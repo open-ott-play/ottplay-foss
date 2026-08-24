@@ -16,14 +16,6 @@ __pycache__/
 feedback.log
 logs/
 
-# Private modules — excluded from public repo on purpose.
-# Without them `npm run build` fails (missing imports), so the full
-# readable bundle cannot be assembled from this tree.
-# Maintainer's copies live in a separate private repo.
-src/core/
-src/keyhandler/
-src/provider/
-
 # Local test playlist (contains real stream URLs with tokens)
 test.m3u
 
