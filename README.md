@@ -29,6 +29,18 @@ python3 server.py 8080
 
 On first load: press **F2 (Settings) → Providers → M3U**, enter your playlist URL.
 
+## Docker
+
+Multi-arch images (amd64/arm64) are published to Docker Hub on every push to `main` and on `v*` tags:
+
+```bash
+docker run -d -p 8080:8080 alvit/ottplay-foss
+# with EPG source:
+docker run -d -p 8080:8080 alvit/ottplay-foss python3 server.py 8080 --epg-url <url>
+```
+
+Tags: `latest` (main), `v1.2.3` / `1.2` (semver), `sha-<short>`.
+
 ## Build from Source
 
 ```
