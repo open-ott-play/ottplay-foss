@@ -1,0 +1,14 @@
+node_modules/
+build/
+dist/
+.cache/
+logs/
+__pycache__/
+.venv/
+.ruff_cache/
+feedback.log
+test.m3u
+.git/
+.github/
+.DS_Store
+*.md
