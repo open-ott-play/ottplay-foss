@@ -29,16 +29,27 @@ run_deploy() {
     command -v docker >/dev/null || fail "docker not found"
     command -v curl >/dev/null || fail "curl not found"
 
-    log "Pulling ${IMAGE}..."
-    docker pull "$IMAGE" || fail "docker pull failed"
+    # docker usually needs root on Synology; fall back to passwordless sudo
+    DOCKER="docker"
+    if ! docker info >/dev/null 2>&1; then
+        if command -v sudo >/dev/null && sudo -n docker info >/dev/null 2>&1; then
+            DOCKER="sudo -n docker"
+            log "using sudo for docker"
+        else
+            fail "no docker access: add user to 'docker' group or enable passwordless sudo"
+        fi
+    fi
 
-    if docker ps -a --format '{{.Names}}' | grep -qx "${CONTAINER}"; then
+    log "Pulling ${IMAGE}..."
+    $DOCKER pull "$IMAGE" || fail "docker pull failed"
+
+    if $DOCKER ps -a --format '{{.Names}}' | grep -qx "${CONTAINER}"; then
         log "Removing existing container '${CONTAINER}'..."
-        docker rm -f "$CONTAINER" >/dev/null || fail "failed to remove old container"
+        $DOCKER rm -f "$CONTAINER" >/dev/null || fail "failed to remove old container"
     fi
 
     # shellcheck disable=SC2086
-    docker run -d \
+    $DOCKER run -d \
         --name "$CONTAINER" \
         --restart unless-stopped \
         -p "${PORT}:8080" \
@@ -57,15 +68,15 @@ run_deploy() {
 
     log "Waiting for ${BASE_URL}/ ..."
     wait_for "${BASE_URL}/" || {
-        docker logs --tail 20 "$CONTAINER" >&2 || true
+        $DOCKER logs --tail 20 "$CONTAINER" >&2 || true
         fail "endpoint ${BASE_URL}/ did not return HTTP 200"
     }
 
     wait_for "${BASE_URL}/dist/stbPlayer.js" 15 || fail "player bundle endpoint not reachable"
 
     log "OK: container '${CONTAINER}' is up."
-    log "  Image:   $(docker inspect -f '{{.Config.Image}}' "$CONTAINER")"
-    log "  Started: $(docker inspect -f '{{.State.StartedAt}}' "$CONTAINER")"
+    log "  Image:   $($DOCKER inspect -f '{{.Config.Image}}' "$CONTAINER")"
+    log "  Started: $($DOCKER inspect -f '{{.State.StartedAt}}' "$CONTAINER")"
     log "  URL:     ${BASE_URL}/"
 }
 
