@@ -18,21 +18,21 @@
  * @property cmd      - Raw command line from M3U8 or similar playlist format.
  */
 export interface Channel {
-  ch_id: number;
-  channel_name: string;
-  url?: string;
-  icon?: string;
-  rec?: number;           // archive hours available
-  name?: string;          // current program name
-  time?: number;          // current program start (unix timestamp)
-  time_to?: number;       // current program end
-  descr?: string;         // current program description
-  nextpr?: EPGEntry[] | null;
-  outdated?: boolean;
-  time_request?: number;  // EPG cache expiry
-  number?: string;        // display number
-  group?: string;         // group/category name
-  cmd?: string;           // raw command from playlist
+    ch_id: number;
+    channel_name: string;
+    url?: string;
+    icon?: string;
+    rec?: number; // archive hours available
+    name?: string; // current program name
+    time?: number; // current program start (unix timestamp)
+    time_to?: number; // current program end
+    descr?: string; // current program description
+    nextpr?: EPGEntry[] | null;
+    outdated?: boolean;
+    time_request?: number; // EPG cache expiry
+    number?: string; // display number
+    group?: string; // group/category name
+    cmd?: string; // raw command from playlist
 }
 
 /**
@@ -45,11 +45,11 @@ export interface Channel {
  * @property icon   - Optional URL to program artwork or thumbnail.
  */
 export interface EPGEntry {
-  name: string;
-  time: number;
-  time_to: number;
-  descr: string;
-  icon?: string;
+    name: string;
+    time: number;
+    time_to: number;
+    descr: string;
+    icon?: string;
 }
 
 /**
@@ -62,11 +62,11 @@ export interface EPGEntry {
  * @property t  - If non-zero, the archive timestamp (playType + playTime) when the user was watching archive.
  */
 export interface PreviousChannel {
-  ci: number;       // channel id
-  c: number;        // category index
-  i: number;        // primary index
-  e?: string;       // program name at switch time
-  t?: number;       // archive timestamp if was playing archive
+    ci: number; // channel id
+    c: number; // category index
+    i: number; // primary index
+    e?: string; // program name at switch time
+    t?: number; // archive timestamp if was playing archive
 }
 
 /**
@@ -78,10 +78,10 @@ export interface PreviousChannel {
  * @property current - Last known playback position in seconds (for resume).
  */
 export interface MediaHistoryEntry {
-  ch_id: number;
-  name: string;
-  fav?: number;
-  current?: number;  // playback position in seconds
+    ch_id: number;
+    name: string;
+    fav?: number;
+    current?: number; // playback position in seconds
 }
 
 /**
@@ -91,8 +91,8 @@ export interface MediaHistoryEntry {
  * @property value - CSS `object-fit` value to apply.
  */
 export interface AspectRatio {
-  name: string;
-  value: string;  // CSS object-fit value
+    name: string;
+    value: string; // CSS object-fit value
 }
 
 /**
@@ -102,6 +102,6 @@ export interface AspectRatio {
  * @property value - Internal zoom value (interpreted by the renderer).
  */
 export interface ZoomPreset {
-  name: string;
-  value: string;
+    name: string;
+    value: string;
 }

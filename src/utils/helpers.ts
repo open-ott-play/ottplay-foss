@@ -16,14 +16,14 @@
  * `new Event()` constructor is unavailable (legacy IE).
  */
 export function createNewEvent(type: string): Event {
-  var event: Event;
-  try {
-    event = new Event(type);
-  } catch (_e) {
-    event = document.createEvent('Event');
-    event.initEvent(type, false, false);
-  }
-  return event;
+    var event: Event;
+    try {
+        event = new Event(type);
+    } catch (_e) {
+        event = document.createEvent("Event");
+        event.initEvent(type, false, false);
+    }
+    return event;
 }
 
 /**
@@ -36,7 +36,7 @@ export function createNewEvent(type: string): Event {
  * feedback data to the server.
  */
 export function client_feedb(message: string): void {
-  PostFeedback(message, '/report_feedb');
+    PostFeedback(message, "/report_feedb");
 }
 
 /**
@@ -52,14 +52,14 @@ export function client_feedb(message: string): void {
  * Mutates the internal `_perfLog` array.
  */
 export function pperf_stamp(label: string): void {
-  if (typeof pperf_stamp === 'function') return;
-  if (navigator.userAgent.indexOf('Maple 6') === -1) return;
-  var now = Date.now();
-  _perfLog.push(now.toString(10) + ' - ' + label);
+    if (typeof pperf_stamp === "function") return;
+    if (navigator.userAgent.indexOf("Maple 6") === -1) return;
+    var now = Date.now();
+    _perfLog.push(now.toString(10) + " - " + label);
 }
 var _perfLog: string[] = [];
 var FeedbPOST: (msg: string) => void = function (msg: string): void {
-  PostFeedback(msg, '/report_feedb');
+    PostFeedback(msg, "/report_feedb");
 };
 
 /**
@@ -78,23 +78,35 @@ var FeedbPOST: (msg: string) => void = function (msg: string): void {
  *   using jQuery (`$.ajax`) if available.
  */
 export function PostFeedback(data: any, endpoint?: string): void {
-  try {
-    _fbBuffer.push({ msg: data, path: endpoint || '/report_feedb', ts: Date.now() });
-    if (_fbTimer === null) {
-      _fbTimer = setTimeout(function () {
-        _fbTimer = null;
-        var batch = _fbBuffer.splice(0, _fbBuffer.length);
-        if (batch.length === 0) return;
-        var base = (typeof (window as any).host === 'string' ? (window as any).host : '');
-        try {
-          if (typeof $ !== 'undefined' && $.ajax) {
-            $.ajax({ type: 'POST', url: base + '/api/feedback',
-              data: JSON.stringify(batch), contentType: 'application/json', timeout: 3000 });
-          }
-        } catch (_e) {}
-      }, 5000);
-    }
-  } catch (_e) {}
+    try {
+        _fbBuffer.push({
+            msg: data,
+            path: endpoint || "/report_feedb",
+            ts: Date.now(),
+        });
+        if (_fbTimer === null) {
+            _fbTimer = setTimeout(function () {
+                _fbTimer = null;
+                var batch = _fbBuffer.splice(0, _fbBuffer.length);
+                if (batch.length === 0) return;
+                var base =
+                    typeof (window as any).host === "string"
+                        ? (window as any).host
+                        : "";
+                try {
+                    if (typeof $ !== "undefined" && $.ajax) {
+                        $.ajax({
+                            type: "POST",
+                            url: base + "/api/feedback",
+                            data: JSON.stringify(batch),
+                            contentType: "application/json",
+                            timeout: 3000,
+                        });
+                    }
+                } catch (_e) {}
+            }, 5000);
+        }
+    } catch (_e) {}
 }
 var _fbBuffer: any[] = [];
 var _fbTimer: any = null;
@@ -109,7 +121,7 @@ var _fbTimer: any = null;
  * 1280×720 is the reference resolution.
  */
 export function getWidthK(): number {
-  return window.innerWidth / 1280;
+    return window.innerWidth / 1280;
 }
 
 /**
@@ -122,7 +134,7 @@ export function getWidthK(): number {
  * 1280×720 is the reference resolution.
  */
 export function getHeightK(): number {
-  return window.innerHeight / 720;
+    return window.innerHeight / 720;
 }
 
 // Expose globally for UI code that uses window.getWidthK / window.getHeightK
@@ -140,7 +152,7 @@ export function getHeightK(): number {
  * returned as-is via string concatenation.
  */
 export function formatTwoDigits(num: number): string {
-  return num.toString().length === 1 ? '0' + num : '' + num;
+    return num.toString().length === 1 ? "0" + num : "" + num;
 }
 
 /**
@@ -150,8 +162,12 @@ export function formatTwoDigits(num: number): string {
  * @returns A string in the format `"HH:MM"` using local time.
  */
 export function time2time(timestamp: number): string {
-  var date = new Date(timestamp * 1000);
-  return formatTwoDigits(date.getHours()) + ':' + formatTwoDigits(date.getMinutes());
+    var date = new Date(timestamp * 1000);
+    return (
+        formatTwoDigits(date.getHours()) +
+        ":" +
+        formatTwoDigits(date.getMinutes())
+    );
 }
 
 /**
@@ -161,8 +177,16 @@ export function time2time(timestamp: number): string {
  * @returns A string in the format `"DD.MM.YYYY HH:MM"` using local time.
  */
 export function time2dateStr(timestamp: number): string {
-  var date = new Date(timestamp * 1000);
-  return formatTwoDigits(date.getDate()) + '.' + formatTwoDigits(date.getMonth() + 1) + '.' + date.getFullYear() + ' ' + time2time(timestamp);
+    var date = new Date(timestamp * 1000);
+    return (
+        formatTwoDigits(date.getDate()) +
+        "." +
+        formatTwoDigits(date.getMonth() + 1) +
+        "." +
+        date.getFullYear() +
+        " " +
+        time2time(timestamp)
+    );
 }
 
 /**
@@ -176,10 +200,10 @@ export function time2dateStr(timestamp: number): string {
  * always zero-padded to two digits.
  */
 export function secondsToText(totalSeconds: number): string {
-  var h = Math.floor(totalSeconds / 3600);
-  var m = Math.floor((totalSeconds % 3600) / 60);
-  var s = Math.floor(totalSeconds % 60);
-  return h + ':' + formatTwoDigits(m) + ':' + formatTwoDigits(s);
+    var h = Math.floor(totalSeconds / 3600);
+    var m = Math.floor((totalSeconds % 3600) / 60);
+    var s = Math.floor(totalSeconds % 60);
+    return h + ":" + formatTwoDigits(m) + ":" + formatTwoDigits(s);
 }
 
 /**
@@ -193,7 +217,7 @@ export function secondsToText(totalSeconds: number): string {
  * Both values are formatted via `secondsToText` and joined with `" / "`.
  */
 export function positionToText(position: number, duration: number): string {
-  return secondsToText(position) + ' / ' + secondsToText(duration);
+    return secondsToText(position) + " / " + secondsToText(duration);
 }
 
 /**
@@ -208,14 +232,14 @@ export function positionToText(position: number, duration: number): string {
  * contains "Safari").
  */
 export function browserName(): string {
-  var ua = navigator.userAgent;
-  if (ua.indexOf('Firefox') !== -1) return 'Firefox';
-  if (ua.indexOf('Opera') !== -1) return 'Opera';
-  if (ua.indexOf('Trident') !== -1) return 'IE';
-  if (ua.indexOf('Edge') !== -1) return 'Edge';
-  if (ua.indexOf('Chrome') !== -1) return 'Chrome';
-  if (ua.indexOf('Safari') !== -1) return 'Safari';
-  return 'Unknown';
+    var ua = navigator.userAgent;
+    if (ua.indexOf("Firefox") !== -1) return "Firefox";
+    if (ua.indexOf("Opera") !== -1) return "Opera";
+    if (ua.indexOf("Trident") !== -1) return "IE";
+    if (ua.indexOf("Edge") !== -1) return "Edge";
+    if (ua.indexOf("Chrome") !== -1) return "Chrome";
+    if (ua.indexOf("Safari") !== -1) return "Safari";
+    return "Unknown";
 }
 
 /**
@@ -228,7 +252,8 @@ export function browserName(): string {
  * middleware that provides `showShift` for on-screen notifications.
  */
 export function alert(msg: string): void {
-  if (typeof (window as any).showShift === 'function') (window as any).showShift(msg);
+    if (typeof (window as any).showShift === "function")
+        (window as any).showShift(msg);
 }
 
 /**
@@ -242,12 +267,12 @@ export function alert(msg: string): void {
  * - Falls back to `console.error` if the element is not found.
  */
 export function log(elementId: string, text: string): void {
-  var el = document.getElementById(elementId);
-  if (el !== null) {
-    el.innerHTML = text + '<br>' + el.innerHTML;
-  } else {
-    console.error('log: element "' + elementId + '" is unavailable');
-  }
+    var el = document.getElementById(elementId);
+    if (el !== null) {
+        el.innerHTML = text + "<br>" + el.innerHTML;
+    } else {
+        console.error('log: element "' + elementId + '" is unavailable');
+    }
 }
 
 /**
@@ -262,11 +287,11 @@ export function log(elementId: string, text: string): void {
  * tags despite the function name mentioning scripts.
  */
 export function checkIfIncluded(url: string): boolean {
-  var links = document.getElementsByTagName('link');
-  for (var i = 0; i < links.length; i++) {
-    if (links[i].href.indexOf(url) !== -1) return true;
-  }
-  return false;
+    var links = document.getElementsByTagName("link");
+    for (var i = 0; i < links.length; i++) {
+        if (links[i].href.indexOf(url) !== -1) return true;
+    }
+    return false;
 }
 
 /**
@@ -283,20 +308,27 @@ export function checkIfIncluded(url: string): boolean {
  * - On error: logs to console, calls `alert()`, and invokes `errorCb`.
  * - Records a `pperf_stamp` if `pperf_stamp` is available.
  */
-export function loadScript(url: string, successCb: (() => void) | null, errorCb: ((e: Error) => void) | null, location: HTMLElement): void {
-  var script = document.createElement('script');
-  script.src = url;
-  script.type = 'text/javascript';
-  if (typeof (script as any).crossOrigin !== 'undefined') (script as any).crossOrigin = 'anonymous';
-  if (successCb) script.onload = successCb;
-  script.onerror = function () {
-    var err = new Error('Error loading: ' + url);
-    console.error(err);
-    alert(err.message);
-    if (typeof errorCb === 'function') errorCb(err);
-  };
-  location.appendChild(script);
-  if (typeof pperf_stamp === 'function') pperf_stamp('startPlayer -- loadJS ' + url);
+export function loadScript(
+    url: string,
+    successCb: (() => void) | null,
+    errorCb: ((e: Error) => void) | null,
+    location: HTMLElement,
+): void {
+    var script = document.createElement("script");
+    script.src = url;
+    script.type = "text/javascript";
+    if (typeof (script as any).crossOrigin !== "undefined")
+        (script as any).crossOrigin = "anonymous";
+    if (successCb) script.onload = successCb;
+    script.onerror = function () {
+        var err = new Error("Error loading: " + url);
+        console.error(err);
+        alert(err.message);
+        if (typeof errorCb === "function") errorCb(err);
+    };
+    location.appendChild(script);
+    if (typeof pperf_stamp === "function")
+        pperf_stamp("startPlayer -- loadJS " + url);
 }
 
 /**
@@ -309,8 +341,13 @@ export function loadScript(url: string, successCb: (() => void) | null, errorCb:
  *
  * @see loadScript
  */
-export function loadJS(url: string, successCb: (() => void) | null, errorCb: ((e: Error) => void) | null, location: HTMLElement): void {
-  loadScript(url, successCb, errorCb, location);
+export function loadJS(
+    url: string,
+    successCb: (() => void) | null,
+    errorCb: ((e: Error) => void) | null,
+    location: HTMLElement,
+): void {
+    loadScript(url, successCb, errorCb, location);
 }
 
 /**
@@ -325,8 +362,12 @@ export function loadJS(url: string, successCb: (() => void) | null, errorCb: ((e
  *
  * @see loadScript
  */
-export function getScriptDOM(url: string, successCb: (() => void) | null, errorCb: ((e: Error) => void) | null): void {
-  loadScript(url, successCb, errorCb, document.body);
+export function getScriptDOM(
+    url: string,
+    successCb: (() => void) | null,
+    errorCb: ((e: Error) => void) | null,
+): void {
+    loadScript(url, successCb, errorCb, document.body);
 }
 
 /**
@@ -345,54 +386,58 @@ export function getScriptDOM(url: string, successCb: (() => void) | null, errorC
  * property (which is immediately removed) to work around a CSS parsing bug.
  */
 export var innerStyle: any = (function () {
-  var cssSheet: any;
-  var rules: Record<string, any> = {};
-  /**
-   * Initialise the internal `<style>` element and insert it at the top of
-   * `<body>`.
-   *
-   * @sideEffects
-   * Creates a `<style>` DOM element and inserts it as the first child of
-   * `<body>`; stores a reference to the element's CSSStyleSheet.
-   */
-  function init(): void {
-    (innerStyle as any).elHtml = document.createElement('style');
-    document.body.insertBefore((innerStyle as any).elHtml, document.body.firstChild);
-    cssSheet = (innerStyle as any).elHtml.sheet;
-  }
-
-  /**
-   * Get (or create) the CSS rule object for a given selector.
-   *
-   * @param selector - A CSS selector string (e.g. `'.my-class'`).
-   * @returns The corresponding CSS style rule object, or `undefined` if
-   *          the rule could not be inserted.
-   *
-   * @sideEffects
-   * On first invocation for a given selector, inserts a new empty rule
-   * (or `{quotes: inherit}` on Maple) into the stylesheet and caches it.
-   */
-  function getRule(selector: string): any {
-    var rule = rules[selector];
-    if (typeof rule === 'undefined') {
-      var index = cssSheet.cssRules.length;
-      if (!(window as any).client_can.is_maple) {
-        cssSheet.insertRule(selector + ' {}', 0);
-        rule = cssSheet.cssRules[0];
-      } else {
-        cssSheet.insertRule(selector + ' {quotes: inherit;}', 0);
-        rule = cssSheet.cssRules[index];
-        if (typeof rule !== 'undefined') rule.style.removeProperty('quotes');
-      }
-      if (cssSheet.cssRules.length <= index) {
-        client_feedb('Cannot add empty CSS rule');
-        rule = undefined;
-      }
-      rules[selector] = rule;
+    var cssSheet: any;
+    var rules: Record<string, any> = {};
+    /**
+     * Initialise the internal `<style>` element and insert it at the top of
+     * `<body>`.
+     *
+     * @sideEffects
+     * Creates a `<style>` DOM element and inserts it as the first child of
+     * `<body>`; stores a reference to the element's CSSStyleSheet.
+     */
+    function init(): void {
+        (innerStyle as any).elHtml = document.createElement("style");
+        document.body.insertBefore(
+            (innerStyle as any).elHtml,
+            document.body.firstChild,
+        );
+        cssSheet = (innerStyle as any).elHtml.sheet;
     }
-    return rule;
-  }
-  return { init: init, getRule: getRule };
+
+    /**
+     * Get (or create) the CSS rule object for a given selector.
+     *
+     * @param selector - A CSS selector string (e.g. `'.my-class'`).
+     * @returns The corresponding CSS style rule object, or `undefined` if
+     *          the rule could not be inserted.
+     *
+     * @sideEffects
+     * On first invocation for a given selector, inserts a new empty rule
+     * (or `{quotes: inherit}` on Maple) into the stylesheet and caches it.
+     */
+    function getRule(selector: string): any {
+        var rule = rules[selector];
+        if (typeof rule === "undefined") {
+            var index = cssSheet.cssRules.length;
+            if (!(window as any).client_can.is_maple) {
+                cssSheet.insertRule(selector + " {}", 0);
+                rule = cssSheet.cssRules[0];
+            } else {
+                cssSheet.insertRule(selector + " {quotes: inherit;}", 0);
+                rule = cssSheet.cssRules[index];
+                if (typeof rule !== "undefined")
+                    rule.style.removeProperty("quotes");
+            }
+            if (cssSheet.cssRules.length <= index) {
+                client_feedb("Cannot add empty CSS rule");
+                rule = undefined;
+            }
+            rules[selector] = rule;
+        }
+        return rule;
+    }
+    return { init: init, getRule: getRule };
 })();
 
 /**
@@ -410,13 +455,23 @@ export var innerStyle: any = (function () {
  * for callers to use (e.g. via `innerHTML`).
  */
 export function getThumbnail(url: string): string {
-  if ((window as any).sThumbnail && url) {
-    var w = Math.floor(133 * getWidthK());
-    var h = Math.floor(200 * getHeightK());
-    var m = Math.floor(w / 15);
-    return '<div class="img" style="background-image: url(\'' + url + "');width:" + w + 'px;height:' + h + 'px;margin:' + m + 'px;float:left;background-size:cover;"></div>';
-  }
-  return '';
+    if ((window as any).sThumbnail && url) {
+        var w = Math.floor(133 * getWidthK());
+        var h = Math.floor(200 * getHeightK());
+        var m = Math.floor(w / 15);
+        return (
+            '<div class="img" style="background-image: url(\'' +
+            url +
+            "');width:" +
+            w +
+            "px;height:" +
+            h +
+            "px;margin:" +
+            m +
+            'px;float:left;background-size:cover;"></div>'
+        );
+    }
+    return "";
 }
 
 /**
@@ -430,7 +485,7 @@ export function getThumbnail(url: string): string {
  * error reporting; currently it only logs to console.
  */
 export function ErrPOST(msg: any): void {
-  if (msg) console.log('[ERR]', msg);
+    if (msg) console.log("[ERR]", msg);
 }
 
 /**
@@ -445,8 +500,8 @@ export function ErrPOST(msg: any): void {
  * Finalises with `h ^ (h >>> 9)`. Not cryptographically secure.
  */
 export function TSH(str: string): number {
-  for (var i = 0, h = 9; i < str.length;) {
-    h = Math.imul(h ^ str.charCodeAt(i++), 387420489);
-  }
-  return h ^ h >>> 9;
+    for (var i = 0, h = 9; i < str.length; ) {
+        h = Math.imul(h ^ str.charCodeAt(i++), 387420489);
+    }
+    return h ^ (h >>> 9);
 }
