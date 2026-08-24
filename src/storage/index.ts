@@ -235,7 +235,10 @@ function createCookieAdapter(): StorageAdapter {
             document.cookie.replace(
                 new RegExp(
                     "(?:^|.*;\\s*)" +
-                        decodeURIComponent(key).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
+                        decodeURIComponent(key).replace(
+                            /[.*+?^${}()|[\]\\]/g,
+                            "\\$&",
+                        ) +
                         "\\s*\\=\\s*((?:[^;](?!;))*[^;]?).*",
                 ),
                 "$1",
