@@ -9,27 +9,6 @@
  * - Expose every function/constant on window.* for legacy compatibility.
  * - Handle playback (channel and media), channel list display, archive mode.
  * - Manage sleep timers, info bar, PiP, preview, and cloud settings sync.
- *
- * ─── BUILD CONSTRAINT: duplicate function bodies required ─────────────────
- * `build-concat.cjs` runs `tsc` then `stripModule()` which removes every
- * `import`/`export` line, then concatenates all .ts files in a fixed order
- * and runs terser to produce `dist/stbPlayer.js`. The legacy code in this
- * file uses top-level `function X` declarations (not `export function`),
- * which become global function declarations after the strip step and
- * therefore land in the bundle as callable symbols.
- *
- * New code lives in `src/app/*.ts` and `src/view/*.ts` as proper ES modules
- * with named exports — those are tree-shaken at the TypeScript level
- * (imports become references), but their body is inlined into the bundle
- * in the order `build-concat.cjs` lists. The legacy `function X` blocks
- * further down are therefore REQUIRED for the bundle to work: they provide
- * the surface that the concat step turns into globals for non-module
- * callers (stbPlayer, dune plugins, runtime providers).
- *
- * Do NOT delete these duplicates as part of the ES-module refactor. The
- * full migration to post-bundle architecture (drop the concat pipeline,
- * use real ES modules, drop the globals) is tracked separately.
- * ──────────────────────────────────────────────────────────────────────────
  */
 
 // Polyfills (must run first)
@@ -53,36 +32,21 @@ import {
     addToFavorites,
     aSubs,
     aZooms,
-    bucketsList,
     catIndex,
     cats,
     catsArray,
     channels,
-    channelsList,
     curList,
-    detailEPG,
     enterPinAndSetAccess,
     enterPinCode,
     epg,
-    epg_ch_id,
-    epgArray,
-    epgKeyHandler,
     epgList,
-    epgListAlpha,
-    epglisted,
-    epgPodval,
-    epgreturn,
-    epgShow_miniproc,
     favoritesArray,
-    fileArchive,
     forcePlay,
     getChannelUrl,
-    getCurProgData,
     getMediaDescr,
     handleNumberInput,
     ifParentalAccessChId,
-    itemEPG,
-    listEpgArray,
     medFavorites,
     medHistory,
     mediaSelects,
@@ -96,23 +60,15 @@ import {
     prevArr,
     prevChannel,
     primaryIndex,
-    recordsList,
     removeFromFavorites,
     saveChannelsCats,
     sEditor,
-    selectEpg,
-    setCurProg,
     setCurrent,
-    setEpgTimer,
     setParentAccess,
-    shiftArchive,
-    shiftArchiveSelect,
     sInfoSwitch,
     sMedCount,
     sPlayers,
-    sRWfun,
     sStopPlay,
-    timeShift,
     updateArchiveInfo,
 } from "./channels";
 // Localization
@@ -150,10 +106,9 @@ import {
     stbSetItem,
     storage,
 } from "./storage";
-import { client_feedb, PostFeedback, pperf_flush } from "./utils/helpers";
+import { client_feedb } from "./utils/helpers";
 
-// Sync channels to window.channels and window.chanels (alias) so provider scripts and UI can access it globally
-(window as any).channels = channels;
+// Sync channels to window.chanels so provider scripts and UI can access it globally
 (window as any).chanels = channels;
 
 // Core
@@ -228,7 +183,6 @@ import {
     infoBarHideT,
     infoBox,
     infoList,
-    infoProgramm,
     initBackgroundIntervals,
     popBuckets,
     popEpg,
@@ -297,7 +251,7 @@ declare var duneAddSettings: ((_index: number) => void) | null;
 function nofun(): void {}
 
 // Version
-var PLAYER_VERSION = "__OTTP_VERSION__";
+var PLAYER_VERSION = "0319.1812";
 
 // Backward compat globals (were defined in old monolithic bundle)
 // itemWith — channel list item width, updated by showPage()
@@ -306,11 +260,11 @@ var PLAYER_VERSION = "__OTTP_VERSION__";
 (window as any).client_can_https = false;
 (window as any).client_can = {
     https: (window as any).client_can_https,
+    localstorage: typeof window.localStorage !== "undefined",
+    websocket: typeof window.WebSocket !== "undefined",
     is_maple:
         typeof navigator !== "undefined" &&
         navigator.userAgent.indexOf("Maple 6") !== -1,
-    localstorage: typeof window.localStorage !== "undefined",
-    websocket: typeof window.WebSocket !== "undefined",
 };
 (window as any).client_can.crossxhr =
     typeof navigator !== "undefined" &&
@@ -345,9 +299,9 @@ var numberTimeout: any = null;
 var isListVisible = false;
 var listSelectionIndex = 0;
 var listDataArray: any[] = [];
-var getListItemFn: Function | null = null;
-var detailListActionFn: Function | null = null;
-var listKeyHandlerFn: Function | null = null;
+var getListItemFn: Function = null;
+var detailListActionFn: Function = null;
+var listKeyHandlerFn: Function = null;
 var selIndex = 0;
 var listArray: any[] = [];
 
@@ -360,7 +314,7 @@ var editValue = "";
 var isSelectBox = false;
 
 // PiP state
-var pipIndex: number | null = null;
+var pipIndex: number = null;
 var pipCatIndex = 0;
 
 // Preview
@@ -439,7 +393,7 @@ var savedPopup: {
     popupActions: any[];
     popupArray: string[];
     popupDetail: string[];
-} = { popupActions: [], popupArray: [], popupDetail: [], ver: PLAYER_VERSION };
+} = { ver: PLAYER_VERSION, popupActions: [], popupArray: [], popupDetail: [] };
 var version: string = PLAYER_VERSION;
 
 // Options system (ported from stbPlayer.js)
@@ -532,12 +486,12 @@ declare function loadScript(
     url: string,
     successCb: () => void,
     errorCb?: (e: any) => void,
-    location?: HTMLElement
+    location?: HTMLElement,
 ): void;
 declare function getScriptDOM(
     url: string,
     successCb: () => void,
-    errorCb?: () => void
+    errorCb?: () => void,
 ): void;
 
 // Provider-scoped storage aliases
@@ -641,98 +595,98 @@ function setFontSize(): void {
     $("#info").css("padding", 20 * e + "px");
     $("#numprog").css({
         left: 20 * e + "px",
-        padding: 10 * e + "px",
         top: 20 * e + "px",
+        padding: 10 * e + "px",
     });
     $("#permanentTime").css({
-        padding: 10 * e + "px " + 10 * t + "px",
         right: 20 * e + "px",
         top: 20 * t + "px",
+        padding: 10 * e + "px " + 10 * t + "px",
     });
     $("#launch").css({ "font-size": 16 * e + "px", padding: 100 * e + "px" });
     $("logo").css({ margin: 100 * e + "px" });
     $("#list").css({ margin: 10 * e + "px " + 10 * t + "px" });
     $("#listCaption").css({ height: 30 * e + "px" });
-    $("#listTime").css({ "font-size": 22 * e + "px", width: 80 * t + "px" });
+    $("#listTime").css({ width: 80 * t + "px", "font-size": 22 * e + "px" });
     $("#list_s").css({ "font-size": 16 * e + "px" });
     $("#listPodval").css({ height: 30 * e + "px" });
     $("#listDetail").css({
+        width: 514 * t + 1 + "px",
+        top: 330 * e + "px",
         bottom: 30 * e + 1 + "px",
         padding: 4 * e + "px " + 4 * t + "px",
-        top: 330 * e + "px",
-        width: 514 * t + 1 + "px",
     });
     $("#listPopUp").css({
         bottom: 30 * e + 1 + "px",
-        margin: 10 * e + "px",
         padding: 10 * e + "px",
+        margin: 10 * e + "px",
     });
     $("#listIn").css({
-        bottom: 30 * e + 1 + "px",
         left: 522 * t + "px",
-        padding: 4 * e + "px 0px",
         top: 30 * e + 1 + "px",
+        bottom: 30 * e + 1 + "px",
+        padding: 4 * e + "px 0px",
     });
     $("#listAbout").css({
-        bottom: 30 * e + 1 + "px",
         left: 522 * t + "px",
-        padding: 10 * e + "px " + 10 * t + "px",
         top: 30 * e + 1 + "px",
+        bottom: 30 * e + 1 + "px",
+        padding: 10 * e + "px " + 10 * t + "px",
     });
     $("#listEdit").css({
-        bottom: 30 * e + 1 + "px",
         left: 522 * t + "px",
-        padding: 10 * e + "px " + 10 * t + "px",
         top: 30 * e + 1 + "px",
+        bottom: 30 * e + 1 + "px",
+        padding: 10 * e + "px " + 10 * t + "px",
     });
     $("#info1").css({ padding: 20 * e + "px " + 20 * t + "px" });
-    $("#picon").css({ height: 80 * e + "px", width: 80 * t + "px" });
+    $("#picon").css({ width: 80 * t + "px", height: 80 * e + "px" });
     $("#channel").css({
-        padding: "0px 0px 0px " + 20 * t + "px",
         width: 1040 * t + "px",
+        padding: "0px 0px 0px " + 20 * t + "px",
     });
     $("#channel_number").css({ width: 70 * t + "px" });
     $("#progress_div").css({ margin: 2 * e + "px 0px" });
     $("#progress").css({ height: 6 * e + "px" });
     $("#progress_r").css({ height: 6 * e + "px" });
-    $("#begin_time").css({ "font-size": 22 * e + "px", width: 70 * t + "px" });
-    $("#end_time").css({ "font-size": 22 * e + "px", width: 70 * t + "px" });
+    $("#begin_time").css({ width: 70 * t + "px", "font-size": 22 * e + "px" });
+    $("#end_time").css({ width: 70 * t + "px", "font-size": 22 * e + "px" });
     $("#programm_name").css({ width: 900 * t + "px" });
-    $("#nbegin_time").css({ "font-size": 22 * e + "px", width: 70 * t + "px" });
-    $("#nend_time").css({ "font-size": 22 * e + "px", width: 70 * t + "px" });
+    $("#nbegin_time").css({ width: 70 * t + "px", "font-size": 22 * e + "px" });
+    $("#nend_time").css({ width: 70 * t + "px", "font-size": 22 * e + "px" });
     $("#nprogramm_name").css({ width: 900 * t + "px" });
-    $("#data").css({ "font-size": 22 * e + "px", width: 80 * t + "px" });
+    $("#data").css({ width: 80 * t + "px", "font-size": 22 * e + "px" });
     $("#current_s").css({ "font-size": 16 * e + "px" });
     $("#video_res").css({ "font-size": 16 * e + "px" });
     $("#descr").css({
-        margin: "0px 0px " + 20 * e + "px 0px",
         padding: "0px " + 100 * t + "px",
+        margin: "0px 0px " + 20 * e + "px 0px",
     });
     $("#buffering").css({
-        "background-size": 30 * e + "px",
-        height: 30 * e + "px",
         left: 10 * e + "px",
         top: 10 * e + "px",
         width: 30 * e + "px",
+        height: 30 * e + "px",
+        "background-size": 30 * e + "px",
     });
     $("#pip_buffering").css({
-        "background-size": 30 * e + "px",
-        height: 30 * e + "px",
         right: 10 * e + "px",
         top: 10 * e + "px",
         width: 30 * e + "px",
+        height: 30 * e + "px",
+        "background-size": 30 * e + "px",
     });
     $("#mute").css({
-        "background-size": 20 * e + "px",
-        height: 40 * e + "px",
         width: 40 * e + "px",
+        height: 40 * e + "px",
+        "background-size": 20 * e + "px",
     });
     $("#volume_div").css({
-        border: 5 * e + "px solid black",
         left: 10 * t + "px",
         width: 15 * t + "px",
+        border: 5 * e + "px solid black",
     });
-    $("#dialogbox").css({ margin: 10 * e + "px", padding: 10 * e + "px" });
+    $("#dialogbox").css({ padding: 10 * e + "px", margin: 10 * e + "px" });
     $("btn").css({
         "border-radius": 6 * e + "px",
         padding: "0px " + 6 * t + "px",
@@ -778,11 +732,11 @@ function setFontSize(): void {
         if (a2) {
             var w = a2 * 6;
             $("#channel_number").css({ width: w + "px" });
-            $("#begin_time").css({ "font-size": "inherit", width: w + "px" });
-            $("#end_time").css({ "font-size": "inherit", width: w + "px" });
+            $("#begin_time").css({ width: w + "px", "font-size": "inherit" });
+            $("#end_time").css({ width: w + "px", "font-size": "inherit" });
             $("#programm_name").css({ width: 1200 * t - w - 20 * t + "px" });
-            $("#nbegin_time").css({ "font-size": "inherit", width: w + "px" });
-            $("#nend_time").css({ "font-size": "inherit", width: w + "px" });
+            $("#nbegin_time").css({ width: w + "px", "font-size": "inherit" });
+            $("#nend_time").css({ width: w + "px", "font-size": "inherit" });
             $("#nprogramm_name").css({ width: 1200 * t - w - 20 * t + "px" });
         }
     } catch (ex) {
@@ -799,7 +753,7 @@ function setFontSize(): void {
             (window as any).stbCSS();
         $("#descr").css(
             "max-height",
-            (660 - $("#channel").height()) * e + "px"
+            (660 - $("#channel").height()) * e + "px",
         );
     } catch (ex) {
         console.error(ex);
@@ -845,17 +799,13 @@ function setColor(): void {
     var selCv = settings.highlightColorSel.split(",");
     curColorB =
         "rgb(" +
-        hsvToRgb(Number.parseInt(selCv[0]), Number.parseInt(selCv[1]), 50).join(
-            ","
-        ) +
+        hsvToRgb(parseInt(selCv[0]), parseInt(selCv[1]), 50).join(",") +
         ")";
     // sSHLcolor -> curColor (selection foreground), H,S at lightness 100
     var fgCv = settings.highlightColor.split(",");
     curColor =
         "rgb(" +
-        hsvToRgb(Number.parseInt(fgCv[0]), Number.parseInt(fgCv[1]), 100).join(
-            ","
-        ) +
+        hsvToRgb(parseInt(fgCv[0]), parseInt(fgCv[1]), 100).join(",") +
         ")";
 
     $("#listCaption").css("border-bottom", "1px solid " + curColor);
@@ -889,9 +839,7 @@ function setColor(): void {
     var bgCv = settings.highlightColorB.split(",");
     var bgColor =
         "rgb(" +
-        hsvToRgb(Number.parseInt(bgCv[0]), 100, Number.parseInt(bgCv[1])).join(
-            ","
-        ) +
+        hsvToRgb(parseInt(bgCv[0]), 100, parseInt(bgCv[1])).join(",") +
         ")";
     $(".list_back").css("background-color", bgColor);
     $("#listPopUp").css("background-color", bgColor);
@@ -913,12 +861,10 @@ function stbSetOsdOpacity(val: number): void {
     $(".osd").css(
         "background-color",
         "rgba(" +
-            hsvToRgb(Number.parseInt(cv[0]), 100, Number.parseInt(cv[1])).join(
-                ","
-            ) +
+            hsvToRgb(parseInt(cv[0]), 100, parseInt(cv[1])).join(",") +
             "," +
             val / 100 +
-            ")"
+            ")",
     );
 }
 
@@ -962,7 +908,7 @@ function setSleepTimeout(): void {
             function () {
                 stbToggleStandby();
             },
-            settings.sleepTimeout * 60 * 1000
+            settings.sleepTimeout * 60 * 1000,
         );
     }
 }
@@ -990,8 +936,7 @@ function showChanelsList(): void {
     listKeyHandlerFn = function (key: number) {
         switch (key) {
             case 13: // ENTER
-                // Close the list; playback stays on the current channel
-                // (provider module replaces this handler when loaded).
+                // Play selected
                 closeList();
                 isListVisible = false;
                 return true;
@@ -1008,6 +953,18 @@ function showChanelsList(): void {
 
 // Archive playback
 
+/**
+ * Start archive (timeshift) playback at the given timestamp.
+ * Delegates to playArchive() from the channels module.
+ *
+ * @param timestamp - Unix timestamp (seconds) to seek to.
+ *
+ * Side effects: Calls playArchive(); may change playback state.
+ */
+function playArchiveMode(timestamp: number): void {
+    playArchive(timestamp);
+}
+
 // Media info update
 
 /**
@@ -1018,8 +975,11 @@ function showChanelsList(): void {
  */
 function updateMediaInfoDisplay(): void {
     var resEl = document.getElementById("video_res");
-    if (resEl && video && video.videoWidth)
-        resEl.innerHTML = "<br/>" + video.videoWidth + "x" + video.videoHeight;
+    if (resEl && video) {
+        if (video.videoWidth)
+            resEl.innerHTML =
+                "<br/>" + video.videoWidth + "x" + video.videoHeight;
+    }
 }
 
 // Check media (detect archive)
@@ -1040,7 +1000,7 @@ function checkMedia(): void {
         if (
             duration &&
             duration > 180 &&
-            duration !== Number.POSITIVE_INFINITY &&
+            duration !== Infinity &&
             duration < 1000000
         ) {
             window.playTime = 0;
@@ -1060,11 +1020,6 @@ function checkMedia(): void {
 function body_onUnload(): void {
     setCurrent(catIndex, primaryIndex);
     window.playType = 0;
-    // Report collected Maple 6 performance stamps (buffer is cleared;
-    // no-op and empty on other platforms). The server appends the payload
-    // to feedback.log.
-    var perf: string = pperf_flush();
-    if (perf) PostFeedback(perf);
 }
 
 /**
@@ -1082,7 +1037,7 @@ if (navigator.userAgent.search(/Maple/i) === -1) {
     } else if ((document as any).attachEvent) {
         (document as any).attachEvent(
             "onvisibilitychange",
-            body_onUnloadHidden
+            body_onUnloadHidden,
         );
     }
     if (window.addEventListener) {
@@ -1192,7 +1147,7 @@ function selectLang(): void {
                     "TRACE selectLang ENTER prevSelIndex=" +
                         prevSelIndex +
                         " selIndex=" +
-                        selIndex
+                        selIndex,
                 );
                 if (prevSelIndex === selIndex) {
                     if (typeof duneAddSettings !== "function") loadProv();
@@ -1219,7 +1174,7 @@ function selectLang(): void {
                         function () {
                             console.log("TRACE langJS load FAILED");
                             infoBox("ERR: lang loading fail!");
-                        }
+                        },
                     );
                 }
                 return true;
@@ -1415,7 +1370,7 @@ function onStbReady(): void {
                     el.style.display = "none";
                 }
                 selectLang();
-            }
+            },
         );
 
         if (TMDb && TMDb.prepare) TMDb.prepare();
@@ -1448,13 +1403,8 @@ console.log("player loaded!");
 
 // Expose globals for backward compat with HTML and other scripts
 declare var window: any;
-// @legacy-bridge: entry point — called by HTML on DOMContentLoaded or auto-start guard.
-// Required by: index.html (the only caller).
 window.startPlayer = startPlayer;
-// @legacy-bridge: post-init hook — merges window.keys, loads settings, starts provider.
-// Required by: stb/{device}/stb.js for device-specific key mappings.
 window.onStbReady = onStbReady;
-// @legacy-bridge: keyboard dispatch — called by stb/{device}/stb.js on key events.
 window.keyHandler = keyHandler;
 window._doKey = dispatchKey;
 window.keys = keys;
@@ -1487,13 +1437,13 @@ function _playChannel(catIdx: number, chIdx: number): void {
             " chIdx=" +
             chIdx +
             " catsArray.length=" +
-            catsArray.length
+            catsArray.length,
     );
     if (catsArray[catIdx] === undefined) {
         infoBox(
             "ERROR: Category #" +
                 catIdx +
-                " does not exist!<br /> Please select other"
+                " does not exist!<br /> Please select other",
         );
         client_feedb(
             "category_trouble_playChannel: " +
@@ -1501,7 +1451,7 @@ function _playChannel(catIdx: number, chIdx: number): void {
                 " / " +
                 catsArray.length +
                 " / " +
-                Object.keys(providerGetJson("cats", {})).length
+                Object.keys(providerGetJson("cats", {})).length,
         );
     }
     if (
@@ -1519,7 +1469,7 @@ function _playChannel(catIdx: number, chIdx: number): void {
         "[playChannel] channelId=" +
             channelId +
             " url=" +
-            getChannelUrl(channelId)
+            getChannelUrl(channelId),
     );
     updateChanelInfo(channelId);
     if (sInfoSwitch) showChanelInfo(settings.infoTimeout);
@@ -1558,8 +1508,7 @@ function _playMedia(item: any): void {
     });
     if (historyIdx !== -1) {
         if (historyIdx === 0 && (window as any).playType === -1e11) return;
-        resumePos =
-            Math.floor((medHistory[historyIdx]?.current ?? 0) / 60) * 60;
+        resumePos = Math.floor(medHistory[historyIdx].current / 60) * 60;
         medHistory.splice(historyIdx, 1);
     }
     medHistory.unshift(item);
@@ -1567,7 +1516,7 @@ function _playMedia(item: any): void {
     medHistory.splice(maxMedCount);
     $("#picon").css(
         "background-image",
-        'url("' + (item.logo_30x30 || "") + '")'
+        'url("' + (item.logo_30x30 || "") + '")',
     );
     $("#channel_number").text(" ");
     $("#channel_name").html(item.title);
@@ -1597,7 +1546,7 @@ function _playMedia(item: any): void {
             _("Continue watching?") + "<br><br>" + step2text(resumePos),
             function () {
                 stbSetPosTime(resumePos);
-            }
+            },
         );
 }
 
@@ -1656,7 +1605,7 @@ window.stbSetBuffer = stbSetBuffer;
  */
 window._setSetup = function (
     saveCallback: () => void,
-    cancelCallback: () => void
+    cancelCallback: () => void,
 ): void {
     (window as any).selIndex = 0;
     (window as any).getListItem = function (item: any, _idx: number): string {
@@ -1695,21 +1644,21 @@ window._setSetup = function (
             (window as any).btnDiv(
                 (window as any).keys.RETURN,
                 (window as any).strRETURN,
-                "Close"
+                "Close",
             ) +
             (window as any).btnDiv(
                 (window as any).keys.ENTER,
                 (window as any).strENTER,
                 "Change value",
                 (window as any).strLEFT,
-                (window as any).strRIGHT
+                (window as any).strRIGHT,
             ) +
             (window as any).btnDiv(
                 (window as any).keys.GREEN,
                 "",
                 "Save Settings",
                 (window as any).strPlayPause,
-                "0"
+                "0",
             );
     }
     (window as any).listKeyHandlerFn = function (e: number): boolean {
@@ -1824,15 +1773,15 @@ window.stbOptions = function (): void {
             val: w.sBufSize,
             values: w.bufferSizes,
         },
-        { cur: "", name: "", val: 0, values: w.nofun || [] },
+        { name: "", val: 0, values: w.nofun || [], cur: "" },
         {
-            cur: "",
             name:
                 '<div class="btn">' +
                 (w._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
             values: saveSettings,
+            cur: "",
         },
     ]);
     var captionEl = document.getElementById("listCaption");
@@ -1863,7 +1812,7 @@ function setListArrays(w: any, data: any[]): void {
 window.saveIfChanged = function (
     pos: number,
     key: string,
-    useStb: boolean
+    useStb: boolean,
 ): void {
     var w = window as any;
     if (useStb === undefined) useStb = false;
@@ -1911,12 +1860,11 @@ window.settingsInterface = function (): void {
         w.saveIfChanged(i++, "sSleepTimeout", true);
         if (typeof w.stbSetOsdOpacity === "function")
             w.saveIfChanged(i++, "sOsdOpacity", true);
-        if (
-            typeof w.stbGetVolume === "function" &&
-            w.sVolumeStep !== w.listArray[i++].val + 3
-        ) {
-            w.sVolumeStep = w.listArray[i - 1].val + 3;
-            w.stbSetItem("sVolumeStep", w.sVolumeStep.toString());
+        if (typeof w.stbGetVolume === "function") {
+            if (w.sVolumeStep !== w.listArray[i++].val + 3) {
+                w.sVolumeStep = w.listArray[i - 1].val + 3;
+                w.stbSetItem("sVolumeStep", w.sVolumeStep.toString());
+            }
         }
         i++;
         if (w.sSHLcolor !== w.eSHLcolor) {
@@ -2038,24 +1986,24 @@ window.settingsInterface = function (): void {
             values: [3, 4, 5, 6, 7, 8, 9, 10],
         },
         {
-            cur: w._("select") || "select",
             name: w._("Color spectrum") || "Color spectrum",
             val: w.sSHLcolor,
             values: w.colorDialog,
+            cur: w._("select") || "select",
         },
         {
-            cur: w._("select") || "select",
             name:
                 w._("Background color of selected item") ||
                 "Background color of selected item",
             val: w.sSHLcolSel,
             values: w.selColorDialog,
+            cur: w._("select") || "select",
         },
         {
-            cur: w._("select") || "select",
             name: w._("Background color") || "Background color",
             val: w.sSHLcolorB,
             values: w.backColorDialog,
+            cur: w._("select") || "select",
         },
         {
             name:
@@ -2108,15 +2056,15 @@ window.settingsInterface = function (): void {
             val: w.sBufSize,
             values: w.bufferSizes,
         },
-        { cur: "", name: "", val: 0, values: w.nofun || [] },
+        { name: "", val: 0, values: w.nofun || [], cur: "" },
         {
-            cur: "",
             name:
                 '<div class="btn">' +
                 (w._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
             values: save,
+            cur: "",
         },
     ]);
     if (typeof w.stbSetBuffer === "function" && w.stbBufferSizes)
@@ -2205,15 +2153,15 @@ window.settingsInfobar = function (): void {
             val: w.sThumbnail,
             values: noyes,
         },
-        { cur: "", name: "", val: 0, values: w.nofun || [] },
+        { name: "", val: 0, values: w.nofun || [], cur: "" },
         {
-            cur: "",
             name:
                 '<div class="btn">' +
                 (w._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
             values: save,
+            cur: "",
         },
     ]);
     var capEl = document.getElementById("listCaption");
@@ -2323,15 +2271,15 @@ window.settingsLists = function (): void {
             val: w.sShowScroll,
             values: noyes,
         },
-        { cur: "", name: "", val: 0, values: w.nofun || [] },
+        { name: "", val: 0, values: w.nofun || [], cur: "" },
         {
-            cur: "",
             name:
                 '<div class="btn">' +
                 (w._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
             values: save,
+            cur: "",
         },
     ]);
     var capEl = document.getElementById("listCaption");
@@ -2454,15 +2402,15 @@ window.settingsChannels = function (): void {
                       (w._('"Favorites"') || '"Favorites"') +
                       "</span>",
         },
-        { cur: "", name: "", val: 0, values: w.nofun || [] },
+        { name: "", val: 0, values: w.nofun || [], cur: "" },
         {
-            cur: "",
             name:
                 '<div class="btn">' +
                 (w._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
             values: save,
+            cur: "",
         },
     ]);
     var capEl = document.getElementById("listCaption");
@@ -2588,7 +2536,7 @@ window.settingsButtons = function (): void {
             name: w._(
                 r,
                 a + (w.strLEFT || "L") + o,
-                a + (w.strRIGHT || "R") + o
+                a + (w.strRIGHT || "R") + o,
             ),
             val: w.sArrowFun,
             values: c,
@@ -2602,7 +2550,7 @@ window.settingsButtons = function (): void {
             name: w._(
                 r,
                 a + (w.strPREV || "PREV") + o,
-                a + (w.strNEXT || "NEXT") + o
+                a + (w.strNEXT || "NEXT") + o,
             ),
             val: w.sPNFun,
             values: [
@@ -2646,7 +2594,7 @@ window.settingsButtons = function (): void {
         {
             name: w._(
                 "Button function %1 when viewing archive",
-                a + (w.strENTER || "ENTER") + o
+                a + (w.strENTER || "ENTER") + o,
             ),
             val: w.sOkfun,
             values: [w._("EPG") || "EPG", w._("Channels") || "Channels"],
@@ -2680,12 +2628,12 @@ window.settingsButtons = function (): void {
             val: w.sNoNumbersKeys,
             values: noyes,
         },
-        { cur: "", name: "", val: 0, values: w.nofun || [] },
+        { name: "", val: 0, values: w.nofun || [], cur: "" },
         {
-            cur: "",
             name: a + (w._("Save Settings") || "Save Settings") + o,
             val: 0,
             values: save,
+            cur: "",
         },
     ];
     if (w.sNoNumbersKeys) w.listArray.splice(17, 3);
@@ -2738,15 +2686,15 @@ window.settingsMenu = function (): void {
             values: noyes,
         });
     }
-    w.listArray.push({ cur: "", name: "", val: 0, values: w.nofun || [] });
+    w.listArray.push({ name: "", val: 0, values: w.nofun || [], cur: "" });
     w.listArray.push({
-        cur: "",
         name:
             '<div class="btn">' +
             (w._("Save Settings") || "Save Settings") +
             "</div>",
         val: 0,
         values: save,
+        cur: "",
     });
     var capEl = document.getElementById("listCaption");
     if (capEl)
@@ -2841,7 +2789,7 @@ window.settingsManage = function (): void {
             detailEl.innerHTML = w._(
                 w.listArray[w.selIndex].desc ||
                     w.listArray[w.selIndex].name ||
-                    ""
+                    "",
             );
     };
     w.listKeyHandlerFn = function (key: number): boolean {
@@ -2899,7 +2847,7 @@ window.cloudSendSettings = function (): void {
         if (typeof jQuery !== "undefined") {
             jQuery("#listAbout")
                 .html(
-                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>Cloud save/load requires STB firmware (host_ott not set)</div>'
+                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>Cloud save/load requires STB firmware (host_ott not set)</div>',
                 )
                 .show();
         }
@@ -2910,7 +2858,7 @@ window.cloudSendSettings = function (): void {
             .html(
                 '<div style="text-align:center;font-size:larger;"><br/><br/>' +
                     (w._("Send settings") || "Send settings") +
-                    "...</div>"
+                    "...</div>",
             )
             .show();
     }
@@ -2929,15 +2877,11 @@ window.cloudSendSettings = function (): void {
     xml += "\n</properties>";
     if (typeof jQuery !== "undefined") {
         jQuery.ajax({
-            cache: false,
+            url: w.host_ott_proto + w.host_ott + "/swop/a.php",
             data: { c: "send", d: xml },
-            error: function (jqXHR: any) {
-                jQuery("#listAbout").html(
-                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
-                        jqXHR.responseText +
-                        "</div>"
-                );
-            },
+            type: "POST",
+            timeout: 10000,
+            cache: false,
             success: function (data: any) {
                 cleanup();
                 jQuery("#listAbout").html(
@@ -2962,12 +2906,16 @@ window.cloudSendSettings = function (): void {
                         w.host_ott +
                         "/swop/?" +
                         data.code +
-                        '" style="height:30%;"/></div></div>'
+                        '" style="height:30%;"/></div></div>',
                 );
             },
-            timeout: 10000,
-            type: "POST",
-            url: w.host_ott_proto + w.host_ott + "/swop/a.php",
+            error: function (jqXHR: any) {
+                jQuery("#listAbout").html(
+                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
+                        jqXHR.responseText +
+                        "</div>",
+                );
+            },
         });
     }
 };
@@ -3010,7 +2958,7 @@ window.cloudLoadSettings = function (): void {
         if (typeof jQuery !== "undefined") {
             jQuery("#listAbout")
                 .html(
-                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>Cloud save/load requires STB firmware (host_ott not set)</div>'
+                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>Cloud save/load requires STB firmware (host_ott not set)</div>',
                 )
                 .show();
         }
@@ -3028,16 +2976,11 @@ window.cloudLoadSettings = function (): void {
         if (cancelled) return;
         if (typeof jQuery !== "undefined") {
             jQuery.ajax({
-                cache: false,
+                url: w.host_ott_proto + w.host_ott + "/swop/a.php",
                 data: { c: "get", d: code },
-                error: function (jqXHR: any) {
-                    if (typeof jQuery !== "undefined")
-                        jQuery("#listAbout").html(
-                            '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
-                                jqXHR.responseText +
-                                "</div>"
-                        );
-                },
+                type: "POST",
+                timeout: 10000,
+                cache: false,
                 success: function (data: any) {
                     if (cancelled) return;
                     if (data.status === "forbidden") setTimeout(poll, 5000);
@@ -3045,12 +2988,12 @@ window.cloudLoadSettings = function (): void {
                         var xml = data.data;
                         if (
                             xml.indexOf(
-                                "<comment>OTT-Play Preferences</comment>"
+                                "<comment>OTT-Play Preferences</comment>",
                             ) !== -1
                         ) {
                             if (typeof jQuery !== "undefined")
                                 jQuery("#listAbout").html(
-                                    '<div style="text-align:center;font-size:200%;"><br/><br/>OTT-Play Preferences received!<br/>Restart player...</div>'
+                                    '<div style="text-align:center;font-size:200%;"><br/><br/>OTT-Play Preferences received!<br/>Restart player...</div>',
                                 );
                             var entries = xml.split('<entry key="');
                             entries.shift();
@@ -3071,14 +3014,19 @@ window.cloudLoadSettings = function (): void {
                         } else {
                             if (typeof jQuery !== "undefined")
                                 jQuery("#listAbout").html(
-                                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>File not OTT-Play Preferences!!!</div>'
+                                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>File not OTT-Play Preferences!!!</div>',
                                 );
                         }
                     }
                 },
-                timeout: 10000,
-                type: "POST",
-                url: w.host_ott_proto + w.host_ott + "/swop/a.php",
+                error: function (jqXHR: any) {
+                    if (typeof jQuery !== "undefined")
+                        jQuery("#listAbout").html(
+                            '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
+                                jqXHR.responseText +
+                                "</div>",
+                        );
+                },
             });
         }
     }
@@ -3087,7 +3035,7 @@ window.cloudLoadSettings = function (): void {
             .html(
                 '<div style="text-align:center;font-size:larger;"><br/><br/>' +
                     (w._("Send request") || "Send request") +
-                    "...</div>"
+                    "...</div>",
             )
             .show();
     }
@@ -3097,15 +3045,11 @@ window.cloudLoadSettings = function (): void {
     };
     if (typeof jQuery !== "undefined") {
         jQuery.ajax({
-            cache: false,
+            url: w.host_ott_proto + w.host_ott + "/swop/a.php",
             data: { c: "get_code" },
-            error: function (jqXHR: any) {
-                jQuery("#listAbout").html(
-                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
-                        jqXHR.responseText +
-                        "</div>"
-                );
-            },
+            type: "POST",
+            timeout: 10000,
+            cache: false,
             success: function (data: any) {
                 code = data.code;
                 jQuery("#listAbout").html(
@@ -3130,13 +3074,17 @@ window.cloudLoadSettings = function (): void {
                         w.host_ott +
                         "/swop/?" +
                         code +
-                        '" style="height:30%;"/></div></div>'
+                        '" style="height:30%;"/></div></div>',
                 );
                 setTimeout(poll, 10000);
             },
-            timeout: 10000,
-            type: "POST",
-            url: w.host_ott_proto + w.host_ott + "/swop/a.php",
+            error: function (jqXHR: any) {
+                jQuery("#listAbout").html(
+                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
+                        jqXHR.responseText +
+                        "</div>",
+                );
+            },
         });
     }
 };
@@ -3145,8 +3093,6 @@ window.cloudLoadSettings = function (): void {
 window.edit_dealer = edit_dealer;
 window.edit_dealer_remote = edit_dealer_remote;
 
-// @legacy-bridge: provider settings entry — edit_dealer reads/writes window.editvar for
-// the provider code field. Required by: stalker provider (portal URL entry).
 window._enterPinCode = _enterPinCode;
 window.enterPinCode = enterPinCode;
 window.enterPinAndSetAccess = enterPinAndSetAccess;
@@ -3180,12 +3126,12 @@ window.previewChId = function (chId: number): void {
         return;
     w.previewTimer = setTimeout(function () {
         if (w.sStopPlay && typeof w.stbStop === "function") w.stbStop();
-        w.previewChan = { c: 0, ch_id: chId, i: 0 };
+        w.previewChan = { c: 0, i: 0, ch_id: chId };
         if (typeof w.stbPlay === "function")
             w.stbPlay(
                 typeof w.getChannelUrl === "function"
                     ? w.getChannelUrl(chId)
-                    : null
+                    : null,
             );
     }, 500);
 };
@@ -3212,10 +3158,10 @@ window.addChannel2bucket = function (): void {
         if (typeof w.showShift === "function")
             w.showShift(
                 (w._("Channel ") || "Channel ") +
-                    (w.channels && w.channels[chId]
-                        ? w.channels[chId].channel_name
+                    (w.chanels && w.chanels[chId]
+                        ? w.chanels[chId].channel_name
                         : "") +
-                    (w._(" added to favorites") || " added to favorites")
+                    (w._(" added to favorites") || " added to favorites"),
             );
     } else {
         if (typeof w.saveCPD === "function") w.saveCPD();
@@ -3241,12 +3187,12 @@ window.addChannel2bucket = function (): void {
                     if (typeof w.showShift === "function")
                         w.showShift(
                             (w._("Channel ") || "Channel ") +
-                                (w.channels && w.channels[chId]
-                                    ? w.channels[chId].channel_name
+                                (w.chanels && w.chanels[chId]
+                                    ? w.chanels[chId].channel_name
                                     : "") +
                                 (w._(" added to category ") ||
                                     " added to category ") +
-                                w.listArray[w.selIndex]
+                                w.listArray[w.selIndex],
                         );
                     break;
                 case w.keys.RETURN:
@@ -3323,15 +3269,9 @@ window.loadAllOptions = loadAllOptions;
 window.saveOpt = saveAllOptions;
 window.loadOpt = loadAllOptions;
 window.body_onUnload = body_onUnload;
-window.playArchive = playArchive;
-window.fileArchive = fileArchive;
-window.shiftArchive = shiftArchive;
-window.shiftArchiveSelect = shiftArchiveSelect;
-window.timeShift = timeShift;
+window.playArchive = playArchiveMode;
 window.checkMedia = checkMedia;
 window.setCurrent = setCurrent;
-window.setCurProg = setCurProg;
-window.getCurProgData = getCurProgData;
 window.nextChannel = nextChannel;
 window.prevChannel = prevChannel;
 window.handleNumberInput = handleNumberInput;
@@ -3340,23 +3280,6 @@ window.addToFavorites = addToFavorites;
 window.removeFromFavorites = removeFromFavorites;
 window.saveChannelsCats = saveChannelsCats;
 window.epgList = epgList;
-window.epgListAlpha = epgListAlpha;
-window.epgShow_miniproc = epgShow_miniproc;
-window.epgKeyHandler = epgKeyHandler;
-window.epgPodval = epgPodval;
-window.detailEPG = detailEPG;
-window.setEpgTimer = setEpgTimer;
-window.itemEPG = itemEPG;
-window.epgArray = epgArray;
-window.listEpgArray = listEpgArray;
-window.epg_ch_id = epg_ch_id;
-window.epglisted = epglisted;
-window.epgreturn = epgreturn;
-window.channelsList = channelsList;
-window.bucketsList = bucketsList;
-window.recordsList = recordsList;
-window.selectEpg = selectEpg;
-window.infoProgramm = infoProgramm;
 window.updateArchiveInfo = updateArchiveInfo;
 window.initBackgroundIntervals = initBackgroundIntervals;
 window.btnDiv = btnDiv;
@@ -3376,20 +3299,19 @@ window.getMacAddress = getMacAddress;
 window.ottpStorage = storage;
 window.lzstring = {
     compress: (window as any).compress,
+    decompress: (window as any).decompress,
     compressToBase64: (window as any).compressToBase64,
+    decompressFromBase64: (window as any).decompressFromBase64,
+    compressToUTF16: (window as any).compressToUTF16,
+    decompressFromUTF16: (window as any).decompressFromUTF16,
     compressToEncodedURIComponent: (window as any)
         .compressToEncodedURIComponent,
-    compressToUint8Array: (window as any).compressToUint8Array,
-    compressToUTF16: (window as any).compressToUTF16,
-    decompress: (window as any).decompress,
-    decompressFromBase64: (window as any).decompressFromBase64,
     decompressFromEncodedURIComponent: (window as any)
         .decompressFromEncodedURIComponent,
+    compressToUint8Array: (window as any).compressToUint8Array,
     decompressFromUint8Array: (window as any).decompressFromUint8Array,
-    decompressFromUTF16: (window as any).decompressFromUTF16,
 };
 window.channels = channels;
-(window as any).chanels = channels;
 window.cats = cats;
 window.catsArray = catsArray;
 window.curList = curList;
@@ -3586,7 +3508,7 @@ function buttonsInfo(): void {
 var infoArr: any[] = [
     { action: buttonsInfo, name: "Description of remote control buttons" },
     { action: nofun },
-    { action: pluginInfo, desc: "Player and device info", name: "About" },
+    { action: pluginInfo, name: "About", desc: "Player and device info" },
 ];
 
 window.infoArr = infoArr;
@@ -3635,12 +3557,9 @@ window.strPREV = strPREV;
 window.strNEXT = strNEXT;
 window.strSubt = strSubt;
 window.strNew = strNew;
-// @legacy-bridge: TMDb.prepare + TMDb.search called by src/ui/index.js (concatenated
-// into dist/stbPlayer.js). Provider scripts may extend TMDb with their own .search().
 window.TMDb = TMDb;
-// NOTE: __cv/__av are set by index.html (lines 144-145) BEFORE dist/stbPlayer.js
-// loads. Provider scripts (src/provider/index.ts) read them as bare globals. Do
-// not re-assign here — the HTML-injected values win.
+window.__cv = PLAYER_VERSION;
+window.__av = PLAYER_VERSION;
 window.version = "<br/>Version: " + PLAYER_VERSION;
 
 // Command handler (push commands via webhook)
@@ -3784,7 +3703,7 @@ window.settingsCommands = function (): void {
             // Prompt for new local URL
             var newUrl = prompt(
                 "Local command URL (leave empty to use central server):",
-                lurl
+                lurl,
             );
             if (newUrl !== null) {
                 w.sLocalCmdUrl = newUrl.trim();
@@ -3811,14 +3730,14 @@ optionsArr.push({ action: _o.parentControlSetup, name: "Parental control" });
 optionsArr.push({ action: noSelProv });
 optionsArr.push({
     action: selectProvaider,
-    desc: "Change provider - you can change the provider, and it will be remembered at the next start of player!",
     name: "Change provider",
+    desc: "Change provider - you can change the provider, and it will be remembered at the next start of player!",
 });
 optionsArr.push({ action: edit_dealer, name: "Enter Provider Code" });
 optionsArr.push({ action: _o.settingsManage, name: "Manage settings" });
 optionsArr.push({
     action: _o.settingsCommands,
-    desc: "Device ID and local command URL settings",
     name: "Remote control",
+    desc: "Device ID and local command URL settings",
 });
 optionsArr.push({ action: selectLang, name: "Change interface language" });

@@ -4,48 +4,54 @@
  * Ported from stbPlayer.js keyHandler, keyFun.
  */
 
-import {
-    closeFullscreen,
-    isNormalScreen,
-    openFullscreen,
-    stbEventToKeyCode,
-} from "../core";
+import { stbEventToKeyCode } from "../core";
 import { translate as _ } from "../localization";
 import { settings } from "../settings";
 
 declare var listKeyHandlerFn: (key: number) => boolean;
 declare var dialogBoxKeyHandler: ((key: number) => void) | null;
 
-// Virtual keyboard state (from ui/index.ts)
-declare var _keysSymbol: { s: string; a: () => void }[];
-declare var _keyP: boolean;
-declare var _keyE: boolean;
-declare var _setLang: (e: boolean) => void;
-declare var showEdit: () => void;
-
 /* ---------------------------------------------------------------------------
  * Key codes (from stb/pc/stb.js — override per device via window.keys)
  * --------------------------------------------------------------------------- */
 
 export var keys: Record<string, number> = {
-    ASPECT: 65,
-    AUDIO: 83,
+    UP: 38,
+    DOWN: 40,
+    LEFT: 37,
+    RIGHT: 39,
+    ENTER: 13,
+    RETURN: 8,
+    EXIT: 27,
+    PLAY: 80,
+    PAUSE: 19,
+    STOP: 83,
+    RW: 33,
+    FF: 34,
+    PREV: 36,
+    NEXT: 35,
+    VOL_UP: 175,
+    VOL_DOWN: 174,
+    MUTE: 173,
+    RED: 403,
+    GREEN: 404,
+    YELLOW: 405,
     BLUE: 406,
+    INFO: 73,
+    EPG: 0,
+    TOOLS: 84,
+    MENU: 179,
+    PIP: 87,
+    ASPECT: 65,
+    ZOOM: 69,
+    AUDIO: 83,
+    SUBTITLE: 76,
+    SETUP: 192,
+    LANG: 16,
+    CH_UP: 187,
     CH_DOWN: 189,
     CH_LIST: 0,
-    CH_UP: 187,
-    DOWN: 40,
-    ENTER: 13,
-    EPG: 0,
-    EXIT: 27,
-    FAVORITES: 70,
-    FF: 34,
-    GREEN: 404,
-    INFO: 73,
-    LANG: 16,
-    LEFT: 37,
-    MENU: 179,
-    MUTE: 173,
+    POWER: 81,
     N0: 48,
     N1: 49,
     N2: 50,
@@ -56,27 +62,9 @@ export var keys: Record<string, number> = {
     N7: 55,
     N8: 56,
     N9: 57,
-    NEXT: 35,
-    PAUSE: 19,
-    PIP: 87,
-    PLAY: 80,
-    POWER: 81,
     PRECH: 191,
-    PREV: 36,
     REC: 0,
-    RED: 403,
-    RETURN: 8,
-    RIGHT: 39,
-    RW: 33,
-    SETUP: 192,
-    STOP: 83,
-    SUBTITLE: 76,
-    TOOLS: 84,
-    UP: 38,
-    VOL_DOWN: 174,
-    VOL_UP: 175,
-    YELLOW: 405,
-    ZOOM: 69,
+    FAVORITES: 70,
 };
 
 /* ---------------------------------------------------------------------------
@@ -100,16 +88,6 @@ var isSelectBox = false;
  * @analysis Falls through modes in order; once a mode handles the key, later modes are skipped. Dialog box always takes priority.
  */
 export function keyHandler(event: KeyboardEvent): void {
-    // If an input, textarea, or contenteditable element is focused, let browser handle the key
-    const target = event.target as HTMLElement | null;
-    if (
-        target &&
-        (target.tagName === "INPUT" ||
-            target.tagName === "TEXTAREA" ||
-            target.isContentEditable)
-    ) {
-        return;
-    }
     var keyCode = stbEventToKeyCode(event);
     if (!keyCode) return;
     if (typeof (window as any).setSleepTimeout === "function")
@@ -197,7 +175,7 @@ export function keyHandler(event: KeyboardEvent): void {
             "DBG keyHandler: list visible, keyCode=" +
                 keyCode +
                 " listKeyHandlerFn=" +
-                typeof listKeyHandlerFn
+                typeof listKeyHandlerFn,
         );
         if (handleListKey(keyCode, event)) return;
     }
@@ -227,58 +205,8 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
     event.preventDefault();
     event.stopPropagation();
 
-    /* 0-9: channel number input and archive navigation */
+    /* 0-9: channel number input */
     if (keyCode >= 48 && keyCode <= 57) {
-        // Digit keys for archive navigation when playType > 0
-        if ((window as any).playType > 0) {
-            switch (keyCode) {
-                case keys.N1:
-                    if (typeof (window as any).shiftArchive === "function")
-                        (window as any).shiftArchive(-(window as any).s13dur);
-                    return;
-                case keys.N3:
-                    if (typeof (window as any).shiftArchive === "function")
-                        (window as any).shiftArchive((window as any).s13dur);
-                    return;
-                case keys.N4:
-                    if (typeof (window as any).shiftArchive === "function")
-                        (window as any).shiftArchive(-(window as any).s46dur);
-                    return;
-                case keys.N6:
-                    if (typeof (window as any).shiftArchive === "function")
-                        (window as any).shiftArchive((window as any).s46dur);
-                    return;
-                case keys.N7:
-                    if (typeof (window as any).shiftArchive === "function")
-                        (window as any).shiftArchive(-(window as any).s79dur);
-                    return;
-                case keys.N9:
-                    if (typeof (window as any).shiftArchive === "function")
-                        (window as any).shiftArchive((window as any).s79dur);
-                    return;
-                case keys.N2:
-                    if (typeof (window as any).keyFun === "function")
-                        (window as any).keyFun(20);
-                    return;
-                case keys.N5:
-                    if (typeof (window as any).keyFun === "function")
-                        (window as any).keyFun(21);
-                    return;
-                case keys.N8:
-                    // Map N8 to STOP
-                    if (typeof (window as any).playChannel === "function") {
-                        (window as any).playChannel(
-                            (window as any).catIndex,
-                            (window as any).primaryIndex
-                        );
-                    }
-                    return;
-                case keys.N0:
-                    // fall through to number input below
-                    break;
-            }
-        }
-        // Standard number input for channel selection
         if (typeof (window as any).numberProg === "function") {
             (window as any).numberProg(keyCode - 48);
         }
@@ -304,7 +232,7 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
                     (window as any).epgList(
                         (window as any).catIndex,
                         (window as any).primaryIndex,
-                        false
+                        false,
                     );
                 break;
             }
@@ -314,7 +242,7 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
             if (typeof (window as any).channelsList === "function")
                 (window as any).channelsList(
                     (window as any).catIndex,
-                    (window as any).primaryIndex
+                    (window as any).primaryIndex,
                 );
             break;
         case keys.RETURN:
@@ -368,7 +296,7 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
             if (typeof (window as any).playChannel === "function") {
                 (window as any).playChannel(
                     (window as any).catIndex,
-                    (window as any).primaryIndex
+                    (window as any).primaryIndex,
                 );
             }
             break;
@@ -446,7 +374,7 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
                 (window as any).epgList(
                     (window as any).catIndex,
                     (window as any).primaryIndex,
-                    false
+                    false,
                 );
             }
             break;
@@ -474,8 +402,6 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
         case keys.SUBTITLE:
             if (typeof (window as any).stbToggleSubtitle === "function")
                 (window as any).stbToggleSubtitle();
-            if (isNormalScreen()) openFullscreen();
-            else closeFullscreen();
             break;
         case keys.SETUP:
             (window as any).isListVisible = true;
@@ -489,12 +415,6 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
         case keys.CH_DOWN:
             if (typeof (window as any).minusProg === "function")
                 (window as any).minusProg();
-            break;
-        case keys.LANG:
-            if (!_keysSymbol[1].s) return;
-            _keyP = false;
-            _setLang(!_keyE);
-            showEdit();
             break;
     }
 }
@@ -608,11 +528,10 @@ function handleEditKey(keyCode: number, event: KeyboardEvent): void {
     if (keyCode === keys.ENTER) {
         if (typeof (window as any).setEdit === "function")
             (window as any).setEdit();
-    } else if (
-        (keyCode === keys.RETURN || keyCode === keys.EXIT) &&
-        typeof (window as any).restoreCPD === "function"
-    )
-        (window as any).restoreCPD();
+    } else if (keyCode === keys.RETURN || keyCode === keys.EXIT) {
+        if (typeof (window as any).restoreCPD === "function")
+            (window as any).restoreCPD();
+    }
 }
 
 /* ---------------------------------------------------------------------------
@@ -667,8 +586,8 @@ export function dispatchKey(keyCode: number, event?: Event): void {
     if (event) event.stopPropagation();
     keyHandler({
         keyCode: keyCode,
-        preventDefault: () => {},
-        stopPropagation: () => {},
+        preventDefault: function () {},
+        stopPropagation: function () {},
     } as any);
 }
 
@@ -699,7 +618,7 @@ export function keyFun(fn: number): void {
                 (window as any).recordsList(
                     (window as any).catIndex,
                     (window as any).primaryIndex,
-                    false
+                    false,
                 );
             }
             return;
@@ -748,7 +667,7 @@ export function keyFun(fn: number): void {
                 (window as any).epgList(
                     (window as any).catIndex,
                     (window as any).primaryIndex,
-                    false
+                    false,
                 );
             }
             return;
@@ -816,13 +735,13 @@ export function keyFun(fn: number): void {
             ) {
                 if (typeof (window as any).playArchive === "function")
                     (window as any).playArchive(
-                        (window as any).epgArray[(window as any).curProg].time
+                        (window as any).epgArray[(window as any).curProg].time,
                     );
             } else {
                 if (typeof (window as any).playArchive === "function")
                     (window as any).playArchive(
                         (window as any).epgArray[(window as any).curProg - 1]
-                            .time
+                            .time,
                     );
             }
             return;
@@ -840,7 +759,7 @@ export function keyFun(fn: number): void {
                 if (typeof (window as any).playArchive === "function")
                     (window as any).playArchive(
                         (window as any).epgArray[(window as any).curProg + 1]
-                            .time
+                            .time,
                     );
             } else {
                 if (typeof (window as any).showShift === "function")
@@ -848,7 +767,7 @@ export function keyFun(fn: number): void {
                 if (typeof (window as any).playChannel === "function")
                     (window as any).playChannel(
                         (window as any).catIndex,
-                        (window as any).primaryIndex
+                        (window as any).primaryIndex,
                     );
             }
             return;
@@ -856,17 +775,15 @@ export function keyFun(fn: number): void {
 }
 
 // Touch handlers
-var xDown: number | null = null,
-    yDown: number | null = null,
-    xUp: number | null = null,
-    yUp: number | null = null,
+var xDown: number = null,
+    yDown: number = null,
+    xUp: number,
+    yUp: number,
     touch_locked = false;
-var xMove1: number | null = null,
-    yMove1: number | null = null,
-    tCount: number | undefined;
+var xMove1: number, yMove1: number, tCount: number;
 var touch_min_sensY = Math.round(screen.height / 10);
 var touch_min_sensX = Math.round(
-    touch_min_sensY * (screen.width / screen.height) * 2
+    touch_min_sensY * (screen.width / screen.height) * 2,
 );
 
 // Tap detection
@@ -890,7 +807,7 @@ export function checkTap(
     r: number,
     s: number,
     n: number,
-    i: number
+    i: number,
 ): boolean {
     if (
         Math.abs(e - r) < touch_min_sensX / 10 &&
@@ -920,7 +837,7 @@ export function getDirection(
     r: number,
     s: number,
     n: number,
-    i: number
+    i: number,
 ): number {
     var a = 0;
     if (r - e > n) a |= 4;
@@ -933,7 +850,7 @@ export function getDirection(
 // Number input state
 var nProg = "";
 var numTimeout: any = null;
-var numProgEl: HTMLElement | null = null;
+var numProgEl: HTMLElement = null;
 
 /**
  * Handle incremental numeric channel/program input (digit-by-digit, like a remote control).
@@ -965,7 +882,7 @@ export function numberProg(digit: number): void {
         return;
     }
     nProg += digit.toString();
-    var idx = Number.parseInt(nProg, 10) - 1;
+    var idx = parseInt(nProg, 10) - 1;
     if (!numProgEl) numProgEl = document.getElementById("numprog");
     if (numProgEl) {
         numProgEl.innerHTML =
@@ -975,18 +892,18 @@ export function numberProg(digit: number): void {
                 ((window as any).curList ? (window as any).curList.length : 0)
                 ? ""
                 : "<br/>" +
-                  ((window as any).channels &&
+                  ((window as any).chanels &&
                   (window as any).curList &&
-                  (window as any).channels[(window as any).curList[idx]]
-                      ? (window as any).channels[(window as any).curList[idx]]
+                  (window as any).chanels[(window as any).curList[idx]]
+                      ? (window as any).chanels[(window as any).curList[idx]]
                             .channel_name
                       : ""));
         numProgEl.style.display = "";
     }
     clearTimeout(numTimeout);
-    numTimeout = setTimeout(() => {
+    numTimeout = setTimeout(function () {
         if (numProgEl) numProgEl.style.display = "none";
-        var e = Number.parseInt(nProg) - 1;
+        var e = parseInt(nProg) - 1;
         nProg = "";
         if (
             e < 0 ||
@@ -1051,8 +968,7 @@ function onPrevSelect(sel: number): void {
     if (prevArr[sel].t) {
         var chId = prevArr[sel].ci;
         var ts = prevArr[sel].t;
-        var r = 0,
-            n = -1;
+        var r: number, n: number;
         var catsL = (window as any).cats;
         var catsArrayL = (window as any).catsArray;
         r = prevArr[sel].c;
@@ -1072,11 +988,11 @@ function onPrevSelect(sel: number): void {
         if (typeof (window as any).getEPGchanelCached === "function") {
             (window as any).getEPGchanelCached(
                 chId,
-                (_t: any, epgData: any) => {
+                function (_t: any, epgData: any) {
                     var recent: any[] = [];
                     if (epgData !== null && epgData.length) {
-                        var ch = (window as any).channels
-                            ? (window as any).channels[chId]
+                        var ch = (window as any).chanels
+                            ? (window as any).chanels[chId]
                             : null;
                         var chRec = ((ch && ch.rec) || 0) * 60 * 60;
                         var cutoff = Date.now() / 1e3 - chRec;
@@ -1085,14 +1001,16 @@ function onPrevSelect(sel: number): void {
                             if (epgData[i].time > cutoff)
                                 recent.push(epgData[i]);
                         }
-                        recent.sort((a: any, b: any) => a.time - b.time);
+                        recent.sort(function (a: any, b: any) {
+                            return a.time - b.time;
+                        });
                     }
                     (window as any).epgArray = recent;
                     if (typeof (window as any).setCurProg === "function")
                         (window as any).setCurProg(chId, epgData, null);
                     if (typeof (window as any).playArchive === "function")
                         (window as any).playArchive(ts);
-                }
+                },
             );
         }
     } else {
@@ -1170,7 +1088,7 @@ export function prevProg(): void {
         n =
             (window as any).cats && (window as any).catsArray
                 ? (window as any).cats[(window as any).catsArray[r]].indexOf(
-                      entry.ci
+                      entry.ci,
                   )
                 : -1;
         if (n !== -1) return;
@@ -1188,16 +1106,16 @@ export function prevProg(): void {
         case 1:
             setFromEntry(prevArr[0]);
             if (typeof (window as any).playChannel === "function")
-                (window as any).playChannel(r!, n!);
+                (window as any).playChannel(r, n);
             return;
         default: {
             var items: string[] = [];
-            prevArr.forEach((entry: any, idx: number, arr: any[]) => {
+            prevArr.forEach(function (entry: any, idx: number, arr: any[]) {
                 try {
                     items.push(
-                        ((window as any).channels &&
-                        (window as any).channels[entry.ci]
-                            ? (window as any).channels[entry.ci].channel_name
+                        ((window as any).chanels &&
+                        (window as any).chanels[entry.ci]
+                            ? (window as any).chanels[entry.ci].channel_name
                             : "") +
                             (entry.t
                                 ? '<span style="color:red;"> - ' +
@@ -1208,7 +1126,7 @@ export function prevProg(): void {
                                 ? ' <span style="color:#f9bf3b;"><span style="color:#607d8b;">&#x02237; </span>' +
                                   entry.e +
                                   "</span>"
-                                : "")
+                                : ""),
                     );
                 } catch (e) {
                     arr.splice(idx, 1);
@@ -1262,17 +1180,17 @@ function handleTouchStart(e: any): void {
  *             A non-zero dir causes the move reference point to be reset to prevent repeated dispatches.
  */
 function handleTouchMove(e: any): void {
-    if (!(xDown && yDown)) return;
+    if (!xDown || !yDown) return;
     e.preventDefault();
     xUp = Math.round(e.touches[0].screenX);
     yUp = Math.round(e.touches[0].screenY);
     if (tCount === 1) {
         var dir =
-            Math.abs(xUp! - xMove1!) > Math.abs(yUp! - yMove1!)
-                ? xUp! > xMove1!
+            Math.abs(xUp - xMove1) > Math.abs(yUp - yMove1)
+                ? xUp > xMove1
                     ? 4
                     : 1
-                : yUp! > yMove1!
+                : yUp > yMove1
                   ? 2
                   : 8;
         if (dir === 1) (window as any)._doKey((window as any).keys.LEFT);
@@ -1296,15 +1214,16 @@ function handleTouchMove(e: any): void {
  * @analysis Only triggers on exactly 3 touch points. Resets tracking state unconditionally after processing.
  */
 function handleTouchEnd(e: any): void {
-    if (
-        tCount === 3 &&
-        Math.abs(xUp! - xDown!) < touch_min_sensX * 5 &&
-        Math.abs(yUp! - yDown!) < touch_min_sensY * 2
-    )
-        (window as any)._doKey((window as any).keys.SETUP);
-    xDown = null as number | null;
-    yDown = null as number | null;
-    tCount = undefined as number | undefined;
+    if (tCount === 3) {
+        if (
+            Math.abs(xUp - xDown) < touch_min_sensX * 5 &&
+            Math.abs(yUp - yDown) < touch_min_sensY * 2
+        )
+            (window as any)._doKey((window as any).keys.SETUP);
+    }
+    xDown = null;
+    yDown = null;
+    tCount = undefined;
 }
 
 /**
@@ -1324,42 +1243,42 @@ function handleTouchEnd(e: any): void {
  *             so that regular click handlers fire naturally.
  */
 function body_handleTouchEnd(e: any): void {
-    if (!(xDown && yDown)) return;
+    if (!xDown || !yDown) return;
     e.preventDefault();
     if (e.touches.length === 0) {
         if (tCount === 3) {
             // 3-finger tap → SETUP (from handleTouchEnd)
             if (
                 checkTap(
-                    xDown!,
-                    yDown!,
-                    xUp!,
-                    yUp!,
+                    xDown,
+                    yDown,
+                    xUp,
+                    yUp,
                     touch_min_sensX * 5,
-                    touch_min_sensY * 2
+                    touch_min_sensY * 2,
                 )
             )
                 (window as any)._doKey((window as any).keys.SETUP);
         } else if (tCount === 2) {
             // 2-finger gestures → color keys or ENTER
             var dir = getDirection(
-                xDown!,
-                yDown!,
-                xUp!,
-                yUp!,
+                xDown,
+                yDown,
+                xUp,
+                yUp,
                 touch_min_sensX,
-                touch_min_sensY * 2
+                touch_min_sensY * 2,
             );
             switch (dir) {
                 case 0:
                     if (
                         checkTap(
-                            xDown!,
-                            yDown!,
-                            xUp!,
-                            yUp!,
+                            xDown,
+                            yDown,
+                            xUp,
+                            yUp,
                             touch_min_sensX / 2,
-                            touch_min_sensY / 2
+                            touch_min_sensY / 2,
                         )
                     )
                         (window as any)._doKey((window as any).keys.ENTER);
@@ -1381,20 +1300,20 @@ function body_handleTouchEnd(e: any): void {
             // 1-finger tap → click event
             if (
                 checkTap(
-                    xDown!,
-                    yDown!,
-                    xUp!,
-                    yUp!,
+                    xDown,
+                    yDown,
+                    xUp,
+                    yUp,
                     touch_min_sensX / 2,
-                    touch_min_sensY / 2
+                    touch_min_sensY / 2,
                 )
             ) {
                 var clickEvent = new MouseEvent("click", {
                     bubbles: true,
                     cancelable: true,
+                    view: window,
                     clientX: e.changedTouches[0].clientX,
                     clientY: e.changedTouches[0].clientY,
-                    view: window,
                 });
                 e.target.dispatchEvent(clickEvent);
             }

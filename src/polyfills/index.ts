@@ -40,7 +40,7 @@ export function applyPolyfills(): void {
  * - May add `Date.now` if it does not exist
  */
 function polyfillPerformanceNow(): void {
-    if (!(window.performance && window.performance.now)) {
+    if (!window.performance || !window.performance.now) {
         if (!Date.now) {
             Date.now = function (this: any): number {
                 return new this().getTime();
@@ -113,7 +113,7 @@ function polyfillArrayFindIndex(): void {
         Array.prototype.findIndex = function (
             this: any[],
             predicate: (value: any, index: number, obj: any[]) => boolean,
-            thisArg?: any
+            thisArg?: any,
         ): number {
             if (this == null) {
                 throw new TypeError('"this" is null or not defined');
@@ -180,7 +180,7 @@ function polyfillTextEncoder(): void {
                 bytes.push(0x80 | (code & 0x3f));
             } else {
                 var charCode = code;
-                if (charCode >= 0xd800 && charCode <= 0xdbff && pos + 1 < len) {
+                if (0xd800 <= charCode && charCode <= 0xdbff && pos + 1 < len) {
                     var nextCode = str.charCodeAt(pos + 1);
                     if (0xdc00 <= nextCode && nextCode <= 0xdfff) {
                         charCode =
@@ -238,7 +238,7 @@ function polyfillDateTimezone(): void {
         return ((this as any).prototype.timezoneOffset = offset);
     };
     (Date.prototype as any).setTimezoneOffset = function (
-        offset: number
+        offset: number,
     ): number {
         return ((this as any).timezoneOffset = offset);
     };

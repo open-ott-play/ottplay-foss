@@ -40,15 +40,15 @@ const LZ_MARKER = "\x01LZ\x01";
 // ---------------------------------------------------------------------------
 
 export interface StorageAdapter {
-    clear(): void;
-    del(key: string): void;
-    dump(): Record<string, string>;
     get(key: string): string | null;
-    getI(key: string, defaultValue?: number): number;
+    set(key: string, value: string): void;
+    del(key: string): void;
     has(key: string): boolean;
     hasValue(key: string): boolean;
+    clear(): void;
+    dump(): Record<string, string>;
     reset(): void;
-    set(key: string, value: string): void;
+    getI(key: string, defaultValue?: number): number;
     setI(key: string, value: number): void;
 }
 
@@ -171,8 +171,8 @@ function createLocalStorageAdapter(): StorageAdapter {
      *                       valid integer (default 0).
      * @returns The parsed integer or `defaultValue`.
      */
-    const getI = function (key: string, defaultValue = 0): number {
-        const parsed = Number.parseInt(get(key) || "", 10);
+    const getI = function (key: string, defaultValue: number = 0): number {
+        const parsed = parseInt(get(key) || "", 10);
         return isNaN(parsed) ? defaultValue : parsed;
     };
 
@@ -187,15 +187,15 @@ function createLocalStorageAdapter(): StorageAdapter {
     };
 
     return {
-        clear,
-        del,
-        dump,
         get,
-        getI,
+        set,
+        del,
         has,
         hasValue,
+        clear,
+        dump,
         reset: init,
-        set,
+        getI,
         setI,
     };
 }
@@ -226,7 +226,7 @@ function createCookieAdapter(): StorageAdapter {
     const get = function (key: string): string {
         const pattern =
             "(?:^|;\\s*)" +
-            decodeURIComponent(key).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
+            decodeURIComponent(key).replace(/[-.+*]/g, "\\$&") +
             "\\s*\\=";
         if (!new RegExp(pattern).test(document.cookie)) {
             return "";
@@ -235,14 +235,11 @@ function createCookieAdapter(): StorageAdapter {
             document.cookie.replace(
                 new RegExp(
                     "(?:^|.*;\\s*)" +
-                        decodeURIComponent(key).replace(
-                            /[.*+?^${}()|[\]\\]/g,
-                            "\\$&"
-                        ) +
-                        "\\s*\\=\\s*((?:[^;](?!;))*[^;]?).*"
+                        decodeURIComponent(key).replace(/[-.+*]/g, "\\$&") +
+                        "\\s*\\=\\s*((?:[^;](?!;))*[^;]?).*",
                 ),
-                "$1"
-            )
+                "$1",
+            ),
         );
     };
 
@@ -366,8 +363,8 @@ function createCookieAdapter(): StorageAdapter {
      * @param defaultValue - Fallback value (default 0).
      * @returns The parsed integer, or `defaultValue` if parsing fails.
      */
-    const getI = function (key: string, defaultValue = 0): number {
-        const parsed = Number.parseInt(get(key), 10);
+    const getI = function (key: string, defaultValue: number = 0): number {
+        const parsed = parseInt(get(key), 10);
         return isNaN(parsed) ? defaultValue : parsed;
     };
 
@@ -382,15 +379,15 @@ function createCookieAdapter(): StorageAdapter {
     };
 
     return {
-        clear,
-        del,
-        dump,
         get,
-        getI,
+        set,
+        del,
         has,
         hasValue,
+        clear,
+        dump,
         reset: init,
-        set,
+        getI,
         setI,
     };
 }
@@ -574,7 +571,7 @@ export function providerDelItem(key: string): void {
  *          otherwise (including missing key).
  */
 export function providerGetBool(key: string): boolean {
-    return !!providerGetItem(key);
+    return !!(providerGetItem(key) || false);
 }
 
 /**
@@ -586,7 +583,7 @@ export function providerGetBool(key: string): boolean {
  * @returns The parsed integer, or `defaultValue`.
  */
 export function providerGetNum(key: string, defaultValue: number): number {
-    const parsed = Number.parseInt(providerGetItem(key) || "", 10);
+    const parsed = parseInt(providerGetItem(key) || "", 10);
     return isNaN(parsed) ? defaultValue : parsed;
 }
 

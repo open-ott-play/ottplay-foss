@@ -85,7 +85,7 @@ export function compress(uncompressed: string): string {
 function _compress(
     uncompressed: string,
     bitsPerChar: number,
-    getCharFromInt: (n: number) => string
+    getCharFromInt: (n: number) => string,
 ): string {
     if (uncompressed == null) return "";
     var i: number, value: number;
@@ -117,7 +117,7 @@ function _compress(
             if (
                 Object.prototype.hasOwnProperty.call(
                     contextDictionaryToCreate,
-                    contextW
+                    contextW,
                 )
             ) {
                 if (contextW.charCodeAt(0) < 256) {
@@ -203,7 +203,7 @@ function _compress(
         if (
             Object.prototype.hasOwnProperty.call(
                 contextDictionaryToCreate,
-                contextW
+                contextW,
             )
         ) {
             if (contextW.charCodeAt(0) < 256) {
@@ -349,7 +349,7 @@ export function decompress(compressed: string): string | null {
 function _decompress(
     length: number,
     resetValue: number,
-    getNextValue: (index: number) => number
+    getNextValue: (index: number) => number,
 ): string | null {
     var dictionary: any[] = [];
     var enlargeIn = 4;
@@ -363,9 +363,9 @@ function _decompress(
     var maxpower: number;
     var c: any;
     var data: { val: number; position: number; index: number } = {
-        index: 1,
-        position: resetValue,
         val: getNextValue(0),
+        position: resetValue,
+        index: 1,
     };
     var i: number;
 
@@ -627,7 +627,7 @@ export function compressToEncodedURIComponent(input: string): string {
  * in query strings.
  */
 export function decompressFromEncodedURIComponent(
-    input: string
+    input: string,
 ): string | null {
     if (input == null) return "";
     if (input === "") return null;

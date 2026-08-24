@@ -21,7 +21,7 @@ declare var jQuery: any;
 // Globals from other modules
 declare var selIndex: number;
 declare var isListVisible: boolean;
-declare var listPopUpElement: HTMLElement | null;
+declare var listPopUpElement: HTMLElement;
 declare var addBtn2menu: (arr: any[], action: any, label: string) => void;
 declare var dialogBoxKeyHandler: ((key: number) => void) | null;
 declare var listArray: any[];
@@ -35,48 +35,48 @@ declare var nprovparams: number;
 // DOM element references
 var $infoBar: any;
 var infoTimeout: any = null;
-var listElement: HTMLElement | null = null;
-var listInElement: HTMLElement | null = null;
-var listCaptionElement: HTMLElement | null = null;
-var listPodvalElement: HTMLElement | null = null;
-var listDetailElement: HTMLElement | null = null;
-var numprogElement: HTMLElement | null = null;
+var listElement: HTMLElement = null;
+var listInElement: HTMLElement = null;
+var listCaptionElement: HTMLElement = null;
+var listPodvalElement: HTMLElement = null;
+var listDetailElement: HTMLElement = null;
+var numprogElement: HTMLElement = null;
 
 // State
 var listDataArray: any[] = [];
-var getListItemFn: ((item: any, idx: number) => string) | null = null;
-var detailListActionFn: (() => void) | null = null;
-var listKeyHandlerFn: ((key: any) => boolean) | null = null;
+var getListItemFn: (item: any, idx: number) => string = null;
+var detailListActionFn: () => void = null;
+var listKeyHandlerFn: (key: any) => boolean = null;
 // Forward old-style global names (set by provider scripts) to new-style module variables
 Object.defineProperty(window, "listKeyHandler", {
-    configurable: true,
-    enumerable: true,
-    get: function (): any {
-        return listKeyHandlerFn;
-    },
     set: function (v: any) {
         listKeyHandlerFn = v;
     },
-});
-Object.defineProperty(window, "getListItem", {
+    get: function (): any {
+        return listKeyHandlerFn;
+    },
     configurable: true,
     enumerable: true,
-    get: function (): any {
-        return getListItemFn;
-    },
+});
+Object.defineProperty(window, "getListItem", {
     set: function (v: any) {
         getListItemFn = v;
     },
-});
-Object.defineProperty(window, "detailListAction", {
+    get: function (): any {
+        return getListItemFn;
+    },
     configurable: true,
     enumerable: true,
-    get: function (): any {
-        return detailListActionFn;
-    },
+});
+Object.defineProperty(window, "detailListAction", {
     set: function (v: any) {
         detailListActionFn = v;
     },
+    get: function (): any {
+        return detailListActionFn;
+    },
+    configurable: true,
+    enumerable: true,
 });
 var itemWidth = 735;
 declare var curColor: string;
@@ -100,48 +100,49 @@ var _keysP = ".:/@,!?<>#$%^&*()-=_+;'\"[]{}`~";
 var _keys = "";
 var _keysSymbol: any[] = [
     {
+        s: "",
         a: function () {
             _setCase(!_keyUp);
             showEdit();
         },
-        s: "",
     },
     {
+        s: "",
         a: function () {
             if (!_keysSymbol[1].s) return;
             _keyP = false;
             _setLang(!_keyE);
             showEdit();
         },
-        s: "",
     },
     {
+        s: "",
         a: function () {
             _setPunct(!_keyP);
             showEdit();
         },
-        s: "",
     },
-    { a: (window as any).loadValue || function () {}, s: "&hearts;&trade;" },
+    { s: "&hearts;&trade;", a: (window as any).loadValue || function () {} },
     {
+        s: "&larr;",
         a: function () {
             if (editPos) {
                 editPos--;
                 _changeEdit();
             }
         },
-        s: "&larr;",
     },
     {
+        s: "&rarr;",
         a: function () {
             if (editPos < (window as any).editvar.length) {
                 editPos++;
                 _changeEdit();
             }
         },
-        s: "&rarr;",
     },
     {
+        s: "_",
         a: function () {
             (window as any).editvar =
                 (window as any).editvar.substr(0, editPos) +
@@ -150,9 +151,9 @@ var _keysSymbol: any[] = [
             editPos++;
             _changeEdit();
         },
-        s: "_",
     },
     {
+        s: "",
         a: function () {
             if (editPos) {
                 (window as any).editvar =
@@ -162,10 +163,10 @@ var _keysSymbol: any[] = [
                 _changeEdit();
             }
         },
-        s: "",
     },
-    { a: function () {}, s: "" },
+    { s: "", a: function () {} },
     {
+        s: "Ok",
         a: function () {
             clearInterval(cursorInterval);
             (window as any).restoreCPD();
@@ -173,7 +174,6 @@ var _keysSymbol: any[] = [
             if (typeof (window as any).setEdit === "function")
                 (window as any).setEdit();
         },
-        s: "Ok",
     },
 ];
 var _keyUp = false;
@@ -277,10 +277,10 @@ export function uiInit(): void {
     });
     $("#dialogbox").on("show", function () {
         $(this)
-            .css({ height: "auto", left: 0, top: 0, width: "auto" })
+            .css({ top: 0, left: 0, width: "auto", height: "auto" })
             .css({
-                left: (1260 * getWidthK() - $(this).width()) / 2,
                 top: (720 * getHeightK() - $(this).height()) / 2,
+                left: (1260 * getWidthK() - $(this).width()) / 2,
             });
     });
 
@@ -321,99 +321,24 @@ export function uiInit(): void {
         }
     }
 
-    // Progress bar drag-to-seek — press on progress bar and drag to seek, release to seek
+    // Progress bar click — seek
     var $progressDiv = $("#progress_div");
-    var seekInProgress = false;
-    var seekStartX = 0;
-
-    $progressDiv.mousedown(function (e: any) {
-        if (!e) e = event;
-        if (e.clientX === undefined) {
-            console.error("$progress_div[mousedown] evt.clientX not exist");
-            return;
-        }
-        seekInProgress = true;
-        seekStartX = e.clientX;
-    });
-
-    $progressDiv.mouseup(function (e: any) {
-        if (!seekInProgress) return;
-        seekInProgress = false;
-        if (!e) e = event;
-        if (e.clientX === undefined) {
-            console.error("$progress_div[mouseup] evt.clientX not exist");
-            return;
-        }
-        e.stopPropagation();
-        var w = window as any;
-        if (
-            !(
-                w.playType ||
-                (w.channels &&
-                    w.curList &&
-                    w.channels[w.curList[w.primaryIndex]] &&
-                    w.channels[w.curList[w.primaryIndex]].rec)
-            )
-        )
-            return;
-        var t =
-            (e.clientX - $progressDiv.position().left) / $progressDiv.width();
-        if (w.playType < 0) {
-            var r = Math.max(Math.round(t * w.stbGetLen()), 0);
-            var hr = Math.floor(r / 3600);
-            var mn = Math.floor((r % 3600) / 60);
-            var sc = r % 60;
-            if (typeof w.showShift === "function")
-                w.showShift(
-                    ">> " +
-                        (hr ? hr + ":" : "") +
-                        _t2(mn) +
-                        ":" +
-                        _t2(sc) +
-                        " <<"
-                );
-            if (typeof w.stbSetPosTime === "function") w.stbSetPosTime(r);
-            return;
-        }
-        var r2 = Math.round(
-            t * (w._prog100.time_to - w._prog100.time) + w._prog100.time
-        );
-        if (r2 < Date.now() / 1e3) {
-            if (!w.playType) {
-                if (typeof w.timeShift === "function")
-                    w.timeShift(Math.round(Date.now() / 1e3 - r2));
-                return;
-            }
-            if (typeof w.showShift === "function")
-                w.showShift(">> " + pos2text(r2) + " <<");
-            if (typeof w.playArchive === "function") w.playArchive(r2);
-        } else {
-            if (typeof w.showShift === "function")
-                w.showShift(w._(w.playType ? "Live" : "Restart stream"));
-            if (typeof w.playChannel === "function")
-                w.playChannel(w.catIndex, w.primaryIndex);
-        }
-    });
-
-    // Progress bar click — seek (for press-and-release at same position)
     $progressDiv.click(function (e: any) {
         if (!e) e = event;
         if (e.clientX === undefined) {
             console.error("$progress_div[click] evt.clientX not exist");
             return;
         }
-        e.stopPropagation();
         var w = window as any;
         if (
-            !(
-                w.playType ||
-                (w.channels &&
-                    w.curList &&
-                    w.channels[w.curList[w.primaryIndex]] &&
-                    w.channels[w.curList[w.primaryIndex]].rec)
-            )
+            !w.playType &&
+            (!w.chanels ||
+                !w.curList ||
+                !w.chanels[w.curList[w.primaryIndex]] ||
+                !w.chanels[w.curList[w.primaryIndex]].rec)
         )
             return;
+        e.stopPropagation();
         var t =
             (e.clientX - $progressDiv.position().left) / $progressDiv.width();
         if (w.playType < 0) {
@@ -428,13 +353,13 @@ export function uiInit(): void {
                         _t2(mn) +
                         ":" +
                         _t2(sc) +
-                        " <<"
+                        " <<",
                 );
             if (typeof w.stbSetPosTime === "function") w.stbSetPosTime(r);
             return;
         }
         var r2 = Math.round(
-            t * (w._prog100.time_to - w._prog100.time) + w._prog100.time
+            t * (w._prog100.time_to - w._prog100.time) + w._prog100.time,
         );
         if (r2 < Date.now() / 1e3) {
             if (!w.playType) {
@@ -463,13 +388,11 @@ export function uiInit(): void {
         }
         var w = window as any;
         if (
-            !(
-                w.playType ||
-                (w.channels &&
-                    w.curList &&
-                    w.channels[w.curList[w.primaryIndex]] &&
-                    w.channels[w.curList[w.primaryIndex]].rec)
-            )
+            !w.playType &&
+            (!w.chanels ||
+                !w.curList ||
+                !w.chanels[w.curList[w.primaryIndex]] ||
+                !w.chanels[w.curList[w.primaryIndex]].rec)
         )
             return;
         var clientX = e.clientX;
@@ -490,7 +413,7 @@ export function uiInit(): void {
             $tooltipSpan.text((hr ? hr + ":" : "") + _t2(mn) + ":" + _t2(sc));
         } else {
             var r2 = Math.round(
-                frac * (w._prog100.time_to - w._prog100.time) + w._prog100.time
+                frac * (w._prog100.time_to - w._prog100.time) + w._prog100.time,
             );
             $tooltipSpan.text(pos2text(r2));
         }
@@ -581,7 +504,7 @@ export function showChanelInfo(timeoutSec: number): void {
         if (timeoutSec !== 2) {
             infoTimeout = setTimeout(
                 infoBarHideT,
-                (timeoutSec > 0 ? timeoutSec : w.sInfoTimeout || 5) * 1000
+                (timeoutSec > 0 ? timeoutSec : w.sInfoTimeout || 5) * 1000,
             );
         }
     } else if (!$("#descr").is(":visible")) {
@@ -630,7 +553,7 @@ export function showPage(): void {
     if (listElement) listElement.style.display = "";
     var dataArr = listDataArray.length
         ? listDataArray
-        : (window as any).listDataArray || (window as any).listArray || [];
+        : (window as any).listDataArray || [];
     var pageStart =
         Math.floor(selIndex / settings.pageSize) * settings.pageSize;
     var pageEnd = Math.min(pageStart + settings.pageSize, dataArr.length);
@@ -714,7 +637,7 @@ export function showPage(): void {
 export function changeSelect(delta: number): void {
     var dataArr = listDataArray.length
         ? listDataArray
-        : (window as any).listDataArray || (window as any).listArray || [];
+        : (window as any).listDataArray || [];
     if (!dataArr.length) return;
     var oldIndex = selIndex;
     selIndex += delta;
@@ -800,10 +723,10 @@ export function showShift(message: string): void {
     if (info) {
         info.innerHTML = message;
         info.style.display = "";
+        setTimeout(function () {
+            info.style.display = "none";
+        }, 3000);
     }
-    setTimeout(function () {
-        if (info) info.style.display = "none";
-    }, 3000);
 }
 
 /**
@@ -837,14 +760,14 @@ export function infoBox(message: string): void {
 export function confirmBox(
     message: string,
     onYes: () => void,
-    onNo?: () => void
+    onNo?: () => void,
 ): void {
     $("#dialogbox")
         .html(
             message +
                 "<br/><br/>" +
                 btnDiv(keys.ENTER, strENTER, "Yes") +
-                btnDiv(keys.RETURN, strRETURN, "No")
+                btnDiv(keys.RETURN, strRETURN, "No"),
         )
         .show();
     (window as any).dialogBoxKeyHandler = function (e: number): void {
@@ -876,7 +799,7 @@ export function showSelectBox(
     s: number,
     n: string[],
     i: (val: number) => void,
-    a?: number
+    a?: number,
 ): void {
     clearTimeout((window as any).numTimeout);
     if (n.length === 0) return;
@@ -908,7 +831,7 @@ export function showSelectBox(
                       ";background-color:" +
                       (window as any).curColorB
                     : "") +
-                '" onclick="_doKey(' +
+                '" onclick="(window as any)._doKey(' +
                 (-100 + t) +
                 ');">&nbsp;&nbsp;' +
                 val +
@@ -977,10 +900,10 @@ export function updateChanelInfo(channelId: number): void {
     if (channelId !== curList[primaryIndex]) return;
     // Trigger EPG data load if needed; callback re-invokes when data arrives
     // Only fetch if channel doesn't already have valid EPG (prevents infinite recursion)
-    var _ch = (window as any).channels
-        ? (window as any).channels[channelId]
+    var _ch = (window as any).chanels
+        ? (window as any).chanels[channelId]
         : undefined;
-    if (!(_ch && _ch.time_to) || _ch.time_to < Date.now() / 1000) {
+    if (!_ch || !_ch.time_to || _ch.time_to < Date.now() / 1000) {
         getCurProgData(channelId, function () {
             setTimeout(function () {
                 updateChanelInfo(channelId);
@@ -1008,9 +931,9 @@ export function updateChanelInfo(channelId: number): void {
         channelNumEl.innerHTML =
             "" + ((primaryIndex != null ? primaryIndex : -1) + 1);
 
-    // Channel info from global channels
-    var t = (window as any).channels
-        ? (window as any).channels[channelId]
+    // Channel info from global chanels
+    var t = (window as any).chanels
+        ? (window as any).chanels[channelId]
         : undefined;
     if (t) {
         if (channelNameEl) channelNameEl.innerHTML = t.channel_name || "";
@@ -1054,7 +977,8 @@ export function updateChanelInfo(channelId: number): void {
         if (progressEl) progressEl.style.width = pct + "%";
         if (beginTimeEl) beginTimeEl.textContent = time2time(t.time);
         var remainingMin = Math.round((t.time_to - nowSec) / 60);
-        if (endTimeEl) endTimeEl.textContent = "+" + remainingMin;
+        if (endTimeEl)
+            endTimeEl.textContent = "+" + (remainingMin > 0 ? remainingMin : 0);
         if (programDurationEl) {
             programDurationEl.innerHTML =
                 time2str(t.time) +
@@ -1080,9 +1004,10 @@ export function updateChanelInfo(channelId: number): void {
             if (nbeginTimeEl)
                 nbeginTimeEl.textContent = time2time(t.nextpr[0].time);
             var nextDur = Math.round(
-                (t.nextpr[0].time_to - t.nextpr[0].time) / 60
+                (t.nextpr[0].time_to - t.nextpr[0].time) / 60,
             );
-            if (nendTimeEl) nendTimeEl.textContent = "" + nextDur;
+            if (nendTimeEl)
+                nendTimeEl.textContent = "" + (nextDur > 0 ? nextDur : 0);
         }
     } else {
         // No EPG — clear program fields
@@ -1156,8 +1081,11 @@ export function initBackgroundIntervals(): void {
  */
 export function updateMediaInfo(): void {
     var resEl = document.getElementById("video_res");
-    if (resEl && video && video.videoWidth)
-        resEl.innerHTML = "<br/>" + video.videoWidth + "x" + video.videoHeight;
+    if (resEl && video) {
+        if (video.videoWidth)
+            resEl.innerHTML =
+                "<br/>" + video.videoWidth + "x" + video.videoHeight;
+    }
 }
 
 /**
@@ -1210,9 +1138,9 @@ export function btnDiv(
     label: string,
     description: string,
     num?: string,
-    extra?: string
+    extra?: string,
 ): string {
-    if (!(description && keyLabel)) return "";
+    if (!description || !keyLabel) return "";
     description = _(description);
     var cls = "btn";
     switch (keyLabel) {
@@ -1444,7 +1372,7 @@ export function infoProgramm(title: string): void {
 export function infoMedia(): void {
     var la = (window as any).listArray || [];
     var si = (window as any).selIndex || 0;
-    if (!(la[si] && la[si].description)) return;
+    if (!la[si] || !la[si].description) return;
     $("#listPopUp").hide();
     saveCPD();
     var t = la[si].title || "";
@@ -1514,8 +1442,7 @@ export function infoList(e?: string): void {
     detailListActionFn = function () {
         var arr = (window as any).infoArr || [];
         var item = arr[selIndex];
-        if (item)
-            listDetailElement!.innerHTML = _(item.desc || item.name || "");
+        if (item) listDetailElement.innerHTML = _(item.desc || item.name || "");
     };
     listKeyHandlerFn = function (key: number): boolean {
         switch (key) {
@@ -1612,7 +1539,7 @@ export function popupList(i?: any): void {
 
     var u = -1; // counter для добавленных элементов
     var playType: number = (window as any).playType || 0;
-    var channels: any = (window as any).channels || {};
+    var chanels: any = (window as any).chanels || {};
     var popStop: any = (window as any).popStop;
     var popPause: any = (window as any).popPause;
     var popTogglePip: any = (window as any).popTogglePip;
@@ -1666,13 +1593,13 @@ export function popupList(i?: any): void {
                         r,
                         !(window as any).stbIsPlaying
                             ? false
-                            : (window as any).stbIsPlaying()
+                            : (window as any).stbIsPlaying(),
                     );
                 case popShift:
                 case popRecords:
-                    if (playType < 0 || !c || !channels[c] || channels[c].rec)
+                    if (playType < 0 || !c || !chanels[c] || chanels[c].rec)
                         break;
-                    return;
+                    else return;
                 case popTogglePip:
                     r = splitSlash(r, (window as any).pipIndex != null);
                     break;
@@ -1793,7 +1720,8 @@ export function popupList(i?: any): void {
         if (n) r = '<div class="btn">' + n + "</div> " + r;
 
         // Пуш в массив как ОБЪЕКТ (не строку!)
-        listArray.push({ action: action, desc: s, name: r });
+        listArray.push({ name: r, desc: s, action: action });
+        listDataArray.push(r); // для совместимости с showPage
 
         if (action == noProvParam) a = listArray.length - 1;
         if (action == optionsList) o = listArray.length;
@@ -1822,7 +1750,7 @@ export function popupList(i?: any): void {
                 " listArray.len=" +
                 listArray.length +
                 " item=" +
-                (listArray[selIndex] ? "exists" : "null")
+                (listArray[selIndex] ? "exists" : "null"),
         );
         switch (typeof key === "number" ? key : key.keyCode) {
             case keys.RETURN:
@@ -1834,12 +1762,16 @@ export function popupList(i?: any): void {
                     "DBG popupList ENTER: item=" +
                         (item ? "exists" : "null") +
                         " item.action=" +
-                        (item && item.action ? typeof item.action : "undefined")
+                        (item && item.action
+                            ? typeof item.action
+                            : "undefined"),
                 );
-                if (item && item.action && typeof item.action === "function") {
-                    console.log("DBG popupList ENTER: calling action");
-                    item.action();
-                    console.log("DBG popupList ENTER: action returned");
+                if (item && item.action) {
+                    if (typeof item.action === "function") {
+                        console.log("DBG popupList ENTER: calling action");
+                        item.action();
+                        console.log("DBG popupList ENTER: action returned");
+                    }
                 }
                 return true;
             }
@@ -1890,7 +1822,7 @@ export function popupList(i?: any): void {
             case keys.TOOLS:
                 if (typeof optionsList === "function") optionsList();
                 return true;
-            case keys.SUBTITLE:
+            case keys.SUBT:
                 if (typeof (window as any).toggleSubtitle === "function")
                     (window as any).toggleSubtitle();
                 return true;
@@ -1900,7 +1832,7 @@ export function popupList(i?: any): void {
                     (window as any).epgList(
                         (window as any).catIndex,
                         (window as any).primaryIndex,
-                        false
+                        false,
                     );
                 return true;
             case keys.GREEN:
@@ -1908,7 +1840,7 @@ export function popupList(i?: any): void {
                     (window as any).recordsList(
                         (window as any).catIndex,
                         (window as any).primaryIndex,
-                        false
+                        false,
                     );
                 return true;
             case keys.BLUE:
@@ -1957,7 +1889,7 @@ export function popEpg(): void {
         (window as any).epgList(
             (window as any).catIndex,
             (window as any).primaryIndex,
-            false
+            false,
         );
 }
 
@@ -1972,7 +1904,7 @@ export function popRecords(): void {
         (window as any).recordsList(
             (window as any).catIndex,
             (window as any).primaryIndex,
-            false
+            false,
         );
 }
 
@@ -2129,8 +2061,8 @@ export function togglePip(): void {
         if (typeof (window as any).stbPlayPip === "function")
             (window as any).stbPlayPip(
                 (window as any).getChannelUrl(
-                    (window as any).curList[(window as any).pipIndex]
-                )
+                    (window as any).curList[(window as any).pipIndex],
+                ),
             );
     } else {
         if (
@@ -2143,7 +2075,7 @@ export function togglePip(): void {
         (window as any).pipCatIndex = (window as any).catIndex;
         if (typeof (window as any).stbPlayPip === "function")
             (window as any).stbPlayPip(
-                (window as any).getChannelUrl((window as any).curList[e])
+                (window as any).getChannelUrl((window as any).curList[e]),
             );
     }
 }
@@ -2227,8 +2159,8 @@ export function hsvToRgb(h: number, s: number, v: number): number[] {
 export function colorDialog(): void {
     var s = 50,
         n = 85;
-    s = Number.parseInt(((window as any).eSHLcolor || "50,85").split(",")[0]);
-    n = Number.parseInt(((window as any).eSHLcolor || "50,85").split(",")[1]);
+    s = parseInt(((window as any).eSHLcolor || "50,85").split(",")[0]);
+    n = parseInt(((window as any).eSHLcolor || "50,85").split(",")[1]);
     saveCPD();
     if (listCaptionElement) listCaptionElement.innerHTML = _("Color spectrum");
     if (listPodvalElement)
@@ -2261,7 +2193,7 @@ export function colorDialog(): void {
                 btnDiv(keys.GREEN, "", "Green") +
                 "<br>" +
                 btnDiv(keys.BLUE, "", "Blue") +
-                "</div>"
+                "</div>",
         )
         .show();
     aboutKeyHandler = function (e: number): boolean {
@@ -2304,14 +2236,14 @@ export function colorDialog(): void {
         var rgb = hsvToRgb(s, n, 100);
         $("#step").css(
             "color",
-            "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
+            "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")",
         );
         return true;
     };
     var rgb0 = hsvToRgb(s, n, 100);
     $("#step").css(
         "color",
-        "rgb(" + rgb0[0] + "," + rgb0[1] + "," + rgb0[2] + ")"
+        "rgb(" + rgb0[0] + "," + rgb0[1] + "," + rgb0[2] + ")",
     );
 }
 
@@ -2326,12 +2258,8 @@ export function colorDialog(): void {
  * @analysis Unlike `colorDialog`, this one modifies background-color (not color) and uses V=50.
  */
 export function selColorDialog(): void {
-    var s = Number.parseInt(
-        ((window as any).eSHLcolSel || "50,85").split(",")[0]
-    );
-    var n = Number.parseInt(
-        ((window as any).eSHLcolSel || "50,85").split(",")[1]
-    );
+    var s = parseInt(((window as any).eSHLcolSel || "50,85").split(",")[0]);
+    var n = parseInt(((window as any).eSHLcolSel || "50,85").split(",")[1]);
     saveCPD();
     if (listCaptionElement) listCaptionElement.innerHTML = _("Select color");
     if (listPodvalElement)
@@ -2345,7 +2273,7 @@ export function selColorDialog(): void {
                 _("Color") +
                 ':<br/><br/>&nbsp;<span id="step" style="font-size: 150%;background-color:' +
                 (window as any).curColorB +
-                '">&nbsp;1234567890&nbsp;</span>&nbsp;</div>'
+                '">&nbsp;1234567890&nbsp;</span>&nbsp;</div>',
         )
         .show();
     aboutKeyHandler = function (e: number): boolean {
@@ -2388,14 +2316,14 @@ export function selColorDialog(): void {
         var rgb = hsvToRgb(s, n, 50);
         $("#step").css(
             "background-color",
-            "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
+            "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")",
         );
         return true;
     };
     var rgb0 = hsvToRgb(s, n, 50);
     $("#step").css(
         "background-color",
-        "rgb(" + rgb0[0] + "," + rgb0[1] + "," + rgb0[2] + ")"
+        "rgb(" + rgb0[0] + "," + rgb0[1] + "," + rgb0[2] + ")",
     );
 }
 
@@ -2408,12 +2336,8 @@ export function selColorDialog(): void {
  *             Registers `aboutKeyHandler`. Updates `#step` background-color preview.
  */
 export function backColorDialog(): void {
-    var s = Number.parseInt(
-        ((window as any).eSHLcolorB || "255,0").split(",")[0]
-    );
-    var n = Number.parseInt(
-        ((window as any).eSHLcolorB || "255,0").split(",")[1]
-    );
+    var s = parseInt(((window as any).eSHLcolorB || "255,0").split(",")[0]);
+    var n = parseInt(((window as any).eSHLcolorB || "255,0").split(",")[1]);
     saveCPD();
     if (listCaptionElement)
         listCaptionElement.innerHTML = _("Background color");
@@ -2428,7 +2352,7 @@ export function backColorDialog(): void {
                 _("Color") +
                 ':<br/><br/>&nbsp;<span id="step" style="font-size: 150%;background-color:' +
                 (window as any).curColorB +
-                '">&nbsp;1234567890&nbsp;</span>&nbsp;</div>'
+                '">&nbsp;1234567890&nbsp;</span>&nbsp;</div>',
         )
         .show();
     aboutKeyHandler = function (e: number): boolean {
@@ -2471,14 +2395,14 @@ export function backColorDialog(): void {
         var rgb = hsvToRgb(s, n, 100);
         $("#step").css(
             "background-color",
-            "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
+            "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")",
         );
         return true;
     };
     var rgb0 = hsvToRgb(s, n, 100);
     $("#step").css(
         "background-color",
-        "rgb(" + rgb0[0] + "," + rgb0[1] + "," + rgb0[2] + ")"
+        "rgb(" + rgb0[0] + "," + rgb0[1] + "," + rgb0[2] + ")",
     );
 }
 
@@ -2521,11 +2445,11 @@ export function joyMenu(): void {
                     strDOWN,
                     (window as any).playType
                         ? "<br>Live"
-                        : "<br>Previous<br>channel"
+                        : "<br>Previous<br>channel",
                 ) +
                 "</td><td></td></tr>" +
                 "</table>" +
-                btnDiv(keys.RETURN, strRETURN, "Close")
+                btnDiv(keys.RETURN, strRETURN, "Close"),
         )
         .show();
     dialogBoxKeyHandler = function (e: number): void {
@@ -2599,7 +2523,7 @@ function _setLang(e: boolean): void {
     var s = Math.floor(r.length / 10);
     if (r.length % 10) r = (r + _keysP).substr(0, (s + 1) * 10);
     _keys = _keys1 + r + _keysA;
-    _keysSymbol[2].s = "!?,";
+    _keysSymbol[2].s = "!,?";
     _setCase(_keyUp);
     _keyCur = _keys.length - 9;
 }
@@ -2725,13 +2649,13 @@ export function showEdit(): void {
                 keys.RED,
                 "",
                 _keysSymbol[0] ? (_keyUp ? "&darr;a" : "&uarr;A") : "",
-                strTools
+                strTools,
             ) +
             btnDiv(
                 keys.GREEN,
                 "",
                 _keysSymbol[1] ? (_keyE ? _("lang") : "English") : "",
-                strFF
+                strFF,
             ) +
             btnDiv(keys.YELLOW, "", "Delete", strRW) +
             btnDiv(keys.BLUE, "", "Ok", strPlayPause);
@@ -2750,7 +2674,7 @@ export function _changeEdit(): void {
             '<div id="cursor" style="display:inline-block;vertical-align:top;background-color:' +
             (window as any).curColor +
             ';width:3px;height:1.2em;"></div>' +
-            (window as any).editvar.substr(editPos)
+            (window as any).editvar.substr(editPos),
     );
     clearInterval(cursorInterval);
     var blink = true;
@@ -2759,7 +2683,7 @@ export function _changeEdit(): void {
         blink = !blink;
         cursor.css(
             "background-color",
-            blink ? (window as any).curColor : "inherit"
+            blink ? (window as any).curColor : "inherit",
         );
     }, 500);
 }
@@ -2929,7 +2853,8 @@ export function editKey1(e: number): void {
 export function editKey2(code: number): void {
     switch (code) {
         case (window as any).keys.ENTER:
-            (window as any).editvar = ($("#editvar").val() as string) || "";
+            (window as any).editvar =
+                ($("#(window as any).editvar").val() as string) || "";
             if (typeof (window as any).setEdit === "function")
                 (window as any).setEdit();
             break;
@@ -2985,7 +2910,7 @@ export function showEditKey2(_initKeys?: number[]): void {
             }
         )(keys.ENTER || 13, strEnter, "- save");
     $("#listEdit").show().html(html);
-    document.getElementById("editvar")?.focus();
+    document.getElementById("(window as any).editvar")?.focus();
 }
 
 /* ---------------------------------------------------------------------------
@@ -2993,46 +2918,7 @@ export function showEditKey2(_initKeys?: number[]): void {
  * --------------------------------------------------------------------------- */
 
 declare function showMediaList(): void;
-declare function getMediaDescr(item: any): string;
-declare function mediaKeyHandler(keyCode: number): boolean;
-
-/**
- * Render the media library list from the already-loaded `window.mediaRecords`
- * (no provider refetch). Used by `mediaList()` for folder (submenu) navigation
- * and for the refresh path, where the records are in place and only the view
- * needs rebuilding. Mirrors the chrome of the fetching variant (`showMediaList`).
- *
- * @sideeffect Sets `window.listArray`, `window.getListItemFn`,
- *             `window.detailListActionFn`, `window.listKeyHandlerFn`; updates
- *             #listCaption / #listPodval; calls `window.showPage`.
- */
-function showMediaList1(): void {
-    var w = window as any;
-    var data: any[] = w.mediaRecords || [];
-    w.listArray = data;
-    w.getListItemFn = function (item: any, _idx: number) {
-        return "&nbsp;&nbsp;" + (item.name || item.title || "");
-    };
-    w.detailListActionFn = function () {
-        var detailEl = document.getElementById("listDetail");
-        if (detailEl)
-            detailEl.innerHTML = getMediaDescr(w.listArray[w.selIndex]);
-    };
-    w.listKeyHandlerFn = mediaKeyHandler;
-
-    var captionEl = document.getElementById("listCaption");
-    if (captionEl) captionEl.innerHTML = w.mediaName || w._("Media Library");
-
-    var podvalEl = document.getElementById("listPodval");
-    if (podvalEl) {
-        podvalEl.innerHTML =
-            w.btnDiv(w.keys.RETURN, w.strRETURN, "Close") +
-            w.btnDiv(w.keys.GREEN, "", "Favorites") +
-            w.btnDiv(w.keys.YELLOW, "", "TMDb");
-    }
-
-    if (typeof w.showPage === "function") w.showPage();
-}
+declare function showMediaList1(): void;
 
 /**
  * Navigate the media library hierarchy. Handles submenu entries, info/alert commands,
@@ -3193,7 +3079,7 @@ export function selectValue(t: any): void {
     if (maxW > 0 && listAboutW > 0) {
         n = Math.max(
             Math.min(Math.round(listAboutW / maxW) - 1, r.length),
-            Math.round(r.length / 6) + 1
+            Math.round(r.length / 6) + 1,
         );
     }
 
@@ -3251,7 +3137,7 @@ export function selectValue(t: any): void {
                         ? -n
                         : r.length -
                               (r.length % n) +
-                              (_curVal + 1 > r.length % n ? -n : 0)
+                              (_curVal + 1 > r.length % n ? -n : 0),
                 );
                 return true;
             case keys.DOWN:
@@ -3263,7 +3149,7 @@ export function selectValue(t: any): void {
                         ? -1
                         : _curVal + n - 1 > r.length - 1
                           ? r.length - _curVal - 1
-                          : n - 1
+                          : n - 1,
                 );
                 return true;
             case keys.RIGHT:
@@ -3272,7 +3158,7 @@ export function selectValue(t: any): void {
                         ? _curVal + 1 == r.length
                             ? -_curVal % n
                             : 1
-                        : -n + 1
+                        : -n + 1,
                 );
                 return true;
             case keys.ENTER:

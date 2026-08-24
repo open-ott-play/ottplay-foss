@@ -4,7 +4,7 @@ export function polyfillArrayFindIndex(): void {
         Array.prototype.findIndex = function (
             this: any[],
             predicate: (value: any, index: number, obj: any[]) => boolean,
-            thisArg?: any
+            thisArg?: any,
         ): number {
             if (this == null) {
                 throw new TypeError('"this" is null or not defined');

@@ -84,7 +84,7 @@ export var _ = translate;
 export function loadLanguage(
     langCode: string,
     successCallback: () => void,
-    errorCallback?: () => void
+    errorCallback?: () => void,
 ): void {
     var host = (window as any).__host || "";
     var version = (window as any).__cv || "local";

@@ -52,25 +52,12 @@ export function client_feedb(message: string): void {
  * Mutates the internal `_perfLog` array.
  */
 export function pperf_stamp(label: string): void {
+    if (typeof pperf_stamp === "function") return;
     if (navigator.userAgent.indexOf("Maple 6") === -1) return;
     var now = Date.now();
     _perfLog.push(now.toString(10) + " - " + label);
 }
 var _perfLog: string[] = [];
-
-/**
- * Return all recorded performance stamps as one newline-joined string and
- * clear the buffer. Empty string when nothing was recorded (non-Maple 6
- * devices never record).
- *
- * @returns The collected `"timestamp - label"` lines, or "".
- */
-export function pperf_flush(): string {
-    if (!_perfLog.length) return "";
-    var out: string = _perfLog.join("\n");
-    _perfLog = [];
-    return out;
-}
 var FeedbPOST: (msg: string) => void = function (msg: string): void {
     PostFeedback(msg, "/report_feedb");
 };
@@ -109,11 +96,11 @@ export function PostFeedback(data: any, endpoint?: string): void {
                 try {
                     if (typeof $ !== "undefined" && $.ajax) {
                         $.ajax({
-                            contentType: "application/json",
-                            data: JSON.stringify(batch),
-                            timeout: 3000,
                             type: "POST",
                             url: base + "/api/feedback",
+                            data: JSON.stringify(batch),
+                            contentType: "application/json",
+                            timeout: 3000,
                         });
                     }
                 } catch (_e) {}
@@ -325,7 +312,7 @@ export function loadScript(
     url: string,
     successCb: (() => void) | null,
     errorCb: ((e: Error) => void) | null,
-    location: HTMLElement
+    location: HTMLElement,
 ): void {
     var script = document.createElement("script");
     script.src = url;
@@ -358,7 +345,7 @@ export function loadJS(
     url: string,
     successCb: (() => void) | null,
     errorCb: ((e: Error) => void) | null,
-    location: HTMLElement
+    location: HTMLElement,
 ): void {
     loadScript(url, successCb, errorCb, location);
 }
@@ -378,7 +365,7 @@ export function loadJS(
 export function getScriptDOM(
     url: string,
     successCb: (() => void) | null,
-    errorCb: ((e: Error) => void) | null
+    errorCb: ((e: Error) => void) | null,
 ): void {
     loadScript(url, successCb, errorCb, document.body);
 }
@@ -413,7 +400,7 @@ export var innerStyle: any = (function () {
         (innerStyle as any).elHtml = document.createElement("style");
         document.body.insertBefore(
             (innerStyle as any).elHtml,
-            document.body.firstChild
+            document.body.firstChild,
         );
         cssSheet = (innerStyle as any).elHtml.sheet;
     }
@@ -450,7 +437,7 @@ export var innerStyle: any = (function () {
         }
         return rule;
     }
-    return { getRule: getRule, init: init };
+    return { init: init, getRule: getRule };
 })();
 
 /**

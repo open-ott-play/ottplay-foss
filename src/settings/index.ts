@@ -5,7 +5,7 @@
  * persisted on change (see `saveSettings`). The `PlayerSettings` interface
  * defines every tunable parameter exposed to the user via the settings UI.
  */
-import { storage } from "../storage/index";
+import { storage } from "../storage";
 
 /**
  * All player configuration parameters.
@@ -85,78 +85,78 @@ import { storage } from "../storage/index";
  * @property highlightColorB   - Background highlight colour (HSL H,S).
  */
 export interface PlayerSettings {
-    adFun: number;
-    alFun: number;
-    arFun: number;
-    arrowFun: number;
-    auFun: number;
-    autorun: number;
-    bFun: number;
-    bufSize: number;
-    deviceUuid: string;
-    editor: number;
-    eFun: number;
-    favorites: number;
-    ffFun: number;
+    noSmall: number;
+    stopPlay: number;
+    pipSize: number;
+    pipPosition: number;
+    pageSize: number;
     fontShift: number;
     fontSize: number;
-    gFun: number;
-    grapI: number;
-    hdmiSupport: number;
-    hideMenus: string[];
-    highlightColor: string;
-    highlightColorB: string;
-    highlightColorSel: string;
-    infoChange: number;
-    infoRew: number;
-    infoSlide: number;
-    infoSwitch: number;
-    infoTimeout: number;
-    listPosition: number;
-    localCmdUrl: string;
-    medCount: number;
-    nextCount: number;
-    nextCountList: number;
-    nextFun: number;
-    noColorKeys: number;
-    noNumbersKeys: number;
-    noSmall: number;
-    okFun: number;
-    osdOpacity: number;
-    pageSize: number;
-    parentPin: string;
-    permanentTime: number;
-    pipPosition: number;
-    pipSize: number;
-    players: number;
-    pnFun: number;
-    prevCount: number;
-    prevFun: number;
-    preview: number;
-    psChannels: number;
-    psOptions: number;
-    psProvs: number;
-    res10Resume: number;
+    arrowFun: number;
     rewFun: number;
+    pnFun: number;
     rFun: number;
+    gFun: number;
+    yFun: number;
+    bFun: number;
+    alFun: number;
+    arFun: number;
+    auFun: number;
+    adFun: number;
     rwFun: number;
+    ffFun: number;
+    prevFun: number;
+    nextFun: number;
+    eFun: number;
+    okFun: number;
     seek13Duration: number;
     seek46Duration: number;
     seek79Duration: number;
-    showArchive: number;
-    showDescription: number;
-    showName: number;
+    noColorKeys: number;
+    noNumbersKeys: number;
+    timezone: number;
+    sleepTimeout: number;
+    volumeStep: number;
+    infoTimeout: number;
+    infoSlide: number;
+    infoSwitch: number;
+    infoChange: number;
+    infoRew: number;
+    thumbnail: number;
+    osdOpacity: number;
+    listPosition: number;
+    editor: number;
     showNumber: number;
     showPicon: number;
-    showProgram: number;
+    showName: number;
     showProgress: number;
+    showArchive: number;
     showScroll: number;
-    sleepTimeout: number;
-    stopPlay: number;
-    thumbnail: number;
-    timezone: number;
-    volumeStep: number;
-    yFun: number;
+    showDescription: number;
+    showProgram: number;
+    preview: number;
+    nextCount: number;
+    nextCountList: number;
+    favorites: number;
+    permanentTime: number;
+    res10Resume: number;
+    prevCount: number;
+    medCount: number;
+    psChannels: number;
+    psOptions: number;
+    psProvs: number;
+    hdmiSupport: number;
+    autorun: number;
+    players: number;
+    bufSize: number;
+    grapI: number;
+    parentPin: string;
+    hideMenus: string[];
+    highlightColorSel: string;
+    highlightColor: string;
+    highlightColorB: string;
+    localCmdUrl: string;
+    deviceUuid: string;
 }
 
 /**
@@ -169,82 +169,82 @@ export interface PlayerSettings {
  */
 export function defaultSettings(): PlayerSettings {
     return {
-        adFun: 16,
-        alFun: 14,
-        arFun: 13,
-        arrowFun: 0,
-        auFun: 15,
-        autorun: 0,
-        bFun: 9,
-        bufSize: 0,
-        deviceUuid: "",
-        editor: 0,
-        eFun: 0,
-        favorites: 0,
-        ffFun: 19,
+        noSmall: 0,
+        stopPlay: 0,
+        pipSize: 0,
+        pipPosition: 0,
+        pageSize: 25,
         fontShift: 4,
         fontSize: 4,
-        gFun: 0,
-        grapI: 0,
-        hdmiSupport: 0,
-        hideMenus: [],
-        highlightColor: "50,85",
-        highlightColorB: "255,0",
-        highlightColorSel: "240,25",
-        infoChange: 1,
-        infoRew: 1,
-        infoSlide: 1,
-        infoSwitch: 1,
-        infoTimeout: 5,
-        listPosition: 0,
-        localCmdUrl: "",
-        medCount: 2,
-        nextCount: 0,
-        nextCountList: 1,
-        nextFun: 21,
-        noColorKeys: 0,
-        noNumbersKeys: 0,
-        noSmall: 0,
-        okFun: 0,
-        osdOpacity: 7,
-        pageSize: 25,
-        parentPin: "1234",
-        permanentTime: 0,
-        pipPosition: 0,
-        pipSize: 0,
-        players: 0,
-        pnFun: 0,
-        prevCount: 2,
-        prevFun: 20,
-        preview: 0,
-        psChannels: 1,
-        psOptions: 0,
-        psProvs: 0,
-        res10Resume: 1,
+        arrowFun: 0,
         rewFun: 0,
+        pnFun: 0,
         rFun: 10,
+        gFun: 0,
+        yFun: 1,
+        bFun: 9,
+        alFun: 14,
+        arFun: 13,
+        auFun: 15,
+        adFun: 16,
         rwFun: 18,
+        ffFun: 19,
+        prevFun: 20,
+        nextFun: 21,
+        eFun: 0,
+        okFun: 0,
         seek13Duration: 15,
         seek46Duration: 180,
         seek79Duration: 600,
-        showArchive: 1,
-        showDescription: 1,
-        showName: 1,
+        noColorKeys: 0,
+        noNumbersKeys: 0,
+        timezone: 0,
+        sleepTimeout: 0,
+        volumeStep: 5,
+        infoTimeout: 5,
+        infoSlide: 1,
+        infoSwitch: 1,
+        infoChange: 1,
+        infoRew: 1,
+        thumbnail: 1,
+        osdOpacity: 7,
+        listPosition: 0,
+        editor: 0,
         showNumber: 1,
         showPicon: 1,
-        showProgram: 1,
+        showName: 1,
         showProgress: 1,
+        showArchive: 1,
         showScroll: 1,
-        sleepTimeout: 0,
-        stopPlay: 0,
-        thumbnail: 1,
-        timezone: 0,
-        volumeStep: 5,
-        yFun: 1,
+        showDescription: 1,
+        showProgram: 1,
+        preview: 0,
+        nextCount: 0,
+        nextCountList: 1,
+        favorites: 0,
+        permanentTime: 0,
+        res10Resume: 1,
+        prevCount: 2,
+        medCount: 2,
+        psChannels: 1,
+        psOptions: 0,
+        psProvs: 0,
+        hdmiSupport: 0,
+        autorun: 0,
+        players: 0,
+        bufSize: 0,
+        grapI: 0,
+        parentPin: "1234",
+        hideMenus: [],
+        highlightColorSel: "240,25",
+        highlightColor: "50,85",
+        highlightColorB: "255,0",
+        localCmdUrl: "",
+        deviceUuid: "",
     };
 }
 
-export let settings: PlayerSettings = defaultSettings();
+export var settings: PlayerSettings = defaultSettings();
 
 /**
  * Load all settings from persistent storage into the module-level
@@ -262,84 +262,84 @@ export let settings: PlayerSettings = defaultSettings();
  * Mutates the module-level `settings` variable.
  */
 export function loadSettings(): PlayerSettings {
-    const s = storage;
+    var s = storage;
     settings = {
-        adFun: s.getI("sADfun", 16),
-        alFun: s.getI("sALfun", 14),
-        arFun: s.getI("sARfun", 13),
-        arrowFun: s.getI("sArrowFun", 0),
-        auFun: s.getI("sAUfun", 15),
-        autorun: s.getI("sAutorun", 0),
-        bFun: s.getI("sBfun", 9),
-        bufSize: s.getI("sBufSize", 0),
-        deviceUuid: s.get("sDeviceUuid") || "",
-        editor: s.getI("sEditor", 0),
-        eFun: s.getI("sEfun", 0),
-        favorites: s.getI("sFavorites", 0),
-        ffFun: s.getI("sFFfun", 19),
+        noSmall: s.getI("sNoSmall", 0),
+        stopPlay: s.getI("sStopPlay", 0),
+        pipSize: s.getI("sPipSize", 0),
+        pipPosition: s.getI("sPipPos", 0),
+        pageSize: s.getI("sPageSize", 25),
         fontShift: s.getI("sFontShift", 4),
         fontSize: s.getI("sFont", 4),
-        gFun: s.getI("sGfun", 0),
-        grapI: s.getI("sGrapI", 0),
-        hdmiSupport: s.getI("sHDMIsupport", 0),
-        hideMenus: (s.get("sHideMenus") || "").split(",").filter(function (
-            x: string
-        ) {
-            return x !== "";
-        }),
-        highlightColor: s.get("sSHLcolor") || "50,85",
-        highlightColorB: s.get("sSHLcolorB") || "255,0",
-        highlightColorSel: s.get("sSHLcolSel") || "240,25",
-        infoChange: s.getI("sInfoChange", 1),
-        infoRew: s.getI("sInfoRew", 1),
-        infoSlide: s.getI("sInfoSlide", 1),
-        infoSwitch: s.getI("sInfoSwitch", 1),
-        infoTimeout: s.getI("sInfoTimeout", 5),
-        listPosition: s.getI("sListPos", 0),
-        localCmdUrl: s.get("sLocalCmdUrl") || "",
-        medCount: s.getI("sMedCount", 2),
-        nextCount: s.getI("sNextCount", 0),
-        nextCountList: s.getI("sNextCountL", 1),
-        nextFun: s.getI("sNEXTfun", 21),
-        noColorKeys: s.getI("sNoColorKeys", 0),
-        noNumbersKeys: s.getI("sNoNumbersKeys", 0),
-        noSmall: s.getI("sNoSmall", 0),
-        okFun: s.getI("sOkfun", 0),
-        osdOpacity: s.getI("sOsdOpacity", 7),
-        pageSize: s.getI("sPageSize", 25),
-        parentPin: s.get("parentPIN") || "1234",
-        permanentTime: s.getI("sPermanentTime", 0),
-        pipPosition: s.getI("sPipPos", 0),
-        pipSize: s.getI("sPipSize", 0),
-        players: s.getI("sPlayers", 0),
-        pnFun: s.getI("sPNFun", 0),
-        prevCount: s.getI("sPrevCount", 2),
-        prevFun: s.getI("sPREVfun", 20),
-        preview: s.getI("sPreview", 0),
-        psChannels: s.getI("sPSchannels", 1),
-        psOptions: s.getI("sPSoptions", 0),
-        psProvs: s.getI("sPSprovs", 0),
-        res10Resume: s.getI("s10resum", 1),
+        arrowFun: s.getI("sArrowFun", 0),
         rewFun: s.getI("sRewFun", 0),
+        pnFun: s.getI("sPNFun", 0),
         rFun: s.getI("sRfun", 10),
+        gFun: s.getI("sGfun", 0),
+        yFun: s.getI("sYfun", 1),
+        bFun: s.getI("sBfun", 9),
+        alFun: s.getI("sALfun", 14),
+        arFun: s.getI("sARfun", 13),
+        auFun: s.getI("sAUfun", 15),
+        adFun: s.getI("sADfun", 16),
         rwFun: s.getI("sRWfun", 18),
+        ffFun: s.getI("sFFfun", 19),
+        prevFun: s.getI("sPREVfun", 20),
+        nextFun: s.getI("sNEXTfun", 21),
+        eFun: s.getI("sEfun", 0),
+        okFun: s.getI("sOkfun", 0),
         seek13Duration: s.getI("s13dur", 15),
         seek46Duration: s.getI("s46dur", 180),
         seek79Duration: s.getI("s79dur", 600),
-        showArchive: s.getI("sShowArchive", 1),
-        showDescription: s.getI("sShowDescr", 1),
-        showName: s.getI("sShowName", 1),
+        noColorKeys: s.getI("sNoColorKeys", 0),
+        noNumbersKeys: s.getI("sNoNumbersKeys", 0),
+        timezone: s.getI("sTimezone", 0),
+        sleepTimeout: s.getI("sSleepTimeout", 0),
+        volumeStep: s.getI("sVolumeStep", 5),
+        infoTimeout: s.getI("sInfoTimeout", 5),
+        infoSlide: s.getI("sInfoSlide", 1),
+        infoSwitch: s.getI("sInfoSwitch", 1),
+        infoChange: s.getI("sInfoChange", 1),
+        infoRew: s.getI("sInfoRew", 1),
+        thumbnail: s.getI("sThumbnail", 1),
+        osdOpacity: s.getI("sOsdOpacity", 7),
+        listPosition: s.getI("sListPos", 0),
+        editor: s.getI("sEditor", 0),
         showNumber: s.getI("sShowNum", 1),
         showPicon: s.getI("sShowPikon", 1),
-        showProgram: s.getI("sShowProgram", 1),
+        showName: s.getI("sShowName", 1),
         showProgress: s.getI("sShowProgress", 1),
+        showArchive: s.getI("sShowArchive", 1),
         showScroll: s.getI("sShowScroll", 1),
-        sleepTimeout: s.getI("sSleepTimeout", 0),
-        stopPlay: s.getI("sStopPlay", 0),
-        thumbnail: s.getI("sThumbnail", 1),
-        timezone: s.getI("sTimezone", 0),
-        volumeStep: s.getI("sVolumeStep", 5),
-        yFun: s.getI("sYfun", 1),
+        showDescription: s.getI("sShowDescr", 1),
+        showProgram: s.getI("sShowProgram", 1),
+        preview: s.getI("sPreview", 0),
+        nextCount: s.getI("sNextCount", 0),
+        nextCountList: s.getI("sNextCountL", 1),
+        favorites: s.getI("sFavorites", 0),
+        permanentTime: s.getI("sPermanentTime", 0),
+        res10Resume: s.getI("s10resum", 1),
+        prevCount: s.getI("sPrevCount", 2),
+        medCount: s.getI("sMedCount", 2),
+        psChannels: s.getI("sPSchannels", 1),
+        psOptions: s.getI("sPSoptions", 0),
+        psProvs: s.getI("sPSprovs", 0),
+        hdmiSupport: s.getI("sHDMIsupport", 0),
+        autorun: s.getI("sAutorun", 0),
+        players: s.getI("sPlayers", 0),
+        bufSize: s.getI("sBufSize", 0),
+        grapI: s.getI("sGrapI", 0),
+        parentPin: s.get("parentPIN") || "1234",
+        hideMenus: (s.get("sHideMenus") || "").split(",").filter(function (
+            x: string,
+        ) {
+            return x !== "";
+        }),
+        highlightColorSel: s.get("sSHLcolSel") || "240,25",
+        highlightColor: s.get("sSHLcolor") || "50,85",
+        highlightColorB: s.get("sSHLcolorB") || "255,0",
+        localCmdUrl: s.get("sLocalCmdUrl") || "",
+        deviceUuid: s.get("sDeviceUuid") || "",
     };
     return settings;
 }
@@ -359,7 +359,7 @@ export function loadSettings(): PlayerSettings {
  * Writes every property to the underlying storage adapter.
  */
 export function saveSettings(s: PlayerSettings): void {
-    const store = storage;
+    var store = storage;
     store.setI("sNoSmall", s.noSmall);
     store.setI("sStopPlay", s.stopPlay);
     store.setI("sPipSize", s.pipSize);

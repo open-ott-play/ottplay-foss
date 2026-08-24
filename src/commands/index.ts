@@ -17,21 +17,21 @@
 
 // ─── External declarations (set by other modules at runtime) ───────────────────
 
-declare let $: any;
-declare let window: any;
+declare var $: any;
+declare var window: any;
 
 // ─── Command interface ─────────────────────────────────────────────────────────
 
 export interface Command {
-    channel_name?: string;
-    channel_number?: number;
     command: string;
-    message?: string;
-    playlist?: string;
-    popup_duration?: number;
     provider?: number;
     provider_settings?: string;
+    playlist?: string;
+    channel_number?: number;
+    channel_name?: string;
     random_range?: [number, number];
+    message?: string;
+    popup_duration?: number;
     volume?: number; // 0-100, absolute volume level
     volume_step?: number; // relative change, e.g. +5 or -5
 }
@@ -46,15 +46,11 @@ export interface Command {
  * @param text     - Message text to display.
  * @param durationSec — How long (seconds) the popup stays visible. Default 5.
  */
-export function showPopup(text: string, durationSec = 5) {
-    if (!text) {
-        return;
-    }
-    const container = document.getElementById("notifications");
-    if (!container) {
-        return;
-    }
-    const el = document.createElement("div");
+export function showPopup(text: string, durationSec: number = 5): void {
+    if (!text) return;
+    var container = document.getElementById("notifications");
+    if (!container) return;
+    var el = document.createElement("div");
     el.className = "notify";
     el.textContent = text;
     container.appendChild(el);
@@ -95,7 +91,7 @@ function findChannelIndices(chId: number): [number, number] {
  */
 function channelByNumber(num: number): void {
     var w = window;
-    if (!(w.curList && w.curList.length)) {
+    if (!w.curList || !w.curList.length) {
         showPopup("No channels loaded");
         return;
     }
@@ -103,7 +99,7 @@ function channelByNumber(num: number): void {
     var idx = num - 1;
     if (idx < 0 || idx >= w.curList.length) {
         showPopup(
-            "Channel #" + num + " not found (total: " + w.curList.length + ")"
+            "Channel #" + num + " not found (total: " + w.curList.length + ")",
         );
         return;
     }
@@ -117,7 +113,7 @@ function channelByNumber(num: number): void {
         w.playChannel(indices[0], indices[1]);
     }
     var chName =
-        w.channels && w.channels[chId] ? w.channels[chId].channel_name : "";
+        w.chanels && w.chanels[chId] ? w.chanels[chId].channel_name : "";
     showPopup("Channel #" + num + (chName ? ": " + chName : ""));
 }
 
@@ -131,7 +127,7 @@ function channelByName(name: string): void {
     if (!name) return;
     var w = window;
     var needle = name.toLowerCase();
-    var bestChId = -1;
+    var bestChId: number = null;
     var bestCatIdx = -1;
     var bestChIdx = -1;
 
@@ -141,7 +137,7 @@ function channelByName(name: string): void {
         var list = w.cats[cat];
         for (var i = 0; i < list.length; i++) {
             var chId = list[i];
-            var ch = w.channels && w.channels[chId];
+            var ch = w.chanels && w.chanels[chId];
             if (
                 ch &&
                 ch.channel_name &&
@@ -165,8 +161,8 @@ function channelByName(name: string): void {
         w.playChannel(bestCatIdx, bestChIdx);
     }
     var chName =
-        w.channels && w.channels[bestChId]
-            ? w.channels[bestChId].channel_name
+        w.chanels && w.chanels[bestChId]
+            ? w.chanels[bestChId].channel_name
             : "";
     showPopup("Playing: " + chName);
 }
@@ -181,7 +177,7 @@ function channelByName(name: string): void {
  */
 function randomChannel(rangeStart?: number, rangeEnd?: number): void {
     var w = window;
-    if (!(w.curList && w.curList.length)) {
+    if (!w.curList || !w.curList.length) {
         showPopup("No channels loaded");
         return;
     }
@@ -216,7 +212,7 @@ function randomChannel(rangeStart?: number, rangeEnd?: number): void {
         w.playChannel(indices[0], indices[1]);
     }
     var chName =
-        w.channels && w.channels[chId] ? w.channels[chId].channel_name : "";
+        w.chanels && w.chanels[chId] ? w.chanels[chId].channel_name : "";
     showPopup("Random #" + (pickIdx + 1) + (chName ? ": " + chName : ""));
 }
 
@@ -333,7 +329,7 @@ function exitPlayer(): void {
  * @param cmd - Command object with a "command" field.
  */
 export function handleCommand(cmd: Command): void {
-    if (!(cmd && cmd.command)) return;
+    if (!cmd || !cmd.command) return;
 
     switch (cmd.command) {
         case "popup_message":

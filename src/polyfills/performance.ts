@@ -1,6 +1,6 @@
 /** performance.now() polyfill for old STB devices */
 export function polyfillPerformanceNow(): void {
-    if (!((window as any).performance && (window as any).performance.now)) {
+    if (!(window as any).performance || !(window as any).performance.now) {
         if (!Date.now) {
             Date.now = function (this: any): number {
                 return new this().getTime();
