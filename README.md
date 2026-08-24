@@ -18,8 +18,7 @@ Self-contained IPTV/OTT player with a local Python HTTP server. Runs on Smart TV
 ```bash
 # 1. Build the player bundle
 npm install
-npm run build          # production (minified, ~32KB)
-npm run build:dev      # development (readable, ~94KB)
+npm run build          # production (minified → dist/stbPlayer.js)
 
 # 2. Start the server
 python3 server.py 8080
@@ -379,7 +378,7 @@ python3 server.py 8080 --epg-url http://a.com/epg.xml --epg-url http://b.com/epg
 ├── local_proxy.py         # Standalone local command proxy
 ├── index.html             # Player entry point (device detection + poller)
 ├── dist/
-│   └── stbPlayer.js       # Built player bundle (TypeScript → ES5, ~32KB)
+│   └── stbPlayer.js       # Built player bundle (TypeScript → ES5, minified)
 ├── src/                   # TypeScript sources (13 modules)
 ├── stb/
 │   ├── core.js            # Shared STB implementation
