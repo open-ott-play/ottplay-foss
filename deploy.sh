@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Deploy ottplay-foss Docker container (run on the Synology NAS, or pipe it:
-#   ssh nas 'bash -s' < deploy.sh
+#   ssh synology 'bash -s' < deploy.sh
 # )
 #
 # Pulls the latest image, replaces any existing container, then verifies
