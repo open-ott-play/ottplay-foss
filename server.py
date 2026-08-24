@@ -18,13 +18,16 @@ from datetime import datetime, timezone, timedelta
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
 EPG_URLS = []
 VERBOSE = False
+NO_EPG = False
 for i, arg in enumerate(sys.argv):
     if arg == '--epg-url' and i + 1 < len(sys.argv):
         EPG_URLS.append(sys.argv[i + 1])
+    if arg == '--no-epg':
+        NO_EPG = True
     if arg == '--verbose' or arg == '-v':
         VERBOSE = True
 
-if not EPG_URLS:
+if not EPG_URLS and not NO_EPG:
     EPG_URLS.append('http://epg.it999.ru/epg2.xml.gz')
 
 # --- Logo generation ---
