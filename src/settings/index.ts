@@ -1,0 +1,309 @@
+/**
+ * Player settings — all ~100 configuration parameters.
+ *
+ * Loaded from persistent storage on startup (see `loadSettings`) and
+ * persisted on change (see `saveSettings`). The `PlayerSettings` interface
+ * defines every tunable parameter exposed to the user via the settings UI.
+ */
+import { storage } from '../storage';
+
+/**
+ * All player configuration parameters.
+ *
+ * Each property corresponds to a stored key (prefixed with `s` or stored
+ * verbatim) that is read from / written to the `storage` adapter.
+ *
+ * @property noSmall           - Disable small screen optimisation (0/1).
+ * @property stopPlay          - Stop playback on certain events (0/1).
+ * @property pipSize           - Picture-in-picture size mode.
+ * @property pipPosition       - Picture-in-picture screen position.
+ * @property pageSize          - Number of items per page in channel list.
+ * @property fontShift         - Font size adjustment shift.
+ * @property fontSize          - Base font size index.
+ * @property arrowFun          - Remote arrow key function mapping.
+ * @property rewFun            - Rewind button function mapping.
+ * @property pnFun             - P+/P- button function mapping.
+ * @property rFun              - Red (R) colour key function mapping.
+ * @property gFun              - Green (G) colour key function mapping.
+ * @property yFun              - Yellow (Y) colour key function mapping.
+ * @property bFun              - Blue (B) colour key function mapping.
+ * @property alFun             - Left arrow function mapping.
+ * @property arFun             - Right arrow function mapping.
+ * @property auFun             - Up arrow function mapping.
+ * @property adFun             - Down arrow function mapping.
+ * @property rwFun             - Rewind key function mapping.
+ * @property ffFun             - Fast-forward key function mapping.
+ * @property prevFun           - Previous channel / track function mapping.
+ * @property nextFun           - Next channel / track function mapping.
+ * @property eFun              - Exit / back function mapping.
+ * @property okFun             - OK / select function mapping.
+ * @property seek13Duration    - Short skip duration (seconds).
+ * @property seek46Duration    - Medium skip duration (seconds).
+ * @property seek79Duration    - Long skip duration (seconds).
+ * @property noColorKeys       - Disable colour-key shortcuts (0/1).
+ * @property noNumbersKeys     - Disable numeric key shortcuts (0/1).
+ * @property timezone          - UTC offset override (applied via polyfill).
+ * @property sleepTimeout      - Inactivity sleep timer (minutes).
+ * @property volumeStep        - Volume increment per key press (%).
+ * @property infoTimeout       - Info OSD auto-hide timeout (seconds).
+ * @property infoSlide         - Info OSD slide animation enabled (0/1).
+ * @property infoSwitch        - Info OSD channel-switch enabled (0/1).
+ * @property infoChange        - Info OSD on programme change (0/1).
+ * @property infoRew           - Info OSD during rewind/ff (0/1).
+ * @property thumbnail         - Show channel thumbnail/preview (0/1).
+ * @property osdOpacity        - OSD background opacity level.
+ * @property listPosition      - Remember list scroll position (0/1).
+ * @property editor            - Enable channel editor (0/1).
+ * @property showNumber        - Show channel number in list (0/1).
+ * @property showPicon         - Show channel picon (0/1).
+ * @property showName          - Show channel name (0/1).
+ * @property showProgress      - Show progress bar (0/1).
+ * @property showArchive       - Show archive indicator (0/1).
+ * @property showScroll        - Show scrollbar (0/1).
+ * @property showDescription   - Show programme description (0/1).
+ * @property showProgram       - Show programme title (0/1).
+ * @property preview           - Enable preview window (0/1).
+ * @property nextCount         - Number of next programmes to show.
+ * @property nextCountList     - Number of next programmes in list view.
+ * @property favorites         - Enable favourites filtering (0/1).
+ * @property permanentTime     - Always show time in OSD (0/1).
+ * @property res10Resume       - Resume playback from last position (0/1).
+ * @property prevCount         - Number of previous programmes shown.
+ * @property medCount          - Media item count threshold.
+ * @property psChannels        - Provider-switch channel mapping (0/1).
+ * @property psOptions         - Provider-switch options (0/1).
+ * @property psProvs           - Provider-switch provider list (0/1).
+ * @property hdmiSupport       - Enable HDMI-CEC support (0/1).
+ * @property autorun           - Auto-start on boot (0/1).
+ * @property players           - Player type selection.
+ * @property bufSize           - Buffer size in KB.
+ * @property grapI             - Use graphical icons for yes/no/off (0/1).
+ * @property parentPin         - Parental control PIN code.
+ * @property hideMenus         - List of menu IDs to hide.
+ * @property highlightColorSel - Selected item highlight colour (HSL H,S).
+ * @property highlightColor    - Default highlight colour (HSL H,S).
+ * @property highlightColorB   - Background highlight colour (HSL H,S).
+ */
+export interface PlayerSettings {
+  noSmall: number;
+  stopPlay: number;
+  pipSize: number;
+  pipPosition: number;
+  pageSize: number;
+  fontShift: number;
+  fontSize: number;
+  arrowFun: number;
+  rewFun: number;
+  pnFun: number;
+  rFun: number;
+  gFun: number;
+  yFun: number;
+  bFun: number;
+  alFun: number;
+  arFun: number;
+  auFun: number;
+  adFun: number;
+  rwFun: number;
+  ffFun: number;
+  prevFun: number;
+  nextFun: number;
+  eFun: number;
+  okFun: number;
+  seek13Duration: number;
+  seek46Duration: number;
+  seek79Duration: number;
+  noColorKeys: number;
+  noNumbersKeys: number;
+  timezone: number;
+  sleepTimeout: number;
+  volumeStep: number;
+  infoTimeout: number;
+  infoSlide: number;
+  infoSwitch: number;
+  infoChange: number;
+  infoRew: number;
+  thumbnail: number;
+  osdOpacity: number;
+  listPosition: number;
+  editor: number;
+  showNumber: number;
+  showPicon: number;
+  showName: number;
+  showProgress: number;
+  showArchive: number;
+  showScroll: number;
+  showDescription: number;
+  showProgram: number;
+  preview: number;
+  nextCount: number;
+  nextCountList: number;
+  favorites: number;
+  permanentTime: number;
+  res10Resume: number;
+  prevCount: number;
+  medCount: number;
+  psChannels: number;
+  psOptions: number;
+  psProvs: number;
+  hdmiSupport: number;
+  autorun: number;
+  players: number;
+  bufSize: number;
+  grapI: number;
+  parentPin: string;
+  hideMenus: string[];
+  highlightColorSel: string;
+  highlightColor: string;
+  highlightColorB: string;
+  localCmdUrl: string;
+  deviceUuid: string;
+}
+
+/**
+ * Return the factory-default `PlayerSettings` object.
+ *
+ * @returns A `PlayerSettings` instance with all default values.
+ *
+ * @remarks
+ * These defaults mirror the original stbPlayer.js hard-coded values.
+ */
+export function defaultSettings(): PlayerSettings {
+  return {
+    noSmall: 0, stopPlay: 0, pipSize: 0, pipPosition: 0, pageSize: 25,
+    fontShift: 4, fontSize: 4, arrowFun: 0, rewFun: 0, pnFun: 0,
+    rFun: 10, gFun: 0, yFun: 1, bFun: 9, alFun: 14, arFun: 13,
+    auFun: 15, adFun: 16, rwFun: 18, ffFun: 19, prevFun: 20, nextFun: 21,
+    eFun: 0, okFun: 0, seek13Duration: 15, seek46Duration: 180, seek79Duration: 600,
+    noColorKeys: 0, noNumbersKeys: 0, timezone: 0, sleepTimeout: 0, volumeStep: 5,
+    infoTimeout: 5, infoSlide: 1, infoSwitch: 1, infoChange: 1, infoRew: 1,
+    thumbnail: 1, osdOpacity: 7, listPosition: 0, editor: 0,
+    showNumber: 1, showPicon: 1, showName: 1, showProgress: 1, showArchive: 1,
+    showScroll: 1, showDescription: 1, showProgram: 1, preview: 0,
+    nextCount: 0, nextCountList: 1, favorites: 0, permanentTime: 0, res10Resume: 1,
+    prevCount: 2, medCount: 2, psChannels: 1, psOptions: 0, psProvs: 0,
+    hdmiSupport: 0, autorun: 0, players: 0, bufSize: 0, grapI: 0,
+    parentPin: '1234', hideMenus: [],
+    highlightColorSel: '240,25', highlightColor: '50,85', highlightColorB: '255,0',
+    localCmdUrl: '', deviceUuid: '',
+  };
+}
+
+export var settings: PlayerSettings = defaultSettings();
+
+/**
+ * Load all settings from persistent storage into the module-level
+ * `settings` object.
+ *
+ * @returns The populated `PlayerSettings` object (also available as the
+ *          module-level `settings` export).
+ *
+ * @remarks
+ * Each property is read via `storage.getI()` (integer) or `storage.get()`
+ * (string/array) with its respective fallback default. After calling this
+ * function, the shared `settings` variable is up-to-date.
+ *
+ * @sideEffects
+ * Mutates the module-level `settings` variable.
+ */
+export function loadSettings(): PlayerSettings {
+  var s = storage;
+  settings = {
+    noSmall: s.getI('sNoSmall', 0), stopPlay: s.getI('sStopPlay', 0),
+    pipSize: s.getI('sPipSize', 0), pipPosition: s.getI('sPipPos', 0),
+    pageSize: s.getI('sPageSize', 25), fontShift: s.getI('sFontShift', 4),
+    fontSize: s.getI('sFont', 4), arrowFun: s.getI('sArrowFun', 0),
+    rewFun: s.getI('sRewFun', 0), pnFun: s.getI('sPNFun', 0),
+    rFun: s.getI('sRfun', 10), gFun: s.getI('sGfun', 0),
+    yFun: s.getI('sYfun', 1), bFun: s.getI('sBfun', 9),
+    alFun: s.getI('sALfun', 14), arFun: s.getI('sARfun', 13),
+    auFun: s.getI('sAUfun', 15), adFun: s.getI('sADfun', 16),
+    rwFun: s.getI('sRWfun', 18), ffFun: s.getI('sFFfun', 19),
+    prevFun: s.getI('sPREVfun', 20), nextFun: s.getI('sNEXTfun', 21),
+    eFun: s.getI('sEfun', 0), okFun: s.getI('sOkfun', 0),
+    seek13Duration: s.getI('s13dur', 15), seek46Duration: s.getI('s46dur', 180),
+    seek79Duration: s.getI('s79dur', 600), noColorKeys: s.getI('sNoColorKeys', 0),
+    noNumbersKeys: s.getI('sNoNumbersKeys', 0), timezone: s.getI('sTimezone', 0),
+    sleepTimeout: s.getI('sSleepTimeout', 0), volumeStep: s.getI('sVolumeStep', 5),
+    infoTimeout: s.getI('sInfoTimeout', 5), infoSlide: s.getI('sInfoSlide', 1),
+    infoSwitch: s.getI('sInfoSwitch', 1), infoChange: s.getI('sInfoChange', 1),
+    infoRew: s.getI('sInfoRew', 1), thumbnail: s.getI('sThumbnail', 1),
+    osdOpacity: s.getI('sOsdOpacity', 7), listPosition: s.getI('sListPos', 0),
+    editor: s.getI('sEditor', 0), showNumber: s.getI('sShowNum', 1),
+    showPicon: s.getI('sShowPikon', 1), showName: s.getI('sShowName', 1),
+    showProgress: s.getI('sShowProgress', 1), showArchive: s.getI('sShowArchive', 1),
+    showScroll: s.getI('sShowScroll', 1), showDescription: s.getI('sShowDescr', 1),
+    showProgram: s.getI('sShowProgram', 1), preview: s.getI('sPreview', 0),
+    nextCount: s.getI('sNextCount', 0), nextCountList: s.getI('sNextCountL', 1),
+    favorites: s.getI('sFavorites', 0), permanentTime: s.getI('sPermanentTime', 0),
+    res10Resume: s.getI('s10resum', 1), prevCount: s.getI('sPrevCount', 2),
+    medCount: s.getI('sMedCount', 2), psChannels: s.getI('sPSchannels', 1),
+    psOptions: s.getI('sPSoptions', 0), psProvs: s.getI('sPSprovs', 0),
+    hdmiSupport: s.getI('sHDMIsupport', 0), autorun: s.getI('sAutorun', 0),
+    players: s.getI('sPlayers', 0), bufSize: s.getI('sBufSize', 0),
+    grapI: s.getI('sGrapI', 0), parentPin: s.get('parentPIN') || '1234',
+    hideMenus: (s.get('sHideMenus') || '').split(',').filter(function (x: string) { return x !== ''; }),
+    highlightColorSel: s.get('sSHLcolSel') || '240,25',
+    highlightColor: s.get('sSHLcolor') || '50,85',
+    highlightColorB: s.get('sSHLcolorB') || '255,0',
+    localCmdUrl: s.get('sLocalCmdUrl') || '',
+    deviceUuid: s.get('sDeviceUuid') || '',
+  };
+  return settings;
+}
+
+/**
+ * Persist the given settings object to storage.
+ *
+ * @param s - A `PlayerSettings` instance whose values will be written.
+ *
+ * @remarks
+ * Each property is written via `storage.setI()` (for integers) or
+ * `storage.set()` (for strings / serialised arrays). This function
+ * does NOT update the module-level `settings` variable — callers
+ * typically modify `settings` then pass it here.
+ *
+ * @sideEffects
+ * Writes every property to the underlying storage adapter.
+ */
+export function saveSettings(s: PlayerSettings): void {
+  var store = storage;
+  store.setI('sNoSmall', s.noSmall); store.setI('sStopPlay', s.stopPlay);
+  store.setI('sPipSize', s.pipSize); store.setI('sPipPos', s.pipPosition);
+  store.setI('sPageSize', s.pageSize); store.setI('sFontShift', s.fontShift);
+  store.setI('sFont', s.fontSize); store.setI('sArrowFun', s.arrowFun);
+  store.setI('sRewFun', s.rewFun); store.setI('sPNFun', s.pnFun);
+  store.setI('sRfun', s.rFun); store.setI('sGfun', s.gFun);
+  store.setI('sYfun', s.yFun); store.setI('sBfun', s.bFun);
+  store.setI('sALfun', s.alFun); store.setI('sARfun', s.arFun);
+  store.setI('sAUfun', s.auFun); store.setI('sADfun', s.adFun);
+  store.setI('sRWfun', s.rwFun); store.setI('sFFfun', s.ffFun);
+  store.setI('sPREVfun', s.prevFun); store.setI('sNEXTfun', s.nextFun);
+  store.setI('sEfun', s.eFun); store.setI('sOkfun', s.okFun);
+  store.setI('s13dur', s.seek13Duration); store.setI('s46dur', s.seek46Duration);
+  store.setI('s79dur', s.seek79Duration); store.setI('sNoColorKeys', s.noColorKeys);
+  store.setI('sNoNumbersKeys', s.noNumbersKeys); store.setI('sTimezone', s.timezone);
+  store.setI('sSleepTimeout', s.sleepTimeout); store.setI('sVolumeStep', s.volumeStep);
+  store.setI('sInfoTimeout', s.infoTimeout); store.setI('sInfoSlide', s.infoSlide);
+  store.setI('sInfoSwitch', s.infoSwitch); store.setI('sInfoChange', s.infoChange);
+  store.setI('sInfoRew', s.infoRew); store.setI('sThumbnail', s.thumbnail);
+  store.setI('sOsdOpacity', s.osdOpacity); store.setI('sListPos', s.listPosition);
+  store.setI('sEditor', s.editor); store.setI('sShowNum', s.showNumber);
+  store.setI('sShowPikon', s.showPicon); store.setI('sShowName', s.showName);
+  store.setI('sShowProgress', s.showProgress); store.setI('sShowArchive', s.showArchive);
+  store.setI('sShowScroll', s.showScroll); store.setI('sShowDescr', s.showDescription);
+  store.setI('sShowProgram', s.showProgram); store.setI('sPreview', s.preview);
+  store.setI('sNextCount', s.nextCount); store.setI('sNextCountL', s.nextCountList);
+  store.setI('sFavorites', s.favorites); store.setI('sPermanentTime', s.permanentTime);
+  store.setI('s10resum', s.res10Resume); store.setI('sPrevCount', s.prevCount);
+  store.setI('sMedCount', s.medCount); store.setI('sPSchannels', s.psChannels);
+  store.setI('sPSoptions', s.psOptions); store.setI('sPSprovs', s.psProvs);
+  store.setI('sHDMIsupport', s.hdmiSupport); store.setI('sAutorun', s.autorun);
+  store.setI('sPlayers', s.players); store.setI('sBufSize', s.bufSize);
+  store.setI('sGrapI', s.grapI); store.set('parentPIN', s.parentPin);
+  store.set('sHideMenus', s.hideMenus.join(','));
+  store.set('sSHLcolSel', s.highlightColorSel);
+  store.set('sSHLcolor', s.highlightColor);
+  store.set('sSHLcolorB', s.highlightColorB);
+  store.set('sLocalCmdUrl', s.localCmdUrl);
+  store.set('sDeviceUuid', s.deviceUuid);
+}
