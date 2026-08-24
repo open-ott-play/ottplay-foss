@@ -1,12 +1,12 @@
 # Build the TS bundle (dist/stbPlayer.js)
-FROM node:22-alpine AS build
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS build
 WORKDIR /app
 COPY package.json package-lock.json tsconfig.json build-concat.cjs ./
 COPY src ./src
 RUN npm ci --ignore-scripts && npm run typecheck && npm run build
 
 # Serve static player + EPG/logo proxy endpoints via the bundled python server
-FROM python:3.12-alpine
+FROM python:3.12-alpine@sha256:d09d15e60962ca365d1cd544a48773bac9d33f2fb1b00f2aa0deec78ade7dc31
 WORKDIR /app
 COPY --from=build /app/dist ./dist
 COPY index.html favicon.ico server.py ./
