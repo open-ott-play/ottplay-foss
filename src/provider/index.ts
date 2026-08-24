@@ -913,7 +913,8 @@ export function loadProv(): void {
     }
     if (parseInt(stbGetItem("noSelProv") || "0")) delOption(selectProvaider);
     else {
-        $(launch_id).append("<br/>Loading provider " + s + " script ...");
+        $(launch_id).append("<br/>");
+        $(launch_id).append(document.createTextNode("Loading provider " + s + " script ..."));
         delOption(edit_dealer);
     }
     pperf_stamp("loadProv -- load js");
