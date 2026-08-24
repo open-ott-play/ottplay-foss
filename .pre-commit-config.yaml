@@ -1,0 +1,34 @@
+# Pre-push hooks: biome lint/format, secrets scan, shell lint, hygiene.
+# Install:  pre-commit install -t pre-push
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e # v8.16.3
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c # v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+        # vendored / generated trees stay untouched
+        exclude: '^(js|stb|stbPlayer|prov|fonts)/'
+      - id: trailing-whitespace
+        exclude: '^(js|stb|stbPlayer|prov|fonts)/'
+      - id: check-yaml
+
+  - repo: https://github.com/jumanjihouse/pre-commit-hooks
+    rev: 38980559e3a605691d6579f96222c30778e5a69e # 3.0.0
+    hooks:
+      - id: shellcheck
+        args: [--exclude=SC2154, --exclude=SC2164, --exclude=SC2181, --exclude=SC2029, --exclude=SC1091]
+
+  # Biome (lint + format + organize imports) over the whole scoped tree.
+  # Auto-fixes files; if it rewrites anything the push is rejected — re-add and push again.
+  - repo: local
+    hooks:
+      - id: biome
+        name: biome check
+        entry: npx --no-install @biomejs/biome check --write .
+        language: system
+        pass_filenames: false
+        types_or: [file]

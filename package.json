@@ -1,16 +1,19 @@
 {
-  "name": "ottplay-foss",
-  "version": "1.0.0",
-  "type": "module",
-  "description": "OTT-play FOSS - IPTV/OTT set-top-box player",
-  "scripts": {
-    "build": "node build-concat.cjs",
-    "typecheck": "tsc --noEmit"
-  },
-  "devDependencies": {
-    "@types/jquery": "^4.0.1",
-    "rollup": "^4.61.1",
-    "terser": "^5.50.0",
-    "typescript": "^5.9.3"
-  }
+    "name": "ottplay-foss",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "OTT-play FOSS - IPTV/OTT set-top-box player",
+    "scripts": {
+        "build": "node build-concat.cjs",
+        "typecheck": "tsc --noEmit",
+        "lint": "biome check .",
+        "lint:fix": "biome check --write ."
+    },
+    "devDependencies": {
+        "@biomejs/biome": "^2.5.10",
+        "@types/jquery": "^4.0.1",
+        "rollup": "^4.61.1",
+        "terser": "^5.50.0",
+        "typescript": "^5.9.3"
+    }
 }
