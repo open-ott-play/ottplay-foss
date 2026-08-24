@@ -226,7 +226,7 @@ function createCookieAdapter(): StorageAdapter {
     const get = function (key: string): string {
         const pattern =
             "(?:^|;\\s*)" +
-            decodeURIComponent(key).replace(/[-.+*]/g, "\\$&") +
+            decodeURIComponent(key).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
             "\\s*\\=";
         if (!new RegExp(pattern).test(document.cookie)) {
             return "";
@@ -235,7 +235,7 @@ function createCookieAdapter(): StorageAdapter {
             document.cookie.replace(
                 new RegExp(
                     "(?:^|.*;\\s*)" +
-                        decodeURIComponent(key).replace(/[-.+*]/g, "\\$&") +
+                        decodeURIComponent(key).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
                         "\\s*\\=\\s*((?:[^;](?!;))*[^;]?).*",
                 ),
                 "$1",
