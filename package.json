@@ -12,7 +12,7 @@
   "devDependencies": {
     "@types/jquery": "^3.5.30",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
-    "@typescript-eslint/parser": "^7.18.0",
+    "@typescript-eslint/parser": "^8.67.0",
     "eslint": "^8.57.0",
     "rollup": "^4.61.1",
     "terser": "^5.50.0",
