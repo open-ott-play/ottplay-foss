@@ -1020,18 +1020,27 @@ export function loadProv(): void {
                             parseInt(stbGetItem("noProvParam") || "0") !==
                         2
                     ) {
-                        $(launch_id).append(
-                            '<img src="' +
-                                host +
-                                "/prov/" +
-                                s +
-                                "/logo.png?" +
-                                __av +
-                                '" alt=" " onerror="this.width=0" style="position:absolute; ' +
-                                (launch_id !== "#dialogbox"
-                                    ? 'top:100px; right:100px;" width="25%" max-height="25%" />'
-                                    : 'top:6px; right:6px;" height="40" />'),
+                        const img = $("<img>");
+                        img.attr(
+                            "src",
+                            host + "/prov/" + s + "/logo.png?" + __av,
                         );
+                        img.attr("alt", " ");
+                        img.css("position", "absolute");
+                        if (launch_id !== "#dialogbox") {
+                            img.css("top", "100px");
+                            img.css("right", "100px");
+                            img.attr("width", "25%");
+                            img.css("max-height", "25%");
+                        } else {
+                            img.css("top", "6px");
+                            img.css("right", "6px");
+                            img.attr("height", "40");
+                        }
+                        img.on("error", function () {
+                            (this as HTMLImageElement).width = 0;
+                        });
+                        $(launch_id).append(img);
                     }
                     if (typeof getEPGchanelCur !== "function")
                         getEPGchanelCur = epgCash
