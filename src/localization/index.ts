@@ -37,20 +37,20 @@ export var useGraphicIcons = false;
  * (e.g. `%1` → args[0], `%2` → args[1], ...).
  */
 export function translate(key: string, ...args: any[]): string {
-  if (useGraphicIcons) {
-    switch (key) {
-      case 'off':
-      case 'no':
-        return '<span class="fontello">&#xf204;</span>';
-      case 'yes':
-        return '<span class="fontello">&#xf205;</span>';
+    if (useGraphicIcons) {
+        switch (key) {
+            case "off":
+            case "no":
+                return '<span class="fontello">&#xf204;</span>';
+            case "yes":
+                return '<span class="fontello">&#xf205;</span>';
+        }
     }
-  }
-  var text = translations[key] !== undefined ? translations[key] : key;
-  for (var i = 0; i < args.length; i++) {
-    text = text.replace(new RegExp('%' + (i + 1), 'g'), args[i]);
-  }
-  return text;
+    var text = translations[key] !== undefined ? translations[key] : key;
+    for (var i = 0; i < args.length; i++) {
+        text = text.replace(new RegExp("%" + (i + 1), "g"), args[i]);
+    }
+    return text;
 }
 
 /**
@@ -81,27 +81,31 @@ export var _ = translate;
  * `{host}/stbPlayer/{langCode}.js?{version}` where `host` and `version`
  * come from `window.__host` and `window.__cv` (defaults: `''` and `'local'`).
  */
-export function loadLanguage(langCode: string, successCallback: () => void, errorCallback?: () => void): void {
-  var host = (window as any).__host || '';
-  var version = (window as any).__cv || 'local';
-  var scriptUrl = host + '/stbPlayer/' + langCode + '.js?' + version;
+export function loadLanguage(
+    langCode: string,
+    successCallback: () => void,
+    errorCallback?: () => void,
+): void {
+    var host = (window as any).__host || "";
+    var version = (window as any).__cv || "local";
+    var scriptUrl = host + "/stbPlayer/" + langCode + ".js?" + version;
 
-  var script = document.createElement('script');
-  script.src = scriptUrl;
-  script.type = 'text/javascript';
-  if (typeof (script as any).crossOrigin !== 'undefined') {
-    (script as any).crossOrigin = 'anonymous';
-  }
-  script.onload = function () {
-    // Language file should have populated window.keyStrings
-    if ((window as any).keyStrings) {
-      translations = (window as any).keyStrings;
+    var script = document.createElement("script");
+    script.src = scriptUrl;
+    script.type = "text/javascript";
+    if (typeof (script as any).crossOrigin !== "undefined") {
+        (script as any).crossOrigin = "anonymous";
     }
-    if (successCallback) successCallback();
-  };
-  script.onerror = function (e) {
-    console.error('Error loading language:', scriptUrl);
-    if (errorCallback) errorCallback();
-  };
-  document.body.appendChild(script);
+    script.onload = function () {
+        // Language file should have populated window.keyStrings
+        if ((window as any).keyStrings) {
+            translations = (window as any).keyStrings;
+        }
+        if (successCallback) successCallback();
+    };
+    script.onerror = function (e) {
+        console.error("Error loading language:", scriptUrl);
+        if (errorCallback) errorCallback();
+    };
+    document.body.appendChild(script);
 }
