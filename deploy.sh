@@ -19,7 +19,7 @@ set -euo pipefail
 run_deploy() {
     IMAGE="${IMAGE:-alvit/ottplay-foss:latest}"
     CONTAINER="${CONTAINER:-ottplay-foss}"
-    PORT="${PORT:-8080}"
+    PORT="${PORT:-8095}"  # ponytail: NAS-specific default; override via PORT env
     EXTRA_ARGS="${EXTRA_ARGS:-}"
     BASE_URL="http://localhost:${PORT}"
 
