@@ -26,7 +26,13 @@ run_deploy() {
     log() { echo "[deploy] $*"; }
     fail() { echo "[deploy] FAIL: $*" >&2; exit 1; }
 
-    command -v docker >/dev/null || fail "docker not found"
+    # non-interactive SSH shells miss Synology's /usr/local/bin
+    case ":$PATH:" in
+        *":/usr/local/bin:"*) ;;
+        *) PATH="/usr/local/bin:/opt/bin:$PATH" ;;
+    esac
+
+    command -v docker >/dev/null || fail "docker not found (PATH=$PATH)"
     command -v curl >/dev/null || fail "curl not found"
 
     # docker usually needs root on Synology; fall back to passwordless sudo
@@ -88,15 +94,15 @@ fi
 HOST="${1:-synology}"
 [ $# -gt 0 ] && shift
 
-[ -r "$0" ] || {
-    echo "[deploy] cannot read '$0' to stream over SSH; use --local or pipe: bash -s < deploy.sh" >&2
-    exit 1
-}
-
-# forward IMAGE/CONTAINER/PORT/EXTRA_ARGS to the remote shell
-env_str=""
-for v in IMAGE CONTAINER PORT EXTRA_ARGS; do
-    [ -n "${!v:-}" ] && env_str+="$v=$(printf '%q' "${!v}") "
-done
-
-exec ssh "$HOST" "${env_str}bash -s" < "$0"
+SCRIPT_PATH="${BASH_SOURCE[0]:-$0}"
+if [ -s "$SCRIPT_PATH" ] && [ -f "$SCRIPT_PATH" ]; then
+    # forward IMAGE/CONTAINER/PORT/EXTRA_ARGS to the remote shell
+    env_str=""
+    for v in IMAGE CONTAINER PORT EXTRA_ARGS; do
+        [ -n "${!v:-}" ] && env_str+="$v=$(printf '%q' "${!v}") "
+    done
+    exec ssh "$HOST" "${env_str}bash -s" < "$SCRIPT_PATH"
+else
+    # streamed over SSH ($0=bash): we are already on the target machine
+    run_deploy
+fi
