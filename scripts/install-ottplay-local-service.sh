@@ -101,6 +101,7 @@ cat > "$PLIST" <<EOF
 </plist>
 EOF
 
+# shellcheck disable=SC2046  # pids are numeric, splitting is safe
 kill $(lsof -t -iTCP:"$PORT" -sTCP:LISTEN) 2>/dev/null || true
 sleep 1
 launchctl unload "$PLIST" 2>/dev/null || true
