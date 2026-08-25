@@ -5,10 +5,8 @@
 #
 # Usage: scripts/install-ottplay-local-service.sh
 # Env overrides: OTTPLAY_SRC, OTTPLAY_DEST, OTTPLAY_PORT (default 8095 —
-#                8080 is taken by hls-proxy), OTTPLAY_HTTPS_PORTS
-#                (default "8443 8444 8445 8446" — one process, several HTTPS
-#                ports; each port is a separate browser origin, so Chrome
-#                keeps isolated player settings per port), OTTPLAY_LABEL.
+#                8080 is taken by hls-proxy), OTTPLAY_HTTPS_PORT
+#                (default PORT+348), OTTPLAY_LABEL.
 # Binds loopback only (--host 127.0.0.1); docker deployments stay wildcard.
 set -euo pipefail
 
@@ -16,7 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC="${OTTPLAY_SRC:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 DEST="${OTTPLAY_DEST:-$HOME/ottplay-foss-local}"
 PORT="${OTTPLAY_PORT:-8095}"
-HTTPS_PORTS="${OTTPLAY_HTTPS_PORTS:-8443 8444 8445 8446}"   # one per browser origin
+HTTPS_PORT="${OTTPLAY_HTTPS_PORT:-$((PORT + 348))}"   # 8095→8443, 8096→8444, …
 LABEL="${OTTPLAY_LABEL:-com.ottplay-foss-local}"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 PY="$(command -v python3)"
@@ -54,11 +52,7 @@ if [ ! -f "$CRT" ] || [ ! -f "$KEY" ]; then
     echo "generated: $CRT (SAN: $SAN)"
 fi
 # Trust it system-wide so Chrome/Safari accept https://localhost without a warning.
-# Check the admin trust-settings record, NOT verify-cert: verify-cert passes for a
-# self-signed cert found in a keychain even when no trust record exists (Chrome
-# then refuses). MDM profiles can wipe third-party trust records — this re-adds.
-CN="$(openssl x509 -in "$CRT" -noout -subject | sed 's/.*CN *= *//')"
-if security dump-trust-settings -d 2>/dev/null | grep -qF "$CN"; then
+if security verify-cert -c "$CRT" >/dev/null 2>&1; then
     echo "cert already trusted"
 else
     if sudo -n security add-trusted-cert -d -r trustRoot \
@@ -70,14 +64,8 @@ else
     fi
 fi
 
-echo "[4/5] launchd plist ($LABEL, http :$PORT, https :$HTTPS_PORTS)"
+echo "[4/5] launchd plist ($LABEL, http :$PORT, https :$HTTPS_PORT)"
 mkdir -p "$HOME/Library/LaunchAgents" "$HOME/Library/Logs"
-HTTPS_ARGS=""
-for p in $HTTPS_PORTS; do
-    HTTPS_ARGS="${HTTPS_ARGS}        <string>--https-port</string>
-        <string>$p</string>
-"
-done
 cat > "$PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -92,7 +80,9 @@ cat > "$PLIST" <<EOF
         <string>$PORT</string>
         <string>--host</string>
         <string>127.0.0.1</string>
-$HTTPS_ARGS        <string>--cert</string>
+        <string>--https-port</string>
+        <string>$HTTPS_PORT</string>
+        <string>--cert</string>
         <string>$CRT</string>
         <string>--key</string>
         <string>$KEY</string>
@@ -111,7 +101,6 @@ $HTTPS_ARGS        <string>--cert</string>
 </plist>
 EOF
 
-# shellcheck disable=SC2046  # pids are numeric, splitting is safe
 kill $(lsof -t -iTCP:"$PORT" -sTCP:LISTEN) 2>/dev/null || true
 sleep 1
 launchctl unload "$PLIST" 2>/dev/null || true
@@ -119,23 +108,17 @@ launchctl load "$PLIST"
 
 echo "[5/5] verify"
 # First start downloads EPG (~1-2 min) before binding; allow up to 3 min.
-# Listeners bind together after EPG load, so the first port gates all of them.
-first_port="${HTTPS_PORTS%% *}"
 ok=""
 for _ in $(seq 1 60); do
-    code="$(curl -s --cacert "$CRT" -o /dev/null -w '%{http_code}' -m 3 "https://localhost:$first_port/")" || true
+    code="$(curl -s --cacert "$CRT" -o /dev/null -w '%{http_code}' -m 3 "https://localhost:$HTTPS_PORT/")" || true
     [ "$code" = "200" ] && { ok=1; break; }
     sleep 3
 done
 if [ -z "$ok" ]; then
-    echo "warning: service not responding on :$first_port — check ~/Library/Logs/ottplay-foss-local.log" >&2
+    echo "warning: service not responding on :$HTTPS_PORT — check ~/Library/Logs/ottplay-foss-local.log" >&2
     exit 1
 fi
 code_http="$(curl -s -o /dev/null -w '%{http_code}' -m 3 "http://127.0.0.1:$PORT/")"
 PID="$(launchctl list "$LABEL" 2>/dev/null | awk -F'[ =;]+' '/"PID"/{print $2}')"
-for p in $HTTPS_PORTS; do
-    printf 'https://localhost:%s/ (HTTP %s)\n' "$p" \
-        "$(curl -s --cacert "$CRT" -o /dev/null -w '%{http_code}' -m 3 "https://localhost:$p/")"
-done
-echo "installed: http://127.0.0.1:$PORT/ (HTTP $code_http); label $LABEL, pid $PID"
-echo "log: ~/Library/Logs/ottplay-foss-local.log"
+echo "installed: https://localhost:$HTTPS_PORT/ (cert-verified) + http://127.0.0.1:$PORT/ (HTTP $code_http)"
+echo "label $LABEL, pid $PID; log: ~/Library/Logs/ottplay-foss-local.log"
