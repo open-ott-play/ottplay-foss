@@ -37,4 +37,4 @@ if [ -f "$CRT" ]; then
     sudo -n security delete-certificate -c "OTT-play Local" /Library/Keychains/System.keychain 2>/dev/null \
         && echo "cert removed from System keychain" || true
 fi
-echo "done (~/ottplay-foss-local kept; reinstall with install-ottplay-local-service.sh / install-ottplay-extra-instances.sh)"
+echo "done (~/ottplay-foss-local kept; reinstall with install-ottplay-local-service.sh)"

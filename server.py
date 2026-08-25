@@ -20,7 +20,7 @@ HOST = ''           # '' = all interfaces (docker); pass --host 127.0.0.1 for lo
 EPG_URLS = []
 VERBOSE = False
 NO_EPG = False
-HTTPS_PORT = None   # extra HTTPS listener, enabled when --cert/--key given
+HTTPS_PORTS = []    # HTTPS listeners; repeat --https-port for extra origins (per-port browser storage)
 CERT_FILE = None
 KEY_FILE = None
 for i, arg in enumerate(sys.argv):
@@ -31,7 +31,7 @@ for i, arg in enumerate(sys.argv):
     if arg == '--verbose' or arg == '-v':
         VERBOSE = True
     if arg == '--https-port' and i + 1 < len(sys.argv):
-        HTTPS_PORT = int(sys.argv[i + 1])
+        HTTPS_PORTS.append(int(sys.argv[i + 1]))
     if arg == '--host' and i + 1 < len(sys.argv):
         HOST = sys.argv[i + 1]
     if arg == '--cert' and i + 1 < len(sys.argv):
@@ -707,14 +707,15 @@ if __name__ == '__main__':
             # HTTPS sidecar listener; plain HTTP on PORT stays available for devices.
             import ssl
             import threading
-            if HTTPS_PORT is None:
-                HTTPS_PORT = 8443
+            if not HTTPS_PORTS:
+                HTTPS_PORTS.append(8443)
             ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             ctx.load_cert_chain(CERT_FILE, KEY_FILE)
-            httpsd = ReusableTCPServer((HOST, HTTPS_PORT), OTTPlayHandler)
-            httpsd.socket = ctx.wrap_socket(httpsd.socket, server_side=True)
-            threading.Thread(target=httpsd.serve_forever, daemon=True).start()
-            print(f"OTT-play FOSS: https://localhost:{HTTPS_PORT} (trusted cert) + http://localhost:{PORT}")
+            for hp in HTTPS_PORTS:
+                httpsd = ReusableTCPServer((HOST, hp), OTTPlayHandler)
+                httpsd.socket = ctx.wrap_socket(httpsd.socket, server_side=True)
+                threading.Thread(target=httpsd.serve_forever, daemon=True).start()
+            print(f"OTT-play FOSS: https on ports {','.join(map(str, HTTPS_PORTS))} (trusted cert) + http://localhost:{PORT}")
         else:
             print(f"OTT-play FOSS: http://localhost:{PORT}")
         print(f"Directory: {os.getcwd()}")
