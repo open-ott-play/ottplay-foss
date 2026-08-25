@@ -19,26 +19,43 @@ set -euo pipefail
 run_deploy() {
     IMAGE="${IMAGE:-alvit/ottplay-foss:latest}"
     CONTAINER="${CONTAINER:-ottplay-foss}"
-    PORT="${PORT:-8080}"
+    PORT="${PORT:-8095}"  # ponytail: NAS-specific default; override via PORT env
     EXTRA_ARGS="${EXTRA_ARGS:-}"
     BASE_URL="http://localhost:${PORT}"
 
     log() { echo "[deploy] $*"; }
     fail() { echo "[deploy] FAIL: $*" >&2; exit 1; }
 
-    command -v docker >/dev/null || fail "docker not found"
+    # non-interactive SSH shells miss Synology's /usr/local/bin
+    case ":$PATH:" in
+        *":/usr/local/bin:"*) ;;
+        *) PATH="/usr/local/bin:/opt/bin:$PATH" ;;
+    esac
+
+    command -v docker >/dev/null || fail "docker not found (PATH=$PATH)"
     command -v curl >/dev/null || fail "curl not found"
 
-    log "Pulling ${IMAGE}..."
-    docker pull "$IMAGE" || fail "docker pull failed"
+    # docker usually needs root on Synology; fall back to passwordless sudo
+    DOCKER="docker"
+    if ! docker info >/dev/null 2>&1; then
+        if command -v sudo >/dev/null && sudo -n docker info >/dev/null 2>&1; then
+            DOCKER="sudo -n docker"
+            log "using sudo for docker"
+        else
+            fail "no docker access: add user to 'docker' group or enable passwordless sudo"
+        fi
+    fi
 
-    if docker ps -a --format '{{.Names}}' | grep -qx "${CONTAINER}"; then
+    log "Pulling ${IMAGE}..."
+    $DOCKER pull "$IMAGE" || fail "docker pull failed"
+
+    if $DOCKER ps -a --format '{{.Names}}' | grep -qx "${CONTAINER}"; then
         log "Removing existing container '${CONTAINER}'..."
-        docker rm -f "$CONTAINER" >/dev/null || fail "failed to remove old container"
+        $DOCKER rm -f "$CONTAINER" >/dev/null || fail "failed to remove old container"
     fi
 
     # shellcheck disable=SC2086
-    docker run -d \
+    $DOCKER run -d \
         --name "$CONTAINER" \
         --restart unless-stopped \
         -p "${PORT}:8080" \
@@ -57,15 +74,15 @@ run_deploy() {
 
     log "Waiting for ${BASE_URL}/ ..."
     wait_for "${BASE_URL}/" || {
-        docker logs --tail 20 "$CONTAINER" >&2 || true
+        $DOCKER logs --tail 20 "$CONTAINER" >&2 || true
         fail "endpoint ${BASE_URL}/ did not return HTTP 200"
     }
 
     wait_for "${BASE_URL}/dist/stbPlayer.js" 15 || fail "player bundle endpoint not reachable"
 
     log "OK: container '${CONTAINER}' is up."
-    log "  Image:   $(docker inspect -f '{{.Config.Image}}' "$CONTAINER")"
-    log "  Started: $(docker inspect -f '{{.State.StartedAt}}' "$CONTAINER")"
+    log "  Image:   $($DOCKER inspect -f '{{.Config.Image}}' "$CONTAINER")"
+    log "  Started: $($DOCKER inspect -f '{{.State.StartedAt}}' "$CONTAINER")"
     log "  URL:     ${BASE_URL}/"
 }
 
@@ -77,15 +94,15 @@ fi
 HOST="${1:-synology}"
 [ $# -gt 0 ] && shift
 
-[ -r "$0" ] || {
-    echo "[deploy] cannot read '$0' to stream over SSH; use --local or pipe: bash -s < deploy.sh" >&2
-    exit 1
-}
-
-# forward IMAGE/CONTAINER/PORT/EXTRA_ARGS to the remote shell
-env_str=""
-for v in IMAGE CONTAINER PORT EXTRA_ARGS; do
-    [ -n "${!v:-}" ] && env_str+="$v=$(printf '%q' "${!v}") "
-done
-
-exec ssh "$HOST" "${env_str}bash -s" < "$0"
+SCRIPT_PATH="${BASH_SOURCE[0]:-$0}"
+if [ -s "$SCRIPT_PATH" ] && [ -f "$SCRIPT_PATH" ]; then
+    # forward IMAGE/CONTAINER/PORT/EXTRA_ARGS to the remote shell
+    env_str=""
+    for v in IMAGE CONTAINER PORT EXTRA_ARGS; do
+        [ -n "${!v:-}" ] && env_str+="$v=$(printf '%q' "${!v}") "
+    done
+    exec ssh "$HOST" "${env_str}bash -s" < "$SCRIPT_PATH"
+else
+    # streamed over SSH ($0=bash): we are already on the target machine
+    run_deploy
+fi
