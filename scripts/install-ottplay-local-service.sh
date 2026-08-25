@@ -52,7 +52,11 @@ if [ ! -f "$CRT" ] || [ ! -f "$KEY" ]; then
     echo "generated: $CRT (SAN: $SAN)"
 fi
 # Trust it system-wide so Chrome/Safari accept https://localhost without a warning.
-if security verify-cert -c "$CRT" >/dev/null 2>&1; then
+# Check the admin trust-settings record, NOT verify-cert: verify-cert passes for a
+# self-signed cert found in a keychain even when no trust record exists (Chrome
+# then refuses). MDM profiles can wipe third-party trust records — this re-adds.
+CN="$(openssl x509 -in "$CRT" -noout -subject | sed 's/.*CN *= *//')"
+if security dump-trust-settings -d 2>/dev/null | grep -qF "$CN"; then
     echo "cert already trusted"
 else
     if sudo -n security add-trusted-cert -d -r trustRoot \
