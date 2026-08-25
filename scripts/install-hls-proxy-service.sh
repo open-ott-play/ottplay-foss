@@ -22,6 +22,11 @@ codesign -s - --force "$DEST/hls-proxy" 1>&2
 
 # Ensure loopback-only config (idempotent; run sync script first to refresh from docker).
 hls_proxy_apply_loopback "$DEST/local.json"
+# Re-apply deep cache (car/cellular window) — sync may have reset it.
+# HLS_PROXY_DEEP_CACHE=0 to skip.
+if [ "${HLS_PROXY_DEEP_CACHE:-1}" = "1" ]; then
+    "$SCRIPT_DIR/set-hls-proxy-deep-cache.sh" on
+fi
 PORT="$(python3 -c "import json,sys; print(json.load(open('$DEST/local.json'))['SERVER']['port'])")"
 
 mkdir -p "$HOME/Library/LaunchAgents" "$HOME/Library/Logs"
