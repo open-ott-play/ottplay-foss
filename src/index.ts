@@ -936,7 +936,8 @@ function showChanelsList(): void {
     listKeyHandlerFn = function (key: number) {
         switch (key) {
             case 13: // ENTER
-                // Play selected
+                // Close the list; playback stays on the current channel
+                // (provider module replaces this handler when loaded).
                 closeList();
                 isListVisible = false;
                 return true;

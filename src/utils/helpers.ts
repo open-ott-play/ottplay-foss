@@ -52,7 +52,6 @@ export function client_feedb(message: string): void {
  * Mutates the internal `_perfLog` array.
  */
 export function pperf_stamp(label: string): void {
-    if (typeof pperf_stamp === "function") return;
     if (navigator.userAgent.indexOf("Maple 6") === -1) return;
     var now = Date.now();
     _perfLog.push(now.toString(10) + " - " + label);
