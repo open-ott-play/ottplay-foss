@@ -1632,34 +1632,70 @@ export function liveStop(): void {
 }
 
 /**
- * Shift the archive playback position by a delta (positive = forward, negative = backward).
- * The delta magnitude is `direction * settings.seek13Duration`.
+ * Apply a seek inside the current archive stream, clamped to [0, len-15].
+ * No-op outside archive playback (live, media/VOD sentinel) or when the
+ * platform cannot set the playback position.
  *
- * @param direction - +1 forward, -1 backward.
- * Side effects: Mutates `archivePos`.
+ * @param offset - Target offset in seconds from the start of the stream.
  */
-export function shiftArchive(direction: number): void {
-    archivePos += direction * settings.seek13Duration;
+function seekArchive(offset: number): void {
+    var w = window as any;
+    if (
+        typeof w.stbSetPosTime !== "function" ||
+        !playType ||
+        playType === -99999999999 ||
+        !videoElement
+    )
+        return;
+    var len: number =
+        typeof (w.stbGetLen as any) === "function" ? w.stbGetLen() : 0;
+    if (offset < 0) offset = 0;
+    if (len && offset > len - 15) offset = len - 15;
+    w.stbSetPosTime(offset);
 }
 
 /**
- * Set the archive position to an explicit value (used for direct time-selection).
+ * Shift the archive playback position by a delta (positive = forward, negative = backward).
+ * The delta magnitude is `direction * settings.seek13Duration` seconds from the
+ * current playback position, and the player actually seeks there.
  *
- * @param position - Target archive timestamp (Unix seconds).
- * Side effects: Sets `archivePos`.
+ * @param direction - +1 forward, -1 backward.
+ * Side effects: Mutates `archivePos`; seeks the video element.
+ */
+export function shiftArchive(direction: number): void {
+    archivePos += direction * settings.seek13Duration;
+    if (!videoElement) return;
+    seekArchive(videoElement.currentTime + direction * settings.seek13Duration);
+}
+
+/**
+ * Set the archive position to an explicit value.
+ *
+ * Accepted forms: an absolute Unix timestamp (> 1e9), a relative nudge in
+ * seconds from the current position (e.g. 60 / -60), or <= 0 to rewind to
+ * the beginning of the stream.
+ *
+ * @param position - Target archive timestamp or offset.
+ * Side effects: Sets `archivePos`; seeks the video element.
  */
 export function shiftArchiveSelect(position: number): void {
     archivePos = position;
+    if (!videoElement) return;
+    var target: number;
+    if (position > 1e9) target = position - playType;
+    else if (position <= 0) target = 0;
+    else target = videoElement.currentTime + position;
+    seekArchive(target);
 }
 
 /**
  * Directly set the archive seek position (alias for shiftArchiveSelect).
  *
  * @param position - Target archive timestamp.
- * Side effects: Sets `archivePos`.
+ * Side effects: Sets `archivePos`; seeks the video element.
  */
 export function timeShift(position: number): void {
-    archivePos = position;
+    shiftArchiveSelect(position);
 }
 
 /**
