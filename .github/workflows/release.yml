@@ -81,16 +81,17 @@ jobs:
         with:
           path: .
 
-      # Toolkit release.yml attaches fixed globs (dist/*, *.tar.gz, ...) —
-      # land everything under dist/ so both files match.
+      # Flatten artifacts into dist/ (same as before)
       - name: Flatten artifacts
         run: |
           mkdir -p dist
           mv ottplay-foss-dist/* dist/
           ls -la dist/
 
-      - name: Create checksums
-        run: find dist -type f -exec sha256sum {} \; | sort -k2 > checksums.txt
+      - name: Create downloadable tarball
+        # Already created in build job; just ensure it's present
+        run: |
+          ls -la dist/ottplay-foss-dist.tar.gz || echo "Tarball not found"
 
       - name: Detect Prerelease
         id: detect
@@ -108,11 +109,17 @@ jobs:
             echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Create GitHub Release
-        uses: victron-venus/venus-os-ci-toolkit/.github/workflows/release.yml@5b18667880c7a0154b7c7e6686042eff5f47cdb7
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
-          skip-checkout: true
-          generate-notes: true
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
           prerelease: ${{ steps.detect.outputs.is_prerelease == 'true' }}
-        secrets:
+          generate_release_notes: true
+          files: |
+            dist/ottplay-foss-dist.tar.gz
+            dist/checksums.txt
+        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
