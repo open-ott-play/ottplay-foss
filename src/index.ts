@@ -106,7 +106,7 @@ import {
     stbSetItem,
     storage,
 } from "./storage";
-import { client_feedb } from "./utils/helpers";
+import { client_feedb, PostFeedback, pperf_flush } from "./utils/helpers";
 
 // Sync channels to window.chanels so provider scripts and UI can access it globally
 (window as any).chanels = channels;
@@ -1021,6 +1021,11 @@ function checkMedia(): void {
 function body_onUnload(): void {
     setCurrent(catIndex, primaryIndex);
     window.playType = 0;
+    // Report collected Maple 6 performance stamps (buffer is cleared;
+    // no-op and empty on other platforms). The server appends the payload
+    // to feedback.log.
+    var perf: string = pperf_flush();
+    if (perf) PostFeedback(perf);
 }
 
 /**
