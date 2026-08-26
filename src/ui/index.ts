@@ -831,7 +831,7 @@ export function showSelectBox(
                       ";background-color:" +
                       (window as any).curColorB
                     : "") +
-                '" onclick="(window as any)._doKey(' +
+                '" onclick="_doKey(' +
                 (-100 + t) +
                 ');">&nbsp;&nbsp;' +
                 val +
@@ -2854,8 +2854,7 @@ export function editKey1(e: number): void {
 export function editKey2(code: number): void {
     switch (code) {
         case (window as any).keys.ENTER:
-            (window as any).editvar =
-                ($("#(window as any).editvar").val() as string) || "";
+            (window as any).editvar = ($("#editvar").val() as string) || "";
             if (typeof (window as any).setEdit === "function")
                 (window as any).setEdit();
             break;
@@ -2911,7 +2910,7 @@ export function showEditKey2(_initKeys?: number[]): void {
             }
         )(keys.ENTER || 13, strEnter, "- save");
     $("#listEdit").show().html(html);
-    document.getElementById("(window as any).editvar")?.focus();
+    document.getElementById("editvar")?.focus();
 }
 
 /* ---------------------------------------------------------------------------
