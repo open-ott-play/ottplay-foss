@@ -2409,7 +2409,7 @@ export function _enterPinCode(
             '<div id="k' +
             digit +
             '" style="display:inline-block;padding:6px;">' +
-            '<div class="btn" onclick="(window as any)._doKey && (window as any)._doKey((window as any).keys.N' +
+            '<div class="btn" onclick="_doKey && _doKey(window.keys.N' +
             digit +
             ');">' +
             digit +

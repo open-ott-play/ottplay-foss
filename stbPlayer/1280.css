@@ -125,3 +125,7 @@ body{
 .fontello{ font-family: "fontello"; font-style: normal; font-weight: normal; font-variant: normal; text-transform: none; }
 #plogo{ background-position: top right; }
 #nprogramm_name, #nbegin_time, #nend_time { color: #bdbdbd; }
+.epg-entry { padding: 2px 0; }
+.epg-time { display: inline-block; width: 70px; color: #bdbdbd; }
+.epg-name { font-weight: bold; }
+.epg-descr { padding-left: 70px; font-size: smaller; color: #bdbdbd; }
