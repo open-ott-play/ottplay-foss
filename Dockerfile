@@ -11,6 +11,9 @@ WORKDIR /app
 COPY --from=build /app/dist ./dist
 COPY index.html favicon.ico server.py ./
 COPY fonts ./fonts
+# Local library fallbacks (index.html loads /js/* when the CDN is unreachable,
+# e.g. LAN-only STB deployments) — must ship in the image.
+COPY js ./js
 COPY stb ./stb
 COPY stbPlayer ./stbPlayer
 COPY prov ./prov
