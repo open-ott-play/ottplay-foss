@@ -111,5 +111,3 @@ jobs:
           skip-checkout: true
           generate-notes: true
           prerelease: ${{ steps.detect.outputs.is_prerelease == 'true' }}
-        secrets:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
