@@ -57,6 +57,20 @@ export function pperf_stamp(label: string): void {
     _perfLog.push(now.toString(10) + " - " + label);
 }
 var _perfLog: string[] = [];
+
+/**
+ * Return all recorded performance stamps as one newline-joined string and
+ * clear the buffer. Empty string when nothing was recorded (non-Maple 6
+ * devices never record).
+ *
+ * @returns The collected `"timestamp - label"` lines, or "".
+ */
+export function pperf_flush(): string {
+    if (!_perfLog.length) return "";
+    var out: string = _perfLog.join("\n");
+    _perfLog = [];
+    return out;
+}
 var FeedbPOST: (msg: string) => void = function (msg: string): void {
     PostFeedback(msg, "/report_feedb");
 };
