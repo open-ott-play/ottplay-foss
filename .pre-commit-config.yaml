@@ -32,3 +32,11 @@ repos:
         language: system
         pass_filenames: false
         types_or: [file]
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v10.8.0
+    hooks:
+      - id: eslint
+  - repo: https://github.com/pylint-dev/pylint
+    rev: v4.0.6
+    hooks:
+      - id: pylint
