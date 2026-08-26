@@ -1823,7 +1823,7 @@ export function popupList(i?: any): void {
             case keys.TOOLS:
                 if (typeof optionsList === "function") optionsList();
                 return true;
-            case keys.SUBT:
+            case keys.SUBTITLE:
                 if (typeof (window as any).toggleSubtitle === "function")
                     (window as any).toggleSubtitle();
                 return true;
@@ -2918,7 +2918,46 @@ export function showEditKey2(_initKeys?: number[]): void {
  * --------------------------------------------------------------------------- */
 
 declare function showMediaList(): void;
-declare function showMediaList1(): void;
+declare function getMediaDescr(item: any): string;
+declare function mediaKeyHandler(keyCode: number): boolean;
+
+/**
+ * Render the media library list from the already-loaded `window.mediaRecords`
+ * (no provider refetch). Used by `mediaList()` for folder (submenu) navigation
+ * and for the refresh path, where the records are in place and only the view
+ * needs rebuilding. Mirrors the chrome of the fetching variant (`showMediaList`).
+ *
+ * @sideeffect Sets `window.listArray`, `window.getListItemFn`,
+ *             `window.detailListActionFn`, `window.listKeyHandlerFn`; updates
+ *             #listCaption / #listPodval; calls `window.showPage`.
+ */
+function showMediaList1(): void {
+    var w = window as any;
+    var data: any[] = w.mediaRecords || [];
+    w.listArray = data;
+    w.getListItemFn = function (item: any, _idx: number) {
+        return "&nbsp;&nbsp;" + (item.name || item.title || "");
+    };
+    w.detailListActionFn = function () {
+        var detailEl = document.getElementById("listDetail");
+        if (detailEl)
+            detailEl.innerHTML = getMediaDescr(w.listArray[w.selIndex]);
+    };
+    w.listKeyHandlerFn = mediaKeyHandler;
+
+    var captionEl = document.getElementById("listCaption");
+    if (captionEl) captionEl.innerHTML = w.mediaName || w._("Media Library");
+
+    var podvalEl = document.getElementById("listPodval");
+    if (podvalEl) {
+        podvalEl.innerHTML =
+            w.btnDiv(w.keys.RETURN, w.strRETURN, "Close") +
+            w.btnDiv(w.keys.GREEN, "", "Favorites") +
+            w.btnDiv(w.keys.YELLOW, "", "TMDb");
+    }
+
+    if (typeof w.showPage === "function") w.showPage();
+}
 
 /**
  * Navigate the media library hierarchy. Handles submenu entries, info/alert commands,
