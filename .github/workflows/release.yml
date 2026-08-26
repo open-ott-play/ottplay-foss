@@ -89,7 +89,10 @@ jobs:
           mv ottplay-foss-dist/* dist/
           ls -la dist/
 
-      - name: Detect prerelease
+      - name: Create checksums
+        run: find dist -type f -exec sha256sum {} \; | sort -k2 > checksums.txt
+
+      - name: Detect Prerelease
         id: detect
         env:
           INPUT_TAG: ${{ inputs.tag }}
@@ -111,3 +114,5 @@ jobs:
           skip-checkout: true
           generate-notes: true
           prerelease: ${{ steps.detect.outputs.is_prerelease == 'true' }}
+        secrets:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
