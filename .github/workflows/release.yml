@@ -1,0 +1,115 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g., v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build player bundle
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: TypeScript check
+        run: npm run typecheck --ignore-scripts
+
+      - name: Build bundle
+        run: npm run build --ignore-scripts
+
+      - name: Package deployable bundle
+        # Same content the Docker image serves statically (minus server.py):
+        # usable for self-hosting without Docker.
+        run: |
+          tar -czf ottplay-foss-dist.tar.gz \
+            index.html favicon.ico dist fonts js stb stbPlayer prov
+          sha256sum ottplay-foss-dist.tar.gz > checksums.txt
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ottplay-foss-dist
+          path: |
+            ottplay-foss-dist.tar.gz
+            checksums.txt
+          retention-days: 30
+
+  release:
+    name: Attach bundle to release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
+      - name: Download artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: .
+
+      # Toolkit release.yml attaches fixed globs (dist/*, *.tar.gz, ...) —
+      # land everything under dist/ so both files match.
+      - name: Flatten artifacts
+        run: |
+          mkdir -p dist
+          mv ottplay-foss-dist/* dist/
+          ls -la dist/
+
+      - name: Detect prerelease
+        id: detect
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="$INPUT_TAG"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          if [[ "$TAG" =~ -(alpha|beta|rc) ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        uses: victron-venus/venus-os-ci-toolkit/.github/workflows/release.yml@5b18667880c7a0154b7c7e6686042eff5f47cdb7
+        with:
+          skip-checkout: true
+          generate-notes: true
+          prerelease: ${{ steps.detect.outputs.is_prerelease == 'true' }}
+        secrets:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
