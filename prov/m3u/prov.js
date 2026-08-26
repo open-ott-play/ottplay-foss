@@ -542,6 +542,10 @@ function doEditListData(r) {
                         t("Enter playlist URL", "www", null, false, m3uArr.active == r);
                         return true;
                     case u:
+                        if (typeof showFileDialog !== "function") {
+                            alert(_("File selection is not supported on this device"));
+                            return true;
+                        }
                         editvar = (s["www"] || "").toString();
                         setEdit = function() { s.www = editvar;
                             providerSetItem("m3uArr", JSON.stringify(m3uArr));

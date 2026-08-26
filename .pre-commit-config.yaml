@@ -32,10 +32,10 @@ repos:
         language: system
         pass_filenames: false
         types_or: [file]
-  - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v10.8.0
-    hooks:
-      - id: eslint
+  # NOTE: no eslint hook — the repo standardized on Biome (biome.json);
+  # mirrors-eslint@v10 requires a flat eslint.config.js which this repo
+  # intentionally does not carry, so the hook failed every push that
+  # touched a .js file.
   - repo: https://github.com/pylint-dev/pylint
     rev: v4.0.6
     hooks:
