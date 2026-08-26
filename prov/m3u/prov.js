@@ -186,7 +186,7 @@ function setProviderParams() {
     return r;
 }
 
-function getChannelPicon(e) { return chanels[e].logo || ""; }
+function getChannelPicon(e) { return chanels[e] ? chanels[e].logo || "" : ""; }
 
 function getChannelUrl(e) { return chanels[e].url || ""; }
 
