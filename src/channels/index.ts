@@ -2005,9 +2005,9 @@ export function getFilteredHistory(): MediaHistoryEntry[] {
     if (!historySearchText) return medHistory.slice();
     const lower = historySearchText.toLowerCase();
     return medHistory.filter(
-        entry =>
+        (entry) =>
             (entry.name?.toLowerCase().includes(lower) ?? false) ||
-            (entry.title?.toLowerCase().includes(lower) ?? false)
+            (entry.title?.toLowerCase().includes(lower) ?? false),
     );
 }
 
@@ -2018,7 +2018,7 @@ export function getFilteredHistory(): MediaHistoryEntry[] {
 export function getFilteredChannelList(): number[] {
     if (!searchText) return curList.slice();
     const lower = searchText.toLowerCase();
-    return curList.filter(chId => {
+    return curList.filter((chId) => {
         const ch = chanels[chId];
         return (
             (ch?.channel_name?.toLowerCase().includes(lower) ?? false) ||
