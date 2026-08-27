@@ -88,6 +88,10 @@ var isSelectBox = false;
  * @analysis Falls through modes in order; once a mode handles the key, later modes are skipped. Dialog box always takes priority.
  */
 export function keyHandler(event: KeyboardEvent): void {
+    // If an input, textarea, or contenteditable element is focused, let browser handle the key
+    if (event.target && (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.isContentEditable)) {
+        return;
+    }
     var keyCode = stbEventToKeyCode(event);
     if (!keyCode) return;
     if (typeof (window as any).setSleepTimeout === "function")
