@@ -162,18 +162,23 @@ export function closeFullscreen(): void {
 }
 
 /**
- * Process a raw key event to toggle fullscreen when keyCode === 76 ('L'),
- * then return the keyCode for further handling.
+ * Process a raw key event to toggle fullscreen when keyCode === 76 ('L').
  *
  * @param event - A raw keyboard event object (or null/undefined).
- * @returns The numeric keyCode from the event, or 0 if no event.
+ * @returns The numeric keyCode from the event, or 0 if the key was consumed
+ *          by fullscreen handling or if no event.
  *
- * Side effects: Toggles fullscreen when 'L' is pressed.
+ * Side effects: Toggles fullscreen when 'L' is pressed and prevents the
+ *               default browser action (typing 'l' in input fields).
  */
 export function stbEventToKeyCode(event: any): number {
     if (event && event.keyCode === 76) {
         if (isNormalScreen()) openFullscreen();
         else closeFullscreen();
+        // Prevent default action (typing 'l' in input fields) and stop propagation
+        if (event.preventDefault) event.preventDefault();
+        if (event.stopPropagation) event.stopPropagation();
+        return 0; // Indicate key was consumed
     }
     return event ? event.keyCode : 0;
 }

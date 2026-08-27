@@ -218,6 +218,7 @@ export let epgTimers: any[] = [],
     sSortAbc = 0;
 export let medHistory: MediaHistoryEntry[] = [],
     medFavorites: MediaHistoryEntry[] = [];
+export let historySearchText = "";
 
 /* ---- Playback & EPG state ---- */
 export let playType = 0,
@@ -1985,6 +1986,45 @@ export function searchMedia(query: string): void {
  */
 export function searchRec(query: string): void {
     searchText = query;
+}
+
+/**
+ * Set the history search query string.
+ * @param query - The search text to filter history entries by.
+ * Side effects: Sets `historySearchText`.
+ */
+export function searchHistoryChannel(query: string): void {
+    historySearchText = query;
+}
+
+/**
+ * Returns history entries that match `historySearchText` (case‑insensitive).
+ * If the filter is empty, returns a copy of `medHistory`.
+ */
+export function getFilteredHistory(): MediaHistoryEntry[] {
+    if (!historySearchText) return medHistory.slice();
+    const lower = historySearchText.toLowerCase();
+    return medHistory.filter(
+        entry =>
+            (entry.name?.toLowerCase().includes(lower) ?? false) ||
+            (entry.title?.toLowerCase().includes(lower) ?? false)
+    );
+}
+
+/**
+ * Returns channel IDs that match `searchText` (case‑insensitive) within the current category.
+ * If the filter is empty, returns a copy of `curList`.
+ */
+export function getFilteredChannelList(): number[] {
+    if (!searchText) return curList.slice();
+    const lower = searchText.toLowerCase();
+    return curList.filter(chId => {
+        const ch = chanels[chId];
+        return (
+            (ch?.channel_name?.toLowerCase().includes(lower) ?? false) ||
+            (ch?.name?.toLowerCase().includes(lower) ?? false)
+        );
+    });
 }
 
 /**
