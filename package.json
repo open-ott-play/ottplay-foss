@@ -12,7 +12,7 @@
     "devDependencies": {
         "@biomejs/biome": "^2.5.10",
         "@types/jquery": "^4.0.1",
-        "rollup": "^4.62.5",
+        "rollup": "^4.63.0",
         "terser": "^5.50.0",
         "typescript": "^5.9.3"
     }
