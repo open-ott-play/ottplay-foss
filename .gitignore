@@ -21,3 +21,4 @@ test.m3u
 
 # OS / editor
 .DS_Store
+*.backup
