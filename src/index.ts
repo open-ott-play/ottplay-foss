@@ -63,6 +63,7 @@ import {
     epg,
     epgList,
     favoritesArray,
+    fileArchive,
     forcePlay,
     getChannelUrl,
     getMediaDescr,
@@ -86,10 +87,14 @@ import {
     sEditor,
     setCurrent,
     setParentAccess,
+    shiftArchive,
+    shiftArchiveSelect,
     sInfoSwitch,
     sMedCount,
     sPlayers,
+    sRWfun,
     sStopPlay,
+    timeShift,
     updateArchiveInfo,
 } from "./channels";
 // Localization
@@ -3298,6 +3303,10 @@ window.saveOpt = saveAllOptions;
 window.loadOpt = loadAllOptions;
 window.body_onUnload = body_onUnload;
 window.playArchive = playArchiveMode;
+window.fileArchive = fileArchive;
+window.shiftArchive = shiftArchive;
+window.shiftArchiveSelect = shiftArchiveSelect;
+window.timeShift = timeShift;
 window.checkMedia = checkMedia;
 window.setCurrent = setCurrent;
 window.nextChannel = nextChannel;

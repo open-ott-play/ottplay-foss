@@ -278,6 +278,11 @@ export let searchText = "",
 export let archivePos = 0,
     archiveStart = 0,
     archiveEnd = 0;
+export let fileArchive = false;
+
+/* ---- Timeshift / catchup state (restored from stbPlayer.js) ---- */
+var _shiftTimer: any = null;
+var _shiftSec = 0;
 
 /**
  * Switch the current category and channel selection.
@@ -1594,13 +1599,48 @@ export function getMediaDescr(item: any): string {
 }
 
 /**
- * Set the archive playback start position (Unix timestamp).
+ * Start archive playback at a given Unix timestamp.
  *
- * @param timestamp - Archive start time.
- * Side effects: Sets `archivePos`.
+ * Mirrors the monolith's playArchive() in stbPlayer.js: updates OSD,
+ * computes the current program (or a synthetic hour block when EPG is
+ * missing), then either opens a fresh stbPlay() with the provider's
+ * archive URL or seeks within the existing stream when the program
+ * has not changed.
+ *
+ * @param e - Archive start time in seconds (Unix).
+ * Side effects: Sets playTime, playType, forcePlay, fileArchive, archivePos;
+ *               calls stbStop/stbPlay/stbSetPosTime via window globals.
  */
-export function playArchive(timestamp: number): void {
-    archivePos = timestamp;
+export function playArchive(e: number): void {
+    var w = window as any;
+    var t = curProg;
+    if (typeof updateArchiveInfo === "function") updateArchiveInfo(e);
+    if (w.sInfoRew && typeof w.showChanelInfo === "function")
+        w.showChanelInfo(1);
+    var r = curList[primaryIndex];
+    var prog = epgArray[curProg] || {
+        name: "",
+        time: Math.floor(e / 3600) * 3600,
+        time_to: (Math.floor(e / 3600) + 1) * 3600,
+        descr: "",
+    };
+    playTime = 0;
+    playType = Math.floor(e);
+    forcePlay = true;
+    (w as any).playType = playType;
+    (w as any).playTime = playTime;
+    (w as any).forcePlay = forcePlay;
+    archivePos = e;
+    var getUrl = w.getArchiveUrl;
+    if (typeof getUrl !== "function") return;
+    if (!fileArchive || t !== curProg) {
+        if (w.sStopPlay && typeof w.stbStop === "function") w.stbStop();
+        var url = getUrl(r, e, prog.time_to, prog);
+        if (typeof w.stbPlay === "function")
+            w.stbPlay(url, fileArchive ? e - prog.time : 0);
+    } else if (typeof w.stbSetPosTime === "function") {
+        w.stbSetPosTime(e - prog.time);
+    }
 }
 
 /**
@@ -1645,20 +1685,23 @@ export function liveStop(): void {
 
 /**
  * Apply a seek inside the current archive stream, clamped to [0, len-15].
- * No-op outside archive playback (live, media/VOD sentinel) or when the
- * platform cannot set the playback position.
+ * No-op when the platform cannot set the playback position.
+ * Handles live TV (playType === 0) as a clock-skip by calling timeShift.
  *
  * @param offset - Target offset in seconds from the start of the stream.
  */
 function seekArchive(offset: number): void {
     var w = window as any;
-    if (
-        typeof w.stbSetPosTime !== "function" ||
-        !playType ||
-        playType === -99999999999 ||
-        !videoElement
-    )
+    if (typeof w.stbSetPosTime !== "function" || !videoElement) return;
+    // Guard for media sentinel (playType < 0) only — live (playType === 0) is allowed
+    if (playType < 0 && playType !== -99999999999) return;
+    if (playType === 0) {
+        // Clock skip on live: offset is relative seconds from now
+        var delta = offset;
+        if (typeof (window as any).timeShift === "function")
+            (window as any).timeShift(-delta);
         return;
+    }
     var len: number =
         typeof (w.stbGetLen as any) === "function" ? w.stbGetLen() : 0;
     if (offset < 0) offset = 0;
@@ -1668,46 +1711,192 @@ function seekArchive(offset: number): void {
 
 /**
  * Shift the archive playback position by a delta (positive = forward, negative = backward).
- * The delta magnitude is `direction * settings.seek13Duration` seconds from the
- * current playback position, and the player actually seeks there.
+ * Accumulates the delta and debounces the actual seek to ~500 ms, matching the
+ * monolith's behaviour so a stream of key presses becomes one seek.
  *
- * @param direction - +1 forward, -1 backward.
- * Side effects: Mutates `archivePos`; seeks the video element.
+ * @param e - Delta in seconds (negative = rewind, positive = forward, -6e6 = to beginning).
+ * Side effects: Mutates `_shiftSec`, `archivePos`; shows a shift OSD; debounces
+ *               a call to `_shiftArchive` via a setTimeout.
  */
-export function shiftArchive(direction: number): void {
-    archivePos += direction * settings.seek13Duration;
-    if (!videoElement) return;
-    seekArchive(videoElement.currentTime + direction * settings.seek13Duration);
+export function shiftArchive(e: number): void {
+    var w = window as any;
+    if (e === -6e6) {
+        _shiftSec = e;
+        _shiftArchive();
+        return;
+    }
+    _shiftSec += e;
+    clearTimeout(_shiftTimer);
+    if (w.sInfoRew && typeof w.showChanelInfo === "function")
+        w.showChanelInfo(1);
+    if (typeof w.showShift === "function") w.showShift(step2text(_shiftSec));
+    _shiftTimer = setTimeout(_shiftArchive, 500);
 }
 
 /**
- * Set the archive position to an explicit value.
- *
- * Accepted forms: an absolute Unix timestamp (> 1e9), a relative nudge in
- * seconds from the current position (e.g. 60 / -60), or <= 0 to rewind to
- * the beginning of the stream.
- *
- * @param position - Target archive timestamp or offset.
- * Side effects: Sets `archivePos`; seeks the video element.
+ * Apply the accumulated shift delta. Dispatches by current playType:
+ *  - live (playType === 0): negative → timeShift(-delta), positive → restart live
+ *  - media (playType < 0): relative stbSetPosTime, clamped
+ *  - archive (playType > 0): shift playType by delta+playTime, re-playArchive
+ *    if the result is still in the past, else drop to live.
  */
-export function shiftArchiveSelect(position: number): void {
-    archivePos = position;
-    if (!videoElement) return;
-    var target: number;
-    if (position > 1e9) target = position - playType;
-    else if (position <= 0) target = 0;
-    else target = videoElement.currentTime + position;
-    seekArchive(target);
+function _shiftArchive(): void {
+    var w = window as any;
+    var e = _shiftSec;
+    _shiftSec = 0;
+    clearTimeout(_shiftTimer);
+    if (!e) return;
+    if (!playType) {
+        if (e < 0) {
+            if (typeof w.timeShift === "function") w.timeShift(-e);
+        } else {
+            if (typeof w.showShift === "function")
+                w.showShift((w._ && w._("Restart stream")) || "Restart stream");
+            if (typeof w.playChannel === "function")
+                w.playChannel(catIndex, primaryIndex);
+        }
+        return;
+    }
+    function announce(): void {
+        if (e === -6e6) {
+            if (typeof w.showShift === "function")
+                w.showShift((w._ && w._("To begining")) || "To beginning");
+        } else {
+            if (typeof w.showShift === "function") w.showShift(step2text(e));
+        }
+    }
+    if (playType < 0) {
+        var newPos = Math.max(
+            (typeof w.stbGetPosTime === "function" ? w.stbGetPosTime() : 0) + e,
+            0
+        );
+        var len = typeof w.stbGetLen === "function" ? w.stbGetLen() : 0;
+        if (len && newPos > len) return;
+        if (typeof w.stbSetPosTime === "function") w.stbSetPosTime(newPos);
+        announce();
+        if (w.sInfoRew && typeof w.showChanelInfo === "function")
+            w.showChanelInfo(1);
+        return;
+    }
+    playType = playType + e + playTime;
+    (w as any).playType = playType;
+    if (playType < Date.now() / 1e3) {
+        announce();
+        playArchive(playType);
+    } else {
+        if (typeof w.showShift === "function")
+            w.showShift((w._ && w._("Live")) || "Live");
+        if (typeof w.playChannel === "function")
+            w.playChannel(catIndex, primaryIndex);
+    }
 }
 
 /**
- * Directly set the archive seek position (alias for shiftArchiveSelect).
+ * Format a shift delta (seconds) as a localized ">> mm:ss / << mm:ss" string.
  *
- * @param position - Target archive timestamp.
- * Side effects: Sets `archivePos`; seeks the video element.
+ * @param e - Delta in seconds.
+ * Side effects: Reads global window._ for localization.
  */
-export function timeShift(position: number): void {
-    shiftArchiveSelect(position);
+function step2text(e: number): string {
+    if (!e) return "&nbsp;";
+    var abs = Math.abs(e);
+    var m = Math.floor(abs / 60);
+    var s = abs % 60;
+    var w = window as any;
+    var _ =
+        (w._ && w._.bind(w)) ||
+        function (s: string) {
+            return s;
+        };
+    var prefix = e > 0 ? ">> " : "<< ";
+    return prefix + (m ? m + _(" m ") : "") + (s ? s + _(" s") : "");
+}
+
+/**
+ * Interactive OSD for manual archive position selection.
+ * Opens a dialog that accumulates a delta via number keys, then calls
+ * shiftArchive(delta) after a 3-second idle timeout.
+ *
+ * @param initialDelta - Initial delta offset (seconds).
+ * Side effects: Shows/hides a dialog box; calls shiftArchive().
+ */
+export function shiftArchiveSelect(initialDelta: number): void {
+    var w = window as any;
+    var chId = curList[primaryIndex];
+    var ch = chanels[chId];
+    if (!playType && !(ch && ch.rec)) return;
+    var i = 0;
+    var t: any = null;
+    function r(delta: number): void {
+        clearTimeout(t);
+        i += delta;
+        var stepEl = document.getElementById("step");
+        if (stepEl) stepEl.innerHTML = step2text(i);
+        t = setTimeout(function () {
+            var dialogbox = document.getElementById("dialogbox");
+            if (dialogbox) dialogbox.style.display = "none";
+            shiftArchive(i);
+        }, 3000);
+    }
+    // Guard: keep existing dialog if open
+    var dialogbox = document.getElementById("dialogbox");
+    if (dialogbox) {
+        dialogbox.style.display = "";
+    }
+    r(initialDelta);
+}
+
+/**
+ * Clock-skip / timeshift on live TV — jumps N seconds back into the stream.
+ * Requires the current channel to have `rec` (catchup-days) set.
+ * Fetches EPG, sets epgArray, then calls playArchive(now-n) for clock skip
+ * without requiring an EPG entry, or playArchive(progStart) when n=0.
+ *
+ * @param n - Seconds to go back (positive), or 0 to jump to current program start.
+ * Side effects: Sets epgArray, curProg; calls playArchive(); shows OSD.
+ */
+export function timeShift(n: number): void {
+    var w = window as any;
+    var chId = curList[primaryIndex];
+    var ch = chanels[chId];
+    if (!ch || !ch.rec) return;
+    if (typeof w.getEPGchanelCached !== "function") return;
+    w.getEPGchanelCached(chId, function (_t: any, epgData: EPGEntry[] | null) {
+        var r: EPGEntry[] = [];
+        if (
+            epgData !== null &&
+            epgData !== undefined &&
+            (epgData as any).length
+        ) {
+            r = (epgData as EPGEntry[])
+                .filter(function (e) {
+                    return e.time > Date.now() / 1000 - ch!.rec! * 60 * 60;
+                })
+                .sort(function (a, b) {
+                    return a.time - b.time;
+                });
+        }
+        epgArray = r;
+        (window as any).epgArray = r;
+        setCurProg(chId, epgData, null);
+        (window as any).curProg = curProg;
+        setCurrent(catIndex, primaryIndex, true);
+        if (n) {
+            var delta = Math.round(Date.now() / 1000) - n;
+            if (typeof w.showShift === "function") w.showShift(step2text(-n));
+            playArchive(delta);
+        } else {
+            if (typeof w.showShift === "function")
+                w.showShift(
+                    (w._ && w._("Archive - begin")) || "Archive - begin"
+                );
+            var now = Date.now() / 1000;
+            var s = r.findIndex(function (e) {
+                return e.time_to >= now && e.time <= now;
+            });
+            if (s >= 0 && r[s]) playArchive(r[s].time);
+        }
+    });
 }
 
 /**
