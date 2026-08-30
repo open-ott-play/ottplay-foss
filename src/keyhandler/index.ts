@@ -89,11 +89,12 @@ var isSelectBox = false;
  */
 export function keyHandler(event: KeyboardEvent): void {
     // If an input, textarea, or contenteditable element is focused, let browser handle the key
+    const target = event.target as HTMLElement | null;
     if (
-        event.target &&
-        (event.target.tagName === "INPUT" ||
-            event.target.tagName === "TEXTAREA" ||
-            event.target.isContentEditable)
+        target &&
+        (target.tagName === "INPUT" ||
+            target.tagName === "TEXTAREA" ||
+            target.isContentEditable)
     ) {
         return;
     }
