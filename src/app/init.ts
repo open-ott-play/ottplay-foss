@@ -5,21 +5,27 @@
 
 export const PLAYER_VERSION = "0319.1812";
 
-import { sPlayers } from "../channels";
+// duneAddSettings — set by provider scripts (stalker, edem, etc.)
+declare var duneAddSettings: ((_index: number) => void) | null;
+
+import { cats, catsArray, sPlayers, sStopPlay } from "../channels";
 import {
-    client_feedb,
-    dispatchKey,
-    keyHandler,
-    keys,
+    setPlayer,
+    setPlayerMode,
     stbExit,
     stbInit,
     stbPlay,
     stbSetBuffer,
     stbStop,
 } from "../core";
-import { storage } from "../storage";
-import { closeList, infoBox, initUIReferences, showPage, uiInit } from "../ui";
-import { getScriptDOM } from "../utils/helpers";
+import { dispatchKey, keyHandler, keys } from "../keyhandler";
+import { _ } from "../localization";
+import { loadChannels, loadProv } from "../provider";
+import { loadSettings, settings } from "../settings";
+import { setTimezone } from "../settings/helpers";
+import { providerGetJson, stbGetItem, stbSetItem, storage } from "../storage";
+import { closeList, initBackgroundIntervals, uiInit } from "../ui";
+import { client_feedb, getScriptDOM } from "../utils/helpers";
 import {
     setColor,
     setEditor,
@@ -27,25 +33,16 @@ import {
     setListPos,
     setPipPosBuf,
     setSleepTimeout,
-    setTimezone,
 } from "../view/display-helpers";
-import { initBackgroundIntervals } from "../view/ui-helpers";
-import { applySettingsToWindow, loadSettings, settings } from "./config";
+import { initUIReferences } from "../view/ui-helpers";
+import { applySettingsToWindow } from "./apply-settings";
 import { selectLang } from "./language";
-import { setPlayer, setPlayerMode } from "./player";
-import { loadChannels, loadProv, providerGetJson } from "./provider";
 import {
-    _,
-    cats,
-    catsArray,
     hostUrl,
     popupActions,
     popupArray,
     popupDetail,
     savedPopup,
-    sStopPlay,
-    stbGetItem,
-    stbSetItem,
     TMDb,
     version,
 } from "./state";

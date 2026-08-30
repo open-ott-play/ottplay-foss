@@ -4,8 +4,6 @@
  */
 
 import {
-    catIndex,
-    catsArray,
     setDetailListActionFn,
     setGetListItemFn,
     setIsListVisible,
@@ -13,7 +11,7 @@ import {
     setListKeyHandlerFn,
     setListSelectionIndex,
 } from "../app/state";
-import { playArchive } from "../channels";
+import { catIndex, catsArray, playArchive } from "../channels";
 import { closeList, showPage } from "../ui";
 
 /**
