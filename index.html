@@ -1,262 +1,436 @@
 <!DOCTYPE html>
 <html>
-<head>
-<title>OTT-play FOSS (local)</title>
-<meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<meta name="referrer" content="no-referrer" />
-	<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-	<meta http-equiv="Pragma" content="no-cache" />
-	<meta http-equiv="Expires" content="0" />
-	<link rel="icon" type="image/x-icon" href="favicon.ico" />
-<style type="text/css">
-body { touch-action:none; }
-#notifications { position: fixed; top: 60px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
-.notify {
-  background: rgba(0,0,0,0.88);
-  color: #f0f0f0;
-  padding: 0.5em 0.8em;
-  border-radius: 0.2em;
-  border-left: 0.15em solid #FBC02D;
-  font-size: inherit;
-  font-weight: bold;
-  font-family: Helvetica, Arial, sans-serif;
-  max-width: 25em;
-  box-shadow: 0.1em 0.1em 0.3em rgba(0,0,0,0.6);
-  animation: notifyIn 0.3s ease-out;
-  word-wrap: break-word;
-}
-.notify-out { animation: notifyOut 0.3s ease-in forwards; }
-@keyframes notifyIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-@keyframes notifyOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
-</style>
-</head>
-<body style="background: #111; color: #ccc;">
-<div id="permanentTime" class="osd"></div>
-<div id="info1" class="osd">
-	<div id="descr">
-		<div id="programm_name2">1</div>
-		<span id="programm_duration">1</span>
-		<div style="overflow: hidden;"><div id="programm_descr">1</div></div>
-	</div>
-	<div id="picon"></div>
-	<div id="channel">
-		<div id="channel_number">1</div><div id="channel_name">1</div>
-		<div id="progress_div"><div id="progress_r"></div><div id="progress"></div><div id="progress_span" class="tooltip"><span></span></div></div>
-		<div id="begin_time">1</div><div id="programm_name">1</div><div id="end_time"></div>
-		<div style="clear: both;"></div>
-		<div id="nbegin_time">1</div><div id="nprogramm_name">1</div><div id="nend_time"></div>
-	</div>
-	<div id="data">
-		<span id="current_t"></span><span id="current_s"></span>
-		<div id="video_res"></div>
-	</div>
-</div>
-<div id="list_osd" class="osd"></div>
-<div id="list_window"><div id="_t" class="list_back"></div><div id="_b" class="list_back"></div><div id="_l" class="list_back"></div><div id="_r" class="list_back"></div></div>
-<div id="list">
-	<div id="listCaption"></div>
-	<div id="listTime">
-		<span id="list_t"></span><span id="list_s"></span>
-	</div>
-	<div id="listPodval"></div>
-	<div id="listDetail"></div>
-	<div id="listIn"></div>
-	<div id="listAbout"></div>
-	<div id="listEdit"></div>
-	<div id="listPopUp"></div>
-</div>
-<pre id="launch">Start: local</pre>
-<div id="info" class="osd"></div>
-<div id="numprog" class="osd"></div>
-<div id="volume_div"><div id="volume"></div></div>
-<div id="mute"></div>
-<div id="dialogbox" class="osd"></div>
-<div id="buffering"></div>
-<div id="pip_buffering"></div>
-<div id="notifications"></div>
-<span id="testFont"></span>
+    <head>
+        <title>OTT-play FOSS (local)</title>
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, user-scalable=no"
+        >
+        <meta name="referrer" content="no-referrer">
+        <meta
+            http-equiv="Cache-Control"
+            content="no-cache, no-store, must-revalidate"
+        >
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="0">
+        <link rel="icon" type="image/x-icon" href="favicon.ico">
+        <style type="text/css">
+        body {
+            touch-action: none;
+        }
+        #notifications {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+        .notify {
+            max-width: 25em;
+            padding: 0.5em 0.8em;
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: inherit;
+            font-weight: bold;
+            color: #f0f0f0;
+            word-wrap: break-word;
+            background: rgba(0, 0, 0, 0.88);
+            border-left: 0.15em solid #fbc02d;
+            border-radius: 0.2em;
+            box-shadow: 0.1em 0.1em 0.3em rgba(0, 0, 0, 0.6);
+            animation: notifyIn 0.3s ease-out;
+        }
+        .notify-out {
+            animation: notifyOut 0.3s ease-in forwards;
+        }
+        @keyframes notifyIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        @keyframes notifyOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        </style>
+    </head>
+    <body style="background: #111; color: #ccc;">
+        <div id="permanentTime" class="osd"></div>
+        <div id="info1" class="osd">
+            <div id="descr">
+                <div id="programm_name2">1</div>
+                <span id="programm_duration">1</span>
+                <div style="overflow: hidden;">
+                    <div id="programm_descr">1</div>
+                </div>
+            </div>
+            <div id="picon"></div>
+            <div id="channel">
+                <div id="channel_number">1</div>
+                <div id="channel_name">1</div>
+                <div id="progress_div">
+                    <div id="progress_r"></div>
+                    <div id="progress"></div>
+                    <div id="progress_span" class="tooltip"><span></span></div>
+                </div>
+                <div id="begin_time">1</div>
+                <div id="programm_name">1</div>
+                <div id="end_time"></div>
+                <div style="clear: both;"></div>
+                <div id="nbegin_time">1</div>
+                <div id="nprogramm_name">1</div>
+                <div id="nend_time"></div>
+            </div>
+            <div id="data">
+                <span id="current_t"></span><span id="current_s"></span>
+                <div id="video_res"></div>
+            </div>
+        </div>
+        <div id="list_osd" class="osd"></div>
+        <div id="list_window">
+            <div id="_t" class="list_back"></div>
+            <div id="_b" class="list_back"></div>
+            <div id="_l" class="list_back"></div>
+            <div id="_r" class="list_back"></div>
+        </div>
+        <div id="list">
+            <div id="listCaption"></div>
+            <div id="listTime">
+                <span id="list_t"></span><span id="list_s"></span>
+            </div>
+            <div id="listPodval"></div>
+            <div id="listDetail"></div>
+            <div id="listIn"></div>
+            <div id="listAbout"></div>
+            <div id="listEdit"></div>
+            <div id="listPopUp"></div>
+        </div>
+        <pre id="launch">Start: local</pre>
+        <div id="info" class="osd"></div>
+        <div id="numprog" class="osd"></div>
+        <div id="volume_div"><div id="volume"></div></div>
+        <div id="mute"></div>
+        <div id="dialogbox" class="osd"></div>
+        <div id="buffering"></div>
+        <div id="pip_buffering"></div>
+        <div id="notifications"></div>
+        <span id="testFont"></span>
 
-<script>
-var host = window.location.origin || 'http://localhost:8080';
-var __dev = true; // set false for production
-var __cv = __dev ? 'dev_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) : '0319.1812';
-var __av = __dev ? 'dev_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) : 'local';
+        <script>
+        "use strict";
+        var host = window.location.origin || "http://localhost:8080";
+        var __dev = true; // set false for production
+        var __cv = __dev
+            ? "dev_" +
+              Date.now() +
+              "_" +
+              Math.random().toString(36).substr(2, 9)
+            : "0319.1812";
+        var __av = __dev
+            ? "dev_" +
+              Date.now() +
+              "_" +
+              Math.random().toString(36).substr(2, 9)
+            : "local";
 
-function detectDevice() {
-    var path = window.location.pathname;
-    var m = path.match(/^\/f\/(.+?)(\/|$)/);
-    if (m) return m[1].replace(/\/+$/, '');
-    var ua = navigator.userAgent.toLowerCase();
-    if (ua.indexOf('webos') !== -1 || ua.indexOf('lg') !== -1) return 'lg/webos';
-    if (ua.indexOf('tizen') !== -1) return 'samsung/tizen';
-    if (ua.indexOf('maple') !== -1) return 'samsung/maple';
-    if (ua.indexOf('stb') !== -1 && ua.indexOf('infomir') !== -1) return 'mag';
-    if (ua.indexOf('dune') !== -1) return 'dune';
-    if (ua.indexOf('android') !== -1) return 'android';
-    if (ua.indexOf('hbbtv') !== -1 || ua.indexOf('oipf') !== -1) return 'hbbtv';
-    if (ua.indexOf('viera') !== -1) return 'panasonic';
-    if (ua.indexOf('philips') !== -1) return 'philips';
-    if (ua.indexOf('hisense') !== -1) return 'hisense';
-    if (ua.indexOf('sony') !== -1) return 'sony';
-    if (ua.indexOf('tcl') !== -1) return 'tcl';
-    if (ua.indexOf('sharp') !== -1) return 'sharp';
-    if (ua.indexOf('toshiba') !== -1) return 'toshiba';
-    if (ua.indexOf('skyworth') !== -1) return 'skyworth';
-    if (ua.indexOf('vewd') !== -1) return 'vewd';
-    if (ua.indexOf('spark') !== -1) return 'spark';
-    if (ua.indexOf('nodejs') !== -1 || ua.indexOf('electron') !== -1) return 'nodejs';
-    return 'pc';
-}
-var ott_device = detectDevice();
+        function detectDevice() {
+            var path = window.location.pathname;
+            var m = path.match(/^\/f\/(.+?)(\/|$)/);
+            if (m) return m[1].replace(/\/+$/, "");
+            var ua = navigator.userAgent.toLowerCase();
+            if (ua.indexOf("webos") !== -1 || ua.indexOf("lg") !== -1)
+                return "lg/webos";
+            if (ua.indexOf("tizen") !== -1) return "samsung/tizen";
+            if (ua.indexOf("maple") !== -1) return "samsung/maple";
+            if (ua.indexOf("stb") !== -1 && ua.indexOf("infomir") !== -1)
+                return "mag";
+            if (ua.indexOf("dune") !== -1) return "dune";
+            if (ua.indexOf("android") !== -1) return "android";
+            if (ua.indexOf("hbbtv") !== -1 || ua.indexOf("oipf") !== -1)
+                return "hbbtv";
+            if (ua.indexOf("viera") !== -1) return "panasonic";
+            if (ua.indexOf("philips") !== -1) return "philips";
+            if (ua.indexOf("hisense") !== -1) return "hisense";
+            if (ua.indexOf("sony") !== -1) return "sony";
+            if (ua.indexOf("tcl") !== -1) return "tcl";
+            if (ua.indexOf("sharp") !== -1) return "sharp";
+            if (ua.indexOf("toshiba") !== -1) return "toshiba";
+            if (ua.indexOf("skyworth") !== -1) return "skyworth";
+            if (ua.indexOf("vewd") !== -1) return "vewd";
+            if (ua.indexOf("spark") !== -1) return "spark";
+            if (ua.indexOf("nodejs") !== -1 || ua.indexOf("electron") !== -1)
+                return "nodejs";
+            return "pc";
+        }
+        var ott_device = detectDevice();
 
-// Device UUID — generated once, persisted in localStorage
-var deviceUUID = localStorage.getItem('ott_device_uuid');
-if (!deviceUUID) {
-	deviceUUID = 'dev_' + Math.random().toString(36).substr(2, 9) + Math.random().toString(36).substr(2, 4);
-	localStorage.setItem('ott_device_uuid', deviceUUID);
-}
-window.deviceUUID = deviceUUID;
+        // Device UUID — generated once, persisted in localStorage
+        var deviceUUID = localStorage.getItem("ott_device_uuid");
+        if (!deviceUUID) {
+            deviceUUID =
+                "dev_" +
+                Math.random().toString(36).substr(2, 9) +
+                Math.random().toString(36).substr(2, 4);
+            localStorage.setItem("ott_device_uuid", deviceUUID);
+        }
+        window.deviceUUID = deviceUUID;
 
-if(typeof console==="undefined"){var console={log:function(){},error:function(){}}}
-if(!Math.imul)Math.imul=function(a,b){var aHi=a>>>16&65535;var aLo=a&65535;var bHi=b>>>16&65535;var bLo=b&65535;return aLo*bLo+(aHi*bLo+aLo*bHi<<16>>>0)|0};
+        if (typeof console === "undefined") {
+            var console = { log: function () {}, error: function () {} };
+        }
+        if (!Math.imul)
+            Math.imul = function (a, b) {
+                var aHi = (a >>> 16) & 65535;
+                var aLo = a & 65535;
+                var bHi = (b >>> 16) & 65535;
+                var bLo = b & 65535;
+                return (
+                    (aLo * bLo + (((aHi * bLo + aLo * bHi) << 16) >>> 0)) | 0
+                );
+            };
 
-var body_onUnload=function(){};
-var errStack=[];
-var dnt=false,__iid="";
+        var body_onUnload = function () {};
+        var errStack = [];
+        var dnt = false,
+            __iid = "";
 
-// Stubbed server functions
-function PostFeedback(_data,_endpoint){}
-function ErrPOST(msg){ if(msg) console.log('[ERR]', msg); }
-function FeedbPOST(msg){}
+        // Stubbed server functions
+        function PostFeedback(_data, _endpoint) {}
+        function ErrPOST(msg) {
+            if (msg) console.log("[ERR]", msg);
+        }
+        function FeedbPOST(msg) {}
 
-var TSH=function(str){for(var i=0,h=9;i<str.length;){h=Math.imul(h^str.charCodeAt(i++),387420489)}return h^h>>>9};
+        var TSH = function (str) {
+            for (var i = 0, h = 9; i < str.length; ) {
+                h = Math.imul(h ^ str.charCodeAt(i++), 387420489);
+            }
+            return h ^ (h >>> 9);
+        };
 
-try{
-window.onerror=function(event,source,lineno,colno,error){
-	var etext=[];
-	if(typeof event==="string"){
-		etext.push(event||"<no_msg>");
-		etext.push((source||"<no_url>")+"__"+(lineno||"??")+":"+(colno||"??"));
-		etext.push(typeof error==="object"?error.stack:"<no_stack>");
-	}else{
-		etext.push(event.message||"<no_msg>");
-		etext.push((event.filename||"<no_url>")+"__"+(event.lineno||"??")+":"+(event.colno||"??"));
-		etext.push(typeof event.error==="object"?event.error.stack:"<no_stack>");
-	}
-	console.error(etext.join("\n"));
-};
-}finally{}
+        try {
+            window.onerror = function (event, source, lineno, colno, error) {
+                var etext = [];
+                if (typeof event === "string") {
+                    etext.push(event || "<no_msg>");
+                    etext.push(
+                        (source || "<no_url>") +
+                            "__" +
+                            (lineno || "??") +
+                            ":" +
+                            (colno || "??")
+                    );
+                    etext.push(
+                        typeof error === "object" ? error.stack : "<no_stack>"
+                    );
+                } else {
+                    etext.push(event.message || "<no_msg>");
+                    etext.push(
+                        (event.filename || "<no_url>") +
+                            "__" +
+                            (event.lineno || "??") +
+                            ":" +
+                            (event.colno || "??")
+                    );
+                    etext.push(
+                        typeof event.error === "object"
+                            ? event.error.stack
+                            : "<no_stack>"
+                    );
+                }
+                console.error(etext.join("\n"));
+            };
+        } finally {
+        }
 
-(function(){
-	var _head=document.head||document.getElementsByTagName("head")[0];
-	if(!_head){document.body.innerHTML="<h3>Bad document.head</h3>";return}
+        (function () {
+            var _head =
+                document.head || document.getElementsByTagName("head")[0];
+            if (!_head) {
+                document.body.innerHTML = "<h3>Bad document.head</h3>";
+                return;
+            }
 
- 	function loadJS(url,cb,location,errorCb){
-		var scriptTag=document.createElement("script");
-		scriptTag.src=url;
-		scriptTag.type="text/javascript";
-		if(typeof scriptTag.crossOrigin!=="undefined")scriptTag.crossOrigin="anonymous";
-		scriptTag.onload=cb;
-		scriptTag.onerror=function(e){if(typeof errorCb==='function')errorCb(e);else throw new Error("Error loading:"+url)};
-		location.appendChild(scriptTag);
-	}
+            function loadJS(url, cb, location, errorCb) {
+                var scriptTag = document.createElement("script");
+                scriptTag.src = url;
+                scriptTag.type = "text/javascript";
+                if (typeof scriptTag.crossOrigin !== "undefined")
+                    scriptTag.crossOrigin = "anonymous";
+                scriptTag.onload = cb;
+                scriptTag.onerror = function (e) {
+                    if (typeof errorCb === "function") errorCb(e);
+                    else throw new Error("Error loading:" + url);
+                };
+                location.appendChild(scriptTag);
+            }
 
-	function getScriptDOM(url,successCb,errorCb){
-		return loadJS(url,successCb,document.body,errorCb);
-	}
+            function getScriptDOM(url, successCb, errorCb) {
+                return loadJS(url, successCb, document.body, errorCb);
+            }
 
-	function loadCSS(url,location){
-		var linkTag=document.createElement("link");
-		linkTag.href=url;
-		linkTag.type="text/css";
-		linkTag.rel="stylesheet";
-		location.appendChild(linkTag);
-	}
+            function loadCSS(url, location) {
+                var linkTag = document.createElement("link");
+                linkTag.href = url;
+                linkTag.type = "text/css";
+                linkTag.rel = "stylesheet";
+                location.appendChild(linkTag);
+            }
 
-	function loadSTB(){
-		// Load player bundle first (defines window.version), then device key mapping
-		loadJS(host+"/dist/stbPlayer.js?"+__cv, function(){
-			loadJS(host+"/stb/"+ott_device+"/stb.js?"+__cv, function(){
-				if(typeof startPlayer==="function") startPlayer();
-				else console.error("startPlayer not defined");
-			}, _head);
-		}, _head);
-	}
+            function loadSTB() {
+                // Load player bundle first (defines window.version), then device key mapping
+                loadJS(
+                    host + "/dist/stbPlayer.js?" + __cv,
+                    function () {
+                        loadJS(
+                            host + "/stb/" + ott_device + "/stb.js?" + __cv,
+                            function () {
+                                if (typeof startPlayer === "function")
+                                    startPlayer();
+                                else console.error("startPlayer not defined");
+                            },
+                            _head
+                        );
+                    },
+                    _head
+                );
+            }
 
-	function loadLibraries(){
-		var need = 0;
-		function checkDone(){
-			if(++need >= 2) loadSTB();
-		}
-		if(typeof Hls === "undefined"){
-			var hlsUrl = (ott_device === "pc")
-				? "https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"
-				: "https://cdn.jsdelivr.net/npm/hls.js@0.14.17/dist/hls.min.js";
-			loadJS(hlsUrl, function(){
-				if(typeof Hls === "undefined")
-					loadJS(host+"/js/hls.min.js", checkDone, _head);
-				else checkDone();
-			}, _head);
-		} else checkDone();
-		if(typeof shaka === "undefined" || typeof shaka.Player === "undefined"){
-			loadJS("https://cdn.jsdelivr.net/npm/shaka-player@3.3.19/dist/shaka-player.compiled.js", function(){
-				if(typeof shaka === "undefined" || typeof shaka.Player === "undefined")
-					loadJS(host+"/js/shaka-player.compiled.js", checkDone, _head);
-				else checkDone();
-			}, _head);
-		} else checkDone();
-	}
+            function loadLibraries() {
+                var need = 0;
+                function checkDone() {
+                    if (++need >= 2) loadSTB();
+                }
+                if (typeof Hls === "undefined") {
+                    var hlsUrl =
+                        ott_device === "pc"
+                            ? "https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"
+                            : "https://cdn.jsdelivr.net/npm/hls.js@0.14.17/dist/hls.min.js";
+                    loadJS(
+                        hlsUrl,
+                        function () {
+                            if (typeof Hls === "undefined")
+                                loadJS(
+                                    host + "/js/hls.min.js",
+                                    checkDone,
+                                    _head
+                                );
+                            else checkDone();
+                        },
+                        _head
+                    );
+                } else checkDone();
+                if (
+                    typeof shaka === "undefined" ||
+                    typeof shaka.Player === "undefined"
+                ) {
+                    loadJS(
+                        "https://cdn.jsdelivr.net/npm/shaka-player@3.3.19/dist/shaka-player.compiled.js",
+                        function () {
+                            if (
+                                typeof shaka === "undefined" ||
+                                typeof shaka.Player === "undefined"
+                            )
+                                loadJS(
+                                    host + "/js/shaka-player.compiled.js",
+                                    checkDone,
+                                    _head
+                                );
+                            else checkDone();
+                        },
+                        _head
+                    );
+                } else checkDone();
+            }
 
-	function loadJQ(){
-		loadCSS(host+"/stbPlayer/1280.css?"+__av, _head);
-		loadJS("https://code.jquery.com/jquery-1.11.1.min.js", function(){
-			if(typeof jQuery === "undefined") {
-				loadJS(host+"/js/jquery-1.11.1.min.js", loadLibraries, _head);
-			} else loadLibraries();
-		}, _head);
-	}
+            function loadJQ() {
+                loadCSS(host + "/stbPlayer/1280.css?" + __av, _head);
+                loadJS(
+                    "https://code.jquery.com/jquery-1.11.1.min.js",
+                    function () {
+                        if (typeof jQuery === "undefined") {
+                            loadJS(
+                                host + "/js/jquery-1.11.1.min.js",
+                                loadLibraries,
+                                _head
+                            );
+                        } else loadLibraries();
+                    },
+                    _head
+                );
+            }
 
- 	// Expose script loaders globally for stbPlayer.js
-	window.getScriptDOM = getScriptDOM;
+            // Expose script loaders globally for stbPlayer.js
+            window.getScriptDOM = getScriptDOM;
 
-	if(typeof jQuery==="undefined") loadJQ();
-	else { loadCSS(host+"/stbPlayer/1280.css?"+__av, _head); loadLibraries(); }
+            if (typeof jQuery === "undefined") loadJQ();
+            else {
+                loadCSS(host + "/stbPlayer/1280.css?" + __av, _head);
+                loadLibraries();
+            }
 
-	// Local command poller (10s interval)
-	// Only polls the user-configured local command URL (Variant 2).
-	// Central server polling is disabled for security — no unauthenticated
-	// endpoint should accept commands from any client.
-	var _cmdSeen = {};
-	setInterval(function pollCommands(){
-		var localUrl = window.sLocalCmdUrl || '';
-		if (!localUrl) return; // No URL configured — nothing to poll
-		var xhr = new XMLHttpRequest();
-		xhr.open("GET", localUrl + '?t=' + Date.now(), true);
-		xhr.onload = function(){
-			if(xhr.status !== 200) return;
-			var list;
-			try { list = JSON.parse(xhr.responseText); } catch(e) { return; }
-			if(!list || !list.length) return;
-			list.forEach(function(cmd){
-				var key = cmd.ts || (cmd.command + JSON.stringify(cmd));
-				if(_cmdSeen[key]) return;
-				_cmdSeen[key] = true;
-				if(cmd.command && typeof window.handleCommand === 'function') {
-					window.handleCommand(cmd);
-				} else if(cmd.message && typeof window.showPopup === 'function') {
-					window.showPopup(cmd.message, cmd.popup_duration || 5);
-				}
-			});
-			var keys = Object.keys(_cmdSeen);
-			if(keys.length > 200) {
-				var cutoff = keys.length - 100;
-				for(var i = 0; i < cutoff; i++) delete _cmdSeen[keys[i]];
-			}
-		};
-		xhr.send();
-	}, 10000);
-})();
-</script>
-</body>
+            // Local command poller (10s interval)
+            // Only polls the user-configured local command URL (Variant 2).
+            // Central server polling is disabled for security — no unauthenticated
+            // endpoint should accept commands from any client.
+            var _cmdSeen = {};
+            setInterval(function pollCommands() {
+                var localUrl = window.sLocalCmdUrl || "";
+                if (!localUrl) return; // No URL configured — nothing to poll
+                var xhr = new XMLHttpRequest();
+                xhr.open("GET", localUrl + "?t=" + Date.now(), true);
+                xhr.onload = function () {
+                    if (xhr.status !== 200) return;
+                    var list;
+                    try {
+                        list = JSON.parse(xhr.responseText);
+                    } catch (e) {
+                        return;
+                    }
+                    if (!(list && list.length)) return;
+                    list.forEach(function (cmd) {
+                        var key = cmd.ts || cmd.command + JSON.stringify(cmd);
+                        if (_cmdSeen[key]) return;
+                        _cmdSeen[key] = true;
+                        if (
+                            cmd.command &&
+                            typeof window.handleCommand === "function"
+                        ) {
+                            window.handleCommand(cmd);
+                        } else if (
+                            cmd.message &&
+                            typeof window.showPopup === "function"
+                        ) {
+                            window.showPopup(
+                                cmd.message,
+                                cmd.popup_duration || 5
+                            );
+                        }
+                    });
+                    var keys = Object.keys(_cmdSeen);
+                    if (keys.length > 200) {
+                        var cutoff = keys.length - 100;
+                        for (var i = 0; i < cutoff; i++)
+                            delete _cmdSeen[keys[i]];
+                    }
+                };
+                xhr.send();
+            }, 10000);
+        })();
+        </script>
+    </body>
 </html>

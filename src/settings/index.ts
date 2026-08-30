@@ -5,7 +5,7 @@
  * persisted on change (see `saveSettings`). The `PlayerSettings` interface
  * defines every tunable parameter exposed to the user via the settings UI.
  */
-import { storage } from "../storage";
+import { storage } from "../storage/index";
 
 /**
  * All player configuration parameters.
@@ -85,78 +85,78 @@ import { storage } from "../storage";
  * @property highlightColorB   - Background highlight colour (HSL H,S).
  */
 export interface PlayerSettings {
-    noSmall: number;
-    stopPlay: number;
-    pipSize: number;
-    pipPosition: number;
-    pageSize: number;
-    fontShift: number;
-    fontSize: number;
-    arrowFun: number;
-    rewFun: number;
-    pnFun: number;
-    rFun: number;
-    gFun: number;
-    yFun: number;
-    bFun: number;
+    adFun: number;
     alFun: number;
     arFun: number;
+    arrowFun: number;
     auFun: number;
-    adFun: number;
-    rwFun: number;
-    ffFun: number;
-    prevFun: number;
-    nextFun: number;
+    autorun: number;
+    bFun: number;
+    bufSize: number;
+    deviceUuid: string;
+    editor: number;
     eFun: number;
-    okFun: number;
-    seek13Duration: number;
-    seek46Duration: number;
-    seek79Duration: number;
-    noColorKeys: number;
-    noNumbersKeys: number;
-    timezone: number;
-    sleepTimeout: number;
-    volumeStep: number;
-    infoTimeout: number;
-    infoSlide: number;
-    infoSwitch: number;
+    favorites: number;
+    ffFun: number;
+    fontShift: number;
+    fontSize: number;
+    gFun: number;
+    grapI: number;
+    hdmiSupport: number;
+    hideMenus: string[];
+    highlightColor: string;
+    highlightColorB: string;
+    highlightColorSel: string;
     infoChange: number;
     infoRew: number;
-    thumbnail: number;
-    osdOpacity: number;
+    infoSlide: number;
+    infoSwitch: number;
+    infoTimeout: number;
     listPosition: number;
-    editor: number;
-    showNumber: number;
-    showPicon: number;
-    showName: number;
-    showProgress: number;
-    showArchive: number;
-    showScroll: number;
-    showDescription: number;
-    showProgram: number;
-    preview: number;
+    localCmdUrl: string;
+    medCount: number;
     nextCount: number;
     nextCountList: number;
-    favorites: number;
+    nextFun: number;
+    noColorKeys: number;
+    noNumbersKeys: number;
+    noSmall: number;
+    okFun: number;
+    osdOpacity: number;
+    pageSize: number;
+    parentPin: string;
     permanentTime: number;
-    res10Resume: number;
+    pipPosition: number;
+    pipSize: number;
+    players: number;
+    pnFun: number;
     prevCount: number;
-    medCount: number;
+    prevFun: number;
+    preview: number;
     psChannels: number;
     psOptions: number;
     psProvs: number;
-    hdmiSupport: number;
-    autorun: number;
-    players: number;
-    bufSize: number;
-    grapI: number;
-    parentPin: string;
-    hideMenus: string[];
-    highlightColorSel: string;
-    highlightColor: string;
-    highlightColorB: string;
-    localCmdUrl: string;
-    deviceUuid: string;
+    res10Resume: number;
+    rewFun: number;
+    rFun: number;
+    rwFun: number;
+    seek13Duration: number;
+    seek46Duration: number;
+    seek79Duration: number;
+    showArchive: number;
+    showDescription: number;
+    showName: number;
+    showNumber: number;
+    showPicon: number;
+    showProgram: number;
+    showProgress: number;
+    showScroll: number;
+    sleepTimeout: number;
+    stopPlay: number;
+    thumbnail: number;
+    timezone: number;
+    volumeStep: number;
+    yFun: number;
 }
 
 /**
@@ -244,7 +244,7 @@ export function defaultSettings(): PlayerSettings {
     };
 }
 
-export var settings: PlayerSettings = defaultSettings();
+export let settings: PlayerSettings = defaultSettings();
 
 /**
  * Load all settings from persistent storage into the module-level
@@ -262,7 +262,7 @@ export var settings: PlayerSettings = defaultSettings();
  * Mutates the module-level `settings` variable.
  */
 export function loadSettings(): PlayerSettings {
-    var s = storage;
+    const s = storage;
     settings = {
         noSmall: s.getI("sNoSmall", 0),
         stopPlay: s.getI("sStopPlay", 0),
@@ -331,7 +331,7 @@ export function loadSettings(): PlayerSettings {
         grapI: s.getI("sGrapI", 0),
         parentPin: s.get("parentPIN") || "1234",
         hideMenus: (s.get("sHideMenus") || "").split(",").filter(function (
-            x: string,
+            x: string
         ) {
             return x !== "";
         }),
@@ -359,7 +359,7 @@ export function loadSettings(): PlayerSettings {
  * Writes every property to the underlying storage adapter.
  */
 export function saveSettings(s: PlayerSettings): void {
-    var store = storage;
+    const store = storage;
     store.setI("sNoSmall", s.noSmall);
     store.setI("sStopPlay", s.stopPlay);
     store.setI("sPipSize", s.pipSize);

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+"use strict";
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
@@ -22,8 +23,12 @@ const modules = [
     "build/keyhandler/index.js",
     "build/provider/index.js",
     "build/commands/index.js",
+    "build/app/init.js",
     "build/index.js",
 ];
+
+const EXPORT_BRACE_RE = /^export\s*\{[^}]*\};?\s*$/;
+const EXPORT_RE = /^(\s*)export\s+/;
 
 function stripModule(code) {
     return code
@@ -36,8 +41,8 @@ function stripModule(code) {
         .map((line) => {
             const t = line.trim();
             if (t.startsWith("export ")) {
-                if (/^export\s*\{[^}]*\};?\s*$/.test(t)) return "// " + line;
-                return line.replace(/^(\s*)export\s+/, "$1");
+                if (EXPORT_BRACE_RE.test(t)) return "// " + line;
+                return line.replace(EXPORT_RE, "$1");
             }
             return line;
         })

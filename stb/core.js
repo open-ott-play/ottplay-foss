@@ -1,19 +1,20 @@
 var stb = null;
-var video = null, videopip = null;
-var stbPlayers = ['html5', 'hls.js', 'shaka'];
-var strEXIT = 'Esc';
-var strENTER = 'ENTER';
+var video = null,
+    videopip = null;
+var stbPlayers = ["html5", "hls.js", "shaka"];
+var strEXIT = "Esc";
+var strENTER = "ENTER";
 var strTools = '<span class="fontello">&#xe808;</span>';
 var strInfo = '<span class="fontello">&#xe810;</span>';
-var strEPG = '';
-var strPip = 'W';
-var strAspect = 'A';
-var strZoom = 'E';
-var strAudio = 'S';
-var strPRECH = '?';
+var strEPG = "";
+var strPip = "W";
+var strAspect = "A";
+var strZoom = "E";
+var strAudio = "S";
+var strPRECH = "?";
 var strRETURN = '<span class="fontello">&#xe804;</span>';
-var strSETUP = '\u00a7';
-var strLANG = 'SHIFT';
+var strSETUP = "\u00a7";
+var strLANG = "SHIFT";
 
 function stbEventToKeyCode(event) {
     if (event.keyCode == 76) {
@@ -24,8 +25,15 @@ function stbEventToKeyCode(event) {
 }
 function isNormalScreen() {
     try {
-        return !document.fullscreen && !document.mozFullScreen && !document.webkitFullScreen && !document.msRequestFullscreen;
-    } catch (e) { return true; }
+        return !(
+            document.fullscreen ||
+            document.mozFullScreen ||
+            document.webkitFullScreen ||
+            document.msRequestFullscreen
+        );
+    } catch (e) {
+        return true;
+    }
 }
 function openFullscreen() {
     var elem = document.documentElement;
@@ -40,27 +48,50 @@ function closeFullscreen() {
     else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
     else if (document.msExitFullscreen) document.msExitFullscreen();
 }
-function stbExit() { window.close(); }
+function stbExit() {
+    window.close();
+}
 
-var hls = null, player = null;
+var hls = null,
+    player = null;
 function stbPlay(url, pos) {
-    if (pos) url += '#t=' + pos;
-    if (hls) { hls.destroy(); hls = null; }
-    if (player) { player = null; }
-    if ((sPlayers === 1) && typeof Hls !== "undefined" && Hls.isSupported()) {
+    if (pos) url += "#t=" + pos;
+    if (hls) {
+        hls.destroy();
+        hls = null;
+    }
+    if (player) {
+        player = null;
+    }
+    if (sPlayers === 1 && typeof Hls !== "undefined" && Hls.isSupported()) {
         hls = new Hls();
         hls.loadSource(url);
         hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, function () { });
+        hls.on(Hls.Events.MANIFEST_PARSED, function () {});
         hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, function (eventName, _a) {
             var audioTracks = _a.audioTracks;
-            execCHarr('aAudios', function (ind) { console.log('PreSet audioTrack'); if (hls) hls.audioTrack = ind; });
+            execCHarr("aAudios", function (ind) {
+                console.log("PreSet audioTrack");
+                if (hls) hls.audioTrack = ind;
+            });
         });
-        execCHarr('aSubs', function (ind) { if (hls) hls.subtitleTrack = ind - 1; });
-    } else if ((sPlayers === 2) && typeof shaka !== "undefined" && shaka.Player && shaka.Player.isBrowserSupported()) {
+        execCHarr("aSubs", function (ind) {
+            if (hls) hls.subtitleTrack = ind - 1;
+        });
+    } else if (
+        sPlayers === 2 &&
+        typeof shaka !== "undefined" &&
+        shaka.Player &&
+        shaka.Player.isBrowserSupported()
+    ) {
         var player = new shaka.Player(video);
         window.player = player;
-        try { player.load(url); video.play(); } catch (e) { console.error(e); }
+        try {
+            player.load(url);
+            video.play();
+        } catch (e) {
+            console.error(e);
+        }
     } else {
         video.src = url;
     }
@@ -68,295 +99,573 @@ function stbPlay(url, pos) {
 }
 function stbStop() {
     video.pause();
-    video.removeAttribute('src');
+    video.removeAttribute("src");
     if (hls) hls.destroy();
 }
-function stbPause() { video.pause(); }
-function stbContinue() { video.paused ? video.play() : video.pause(); }
-function stbIsPlaying() { return !video.paused; }
-function stbToggleMute() { video.muted = !video.muted; }
-function stbGetVolume() { return video.volume * 100; }
-function stbSetVolume(value) { video.volume = value / 100; }
-function stbGetPosTime() { return video.currentTime; }
+function stbPause() {
+    video.pause();
+}
+function stbContinue() {
+    video.paused ? video.play() : video.pause();
+}
+function stbIsPlaying() {
+    return !video.paused;
+}
+function stbToggleMute() {
+    video.muted = !video.muted;
+}
+function stbGetVolume() {
+    return video.volume * 100;
+}
+function stbSetVolume(value) {
+    video.volume = value / 100;
+}
+function stbGetPosTime() {
+    return video.currentTime;
+}
 function stbSetPosTime(value) {
     video.currentTime = value;
     if (playType < 0) updateMediaInfo();
 }
-function stbGetLen() { return video.duration; }
+function stbGetLen() {
+    return video.duration;
+}
 function stbToFullScreen() {
     _full = true;
-    $('#video').css({ left: 0, top: 0, width: '100%', height: '100%' });
-    $('#vdiv').css({ left: 0, top: 0, width: '100%', height: '100%' });
+    $("#video").css({ left: 0, top: 0, width: "100%", height: "100%" });
+    $("#vdiv").css({ left: 0, top: 0, width: "100%", height: "100%" });
     _aspect();
 }
 function stbSetWindow() {
     _full = false;
-    var lh = getHeightK(), lw = getWidthK();
-    $('#vdiv').css({ left: sListPos ? 758 * lw : 10 * lw, top: 50 * lh, width: 512 * lw, height: 288 * lh });
-    $('#video').css({ left: 0, top: 0, width: '100%', height: '100%' });
+    var lh = getHeightK(),
+        lw = getWidthK();
+    $("#vdiv").css({
+        left: sListPos ? 758 * lw : 10 * lw,
+        top: 50 * lh,
+        width: 512 * lw,
+        height: 288 * lh,
+    });
+    $("#video").css({ left: 0, top: 0, width: "100%", height: "100%" });
 }
 function stbInfo() {
-    $('#listAbout').append('<br/>userAgent: ' + navigator.userAgent +
-        '<br/>appCodeName: ' + navigator.appCodeName +
-        '<br/>appName: ' + navigator.appName +
-        '<br/>appVersion: ' + navigator.appVersion +
-        '<br/>platform: ' + navigator.platform);
-    $.get('http://api.ipify.org', function (data) { $('#listAbout').append('<br/>Ip address: ' + data); });
+    $("#listAbout").append(
+        "<br/>userAgent: " +
+            navigator.userAgent +
+            "<br/>appCodeName: " +
+            navigator.appCodeName +
+            "<br/>appName: " +
+            navigator.appName +
+            "<br/>appVersion: " +
+            navigator.appVersion +
+            "<br/>platform: " +
+            navigator.platform
+    );
+    $.get("http://api.ipify.org", function (data) {
+        $("#listAbout").append("<br/>Ip address: " + data);
+    });
 }
-var _full = true, aspect = 0;
-function _setAspect(val) { aspect = val; _aspect(); }
+var _full = true,
+    aspect = 0;
+function _setAspect(val) {
+    aspect = val;
+    _aspect();
+}
 function _aspect() {
-    var arrayRatio = ['contain', 'cover'];
-    $('#video').css('object-fit', arrayRatio[aspect]);
+    var arrayRatio = ["contain", "cover"];
+    $("#video").css("object-fit", arrayRatio[aspect]);
 }
 function stbToggleAspectRatio() {
-    showSelectBox(aspect, ['contain', 'cover'], function (val) { _setAspect(val); saveCHarr('aAspects', val); });
+    showSelectBox(aspect, ["contain", "cover"], function (val) {
+        _setAspect(val);
+        saveCHarr("aAspects", val);
+    });
 }
 function _setAudioTrack(ind) {
-    if (hls) { if (hls.audioTrack != ind) hls.audioTrack = ind; return; }
+    if (hls) {
+        if (hls.audioTrack != ind) hls.audioTrack = ind;
+        return;
+    }
     var at = video.audioTracks;
-    for (var i = 0; i < at.length; i++) at[i].enabled = (i == ind);
+    for (var i = 0; i < at.length; i++) at[i].enabled = i == ind;
 }
 function stbToggleAudioTrack() {
-    var z = 0, curTrack = 0, at = (hls || video).audioTracks, al = [];
+    var z = 0,
+        curTrack = 0,
+        at = (hls || video).audioTracks,
+        al = [];
     if (hls) curTrack = hls.audioTrack;
     for (var i = 0; i < at.length; i++) {
-        if (hls) { if (curTrack == i) z = i; }
-        else { if (at[i].enabled) z = i; }
-        al.push((i + 1) + '/' + at.length + ' (' + (at[i].label || at[i].name) + '/' + (at[i].language || at[i].lang) + ')');
+        if (hls) {
+            if (curTrack == i) z = i;
+        } else {
+            if (at[i].enabled) z = i;
+        }
+        al.push(
+            i +
+                1 +
+                "/" +
+                at.length +
+                " (" +
+                (at[i].label || at[i].name) +
+                "/" +
+                (at[i].language || at[i].lang) +
+                ")"
+        );
     }
-    showSelectBox(z, al, function (val) {
-        if (val == z) return;
-        _setAudioTrack(val);
-        saveCHarr('aAudios', val);
-    }, -1);
+    showSelectBox(
+        z,
+        al,
+        function (val) {
+            if (val == z) return;
+            _setAudioTrack(val);
+            saveCHarr("aAudios", val);
+        },
+        -1
+    );
 }
 function _setSubtitleTrack(ind) {
-    if (hls) { hls.subtitleTrack = ind - 1; return; }
+    if (hls) {
+        hls.subtitleTrack = ind - 1;
+        return;
+    }
     var tt = video.textTracks;
-    for (var i = 0; i < tt.length; i++) tt[i].mode = (i == ind - 1) ? 'showing' : 'disabled';
+    for (var i = 0; i < tt.length; i++)
+        tt[i].mode = i == ind - 1 ? "showing" : "disabled";
 }
 function stbToggleSubtitle() {
-    var z = 0, tt = video.textTracks, al = [tt.length ? _('Off') : _('Not found')];
-    if (hls) { tt = hls.subtitleTracks; z = hls.subtitleTrack + 1; }
-    for (var i = 0; i < tt.length; i++) {
-        if (tt[i].mode == 'showing') z = i + 1;
-        al.push((i + 1) + '/' + tt.length + ' (' + (tt[i].label || tt[i].name) + '/' + (tt[i].language || tt[i].lang) + ')');
+    var z = 0,
+        tt = video.textTracks,
+        al = [tt.length ? _("Off") : _("Not found")];
+    if (hls) {
+        tt = hls.subtitleTracks;
+        z = hls.subtitleTrack + 1;
     }
-    showSelectBox(z, al, function (val) {
-        if (val == z) return;
-        _setSubtitleTrack(val);
-        saveCHarr('aSubs', val);
-    }, -1);
+    for (var i = 0; i < tt.length; i++) {
+        if (tt[i].mode == "showing") z = i + 1;
+        al.push(
+            i +
+                1 +
+                "/" +
+                tt.length +
+                " (" +
+                (tt[i].label || tt[i].name) +
+                "/" +
+                (tt[i].language || tt[i].lang) +
+                ")"
+        );
+    }
+    showSelectBox(
+        z,
+        al,
+        function (val) {
+            if (val == z) return;
+            _setSubtitleTrack(val);
+            saveCHarr("aSubs", val);
+        },
+        -1
+    );
 }
-function stbAudioTracksExists() { var _v = hls || video; return (_v && _v.audioTracks) ? _v.audioTracks.length > 1 : false; }
-function stbSubtitleExists() { if (hls) return hls.subtitleTracks.length; return video.textTracks.length; }
+function stbAudioTracksExists() {
+    var _v = hls || video;
+    return _v && _v.audioTracks ? _v.audioTracks.length > 1 : false;
+}
+function stbSubtitleExists() {
+    if (hls) return hls.subtitleTracks.length;
+    return video.textTracks.length;
+}
 
 function editKey2(code) {
     switch (code) {
-        case keys.ENTER: editvar = $('#editvar').val(); setEdit();
-        case keys.EXIT: $('#listEdit').hide(); restoreCPD();
+        case keys.ENTER:
+            editvar = $("#editvar").val();
+            setEdit();
+        case keys.EXIT:
+            $("#listEdit").hide();
+            restoreCPD();
     }
 }
 function showEditKey2() {
     saveCPD();
     listCaption.innerHTML = editCaption;
-    $('#listEdit').show().html(editCaption + ':<br/><br/>' +
-        '<br/><input type="text" id="editvar" value="' + editvar + '" style="background-color: black; color:' + curColor + '; font-size:150%; width: 95%;" autofocus><br/><br/>' +
-        '<br/>' + btnDiv(keys.EXIT, strEXIT, '- return without save') +
-        '<br/>' + btnDiv(keys.ENTER, strENTER, '- save'));
+    $("#listEdit")
+        .show()
+        .html(
+            editCaption +
+                ":<br/><br/>" +
+                '<br/><input type="text" id="editvar" value="' +
+                editvar +
+                '" style="background-color: black; color:' +
+                curColor +
+                '; font-size:150%; width: 95%;" autofocus><br/><br/>' +
+                "<br/>" +
+                btnDiv(keys.EXIT, strEXIT, "- return without save") +
+                "<br/>" +
+                btnDiv(keys.ENTER, strENTER, "- save")
+        );
     document.getElementById("editvar").focus();
 }
 var hlsp = null;
 function stbPlayPip(url) {
-    if ((sPlayers === 1) && typeof Hls !== "undefined" && Hls.isSupported()) {
+    if (sPlayers === 1 && typeof Hls !== "undefined" && Hls.isSupported()) {
         if (hlsp) hlsp.destroy();
         hlsp = new Hls();
         hlsp.loadSource(url);
         hlsp.attachMedia(videopip);
-        hlsp.on(Hls.Events.MANIFEST_PARSED, function () { });
-    } else { videopip.src = url; }
+        hlsp.on(Hls.Events.MANIFEST_PARSED, function () {});
+    } else {
+        videopip.src = url;
+    }
     videopip.play();
-    $('#videopip').show();
+    $("#videopip").show();
 }
 function stbStopPip() {
     videopip.pause();
-    videopip.src = '';
+    videopip.src = "";
     if (hlsp) hlsp.destroy();
-    $('#videopip').hide();
-    $('#pip_buffering').hide();
+    $("#videopip").hide();
+    $("#pip_buffering").hide();
 }
 function setPipPos() {
     function setPipWindowRect(x, y, width, height) {
-        $('#videopip').css({ left: x, top: y, width: width, height: height });
+        $("#videopip").css({ left: x, top: y, width: width, height: height });
     }
-    var lw = getWidthK(), lh = getHeightK(), ll = Math.min(lw, lh), ls = Math.max(lw, lh);
-    ps = [{ x: 256, y: 144 }, { x: 384, y: 216 }, { x: 512, y: 288 }];
-    $('#videopip').css({ width: ps[sPipSize].x * ll, height: ps[sPipSize].y * ll });
+    var lw = getWidthK(),
+        lh = getHeightK(),
+        ll = Math.min(lw, lh),
+        ls = Math.max(lw, lh);
+    ps = [
+        { x: 256, y: 144 },
+        { x: 384, y: 216 },
+        { x: 512, y: 288 },
+    ];
+    $("#videopip").css({
+        width: ps[sPipSize].x * ll,
+        height: ps[sPipSize].y * ll,
+    });
     switch (sPipPos) {
-        case 0: $('#videopip').css({ right: 20 * ll, top: 20 * ll }); return;
-        case 1: $('#videopip').css({ right: 20 * ll, bottom: 20 * ll }); return;
-        case 2: $('#videopip').css({ left: 20 * ll, bottom: 20 * ll }); return;
-        case 3: $('#videopip').css({ left: 20 * ll, top: 20 * ll }); return;
+        case 0:
+            $("#videopip").css({ right: 20 * ll, top: 20 * ll });
+            return;
+        case 1:
+            $("#videopip").css({ right: 20 * ll, bottom: 20 * ll });
+            return;
+        case 2:
+            $("#videopip").css({ left: 20 * ll, bottom: 20 * ll });
+            return;
+        case 3:
+            $("#videopip").css({ left: 20 * ll, top: 20 * ll });
+            return;
     }
 }
-var stbBufferSizes = ['0', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+var stbBufferSizes = ["0", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 function stbSetBuffer() {
     try {
-        var buf = parseInt(sBufSize || stbGetItem('sBufSize'), 10);
+        var buf = Number.parseInt(sBufSize || stbGetItem("sBufSize"), 10);
         if (!isNaN(buf) && buf > 0 && video) {
-            video.preload = 'auto';
-            if (typeof video.buffered !== 'undefined' && buf > 3) {
-                console.log('[stb] buffer set to ' + buf + 's');
+            video.preload = "auto";
+            if (typeof video.buffered !== "undefined" && buf > 3) {
+                console.log("[stb] buffer set to " + buf + "s");
             }
         }
-    } catch(e) { console.error('[stb] stbSetBuffer error:', e); }
+    } catch (e) {
+        console.error("[stb] stbSetBuffer error:", e);
+    }
 }
 function stbOptions() {
     function saveSettings() {
         i = -1;
-        if (sEditor != listArray[++i].val) { sEditor = listArray[i].val; stbSetItem('sEditor', sEditor); }
-        if (sPlayers != listArray[++i].val) { sPlayers = listArray[i].val; providerSetItem('sPlayers', sPlayers); }
-        if (sBufSize != listArray[++i].val) { sBufSize = listArray[i].val; stbSetItem('sBufSize', sBufSize); }
+        if (sEditor != listArray[++i].val) {
+            sEditor = listArray[i].val;
+            stbSetItem("sEditor", sEditor);
+        }
+        if (sPlayers != listArray[++i].val) {
+            sPlayers = listArray[i].val;
+            providerSetItem("sPlayers", sPlayers);
+        }
+        if (sBufSize != listArray[++i].val) {
+            sBufSize = listArray[i].val;
+            stbSetItem("sBufSize", sBufSize);
+        }
         setEditor();
         stbSetBuffer();
-        showShift(_('Settings saved'));
+        showShift(_("Settings saved"));
         closeList();
         optionsList(stbOptions);
     }
-    var noyes = [_('no'), _('yes')];
+    var noyes = [_("no"), _("yes")];
     var settingsArray = [
-        { name: _('Editor'), val: sEditor, values: [_('built-in'), _('native')] },
-        { name: _('Type of player for streaming'), val: sPlayers, values: stbPlayers },
-        { name: _('Buffer Size, s'), val: sBufSize, values: stbBufferSizes },
-        { name: '', val: 0, values: nofun, cur: '' },
-        { name: '<div class="btn">' + _('Save Settings') + '</div>', val: 0, values: saveSettings, cur: '' }
+        {
+            name: _("Editor"),
+            val: sEditor,
+            values: [_("built-in"), _("native")],
+        },
+        {
+            name: _("Type of player for streaming"),
+            val: sPlayers,
+            values: stbPlayers,
+        },
+        { name: _("Buffer Size, s"), val: sBufSize, values: stbBufferSizes },
+        { name: "", val: 0, values: nofun, cur: "" },
+        {
+            name: '<div class="btn">' + _("Save Settings") + "</div>",
+            val: 0,
+            values: saveSettings,
+            cur: "",
+        },
     ];
     listArray = settingsArray;
-    listCaption.innerHTML = _('Settings STB');
-    _setSetup(saveSettings, function () { optionsList(stbOptions); });
+    listCaption.innerHTML = _("Settings STB");
+    _setSetup(saveSettings, function () {
+        optionsList(stbOptions);
+    });
 }
 function addAoptions() {
-    optionsArr.splice(optIndexOf(parentControlSetup), 0, { action: stbOptions, name: 'Settings STB' });
-    optionsArr.splice(optIndexOf(selectLang) + 1, 0, {}, { name: 'Save settings to storage' }, { name: 'Load settings from storage' });
+    optionsArr.splice(optIndexOf(parentControlSetup), 0, {
+        action: stbOptions,
+        name: "Settings STB",
+    });
+    optionsArr.splice(
+        optIndexOf(selectLang) + 1,
+        0,
+        {},
+        { name: "Save settings to storage" },
+        { name: "Load settings from storage" }
+    );
 }
-function unload() { stbStop(); }
+function unload() {
+    stbStop();
+}
 var stb = {};
 stb.getMacAddress = function () {
-    return stbGetItem(ott_device + '_mac') || (function () {
-        var _mac = 'XX:XX:XX:XX:XX:XX'.replace(/X/g, function () { return '0123456789abcdef'.charAt(Math.floor(Math.random() * 16)); });
-        stbSetItem(ott_device + '_mac', _mac);
-        return _mac;
-    })();
+    return (
+        stbGetItem(ott_device + "_mac") ||
+        (function () {
+            var _mac = "XX:XX:XX:XX:XX:XX".replace(/X/g, function () {
+                return "0123456789abcdef".charAt(
+                    Math.floor(Math.random() * 16)
+                );
+            });
+            stbSetItem(ott_device + "_mac", _mac);
+            return _mac;
+        })()
+    );
 };
 var _Dec = 0;
 function videoEvent(event) {
     if (event && event.type) {
-        console.log('[video] event: ' + event.type);
-        if (event.type === 'error') {
+        console.log("[video] event: " + event.type);
+        if (event.type === "error") {
             var mediaError = video ? video.error : null;
             if (mediaError) {
-                console.error('[video] MediaError: code=' + mediaError.code + ' message=' + mediaError.message);
-                if (typeof client_feedb === "function") client_feedb('video::ERR::code=' + mediaError.code + ' msg=' + mediaError.message);
+                console.error(
+                    "[video] MediaError: code=" +
+                        mediaError.code +
+                        " message=" +
+                        mediaError.message
+                );
+                if (typeof client_feedb === "function")
+                    client_feedb(
+                        "video::ERR::code=" +
+                            mediaError.code +
+                            " msg=" +
+                            mediaError.message
+                    );
             }
         }
     }
 }
 function setTransform() {
-    $('body').css('transform', 'scale(' + Math.min(window.innerWidth / wi, window.innerHeight / hi) + ')');
+    $("body").css(
+        "transform",
+        "scale(" +
+            Math.min(window.innerWidth / wi, window.innerHeight / hi) +
+            ")"
+    );
 }
 function setPlayer() {
-    if (!providerHasItemValue('sPlayers') && !video.canPlayType('application/vnd.apple.mpegurl')) {
+    if (
+        !(
+            providerHasItemValue("sPlayers") ||
+            video.canPlayType("application/vnd.apple.mpegurl")
+        )
+    ) {
         sPlayers = 1;
     }
 }
 document.body.style.cursor = "pointer";
 function stbInit() {
-    $('body').css({ 'background-color': '#111' });
-    window.addEventListener('resize', function () {
+    $("body").css({ "background-color": "#111" });
+    window.addEventListener("resize", function () {
         if (typeof setFontSize === "function") setFontSize();
         if (typeof setListPos === "function") setListPos();
         if (typeof setColor === "function") setColor();
-        if (list && list.style.display != 'none') { if (typeof closeList === "function") closeList(); if (typeof showPage === "function") showPage(); }
+        if (list && list.style.display != "none") {
+            if (typeof closeList === "function") closeList();
+            if (typeof showPage === "function") showPage();
+        }
     });
     try {
-        if (document.getElementById('launch'))
-            $('#launch').append(_('<br/>Loading STB...'));
-        if (!document.getElementById('vdiv')) {
-            $('body').prepend('<div id="vdiv" style="position: absolute; overflow: hidden; background-color: black;"><video id="video" style="position: absolute; object-position: center center;"></video></div><video id="videopip" muted style="position: absolute; display: none; background-color: black; object-position: center center;"></video>');
+        if (document.getElementById("launch"))
+            $("#launch").append(_("<br/>Loading STB..."));
+        if (!document.getElementById("vdiv")) {
+            $("body").prepend(
+                '<div id="vdiv" style="position: absolute; overflow: hidden; background-color: black;"><video id="video" style="position: absolute; object-position: center center;"></video></div><video id="videopip" muted style="position: absolute; display: none; background-color: black; object-position: center center;"></video>'
+            );
         }
-        video = document.getElementById('video');
-        video.addEventListener("waiting", function () { $('#buffering').show(); $('#video_res').html('<br/>connect...'); });
-        video.addEventListener("loadstart", function () { $('#buffering').show(); $('#video_res').html('<br/>buffering...'); });
-        video.addEventListener("loadeddata", function () { console.log('Event: loadeddata'); });
-        video.addEventListener("loadedmetadata", function () { console.log('Event: loadedmetadata'); });
-        video.addEventListener("durationchange", function () { if (playType < 0) updateMediaInfo(); });
-        video.addEventListener('canplay', function () {
-            $('#buffering').hide();
-            $('#video_res').text('');
+        video = document.getElementById("video");
+        video.addEventListener("waiting", function () {
+            $("#buffering").show();
+            $("#video_res").html("<br/>connect...");
+        });
+        video.addEventListener("loadstart", function () {
+            $("#buffering").show();
+            $("#video_res").html("<br/>buffering...");
+        });
+        video.addEventListener("loadeddata", function () {
+            console.log("Event: loadeddata");
+        });
+        video.addEventListener("loadedmetadata", function () {
+            console.log("Event: loadedmetadata");
+        });
+        video.addEventListener("durationchange", function () {
             if (playType < 0) updateMediaInfo();
-            if (video.videoWidth) $('#video_res').html('<br/>' + video.videoWidth + 'x' + video.videoHeight);
+        });
+        video.addEventListener("canplay", function () {
+            $("#buffering").hide();
+            $("#video_res").text("");
+            if (playType < 0) updateMediaInfo();
+            if (video.videoWidth)
+                $("#video_res").html(
+                    "<br/>" + video.videoWidth + "x" + video.videoHeight
+                );
             if (typeof execCHarr === "function") {
-                execCHarr('aAspects', _setAspect);
-                execCHarr('aSubs', _setSubtitleTrack);
-                execCHarr('aAudios', _setAudioTrack);
+                execCHarr("aAspects", _setAspect);
+                execCHarr("aSubs", _setSubtitleTrack);
+                execCHarr("aAudios", _setAudioTrack);
             }
         });
-        video.addEventListener("playing", function () { $('#buffering').hide(); });
-        video.addEventListener("error", function () {
-            var me = ['', 'ABORTED', 'NETWORK', 'DECODE', 'SRC_NOT_SUPPORTED'];
-            console.log('video > error: ' + (video.error.code || '') + '-' + (me[video.error.code] || video.error.code) + (video.error.message ? ' (' + video.error.message + ')' : ''));
-            $('#buffering').hide();
-            $('#video_res').html('<br/>error ' + video.error.code);
+        video.addEventListener("playing", function () {
+            $("#buffering").hide();
         });
-        video.addEventListener("resize", function () { if (video.videoWidth) $('#video_res').html('<br/>' + video.videoWidth + 'x' + video.videoHeight); });
-        ['waiting', 'loadstart', 'loadeddata', 'loadedmetadata', 'durationchange', 'canplay', 'canplaythrough', 'playing', 'error', 'progress',
-            'ratechange', 'ended', 'suspend', 'emptied', 'stalled', 'abort', 'play', 'pause', 'resize'].forEach(function (element) { video.addEventListener(element, videoEvent); });
+        video.addEventListener("error", function () {
+            var me = ["", "ABORTED", "NETWORK", "DECODE", "SRC_NOT_SUPPORTED"];
+            console.log(
+                "video > error: " +
+                    (video.error.code || "") +
+                    "-" +
+                    (me[video.error.code] || video.error.code) +
+                    (video.error.message
+                        ? " (" + video.error.message + ")"
+                        : "")
+            );
+            $("#buffering").hide();
+            $("#video_res").html("<br/>error " + video.error.code);
+        });
+        video.addEventListener("resize", function () {
+            if (video.videoWidth)
+                $("#video_res").html(
+                    "<br/>" + video.videoWidth + "x" + video.videoHeight
+                );
+        });
+        [
+            "waiting",
+            "loadstart",
+            "loadeddata",
+            "loadedmetadata",
+            "durationchange",
+            "canplay",
+            "canplaythrough",
+            "playing",
+            "error",
+            "progress",
+            "ratechange",
+            "ended",
+            "suspend",
+            "emptied",
+            "stalled",
+            "abort",
+            "play",
+            "pause",
+            "resize",
+        ].forEach(function (element) {
+            video.addEventListener(element, videoEvent);
+        });
         if (video.webkitVideoDecodedByteCount != undefined)
             setInterval(function () {
-                if (video.videoWidth && (video.webkitVideoDecodedByteCount - _Dec) > 0)
-                    $('#video_res').html('<br/>' + video.videoWidth + 'x' + video.videoHeight + '<br/>' + Math.round((video.webkitVideoDecodedByteCount - _Dec) * 8 / 1024 / 1024 * 100) / 100 + ' Mbps');
+                if (
+                    video.videoWidth &&
+                    video.webkitVideoDecodedByteCount - _Dec > 0
+                )
+                    $("#video_res").html(
+                        "<br/>" +
+                            video.videoWidth +
+                            "x" +
+                            video.videoHeight +
+                            "<br/>" +
+                            Math.round(
+                                (((video.webkitVideoDecodedByteCount - _Dec) *
+                                    8) /
+                                    1024 /
+                                    1024) *
+                                    100
+                            ) /
+                                100 +
+                            " Mbps"
+                    );
                 _Dec = video.webkitVideoDecodedByteCount;
             }, 1000);
-        videopip = document.getElementById('videopip');
-        videopip.addEventListener("loadstart", function () { if (videopip.style.display != 'none') $('#pip_buffering').show(); });
-        videopip.addEventListener("playing", function () { $('#pip_buffering').hide(); });
-    } catch (e) { console.error(e); }
-    if (document.getElementById('launch'))
-        $('#launch').append(_('<br/>Setup STB...'));
-    if (isNaN(parseInt(stbGetItem('sEditor')))) stbSetItem('sEditor', 1);
+        videopip = document.getElementById("videopip");
+        videopip.addEventListener("loadstart", function () {
+            if (videopip.style.display != "none") $("#pip_buffering").show();
+        });
+        videopip.addEventListener("playing", function () {
+            $("#pip_buffering").hide();
+        });
+    } catch (e) {
+        console.error(e);
+    }
+    if (document.getElementById("launch"))
+        $("#launch").append(_("<br/>Setup STB..."));
+    if (isNaN(Number.parseInt(stbGetItem("sEditor")))) stbSetItem("sEditor", 1);
     stbToFullScreen();
     window.onkeydown = keyHandler;
 }
 function stbCSS() {
     if (typeof stbGetItem !== "function") return;
-    var css = stbGetItem('stb_custom_css');
+    var css = stbGetItem("stb_custom_css");
     if (css) {
-        var style = document.createElement('style');
+        var style = document.createElement("style");
         style.textContent = css;
         document.head.appendChild(style);
     }
 }
 function stbToggleStandby() {
-    console.log('[stb] standby requested - not supported on ' + (ott_device || 'unknown'));
+    console.log(
+        "[stb] standby requested - not supported on " +
+            (ott_device || "unknown")
+    );
 }
 function stbToggleZoom() {
-    document.body.classList.toggle('stb-zoom');
+    document.body.classList.toggle("stb-zoom");
 }
 function saveOpt() {
     if (typeof stbGetAllItems !== "function") return;
     var items = stbGetAllItems();
     try {
-        localStorage.setItem('stb_settings_backup', JSON.stringify(items));
-        showShift(_('Settings saved to storage'));
-    } catch(e) {
-        console.error('[stb] saveOpt error:', e);
+        localStorage.setItem("stb_settings_backup", JSON.stringify(items));
+        showShift(_("Settings saved to storage"));
+    } catch (e) {
+        console.error("[stb] saveOpt error:", e);
     }
 }
 function loadOpt() {
     try {
-        var data = localStorage.getItem('stb_settings_backup');
-        if (!data) { showShift(_('No saved settings found')); return; }
+        var data = localStorage.getItem("stb_settings_backup");
+        if (!data) {
+            showShift(_("No saved settings found"));
+            return;
+        }
         var items = JSON.parse(data);
         if (typeof stbClearAllItems === "function") stbClearAllItems();
         for (var k in items) {
@@ -364,15 +673,15 @@ function loadOpt() {
                 stbSetItem(k, items[k]);
             }
         }
-        showShift(_('Settings loaded from storage'));
-    } catch(e) {
-        console.error('[stb] loadOpt error:', e);
+        showShift(_("Settings loaded from storage"));
+    } catch (e) {
+        console.error("[stb] loadOpt error:", e);
     }
 }
 function setAutorun() {
-    var autorun = stbGetItem('stb_autorun');
-    if (autorun === '1') {
-        console.log('[stb] autorun triggered');
+    var autorun = stbGetItem("stb_autorun");
+    if (autorun === "1") {
+        console.log("[stb] autorun triggered");
         if (typeof startPlayer === "function") startPlayer();
     }
 }

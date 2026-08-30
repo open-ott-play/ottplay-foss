@@ -9,6 +9,27 @@
  * - Expose every function/constant on window.* for legacy compatibility.
  * - Handle playback (channel and media), channel list display, archive mode.
  * - Manage sleep timers, info bar, PiP, preview, and cloud settings sync.
+ *
+ * ─── BUILD CONSTRAINT: duplicate function bodies required ─────────────────
+ * `build-concat.cjs` runs `tsc` then `stripModule()` which removes every
+ * `import`/`export` line, then concatenates all .ts files in a fixed order
+ * and runs terser to produce `dist/stbPlayer.js`. The legacy code in this
+ * file uses top-level `function X` declarations (not `export function`),
+ * which become global function declarations after the strip step and
+ * therefore land in the bundle as callable symbols.
+ *
+ * New code lives in `src/app/*.ts` and `src/view/*.ts` as proper ES modules
+ * with named exports — those are tree-shaken at the TypeScript level
+ * (imports become references), but their body is inlined into the bundle
+ * in the order `build-concat.cjs` lists. The legacy `function X` blocks
+ * further down are therefore REQUIRED for the bundle to work: they provide
+ * the surface that the concat step turns into globals for non-module
+ * callers (stbPlayer, dune plugins, runtime providers).
+ *
+ * Do NOT delete these duplicates as part of the ES-module refactor. The
+ * full migration to post-bundle architecture (drop the concat pipeline,
+ * use real ES modules, drop the globals) is tracked separately.
+ * ──────────────────────────────────────────────────────────────────────────
  */
 
 // Polyfills (must run first)

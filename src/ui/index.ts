@@ -332,10 +332,12 @@ export function uiInit(): void {
         var w = window as any;
         if (
             !w.playType &&
-            (!w.chanels ||
-                !w.curList ||
-                !w.chanels[w.curList[w.primaryIndex]] ||
-                !w.chanels[w.curList[w.primaryIndex]].rec)
+            !(
+                w.chanels &&
+                w.curList &&
+                w.chanels[w.curList[w.primaryIndex]] &&
+                w.chanels[w.curList[w.primaryIndex]].rec
+            )
         )
             return;
         e.stopPropagation();
@@ -353,13 +355,13 @@ export function uiInit(): void {
                         _t2(mn) +
                         ":" +
                         _t2(sc) +
-                        " <<",
+                        " <<"
                 );
             if (typeof w.stbSetPosTime === "function") w.stbSetPosTime(r);
             return;
         }
         var r2 = Math.round(
-            t * (w._prog100.time_to - w._prog100.time) + w._prog100.time,
+            t * (w._prog100.time_to - w._prog100.time) + w._prog100.time
         );
         if (r2 < Date.now() / 1e3) {
             if (!w.playType) {
@@ -389,10 +391,12 @@ export function uiInit(): void {
         var w = window as any;
         if (
             !w.playType &&
-            (!w.chanels ||
-                !w.curList ||
-                !w.chanels[w.curList[w.primaryIndex]] ||
-                !w.chanels[w.curList[w.primaryIndex]].rec)
+            !(
+                w.chanels &&
+                w.curList &&
+                w.chanels[w.curList[w.primaryIndex]] &&
+                w.chanels[w.curList[w.primaryIndex]].rec
+            )
         )
             return;
         var clientX = e.clientX;
@@ -413,7 +417,7 @@ export function uiInit(): void {
             $tooltipSpan.text((hr ? hr + ":" : "") + _t2(mn) + ":" + _t2(sc));
         } else {
             var r2 = Math.round(
-                frac * (w._prog100.time_to - w._prog100.time) + w._prog100.time,
+                frac * (w._prog100.time_to - w._prog100.time) + w._prog100.time
             );
             $tooltipSpan.text(pos2text(r2));
         }
@@ -504,7 +508,7 @@ export function showChanelInfo(timeoutSec: number): void {
         if (timeoutSec !== 2) {
             infoTimeout = setTimeout(
                 infoBarHideT,
-                (timeoutSec > 0 ? timeoutSec : w.sInfoTimeout || 5) * 1000,
+                (timeoutSec > 0 ? timeoutSec : w.sInfoTimeout || 5) * 1000
             );
         }
     } else if (!$("#descr").is(":visible")) {
@@ -760,14 +764,14 @@ export function infoBox(message: string): void {
 export function confirmBox(
     message: string,
     onYes: () => void,
-    onNo?: () => void,
+    onNo?: () => void
 ): void {
     $("#dialogbox")
         .html(
             message +
                 "<br/><br/>" +
                 btnDiv(keys.ENTER, strENTER, "Yes") +
-                btnDiv(keys.RETURN, strRETURN, "No"),
+                btnDiv(keys.RETURN, strRETURN, "No")
         )
         .show();
     (window as any).dialogBoxKeyHandler = function (e: number): void {
@@ -799,7 +803,7 @@ export function showSelectBox(
     s: number,
     n: string[],
     i: (val: number) => void,
-    a?: number,
+    a?: number
 ): void {
     clearTimeout((window as any).numTimeout);
     if (n.length === 0) return;
@@ -903,7 +907,7 @@ export function updateChanelInfo(channelId: number): void {
     var _ch = (window as any).chanels
         ? (window as any).chanels[channelId]
         : undefined;
-    if (!_ch || !_ch.time_to || _ch.time_to < Date.now() / 1000) {
+    if (!(_ch && _ch.time_to) || _ch.time_to < Date.now() / 1000) {
         getCurProgData(channelId, function () {
             setTimeout(function () {
                 updateChanelInfo(channelId);
@@ -1004,7 +1008,7 @@ export function updateChanelInfo(channelId: number): void {
             if (nbeginTimeEl)
                 nbeginTimeEl.textContent = time2time(t.nextpr[0].time);
             var nextDur = Math.round(
-                (t.nextpr[0].time_to - t.nextpr[0].time) / 60,
+                (t.nextpr[0].time_to - t.nextpr[0].time) / 60
             );
             if (nendTimeEl)
                 nendTimeEl.textContent = "" + (nextDur > 0 ? nextDur : 0);
@@ -1081,11 +1085,8 @@ export function initBackgroundIntervals(): void {
  */
 export function updateMediaInfo(): void {
     var resEl = document.getElementById("video_res");
-    if (resEl && video) {
-        if (video.videoWidth)
-            resEl.innerHTML =
-                "<br/>" + video.videoWidth + "x" + video.videoHeight;
-    }
+    if (resEl && video && video.videoWidth)
+        resEl.innerHTML = "<br/>" + video.videoWidth + "x" + video.videoHeight;
 }
 
 /**
@@ -1138,9 +1139,9 @@ export function btnDiv(
     label: string,
     description: string,
     num?: string,
-    extra?: string,
+    extra?: string
 ): string {
-    if (!description || !keyLabel) return "";
+    if (!(description && keyLabel)) return "";
     description = _(description);
     var cls = "btn";
     switch (keyLabel) {
@@ -1372,7 +1373,7 @@ export function infoProgramm(title: string): void {
 export function infoMedia(): void {
     var la = (window as any).listArray || [];
     var si = (window as any).selIndex || 0;
-    if (!la[si] || !la[si].description) return;
+    if (!(la[si] && la[si].description)) return;
     $("#listPopUp").hide();
     saveCPD();
     var t = la[si].title || "";
@@ -1593,13 +1594,13 @@ export function popupList(i?: any): void {
                         r,
                         !(window as any).stbIsPlaying
                             ? false
-                            : (window as any).stbIsPlaying(),
+                            : (window as any).stbIsPlaying()
                     );
                 case popShift:
                 case popRecords:
                     if (playType < 0 || !c || !chanels[c] || chanels[c].rec)
                         break;
-                    else return;
+                    return;
                 case popTogglePip:
                     r = splitSlash(r, (window as any).pipIndex != null);
                     break;
@@ -1751,7 +1752,7 @@ export function popupList(i?: any): void {
                 " listArray.len=" +
                 listArray.length +
                 " item=" +
-                (listArray[selIndex] ? "exists" : "null"),
+                (listArray[selIndex] ? "exists" : "null")
         );
         switch (typeof key === "number" ? key : key.keyCode) {
             case keys.RETURN:
@@ -1763,16 +1764,12 @@ export function popupList(i?: any): void {
                     "DBG popupList ENTER: item=" +
                         (item ? "exists" : "null") +
                         " item.action=" +
-                        (item && item.action
-                            ? typeof item.action
-                            : "undefined"),
+                        (item && item.action ? typeof item.action : "undefined")
                 );
-                if (item && item.action) {
-                    if (typeof item.action === "function") {
-                        console.log("DBG popupList ENTER: calling action");
-                        item.action();
-                        console.log("DBG popupList ENTER: action returned");
-                    }
+                if (item && item.action && typeof item.action === "function") {
+                    console.log("DBG popupList ENTER: calling action");
+                    item.action();
+                    console.log("DBG popupList ENTER: action returned");
                 }
                 return true;
             }
@@ -1833,7 +1830,7 @@ export function popupList(i?: any): void {
                     (window as any).epgList(
                         (window as any).catIndex,
                         (window as any).primaryIndex,
-                        false,
+                        false
                     );
                 return true;
             case keys.GREEN:
@@ -1841,7 +1838,7 @@ export function popupList(i?: any): void {
                     (window as any).recordsList(
                         (window as any).catIndex,
                         (window as any).primaryIndex,
-                        false,
+                        false
                     );
                 return true;
             case keys.BLUE:
@@ -1890,7 +1887,7 @@ export function popEpg(): void {
         (window as any).epgList(
             (window as any).catIndex,
             (window as any).primaryIndex,
-            false,
+            false
         );
 }
 
@@ -1905,7 +1902,7 @@ export function popRecords(): void {
         (window as any).recordsList(
             (window as any).catIndex,
             (window as any).primaryIndex,
-            false,
+            false
         );
 }
 
@@ -2062,8 +2059,8 @@ export function togglePip(): void {
         if (typeof (window as any).stbPlayPip === "function")
             (window as any).stbPlayPip(
                 (window as any).getChannelUrl(
-                    (window as any).curList[(window as any).pipIndex],
-                ),
+                    (window as any).curList[(window as any).pipIndex]
+                )
             );
     } else {
         if (
@@ -2076,7 +2073,7 @@ export function togglePip(): void {
         (window as any).pipCatIndex = (window as any).catIndex;
         if (typeof (window as any).stbPlayPip === "function")
             (window as any).stbPlayPip(
-                (window as any).getChannelUrl((window as any).curList[e]),
+                (window as any).getChannelUrl((window as any).curList[e])
             );
     }
 }
@@ -2160,8 +2157,8 @@ export function hsvToRgb(h: number, s: number, v: number): number[] {
 export function colorDialog(): void {
     var s = 50,
         n = 85;
-    s = parseInt(((window as any).eSHLcolor || "50,85").split(",")[0]);
-    n = parseInt(((window as any).eSHLcolor || "50,85").split(",")[1]);
+    s = Number.parseInt(((window as any).eSHLcolor || "50,85").split(",")[0]);
+    n = Number.parseInt(((window as any).eSHLcolor || "50,85").split(",")[1]);
     saveCPD();
     if (listCaptionElement) listCaptionElement.innerHTML = _("Color spectrum");
     if (listPodvalElement)
@@ -2194,7 +2191,7 @@ export function colorDialog(): void {
                 btnDiv(keys.GREEN, "", "Green") +
                 "<br>" +
                 btnDiv(keys.BLUE, "", "Blue") +
-                "</div>",
+                "</div>"
         )
         .show();
     aboutKeyHandler = function (e: number): boolean {
@@ -2237,14 +2234,14 @@ export function colorDialog(): void {
         var rgb = hsvToRgb(s, n, 100);
         $("#step").css(
             "color",
-            "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")",
+            "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
         );
         return true;
     };
     var rgb0 = hsvToRgb(s, n, 100);
     $("#step").css(
         "color",
-        "rgb(" + rgb0[0] + "," + rgb0[1] + "," + rgb0[2] + ")",
+        "rgb(" + rgb0[0] + "," + rgb0[1] + "," + rgb0[2] + ")"
     );
 }
 
@@ -2259,8 +2256,12 @@ export function colorDialog(): void {
  * @analysis Unlike `colorDialog`, this one modifies background-color (not color) and uses V=50.
  */
 export function selColorDialog(): void {
-    var s = parseInt(((window as any).eSHLcolSel || "50,85").split(",")[0]);
-    var n = parseInt(((window as any).eSHLcolSel || "50,85").split(",")[1]);
+    var s = Number.parseInt(
+        ((window as any).eSHLcolSel || "50,85").split(",")[0]
+    );
+    var n = Number.parseInt(
+        ((window as any).eSHLcolSel || "50,85").split(",")[1]
+    );
     saveCPD();
     if (listCaptionElement) listCaptionElement.innerHTML = _("Select color");
     if (listPodvalElement)
@@ -2274,7 +2275,7 @@ export function selColorDialog(): void {
                 _("Color") +
                 ':<br/><br/>&nbsp;<span id="step" style="font-size: 150%;background-color:' +
                 (window as any).curColorB +
-                '">&nbsp;1234567890&nbsp;</span>&nbsp;</div>',
+                '">&nbsp;1234567890&nbsp;</span>&nbsp;</div>'
         )
         .show();
     aboutKeyHandler = function (e: number): boolean {
@@ -2317,14 +2318,14 @@ export function selColorDialog(): void {
         var rgb = hsvToRgb(s, n, 50);
         $("#step").css(
             "background-color",
-            "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")",
+            "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
         );
         return true;
     };
     var rgb0 = hsvToRgb(s, n, 50);
     $("#step").css(
         "background-color",
-        "rgb(" + rgb0[0] + "," + rgb0[1] + "," + rgb0[2] + ")",
+        "rgb(" + rgb0[0] + "," + rgb0[1] + "," + rgb0[2] + ")"
     );
 }
 
@@ -2337,8 +2338,12 @@ export function selColorDialog(): void {
  *             Registers `aboutKeyHandler`. Updates `#step` background-color preview.
  */
 export function backColorDialog(): void {
-    var s = parseInt(((window as any).eSHLcolorB || "255,0").split(",")[0]);
-    var n = parseInt(((window as any).eSHLcolorB || "255,0").split(",")[1]);
+    var s = Number.parseInt(
+        ((window as any).eSHLcolorB || "255,0").split(",")[0]
+    );
+    var n = Number.parseInt(
+        ((window as any).eSHLcolorB || "255,0").split(",")[1]
+    );
     saveCPD();
     if (listCaptionElement)
         listCaptionElement.innerHTML = _("Background color");
@@ -2353,7 +2358,7 @@ export function backColorDialog(): void {
                 _("Color") +
                 ':<br/><br/>&nbsp;<span id="step" style="font-size: 150%;background-color:' +
                 (window as any).curColorB +
-                '">&nbsp;1234567890&nbsp;</span>&nbsp;</div>',
+                '">&nbsp;1234567890&nbsp;</span>&nbsp;</div>'
         )
         .show();
     aboutKeyHandler = function (e: number): boolean {
@@ -2396,14 +2401,14 @@ export function backColorDialog(): void {
         var rgb = hsvToRgb(s, n, 100);
         $("#step").css(
             "background-color",
-            "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")",
+            "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
         );
         return true;
     };
     var rgb0 = hsvToRgb(s, n, 100);
     $("#step").css(
         "background-color",
-        "rgb(" + rgb0[0] + "," + rgb0[1] + "," + rgb0[2] + ")",
+        "rgb(" + rgb0[0] + "," + rgb0[1] + "," + rgb0[2] + ")"
     );
 }
 
@@ -2446,11 +2451,11 @@ export function joyMenu(): void {
                     strDOWN,
                     (window as any).playType
                         ? "<br>Live"
-                        : "<br>Previous<br>channel",
+                        : "<br>Previous<br>channel"
                 ) +
                 "</td><td></td></tr>" +
                 "</table>" +
-                btnDiv(keys.RETURN, strRETURN, "Close"),
+                btnDiv(keys.RETURN, strRETURN, "Close")
         )
         .show();
     dialogBoxKeyHandler = function (e: number): void {
@@ -2650,13 +2655,13 @@ export function showEdit(): void {
                 keys.RED,
                 "",
                 _keysSymbol[0] ? (_keyUp ? "&darr;a" : "&uarr;A") : "",
-                strTools,
+                strTools
             ) +
             btnDiv(
                 keys.GREEN,
                 "",
                 _keysSymbol[1] ? (_keyE ? _("lang") : "English") : "",
-                strFF,
+                strFF
             ) +
             btnDiv(keys.YELLOW, "", "Delete", strRW) +
             btnDiv(keys.BLUE, "", "Ok", strPlayPause);
@@ -2675,7 +2680,7 @@ export function _changeEdit(): void {
             '<div id="cursor" style="display:inline-block;vertical-align:top;background-color:' +
             (window as any).curColor +
             ';width:3px;height:1.2em;"></div>' +
-            (window as any).editvar.substr(editPos),
+            (window as any).editvar.substr(editPos)
     );
     clearInterval(cursorInterval);
     var blink = true;
@@ -2684,7 +2689,7 @@ export function _changeEdit(): void {
         blink = !blink;
         cursor.css(
             "background-color",
-            blink ? (window as any).curColor : "inherit",
+            blink ? (window as any).curColor : "inherit"
         );
     }, 500);
 }
@@ -3118,7 +3123,7 @@ export function selectValue(t: any): void {
     if (maxW > 0 && listAboutW > 0) {
         n = Math.max(
             Math.min(Math.round(listAboutW / maxW) - 1, r.length),
-            Math.round(r.length / 6) + 1,
+            Math.round(r.length / 6) + 1
         );
     }
 
@@ -3176,7 +3181,7 @@ export function selectValue(t: any): void {
                         ? -n
                         : r.length -
                               (r.length % n) +
-                              (_curVal + 1 > r.length % n ? -n : 0),
+                              (_curVal + 1 > r.length % n ? -n : 0)
                 );
                 return true;
             case keys.DOWN:
@@ -3188,7 +3193,7 @@ export function selectValue(t: any): void {
                         ? -1
                         : _curVal + n - 1 > r.length - 1
                           ? r.length - _curVal - 1
-                          : n - 1,
+                          : n - 1
                 );
                 return true;
             case keys.RIGHT:
@@ -3197,7 +3202,7 @@ export function selectValue(t: any): void {
                         ? _curVal + 1 == r.length
                             ? -_curVal % n
                             : 1
-                        : -n + 1,
+                        : -n + 1
                 );
                 return true;
             case keys.ENTER:

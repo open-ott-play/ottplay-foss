@@ -12,14 +12,14 @@ declare function showSelectBox(
     current: number,
     items: string[],
     callback: (val: number) => void,
-    exitKey?: number,
+    exitKey?: number
 ): void;
 declare function showShift(msg: string): void;
 declare function _(key: string, ...args: any[]): string;
 declare function saveCHarr(key: string, val: number): void;
 declare function execCHarr(key: string, callback: (val: number) => void): void;
 
-import { providerHasItemValue } from "../storage";
+import { providerHasItemValue } from "../storage/index";
 
 /** Reference to the primary <video> DOM element. */
 export var video: HTMLVideoElement = null;
@@ -122,11 +122,11 @@ var pipPresets = [
  */
 export function isNormalScreen(): boolean {
     try {
-        return (
-            !document.fullscreen &&
-            !(document as any).mozFullScreen &&
-            !(document as any).webkitFullScreen &&
-            !(document as any).msRequestFullscreen
+        return !(
+            document.fullscreen ||
+            (document as any).mozFullScreen ||
+            (document as any).webkitFullScreen ||
+            (document as any).msRequestFullscreen
         );
     } catch (e) {
         return true;
@@ -227,7 +227,7 @@ export function stbPlay(url: string, position?: number): void {
             playerMode +
             " (" +
             _pm +
-            ")",
+            ")"
     );
     if (
         playerMode === 1 &&
@@ -273,7 +273,7 @@ export function stbPlay(url: string, position?: number): void {
                 execCHarr("aAudios", function (i: number) {
                     if (hlsInstance) hlsInstance.audioTrack = i;
                 });
-            },
+            }
         );
         execCHarr("aSubs", function (i: number) {
             if (hlsInstance) hlsInstance.subtitleTrack = i - 1;
@@ -555,9 +555,9 @@ export function setPipPosition(): void {
  */
 export function stbSetBuffer(): void {
     try {
-        var b = parseInt(
+        var b = Number.parseInt(
             (bufSize as any) || (window as any).stbGetItem("sBufSize"),
-            10,
+            10
         );
         if (!isNaN(b) && b > 0 && video) {
             video.preload = "auto";
@@ -635,7 +635,7 @@ export function stbInit(): void {
     try {
         if (!document.getElementById("vdiv")) {
             $("body").prepend(
-                '<div id="vdiv" style="position: absolute; overflow: hidden; background-color: black;"><video id="video" style="position: absolute; object-position: center center;"></video></div><video id="videopip" muted style="position: absolute; display: none; background-color: black; object-position: center center;"></video>',
+                '<div id="vdiv" style="position: absolute; overflow: hidden; background-color: black;"><video id="video" style="position: absolute; object-position: center center;"></video></div><video id="videopip" muted style="position: absolute; display: none; background-color: black; object-position: center center;"></video>'
             );
         }
         video = document.getElementById("video") as HTMLVideoElement;
@@ -659,7 +659,7 @@ export function stbInit(): void {
             $("#video_res").text("");
             if (video.videoWidth)
                 $("#video_res").html(
-                    "<br/>" + video.videoWidth + "x" + video.videoHeight,
+                    "<br/>" + video.videoWidth + "x" + video.videoHeight
                 );
             if (typeof execCHarr === "function") {
                 execCHarr("aAspects", setAspect);
@@ -684,17 +684,17 @@ export function stbInit(): void {
                         ? " (" + video.error.message + ")"
                         : "") +
                     " player=" +
-                    _p,
+                    _p
             );
             $("#buffering").hide();
             $("#video_res").html(
-                "<br/>error " + video.error.code + " (" + _p + ")",
+                "<br/>error " + video.error.code + " (" + _p + ")"
             );
         });
         video.addEventListener("resize", function () {
             if (video.videoWidth)
                 $("#video_res").html(
-                    "<br/>" + video.videoWidth + "x" + video.videoHeight,
+                    "<br/>" + video.videoWidth + "x" + video.videoHeight
                 );
         });
         [
@@ -740,10 +740,10 @@ export function stbInit(): void {
                                     8) /
                                     1024 /
                                     1024) *
-                                    100,
+                                    100
                             ) /
                                 100 +
-                            " Mbps",
+                            " Mbps"
                     );
                 }
                 prevDecodedBytes = (video as any).webkitVideoDecodedByteCount;
@@ -778,10 +778,7 @@ function videoEvent(event: Event): void {
             var me = video ? video.error : null;
             if (me)
                 console.error(
-                    "[video] MediaError: code=" +
-                        me.code +
-                        " msg=" +
-                        me.message,
+                    "[video] MediaError: code=" + me.code + " msg=" + me.message
                 );
         }
     }
@@ -829,7 +826,7 @@ export function stbToggleAudioTrack(): void {
                 ((tracks[i] as any).label || (tracks[i] as any).name) +
                 "/" +
                 ((tracks[i] as any).language || (tracks[i] as any).lang) +
-                ")",
+                ")"
         );
     }
     showSelectBox(
@@ -841,7 +838,7 @@ export function stbToggleAudioTrack(): void {
                 saveCHarr("aAudios", v);
             }
         },
-        -1,
+        -1
     );
 }
 
@@ -891,7 +888,7 @@ export function stbToggleSubtitle(): void {
                 ((tracks[i] as any).label || (tracks[i] as any).name) +
                 "/" +
                 ((tracks[i] as any).language || (tracks[i] as any).lang) +
-                ")",
+                ")"
         );
     }
     showSelectBox(
@@ -903,7 +900,7 @@ export function stbToggleSubtitle(): void {
                 saveCHarr("aSubs", v);
             }
         },
-        -1,
+        -1
     );
 }
 
@@ -1021,7 +1018,7 @@ export function setTransform(): void {
         "transform",
         "scale(" +
             Math.min(window.innerWidth / wi, window.innerHeight / hi) +
-            ")",
+            ")"
     );
 }
 
