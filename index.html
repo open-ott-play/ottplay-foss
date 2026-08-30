@@ -134,17 +134,20 @@
         "use strict";
         var host = window.location.origin || "http://localhost:8080";
         var __dev = true; // set false for production
+        var _rnd = new Uint8Array(8);
+        crypto.getRandomValues(_rnd);
+        var _rndstr = Array.from(_rnd).map(function (b) { return (b & 0x0f).toString(36); }).join("");
         var __cv = __dev
             ? "dev_" +
               Date.now() +
               "_" +
-              Math.random().toString(36).substr(2, 9)
+              _rndstr
             : "0319.1812";
         var __av = __dev
             ? "dev_" +
               Date.now() +
               "_" +
-              Math.random().toString(36).substr(2, 9)
+              _rndstr
             : "local";
 
         function detectDevice() {
