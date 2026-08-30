@@ -2164,12 +2164,363 @@ export function bucketsKeyHandler(keyCode: number): boolean {
     }
 }
 /**
- * Set the channel search query string.
- * @param query - The search text to filter channels by.
- * Side effects: Sets `searchText`.
+ * Open the channel search prompt, then re-render the current category
+ * filtered by the entered query.
+ *
+ * Ported from stbPlayer.js searchChannel(). Hides the Actions popup, opens
+ * the inline editor with caption "String for search" seeded from
+ * stbGetItem("chSearch") (empty default), and on submit persists the new
+ * query, filters the current category by channel_name, installs a fresh
+ * listKeyHandler for the search view, updates listCaption/listPodval and
+ * re-renders via showPage().
+ *
+ * Side effects:
+ *  - Writes "chSearch" to stb storage on submit.
+ *  - Mutates global listArray, listKeyHandler, listCaption, listPodval.
+ *  - Hides #listPopUp.
+ *
+ * The installed listKeyHandler mirrors the original: YELLOW/TOOLS/N0
+ * retrigger this function; ENTER plays the selected channel via
+ * playChannel; GREEN/PLAY/PAUSE/N3 calls addChannel2bucket; RETURN/RW/PREV
+ * (and LEFT when sArrowFun===2) returns to the unfiltered channelsList
+ * preserving the prior position (listChannel).
  */
-export function searchChannel(query: string): void {
-    searchText = query;
+export function searchChannel(): void {
+    var w = window as any;
+    $("#listPopUp").hide();
+    var editCaption = w._("String for search");
+    var saved =
+        typeof w.stbGetItem === "function"
+            ? w.stbGetItem("chSearch") || ""
+            : "";
+    var editvar = saved;
+    var setEdit = function (): void {
+        if (!editvar.length) return;
+        saved = editvar;
+        if (typeof w.stbSetItem === "function") w.stbSetItem("chSearch", saved);
+        setTimeout(function () {
+            var q = saved.toLowerCase();
+            var catList = cats[catsArray[w.w.listCatIndex]] || [];
+            w.w.listArray = catList.filter(function (id: number): boolean {
+                var ch = chanels[id];
+                return (
+                    ch &&
+                    ch.channel_name &&
+                    ch.channel_name.toLowerCase().indexOf(q) !== -1
+                );
+            });
+            w.w.selIndex = 0;
+            w.w.listKeyHandler = function (e: number): boolean {
+                function play(): void {
+                    var idx = (cats[catsArray[w.w.listCatIndex]] || []).indexOf(
+                        w.w.listArray[w.w.selIndex]
+                    );
+                    if (sPreview == 2) {
+                        if (
+                            w.w.previewChan &&
+                            w.w.previewChan.ch_id == w.w.listArray[w.w.selIndex]
+                        ) {
+                            setCurrent(w.w.listCatIndex, idx);
+                        } else {
+                            if (typeof w.previewChId === "function")
+                                w.previewChId(w.w.listArray[w.w.selIndex]);
+                            return;
+                        }
+                    }
+                    w.w.previewChan = null;
+                    if (typeof w.closeList === "function") w.closeList();
+                    if (
+                        (w.w.catIndex == w.w.listCatIndex &&
+                            w.w.primaryIndex == idx &&
+                            !w.w.playType) ||
+                        sPreview == 1
+                    ) {
+                        setCurrent(w.w.listCatIndex, idx);
+                        var t = (w.curList || [])[w.w.primaryIndex];
+                        if (typeof w.updateChanelInfo === "function")
+                            w.updateChanelInfo(t);
+                        if (
+                            w.sInfoSwitch &&
+                            typeof w.showChanelInfo === "function"
+                        )
+                            w.showChanelInfo(1);
+                        w.w.playType = 0;
+                        return;
+                    }
+                    setTimeout(function () {
+                        if (typeof w.playChannel === "function")
+                            w.playChannel(w.w.listCatIndex, idx);
+                    }, 10);
+                }
+                var r: any;
+                switch (e) {
+                    case w.keys.EXIT:
+                        if (typeof w.closeList === "function") w.closeList();
+                        return true;
+                    case w.keys.LEFT:
+                        if (w.sArrowFun != 2) return false;
+                    // fall through
+                    case w.keys.RETURN:
+                        if (typeof w.channelsList === "function")
+                            w.channelsList(w.w.listCatIndex, w.w.listChannel);
+                        return true;
+                    case w.keys.RIGHT:
+                        if (w.sArrowFun != 2) return false;
+                        return true;
+                    case w.keys.N2:
+                    case w.keys.INFO:
+                        r = chanels[w.w.listArray[w.w.selIndex]];
+                        if (
+                            r !== undefined &&
+                            typeof w.infoProgramm === "function"
+                        )
+                            w.infoProgramm(r.name);
+                        return true;
+                    case w.keys.RW:
+                        if (w.sRewFun != 1) return false;
+                        if (typeof w.channelsList === "function")
+                            w.channelsList(w.w.listCatIndex, w.w.listChannel);
+                        return true;
+                    case w.keys.PREV:
+                        if (w.sPNFun != 1) return false;
+                        if (typeof w.channelsList === "function")
+                            w.channelsList(w.w.listCatIndex, w.w.listChannel);
+                        return true;
+                    case w.keys.FF:
+                        if (w.sRewFun != 1) return false;
+                        r = chanels[w.w.listArray[w.w.selIndex]];
+                        if (
+                            r !== undefined &&
+                            typeof w.infoProgramm === "function"
+                        )
+                            w.infoProgramm(r.name);
+                        return true;
+                    case w.keys.NEXT:
+                        if (w.sPNFun != 1) return false;
+                        r = chanels[w.w.listArray[w.w.selIndex]];
+                        if (
+                            r !== undefined &&
+                            typeof w.infoProgramm === "function"
+                        )
+                            w.infoProgramm(r.name);
+                        return true;
+                    case w.keys.N0:
+                    case w.keys.YELLOW:
+                    case w.keys.TOOLS:
+                        searchChannel();
+                        return true;
+                    case w.keys.ENTER:
+                        play();
+                        return true;
+                    case w.keys.GREEN:
+                    case w.keys.PLAY:
+                    case w.keys.PAUSE:
+                    case w.keys.N3:
+                        if (typeof w.addChannel2bucket === "function")
+                            w.addChannel2bucket();
+                        return true;
+                }
+                return false;
+            };
+            (function () {
+                var captionEl = document.getElementById("listCaption");
+                if (captionEl)
+                    captionEl.innerHTML =
+                        w._("Channel list. Category: ") +
+                        catsArray[w.w.listCatIndex] +
+                        ". " +
+                        w._("Search") +
+                        ':"' +
+                        saved +
+                        '" (' +
+                        w.w.listArray.length +
+                        ")";
+            })();
+            var podvalEl = document.getElementById("listPodval");
+            if (podvalEl) {
+                podvalEl.innerHTML =
+                    (typeof w.btnDiv === "function"
+                        ? w.btnDiv(
+                              w.keys.RETURN,
+                              w.strRETURN,
+                              "Close",
+                              w.sArrowFun == 2
+                                  ? w.strLEFT
+                                  : w.sRewFun == 1
+                                    ? w.strRW
+                                    : w.sPNFun == 1
+                                      ? w.strPREV
+                                      : ""
+                          )
+                        : "") +
+                    (typeof w.btnDiv === "function"
+                        ? w.btnDiv(
+                              w.keys.N2,
+                              w.strInfo,
+                              "Description",
+                              "2",
+                              w.sArrowFun == 2
+                                  ? w.strRIGHT
+                                  : w.sRewFun == 1
+                                    ? w.strFF
+                                    : w.sPNFun == 1
+                                      ? w.strNEXT
+                                      : ""
+                          )
+                        : "") +
+                    (typeof w.btnDiv === "function"
+                        ? w.btnDiv(w.keys.YELLOW, "", "Search", w.strTools, "0")
+                        : "") +
+                    (typeof w.btnDiv === "function"
+                        ? w.btnDiv(
+                              w.keys.GREEN,
+                              "",
+                              "Add channel to " +
+                                  (sFavorites ? "favorites" : "category"),
+                              w.strPlayPause,
+                              "3"
+                          )
+                        : "");
+            }
+            $("#listPopUp").hide();
+            if (typeof w.showPage === "function") w.showPage();
+        });
+    };
+    w.editCaption = editCaption;
+    w.editvar = editvar;
+    w.setEdit = setEdit;
+    if (typeof w.showEditKey === "function") w.showEditKey();
+}
+
+/**
+ * Show the on-screen Actions dialog used when sNoNumbersKeys is set.
+ *
+ * Ported from the inline `function a()` inside the original
+ * channelsKeyHandler: a 3×3 table of arrow-key action buttons (UP=move
+ * channel up, DOWN=move channel down, LEFT=delete-or-sort,
+ * RIGHT=parental-or-empty, ENTER=add-to-bucket) plus a YELLOW/TOOLS
+ * "Search" button. Each arrow ENTER also routes through the same
+ * dialogBoxKeyHandler installed for the duration of the dialog, so PC
+ * users without a number pad can reach Move/Delete/Sort/Add/Parental
+ * without needing N0/N3/N6/N7/N8/N9 — the same actions the popup N-keys
+ * trigger.
+ *
+ * Side effects: writes innerHTML to #dialogbox, shows it, installs
+ * window.dialogBoxKeyHandler, hides it on RETURN.
+ */
+export function showActionsDialog(): void {
+    var w = window as any;
+    var t =
+        !w.sFavorites && w.w.w.listCatIndex
+            ? true
+            : !!(w.sFavorites && !w.w.w.listCatIndex);
+    var e = '<td align="center" valign="top" width="30%">';
+    var dialog = document.getElementById("dialogbox");
+    if (!dialog) return;
+    dialog.innerHTML =
+        '<table style="font-size:inherit" width="100%">' +
+        "<tr><td></td>" +
+        e +
+        (typeof w.btnDiv === "function"
+            ? w.btnDiv(w.keys.UP, w.strUP, t ? "<br>Up<br>" : "<br><br>")
+            : "") +
+        "</td><td></td></tr>" +
+        "<tr>" +
+        e +
+        (typeof w.btnDiv === "function"
+            ? w.btnDiv(
+                  w.keys.LEFT,
+                  w.strLEFT,
+                  t
+                      ? "<br>Delete"
+                      : "<br>" +
+                            w._("Sort channels") +
+                            ":<br>" +
+                            w._(w.sSortAbc ? '"As Is"' : "By alphabet")
+              )
+            : "") +
+        "</td>" +
+        e +
+        (typeof w.btnDiv === "function"
+            ? w.btnDiv(
+                  w.keys.ENTER,
+                  w.strENTER,
+                  !w.sFavorites || w.w.w.listCatIndex
+                      ? "<br>Add<br>to " +
+                            (w.sFavorites ? "favorites" : "category")
+                      : "<br><br>"
+              )
+            : "") +
+        "</td>" +
+        e +
+        (typeof w.btnDiv === "function"
+            ? w.btnDiv(
+                  w.keys.RIGHT,
+                  w.strRIGHT,
+                  w.sPSchannels && w.parentPIN != "*"
+                      ? "<br>Parental<br>Control"
+                      : "<br>"
+              )
+            : "") +
+        "</td></tr>" +
+        "<tr><td></td>" +
+        e +
+        (typeof w.btnDiv === "function"
+            ? w.btnDiv(w.keys.DOWN, w.strDOWN, t ? "<br>Down<br>" : "<br><br>")
+            : "") +
+        "</td><td></td></tr>" +
+        "</table>" +
+        (typeof w.btnDiv === "function"
+            ? w.btnDiv(w.keys.RETURN, w.strRETURN, "Close")
+            : "") +
+        (typeof w.btnDiv === "function"
+            ? w.btnDiv(w.keys.YELLOW, "", "Search", w.strTools)
+            : "");
+    $(dialog).show();
+    w.dialogBoxKeyHandler = function (ev: number): boolean {
+        switch (ev) {
+            case w.keys.ENTER:
+                $(dialog).hide();
+                if (typeof w.addChannel2bucket === "function")
+                    w.addChannel2bucket();
+                return true;
+            case w.keys.UP:
+                if (typeof w.moveChannel === "function") w.moveChannel(-1);
+                return true;
+            case w.keys.DOWN:
+                if (typeof w.moveChannel === "function") w.moveChannel(1);
+                return true;
+            case w.keys.LEFT:
+                if (t) {
+                    if (typeof w.deleteChannel === "function")
+                        w.deleteChannel();
+                } else {
+                    $(dialog).hide();
+                    if (typeof w.sortChannelsAction === "function")
+                        w.sortChannelsAction();
+                }
+                return true;
+            case w.keys.RIGHT:
+                if (
+                    w.sPSchannels &&
+                    w.parentPIN != "*" &&
+                    typeof w.parentChannel === "function"
+                ) {
+                    w.parentChannel();
+                }
+                return true;
+            case w.keys.RETURN:
+                $(dialog).hide();
+                return true;
+            case w.keys.YELLOW:
+            case w.keys.TOOLS:
+                $(dialog).hide();
+                w.w.w.listChannel = w.w.w.selIndex;
+                searchChannel();
+                return true;
+        }
+        return false;
+    };
 }
 
 /**
@@ -2447,9 +2798,7 @@ export function channelsKeyHandler(keyCode: number): boolean {
         case keys.YELLOW:
         case keys.TOOLS:
             if ((window as any).sNoNumbersKeys) {
-                if (typeof (window as any).showActionsDialog === "function") {
-                    (window as any).showActionsDialog();
-                }
+                showActionsDialog();
             } else {
                 $("#listPopUp").toggle();
             }
