@@ -356,6 +356,7 @@ function setPopupChannels(): void {
             "<br/>" + btnDiv(keys.N4, "4", "Channel parental control")
         );
     }
+    $("#listPopUp").append("<br/>" + btnDiv(keys.N6, "6", "Search"));
 }
 declare var sPreview: number;
 declare var previewChan: any;
