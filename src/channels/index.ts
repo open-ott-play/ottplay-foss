@@ -2195,8 +2195,13 @@ export function searchChannel(): void {
             : "";
     var editvar = saved;
     var setEdit = function (): void {
-        if (!editvar.length) return;
-        saved = editvar;
+        // Read window.editvar and #editvar input (user may have typed in the HTML input)
+        var inputEl = document.getElementById("editvar");
+        var inputVal = (inputEl && (inputEl as HTMLInputElement).value) || "";
+        var submitted = (window as any).editvar || "";
+        if (!inputVal && !submitted) return;
+        saved = inputVal || submitted;
+        (window as any).editvar = saved;
         if (typeof w.stbSetItem === "function") w.stbSetItem("chSearch", saved);
         setTimeout(function () {
             var q = saved.toLowerCase();
@@ -2326,9 +2331,6 @@ export function searchChannel(): void {
                 var captionEl = document.getElementById("listCaption");
                 if (captionEl)
                     captionEl.innerHTML =
-                        w._("Channel list. Category: ") +
-                        catsArray[w.w.listCatIndex] +
-                        ". " +
                         w._("Search") +
                         ':"' +
                         saved +
@@ -2383,6 +2385,7 @@ export function searchChannel(): void {
                         : "");
             }
             $("#listPopUp").hide();
+            $("#listEdit").hide();
             if (typeof w.showPage === "function") w.showPage();
         });
     };
