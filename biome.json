@@ -204,18 +204,12 @@
     "ignoreUnknown": true,
     "includes": [
       "src/**",
+      "prov/**/prov.js",
+      "src/stb/**/stb.js",
       "build-concat.cjs",
       "biome.json",
       "package.json",
-      "tsconfig.json",
-      "!index.html",
-      "!dist/**",
-      "!fonts/**",
-      "!node_modules/**",
-      "!stb/**",
-      "!js/**",
-      "!stbPlayer/**",
-      "!prov/**"
+      "tsconfig.json"
     ]
   },
   "formatter": {
@@ -224,7 +218,7 @@
     "indentWidth": 4
   },
   "linter": {
-    "enabled": false,
+    "enabled": true,
     "rules": {
       "correctness": {
         "noInnerDeclarations": "off",

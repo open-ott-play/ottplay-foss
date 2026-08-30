@@ -151,5 +151,5 @@ export function buttonsInfo(): void {
 export const infoArr: any[] = [
     { action: buttonsInfo, name: "Description of remote control buttons" },
     { action: nofun },
-    { action: pluginInfo, desc: "Player and device info", name: "About" },
+    { action: pluginInfo, name: "About", desc: "Player and device info" },
 ];

@@ -74,6 +74,8 @@ export interface MediaHistoryEntry {
 
 /** Map of channel ID → Channel object, populated from the provider. */
 export let channels: Record<number, Channel> = {};
+/** Alias for `channels` (legacy compatibility with older code). */
+export let chanels = channels;
 /** Map of channel ID → array of EPGEntry (program guide data). */
 export let epg: Record<number, EPGEntry[]> = {};
 /** Map of category name → array of channel IDs in that category. */
@@ -232,9 +234,7 @@ export let arrayGetCurProg: Array<{
     callback: (chId: number) => void;
 }> = [];
 export let epglisted = 0,
-    epgreturn = false,
     listChannel = 0,
-    listEpgArray: EPGEntry[] = [],
     epg_ch_id: any = null;
 
 /**
@@ -261,7 +261,8 @@ export function doGetCurProg(): void {
         doGetCurProg();
     }
 }
-export let curEpgData: EPGEntry[] | null = null;
+export let curEpgData: EPGEntry[] | null = null,
+    listEpgArray: EPGEntry[] = [];
 export let epgArray: EPGEntry[] = [],
     curProg = -1;
 export let mediaListArr: any[] = [],
@@ -277,11 +278,6 @@ export let searchText = "",
 export let archivePos = 0,
     archiveStart = 0,
     archiveEnd = 0;
-export let fileArchive = false;
-
-/* ---- Timeshift / catchup state (restored from stbPlayer.js) ---- */
-var _shiftTimer: any = null;
-var _shiftSec = 0;
 
 /**
  * Switch the current category and channel selection.
@@ -329,10 +325,10 @@ export function setCurrent(
                     );
                 });
                 prevArr.unshift({
-                    c: catIndex,
                     ci: oldCatId,
-                    e: _prog100?.name,
+                    c: catIndex,
                     i: primaryIndex,
+                    e: _prog100?.name,
                 });
                 if (wasArchive && prevArr[0])
                     prevArr[0].t = playType + playTime;
@@ -513,13 +509,7 @@ export function getEPGchanelCached(
         callback(channelId, cached);
         return;
     }
-    // Fall through to provider fetch
-    var w = window as any;
-    if (typeof w.getEPGchanel === "function") {
-        w.getEPGchanel(channelId, callback);
-    } else {
-        callback(channelId, null);
-    }
+    callback(channelId, null);
 }
 
 /**
@@ -556,8 +546,8 @@ export function getCurProgData(
     channelId: number,
     callback: (chId: number) => void
 ): boolean {
-    var ch = (window as any).channels
-        ? (window as any).channels[channelId]
+    var ch = (window as any).chanels
+        ? (window as any).chanels[channelId]
         : undefined;
     var now = Date.now() / 1000;
     // If channel object already has current EPG data, return true immediately (sync path)
@@ -578,7 +568,7 @@ export function getCurProgData(
         }
     }
     // Queue EPG fetch from server (matches old stbPlayer doGetCurProg behavior)
-    arrayGetCurProg.push({ callback: callback, ch_id: channelId });
+    arrayGetCurProg.push({ ch_id: channelId, callback: callback });
     if (arrayGetCurProg.length < 2) doGetCurProg();
     return false;
 }
@@ -602,8 +592,8 @@ export function setCurProg(
         epg[channelId] = epgData;
         epgCashObj[channelId] = epgData;
         // Populate channel object with current program (matching old stbPlayer behavior)
-        var ch = (window as any).channels
-            ? (window as any).channels[channelId]
+        var ch = (window as any).chanels
+            ? (window as any).chanels[channelId]
             : undefined;
         if (ch) {
             var sorted = epgData.slice().sort(function (
@@ -677,14 +667,14 @@ export function onChanelsLoaded(): void {
                     var arr = (window as any).arrayProvaiders;
                     var recentCount = 3;
                     if (arr && arr.indexOf(id) > recentCount - 1) {
-                        var recentProviders: any[] = [];
+                        var recentProviders = [];
                         try {
                             recentProviders = JSON.parse(
                                 (window as any).stbGetItem("ottplayprovs") ||
                                     "[]"
                             );
                         } catch (_) {}
-                        var rIdx: number = recentProviders.indexOf(id);
+                        var rIdx = recentProviders.indexOf(id);
                         if (rIdx !== -1) recentProviders.splice(rIdx, 1);
                         recentProviders.push(id);
                         (window as any).stbSetItem(
@@ -709,7 +699,7 @@ export function onChanelsLoaded(): void {
             }
             if (!catsArray.length && cList.length) {
                 cList.forEach(function (chId: number) {
-                    var ch = (window as any).channels[chId];
+                    var ch = (window as any).chanels[chId];
                     if (ch && ch.category) {
                         if (!cats[ch.category.name]) {
                             catsArray.push(ch.category.name);
@@ -728,7 +718,7 @@ export function onChanelsLoaded(): void {
                 typeof (window as any).parental !== "undefined"
             ) {
                 cList.forEach(function (chId: number) {
-                    var ch = (window as any).channels[chId];
+                    var ch = (window as any).chanels[chId];
                     if (
                         ch &&
                         ch.category &&
@@ -893,7 +883,7 @@ export function itemEPG(item: EPGEntry, index: number): string {
  * - Mutates `epglisted` flag (prevents concurrent EPG fetches).
  * - Sets `epg_ch_id`, `curEpgData`.
  * - Shows/hides #listPopUp spinner.
- * - Calls `window.getEPGchanelCached` (provider API) and `window.setCurProg` on success.
+ * - Calls `window.getEPGchanel` (provider API) and `window.setCurProg` on success.
  */
 export function epgShow_miniproc(
     mode: number,
@@ -904,12 +894,7 @@ export function epgShow_miniproc(
 ): void {
     var w = window as any;
     if (epglisted) return;
-    // Legacy guard: skip fetch if same channel (use cached data)
-    if (epg_ch_id && epg_ch_id === channelId) {
-        callback(channelId);
-        return;
-    }
-    epglisted = mode;
+    epglisted = 1;
     epg_ch_id = channelId;
     w.listCatIndex = catIdx;
     w.listChannel = chIdx;
@@ -929,26 +914,23 @@ export function epgShow_miniproc(
             .show();
     }
 
-    if (typeof w.getEPGchanelCached === "function") {
-        w.getEPGchanelCached(
-            providerChId,
-            function (id: any, data: EPGEntry[]) {
-                epglisted = 0;
-                if (id != providerChId) return;
-                if (!data || data.length === 0) {
-                    curEpgData = null;
-                    $("#listPopUp").hide();
-                    w.listChannel |= 65536;
-                    if (typeof w.infoBox === "function")
-                        w.infoBox(w._("Channel has no EPG"));
-                    return;
-                }
-                curEpgData = data;
-                if (callback) callback(channelId);
-                if (typeof (w as any).setCurProg === "function")
-                    (w as any).setCurProg(channelId, data, null);
+    if (typeof w.getEPGchanel === "function") {
+        w.getEPGchanel(providerChId, function (id: any, data: EPGEntry[]) {
+            epglisted = 0;
+            if (id != providerChId) return;
+            if (!data || data.length === 0) {
+                curEpgData = null;
+                $("#listPopUp").hide();
+                w.listChannel |= 65536;
+                if (typeof w.infoBox === "function")
+                    w.infoBox(w._("Channel has no EPG"));
+                return;
             }
-        );
+            curEpgData = data;
+            if (callback) callback(channelId);
+            if (typeof (w as any).setCurProg === "function")
+                (w as any).setCurProg(channelId, data, null);
+        });
     } else {
         epglisted = 0;
     }
@@ -971,8 +953,6 @@ export function epgShow_miniproc(
  */
 export function epgList(catIdx: number, chIdx: number, force: boolean): void {
     var w = window as any;
-    epgreturn = force || false;
-    w.epgreturn = epgreturn;
 
     // Check if channel has EPG
     if (
@@ -1102,101 +1082,23 @@ export function epgKeyHandler(keyCode: number): boolean {
     if (!item) return false;
 
     switch (keyCode) {
-        case keys.LEFT:
-            if (w.sArrowFun !== 2) return false;
-        // fallthrough
-        case keys.N3:
-        case keys.CH_LIST:
-        case keys.YELLOW:
-            if (typeof w.channelsList === "function")
-                w.channelsList(w.listCatIndex, w.listChannel);
-            return true;
-        case keys.RETURN:
-            if (typeof w.closeList === "function") w.closeList();
-            return true;
         case keys.ENTER:
             selectEpg();
             return true;
-        case keys.N1:
-        case keys.PLAY:
-        case keys.PAUSE:
-        case keys.BLUE:
-            if (typeof w.bucketsList === "function")
-                w.bucketsList(w.listCatIndex);
-            return true;
-        case keys.RIGHT:
-            if (w.sArrowFun !== 2) return false;
-        // fallthrough
-        case keys.N2:
-            if (typeof w.infoProgramm === "function") w.infoProgramm(item.name);
-            return true;
-        case keys.RW:
-            if (w.sRewFun !== 1) return false;
-            if (typeof w.channelsList === "function")
-                w.channelsList(w.listCatIndex, w.listChannel);
-            return true;
-        case keys.PREV:
-            if (w.sPNFun !== 1) return false;
-            if (typeof w.channelsList === "function")
-                w.channelsList(w.listCatIndex, w.listChannel);
-            return true;
-        case keys.FF:
-            if (w.sRewFun !== 1) return false;
-            if (typeof w.infoProgramm === "function") w.infoProgramm(item.name);
-            return true;
-        case keys.NEXT:
-            if (w.sPNFun !== 1) return false;
-            if (typeof w.infoProgramm === "function") w.infoProgramm(item.name);
-            return true;
-        case keys.N0:
-        case keys.EPG:
-        case keys.STOP:
         case keys.RED:
-            switch (epglisted) {
-                case 0:
-                    if (typeof w.epgList === "function")
-                        w.epgList(
-                            w.listCatIndex,
-                            w.listChannel,
-                            w.epgreturn || false
-                        );
-                    return true;
-                case 1:
-                    if (typeof w.epgListAlpha === "function")
-                        w.epgListAlpha(
-                            w.listCatIndex,
-                            w.listChannel,
-                            w.epgreturn || false
-                        );
-                    return true;
-                case 2:
-                    if (
-                        channels[epg_ch_id] &&
-                        channels[epg_ch_id].rec &&
-                        typeof w.recordsList === "function"
-                    )
-                        w.recordsList(
-                            w.listCatIndex,
-                            w.listChannel,
-                            w.epgreturn || false
-                        );
-                    else if (typeof w.epgList === "function")
-                        w.epgList(
-                            w.listCatIndex,
-                            w.listChannel,
-                            w.epgreturn || false
-                        );
-                    return true;
-            }
+        case keys.INFO:
+            if (typeof w.infoProgramm === "function") w.infoProgramm(item.name);
             return true;
-        case keys.N8:
-        case keys.TOOLS:
         case keys.GREEN:
             if (typeof setEpgTimer === "function")
                 setEpgTimer(epg_ch_id, item.time);
             return true;
-        case keys.INFO:
-            if (typeof w.infoProgramm === "function") w.infoProgramm(item.name);
+        case keys.YELLOW:
+            if (w.TMDb && typeof w.TMDb.search === "function")
+                w.TMDb.search(item.name);
+            return true;
+        case keys.RETURN:
+            if (typeof w.closeList === "function") w.closeList();
             return true;
     }
     return false;
@@ -1377,12 +1279,12 @@ export function setEpgTimer(channelId: any, time: number): void {
         w.confirmBox(w._(msg), function () {
             if (idx === -1) {
                 var timer = {
-                    c: w.listCatIndex,
                     ci: channelId,
+                    c: w.listCatIndex,
                     i: w.listChannel,
-                    n: item.name,
                     t: item.time,
                     te: item.time_to,
+                    n: item.name,
                 };
                 startEpgTimer(timer);
                 epgTimers.push(timer);
@@ -1393,12 +1295,12 @@ export function setEpgTimer(channelId: any, time: number): void {
             if (typeof w.stbSetItem === "function") {
                 var cleanTimers = epgTimers.map(function (t) {
                     return {
-                        c: t.c,
                         ci: t.ci,
+                        c: t.c,
                         i: t.i,
-                        n: t.n,
                         t: t.t,
                         te: t.te,
+                        n: t.n,
                     };
                 });
                 w.stbSetItem("epgTimers", JSON.stringify(cleanTimers));
@@ -1692,47 +1594,13 @@ export function getMediaDescr(item: any): string {
 }
 
 /**
- * Start archive playback at a given Unix timestamp.
+ * Set the archive playback start position (Unix timestamp).
  *
- * Mirrors the monolith's playArchive() in stbPlayer.js: updates OSD,
- * computes the current program (or a synthetic hour block when EPG is
- * missing), then either opens a fresh stbPlay() with the provider's
- * archive URL or seeks within the existing stream when the program
- * has not changed.
- *
- * @param e - Archive start time in seconds (Unix).
- * Side effects: Sets playTime, playType, forcePlay, fileArchive, archivePos;
- *               calls stbStop/stbPlay/stbSetPosTime via window globals.
+ * @param timestamp - Archive start time.
+ * Side effects: Sets `archivePos`.
  */
-export function playArchive(e: number): void {
-    var w = window as any;
-    var t = curProg;
-    if (typeof updateArchiveInfo === "function") updateArchiveInfo(e);
-    if (w.sInfoRew && typeof w.showChanelInfo === "function")
-        w.showChanelInfo(1);
-    var r = curList[primaryIndex];
-    var prog = epgArray[curProg] || {
-        descr: "",
-        name: "",
-        time: Math.floor(e / 3600) * 3600,
-        time_to: (Math.floor(e / 3600) + 1) * 3600,
-    };
-    playTime = 0;
-    playType = Math.floor(e);
-    forcePlay = true;
-    (w as any).playType = playType;
-    (w as any).playTime = playTime;
-    (w as any).forcePlay = forcePlay;
-    archivePos = e;
-    var getUrl = w.getArchiveUrl;
-    if (!fileArchive || t !== curProg) {
-        if (w.sStopPlay && typeof w.stbStop === "function") w.stbStop();
-        var url = getUrl(r, e, prog.time_to, prog);
-        if (typeof w.stbPlay === "function")
-            w.stbPlay(url, fileArchive ? e - prog.time : 0);
-    } else if (typeof w.stbSetPosTime === "function") {
-        w.stbSetPosTime(e - prog.time);
-    }
+export function playArchive(timestamp: number): void {
+    archivePos = timestamp;
 }
 
 /**
@@ -1777,23 +1645,20 @@ export function liveStop(): void {
 
 /**
  * Apply a seek inside the current archive stream, clamped to [0, len-15].
- * No-op when the platform cannot set the playback position.
- * Handles live TV (playType === 0) as a clock-skip by calling timeShift.
+ * No-op outside archive playback (live, media/VOD sentinel) or when the
+ * platform cannot set the playback position.
  *
  * @param offset - Target offset in seconds from the start of the stream.
  */
 function seekArchive(offset: number): void {
     var w = window as any;
-    if (typeof w.stbSetPosTime !== "function" || !videoElement) return;
-    // Guard for media sentinel (playType < 0) only — live (playType === 0) is allowed
-    if (playType < 0 && playType !== -99999999999) return;
-    if (playType === 0) {
-        // Clock skip on live: offset is relative seconds from now
-        var delta = offset;
-        if (typeof (window as any).timeShift === "function")
-            (window as any).timeShift(-delta);
+    if (
+        typeof w.stbSetPosTime !== "function" ||
+        !playType ||
+        playType === -99999999999 ||
+        !videoElement
+    )
         return;
-    }
     var len: number =
         typeof (w.stbGetLen as any) === "function" ? w.stbGetLen() : 0;
     if (offset < 0) offset = 0;
@@ -1803,196 +1668,46 @@ function seekArchive(offset: number): void {
 
 /**
  * Shift the archive playback position by a delta (positive = forward, negative = backward).
- * Accumulates the delta and debounces the actual seek to ~500 ms, matching the
- * monolith's behaviour so a stream of key presses becomes one seek.
+ * The delta magnitude is `direction * settings.seek13Duration` seconds from the
+ * current playback position, and the player actually seeks there.
  *
- * @param e - Delta in seconds (negative = rewind, positive = forward, -6e6 = to beginning).
- * Side effects: Mutates `_shiftSec`, `archivePos`; shows a shift OSD; debounces
- *               a call to `_shiftArchive` via a setTimeout.
+ * @param direction - +1 forward, -1 backward.
+ * Side effects: Mutates `archivePos`; seeks the video element.
  */
-export function shiftArchive(e: number): void {
-    var w = window as any;
-    if (e === -6e6) {
-        _shiftSec = e;
-        _shiftArchive();
-        return;
-    }
-    _shiftSec += e;
-    clearTimeout(_shiftTimer);
-    if (w.sInfoRew && typeof w.showChanelInfo === "function")
-        w.showChanelInfo(1);
-    if (typeof w.showShift === "function") w.showShift(step2text(_shiftSec));
-    _shiftTimer = setTimeout(_shiftArchive, 500);
+export function shiftArchive(direction: number): void {
+    archivePos += direction * settings.seek13Duration;
+    if (!videoElement) return;
+    seekArchive(videoElement.currentTime + direction * settings.seek13Duration);
 }
 
 /**
- * Apply the accumulated shift delta. Dispatches by current playType:
- *  - live (playType === 0): negative → timeShift(-delta), positive → restart live
- *  - media (playType < 0): relative stbSetPosTime, clamped
- *  - archive (playType > 0): shift playType by delta+playTime, re-playArchive
- *    if the result is still in the past, else drop to live.
+ * Set the archive position to an explicit value.
+ *
+ * Accepted forms: an absolute Unix timestamp (> 1e9), a relative nudge in
+ * seconds from the current position (e.g. 60 / -60), or <= 0 to rewind to
+ * the beginning of the stream.
+ *
+ * @param position - Target archive timestamp or offset.
+ * Side effects: Sets `archivePos`; seeks the video element.
  */
-function _shiftArchive(): void {
-    var w = window as any;
-    var e = _shiftSec;
-    _shiftSec = 0;
-    clearTimeout(_shiftTimer);
-    if (!e) return;
-    if (!playType) {
-        if (e < 0) {
-            if (typeof w.timeShift === "function") w.timeShift(-e);
-        } else {
-            if (typeof w.showShift === "function")
-                w.showShift((w._ && w._("Restart stream")) || "Restart stream");
-            if (typeof w.playChannel === "function")
-                w.playChannel(catIndex, primaryIndex);
-        }
-        return;
-    }
-    function announce(): void {
-        if (e === -6e6) {
-            if (typeof w.showShift === "function")
-                w.showShift((w._ && w._("To begining")) || "To beginning");
-        } else {
-            if (typeof w.showShift === "function") w.showShift(step2text(e));
-        }
-    }
-    if (playType < 0) {
-        var newPos = Math.max(
-            (typeof w.stbGetPosTime === "function" ? w.stbGetPosTime() : 0) + e,
-            0
-        );
-        var len = typeof w.stbGetLen === "function" ? w.stbGetLen() : 0;
-        if (len && newPos > len) return;
-        if (typeof w.stbSetPosTime === "function") w.stbSetPosTime(newPos);
-        announce();
-        if (w.sInfoRew && typeof w.showChanelInfo === "function")
-            w.showChanelInfo(1);
-        return;
-    }
-    playType = playType + e + playTime;
-    (w as any).playType = playType;
-    if (playType < Date.now() / 1e3) {
-        announce();
-        playArchive(playType);
-    } else {
-        if (typeof w.showShift === "function")
-            w.showShift((w._ && w._("Live")) || "Live");
-        if (typeof w.playChannel === "function")
-            w.playChannel(catIndex, primaryIndex);
-    }
+export function shiftArchiveSelect(position: number): void {
+    archivePos = position;
+    if (!videoElement) return;
+    var target: number;
+    if (position > 1e9) target = position - playType;
+    else if (position <= 0) target = 0;
+    else target = videoElement.currentTime + position;
+    seekArchive(target);
 }
 
 /**
- * Format a shift delta (seconds) as a localized ">> mm:ss / << mm:ss" string.
+ * Directly set the archive seek position (alias for shiftArchiveSelect).
  *
- * @param e - Delta in seconds.
- * Side effects: Reads global window._ for localization.
+ * @param position - Target archive timestamp.
+ * Side effects: Sets `archivePos`; seeks the video element.
  */
-function step2text(e: number): string {
-    if (!e) return "&nbsp;";
-    var abs = Math.abs(e);
-    var m = Math.floor(abs / 60);
-    var s = abs % 60;
-    var w = window as any;
-    var _ =
-        (w._ && w._.bind(w)) ||
-        function (s: string) {
-            return s;
-        };
-    var prefix = e > 0 ? ">> " : "<< ";
-    return prefix + (m ? m + _(" m ") : "") + (s ? s + _(" s") : "");
-}
-
-/**
- * Interactive OSD for manual archive position selection.
- * Opens a dialog that accumulates a delta via number keys, then calls
- * shiftArchive(delta) after a 3-second idle timeout.
- *
- * @param initialDelta - Initial delta offset (seconds).
- * Side effects: Shows/hides a dialog box; calls shiftArchive().
- */
-export function shiftArchiveSelect(initialDelta: number): void {
-    var w = window as any;
-    var chId = curList[primaryIndex];
-    var ch = channels[chId];
-    if (!playType && !(ch && ch.rec)) return;
-    var i = 0;
-    var t: any = null;
-    function r(delta: number): void {
-        clearTimeout(t);
-        i += delta;
-        var stepEl = document.getElementById("step");
-        if (stepEl) stepEl.innerHTML = step2text(i);
-        t = setTimeout(function () {
-            var dialogbox = document.getElementById("dialogbox");
-            if (dialogbox) dialogbox.style.display = "none";
-            shiftArchive(i);
-        }, 3000);
-    }
-    // Guard: keep existing dialog if open
-    var dialogbox = document.getElementById("dialogbox");
-    if (dialogbox) {
-        dialogbox.style.display = "";
-    }
-    r(initialDelta);
-}
-
-/**
- * Clock-skip / timeshift on live TV — jumps N seconds back into the stream.
- * Requires the current channel to have `rec` (catchup-days) set.
- * Fetches EPG, sets epgArray, then calls playArchive(now-n) for clock skip
- * without requiring an EPG entry, or playArchive(progStart) when n=0.
- *
- * @param n - Seconds to go back (positive), or 0 to jump to current program start.
- * Side effects: Sets epgArray, curProg; calls playArchive(); shows OSD.
- */
-export function timeShift(n: number): void {
-    var w = window as any;
-    var chId = curList[primaryIndex];
-    var ch = channels[chId];
-    if (!ch || !ch.rec) return;
-    if (typeof w.getEPGchanelCached !== "function") {
-        // No EPG helper — seek by delta using archivePos as the base time
-        if (n > 0) playArchive(Date.now() / 1000 - n);
-        return;
-    }
-    w.getEPGchanelCached(chId, function (_t: any, epgData: EPGEntry[] | null) {
-        var r: EPGEntry[] = [];
-        if (
-            epgData !== null &&
-            epgData !== undefined &&
-            (epgData as any).length
-        ) {
-            r = (epgData as EPGEntry[])
-                .filter(function (e) {
-                    return e.time > Date.now() / 1000 - ch!.rec! * 60 * 60;
-                })
-                .sort(function (a, b) {
-                    return a.time - b.time;
-                });
-        }
-        epgArray = r;
-        (window as any).epgArray = r;
-        setCurProg(chId, epgData, undefined);
-        (window as any).curProg = curProg;
-        setCurrent(catIndex, primaryIndex, true);
-        if (n) {
-            var delta = Math.round(Date.now() / 1000) - n;
-            if (typeof w.showShift === "function") w.showShift(step2text(-n));
-            playArchive(delta);
-        } else {
-            if (typeof w.showShift === "function")
-                w.showShift(
-                    (w._ && w._("Archive - begin")) || "Archive - begin"
-                );
-            var now = Date.now() / 1000;
-            var s = r.findIndex(function (e) {
-                return e.time_to >= now && e.time <= now;
-            });
-            if (s >= 0 && r[s]) playArchive(r[s].time);
-        }
-    });
+export function timeShift(position: number): void {
+    shiftArchiveSelect(position);
 }
 
 /**
@@ -2260,369 +1975,12 @@ export function bucketsKeyHandler(keyCode: number): boolean {
     }
 }
 /**
- * Open the channel search prompt, then re-render the current category
- * filtered by the entered query.
- *
- * Ported from stbPlayer.js searchChannel(). Hides the Actions popup, opens
- * the inline editor with caption "String for search" seeded from
- * stbGetItem("chSearch") (empty default), and on submit persists the new
- * query, filters the current category by channel_name, installs a fresh
- * listKeyHandler for the search view, updates listCaption/listPodval and
- * re-renders via showPage().
- *
- * Side effects:
- *  - Writes "chSearch" to stb storage on submit.
- *  - Mutates global listArray, listKeyHandler, listCaption, listPodval.
- *  - Hides #listPopUp.
- *
- * The installed listKeyHandler mirrors the original: YELLOW/TOOLS/N0
- * retrigger this function; ENTER plays the selected channel via
- * playChannel; GREEN/PLAY/PAUSE/N3 calls addChannel2bucket; RETURN/RW/PREV
- * (and LEFT when sArrowFun===2) returns to the unfiltered channelsList
- * preserving the prior position (listChannel).
+ * Set the channel search query string.
+ * @param query - The search text to filter channels by.
+ * Side effects: Sets `searchText`.
  */
-export function searchChannel(): void {
-    var w = window as any;
-    $("#listPopUp").hide();
-    var editCaption = w._("String for search");
-    var saved =
-        typeof w.stbGetItem === "function"
-            ? w.stbGetItem("chSearch") || ""
-            : "";
-    var editvar = saved;
-    var setEdit = function (): void {
-        // Read window.editvar and #editvar input (user may have typed in the HTML input)
-        var inputEl = document.getElementById("editvar");
-        var inputVal = (inputEl && (inputEl as HTMLInputElement).value) || "";
-        var submitted = (window as any).editvar || "";
-        if (!inputVal && !submitted) return;
-        saved = inputVal || submitted;
-        (window as any).editvar = saved;
-        if (typeof w.stbSetItem === "function") w.stbSetItem("chSearch", saved);
-        setTimeout(function () {
-            if (w.listCatIndex === undefined) return;
-            var q = saved.toLowerCase();
-            var catList = cats[catsArray[w.listCatIndex]] || [];
-            w.listArray = catList.filter(function (id: number): boolean {
-                var ch = channels[id];
-                return !!(
-                    ch &&
-                    ch.channel_name &&
-                    ch.channel_name.toLowerCase().indexOf(q) !== -1
-                );
-            });
-            w.listDataArray = w.listArray;
-            w.selIndex = 0;
-            w.listKeyHandler = function (e: number): boolean {
-                function play(): void {
-                    var idx = (cats[catsArray[w.listCatIndex]] || []).indexOf(
-                        w.listArray[w.selIndex]
-                    );
-                    if (sPreview == 2) {
-                        if (
-                            w.previewChan &&
-                            w.previewChan.ch_id == w.listArray[w.selIndex]
-                        ) {
-                            setCurrent(w.listCatIndex, idx);
-                        } else {
-                            if (typeof w.previewChId === "function")
-                                w.previewChId(w.listArray[w.selIndex]);
-                            return;
-                        }
-                    }
-                    w.previewChan = null;
-                    if (typeof w.closeList === "function") w.closeList();
-                    if (
-                        (w.catIndex == w.listCatIndex &&
-                            w.primaryIndex == idx &&
-                            !w.playType) ||
-                        sPreview == 1
-                    ) {
-                        setCurrent(w.listCatIndex, idx);
-                        var t = (w.curList || [])[w.primaryIndex];
-                        if (typeof w.updateChanelInfo === "function")
-                            w.updateChanelInfo(t);
-                        if (
-                            w.sInfoSwitch &&
-                            typeof w.showChanelInfo === "function"
-                        )
-                            w.showChanelInfo(1);
-                        w.playType = 0;
-                        return;
-                    }
-                    setTimeout(function () {
-                        if (typeof w.playChannel === "function")
-                            w.playChannel(w.listCatIndex, idx);
-                    }, 10);
-                }
-                var r: any;
-                switch (e) {
-                    case w.keys.EXIT:
-                        if (typeof w.closeList === "function") w.closeList();
-                        return true;
-                    case w.keys.LEFT:
-                        if (w.sArrowFun != 2) return false;
-                    // fall through
-                    case w.keys.RETURN:
-                        if (typeof w.channelsList === "function")
-                            w.channelsList(w.listCatIndex, w.listChannel);
-                        return true;
-                    case w.keys.RIGHT:
-                        if (w.sArrowFun != 2) return false;
-                        return true;
-                    case w.keys.N2:
-                    case w.keys.INFO:
-                        r = channels[w.listArray[w.selIndex]];
-                        if (
-                            r !== undefined &&
-                            typeof w.infoProgramm === "function"
-                        )
-                            w.infoProgramm(r.name);
-                        return true;
-                    case w.keys.RW:
-                        if (w.sRewFun != 1) return false;
-                        if (typeof w.channelsList === "function")
-                            w.channelsList(w.listCatIndex, w.listChannel);
-                        return true;
-                    case w.keys.PREV:
-                        if (w.sPNFun != 1) return false;
-                        if (typeof w.channelsList === "function")
-                            w.channelsList(w.listCatIndex, w.listChannel);
-                        return true;
-                    case w.keys.FF:
-                        if (w.sRewFun != 1) return false;
-                        r = channels[w.listArray[w.selIndex]];
-                        if (
-                            r !== undefined &&
-                            typeof w.infoProgramm === "function"
-                        )
-                            w.infoProgramm(r.name);
-                        return true;
-                    case w.keys.NEXT:
-                        if (w.sPNFun != 1) return false;
-                        r = channels[w.listArray[w.selIndex]];
-                        if (
-                            r !== undefined &&
-                            typeof w.infoProgramm === "function"
-                        )
-                            w.infoProgramm(r.name);
-                        return true;
-                    case w.keys.N0:
-                    case w.keys.YELLOW:
-                    case w.keys.TOOLS:
-                        searchChannel();
-                        return true;
-                    case w.keys.ENTER:
-                        play();
-                        return true;
-                    case w.keys.GREEN:
-                    case w.keys.PLAY:
-                    case w.keys.PAUSE:
-                    case w.keys.N3:
-                        if (typeof w.addChannel2bucket === "function")
-                            w.addChannel2bucket();
-                        return true;
-                }
-                return false;
-            };
-            (function () {
-                var captionEl = document.getElementById("listCaption");
-                if (captionEl) {
-                    captionEl.textContent =
-                        w._("Search") +
-                        ':"' +
-                        saved +
-                        '" (' +
-                        w.listArray.length +
-                        ")";
-                }
-            })();
-            var podvalEl = document.getElementById("listPodval");
-            if (podvalEl) {
-                podvalEl.innerHTML =
-                    (typeof w.btnDiv === "function"
-                        ? w.btnDiv(
-                              w.keys.RETURN,
-                              w.strRETURN,
-                              "Close",
-                              w.sArrowFun == 2
-                                  ? w.strLEFT
-                                  : w.sRewFun == 1
-                                    ? w.strRW
-                                    : w.sPNFun == 1
-                                      ? w.strPREV
-                                      : ""
-                          )
-                        : "") +
-                    (typeof w.btnDiv === "function"
-                        ? w.btnDiv(
-                              w.keys.N2,
-                              w.strInfo,
-                              "Description",
-                              "2",
-                              w.sArrowFun == 2
-                                  ? w.strRIGHT
-                                  : w.sRewFun == 1
-                                    ? w.strFF
-                                    : w.sPNFun == 1
-                                      ? w.strNEXT
-                                      : ""
-                          )
-                        : "") +
-                    (typeof w.btnDiv === "function"
-                        ? w.btnDiv(w.keys.YELLOW, "", "Search", w.strTools, "0")
-                        : "") +
-                    (typeof w.btnDiv === "function"
-                        ? w.btnDiv(
-                              w.keys.GREEN,
-                              "",
-                              "Add channel to " +
-                                  (sFavorites ? "favorites" : "category"),
-                              w.strPlayPause,
-                              "3"
-                          )
-                        : "");
-            }
-            $("#listPopUp").hide();
-            $("#listEdit").hide();
-            if (typeof w.showPage === "function") w.showPage();
-        });
-    };
-    w.editCaption = editCaption;
-    w.editvar = editvar;
-    w.setEdit = setEdit;
-    if (typeof w.showEditKey === "function") w.showEditKey();
-}
-
-/**
- * Show the on-screen Actions dialog used when sNoNumbersKeys is set.
- *
- * Ported from the inline `function a()` inside the original
- * channelsKeyHandler: a 3×3 table of arrow-key action buttons (UP=move
- * channel up, DOWN=move channel down, LEFT=delete-or-sort,
- * RIGHT=parental-or-empty, ENTER=add-to-bucket) plus a YELLOW/TOOLS
- * "Search" button. Each arrow ENTER also routes through the same
- * dialogBoxKeyHandler installed for the duration of the dialog, so PC
- * users without a number pad can reach Move/Delete/Sort/Add/Parental
- * without needing N0/N3/N6/N7/N8/N9 — the same actions the popup N-keys
- * trigger.
- *
- * Side effects: writes innerHTML to #dialogbox, shows it, installs
- * window.dialogBoxKeyHandler, hides it on RETURN.
- */
-export function showActionsDialog(): void {
-    var w = window as any;
-    var t =
-        !w.sFavorites && w.listCatIndex
-            ? true
-            : !!(w.sFavorites && !w.listCatIndex);
-    var e = '<td align="center" valign="top" width="30%">';
-    var dialog = document.getElementById("dialogbox");
-    if (!dialog) return;
-    dialog.innerHTML =
-        '<table style="font-size:inherit" width="100%">' +
-        "<tr><td></td>" +
-        e +
-        (typeof w.btnDiv === "function"
-            ? w.btnDiv(w.keys.UP, w.strUP, t ? "<br>Up<br>" : "<br><br>")
-            : "") +
-        "</td><td></td></tr>" +
-        "<tr>" +
-        e +
-        (typeof w.btnDiv === "function"
-            ? w.btnDiv(
-                  w.keys.LEFT,
-                  w.strLEFT,
-                  t
-                      ? "<br>Delete"
-                      : "<br>" +
-                            w._("Sort channels") +
-                            ":<br>" +
-                            w._(w.sSortAbc ? '"As Is"' : "By alphabet")
-              )
-            : "") +
-        "</td>" +
-        e +
-        (typeof w.btnDiv === "function"
-            ? w.btnDiv(
-                  w.keys.ENTER,
-                  w.strENTER,
-                  !w.sFavorites || w.listCatIndex
-                      ? "<br>Add<br>to " +
-                            (w.sFavorites ? "favorites" : "category")
-                      : "<br><br>"
-              )
-            : "") +
-        "</td>" +
-        e +
-        (typeof w.btnDiv === "function"
-            ? w.btnDiv(
-                  w.keys.RIGHT,
-                  w.strRIGHT,
-                  w.sPSchannels && w.parentPIN != "*"
-                      ? "<br>Parental<br>Control"
-                      : "<br>"
-              )
-            : "") +
-        "</td></tr>" +
-        "<tr><td></td>" +
-        e +
-        (typeof w.btnDiv === "function"
-            ? w.btnDiv(w.keys.DOWN, w.strDOWN, t ? "<br>Down<br>" : "<br><br>")
-            : "") +
-        "</td><td></td></tr>" +
-        "</table>" +
-        (typeof w.btnDiv === "function"
-            ? w.btnDiv(w.keys.RETURN, w.strRETURN, "Close")
-            : "") +
-        (typeof w.btnDiv === "function"
-            ? w.btnDiv(w.keys.YELLOW, "", "Search", w.strTools)
-            : "");
-    $(dialog!).show();
-    w.dialogBoxKeyHandler = function (ev: number): boolean {
-        switch (ev) {
-            case w.keys.ENTER:
-                $(dialog!).hide();
-                if (typeof w.addChannel2bucket === "function")
-                    w.addChannel2bucket();
-                return true;
-            case w.keys.UP:
-                if (typeof w.moveChannel === "function") w.moveChannel(-1);
-                return true;
-            case w.keys.DOWN:
-                if (typeof w.moveChannel === "function") w.moveChannel(1);
-                return true;
-            case w.keys.LEFT:
-                if (t) {
-                    if (typeof w.deleteChannel === "function")
-                        w.deleteChannel();
-                } else {
-                    $(dialog!).hide();
-                    if (typeof w.sortChannelsAction === "function")
-                        w.sortChannelsAction();
-                }
-                return true;
-            case w.keys.RIGHT:
-                if (
-                    w.sPSchannels &&
-                    w.parentPIN != "*" &&
-                    typeof w.parentChannel === "function"
-                ) {
-                    w.parentChannel();
-                }
-                return true;
-            case w.keys.RETURN:
-                $(dialog!).hide();
-                return true;
-            case w.keys.YELLOW:
-            case w.keys.TOOLS:
-                $(dialog!).hide();
-                w.listChannel = w.selIndex;
-                searchChannel();
-                return true;
-        }
-        return false;
-    };
+export function searchChannel(query: string): void {
+    searchText = query;
 }
 
 /**
@@ -2674,7 +2032,7 @@ export function getFilteredChannelList(): number[] {
     if (!searchText) return curList.slice();
     const lower = searchText.toLowerCase();
     return curList.filter((chId) => {
-        const ch = channels[chId];
+        const ch = chanels[chId];
         return (
             (ch?.channel_name?.toLowerCase().includes(lower) ?? false) ||
             (ch?.name?.toLowerCase().includes(lower) ?? false)
@@ -2897,19 +2255,19 @@ export function channelsKeyHandler(keyCode: number): boolean {
             }
             return true;
 
-        case keys.N0:
         case keys.YELLOW:
         case keys.TOOLS:
             if ((window as any).sNoNumbersKeys) {
-                showActionsDialog();
+                if (typeof (window as any).showActionsDialog === "function") {
+                    (window as any).showActionsDialog();
+                }
             } else {
                 $("#listPopUp").toggle();
             }
             return true;
 
-        case keys.N2:
         case keys.INFO: {
-            var ch = (window as any).channels[
+            var ch = (window as any).chanels[
                 (window as any).listArray[(window as any).selIndex]
             ];
             if (
@@ -3024,7 +2382,9 @@ export function channelsKeyHandler(keyCode: number): boolean {
             }
             case keys.N6:
                 (window as any).listChannel = (window as any).selIndex;
-                searchChannel();
+                if (typeof (window as any).searchChannel === "function") {
+                    (window as any).searchChannel();
+                }
                 return true;
         }
     }
@@ -3411,15 +2771,15 @@ export function parentControlSetup(): void {
             val: (window as any).sPSprovs,
             values: yesNo,
         },
-        { cur: "", name: "", val: 0, values: (window as any).nofun || [] },
+        { name: "", val: 0, values: (window as any).nofun || [], cur: "" },
         {
-            cur: "",
             name:
                 '<div class="btn">' +
                 ((window as any)._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
             values: saveSettings,
+            cur: "",
         },
     ];
     if (

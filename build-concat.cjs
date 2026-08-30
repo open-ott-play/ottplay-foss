@@ -5,13 +5,8 @@ const path = require("path");
 const { execSync } = require("child_process");
 const Terser = require("terser");
 
-const pkg = JSON.parse(
-    fs.readFileSync(path.join(__dirname, "package.json"), "utf8")
-);
-const VERSION = pkg.version || "local";
-
 console.log("Step 1: tsc compile...");
-execSync("npx tsc", { cwd: __dirname, stdio: "inherit" });
+execSync("npx tsc", { stdio: "inherit", cwd: __dirname });
 
 const modules = [
     "build/polyfills/index.js",
@@ -29,7 +24,6 @@ const modules = [
     "build/provider/index.js",
     "build/commands/index.js",
     "build/app/init.js",
-    "build/app/device.js",
     "build/index.js",
 ];
 
@@ -69,26 +63,15 @@ for (const mod of modules) {
     bundle += stripModule(fs.readFileSync(full, "utf8")) + "\n";
 }
 
-bundle = bundle.replace(/__OTTP_VERSION__/g, VERSION);
-
 const outFile = path.join(outDir, "stbPlayer.js");
 fs.writeFileSync(outFile, bundle);
-
-const indexSrc = path.join(__dirname, "index.html");
-if (fs.existsSync(indexSrc)) {
-    const html = fs
-        .readFileSync(indexSrc, "utf8")
-        .replace(/__OTTP_VERSION__/g, VERSION);
-    fs.writeFileSync(path.join(outDir, "index.html"), html);
-    console.log("Wrote dist/index.html with version=" + VERSION);
-}
 console.log("Build:", outFile, "(" + fs.statSync(outFile).size + " bytes)");
 
 console.log("Step 3: minify with terser...");
 Terser.minify(fs.readFileSync(outFile, "utf8"), {
+    module: false,
     compress: { defaults: false },
     mangle: false,
-    module: false,
     output: { comments: false },
 }).then(function (result) {
     if (result.error) throw result.error;

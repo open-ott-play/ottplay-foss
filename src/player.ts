@@ -118,8 +118,8 @@ import {
     stbSetOsdOpacity,
 } from "./view/display-helpers";
 
-// Sync channels to window.channels so provider scripts and UI can access it globally
-(window as any).channels = channels;
+// Sync channels to window.chanels so provider scripts and UI can access it globally
+(window as any).chanels = channels;
 
 // Core
 import {
@@ -261,7 +261,7 @@ declare var duneAddSettings: ((_index: number) => void) | null;
 function nofun(): void {}
 
 // Version
-var PLAYER_VERSION = "__OTTP_VERSION__";
+var PLAYER_VERSION = "0319.1812";
 
 // Backward compat globals (were defined in old monolithic bundle)
 // itemWith — channel list item width, updated by showPage()
@@ -270,11 +270,11 @@ var PLAYER_VERSION = "__OTTP_VERSION__";
 (window as any).client_can_https = false;
 (window as any).client_can = {
     https: (window as any).client_can_https,
+    localstorage: typeof window.localStorage !== "undefined",
+    websocket: typeof window.WebSocket !== "undefined",
     is_maple:
         typeof navigator !== "undefined" &&
         navigator.userAgent.indexOf("Maple 6") !== -1,
-    localstorage: typeof window.localStorage !== "undefined",
-    websocket: typeof window.WebSocket !== "undefined",
 };
 (window as any).client_can.crossxhr =
     typeof navigator !== "undefined" &&
@@ -324,7 +324,7 @@ var editValue = "";
 var isSelectBox = false;
 
 // PiP state
-var pipIndex: number | null = null;
+var pipIndex: number = null;
 var pipCatIndex = 0;
 
 // Preview
@@ -403,7 +403,7 @@ var savedPopup: {
     popupActions: any[];
     popupArray: string[];
     popupDetail: string[];
-} = { popupActions: [], popupArray: [], popupDetail: [], ver: PLAYER_VERSION };
+} = { ver: PLAYER_VERSION, popupActions: [], popupArray: [], popupDetail: [] };
 var version: string = PLAYER_VERSION;
 
 // Options system (ported from stbPlayer.js)

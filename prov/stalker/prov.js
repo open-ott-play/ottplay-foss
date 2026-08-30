@@ -28,10 +28,10 @@ providerHasItemValue = function (e) {
 };
 
 var stalker = {
-    data: null,
-    mac: "",
     portal: "",
+    mac: "",
     token: "",
+    data: null,
 };
 
 function loadStalkerParams() {
@@ -40,11 +40,11 @@ function loadStalkerParams() {
         if (d) stalker = JSON.parse(d);
     } catch (e) {}
     if (!stalker.portal)
-        stalker = { data: null, mac: "", portal: "", token: "" };
+        stalker = { portal: "", mac: "", token: "", data: null };
 }
 
 function saveStalkerParams() {
-    var d = { data: null, mac: stalker.mac, portal: stalker.portal, token: "" };
+    var d = { portal: stalker.portal, mac: stalker.mac, token: "", data: null };
     providerSetItem("stalker_data", JSON.stringify(d));
 }
 
@@ -79,23 +79,23 @@ function getEPGchanel(s, e) {
     }
     var apiUrl = stalker.portal.replace(/\/+$/, "") + "/stalker_portal/api/";
     var data = {
-        id: 1,
         jsonrpc: "2.0",
+        id: 1,
         method: "get_epg",
         params: {
             ch_id: chId,
-            from: Math.floor(Date.now() / 1e3 - 86400),
             mac: stalker.mac,
+            from: Math.floor(Date.now() / 1e3 - 86400),
             to: Math.floor(Date.now() / 1e3 + 86400),
         },
     };
     $.ajax({
-        contentType: "application/json",
-        data: JSON.stringify(data),
-        dataType: "json",
-        timeout: 1e4,
         type: "POST",
         url: apiUrl,
+        data: JSON.stringify(data),
+        contentType: "application/json",
+        dataType: "json",
+        timeout: 1e4,
     })
         .done(function (r) {
             var o = null;
@@ -112,11 +112,11 @@ function getEPGchanel(s, e) {
                         0;
                     if (start && end) {
                         o.push({
-                            descr: epg.descr || epg.description || "",
-                            icon: "",
-                            name: epg.name || epg.title || "No title",
                             time: start,
                             time_to: end,
+                            name: epg.name || epg.title || "No title",
+                            descr: epg.descr || epg.description || "",
+                            icon: "",
                         });
                     }
                 });
@@ -142,14 +142,14 @@ function stalkerApiCall(method, params, callback) {
     var apiUrl = stalker.portal.replace(/\/+$/, "") + "/stalker_portal/api/";
     if (!params) params = {};
     if (!params.mac) params.mac = stalker.mac;
-    var data = { id: 1, jsonrpc: "2.0", method: method, params: params };
+    var data = { jsonrpc: "2.0", id: 1, method: method, params: params };
     $.ajax({
-        contentType: "application/json",
-        data: JSON.stringify(data),
-        dataType: "json",
-        timeout: 15e3,
         type: "POST",
         url: apiUrl,
+        data: JSON.stringify(data),
+        contentType: "application/json",
+        dataType: "json",
+        timeout: 15e3,
     })
         .done(callback)
         .fail(function (e, r, t) {
@@ -249,23 +249,23 @@ function loadChannelsFromStalker(callback) {
                     logoUrl = stalker.portal.replace(/\/+$/, "") + logoUrl;
                 }
                 chanels[h] = {
-                    ca: ch.archive ? "append" : "",
-                    caso: "",
+                    channel_name: ch.name,
                     category: {
                         class: catsArray.indexOf(catName) + 2,
                         name: catName,
                     },
-                    channel_name: ch.name,
-                    epg: String(ch.id || ch.ch_id || ""),
-                    logo: logoUrl,
                     rec:
                         Number.parseInt(ch.archive) ||
                         Number.parseInt(ch.archive_duration) ||
                         0,
                     time: 0,
                     time_to: 0,
-                    tn: ch.name,
                     url: streamUrl,
+                    logo: logoUrl,
+                    epg: String(ch.id || ch.ch_id || ""),
+                    tn: ch.name,
+                    ca: ch.archive ? "append" : "",
+                    caso: "",
                 };
             }
         });

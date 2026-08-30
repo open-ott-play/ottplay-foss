@@ -4,7 +4,7 @@
  */
 
 // Version
-export const PLAYER_VERSION = "__OTTP_VERSION__";
+export const PLAYER_VERSION = "0319.1812";
 
 // Host URL
 export let hostUrl = "";
@@ -50,7 +50,7 @@ export let editValue = "";
 export let isSelectBox = false;
 
 // PiP state
-export let pipIndex: number | null = null;
+export let pipIndex: number = null;
 export let pipCatIndex = 0;
 
 // Preview
@@ -68,7 +68,7 @@ export const savedPopup: {
     popupActions: any[];
     popupArray: string[];
     popupDetail: any[];
-} = { popupActions: [], popupArray: [], popupDetail: [], ver: PLAYER_VERSION };
+} = { ver: PLAYER_VERSION, popupActions: [], popupArray: [], popupDetail: [] };
 
 export const version: string = PLAYER_VERSION;
 
@@ -142,13 +142,13 @@ export function setSleepTimer(val: any): void {
 // Backward compat capability detection (was window.client_can)
 export const client_can_https = false;
 export const client_can = {
-    crossxhr:
-        typeof navigator !== "undefined" &&
-        !/(?:Viera\/1\.)/.test(navigator.userAgent),
     https: client_can_https,
+    localstorage: typeof window.localStorage !== "undefined",
+    websocket: typeof window.WebSocket !== "undefined",
     is_maple:
         typeof navigator !== "undefined" &&
         navigator.userAgent.indexOf("Maple 6") !== -1,
-    localstorage: typeof window.localStorage !== "undefined",
-    websocket: typeof window.WebSocket !== "undefined",
+    crossxhr:
+        typeof navigator !== "undefined" &&
+        !/(?:Viera\/1\.)/.test(navigator.userAgent),
 };

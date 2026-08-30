@@ -3,30 +3,23 @@
  * Handles player startup, DOM ready events, and initial setup
  */
 
-export const PLAYER_VERSION = "__OTTP_VERSION__";
+export const PLAYER_VERSION = "0319.1812";
 
-// duneAddSettings — set by provider scripts (stalker, edem, etc.)
-declare var duneAddSettings: ((_index: number) => void) | null;
-
-import { benchy_startPlayer, benchy_stbReady } from "../benchy";
-import { cats, catsArray, sPlayers, sStopPlay } from "../channels";
+import { sPlayers } from "../channels";
 import {
-    setPlayer,
-    setPlayerMode,
+    client_feedb,
+    dispatchKey,
+    keyHandler,
+    keys,
     stbExit,
     stbInit,
     stbPlay,
     stbSetBuffer,
     stbStop,
 } from "../core";
-import { dispatchKey, keyHandler, keys } from "../keyhandler";
-import { _ } from "../localization";
-import { loadChannels, loadProv } from "../provider";
-import { loadSettings, settings } from "../settings";
-import { setTimezone } from "../settings/helpers";
-import { providerGetJson, stbGetItem, stbSetItem, storage } from "../storage";
-import { closeList, initBackgroundIntervals, uiInit } from "../ui";
-import { client_feedb, getScriptDOM } from "../utils/helpers";
+import { storage } from "../storage";
+import { closeList, infoBox, initUIReferences, showPage, uiInit } from "../ui";
+import { getScriptDOM } from "../utils/helpers";
 import {
     setColor,
     setEditor,
@@ -34,17 +27,25 @@ import {
     setListPos,
     setPipPosBuf,
     setSleepTimeout,
+    setTimezone,
 } from "../view/display-helpers";
-import { initUIReferences } from "../view/ui-helpers";
-import { applySettingsToWindow } from "./apply-settings";
-import { __av, __cv, detectDevice, ott_device } from "./device";
+import { initBackgroundIntervals } from "../view/ui-helpers";
+import { applySettingsToWindow, loadSettings, settings } from "./config";
 import { selectLang } from "./language";
+import { setPlayer, setPlayerMode } from "./player";
+import { loadChannels, loadProv, providerGetJson } from "./provider";
 import {
+    _,
+    cats,
+    catsArray,
     hostUrl,
     popupActions,
     popupArray,
     popupDetail,
     savedPopup,
+    sStopPlay,
+    stbGetItem,
+    stbSetItem,
     TMDb,
     version,
 } from "./state";
@@ -74,9 +75,6 @@ export function loadProvCallback(): void {
  * Main entry point — called once the DOM is ready.
  */
 export function startPlayer(): void {
-    // Detect device type and expose globals for provider scripts
-    (window as any).ott_device = ott_device;
-    (window as any).detectDevice = detectDevice;
     var launchEl = document.getElementById("launch");
     if (launchEl) {
         launchEl.innerHTML += "<br/>VER: " + PLAYER_VERSION;
@@ -99,27 +97,6 @@ export function startPlayer(): void {
         }
 
         storage.reset();
-
-        // Inject device stub script
-        var stubScript = document.createElement("script");
-        stubScript.src = hostUrl + "/stb/" + ott_device + "/stb.js?" + __cv;
-        stubScript.onload = function () {
-            if (typeof startPlayer === "function") startPlayer();
-            else console.error("startPlayer not defined");
-        };
-        document.head.appendChild(stubScript);
-
-        // Inject 1280.css stylesheet
-        var link = document.createElement("link");
-        link.rel = "stylesheet";
-        link.href = hostUrl + "/stbPlayer/1280.css?" + __av;
-        link.media = "only screen";
-        link.onload = function () {
-            link.media = "all";
-        };
-        document.head.appendChild(link);
-
-        benchy_startPlayer();
 
         uiInit();
         initBackgroundIntervals();
@@ -239,52 +216,6 @@ export function onStbReady(): void {
         console.error(e);
     }
 }
-
-// Global error handler (legacy index.html:108-122)
-(function () {
-    window.onerror = function (
-        event: any,
-        source: string,
-        lineno: number,
-        colno: number,
-        error: Error | undefined
-    ): boolean {
-        var etext: string[] = [];
-        if (typeof event === "string") {
-            etext.push(event || "<no_msg>");
-            etext.push(
-                (source || "<no_url>") +
-                    "__" +
-                    (lineno || "??") +
-                    ":" +
-                    (colno || "??")
-            );
-            etext.push(
-                typeof error === "object" && error !== null
-                    ? error.stack || "<no_stack>"
-                    : "<no_stack>"
-            );
-        } else if (event && typeof event === "object") {
-            etext.push(event.message || "<no_msg>");
-            etext.push(
-                (event.filename || "<no_url>") +
-                    "__" +
-                    (event.lineno || "??") +
-                    ":" +
-                    (event.colno || "??")
-            );
-            etext.push(
-                typeof event.error === "object"
-                    ? event.error.stack
-                    : "<no_stack>"
-            );
-        }
-        var errMsg = etext.join("\n");
-        console.error("[window.onerror]", errMsg);
-        client_feedb("window_onerror::" + errMsg.replace(/\n/g, "__"));
-        return true;
-    };
-})();
 
 // Auto-start when DOM ready
 if (

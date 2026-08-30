@@ -22,9 +22,9 @@ declare function execCHarr(key: string, callback: (val: number) => void): void;
 import { providerHasItemValue } from "../storage/index";
 
 /** Reference to the primary <video> DOM element. */
-export var video: HTMLVideoElement | null = null;
+export var video: HTMLVideoElement = null;
 /** Reference to the PiP (picture-in-picture) <video> DOM element. */
-export var videoPip: HTMLVideoElement | null = null;
+export var videoPip: HTMLVideoElement = null;
 /**
  * Active playback engine mode:
  * 0 = native HTML5, 1 = hls.js, 2 = shaka-player.
@@ -83,9 +83,9 @@ export var strSETUP = "§";
 /** Button label for the Language key. */
 export var strLANG = "SHIFT";
 
-/** Active hls.js instance for the main video!. */
+/** Active hls.js instance for the main video. */
 var hlsInstance: any = null;
-/** Active hls.js instance for the PiP video!. */
+/** Active hls.js instance for the PiP video. */
 var hlsPipInstance: any = null;
 /** Whether the player is currently in fullscreen mode. */
 var isFullscreen = true;
@@ -193,7 +193,7 @@ export function stbEventToKeyCode(event: any): number {
  * Side effects:
  * - Destroys any previous hls.js or shaka instance.
  * - Attaches hls.js or shaka to the video element if that engine is active.
- * - Calls video!.play().
+ * - Calls video.play().
  * - Automatically restores previous audio/subtitle track settings via execCHarr.
  */
 export function stbPlay(url: string, position?: number): void {
@@ -236,14 +236,14 @@ export function stbPlay(url: string, position?: number): void {
         Hls.isSupported()
     ) {
         hlsInstance = new Hls({
-            backBufferLength: 90,
-            capLevelToPlayerSize: true,
             enableWorker: true,
             lowLatencyMode: false,
+            backBufferLength: 90,
             maxBufferLength: 30,
             maxMaxBufferLength: 600,
-            overrideNative: false,
             startLevel: -1,
+            capLevelToPlayerSize: true,
+            overrideNative: false,
         });
         hlsInstance.loadSource(url);
         hlsInstance.attachMedia(video);
@@ -263,7 +263,7 @@ export function stbPlay(url: string, position?: number): void {
             }
         });
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
-            video!.play().catch(function (e) {
+            video.play().catch(function (e) {
                 console.log("[HLS] play() rejected:", e);
             });
         });
@@ -287,16 +287,16 @@ export function stbPlay(url: string, position?: number): void {
         (window as any).player = new shaka.Player(video);
         try {
             (window as any).player.load(url);
-            video!.play();
+            video.play();
         } catch (e) {
             console.error(e);
         }
     } else {
-        video!.src = url;
+        video.src = url;
     }
     // Only call play() for non-HLS modes — HLS.js triggers play after manifest parsed
     if (playerMode !== 1) {
-        video!.play();
+        video.play();
     }
 }
 
@@ -305,75 +305,75 @@ export function stbPlay(url: string, position?: number): void {
  * Side effects: Mutates video element; may free decoder resources.
  */
 export function stbStop(): void {
-    video!.pause();
-    video!.removeAttribute("src");
+    video.pause();
+    video.removeAttribute("src");
     if (hlsInstance) hlsInstance.destroy();
 }
 /**
  * Pause playback.
- * Side effects: Sets video!.pause().
+ * Side effects: Sets video.pause().
  */
 export function stbPause(): void {
-    video!.pause();
+    video.pause();
 }
 /**
  * Toggle play/pause. Resumes if paused, pauses if playing.
  * Side effects: Plays or pauses the video element.
  */
 export function stbContinue(): void {
-    if (video!.paused) video!.play();
-    else video!.pause();
+    if (video.paused) video.play();
+    else video.pause();
 }
 /**
  * Check whether the video is currently playing (not paused).
  * @returns `true` if video is playing, `false` if paused.
  */
 export function stbIsPlaying(): boolean {
-    return !video!.paused;
+    return !video.paused;
 }
 /**
  * Toggle the muted state on the video element.
- * Side effects: Flips video!.muted.
+ * Side effects: Flips video.muted.
  */
 export function stbToggleMute(): void {
-    video!.muted = !video!.muted;
+    video.muted = !video.muted;
 }
 /**
  * Get the current volume level as a percentage.
  * @returns Volume in range 0–100.
  */
 export function stbGetVolume(): number {
-    return video!.volume * 100;
+    return video.volume * 100;
 }
 /**
  * Set the volume level.
  * @param v - Volume in range 0–100 (will be divided by 100 for the video element).
- * Side effects: Sets video!.volume.
+ * Side effects: Sets video.volume.
  */
 export function stbSetVolume(v: number): void {
-    video!.volume = v / 100;
+    video.volume = v / 100;
 }
 /**
  * Get the current playback position.
  * @returns Current time in seconds.
  */
 export function stbGetPosTime(): number {
-    return video!.currentTime;
+    return video.currentTime;
 }
 /**
  * Seek to a specific playback position.
  * @param v - Target time in seconds.
- * Side effects: Sets video!.currentTime.
+ * Side effects: Sets video.currentTime.
  */
 export function stbSetPosTime(v: number): void {
-    video!.currentTime = v;
+    video.currentTime = v;
 }
 /**
  * Get the total duration of the loaded media.
  * @returns Duration in seconds (may be NaN or Infinity for live streams).
  */
 export function stbGetLen(): number {
-    return video!.duration;
+    return video.duration;
 }
 
 /**
@@ -385,8 +385,8 @@ export function stbGetLen(): number {
  */
 export function stbToFullScreen(): void {
     isFullscreen = true;
-    $("#video").css({ height: "100%", left: 0, top: 0, width: "100%" });
-    $("#vdiv").css({ height: "100%", left: 0, top: 0, width: "100%" });
+    $("#video").css({ left: 0, top: 0, width: "100%", height: "100%" });
+    $("#vdiv").css({ left: 0, top: 0, width: "100%", height: "100%" });
     applyAspectRatio();
 }
 
@@ -401,12 +401,12 @@ export function stbSetWindow(): void {
     var h = window.innerHeight / 720,
         w = window.innerWidth / 1280;
     $("#vdiv").css({
-        height: 288 * h + "px",
         left: listPos ? 758 * w + "px" : 10 * w + "px",
         top: 50 * h + "px",
         width: 512 * w + "px",
+        height: 288 * h + "px",
     });
-    $("#video").css({ height: "100%", left: 0, top: 0, width: "100%" });
+    $("#video").css({ left: 0, top: 0, width: "100%", height: "100%" });
 }
 
 /**
@@ -445,7 +445,7 @@ export function setAspect(v: number): void {
  * Apply the current aspectRatio to the #video element's CSS `object-fit` property.
  * Index 0 → "contain", index 1 → "cover".
  *
- * Side effects: Direct DOM CSS mutation on #video!.
+ * Side effects: Direct DOM CSS mutation on #video.
  */
 export function applyAspectRatio(): void {
     $("#video").css("object-fit", ["contain", "cover"][aspectRatio]);
@@ -479,7 +479,7 @@ export function stbAudioTracksExists(): boolean {
  */
 export function stbSubtitleExists(): number {
     if (hlsInstance) return hlsInstance.subtitleTracks.length;
-    return video!.textTracks.length;
+    return video.textTracks.length;
 }
 
 /**
@@ -488,7 +488,7 @@ export function stbSubtitleExists(): number {
  *
  * @param url - Stream URL for the PiP window.
  *
- * Side effects: Shows #videopip; attaches hls.js or native src; calls videoPip!.play().
+ * Side effects: Shows #videopip; attaches hls.js or native src; calls videoPip.play().
  */
 export function stbPlayPip(url: string): void {
     if (playerMode === 1 && typeof Hls !== "undefined" && Hls.isSupported()) {
@@ -498,20 +498,20 @@ export function stbPlayPip(url: string): void {
         hlsPipInstance.attachMedia(videoPip);
         hlsPipInstance.on(Hls.Events.MANIFEST_PARSED, function () {});
     } else {
-        videoPip!.src = url;
+        videoPip.src = url;
     }
-    videoPip!.play();
+    videoPip.play();
     $("#videopip").show();
 }
 
 /**
  * Stop PiP playback, destroy the hls.js Pip instance, and hide the PiP element.
  *
- * Side effects: Hides #videopip; pauses and clears the PiP video!.
+ * Side effects: Hides #videopip; pauses and clears the PiP video.
  */
 export function stbStopPip(): void {
-    videoPip!.pause();
-    videoPip!.src = "";
+    videoPip.pause();
+    videoPip.src = "";
     if (hlsPipInstance) hlsPipInstance.destroy();
     $("#videopip").hide();
 }
@@ -528,18 +528,18 @@ export function setPipPosition(): void {
         h = window.innerHeight / 720,
         m = Math.min(w, h);
     $("#videopip").css({
-        height: pipPresets[pipSize].y * m + "px",
         width: pipPresets[pipSize].x * m + "px",
+        height: pipPresets[pipSize].y * m + "px",
     });
     switch (pipPosition) {
         case 0:
             $("#videopip").css({ right: 20 * m + "px", top: 20 * m + "px" });
             break;
         case 1:
-            $("#videopip").css({ bottom: 20 * m + "px", right: 20 * m + "px" });
+            $("#videopip").css({ right: 20 * m + "px", bottom: 20 * m + "px" });
             break;
         case 2:
-            $("#videopip").css({ bottom: 20 * m + "px", left: 20 * m + "px" });
+            $("#videopip").css({ left: 20 * m + "px", bottom: 20 * m + "px" });
             break;
         case 3:
             $("#videopip").css({ left: 20 * m + "px", top: 20 * m + "px" });
@@ -551,7 +551,7 @@ export function setPipPosition(): void {
  * Configure the video preload behaviour based on the stored buffer size setting.
  * If a positive buffer size is found, sets `preload = "auto"`.
  *
- * Side effects: Sets video!.preload attribute (may trigger early buffering).
+ * Side effects: Sets video.preload attribute (may trigger early buffering).
  */
 export function stbSetBuffer(): void {
     try {
@@ -560,7 +560,7 @@ export function stbSetBuffer(): void {
             10
         );
         if (!isNaN(b) && b > 0 && video) {
-            video!.preload = "auto";
+            video.preload = "auto";
         }
     } catch (e) {
         console.error("[stb] stbSetBuffer error:", e);
@@ -592,7 +592,7 @@ export function setPlayer(): void {
     if (
         video &&
         !providerHasItemValue("sPlayers") &&
-        !video!.canPlayType("application/vnd.apple.mpegurl") &&
+        !video.canPlayType("application/vnd.apple.mpegurl") &&
         typeof Hls !== "undefined" &&
         Hls.isSupported()
     ) {
@@ -639,27 +639,27 @@ export function stbInit(): void {
             );
         }
         video = document.getElementById("video") as HTMLVideoElement;
-        video!.addEventListener("waiting", function () {
+        video.addEventListener("waiting", function () {
             $("#buffering").show();
             $("#video_res").html("<br/>connect...");
         });
-        video!.addEventListener("loadstart", function () {
+        video.addEventListener("loadstart", function () {
             $("#buffering").show();
             $("#video_res").html("<br/>buffering...");
         });
-        video!.addEventListener("loadeddata", function () {
+        video.addEventListener("loadeddata", function () {
             console.log("Event: loadeddata");
         });
-        video!.addEventListener("loadedmetadata", function () {
+        video.addEventListener("loadedmetadata", function () {
             console.log("Event: loadedmetadata");
         });
-        video!.addEventListener("durationchange", function () {});
-        video!.addEventListener("canplay", function () {
+        video.addEventListener("durationchange", function () {});
+        video.addEventListener("canplay", function () {
             $("#buffering").hide();
             $("#video_res").text("");
-            if (video!.videoWidth)
+            if (video.videoWidth)
                 $("#video_res").html(
-                    "<br/>" + video!.videoWidth + "x" + video!.videoHeight
+                    "<br/>" + video.videoWidth + "x" + video.videoHeight
                 );
             if (typeof execCHarr === "function") {
                 execCHarr("aAspects", setAspect);
@@ -667,33 +667,34 @@ export function stbInit(): void {
                 execCHarr("aAudios", setAudioTrack);
             }
         });
-        video!.addEventListener("playing", function () {
+        video.addEventListener("playing", function () {
             $("#buffering").hide();
         });
-        video!.addEventListener("error", function () {
+        video.addEventListener("error", function () {
             var _p =
                 playerMode === 1
                     ? "hls.js"
                     : playerMode === 2
                       ? "shaka"
                       : "html5";
-            var err = video?.error;
             console.log(
                 "video > error: " +
-                    (err?.code || "") +
-                    (err?.message ? " (" + err.message + ")" : "") +
+                    (video.error.code || "") +
+                    (video.error.message
+                        ? " (" + video.error.message + ")"
+                        : "") +
                     " player=" +
                     _p
             );
             $("#buffering").hide();
             $("#video_res").html(
-                "<br/>error " + (err?.code ?? 0) + " (" + _p + ")"
+                "<br/>error " + video.error.code + " (" + _p + ")"
             );
         });
-        video!.addEventListener("resize", function () {
-            if (video!.videoWidth)
+        video.addEventListener("resize", function () {
+            if (video.videoWidth)
                 $("#video_res").html(
-                    "<br/>" + video!.videoWidth + "x" + video!.videoHeight
+                    "<br/>" + video.videoWidth + "x" + video.videoHeight
                 );
         });
         [
@@ -717,21 +718,21 @@ export function stbInit(): void {
             "pause",
             "resize",
         ].forEach(function (e) {
-            video!.addEventListener(e, videoEvent);
+            video.addEventListener(e, videoEvent);
         });
         if ((video as any).webkitVideoDecodedByteCount !== undefined) {
             setInterval(function () {
                 if (
-                    video!.videoWidth &&
+                    video.videoWidth &&
                     (video as any).webkitVideoDecodedByteCount -
                         prevDecodedBytes >
                         0
                 ) {
                     $("#video_res").html(
                         "<br/>" +
-                            video!.videoWidth +
+                            video.videoWidth +
                             "x" +
-                            video!.videoHeight +
+                            video.videoHeight +
                             "<br/>" +
                             Math.round(
                                 ((((video as any).webkitVideoDecodedByteCount -
@@ -749,10 +750,10 @@ export function stbInit(): void {
             }, 1000);
         }
         videoPip = document.getElementById("videopip") as HTMLVideoElement;
-        videoPip!.addEventListener("loadstart", function () {
-            if (videoPip!.style.display != "none") $("#pip_buffering").show();
+        videoPip.addEventListener("loadstart", function () {
+            if (videoPip.style.display != "none") $("#pip_buffering").show();
         });
-        videoPip!.addEventListener("playing", function () {
+        videoPip.addEventListener("playing", function () {
             $("#pip_buffering").hide();
         });
     } catch (e) {
@@ -774,7 +775,7 @@ function videoEvent(event: Event): void {
     if (event && event.type) {
         console.log("[video] event: " + event.type);
         if (event.type === "error") {
-            var me = video ? video!.error : null;
+            var me = video ? video.error : null;
             if (me)
                 console.error(
                     "[video] MediaError: code=" + me.code + " msg=" + me.message
@@ -786,11 +787,11 @@ function videoEvent(event: Event): void {
 /**
  * Switch to a specific audio track.
  * For hls.js, sets hlsInstance.audioTrack directly.
- * For native HTML5, iterates video!.audioTracks and enables only the target index.
+ * For native HTML5, iterates video.audioTracks and enables only the target index.
  *
  * @param index - Zero-based audio track index.
  *
- * Side effects: Mutates hlsInstance.audioTrack or video!.audioTracks[i].enabled.
+ * Side effects: Mutates hlsInstance.audioTrack or video.audioTracks[i].enabled.
  */
 function setAudioTrack(index: number): void {
     if (hlsInstance && hlsInstance.audioTrack !== index) {
@@ -812,7 +813,7 @@ export function stbToggleAudioTrack(): void {
         tracks = hlsInstance
             ? hlsInstance.audioTracks
             : (video as any).audioTracks;
-    var labels: string[] = [];
+    var labels = [];
     if (hlsInstance) cur = hlsInstance.audioTrack;
     for (var i = 0; i < tracks.length; i++) {
         if (!hlsInstance && tracks[i].enabled) cur = i;
@@ -848,7 +849,7 @@ export function stbToggleAudioTrack(): void {
  *
  * @param index - 1-based subtitle track index (0 = "Off" / disabled).
  *
- * Side effects: Mutates hlsInstance.subtitleTrack or video!.textTracks[i].mode.
+ * Side effects: Mutates hlsInstance.subtitleTrack or video.textTracks[i].mode.
  */
 function setSubtitleTrack(index: number): void {
     if (hlsInstance) {

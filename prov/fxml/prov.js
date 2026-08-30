@@ -25,14 +25,14 @@ providerHasItem = function (e) {
 providerHasItemValue = function (e) {
     return ottpStorage.hasValue(p_pref + e);
 };
-var _fxml_cfg = { m3u: "", pass: "", server: "", user: "" };
+var _fxml_cfg = { server: "", user: "", pass: "", m3u: "" };
 function _fxml_load() {
     try {
         var d = providerGetItem("cfg");
         if (d) _fxml_cfg = JSON.parse(d);
     } catch (e) {}
     if (!(_fxml_cfg.server || _fxml_cfg.m3u))
-        _fxml_cfg = { m3u: "", pass: "", server: "", user: "" };
+        _fxml_cfg = { server: "", user: "", pass: "", m3u: "" };
 }
 function _fxml_save() {
     providerSetItem("cfg", JSON.stringify(_fxml_cfg));
@@ -66,27 +66,27 @@ function getChanelsArray(cb) {
 function _fxml_m3u(cb) {
     $(launch_id).append(_("Loading M3U..."));
     $.ajax({
+        url: _fxml_cfg.m3u,
+        timeout: 15e3,
+        success: function (d) {
+            _fxml_parseM3U(d, cb);
+        },
         error: function () {
             $.ajax({
+                url: host + "/m3u/cp.php",
                 data: { url: "@" + _fxml_cfg.m3u },
+                method: "post",
                 dataType: "text",
+                timeout: 15e3,
+                success: function (d) {
+                    _fxml_parseM3U(d, cb);
+                },
                 error: function () {
                     alert(_("Failed to load!"));
                     cb();
                 },
-                method: "post",
-                success: function (d) {
-                    _fxml_parseM3U(d, cb);
-                },
-                timeout: 15e3,
-                url: host + "/m3u/cp.php",
             });
         },
-        success: function (d) {
-            _fxml_parseM3U(d, cb);
-        },
-        timeout: 15e3,
-        url: _fxml_cfg.m3u,
     });
 }
 function _fxml_parseM3U(data, cb) {
@@ -126,17 +126,17 @@ function _fxml_parseM3U(data, cb) {
             if (cList.indexOf(h) === -1) {
                 cList.push(h);
                 chanels[h] = {
-                    ca: "",
-                    caso: "",
-                    category: { class: catsArray.indexOf(cat) + 2, name: cat },
                     channel_name: name,
-                    epg: "",
-                    logo: logo,
+                    category: { class: catsArray.indexOf(cat) + 2, name: cat },
                     rec: 0,
                     time: 0,
                     time_to: 0,
-                    tn: name,
                     url: url,
+                    logo: logo,
+                    epg: "",
+                    tn: name,
+                    ca: "",
+                    caso: "",
                 };
             }
         });
@@ -153,7 +153,7 @@ function _fxml_xtream(cb) {
         encodeURIComponent(_fxml_cfg.user) +
         "&password=" +
         encodeURIComponent(_fxml_cfg.pass);
-    $.ajax({ dataType: "json", timeout: 15e3, type: "GET", url: api })
+    $.ajax({ type: "GET", url: api, dataType: "json", timeout: 15e3 })
         .done(function (r) {
             cList = [];
             chanels = {};
@@ -178,19 +178,14 @@ function _fxml_xtream(cb) {
                 if (cList.indexOf(h) === -1) {
                     cList.push(h);
                     chanels[h] = {
-                        ca: "",
-                        caso: "",
+                        channel_name: s.name,
                         category: {
                             class: catsArray.indexOf(cn) + 2,
                             name: cn,
                         },
-                        channel_name: s.name,
-                        epg: String(s.stream_id),
-                        logo: s.stream_icon || "",
                         rec: 0,
                         time: 0,
                         time_to: 0,
-                        tn: s.name,
                         url:
                             _fxml_cfg.server +
                             "/live/" +
@@ -200,6 +195,11 @@ function _fxml_xtream(cb) {
                             "/" +
                             s.stream_id +
                             ".m3u8",
+                        logo: s.stream_icon || "",
+                        epg: String(s.stream_id),
+                        tn: s.name,
+                        ca: "",
+                        caso: "",
                     };
                 }
             });

@@ -8,10 +8,10 @@
 
 import { stbExit } from "../core";
 import { keys } from "../keyhandler";
-import { loadLanguage } from "../localization";
 import { loadProv } from "../provider";
 import { stbGetItem, stbSetItem } from "../storage";
 import { btnDiv, closeList, infoBox, showPage, strRETURN } from "../ui";
+import { getScriptDOM } from "../utils/helpers";
 import { hostUrl, PLAYER_VERSION, selIndex } from "./state";
 
 declare var duneAddSettings: ((_index: number) => void) | null;
@@ -103,8 +103,13 @@ export function selectLang(): void {
                         "ottplaylang",
                         LANG_CODES[(window as any).selIndex]
                     );
-                    loadLanguage(
-                        LANG_CODES[(window as any).selIndex],
+                    (window as any).keyStrings = {};
+                    getScriptDOM(
+                        hostUrl +
+                            "/stbPlayer/" +
+                            LANG_CODES[(window as any).selIndex] +
+                            ".js?" +
+                            PLAYER_VERSION,
                         function () {
                             if (typeof duneAddSettings !== "function") {
                                 loadProv();

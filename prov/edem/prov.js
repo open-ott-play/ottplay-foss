@@ -28,10 +28,10 @@ providerHasItemValue = function (e) {
 };
 
 var edem = {
-    m3u_url: "",
-    password: "",
     server: "",
     username: "",
+    password: "",
+    m3u_url: "",
 };
 
 function loadEdemParams() {
@@ -40,17 +40,17 @@ function loadEdemParams() {
         if (d) edem = JSON.parse(d);
     } catch (e) {}
     if (!(edem.server || edem.m3u_url))
-        edem = { m3u_url: "", password: "", server: "", username: "" };
+        edem = { server: "", username: "", password: "", m3u_url: "" };
 }
 
 function saveEdemParams() {
     providerSetItem(
         "edem_data",
         JSON.stringify({
-            m3u_url: edem.m3u_url,
-            password: edem.password,
             server: edem.server,
             username: edem.username,
+            password: edem.password,
+            m3u_url: edem.m3u_url,
         })
     );
 }
@@ -89,28 +89,28 @@ function getChanelsArray(callback) {
 function loadFromM3U(callback) {
     $(launch_id).append(_("Loading M3U playlist..."));
     $.ajax({
+        url: edem.m3u_url,
+        timeout: 15e3,
+        success: function (data) {
+            parseM3U(data, callback);
+        },
         error: function (e, r, t) {
             $(launch_id).append(_("Loading via proxy..."));
             $.ajax({
+                url: host + "/m3u/cp.php",
                 data: { url: "@" + edem.m3u_url },
+                method: "post",
                 dataType: "text",
+                timeout: 15e3,
+                success: function (data) {
+                    parseM3U(data, callback);
+                },
                 error: function () {
                     alert(_("Failed to load playlist!"));
                     callback();
                 },
-                method: "post",
-                success: function (data) {
-                    parseM3U(data, callback);
-                },
-                timeout: 15e3,
-                url: host + "/m3u/cp.php",
             });
         },
-        success: function (data) {
-            parseM3U(data, callback);
-        },
-        timeout: 15e3,
-        url: edem.m3u_url,
     });
 }
 
@@ -151,17 +151,17 @@ function parseM3U(data, callback) {
             if (cList.indexOf(h) === -1) {
                 cList.push(h);
                 chanels[h] = {
-                    ca: "",
-                    caso: "",
-                    category: { class: catsArray.indexOf(cat) + 2, name: cat },
                     channel_name: name,
-                    epg: "",
-                    logo: logo,
+                    category: { class: catsArray.indexOf(cat) + 2, name: cat },
                     rec: 0,
                     time: 0,
                     time_to: 0,
-                    tn: name,
                     url: url,
+                    logo: logo,
+                    epg: "",
+                    tn: name,
+                    ca: "",
+                    caso: "",
                 };
             }
         });
@@ -181,10 +181,10 @@ function loadFromXtreamAPI(callback) {
         "&password=" +
         encodeURIComponent(edem.password);
     $.ajax({
-        dataType: "json",
-        timeout: 15e3,
         type: "GET",
         url: apiUrl,
+        dataType: "json",
+        timeout: 15e3,
     })
         .done(function (r) {
             cList = [];
@@ -210,19 +210,14 @@ function loadFromXtreamAPI(callback) {
                 if (cList.indexOf(h) === -1) {
                     cList.push(h);
                     chanels[h] = {
-                        ca: "",
-                        caso: "",
+                        channel_name: s.name,
                         category: {
                             class: catsArray.indexOf(catName) + 2,
                             name: catName,
                         },
-                        channel_name: s.name,
-                        epg: String(s.stream_id),
-                        logo: s.stream_icon || "",
                         rec: 0,
                         time: 0,
                         time_to: 0,
-                        tn: s.name,
                         url:
                             edem.server +
                             "/live/" +
@@ -232,6 +227,11 @@ function loadFromXtreamAPI(callback) {
                             "/" +
                             s.stream_id +
                             ".m3u8",
+                        logo: s.stream_icon || "",
+                        epg: String(s.stream_id),
+                        tn: s.name,
+                        ca: "",
+                        caso: "",
                     };
                 }
             });

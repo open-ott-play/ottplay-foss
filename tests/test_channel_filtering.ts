@@ -1,35 +1,3 @@
-// Minimal window shim for Node.js (channels module reads window.* directly).
-// No jsdom dep — only stubs what src/channels/index.ts actually accesses.
-declare global {
-    // eslint-disable-next-line no-var
-    var window: {
-        stbGetItem: (key: string) => string | null;
-        _: (s: string) => string;
-        editvar: string;
-        chSearch: string;
-    };
-}
-// jQuery $ stub — channels module calls $("#listPopUp").hide() during reset
-const noop = () => noop;
-const jqueryStub = (() => {
-    const handler: ProxyHandler<object> = {
-        apply: () => jqueryStub,
-        get: () => jqueryStub,
-    };
-    return new Proxy(noop, handler);
-})();
-(globalThis as { $?: unknown }).$ = jqueryStub;
-
-if (!globalThis.window) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    globalThis.window = {
-        _: (s: string) => s,
-        chSearch: "",
-        editvar: "",
-        stbGetItem: () => null,
-    } as any;
-}
-
 import assert from "assert";
 
 async function getModule() {
@@ -42,24 +10,25 @@ async function runTests() {
         getFilteredHistory,
         getFilteredChannelList,
         searchHistoryChannel,
-        searchMedia,
+        searchChannel,
         medHistory,
         curList,
-        channels,
+        chanels,
         historySearchText,
+        searchText,
     } = ch;
 
     // Helper to reset state
     function resetState() {
         medHistory.splice(0);
         curList.splice(0);
-        // Clear channels
-        for (const key of Object.keys(channels)) {
-            delete channels[key];
+        // Clear chanels (which is the same as channels)
+        for (const key of Object.keys(chanels)) {
+            delete chanels[key];
         }
-        // Reset search strings via setters (searchChannel() reads window.stbGetItem which is stubbed)
+        // Reset search strings via setter functions
         searchHistoryChannel("");
-        searchMedia("");
+        searchChannel("");
     }
 
     // Test getFilteredHistory
@@ -165,9 +134,9 @@ async function runTests() {
     {
         resetState();
         curList.push(1, 2, 3);
-        channels[1] = { ch_id: 1, channel_name: "CNN", name: "CNN" };
-        channels[2] = { ch_id: 2, channel_name: "BBC", name: "BBC One" };
-        channels[3] = { ch_id: 3, channel_name: "ESPN", name: "ESPN" };
+        chanels[1] = { ch_id: 1, channel_name: "CNN", name: "CNN" };
+        chanels[2] = { ch_id: 2, channel_name: "BBC", name: "BBC One" };
+        chanels[3] = { ch_id: 3, channel_name: "ESPN", name: "ESPN" };
         const result = getFilteredChannelList();
         assert.deepStrictEqual(
             result,
@@ -179,10 +148,10 @@ async function runTests() {
     {
         resetState();
         curList.push(1, 2, 3);
-        channels[1] = { ch_id: 1, channel_name: "CNN", name: "CNN" };
-        channels[2] = { ch_id: 2, channel_name: "BBC", name: "BBC One" };
-        channels[3] = { ch_id: 3, channel_name: "ESPN", name: "ESPN" };
-        searchMedia("bbc");
+        chanels[1] = { ch_id: 1, channel_name: "CNN", name: "CNN" };
+        chanels[2] = { ch_id: 2, channel_name: "BBC", name: "BBC One" };
+        chanels[3] = { ch_id: 3, channel_name: "ESPN", name: "ESPN" };
+        searchChannel("bbc");
         const result = getFilteredChannelList();
         assert.deepStrictEqual(
             result,
@@ -194,10 +163,10 @@ async function runTests() {
     {
         resetState();
         curList.push(1, 2, 3);
-        channels[1] = { ch_id: 1, channel_name: "CNN", name: "CNN" };
-        channels[2] = { ch_id: 2, channel_name: "BBC", name: "BBC One" };
-        channels[3] = { ch_id: 3, channel_name: "ESPN", name: "ESPN" };
-        searchMedia("espn");
+        chanels[1] = { ch_id: 1, channel_name: "CNN", name: "CNN" };
+        chanels[2] = { ch_id: 2, channel_name: "BBC", name: "BBC One" };
+        chanels[3] = { ch_id: 3, channel_name: "ESPN", name: "ESPN" };
+        searchChannel("espn");
         const result = getFilteredChannelList();
         assert.deepStrictEqual(
             result,
@@ -209,9 +178,9 @@ async function runTests() {
     {
         resetState();
         curList.push(1, 2);
-        channels[1] = { ch_id: 1, channel_name: "CNN", name: "CNN" };
-        channels[2] = { ch_id: 2, channel_name: "BBC", name: "BBC One" };
-        searchMedia("CNN");
+        chanels[1] = { ch_id: 1, channel_name: "CNN", name: "CNN" };
+        chanels[2] = { ch_id: 2, channel_name: "BBC", name: "BBC One" };
+        searchChannel("CNN");
         const result = getFilteredChannelList();
         assert.deepStrictEqual(
             result,
@@ -223,9 +192,9 @@ async function runTests() {
     {
         resetState();
         curList.push(1, 2);
-        channels[1] = { ch_id: 1, channel_name: "CNN", name: "CNN" };
-        channels[2] = { ch_id: 2, channel_name: "BBC", name: "BBC One" };
-        searchMedia("Fox");
+        chanels[1] = { ch_id: 1, channel_name: "CNN", name: "CNN" };
+        chanels[2] = { ch_id: 2, channel_name: "BBC", name: "BBC One" };
+        searchChannel("Fox");
         const result = getFilteredChannelList();
         assert.deepStrictEqual(
             result,

@@ -9,12 +9,12 @@ var epg_sources = {};
 
 function postMatch(a, e, r, t) {
     $.ajax({
-        contentType: "text/plain",
-        data: e,
-        dataType: "text",
-        timeout: 120000,
         type: "POST",
         url: a,
+        data: e,
+        contentType: "text/plain",
+        dataType: "text",
+        timeout: 120000,
     })
         .done(function (e) {
             if (!e) return;
@@ -137,10 +137,10 @@ function getEPGchanel(s, e) {
         return;
     }
     $.ajax({
-        dataType: "json",
-        timeout: 1e4,
         type: "GET",
         url: r,
+        dataType: "json",
+        timeout: 1e4,
     })
         .done(function (e) {
             var r = e;
@@ -233,7 +233,7 @@ function loadM3Uparams() {
             m3uArr = { active: 0, M3Us: [] };
         }
     for (var e = m3uArr.M3Us.length; e < m3uCap; e++)
-        m3uArr.M3Us[e] = { rechours: 0, www: "" };
+        m3uArr.M3Us[e] = { www: "", rechours: 0 };
     if (browserName() == "dune")
         try {
             var r = window.location.href.split("?")[1].split("&");
@@ -401,6 +401,9 @@ function getChanelsArray(a) {
                 encodeURIComponent(e);
         }
         $.ajax({
+            url: e,
+            timeout: 5e3,
+            success: i,
             error: function (e, r, t) {
                 $(launch_id).append(
                     _(
@@ -408,8 +411,12 @@ function getChanelsArray(a) {
                     )
                 );
                 $.ajax({
+                    url: host + "/m3u/cp.php",
                     data: { url: "@" + n },
+                    method: "post",
                     dataType: "text",
+                    timeout: 15e3,
+                    success: i,
                     error: function (e, r, t) {
                         console.log(
                             "channels : jqXHR:" +
@@ -422,15 +429,8 @@ function getChanelsArray(a) {
                         alert(_("Failed to load channel list!"));
                         a();
                     },
-                    method: "post",
-                    success: i,
-                    timeout: 15e3,
-                    url: host + "/m3u/cp.php",
                 });
             },
-            success: i,
-            timeout: 5e3,
-            url: e,
         });
     }
 
@@ -494,7 +494,7 @@ function getChanelsArray(a) {
         var M = "",
             E = "",
             N = "",
-            b = { foss: {}, raw: [] };
+            b = { raw: [], foss: {} };
         try {
             var t = e.split("#EXTINF:"),
                 i = t[0],
@@ -579,17 +579,17 @@ function getChanelsArray(a) {
                     var x;
                     cList.push(y);
                     chanels[y] = {
-                        ca: c,
-                        caso: f,
-                        category: { class: catsArray.indexOf(a) + 2, name: a },
                         channel_name: d,
-                        epg: n,
-                        logo: l,
+                        category: { class: catsArray.indexOf(a) + 2, name: a },
                         rec: u,
                         time: 0,
                         time_to: 0,
-                        tn: s,
                         url: h,
+                        logo: l,
+                        epg: n,
+                        tn: s,
+                        ca: c,
+                        caso: f,
                     };
                     if (o !== "") {
                         var A = Number.parseFloat(o);
@@ -988,14 +988,9 @@ function getMediaArrayXML(e, r) {
             "box_client=ott-foss&box_mac=" +
             box_mac;
     $.ajax({
-        complete: function () {
-            $("#dialogbox").hide();
-            r();
-        },
+        url: e,
         dataType: "text",
-        error: function (e, r, t) {
-            alert("Error: " + e.status);
-        },
+        timeout: 6e4,
         success: function (e, r, t) {
             var i = e.slice(0, 16);
             if (i.length < 7) {
@@ -1080,17 +1075,22 @@ function getMediaArrayXML(e, r) {
                 mediaName = n.playlist_name || n.title || mediaName || "?";
                 if (n.next_page_url)
                     mediaRecords.push({
-                        description: "...",
-                        logo_30x30: "",
-                        playlist_url: n.next_page_url,
                         title: "...",
+                        logo_30x30: "",
+                        description: "...",
+                        playlist_url: n.next_page_url,
                     });
             } catch (e) {
                 console.error(e);
             }
         },
-        timeout: 6e4,
-        url: e,
+        error: function (e, r, t) {
+            alert("Error: " + e.status);
+        },
+        complete: function () {
+            $("#dialogbox").hide();
+            r();
+        },
     });
 }
 
@@ -1142,10 +1142,10 @@ function getMediaArrayEXTM3U(e) {
             }
             if (s)
                 mediaRecords.push({
-                    description: u(n, a),
-                    logo_30x30: a,
-                    stream_url: s,
                     title: n,
+                    logo_30x30: a,
+                    description: u(n, a),
+                    stream_url: s,
                 });
         });
     } catch (e) {

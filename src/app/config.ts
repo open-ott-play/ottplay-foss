@@ -3,7 +3,7 @@
  */
 
 // Version
-export const PLAYER_VERSION = "__OTTP_VERSION__";
+export const PLAYER_VERSION = "0319.1812";
 
 // Host URL
 export let hostUrl = "";

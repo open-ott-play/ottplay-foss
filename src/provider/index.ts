@@ -198,7 +198,7 @@ var savedPopup: {
     popupActions: any[];
     popupArray: string[];
     popupDetail: string[];
-} = { popupActions: [], popupArray: [], popupDetail: [], ver: "" };
+} = { ver: "", popupActions: [], popupArray: [], popupDetail: [] };
 declare var channelsList: any;
 declare var pperf_stamp: (label: string) => void;
 declare var stbIsPlaying: () => boolean;
@@ -233,11 +233,11 @@ declare var channelsKeyHandler: (key: number) => boolean;
  * Called as the EPG callback from getCurProgData.
  */
 function updateChanelList(chId: string): void {
-    $("#pn" + chId).html(channels[chId].name);
+    $("#pn" + chId).html(chanels[chId].name);
     $("#pr" + chId).css(
         "width",
-        ((Date.now() / 1e3 - channels[chId].time) /
-            (channels[chId].time_to - channels[chId].time)) *
+        ((Date.now() / 1e3 - chanels[chId].time) /
+            (chanels[chId].time_to - chanels[chId].time)) *
             100 +
             "%"
     );
@@ -249,17 +249,17 @@ function updateChanelList(chId: string): void {
  * thumbnail, upcoming programs, and auto-scrolls long descriptions.
  * Optionally triggers a video preview (sPreview == 1).
  *
- * Reads global state: selIndex, listArray, channels, curColor, sShowDescr,
+ * Reads global state: selIndex, listArray, chanels, curColor, sShowDescr,
  * sNextCountL, sPreview.
  *
  * Side effects: DOM writes to #listDetail, #_descr, auto-scroll via scrollUp().
  * Calls previewChId() on window if sPreview is enabled.
  *
- * Edge case: Returns early if channels[listArray[selIndex]] is undefined or if
+ * Edge case: Returns early if chanels[listArray[selIndex]] is undefined or if
  * the program has already ended (time_to < now).
  */
 function detailProg(): void {
-    var e = channels[listArray[selIndex]];
+    var e = chanels[listArray[selIndex]];
     if (e === undefined) return;
     if (e.time_to && e.time_to >= Date.now() / 1e3) {
         var t = Math.round((Date.now() / 1e3 - e.time) / 60);
@@ -356,7 +356,6 @@ function setPopupChannels(): void {
             "<br/>" + btnDiv(keys.N4, "4", "Channel parental control")
         );
     }
-    $("#listPopUp").append("<br/>" + btnDiv(keys.N6, "6", "Search"));
 }
 declare var sPreview: number;
 declare var previewChan: any;
@@ -373,7 +372,7 @@ declare var selIndex: number;
 declare var listArray: any[];
 declare var listDetail: HTMLElement;
 declare var listCaptionElement: HTMLElement;
-var listPodval: HTMLElement | null = null;
+var listPodval: HTMLElement = null;
 declare var itemWith: number;
 declare var pageSize: number;
 declare var bodyColor: string;
@@ -394,7 +393,7 @@ declare var parentalArray: string[];
 declare var favoritesArray: string[];
 declare var prevArr: any[];
 declare var cList: string[];
-declare var channels: Record<string, any>;
+declare var chanels: Record<string, any>;
 declare var epg: any;
 declare var curList: string[];
 declare var epgCashObj: Record<string, any>;
@@ -578,7 +577,7 @@ export function optionsList(fn?: () => void): void {
         return false;
     };
     listCaptionElement.innerHTML = _("Settings");
-    listPodval!.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
+    listPodval.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
     $("#listPopUp").hide();
     showPage();
 }
@@ -1082,7 +1081,7 @@ export function loadProv(): void {
  * Resets all channel/category/EPG state to defaults, then restores
  * persisted values from provider storage (catIndex, aAspects, etc.).
  *
- * Side effects: Clears channels, epg, catsArray, cats, favoritesArray,
+ * Side effects: Clears chanels, epg, catsArray, cats, favoritesArray,
  * parentalArray, etc. Writes to DOM (#launch / #dialogbox). Calls
  * getChanelsArray(onChanelsLoaded) to trigger the actual provider fetch.
  * Calls setPlayerMode() and setPlayer().
@@ -1108,9 +1107,9 @@ export function loadChannels(): void {
 
     primaryIndex = providerGetNum("primaryIndex", 0);
     cList = [];
-    // Clear channel data in-place to keep window.channels and channels references in sync
-    for (var _ck in channels) {
-        delete channels[_ck];
+    // Clear channel data in-place to keep window.chanels and channels references in sync
+    for (var _ck in chanels) {
+        delete chanels[_ck];
     }
     epg = {};
     epgCashObj = {};
@@ -1387,7 +1386,7 @@ export function selectProvaider(): void {
         }
     };
     listCaptionElement.innerHTML = _("Choose provider");
-    listPodval!.innerHTML =
+    listPodval.innerHTML =
         btnDiv(keys.RETURN, strRETURN, "Close") +
         btnDiv(keys.N0, strInfo, "Description", "0");
     $("#listPopUp").hide();
@@ -1502,15 +1501,11 @@ export function edit_dealer_remote(): void {
     function poll(): void {
         if (cancelled) return;
         $.ajax({
-            cache: false,
+            url: host_ott_proto + host_ott + "/swop/a.php",
             data: { c: "get_val", d: code },
-            error: function (jqXHR: any) {
-                $("#listEdit").html(
-                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
-                        jqXHR.responseText +
-                        "</div>"
-                );
-            },
+            type: "POST",
+            timeout: 1e4,
+            cache: false,
             success: function (data: any) {
                 if (cancelled) return;
                 if (data.status === "forbidden") setTimeout(poll, 5e3);
@@ -1538,13 +1533,17 @@ export function edit_dealer_remote(): void {
                         );
                 }
             },
-            timeout: 1e4,
-            type: "POST",
-            url: host_ott_proto + host_ott + "/swop/a.php",
+            error: function (jqXHR: any) {
+                $("#listEdit").html(
+                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
+                        jqXHR.responseText +
+                        "</div>"
+                );
+            },
         });
     }
 
-    listPodval!.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
+    listPodval.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
     $("#listEdit")
         .html(
             '<div style="text-align:center;font-size:larger;"><br/><br/>' +
@@ -1557,15 +1556,11 @@ export function edit_dealer_remote(): void {
         return true;
     };
     $.ajax({
-        cache: false,
+        url: host_ott_proto + host_ott + "/swop/a.php",
         data: { c: "get_var", n: _("Enter Provider Code"), v: "" },
-        error: function (jqXHR: any) {
-            $("#listEdit").html(
-                '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
-                    jqXHR.responseText +
-                    "</div>"
-            );
-        },
+        type: "POST",
+        timeout: 1e4,
+        cache: false,
         success: function (data: any) {
             code = data.code;
             $("#listEdit").html(
@@ -1595,9 +1590,13 @@ export function edit_dealer_remote(): void {
             );
             setTimeout(poll, 1e4);
         },
-        timeout: 1e4,
-        type: "POST",
-        url: host_ott_proto + host_ott + "/swop/a.php",
+        error: function (jqXHR: any) {
+            $("#listEdit").html(
+                '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
+                    jqXHR.responseText +
+                    "</div>"
+            );
+        },
     });
 }
 
@@ -1620,7 +1619,7 @@ declare var duneAddSettings: ((_index: number) => void) | null;
 /**
  * Called by provider scripts to supply the channel list.
  * Override point — providers implement this function to parse their
- * channel data and populate cats/channels/etc., then invoke the callback.
+ * channel data and populate cats/chanels/etc., then invoke the callback.
  * The default implementation immediately calls the callback (no-op).
  *
  * @param _callback - Function to call once channel data is loaded.
@@ -1691,7 +1690,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     var progMargin = sShowProgress ? Math.floor((itemH - progBarH) / 2) : 0;
 
     getListItemFn = function (chId: string, idx: number) {
-        var ch = channels[chId];
+        var ch = chanels[chId];
         if (!ch)
             return (
                 "&nbsp;&nbsp;" +
@@ -1787,7 +1786,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     listKeyHandlerFn = channelsKeyHandler;
     listCaptionElement.innerHTML =
         _("Channel list. Category: ") + (catsArray[listCatIndex] || "");
-    listPodval!.innerHTML =
+    listPodval.innerHTML =
         btnDiv(
             keys.RED,
             "",
@@ -1824,7 +1823,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     (window as any).listDataArray = listArray;
     previewChan =
         sPreview && catIdx === catIndex && channelIdx === primaryIndex
-            ? { c: catIdx, ch_id: listArray[selIndex], i: channelIdx }
+            ? { c: catIdx, i: channelIdx, ch_id: listArray[selIndex] }
             : null;
     showPage();
 }
@@ -1879,7 +1878,7 @@ export function firstRun(): void {
         return false;
     };
     listCaptionElement.innerHTML = _("First Run Setup");
-    listPodval!.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
+    listPodval.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
     $("#listPopUp").hide();
     listDataArray = listArray;
     showPage();

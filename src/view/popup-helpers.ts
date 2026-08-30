@@ -3,29 +3,34 @@
  * Handles popup menu actions, arrays, and details
  */
 
+// Import required functions from their respective modules
+import { PLAYER_VERSION } from "../version";
+import {
+    popPause,
+    popPrevProg,
+    popShift,
+    popStop,
+    popStopPip,
+    popTogglePip,
+} from "./channels";
+import { restart } from "./commands";
 import {
     toggleAspectRatio,
     toggleAudioTrack,
     toggleSubtitle,
     toggleZoom,
-} from "../core";
-import { nofun, noProvParam, optionsList, restart } from "../provider";
+} from "./core";
+import { noProvParam } from "./provider";
 import {
     exitPortal,
     infoList,
+    nofun,
     popBuckets,
     popEpg,
     popMedia,
-    popPause,
-    popPrevProg,
     popRecords,
-    popShift,
-    popStop,
-    popStopPip,
-    popTogglePip,
-} from "../ui";
-// Import required functions from their respective modules
-import { PLAYER_VERSION } from "../version";
+} from "./ui";
+import { optionsList } from "./view/options-helpers";
 
 // Popup menu
 export const popupActions: any[] = [
@@ -102,5 +107,5 @@ export const savedPopup: {
     popupActions: any[];
     popupArray: string[];
     popupDetail: string[];
-} = { popupActions: [], popupArray: [], popupDetail: [], ver: PLAYER_VERSION };
+} = { ver: PLAYER_VERSION, popupActions: [], popupArray: [], popupDetail: [] };
 export const version: string = PLAYER_VERSION;

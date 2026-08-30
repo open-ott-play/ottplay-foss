@@ -23,9 +23,3 @@ test.m3u
 .DS_Store
 *.backup
 .aid*
-/*.js
-audit/
-CL*.md
-GR*.md
-CA*.md
-TO*.md

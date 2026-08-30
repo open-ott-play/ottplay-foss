@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>OTT-play FOSS</title>
+        <title>OTT-play FOSS (local)</title>
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta
             name="viewport"
@@ -134,15 +134,18 @@
         "use strict";
         var host = window.location.origin || "http://localhost:8080";
         var __dev = true; // set false for production
-        var _rnd = new Uint8Array(8);
-        crypto.getRandomValues(_rnd);
-        var _rndstr = Array.from(_rnd)
-            .map(function (b) {
-                return (b & 0x0f).toString(36);
-            })
-            .join("");
-        var __cv = __dev ? "dev_" + Date.now() + "_" + _rndstr : "__OTTP_VERSION__";
-        var __av = __dev ? "dev_" + Date.now() + "_" + _rndstr : "__OTTP_VERSION__";
+        var __cv = __dev
+            ? "dev_" +
+              Date.now() +
+              "_" +
+              Math.random().toString(36).substr(2, 9)
+            : "0319.1812";
+        var __av = __dev
+            ? "dev_" +
+              Date.now() +
+              "_" +
+              Math.random().toString(36).substr(2, 9)
+            : "local";
 
         function detectDevice() {
             var path = window.location.pathname;
@@ -178,15 +181,10 @@
         // Device UUID — generated once, persisted in localStorage
         var deviceUUID = localStorage.getItem("ott_device_uuid");
         if (!deviceUUID) {
-            var _b = new Uint8Array(8);
-            crypto.getRandomValues(_b);
             deviceUUID =
                 "dev_" +
-                Array.from(_b)
-                    .map(function (b) {
-                        return (b & 0x0f).toString(16);
-                    })
-                    .join("");
+                Math.random().toString(36).substr(2, 9) +
+                Math.random().toString(36).substr(2, 4);
             localStorage.setItem("ott_device_uuid", deviceUUID);
         }
         window.deviceUUID = deviceUUID;
@@ -320,7 +318,7 @@
                 if (typeof Hls === "undefined") {
                     var hlsUrl =
                         ott_device === "pc"
-                            ? "https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"
+                            ? "https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"
                             : "https://cdn.jsdelivr.net/npm/hls.js@0.14.17/dist/hls.min.js";
                     loadJS(
                         hlsUrl,
@@ -340,12 +338,8 @@
                     typeof shaka === "undefined" ||
                     typeof shaka.Player === "undefined"
                 ) {
-                    var shakaUrl =
-                        ott_device === "pc"
-                            ? "https://cdn.jsdelivr.net/npm/shaka-player@latest/dist/shaka-player.compiled.js"
-                            : "https://cdn.jsdelivr.net/npm/shaka-player@3.1.2/dist/shaka-player.compiled.js";
                     loadJS(
-                        shakaUrl,
+                        "https://cdn.jsdelivr.net/npm/shaka-player@3.3.19/dist/shaka-player.compiled.js",
                         function () {
                             if (
                                 typeof shaka === "undefined" ||

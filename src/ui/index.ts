@@ -21,7 +21,7 @@ declare var jQuery: any;
 // Globals from other modules
 declare var selIndex: number;
 declare var isListVisible: boolean;
-declare var listPopUpElement: HTMLElement | null;
+declare var listPopUpElement: HTMLElement;
 declare var addBtn2menu: (arr: any[], action: any, label: string) => void;
 declare var dialogBoxKeyHandler: ((key: number) => void) | null;
 declare var listArray: any[];
@@ -35,48 +35,48 @@ declare var nprovparams: number;
 // DOM element references
 var $infoBar: any;
 var infoTimeout: any = null;
-var listElement: HTMLElement | null = null;
-var listInElement: HTMLElement | null = null;
-var listCaptionElement: HTMLElement | null = null;
-var listPodvalElement: HTMLElement | null = null;
-var listDetailElement: HTMLElement | null = null;
-var numprogElement: HTMLElement | null = null;
+var listElement: HTMLElement = null;
+var listInElement: HTMLElement = null;
+var listCaptionElement: HTMLElement = null;
+var listPodvalElement: HTMLElement = null;
+var listDetailElement: HTMLElement = null;
+var numprogElement: HTMLElement = null;
 
 // State
 var listDataArray: any[] = [];
-var getListItemFn: ((item: any, idx: number) => string) | null = null;
-var detailListActionFn: (() => void) | null = null;
-var listKeyHandlerFn: ((key: any) => boolean) | null = null;
+var getListItemFn: (item: any, idx: number) => string = null;
+var detailListActionFn: () => void = null;
+var listKeyHandlerFn: (key: any) => boolean = null;
 // Forward old-style global names (set by provider scripts) to new-style module variables
 Object.defineProperty(window, "listKeyHandler", {
-    configurable: true,
-    enumerable: true,
-    get: function (): any {
-        return listKeyHandlerFn;
-    },
     set: function (v: any) {
         listKeyHandlerFn = v;
     },
-});
-Object.defineProperty(window, "getListItem", {
+    get: function (): any {
+        return listKeyHandlerFn;
+    },
     configurable: true,
     enumerable: true,
-    get: function (): any {
-        return getListItemFn;
-    },
+});
+Object.defineProperty(window, "getListItem", {
     set: function (v: any) {
         getListItemFn = v;
     },
-});
-Object.defineProperty(window, "detailListAction", {
+    get: function (): any {
+        return getListItemFn;
+    },
     configurable: true,
     enumerable: true,
-    get: function (): any {
-        return detailListActionFn;
-    },
+});
+Object.defineProperty(window, "detailListAction", {
     set: function (v: any) {
         detailListActionFn = v;
     },
+    get: function (): any {
+        return detailListActionFn;
+    },
+    configurable: true,
+    enumerable: true,
 });
 var itemWidth = 735;
 declare var curColor: string;
@@ -100,48 +100,49 @@ var _keysP = ".:/@,!?<>#$%^&*()-=_+;'\"[]{}`~";
 var _keys = "";
 var _keysSymbol: any[] = [
     {
+        s: "",
         a: function () {
             _setCase(!_keyUp);
             showEdit();
         },
-        s: "",
     },
     {
+        s: "",
         a: function () {
             if (!_keysSymbol[1].s) return;
             _keyP = false;
             _setLang(!_keyE);
             showEdit();
         },
-        s: "",
     },
     {
+        s: "",
         a: function () {
             _setPunct(!_keyP);
             showEdit();
         },
-        s: "",
     },
-    { a: (window as any).loadValue || function () {}, s: "&hearts;&trade;" },
+    { s: "&hearts;&trade;", a: (window as any).loadValue || function () {} },
     {
+        s: "&larr;",
         a: function () {
             if (editPos) {
                 editPos--;
                 _changeEdit();
             }
         },
-        s: "&larr;",
     },
     {
+        s: "&rarr;",
         a: function () {
             if (editPos < (window as any).editvar.length) {
                 editPos++;
                 _changeEdit();
             }
         },
-        s: "&rarr;",
     },
     {
+        s: "_",
         a: function () {
             (window as any).editvar =
                 (window as any).editvar.substr(0, editPos) +
@@ -150,9 +151,9 @@ var _keysSymbol: any[] = [
             editPos++;
             _changeEdit();
         },
-        s: "_",
     },
     {
+        s: "",
         a: function () {
             if (editPos) {
                 (window as any).editvar =
@@ -162,10 +163,10 @@ var _keysSymbol: any[] = [
                 _changeEdit();
             }
         },
-        s: "",
     },
-    { a: function () {}, s: "" },
+    { s: "", a: function () {} },
     {
+        s: "Ok",
         a: function () {
             clearInterval(cursorInterval);
             (window as any).restoreCPD();
@@ -173,7 +174,6 @@ var _keysSymbol: any[] = [
             if (typeof (window as any).setEdit === "function")
                 (window as any).setEdit();
         },
-        s: "Ok",
     },
 ];
 var _keyUp = false;
@@ -277,10 +277,10 @@ export function uiInit(): void {
     });
     $("#dialogbox").on("show", function () {
         $(this)
-            .css({ height: "auto", left: 0, top: 0, width: "auto" })
+            .css({ top: 0, left: 0, width: "auto", height: "auto" })
             .css({
-                left: (1260 * getWidthK() - $(this).width()) / 2,
                 top: (720 * getHeightK() - $(this).height()) / 2,
+                left: (1260 * getWidthK() - $(this).width()) / 2,
             });
     });
 
@@ -321,99 +321,26 @@ export function uiInit(): void {
         }
     }
 
-    // Progress bar drag-to-seek — press on progress bar and drag to seek, release to seek
+    // Progress bar click — seek
     var $progressDiv = $("#progress_div");
-    var seekInProgress = false;
-    var seekStartX = 0;
-
-    $progressDiv.mousedown(function (e: any) {
-        if (!e) e = event;
-        if (e.clientX === undefined) {
-            console.error("$progress_div[mousedown] evt.clientX not exist");
-            return;
-        }
-        seekInProgress = true;
-        seekStartX = e.clientX;
-    });
-
-    $progressDiv.mouseup(function (e: any) {
-        if (!seekInProgress) return;
-        seekInProgress = false;
-        if (!e) e = event;
-        if (e.clientX === undefined) {
-            console.error("$progress_div[mouseup] evt.clientX not exist");
-            return;
-        }
-        e.stopPropagation();
-        var w = window as any;
-        if (
-            !(
-                w.playType ||
-                (w.chanels &&
-                    w.curList &&
-                    w.chanels[w.curList[w.primaryIndex]] &&
-                    w.chanels[w.curList[w.primaryIndex]].rec)
-            )
-        )
-            return;
-        var t =
-            (e.clientX - $progressDiv.position().left) / $progressDiv.width();
-        if (w.playType < 0) {
-            var r = Math.max(Math.round(t * w.stbGetLen()), 0);
-            var hr = Math.floor(r / 3600);
-            var mn = Math.floor((r % 3600) / 60);
-            var sc = r % 60;
-            if (typeof w.showShift === "function")
-                w.showShift(
-                    ">> " +
-                        (hr ? hr + ":" : "") +
-                        _t2(mn) +
-                        ":" +
-                        _t2(sc) +
-                        " <<"
-                );
-            if (typeof w.stbSetPosTime === "function") w.stbSetPosTime(r);
-            return;
-        }
-        var r2 = Math.round(
-            t * (w._prog100.time_to - w._prog100.time) + w._prog100.time
-        );
-        if (r2 < Date.now() / 1e3) {
-            if (!w.playType) {
-                if (typeof w.timeShift === "function")
-                    w.timeShift(Math.round(Date.now() / 1e3 - r2));
-                return;
-            }
-            if (typeof w.showShift === "function")
-                w.showShift(">> " + pos2text(r2) + " <<");
-            if (typeof w.playArchive === "function") w.playArchive(r2);
-        } else {
-            if (typeof w.showShift === "function")
-                w.showShift(w._(w.playType ? "Live" : "Restart stream"));
-            if (typeof w.playChannel === "function")
-                w.playChannel(w.catIndex, w.primaryIndex);
-        }
-    });
-
-    // Progress bar click — seek (for press-and-release at same position)
     $progressDiv.click(function (e: any) {
         if (!e) e = event;
         if (e.clientX === undefined) {
             console.error("$progress_div[click] evt.clientX not exist");
             return;
         }
-        e.stopPropagation();
         var w = window as any;
         if (
+            !w.playType &&
             !(
-                w.playType ||
-                (w.chanels &&
-                    w.curList &&
-                    w.chanels[w.curList[w.primaryIndex]] &&
-                    w.chanels[w.curList[w.primaryIndex]].rec)
+                w.chanels &&
+                w.curList &&
+                w.chanels[w.curList[w.primaryIndex]] &&
+                w.chanels[w.curList[w.primaryIndex]].rec
             )
         )
             return;
+        e.stopPropagation();
         var t =
             (e.clientX - $progressDiv.position().left) / $progressDiv.width();
         if (w.playType < 0) {
@@ -463,12 +390,12 @@ export function uiInit(): void {
         }
         var w = window as any;
         if (
+            !w.playType &&
             !(
-                w.playType ||
-                (w.chanels &&
-                    w.curList &&
-                    w.chanels[w.curList[w.primaryIndex]] &&
-                    w.chanels[w.curList[w.primaryIndex]].rec)
+                w.chanels &&
+                w.curList &&
+                w.chanels[w.curList[w.primaryIndex]] &&
+                w.chanels[w.curList[w.primaryIndex]].rec
             )
         )
             return;
@@ -630,7 +557,7 @@ export function showPage(): void {
     if (listElement) listElement.style.display = "";
     var dataArr = listDataArray.length
         ? listDataArray
-        : (window as any).listDataArray || (window as any).listArray || [];
+        : (window as any).listDataArray || [];
     var pageStart =
         Math.floor(selIndex / settings.pageSize) * settings.pageSize;
     var pageEnd = Math.min(pageStart + settings.pageSize, dataArr.length);
@@ -714,7 +641,7 @@ export function showPage(): void {
 export function changeSelect(delta: number): void {
     var dataArr = listDataArray.length
         ? listDataArray
-        : (window as any).listDataArray || (window as any).listArray || [];
+        : (window as any).listDataArray || [];
     if (!dataArr.length) return;
     var oldIndex = selIndex;
     selIndex += delta;
@@ -800,10 +727,10 @@ export function showShift(message: string): void {
     if (info) {
         info.innerHTML = message;
         info.style.display = "";
+        setTimeout(function () {
+            info.style.display = "none";
+        }, 3000);
     }
-    setTimeout(function () {
-        if (info) info.style.display = "none";
-    }, 3000);
 }
 
 /**
@@ -1516,8 +1443,7 @@ export function infoList(e?: string): void {
     detailListActionFn = function () {
         var arr = (window as any).infoArr || [];
         var item = arr[selIndex];
-        if (item)
-            listDetailElement!.innerHTML = _(item.desc || item.name || "");
+        if (item) listDetailElement.innerHTML = _(item.desc || item.name || "");
     };
     listKeyHandlerFn = function (key: number): boolean {
         switch (key) {
@@ -1795,14 +1721,16 @@ export function popupList(i?: any): void {
         if (n) r = '<div class="btn">' + n + "</div> " + r;
 
         // Пуш в массив как ОБЪЕКТ (не строку!)
-        listArray.push({ action: action, desc: s, name: r });
+        listArray.push({ name: r, desc: s, action: action });
+        listDataArray.push(r); // для совместимости с showPage
 
         if (action == noProvParam) a = listArray.length - 1;
         if (action == optionsList) o = listArray.length;
     });
 
     getListItemFn = function (item: any, _idx: number) {
-        return "&nbsp;&nbsp;" + (item.name || "");
+        // item может быть строкой (listDataArray) или объектом (listArray)
+        return "&nbsp;&nbsp;" + (item.name || item);
     };
 
     detailListActionFn = function () {

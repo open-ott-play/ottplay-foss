@@ -28,10 +28,10 @@ providerHasItemValue = function (e) {
 };
 
 var xtream = {
-    data: null,
-    password: "",
     server: "",
     username: "",
+    password: "",
+    data: null,
 };
 
 function loadXtreamParams() {
@@ -40,15 +40,15 @@ function loadXtreamParams() {
         if (d) xtream = JSON.parse(d);
     } catch (e) {}
     if (!xtream.server)
-        xtream = { data: null, password: "", server: "", username: "" };
+        xtream = { server: "", username: "", password: "", data: null };
 }
 
 function saveXtreamParams() {
     var d = {
-        data: null,
-        password: xtream.password,
         server: xtream.server,
         username: xtream.username,
+        password: xtream.password,
+        data: null,
     };
     providerSetItem("xtream_data", JSON.stringify(d));
 }
@@ -92,10 +92,10 @@ function getEPGchanel(s, e) {
         "&action=get_short_epg&stream_id=" +
         streamId;
     $.ajax({
-        dataType: "json",
-        timeout: 1e4,
         type: "GET",
         url: url,
+        dataType: "json",
+        timeout: 1e4,
     })
         .done(function (r) {
             var o = null;
@@ -106,11 +106,11 @@ function getEPGchanel(s, e) {
                     var end = new Date(epg.end).getTime() / 1e3;
                     if (!(isNaN(start) || isNaN(end))) {
                         o.push({
-                            descr: epg.description || "",
-                            icon: "",
-                            name: epg.title || "No title",
                             time: start,
                             time_to: end,
+                            name: epg.title || "No title",
+                            descr: epg.description || "",
+                            icon: "",
                         });
                     }
                 });
@@ -145,10 +145,10 @@ function getChanelsArray(callback) {
         "&password=" +
         encodeURIComponent(xtream.password);
     $.ajax({
-        dataType: "json",
-        timeout: 15e3,
         type: "GET",
         url: apiUrl,
+        dataType: "json",
+        timeout: 15e3,
     })
         .done(function (r) {
             cList = [];
@@ -173,19 +173,14 @@ function getChanelsArray(callback) {
                 if (cList.indexOf(h) === -1) {
                     cList.push(h);
                     chanels[h] = {
-                        ca: "",
-                        caso: "",
+                        channel_name: s.name,
                         category: {
                             class: catsArray.indexOf(catName) + 2,
                             name: catName,
                         },
-                        channel_name: s.name,
-                        epg: String(s.stream_id),
-                        logo: s.stream_icon || "",
                         rec: 0,
                         time: 0,
                         time_to: 0,
-                        tn: s.name,
                         url:
                             xtream.server +
                             "/live/" +
@@ -195,6 +190,11 @@ function getChanelsArray(callback) {
                             "/" +
                             s.stream_id +
                             ".m3u8",
+                        logo: s.stream_icon || "",
+                        epg: String(s.stream_id),
+                        tn: s.name,
+                        ca: "",
+                        caso: "",
                     };
                 }
             });

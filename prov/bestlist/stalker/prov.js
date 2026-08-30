@@ -25,14 +25,14 @@ providerHasItem = function (e) {
 providerHasItemValue = function (e) {
     return ottpStorage.hasValue(p_pref + e);
 };
-var _bestlist_stalker_cfg = { m3u: "", pass: "", server: "", user: "" };
+var _bestlist_stalker_cfg = { server: "", user: "", pass: "", m3u: "" };
 function _bestlist_stalker_load() {
     try {
         var d = providerGetItem("cfg");
         if (d) _bestlist_stalker_cfg = JSON.parse(d);
     } catch (e) {}
     if (!(_bestlist_stalker_cfg.server || _bestlist_stalker_cfg.m3u))
-        _bestlist_stalker_cfg = { m3u: "", pass: "", server: "", user: "" };
+        _bestlist_stalker_cfg = { server: "", user: "", pass: "", m3u: "" };
 }
 function _bestlist_stalker_save() {
     providerSetItem("cfg", JSON.stringify(_bestlist_stalker_cfg));
@@ -75,27 +75,27 @@ function getChanelsArray(cb) {
 function _bestlist_stalker_m3u(cb) {
     $(launch_id).append(_("Loading M3U..."));
     $.ajax({
+        url: _bestlist_stalker_cfg.m3u,
+        timeout: 15e3,
+        success: function (d) {
+            _bestlist_stalker_parseM3U(d, cb);
+        },
         error: function () {
             $.ajax({
+                url: host + "/m3u/cp.php",
                 data: { url: "@" + _bestlist_stalker_cfg.m3u },
+                method: "post",
                 dataType: "text",
+                timeout: 15e3,
+                success: function (d) {
+                    _bestlist_stalker_parseM3U(d, cb);
+                },
                 error: function () {
                     alert(_("Failed to load!"));
                     cb();
                 },
-                method: "post",
-                success: function (d) {
-                    _bestlist_stalker_parseM3U(d, cb);
-                },
-                timeout: 15e3,
-                url: host + "/m3u/cp.php",
             });
         },
-        success: function (d) {
-            _bestlist_stalker_parseM3U(d, cb);
-        },
-        timeout: 15e3,
-        url: _bestlist_stalker_cfg.m3u,
     });
 }
 function _bestlist_stalker_parseM3U(data, cb) {
@@ -135,17 +135,17 @@ function _bestlist_stalker_parseM3U(data, cb) {
             if (cList.indexOf(h) === -1) {
                 cList.push(h);
                 chanels[h] = {
-                    ca: "",
-                    caso: "",
-                    category: { class: catsArray.indexOf(cat) + 2, name: cat },
                     channel_name: name,
-                    epg: "",
-                    logo: logo,
+                    category: { class: catsArray.indexOf(cat) + 2, name: cat },
                     rec: 0,
                     time: 0,
                     time_to: 0,
-                    tn: name,
                     url: url,
+                    logo: logo,
+                    epg: "",
+                    tn: name,
+                    ca: "",
+                    caso: "",
                 };
             }
         });
@@ -162,7 +162,7 @@ function _bestlist_stalker_xtream(cb) {
         encodeURIComponent(_bestlist_stalker_cfg.user) +
         "&password=" +
         encodeURIComponent(_bestlist_stalker_cfg.pass);
-    $.ajax({ dataType: "json", timeout: 15e3, type: "GET", url: api })
+    $.ajax({ type: "GET", url: api, dataType: "json", timeout: 15e3 })
         .done(function (r) {
             cList = [];
             chanels = {};
@@ -187,19 +187,14 @@ function _bestlist_stalker_xtream(cb) {
                 if (cList.indexOf(h) === -1) {
                     cList.push(h);
                     chanels[h] = {
-                        ca: "",
-                        caso: "",
+                        channel_name: s.name,
                         category: {
                             class: catsArray.indexOf(cn) + 2,
                             name: cn,
                         },
-                        channel_name: s.name,
-                        epg: String(s.stream_id),
-                        logo: s.stream_icon || "",
                         rec: 0,
                         time: 0,
                         time_to: 0,
-                        tn: s.name,
                         url:
                             _bestlist_stalker_cfg.server +
                             "/live/" +
@@ -209,6 +204,11 @@ function _bestlist_stalker_xtream(cb) {
                             "/" +
                             s.stream_id +
                             ".m3u8",
+                        logo: s.stream_icon || "",
+                        epg: String(s.stream_id),
+                        tn: s.name,
+                        ca: "",
+                        caso: "",
                     };
                 }
             });

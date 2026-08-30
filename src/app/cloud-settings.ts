@@ -48,15 +48,11 @@ export function cloudSendSettings(): void {
     xml += "\n</properties>";
     if (typeof jQuery !== "undefined") {
         jQuery.ajax({
-            cache: false,
+            url: w.host_ott_proto + w.host_ott + "/swop/a.php",
             data: { c: "send", d: xml },
-            error: function (jqXHR: any) {
-                jQuery("#listAbout").html(
-                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
-                        jqXHR.responseText +
-                        "</div>"
-                );
-            },
+            type: "POST",
+            timeout: 10000,
+            cache: false,
             success: function (data: any) {
                 cleanup();
                 jQuery("#listAbout").html(
@@ -84,9 +80,13 @@ export function cloudSendSettings(): void {
                         '" style="height:30%;"/></div></div>'
                 );
             },
-            timeout: 10000,
-            type: "POST",
-            url: w.host_ott_proto + w.host_ott + "/swop/a.php",
+            error: function (jqXHR: any) {
+                jQuery("#listAbout").html(
+                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
+                        jqXHR.responseText +
+                        "</div>"
+                );
+            },
         });
     }
 }
@@ -119,16 +119,11 @@ export function cloudLoadSettings(): void {
         if (cancelled) return;
         if (typeof jQuery !== "undefined") {
             jQuery.ajax({
-                cache: false,
+                url: w.host_ott_proto + w.host_ott + "/swop/a.php",
                 data: { c: "get", d: code },
-                error: function (jqXHR: any) {
-                    if (typeof jQuery !== "undefined")
-                        jQuery("#listAbout").html(
-                            '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
-                                jqXHR.responseText +
-                                "</div>"
-                        );
-                },
+                type: "POST",
+                timeout: 10000,
+                cache: false,
                 success: function (data: any) {
                     if (cancelled) return;
                     if (data.status === "forbidden") setTimeout(poll, 5000);
@@ -167,9 +162,14 @@ export function cloudLoadSettings(): void {
                         }
                     }
                 },
-                timeout: 10000,
-                type: "POST",
-                url: w.host_ott_proto + w.host_ott + "/swop/a.php",
+                error: function (jqXHR: any) {
+                    if (typeof jQuery !== "undefined")
+                        jQuery("#listAbout").html(
+                            '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
+                                jqXHR.responseText +
+                                "</div>"
+                        );
+                },
             });
         }
     }
@@ -188,15 +188,11 @@ export function cloudLoadSettings(): void {
     };
     if (typeof jQuery !== "undefined") {
         jQuery.ajax({
-            cache: false,
+            url: w.host_ott_proto + w.host_ott + "/swop/a.php",
             data: { c: "get_code" },
-            error: function (jqXHR: any) {
-                jQuery("#listAbout").html(
-                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
-                        jqXHR.responseText +
-                        "</div>"
-                );
-            },
+            type: "POST",
+            timeout: 10000,
+            cache: false,
             success: function (data: any) {
                 code = data.code;
                 jQuery("#listAbout").html(
@@ -225,9 +221,13 @@ export function cloudLoadSettings(): void {
                 );
                 setTimeout(poll, 10000);
             },
-            timeout: 10000,
-            type: "POST",
-            url: w.host_ott_proto + w.host_ott + "/swop/a.php",
+            error: function (jqXHR: any) {
+                jQuery("#listAbout").html(
+                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
+                        jqXHR.responseText +
+                        "</div>"
+                );
+            },
         });
     }
 }
