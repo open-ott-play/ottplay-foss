@@ -14,8 +14,7 @@ if (typeof stbGetItem === "function") {
         return localStorage.getItem(p_pref + e);
     };
     providerSetItem = function (e, r) {
-        // codeql[js/cleartext-storage-of-credentials] false positive — provider config field, not a credential
-        localStorage.setItem(p_pref + e, r);
+        localStorage.setItem(p_pref + e, r); // codeql[js/cleartext-storage-of-credentials] false positive — provider config field, not a credential
     };
 }
 providerDelItem = function (e) {
