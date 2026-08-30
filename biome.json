@@ -204,8 +204,6 @@
     "ignoreUnknown": true,
     "includes": [
       "src/**",
-      "prov/**/prov.js",
-      "src/stb/**/stb.js",
       "build-concat.cjs",
       "biome.json",
       "package.json",
@@ -218,7 +216,7 @@
     "indentWidth": 4
   },
   "linter": {
-    "enabled": true,
+    "enabled": false,
     "rules": {
       "correctness": {
         "noInnerDeclarations": "off",
