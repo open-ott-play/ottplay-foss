@@ -2,61 +2,104 @@
 
 Status: analysis / planning. No implementation.
 
-## What `server.py` Does That the App Must Absorb
+## Two Operating Modes
 
-`server.py` is a Python HTTP server acting as a local backend companion. Its duties break into three tiers:
+The project serves two distinct deployment models:
 
-### Tier 1 — Static file serving
-Serves the built HTML/JS bundle. In a native app this is replaced by embedding the bundle as app assets and loading from `file://` or `app://`. No changes to frontend code needed.
+### Mode A — Legacy STB / Browser (Dune HS5, MAG, etc.)
+Player runs in a browser or WebView on the STB hardware. `python3 server.py` provides the backend companion. Both the frontend bundle and the Python server are required. This mode is preserved indefinitely.
 
-### Tier 2 — XMLTV / EPG proxying
-- Fetches one or more XMLTV URLs (`--epg-url`) with gzip decompression
-- Caches to `.cache/epg_*.json` (TTL 2h) for instant restarts
-- Merges multiple sources, deduplicates by `(start, title)`
-- Normalizes channel IDs for fuzzy EPG matching
-- Serves `/epg/<hash>` (per-channel EPG slice), `/logo/<hash>` (generated SVG logos)
-- `/m3u/match-channels` and `/m3u/match-logos` for M3U provider channel mapping
+### Mode B — Native Apps (iOS, Android, macOS, Windows, Linux)
+Self-contained app. No Python server required. All server.py duties are absorbed into the native layer. The app bundles everything and works offline.
 
-**App must implement:** XMLTV fetch + gzip + XML parse + cache to local storage (SQLite or IndexedDB). Merging/dedup logic can stay TypeScript. EPG slice endpoint becomes an in-process function call. Logo SVG generation (already in Python) must be ported to TypeScript/canvas.
-
-### Tier 3 — Stalker/Xtream mock portal
-`server.py` implements a Stalker Portal-compatible API surface:
-- `GET /portal.php?type=stb&action=get_profile` — device profile
-- `GET /portal.php?type=account_info&action=get_main_info` — account info
-- `GET /portal.php?type=itv&action=get_all_channels` — channel list
-- `GET /portal.php?type=itv&action=get_epg_info&period=<days>` — EPG summary
-- `GET /portal.php?type=itv&action=get_simple_data_url&chan_id=<id>` — stream URL
-- `GET /portal.php?type=tv_archive&action=get_archive_list&chan_id=<id>&day=<date>` — archive manifest
-- `GET /portal.php?type=video_vod&action=get_categories` — VOD categories
-- `POST /portal.php?type=watching&action=set` — watch time heartbeat
-- `POST /report_feedb` — usage reporting
-
-**App must implement:** These are HTTP calls made by provider scripts (`prov/stalker/prov.js`, `prov/xtream/prov.js`) against the configured portal base URL. In a self-contained app there is no external server — the app itself must respond to these requests. Two options:
-1. **Embedded HTTP server** — use a Rust-side tiny HTTP server (Tauri) or `capacitor` plugin that intercepts these patterns and responds from local data.
-2. **Direct function calls** — refactor provider scripts to call a shim instead of `fetch()`. The shim routes through the native layer (Tauri invoke / Capacitor plugin) which returns the same JSON. Provider code stays unchanged but the transport layer changes.
-
-Option 2 is cleaner and avoids port conflicts.
-
-### Tier 4 — `local_proxy.py` (command queue)
-A separate process (`default port 8081`). Exposes:
-- `POST /api/webhook/commands` — enqueue command (from Home Assistant, Node-RED, curl)
-- `GET /api/webhook/commands` — poll pending commands (player polls this)
-- Per-device routing via `?device_id=<id>` query param
-
-Commands include: `{cmd: "key:<keycode>"}`, `{cmd: "ch:<number>"}`, `{cmd: "push:<url>"}`, `{cmd: "reload"}`, etc.
-
-**App must implement:** The player already polls this. In a native app, the command queue should live in the native layer — a Rust-side in-memory store (Tauri state) or a lightweight SQLite table. External POSTs come from the same network, so the native app must bind an HTTP server on a local port (configurable, default `localhost:8081`) that any device on the LAN can reach. This is the one piece that needs a real HTTP server — but it's trivially small (~100 lines of Rust with `tiny_http` or similar).
+These modes are **mutually exclusive at runtime** — a native app does not connect to server.py, and a browser/STB player does not connect to a native command queue. Both share the same TypeScript frontend source.
 
 ---
 
-## `local_proxy.py` Proxy Functions
+## Mode A Contract — What `server.py` Must Keep Doing
 
-The proxy rewrites stream URLs through the local machine (for CORS bypass, geographic unblocking, etc.) by:
-1. Receiving a `POST /m3u/cp.php` with `{cmd: "play", stream_url: "...", ...}`
-2. Proxying the stream URL through the local HTTP server
-3. Returning the proxied URL to the player
+`server.py` is frozen as the backend for all non-native deployments. Any changes to it must not break Dune HS5 / MAG / browser users.
 
-**App must implement:** This is the "local proxy" mode. The native app should intercept these stream requests and handle them in the native layer — for example, using a Tauri plugin that runs a local HTTP proxy or handles the stream directly with an in-process HTTP client that adds required headers and handles CORS.
+### Endpoints served by `server.py`
+
+| Endpoint | Purpose | Preserved? |
+|---|---|---|
+| `/` | Static HTML shell | Yes — unchanged |
+| `/f/<path>` | Static assets (JS/CSS/images) | Yes — unchanged |
+| `/epg/<hash>.json` | Per-channel EPG slice | Yes — unchanged |
+| `/logo/<id>.svg` | Generated SVG channel logos | Yes — unchanged |
+| `/logo/<id>.svg?ch=<name>` | Logo with fallback letter | Yes — unchanged |
+| `/m3u/match-channels` POST | Match M3U channels to EPG | Yes — unchanged |
+| `/m3u/match-logos` POST | Match channel names to logo URLs | Yes — unchanged |
+| `/m3u/cp.php` POST | Stream URL proxy (CORS bypass) | Yes — unchanged |
+| `/tmdb/<path>` GET | TMDB API proxy (avoids CORS) | Yes — unchanged |
+| `/version/<rel>` GET | Version info | Yes — unchanged |
+| `/feedback/<path>` GET/POST | Feedback tracking | Yes — unchanged |
+| `/api/<path>` GET/POST | Feedback/analytics pass-through | Yes — unchanged |
+| `/report_feedb` POST | Usage reporting | Yes — unchanged |
+| `/webhook/poll` | **403** — disabled | N/A |
+| `/webhook/notify` | **403** — disabled | N/A |
+
+### Separate process: `local_proxy.py` (port 8081)
+
+This is **not** part of server.py. It runs as a standalone companion for the webhook-based remote command system (Home Assistant, Node-RED, curl). It is **not** used by the native apps.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/webhook/commands` | Enqueue a command |
+| `GET /api/webhook/commands` | Poll pending commands |
+
+Commands: `{cmd: "key:<keycode>"}`, `{cmd: "ch:<number>"}`, `{cmd: "push:<url>"}`, `{cmd: "reload"}`.
+
+### What `server.py` fetches from the internet
+
+- XMLTV from `--epg-url` URLs (default: `http://epg.it999.ru/epg2.xml.gz`)
+- TMDB API proxied through `/tmdb/`
+- M3U playlist streams proxied through `/m3u/cp.php`
+- Channel logo favicon via Google Favicon API
+
+**Rule:** No changes to server.py that alter these endpoints, their response formats, or the URL structure. If a feature requires a new endpoint, add it alongside the existing ones.
+
+---
+
+## Mode B Contract — What the Native App Must Implement
+
+### Tier 1 — Static bundle (handled by app shell)
+
+The built HTML/JS bundle is embedded as app assets. No server needed.
+
+### Tier 2 — XMLTV / EPG
+
+Port `server.py` XMLTV logic to native:
+
+- Fetch + gzip decompress + XML parse → native HTTP client + gzip library
+- Cache TTL 2h → `SQLite` on desktop, `IndexedDB` on mobile
+- Logo SVG generation → TypeScript SVG string generation (no native needed)
+- Merge + dedup + channel ID normalization → TypeScript (can stay as-is)
+
+All other EPG logic stays in TypeScript. No URL changes needed — in native, the `/epg/<hash>.json` calls become in-process function calls.
+
+### Tier 3 — M3U provider mapping
+
+- `/m3u/match-channels` → native function, same request/response format
+- `/m3u/match-logos` → native function
+- `/m3u/cp.php` (stream proxy) → native HTTP client with header injection (Referer, User-Agent rewrite)
+
+### Tier 4 — TMDB proxy
+
+`/tmdb/<path>` → native TMDB API calls with same response format.
+
+### Tier 5 — Version + feedback
+
+`/version/<rel>`, `/feedback/*`, `/api/*`, `/report_feedb` → native HTTP calls or no-op (analytics optional for v1).
+
+### Tier 6 — Remote commands
+
+Native app implements its own local command queue (not `local_proxy.py`):
+- `POST /api/webhook/commands` → native HTTP server on `localhost:18081` (desktop) or high port (iOS, Android)
+- `GET /api/webhook/commands` → poll from the app's web layer
+
+The native command queue stores commands in memory (expire after 60s, same as `local_proxy.py`).
 
 ---
 
@@ -64,165 +107,115 @@ The proxy rewrites stream URLs through the local machine (for CORS bypass, geogr
 
 ### macOS, Windows, Linux — Tauri v2
 
-**Why Tauri:** Same stack as `inverter-desktop` (Vue 3 + Tauri v2, Rust backend). You get:
-- Rust commands via `invoke()` for all native logic (XMLTV parsing, command queue, portal mock, logo generation)
-- Tiny binary (~10 MB vs ~150 MB for Electron)
-- Full OS integration: system tray, notifications, file dialogs, shell integration
-- Updater plugin already in `inverter-desktop` — port to ottplay with same mechanism
-- Proven build pipeline (`inverter-desktop/.github/workflows/*.yml`)
+**Why Tauri:** Same stack as `inverter-desktop` (Vue 3 + Tauri v2, Rust backend). Binary size ~10 MB. Rust commands handle all server.py tiers. Proven build pipeline.
 
-**Caveat:** No out-of-the-box iOS/Android support — Tauri mobile is separate and less mature. But desktop is the primary target for STB/TV builds.
+**Caveat:** No iOS/Android from the same checkout. Tauri mobile is separate.
 
-**Key files to create:**
-```
-src-tauri/
-  src/
-    main.rs           # existing boilerplate from inverter-desktop
-    commands/
-      xmltv.rs       # XMLTV fetch + parse + cache
-      portal.rs      # Stalker/Xtream mock responses
-      commands.rs     # local_proxy command queue
-      proxy.rs       # stream URL proxy
-  tauri.conf.json    # bundle targets: dmg, msi, deb, rpm, appimage
-```
+Key: embed the TypeScript bundle as `dist/` assets. Rust `include_bytes!` or Tauri `asset_resolver` serves them at startup.
 
 ### iOS — Capacitor + Vue 3
 
-**Why Capacitor:** Already TypeScript-first Vue project. Capacitor wraps the web app in a WKWebView (no UIWebView) and provides native bridges via plugins. No Rust needed for iOS.
+**Why Capacitor:** TypeScript-first. Wrap existing web app in WKWebView. One build, two mobile platforms.
 
-**Why not Tauri mobile (yet):** Tauri v2 mobile is production-ready but requires a separate `src-mobile/` checkout and IPC complexity. For a first port, Capacitor is faster.
+**Caveat:** Tauri mobile is real but ecosystem is thinner. Start with Capacitor for derisking.
 
-**Media constraints on iOS:**
-- **No MSE** (Media Source Extensions) — HLS.js works natively (HLS is first-class on iOS). Shaka Player falls back to HLS internally.
-- **No FairPlay DRM** in a browser WKWebView — native AVPlayer handles it, but not accessible from Capacitor JS. If providers need FairPlay (rare for IPTV), a native Capacitor plugin is required.
-- **PiP** — available via `AVPictureInPictureController`, exposed by `@capacitor/video` or a custom plugin.
-- **Background audio** — requires `UIBackgroundModes: audio` in `Info.plist`, handled by Capacitor config.
-- **No local HTTP server for `local_proxy`** — iOS blocks binding to ports below 1024 without root. Use a high port (e.g., `localhost:18081`) and configure the router accordingly.
-
-**Key files to create:**
-```
-ios/                    # generated by `npx cap add ios`
-  App/
-    AppDelegate.swift
-    Info.plist         # UIBackgroundModes: audio, fetch
-capacitor.config.ts     # server: { androidScheme: 'https', hostname: 'localhost' }
-  plugins/
-    ottplay-commands/   # Native Swift plugin for command queue + stream proxy
-```
+Media constraints:
+- **HLS** — first-class native support. `hls.js` auto-delegates to `<video>` tag on iOS.
+- **DASH** — no MSE in WKWebView. Shaka Player falls back to HLS or fails. Most IPTV providers serve HLS.
+- **FairPlay** — not accessible from Capacitor JS. Only relevant for premium providers; standard IPTV uses none.
+- **Background audio** — `UIBackgroundModes: audio` in Info.plist (Capacitor config).
+- **Local command port** — iOS blocks ports < 1024. Use `localhost:18081`.
 
 ### Android — Capacitor + Vue 3
 
-**Why Capacitor:** Same codebase as iOS. One TypeScript build ships to both.
+Same codebase as iOS.
 
-**Why not Tauri mobile for Android:** Tauri v2 supports Android, but Capacitor is simpler for a web-heavy app that already works in a browser.
+Media constraints:
+- **MSE + Widevine** — available on Chrome WebView (Android 4.4+). HLS.js works. Shaka Player + Widevine works.
+- **Background playback** — `foregroundServiceType="mediaPlayback"` in manifest (Capacitor config).
+- **Local command port** — any port allowed.
 
-**Media constraints on Android:**
-- **MSE + Widevine** — available on Android 4.4+ Chrome WebView. HLS.js works. Shaka Player with Widevine CDM works for DRM streams.
-- **ExoPlayer vs WebView** — WebView-based playback (HLS.js/Shaka) works fine for most IPTV. For niche codecs (MPEG-2, MPEG-4 Part 2), a Capacitor video plugin wrapping ExoPlayer is needed.
-- **Background playback** — `android:foregroundServiceType="mediaPlayback"` in manifest, Capacitor config handles this.
-- **Local proxy port** — Android allows binding to any port. No restriction.
-
-**Key files to create:**
-```
-android/                # generated by `npx cap add android`
-  app/src/main/AndroidManifest.xml  # foregroundServiceType, INTERNET
-capacitor.config.ts
-  plugins/
-    ottplay-commands/   # Native Kotlin plugin for command queue + stream proxy
-```
-
-### Summary table
+### Summary
 
 | OS | Stack | Rationale |
 |---|---|---|
-| macOS | Tauri v2 + Vue 3 | Proven (`inverter-desktop`), tiny binary, Rust backend |
-| Windows | Tauri v2 + Vue 3 | Same as above |
-| Linux | Tauri v2 + Vue 3 | Same, `appimage`/`deb`/`rpm` targets |
-| iOS | Capacitor + Vue 3 | Faster to ship, no Rust mobile needed, WKWebView HLS |
-| Android | Capacitor + Vue 3 | Same codebase as iOS, WebView MSE works |
+| macOS | Tauri v2 + Vue 3 | Same as inverter-desktop, tiny binary, Rust backend |
+| Windows | Tauri v2 + Vue 3 | Same |
+| Linux | Tauri v2 + Vue 3 | Same |
+| iOS | Capacitor + Vue 3 | Faster to ship, WKWebView HLS, no Rust mobile needed |
+| Android | Capacitor + Vue 3 | Same codebase as iOS |
 
-**Why not Electron:** Binary size (~150 MB), security sandbox headaches, high RAM. Tauri is objectively better for this use case. Capacitor for mobile is a pragmatic middle ground between native and web.
-
-**Why not PWA/WKWebView standalone:** PWAs cannot run a local HTTP server — the `local_proxy.py` command queue (which must be reachable from LAN devices) requires a real native process. Also: no App Store distribution, no background audio on iOS, no push notifications.
+**Why not Electron:** 150 MB binary, high RAM. Tauri wins.
+**Why not PWA:** Cannot run a local HTTP server for the command queue. No App Store.
+**Why not Capacitor for desktop:** Tauri is smaller and more native. Capacitor desktop exists but is heavier than Tauri for this use case.
 
 ---
 
 ## Media Playback Constraints
 
 ### iOS
-
-- **HLS** — first-class native support. `hls.js` detects iOS and delegates to `<video>` tag which uses native HLS. No extra config.
-- **DASH** — not supported natively. Shaka Player falls back to HLS (if stream has HLS variant) or fails. Most IPTV providers serve HLS anyway.
-- **MSE** — not available in WKWebView. DASH, Widevine, PlayReady all unavailable in JS context.
-- **FairPlay DRM** — requires AVPlayer with FairPlay license server. Not accessible from Capacitor JS. Only relevant for premium providers; most IPTV does not use DRM.
-- **PiP** — available via `AVPictureInPictureController`. Capacitor plugin needed. iOS 14+ required for web PiP API.
-- **Background audio** — works with `UIBackgroundModes: audio` in Info.plist. Player must use `<audio>` element (not video) when screen is locked, or use AVPlayer via plugin.
+- **HLS** — native via `<video>` tag. `hls.js` auto-detects and delegates.
+- **DASH** — unavailable (no MSE). Shaka Player fails.
+- **FairPlay DRM** — only via native AVPlayer, not accessible from Capacitor.
+- **PiP** — `PictureInPicture` Web API on iOS 14+, or Capacitor plugin wrapping `AVPictureInPictureController`.
+- **Background audio** — `UIBackgroundModes: audio` in Info.plist.
 
 ### Android
-
-- **HLS** — works via Chrome WebView (Android 4.4+). `hls.js` uses MSE under the hood.
-- **DASH** — works via MSE in Chrome WebView. Widevine L1/L3 available on Chrome 74+.
-- **ExoPlayer** — not accessible from Capacitor JS directly. A native plugin is needed for streams that fail in WebView (rare codec, DRM edge cases).
-- **PiP** — supported via `PictureInPicture` Web API on Android 8+. Capacitor plugin wraps `PictureInPictureManager`.
-- **Background playback** — foregroundService with `mediaPlayback` type required. Capacitor config handles manifest injection.
+- **HLS** — via Chrome WebView MSE.
+- **DASH** — via MSE + Widevine L1/L3 on Chrome 74+.
+- **ExoPlayer** — not directly accessible. WebView handles most streams.
+- **PiP** — `PictureInPicture` Web API on Android 8+.
+- **Background** — `foregroundServiceType="mediaPlayback"`.
 
 ### Desktop (Tauri)
-
-- **HLS** — `hls.js` uses MSE, fully supported.
-- **DASH** — `shaka-player` via MSE, fully supported.
-- **DRM** — Widevine/PlayReady via `CDM` (Content Decryption Module) in Chromium. Works in Tauri since it embeds Chromium/WebView.
-- **No constraints** — desktop is the easiest target. All features work as in a browser.
+- **HLS + DASH + DRM** — full MSE support. No constraints.
 
 ---
 
 ## Storage
 
-| Data | Storage mechanism |
+| Data | Native storage |
 |---|---|
-| XMLTV cache | SQLite (Rust) on desktop; IndexedDB on mobile |
-| Channel favorites / history | `localStorage`/`providerSetItem` (already uses `localStorage`) — no change needed |
-| Settings | `localStorage`/`providerSetItem` — already abstracted |
-| Command queue (local_proxy) | In-memory Rust `HashMap` keyed by device_id (lost on restart — this is fine, commands expire after 60s anyway) |
-| Stream proxy cache | None needed; passthrough by default |
+| XMLTV cache | SQLite (desktop), IndexedDB (mobile) |
+| Channel favorites / history | `localStorage` via Capacitor Filesystem plugin or Tauri Store plugin |
+| Settings | Same — `localStorage` persisted |
+| Command queue | In-memory Rust `HashMap` (desktop) / in-memory Swift/Kotlin map (mobile) |
 
-Existing `src/storage/index.ts` uses browser `localStorage`. On mobile Capacitor, this persists across sessions via the filesystem plugin. On desktop Tauri, the same `localStorage` backed by the app's data directory.
+`src/storage/index.ts` already abstracts `localStorage`. Capacitor/Tauri backends persist it to the app's data directory.
 
 ---
 
-## Background / Background Modes
+## Background Modes
 
 ### iOS
-- `UIBackgroundModes: audio` — background audio playback
-- `UIBackgroundModes: fetch` — background data refresh (EPG update)
-- Handled via Capacitor config (`{ ios: { backgroundAudio: true } }`)
+- `UIBackgroundModes: audio` — background playback
+- `UIBackgroundModes: fetch` — background EPG refresh
+- Capacitor config: `{ ios: { backgroundAudio: true } }`
 
 ### Android
-- `foregroundServiceType="mediaPlayback"` — keeps playback alive
-- `android.permission.FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MEDIA_PLAYBACK`
-- Capacitor config handles manifest merging
+- `foregroundServiceType="mediaPlayback"` + `FOREGROUND_SERVICE_MEDIA_PLAYBACK` permission
+- Capacitor config: `{ android: { backgroundAudio: true } }`
 
 ### Desktop
-- No special handling — apps can run indefinitely in the background
+- No special handling — app runs indefinitely.
 
 ---
 
 ## App Store / Play Store / Sideload
 
 ### iOS
-- **TestFlight** — internal testing, up to 100 devices, no App Store review
-- **App Store** — requires Apple Developer account ($99/yr), app review (1-3 days typically)
-- **Sideload (AltStore)** — requires AltServer + Mac/PC companion app, max 3 apps, 7-day certificates (refreshable)
-- **Sideload (Xcode)** — sideloaded .ipa, max 3 apps on one device (registered devices)
+- **TestFlight** — internal testing, 100 devices, no review
+- **App Store** — $99/yr developer account, 1-3 day review
+- **AltStore sideload** — 3 apps, 7-day certs (refreshable)
 
 ### Android
-- **Google Play** — requires $25 one-time dev account, app review for new apps, 1-3 days
-- **Sideload (APK)** — direct APK install, no review, users must enable "Install unknown apps"
-- **F-Droid** — open source only, requires source code submission + build verification
+- **Google Play** — $25 one-time, 1-3 day review
+- **APK sideload** — direct install, enable "Unknown apps" in settings
 
 ### Desktop
-- **macOS** — App Store (same Apple account as iOS), or direct DMG download + notarization
-- **Windows** — Microsoft Store (requires Microsoft account + $19 one-time fee), or direct EXE/MSI
-- **Linux** — direct download, `.deb`/`.rpm` repos, Flathub submission
+- **macOS** — App Store (same account) or notarized DMG
+- **Windows** — Microsoft Store ($19) or direct EXE/MSI
+- **Linux** — direct download, `.deb`/`.rpm`, Flathub
 
 ---
 
@@ -230,53 +223,47 @@ Existing `src/storage/index.ts` uses browser `localStorage`. On mobile Capacitor
 
 ### Phase 0 — Tauri desktop skeleton (weeks 1-2)
 
-Goal: build and ship a working desktop Tauri app with zero functional changes to the frontend.
+Goal: build + ship a working desktop Tauri app with zero frontend changes.
 
-1. `npm install @tauri-apps/cli && npx tauri init` — creates `src-tauri/`
-2. Copy `Cargo.toml`, `tauri.conf.json`, `src/main.rs` patterns from `inverter-desktop`
-3. Add minimal Tauri commands that wrap `localStorage` and pass through to the web layer unchanged
-4. Build for macOS (`.dmg`), verify it launches, loads the existing bundle
-5. Verify HLS playback works (hls.js + Tauri WebViewWindow)
+1. `npm install @tauri-apps/cli && npx tauri init` → `src-tauri/`
+2. Copy patterns from `inverter-desktop`: `Cargo.toml`, `tauri.conf.json`, `src/main.rs`
+3. Embed `dist/` as app assets. Rust serves them at `app://` URLs.
+4. Build `.dmg` / `.msi` — verify app launches and plays HLS
+5. **What breaks:** Nothing in `src/`. Build system only.
+6. **What is preserved:** `server.py` untouched. STB/TV builds unaffected.
 
-**What breaks:** Nothing in `src/`. Build system changes only.
+### Phase 1 — Rust backend for server.py tiers (weeks 3-5)
 
-**Keep:** All existing `npm run build` output. Tauri serves `dist/` as file:// URLs internally.
+Goal: eliminate Python for desktop builds.
 
-### Phase 1 — Rust backend for server.py duties (weeks 3-5)
+1. **XMLTV** → `src-tauri/src/commands/xmltv.rs`
+   - Rust: `ureq` (HTTP), `flate2` (gzip), `quick-xml` (XML), `serde_json` (cache)
+   - Cache: `{app_data_dir}/epg_cache/`
+   - Same response format as `server.py` — frontend unchanged
 
-Goal: eliminate Python runtime dependency for desktop builds.
+2. **Logo SVG** → `src-tauri/src/commands/logo.rs`
+   - TypeScript SVG string generation (no Rust needed — SVG is text)
 
-1. Port XMLTV fetch + gzip + XML parse + cache → `src-tauri/src/commands/xmltv.rs`
-   - Same logic as `server.py` `_fetch_single_xmltv()` / `parse_xmltv_time()` / `match_channel_to_xmltv()`
-   - Use Rust crates: `ureq` (HTTP), `flate2` (gzip), `quick-xml` (XML), `serde` + `serde_json` (cache)
-   - Cache to `{app_data_dir}/epg_cache/` as JSON
+3. **M3U mapping** → `src-tauri/src/commands/m3u.rs`
+   - `POST /m3u/match-channels`, `POST /m3u/match-logos`, `POST /m3u/cp.php`
+   - Same request/response format
 
-2. Port logo generation → `src-tauri/src/commands/logo.rs`
-   - Current Python generates SVG strings. Port to Rust string building or use embedded SVG templates.
-   - Or generate logos on the TypeScript side (SVG is text, no native needed).
+4. **TMDB proxy** → `src-tauri/src/commands/tmdb.rs`
+   - Forward to TMDB API, return same JSON
 
-3. Port Stalker portal mock → `src-tauri/src/commands/portal.rs`
-   - All `GET /portal.php?...` responses as `#[tauri::command]` functions
-   - Provider scripts call these via `fetch()` to the portal base URL — need to intercept.
-   - **Option A:** Refactor provider scripts to call `window.__ottplay_rpc.get_simple_data_url(chan_id)` instead of `fetch(portal_url)`.
-   - **Option B:** Use Tauri HTTP server plugin (embed a tiny `tiny_http` listener on a port within the app).
-   - Option A is cleaner but touches provider code. Option B is more transparent.
+5. **Version + feedback** → `src-tauri/src/commands/misc.rs`
+   - `GET /version/<rel>`, `/feedback/*`, `/api/*`, `/report_feedb`
 
-4. Port `local_proxy.py` command queue → `src-tauri/src/commands/queue.rs`
-   - `tiny_http` server on `localhost:18081` (configurable)
-   - `POST /api/webhook/commands` → store in `RwLock<HashMap<String, Vec<Command>>>`
-   - `GET /api/webhook/commands` → drain and return, expire entries > 60s old
-   - Expose as `#[tauri::command]` for the web layer to also call directly
+6. **Command queue** → `src-tauri/src/commands/queue.rs`
+   - `tiny_http` server on `localhost:18081`
+   - `RwLock<HashMap<String, Vec<Command>>>` — expire > 60s
+   - Expose as `#[tauri::command]` for direct JS call too
 
-5. Port stream proxy (`local_proxy.py` `cp.php` mode) → `src-tauri/src/commands/proxy.rs`
-   - Intercept stream URL requests, proxy through app
-   - Handle required header injection (Referer, Origin, User-Agent rewriting)
-
-**What breaks:** `server.py` still needed for non-Tauri builds (STB, TV, existing browser deployments). Deprecate it for desktop only.
+7. **What is preserved:** `server.py` stays for STB/TV. STB/TV users see zero change.
 
 ### Phase 2 — Capacitor mobile (weeks 6-10)
 
-Goal: iOS + Android apps from the same TypeScript codebase.
+Goal: iOS + Android from the same TypeScript source.
 
 1. `npm install @capacitor/core @capacitor/cli && npx cap init`
 2. `npx cap add ios && npx cap add android`
@@ -284,49 +271,43 @@ Goal: iOS + Android apps from the same TypeScript codebase.
    ```ts
    {
      server: { hostname: 'localhost' },
-     ios: { backgroundAudio: true, contentCapable: true },
+     ios: { backgroundAudio: true },
      android: { backgroundAudio: true, minSdkVersion: 22 },
    }
    ```
-4. Build: `npm run build && npx cap copy ios && npx cap copy android`
+4. **Native plugin for command queue:**
+   - iOS: Swift plugin on `localhost:18081`
+   - Android: Kotlin plugin
+5. **Build:** `npm run build && npx cap copy ios && npx cap copy android && npx cap sync`
 
-**Native plugin for command queue:**
-- iOS: Swift plugin in `ios/Plugin/OttplayCommands/` with `CapacitorPlugin` subclass
-- Android: Kotlin plugin in `android/app/src/main/java/com/ottplay/commands/`
-- Exposes `OttplayCommands.startServer(port)` and `OttplayCommands.postCommand(cmd)` to JS
-
-**What changes:** `local_proxy.py` ported to Swift/Kotlin as a local HTTP server plugin. All other logic stays TypeScript.
-
-**What breaks:** Nothing. Mobile builds are additive.
+**What breaks:** Nothing. `server.py` untouched. STB/TV unchanged.
 
 ### Phase 3 — App Store / Play Store submission (weeks 11-14)
 
-- iOS TestFlight first (fast, internal). Address crashes, permissions prompts.
-- Android internal testing track (fast). Same.
-- Iterate on UX for touch vs remote (mobile uses touch, TV uses remote keys — device profiles already separate these).
-- Prepare store listing assets: screenshots, icon (1024×1024), description, privacy policy URL.
+- iOS TestFlight → fix crashes + permission prompts
+- Android internal track → same
+- Touch vs remote: device profiles in `src/keyhandler/` already separate input modes
+- Store listing: icon 1024×1024, screenshots, privacy policy URL
 
-**No functional changes** — this phase is store compliance only.
+### Phase 4 — STB/TV builds (ongoing, unchanged)
 
-### Phase 4 — STB/TV builds (ongoing)
+STB/TV builds continue as today:
+- Browser/WebView on MAG, Dune HS5, etc.
+- `python3 server.py` as companion backend
+- No native app involvement
 
-STB/TV builds (MAG, Android TV, Samsung Tizen, etc.) are not native apps in the mobile sense. They use:
-- The existing browser-based build (`npm run build`)
-- `server.py` as the local companion server
-- Device profiles in `src/stb/` (note: `src/stb/` directory does not yet exist — device profiles were described in `docs/device-profiles.md` but the actual `src/stb/` directory was not present in the current checkout. If device profiles exist elsewhere, they are preserved and continue to work.)
-
-These builds are **unchanged** by the native app work. They remain as they are.
+**Key:** `server.py` is never removed or changed in a breaking way while any STB/TV user depends on it. Changes to server.py require a compatibility check against the current Dune HS5 / MAG workflows.
 
 ---
 
 ## Key Risks
 
-1. **Stalker portal interceptor** — provider scripts `fetch()` the portal base URL. In a native app there's no external server. The portal mock must live inside the app. Refactoring provider scripts to use an RPC shim (Option A above) is the cleanest path but requires changes to `prov/stalker/prov.js` and `prov/xtream/prov.js`. Test thoroughly with real provider credentials.
+1. **Dune HS5 compatibility** — Dune HS5 runs the player in a browser/WebView. `server.py` must keep serving the same URLs with the same response formats. Any backend change must be tested against a real Dune HS5 device.
 
-2. **MSE on iOS** — DASH won't work. Most IPTV providers serve HLS variants. Verify your target providers' stream formats before committing to Capacitor. If DASH is essential, a native ExoPlayer Capacitor plugin is needed.
+2. **iOS DASH** — if any provider serves DASH-only streams (no HLS fallback), Capacitor WKWebView cannot play them. Verify target providers before committing. Workaround: native ExoPlayer Capacitor plugin.
 
-3. **FairPlay DRM** — if any provider requires FairPlay, Capacitor's WKWebView cannot handle it. Native AVPlayer integration or a dedicated streaming app (using AVKit directly) would be needed. Unlikely for typical IPTV.
+3. **Stalker portal interception** — provider scripts in `src/provider/index.ts` call `host_ott/swop/a.php` and the configured portal base URL. In native apps there's no external portal server. Provider scripts must route through a shim (Option A: `window.__ottplay_rpc` calls → native `#[tauri::command]`; Option B: native HTTP server intercepts portal patterns). Option A is cleaner, requires small refactor of `src/provider/index.ts`.
 
-4. **Tauri mobile maturity** — while Tauri v2 mobile is production-ready, the ecosystem (plugins, documentation) is thinner than Capacitor. Start with Capacitor for mobile to derisk. Revisit Tauri mobile in a future phase.
+4. **Tauri mobile** — Tauri v2 mobile is production-ready but ecosystem is smaller than Capacitor. Phase 2 uses Capacitor. Revisit Tauri mobile in a future phase.
 
-5. **Binary size vs features** — Capacitor apps bundle the web assets + a thin native shell (~30-50 MB). Tauri apps are smaller (~10 MB) but require Rust development. The phase plan starts with Tauri desktop (where Rust is already justified) and Capacitor mobile (where adding Rust to a TypeScript mobile project adds complexity without benefit).
+5. **Biome config drift** — `biome.json` schema (2.5.10) doesn't match installed CLI (2.4.16). Fix: `npx biome migrate` or align versions. Blocks pre-push hooks. Unrelated to native app work but should be resolved separately.
