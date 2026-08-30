@@ -181,10 +181,11 @@
         // Device UUID — generated once, persisted in localStorage
         var deviceUUID = localStorage.getItem("ott_device_uuid");
         if (!deviceUUID) {
+            var _b = new Uint8Array(8);
+            crypto.getRandomValues(_b);
             deviceUUID =
                 "dev_" +
-                Math.random().toString(36).substr(2, 9) +
-                Math.random().toString(36).substr(2, 4);
+                Array.from(_b).map(function (b) { return (b & 0x0f).toString(16); }).join("");
             localStorage.setItem("ott_device_uuid", deviceUUID);
         }
         window.deviceUUID = deviceUUID;
