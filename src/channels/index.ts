@@ -2329,14 +2329,15 @@ export function searchChannel(): void {
             };
             (function () {
                 var captionEl = document.getElementById("listCaption");
-                if (captionEl)
-                    captionEl.innerHTML =
+                if (captionEl) {
+                    captionEl.textContent =
                         w._("Search") +
                         ':"' +
                         saved +
                         '" (' +
                         w.w.listArray.length +
                         ")";
+                }
             })();
             var podvalEl = document.getElementById("listPodval");
             if (podvalEl) {
