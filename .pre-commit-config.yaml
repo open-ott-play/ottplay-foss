@@ -28,7 +28,7 @@ repos:
     hooks:
       - id: biome
         name: biome check
-        entry: npx --no-install @biomejs/biome check --write src build-concat.cjs biome.json package.json tsconfig.json server.py
+        entry: npx --no-install @biomejs/biome check --write src build-concat.cjs biome.json package.json tsconfig.json
         language: system
         pass_filenames: false
         types_or: [file]
@@ -36,3 +36,8 @@ repos:
   # mirrors-eslint@v10 requires a flat eslint.config.js which this repo
   # intentionally does not carry, so the hook failed every push that
   # touched a .js file.
+  - repo: https://github.com/pylint-dev/pylint
+    rev: v4.0.6
+    hooks:
+      - id: pylint
+        exclude: "^tests/"

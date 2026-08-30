@@ -331,12 +331,12 @@ export function uiInit(): void {
         }
         var w = window as any;
         if (
-            !w.playType &&
             !(
-                w.chanels &&
-                w.curList &&
-                w.chanels[w.curList[w.primaryIndex]] &&
-                w.chanels[w.curList[w.primaryIndex]].rec
+                w.playType ||
+                (w.chanels &&
+                    w.curList &&
+                    w.chanels[w.curList[w.primaryIndex]] &&
+                    w.chanels[w.curList[w.primaryIndex]].rec)
             )
         )
             return;
@@ -390,12 +390,12 @@ export function uiInit(): void {
         }
         var w = window as any;
         if (
-            !w.playType &&
             !(
-                w.chanels &&
-                w.curList &&
-                w.chanels[w.curList[w.primaryIndex]] &&
-                w.chanels[w.curList[w.primaryIndex]].rec
+                w.playType ||
+                (w.chanels &&
+                    w.curList &&
+                    w.chanels[w.curList[w.primaryIndex]] &&
+                    w.chanels[w.curList[w.primaryIndex]].rec)
             )
         )
             return;
