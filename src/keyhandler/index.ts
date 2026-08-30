@@ -89,11 +89,12 @@ var isSelectBox = false;
  */
 export function keyHandler(event: KeyboardEvent): void {
     // If an input, textarea, or contenteditable element is focused, let browser handle the key
+    const target = event.target as HTMLElement | null;
     if (
-        event.target &&
-        ((event.target as HTMLElement).tagName === "INPUT" ||
-            (event.target as HTMLElement).tagName === "TEXTAREA" ||
-            (event.target as HTMLElement).isContentEditable)
+        target &&
+        (target.tagName === "INPUT" ||
+            target.tagName === "TEXTAREA" ||
+            target.isContentEditable)
     ) {
         return;
     }
@@ -537,11 +538,10 @@ function handleEditKey(keyCode: number, event: KeyboardEvent): void {
     if (keyCode === keys.ENTER) {
         if (typeof (window as any).setEdit === "function")
             (window as any).setEdit();
-    } else if (
-        (keyCode === keys.RETURN || keyCode === keys.EXIT) &&
-        typeof (window as any).restoreCPD === "function"
-    )
-        (window as any).restoreCPD();
+    } else if (keyCode === keys.RETURN || keyCode === keys.EXIT) {
+        if (typeof (window as any).restoreCPD === "function")
+            (window as any).restoreCPD();
+    }
 }
 
 /* ---------------------------------------------------------------------------
@@ -892,7 +892,7 @@ export function numberProg(digit: number): void {
         return;
     }
     nProg += digit.toString();
-    var idx = Number.parseInt(nProg, 10) - 1;
+    var idx = parseInt(nProg, 10) - 1;
     if (!numProgEl) numProgEl = document.getElementById("numprog");
     if (numProgEl) {
         numProgEl.innerHTML =
@@ -913,7 +913,7 @@ export function numberProg(digit: number): void {
     clearTimeout(numTimeout);
     numTimeout = setTimeout(function () {
         if (numProgEl) numProgEl.style.display = "none";
-        var e = Number.parseInt(nProg) - 1;
+        var e = parseInt(nProg) - 1;
         nProg = "";
         if (
             e < 0 ||
@@ -1190,7 +1190,7 @@ function handleTouchStart(e: any): void {
  *             A non-zero dir causes the move reference point to be reset to prevent repeated dispatches.
  */
 function handleTouchMove(e: any): void {
-    if (!(xDown && yDown)) return;
+    if (!xDown || !yDown) return;
     e.preventDefault();
     xUp = Math.round(e.touches[0].screenX);
     yUp = Math.round(e.touches[0].screenY);
@@ -1224,12 +1224,13 @@ function handleTouchMove(e: any): void {
  * @analysis Only triggers on exactly 3 touch points. Resets tracking state unconditionally after processing.
  */
 function handleTouchEnd(e: any): void {
-    if (
-        tCount === 3 &&
-        Math.abs(xUp - xDown) < touch_min_sensX * 5 &&
-        Math.abs(yUp - yDown) < touch_min_sensY * 2
-    )
-        (window as any)._doKey((window as any).keys.SETUP);
+    if (tCount === 3) {
+        if (
+            Math.abs(xUp - xDown) < touch_min_sensX * 5 &&
+            Math.abs(yUp - yDown) < touch_min_sensY * 2
+        )
+            (window as any)._doKey((window as any).keys.SETUP);
+    }
     xDown = null;
     yDown = null;
     tCount = undefined;
@@ -1252,7 +1253,7 @@ function handleTouchEnd(e: any): void {
  *             so that regular click handlers fire naturally.
  */
 function body_handleTouchEnd(e: any): void {
-    if (!(xDown && yDown)) return;
+    if (!xDown || !yDown) return;
     e.preventDefault();
     if (e.touches.length === 0) {
         if (tCount === 3) {
