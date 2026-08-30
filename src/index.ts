@@ -9,6 +9,27 @@
  * - Expose every function/constant on window.* for legacy compatibility.
  * - Handle playback (channel and media), channel list display, archive mode.
  * - Manage sleep timers, info bar, PiP, preview, and cloud settings sync.
+ *
+ * ─── BUILD CONSTRAINT: duplicate function bodies required ─────────────────
+ * `build-concat.cjs` runs `tsc` then `stripModule()` which removes every
+ * `import`/`export` line, then concatenates all .ts files in a fixed order
+ * and runs terser to produce `dist/stbPlayer.js`. The legacy code in this
+ * file uses top-level `function X` declarations (not `export function`),
+ * which become global function declarations after the strip step and
+ * therefore land in the bundle as callable symbols.
+ *
+ * New code lives in `src/app/*.ts` and `src/view/*.ts` as proper ES modules
+ * with named exports — those are tree-shaken at the TypeScript level
+ * (imports become references), but their body is inlined into the bundle
+ * in the order `build-concat.cjs` lists. The legacy `function X` blocks
+ * further down are therefore REQUIRED for the bundle to work: they provide
+ * the surface that the concat step turns into globals for non-module
+ * callers (stbPlayer, dune plugins, runtime providers).
+ *
+ * Do NOT delete these duplicates as part of the ES-module refactor. The
+ * full migration to post-bundle architecture (drop the concat pipeline,
+ * use real ES modules, drop the globals) is tracked separately.
+ * ──────────────────────────────────────────────────────────────────────────
  */
 
 // Polyfills (must run first)
@@ -486,12 +507,12 @@ declare function loadScript(
     url: string,
     successCb: () => void,
     errorCb?: (e: any) => void,
-    location?: HTMLElement,
+    location?: HTMLElement
 ): void;
 declare function getScriptDOM(
     url: string,
     successCb: () => void,
-    errorCb?: () => void,
+    errorCb?: () => void
 ): void;
 
 // Provider-scoped storage aliases
@@ -753,7 +774,7 @@ function setFontSize(): void {
             (window as any).stbCSS();
         $("#descr").css(
             "max-height",
-            (660 - $("#channel").height()) * e + "px",
+            (660 - $("#channel").height()) * e + "px"
         );
     } catch (ex) {
         console.error(ex);
@@ -799,13 +820,17 @@ function setColor(): void {
     var selCv = settings.highlightColorSel.split(",");
     curColorB =
         "rgb(" +
-        hsvToRgb(parseInt(selCv[0]), parseInt(selCv[1]), 50).join(",") +
+        hsvToRgb(Number.parseInt(selCv[0]), Number.parseInt(selCv[1]), 50).join(
+            ","
+        ) +
         ")";
     // sSHLcolor -> curColor (selection foreground), H,S at lightness 100
     var fgCv = settings.highlightColor.split(",");
     curColor =
         "rgb(" +
-        hsvToRgb(parseInt(fgCv[0]), parseInt(fgCv[1]), 100).join(",") +
+        hsvToRgb(Number.parseInt(fgCv[0]), Number.parseInt(fgCv[1]), 100).join(
+            ","
+        ) +
         ")";
 
     $("#listCaption").css("border-bottom", "1px solid " + curColor);
@@ -839,7 +864,9 @@ function setColor(): void {
     var bgCv = settings.highlightColorB.split(",");
     var bgColor =
         "rgb(" +
-        hsvToRgb(parseInt(bgCv[0]), 100, parseInt(bgCv[1])).join(",") +
+        hsvToRgb(Number.parseInt(bgCv[0]), 100, Number.parseInt(bgCv[1])).join(
+            ","
+        ) +
         ")";
     $(".list_back").css("background-color", bgColor);
     $("#listPopUp").css("background-color", bgColor);
@@ -861,10 +888,12 @@ function stbSetOsdOpacity(val: number): void {
     $(".osd").css(
         "background-color",
         "rgba(" +
-            hsvToRgb(parseInt(cv[0]), 100, parseInt(cv[1])).join(",") +
+            hsvToRgb(Number.parseInt(cv[0]), 100, Number.parseInt(cv[1])).join(
+                ","
+            ) +
             "," +
             val / 100 +
-            ")",
+            ")"
     );
 }
 
@@ -908,7 +937,7 @@ function setSleepTimeout(): void {
             function () {
                 stbToggleStandby();
             },
-            settings.sleepTimeout * 60 * 1000,
+            settings.sleepTimeout * 60 * 1000
         );
     }
 }
@@ -976,11 +1005,8 @@ function playArchiveMode(timestamp: number): void {
  */
 function updateMediaInfoDisplay(): void {
     var resEl = document.getElementById("video_res");
-    if (resEl && video) {
-        if (video.videoWidth)
-            resEl.innerHTML =
-                "<br/>" + video.videoWidth + "x" + video.videoHeight;
-    }
+    if (resEl && video && video.videoWidth)
+        resEl.innerHTML = "<br/>" + video.videoWidth + "x" + video.videoHeight;
 }
 
 // Check media (detect archive)
@@ -1001,7 +1027,7 @@ function checkMedia(): void {
         if (
             duration &&
             duration > 180 &&
-            duration !== Infinity &&
+            duration !== Number.POSITIVE_INFINITY &&
             duration < 1000000
         ) {
             window.playTime = 0;
@@ -1043,7 +1069,7 @@ if (navigator.userAgent.search(/Maple/i) === -1) {
     } else if ((document as any).attachEvent) {
         (document as any).attachEvent(
             "onvisibilitychange",
-            body_onUnloadHidden,
+            body_onUnloadHidden
         );
     }
     if (window.addEventListener) {
@@ -1153,7 +1179,7 @@ function selectLang(): void {
                     "TRACE selectLang ENTER prevSelIndex=" +
                         prevSelIndex +
                         " selIndex=" +
-                        selIndex,
+                        selIndex
                 );
                 if (prevSelIndex === selIndex) {
                     if (typeof duneAddSettings !== "function") loadProv();
@@ -1180,7 +1206,7 @@ function selectLang(): void {
                         function () {
                             console.log("TRACE langJS load FAILED");
                             infoBox("ERR: lang loading fail!");
-                        },
+                        }
                     );
                 }
                 return true;
@@ -1376,7 +1402,7 @@ function onStbReady(): void {
                     el.style.display = "none";
                 }
                 selectLang();
-            },
+            }
         );
 
         if (TMDb && TMDb.prepare) TMDb.prepare();
@@ -1443,13 +1469,13 @@ function _playChannel(catIdx: number, chIdx: number): void {
             " chIdx=" +
             chIdx +
             " catsArray.length=" +
-            catsArray.length,
+            catsArray.length
     );
     if (catsArray[catIdx] === undefined) {
         infoBox(
             "ERROR: Category #" +
                 catIdx +
-                " does not exist!<br /> Please select other",
+                " does not exist!<br /> Please select other"
         );
         client_feedb(
             "category_trouble_playChannel: " +
@@ -1457,7 +1483,7 @@ function _playChannel(catIdx: number, chIdx: number): void {
                 " / " +
                 catsArray.length +
                 " / " +
-                Object.keys(providerGetJson("cats", {})).length,
+                Object.keys(providerGetJson("cats", {})).length
         );
     }
     if (
@@ -1475,7 +1501,7 @@ function _playChannel(catIdx: number, chIdx: number): void {
         "[playChannel] channelId=" +
             channelId +
             " url=" +
-            getChannelUrl(channelId),
+            getChannelUrl(channelId)
     );
     updateChanelInfo(channelId);
     if (sInfoSwitch) showChanelInfo(settings.infoTimeout);
@@ -1522,7 +1548,7 @@ function _playMedia(item: any): void {
     medHistory.splice(maxMedCount);
     $("#picon").css(
         "background-image",
-        'url("' + (item.logo_30x30 || "") + '")',
+        'url("' + (item.logo_30x30 || "") + '")'
     );
     $("#channel_number").text(" ");
     $("#channel_name").html(item.title);
@@ -1552,7 +1578,7 @@ function _playMedia(item: any): void {
             _("Continue watching?") + "<br><br>" + step2text(resumePos),
             function () {
                 stbSetPosTime(resumePos);
-            },
+            }
         );
 }
 
@@ -1611,7 +1637,7 @@ window.stbSetBuffer = stbSetBuffer;
  */
 window._setSetup = function (
     saveCallback: () => void,
-    cancelCallback: () => void,
+    cancelCallback: () => void
 ): void {
     (window as any).selIndex = 0;
     (window as any).getListItem = function (item: any, _idx: number): string {
@@ -1650,21 +1676,21 @@ window._setSetup = function (
             (window as any).btnDiv(
                 (window as any).keys.RETURN,
                 (window as any).strRETURN,
-                "Close",
+                "Close"
             ) +
             (window as any).btnDiv(
                 (window as any).keys.ENTER,
                 (window as any).strENTER,
                 "Change value",
                 (window as any).strLEFT,
-                (window as any).strRIGHT,
+                (window as any).strRIGHT
             ) +
             (window as any).btnDiv(
                 (window as any).keys.GREEN,
                 "",
                 "Save Settings",
                 (window as any).strPlayPause,
-                "0",
+                "0"
             );
     }
     (window as any).listKeyHandlerFn = function (e: number): boolean {
@@ -1813,7 +1839,7 @@ delete (window as any).addAoptions;
 window.saveIfChanged = function (
     pos: number,
     key: string,
-    useStb: boolean,
+    useStb: boolean
 ): void {
     var w = window as any;
     if (useStb === undefined) useStb = false;
@@ -1861,11 +1887,12 @@ window.settingsInterface = function (): void {
         w.saveIfChanged(i++, "sSleepTimeout", true);
         if (typeof w.stbSetOsdOpacity === "function")
             w.saveIfChanged(i++, "sOsdOpacity", true);
-        if (typeof w.stbGetVolume === "function") {
-            if (w.sVolumeStep !== w.listArray[i++].val + 3) {
-                w.sVolumeStep = w.listArray[i - 1].val + 3;
-                w.stbSetItem("sVolumeStep", w.sVolumeStep.toString());
-            }
+        if (
+            typeof w.stbGetVolume === "function" &&
+            w.sVolumeStep !== w.listArray[i++].val + 3
+        ) {
+            w.sVolumeStep = w.listArray[i - 1].val + 3;
+            w.stbSetItem("sVolumeStep", w.sVolumeStep.toString());
         }
         i++;
         if (w.sSHLcolor !== w.eSHLcolor) {
@@ -2537,7 +2564,7 @@ window.settingsButtons = function (): void {
             name: w._(
                 r,
                 a + (w.strLEFT || "L") + o,
-                a + (w.strRIGHT || "R") + o,
+                a + (w.strRIGHT || "R") + o
             ),
             val: w.sArrowFun,
             values: c,
@@ -2551,7 +2578,7 @@ window.settingsButtons = function (): void {
             name: w._(
                 r,
                 a + (w.strPREV || "PREV") + o,
-                a + (w.strNEXT || "NEXT") + o,
+                a + (w.strNEXT || "NEXT") + o
             ),
             val: w.sPNFun,
             values: [
@@ -2595,7 +2622,7 @@ window.settingsButtons = function (): void {
         {
             name: w._(
                 "Button function %1 when viewing archive",
-                a + (w.strENTER || "ENTER") + o,
+                a + (w.strENTER || "ENTER") + o
             ),
             val: w.sOkfun,
             values: [w._("EPG") || "EPG", w._("Channels") || "Channels"],
@@ -2790,7 +2817,7 @@ window.settingsManage = function (): void {
             detailEl.innerHTML = w._(
                 w.listArray[w.selIndex].desc ||
                     w.listArray[w.selIndex].name ||
-                    "",
+                    ""
             );
     };
     w.listKeyHandlerFn = function (key: number): boolean {
@@ -2848,7 +2875,7 @@ window.cloudSendSettings = function (): void {
         if (typeof jQuery !== "undefined") {
             jQuery("#listAbout")
                 .html(
-                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>Cloud save/load requires STB firmware (host_ott not set)</div>',
+                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>Cloud save/load requires STB firmware (host_ott not set)</div>'
                 )
                 .show();
         }
@@ -2859,7 +2886,7 @@ window.cloudSendSettings = function (): void {
             .html(
                 '<div style="text-align:center;font-size:larger;"><br/><br/>' +
                     (w._("Send settings") || "Send settings") +
-                    "...</div>",
+                    "...</div>"
             )
             .show();
     }
@@ -2907,14 +2934,14 @@ window.cloudSendSettings = function (): void {
                         w.host_ott +
                         "/swop/?" +
                         data.code +
-                        '" style="height:30%;"/></div></div>',
+                        '" style="height:30%;"/></div></div>'
                 );
             },
             error: function (jqXHR: any) {
                 jQuery("#listAbout").html(
                     '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
                         jqXHR.responseText +
-                        "</div>",
+                        "</div>"
                 );
             },
         });
@@ -2959,7 +2986,7 @@ window.cloudLoadSettings = function (): void {
         if (typeof jQuery !== "undefined") {
             jQuery("#listAbout")
                 .html(
-                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>Cloud save/load requires STB firmware (host_ott not set)</div>',
+                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>Cloud save/load requires STB firmware (host_ott not set)</div>'
                 )
                 .show();
         }
@@ -2989,12 +3016,12 @@ window.cloudLoadSettings = function (): void {
                         var xml = data.data;
                         if (
                             xml.indexOf(
-                                "<comment>OTT-Play Preferences</comment>",
+                                "<comment>OTT-Play Preferences</comment>"
                             ) !== -1
                         ) {
                             if (typeof jQuery !== "undefined")
                                 jQuery("#listAbout").html(
-                                    '<div style="text-align:center;font-size:200%;"><br/><br/>OTT-Play Preferences received!<br/>Restart player...</div>',
+                                    '<div style="text-align:center;font-size:200%;"><br/><br/>OTT-Play Preferences received!<br/>Restart player...</div>'
                                 );
                             var entries = xml.split('<entry key="');
                             entries.shift();
@@ -3015,7 +3042,7 @@ window.cloudLoadSettings = function (): void {
                         } else {
                             if (typeof jQuery !== "undefined")
                                 jQuery("#listAbout").html(
-                                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>File not OTT-Play Preferences!!!</div>',
+                                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>File not OTT-Play Preferences!!!</div>'
                                 );
                         }
                     }
@@ -3025,7 +3052,7 @@ window.cloudLoadSettings = function (): void {
                         jQuery("#listAbout").html(
                             '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
                                 jqXHR.responseText +
-                                "</div>",
+                                "</div>"
                         );
                 },
             });
@@ -3036,7 +3063,7 @@ window.cloudLoadSettings = function (): void {
             .html(
                 '<div style="text-align:center;font-size:larger;"><br/><br/>' +
                     (w._("Send request") || "Send request") +
-                    "...</div>",
+                    "...</div>"
             )
             .show();
     }
@@ -3075,7 +3102,7 @@ window.cloudLoadSettings = function (): void {
                         w.host_ott +
                         "/swop/?" +
                         code +
-                        '" style="height:30%;"/></div></div>',
+                        '" style="height:30%;"/></div></div>'
                 );
                 setTimeout(poll, 10000);
             },
@@ -3083,7 +3110,7 @@ window.cloudLoadSettings = function (): void {
                 jQuery("#listAbout").html(
                     '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
                         jqXHR.responseText +
-                        "</div>",
+                        "</div>"
                 );
             },
         });
@@ -3132,7 +3159,7 @@ window.previewChId = function (chId: number): void {
             w.stbPlay(
                 typeof w.getChannelUrl === "function"
                     ? w.getChannelUrl(chId)
-                    : null,
+                    : null
             );
     }, 500);
 };
@@ -3162,7 +3189,7 @@ window.addChannel2bucket = function (): void {
                     (w.chanels && w.chanels[chId]
                         ? w.chanels[chId].channel_name
                         : "") +
-                    (w._(" added to favorites") || " added to favorites"),
+                    (w._(" added to favorites") || " added to favorites")
             );
     } else {
         if (typeof w.saveCPD === "function") w.saveCPD();
@@ -3193,7 +3220,7 @@ window.addChannel2bucket = function (): void {
                                     : "") +
                                 (w._(" added to category ") ||
                                     " added to category ") +
-                                w.listArray[w.selIndex],
+                                w.listArray[w.selIndex]
                         );
                     break;
                 case w.keys.RETURN:
@@ -3704,7 +3731,7 @@ window.settingsCommands = function (): void {
             // Prompt for new local URL
             var newUrl = prompt(
                 "Local command URL (leave empty to use central server):",
-                lurl,
+                lurl
             );
             if (newUrl !== null) {
                 w.sLocalCmdUrl = newUrl.trim();

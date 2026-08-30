@@ -208,16 +208,16 @@ declare var stbGetItem: (key: string) => string;
 declare var stbPlayPip: (url: string) => void;
 declare var getEPGchanel: (
     chId: string,
-    cb: (id: string, data: any[]) => void,
+    cb: (id: string, data: any[]) => void
 ) => void;
 declare var getEPGchanelCached: (
     chId: string,
-    cb: (id: string, data: any[]) => void,
+    cb: (id: string, data: any[]) => void
 ) => void;
 declare var epgCash: number;
 declare var getCurProgData: (
     chId: string,
-    cb: (chId: string) => void,
+    cb: (chId: string) => void
 ) => boolean;
 declare var getChannelPicon: (chId: string) => string;
 declare var channelsKeyHandler: (key: number) => boolean;
@@ -239,7 +239,7 @@ function updateChanelList(chId: string): void {
         ((Date.now() / 1e3 - chanels[chId].time) /
             (chanels[chId].time_to - chanels[chId].time)) *
             100 +
-            "%",
+            "%"
     );
     if (listArray[selIndex] == chId) detailProg();
 }
@@ -311,10 +311,8 @@ function detailProg(): void {
         s = $("#_prd").height() + 10 - s;
         scrollUp("_prd", s, 5000);
     }
-    if (sPreview == 1) {
-        if (typeof (window as any).previewChId === "function")
-            (window as any).previewChId(listArray[selIndex]);
-    }
+    if (sPreview == 1 && typeof (window as any).previewChId === "function")
+        (window as any).previewChId(listArray[selIndex]);
 }
 /**
  * Populate the channel list popup (#listPopUp) with action buttons.
@@ -334,15 +332,14 @@ function setPopupChannels(): void {
                 btnDiv(keys.N8, "8", "Delete channel") +
                 (sFavorites
                     ? ""
-                    : "<br/>" +
-                      btnDiv(keys.N3, "3", "Add channel to category")),
+                    : "<br/>" + btnDiv(keys.N3, "3", "Add channel to category"))
         );
     } else {
         $("#listPopUp").html(
             btnDiv(
                 keys.N3,
                 "3",
-                "Add channel to " + (sFavorites ? "favorites" : "category"),
+                "Add channel to " + (sFavorites ? "favorites" : "category")
             ) +
                 "<br/>" +
                 btnDiv(
@@ -350,13 +347,13 @@ function setPopupChannels(): void {
                     "9",
                     _("Sort channels") +
                         ": " +
-                        _(sSortAbc ? '"As Is"' : "By alphabet"),
-                ),
+                        _(sSortAbc ? '"As Is"' : "By alphabet")
+                )
         );
     }
     if (sPSchannels && parentPIN != "*") {
         $("#listPopUp").append(
-            "<br/>" + btnDiv(keys.N4, "4", "Channel parental control"),
+            "<br/>" + btnDiv(keys.N4, "4", "Channel parental control")
         );
     }
 }
@@ -419,7 +416,7 @@ declare var btnDiv: (
     label: string,
     desc: string,
     num?: string,
-    extra?: string,
+    extra?: string
 ) => string;
 declare var strRETURN: string;
 declare var strInfo: string;
@@ -452,7 +449,7 @@ declare var showEditKey: (initKeys?: number[]) => void;
 declare var getScriptDOM: (
     url: string,
     onSuccess: () => void,
-    onError: (e?: any) => void,
+    onError: (e?: any) => void
 ) => void;
 /**
  * Process a "dealer" (provider activation) code string.
@@ -544,7 +541,7 @@ export function optionsList(fn?: () => void): void {
     };
     detailListActionFn = function () {
         listDetail.innerHTML = _(
-            optionsArr[selIndex].desc || optionsArr[selIndex].name || "",
+            optionsArr[selIndex].desc || optionsArr[selIndex].name || ""
         );
         if (optionsArr[selIndex].action == noSelProv) nselprov = 0;
     };
@@ -559,7 +556,7 @@ export function optionsList(fn?: () => void): void {
                 " action=" +
                 (optionsArr[selIndex]
                     ? typeof optionsArr[selIndex].action
-                    : "undefined"),
+                    : "undefined")
         );
         switch (key) {
             case keys.RETURN:
@@ -568,9 +565,7 @@ export function optionsList(fn?: () => void): void {
             case keys.ENTER:
                 console.log(
                     "DBG optionsList ENTER: optionsArr[selIndex].action=" +
-                        (optionsArr[selIndex].action
-                            ? "function"
-                            : "undefined"),
+                        (optionsArr[selIndex].action ? "function" : "undefined")
                 );
                 if (optionsArr[selIndex].action) optionsArr[selIndex].action();
                 return true;
@@ -612,7 +607,7 @@ export function noSelProv(): void {
         }
         return;
     }
-    var e = parseInt(stbGetItem("noSelProv")) || 0;
+    var e = Number.parseInt(stbGetItem("noSelProv")) || 0;
     confirmBox(e ? "Show providers?" : "Hide providers?", function () {
         stbSetItem("noSelProv", e ? "1" : "0");
         restart();
@@ -636,13 +631,13 @@ export function noProvParam(): void {
         }
         return;
     }
-    var e = parseInt(stbGetItem("noProvParam")) || 0;
+    var e = Number.parseInt(stbGetItem("noProvParam")) || 0;
     confirmBox(
         e ? "Show provider settings?" : "Hide provider settings?",
         function () {
             stbSetItem("noProvParam", e ? "1" : "0");
             restart();
-        },
+        }
     );
     nprovparams = 0;
 }
@@ -751,7 +746,7 @@ declare var optIndexOf: (action: any) => number;
 declare var confirmBox: (
     message: string,
     onYes: () => void,
-    onNo?: () => void,
+    onNo?: () => void
 ) => void;
 
 // ─── Load provider script ─────────────────────────────────────────────────────
@@ -805,7 +800,7 @@ export function loadProv(): void {
                     host +
                     "/stbPlayer/buffering.gif?" +
                     __av +
-                    '" height="40">',
+                    '" height="40">'
             )
             .show();
         launch_id = "#dialogbox";
@@ -911,11 +906,12 @@ export function loadProv(): void {
         onError();
         return;
     }
-    if (parseInt(stbGetItem("noSelProv") || "0")) delOption(selectProvaider);
+    if (Number.parseInt(stbGetItem("noSelProv") || "0"))
+        delOption(selectProvaider);
     else {
         $(launch_id).append("<br/>");
         $(launch_id).append(
-            document.createTextNode("Loading provider " + s + " script ..."),
+            document.createTextNode("Loading provider " + s + " script ...")
         );
         delOption(edit_dealer);
     }
@@ -926,7 +922,7 @@ export function loadProv(): void {
             try {
                 pperf_stamp("loadProv -- js ready");
                 console.log(
-                    "[loadProv] Script loaded, checking duneAddSettings",
+                    "[loadProv] Script loaded, checking duneAddSettings"
                 );
                 if (typeof duneAddSettings === "function") {
                     $(launch_id).append("<br/>Loading settings...");
@@ -935,11 +931,11 @@ export function loadProv(): void {
                         "[loadProv] popupActions.length:",
                         popupActions.length,
                         "noProvParam:",
-                        (window as any).noProvParam,
+                        (window as any).noProvParam
                     );
                     console.log(
                         "[loadProv] popupActions.indexOf(noProvParam):",
-                        popupActions.indexOf(noProvParam),
+                        popupActions.indexOf(noProvParam)
                     );
                     var idx = popupActions.indexOf(noProvParam) + 1;
                     console.log("[loadProv] idx after +1:", idx);
@@ -947,85 +943,87 @@ export function loadProv(): void {
                         "[loadProv] BEFORE duneAddSettings - popupArray.length:",
                         popupArray.length,
                         "popupActions.length:",
-                        popupActions.length,
+                        popupActions.length
                     );
                     console.log(
                         "[loadProv] popupArray before:",
-                        popupArray.slice(),
+                        popupArray.slice()
                     );
                     duneAddSettings(idx);
                     console.log(
                         "[loadProv] AFTER duneAddSettings - popupArray.length:",
-                        popupArray.length,
+                        popupArray.length
                     );
                     console.log(
                         "[loadProv] popupArray after:",
-                        popupArray.slice(),
+                        popupArray.slice()
                     );
                     console.log(
                         "[loadProv] duneAddSettings completed, popupArray:",
                         popupArray.slice(0, 5),
-                        "...",
+                        "..."
                     );
                     console.log("[loadProv] Now calling loadChannels");
                     // Update window globals for popupList to read
                     console.log("[loadProv] About to update window globals");
                     console.log(
                         "[loadProv] optionsList index:",
-                        popupActions.indexOf(optionsList),
+                        popupActions.indexOf(optionsList)
                     );
                     console.log("[loadProv] idx:", idx);
                     console.log(
                         "[loadProv] popupActions.length before splice check:",
-                        popupActions.length,
+                        popupActions.length
                     );
                     console.log(
                         "[loadProv] popupArray before window update:",
-                        popupArray.slice(),
+                        popupArray.slice()
                     );
                     (window as any).popupActions = popupActions;
                     (window as any).popupArray = popupArray;
                     (window as any).popupDetail = popupDetail;
                     console.log(
                         "[loadProv] window.popupArray length after update:",
-                        (window as any).popupArray.length,
+                        (window as any).popupArray.length
                     );
                     console.log(
                         "[loadProv] window.popupArray full:",
-                        (window as any).popupArray.slice(),
+                        (window as any).popupArray.slice()
                     );
                     (window as any).popupActions = popupActions;
                     (window as any).popupArray = popupArray;
                     (window as any).popupDetail = popupDetail;
-                    if (parseInt(stbGetItem("noProvParam") || "0")) {
+                    if (Number.parseInt(stbGetItem("noProvParam") || "0")) {
                         var count = popupActions.indexOf(optionsList) - idx;
                         console.log(
                             "[loadProv] noProvParam=1, about to splice count:",
                             count,
                             "items from idx:",
-                            idx,
+                            idx
                         );
                         console.log(
                             "[loadProv] popupArray before splice:",
-                            popupArray.slice(),
+                            popupArray.slice()
                         );
                         popupArray.splice(idx, count);
                         popupDetail.splice(idx, count);
                         popupActions.splice(idx, count);
                         console.log(
                             "[loadProv] popupArray after splice:",
-                            popupArray.slice(),
+                            popupArray.slice()
                         );
                     }
                     if (
-                        parseInt(stbGetItem("noSelProv") || "0") +
-                            parseInt(stbGetItem("noProvParam") || "0") !==
+                        Number.parseInt(stbGetItem("noSelProv") || "0") +
+                            Number.parseInt(
+                                stbGetItem("noProvParam") || "0"
+                            ) !==
                         2
                     ) {
                         const img = $("<img>");
                         img.attr(
                             "src",
-                            host + "/prov/" + s + "/logo.png?" + __av,
+                            host + "/prov/" + s + "/logo.png?" + __av
                         );
                         img.attr("alt", " ");
                         img.css("position", "absolute");
@@ -1065,14 +1063,14 @@ export function loadProv(): void {
                         ", message " +
                         (e as any).message +
                         ", typeof " +
-                        typeof e,
+                        typeof e
                 );
             }
         },
         function (e: any) {
             console.error(e);
             onError();
-        },
+        }
     );
 }
 
@@ -1100,7 +1098,7 @@ export function loadChannels(): void {
                         host +
                         "/stbPlayer/buffering.gif?" +
                         __av +
-                        '" height="40">',
+                        '" height="40">'
                 )
                 .show();
         launch_id = "#dialogbox";
@@ -1253,7 +1251,7 @@ export function selectProvaider(): void {
         $("#listAbout").html(
             '<div style="font-size:larger;">' +
                 listDetail.innerHTML.replace("display:none", "") +
-                "</div>",
+                "</div>"
         );
         saveCPD();
         aboutKeyHandler = function () {
@@ -1334,7 +1332,7 @@ export function selectProvaider(): void {
                 function (_e: any, status: string) {
                     if (status === "error")
                         $("#listDetail").load(aboutUrl + ".html?" + __av);
-                },
+                }
             );
         }
     };
@@ -1440,7 +1438,7 @@ export function edit_dealer(): void {
                 },
                 function () {
                     showError("Error Code!");
-                },
+                }
             );
     };
     showEditKey([0, 1, 2]);
@@ -1531,7 +1529,7 @@ export function edit_dealer_remote(): void {
                             },
                             function () {
                                 showError("Error Code!");
-                            },
+                            }
                         );
                 }
             },
@@ -1539,7 +1537,7 @@ export function edit_dealer_remote(): void {
                 $("#listEdit").html(
                     '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
                         jqXHR.responseText +
-                        "</div>",
+                        "</div>"
                 );
             },
         });
@@ -1550,7 +1548,7 @@ export function edit_dealer_remote(): void {
         .html(
             '<div style="text-align:center;font-size:larger;"><br/><br/>' +
                 _("Send request") +
-                "...</div>",
+                "...</div>"
         )
         .show();
     editKey = function (key: number) {
@@ -1588,7 +1586,7 @@ export function edit_dealer_remote(): void {
                     "ott-play.com/swop/?" +
                     code +
                     '" style="height:30%;"/></div>' +
-                    "</div>",
+                    "</div>"
             );
             setTimeout(poll, 1e4);
         },
@@ -1596,7 +1594,7 @@ export function edit_dealer_remote(): void {
             $("#listEdit").html(
                 '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
                     jqXHR.responseText +
-                    "</div>",
+                    "</div>"
             );
         },
     });
@@ -1657,7 +1655,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
         infoBox(
             "ERROR: Category #" +
                 catIdx +
-                " does not exist!<br /> Please select other",
+                " does not exist!<br /> Please select other"
         );
         client_feedb(
             "category_trouble_channelsList: " +
@@ -1665,7 +1663,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                 " / " +
                 catsArray.length +
                 " / " +
-                Object.keys(providerGetJson("cats", {})).length,
+                Object.keys(providerGetJson("cats", {})).length
         );
     }
     selIndex = channelIdx;
@@ -1800,7 +1798,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   ? strFF
                   : sPNFun === 1
                     ? strNEXT
-                    : "",
+                    : ""
         ) +
         btnDiv(
             keys.BLUE,
@@ -1813,7 +1811,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   ? strRW
                   : sPNFun === 1
                     ? strPREV
-                    : "",
+                    : ""
         ) +
         btnDiv(keys.YELLOW, "", "Actions", strTools, "0") +
         btnDiv(keys.N2, strInfo, "Description", "2") +
