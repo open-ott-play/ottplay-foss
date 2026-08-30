@@ -17,7 +17,7 @@ export function polyfillTextEncoder(): void {
             } else {
                 var surrogate = code;
                 if (
-                    0xd800 <= surrogate &&
+                    surrogate >= 0xd800 &&
                     surrogate <= 0xdbff &&
                     pos + 1 < len
                 ) {

@@ -325,7 +325,7 @@ export function loadScript(
     url: string,
     successCb: (() => void) | null,
     errorCb: ((e: Error) => void) | null,
-    location: HTMLElement,
+    location: HTMLElement
 ): void {
     var script = document.createElement("script");
     script.src = url;
@@ -358,7 +358,7 @@ export function loadJS(
     url: string,
     successCb: (() => void) | null,
     errorCb: ((e: Error) => void) | null,
-    location: HTMLElement,
+    location: HTMLElement
 ): void {
     loadScript(url, successCb, errorCb, location);
 }
@@ -378,7 +378,7 @@ export function loadJS(
 export function getScriptDOM(
     url: string,
     successCb: (() => void) | null,
-    errorCb: ((e: Error) => void) | null,
+    errorCb: ((e: Error) => void) | null
 ): void {
     loadScript(url, successCb, errorCb, document.body);
 }
@@ -413,7 +413,7 @@ export var innerStyle: any = (function () {
         (innerStyle as any).elHtml = document.createElement("style");
         document.body.insertBefore(
             (innerStyle as any).elHtml,
-            document.body.firstChild,
+            document.body.firstChild
         );
         cssSheet = (innerStyle as any).elHtml.sheet;
     }

@@ -8,64 +8,64 @@ import {
     videoPip as pipVideoElement,
     playerMode,
     video as videoElement,
-} from "../core";
-import { settings } from "../settings";
-import { providerSetItem, storage } from "../storage";
+} from "../core/index";
+import { settings } from "../settings/index";
+import { providerSetItem, storage } from "../storage/index";
 
 export interface Channel {
+    adult?: number;
+    category?: { name: string; class: string };
     ch_id: number;
     channel_name: string;
-    url?: string;
     cmd?: string;
-    icon?: string;
-    rec?: number;
-    name?: string;
-    time?: number;
-    time_to?: number;
     descr?: string;
-    nextpr?: EPGEntry[] | null;
-    outdated?: boolean;
-    time_request?: number;
-    number?: string;
-    category?: { name: string; class: string };
-    logo_30x30?: string;
-    stream_url?: string | (() => string);
-    playlist_url?: string;
-    title?: string;
     description?: string | (() => string);
-    adult?: number;
+    icon?: string;
+    logo_30x30?: string;
+    name?: string;
+    nextpr?: EPGEntry[] | null;
+    number?: string;
+    outdated?: boolean;
+    playlist_url?: string;
+    rec?: number;
     search_on?: boolean;
+    stream_url?: string | (() => string);
+    time?: number;
+    time_request?: number;
+    time_to?: number;
+    title?: string;
+    url?: string;
 }
 
 export interface EPGEntry {
+    ch_id?: number;
+    descr: string;
+    icon?: string;
     name: string;
     time: number;
     time_to: number;
-    descr: string;
-    icon?: string;
-    ch_id?: number;
 }
 
 export interface PreviousChannel {
-    ci: number;
     c: number;
-    i: number;
+    ci: number;
     e?: string;
+    i: number;
     t?: number;
 }
 
 export interface MediaHistoryEntry {
-    ch_id?: number;
-    name?: string;
-    title?: string;
-    stream_url?: string | (() => string);
-    logo_30x30?: string;
-    current?: number;
-    fav?: number;
-    description?: string | (() => string);
-    playlist_url?: string;
     adult?: number;
+    ch_id?: number;
+    current?: number;
+    description?: string | (() => string);
+    fav?: number;
+    logo_30x30?: string;
+    name?: string;
+    playlist_url?: string;
     search_on?: boolean;
+    stream_url?: string | (() => string);
+    title?: string;
 }
 
 /* ---------------------------------------------------------------------------
@@ -245,13 +245,13 @@ export let epglisted = 0,
 export function doGetCurProg(): void {
     if (arrayGetCurProg.length === 0) return;
     var entry = arrayGetCurProg.shift();
-    var chId = entry.ch_id;
+    var chId = entry!.ch_id;
     // Use getEPGchanelCurCached if available (set by provider), else getEPGchanelCached
     var fetchFn = (window as any).getEPGchanelCurCached || getEPGchanelCached;
     if (typeof fetchFn === "function") {
         fetchFn(chId, function (_id: any, epgData: EPGEntry[] | null) {
             setCurProg(chId, epgData, function () {
-                entry.callback(chId);
+                entry!.callback(chId);
             });
             // Use setTimeout to prevent infinite recursion if callback triggers another fetch
             setTimeout(doGetCurProg, 0);
@@ -297,7 +297,7 @@ export let archivePos = 0,
 export function setCurrent(
     categoryIndex: number,
     channelIndex: number,
-    isArchive?: boolean,
+    isArchive?: boolean
 ): void {
     var wasArchive = playType > 0;
     if (
@@ -310,7 +310,7 @@ export function setCurrent(
         if (playType === -99999999999) {
             if (medHistory.length && medHistory[0].current !== undefined) {
                 medHistory[0].current = Math.floor(
-                    (window as any).video?.currentTime || 0,
+                    (window as any).video?.currentTime || 0
                 );
             }
         } else {
@@ -485,7 +485,7 @@ export function ifParentalAccess(callback: () => void): boolean {
  */
 export function ifParentalAccessChId(
     channelId: number,
-    callback: () => void,
+    callback: () => void
 ): boolean {
     if (hasParentalLock(channelId)) return ifParentalAccess(callback);
     return false;
@@ -502,7 +502,7 @@ export function ifParentalAccessChId(
  */
 export function getEPGchanelCached(
     channelId: number,
-    callback: (chId: number, programs: EPGEntry[] | null) => void,
+    callback: (chId: number, programs: EPGEntry[] | null) => void
 ): void {
     var cached = epg[channelId];
     if (cached) {
@@ -544,7 +544,7 @@ export function getEpgFromCash(channelId: number): EPGEntry[] | null {
  */
 export function getCurProgData(
     channelId: number,
-    callback: (chId: number) => void,
+    callback: (chId: number) => void
 ): boolean {
     var ch = (window as any).chanels
         ? (window as any).chanels[channelId]
@@ -586,7 +586,7 @@ export function getCurProgData(
 export function setCurProg(
     channelId: number,
     epgData: EPGEntry[] | null,
-    callback?: () => void,
+    callback?: () => void
 ): void {
     if (epgData) {
         epg[channelId] = epgData;
@@ -598,7 +598,7 @@ export function setCurProg(
         if (ch) {
             var sorted = epgData.slice().sort(function (
                 a: EPGEntry,
-                b: EPGEntry,
+                b: EPGEntry
             ) {
                 return a.time - b.time;
             });
@@ -660,7 +660,7 @@ export function onChanelsLoaded(): void {
             ) {
                 (window as any).stbSetItem(
                     "ottplayprov",
-                    (window as any)._pendingProvId,
+                    (window as any)._pendingProvId
                 );
                 if (typeof (window as any).stbSetItem === "function") {
                     var id = (window as any)._pendingProvId;
@@ -671,7 +671,7 @@ export function onChanelsLoaded(): void {
                         try {
                             recentProviders = JSON.parse(
                                 (window as any).stbGetItem("ottplayprovs") ||
-                                    "[]",
+                                    "[]"
                             );
                         } catch (_) {}
                         var rIdx = recentProviders.indexOf(id);
@@ -679,7 +679,7 @@ export function onChanelsLoaded(): void {
                         recentProviders.push(id);
                         (window as any).stbSetItem(
                             "ottplayprovs",
-                            JSON.stringify(recentProviders),
+                            JSON.stringify(recentProviders)
                         );
                     }
                 }
@@ -694,7 +694,7 @@ export function onChanelsLoaded(): void {
             } else {
                 favoritesArray = (window as any).providerGetJson(
                     "favoritesArray",
-                    [],
+                    []
                 );
             }
             if (!catsArray.length && cList.length) {
@@ -711,7 +711,7 @@ export function onChanelsLoaded(): void {
             }
             parentalArray = (window as any).providerGetJson(
                 "parentalArray",
-                [],
+                []
             );
             if (
                 !parentalArray.length &&
@@ -890,7 +890,7 @@ export function epgShow_miniproc(
     catIdx: number,
     chIdx: number,
     channelId: any,
-    callback: (chId: any) => void,
+    callback: (chId: any) => void
 ): void {
     var w = window as any;
     if (epglisted) return;
@@ -909,7 +909,7 @@ export function epgShow_miniproc(
                     w.host +
                     "/stbPlayer/buffering.gif?" +
                     w.__av +
-                    '" height="40">',
+                    '" height="40">'
             )
             .show();
     }
@@ -1115,7 +1115,7 @@ export function epgKeyHandler(keyCode: number): boolean {
 export function detailEPG(channelId: number): void {
     var w = window as any;
     var item = w.listArray[w.selIndex];
-    if (!item || !w.listDetailElement) return;
+    if (!(item && w.listDetailElement)) return;
 
     var now = Math.floor(Date.now() / 1000);
     var dur = Math.round((item.time_to - item.time) / 60);
@@ -1164,7 +1164,7 @@ export function detailEPG(channelId: number): void {
  */
 export function renderEpgHTML(epgData: EPGEntry[]): string {
     var html = "";
-    if (!epgData || !epgData.length) return html;
+    if (!(epgData && epgData.length)) return html;
     epgData.forEach(function (entry: EPGEntry) {
         html +=
             '<div class="epg-entry"><span class="epg-time">' +
@@ -1292,8 +1292,19 @@ export function setEpgTimer(channelId: any, time: number): void {
                 clearTimeout(epgTimers[idx].ti);
                 epgTimers.splice(idx, 1);
             }
-            if (typeof w.stbSetItem === "function")
-                w.stbSetItem("epgTimers", JSON.stringify(epgTimers));
+            if (typeof w.stbSetItem === "function") {
+                var cleanTimers = epgTimers.map(function (t) {
+                    return {
+                        ci: t.ci,
+                        c: t.c,
+                        i: t.i,
+                        t: t.t,
+                        te: t.te,
+                        n: t.n,
+                    };
+                });
+                w.stbSetItem("epgTimers", JSON.stringify(cleanTimers));
+            }
         });
     }
 }
@@ -1320,11 +1331,11 @@ export function epgListAlpha(epgData: EPGEntry[], _options?: any): void {
  * @returns Concatenated HTML string, or empty string if records is empty/null.
  */
 export function recordsList(records: any[]): string {
-    if (!records || !records.length) return "";
+    if (!(records && records.length)) return "";
     return records
         .map(
             (r: any) =>
-                "<div>&nbsp;&nbsp;" + (r.name || r.title || "") + "</div>",
+                "<div>&nbsp;&nbsp;" + (r.name || r.title || "") + "</div>"
         )
         .join("");
 }
@@ -1504,7 +1515,7 @@ export function selectMedia(index: number): void {
                         w.host +
                         "/stbPlayer/buffering.gif?" +
                         w.__av +
-                        '" height="40">',
+                        '" height="40">'
                 )
                 .show();
             w.getScriptDOM(item.playlist_url, function () {
@@ -1758,7 +1769,7 @@ export function bucketsList(catIdx: number, _channelIdx?: number): void {
             w.keys.RED,
             "",
             w._(w.strPlayPause || strPlayPause),
-            w.strPRECH,
+            w.strPRECH
         );
         if (!sFavorites) {
             html += w.btnDiv(w.keys.YELLOW, "", w._(w.strTools), "0");
@@ -1852,7 +1863,7 @@ export function bucketsKeyHandler(keyCode: number): boolean {
                 if (!srcName) return true;
                 var copyName = prompt(
                     w._("Enter new category name"),
-                    srcName + " (copy)",
+                    srcName + " (copy)"
                 );
                 if (copyName && copyName.trim()) {
                     copyName = copyName.trim();
@@ -1909,10 +1920,12 @@ export function bucketsKeyHandler(keyCode: number): boolean {
         case keys.N8:
         case keys.N9: {
             var idx = keyCode - keys.N1;
-            if (idx >= 0 && idx < catsArray.length) {
-                if (typeof w.channelsList === "function") {
-                    w.channelsList(idx, 0);
-                }
+            if (
+                idx >= 0 &&
+                idx < catsArray.length &&
+                typeof w.channelsList === "function"
+            ) {
+                w.channelsList(idx, 0);
             }
             return true;
         }
@@ -2007,7 +2020,7 @@ export function getFilteredHistory(): MediaHistoryEntry[] {
     return medHistory.filter(
         (entry) =>
             (entry.name?.toLowerCase().includes(lower) ?? false) ||
-            (entry.title?.toLowerCase().includes(lower) ?? false),
+            (entry.title?.toLowerCase().includes(lower) ?? false)
     );
 }
 
@@ -2082,7 +2095,7 @@ export function getCHarr(arrayName: string): number {
  */
 export function execCHarr(
     arrayName: string,
-    callback: (val: number) => void,
+    callback: (val: number) => void
 ): void {
     if (typeof arrayName !== "string" || typeof callback !== "function") return;
     var chId = _ch_id(arrayName);
@@ -2113,7 +2126,7 @@ export function execCHarr(
  */
 export function saveCHarr(
     arrayName: string,
-    val: number | undefined | null,
+    val: number | undefined | null
 ): void {
     if (typeof arrayName !== "string") return;
     var obj = (window as any)[arrayName];
@@ -2177,7 +2190,7 @@ export function channelsKeyHandler(keyCode: number): boolean {
                     if (typeof (window as any).playChannel === "function") {
                         (window as any).playChannel(
                             (window as any).listCatIndex,
-                            (window as any).selIndex,
+                            (window as any).selIndex
                         );
                     }
                 } else if (!(window as any).playType) {
@@ -2185,7 +2198,7 @@ export function channelsKeyHandler(keyCode: number): boolean {
                     if (typeof (window as any).setCurrent === "function") {
                         (window as any).setCurrent(
                             (window as any).listCatIndex,
-                            (window as any).selIndex,
+                            (window as any).selIndex
                         );
                     }
                     var chId = (window as any).curList
@@ -2201,7 +2214,7 @@ export function channelsKeyHandler(keyCode: number): boolean {
                         (window as any).sInfoSwitch
                     ) {
                         (window as any).showChanelInfo(
-                            (window as any).settings.infoTimeout,
+                            (window as any).settings.infoTimeout
                         );
                     }
                     (window as any).playType = 0;
@@ -2217,7 +2230,7 @@ export function channelsKeyHandler(keyCode: number): boolean {
                 if (chId) (window as any).pipIndex = (window as any).selIndex;
                 if (typeof (window as any).getChannelUrl === "function") {
                     (window as any).stbPlayPip(
-                        (window as any).getChannelUrl(chId),
+                        (window as any).getChannelUrl(chId)
                     );
                 }
             }
@@ -2229,7 +2242,7 @@ export function channelsKeyHandler(keyCode: number): boolean {
                 (window as any).epgList(
                     (window as any).listCatIndex,
                     (window as any).selIndex,
-                    true,
+                    true
                 );
             }
             return true;
@@ -2257,10 +2270,12 @@ export function channelsKeyHandler(keyCode: number): boolean {
             var ch = (window as any).chanels[
                 (window as any).listArray[(window as any).selIndex]
             ];
-            if (ch && typeof ch.name !== "undefined") {
-                if (typeof (window as any).infoProgramm === "function") {
-                    (window as any).infoProgramm(ch.name);
-                }
+            if (
+                ch &&
+                typeof ch.name !== "undefined" &&
+                typeof (window as any).infoProgramm === "function"
+            ) {
+                (window as any).infoProgramm(ch.name);
             }
             return true;
         }
@@ -2288,7 +2303,7 @@ export function channelsKeyHandler(keyCode: number): boolean {
                         newCat,
                         (window as any).catIndex !== newCat
                             ? 0
-                            : (window as any).primaryIndex,
+                            : (window as any).primaryIndex
                     );
                 }
                 return true;
@@ -2306,7 +2321,7 @@ export function channelsKeyHandler(keyCode: number): boolean {
                 (window as any).epgList(
                     (window as any).listCatIndex,
                     (window as any).selIndex,
-                    true,
+                    true
                 );
                 return true;
             }
@@ -2321,7 +2336,7 @@ export function channelsKeyHandler(keyCode: number): boolean {
                         newCat2,
                         (window as any).catIndex !== newCat2
                             ? 0
-                            : (window as any).primaryIndex,
+                            : (window as any).primaryIndex
                     );
                 }
                 return true;
@@ -2456,7 +2471,7 @@ function deleteChannel(): void {
  */
 export function _enterPinCode(
     promptText: string,
-    callback: (pin: string) => void,
+    callback: (pin: string) => void
 ): void {
     var pin = "";
     var html = "";
@@ -2497,7 +2512,7 @@ export function _enterPinCode(
         .html(
             promptText +
                 '<br/><br/><span id="pin" style="font-size: 200%;">&nbsp;</span><br><br>' +
-                html,
+                html
         )
         .show();
     highlight(1);
@@ -2561,7 +2576,7 @@ export function _enterPinCode(
  */
 export function enterPinCode(
     promptText: string,
-    callback: (pin: string) => void,
+    callback: (pin: string) => void
 ): void {
     _enterPinCode(promptText, callback);
 }
@@ -2593,7 +2608,7 @@ export function setParentAccess(granted: boolean, callback: () => void): void {
         if (typeof (window as any).showShift === "function")
             (window as any).showShift(
                 (window as any)._("Wrong parental code !!!") ||
-                    "Wrong parental code !!!",
+                    "Wrong parental code !!!"
             );
     }
 }
@@ -2611,7 +2626,7 @@ export function enterPinAndSetAccess(callback: () => void): void {
         function (pin: string) {
             if (!pin) return;
             setParentAccess(pin === (window as any).parentPIN, callback);
-        },
+        }
     );
 }
 
@@ -2656,7 +2671,7 @@ export function parentControlSetup(): void {
             if (typeof (window as any).stbSetItem === "function")
                 (window as any).stbSetItem(
                     "parentPIN",
-                    (window as any).parentPIN,
+                    (window as any).parentPIN
                 );
             var idx = 1;
             if (typeof (window as any).saveIfChanged === "function")
@@ -2667,14 +2682,13 @@ export function parentControlSetup(): void {
                 typeof (window as any).optIndexOf === "function" &&
                 typeof (window as any).selectProvaider !== "undefined" &&
                 (window as any).optIndexOf((window as any).selectProvaider) !==
-                    -1
-            ) {
-                if (typeof (window as any).saveIfChanged === "function")
-                    (window as any).saveIfChanged(idx++, "sPSprovs", true);
-            }
+                    -1 &&
+                typeof (window as any).saveIfChanged === "function"
+            )
+                (window as any).saveIfChanged(idx++, "sPSprovs", true);
             if (typeof (window as any).showShift === "function")
                 (window as any).showShift(
-                    (window as any)._("Settings saved") || "Settings saved",
+                    (window as any)._("Settings saved") || "Settings saved"
                 );
             if (typeof (window as any).closeList === "function")
                 (window as any).closeList();
@@ -2711,16 +2725,16 @@ export function parentControlSetup(): void {
                                     )
                                         (window as any).showShift(
                                             (window as any)._(
-                                                "Wrong parental code !!!",
-                                            ) || "Wrong parental code !!!",
+                                                "Wrong parental code !!!"
+                                            ) || "Wrong parental code !!!"
                                         );
                                 } else {
                                     (window as any).parentPIN = pin;
                                     setParentAccess(true, doSave);
                                 }
-                            },
+                            }
                         );
-                    },
+                    }
                 );
             }
         } else {

@@ -1,136 +1,337 @@
-version += ' fox-0219';
-p_pref = 'fox';
+version += " fox-0219";
+p_pref = "fox";
 parental = /XXX|Взрослые|Для взрослых|Эротика|18\+|Adults/i;
-if (typeof stbGetItem === 'function') {
-    providerGetItem = function(e) { return stbGetItem(p_pref + e); };
-    providerSetItem = function(e, r) { stbSetItem(p_pref + e, r); };
+if (typeof stbGetItem === "function") {
+    providerGetItem = function (e) {
+        return stbGetItem(p_pref + e);
+    };
+    providerSetItem = function (e, r) {
+        stbSetItem(p_pref + e, r);
+    };
 } else {
-    providerGetItem = function(e) { return localStorage.getItem(p_pref + e); };
-    providerSetItem = function(e, r) { localStorage.setItem(p_pref + e, r); };
+    providerGetItem = function (e) {
+        return localStorage.getItem(p_pref + e);
+    };
+    providerSetItem = function (e, r) {
+        localStorage.setItem(p_pref + e, r);
+    };
 }
-providerDelItem = function(e) { return ottpStorage.del(p_pref + e); };
-providerHasItem = function(e) { return ottpStorage.has(p_pref + e); };
-providerHasItemValue = function(e) { return ottpStorage.hasValue(p_pref + e); };
-var _fox_cfg = { server: '', user: '', pass: '', m3u: '' };
+providerDelItem = function (e) {
+    return ottpStorage.del(p_pref + e);
+};
+providerHasItem = function (e) {
+    return ottpStorage.has(p_pref + e);
+};
+providerHasItemValue = function (e) {
+    return ottpStorage.hasValue(p_pref + e);
+};
+var _fox_cfg = { server: "", user: "", pass: "", m3u: "" };
 function _fox_load() {
-    try { var d = providerGetItem('cfg'); if (d) _fox_cfg = JSON.parse(d); } catch(e) {}
-    if (!_fox_cfg.server && !_fox_cfg.m3u) _fox_cfg = { server: '', user: '', pass: '', m3u: '' };
+    try {
+        var d = providerGetItem("cfg");
+        if (d) _fox_cfg = JSON.parse(d);
+    } catch (e) {}
+    if (!(_fox_cfg.server || _fox_cfg.m3u))
+        _fox_cfg = { server: "", user: "", pass: "", m3u: "" };
 }
-function _fox_save() { providerSetItem('cfg', JSON.stringify(_fox_cfg)); }
-function getChannelPicon(e) { return chanels[e] ? chanels[e].logo || '' : ''; }
-function getChannelUrl(e) { return chanels[e] ? chanels[e].url || '' : ''; }
-function getEPGchanel(s, e) { e(s, null); }
+function _fox_save() {
+    providerSetItem("cfg", JSON.stringify(_fox_cfg));
+}
+function getChannelPicon(e) {
+    return chanels[e] ? chanels[e].logo || "" : "";
+}
+function getChannelUrl(e) {
+    return chanels[e] ? chanels[e].url || "" : "";
+}
+function getEPGchanel(s, e) {
+    e(s, null);
+}
 function addChan2cat(catName, hash) {
-    if (!catName || !hash) return;
-    if (!cats[catName]) { catsArray.push(catName); cats[catName] = []; }
+    if (!(catName && hash)) return;
+    if (!cats[catName]) {
+        catsArray.push(catName);
+        cats[catName] = [];
+    }
     cats[catName].push(hash);
 }
 function getChanelsArray(cb) {
     _fox_load();
     if (_fox_cfg.server && _fox_cfg.user && _fox_cfg.pass) _fox_xtream(cb);
     else if (_fox_cfg.m3u) _fox_m3u(cb);
-    else { alert(_('Configure Fox-TV in Settings -> Provider Settings')); cb(); }
+    else {
+        alert(_("Configure Fox-TV in Settings -> Provider Settings"));
+        cb();
+    }
 }
 function _fox_m3u(cb) {
-    $(launch_id).append(_('Loading M3U...'));
-    $.ajax({ url: _fox_cfg.m3u, timeout: 15e3,
-        success: function(d) { _fox_parseM3U(d, cb); },
-        error: function() {
-            $.ajax({ url: host + '/m3u/cp.php', data: { url: '@' + _fox_cfg.m3u }, method: 'post', dataType: 'text', timeout: 15e3,
-                success: function(d) { _fox_parseM3U(d, cb); },
-                error: function() { alert(_('Failed to load!')); cb(); }
+    $(launch_id).append(_("Loading M3U..."));
+    $.ajax({
+        url: _fox_cfg.m3u,
+        timeout: 15e3,
+        success: function (d) {
+            _fox_parseM3U(d, cb);
+        },
+        error: function () {
+            $.ajax({
+                url: host + "/m3u/cp.php",
+                data: { url: "@" + _fox_cfg.m3u },
+                method: "post",
+                dataType: "text",
+                timeout: 15e3,
+                success: function (d) {
+                    _fox_parseM3U(d, cb);
+                },
+                error: function () {
+                    alert(_("Failed to load!"));
+                    cb();
+                },
             });
-        }
+        },
     });
 }
 function _fox_parseM3U(data, cb) {
-    cList = []; chanels = {}; cats = {}; catsArray = [];
+    cList = [];
+    chanels = {};
+    cats = {};
+    catsArray = [];
     try {
-        var lines = data.split('#EXTINF:'); var hdr = lines[0] || ''; lines.shift(); var lc = '';
-        lines.forEach(function(b) {
-            var p = b.split('\n'); var inf = p[0] || ''; var url = '';
-            for (var i = 1; i < p.length; i++) { if (p[i].trim() && p[i].trim()[0] !== '#') { url = p[i].trim(); break; } }
+        var lines = data.split("#EXTINF:");
+        var hdr = lines[0] || "";
+        lines.shift();
+        var lc = "";
+        lines.forEach(function (b) {
+            var p = b.split("\n");
+            var inf = p[0] || "";
+            var url = "";
+            for (var i = 1; i < p.length; i++) {
+                if (p[i].trim() && p[i].trim()[0] !== "#") {
+                    url = p[i].trim();
+                    break;
+                }
+            }
             if (!url) return;
-            var name = '???'; var ci = inf.indexOf(','); if (ci > 0) name = inf.substr(ci + 1).trim();
-            var cat = ''; var gm = inf.match(/group-title="([^"]*)"/i); if (gm) cat = gm[1];
-            var logo = ''; var lm = inf.match(/tvg-logo="([^"]*)"/i); if (lm) logo = lm[1];
-            if (!cat) cat = lc || 'Other'; lc = cat;
-            var h = xxHash32S(url, true); addChan2cat(cat, h);
+            var name = "???";
+            var ci = inf.indexOf(",");
+            if (ci > 0) name = inf.substr(ci + 1).trim();
+            var cat = "";
+            var gm = inf.match(/group-title="([^"]*)"/i);
+            if (gm) cat = gm[1];
+            var logo = "";
+            var lm = inf.match(/tvg-logo="([^"]*)"/i);
+            if (lm) logo = lm[1];
+            if (!cat) cat = lc || "Other";
+            lc = cat;
+            var h = xxHash32S(url, true);
+            addChan2cat(cat, h);
             if (cList.indexOf(h) === -1) {
                 cList.push(h);
-                chanels[h] = { channel_name: name, category: { class: catsArray.indexOf(cat) + 2, name: cat }, rec: 0, time: 0, time_to: 0, url: url, logo: logo, epg: '', tn: name, ca: '', caso: '' };
+                chanels[h] = {
+                    channel_name: name,
+                    category: { class: catsArray.indexOf(cat) + 2, name: cat },
+                    rec: 0,
+                    time: 0,
+                    time_to: 0,
+                    url: url,
+                    logo: logo,
+                    epg: "",
+                    tn: name,
+                    ca: "",
+                    caso: "",
+                };
             }
         });
-    } catch(e) { console.error(e); }
+    } catch (e) {
+        console.error(e);
+    }
     cb();
 }
 function _fox_xtream(cb) {
-    $(launch_id).append(_('Loading from API...'));
-    var api = _fox_cfg.server + '/player_api.php?username=' + encodeURIComponent(_fox_cfg.user) + '&password=' + encodeURIComponent(_fox_cfg.pass);
-    $.ajax({ type: 'GET', url: api, dataType: 'json', timeout: 15e3
-    }).done(function(r) {
-        cList = []; chanels = {}; cats = {}; catsArray = [];
-        if (!r || !r.live_streams) { _fox_cfg.m3u = api.replace('/player_api.php', '/get.php') + '&type=m3u_plus&output=ts'; _fox_m3u(cb); return; }
-        var cm = {}; if (r.categories) r.categories.forEach(function(c) { cm[c.category_id] = c.category_name || 'Unknown'; });
-        r.live_streams.forEach(function(s) {
-            var h = xxHash32S(s.name, true); var cn = cm[s.category_id] || 'Other';
-            addChan2cat(cn, h);
-            if (cList.indexOf(h) === -1) {
-                cList.push(h);
-                chanels[h] = { channel_name: s.name, category: { class: catsArray.indexOf(cn) + 2, name: cn }, rec: 0, time: 0, time_to: 0, url: _fox_cfg.server + '/live/' + encodeURIComponent(_fox_cfg.user) + '/' + encodeURIComponent(_fox_cfg.pass) + '/' + s.stream_id + '.m3u8', logo: s.stream_icon || '', epg: String(s.stream_id), tn: s.name, ca: '', caso: '' };
+    $(launch_id).append(_("Loading from API..."));
+    var api =
+        _fox_cfg.server +
+        "/player_api.php?username=" +
+        encodeURIComponent(_fox_cfg.user) +
+        "&password=" +
+        encodeURIComponent(_fox_cfg.pass);
+    $.ajax({ type: "GET", url: api, dataType: "json", timeout: 15e3 })
+        .done(function (r) {
+            cList = [];
+            chanels = {};
+            cats = {};
+            catsArray = [];
+            if (!(r && r.live_streams)) {
+                _fox_cfg.m3u =
+                    api.replace("/player_api.php", "/get.php") +
+                    "&type=m3u_plus&output=ts";
+                _fox_m3u(cb);
+                return;
             }
+            var cm = {};
+            if (r.categories)
+                r.categories.forEach(function (c) {
+                    cm[c.category_id] = c.category_name || "Unknown";
+                });
+            r.live_streams.forEach(function (s) {
+                var h = xxHash32S(s.name, true);
+                var cn = cm[s.category_id] || "Other";
+                addChan2cat(cn, h);
+                if (cList.indexOf(h) === -1) {
+                    cList.push(h);
+                    chanels[h] = {
+                        channel_name: s.name,
+                        category: {
+                            class: catsArray.indexOf(cn) + 2,
+                            name: cn,
+                        },
+                        rec: 0,
+                        time: 0,
+                        time_to: 0,
+                        url:
+                            _fox_cfg.server +
+                            "/live/" +
+                            encodeURIComponent(_fox_cfg.user) +
+                            "/" +
+                            encodeURIComponent(_fox_cfg.pass) +
+                            "/" +
+                            s.stream_id +
+                            ".m3u8",
+                        logo: s.stream_icon || "",
+                        epg: String(s.stream_id),
+                        tn: s.name,
+                        ca: "",
+                        caso: "",
+                    };
+                }
+            });
+            cb();
+        })
+        .fail(function () {
+            _fox_cfg.m3u =
+                _fox_cfg.server.replace(/\/+$/, "") +
+                "/get.php?username=" +
+                encodeURIComponent(_fox_cfg.user) +
+                "&password=" +
+                encodeURIComponent(_fox_cfg.pass) +
+                "&type=m3u_plus&output=ts";
+            _fox_m3u(cb);
         });
-        cb();
-    }).fail(function() {
-        _fox_cfg.m3u = _fox_cfg.server.replace(/\/+$/, '') + '/get.php?username=' + encodeURIComponent(_fox_cfg.user) + '&password=' + encodeURIComponent(_fox_cfg.pass) + '&type=m3u_plus&output=ts';
-        _fox_m3u(cb);
-    });
 }
 function duneAddSettings(e) {
     _fox_load();
-    popupArray.splice(e, 1, ''); popupDetail.splice(e, 1, _('Fox-TV settings'));
+    popupArray.splice(e, 1, "");
+    popupDetail.splice(e, 1, _("Fox-TV settings"));
     popupActions.splice(e, 1, _fox_edit);
     var idx = popupActions.indexOf(_fox_edit);
     if (idx > -1) {
-        var lbl = _('Fox-TV settings');
-        if (_fox_cfg.server && _fox_cfg.user) lbl += ': ' + _fox_cfg.server.replace(/^https?:\/\//, '').split('/')[0] + ' (' + _fox_cfg.user + ')';
-        else if (_fox_cfg.m3u) lbl += ': ' + _fox_cfg.m3u.substr(0, 40) + '...';
+        var lbl = _("Fox-TV settings");
+        if (_fox_cfg.server && _fox_cfg.user)
+            lbl +=
+                ": " +
+                _fox_cfg.server.replace(/^https?:\/\//, "").split("/")[0] +
+                " (" +
+                _fox_cfg.user +
+                ")";
+        else if (_fox_cfg.m3u) lbl += ": " + _fox_cfg.m3u.substr(0, 40) + "...";
         popupArray[idx] = lbl;
     }
 }
 function _fox_edit() {
-    selIndex = 0; _fox_load();
-    var srv = _fox_cfg.server, usr = _fox_cfg.user, pwd = _fox_cfg.pass, m3u = _fox_cfg.m3u;
+    selIndex = 0;
+    _fox_load();
+    var srv = _fox_cfg.server,
+        usr = _fox_cfg.user,
+        pwd = _fox_cfg.pass,
+        m3u = _fox_cfg.m3u;
     function bl() {
         listArray = [
-            _('Server') + ': ' + (srv || ''),
-            _('Login') + ': ' + (usr || ''),
-            _('Password') + ': ' + (pwd ? '********' : ''),
-            _('M3U') + ': ' + (m3u ? m3u.substr(0, 45) : ''),
-            '',
-            _('Save and load')
+            _("Server") + ": " + (srv || ""),
+            _("Login") + ": " + (usr || ""),
+            _("Password") + ": " + (pwd ? "********" : ""),
+            _("M3U") + ": " + (m3u ? m3u.substr(0, 45) : ""),
+            "",
+            _("Save and load"),
         ];
     }
-    var ii = [_('API server URL'), _('Username'), _('Password'), _('M3U URL (fallback)'), '', _('Save & load channels')];
+    var ii = [
+        _("API server URL"),
+        _("Username"),
+        _("Password"),
+        _("M3U URL (fallback)"),
+        "",
+        _("Save & load channels"),
+    ];
     bl();
-    getListItem = function(e, r) { return '&nbsp;&nbsp;' + e; };
-    detailListAction = function() { listDetail.innerHTML = ii[selIndex] || ''; };
-    listKeyHandler = function(e) {
+    getListItem = function (e, r) {
+        return "&nbsp;&nbsp;" + e;
+    };
+    detailListAction = function () {
+        listDetail.innerHTML = ii[selIndex] || "";
+    };
+    listKeyHandler = function (e) {
         switch (e) {
             case keys.ENTER:
                 switch (selIndex) {
-                    case 0: editCaption = _('Server URL'); editvar = srv; setEdit = function() { srv = editvar.trim(); bl(); showPage(); }; showEditKey(keys.ENTER); return true;
-                    case 1: editCaption = _('Username'); editvar = usr; setEdit = function() { usr = editvar.trim(); bl(); showPage(); }; showEditKey(keys.ENTER); return true;
-                    case 2: editCaption = _('Password'); editvar = pwd; setEdit = function() { pwd = editvar.trim(); bl(); showPage(); }; showEditKey(keys.ENTER); return true;
-                    case 3: editCaption = _('M3U URL'); editvar = m3u; setEdit = function() { m3u = editvar.trim(); bl(); showPage(); }; showEditKey(keys.ENTER); return true;
-                    case 5: _fox_cfg.server = srv; _fox_cfg.user = usr; _fox_cfg.pass = pwd; _fox_cfg.m3u = m3u; _fox_save(); duneAddSettings(0); loadChannels(); return true;
+                    case 0:
+                        editCaption = _("Server URL");
+                        editvar = srv;
+                        setEdit = function () {
+                            srv = editvar.trim();
+                            bl();
+                            showPage();
+                        };
+                        showEditKey(keys.ENTER);
+                        return true;
+                    case 1:
+                        editCaption = _("Username");
+                        editvar = usr;
+                        setEdit = function () {
+                            usr = editvar.trim();
+                            bl();
+                            showPage();
+                        };
+                        showEditKey(keys.ENTER);
+                        return true;
+                    case 2:
+                        editCaption = _("Password");
+                        editvar = pwd;
+                        setEdit = function () {
+                            pwd = editvar.trim();
+                            bl();
+                            showPage();
+                        };
+                        showEditKey(keys.ENTER);
+                        return true;
+                    case 3:
+                        editCaption = _("M3U URL");
+                        editvar = m3u;
+                        setEdit = function () {
+                            m3u = editvar.trim();
+                            bl();
+                            showPage();
+                        };
+                        showEditKey(keys.ENTER);
+                        return true;
+                    case 5:
+                        _fox_cfg.server = srv;
+                        _fox_cfg.user = usr;
+                        _fox_cfg.pass = pwd;
+                        _fox_cfg.m3u = m3u;
+                        _fox_save();
+                        duneAddSettings(0);
+                        loadChannels();
+                        return true;
                 }
                 return true;
-            case keys.RETURN: popupList(popupActions.indexOf(noProvParam) + 1); return true;
-            default: return false;
+            case keys.RETURN:
+                popupList(popupActions.indexOf(noProvParam) + 1);
+                return true;
+            default:
+                return false;
         }
     };
-    listDetail.innerHTML = ''; listCaption.innerHTML = _('Fox-TV');
-    listPodval.innerHTML = btnDiv(keys.RETURN, strRETURN, 'Close');
-    $('#listPopUp').hide(); showPage();
+    listDetail.innerHTML = "";
+    listCaption.innerHTML = _("Fox-TV");
+    listPodval.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
+    $("#listPopUp").hide();
+    showPage();
 }
