@@ -22,7 +22,7 @@ export function str2arr_u8_utf(input: string): number[] {
             bytes.push(0x80 | (char & 0x3f));
         } else {
             var code = char;
-            if (0xd800 <= code && code <= 0xdbff && index + 1 < length) {
+            if (code >= 0xd800 && code <= 0xdbff && index + 1 < length) {
                 var next = input.charCodeAt(index + 1);
                 if (0xdc00 <= next && next <= 0xdfff) {
                     code = 0x10000 + ((code & 0x3ff) << 10) + (next & 0x3ff);
@@ -303,7 +303,7 @@ export function xxHash32(bytes: number[], seed?: number): number {
 export function xxHash32S(
     input: string,
     caseInsensitive?: boolean,
-    seed?: number,
+    seed?: number
 ): number {
     if (input) {
         if (caseInsensitive === true) {

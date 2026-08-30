@@ -7,7 +7,7 @@ export function polyfillDateTimezone(): void {
         return ((this as any).prototype.timezoneOffset = offset);
     };
     (Date.prototype as any).setTimezoneOffset = function (
-        offset: number,
+        offset: number
     ): number {
         return ((this as any).timezoneOffset = offset);
     };

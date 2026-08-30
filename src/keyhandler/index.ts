@@ -91,9 +91,9 @@ export function keyHandler(event: KeyboardEvent): void {
     // If an input, textarea, or contenteditable element is focused, let browser handle the key
     if (
         event.target &&
-        (event.target.tagName === "INPUT" ||
-            event.target.tagName === "TEXTAREA" ||
-            event.target.isContentEditable)
+        ((event.target as HTMLElement).tagName === "INPUT" ||
+            (event.target as HTMLElement).tagName === "TEXTAREA" ||
+            (event.target as HTMLElement).isContentEditable)
     ) {
         return;
     }
@@ -184,7 +184,7 @@ export function keyHandler(event: KeyboardEvent): void {
             "DBG keyHandler: list visible, keyCode=" +
                 keyCode +
                 " listKeyHandlerFn=" +
-                typeof listKeyHandlerFn,
+                typeof listKeyHandlerFn
         );
         if (handleListKey(keyCode, event)) return;
     }
@@ -241,7 +241,7 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
                     (window as any).epgList(
                         (window as any).catIndex,
                         (window as any).primaryIndex,
-                        false,
+                        false
                     );
                 break;
             }
@@ -251,7 +251,7 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
             if (typeof (window as any).channelsList === "function")
                 (window as any).channelsList(
                     (window as any).catIndex,
-                    (window as any).primaryIndex,
+                    (window as any).primaryIndex
                 );
             break;
         case keys.RETURN:
@@ -305,7 +305,7 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
             if (typeof (window as any).playChannel === "function") {
                 (window as any).playChannel(
                     (window as any).catIndex,
-                    (window as any).primaryIndex,
+                    (window as any).primaryIndex
                 );
             }
             break;
@@ -383,7 +383,7 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
                 (window as any).epgList(
                     (window as any).catIndex,
                     (window as any).primaryIndex,
-                    false,
+                    false
                 );
             }
             break;
@@ -537,10 +537,11 @@ function handleEditKey(keyCode: number, event: KeyboardEvent): void {
     if (keyCode === keys.ENTER) {
         if (typeof (window as any).setEdit === "function")
             (window as any).setEdit();
-    } else if (keyCode === keys.RETURN || keyCode === keys.EXIT) {
-        if (typeof (window as any).restoreCPD === "function")
-            (window as any).restoreCPD();
-    }
+    } else if (
+        (keyCode === keys.RETURN || keyCode === keys.EXIT) &&
+        typeof (window as any).restoreCPD === "function"
+    )
+        (window as any).restoreCPD();
 }
 
 /* ---------------------------------------------------------------------------
@@ -627,7 +628,7 @@ export function keyFun(fn: number): void {
                 (window as any).recordsList(
                     (window as any).catIndex,
                     (window as any).primaryIndex,
-                    false,
+                    false
                 );
             }
             return;
@@ -676,7 +677,7 @@ export function keyFun(fn: number): void {
                 (window as any).epgList(
                     (window as any).catIndex,
                     (window as any).primaryIndex,
-                    false,
+                    false
                 );
             }
             return;
@@ -744,13 +745,13 @@ export function keyFun(fn: number): void {
             ) {
                 if (typeof (window as any).playArchive === "function")
                     (window as any).playArchive(
-                        (window as any).epgArray[(window as any).curProg].time,
+                        (window as any).epgArray[(window as any).curProg].time
                     );
             } else {
                 if (typeof (window as any).playArchive === "function")
                     (window as any).playArchive(
                         (window as any).epgArray[(window as any).curProg - 1]
-                            .time,
+                            .time
                     );
             }
             return;
@@ -768,7 +769,7 @@ export function keyFun(fn: number): void {
                 if (typeof (window as any).playArchive === "function")
                     (window as any).playArchive(
                         (window as any).epgArray[(window as any).curProg + 1]
-                            .time,
+                            .time
                     );
             } else {
                 if (typeof (window as any).showShift === "function")
@@ -776,7 +777,7 @@ export function keyFun(fn: number): void {
                 if (typeof (window as any).playChannel === "function")
                     (window as any).playChannel(
                         (window as any).catIndex,
-                        (window as any).primaryIndex,
+                        (window as any).primaryIndex
                     );
             }
             return;
@@ -792,7 +793,7 @@ var xDown: number = null,
 var xMove1: number, yMove1: number, tCount: number;
 var touch_min_sensY = Math.round(screen.height / 10);
 var touch_min_sensX = Math.round(
-    touch_min_sensY * (screen.width / screen.height) * 2,
+    touch_min_sensY * (screen.width / screen.height) * 2
 );
 
 // Tap detection
@@ -816,7 +817,7 @@ export function checkTap(
     r: number,
     s: number,
     n: number,
-    i: number,
+    i: number
 ): boolean {
     if (
         Math.abs(e - r) < touch_min_sensX / 10 &&
@@ -846,7 +847,7 @@ export function getDirection(
     r: number,
     s: number,
     n: number,
-    i: number,
+    i: number
 ): number {
     var a = 0;
     if (r - e > n) a |= 4;
@@ -891,7 +892,7 @@ export function numberProg(digit: number): void {
         return;
     }
     nProg += digit.toString();
-    var idx = parseInt(nProg, 10) - 1;
+    var idx = Number.parseInt(nProg, 10) - 1;
     if (!numProgEl) numProgEl = document.getElementById("numprog");
     if (numProgEl) {
         numProgEl.innerHTML =
@@ -912,7 +913,7 @@ export function numberProg(digit: number): void {
     clearTimeout(numTimeout);
     numTimeout = setTimeout(function () {
         if (numProgEl) numProgEl.style.display = "none";
-        var e = parseInt(nProg) - 1;
+        var e = Number.parseInt(nProg) - 1;
         nProg = "";
         if (
             e < 0 ||
@@ -1019,7 +1020,7 @@ function onPrevSelect(sel: number): void {
                         (window as any).setCurProg(chId, epgData, null);
                     if (typeof (window as any).playArchive === "function")
                         (window as any).playArchive(ts);
-                },
+                }
             );
         }
     } else {
@@ -1097,7 +1098,7 @@ export function prevProg(): void {
         n =
             (window as any).cats && (window as any).catsArray
                 ? (window as any).cats[(window as any).catsArray[r]].indexOf(
-                      entry.ci,
+                      entry.ci
                   )
                 : -1;
         if (n !== -1) return;
@@ -1135,7 +1136,7 @@ export function prevProg(): void {
                                 ? ' <span style="color:#f9bf3b;"><span style="color:#607d8b;">&#x02237; </span>' +
                                   entry.e +
                                   "</span>"
-                                : ""),
+                                : "")
                     );
                 } catch (e) {
                     arr.splice(idx, 1);
@@ -1189,7 +1190,7 @@ function handleTouchStart(e: any): void {
  *             A non-zero dir causes the move reference point to be reset to prevent repeated dispatches.
  */
 function handleTouchMove(e: any): void {
-    if (!xDown || !yDown) return;
+    if (!(xDown && yDown)) return;
     e.preventDefault();
     xUp = Math.round(e.touches[0].screenX);
     yUp = Math.round(e.touches[0].screenY);
@@ -1223,13 +1224,12 @@ function handleTouchMove(e: any): void {
  * @analysis Only triggers on exactly 3 touch points. Resets tracking state unconditionally after processing.
  */
 function handleTouchEnd(e: any): void {
-    if (tCount === 3) {
-        if (
-            Math.abs(xUp - xDown) < touch_min_sensX * 5 &&
-            Math.abs(yUp - yDown) < touch_min_sensY * 2
-        )
-            (window as any)._doKey((window as any).keys.SETUP);
-    }
+    if (
+        tCount === 3 &&
+        Math.abs(xUp - xDown) < touch_min_sensX * 5 &&
+        Math.abs(yUp - yDown) < touch_min_sensY * 2
+    )
+        (window as any)._doKey((window as any).keys.SETUP);
     xDown = null;
     yDown = null;
     tCount = undefined;
@@ -1252,7 +1252,7 @@ function handleTouchEnd(e: any): void {
  *             so that regular click handlers fire naturally.
  */
 function body_handleTouchEnd(e: any): void {
-    if (!xDown || !yDown) return;
+    if (!(xDown && yDown)) return;
     e.preventDefault();
     if (e.touches.length === 0) {
         if (tCount === 3) {
@@ -1264,7 +1264,7 @@ function body_handleTouchEnd(e: any): void {
                     xUp,
                     yUp,
                     touch_min_sensX * 5,
-                    touch_min_sensY * 2,
+                    touch_min_sensY * 2
                 )
             )
                 (window as any)._doKey((window as any).keys.SETUP);
@@ -1276,7 +1276,7 @@ function body_handleTouchEnd(e: any): void {
                 xUp,
                 yUp,
                 touch_min_sensX,
-                touch_min_sensY * 2,
+                touch_min_sensY * 2
             );
             switch (dir) {
                 case 0:
@@ -1287,7 +1287,7 @@ function body_handleTouchEnd(e: any): void {
                             xUp,
                             yUp,
                             touch_min_sensX / 2,
-                            touch_min_sensY / 2,
+                            touch_min_sensY / 2
                         )
                     )
                         (window as any)._doKey((window as any).keys.ENTER);
@@ -1314,7 +1314,7 @@ function body_handleTouchEnd(e: any): void {
                     xUp,
                     yUp,
                     touch_min_sensX / 2,
-                    touch_min_sensY / 2,
+                    touch_min_sensY / 2
                 )
             ) {
                 var clickEvent = new MouseEvent("click", {

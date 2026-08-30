@@ -20,19 +20,19 @@
 export interface Channel {
     ch_id: number;
     channel_name: string;
-    url?: string;
-    icon?: string;
-    rec?: number; // archive hours available
-    name?: string; // current program name
-    time?: number; // current program start (unix timestamp)
-    time_to?: number; // current program end
-    descr?: string; // current program description
-    nextpr?: EPGEntry[] | null;
-    outdated?: boolean;
-    time_request?: number; // EPG cache expiry
-    number?: string; // display number
-    group?: string; // group/category name
     cmd?: string; // raw command from playlist
+    descr?: string; // current program description
+    group?: string; // group/category name
+    icon?: string;
+    name?: string; // current program name
+    nextpr?: EPGEntry[] | null;
+    number?: string; // display number
+    outdated?: boolean;
+    rec?: number; // archive hours available
+    time?: number; // current program start (unix timestamp)
+    time_request?: number; // EPG cache expiry
+    time_to?: number; // current program end
+    url?: string;
 }
 
 /**
@@ -45,11 +45,11 @@ export interface Channel {
  * @property icon   - Optional URL to program artwork or thumbnail.
  */
 export interface EPGEntry {
+    descr: string;
+    icon?: string;
     name: string;
     time: number;
     time_to: number;
-    descr: string;
-    icon?: string;
 }
 
 /**
@@ -62,10 +62,10 @@ export interface EPGEntry {
  * @property t  - If non-zero, the archive timestamp (playType + playTime) when the user was watching archive.
  */
 export interface PreviousChannel {
-    ci: number; // channel id
     c: number; // category index
-    i: number; // primary index
+    ci: number; // channel id
     e?: string; // program name at switch time
+    i: number; // primary index
     t?: number; // archive timestamp if was playing archive
 }
 
@@ -79,9 +79,9 @@ export interface PreviousChannel {
  */
 export interface MediaHistoryEntry {
     ch_id: number;
-    name: string;
-    fav?: number;
     current?: number; // playback position in seconds
+    fav?: number;
+    name: string;
 }
 
 /**
