@@ -24,3 +24,6 @@ test.m3u
 *.backup
 .aid*
 /*.js
+audit/
+GR*.md
+CA*.md
