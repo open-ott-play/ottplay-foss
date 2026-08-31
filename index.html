@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>OTT-play FOSS (local)</title>
+        <title>OTT-play FOSS (__OTTP_VERSION__)</title>
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta
             name="viewport"
@@ -141,8 +141,8 @@
                 return (b & 0x0f).toString(36);
             })
             .join("");
-        var __cv = __dev ? "dev_" + Date.now() + "_" + _rndstr : "0319.1812";
-        var __av = __dev ? "dev_" + Date.now() + "_" + _rndstr : "local";
+        var __cv = __dev ? "dev_" + Date.now() + "_" + _rndstr : "__OTTP_VERSION__";
+        var __av = __dev ? "dev_" + Date.now() + "_" + _rndstr : "__OTTP_VERSION__";
 
         function detectDevice() {
             var path = window.location.pathname;

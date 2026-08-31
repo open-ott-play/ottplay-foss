@@ -277,7 +277,7 @@ declare var duneAddSettings: ((_index: number) => void) | null;
 function nofun(): void {}
 
 // Version
-var PLAYER_VERSION = "0319.1812";
+var PLAYER_VERSION = "__OTTP_VERSION__";
 
 // Backward compat globals (were defined in old monolithic bundle)
 // itemWith — channel list item width, updated by showPage()
