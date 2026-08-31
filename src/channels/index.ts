@@ -2800,6 +2800,7 @@ export function channelsKeyHandler(keyCode: number): boolean {
             }
             return true;
 
+        case keys.N0:
         case keys.YELLOW:
         case keys.TOOLS:
             if ((window as any).sNoNumbersKeys) {
@@ -2809,6 +2810,7 @@ export function channelsKeyHandler(keyCode: number): boolean {
             }
             return true;
 
+        case keys.N2:
         case keys.INFO: {
             var ch = (window as any).chanels[
                 (window as any).listArray[(window as any).selIndex]
@@ -2925,9 +2927,7 @@ export function channelsKeyHandler(keyCode: number): boolean {
             }
             case keys.N6:
                 (window as any).listChannel = (window as any).selIndex;
-                if (typeof (window as any).searchChannel === "function") {
-                    (window as any).searchChannel();
-                }
+                searchChannel();
                 return true;
         }
     }
