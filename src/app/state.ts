@@ -68,7 +68,7 @@ export const savedPopup: {
     popupActions: any[];
     popupArray: string[];
     popupDetail: any[];
-} = { ver: PLAYER_VERSION, popupActions: [], popupArray: [], popupDetail: [] };
+} = { popupActions: [], popupArray: [], popupDetail: [], ver: PLAYER_VERSION };
 
 export const version: string = PLAYER_VERSION;
 
@@ -142,13 +142,13 @@ export function setSleepTimer(val: any): void {
 // Backward compat capability detection (was window.client_can)
 export const client_can_https = false;
 export const client_can = {
-    https: client_can_https,
-    localstorage: typeof window.localStorage !== "undefined",
-    websocket: typeof window.WebSocket !== "undefined",
-    is_maple:
-        typeof navigator !== "undefined" &&
-        navigator.userAgent.indexOf("Maple 6") !== -1,
     crossxhr:
         typeof navigator !== "undefined" &&
         !/(?:Viera\/1\.)/.test(navigator.userAgent),
+    https: client_can_https,
+    is_maple:
+        typeof navigator !== "undefined" &&
+        navigator.userAgent.indexOf("Maple 6") !== -1,
+    localstorage: typeof window.localStorage !== "undefined",
+    websocket: typeof window.WebSocket !== "undefined",
 };

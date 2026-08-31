@@ -109,11 +109,11 @@ export function PostFeedback(data: any, endpoint?: string): void {
                 try {
                     if (typeof $ !== "undefined" && $.ajax) {
                         $.ajax({
+                            contentType: "application/json",
+                            data: JSON.stringify(batch),
+                            timeout: 3000,
                             type: "POST",
                             url: base + "/api/feedback",
-                            data: JSON.stringify(batch),
-                            contentType: "application/json",
-                            timeout: 3000,
                         });
                     }
                 } catch (_e) {}
@@ -450,7 +450,7 @@ export var innerStyle: any = (function () {
         }
         return rule;
     }
-    return { init: init, getRule: getRule };
+    return { getRule: getRule, init: init };
 })();
 
 /**

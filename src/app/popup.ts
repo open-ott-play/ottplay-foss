@@ -62,8 +62,8 @@ export const savedPopup: {
     popupArray: string[];
     popupDetail: any[];
 } = {
-    ver: PLAYER_VERSION,
     popupActions: [],
     popupArray: [],
     popupDetail: [],
+    ver: PLAYER_VERSION,
 };

@@ -53,98 +53,98 @@ export function setFontSize(): void {
     $("#info").css("padding", 20 * e + "px");
     $("#numprog").css({
         left: 20 * e + "px",
-        top: 20 * e + "px",
         padding: 10 * e + "px",
+        top: 20 * e + "px",
     });
     $("#permanentTime").css({
+        padding: 10 * e + "px " + 10 * t + "px",
         right: 20 * e + "px",
         top: 20 * t + "px",
-        padding: 10 * e + "px " + 10 * t + "px",
     });
     $("#launch").css({ "font-size": 16 * e + "px", padding: 100 * e + "px" });
     $("logo").css({ margin: 100 * e + "px" });
     $("#list").css({ margin: 10 * e + "px " + 10 * t + "px" });
     $("#listCaption").css({ height: 30 * e + "px" });
-    $("#listTime").css({ width: 80 * t + "px", "font-size": 22 * e + "px" });
+    $("#listTime").css({ "font-size": 22 * e + "px", width: 80 * t + "px" });
     $("#list_s").css({ "font-size": 16 * e + "px" });
     $("#listPodval").css({ height: 30 * e + "px" });
     $("#listDetail").css({
-        width: 514 * t + 1 + "px",
-        top: 330 * e + "px",
         bottom: 30 * e + 1 + "px",
         padding: 4 * e + "px " + 4 * t + "px",
+        top: 330 * e + "px",
+        width: 514 * t + 1 + "px",
     });
     $("#listPopUp").css({
         bottom: 30 * e + 1 + "px",
-        padding: 10 * e + "px",
         margin: 10 * e + "px",
+        padding: 10 * e + "px",
     });
     $("#listIn").css({
-        left: 522 * t + "px",
-        top: 30 * e + 1 + "px",
         bottom: 30 * e + 1 + "px",
+        left: 522 * t + "px",
         padding: 4 * e + "px 0px",
+        top: 30 * e + 1 + "px",
     });
     $("#listAbout").css({
-        left: 522 * t + "px",
-        top: 30 * e + 1 + "px",
         bottom: 30 * e + 1 + "px",
+        left: 522 * t + "px",
         padding: 10 * e + "px " + 10 * t + "px",
+        top: 30 * e + 1 + "px",
     });
     $("#listEdit").css({
-        left: 522 * t + "px",
-        top: 30 * e + 1 + "px",
         bottom: 30 * e + 1 + "px",
+        left: 522 * t + "px",
         padding: 10 * e + "px " + 10 * t + "px",
+        top: 30 * e + 1 + "px",
     });
     $("#info1").css({ padding: 20 * e + "px " + 20 * t + "px" });
-    $("#picon").css({ width: 80 * t + "px", height: 80 * e + "px" });
+    $("#picon").css({ height: 80 * e + "px", width: 80 * t + "px" });
     $("#channel").css({
-        width: 1040 * t + "px",
         padding: "0px 0px 0px " + 20 * t + "px",
+        width: 1040 * t + "px",
     });
     $("#channel_number").css({ width: 70 * t + "px" });
     $("#progress_div").css({ margin: 2 * e + "px 0px" });
     $("#progress").css({ height: 6 * e + "px" });
     $("#progress_r").css({ height: 6 * e + "px" });
-    $("#begin_time").css({ width: 70 * t + "px", "font-size": 22 * e + "px" });
-    $("#end_time").css({ width: 70 * t + "px", "font-size": 22 * e + "px" });
+    $("#begin_time").css({ "font-size": 22 * e + "px", width: 70 * t + "px" });
+    $("#end_time").css({ "font-size": 22 * e + "px", width: 70 * t + "px" });
     $("#programm_name").css({ width: 900 * t + "px" });
-    $("#nbegin_time").css({ width: 70 * t + "px", "font-size": 22 * e + "px" });
-    $("#nend_time").css({ width: 70 * t + "px", "font-size": 22 * e + "px" });
+    $("#nbegin_time").css({ "font-size": 22 * e + "px", width: 70 * t + "px" });
+    $("#nend_time").css({ "font-size": 22 * e + "px", width: 70 * t + "px" });
     $("#nprogramm_name").css({ width: 900 * t + "px" });
-    $("#data").css({ width: 80 * t + "px", "font-size": 22 * e + "px" });
+    $("#data").css({ "font-size": 22 * e + "px", width: 80 * t + "px" });
     $("#current_s").css({ "font-size": 16 * e + "px" });
     $("#video_res").css({ "font-size": 16 * e + "px" });
     $("#descr").css({
-        padding: "0px " + 100 * t + "px",
         margin: "0px 0px " + 20 * e + "px 0px",
+        padding: "0px " + 100 * t + "px",
     });
     $("#buffering").css({
+        "background-size": 30 * e + "px",
+        height: 30 * e + "px",
         left: 10 * e + "px",
         top: 10 * e + "px",
         width: 30 * e + "px",
-        height: 30 * e + "px",
-        "background-size": 30 * e + "px",
     });
     $("#pip_buffering").css({
+        "background-size": 30 * e + "px",
+        height: 30 * e + "px",
         right: 10 * e + "px",
         top: 10 * e + "px",
         width: 30 * e + "px",
-        height: 30 * e + "px",
-        "background-size": 30 * e + "px",
     });
     $("#mute").css({
-        width: 40 * e + "px",
-        height: 40 * e + "px",
         "background-size": 20 * e + "px",
+        height: 40 * e + "px",
+        width: 40 * e + "px",
     });
     $("#volume_div").css({
+        border: 5 * e + "px solid black",
         left: 10 * t + "px",
         width: 15 * t + "px",
-        border: 5 * e + "px solid black",
     });
-    $("#dialogbox").css({ padding: 10 * e + "px", margin: 10 * e + "px" });
+    $("#dialogbox").css({ margin: 10 * e + "px", padding: 10 * e + "px" });
     $("btn").css({
         "border-radius": 6 * e + "px",
         padding: "0px " + 6 * t + "px",
@@ -193,11 +193,11 @@ export function setFontSize(): void {
         if (a2) {
             const w = a2 * 6;
             $("#channel_number").css({ width: w + "px" });
-            $("#begin_time").css({ width: w + "px", "font-size": "inherit" });
-            $("#end_time").css({ width: w + "px", "font-size": "inherit" });
+            $("#begin_time").css({ "font-size": "inherit", width: w + "px" });
+            $("#end_time").css({ "font-size": "inherit", width: w + "px" });
             $("#programm_name").css({ width: 1200 * t - w - 20 * t + "px" });
-            $("#nbegin_time").css({ width: w + "px", "font-size": "inherit" });
-            $("#nend_time").css({ width: w + "px", "font-size": "inherit" });
+            $("#nbegin_time").css({ "font-size": "inherit", width: w + "px" });
+            $("#nend_time").css({ "font-size": "inherit", width: w + "px" });
             $("#nprogramm_name").css({ width: 1200 * t - w - 20 * t + "px" });
         }
     } catch (ex) {
