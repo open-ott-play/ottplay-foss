@@ -215,8 +215,58 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
     event.preventDefault();
     event.stopPropagation();
 
-    /* 0-9: channel number input */
+    /* 0-9: channel number input and archive navigation */
     if (keyCode >= 48 && keyCode <= 57) {
+        // Digit keys for archive navigation when playType > 0
+        if ((window as any).playType > 0) {
+            switch (keyCode) {
+                case keys.N1:
+                    if (typeof (window as any).shiftArchive === "function")
+                        (window as any).shiftArchive(-(window as any).s13dur);
+                    return;
+                case keys.N3:
+                    if (typeof (window as any).shiftArchive === "function")
+                        (window as any).shiftArchive((window as any).s13dur);
+                    return;
+                case keys.N4:
+                    if (typeof (window as any).shiftArchive === "function")
+                        (window as any).shiftArchive(-(window as any).s46dur);
+                    return;
+                case keys.N6:
+                    if (typeof (window as any).shiftArchive === "function")
+                        (window as any).shiftArchive((window as any).s46dur);
+                    return;
+                case keys.N7:
+                    if (typeof (window as any).shiftArchive === "function")
+                        (window as any).shiftArchive(-(window as any).s79dur);
+                    return;
+                case keys.N9:
+                    if (typeof (window as any).shiftArchive === "function")
+                        (window as any).shiftArchive((window as any).s79dur);
+                    return;
+                case keys.N2:
+                    if (typeof (window as any).keyFun === "function")
+                        (window as any).keyFun(20);
+                    return;
+                case keys.N5:
+                    if (typeof (window as any).keyFun === "function")
+                        (window as any).keyFun(21);
+                    return;
+                case keys.N8:
+                    // Map N8 to STOP
+                    if (typeof (window as any).playChannel === "function") {
+                        (window as any).playChannel(
+                            (window as any).catIndex,
+                            (window as any).primaryIndex
+                        );
+                    }
+                    return;
+                case keys.N0:
+                    // fall through to number input below
+                    break;
+            }
+        }
+        // Standard number input for channel selection
         if (typeof (window as any).numberProg === "function") {
             (window as any).numberProg(keyCode - 48);
         }
@@ -785,12 +835,14 @@ export function keyFun(fn: number): void {
 }
 
 // Touch handlers
-var xDown: number = null,
-    yDown: number = null,
-    xUp: number,
-    yUp: number,
+var xDown: number | null = null,
+    yDown: number | null = null,
+    xUp: number | null = null,
+    yUp: number | null = null,
     touch_locked = false;
-var xMove1: number, yMove1: number, tCount: number;
+var xMove1: number | null = null,
+    yMove1: number | null = null,
+    tCount: number | undefined = undefined;
 var touch_min_sensY = Math.round(screen.height / 10);
 var touch_min_sensX = Math.round(
     touch_min_sensY * (screen.width / screen.height) * 2
@@ -860,7 +912,7 @@ export function getDirection(
 // Number input state
 var nProg = "";
 var numTimeout: any = null;
-var numProgEl: HTMLElement = null;
+var numProgEl: HTMLElement | null = null;
 
 /**
  * Handle incremental numeric channel/program input (digit-by-digit, like a remote control).
@@ -978,7 +1030,8 @@ function onPrevSelect(sel: number): void {
     if (prevArr[sel].t) {
         var chId = prevArr[sel].ci;
         var ts = prevArr[sel].t;
-        var r: number, n: number;
+        var r: number = 0,
+            n: number = -1;
         var catsL = (window as any).cats;
         var catsArrayL = (window as any).catsArray;
         r = prevArr[sel].c;
@@ -1116,7 +1169,7 @@ export function prevProg(): void {
         case 1:
             setFromEntry(prevArr[0]);
             if (typeof (window as any).playChannel === "function")
-                (window as any).playChannel(r, n);
+                (window as any).playChannel(r!, n!);
             return;
         default: {
             var items: string[] = [];
@@ -1196,11 +1249,11 @@ function handleTouchMove(e: any): void {
     yUp = Math.round(e.touches[0].screenY);
     if (tCount === 1) {
         var dir =
-            Math.abs(xUp - xMove1) > Math.abs(yUp - yMove1)
-                ? xUp > xMove1
+            Math.abs(xUp! - xMove1!) > Math.abs(yUp! - yMove1!)
+                ? xUp! > xMove1!
                     ? 4
                     : 1
-                : yUp > yMove1
+                : yUp! > yMove1!
                   ? 2
                   : 8;
         if (dir === 1) (window as any)._doKey((window as any).keys.LEFT);
@@ -1226,14 +1279,14 @@ function handleTouchMove(e: any): void {
 function handleTouchEnd(e: any): void {
     if (tCount === 3) {
         if (
-            Math.abs(xUp - xDown) < touch_min_sensX * 5 &&
-            Math.abs(yUp - yDown) < touch_min_sensY * 2
+            Math.abs(xUp! - xDown!) < touch_min_sensX * 5 &&
+            Math.abs(yUp! - yDown!) < touch_min_sensY * 2
         )
             (window as any)._doKey((window as any).keys.SETUP);
     }
-    xDown = null;
-    yDown = null;
-    tCount = undefined;
+    xDown = null as number | null;
+    yDown = null as number | null;
+    tCount = undefined as number | undefined;
 }
 
 /**
@@ -1260,10 +1313,10 @@ function body_handleTouchEnd(e: any): void {
             // 3-finger tap → SETUP (from handleTouchEnd)
             if (
                 checkTap(
-                    xDown,
-                    yDown,
-                    xUp,
-                    yUp,
+                    xDown!,
+                    yDown!,
+                    xUp!,
+                    yUp!,
                     touch_min_sensX * 5,
                     touch_min_sensY * 2
                 )
@@ -1272,10 +1325,10 @@ function body_handleTouchEnd(e: any): void {
         } else if (tCount === 2) {
             // 2-finger gestures → color keys or ENTER
             var dir = getDirection(
-                xDown,
-                yDown,
-                xUp,
-                yUp,
+                xDown!,
+                yDown!,
+                xUp!,
+                yUp!,
                 touch_min_sensX,
                 touch_min_sensY * 2
             );
@@ -1283,10 +1336,10 @@ function body_handleTouchEnd(e: any): void {
                 case 0:
                     if (
                         checkTap(
-                            xDown,
-                            yDown,
-                            xUp,
-                            yUp,
+                            xDown!,
+                            yDown!,
+                            xUp!,
+                            yUp!,
                             touch_min_sensX / 2,
                             touch_min_sensY / 2
                         )
@@ -1310,10 +1363,10 @@ function body_handleTouchEnd(e: any): void {
             // 1-finger tap → click event
             if (
                 checkTap(
-                    xDown,
-                    yDown,
-                    xUp,
-                    yUp,
+                    xDown!,
+                    yDown!,
+                    xUp!,
+                    yUp!,
                     touch_min_sensX / 2,
                     touch_min_sensY / 2
                 )

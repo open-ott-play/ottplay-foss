@@ -165,7 +165,7 @@ export function setFontSize(): void {
         const n = $("#testFont");
         const i = n.css("font-size");
         n.css("font-size", 22 * e).text("9");
-        const a = n.width();
+        const a = n.width() ?? 0;
         n.text("").css("font-size", i);
         const o = a * 7;
         if (o) {
@@ -214,7 +214,7 @@ export function setFontSize(): void {
             (window as any).stbCSS();
         $("#descr").css(
             "max-height",
-            (660 - $("#channel").height()) * e + "px"
+            (660 - ($("#channel").height() ?? 0)) * e + "px"
         );
     } catch (ex) {
         console.error(ex);
