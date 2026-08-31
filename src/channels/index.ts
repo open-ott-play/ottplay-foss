@@ -2214,6 +2214,7 @@ export function searchChannel(): void {
                     ch.channel_name.toLowerCase().indexOf(q) !== -1
                 );
             });
+            w.w.listDataArray = w.w.listArray;
             w.w.selIndex = 0;
             w.w.listKeyHandler = function (e: number): boolean {
                 function play(): void {
