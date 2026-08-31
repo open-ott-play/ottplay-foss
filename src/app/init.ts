@@ -3,7 +3,7 @@
  * Handles player startup, DOM ready events, and initial setup
  */
 
-export const PLAYER_VERSION = "0319.1812";
+export const PLAYER_VERSION = "__OTTP_VERSION__";
 
 // duneAddSettings — set by provider scripts (stalker, edem, etc.)
 declare var duneAddSettings: ((_index: number) => void) | null;

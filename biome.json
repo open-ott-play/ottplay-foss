@@ -207,7 +207,8 @@
       "build-concat.cjs",
       "biome.json",
       "package.json",
-      "tsconfig.json"
+      "tsconfig.json",
+      "!fonts/**"
     ]
   },
   "formatter": {
