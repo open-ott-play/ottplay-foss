@@ -363,9 +363,9 @@ function _decompress(
     var maxpower: number;
     var c: any;
     var data: { val: number; position: number; index: number } = {
-        val: getNextValue(0),
-        position: resetValue,
         index: 1,
+        position: resetValue,
+        val: getNextValue(0),
     };
     var i: number;
 

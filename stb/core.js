@@ -132,8 +132,8 @@ function stbGetLen() {
 }
 function stbToFullScreen() {
     _full = true;
-    $("#video").css({ left: 0, top: 0, width: "100%", height: "100%" });
-    $("#vdiv").css({ left: 0, top: 0, width: "100%", height: "100%" });
+    $("#video").css({ height: "100%", left: 0, top: 0, width: "100%" });
+    $("#vdiv").css({ height: "100%", left: 0, top: 0, width: "100%" });
     _aspect();
 }
 function stbSetWindow() {
@@ -141,12 +141,12 @@ function stbSetWindow() {
     var lh = getHeightK(),
         lw = getWidthK();
     $("#vdiv").css({
+        height: 288 * lh,
         left: sListPos ? 758 * lw : 10 * lw,
         top: 50 * lh,
         width: 512 * lw,
-        height: 288 * lh,
     });
-    $("#video").css({ left: 0, top: 0, width: "100%", height: "100%" });
+    $("#video").css({ height: "100%", left: 0, top: 0, width: "100%" });
 }
 function stbInfo() {
     $("#listAbout").append(
@@ -328,7 +328,7 @@ function stbStopPip() {
 }
 function setPipPos() {
     function setPipWindowRect(x, y, width, height) {
-        $("#videopip").css({ left: x, top: y, width: width, height: height });
+        $("#videopip").css({ height: height, left: x, top: y, width: width });
     }
     var lw = getWidthK(),
         lh = getHeightK(),
@@ -340,18 +340,18 @@ function setPipPos() {
         { x: 512, y: 288 },
     ];
     $("#videopip").css({
-        width: ps[sPipSize].x * ll,
         height: ps[sPipSize].y * ll,
+        width: ps[sPipSize].x * ll,
     });
     switch (sPipPos) {
         case 0:
             $("#videopip").css({ right: 20 * ll, top: 20 * ll });
             return;
         case 1:
-            $("#videopip").css({ right: 20 * ll, bottom: 20 * ll });
+            $("#videopip").css({ bottom: 20 * ll, right: 20 * ll });
             return;
         case 2:
-            $("#videopip").css({ left: 20 * ll, bottom: 20 * ll });
+            $("#videopip").css({ bottom: 20 * ll, left: 20 * ll });
             return;
         case 3:
             $("#videopip").css({ left: 20 * ll, top: 20 * ll });
@@ -406,12 +406,12 @@ function stbOptions() {
             values: stbPlayers,
         },
         { name: _("Buffer Size, s"), val: sBufSize, values: stbBufferSizes },
-        { name: "", val: 0, values: nofun, cur: "" },
+        { cur: "", name: "", val: 0, values: nofun },
         {
+            cur: "",
             name: '<div class="btn">' + _("Save Settings") + "</div>",
             val: 0,
             values: saveSettings,
-            cur: "",
         },
     ];
     listArray = settingsArray;

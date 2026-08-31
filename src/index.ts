@@ -53,22 +53,36 @@ import {
     addToFavorites,
     aSubs,
     aZooms,
+    bucketsList,
     catIndex,
     cats,
     catsArray,
     channels,
+    channelsList,
     curList,
+    detailEPG,
     enterPinAndSetAccess,
     enterPinCode,
     epg,
+    epg_ch_id,
+    epgArray,
+    epgKeyHandler,
     epgList,
+    epgListAlpha,
+    epglisted,
+    epgPodval,
+    epgreturn,
+    epgShow_miniproc,
     favoritesArray,
     fileArchive,
     forcePlay,
     getChannelUrl,
+    getCurProgData,
     getMediaDescr,
     handleNumberInput,
     ifParentalAccessChId,
+    itemEPG,
+    listEpgArray,
     medFavorites,
     medHistory,
     mediaSelects,
@@ -82,10 +96,14 @@ import {
     prevArr,
     prevChannel,
     primaryIndex,
+    recordsList,
     removeFromFavorites,
     saveChannelsCats,
     sEditor,
+    selectEpg,
+    setCurProg,
     setCurrent,
+    setEpgTimer,
     setParentAccess,
     shiftArchive,
     shiftArchiveSelect,
@@ -209,6 +227,7 @@ import {
     infoBarHideT,
     infoBox,
     infoList,
+    infoProgramm,
     initBackgroundIntervals,
     popBuckets,
     popEpg,
@@ -286,11 +305,11 @@ var PLAYER_VERSION = "__OTTP_VERSION__";
 (window as any).client_can_https = false;
 (window as any).client_can = {
     https: (window as any).client_can_https,
-    localstorage: typeof window.localStorage !== "undefined",
-    websocket: typeof window.WebSocket !== "undefined",
     is_maple:
         typeof navigator !== "undefined" &&
         navigator.userAgent.indexOf("Maple 6") !== -1,
+    localstorage: typeof window.localStorage !== "undefined",
+    websocket: typeof window.WebSocket !== "undefined",
 };
 (window as any).client_can.crossxhr =
     typeof navigator !== "undefined" &&
@@ -419,7 +438,7 @@ var savedPopup: {
     popupActions: any[];
     popupArray: string[];
     popupDetail: string[];
-} = { ver: PLAYER_VERSION, popupActions: [], popupArray: [], popupDetail: [] };
+} = { popupActions: [], popupArray: [], popupDetail: [], ver: PLAYER_VERSION };
 var version: string = PLAYER_VERSION;
 
 // Options system (ported from stbPlayer.js)
@@ -621,98 +640,98 @@ function setFontSize(): void {
     $("#info").css("padding", 20 * e + "px");
     $("#numprog").css({
         left: 20 * e + "px",
-        top: 20 * e + "px",
         padding: 10 * e + "px",
+        top: 20 * e + "px",
     });
     $("#permanentTime").css({
+        padding: 10 * e + "px " + 10 * t + "px",
         right: 20 * e + "px",
         top: 20 * t + "px",
-        padding: 10 * e + "px " + 10 * t + "px",
     });
     $("#launch").css({ "font-size": 16 * e + "px", padding: 100 * e + "px" });
     $("logo").css({ margin: 100 * e + "px" });
     $("#list").css({ margin: 10 * e + "px " + 10 * t + "px" });
     $("#listCaption").css({ height: 30 * e + "px" });
-    $("#listTime").css({ width: 80 * t + "px", "font-size": 22 * e + "px" });
+    $("#listTime").css({ "font-size": 22 * e + "px", width: 80 * t + "px" });
     $("#list_s").css({ "font-size": 16 * e + "px" });
     $("#listPodval").css({ height: 30 * e + "px" });
     $("#listDetail").css({
-        width: 514 * t + 1 + "px",
-        top: 330 * e + "px",
         bottom: 30 * e + 1 + "px",
         padding: 4 * e + "px " + 4 * t + "px",
+        top: 330 * e + "px",
+        width: 514 * t + 1 + "px",
     });
     $("#listPopUp").css({
         bottom: 30 * e + 1 + "px",
-        padding: 10 * e + "px",
         margin: 10 * e + "px",
+        padding: 10 * e + "px",
     });
     $("#listIn").css({
-        left: 522 * t + "px",
-        top: 30 * e + 1 + "px",
         bottom: 30 * e + 1 + "px",
+        left: 522 * t + "px",
         padding: 4 * e + "px 0px",
+        top: 30 * e + 1 + "px",
     });
     $("#listAbout").css({
-        left: 522 * t + "px",
-        top: 30 * e + 1 + "px",
         bottom: 30 * e + 1 + "px",
+        left: 522 * t + "px",
         padding: 10 * e + "px " + 10 * t + "px",
+        top: 30 * e + 1 + "px",
     });
     $("#listEdit").css({
-        left: 522 * t + "px",
-        top: 30 * e + 1 + "px",
         bottom: 30 * e + 1 + "px",
+        left: 522 * t + "px",
         padding: 10 * e + "px " + 10 * t + "px",
+        top: 30 * e + 1 + "px",
     });
     $("#info1").css({ padding: 20 * e + "px " + 20 * t + "px" });
-    $("#picon").css({ width: 80 * t + "px", height: 80 * e + "px" });
+    $("#picon").css({ height: 80 * e + "px", width: 80 * t + "px" });
     $("#channel").css({
-        width: 1040 * t + "px",
         padding: "0px 0px 0px " + 20 * t + "px",
+        width: 1040 * t + "px",
     });
     $("#channel_number").css({ width: 70 * t + "px" });
     $("#progress_div").css({ margin: 2 * e + "px 0px" });
     $("#progress").css({ height: 6 * e + "px" });
     $("#progress_r").css({ height: 6 * e + "px" });
-    $("#begin_time").css({ width: 70 * t + "px", "font-size": 22 * e + "px" });
-    $("#end_time").css({ width: 70 * t + "px", "font-size": 22 * e + "px" });
+    $("#begin_time").css({ "font-size": 22 * e + "px", width: 70 * t + "px" });
+    $("#end_time").css({ "font-size": 22 * e + "px", width: 70 * t + "px" });
     $("#programm_name").css({ width: 900 * t + "px" });
-    $("#nbegin_time").css({ width: 70 * t + "px", "font-size": 22 * e + "px" });
-    $("#nend_time").css({ width: 70 * t + "px", "font-size": 22 * e + "px" });
+    $("#nbegin_time").css({ "font-size": 22 * e + "px", width: 70 * t + "px" });
+    $("#nend_time").css({ "font-size": 22 * e + "px", width: 70 * t + "px" });
     $("#nprogramm_name").css({ width: 900 * t + "px" });
-    $("#data").css({ width: 80 * t + "px", "font-size": 22 * e + "px" });
+    $("#data").css({ "font-size": 22 * e + "px", width: 80 * t + "px" });
     $("#current_s").css({ "font-size": 16 * e + "px" });
     $("#video_res").css({ "font-size": 16 * e + "px" });
     $("#descr").css({
-        padding: "0px " + 100 * t + "px",
         margin: "0px 0px " + 20 * e + "px 0px",
+        padding: "0px " + 100 * t + "px",
     });
     $("#buffering").css({
+        "background-size": 30 * e + "px",
+        height: 30 * e + "px",
         left: 10 * e + "px",
         top: 10 * e + "px",
         width: 30 * e + "px",
-        height: 30 * e + "px",
-        "background-size": 30 * e + "px",
     });
     $("#pip_buffering").css({
+        "background-size": 30 * e + "px",
+        height: 30 * e + "px",
         right: 10 * e + "px",
         top: 10 * e + "px",
         width: 30 * e + "px",
-        height: 30 * e + "px",
-        "background-size": 30 * e + "px",
     });
     $("#mute").css({
-        width: 40 * e + "px",
-        height: 40 * e + "px",
         "background-size": 20 * e + "px",
+        height: 40 * e + "px",
+        width: 40 * e + "px",
     });
     $("#volume_div").css({
+        border: 5 * e + "px solid black",
         left: 10 * t + "px",
         width: 15 * t + "px",
-        border: 5 * e + "px solid black",
     });
-    $("#dialogbox").css({ padding: 10 * e + "px", margin: 10 * e + "px" });
+    $("#dialogbox").css({ margin: 10 * e + "px", padding: 10 * e + "px" });
     $("btn").css({
         "border-radius": 6 * e + "px",
         padding: "0px " + 6 * t + "px",
@@ -758,11 +777,11 @@ function setFontSize(): void {
         if (a2) {
             var w = a2 * 6;
             $("#channel_number").css({ width: w + "px" });
-            $("#begin_time").css({ width: w + "px", "font-size": "inherit" });
-            $("#end_time").css({ width: w + "px", "font-size": "inherit" });
+            $("#begin_time").css({ "font-size": "inherit", width: w + "px" });
+            $("#end_time").css({ "font-size": "inherit", width: w + "px" });
             $("#programm_name").css({ width: 1200 * t - w - 20 * t + "px" });
-            $("#nbegin_time").css({ width: w + "px", "font-size": "inherit" });
-            $("#nend_time").css({ width: w + "px", "font-size": "inherit" });
+            $("#nbegin_time").css({ "font-size": "inherit", width: w + "px" });
+            $("#nend_time").css({ "font-size": "inherit", width: w + "px" });
             $("#nprogramm_name").css({ width: 1200 * t - w - 20 * t + "px" });
         }
     } catch (ex) {
@@ -1799,15 +1818,15 @@ window.stbOptions = function (): void {
             val: w.sBufSize,
             values: w.bufferSizes,
         },
-        { name: "", val: 0, values: w.nofun || [], cur: "" },
+        { cur: "", name: "", val: 0, values: w.nofun || [] },
         {
+            cur: "",
             name:
                 '<div class="btn">' +
                 (w._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
             values: saveSettings,
-            cur: "",
         },
     ];
     var captionEl = document.getElementById("listCaption");
@@ -2008,24 +2027,24 @@ window.settingsInterface = function (): void {
             values: [3, 4, 5, 6, 7, 8, 9, 10],
         },
         {
+            cur: w._("select") || "select",
             name: w._("Color spectrum") || "Color spectrum",
             val: w.sSHLcolor,
             values: w.colorDialog,
-            cur: w._("select") || "select",
         },
         {
+            cur: w._("select") || "select",
             name:
                 w._("Background color of selected item") ||
                 "Background color of selected item",
             val: w.sSHLcolSel,
             values: w.selColorDialog,
-            cur: w._("select") || "select",
         },
         {
+            cur: w._("select") || "select",
             name: w._("Background color") || "Background color",
             val: w.sSHLcolorB,
             values: w.backColorDialog,
-            cur: w._("select") || "select",
         },
         {
             name:
@@ -2078,15 +2097,15 @@ window.settingsInterface = function (): void {
             val: w.sBufSize,
             values: w.bufferSizes,
         },
-        { name: "", val: 0, values: w.nofun || [], cur: "" },
+        { cur: "", name: "", val: 0, values: w.nofun || [] },
         {
+            cur: "",
             name:
                 '<div class="btn">' +
                 (w._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
             values: save,
-            cur: "",
         },
     ];
     if (typeof w.stbSetBuffer === "function" && w.stbBufferSizes)
@@ -2175,15 +2194,15 @@ window.settingsInfobar = function (): void {
             val: w.sThumbnail,
             values: noyes,
         },
-        { name: "", val: 0, values: w.nofun || [], cur: "" },
+        { cur: "", name: "", val: 0, values: w.nofun || [] },
         {
+            cur: "",
             name:
                 '<div class="btn">' +
                 (w._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
             values: save,
-            cur: "",
         },
     ];
     var capEl = document.getElementById("listCaption");
@@ -2293,15 +2312,15 @@ window.settingsLists = function (): void {
             val: w.sShowScroll,
             values: noyes,
         },
-        { name: "", val: 0, values: w.nofun || [], cur: "" },
+        { cur: "", name: "", val: 0, values: w.nofun || [] },
         {
+            cur: "",
             name:
                 '<div class="btn">' +
                 (w._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
             values: save,
-            cur: "",
         },
     ];
     var capEl = document.getElementById("listCaption");
@@ -2424,15 +2443,15 @@ window.settingsChannels = function (): void {
                       (w._('"Favorites"') || '"Favorites"') +
                       "</span>",
         },
-        { name: "", val: 0, values: w.nofun || [], cur: "" },
+        { cur: "", name: "", val: 0, values: w.nofun || [] },
         {
+            cur: "",
             name:
                 '<div class="btn">' +
                 (w._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
             values: save,
-            cur: "",
         },
     ];
     var capEl = document.getElementById("listCaption");
@@ -2650,12 +2669,12 @@ window.settingsButtons = function (): void {
             val: w.sNoNumbersKeys,
             values: noyes,
         },
-        { name: "", val: 0, values: w.nofun || [], cur: "" },
+        { cur: "", name: "", val: 0, values: w.nofun || [] },
         {
+            cur: "",
             name: a + (w._("Save Settings") || "Save Settings") + o,
             val: 0,
             values: save,
-            cur: "",
         },
     ];
     if (w.sNoNumbersKeys) w.listArray.splice(17, 3);
@@ -2708,15 +2727,15 @@ window.settingsMenu = function (): void {
             values: noyes,
         });
     }
-    w.listArray.push({ name: "", val: 0, values: w.nofun || [], cur: "" });
+    w.listArray.push({ cur: "", name: "", val: 0, values: w.nofun || [] });
     w.listArray.push({
+        cur: "",
         name:
             '<div class="btn">' +
             (w._("Save Settings") || "Save Settings") +
             "</div>",
         val: 0,
         values: save,
-        cur: "",
     });
     var capEl = document.getElementById("listCaption");
     if (capEl)
@@ -2899,11 +2918,15 @@ window.cloudSendSettings = function (): void {
     xml += "\n</properties>";
     if (typeof jQuery !== "undefined") {
         jQuery.ajax({
-            url: w.host_ott_proto + w.host_ott + "/swop/a.php",
-            data: { c: "send", d: xml },
-            type: "POST",
-            timeout: 10000,
             cache: false,
+            data: { c: "send", d: xml },
+            error: function (jqXHR: any) {
+                jQuery("#listAbout").html(
+                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
+                        jqXHR.responseText +
+                        "</div>"
+                );
+            },
             success: function (data: any) {
                 cleanup();
                 jQuery("#listAbout").html(
@@ -2931,13 +2954,9 @@ window.cloudSendSettings = function (): void {
                         '" style="height:30%;"/></div></div>'
                 );
             },
-            error: function (jqXHR: any) {
-                jQuery("#listAbout").html(
-                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
-                        jqXHR.responseText +
-                        "</div>"
-                );
-            },
+            timeout: 10000,
+            type: "POST",
+            url: w.host_ott_proto + w.host_ott + "/swop/a.php",
         });
     }
 };
@@ -2998,11 +3017,16 @@ window.cloudLoadSettings = function (): void {
         if (cancelled) return;
         if (typeof jQuery !== "undefined") {
             jQuery.ajax({
-                url: w.host_ott_proto + w.host_ott + "/swop/a.php",
-                data: { c: "get", d: code },
-                type: "POST",
-                timeout: 10000,
                 cache: false,
+                data: { c: "get", d: code },
+                error: function (jqXHR: any) {
+                    if (typeof jQuery !== "undefined")
+                        jQuery("#listAbout").html(
+                            '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
+                                jqXHR.responseText +
+                                "</div>"
+                        );
+                },
                 success: function (data: any) {
                     if (cancelled) return;
                     if (data.status === "forbidden") setTimeout(poll, 5000);
@@ -3041,14 +3065,9 @@ window.cloudLoadSettings = function (): void {
                         }
                     }
                 },
-                error: function (jqXHR: any) {
-                    if (typeof jQuery !== "undefined")
-                        jQuery("#listAbout").html(
-                            '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
-                                jqXHR.responseText +
-                                "</div>"
-                        );
-                },
+                timeout: 10000,
+                type: "POST",
+                url: w.host_ott_proto + w.host_ott + "/swop/a.php",
             });
         }
     }
@@ -3067,11 +3086,15 @@ window.cloudLoadSettings = function (): void {
     };
     if (typeof jQuery !== "undefined") {
         jQuery.ajax({
-            url: w.host_ott_proto + w.host_ott + "/swop/a.php",
-            data: { c: "get_code" },
-            type: "POST",
-            timeout: 10000,
             cache: false,
+            data: { c: "get_code" },
+            error: function (jqXHR: any) {
+                jQuery("#listAbout").html(
+                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
+                        jqXHR.responseText +
+                        "</div>"
+                );
+            },
             success: function (data: any) {
                 code = data.code;
                 jQuery("#listAbout").html(
@@ -3100,13 +3123,9 @@ window.cloudLoadSettings = function (): void {
                 );
                 setTimeout(poll, 10000);
             },
-            error: function (jqXHR: any) {
-                jQuery("#listAbout").html(
-                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
-                        jqXHR.responseText +
-                        "</div>"
-                );
-            },
+            timeout: 10000,
+            type: "POST",
+            url: w.host_ott_proto + w.host_ott + "/swop/a.php",
         });
     }
 };
@@ -3148,7 +3167,7 @@ window.previewChId = function (chId: number): void {
         return;
     w.previewTimer = setTimeout(function () {
         if (w.sStopPlay && typeof w.stbStop === "function") w.stbStop();
-        w.previewChan = { c: 0, i: 0, ch_id: chId };
+        w.previewChan = { c: 0, ch_id: chId, i: 0 };
         if (typeof w.stbPlay === "function")
             w.stbPlay(
                 typeof w.getChannelUrl === "function"
@@ -3298,6 +3317,8 @@ window.shiftArchiveSelect = shiftArchiveSelect;
 window.timeShift = timeShift;
 window.checkMedia = checkMedia;
 window.setCurrent = setCurrent;
+window.setCurProg = setCurProg;
+window.getCurProgData = getCurProgData;
 window.nextChannel = nextChannel;
 window.prevChannel = prevChannel;
 window.handleNumberInput = handleNumberInput;
@@ -3306,6 +3327,23 @@ window.addToFavorites = addToFavorites;
 window.removeFromFavorites = removeFromFavorites;
 window.saveChannelsCats = saveChannelsCats;
 window.epgList = epgList;
+window.epgListAlpha = epgListAlpha;
+window.epgShow_miniproc = epgShow_miniproc;
+window.epgKeyHandler = epgKeyHandler;
+window.epgPodval = epgPodval;
+window.detailEPG = detailEPG;
+window.setEpgTimer = setEpgTimer;
+window.itemEPG = itemEPG;
+window.epgArray = epgArray;
+window.listEpgArray = listEpgArray;
+window.epg_ch_id = epg_ch_id;
+window.epglisted = epglisted;
+window.epgreturn = epgreturn;
+window.channelsList = channelsList;
+window.bucketsList = bucketsList;
+window.recordsList = recordsList;
+window.selectEpg = selectEpg;
+window.infoProgramm = infoProgramm;
 window.updateArchiveInfo = updateArchiveInfo;
 window.initBackgroundIntervals = initBackgroundIntervals;
 window.btnDiv = btnDiv;
@@ -3325,17 +3363,17 @@ window.getMacAddress = getMacAddress;
 window.ottpStorage = storage;
 window.lzstring = {
     compress: (window as any).compress,
-    decompress: (window as any).decompress,
     compressToBase64: (window as any).compressToBase64,
-    decompressFromBase64: (window as any).decompressFromBase64,
-    compressToUTF16: (window as any).compressToUTF16,
-    decompressFromUTF16: (window as any).decompressFromUTF16,
     compressToEncodedURIComponent: (window as any)
         .compressToEncodedURIComponent,
+    compressToUint8Array: (window as any).compressToUint8Array,
+    compressToUTF16: (window as any).compressToUTF16,
+    decompress: (window as any).decompress,
+    decompressFromBase64: (window as any).decompressFromBase64,
     decompressFromEncodedURIComponent: (window as any)
         .decompressFromEncodedURIComponent,
-    compressToUint8Array: (window as any).compressToUint8Array,
     decompressFromUint8Array: (window as any).decompressFromUint8Array,
+    decompressFromUTF16: (window as any).decompressFromUTF16,
 };
 window.channels = channels;
 window.cats = cats;
@@ -3534,7 +3572,7 @@ function buttonsInfo(): void {
 var infoArr: any[] = [
     { action: buttonsInfo, name: "Description of remote control buttons" },
     { action: nofun },
-    { action: pluginInfo, name: "About", desc: "Player and device info" },
+    { action: pluginInfo, desc: "Player and device info", name: "About" },
 ];
 
 window.infoArr = infoArr;
@@ -3756,14 +3794,14 @@ optionsArr.push({ action: _o.parentControlSetup, name: "Parental control" });
 optionsArr.push({ action: noSelProv });
 optionsArr.push({
     action: selectProvaider,
-    name: "Change provider",
     desc: "Change provider - you can change the provider, and it will be remembered at the next start of player!",
+    name: "Change provider",
 });
 optionsArr.push({ action: edit_dealer, name: "Enter Provider Code" });
 optionsArr.push({ action: _o.settingsManage, name: "Manage settings" });
 optionsArr.push({
     action: _o.settingsCommands,
-    name: "Remote control",
     desc: "Device ID and local command URL settings",
+    name: "Remote control",
 });
 optionsArr.push({ action: selectLang, name: "Change interface language" });

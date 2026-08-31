@@ -49,34 +49,34 @@ var detailListActionFn: (() => void) | null = null;
 var listKeyHandlerFn: ((key: any) => boolean) | null = null;
 // Forward old-style global names (set by provider scripts) to new-style module variables
 Object.defineProperty(window, "listKeyHandler", {
-    set: function (v: any) {
-        listKeyHandlerFn = v;
-    },
+    configurable: true,
+    enumerable: true,
     get: function (): any {
         return listKeyHandlerFn;
     },
-    configurable: true,
-    enumerable: true,
+    set: function (v: any) {
+        listKeyHandlerFn = v;
+    },
 });
 Object.defineProperty(window, "getListItem", {
-    set: function (v: any) {
-        getListItemFn = v;
-    },
+    configurable: true,
+    enumerable: true,
     get: function (): any {
         return getListItemFn;
     },
-    configurable: true,
-    enumerable: true,
+    set: function (v: any) {
+        getListItemFn = v;
+    },
 });
 Object.defineProperty(window, "detailListAction", {
-    set: function (v: any) {
-        detailListActionFn = v;
-    },
+    configurable: true,
+    enumerable: true,
     get: function (): any {
         return detailListActionFn;
     },
-    configurable: true,
-    enumerable: true,
+    set: function (v: any) {
+        detailListActionFn = v;
+    },
 });
 var itemWidth = 735;
 declare var curColor: string;
@@ -100,49 +100,48 @@ var _keysP = ".:/@,!?<>#$%^&*()-=_+;'\"[]{}`~";
 var _keys = "";
 var _keysSymbol: any[] = [
     {
-        s: "",
         a: function () {
             _setCase(!_keyUp);
             showEdit();
         },
+        s: "",
     },
     {
-        s: "",
         a: function () {
             if (!_keysSymbol[1].s) return;
             _keyP = false;
             _setLang(!_keyE);
             showEdit();
         },
+        s: "",
     },
     {
-        s: "",
         a: function () {
             _setPunct(!_keyP);
             showEdit();
         },
+        s: "",
     },
-    { s: "&hearts;&trade;", a: (window as any).loadValue || function () {} },
+    { a: (window as any).loadValue || function () {}, s: "&hearts;&trade;" },
     {
-        s: "&larr;",
         a: function () {
             if (editPos) {
                 editPos--;
                 _changeEdit();
             }
         },
+        s: "&larr;",
     },
     {
-        s: "&rarr;",
         a: function () {
             if (editPos < (window as any).editvar.length) {
                 editPos++;
                 _changeEdit();
             }
         },
+        s: "&rarr;",
     },
     {
-        s: "_",
         a: function () {
             (window as any).editvar =
                 (window as any).editvar.substr(0, editPos) +
@@ -151,9 +150,9 @@ var _keysSymbol: any[] = [
             editPos++;
             _changeEdit();
         },
+        s: "_",
     },
     {
-        s: "",
         a: function () {
             if (editPos) {
                 (window as any).editvar =
@@ -163,10 +162,10 @@ var _keysSymbol: any[] = [
                 _changeEdit();
             }
         },
+        s: "",
     },
-    { s: "", a: function () {} },
+    { a: function () {}, s: "" },
     {
-        s: "Ok",
         a: function () {
             clearInterval(cursorInterval);
             (window as any).restoreCPD();
@@ -174,6 +173,7 @@ var _keysSymbol: any[] = [
             if (typeof (window as any).setEdit === "function")
                 (window as any).setEdit();
         },
+        s: "Ok",
     },
 ];
 var _keyUp = false;
@@ -277,10 +277,10 @@ export function uiInit(): void {
     });
     $("#dialogbox").on("show", function () {
         $(this)
-            .css({ top: 0, left: 0, width: "auto", height: "auto" })
+            .css({ height: "auto", left: 0, top: 0, width: "auto" })
             .css({
-                top: (720 * getHeightK() - $(this).height()) / 2,
                 left: (1260 * getWidthK() - $(this).width()) / 2,
+                top: (720 * getHeightK() - $(this).height()) / 2,
             });
     });
 
@@ -1795,7 +1795,7 @@ export function popupList(i?: any): void {
         if (n) r = '<div class="btn">' + n + "</div> " + r;
 
         // Пуш в массив как ОБЪЕКТ (не строку!)
-        listArray.push({ name: r, desc: s, action: action });
+        listArray.push({ action: action, desc: s, name: r });
         listDataArray.push(r); // для совместимости с showPage
 
         if (action == noProvParam) a = listArray.length - 1;

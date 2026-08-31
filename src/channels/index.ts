@@ -234,7 +234,9 @@ export let arrayGetCurProg: Array<{
     callback: (chId: number) => void;
 }> = [];
 export let epglisted = 0,
+    epgreturn = false,
     listChannel = 0,
+    listEpgArray: EPGEntry[] = [],
     epg_ch_id: any = null;
 
 /**
@@ -261,8 +263,7 @@ export function doGetCurProg(): void {
         doGetCurProg();
     }
 }
-export let curEpgData: EPGEntry[] | null = null,
-    listEpgArray: EPGEntry[] = [];
+export let curEpgData: EPGEntry[] | null = null;
 export let epgArray: EPGEntry[] = [],
     curProg = -1;
 export let mediaListArr: any[] = [],
@@ -330,10 +331,10 @@ export function setCurrent(
                     );
                 });
                 prevArr.unshift({
-                    ci: oldCatId,
                     c: catIndex,
-                    i: primaryIndex,
+                    ci: oldCatId,
                     e: _prog100?.name,
+                    i: primaryIndex,
                 });
                 if (wasArchive && prevArr[0])
                     prevArr[0].t = playType + playTime;
@@ -514,7 +515,13 @@ export function getEPGchanelCached(
         callback(channelId, cached);
         return;
     }
-    callback(channelId, null);
+    // Fall through to provider fetch
+    var w = window as any;
+    if (typeof w.getEPGchanel === "function") {
+        w.getEPGchanel(channelId, callback);
+    } else {
+        callback(channelId, null);
+    }
 }
 
 /**
@@ -573,7 +580,7 @@ export function getCurProgData(
         }
     }
     // Queue EPG fetch from server (matches old stbPlayer doGetCurProg behavior)
-    arrayGetCurProg.push({ ch_id: channelId, callback: callback });
+    arrayGetCurProg.push({ callback: callback, ch_id: channelId });
     if (arrayGetCurProg.length < 2) doGetCurProg();
     return false;
 }
@@ -888,7 +895,7 @@ export function itemEPG(item: EPGEntry, index: number): string {
  * - Mutates `epglisted` flag (prevents concurrent EPG fetches).
  * - Sets `epg_ch_id`, `curEpgData`.
  * - Shows/hides #listPopUp spinner.
- * - Calls `window.getEPGchanel` (provider API) and `window.setCurProg` on success.
+ * - Calls `window.getEPGchanelCached` (provider API) and `window.setCurProg` on success.
  */
 export function epgShow_miniproc(
     mode: number,
@@ -899,7 +906,12 @@ export function epgShow_miniproc(
 ): void {
     var w = window as any;
     if (epglisted) return;
-    epglisted = 1;
+    // Legacy guard: skip fetch if same channel (use cached data)
+    if (epg_ch_id && epg_ch_id === channelId) {
+        callback(channelId);
+        return;
+    }
+    epglisted = mode;
     epg_ch_id = channelId;
     w.listCatIndex = catIdx;
     w.listChannel = chIdx;
@@ -919,23 +931,26 @@ export function epgShow_miniproc(
             .show();
     }
 
-    if (typeof w.getEPGchanel === "function") {
-        w.getEPGchanel(providerChId, function (id: any, data: EPGEntry[]) {
-            epglisted = 0;
-            if (id != providerChId) return;
-            if (!data || data.length === 0) {
-                curEpgData = null;
-                $("#listPopUp").hide();
-                w.listChannel |= 65536;
-                if (typeof w.infoBox === "function")
-                    w.infoBox(w._("Channel has no EPG"));
-                return;
+    if (typeof w.getEPGchanelCached === "function") {
+        w.getEPGchanelCached(
+            providerChId,
+            function (id: any, data: EPGEntry[]) {
+                epglisted = 0;
+                if (id != providerChId) return;
+                if (!data || data.length === 0) {
+                    curEpgData = null;
+                    $("#listPopUp").hide();
+                    w.listChannel |= 65536;
+                    if (typeof w.infoBox === "function")
+                        w.infoBox(w._("Channel has no EPG"));
+                    return;
+                }
+                curEpgData = data;
+                if (callback) callback(channelId);
+                if (typeof (w as any).setCurProg === "function")
+                    (w as any).setCurProg(channelId, data, null);
             }
-            curEpgData = data;
-            if (callback) callback(channelId);
-            if (typeof (w as any).setCurProg === "function")
-                (w as any).setCurProg(channelId, data, null);
-        });
+        );
     } else {
         epglisted = 0;
     }
@@ -958,6 +973,8 @@ export function epgShow_miniproc(
  */
 export function epgList(catIdx: number, chIdx: number, force: boolean): void {
     var w = window as any;
+    epgreturn = force || false;
+    w.epgreturn = epgreturn;
 
     // Check if channel has EPG
     if (
@@ -1087,23 +1104,101 @@ export function epgKeyHandler(keyCode: number): boolean {
     if (!item) return false;
 
     switch (keyCode) {
+        case keys.LEFT:
+            if (w.sArrowFun !== 2) return false;
+        // fallthrough
+        case keys.N3:
+        case keys.CH_LIST:
+        case keys.YELLOW:
+            if (typeof w.channelsList === "function")
+                w.channelsList(w.listCatIndex, w.listChannel);
+            return true;
+        case keys.RETURN:
+            if (typeof w.closeList === "function") w.closeList();
+            return true;
         case keys.ENTER:
             selectEpg();
             return true;
-        case keys.RED:
-        case keys.INFO:
+        case keys.N1:
+        case keys.PLAY:
+        case keys.PAUSE:
+        case keys.BLUE:
+            if (typeof w.bucketsList === "function")
+                w.bucketsList(w.listCatIndex);
+            return true;
+        case keys.RIGHT:
+            if (w.sArrowFun !== 2) return false;
+        // fallthrough
+        case keys.N2:
             if (typeof w.infoProgramm === "function") w.infoProgramm(item.name);
             return true;
+        case keys.RW:
+            if (w.sRewFun !== 1) return false;
+            if (typeof w.channelsList === "function")
+                w.channelsList(w.listCatIndex, w.listChannel);
+            return true;
+        case keys.PREV:
+            if (w.sPNFun !== 1) return false;
+            if (typeof w.channelsList === "function")
+                w.channelsList(w.listCatIndex, w.listChannel);
+            return true;
+        case keys.FF:
+            if (w.sRewFun !== 1) return false;
+            if (typeof w.infoProgramm === "function") w.infoProgramm(item.name);
+            return true;
+        case keys.NEXT:
+            if (w.sPNFun !== 1) return false;
+            if (typeof w.infoProgramm === "function") w.infoProgramm(item.name);
+            return true;
+        case keys.N0:
+        case keys.EPG:
+        case keys.STOP:
+        case keys.RED:
+            switch (epglisted) {
+                case 0:
+                    if (typeof w.epgList === "function")
+                        w.epgList(
+                            w.listCatIndex,
+                            w.listChannel,
+                            w.epgreturn || false
+                        );
+                    return true;
+                case 1:
+                    if (typeof w.epgListAlpha === "function")
+                        w.epgListAlpha(
+                            w.listCatIndex,
+                            w.listChannel,
+                            w.epgreturn || false
+                        );
+                    return true;
+                case 2:
+                    if (
+                        channels[epg_ch_id] &&
+                        channels[epg_ch_id].rec &&
+                        typeof w.recordsList === "function"
+                    )
+                        w.recordsList(
+                            w.listCatIndex,
+                            w.listChannel,
+                            w.epgreturn || false
+                        );
+                    else if (typeof w.epgList === "function")
+                        w.epgList(
+                            w.listCatIndex,
+                            w.listChannel,
+                            w.epgreturn || false
+                        );
+                    return true;
+            }
+            return true;
+        case keys.N8:
+        case keys.TOOLS:
         case keys.GREEN:
             if (typeof setEpgTimer === "function")
                 setEpgTimer(epg_ch_id, item.time);
             return true;
-        case keys.YELLOW:
-            if (w.TMDb && typeof w.TMDb.search === "function")
-                w.TMDb.search(item.name);
-            return true;
-        case keys.RETURN:
-            if (typeof w.closeList === "function") w.closeList();
+        case keys.INFO:
+            if (typeof w.infoProgramm === "function") w.infoProgramm(item.name);
             return true;
     }
     return false;
@@ -1284,12 +1379,12 @@ export function setEpgTimer(channelId: any, time: number): void {
         w.confirmBox(w._(msg), function () {
             if (idx === -1) {
                 var timer = {
-                    ci: channelId,
                     c: w.listCatIndex,
+                    ci: channelId,
                     i: w.listChannel,
+                    n: item.name,
                     t: item.time,
                     te: item.time_to,
-                    n: item.name,
                 };
                 startEpgTimer(timer);
                 epgTimers.push(timer);
@@ -1300,12 +1395,12 @@ export function setEpgTimer(channelId: any, time: number): void {
             if (typeof w.stbSetItem === "function") {
                 var cleanTimers = epgTimers.map(function (t) {
                     return {
-                        ci: t.ci,
                         c: t.c,
+                        ci: t.ci,
                         i: t.i,
+                        n: t.n,
                         t: t.t,
                         te: t.te,
-                        n: t.n,
                     };
                 });
                 w.stbSetItem("epgTimers", JSON.stringify(cleanTimers));
@@ -1619,10 +1714,10 @@ export function playArchive(e: number): void {
         w.showChanelInfo(1);
     var r = curList[primaryIndex];
     var prog = epgArray[curProg] || {
+        descr: "",
         name: "",
         time: Math.floor(e / 3600) * 3600,
         time_to: (Math.floor(e / 3600) + 1) * 3600,
-        descr: "",
     };
     playTime = 0;
     playType = Math.floor(e);
@@ -3318,15 +3413,15 @@ export function parentControlSetup(): void {
             val: (window as any).sPSprovs,
             values: yesNo,
         },
-        { name: "", val: 0, values: (window as any).nofun || [], cur: "" },
+        { cur: "", name: "", val: 0, values: (window as any).nofun || [] },
         {
+            cur: "",
             name:
                 '<div class="btn">' +
                 ((window as any)._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
             values: saveSettings,
-            cur: "",
         },
     ];
     if (
