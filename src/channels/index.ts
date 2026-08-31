@@ -672,14 +672,14 @@ export function onChanelsLoaded(): void {
                     var arr = (window as any).arrayProvaiders;
                     var recentCount = 3;
                     if (arr && arr.indexOf(id) > recentCount - 1) {
-                        var recentProviders = [];
+                        var recentProviders: any[] = [];
                         try {
                             recentProviders = JSON.parse(
                                 (window as any).stbGetItem("ottplayprovs") ||
                                     "[]"
                             );
                         } catch (_) {}
-                        var rIdx = recentProviders.indexOf(id);
+                        var rIdx: number = recentProviders.indexOf(id);
                         if (rIdx !== -1) recentProviders.splice(rIdx, 1);
                         recentProviders.push(id);
                         (window as any).stbSetItem(
@@ -1878,7 +1878,7 @@ export function timeShift(n: number): void {
         }
         epgArray = r;
         (window as any).epgArray = r;
-        setCurProg(chId, epgData, null);
+        setCurProg(chId, epgData, undefined);
         (window as any).curProg = curProg;
         setCurrent(catIndex, primaryIndex, true);
         if (n) {
@@ -2204,11 +2204,12 @@ export function searchChannel(): void {
         (window as any).editvar = saved;
         if (typeof w.stbSetItem === "function") w.stbSetItem("chSearch", saved);
         setTimeout(function () {
+            if (w.listCatIndex === undefined) return;
             var q = saved.toLowerCase();
             var catList = cats[catsArray[w.listCatIndex]] || [];
             w.listArray = catList.filter(function (id: number): boolean {
                 var ch = chanels[id];
-                return (
+                return !!(
                     ch &&
                     ch.channel_name &&
                     ch.channel_name.toLowerCase().indexOf(q) !== -1
@@ -2481,11 +2482,11 @@ export function showActionsDialog(): void {
         (typeof w.btnDiv === "function"
             ? w.btnDiv(w.keys.YELLOW, "", "Search", w.strTools)
             : "");
-    $(dialog).show();
+    $(dialog!).show();
     w.dialogBoxKeyHandler = function (ev: number): boolean {
         switch (ev) {
             case w.keys.ENTER:
-                $(dialog).hide();
+                $(dialog!).hide();
                 if (typeof w.addChannel2bucket === "function")
                     w.addChannel2bucket();
                 return true;
@@ -2500,7 +2501,7 @@ export function showActionsDialog(): void {
                     if (typeof w.deleteChannel === "function")
                         w.deleteChannel();
                 } else {
-                    $(dialog).hide();
+                    $(dialog!).hide();
                     if (typeof w.sortChannelsAction === "function")
                         w.sortChannelsAction();
                 }
@@ -2515,11 +2516,11 @@ export function showActionsDialog(): void {
                 }
                 return true;
             case w.keys.RETURN:
-                $(dialog).hide();
+                $(dialog!).hide();
                 return true;
             case w.keys.YELLOW:
             case w.keys.TOOLS:
-                $(dialog).hide();
+                $(dialog!).hide();
                 w.w.w.listChannel = w.w.w.selIndex;
                 searchChannel();
                 return true;
