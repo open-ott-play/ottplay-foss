@@ -208,14 +208,7 @@
       "biome.json",
       "package.json",
       "tsconfig.json",
-      "!index.html",
-      "!dist/**",
-      "!fonts/**",
-      "!node_modules/**",
-      "!stb/**",
-      "!js/**",
-      "!stbPlayer/**",
-      "!prov/**"
+      "!fonts/**"
     ]
   },
   "formatter": {
