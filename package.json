@@ -3,7 +3,7 @@
     "@biomejs/biome": "^2.5.11",
     "@types/jquery": "^4.0.1",
     "@types/node": "^26.4.0",
-    "rollup": "^4.63.0",
+    "rollup": "^4.63.1",
     "terser": "^5.51.2",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.0",
