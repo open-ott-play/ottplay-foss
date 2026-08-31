@@ -6,7 +6,7 @@ const { execSync } = require("child_process");
 const Terser = require("terser");
 
 console.log("Step 1: tsc compile...");
-execSync("npx tsc", { stdio: "inherit", cwd: __dirname });
+execSync("npx tsc", { cwd: __dirname, stdio: "inherit" });
 
 const modules = [
     "build/polyfills/index.js",
@@ -69,9 +69,9 @@ console.log("Build:", outFile, "(" + fs.statSync(outFile).size + " bytes)");
 
 console.log("Step 3: minify with terser...");
 Terser.minify(fs.readFileSync(outFile, "utf8"), {
-    module: false,
     compress: { defaults: false },
     mangle: false,
+    module: false,
     output: { comments: false },
 }).then(function (result) {
     if (result.error) throw result.error;

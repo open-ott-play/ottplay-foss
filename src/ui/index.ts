@@ -321,14 +321,30 @@ export function uiInit(): void {
         }
     }
 
-    // Progress bar click — seek
+    // Progress bar drag-to-seek — press on progress bar and drag to seek, release to seek
     var $progressDiv = $("#progress_div");
-    $progressDiv.click(function (e: any) {
+    var seekInProgress = false;
+    var seekStartX = 0;
+
+    $progressDiv.mousedown(function (e: any) {
         if (!e) e = event;
         if (e.clientX === undefined) {
-            console.error("$progress_div[click] evt.clientX not exist");
+            console.error("$progress_div[mousedown] evt.clientX not exist");
             return;
         }
+        seekInProgress = true;
+        seekStartX = e.clientX;
+    });
+
+    $progressDiv.mouseup(function (e: any) {
+        if (!seekInProgress) return;
+        seekInProgress = false;
+        if (!e) e = event;
+        if (e.clientX === undefined) {
+            console.error("$progress_div[mouseup] evt.clientX not exist");
+            return;
+        }
+        e.stopPropagation();
         var w = window as any;
         if (
             !(
@@ -340,7 +356,64 @@ export function uiInit(): void {
             )
         )
             return;
+        var t =
+            (e.clientX - $progressDiv.position().left) / $progressDiv.width();
+        if (w.playType < 0) {
+            var r = Math.max(Math.round(t * w.stbGetLen()), 0);
+            var hr = Math.floor(r / 3600);
+            var mn = Math.floor((r % 3600) / 60);
+            var sc = r % 60;
+            if (typeof w.showShift === "function")
+                w.showShift(
+                    ">> " +
+                        (hr ? hr + ":" : "") +
+                        _t2(mn) +
+                        ":" +
+                        _t2(sc) +
+                        " <<"
+                );
+            if (typeof w.stbSetPosTime === "function") w.stbSetPosTime(r);
+            return;
+        }
+        var r2 = Math.round(
+            t * (w._prog100.time_to - w._prog100.time) + w._prog100.time
+        );
+        if (r2 < Date.now() / 1e3) {
+            if (!w.playType) {
+                if (typeof w.timeShift === "function")
+                    w.timeShift(Math.round(Date.now() / 1e3 - r2));
+                return;
+            }
+            if (typeof w.showShift === "function")
+                w.showShift(">> " + pos2text(r2) + " <<");
+            if (typeof w.playArchive === "function") w.playArchive(r2);
+        } else {
+            if (typeof w.showShift === "function")
+                w.showShift(w._(w.playType ? "Live" : "Restart stream"));
+            if (typeof w.playChannel === "function")
+                w.playChannel(w.catIndex, w.primaryIndex);
+        }
+    });
+
+    // Progress bar click — seek (for press-and-release at same position)
+    $progressDiv.click(function (e: any) {
+        if (!e) e = event;
+        if (e.clientX === undefined) {
+            console.error("$progress_div[click] evt.clientX not exist");
+            return;
+        }
         e.stopPropagation();
+        var w = window as any;
+        if (
+            !(
+                w.playType ||
+                (w.chanels &&
+                    w.curList &&
+                    w.chanels[w.curList[w.primaryIndex]] &&
+                    w.chanels[w.curList[w.primaryIndex]].rec)
+            )
+        )
+            return;
         var t =
             (e.clientX - $progressDiv.position().left) / $progressDiv.width();
         if (w.playType < 0) {

@@ -988,24 +988,6 @@ function showChanelsList(): void {
 
 // Archive playback
 
-/**
- * Start archive (timeshift) playback at the given timestamp.
- * Delegates to playArchive() from the channels module.
- *
- * @param timestamp - Unix timestamp (seconds) to seek to.
- *
- * Side effects: Calls playArchive(); may change playback state.
- */
-function playArchiveMode(timestamp: number): void {
-    if ((window as any).playArchiveInProgress) return;
-    (window as any).playArchiveInProgress = true;
-    try {
-        playArchive(timestamp);
-    } finally {
-        (window as any).playArchiveInProgress = false;
-    }
-}
-
 // Media info update
 
 /**
@@ -3309,7 +3291,7 @@ window.loadAllOptions = loadAllOptions;
 window.saveOpt = saveAllOptions;
 window.loadOpt = loadAllOptions;
 window.body_onUnload = body_onUnload;
-window.playArchive = playArchiveMode;
+window.playArchive = playArchive;
 window.fileArchive = fileArchive;
 window.shiftArchive = shiftArchive;
 window.shiftArchiveSelect = shiftArchiveSelect;
