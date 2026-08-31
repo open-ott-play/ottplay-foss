@@ -50,7 +50,7 @@ export let editValue = "";
 export let isSelectBox = false;
 
 // PiP state
-export let pipIndex: number = null;
+export let pipIndex: number | null = null;
 export let pipCatIndex = 0;
 
 // Preview

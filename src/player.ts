@@ -324,7 +324,7 @@ var editValue = "";
 var isSelectBox = false;
 
 // PiP state
-var pipIndex: number = null;
+var pipIndex: number | null = null;
 var pipCatIndex = 0;
 
 // Preview

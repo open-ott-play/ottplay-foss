@@ -373,7 +373,7 @@ declare var selIndex: number;
 declare var listArray: any[];
 declare var listDetail: HTMLElement;
 declare var listCaptionElement: HTMLElement;
-var listPodval: HTMLElement = null;
+var listPodval: HTMLElement | null = null;
 declare var itemWith: number;
 declare var pageSize: number;
 declare var bodyColor: string;
@@ -578,7 +578,7 @@ export function optionsList(fn?: () => void): void {
         return false;
     };
     listCaptionElement.innerHTML = _("Settings");
-    listPodval.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
+    listPodval!.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
     $("#listPopUp").hide();
     showPage();
 }
@@ -1387,7 +1387,7 @@ export function selectProvaider(): void {
         }
     };
     listCaptionElement.innerHTML = _("Choose provider");
-    listPodval.innerHTML =
+    listPodval!.innerHTML =
         btnDiv(keys.RETURN, strRETURN, "Close") +
         btnDiv(keys.N0, strInfo, "Description", "0");
     $("#listPopUp").hide();
@@ -1544,7 +1544,7 @@ export function edit_dealer_remote(): void {
         });
     }
 
-    listPodval.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
+    listPodval!.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
     $("#listEdit")
         .html(
             '<div style="text-align:center;font-size:larger;"><br/><br/>' +
@@ -1787,7 +1787,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     listKeyHandlerFn = channelsKeyHandler;
     listCaptionElement.innerHTML =
         _("Channel list. Category: ") + (catsArray[listCatIndex] || "");
-    listPodval.innerHTML =
+    listPodval!.innerHTML =
         btnDiv(
             keys.RED,
             "",
@@ -1879,7 +1879,7 @@ export function firstRun(): void {
         return false;
     };
     listCaptionElement.innerHTML = _("First Run Setup");
-    listPodval.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
+    listPodval!.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
     $("#listPopUp").hide();
     listDataArray = listArray;
     showPage();

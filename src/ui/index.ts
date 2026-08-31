@@ -21,7 +21,7 @@ declare var jQuery: any;
 // Globals from other modules
 declare var selIndex: number;
 declare var isListVisible: boolean;
-declare var listPopUpElement: HTMLElement;
+declare var listPopUpElement: HTMLElement | null;
 declare var addBtn2menu: (arr: any[], action: any, label: string) => void;
 declare var dialogBoxKeyHandler: ((key: number) => void) | null;
 declare var listArray: any[];
@@ -35,18 +35,18 @@ declare var nprovparams: number;
 // DOM element references
 var $infoBar: any;
 var infoTimeout: any = null;
-var listElement: HTMLElement = null;
-var listInElement: HTMLElement = null;
-var listCaptionElement: HTMLElement = null;
-var listPodvalElement: HTMLElement = null;
-var listDetailElement: HTMLElement = null;
-var numprogElement: HTMLElement = null;
+var listElement: HTMLElement | null = null;
+var listInElement: HTMLElement | null = null;
+var listCaptionElement: HTMLElement | null = null;
+var listPodvalElement: HTMLElement | null = null;
+var listDetailElement: HTMLElement | null = null;
+var numprogElement: HTMLElement | null = null;
 
 // State
 var listDataArray: any[] = [];
-var getListItemFn: (item: any, idx: number) => string = null;
-var detailListActionFn: () => void = null;
-var listKeyHandlerFn: (key: any) => boolean = null;
+var getListItemFn: ((item: any, idx: number) => string) | null = null;
+var detailListActionFn: (() => void) | null = null;
+var listKeyHandlerFn: ((key: any) => boolean) | null = null;
 // Forward old-style global names (set by provider scripts) to new-style module variables
 Object.defineProperty(window, "listKeyHandler", {
     set: function (v: any) {
@@ -727,10 +727,10 @@ export function showShift(message: string): void {
     if (info) {
         info.innerHTML = message;
         info.style.display = "";
-        setTimeout(function () {
-            info.style.display = "none";
-        }, 3000);
     }
+    setTimeout(function () {
+        if (info) info.style.display = "none";
+    }, 3000);
 }
 
 /**
@@ -1443,7 +1443,8 @@ export function infoList(e?: string): void {
     detailListActionFn = function () {
         var arr = (window as any).infoArr || [];
         var item = arr[selIndex];
-        if (item) listDetailElement.innerHTML = _(item.desc || item.name || "");
+        if (item)
+            listDetailElement!.innerHTML = _(item.desc || item.name || "");
     };
     listKeyHandlerFn = function (key: number): boolean {
         switch (key) {

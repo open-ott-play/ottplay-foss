@@ -325,9 +325,9 @@ var numberTimeout: any = null;
 var isListVisible = false;
 var listSelectionIndex = 0;
 var listDataArray: any[] = [];
-var getListItemFn: Function = null;
-var detailListActionFn: Function = null;
-var listKeyHandlerFn: Function = null;
+var getListItemFn: Function | null = null;
+var detailListActionFn: Function | null = null;
+var listKeyHandlerFn: Function | null = null;
 var selIndex = 0;
 var listArray: any[] = [];
 
@@ -340,7 +340,7 @@ var editValue = "";
 var isSelectBox = false;
 
 // PiP state
-var pipIndex: number = null;
+var pipIndex: number | null = null;
 var pipCatIndex = 0;
 
 // Preview
@@ -997,7 +997,13 @@ function showChanelsList(): void {
  * Side effects: Calls playArchive(); may change playback state.
  */
 function playArchiveMode(timestamp: number): void {
-    playArchive(timestamp);
+    if ((window as any).playArchiveInProgress) return;
+    (window as any).playArchiveInProgress = true;
+    try {
+        playArchive(timestamp);
+    } finally {
+        (window as any).playArchiveInProgress = false;
+    }
 }
 
 // Media info update
@@ -1545,7 +1551,8 @@ function _playMedia(item: any): void {
     });
     if (historyIdx !== -1) {
         if (historyIdx === 0 && (window as any).playType === -1e11) return;
-        resumePos = Math.floor(medHistory[historyIdx].current / 60) * 60;
+        resumePos =
+            Math.floor((medHistory[historyIdx]?.current ?? 0) / 60) * 60;
         medHistory.splice(historyIdx, 1);
     }
     medHistory.unshift(item);
