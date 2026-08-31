@@ -2205,8 +2205,8 @@ export function searchChannel(): void {
         if (typeof w.stbSetItem === "function") w.stbSetItem("chSearch", saved);
         setTimeout(function () {
             var q = saved.toLowerCase();
-            var catList = cats[catsArray[w.w.listCatIndex]] || [];
-            w.w.listArray = catList.filter(function (id: number): boolean {
+            var catList = cats[catsArray[w.listCatIndex]] || [];
+            w.listArray = catList.filter(function (id: number): boolean {
                 var ch = chanels[id];
                 return (
                     ch &&
@@ -2214,35 +2214,35 @@ export function searchChannel(): void {
                     ch.channel_name.toLowerCase().indexOf(q) !== -1
                 );
             });
-            w.w.listDataArray = w.w.listArray;
-            w.w.selIndex = 0;
-            w.w.listKeyHandler = function (e: number): boolean {
+            w.listDataArray = w.listArray;
+            w.selIndex = 0;
+            w.listKeyHandler = function (e: number): boolean {
                 function play(): void {
-                    var idx = (cats[catsArray[w.w.listCatIndex]] || []).indexOf(
-                        w.w.listArray[w.w.selIndex]
+                    var idx = (cats[catsArray[w.listCatIndex]] || []).indexOf(
+                        w.listArray[w.selIndex]
                     );
                     if (sPreview == 2) {
                         if (
-                            w.w.previewChan &&
-                            w.w.previewChan.ch_id == w.w.listArray[w.w.selIndex]
+                            w.previewChan &&
+                            w.previewChan.ch_id == w.listArray[w.selIndex]
                         ) {
-                            setCurrent(w.w.listCatIndex, idx);
+                            setCurrent(w.listCatIndex, idx);
                         } else {
                             if (typeof w.previewChId === "function")
-                                w.previewChId(w.w.listArray[w.w.selIndex]);
+                                w.previewChId(w.listArray[w.selIndex]);
                             return;
                         }
                     }
-                    w.w.previewChan = null;
+                    w.previewChan = null;
                     if (typeof w.closeList === "function") w.closeList();
                     if (
-                        (w.w.catIndex == w.w.listCatIndex &&
-                            w.w.primaryIndex == idx &&
-                            !w.w.playType) ||
+                        (w.catIndex == w.listCatIndex &&
+                            w.primaryIndex == idx &&
+                            !w.playType) ||
                         sPreview == 1
                     ) {
-                        setCurrent(w.w.listCatIndex, idx);
-                        var t = (w.curList || [])[w.w.primaryIndex];
+                        setCurrent(w.listCatIndex, idx);
+                        var t = (w.curList || [])[w.primaryIndex];
                         if (typeof w.updateChanelInfo === "function")
                             w.updateChanelInfo(t);
                         if (
@@ -2250,12 +2250,12 @@ export function searchChannel(): void {
                             typeof w.showChanelInfo === "function"
                         )
                             w.showChanelInfo(1);
-                        w.w.playType = 0;
+                        w.playType = 0;
                         return;
                     }
                     setTimeout(function () {
                         if (typeof w.playChannel === "function")
-                            w.playChannel(w.w.listCatIndex, idx);
+                            w.playChannel(w.listCatIndex, idx);
                     }, 10);
                 }
                 var r: any;
@@ -2268,14 +2268,14 @@ export function searchChannel(): void {
                     // fall through
                     case w.keys.RETURN:
                         if (typeof w.channelsList === "function")
-                            w.channelsList(w.w.listCatIndex, w.w.listChannel);
+                            w.channelsList(w.listCatIndex, w.listChannel);
                         return true;
                     case w.keys.RIGHT:
                         if (w.sArrowFun != 2) return false;
                         return true;
                     case w.keys.N2:
                     case w.keys.INFO:
-                        r = chanels[w.w.listArray[w.w.selIndex]];
+                        r = chanels[w.listArray[w.selIndex]];
                         if (
                             r !== undefined &&
                             typeof w.infoProgramm === "function"
@@ -2285,16 +2285,16 @@ export function searchChannel(): void {
                     case w.keys.RW:
                         if (w.sRewFun != 1) return false;
                         if (typeof w.channelsList === "function")
-                            w.channelsList(w.w.listCatIndex, w.w.listChannel);
+                            w.channelsList(w.listCatIndex, w.listChannel);
                         return true;
                     case w.keys.PREV:
                         if (w.sPNFun != 1) return false;
                         if (typeof w.channelsList === "function")
-                            w.channelsList(w.w.listCatIndex, w.w.listChannel);
+                            w.channelsList(w.listCatIndex, w.listChannel);
                         return true;
                     case w.keys.FF:
                         if (w.sRewFun != 1) return false;
-                        r = chanels[w.w.listArray[w.w.selIndex]];
+                        r = chanels[w.listArray[w.selIndex]];
                         if (
                             r !== undefined &&
                             typeof w.infoProgramm === "function"
@@ -2303,7 +2303,7 @@ export function searchChannel(): void {
                         return true;
                     case w.keys.NEXT:
                         if (w.sPNFun != 1) return false;
-                        r = chanels[w.w.listArray[w.w.selIndex]];
+                        r = chanels[w.listArray[w.selIndex]];
                         if (
                             r !== undefined &&
                             typeof w.infoProgramm === "function"
@@ -2336,7 +2336,7 @@ export function searchChannel(): void {
                         ':"' +
                         saved +
                         '" (' +
-                        w.w.listArray.length +
+                        w.listArray.length +
                         ")";
                 }
             })();
