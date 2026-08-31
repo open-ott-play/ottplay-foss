@@ -1859,7 +1859,11 @@ export function timeShift(n: number): void {
     var chId = curList[primaryIndex];
     var ch = chanels[chId];
     if (!ch || !ch.rec) return;
-    if (typeof w.getEPGchanelCached !== "function") return;
+    if (typeof w.getEPGchanelCached !== "function") {
+        // No EPG helper — seek by delta using archivePos as the base time
+        if (n > 0) playArchive(Date.now() / 1000 - n);
+        return;
+    }
     w.getEPGchanelCached(chId, function (_t: any, epgData: EPGEntry[] | null) {
         var r: EPGEntry[] = [];
         if (
