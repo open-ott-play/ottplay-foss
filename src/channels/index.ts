@@ -1632,7 +1632,6 @@ export function playArchive(e: number): void {
     (w as any).forcePlay = forcePlay;
     archivePos = e;
     var getUrl = w.getArchiveUrl;
-    if (typeof getUrl !== "function") return;
     if (!fileArchive || t !== curProg) {
         if (w.sStopPlay && typeof w.stbStop === "function") w.stbStop();
         var url = getUrl(r, e, prog.time_to, prog);
