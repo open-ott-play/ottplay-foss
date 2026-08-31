@@ -102,5 +102,5 @@ export const savedPopup: {
     popupActions: any[];
     popupArray: string[];
     popupDetail: string[];
-} = { ver: PLAYER_VERSION, popupActions: [], popupArray: [], popupDetail: [] };
+} = { popupActions: [], popupArray: [], popupDetail: [], ver: PLAYER_VERSION };
 export const version: string = PLAYER_VERSION;

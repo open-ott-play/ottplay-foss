@@ -331,10 +331,10 @@ export function setCurrent(
                     );
                 });
                 prevArr.unshift({
-                    ci: oldCatId,
                     c: catIndex,
-                    i: primaryIndex,
+                    ci: oldCatId,
                     e: _prog100?.name,
+                    i: primaryIndex,
                 });
                 if (wasArchive && prevArr[0])
                     prevArr[0].t = playType + playTime;
@@ -580,7 +580,7 @@ export function getCurProgData(
         }
     }
     // Queue EPG fetch from server (matches old stbPlayer doGetCurProg behavior)
-    arrayGetCurProg.push({ ch_id: channelId, callback: callback });
+    arrayGetCurProg.push({ callback: callback, ch_id: channelId });
     if (arrayGetCurProg.length < 2) doGetCurProg();
     return false;
 }
@@ -1379,12 +1379,12 @@ export function setEpgTimer(channelId: any, time: number): void {
         w.confirmBox(w._(msg), function () {
             if (idx === -1) {
                 var timer = {
-                    ci: channelId,
                     c: w.listCatIndex,
+                    ci: channelId,
                     i: w.listChannel,
+                    n: item.name,
                     t: item.time,
                     te: item.time_to,
-                    n: item.name,
                 };
                 startEpgTimer(timer);
                 epgTimers.push(timer);
@@ -1395,12 +1395,12 @@ export function setEpgTimer(channelId: any, time: number): void {
             if (typeof w.stbSetItem === "function") {
                 var cleanTimers = epgTimers.map(function (t) {
                     return {
-                        ci: t.ci,
                         c: t.c,
+                        ci: t.ci,
                         i: t.i,
+                        n: t.n,
                         t: t.t,
                         te: t.te,
-                        n: t.n,
                     };
                 });
                 w.stbSetItem("epgTimers", JSON.stringify(cleanTimers));
@@ -1714,10 +1714,10 @@ export function playArchive(e: number): void {
         w.showChanelInfo(1);
     var r = curList[primaryIndex];
     var prog = epgArray[curProg] || {
+        descr: "",
         name: "",
         time: Math.floor(e / 3600) * 3600,
         time_to: (Math.floor(e / 3600) + 1) * 3600,
-        descr: "",
     };
     playTime = 0;
     playType = Math.floor(e);
@@ -3413,15 +3413,15 @@ export function parentControlSetup(): void {
             val: (window as any).sPSprovs,
             values: yesNo,
         },
-        { name: "", val: 0, values: (window as any).nofun || [], cur: "" },
+        { cur: "", name: "", val: 0, values: (window as any).nofun || [] },
         {
+            cur: "",
             name:
                 '<div class="btn">' +
                 ((window as any)._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
             values: saveSettings,
-            cur: "",
         },
     ];
     if (

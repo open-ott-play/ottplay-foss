@@ -31,30 +31,30 @@ async function getModule() {
 // ---------------------------------------------------------------------------
 
 const mockWindow: Record<string, any> = {
-    chanels: {} as Record<number, any>,
-    listChannel: 0,
-    primaryIndex: 0,
-    selIndex: 0,
-    listArray: [] as any[],
-    playType: 0,
-    playTime: 0,
-    host: "http://localhost",
     _: (s: string) => s,
+    chanels: {} as Record<number, any>,
+    confirmBox: null as any,
     curColor: "#fff",
     getEPGchanel: null as any,
+    host: "http://localhost",
+    infoBox: null as any,
+    listArray: [] as any[],
+    listChannel: 0,
+    playTime: 0,
+    playType: 0,
+    primaryIndex: 0,
+    selIndex: 0,
     setCurProg: null as any,
     stbGetItem: null as any,
     stbSetItem: null as any,
-    confirmBox: null as any,
-    infoBox: null as any,
 };
 
 // Stub jQuery (used by epgShow_miniproc for spinner)
 (global as any).$ = function (selector: string) {
     return {
+        hide: () => mockWindow,
         html: () => mockWindow,
         show: () => mockWindow,
-        hide: () => mockWindow,
     };
 };
 
@@ -174,8 +174,8 @@ function testEpglCacheLookups(ch: Awaited<ReturnType<typeof getModule>>) {
 
     // Populate caches
     const sample: any[] = [
-        { name: "Evening News", time: 1000, time_to: 1100, descr: "News" },
-        { name: "Late Show", time: 1100, time_to: 1200, descr: "Comedy" },
+        { descr: "News", name: "Evening News", time: 1000, time_to: 1100 },
+        { descr: "Comedy", name: "Late Show", time: 1100, time_to: 1200 },
     ];
     epg[42] = sample;
     epgCashObj[42] = sample;
@@ -228,16 +228,16 @@ function testRenderEpgHTML(ch: Awaited<ReturnType<typeof getModule>>) {
 
     const entries = [
         {
+            descr: "Wake up",
             name: "Morning Show",
             time: T_10_00,
             time_to: T_11_00,
-            descr: "Wake up",
         },
         {
+            descr: "Headlines",
             name: "News",
             time: T_11_00,
             time_to: T_10_00 + 7200,
-            descr: "Headlines",
         },
     ];
     const html = renderEpgHTML(entries);
@@ -258,7 +258,7 @@ function testRenderEpgHTML(ch: Awaited<ReturnType<typeof getModule>>) {
 
     // Entry without description
     const noDescr = [
-        { name: "Movie", time: 50_000, time_to: 56_000, descr: "" },
+        { descr: "", name: "Movie", time: 50_000, time_to: 56_000 },
     ];
     const html2 = renderEpgHTML(noDescr);
     assert.match(html2, MOVIE_REGEX, "renders entry without description");
@@ -276,18 +276,18 @@ function testSetCurProg(ch: Awaited<ReturnType<typeof getModule>>) {
 
     const now = Math.floor(Date.now() / 1000);
     const sample: any[] = [
-        { name: "Prog A", time: now - 1800, time_to: now - 600, descr: "Past" },
+        { descr: "Past", name: "Prog A", time: now - 1800, time_to: now - 600 },
         {
+            descr: "On now",
             name: "Current",
             time: now - 300,
             time_to: now + 1800,
-            descr: "On now",
         },
         {
+            descr: "Next",
             name: "Prog B",
             time: now + 1800,
             time_to: now + 3600,
-            descr: "Next",
         },
     ];
 
@@ -355,10 +355,10 @@ function testSetCurProgNoCurrentProgram(
     // All programs are in the past
     const pastEntries: any[] = [
         {
+            descr: "Old show",
             name: "Old",
             time: now - 7200,
             time_to: now - 3600,
-            descr: "Old show",
         },
     ];
 
@@ -422,7 +422,7 @@ function testGetCurProgDataCacheHit(ch: Awaited<ReturnType<typeof getModule>>) {
     );
 
     // Case 2: time_request not expired yet (skip)
-    mockWindow.chanels[channelId] = { time_to: 0, time_request: now + 3600 };
+    mockWindow.chanels[channelId] = { time_request: now + 3600, time_to: 0 };
     callbackCalled = false;
     const result2 = getCurProgData(channelId, () => {
         callbackCalled = true;
@@ -439,14 +439,14 @@ function testGetCurProgDataCacheHit(ch: Awaited<ReturnType<typeof getModule>>) {
     );
 
     // Case 3: cache hit with current program (async path)
-    mockWindow.chanels[channelId] = { time_to: 0, time_request: 0 };
+    mockWindow.chanels[channelId] = { time_request: 0, time_to: 0 };
     epg[channelId] = [
-        { name: "Prev", time: now - 3600, time_to: now - 1800, descr: "" },
+        { descr: "", name: "Prev", time: now - 3600, time_to: now - 1800 },
         {
+            descr: "Live",
             name: "Now Showing",
             time: now - 600,
             time_to: now + 600,
-            descr: "Live",
         },
     ];
     callbackCalled = false;
@@ -481,14 +481,14 @@ function testLoadEpgTimersFilter(ch: Awaited<ReturnType<typeof getModule>>) {
 
     const now = Math.floor(Date.now() / 1000);
     const pastTimer = JSON.stringify([
-        { ci: 1, c: 0, i: 0, t: now - 3600, te: now - 1800, n: "Past Show" },
+        { c: 0, ci: 1, i: 0, n: "Past Show", t: now - 3600, te: now - 1800 },
     ]);
     const futureTimer = JSON.stringify([
-        { ci: 2, c: 0, i: 1, t: now + 7200, te: now + 9000, n: "Future Show" },
+        { c: 0, ci: 2, i: 1, n: "Future Show", t: now + 7200, te: now + 9000 },
     ]);
     const mixedTimer = JSON.stringify([
-        { ci: 3, c: 0, i: 2, t: now - 3600, te: now - 1800, n: "Past" },
-        { ci: 4, c: 0, i: 3, t: now + 7200, te: now + 9000, n: "Future" },
+        { c: 0, ci: 3, i: 2, n: "Past", t: now - 3600, te: now - 1800 },
+        { c: 0, ci: 4, i: 3, n: "Future", t: now + 7200, te: now + 9000 },
     ]);
 
     // Past-only (filtered out — loadEpgTimers clears timers and re-adds future ones)
@@ -559,7 +559,7 @@ function testSetEpgTimerAddRemove(ch: Awaited<ReturnType<typeof getModule>>) {
     const programTime = Math.floor(Date.now() / 1000) + 3600;
 
     mockWindow.listArray = [
-        { time: programTime, time_to: programTime + 1800, name: "Test Show" },
+        { name: "Test Show", time: programTime, time_to: programTime + 1800 },
     ];
     mockWindow.selIndex = 0;
     mockWindow.listCatIndex = 0;

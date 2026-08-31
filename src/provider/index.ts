@@ -198,7 +198,7 @@ var savedPopup: {
     popupActions: any[];
     popupArray: string[];
     popupDetail: string[];
-} = { ver: "", popupActions: [], popupArray: [], popupDetail: [] };
+} = { popupActions: [], popupArray: [], popupDetail: [], ver: "" };
 declare var channelsList: any;
 declare var pperf_stamp: (label: string) => void;
 declare var stbIsPlaying: () => boolean;
@@ -1502,11 +1502,15 @@ export function edit_dealer_remote(): void {
     function poll(): void {
         if (cancelled) return;
         $.ajax({
-            url: host_ott_proto + host_ott + "/swop/a.php",
-            data: { c: "get_val", d: code },
-            type: "POST",
-            timeout: 1e4,
             cache: false,
+            data: { c: "get_val", d: code },
+            error: function (jqXHR: any) {
+                $("#listEdit").html(
+                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
+                        jqXHR.responseText +
+                        "</div>"
+                );
+            },
             success: function (data: any) {
                 if (cancelled) return;
                 if (data.status === "forbidden") setTimeout(poll, 5e3);
@@ -1534,13 +1538,9 @@ export function edit_dealer_remote(): void {
                         );
                 }
             },
-            error: function (jqXHR: any) {
-                $("#listEdit").html(
-                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
-                        jqXHR.responseText +
-                        "</div>"
-                );
-            },
+            timeout: 1e4,
+            type: "POST",
+            url: host_ott_proto + host_ott + "/swop/a.php",
         });
     }
 
@@ -1557,11 +1557,15 @@ export function edit_dealer_remote(): void {
         return true;
     };
     $.ajax({
-        url: host_ott_proto + host_ott + "/swop/a.php",
-        data: { c: "get_var", n: _("Enter Provider Code"), v: "" },
-        type: "POST",
-        timeout: 1e4,
         cache: false,
+        data: { c: "get_var", n: _("Enter Provider Code"), v: "" },
+        error: function (jqXHR: any) {
+            $("#listEdit").html(
+                '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
+                    jqXHR.responseText +
+                    "</div>"
+            );
+        },
         success: function (data: any) {
             code = data.code;
             $("#listEdit").html(
@@ -1591,13 +1595,9 @@ export function edit_dealer_remote(): void {
             );
             setTimeout(poll, 1e4);
         },
-        error: function (jqXHR: any) {
-            $("#listEdit").html(
-                '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
-                    jqXHR.responseText +
-                    "</div>"
-            );
-        },
+        timeout: 1e4,
+        type: "POST",
+        url: host_ott_proto + host_ott + "/swop/a.php",
     });
 }
 
@@ -1824,7 +1824,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     (window as any).listDataArray = listArray;
     previewChan =
         sPreview && catIdx === catIndex && channelIdx === primaryIndex
-            ? { c: catIdx, i: channelIdx, ch_id: listArray[selIndex] }
+            ? { c: catIdx, ch_id: listArray[selIndex], i: channelIdx }
             : null;
     showPage();
 }
