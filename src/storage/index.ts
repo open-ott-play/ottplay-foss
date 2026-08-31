@@ -187,15 +187,15 @@ function createLocalStorageAdapter(): StorageAdapter {
     };
 
     return {
-        get,
-        set,
+        clear,
         del,
+        dump,
+        get,
+        getI,
         has,
         hasValue,
-        clear,
-        dump,
         reset: init,
-        getI,
+        set,
         setI,
     };
 }
@@ -382,15 +382,15 @@ function createCookieAdapter(): StorageAdapter {
     };
 
     return {
-        get,
-        set,
+        clear,
         del,
+        dump,
+        get,
+        getI,
         has,
         hasValue,
-        clear,
-        dump,
         reset: init,
-        getI,
+        set,
         setI,
     };
 }

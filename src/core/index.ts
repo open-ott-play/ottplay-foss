@@ -236,14 +236,14 @@ export function stbPlay(url: string, position?: number): void {
         Hls.isSupported()
     ) {
         hlsInstance = new Hls({
+            backBufferLength: 90,
+            capLevelToPlayerSize: true,
             enableWorker: true,
             lowLatencyMode: false,
-            backBufferLength: 90,
             maxBufferLength: 30,
             maxMaxBufferLength: 600,
-            startLevel: -1,
-            capLevelToPlayerSize: true,
             overrideNative: false,
+            startLevel: -1,
         });
         hlsInstance.loadSource(url);
         hlsInstance.attachMedia(video);
@@ -385,8 +385,8 @@ export function stbGetLen(): number {
  */
 export function stbToFullScreen(): void {
     isFullscreen = true;
-    $("#video").css({ left: 0, top: 0, width: "100%", height: "100%" });
-    $("#vdiv").css({ left: 0, top: 0, width: "100%", height: "100%" });
+    $("#video").css({ height: "100%", left: 0, top: 0, width: "100%" });
+    $("#vdiv").css({ height: "100%", left: 0, top: 0, width: "100%" });
     applyAspectRatio();
 }
 
@@ -401,12 +401,12 @@ export function stbSetWindow(): void {
     var h = window.innerHeight / 720,
         w = window.innerWidth / 1280;
     $("#vdiv").css({
+        height: 288 * h + "px",
         left: listPos ? 758 * w + "px" : 10 * w + "px",
         top: 50 * h + "px",
         width: 512 * w + "px",
-        height: 288 * h + "px",
     });
-    $("#video").css({ left: 0, top: 0, width: "100%", height: "100%" });
+    $("#video").css({ height: "100%", left: 0, top: 0, width: "100%" });
 }
 
 /**
@@ -528,18 +528,18 @@ export function setPipPosition(): void {
         h = window.innerHeight / 720,
         m = Math.min(w, h);
     $("#videopip").css({
-        width: pipPresets[pipSize].x * m + "px",
         height: pipPresets[pipSize].y * m + "px",
+        width: pipPresets[pipSize].x * m + "px",
     });
     switch (pipPosition) {
         case 0:
             $("#videopip").css({ right: 20 * m + "px", top: 20 * m + "px" });
             break;
         case 1:
-            $("#videopip").css({ right: 20 * m + "px", bottom: 20 * m + "px" });
+            $("#videopip").css({ bottom: 20 * m + "px", right: 20 * m + "px" });
             break;
         case 2:
-            $("#videopip").css({ left: 20 * m + "px", bottom: 20 * m + "px" });
+            $("#videopip").css({ bottom: 20 * m + "px", left: 20 * m + "px" });
             break;
         case 3:
             $("#videopip").css({ left: 20 * m + "px", top: 20 * m + "px" });

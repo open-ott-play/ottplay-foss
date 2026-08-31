@@ -270,11 +270,11 @@ var PLAYER_VERSION = "__OTTP_VERSION__";
 (window as any).client_can_https = false;
 (window as any).client_can = {
     https: (window as any).client_can_https,
-    localstorage: typeof window.localStorage !== "undefined",
-    websocket: typeof window.WebSocket !== "undefined",
     is_maple:
         typeof navigator !== "undefined" &&
         navigator.userAgent.indexOf("Maple 6") !== -1,
+    localstorage: typeof window.localStorage !== "undefined",
+    websocket: typeof window.WebSocket !== "undefined",
 };
 (window as any).client_can.crossxhr =
     typeof navigator !== "undefined" &&
@@ -403,7 +403,7 @@ var savedPopup: {
     popupActions: any[];
     popupArray: string[];
     popupDetail: string[];
-} = { ver: PLAYER_VERSION, popupActions: [], popupArray: [], popupDetail: [] };
+} = { popupActions: [], popupArray: [], popupDetail: [], ver: PLAYER_VERSION };
 var version: string = PLAYER_VERSION;
 
 // Options system (ported from stbPlayer.js)
