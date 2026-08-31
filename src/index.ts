@@ -53,22 +53,36 @@ import {
     addToFavorites,
     aSubs,
     aZooms,
+    bucketsList,
     catIndex,
     cats,
     catsArray,
     channels,
+    channelsList,
     curList,
+    detailEPG,
     enterPinAndSetAccess,
     enterPinCode,
     epg,
+    epg_ch_id,
+    epgArray,
+    epgKeyHandler,
     epgList,
+    epgListAlpha,
+    epglisted,
+    epgPodval,
+    epgreturn,
+    epgShow_miniproc,
     favoritesArray,
     fileArchive,
     forcePlay,
     getChannelUrl,
+    getCurProgData,
     getMediaDescr,
     handleNumberInput,
     ifParentalAccessChId,
+    itemEPG,
+    listEpgArray,
     medFavorites,
     medHistory,
     mediaSelects,
@@ -82,10 +96,14 @@ import {
     prevArr,
     prevChannel,
     primaryIndex,
+    recordsList,
     removeFromFavorites,
     saveChannelsCats,
     sEditor,
+    selectEpg,
+    setCurProg,
     setCurrent,
+    setEpgTimer,
     setParentAccess,
     shiftArchive,
     shiftArchiveSelect,
@@ -209,6 +227,7 @@ import {
     infoBarHideT,
     infoBox,
     infoList,
+    infoProgramm,
     initBackgroundIntervals,
     popBuckets,
     popEpg,
@@ -3298,6 +3317,8 @@ window.shiftArchiveSelect = shiftArchiveSelect;
 window.timeShift = timeShift;
 window.checkMedia = checkMedia;
 window.setCurrent = setCurrent;
+window.setCurProg = setCurProg;
+window.getCurProgData = getCurProgData;
 window.nextChannel = nextChannel;
 window.prevChannel = prevChannel;
 window.handleNumberInput = handleNumberInput;
@@ -3306,6 +3327,23 @@ window.addToFavorites = addToFavorites;
 window.removeFromFavorites = removeFromFavorites;
 window.saveChannelsCats = saveChannelsCats;
 window.epgList = epgList;
+window.epgListAlpha = epgListAlpha;
+window.epgShow_miniproc = epgShow_miniproc;
+window.epgKeyHandler = epgKeyHandler;
+window.epgPodval = epgPodval;
+window.detailEPG = detailEPG;
+window.setEpgTimer = setEpgTimer;
+window.itemEPG = itemEPG;
+window.epgArray = epgArray;
+window.listEpgArray = listEpgArray;
+window.epg_ch_id = epg_ch_id;
+window.epglisted = epglisted;
+window.epgreturn = epgreturn;
+window.channelsList = channelsList;
+window.bucketsList = bucketsList;
+window.recordsList = recordsList;
+window.selectEpg = selectEpg;
+window.infoProgramm = infoProgramm;
 window.updateArchiveInfo = updateArchiveInfo;
 window.initBackgroundIntervals = initBackgroundIntervals;
 window.btnDiv = btnDiv;
