@@ -1,14 +1,14 @@
 {
   "devDependencies": {
-    "@biomejs/biome": "2.4.16",
+    "@biomejs/biome": "^2.4.16",
     "@types/jquery": "^4.0.1",
     "@types/node": "^26.4.0",
     "rollup": "^4.63.0",
     "terser": "^5.50.0",
-    "tsx": "^4.19.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.19.0",
     "typescript": "^5.9.3",
-    "ultracite": "7.8.3"
+    "ultracite": "^7.8.3"
   },
   "name": "ottplay-foss",
   "scripts": {

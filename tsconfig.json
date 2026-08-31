@@ -14,7 +14,8 @@
     "sourceMap": false,
     "removeComments": true,
     "skipLibCheck": true,
-    "noEmit": false
+    "noEmit": false,
+    "strictNullChecks": true
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "build"]
