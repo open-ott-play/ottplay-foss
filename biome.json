@@ -211,7 +211,11 @@
       "!index.html",
       "!dist/**",
       "!fonts/**",
-      "!node_modules/**"
+      "!node_modules/**",
+      "!stb/**",
+      "!js/**",
+      "!stbPlayer/**",
+      "!prov/**"
     ]
   },
   "formatter": {
