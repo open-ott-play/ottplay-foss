@@ -16,6 +16,13 @@ import { settings } from "../settings";
 declare var listKeyHandlerFn: (key: number) => boolean;
 declare var dialogBoxKeyHandler: ((key: number) => void) | null;
 
+// Virtual keyboard state (from ui/index.ts)
+declare var _keysSymbol: { s: string; a: () => void }[];
+declare var _keyP: boolean;
+declare var _keyE: boolean;
+declare var _setLang: (e: boolean) => void;
+declare var showEdit: () => void;
+
 /* ---------------------------------------------------------------------------
  * Key codes (from stb/pc/stb.js — override per device via window.keys)
  * --------------------------------------------------------------------------- */
@@ -483,6 +490,12 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
             if (typeof (window as any).minusProg === "function")
                 (window as any).minusProg();
             break;
+        case keys.LANG:
+            if (!_keysSymbol[1].s) return;
+            _keyP = false;
+            _setLang(!_keyE);
+            showEdit();
+            break;
     }
 }
 
@@ -595,10 +608,11 @@ function handleEditKey(keyCode: number, event: KeyboardEvent): void {
     if (keyCode === keys.ENTER) {
         if (typeof (window as any).setEdit === "function")
             (window as any).setEdit();
-    } else if (keyCode === keys.RETURN || keyCode === keys.EXIT) {
-        if (typeof (window as any).restoreCPD === "function")
-            (window as any).restoreCPD();
-    }
+    } else if (
+        (keyCode === keys.RETURN || keyCode === keys.EXIT) &&
+        typeof (window as any).restoreCPD === "function"
+    )
+        (window as any).restoreCPD();
 }
 
 /* ---------------------------------------------------------------------------
@@ -653,8 +667,8 @@ export function dispatchKey(keyCode: number, event?: Event): void {
     if (event) event.stopPropagation();
     keyHandler({
         keyCode: keyCode,
-        preventDefault: function () {},
-        stopPropagation: function () {},
+        preventDefault: () => {},
+        stopPropagation: () => {},
     } as any);
 }
 
@@ -849,7 +863,7 @@ var xDown: number | null = null,
     touch_locked = false;
 var xMove1: number | null = null,
     yMove1: number | null = null,
-    tCount: number | undefined = undefined;
+    tCount: number | undefined;
 var touch_min_sensY = Math.round(screen.height / 10);
 var touch_min_sensX = Math.round(
     touch_min_sensY * (screen.width / screen.height) * 2
@@ -951,7 +965,7 @@ export function numberProg(digit: number): void {
         return;
     }
     nProg += digit.toString();
-    var idx = parseInt(nProg, 10) - 1;
+    var idx = Number.parseInt(nProg, 10) - 1;
     if (!numProgEl) numProgEl = document.getElementById("numprog");
     if (numProgEl) {
         numProgEl.innerHTML =
@@ -970,9 +984,9 @@ export function numberProg(digit: number): void {
         numProgEl.style.display = "";
     }
     clearTimeout(numTimeout);
-    numTimeout = setTimeout(function () {
+    numTimeout = setTimeout(() => {
         if (numProgEl) numProgEl.style.display = "none";
-        var e = parseInt(nProg) - 1;
+        var e = Number.parseInt(nProg) - 1;
         nProg = "";
         if (
             e < 0 ||
@@ -1037,8 +1051,8 @@ function onPrevSelect(sel: number): void {
     if (prevArr[sel].t) {
         var chId = prevArr[sel].ci;
         var ts = prevArr[sel].t;
-        var r: number = 0,
-            n: number = -1;
+        var r = 0,
+            n = -1;
         var catsL = (window as any).cats;
         var catsArrayL = (window as any).catsArray;
         r = prevArr[sel].c;
@@ -1058,7 +1072,7 @@ function onPrevSelect(sel: number): void {
         if (typeof (window as any).getEPGchanelCached === "function") {
             (window as any).getEPGchanelCached(
                 chId,
-                function (_t: any, epgData: any) {
+                (_t: any, epgData: any) => {
                     var recent: any[] = [];
                     if (epgData !== null && epgData.length) {
                         var ch = (window as any).chanels
@@ -1071,9 +1085,7 @@ function onPrevSelect(sel: number): void {
                             if (epgData[i].time > cutoff)
                                 recent.push(epgData[i]);
                         }
-                        recent.sort(function (a: any, b: any) {
-                            return a.time - b.time;
-                        });
+                        recent.sort((a: any, b: any) => a.time - b.time);
                     }
                     (window as any).epgArray = recent;
                     if (typeof (window as any).setCurProg === "function")
@@ -1180,7 +1192,7 @@ export function prevProg(): void {
             return;
         default: {
             var items: string[] = [];
-            prevArr.forEach(function (entry: any, idx: number, arr: any[]) {
+            prevArr.forEach((entry: any, idx: number, arr: any[]) => {
                 try {
                     items.push(
                         ((window as any).chanels &&
@@ -1250,7 +1262,7 @@ function handleTouchStart(e: any): void {
  *             A non-zero dir causes the move reference point to be reset to prevent repeated dispatches.
  */
 function handleTouchMove(e: any): void {
-    if (!xDown || !yDown) return;
+    if (!(xDown && yDown)) return;
     e.preventDefault();
     xUp = Math.round(e.touches[0].screenX);
     yUp = Math.round(e.touches[0].screenY);
@@ -1284,13 +1296,12 @@ function handleTouchMove(e: any): void {
  * @analysis Only triggers on exactly 3 touch points. Resets tracking state unconditionally after processing.
  */
 function handleTouchEnd(e: any): void {
-    if (tCount === 3) {
-        if (
-            Math.abs(xUp! - xDown!) < touch_min_sensX * 5 &&
-            Math.abs(yUp! - yDown!) < touch_min_sensY * 2
-        )
-            (window as any)._doKey((window as any).keys.SETUP);
-    }
+    if (
+        tCount === 3 &&
+        Math.abs(xUp! - xDown!) < touch_min_sensX * 5 &&
+        Math.abs(yUp! - yDown!) < touch_min_sensY * 2
+    )
+        (window as any)._doKey((window as any).keys.SETUP);
     xDown = null as number | null;
     yDown = null as number | null;
     tCount = undefined as number | undefined;
@@ -1313,7 +1324,7 @@ function handleTouchEnd(e: any): void {
  *             so that regular click handlers fire naturally.
  */
 function body_handleTouchEnd(e: any): void {
-    if (!xDown || !yDown) return;
+    if (!(xDown && yDown)) return;
     e.preventDefault();
     if (e.touches.length === 0) {
         if (tCount === 3) {
