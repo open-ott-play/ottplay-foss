@@ -1050,4 +1050,3 @@ flowchart LR
     OnStbReady --> SavedPopup[savedPopup snapshot]:::store
     LoadProv --> SavedPopup
 ```
-
