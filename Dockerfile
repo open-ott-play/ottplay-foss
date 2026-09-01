@@ -6,7 +6,7 @@ COPY src ./src
 RUN npm ci --ignore-scripts && npm run typecheck && npm run build
 
 # Serve static player + EPG/logo proxy endpoints via the bundled python server
-FROM python:3.14-alpine@sha256:05b2b8b732ecd268fee8727a369f936f022d1321b59befd13c30ede22769dcdc
+FROM python:3.14-alpine@sha256:3f818d6811ff5f3f2b5e5d836df3d25c2dd2e588d3b4981338a8ba17e422f74f
 WORKDIR /app
 COPY --from=build /app/dist ./dist
 COPY index.html favicon.ico server.py ./
