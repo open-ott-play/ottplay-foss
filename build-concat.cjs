@@ -29,6 +29,7 @@ const modules = [
     "build/provider/index.js",
     "build/commands/index.js",
     "build/app/init.js",
+    "build/app/device.js",
     "build/index.js",
 ];
 
