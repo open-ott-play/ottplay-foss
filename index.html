@@ -320,7 +320,7 @@
                 if (typeof Hls === "undefined") {
                     var hlsUrl =
                         ott_device === "pc"
-                            ? "https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"
+                            ? "https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"
                             : "https://cdn.jsdelivr.net/npm/hls.js@0.14.17/dist/hls.min.js";
                     loadJS(
                         hlsUrl,
@@ -340,8 +340,12 @@
                     typeof shaka === "undefined" ||
                     typeof shaka.Player === "undefined"
                 ) {
+                    var shakaUrl =
+                        ott_device === "pc"
+                            ? "https://cdn.jsdelivr.net/npm/shaka-player@latest/dist/shaka-player.compiled.js"
+                            : "https://cdn.jsdelivr.net/npm/shaka-player@3.1.2/dist/shaka-player.compiled.js";
                     loadJS(
-                        "https://cdn.jsdelivr.net/npm/shaka-player@3.3.19/dist/shaka-player.compiled.js",
+                        shakaUrl,
                         function () {
                             if (
                                 typeof shaka === "undefined" ||
