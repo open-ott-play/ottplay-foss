@@ -152,8 +152,9 @@ import {
 } from "./storage";
 import { client_feedb, PostFeedback, pperf_flush } from "./utils/helpers";
 
-// Sync channels to window.channels so provider scripts and UI can access it globally
+// Sync channels to window.channels and window.chanels (alias) so provider scripts and UI can access it globally
 (window as any).channels = channels;
+(window as any).chanels = channels;
 
 // Core
 import {
@@ -3376,6 +3377,7 @@ window.lzstring = {
     decompressFromUTF16: (window as any).decompressFromUTF16,
 };
 window.channels = channels;
+(window as any).chanels = channels;
 window.cats = cats;
 window.catsArray = catsArray;
 window.curList = curList;
