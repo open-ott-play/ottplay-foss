@@ -28,17 +28,9 @@ jobs:
         with:
           egress-policy: audit
 
-      - name: Wait for required checks
-        uses: poseidon/wait-for-status-checks@e7e24423722c5b8e97a6dd5848827d2a412f812d # v0.7.0
-        with:
-          token: ${{ secrets.BOT_PAT }}
-          timeout: 600
-          interval: 10
-
       - name: Auto-merge PR
-        # wait-for-status-checks declares no outputs; automerge-action itself
-        # blocks until required checks pass and required reviews are present,
-        # retrying MERGE_RETRIES times.
+        # automerge-action blocks until required checks pass and required reviews
+        # are present, retrying MERGE_RETRIES times.
         uses: pascalgn/automerge-action@7961b8b5eec56cc088c140b56d864285eabd3f67 # v0.16.4
         env:
           GITHUB_TOKEN: ${{ secrets.BOT_PAT }}
