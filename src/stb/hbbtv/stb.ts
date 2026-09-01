@@ -3,9 +3,8 @@
  *
  * Keycodes for HbbTV TVs.
  * Sets window.keys.
+ * stbInit: NO — legacy has no stbInit body
  */
-
-import { stbInit as baseStbInit } from "../../core";
 
 var hbbtvKeys = {
     ASPECT: 0,
@@ -61,12 +60,3 @@ var hbbtvKeys = {
 (window as any).strEXIT = "EXIT";
 (window as any).strTools = "TOOLS";
 (window as any).strRETURN = "BACK";
-
-// Override stbInit with HbbTV-specific init
-function stbInit(): void {
-    baseStbInit();
-    try {
-        console.log("[stb] HbbTV platform detected");
-    } catch (e) {}
-}
-(window as any).stbInit = stbInit;
