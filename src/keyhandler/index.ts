@@ -4,7 +4,12 @@
  * Ported from stbPlayer.js keyHandler, keyFun.
  */
 
-import { stbEventToKeyCode, isNormalScreen, openFullscreen, closeFullscreen } from "../core";
+import {
+    closeFullscreen,
+    isNormalScreen,
+    openFullscreen,
+    stbEventToKeyCode,
+} from "../core";
 import { translate as _ } from "../localization";
 import { settings } from "../settings";
 
