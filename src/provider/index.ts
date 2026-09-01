@@ -233,11 +233,11 @@ declare var channelsKeyHandler: (key: number) => boolean;
  * Called as the EPG callback from getCurProgData.
  */
 function updateChanelList(chId: string): void {
-    $("#pn" + chId).html(chanels[chId].name);
+    $("#pn" + chId).html(channels[chId].name);
     $("#pr" + chId).css(
         "width",
-        ((Date.now() / 1e3 - chanels[chId].time) /
-            (chanels[chId].time_to - chanels[chId].time)) *
+        ((Date.now() / 1e3 - channels[chId].time) /
+            (channels[chId].time_to - channels[chId].time)) *
             100 +
             "%"
     );
@@ -249,17 +249,17 @@ function updateChanelList(chId: string): void {
  * thumbnail, upcoming programs, and auto-scrolls long descriptions.
  * Optionally triggers a video preview (sPreview == 1).
  *
- * Reads global state: selIndex, listArray, chanels, curColor, sShowDescr,
+ * Reads global state: selIndex, listArray, channels, curColor, sShowDescr,
  * sNextCountL, sPreview.
  *
  * Side effects: DOM writes to #listDetail, #_descr, auto-scroll via scrollUp().
  * Calls previewChId() on window if sPreview is enabled.
  *
- * Edge case: Returns early if chanels[listArray[selIndex]] is undefined or if
+ * Edge case: Returns early if channels[listArray[selIndex]] is undefined or if
  * the program has already ended (time_to < now).
  */
 function detailProg(): void {
-    var e = chanels[listArray[selIndex]];
+    var e = channels[listArray[selIndex]];
     if (e === undefined) return;
     if (e.time_to && e.time_to >= Date.now() / 1e3) {
         var t = Math.round((Date.now() / 1e3 - e.time) / 60);
@@ -394,7 +394,7 @@ declare var parentalArray: string[];
 declare var favoritesArray: string[];
 declare var prevArr: any[];
 declare var cList: string[];
-declare var chanels: Record<string, any>;
+declare var channels: Record<string, any>;
 declare var epg: any;
 declare var curList: string[];
 declare var epgCashObj: Record<string, any>;
@@ -1082,7 +1082,7 @@ export function loadProv(): void {
  * Resets all channel/category/EPG state to defaults, then restores
  * persisted values from provider storage (catIndex, aAspects, etc.).
  *
- * Side effects: Clears chanels, epg, catsArray, cats, favoritesArray,
+ * Side effects: Clears channels, epg, catsArray, cats, favoritesArray,
  * parentalArray, etc. Writes to DOM (#launch / #dialogbox). Calls
  * getChanelsArray(onChanelsLoaded) to trigger the actual provider fetch.
  * Calls setPlayerMode() and setPlayer().
@@ -1108,9 +1108,9 @@ export function loadChannels(): void {
 
     primaryIndex = providerGetNum("primaryIndex", 0);
     cList = [];
-    // Clear channel data in-place to keep window.chanels and channels references in sync
-    for (var _ck in chanels) {
-        delete chanels[_ck];
+    // Clear channel data in-place to keep window.channels and channels references in sync
+    for (var _ck in channels) {
+        delete channels[_ck];
     }
     epg = {};
     epgCashObj = {};
@@ -1620,7 +1620,7 @@ declare var duneAddSettings: ((_index: number) => void) | null;
 /**
  * Called by provider scripts to supply the channel list.
  * Override point — providers implement this function to parse their
- * channel data and populate cats/chanels/etc., then invoke the callback.
+ * channel data and populate cats/channels/etc., then invoke the callback.
  * The default implementation immediately calls the callback (no-op).
  *
  * @param _callback - Function to call once channel data is loaded.
@@ -1691,7 +1691,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     var progMargin = sShowProgress ? Math.floor((itemH - progBarH) / 2) : 0;
 
     getListItemFn = function (chId: string, idx: number) {
-        var ch = chanels[chId];
+        var ch = channels[chId];
         if (!ch)
             return (
                 "&nbsp;&nbsp;" +

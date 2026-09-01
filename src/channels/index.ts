@@ -74,8 +74,6 @@ export interface MediaHistoryEntry {
 
 /** Map of channel ID → Channel object, populated from the provider. */
 export let channels: Record<number, Channel> = {};
-/** Alias for `channels` (legacy compatibility with older code). */
-export let chanels = channels;
 /** Map of channel ID → array of EPGEntry (program guide data). */
 export let epg: Record<number, EPGEntry[]> = {};
 /** Map of category name → array of channel IDs in that category. */
@@ -558,8 +556,8 @@ export function getCurProgData(
     channelId: number,
     callback: (chId: number) => void
 ): boolean {
-    var ch = (window as any).chanels
-        ? (window as any).chanels[channelId]
+    var ch = (window as any).channels
+        ? (window as any).channels[channelId]
         : undefined;
     var now = Date.now() / 1000;
     // If channel object already has current EPG data, return true immediately (sync path)
@@ -604,8 +602,8 @@ export function setCurProg(
         epg[channelId] = epgData;
         epgCashObj[channelId] = epgData;
         // Populate channel object with current program (matching old stbPlayer behavior)
-        var ch = (window as any).chanels
-            ? (window as any).chanels[channelId]
+        var ch = (window as any).channels
+            ? (window as any).channels[channelId]
             : undefined;
         if (ch) {
             var sorted = epgData.slice().sort(function (
@@ -711,7 +709,7 @@ export function onChanelsLoaded(): void {
             }
             if (!catsArray.length && cList.length) {
                 cList.forEach(function (chId: number) {
-                    var ch = (window as any).chanels[chId];
+                    var ch = (window as any).channels[chId];
                     if (ch && ch.category) {
                         if (!cats[ch.category.name]) {
                             catsArray.push(ch.category.name);
@@ -730,7 +728,7 @@ export function onChanelsLoaded(): void {
                 typeof (window as any).parental !== "undefined"
             ) {
                 cList.forEach(function (chId: number) {
-                    var ch = (window as any).chanels[chId];
+                    var ch = (window as any).channels[chId];
                     if (
                         ch &&
                         ch.category &&
@@ -1917,7 +1915,7 @@ function step2text(e: number): string {
 export function shiftArchiveSelect(initialDelta: number): void {
     var w = window as any;
     var chId = curList[primaryIndex];
-    var ch = chanels[chId];
+    var ch = channels[chId];
     if (!playType && !(ch && ch.rec)) return;
     var i = 0;
     var t: any = null;
@@ -1952,7 +1950,7 @@ export function shiftArchiveSelect(initialDelta: number): void {
 export function timeShift(n: number): void {
     var w = window as any;
     var chId = curList[primaryIndex];
-    var ch = chanels[chId];
+    var ch = channels[chId];
     if (!ch || !ch.rec) return;
     if (typeof w.getEPGchanelCached !== "function") {
         // No EPG helper — seek by delta using archivePos as the base time
@@ -2306,7 +2304,7 @@ export function searchChannel(): void {
             var q = saved.toLowerCase();
             var catList = cats[catsArray[w.listCatIndex]] || [];
             w.listArray = catList.filter(function (id: number): boolean {
-                var ch = chanels[id];
+                var ch = channels[id];
                 return !!(
                     ch &&
                     ch.channel_name &&
@@ -2374,7 +2372,7 @@ export function searchChannel(): void {
                         return true;
                     case w.keys.N2:
                     case w.keys.INFO:
-                        r = chanels[w.listArray[w.selIndex]];
+                        r = channels[w.listArray[w.selIndex]];
                         if (
                             r !== undefined &&
                             typeof w.infoProgramm === "function"
@@ -2393,7 +2391,7 @@ export function searchChannel(): void {
                         return true;
                     case w.keys.FF:
                         if (w.sRewFun != 1) return false;
-                        r = chanels[w.listArray[w.selIndex]];
+                        r = channels[w.listArray[w.selIndex]];
                         if (
                             r !== undefined &&
                             typeof w.infoProgramm === "function"
@@ -2402,7 +2400,7 @@ export function searchChannel(): void {
                         return true;
                     case w.keys.NEXT:
                         if (w.sPNFun != 1) return false;
-                        r = chanels[w.listArray[w.selIndex]];
+                        r = channels[w.listArray[w.selIndex]];
                         if (
                             r !== undefined &&
                             typeof w.infoProgramm === "function"
@@ -2676,7 +2674,7 @@ export function getFilteredChannelList(): number[] {
     if (!searchText) return curList.slice();
     const lower = searchText.toLowerCase();
     return curList.filter((chId) => {
-        const ch = chanels[chId];
+        const ch = channels[chId];
         return (
             (ch?.channel_name?.toLowerCase().includes(lower) ?? false) ||
             (ch?.name?.toLowerCase().includes(lower) ?? false)
@@ -2911,7 +2909,7 @@ export function channelsKeyHandler(keyCode: number): boolean {
 
         case keys.N2:
         case keys.INFO: {
-            var ch = (window as any).chanels[
+            var ch = (window as any).channels[
                 (window as any).listArray[(window as any).selIndex]
             ];
             if (

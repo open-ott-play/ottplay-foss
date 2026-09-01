@@ -117,7 +117,7 @@ function channelByNumber(num: number): void {
         w.playChannel(indices[0], indices[1]);
     }
     var chName =
-        w.chanels && w.chanels[chId] ? w.chanels[chId].channel_name : "";
+        w.channels && w.channels[chId] ? w.channels[chId].channel_name : "";
     showPopup("Channel #" + num + (chName ? ": " + chName : ""));
 }
 
@@ -141,7 +141,7 @@ function channelByName(name: string): void {
         var list = w.cats[cat];
         for (var i = 0; i < list.length; i++) {
             var chId = list[i];
-            var ch = w.chanels && w.chanels[chId];
+            var ch = w.channels && w.channels[chId];
             if (
                 ch &&
                 ch.channel_name &&
@@ -165,8 +165,8 @@ function channelByName(name: string): void {
         w.playChannel(bestCatIdx, bestChIdx);
     }
     var chName =
-        w.chanels && w.chanels[bestChId]
-            ? w.chanels[bestChId].channel_name
+        w.channels && w.channels[bestChId]
+            ? w.channels[bestChId].channel_name
             : "";
     showPopup("Playing: " + chName);
 }
@@ -216,7 +216,7 @@ function randomChannel(rangeStart?: number, rangeEnd?: number): void {
         w.playChannel(indices[0], indices[1]);
     }
     var chName =
-        w.chanels && w.chanels[chId] ? w.chanels[chId].channel_name : "";
+        w.channels && w.channels[chId] ? w.channels[chId].channel_name : "";
     showPopup("Random #" + (pickIdx + 1) + (chName ? ": " + chName : ""));
 }
 

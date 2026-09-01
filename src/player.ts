@@ -118,8 +118,8 @@ import {
     stbSetOsdOpacity,
 } from "./view/display-helpers";
 
-// Sync channels to window.chanels so provider scripts and UI can access it globally
-(window as any).chanels = channels;
+// Sync channels to window.channels so provider scripts and UI can access it globally
+(window as any).channels = channels;
 
 // Core
 import {

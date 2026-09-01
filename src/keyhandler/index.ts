@@ -975,10 +975,10 @@ export function numberProg(digit: number): void {
                 ((window as any).curList ? (window as any).curList.length : 0)
                 ? ""
                 : "<br/>" +
-                  ((window as any).chanels &&
+                  ((window as any).channels &&
                   (window as any).curList &&
-                  (window as any).chanels[(window as any).curList[idx]]
-                      ? (window as any).chanels[(window as any).curList[idx]]
+                  (window as any).channels[(window as any).curList[idx]]
+                      ? (window as any).channels[(window as any).curList[idx]]
                             .channel_name
                       : ""));
         numProgEl.style.display = "";
@@ -1075,8 +1075,8 @@ function onPrevSelect(sel: number): void {
                 (_t: any, epgData: any) => {
                     var recent: any[] = [];
                     if (epgData !== null && epgData.length) {
-                        var ch = (window as any).chanels
-                            ? (window as any).chanels[chId]
+                        var ch = (window as any).channels
+                            ? (window as any).channels[chId]
                             : null;
                         var chRec = ((ch && ch.rec) || 0) * 60 * 60;
                         var cutoff = Date.now() / 1e3 - chRec;
@@ -1195,9 +1195,9 @@ export function prevProg(): void {
             prevArr.forEach((entry: any, idx: number, arr: any[]) => {
                 try {
                     items.push(
-                        ((window as any).chanels &&
-                        (window as any).chanels[entry.ci]
-                            ? (window as any).chanels[entry.ci].channel_name
+                        ((window as any).channels &&
+                        (window as any).channels[entry.ci]
+                            ? (window as any).channels[entry.ci].channel_name
                             : "") +
                             (entry.t
                                 ? '<span style="color:red;"> - ' +

@@ -152,8 +152,8 @@ import {
 } from "./storage";
 import { client_feedb, PostFeedback, pperf_flush } from "./utils/helpers";
 
-// Sync channels to window.chanels so provider scripts and UI can access it globally
-(window as any).chanels = channels;
+// Sync channels to window.channels so provider scripts and UI can access it globally
+(window as any).channels = channels;
 
 // Core
 import {
@@ -3199,8 +3199,8 @@ window.addChannel2bucket = function (): void {
         if (typeof w.showShift === "function")
             w.showShift(
                 (w._("Channel ") || "Channel ") +
-                    (w.chanels && w.chanels[chId]
-                        ? w.chanels[chId].channel_name
+                    (w.channels && w.channels[chId]
+                        ? w.channels[chId].channel_name
                         : "") +
                     (w._(" added to favorites") || " added to favorites")
             );
@@ -3228,8 +3228,8 @@ window.addChannel2bucket = function (): void {
                     if (typeof w.showShift === "function")
                         w.showShift(
                             (w._("Channel ") || "Channel ") +
-                                (w.chanels && w.chanels[chId]
-                                    ? w.chanels[chId].channel_name
+                                (w.channels && w.channels[chId]
+                                    ? w.channels[chId].channel_name
                                     : "") +
                                 (w._(" added to category ") ||
                                     " added to category ") +
