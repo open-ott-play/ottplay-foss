@@ -349,10 +349,10 @@ export function uiInit(): void {
         if (
             !(
                 w.playType ||
-                (w.chanels &&
+                (w.channels &&
                     w.curList &&
-                    w.chanels[w.curList[w.primaryIndex]] &&
-                    w.chanels[w.curList[w.primaryIndex]].rec)
+                    w.channels[w.curList[w.primaryIndex]] &&
+                    w.channels[w.curList[w.primaryIndex]].rec)
             )
         )
             return;
@@ -407,10 +407,10 @@ export function uiInit(): void {
         if (
             !(
                 w.playType ||
-                (w.chanels &&
+                (w.channels &&
                     w.curList &&
-                    w.chanels[w.curList[w.primaryIndex]] &&
-                    w.chanels[w.curList[w.primaryIndex]].rec)
+                    w.channels[w.curList[w.primaryIndex]] &&
+                    w.channels[w.curList[w.primaryIndex]].rec)
             )
         )
             return;
@@ -465,10 +465,10 @@ export function uiInit(): void {
         if (
             !(
                 w.playType ||
-                (w.chanels &&
+                (w.channels &&
                     w.curList &&
-                    w.chanels[w.curList[w.primaryIndex]] &&
-                    w.chanels[w.curList[w.primaryIndex]].rec)
+                    w.channels[w.curList[w.primaryIndex]] &&
+                    w.channels[w.curList[w.primaryIndex]].rec)
             )
         )
             return;
@@ -977,8 +977,8 @@ export function updateChanelInfo(channelId: number): void {
     if (channelId !== curList[primaryIndex]) return;
     // Trigger EPG data load if needed; callback re-invokes when data arrives
     // Only fetch if channel doesn't already have valid EPG (prevents infinite recursion)
-    var _ch = (window as any).chanels
-        ? (window as any).chanels[channelId]
+    var _ch = (window as any).channels
+        ? (window as any).channels[channelId]
         : undefined;
     if (!(_ch && _ch.time_to) || _ch.time_to < Date.now() / 1000) {
         getCurProgData(channelId, function () {
@@ -1008,9 +1008,9 @@ export function updateChanelInfo(channelId: number): void {
         channelNumEl.innerHTML =
             "" + ((primaryIndex != null ? primaryIndex : -1) + 1);
 
-    // Channel info from global chanels
-    var t = (window as any).chanels
-        ? (window as any).chanels[channelId]
+    // Channel info from global channels
+    var t = (window as any).channels
+        ? (window as any).channels[channelId]
         : undefined;
     if (t) {
         if (channelNameEl) channelNameEl.innerHTML = t.channel_name || "";
@@ -1612,7 +1612,7 @@ export function popupList(i?: any): void {
 
     var u = -1; // counter для добавленных элементов
     var playType: number = (window as any).playType || 0;
-    var chanels: any = (window as any).chanels || {};
+    var channels: any = (window as any).channels || {};
     var popStop: any = (window as any).popStop;
     var popPause: any = (window as any).popPause;
     var popTogglePip: any = (window as any).popTogglePip;
@@ -1670,7 +1670,7 @@ export function popupList(i?: any): void {
                     );
                 case popShift:
                 case popRecords:
-                    if (playType < 0 || !c || !chanels[c] || chanels[c].rec)
+                    if (playType < 0 || !c || !channels[c] || channels[c].rec)
                         break;
                     return;
                 case popTogglePip:
