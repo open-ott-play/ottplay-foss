@@ -291,7 +291,10 @@ export function stbPlay(url: string, position?: number): void {
                         .load(url)
                         .then(function () {
                             video!.play().catch(function (e) {
-                                console.log("[shaka fallback] play() rejected:", e);
+                                console.log(
+                                    "[shaka fallback] play() rejected:",
+                                    e
+                                );
                             });
                         })
                         .catch(function (e) {
