@@ -690,15 +690,11 @@ export function stbInit(): void {
         video = document.getElementById("video") as HTMLVideoElement;
         video!.addEventListener("waiting", function () {
             $("#buffering").show();
-            $("#video_res").html(
-                "<br/>connect... (" + playerModeNames[playerMode] + ")"
-            );
+            $("#video_res").html("<br/>connecting...");
         });
         video!.addEventListener("loadstart", function () {
             $("#buffering").show();
-            $("#video_res").html(
-                "<br/>buffering... (" + playerModeNames[playerMode] + ")"
-            );
+            $("#video_res").html("<br/>buffering...");
         });
         video!.addEventListener("loadeddata", function () {
             console.log("Event: loadeddata");
