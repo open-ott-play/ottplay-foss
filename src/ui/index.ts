@@ -1054,8 +1054,7 @@ export function updateChanelInfo(channelId: number): void {
         if (progressEl) progressEl.style.width = pct + "%";
         if (beginTimeEl) beginTimeEl.textContent = time2time(t.time);
         var remainingMin = Math.round((t.time_to - nowSec) / 60);
-        if (endTimeEl)
-            endTimeEl.textContent = "+" + (remainingMin > 0 ? remainingMin : 0);
+        if (endTimeEl) endTimeEl.textContent = "+" + remainingMin;
         if (programDurationEl) {
             programDurationEl.innerHTML =
                 time2str(t.time) +
@@ -1084,7 +1083,7 @@ export function updateChanelInfo(channelId: number): void {
                 (t.nextpr[0].time_to - t.nextpr[0].time) / 60
             );
             if (nendTimeEl)
-                nendTimeEl.textContent = "" + (nextDur > 0 ? nextDur : 0);
+                nendTimeEl.textContent = "" + nextDur;
         }
     } else {
         // No EPG — clear program fields
