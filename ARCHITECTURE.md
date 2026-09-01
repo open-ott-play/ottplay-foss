@@ -32,27 +32,27 @@ The player is a single-page web app. The host (browser or TV runtime) loads one 
 
 ```mermaid
 flowchart LR
-    User([User / remote / keyboard])
-    Host{{Browser or TV runtime}}
-    HTML[index.html<br/>device detection]
-    Bundle[dist/stbPlayer.js<br/>~one big IIFE]
-    Shim[stb/&lt;device&gt;/stb.js<br/>keys + stbInit]
-    TS[TypeScript modules<br/>src/]
-    Prov[prov/*.js<br/>provider script]
-    LS[(localStorage / cookies)]
-    Stream[(HLS / DASH source)]
-    Backend[local_proxy.py<br/>HA webhook]
+    User(["User / remote / keyboard"])
+    Host{{"Browser or TV runtime"}}
+    HTML["index.html<br/>device detection"]
+    Bundle["dist/stbPlayer.js<br/>~one big IIFE"]
+    Shim["stb/<device>/stb.js<br/>keys + stbInit"]
+    TS["TypeScript modules<br/>src/"]
+    Prov["prov/*.js<br/>provider script"]
+    LS[("localStorage / cookies")]
+    Stream[("HLS / DASH source")]
+    Backend["local_proxy.py<br/>HA webhook"]
 
-    User -- key event --> Host
+    User -- "key event" --> Host
     Host --> HTML
     HTML --> Bundle
-    Bundle -. sourced from .-> TS
-    Bundle -- 2nd chunk .-> Shim
-    HTML -- async --> Prov
+    Bundle -. "sourced from" .-> TS
+    Bundle -. "2nd chunk" .-> Shim
+    HTML -- "async" --> Prov
     Bundle <--> LS
     Bundle --> Stream
-    Bundle -. every 10s .-> Backend
-    Backend -- POST command --> Bundle
+    Bundle -. "every 10s" .-> Backend
+    Backend -- "POST command" --> Bundle
 ```
 
 ---
@@ -230,14 +230,14 @@ PiP is **purely a CSS overlay** in this player — there is no `luna://com.webos
 ```mermaid
 flowchart TB
     subgraph DOM
-        V[#vdiv<br/>position: absolute<br/>overflow: hidden]:::dom
-        Main[#video<br/>primary stream]:::dom
-        Pip[#videopip<br/>muted, display: none<br/>position: absolute]:::dom
+        V["#vdiv<br/>position: absolute<br/>overflow: hidden"]:::dom
+        Main["#video<br/>primary stream"]:::dom
+        Pip["#videopip<br/>muted, display: none<br/>position: absolute"]:::dom
         V --> Main
     end
 
-    MainEl([#video]) -. visible .-> Screen
-    PipEl([#videopip]) -. CSS positioned corner .-> Screen
+    MainEl(["#video"]) -. "visible" .-> Screen
+    PipEl(["#videopip"]) -. "CSS positioned corner" .-> Screen
 
     Screen([TV / browser canvas]):::screen
 
