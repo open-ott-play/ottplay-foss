@@ -1082,8 +1082,7 @@ export function updateChanelInfo(channelId: number): void {
             var nextDur = Math.round(
                 (t.nextpr[0].time_to - t.nextpr[0].time) / 60
             );
-            if (nendTimeEl)
-                nendTimeEl.textContent = "" + nextDur;
+            if (nendTimeEl) nendTimeEl.textContent = "" + nextDur;
         }
     } else {
         // No EPG — clear program fields
