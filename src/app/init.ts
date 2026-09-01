@@ -8,6 +8,7 @@ export const PLAYER_VERSION = "__OTTP_VERSION__";
 // duneAddSettings — set by provider scripts (stalker, edem, etc.)
 declare var duneAddSettings: ((_index: number) => void) | null;
 
+import { benchy_startPlayer, benchy_stbReady } from "../benchy";
 import { cats, catsArray, sPlayers, sStopPlay } from "../channels";
 import {
     setPlayer,
@@ -118,6 +119,8 @@ export function startPlayer(): void {
         };
         document.head.appendChild(link);
 
+        benchy_startPlayer();
+
         uiInit();
         initBackgroundIntervals();
         (window as any).listPodval = (window as any).listPodvalElement;
@@ -201,6 +204,8 @@ export function onStbReady(): void {
             selectLang();
             return;
         }
+
+        benchy_stbReady();
 
         console.log("TRACE lang=" + lang + ", loading langJS");
         if (typeof (window as any).pperf_stamp === "function")
