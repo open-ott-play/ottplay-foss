@@ -244,9 +244,16 @@ export function stbPlay(url: string, position?: number): void {
             maxMaxBufferLength: 600,
             overrideNative: false,
             startLevel: -1,
+            // For PC: ensure CORS-friendly requests (latest hls.js is strict)
+            xhrSetup: function (xhr: XMLHttpRequest) {
+                xhr.withCredentials = false;
+            },
         });
         hlsInstance.loadSource(url);
         hlsInstance.attachMedia(video);
+        // PC + latest hls.js can stall silently on FHD (no ERROR fired, just 'waiting').
+        // Watchdog: if no FRAG_LOADED within 15s of MANIFEST_PARSED, fall back to shaka.
+        var _hlsWatchdog: any = null;
         hlsInstance.on(Hls.Events.ERROR, function (_event: any, data: any) {
             if (data.fatal) {
                 console.error("[HLS] fatal error:", data.type, data.details);
@@ -263,9 +270,47 @@ export function stbPlay(url: string, position?: number): void {
             }
         });
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
+            if (_hlsWatchdog) clearTimeout(_hlsWatchdog);
+            _hlsWatchdog = setTimeout(function () {
+                if (!hlsInstance) return;
+                console.warn(
+                    "[HLS] no fragments after 15s, falling back to shaka"
+                );
+                try {
+                    hlsInstance.destroy();
+                } catch (e) {}
+                hlsInstance = null;
+                playerMode = 2; // shaka
+                if (
+                    typeof shaka !== "undefined" &&
+                    shaka.Player &&
+                    shaka.Player.isBrowserSupported()
+                ) {
+                    (window as any).player = new shaka.Player(video);
+                    (window as any).player
+                        .load(url)
+                        .then(function () {
+                            video!.play().catch(function (e) {
+                                console.log("[shaka fallback] play() rejected:", e);
+                            });
+                        })
+                        .catch(function (e) {
+                            console.error("[shaka fallback] load failed:", e);
+                        });
+                } else {
+                    video!.src = url;
+                    video!.play();
+                }
+            }, 15000);
             video!.play().catch(function (e) {
                 console.log("[HLS] play() rejected:", e);
             });
+        });
+        hlsInstance.on(Hls.Events.FRAG_LOADED, function () {
+            if (_hlsWatchdog) {
+                clearTimeout(_hlsWatchdog);
+                _hlsWatchdog = null;
+            }
         });
         hlsInstance.on(
             Hls.Events.AUDIO_TRACKS_UPDATED,
