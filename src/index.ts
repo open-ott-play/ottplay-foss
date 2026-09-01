@@ -1448,8 +1448,13 @@ console.log("player loaded!");
 
 // Expose globals for backward compat with HTML and other scripts
 declare var window: any;
+// @legacy-bridge: entry point — called by HTML on DOMContentLoaded or auto-start guard.
+// Required by: index.html (the only caller).
 window.startPlayer = startPlayer;
+// @legacy-bridge: post-init hook — merges window.keys, loads settings, starts provider.
+// Required by: stb/{device}/stb.js for device-specific key mappings.
 window.onStbReady = onStbReady;
+// @legacy-bridge: keyboard dispatch — called by stb/{device}/stb.js on key events.
 window.keyHandler = keyHandler;
 window._doKey = dispatchKey;
 window.keys = keys;
@@ -3135,6 +3140,8 @@ window.cloudLoadSettings = function (): void {
 window.edit_dealer = edit_dealer;
 window.edit_dealer_remote = edit_dealer_remote;
 
+// @legacy-bridge: provider settings entry — edit_dealer reads/writes window.editvar for
+// the provider code field. Required by: stalker provider (portal URL entry).
 window._enterPinCode = _enterPinCode;
 window.enterPinCode = enterPinCode;
 window.enterPinAndSetAccess = enterPinAndSetAccess;
@@ -3623,9 +3630,12 @@ window.strPREV = strPREV;
 window.strNEXT = strNEXT;
 window.strSubt = strSubt;
 window.strNew = strNew;
+// @legacy-bridge: TMDb.prepare + TMDb.search called by src/ui/index.js (concatenated
+// into dist/stbPlayer.js). Provider scripts may extend TMDb with their own .search().
 window.TMDb = TMDb;
-window.__cv = PLAYER_VERSION;
-window.__av = PLAYER_VERSION;
+// NOTE: __cv/__av are set by index.html (lines 144-145) BEFORE dist/stbPlayer.js
+// loads. Provider scripts (src/provider/index.ts) read them as bare globals. Do
+// not re-assign here — the HTML-injected values win.
 window.version = "<br/>Version: " + PLAYER_VERSION;
 
 // Command handler (push commands via webhook)
