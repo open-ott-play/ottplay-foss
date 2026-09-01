@@ -16,7 +16,7 @@
 - `index.html` must set `host = window.location.origin`, `__iid = ""` before loading bundle
 - Wire in `src/app/init.ts` (where `initUIReferences` runs)
 
-### 2. loadSTB() dynamic stub loader
+### 2. loadSTB() dynamic stub loader ✅
 **Legacy source**: `index.html:146-155` (`loadSTB` loads `core.js` → `<device>/stb.js` → calls `startPlayer()`)
 **TS target**: Add to `src/app/init.ts` or new `src/app/stb-loader.ts`
 - After `core.ts` compiles, inject `<script src="${host}/stb/${ott_device}/stb.js?${__cv}">`
@@ -35,7 +35,7 @@
 - Ensure they wrap `ottpStorage.get/set` and use `p_pref` prefix
 - Export `stbGetItem` = `providerGetItem`, `stbSetItem` = `providerSetItem` globally (attach to `window`)
 
-### 5. Benchy diagnostics (CSS integrity + live reload + telemetry)
+### 5. Benchy diagnostics (CSS integrity + live reload + telemetry) ✅
 **Legacy source**: `stbPlayer.js:514-731`
 | fn | lines | purpose |
 |---|---|---|
