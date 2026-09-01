@@ -3,9 +3,8 @@
  *
  * Keycodes for E2 (Enigma2) STBs.
  * Sets window.keys.
+ * stbInit: NO — legacy has no stbInit body
  */
-
-import { stbInit as baseStbInit } from "../../core";
 
 var e2Keys = {
     ASPECT: 0,
@@ -60,12 +59,3 @@ var e2Keys = {
 (window as any).keys = e2Keys;
 (window as any).strEXIT = "EXIT";
 (window as any).strRETURN = "BACK";
-
-// Override stbInit with E2-specific init
-function stbInit(): void {
-    baseStbInit();
-    try {
-        console.log("[stb] E2 platform detected");
-    } catch (e) {}
-}
-(window as any).stbInit = stbInit;

@@ -3,9 +3,8 @@
  *
  * Keycodes for Panasonic HbbTV TVs.
  * Sets window.keys.
+ * stbInit: NO — legacy has no stbInit body
  */
-
-import { stbInit as baseStbInit } from "../../core";
 
 var panasonicKeys = {
     ASPECT: 0,
@@ -61,12 +60,3 @@ var panasonicKeys = {
 (window as any).strEXIT = "EXIT";
 (window as any).strTools = "TOOLS";
 (window as any).strRETURN = "BACK";
-
-// Override stbInit with Panasonic-specific init
-function stbInit(): void {
-    baseStbInit();
-    try {
-        console.log("[stb] Panasonic platform detected");
-    } catch (e) {}
-}
-(window as any).stbInit = stbInit;

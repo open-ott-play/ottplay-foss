@@ -3,6 +3,7 @@
  *
  * Keycodes for Edem.
  * Sets window.keys.
+ * stbInit: NO — legacy has no stbInit body
  */
 
 var edemKeys = {
