@@ -3,9 +3,8 @@
  *
  * Keycodes for Skyworth HbbTV TVs.
  * Sets window.keys.
+ * stbInit: NO — legacy has no stbInit body
  */
-
-import { stbInit as baseStbInit } from "../../core";
 
 var skyworthKeys = {
     ASPECT: 0,
@@ -61,12 +60,3 @@ var skyworthKeys = {
 (window as any).strEXIT = "EXIT";
 (window as any).strTools = "TOOLS";
 (window as any).strRETURN = "BACK";
-
-// Override stbInit with Skyworth-specific init
-function stbInit(): void {
-    baseStbInit();
-    try {
-        console.log("[stb] Skyworth platform detected");
-    } catch (e) {}
-}
-(window as any).stbInit = stbInit;

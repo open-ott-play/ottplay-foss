@@ -3,9 +3,8 @@
  *
  * Keycodes for Sharp HbbTV TVs.
  * Sets window.keys.
+ * stbInit: NO — legacy has no stbInit body
  */
-
-import { stbInit as baseStbInit } from "../../core";
 
 var sharpKeys = {
     ASPECT: 0,
@@ -61,12 +60,3 @@ var sharpKeys = {
 (window as any).strEXIT = "EXIT";
 (window as any).strTools = "TOOLS";
 (window as any).strRETURN = "BACK";
-
-// Override stbInit with Sharp-specific init
-function stbInit(): void {
-    baseStbInit();
-    try {
-        console.log("[stb] Sharp platform detected");
-    } catch (e) {}
-}
-(window as any).stbInit = stbInit;
