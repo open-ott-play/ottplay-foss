@@ -1794,15 +1794,13 @@ export function popupList(i?: any): void {
 
         // Пуш в массив как ОБЪЕКТ (не строку!)
         listArray.push({ action: action, desc: s, name: r });
-        listDataArray.push(r); // для совместимости с showPage
 
         if (action == noProvParam) a = listArray.length - 1;
         if (action == optionsList) o = listArray.length;
     });
 
     getListItemFn = function (item: any, _idx: number) {
-        // item может быть строкой (listDataArray) или объектом (listArray)
-        return "&nbsp;&nbsp;" + (item.name || item);
+        return "&nbsp;&nbsp;" + (item.name || "");
     };
 
     detailListActionFn = function () {
