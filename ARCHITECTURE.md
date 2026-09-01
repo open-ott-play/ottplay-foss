@@ -862,3 +862,192 @@ If a new provider is needed, drop a `prov/<name>/prov.js` file with the four fun
 | Local webhook proxy | `local_proxy.py` |
 | Build | `build-concat.cjs` |
 | Local webhook proxy | `local_proxy.py` |
+
+---
+
+## 16. Startup sequence (mermaid)
+
+Bootstrap chain from `<script>` load through first channel render. Source: `src/index.ts:1278` (`startPlayer`), `src/index.ts:1335` (`onStbReady`), `src/provider/index.ts:775` (`loadProv`), `src/provider/index.ts:1092` (`loadChannels`).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant HTML as index.html
+    participant Bundle as dist/stbPlayer.js
+    participant Idx as src/index.ts
+    participant Start as startPlayer()
+    participant Ready as onStbReady()
+    participant Prov as loadProv()
+    participant Chan as loadChannels()
+    participant STB as stbInit() (shim)
+    participant DOM as DOM
+    participant LS as stbGetItem/storage
+    participant Lang as lang.js
+    participant ProvJS as prov/{name}/prov.js
+    participant Net as Provider API/M3U
+
+    HTML->>Bundle: <script src=stbPlayer.js>
+    Bundle->>Idx: applyPolyfills() + import all TS modules
+    Bundle->>DOM: document.addEventListener("DOMContentLoaded", startPlayer)
+    DOM-->>Start: fire on DOM ready
+    Start->>Start: onPlayerStart() (perf stamp)
+    Start->>Start: storage.reset()
+    Start->>Start: uiInit() — build #launch, #listPopUp, etc.
+    Start->>Start: initBackgroundIntervals() — 1s clock, 30s info refresh
+    Start->>STB: stbInit() (per-device shim: keys, stb refs)
+    Start->>DOM: window.onkeydown = keyHandler
+    Start->>Ready: onStbReady()
+    Ready->>Ready: Object.assign(keys, window.keys)
+    Ready->>LS: loadSettings() — pull all s* from stb
+    Ready->>Ready: applySettingsToWindow(settings)
+    Ready->>Ready: initUIReferences()
+    Ready->>Ready: setTimezone / setFontSize / setColor / setEditor ...
+    Ready->>LS: stbGetItem("ottplaylang")
+    alt no language set
+        Ready->>DOM: selectLang() — show language picker, return
+    else language set
+        Ready->>Lang: getScriptDOM(host/stbPlayer/{lang}.js)
+        Lang-->>Ready: langJS loaded
+        alt duneAddSettings present (dune provider)
+            Ready->>DOM: optionsList(selectLang)
+        else standard
+            Ready->>Prov: loadProv()
+            Prov->>Prov: restore popupActions from savedPopup
+            Prov->>LS: stbGetItem("ottplayprov") — provider id
+            Prov->>ProvJS: getScriptDOM(prov/{id}/prov.js)
+            ProvJS-->>Prov: provider script loaded
+            Prov->>Prov: duneAddSettings() if present
+            Prov->>Prov: loadProvCallback()
+            Prov->>Chan: loadChannels()
+            Chan->>Chan: clear chanels/epg/cats/cList/curList
+            Chan->>LS: providerGetJson — history, favorites, prefs
+            Chan->>Chan: setPlayerMode(sPlayers) + setPlayer()
+            Chan->>ProvJS: getChanelsArray(cb)
+            ProvJS->>Net: GET {xtream|stalker|m3u|edem} (15s timeout)
+            Net-->>ProvJS: live_streams / M3U body
+            ProvJS->>ProvJS: parseM3U / fill cList+chanels+cats+catsArray
+            ProvJS-->>Chan: cb() — list ready
+            Chan->>Chan: onChanelsLoaded() — render category picker
+        end
+    end
+```
+
+---
+
+## 17. Function call dependency graph (mermaid)
+
+Edges = direct call. Grouped by module. Built from graphify `graphify_callees` / `graphify_callers` traces.
+
+```mermaid
+flowchart LR
+    classDef boot fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    classDef ui fill:#fff3e0,stroke:#ef6c00,color:#bf360c
+    classDef chan fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    classDef prov fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
+    classDef stb fill:#fce4ec,stroke:#ad1457,color:#880e4f
+    classDef store fill:#eceff1,stroke:#37474f,color:#263238
+
+    %% ── bootstrap ─────────────────────────
+    Bootstrap[DOMContentLoaded]:::boot --> Start[startPlayer]:::boot
+    Start --> OnPlayerStart[onPlayerStart]:::boot
+    Start --> StorageReset[storage.reset]:::boot
+    Start --> UiInit[uiInit]:::boot
+    Start --> BgInt[initBackgroundIntervals]:::boot
+    Start --> StbInit[stbInit]:::stb
+    Start --> KeyHandler[window.onkeydown=keyHandler]:::boot
+    Start --> OnStbReady[onStbReady]:::boot
+
+    %% ── onStbReady fanout ────────────────
+    OnStbReady --> LoadSettings[loadSettings]:::store
+    OnStbReady --> ApplySet[applySettingsToWindow]:::store
+    OnStbReady --> InitUIRef[initUIReferences]:::ui
+    OnStbReady --> SetTimezone[setTimezone]:::ui
+    OnStbReady --> SetFontSize[setFontSize]:::ui
+    OnStbReady --> SetColor[setColor]:::ui
+    OnStbReady --> SetEditor[setEditor]:::ui
+    OnStbReady --> SetPipBuf[setPipPosBuf]:::ui
+    OnStbReady --> SetSleep[setSleepTimeout]:::ui
+    OnStbReady --> CloseList[closeList]:::ui
+    OnStbReady --> GetScriptDOM1[getScriptDOM lang.js]:::boot
+    OnStbReady -->|lang set, no dune| LoadProv[loadProv]:::prov
+    OnStbReady -->|dune present| OptionsList[optionsList]:::ui
+
+    %% ── loadProv chain ───────────────────
+    LoadProv --> FirstRun[firstRun fallback]:::prov
+    LoadProv --> GetScriptDOM2[getScriptDOM prov.js]:::prov
+    LoadProv --> DuneAdd[duneAddSettings]:::prov
+    LoadProv --> LoadProvCb[loadProvCallback]:::prov
+
+    %% ── loadChannels chain ───────────────
+    LoadProvCb --> LoadChannels[loadChannels]:::chan
+    LoadChannels --> SetPlayerMode[setPlayerMode]:::chan
+    LoadChannels --> SetPlayer[setPlayer]:::stb
+    LoadChannels --> GetChanels[getChanelsArray]:::chan
+    GetChanels -->|provider override| XtreamLoad[_xtream_load/_xtream_m3u]:::prov
+    GetChanels -->|provider override| M3ULoad[provider_load/_parseM3U]:::prov
+    GetChanels -->|provider override| StalkerLoad[loadChannelsFromStalker]:::prov
+    GetChanels -->|provider override| EdemLoad[loadFromM3U]:::prov
+    LoadChannels --> OnChanelsLoaded[onChanelsLoaded]:::chan
+
+    %% ── storage layer ────────────────────
+    LoadSettings --> ProviderGet[providerGetItem/GetJson/GetNum]:::store
+    LoadSettings --> StbGetItem[stbGetItem]:::store
+    OnStbReady --> StbGetItem
+    LoadChannels --> ProviderGet
+    LoadProv --> StbGetItem
+
+    %% ── keyHandler → playback ────────────
+    KeyHandler --> HandleMainKey[handleMainKey]:::ui
+    HandleMainKey --> PlayChannel[playChannel]:::chan
+    HandleMainKey --> NextChannel[nextChannel/prevChannel]:::chan
+    HandleMainKey --> RandomChannel[randomChannel]:::chan
+    HandleMainKey --> ExitPortal[exitPortal]:::ui
+    HandleMainKey --> PopEPG[popEpg]:::ui
+    HandleMainKey --> PopRecords[popRecords]:::ui
+    HandleMainKey --> PopMedia[popMedia]:::ui
+    HandleMainKey --> OptionsList
+    PlayChannel --> StbPlay[stbPlay]:::stb
+    PlayChannel --> GetChannelUrl[getChannelUrl]:::chan
+    PlayChannel --> IfParental[ifParentalAccessChId]:::chan
+    PlayChannel --> UpdateChan[updateChanelInfo]:::ui
+    PlayChannel --> ShowChanInfo[showChanelInfo]:::ui
+    PlayChannel --> CheckMedia[checkMedia]:::chan
+
+    %% ── PiP / aspect ─────────────────────
+    HandleMainKey --> ToggleAspect[toggleAspectRatio]:::ui
+    HandleMainKey --> ToggleZoom[toggleZoom]:::ui
+    HandleMainKey --> ToggleSub[toggleSubtitle]:::ui
+    ToggleAspect --> StbToggleAR[stbToggleAspectRatio]:::stb
+    StbToggleAR --> SetAspect[setAspect → applyAspectRatio]:::stb
+
+    %% ── EPG ──────────────────────────────
+    PopEPG --> GetEPG[getEPG]:::chan
+    GetEPG --> SetCurProg[setCurProg]:::chan
+    SetCurProg -->|cache hit| EpgCash[epgCashObj/Arr]:::chan
+    SetCurProg -->|cache miss| FetchEPG[fetch /stbPlayer/epg.php]:::chan
+    FetchEPG -->|stb EPG| ServerPy[server.py XMLTV]:::chan
+
+    %% ── provider scripts (per-Xtreem duplication) ──
+    subgraph Xtream[prov/xtream + 30+ clones]
+        XLoad[_xtream_load]:::prov
+        XXtream[_xtream_xtream]:::prov
+        XM3u[_xtream_m3u]:::prov
+        XParse[_xtream_parseM3U]:::prov
+        XEdit[_xtream_edit]:::prov
+        XSave[_xtream_save]:::prov
+    end
+    XLoad --> XEdit
+    XXtream --> XM3u
+    XXtream --> XParse
+    XM3u --> XParse
+    XEdit --> XSave
+    XEdit --> DuneAdd
+
+    %% ── popup / settings ─────────────────
+    OptionsList --> SaveIfChanged[saveIfChanged]:::store
+    SaveIfChanged --> StbSetItem[stbSetItem]:::store
+    SetEditor --> SaveIfChanged
+    OnStbReady --> SavedPopup[savedPopup snapshot]:::store
+    LoadProv --> SavedPopup
+```
+
