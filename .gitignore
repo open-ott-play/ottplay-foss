@@ -25,6 +25,7 @@ test.m3u
 .aid*
 /*.js
 audit/
+CL*.md
 GR*.md
 CA*.md
 TO*.md

@@ -557,11 +557,11 @@ sequenceDiagram
 
     User->>UI: press EPG key
     UI->>Ch: showEPG()
-    Ch->>Ch: build epgList for all channels<br/>curList.forEach(epgList)
-    loop per channel (lazy)
+    Ch->>Ch: "build epgList for all channels<br/>curList.forEach(epgList)"
+    loop per channel - lazy
         Ch->>Ch: doGetCurProg queue
-        Note over Ch: batches all requests,<br/>shifts one per tick
-        Ch->>Prov: window.getEPGchanel(chId, cb)
+        Note over Ch: "batches all requests<br/>shifts one per tick"
+        Ch->>Prov: "window.getEPGchanel(chId, cb)"
         alt M3U provider
             Prov->>Server: GET /m3u/match-channels
             Note over Server: maps M3U names → channel IDs
@@ -571,13 +571,13 @@ sequenceDiagram
             Server-->>Prov: epg_data JSON
         alt Xtream Codes provider
             Prov->>XtreamAPI: GET /player_api.php<br/>?action=get_short_epg<br/>&stream_id=<id>
-            XtreamAPI-->>Prov: {epg_listings: [...]}
+            XtreamAPI-->>Prov: "{epg_listings: [...]}"
         alt Stalker provider
             Prov->>Portal: POST /stalker_portal/api/<br/>{jsonrpc:"2.0",method:"get_epg",<br/>params:{ch_id,from,to,mac}}
             Portal-->>Prov: "{result: [{start,end,title,desc}]}"
         end
         Prov-->>Ch: epgData: EPGEntry[]
-        Ch->>Cache: setCurProg(chId, epgData)<br/>epg[chId] = epgData
+        Ch->>Cache: "setCurProg(chId, epgData)<br/>epg[chId] = epgData"
         Ch->>UI: render current program in OSD
     end
     Ch->>UI: render full program list
@@ -865,7 +865,7 @@ If a new provider is needed, drop a `prov/<name>/prov.js` file with the four fun
 
 ---
 
-## 16. Startup sequence (mermaid)
+## 16. Startup sequence
 
 Bootstrap chain from `<script>` load through first channel render. Source: `src/index.ts:1278` (`startPlayer`), `src/index.ts:1335` (`onStbReady`), `src/provider/index.ts:775` (`loadProv`), `src/provider/index.ts:1092` (`loadChannels`).
 
@@ -934,7 +934,7 @@ sequenceDiagram
 
 ---
 
-## 17. Function call dependency graph (mermaid)
+## 17. Function call dependency graph
 
 Edges = direct call. Grouped by module. Built from graphify `graphify_callees` / `graphify_callers` traces.
 
