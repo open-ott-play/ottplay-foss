@@ -8,11 +8,6 @@ export const PLAYER_VERSION = "__OTTP_VERSION__";
 // duneAddSettings — set by provider scripts (stalker, edem, etc.)
 declare var duneAddSettings: ((_index: number) => void) | null;
 
-import {
-    benchy_startPlayer,
-    benchy_stbReady,
-    fix_mag_favoritesArray,
-} from "../benchy";
 import { cats, catsArray, sPlayers, sStopPlay } from "../channels";
 import {
     setPlayer,
@@ -123,12 +118,9 @@ export function startPlayer(): void {
         };
         document.head.appendChild(link);
 
-        benchy_startPlayer();
-
         uiInit();
         initBackgroundIntervals();
         (window as any).listPodval = (window as any).listPodvalElement;
-        fix_mag_favoritesArray();
         if (typeof stbInit === "function") {
             stbInit();
             window.onkeydown = keyHandler;
@@ -232,7 +224,6 @@ export function onStbReady(): void {
         );
 
         if (TMDb && TMDb.prepare) TMDb.prepare();
-        benchy_stbReady();
     } catch (e) {
         var launchEl2 = document.getElementById("launch");
         if (launchEl2) {
@@ -245,52 +236,6 @@ export function onStbReady(): void {
         console.error(e);
     }
 }
-
-// Global error handler (legacy index.html:108-122)
-(function () {
-    window.onerror = function (
-        event: any,
-        source: string,
-        lineno: number,
-        colno: number,
-        error: Error | undefined
-    ): boolean {
-        var etext: string[] = [];
-        if (typeof event === "string") {
-            etext.push(event || "<no_msg>");
-            etext.push(
-                (source || "<no_url>") +
-                    "__" +
-                    (lineno || "??") +
-                    ":" +
-                    (colno || "??")
-            );
-            etext.push(
-                typeof error === "object" && error !== null
-                    ? error.stack || "<no_stack>"
-                    : "<no_stack>"
-            );
-        } else if (event && typeof event === "object") {
-            etext.push(event.message || "<no_msg>");
-            etext.push(
-                (event.filename || "<no_url>") +
-                    "__" +
-                    (event.lineno || "??") +
-                    ":" +
-                    (event.colno || "??")
-            );
-            etext.push(
-                typeof event.error === "object"
-                    ? event.error.stack
-                    : "<no_stack>"
-            );
-        }
-        var errMsg = etext.join("\n");
-        console.error("[window.onerror]", errMsg);
-        client_feedb("window_onerror::" + errMsg.replace(/\n/g, "__"));
-        return true;
-    };
-})();
 
 // Auto-start when DOM ready
 if (

@@ -63,68 +63,17 @@ var webosKeys = {
 (window as any).strTools = "TOOLS";
 (window as any).strRETURN = "BACK";
 
-// Hide LG splash/logo on launch — 2–5 s native delay otherwise
-function hideSplash(): void {
-    try {
-        const webOS = (window as any).webOS;
-        if (typeof webOS?.system?.hideSplashScreen === "function") {
-            webOS.system.hideSplashScreen();
-        }
-    } catch {
-        // ponytail: degrade silently
-    }
-}
-
-// Hide magic-remote cursor — STB remotes have no pointer, cursor = visual noise
-function hideCursor(): void {
-    try {
-        const webOS = (window as any).webOS;
-        if (typeof webOS?.device?.cursorVisible === "function") {
-            webOS.device.cursorVisible(false);
-        }
-    } catch {
-        // ponytail: degrade silently
-    }
-}
-
-// Lock window to landscape — WebOS supports portrait, we don't
-function lockLandscape(): void {
-    try {
-        const webOS = (window as any).webOS;
-        if (typeof webOS?.platform?.setWindowOrientation === "function") {
-            webOS.platform.setWindowOrientation("landscape");
-        }
-    } catch {
-        // ponytail: degrade silently
-    }
-}
-
-// Bring app to foreground — prevent OS from stealing focus during playback
-function focusApp(): void {
-    try {
-        const webOS = (window as any).webOS;
-        if (typeof webOS?.app?.requestWindowFocus === "function") {
-            webOS.app.requestWindowFocus();
-        }
-    } catch {
-        // ponytail: degrade silently
-    }
-}
-
 // Override stbInit with WebOS-specific init
 function stbInit(): void {
     baseStbInit();
-    const win = window as any;
-    if (
-        typeof win.webOS === "undefined" &&
-        typeof win.PalmSystem === "undefined"
-    ) {
-        return;
+    try {
+        if (typeof (window as any).webOS !== "undefined") {
+            console.log("[stb] LG WebOS platform detected");
+        } else if (typeof (window as any).PalmSystem !== "undefined") {
+            console.log("[stb] LG WebOS (PalmSystem) platform detected");
+        }
+    } catch (e) {
+        // WebOS-specific features may not be available in all environments
     }
-    console.log("[stb] LG WebOS platform detected");
-    hideSplash();
-    hideCursor();
-    lockLandscape();
-    focusApp();
 }
 (window as any).stbInit = stbInit;

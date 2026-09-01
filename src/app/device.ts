@@ -29,7 +29,6 @@ export function detectDevice(): string {
     if (ua.indexOf("skyworth") !== -1) return "skyworth";
     if (ua.indexOf("vewd") !== -1) return "vewd";
     if (ua.indexOf("spark") !== -1) return "spark";
-    if (ua.indexOf("inext") !== -1) return "inext";
     if (ua.indexOf("nodejs") !== -1 || ua.indexOf("electron") !== -1)
         return "nodejs";
     return "pc";
