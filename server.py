@@ -494,10 +494,15 @@ class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
         )
         self._send_text(response)
         xmltv_hits = sum(1 for m in ch_mappings if '~local~' in m and m.split('~local~')[1] in epg_to_xmltv)
-        sys.stderr.write(f"[EPG] match-channels: {len(ch_mappings)} channels ({xmltv_hits} from XMLTV)\n")
+        sys.stderr.write(
+            f"[EPG] match-channels: {len(ch_mappings)} channels ({xmltv_hits} from XMLTV)\n"
+        )
         if VERBOSE and ch_list:
             sys.stderr.write("[EPG] Channel list:\n")
-            for name, status, score in sorted(ch_list, key=lambda x: (0 if x[1] != "NO EPG" else 1, x[0].lower())):
+            for name, status, score in sorted(
+                ch_list,
+                key=lambda x: (0 if x[1] != "NO EPG" else 1, x[0].lower()),
+            ):
                 sys.stderr.write(f"  {status:25s} {name}\n")
 
     def _handle_match_logos(self):
@@ -534,7 +539,9 @@ class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
             if logo_url:
                 log_mappings.append(f"{ch_id}~{logo_url}")
             else:
-                log_mappings.append(f"{ch_id}~/logo/{ch_id}.svg?ch={urllib.parse.quote(ch_name)}")
+                log_mappings.append(
+                    f"{ch_id}~/logo/{ch_id}.svg?ch={urllib.parse.quote(ch_name)}"
+                )
 
         response = "{}\n\t\n" + "\n".join(log_mappings)
         self._send_text(response)
