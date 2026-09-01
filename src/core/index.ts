@@ -172,14 +172,6 @@ export function closeFullscreen(): void {
  *               default browser action (typing 'l' in input fields).
  */
 export function stbEventToKeyCode(event: any): number {
-    if (event && event.keyCode === 76) {
-        if (isNormalScreen()) openFullscreen();
-        else closeFullscreen();
-        // Prevent default action (typing 'l' in input fields) and stop propagation
-        if (event.preventDefault) event.preventDefault();
-        if (event.stopPropagation) event.stopPropagation();
-        return 0; // Indicate key was consumed
-    }
     return event ? event.keyCode : 0;
 }
 
