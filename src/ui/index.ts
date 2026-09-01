@@ -2603,7 +2603,7 @@ function _setLang(e: boolean): void {
     var s = Math.floor(r.length / 10);
     if (r.length % 10) r = (r + _keysP).substr(0, (s + 1) * 10);
     _keys = _keys1 + r + _keysA;
-    _keysSymbol[2].s = "!,?";
+    _keysSymbol[2].s = "!?,";
     _setCase(_keyUp);
     _keyCur = _keys.length - 9;
 }
