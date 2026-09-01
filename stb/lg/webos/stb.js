@@ -51,6 +51,38 @@ var strEXIT = "EXIT";
 var strTools = "TOOLS";
 var strRETURN = "BACK";
 var _baseStbInit = typeof stbInit === "function" ? stbInit : function () {};
+// Hide LG splash/logo on launch — 2–5 s native delay otherwise
+function _hideSplash() {
+    try {
+        if (typeof webOS !== "undefined" && webOS.system && typeof webOS.system.hideSplashScreen === "function") {
+            webOS.system.hideSplashScreen();
+        }
+    } catch (e) {}
+}
+// Hide magic-remote cursor — STB remotes have no pointer, cursor = visual noise
+function _hideCursor() {
+    try {
+        if (typeof webOS !== "undefined" && webOS.device && typeof webOS.device.cursorVisible === "function") {
+            webOS.device.cursorVisible(false);
+        }
+    } catch (e) {}
+}
+// Lock window to landscape — WebOS supports portrait, we don't
+function _lockLandscape() {
+    try {
+        if (typeof webOS !== "undefined" && webOS.platform && typeof webOS.platform.setWindowOrientation === "function") {
+            webOS.platform.setWindowOrientation("landscape");
+        }
+    } catch (e) {}
+}
+// Bring app to foreground — prevent OS from stealing focus during playback
+function _focusApp() {
+    try {
+        if (typeof webOS !== "undefined" && webOS.app && typeof webOS.app.requestWindowFocus === "function") {
+            webOS.app.requestWindowFocus();
+        }
+    } catch (e) {}
+}
 function stbInit() {
     _baseStbInit();
     try {
@@ -58,6 +90,12 @@ function stbInit() {
             console.log("[stb] LG WebOS platform detected");
         } else if (typeof window.PalmSystem !== "undefined") {
             console.log("[stb] LG WebOS (PalmSystem) platform detected");
+        } else {
+            return;
         }
+        _hideSplash();
+        _hideCursor();
+        _lockLandscape();
+        _focusApp();
     } catch (e) {}
 }
