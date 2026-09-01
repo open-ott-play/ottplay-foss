@@ -2515,9 +2515,9 @@ export function searchChannel(): void {
 export function showActionsDialog(): void {
     var w = window as any;
     var t =
-        !w.sFavorites && w.w.w.listCatIndex
+        !w.sFavorites && w.listCatIndex
             ? true
-            : !!(w.sFavorites && !w.w.w.listCatIndex);
+            : !!(w.sFavorites && !w.listCatIndex);
     var e = '<td align="center" valign="top" width="30%">';
     var dialog = document.getElementById("dialogbox");
     if (!dialog) return;
@@ -2549,7 +2549,7 @@ export function showActionsDialog(): void {
             ? w.btnDiv(
                   w.keys.ENTER,
                   w.strENTER,
-                  !w.sFavorites || w.w.w.listCatIndex
+                  !w.sFavorites || w.listCatIndex
                       ? "<br>Add<br>to " +
                             (w.sFavorites ? "favorites" : "category")
                       : "<br><br>"
@@ -2619,7 +2619,7 @@ export function showActionsDialog(): void {
             case w.keys.YELLOW:
             case w.keys.TOOLS:
                 $(dialog!).hide();
-                w.w.w.listChannel = w.w.w.selIndex;
+                w.listChannel = w.selIndex;
                 searchChannel();
                 return true;
         }
