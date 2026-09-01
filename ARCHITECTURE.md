@@ -747,7 +747,7 @@ flowchart TD
         direction TB
         X1[User enters<br/>server + username + password]:::user
         X2["getChanelsArray callback:<br/>GET /player_api.php<br/?username=...&password=..."]:::prov
-        X3[Parse live_streams + categories<br/>build chanels{} + cats{}]:::prov
+        X3["Parse live_streams + categories<br/>build chanels{} + cats{}"]:::prov
         X4["getChannelUrl(chId)<br/>→ {server}/live/{user}/{pwd}/{stream_id}.m3u8"]:::api
         X5["getArchiveUrl(chId,start,end)<br/>→ subst ${start}/${end}<br/>in chanels[chId].caso"]:::api
         X6["getEPGchanel(chId,cb)<br/>→ GET /player_api.php<br/>?action=get_short_epg<br/>&stream_id=<id>"]:::api
@@ -983,14 +983,15 @@ flowchart LR
     LoadChannels --> SetPlayerMode[setPlayerMode]:::chan
     LoadChannels --> SetPlayer[setPlayer]:::stb
     LoadChannels --> GetChanels[getChanelsArray]:::chan
-    GetChanels -->|provider override| XtreamLoad[_xtream_load/_xtream_m3u]:::prov
-    GetChanels -->|provider override| M3ULoad[provider_load/_parseM3U]:::prov
+    GetChanels -->|provider override| XtreamLoad[_xtream_load]:::prov
+    GetChanels -->|provider override| XLoad2[_xtream_m3u]:::prov
+    GetChanels -->|provider override| M3ULoad[_parseM3U]:::prov
     GetChanels -->|provider override| StalkerLoad[loadChannelsFromStalker]:::prov
     GetChanels -->|provider override| EdemLoad[loadFromM3U]:::prov
     LoadChannels --> OnChanelsLoaded[onChanelsLoaded]:::chan
 
     %% ── storage layer ────────────────────
-    LoadSettings --> ProviderGet[providerGetItem/GetJson/GetNum]:::store
+    LoadSettings --> ProviderGet["providerGetItem/GetJson/GetNum"]:::store
     LoadSettings --> StbGetItem[stbGetItem]:::store
     OnStbReady --> StbGetItem
     LoadChannels --> ProviderGet
@@ -999,7 +1000,7 @@ flowchart LR
     %% ── keyHandler → playback ────────────
     KeyHandler --> HandleMainKey[handleMainKey]:::ui
     HandleMainKey --> PlayChannel[playChannel]:::chan
-    HandleMainKey --> NextChannel[nextChannel/prevChannel]:::chan
+    HandleMainKey --> NextChannel["nextChannel/prevChannel"]:::chan
     HandleMainKey --> RandomChannel[randomChannel]:::chan
     HandleMainKey --> ExitPortal[exitPortal]:::ui
     HandleMainKey --> PopEPG[popEpg]:::ui
@@ -1018,7 +1019,7 @@ flowchart LR
     HandleMainKey --> ToggleZoom[toggleZoom]:::ui
     HandleMainKey --> ToggleSub[toggleSubtitle]:::ui
     ToggleAspect --> StbToggleAR[stbToggleAspectRatio]:::stb
-    StbToggleAR --> SetAspect[setAspect → applyAspectRatio]:::stb
+    StbToggleAR --> SetAspect["setAspect → applyAspectRatio"]:::stb
 
     %% ── EPG ──────────────────────────────
     PopEPG --> GetEPG[getEPG]:::chan
