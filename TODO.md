@@ -60,7 +60,7 @@
 - Manages `<style>` element, `getRule(selector)` for dynamic CSS
 - Used by `benchy_CSSJS` for integrity test
 
-### 7. Polyfills & error handling
+### 7. Polyfills & error handling ✅
 **Legacy source**: `index.html:3-20` (performance.now, trim, imul, findIndex, isArray) + `index.html:108-122` (window.onerror)
 **TS target**: `src/polyfills/index.ts` (already exists — verify coverage) + error handler in `src/app/init.ts`
 
