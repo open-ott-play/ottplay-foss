@@ -83,6 +83,17 @@ function _focusApp() {
         }
     } catch (e) {}
 }
+// Ensure PiP menu items are always visible on LG — clear any persisted sHideMenus entries
+function _showPipMenu() {
+    try {
+        if (typeof stbSetItem === "function") {
+            var hidden = (stbGetItem("sHideMenus") || "").split(",").filter(function(x) {
+                return x !== "" && x !== "popTogglePip" && x !== "popStopPip";
+            });
+            stbSetItem("sHideMenus", hidden.join(","));
+        }
+    } catch (e) {}
+}
 function stbInit() {
     _baseStbInit();
     try {
@@ -97,5 +108,6 @@ function stbInit() {
         _hideCursor();
         _lockLandscape();
         _focusApp();
+        _showPipMenu();
     } catch (e) {}
 }
