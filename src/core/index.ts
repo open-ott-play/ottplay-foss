@@ -254,9 +254,12 @@ export function stbPlay(url: string, position?: number): void {
         // PC + latest hls.js can stall silently on FHD (no ERROR fired, just 'waiting').
         // Watchdog: if no FRAG_LOADED within 15s of MANIFEST_PARSED, fall back to shaka.
         var _hlsWatchdog: any = null;
+        var _hlsConsecutiveErrors = 0;
+        var _hlsMaxErrors = 5;
         hlsInstance.on(Hls.Events.ERROR, function (_event: any, data: any) {
             if (data.fatal) {
                 console.error("[HLS] fatal error:", data.type, data.details);
+                _hlsConsecutiveErrors = 0;
                 if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
                     console.log("[HLS] trying recoverMediaError");
                     hlsInstance.recoverMediaError();
@@ -266,6 +269,60 @@ export function stbPlay(url: string, position?: number): void {
                 } else {
                     console.log("[HLS] unrecoverable, destroying");
                     hlsInstance.destroy();
+                }
+            } else {
+                // Non-fatal error (buffer stall, etc.) — count and potentially fallback
+                _hlsConsecutiveErrors++;
+                console.warn(
+                    "[HLS] non-fatal error " +
+                        _hlsConsecutiveErrors +
+                        "/" +
+                        _hlsMaxErrors +
+                        ": " +
+                        data.type +
+                        " (" +
+                        data.details +
+                        ")"
+                );
+                if (_hlsConsecutiveErrors >= _hlsMaxErrors) {
+                    console.warn(
+                        "[HLS] too many non-fatal errors, falling back to shaka"
+                    );
+                    try {
+                        hlsInstance.destroy();
+                    } catch (e) {}
+                    hlsInstance = null;
+                    playerMode = 2; // shaka
+                    if (
+                        typeof shaka !== "undefined" &&
+                        shaka.Player &&
+                        shaka.Player.isBrowserSupported()
+                    ) {
+                        (window as any).player = new shaka.Player(video);
+                        (window as any).player
+                            .load(url)
+                            .then(function () {
+                                video!.play().catch(function (e) {
+                                    console.log(
+                                        "[shaka fallback] play() rejected:",
+                                        e
+                                    );
+                                });
+                            })
+                            .catch(function (e) {
+                                console.error(
+                                    "[shaka fallback] load failed:",
+                                    e
+                                );
+                            });
+                    } else {
+                        video!.src = url;
+                        video!.play();
+                    }
+                    _hlsConsecutiveErrors = 0;
+                } else {
+                    // Brief retry attempt — try to resume playback
+                    hlsInstance.startLoad();
                 }
             }
         });
@@ -689,11 +746,15 @@ export function stbInit(): void {
         video = document.getElementById("video") as HTMLVideoElement;
         video!.addEventListener("waiting", function () {
             $("#buffering").show();
-            $("#video_res").html("<br/>connect...");
+            $("#video_res").html(
+                "<br/>connect... (" + playerModeNames[playerMode] + ")"
+            );
         });
         video!.addEventListener("loadstart", function () {
             $("#buffering").show();
-            $("#video_res").html("<br/>buffering...");
+            $("#video_res").html(
+                "<br/>buffering... (" + playerModeNames[playerMode] + ")"
+            );
         });
         video!.addEventListener("loadeddata", function () {
             console.log("Event: loadeddata");
