@@ -286,39 +286,12 @@ export function stbPlay(url: string, position?: number): void {
                 );
                 if (_hlsConsecutiveErrors >= _hlsMaxErrors) {
                     console.warn(
-                        "[HLS] too many non-fatal errors, falling back to shaka"
+                        "[HLS] too many non-fatal errors, giving up on this stream"
                     );
                     try {
                         hlsInstance.destroy();
                     } catch (e) {}
                     hlsInstance = null;
-                    playerMode = 2; // shaka
-                    if (
-                        typeof shaka !== "undefined" &&
-                        shaka.Player &&
-                        shaka.Player.isBrowserSupported()
-                    ) {
-                        (window as any).player = new shaka.Player(video);
-                        (window as any).player
-                            .load(url)
-                            .then(function () {
-                                video!.play().catch(function (e) {
-                                    console.log(
-                                        "[shaka fallback] play() rejected:",
-                                        e
-                                    );
-                                });
-                            })
-                            .catch(function (e) {
-                                console.error(
-                                    "[shaka fallback] load failed:",
-                                    e
-                                );
-                            });
-                    } else {
-                        video!.src = url;
-                        video!.play();
-                    }
                     _hlsConsecutiveErrors = 0;
                 } else {
                     // Brief retry attempt — try to resume playback
@@ -328,40 +301,6 @@ export function stbPlay(url: string, position?: number): void {
         });
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
             if (_hlsWatchdog) clearTimeout(_hlsWatchdog);
-            _hlsWatchdog = setTimeout(function () {
-                if (!hlsInstance) return;
-                console.warn(
-                    "[HLS] no fragments after 15s, falling back to shaka"
-                );
-                try {
-                    hlsInstance.destroy();
-                } catch (e) {}
-                hlsInstance = null;
-                playerMode = 2; // shaka
-                if (
-                    typeof shaka !== "undefined" &&
-                    shaka.Player &&
-                    shaka.Player.isBrowserSupported()
-                ) {
-                    (window as any).player = new shaka.Player(video);
-                    (window as any).player
-                        .load(url)
-                        .then(function () {
-                            video!.play().catch(function (e) {
-                                console.log(
-                                    "[shaka fallback] play() rejected:",
-                                    e
-                                );
-                            });
-                        })
-                        .catch(function (e) {
-                            console.error("[shaka fallback] load failed:", e);
-                        });
-                } else {
-                    video!.src = url;
-                    video!.play();
-                }
-            }, 15000);
             video!.play().catch(function (e) {
                 console.log("[HLS] play() rejected:", e);
             });
@@ -390,12 +329,17 @@ export function stbPlay(url: string, position?: number): void {
         shaka.Player.isBrowserSupported()
     ) {
         (window as any).player = new shaka.Player(video);
-        try {
-            (window as any).player.load(url);
-            video!.play();
-        } catch (e) {
-            console.error(e);
-        }
+        (window as any).player
+            .load(url)
+            .then(function () {
+                console.log("[Shaka] manifest loaded");
+                video!.play();
+            })
+            .catch(function (e) {
+                console.error("[Shaka] load failed:", e);
+                video!.src = url;
+                video!.play();
+            });
     } else {
         video!.src = url;
     }
