@@ -64,13 +64,66 @@ var tizenKeys = {
 (window as any).strRETURN = "RETURN";
 (window as any).strSETUP = "MENU";
 
+// Hide Samsung launch splash — Tizen 5.5+ exposes setSplashEnabled on webapis.appcommon
+function hideSplash(): void {
+    try {
+        const webapis = (window as any).webapis;
+        if (webapis?.appcommon?.setSplashEnabled) {
+            webapis.appcommon.setSplashEnabled(false);
+        }
+    } catch {
+        // ponytail: degrade silently
+    }
+}
+
+// Hide smart-remote cursor — Tizen SDK has no setCursorVisible JS API, use CSS
+function hideCursor(): void {
+    try {
+        document.documentElement.style.cursor = "none";
+        document.body.style.cursor = "none";
+    } catch {
+        // ponytail: degrade silently
+    }
+}
+
+// Lock window to landscape — Tizen supports portrait, we don't
+function lockLandscape(): void {
+    try {
+        const so = (screen as any).orientation;
+        if (so?.lock) {
+            so.lock("landscape").catch(() => {
+                /* ponytail: some Tizen builds reject; ignore */
+            });
+        }
+    } catch {
+        // ponytail: degrade silently
+    }
+}
+
+// Bring app to foreground — prevent OS from stealing focus during playback
+function focusApp(): void {
+    try {
+        const tizen = (window as any).tizen;
+        if (tizen?.application?.getCurrentApplication) {
+            tizen.application.getCurrentApplication().requestForeground();
+        }
+        if (typeof window.focus === "function") window.focus();
+    } catch {
+        // ponytail: degrade silently
+    }
+}
+
 // Override stbInit with Tizen-specific init
 function stbInit(): void {
     baseStbInit();
-    try {
-        if (typeof (window as any).tizen !== "undefined") {
-            console.log("[stb] Samsung Tizen platform detected");
-        }
-    } catch (e) {}
+    const win = window as any;
+    if (typeof win.tizen === "undefined") {
+        return;
+    }
+    console.log("[stb] Samsung Tizen platform detected");
+    hideSplash();
+    hideCursor();
+    lockLandscape();
+    focusApp();
 }
 (window as any).stbInit = stbInit;
