@@ -1,26 +1,27 @@
 /**
  * PC device stub.
  *
- * Keycodes and platform-specific init for PC/Maple/Spark STBs.
+ * Keyboard codes for PC browsers.
  * Sets window.keys and overrides stbInit.
  */
 
-// PC keycodes
+import { stbInit as baseStbInit } from "../../core";
+
 var pcKeys = {
-    ASPECT: 0,
-    AUDIO: 0,
-    BLUE: 0,
-    CH_DOWN: 0,
+    ASPECT: 65,
+    AUDIO: 83,
+    BLUE: 86,
+    CH_DOWN: 189,
     CH_LIST: 0,
-    CH_UP: 0,
+    CH_UP: 187,
     DOWN: 40,
     ENTER: 13,
     EPG: 0,
     EXIT: 27,
     FF: 70,
-    GREEN: 113,
+    GREEN: 88,
     INFO: 73,
-    LANG: 0,
+    LANG: 16,
     LEFT: 37,
     MUTE: 77,
     N0: 48,
@@ -33,32 +34,36 @@ var pcKeys = {
     N7: 55,
     N8: 56,
     N9: 57,
-    NEXT: 0,
-    PAUSE: 19,
-    PIP: 0,
-    PLAY: 415,
-    POWER: 0,
-    PRECH: 0,
-    PREV: 0,
+    NEXT: 190,
+    PAUSE: 80,
+    PIP: 87,
+    PLAY: 80,
+    POWER: 81,
+    PRECH: 191,
+    PREV: 188,
     REC: 0,
-    RED: 403,
+    RED: 90,
     RETURN: 8,
     RIGHT: 39,
     RW: 82,
-    SETUP: 0,
-    STOP: 413,
-    TOOLS: 459,
+    SETUP: 192,
+    STOP: 83,
+    TOOLS: 84,
     UP: 38,
-    VOL_DOWN: 448,
-    VOL_UP: 447,
-    YELLOW: 405,
-    ZOOM: 0,
+    VOL_DOWN: 0,
+    VOL_UP: 0,
+    YELLOW: 67,
+    ZOOM: 69,
 };
 
 // Set globals expected by the player
 (window as any).keys = pcKeys;
 
+// Override stbInit
 function stbInit(): void {
-    console.log("[stb] PC platform detected");
+    baseStbInit();
+    try {
+        console.log("[stb] PC platform detected");
+    } catch (e) {}
 }
 (window as any).stbInit = stbInit;
