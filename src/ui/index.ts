@@ -630,7 +630,7 @@ export function showPage(): void {
     if (listElement) listElement.style.display = "";
     var dataArr = listDataArray.length
         ? listDataArray
-        : (window as any).listDataArray || [];
+        : (window as any).listDataArray || (window as any).listArray || [];
     var pageStart =
         Math.floor(selIndex / settings.pageSize) * settings.pageSize;
     var pageEnd = Math.min(pageStart + settings.pageSize, dataArr.length);
@@ -714,7 +714,7 @@ export function showPage(): void {
 export function changeSelect(delta: number): void {
     var dataArr = listDataArray.length
         ? listDataArray
-        : (window as any).listDataArray || [];
+        : (window as any).listDataArray || (window as any).listArray || [];
     if (!dataArr.length) return;
     var oldIndex = selIndex;
     selIndex += delta;
