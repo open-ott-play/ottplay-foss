@@ -36,6 +36,7 @@ import {
 } from "../view/display-helpers";
 import { initUIReferences } from "../view/ui-helpers";
 import { applySettingsToWindow } from "./apply-settings";
+import { __av, __cv, detectDevice, ott_device } from "./device";
 import { selectLang } from "./language";
 import {
     hostUrl,
@@ -72,6 +73,9 @@ export function loadProvCallback(): void {
  * Main entry point — called once the DOM is ready.
  */
 export function startPlayer(): void {
+    // Detect device type and expose globals for provider scripts
+    (window as any).ott_device = ott_device;
+    (window as any).detectDevice = detectDevice;
     var launchEl = document.getElementById("launch");
     if (launchEl) {
         launchEl.innerHTML += "<br/>VER: " + PLAYER_VERSION;
@@ -94,6 +98,25 @@ export function startPlayer(): void {
         }
 
         storage.reset();
+
+        // Inject device stub script
+        var stubScript = document.createElement("script");
+        stubScript.src = hostUrl + "/stb/" + ott_device + "/stb.js?" + __cv;
+        stubScript.onload = function () {
+            if (typeof startPlayer === "function") startPlayer();
+            else console.error("startPlayer not defined");
+        };
+        document.head.appendChild(stubScript);
+
+        // Inject 1280.css stylesheet
+        var link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = hostUrl + "/stbPlayer/1280.css?" + __av;
+        link.media = "only screen";
+        link.onload = function () {
+            link.media = "all";
+        };
+        document.head.appendChild(link);
 
         uiInit();
         initBackgroundIntervals();
