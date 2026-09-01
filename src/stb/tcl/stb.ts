@@ -3,9 +3,8 @@
  *
  * Keycodes for TCL HbbTV TVs.
  * Sets window.keys.
+ * stbInit: NO — legacy has no stbInit body
  */
-
-import { stbInit as baseStbInit } from "../../core";
 
 var tclKeys = {
     ASPECT: 0,
@@ -61,12 +60,3 @@ var tclKeys = {
 (window as any).strEXIT = "EXIT";
 (window as any).strTools = "TOOLS";
 (window as any).strRETURN = "BACK";
-
-// Override stbInit with TCL-specific init
-function stbInit(): void {
-    baseStbInit();
-    try {
-        console.log("[stb] TCL platform detected");
-    } catch (e) {}
-}
-(window as any).stbInit = stbInit;

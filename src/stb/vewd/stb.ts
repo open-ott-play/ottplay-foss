@@ -3,9 +3,8 @@
  *
  * Keycodes for VEWD (Opera TV) HbbTV TVs.
  * Sets window.keys.
+ * stbInit: NO — legacy has no stbInit body
  */
-
-import { stbInit as baseStbInit } from "../../core";
 
 var vewdKeys = {
     ASPECT: 0,
@@ -61,12 +60,3 @@ var vewdKeys = {
 (window as any).strEXIT = "EXIT";
 (window as any).strTools = "TOOLS";
 (window as any).strRETURN = "BACK";
-
-// Override stbInit with VEWD-specific init
-function stbInit(): void {
-    baseStbInit();
-    try {
-        console.log("[stb] VEWD platform detected");
-    } catch (e) {}
-}
-(window as any).stbInit = stbInit;
