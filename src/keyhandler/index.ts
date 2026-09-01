@@ -4,7 +4,7 @@
  * Ported from stbPlayer.js keyHandler, keyFun.
  */
 
-import { stbEventToKeyCode } from "../core";
+import { stbEventToKeyCode, isNormalScreen, openFullscreen, closeFullscreen } from "../core";
 import { translate as _ } from "../localization";
 import { settings } from "../settings";
 
@@ -462,6 +462,8 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
         case keys.SUBTITLE:
             if (typeof (window as any).stbToggleSubtitle === "function")
                 (window as any).stbToggleSubtitle();
+            if (isNormalScreen()) openFullscreen();
+            else closeFullscreen();
             break;
         case keys.SETUP:
             (window as any).isListVisible = true;
