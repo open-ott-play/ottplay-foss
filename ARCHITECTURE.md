@@ -161,11 +161,11 @@ flowchart TD
     Mode2 -- yes --> Edit[virtual keyboard handler]:::handler --> Return3([return])
     Mode2 -- no --> Mode3{list<br/>open?}
     Mode3 -- yes --> List
-    Mode3 -- no --> Main[handleMainKey<br/>(page-specific)]:::handler
+    Mode3 -- no --> Main["handleMainKey<br/>(page-specific)"]:::handler
 
-    Main -- popup visible --> Popup[popupList handler]
-    Main -- playback --> Playback[stbPlay / stbPause / stbStop]
-    Main -- EPG / favs / hist --> View[open list view]
+    Main -- "popup visible" --> Popup[popupList handler]
+    Main -- playback --> Playback["stbPlay / stbPause / stbStop"]
+    Main -- "EPG / favs / hist" --> View[open list view]
     Main -- settings --> Settings[settingsMenu]
     Main -- PiP --> Pip[popTogglePip / popStopPip]
     Main -- unmapped --> Drop([event dropped])
@@ -187,21 +187,21 @@ flowchart LR
     B[stbPlay url]:::core
     C{url type?}:::decision
     D[stbStop<br/>tear down old stream]:::core
-    E[video.src = url<br/>(native HLS on Safari)]
+    E["video.src = url<br/>(native HLS on Safari)"]
     F[HLS.js<br/>Hls.loadSource]:::ext
     G[Shaka<br/>shaka.Player.load]:::ext
     H[setPipPosition<br/>if PiP]
     I[setMute / setVolume<br/>setAspect]
     J[video.play]:::core
-    K[(#video element)]:::dom
+    K[("#video element")]:::dom
 
     A --> B
     B --> D
     B --> C
-    C -- m3u8 / m3u8+query --> F
+    C -- "m3u8 / m3u8+query" --> F
     C -- mpd --> G
-    C -- direct / file --> E
-    C -- PiP url --> H
+    C -- "direct / file" --> E
+    C -- "PiP url" --> H
     F --> I
     G --> I
     E --> I
@@ -301,7 +301,7 @@ flowchart LR
 
     Keys[remote ENTER<br/>on highlighted item]:::ui --> Action[action fn<br/>e.g. popTogglePip]:::fn
 
-    Settings[settingsMenu.save]:::ui -- push action.name --> SHM
+    Settings[settingsMenu.save]:::ui -- "push action.name" --> SHM
 
     classDef src fill:#dcfce7,stroke:#166534
     classDef store fill:#fde68a,stroke:#b45309
@@ -332,7 +332,7 @@ flowchart LR
     Popup[popupList<br/>reads sHideMenus]:::ui --> RawLS
     Settings[settingsMenu]:::ui --> RawLS
 
-    RawLS -- key/value strings --> Browser[localStorage]:::store
+    RawLS -- "key/value strings" --> Browser[localStorage]:::store
     Browser -- per-origin quota --> RawLS
 
     classDef ui fill:#fae8ff,stroke:#6b21a8
@@ -352,7 +352,7 @@ flowchart TD
     A[stbInit] --> B[providerLoad name]
     B --> C{provider<br/>cached?}
     C -- yes --> Use[reuse window.provider]
-    C -- no --> Inj[inject &lt;script src=prov/&lt;name&gt;.js&gt;]
+    C -- no --> Inj["inject &lt;script src=prov/&lt;name&gt;.js&gt;"]
     Inj --> OnLoad[onload]
     OnLoad --> Def[provider defines:<br/>window.popupActions<br/>window.getChannelUrl<br/>window.getEpg<br/>...]
     Def --> Ready[providerReady = true]
@@ -377,8 +377,8 @@ The `stb/<device>/stb.js` files are tiny shims that:
 flowchart LR
     HTML[index.html] --> Dev1[stb/lg/webos/stb.js<br/>PIP=0, RETURN=461]
     HTML --> Dev2[stb/pc/stb.js<br/>PIP=87, ENTER=13]
-    HTML --> Dev3[stb/samsung/tizen/stb.js<br/>RETURN=10009]
-    HTML --> DevN[stb/&lt;24 others&gt;]
+    HTML --> Dev3["stb/samsung/tizen/stb.js<br/>RETURN=10009"]
+    HTML --> DevN["stb/<24 others>"]
 
     Dev1 --> Wrap[wrapped stbInit]
     Dev2 --> Wrap
@@ -574,7 +574,7 @@ sequenceDiagram
             XtreamAPI-->>Prov: {epg_listings: [...]}
         alt Stalker provider
             Prov->>Portal: POST /stalker_portal/api/<br/>{jsonrpc:"2.0",method:"get_epg",<br/>params:{ch_id,from,to,mac}}
-            Portal-->>Prov: {result: [{start,end,title,desc}]}
+            Portal-->>Prov: "{result: [{start,end,title,desc}]}"
         end
         Prov-->>Ch: epgData: EPGEntry[]
         Ch->>Cache: setCurProg(chId, epgData)<br/>epg[chId] = epgData
@@ -648,32 +648,32 @@ If `caso` is empty, `getArchiveUrl` returns `""` and the player disables the arc
 flowchart LR
     subgraph EPG guided
         A1[User opens EPG] --> A2[selects past program]
-        A2 --> A3{item.rec > 0 ?}
+        A2 --> A3{"item.rec > 0 ?"}
         A3 -- no --> A4[show program info]
         A3 -- yes --> A5[closeList + setCurrent]
-        A5 --> A6[playArchive(item.time)]
+        A5 --> A6["playArchive(item.time)"]
     end
 
     subgraph Clock-skip
-        B1[User presses RW key] --> B2[timeShift(N)]
-        B2 --> B3{N EPG helper ?}
-        B3 -- yes --> B4[playArchive(now-N)]
-        B3 -- no --> B5[playArchive(Date.now()-N)]
+        B1[User presses RW key] --> B2["timeShift(N)"]
+        B2 --> B3{"N EPG helper ?"}
+        B3 -- yes --> B4["playArchive(now-N)"]
+        B3 -- no --> B5["playArchive(Date.now()-N)"]
     end
 
     subgraph Core
-        C1[playArchive unix_ts]
-        C1 --> C2{fileArchive<br/>same program?}
+        C1["playArchive unix_ts"]
+        C1 --> C2{"fileArchive<br/>same program?"}
         C2 -- yes --> C3[seek within stream]
-        C2 -- no --> C4[window.getArchiveUrl]
-        C4 --> C5[build URL<br/>${start} ${end} tokens]
+        C2 -- no --> C4["window.getArchiveUrl"]
+        C4 --> C5["build URL<br/>${start} ${end} tokens"]
         C5 --> C6[stbPlay url offset]
     end
 
     A6 --> C1
     B4 --> C1
     B5 --> C1
-    C3 --> Out[(#video<br/>seeked)]
+    C3 --> Out[("#video<br/>seeked")]
     C6 --> Out
 ```
 
@@ -729,9 +729,9 @@ flowchart TD
 
     subgraph M3U["prov/m3u/prov.js — static playlist"]
         direction TB
-        M1[User enters URL<br/>Settings → M3U]:::user
-        M2[loadPlaylist<br/>→ loadM3Uparams<br/>→ loadChannels]:::prov
-        M3[fetch M3U from URL<br/>parse EXTINF entries]:::prov
+        M1["User enters URL<br/>Settings → M3U"]:::user
+        M2["loadPlaylist<br/>→ loadM3Uparams<br/>→ loadChannels"]:::prov
+        M3["fetch M3U from URL<br/>parse EXTINF entries"]:::prov
         M4["getChanelsArray callback:<br/>populate chanels{} + cList[]"]:::prov
         M5["getChannelUrl(chId)<br/>→ chanels[chId].url"]:::api
         M6["getArchiveUrl(chId,start,end)<br/>→ subst ${start}/${end}<br/>in chanels[chId].caso"]:::api
@@ -745,7 +745,7 @@ flowchart TD
 
     subgraph Xtream["prov/xtream/prov.js — Xtream Codes API"]
         direction TB
-        X1[User enters<br/>server + username + password]:::user
+        X1["User enters<br/>server + username + password"]:::user
         X2["getChanelsArray callback:<br/>GET /player_api.php<br/?username=...&password=..."]:::prov
         X3["Parse live_streams + categories<br/>build chanels{} + cats{}"]:::prov
         X4["getChannelUrl(chId)<br/>→ {server}/live/{user}/{pwd}/{stream_id}.m3u8"]:::api
@@ -760,12 +760,12 @@ flowchart TD
 
     subgraph Stalker["prov/stalker/prov.js — Stalker / Ministra portal"]
         direction TB
-        S1[User enters<br/>portal URL + MAC]:::user
+        S1["User enters<br/>portal URL + MAC"]:::user
         S2["stalkerApiCall('handshake', {})<br/>→ POST /stalker_portal/api/<br/>{jsonrpc:2.0,method:handshake}"]:::prov
-        S2b{response<br/>has token?} -->|no| S3["stalkerApiCall('handshake',<br/>{mac})"]:::prov
+        S2b{"response<br/>has token?"} -->|no| S3["stalkerApiCall('handshake',<br/>{mac})"]:::prov
         S3 --> S4["stalkerApiCall('get_channels', {})<br/>→ list all channels + genres"]:::prov
         S2 -->|yes| S4
-        S4 --> S5[build chanels{} + cats{}<br/>store portal token]:::prov
+        S4 --> S5["build chanels{} + cats{}<br/>store portal token"]:::prov
         S6["getChannelUrl(chId)<br/>→ portal + stream path from chanels[chId].url"]:::api
         S7["getArchiveUrl(chId,start,end)<br/>→ subst in chanels[chId].caso"]:::api
         S8["getEPGchanel(chId,cb)<br/>→ POST /stalker_portal/api/<br/>{jsonrpc:2.0,method:get_epg,<br/>params:{ch_id,from,to,mac}}"]:::api
