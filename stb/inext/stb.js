@@ -1,5 +1,4 @@
-version += " inext-0219";
-var keys = {
+var inextKeys = {
     ASPECT: 0,
     AUDIO: 0,
     BLUE: 115,
@@ -47,5 +46,15 @@ var keys = {
     YELLOW: 114,
     ZOOM: 0,
 };
-var strEXIT = "EXIT";
-var strRETURN = "BACK";
+window.keys = inextKeys;
+window.strEXIT = "EXIT";
+window.strRETURN = "BACK";
+var _baseStbInit = typeof stbInit === "function" ? stbInit : function () {};
+function stbInit() {
+    _baseStbInit();
+    try {
+        console.log("[stb] iNext platform detected");
+    }
+    catch (e) { }
+}
+window.stbInit = stbInit;
