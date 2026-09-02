@@ -219,8 +219,8 @@ export function stbPlay(url: string, position?: number): void {
         hlsInstance.destroy();
         hlsInstance = null;
     }
-    if ((window as any).player) {
-        (window as any).player = null;
+    if (window.player) {
+        window.player = null;
     }
     clearPlayTimeInterval();
     // Auto-detect HEVC: if URL likely contains HEVC and browser can't handle it via MSE, use native HTML5
@@ -312,9 +312,9 @@ export function stbPlay(url: string, position?: number): void {
         shaka.Player &&
         shaka.Player.isBrowserSupported()
     ) {
-        (window as any).player = new shaka.Player(video);
+        window.player = new shaka.Player(video);
         try {
-            (window as any).player.load(url);
+            window.player.load(url);
             video!.play();
         } catch (e) {
             console.error(e);
@@ -330,12 +330,12 @@ export function stbPlay(url: string, position?: number): void {
         }
     }
     // Sync playType/playTime to window for external UI consumers
-    (window as any).playType = (window as any).playType ?? 0;
-    (window as any).playTime = (window as any).playTime ?? 0;
+    window.playType = window.playType ?? 0;
+    window.playTime = window.playTime ?? 0;
     // Start playTime ticker for archive playback (playType > 0 set by playArchive)
-    if ((window as any).playType > 0) {
+    if (window.playType > 0) {
         _playTimeInterval = setInterval(function () {
-            (window as any).playTime = ((window as any).playTime as number) + 1;
+            window.playTime = (window.playTime as number) + 1;
         }, 1000);
     }
 }
@@ -446,7 +446,7 @@ export function stbSetWindow(): void {
         w = window.innerWidth / 1280;
     $("#vdiv").css({
         height: 288 * h + "px",
-        left: (window as any).sListPos ? 758 * w + "px" : 10 * w + "px",
+        left: window.sListPos ? 758 * w + "px" : 10 * w + "px",
         top: 50 * h + "px",
         width: 512 * w + "px",
     });
@@ -600,7 +600,7 @@ export function setPipPosition(): void {
 export function stbSetBuffer(): void {
     try {
         var b = Number.parseInt(
-            (bufSize as any) || (window as any).stbGetItem("sBufSize"),
+            (bufSize as any) || window.stbGetItem("sBufSize"),
             10
         );
         if (!isNaN(b) && b > 0 && video) {
@@ -617,8 +617,8 @@ export function stbSetBuffer(): void {
  * Side effects: Creates and appends a <style> element to document.head if CSS exists.
  */
 export function stbCSS(): void {
-    if (typeof (window as any).stbGetItem !== "function") return;
-    var css = (window as any).stbGetItem("stb_custom_css");
+    if (typeof window.stbGetItem !== "function") return;
+    var css = window.stbGetItem("stb_custom_css");
     if (css) {
         var s = document.createElement("style");
         s.textContent = css;
@@ -664,17 +664,14 @@ export function stbExit(): void {
  * - Shows/hides #buffering and #video_res on playback events.
  * - Starts a 1-second interval to calculate and display decoded bitrate.
  * - Calls stbToFullScreen().
- * - Assigns `window.onkeydown = (window as any).keyHandler`.
+ * - Assigns `window.onkeydown = window.keyHandler`.
  */
 export function stbInit(): void {
     $("body").css({ "background-color": "#111" });
     window.addEventListener("resize", function () {
-        if (typeof (window as any).setFontSize === "function")
-            (window as any).setFontSize();
-        if (typeof (window as any).setListPos === "function")
-            (window as any).setListPos();
-        if (typeof (window as any).setColor === "function")
-            (window as any).setColor();
+        if (typeof window.setFontSize === "function") window.setFontSize();
+        if (typeof window.setListPos === "function") window.setListPos();
+        if (typeof window.setColor === "function") window.setColor();
     });
     try {
         if (!document.getElementById("vdiv")) {
@@ -803,7 +800,7 @@ export function stbInit(): void {
         console.error(e);
     }
     stbToFullScreen();
-    window.onkeydown = (window as any).keyHandler;
+    window.onkeydown = window.keyHandler;
 }
 
 /**
@@ -972,19 +969,17 @@ export function stbToggleStandby(): void {
     _standby = !_standby;
     if (_standby) {
         if (typeof stbStop === "function") stbStop();
-        if (typeof (window as any).closeList === "function")
-            (window as any).closeList();
+        if (typeof window.closeList === "function") window.closeList();
         document.body.style.backgroundColor = "#000";
         var launchEl = document.getElementById("launch");
         if (launchEl)
             launchEl.innerHTML =
                 '<div style="text-align:center;padding-top:40%;color:#666;font-size:200%;">' +
-                ((window as any).standbyText || "STANDBY") +
+                (window.standbyText || "STANDBY") +
                 "</div>";
     } else {
         document.body.style.backgroundColor = "";
-        if (typeof (window as any).startPlayer === "function")
-            (window as any).startPlayer();
+        if (typeof window.startPlayer === "function") window.startPlayer();
     }
 }
 
@@ -1020,9 +1015,9 @@ export function toggleSubtitle(): void {
  */
 export function saveAllOptions(): void {
     try {
-        var items = (window as any).stbGetAllItems();
+        var items = window.stbGetAllItems();
         localStorage.setItem("stb_settings_backup", JSON.stringify(items));
-        (window as any).showShift(_("Settings saved to storage"));
+        window.showShift(_("Settings saved to storage"));
     } catch (e) {}
 }
 
@@ -1036,15 +1031,14 @@ export function loadAllOptions(): void {
     try {
         var d = localStorage.getItem("stb_settings_backup");
         if (!d) {
-            (window as any).showShift(_("No saved settings found"));
+            window.showShift(_("No saved settings found"));
             return;
         }
         var items = JSON.parse(d);
-        (window as any).stbClearAllItems();
+        window.stbClearAllItems();
         for (var k in items)
-            if (items.hasOwnProperty(k))
-                (window as any).stbSetItem(k, items[k]);
-        (window as any).showShift(_("Settings loaded from storage"));
+            if (items.hasOwnProperty(k)) window.stbSetItem(k, items[k]);
+        window.showShift(_("Settings loaded from storage"));
     } catch (e) {}
 }
 
@@ -1055,8 +1049,8 @@ export function loadAllOptions(): void {
  * Side effects: Sets CSS `transform: scale(...)` on <body>.
  */
 export function setTransform(): void {
-    var wi = (window as any).wi || 1280;
-    var hi = (window as any).hi || 720;
+    var wi = window.wi || 1280;
+    var hi = window.hi || 720;
     $("body").css(
         "transform",
         "scale(" +
@@ -1077,11 +1071,9 @@ export function unload(): void {
  * Side effects: Calls startPlayer() if autorun is enabled.
  */
 export function setAutorun(): void {
-    var autorun = (window as any).stbGetItem
-        ? (window as any).stbGetItem("stb_autorun")
-        : null;
-    if (autorun === "1" && typeof (window as any).startPlayer === "function") {
-        (window as any).startPlayer();
+    var autorun = window.stbGetItem ? window.stbGetItem("stb_autorun") : null;
+    if (autorun === "1" && typeof window.startPlayer === "function") {
+        window.startPlayer();
     }
 }
 

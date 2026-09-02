@@ -249,7 +249,7 @@ export function doGetCurProg(): void {
     var entry = arrayGetCurProg.shift();
     var chId = entry!.ch_id;
     // Use getEPGchanelCurCached if available (set by provider), else getEPGchanelCached
-    var fetchFn = (window as any).getEPGchanelCurCached || getEPGchanelCached;
+    var fetchFn = window.getEPGchanelCurCached || getEPGchanelCached;
     if (typeof fetchFn === "function") {
         fetchFn(chId, function (_id: any, epgData: EPGEntry[] | null) {
             setCurProg(chId, epgData, function () {
@@ -316,7 +316,7 @@ export function setCurrent(
         if (playType === -99999999999) {
             if (medHistory.length && medHistory[0].current !== undefined) {
                 medHistory[0].current = Math.floor(
-                    (window as any).video?.currentTime || 0
+                    window.video?.currentTime || 0
                 );
             }
         } else {
@@ -350,9 +350,9 @@ export function setCurrent(
     curList = cats[catsArray[catIndex]] || [];
     primaryIndex = channelIndex;
     // Sync to globals for backward compat with old-style code
-    (window as any).catIndex = categoryIndex;
-    (window as any).curList = curList;
-    (window as any).primaryIndex = channelIndex;
+    window.catIndex = categoryIndex;
+    window.curList = curList;
+    window.primaryIndex = channelIndex;
     // Persist current channel position (original stbPlayer.js saves at this point)
     providerSetItem("primaryIndex", String(primaryIndex));
     providerSetItem("catIndex", String(catIndex));
@@ -368,8 +368,8 @@ export function setCurrent(
 export function nextChannel(): void {
     var nextIndex = primaryIndex + 1;
     if (nextIndex >= curList.length) nextIndex = 0;
-    if (typeof (window as any).playChannel === "function")
-        (window as any).playChannel(catIndex, nextIndex);
+    if (typeof window.playChannel === "function")
+        window.playChannel(catIndex, nextIndex);
 }
 
 /**
@@ -380,8 +380,8 @@ export function nextChannel(): void {
 export function prevChannel(): void {
     var prevIndex = primaryIndex - 1;
     if (prevIndex < 0) prevIndex = curList.length - 1;
-    if (typeof (window as any).playChannel === "function")
-        (window as any).playChannel(catIndex, prevIndex);
+    if (typeof window.playChannel === "function")
+        window.playChannel(catIndex, prevIndex);
 }
 
 /**
@@ -392,8 +392,7 @@ export function prevChannel(): void {
  * Side effects: Calls `window.numberProg(digit)` if defined.
  */
 export function handleNumberInput(digit: number): void {
-    if (typeof (window as any).numberProg === "function")
-        (window as any).numberProg(digit);
+    if (typeof window.numberProg === "function") window.numberProg(digit);
 }
 
 /**
@@ -471,11 +470,11 @@ export function hasParentalLock(channelId: number): boolean {
 export function ifParentalAccess(callback: () => void): boolean {
     if (
         settings.psChannels &&
-        (window as any).parentPIN !== "*" &&
-        !(window as any).parentAccess
+        window.parentPIN !== "*" &&
+        !window.parentAccess
     ) {
-        if (typeof (window as any).enterPinAndSetAccess === "function")
-            (window as any).enterPinAndSetAccess(callback);
+        if (typeof window.enterPinAndSetAccess === "function")
+            window.enterPinAndSetAccess(callback);
         return true;
     }
     return false;
@@ -558,9 +557,7 @@ export function getCurProgData(
     channelId: number,
     callback: (chId: number) => void
 ): boolean {
-    var ch = (window as any).channels
-        ? (window as any).channels[channelId]
-        : undefined;
+    var ch = window.channels ? window.channels[channelId] : undefined;
     var now = Date.now() / 1000;
     // If channel object already has current EPG data, return true immediately (sync path)
     if (ch && ch.time_to && ch.time_to >= now) return true;
@@ -604,9 +601,7 @@ export function setCurProg(
         epg[channelId] = epgData;
         epgCashObj[channelId] = epgData;
         // Populate channel object with current program (matching old stbPlayer behavior)
-        var ch = (window as any).channels
-            ? (window as any).channels[channelId]
-            : undefined;
+        var ch = window.channels ? window.channels[channelId] : undefined;
         if (ch) {
             var sorted = epgData.slice().sort(function (
                 a: EPGEntry,
@@ -667,51 +662,44 @@ export function onChanelsLoaded(): void {
         if (cList.length) {
             // Save pending provider to storage on success
             if (
-                (window as any)._pendingProvId &&
-                typeof (window as any).stbSetItem === "function"
+                window._pendingProvId &&
+                typeof window.stbSetItem === "function"
             ) {
-                (window as any).stbSetItem(
-                    "ottplayprov",
-                    (window as any)._pendingProvId
-                );
-                if (typeof (window as any).stbSetItem === "function") {
-                    var id = (window as any)._pendingProvId;
-                    var arr = (window as any).arrayProvaiders;
+                window.stbSetItem("ottplayprov", window._pendingProvId);
+                if (typeof window.stbSetItem === "function") {
+                    var id = window._pendingProvId;
+                    var arr = window.arrayProvaiders;
                     var recentCount = 3;
                     if (arr && arr.indexOf(id) > recentCount - 1) {
                         var recentProviders: any[] = [];
                         try {
                             recentProviders = JSON.parse(
-                                (window as any).stbGetItem("ottplayprovs") ||
-                                    "[]"
+                                window.stbGetItem("ottplayprovs") || "[]"
                             );
                         } catch (_) {}
                         var rIdx: number = recentProviders.indexOf(id);
                         if (rIdx !== -1) recentProviders.splice(rIdx, 1);
                         recentProviders.push(id);
-                        (window as any).stbSetItem(
+                        window.stbSetItem(
                             "ottplayprovs",
                             JSON.stringify(recentProviders)
                         );
                     }
                 }
-                (window as any)._pendingProvId = "";
+                window._pendingProvId = "";
             }
             if (!sFavorites) {
-                catsArray = (window as any).providerGetJson("catsArray", []);
+                catsArray = window.providerGetJson("catsArray", []);
                 cats =
                     Array.isArray(catsArray) && catsArray.length > 0
-                        ? (window as any).providerGetJson("cats", {})
+                        ? window.providerGetJson("cats", {})
                         : {};
             } else {
-                favoritesArray = (window as any).providerGetJson(
-                    "favoritesArray",
-                    []
-                );
+                favoritesArray = window.providerGetJson("favoritesArray", []);
             }
             if (!catsArray.length && cList.length) {
                 cList.forEach(function (chId: number) {
-                    var ch = (window as any).channels[chId];
+                    var ch = window.channels[chId];
                     if (ch && ch.category) {
                         if (!cats[ch.category.name]) {
                             catsArray.push(ch.category.name);
@@ -721,38 +709,35 @@ export function onChanelsLoaded(): void {
                     }
                 });
             }
-            parentalArray = (window as any).providerGetJson(
-                "parentalArray",
-                []
-            );
+            parentalArray = window.providerGetJson("parentalArray", []);
             if (
                 !parentalArray.length &&
-                typeof (window as any).parental !== "undefined"
+                typeof window.parental !== "undefined"
             ) {
                 cList.forEach(function (chId: number) {
-                    var ch = (window as any).channels[chId];
+                    var ch = window.channels[chId];
                     if (
                         ch &&
                         ch.category &&
                         ch.category.name &&
-                        (window as any).parental.test(ch.category.name)
+                        window.parental.test(ch.category.name)
                     ) {
                         parentalArray.push(chId);
                     }
                 });
             }
-            catsArray.unshift((window as any)._("All"));
-            cats[(window as any)._("All")] = cList.slice();
+            catsArray.unshift(window._("All"));
+            cats[window._("All")] = cList.slice();
             if (sFavorites) {
-                catsArray.unshift((window as any)._("Favorites"));
-                cats[(window as any)._("Favorites")] = favoritesArray;
+                catsArray.unshift(window._("Favorites"));
+                cats[window._("Favorites")] = favoritesArray;
             }
             // Sync module cats/catsArray/curList to globals (used by _channelsList, old code)
-            (window as any).catsArray = catsArray;
-            (window as any).cats = cats;
-            (window as any).curList = curList;
-            (window as any).catIndex = catIndex;
-            (window as any).primaryIndex = primaryIndex;
+            window.catsArray = catsArray;
+            window.cats = cats;
+            window.curList = curList;
+            window.catIndex = catIndex;
+            window.primaryIndex = primaryIndex;
             // Clamp catIndex and primaryIndex to valid ranges
             if (catIndex < 0 || catIndex >= catsArray.length)
                 catIndex = sFavorites ? 1 : 0;
@@ -763,40 +748,40 @@ export function onChanelsLoaded(): void {
             var el = document.getElementById("launch");
             if (el) el.innerHTML += "<br/>Start playback...";
             try {
-                (window as any).playChannel(catIndex, primaryIndex);
+                window.playChannel(catIndex, primaryIndex);
             } catch (e) {
                 console.error(e);
                 primaryIndex = 0;
                 catIndex = sFavorites ? 1 : 0;
                 try {
-                    (window as any).playChannel(catIndex, primaryIndex);
+                    window.playChannel(catIndex, primaryIndex);
                 } catch (e2) {
                     console.error(e2);
                 }
             }
             try {
-                (window as any).loadEpgTimers();
+                window.loadEpgTimers();
             } catch (e) {
                 console.error(e);
             }
             // List must be hidden so main key handler gets events (ENTER, Q, C, etc.)
-            (window as any).isListVisible = false;
+            window.isListVisible = false;
         } else {
             // Empty channel list — show popup so user can configure provider (e.g., enter playlist URL)
-            (window as any).playType = 0;
+            window.playType = 0;
             setCurrent(sFavorites ? 1 : 0, 0);
             var launchEl = document.getElementById("launch");
             if (launchEl)
                 launchEl.innerHTML += "<br/>Channel list not received !!!";
             // Reset pending provider so user can retry without hitting savedProvId === id
-            (window as any)._pendingProvId = "";
-            (window as any).launch_id = "#launch";
+            window._pendingProvId = "";
+            window.launch_id = "#launch";
             // Show popup list so user can select 'Select playlist' to configure provider
             try {
-                if (typeof (window as any).popupList === "function") {
-                    var pActions = (window as any).popupActions;
+                if (typeof window.popupList === "function") {
+                    var pActions = window.popupActions;
                     if (pActions && pActions.length) {
-                        (window as any).popupList();
+                        window.popupList();
                     }
                 }
             } catch (e) {
@@ -1007,8 +992,8 @@ export function epgList(catIdx: number, chIdx: number, force: boolean): void {
         listEpgArray = epgData;
         w.getListItemFn = itemEPG;
         w.detailListActionFn = function () {
-            if (typeof (window as any).detailEPG === "function")
-                (window as any).detailEPG(channelId);
+            if (typeof window.detailEPG === "function")
+                window.detailEPG(channelId);
         };
         w.listKeyHandlerFn = epgKeyHandler;
 
@@ -1061,7 +1046,7 @@ export function selectEpg(): void {
         setCurrent(w.listCatIndex, w.listChannel, true);
 
     // Update global epgArray for playback sync
-    (window as any).epgArray = listEpgArray;
+    window.epgArray = listEpgArray;
     if (typeof playArchive === "function") playArchive(item.time);
 }
 
@@ -1980,10 +1965,10 @@ export function liveStop(): void {
         setCurProg(t, e, undefined as any);
         playType = Math.round(Date.now() / 1e3);
         playTime = 0;
-        if (typeof (window as any).showChanelInfo === "function")
-            (window as any).showChanelInfo(2);
-        if (typeof (window as any).showShift === "function")
-            (window as any).showShift((window as any)._("Pause"));
+        if (typeof window.showChanelInfo === "function")
+            window.showChanelInfo(2);
+        if (typeof window.showShift === "function")
+            window.showShift(window._("Pause"));
         stbPause();
     });
 }
@@ -2003,8 +1988,7 @@ function seekArchive(offset: number): void {
     if (playType === 0) {
         // Clock skip on live: offset is relative seconds from now
         var delta = offset;
-        if (typeof (window as any).timeShift === "function")
-            (window as any).timeShift(-delta);
+        if (typeof window.timeShift === "function") window.timeShift(-delta);
         return;
     }
     var len: number =
@@ -2186,9 +2170,9 @@ export function timeShift(n: number): void {
                 });
         }
         epgArray = r;
-        (window as any).epgArray = r;
+        window.epgArray = r;
         setCurProg(chId, epgData, undefined);
-        (window as any).curProg = curProg;
+        window.curProg = curProg;
         setCurrent(catIndex, primaryIndex, true);
         if (n) {
             var delta = Math.round(Date.now() / 1000) - n;
@@ -2219,8 +2203,7 @@ export function timeShift(n: number): void {
  * Side effects: Calls `window.showPage`.
  */
 export function channelsList(_catIdx: number, _channelIdx: number): void {
-    if (typeof (window as any).showPage === "function")
-        (window as any).showPage();
+    if (typeof window.showPage === "function") window.showPage();
 }
 /**
  * Open the category list ("buckets" / bucket selection) view.
@@ -2509,10 +2492,10 @@ export function searchChannel(): void {
         // Read window.editvar and #editvar input (user may have typed in the HTML input)
         var inputEl = document.getElementById("editvar");
         var inputVal = (inputEl && (inputEl as HTMLInputElement).value) || "";
-        var submitted = (window as any).editvar || "";
+        var submitted = window.editvar || "";
         if (!inputVal && !submitted) return;
         saved = inputVal || submitted;
-        (window as any).editvar = saved;
+        window.editvar = saved;
         if (typeof w.stbSetItem === "function") w.stbSetItem("chSearch", saved);
         setTimeout(function () {
             if (w.listCatIndex === undefined) return;
@@ -2857,7 +2840,7 @@ export function searchMedia(e: any): void {
     w.setEdit = function (): void {
         var inputEl = document.getElementById("editvar");
         var inputVal = (inputEl && (inputEl as HTMLInputElement).value) || "";
-        var submitted = (window as any).editvar || "";
+        var submitted = window.editvar || "";
         if (!inputVal && !submitted) return;
         t = inputVal || submitted;
         if (typeof w.stbSetItem === "function") w.stbSetItem("medSearch", t);
@@ -3149,58 +3132,50 @@ export function saveCHarr(
  * showActionsDialog, infoProgramm, moveChannel, deleteChannel, etc.
  */
 export function channelsKeyHandler(keyCode: number): boolean {
-    var keys = (window as any).keys;
+    var keys = window.keys;
     if (!keys) return false;
 
     switch (keyCode) {
         case keys.RETURN:
-            if (typeof (window as any).closeList === "function")
-                (window as any).closeList();
+            if (typeof window.closeList === "function") window.closeList();
             return true;
 
         case keys.ENTER: {
-            if (typeof (window as any).closeList === "function") {
-                (window as any).closeList();
+            if (typeof window.closeList === "function") {
+                window.closeList();
             }
-            var selChId = (window as any).listArray
-                ? (window as any).listArray[(window as any).selIndex]
+            var selChId = window.listArray
+                ? window.listArray[window.selIndex]
                 : undefined;
-            var curChId = (window as any).curList
-                ? (window as any).curList[(window as any).primaryIndex]
+            var curChId = window.curList
+                ? window.curList[window.primaryIndex]
                 : undefined;
             if (selChId) {
                 if (selChId !== curChId) {
-                    if (typeof (window as any).playChannel === "function") {
-                        (window as any).playChannel(
-                            (window as any).listCatIndex,
-                            (window as any).selIndex
+                    if (typeof window.playChannel === "function") {
+                        window.playChannel(
+                            window.listCatIndex,
+                            window.selIndex
                         );
                     }
-                } else if (!(window as any).playType) {
+                } else if (!window.playType) {
                     // Same channel in live mode — show info bar (matches old stbPlayer behavior)
-                    if (typeof (window as any).setCurrent === "function") {
-                        (window as any).setCurrent(
-                            (window as any).listCatIndex,
-                            (window as any).selIndex
-                        );
+                    if (typeof window.setCurrent === "function") {
+                        window.setCurrent(window.listCatIndex, window.selIndex);
                     }
-                    var chId = (window as any).curList
-                        ? (window as any).curList[(window as any).primaryIndex]
+                    var chId = window.curList
+                        ? window.curList[window.primaryIndex]
                         : undefined;
-                    if (
-                        typeof (window as any).updateChanelInfo === "function"
-                    ) {
-                        (window as any).updateChanelInfo(chId);
+                    if (typeof window.updateChanelInfo === "function") {
+                        window.updateChanelInfo(chId);
                     }
                     if (
-                        typeof (window as any).showChanelInfo === "function" &&
-                        (window as any).sInfoSwitch
+                        typeof window.showChanelInfo === "function" &&
+                        window.sInfoSwitch
                     ) {
-                        (window as any).showChanelInfo(
-                            (window as any).settings.infoTimeout
-                        );
+                        window.showChanelInfo(window.settings.infoTimeout);
                     }
-                    (window as any).playType = 0;
+                    window.playType = 0;
                 }
             }
             return true;
@@ -3208,40 +3183,34 @@ export function channelsKeyHandler(keyCode: number): boolean {
 
         case keys.STOP:
         case keys.PIP:
-            if (typeof (window as any).stbPlayPip === "function") {
-                var chId = (window as any).listArray[(window as any).selIndex];
-                if (chId) (window as any).pipIndex = (window as any).selIndex;
-                if (typeof (window as any).getChannelUrl === "function") {
-                    (window as any).stbPlayPip(
-                        (window as any).getChannelUrl(chId)
-                    );
+            if (typeof window.stbPlayPip === "function") {
+                var chId = window.listArray[window.selIndex];
+                if (chId) window.pipIndex = window.selIndex;
+                if (typeof window.getChannelUrl === "function") {
+                    window.stbPlayPip(window.getChannelUrl(chId));
                 }
             }
             return true;
 
         case keys.RED:
-        case (window as any).keys ? (window as any).keys.EPG : undefined:
-            if (typeof (window as any).epgList === "function") {
-                (window as any).epgList(
-                    (window as any).listCatIndex,
-                    (window as any).selIndex,
-                    true
-                );
+        case window.keys ? window.keys.EPG : undefined:
+            if (typeof window.epgList === "function") {
+                window.epgList(window.listCatIndex, window.selIndex, true);
             }
             return true;
 
         case keys.BLUE:
         case keys.PLAY:
         case keys.PAUSE:
-            if (typeof (window as any).bucketsList === "function") {
-                (window as any).bucketsList((window as any).listCatIndex);
+            if (typeof window.bucketsList === "function") {
+                window.bucketsList(window.listCatIndex);
             }
             return true;
 
         case keys.N0:
         case keys.YELLOW:
         case keys.TOOLS:
-            if ((window as any).sNoNumbersKeys) {
+            if (window.sNoNumbersKeys) {
                 showActionsDialog();
             } else {
                 $("#listPopUp").toggle();
@@ -3250,43 +3219,33 @@ export function channelsKeyHandler(keyCode: number): boolean {
 
         case keys.N2:
         case keys.INFO: {
-            var ch = (window as any).channels[
-                (window as any).listArray[(window as any).selIndex]
-            ];
+            var ch = window.channels[window.listArray[window.selIndex]];
             if (
                 ch &&
                 typeof ch.name !== "undefined" &&
-                typeof (window as any).infoProgramm === "function"
+                typeof window.infoProgramm === "function"
             ) {
-                (window as any).infoProgramm(ch.name);
+                window.infoProgramm(ch.name);
             }
             return true;
         }
 
         case keys.RW:
         case keys.PREV: {
-            var rwFn =
-                keyCode === keys.RW
-                    ? (window as any).sRewFun
-                    : (window as any).sPNFun;
-            if (
-                rwFn === 1 &&
-                typeof (window as any).bucketsList === "function"
-            ) {
-                (window as any).bucketsList((window as any).listCatIndex);
+            var rwFn = keyCode === keys.RW ? window.sRewFun : window.sPNFun;
+            if (rwFn === 1 && typeof window.bucketsList === "function") {
+                window.bucketsList(window.listCatIndex);
                 return true;
             }
             if (rwFn === 2) {
                 var newCat =
-                    (window as any).listCatIndex > 0
-                        ? (window as any).listCatIndex - 1
-                        : ((window as any).catsArray || []).length - 1;
-                if (typeof (window as any).channelsList === "function") {
-                    (window as any).channelsList(
+                    window.listCatIndex > 0
+                        ? window.listCatIndex - 1
+                        : (window.catsArray || []).length - 1;
+                if (typeof window.channelsList === "function") {
+                    window.channelsList(
                         newCat,
-                        (window as any).catIndex !== newCat
-                            ? 0
-                            : (window as any).primaryIndex
+                        window.catIndex !== newCat ? 0 : window.primaryIndex
                     );
                 }
                 return true;
@@ -3296,30 +3255,20 @@ export function channelsKeyHandler(keyCode: number): boolean {
 
         case keys.FF:
         case keys.NEXT: {
-            var ffFn =
-                keyCode === keys.FF
-                    ? (window as any).sRewFun
-                    : (window as any).sPNFun;
-            if (ffFn === 1 && typeof (window as any).epgList === "function") {
-                (window as any).epgList(
-                    (window as any).listCatIndex,
-                    (window as any).selIndex,
-                    true
-                );
+            var ffFn = keyCode === keys.FF ? window.sRewFun : window.sPNFun;
+            if (ffFn === 1 && typeof window.epgList === "function") {
+                window.epgList(window.listCatIndex, window.selIndex, true);
                 return true;
             }
             if (ffFn === 2) {
                 var newCat2 =
-                    (window as any).listCatIndex <
-                    ((window as any).catsArray || []).length - 1
-                        ? (window as any).listCatIndex + 1
+                    window.listCatIndex < (window.catsArray || []).length - 1
+                        ? window.listCatIndex + 1
                         : 0;
-                if (typeof (window as any).channelsList === "function") {
-                    (window as any).channelsList(
+                if (typeof window.channelsList === "function") {
+                    window.channelsList(
                         newCat2,
-                        (window as any).catIndex !== newCat2
-                            ? 0
-                            : (window as any).primaryIndex
+                        window.catIndex !== newCat2 ? 0 : window.primaryIndex
                     );
                 }
                 return true;
@@ -3341,30 +3290,29 @@ export function channelsKeyHandler(keyCode: number): boolean {
                 deleteChannel();
                 return true;
             case keys.N3:
-                if (typeof (window as any).addChannel2bucket === "function") {
-                    (window as any).addChannel2bucket();
+                if (typeof window.addChannel2bucket === "function") {
+                    window.addChannel2bucket();
                 }
                 return true;
             case keys.N4:
-                if (typeof (window as any).parentChannel === "function") {
-                    (window as any).parentChannel();
+                if (typeof window.parentChannel === "function") {
+                    window.parentChannel();
                 }
                 return true;
             case keys.N9: {
-                var newSort = (window as any).sSortAbc == 1 ? 0 : 1;
-                (window as any).sSortAbc = newSort;
-                if (typeof (window as any).providerSetItem === "function") {
-                    (window as any).providerSetItem("sSortAbc", newSort);
+                var newSort = window.sSortAbc == 1 ? 0 : 1;
+                window.sSortAbc = newSort;
+                if (typeof window.providerSetItem === "function") {
+                    window.providerSetItem("sSortAbc", newSort);
                 }
-                if (typeof (window as any).sortChannels === "function") {
-                    (window as any).sortChannels(newSort);
+                if (typeof window.sortChannels === "function") {
+                    window.sortChannels(newSort);
                 }
-                if (typeof (window as any).showPage === "function")
-                    (window as any).showPage();
+                if (typeof window.showPage === "function") window.showPage();
                 return true;
             }
             case keys.N6:
-                (window as any).listChannel = (window as any).selIndex;
+                window.listChannel = window.selIndex;
                 searchChannel();
                 return true;
         }
@@ -3384,8 +3332,8 @@ export function channelsKeyHandler(keyCode: number): boolean {
  * - Calls `window.showPage`, `window.changeSelect`, `window.saveChannelsCats`.
  */
 function moveChannel(delta: number): void {
-    var listArray = (window as any).listArray;
-    var selIndex = (window as any).selIndex;
+    var listArray = window.listArray;
+    var selIndex = window.selIndex;
     if (!listArray || selIndex === undefined) return;
 
     if (selIndex + delta < 0) {
@@ -3399,12 +3347,10 @@ function moveChannel(delta: number): void {
         listArray[selIndex] = listArray[selIndex + delta];
         listArray[selIndex + delta] = tmp;
     }
-    if (typeof (window as any).showPage === "function")
-        (window as any).showPage();
-    if (typeof (window as any).changeSelect === "function")
-        (window as any).changeSelect(delta);
-    if (typeof (window as any).saveChannelsCats === "function")
-        (window as any).saveChannelsCats();
+    if (typeof window.showPage === "function") window.showPage();
+    if (typeof window.changeSelect === "function") window.changeSelect(delta);
+    if (typeof window.saveChannelsCats === "function")
+        window.saveChannelsCats();
 }
 
 /**
@@ -3416,20 +3362,19 @@ function moveChannel(delta: number): void {
  * - Calls `window.showPage` and `window.saveChannelsCats`.
  */
 function deleteChannel(): void {
-    var listArray = (window as any).listArray;
-    var selIndex = (window as any).selIndex;
+    var listArray = window.listArray;
+    var selIndex = window.selIndex;
     if (!listArray || selIndex === undefined) return;
     listArray.splice(selIndex, 1);
     if (
         selIndex === listArray.length &&
-        typeof (window as any).changeSelect === "function"
+        typeof window.changeSelect === "function"
     ) {
-        (window as any).changeSelect(-1);
+        window.changeSelect(-1);
     }
-    if (typeof (window as any).showPage === "function")
-        (window as any).showPage();
-    if (typeof (window as any).saveChannelsCats === "function")
-        (window as any).saveChannelsCats();
+    if (typeof window.showPage === "function") window.showPage();
+    if (typeof window.saveChannelsCats === "function")
+        window.saveChannelsCats();
 }
 
 /* ---------------------------------------------------------------------------
@@ -3469,8 +3414,8 @@ export function _enterPinCode(
         else if (curIdx > 9) curIdx = 0;
         var next = document.getElementById("k" + curIdx);
         if (next) {
-            next.style.backgroundColor = (window as any).curColorB || "#668";
-            next.style.color = (window as any).curColor || "gold";
+            next.style.backgroundColor = window.curColorB || "#668";
+            next.style.color = window.curColor || "gold";
         }
     }
 
@@ -3498,49 +3443,49 @@ export function _enterPinCode(
         .show();
     highlight(1);
 
-    (window as any).dialogBoxKeyHandler = function (e: number): void {
+    window.dialogBoxKeyHandler = function (e: number): void {
         switch (e) {
-            case (window as any).keys.N0:
-            case (window as any).keys.N1:
-            case (window as any).keys.N2:
-            case (window as any).keys.N3:
-            case (window as any).keys.N4:
-            case (window as any).keys.N5:
-            case (window as any).keys.N6:
-            case (window as any).keys.N7:
-            case (window as any).keys.N8:
-            case (window as any).keys.N9: {
+            case window.keys.N0:
+            case window.keys.N1:
+            case window.keys.N2:
+            case window.keys.N3:
+            case window.keys.N4:
+            case window.keys.N5:
+            case window.keys.N6:
+            case window.keys.N7:
+            case window.keys.N8:
+            case window.keys.N9: {
                 pin += (e - 48).toString();
                 var pinEl = document.getElementById("pin");
                 if (pinEl)
                     pinEl.innerHTML = "# # # # ".substr(0, pin.length * 2);
                 if (pin.length === 4) {
                     $("#dialogbox").hide();
-                    (window as any).dialogBoxKeyHandler = null;
+                    window.dialogBoxKeyHandler = null;
                     callback(pin);
                 }
                 return;
             }
-            case (window as any).keys.RETURN:
+            case window.keys.RETURN:
                 $("#dialogbox").hide();
-                (window as any).dialogBoxKeyHandler = null;
+                window.dialogBoxKeyHandler = null;
                 callback("");
                 return;
-            case (window as any).keys.LEFT:
+            case window.keys.LEFT:
                 highlight(curIdx - 1);
                 return;
-            case (window as any).keys.RIGHT:
+            case window.keys.RIGHT:
                 highlight(curIdx + 1);
                 return;
-            case (window as any).keys.UP:
+            case window.keys.UP:
                 highlight(1);
                 return;
-            case (window as any).keys.DOWN:
+            case window.keys.DOWN:
                 highlight(0);
                 return;
-            case (window as any).keys.ENTER:
-                if (typeof (window as any)._doKey === "function") {
-                    (window as any)._doKey((window as any).keys.N0 + curIdx);
+            case window.keys.ENTER:
+                if (typeof window._doKey === "function") {
+                    window._doKey(window.keys.N0 + curIdx);
                 }
                 return;
         }
@@ -3579,17 +3524,16 @@ export function enterPinCode(
  * - Shows on-screen notification on failure.
  */
 export function setParentAccess(granted: boolean, callback: () => void): void {
-    (window as any).parentAccess = granted;
+    window.parentAccess = granted;
     if (granted) {
         setTimeout(function () {
-            (window as any).parentAccess = false;
+            window.parentAccess = false;
         }, 3600000); /* 1 hour */
         callback();
     } else {
-        if (typeof (window as any).showShift === "function")
-            (window as any).showShift(
-                (window as any)._("Wrong parental code !!!") ||
-                    "Wrong parental code !!!"
+        if (typeof window.showShift === "function")
+            window.showShift(
+                window._("Wrong parental code !!!") || "Wrong parental code !!!"
             );
     }
 }
@@ -3603,10 +3547,10 @@ export function setParentAccess(granted: boolean, callback: () => void): void {
  */
 export function enterPinAndSetAccess(callback: () => void): void {
     enterPinCode(
-        (window as any)._("Enter parental code") || "Enter parental code",
+        window._("Enter parental code") || "Enter parental code",
         function (pin: string) {
             if (!pin) return;
-            setParentAccess(pin === (window as any).parentPIN, callback);
+            setParentAccess(pin === window.parentPIN, callback);
         }
     );
 }
@@ -3632,7 +3576,7 @@ export function enterPinAndSetAccess(callback: () => void): void {
  * - Calls `window._setSetup` and `window.optionsList`.
  */
 export function parentControlSetup(): void {
-    if ((window as any).parentPIN !== "*" && !(window as any).parentAccess) {
+    if (window.parentPIN !== "*" && !window.parentAccess) {
         enterPinAndSetAccess(parentControlSetup);
         return;
     }
@@ -3649,68 +3593,59 @@ export function parentControlSetup(): void {
      */
     function saveSettings(): void {
         function doSave(): void {
-            if (typeof (window as any).stbSetItem === "function")
-                (window as any).stbSetItem(
-                    "parentPIN",
-                    (window as any).parentPIN
-                );
+            if (typeof window.stbSetItem === "function")
+                window.stbSetItem("parentPIN", window.parentPIN);
             var idx = 1;
-            if (typeof (window as any).saveIfChanged === "function")
-                (window as any).saveIfChanged(idx++, "sPSchannels", true);
-            if (typeof (window as any).saveIfChanged === "function")
-                (window as any).saveIfChanged(idx++, "sPSoptions", true);
+            if (typeof window.saveIfChanged === "function")
+                window.saveIfChanged(idx++, "sPSchannels", true);
+            if (typeof window.saveIfChanged === "function")
+                window.saveIfChanged(idx++, "sPSoptions", true);
             if (
-                typeof (window as any).optIndexOf === "function" &&
-                typeof (window as any).selectProvaider !== "undefined" &&
-                (window as any).optIndexOf((window as any).selectProvaider) !==
-                    -1 &&
-                typeof (window as any).saveIfChanged === "function"
+                typeof window.optIndexOf === "function" &&
+                typeof window.selectProvaider !== "undefined" &&
+                window.optIndexOf(window.selectProvaider) !== -1 &&
+                typeof window.saveIfChanged === "function"
             )
-                (window as any).saveIfChanged(idx++, "sPSprovs", true);
-            if (typeof (window as any).showShift === "function")
-                (window as any).showShift(
-                    (window as any)._("Settings saved") || "Settings saved"
+                window.saveIfChanged(idx++, "sPSprovs", true);
+            if (typeof window.showShift === "function")
+                window.showShift(
+                    window._("Settings saved") || "Settings saved"
                 );
-            if (typeof (window as any).closeList === "function")
-                (window as any).closeList();
-            if (typeof (window as any).optionsList === "function")
-                (window as any).optionsList(parentControlSetup);
+            if (typeof window.closeList === "function") window.closeList();
+            if (typeof window.optionsList === "function")
+                window.optionsList(parentControlSetup);
         }
 
-        var enabled = (window as any).parentPIN !== "*" ? 1 : 0;
+        var enabled = window.parentPIN !== "*" ? 1 : 0;
         if (
             enabled !==
-            ((window as any).listArray && (window as any).listArray[0]
-                ? (window as any).listArray[0].val
+            (window.listArray && window.listArray[0]
+                ? window.listArray[0].val
                 : null)
         ) {
-            if ((window as any).parentPIN !== "*") {
-                (window as any).parentPIN = "*";
+            if (window.parentPIN !== "*") {
+                window.parentPIN = "*";
                 doSave();
             } else {
                 enterPinCode(
-                    (window as any)._("Set parental code") ||
-                        "Set parental code",
+                    window._("Set parental code") || "Set parental code",
                     function (pin: string) {
                         if (!pin) return;
                         var newPin = pin;
                         enterPinCode(
-                            (window as any)._("Repeat parental code") ||
+                            window._("Repeat parental code") ||
                                 "Repeat parental code",
                             function (repeat: string) {
                                 if (!repeat) return;
                                 if (repeat !== newPin) {
-                                    if (
-                                        typeof (window as any).showShift ===
-                                        "function"
-                                    )
-                                        (window as any).showShift(
-                                            (window as any)._(
+                                    if (typeof window.showShift === "function")
+                                        window.showShift(
+                                            window._(
                                                 "Wrong parental code !!!"
                                             ) || "Wrong parental code !!!"
                                         );
                                 } else {
-                                    (window as any).parentPIN = pin;
+                                    window.parentPIN = pin;
                                     setParentAccess(true, doSave);
                                 }
                             }
@@ -3723,61 +3658,57 @@ export function parentControlSetup(): void {
         }
     }
 
-    var yesNo = [
-        (window as any)._("no") || "no",
-        (window as any)._("yes") || "yes",
-    ];
-    (window as any).listArray = [
+    var yesNo = [window._("no") || "no", window._("yes") || "yes"];
+    window.listArray = [
         {
-            name: (window as any)._("Parental control") || "Parental control",
-            val: (window as any).parentPIN !== "*" ? 1 : 0,
+            name: window._("Parental control") || "Parental control",
+            val: window.parentPIN !== "*" ? 1 : 0,
             values: yesNo,
         },
         {
             name:
-                (window as any)._("Protect Adult Channels") ||
-                "Protect Adult Channels",
-            val: (window as any).sPSchannels,
+                window._("Protect Adult Channels") || "Protect Adult Channels",
+            val: window.sPSchannels,
             values: yesNo,
         },
         {
-            name: (window as any)._("Protect Settings") || "Protect Settings",
-            val: (window as any).sPSoptions,
+            name: window._("Protect Settings") || "Protect Settings",
+            val: window.sPSoptions,
             values: yesNo,
         },
         {
             name:
-                (window as any)._("Protect Change Provider") ||
+                window._("Protect Change Provider") ||
                 "Protect Change Provider",
-            val: (window as any).sPSprovs,
+            val: window.sPSprovs,
             values: yesNo,
         },
-        { cur: "", name: "", val: 0, values: (window as any).nofun || [] },
+        { cur: "", name: "", val: 0, values: window.nofun || [] },
         {
             cur: "",
             name:
                 '<div class="btn">' +
-                ((window as any)._("Save Settings") || "Save Settings") +
+                (window._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
             values: saveSettings,
         },
     ];
     if (
-        typeof (window as any).optIndexOf === "function" &&
-        typeof (window as any).selectProvaider !== "undefined" &&
-        (window as any).optIndexOf((window as any).selectProvaider) === -1
+        typeof window.optIndexOf === "function" &&
+        typeof window.selectProvaider !== "undefined" &&
+        window.optIndexOf(window.selectProvaider) === -1
     ) {
-        (window as any).listArray.splice(3, 1);
+        window.listArray.splice(3, 1);
     }
     var captionEl = document.getElementById("listCaption");
     if (captionEl)
         captionEl.innerHTML =
-            (window as any)._("Parental control") || "Parental control";
-    if (typeof (window as any)._setSetup === "function") {
-        (window as any)._setSetup(saveSettings, function () {
-            if (typeof (window as any).optionsList === "function")
-                (window as any).optionsList(parentControlSetup);
+            window._("Parental control") || "Parental control";
+    if (typeof window._setSetup === "function") {
+        window._setSetup(saveSettings, function () {
+            if (typeof window.optionsList === "function")
+                window.optionsList(parentControlSetup);
         });
     }
 }
