@@ -239,11 +239,22 @@ export function stbPlay(url: string, position?: number): void {
             backBufferLength: 90,
             capLevelToPlayerSize: true,
             enableWorker: true,
+            fragLoadingMaxRetry: 1,
+            levelLoadingMaxRetry: 1,
             lowLatencyMode: false,
+            manifestLoadingMaxRetry: 1,
             maxBufferLength: 30,
             maxMaxBufferLength: 600,
             overrideNative: false,
             startLevel: -1,
+        });
+        // ponytail: seek to position after manifest loaded (fragmented MP4, not native HLS)
+        var _startPos = position || 0;
+        hlsInstance.on(Hls.Events.LEVEL_LOADED, function (_e: any, _d: any) {
+            if (_startPos > 0 && video!.currentTime === 0) {
+                video!.currentTime = _startPos;
+                _startPos = 0;
+            }
         });
         hlsInstance.loadSource(url);
         hlsInstance.attachMedia(video);
@@ -259,6 +270,7 @@ export function stbPlay(url: string, position?: number): void {
                 } else {
                     console.log("[HLS] unrecoverable, destroying");
                     hlsInstance.destroy();
+                    hlsInstance = null;
                 }
             }
         });
@@ -307,7 +319,10 @@ export function stbPlay(url: string, position?: number): void {
 export function stbStop(): void {
     video!.pause();
     video!.removeAttribute("src");
-    if (hlsInstance) hlsInstance.destroy();
+    if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+    }
 }
 /**
  * Pause playback.
