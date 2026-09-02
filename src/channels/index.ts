@@ -7,6 +7,8 @@
 import {
     videoPip as pipVideoElement,
     playerMode,
+    stbIsPlaying,
+    stbPause,
     video as videoElement,
 } from "../core/index";
 import { settings } from "../settings/index";
@@ -216,7 +218,6 @@ export let epgTimers: any[] = [],
     sSortAbc = 0;
 export let medHistory: MediaHistoryEntry[] = [],
     medFavorites: MediaHistoryEntry[] = [];
-export let historySearchText = "";
 
 /* ---- Playback & EPG state ---- */
 export let playType = 0,
@@ -1764,10 +1765,33 @@ export function updateArchiveInfo(position: number): void {
  * Side effects: Calls `window.playChannel` to restart live playback.
  */
 export function liveStop(): void {
-    if (playType <= 0) return;
-    if (typeof (window as any).playChannel === "function") {
-        (window as any).playChannel(catIndex, primaryIndex);
-    }
+    if (!stbIsPlaying()) return;
+    var e = curList[primaryIndex];
+    if (!channels[e].rec) return;
+    getEPGchanelCached(e, function (t: number, e: any) {
+        var r: any[] = [];
+        if (e !== null && e.length) {
+            r = e
+                .filter(function (e: any) {
+                    var ch = channels[t];
+                    return ch
+                        ? e.time > Date.now() / 1e3 - (ch.rec ?? 0) * 60 * 60
+                        : false;
+                })
+                .sort(function (e: any, t: any) {
+                    return e.time - t.time;
+                });
+        }
+        epgArray = r;
+        setCurProg(t, e, undefined as any);
+        playType = Math.round(Date.now() / 1e3);
+        playTime = 0;
+        if (typeof (window as any).showChanelInfo === "function")
+            (window as any).showChanelInfo(2);
+        if (typeof (window as any).showShift === "function")
+            (window as any).showShift((window as any)._("Pause"));
+        stbPause();
+    });
 }
 
 /**
@@ -2805,29 +2829,6 @@ export function searchRec(): void {
         });
     };
     if (typeof w.showEditKey === "function") w.showEditKey();
-}
-
-/**
- * Set the history search query string.
- * @param query - The search text to filter history entries by.
- * Side effects: Sets `historySearchText`.
- */
-export function searchHistoryChannel(query: string): void {
-    historySearchText = query;
-}
-
-/**
- * Returns history entries that match `historySearchText` (case‑insensitive).
- * If the filter is empty, returns a copy of `medHistory`.
- */
-export function getFilteredHistory(): MediaHistoryEntry[] {
-    if (!historySearchText) return medHistory.slice();
-    const lower = historySearchText.toLowerCase();
-    return medHistory.filter(
-        (entry) =>
-            (entry.name?.toLowerCase().includes(lower) ?? false) ||
-            (entry.title?.toLowerCase().includes(lower) ?? false)
-    );
 }
 
 /**
