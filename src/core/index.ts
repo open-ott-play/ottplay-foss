@@ -88,7 +88,7 @@ var hlsInstance: any = null;
 /** Interval handle that increments archive playTime every second. */
 var _playTimeInterval: ReturnType<typeof setInterval> | null = null;
 /** Clear the playTime ticker interval if one is running. */
-function clearPlayTimeInterval(): void {
+export function clearPlayTimeInterval(): void {
     if (_playTimeInterval !== null) {
         clearInterval(_playTimeInterval);
         _playTimeInterval = null;

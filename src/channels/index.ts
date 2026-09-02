@@ -3,6 +3,7 @@
  */
 
 import {
+    clearPlayTimeInterval,
     videoPip as pipVideoElement,
     playerMode,
     stbIsPlaying,
@@ -1708,6 +1709,10 @@ export function getMediaDescr(item: any): string {
 export function playArchive(e: number): void {
     var w = window as any;
     var t = curProg;
+    // Defensive: clear any stale ticker before stbPlay stbStop path runs.
+    // stbPlay clears it too, but only on the happy path; if stbPlay throws
+    // before ticker init, this would leak.
+    clearPlayTimeInterval();
     updateArchiveInfo(e);
     if (w.sInfoRew) w.showChanelInfo(1);
     var r = curList[primaryIndex];
