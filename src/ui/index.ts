@@ -48,26 +48,50 @@ var getListItemFn: ((item: any, idx: number) => string) | null = null;
 var detailListActionFn: (() => void) | null = null;
 var listKeyHandlerFn: ((key: any) => boolean) | null = null;
 // Forward old-style global names (set by provider scripts) to new-style module variables
-Object.defineProperty(window, "listKeyHandler", {
-    configurable: true,
-    enumerable: true,
-    get: function (): any {
-        return listKeyHandlerFn;
-    },
-    set: function (v: any) {
+function makeRedefinable(
+    name: string,
+    get: () => any,
+    set: (v: any) => void
+): void {
+    try {
+        Object.defineProperty(window, name, {
+            configurable: true,
+            enumerable: true,
+            get,
+            set,
+        });
+    } catch (_) {
+        // HMR / re-eval: property already exists as non-configurable; replace via assignment
+        (window as any)[name] = {
+            get value() {
+                return get();
+            },
+            set value(v) {
+                set(v);
+            },
+        };
+        Object.defineProperty(window, name, {
+            configurable: true,
+            enumerable: true,
+            get,
+            set,
+        });
+    }
+}
+makeRedefinable(
+    "listKeyHandler",
+    () => listKeyHandlerFn,
+    (v) => {
         listKeyHandlerFn = v;
-    },
-});
-Object.defineProperty(window, "listKeyHandlerFn", {
-    configurable: true,
-    enumerable: true,
-    get: function (): any {
-        return listKeyHandlerFn;
-    },
-    set: function (v: any) {
+    }
+);
+makeRedefinable(
+    "listKeyHandlerFn",
+    () => listKeyHandlerFn,
+    (v) => {
         listKeyHandlerFn = v;
-    },
-});
+    }
+);
 Object.defineProperty(window, "getListItem", {
     configurable: true,
     enumerable: true,
