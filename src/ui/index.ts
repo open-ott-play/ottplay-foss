@@ -1187,9 +1187,9 @@ export function saveCPD(): void {
  *             Resets `ui_state` to an empty object.
  */
 export function restoreCPD(): void {
-    if (listCaptionElement) listCaptionElement.innerHTML = ui_state.lc || "";
-    if (listPodvalElement) listPodvalElement.innerHTML = ui_state.lp || "";
-    if (listDetailElement) listDetailElement.innerHTML = ui_state.ld || "";
+    listCaptionElement.innerHTML = ui_state.lc;
+    listPodvalElement.innerHTML = ui_state.lp;
+    listDetailElement.innerHTML = ui_state.ld;
     ui_state = {};
 }
 
