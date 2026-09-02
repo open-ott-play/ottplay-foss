@@ -1303,9 +1303,7 @@ export function startPlayer(): void {
         uiInit();
         initBackgroundIntervals();
         (window as any).listPodval = (window as any).listPodvalElement;
-        if (typeof stbInit === "function") {
-            stbInit();
-            window.onkeydown = keyHandler;
+        if (typeof stbInit === "function" && (stbInit() as any) !== false) {
             onStbReady();
         }
     } catch (e) {

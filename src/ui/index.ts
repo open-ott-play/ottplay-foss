@@ -1442,7 +1442,7 @@ export function infoProgramm(title: string): void {
         else if ((window as any).sPNFun === 1) extra = strNEXT;
         listPodvalElement.innerHTML =
             btnDiv(keys.RETURN, strRETURN, "Close") +
-            (title ? btnDiv(keys.N2, strInfo, "TMDb", extra) : "");
+            (title ? btnDiv(keys.N2, strInfo, "TMDb", "2", extra) : "");
     }
     aboutKeyHandler = function (e: number): boolean {
         if (title) {
@@ -1487,7 +1487,7 @@ export function infoMedia(): void {
         else if ((window as any).sPNFun === 1) extra = strNEXT;
         listPodvalElement.innerHTML =
             btnDiv(keys.RETURN, strRETURN, "Close") +
-            (t ? btnDiv(keys.N2, strInfo, "TMDb", extra) : "");
+            (t ? btnDiv(keys.N2, strInfo, "TMDb", "2", extra) : "");
     }
     aboutKeyHandler = function (e: number): boolean {
         if (t) {

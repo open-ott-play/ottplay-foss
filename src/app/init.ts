@@ -124,9 +124,7 @@ export function startPlayer(): void {
         uiInit();
         initBackgroundIntervals();
         (window as any).listPodval = (window as any).listPodvalElement;
-        if (typeof stbInit === "function") {
-            stbInit();
-            window.onkeydown = keyHandler;
+        if (typeof stbInit === "function" && (stbInit() as any) !== false) {
             onStbReady();
         }
     } catch (e) {
@@ -175,10 +173,6 @@ export function onStbReady(): void {
         closeList();
 
         // Expose edit globals for provider scripts (stalker, edem, etc.)
-        if (typeof (window as any).setEdit === "undefined")
-            (window as any).setEdit = function () {
-                // ponytail: no-op stub for provider scripts
-            };
         if (typeof (window as any).editKey === "undefined")
             (window as any).editKey = (window as any).editKey1;
         if (typeof (window as any).showEditKey === "undefined")
