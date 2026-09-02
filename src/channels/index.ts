@@ -1711,10 +1711,10 @@ export function playArchive(e: number): void {
     if (w.sInfoRew) w.showChanelInfo(1);
     var r = curList[primaryIndex];
     var s = epgArray[curProg] || {
+        descr: "",
         name: "",
         time: Math.floor(e / 3600) * 3600,
         time_to: (Math.floor(e / 3600) + 1) * 3600,
-        descr: "",
     };
     playTime = 0;
     playType = Math.floor(e);
