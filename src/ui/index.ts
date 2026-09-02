@@ -58,6 +58,16 @@ Object.defineProperty(window, "listKeyHandler", {
         listKeyHandlerFn = v;
     },
 });
+Object.defineProperty(window, "listKeyHandlerFn", {
+    configurable: true,
+    enumerable: true,
+    get: function (): any {
+        return listKeyHandlerFn;
+    },
+    set: function (v: any) {
+        listKeyHandlerFn = v;
+    },
+});
 Object.defineProperty(window, "getListItem", {
     configurable: true,
     enumerable: true,
