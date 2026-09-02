@@ -20,7 +20,7 @@ HOST = ''           # '' = all interfaces (docker); pass --host 127.0.0.1 for lo
 EPG_URLS = []
 VERBOSE = False
 NO_EPG = False
-HTTPS_PORTS = []    # HTTPS listeners; repeat --https-port for extra origins (per-port browser storage)
+HTTPS_PORT = None   # extra HTTPS listener, enabled when --cert/--key given
 CERT_FILE = None
 KEY_FILE = None
 for i, arg in enumerate(sys.argv):
@@ -31,7 +31,7 @@ for i, arg in enumerate(sys.argv):
     if arg == '--verbose' or arg == '-v':
         VERBOSE = True
     if arg == '--https-port' and i + 1 < len(sys.argv):
-        HTTPS_PORTS.append(int(sys.argv[i + 1]))
+        HTTPS_PORT = int(sys.argv[i + 1])
     if arg == '--host' and i + 1 < len(sys.argv):
         HOST = sys.argv[i + 1]
     if arg == '--cert' and i + 1 < len(sys.argv):
@@ -122,11 +122,7 @@ def fetch_xmltv(sources):
                     all_programs[ch_id].append(p)
 
     total_pr = sum(len(v) for v in all_programs.values())
-    src_count = len(sources) if isinstance(sources, list) else 1
-    sys.stderr.write(
-        f"[XMLTV] Total: {len(all_channels)} channels, "
-        f"{total_pr} programmes from {src_count} source(s)\n"
-    )
+    sys.stderr.write(f"[XMLTV] Total: {len(all_channels)} channels, {total_pr} programmes from {len(sources if isinstance(sources, list) else [sources])} source(s)\n")
     return all_channels, all_programs
 
 
@@ -143,7 +139,7 @@ def _fetch_single_xmltv(source):
     cache_data = os.path.join(cache_dir, f'epg_{cache_key}.json')
     if os.path.isfile(cache_meta) and os.path.isfile(cache_data):
         try:
-            with open(cache_meta, 'r', encoding='utf-8') as f:
+            with open(cache_meta, 'r') as f:
                 meta = json.load(f)
             if meta.get('source') == source and time.time() - meta.get('ts', 0) < 7200:
                 with open(cache_data, 'r', encoding='utf-8') as f:
@@ -151,12 +147,9 @@ def _fetch_single_xmltv(source):
                 ch = cached.get('channels', {})
                 pr = cached.get('programs', {})
                 total_pr = sum(len(v) for v in pr.values())
-                sys.stderr.write(
-                    f"[XMLTV] Loaded {len(ch)} channels, "
-                    f"{total_pr} programmes from cache ({source[:60]})\n"
-                )
+                sys.stderr.write(f"[XMLTV] Loaded {len(ch)} channels, {total_pr} programmes from cache ({source[:60]})\n")
                 return ch, pr
-        except (OSError, ValueError, KeyError):
+        except Exception:
             pass
 
     if source.startswith(('http://', 'https://')):
@@ -169,14 +162,14 @@ def _fetch_single_xmltv(source):
             with urllib.request.urlopen(req, timeout=300) as resp:
                 content = resp.read()
             sys.stderr.write(f"[XMLTV] Downloaded {len(content)} bytes\n")
-        except (urllib.error.URLError, TimeoutError, OSError) as e:
+        except Exception as e:
             sys.stderr.write(f"[XMLTV] Failed to fetch {source[:80]}: {e}\n")
             return channels, programs
     else:
         try:
             with open(source, 'rb') as f:
                 content = f.read()
-        except OSError as e:
+        except Exception as e:
             sys.stderr.write(f"[XMLTV] Failed to read {source}: {e}\n")
             return channels, programs
 
@@ -184,13 +177,13 @@ def _fetch_single_xmltv(source):
         try:
             content = gzip.decompress(content)
             sys.stderr.write(f"[XMLTV] Decompressed to {len(content)} bytes\n")
-        except (OSError, gzip.BadGzipFile, EOFError) as e:
+        except Exception as e:
             sys.stderr.write(f"[XMLTV] Gunzip error: {e}\n")
             return channels, programs
 
     try:
         root = ET.fromstring(content)
-    except ET.ParseError as e:
+    except Exception as e:
         sys.stderr.write(f"[XMLTV] Parse error: {e}\n")
         return channels, programs
 
@@ -227,10 +220,10 @@ def _fetch_single_xmltv(source):
         os.makedirs(cache_dir, exist_ok=True)
         with open(cache_data, 'w', encoding='utf-8') as f:
             json.dump({'channels': channels, 'programs': programs}, f, ensure_ascii=False)
-        with open(cache_meta, 'w', encoding='utf-8') as f:
+        with open(cache_meta, 'w') as f:
             json.dump({'source': source, 'ts': time.time()}, f)
         sys.stderr.write(f"[XMLTV] Cached to {cache_data}\n")
-    except OSError as e:
+    except Exception as e:
         sys.stderr.write(f"[XMLTV] Cache write error: {e}\n")
 
     return channels, programs
@@ -268,7 +261,7 @@ def compute_epg_hash(identifier):
     return hashlib.md5(identifier.encode()).hexdigest()[:16]
 
 
-def match_channel_to_xmltv(playlist_name, channels):
+def match_channel_to_xmltv(playlist_name, xmltv_channels):
     """Fuzzy match a playlist channel name to XMLTV channels.
     Returns (xmltv_channel_id, channel_name, score) or (None, None, 0)."""
     normalized = normalize_name(playlist_name)
@@ -278,7 +271,7 @@ def match_channel_to_xmltv(playlist_name, channels):
     # Use pre-normalized index when available
     index = globals().get('xmltv_index', [])
     if not index:
-        index = build_xmltv_index(channels)
+        index = build_xmltv_index(xmltv_channels)
 
     best_id = None
     best_name = None
@@ -319,10 +312,10 @@ def match_channel_to_xmltv(playlist_name, channels):
 
 
 # Pre-normalize XMLTV channels for faster matching
-def build_xmltv_index(channels):
+def build_xmltv_index(xmltv_channels):
     """Build a pre-normalized index of XMLTV channels for faster fuzzy matching."""
     index = []
-    for ch_id, ch_info in channels.items():
+    for ch_id, ch_info in xmltv_channels.items():
         norm = normalize_name(ch_info['name'])
         if norm:
             index.append((ch_id, ch_info['name'], norm))
@@ -347,25 +340,11 @@ ch_names_by_epgurl = {}
 
 
 class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
-    _HASHED_ASSET = re.compile(r'\.[a-f0-9]{6,}\.(js|css|woff2?|m3u8)$', re.IGNORECASE)
-
     def end_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', '*')
         self.send_header('Access-Control-Max-Age', '86400')
-        p = urllib.parse.urlparse(self.path).path
-        if p.endswith(('.html', '.htm', '.json')) or p.endswith('/') or p == '/':
-            # HTML + API: revalidate every load so reinstalls show fresh code
-            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-            self.send_header('Pragma', 'no-cache')
-            self.send_header('Expires', '0')
-        elif self._HASHED_ASSET.search(p):
-            # Vite-style hashed asset: safe to cache forever
-            self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
-        elif p.endswith(('.js', '.css', '.m3u8', '.m3u', '.ts', '.svg', '.woff', '.woff2')):
-            # Non-hashed: revalidate so updates land without manual cache wipe
-            self.send_header('Cache-Control', 'no-cache, must-revalidate')
         super().end_headers()
 
     def do_OPTIONS(self):
@@ -443,7 +422,7 @@ class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
         body = self._read_body()
         parts = body.split('\n\t\n')
         id_section = parts[2] if len(parts) > 2 else ''
-        id_lines = [line.strip() for line in id_section.split('\n') if line.strip()]
+        id_lines = [l.strip() for l in id_section.split('\n') if l.strip()]
 
         ch_mappings = []
         src_map = {'local': '/'}
@@ -494,22 +473,17 @@ class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
         )
         self._send_text(response)
         xmltv_hits = sum(1 for m in ch_mappings if '~local~' in m and m.split('~local~')[1] in epg_to_xmltv)
-        sys.stderr.write(
-            f"[EPG] match-channels: {len(ch_mappings)} channels ({xmltv_hits} from XMLTV)\n"
-        )
+        sys.stderr.write(f"[EPG] match-channels: {len(ch_mappings)} channels ({xmltv_hits} from XMLTV)\n")
         if VERBOSE and ch_list:
-            sys.stderr.write("[EPG] Channel list:\n")
-            for name, status, score in sorted(
-                ch_list,
-                key=lambda x: (0 if x[1] != "NO EPG" else 1, x[0].lower()),
-            ):
+            sys.stderr.write(f"[EPG] Channel list:\n")
+            for name, status, score in sorted(ch_list, key=lambda x: (0 if x[1] != "NO EPG" else 1, x[0].lower())):
                 sys.stderr.write(f"  {status:25s} {name}\n")
 
     def _handle_match_logos(self):
         body = self._read_body()
         parts = body.split('\n\t\n')
         id_section = parts[2] if len(parts) > 2 else ''
-        id_lines = [line.strip() for line in id_section.split('\n') if line.strip()]
+        id_lines = [l.strip() for l in id_section.split('\n') if l.strip()]
 
         log_mappings = []
         for line in id_lines:
@@ -530,7 +504,7 @@ class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
             logo_url = None
             if xmltv_channels and ch_name:
                 base_name = re.sub(r'[+-]\s*\d+\s*(ч|h|hours?)?', '', ch_name).strip()
-                matched_id, matched_name, _score = match_channel_to_xmltv(base_name, xmltv_channels)
+                matched_id, matched_name, score = match_channel_to_xmltv(base_name, xmltv_channels)
                 if matched_id and matched_name:
                     ch_info = xmltv_channels.get(matched_id, {})
                     if ch_info.get('icon'):
@@ -539,9 +513,7 @@ class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
             if logo_url:
                 log_mappings.append(f"{ch_id}~{logo_url}")
             else:
-                log_mappings.append(
-                    f"{ch_id}~/logo/{ch_id}.svg?ch={urllib.parse.quote(ch_name)}"
-                )
+                log_mappings.append(f"{ch_id}~/logo/{ch_id}.svg?ch={urllib.parse.quote(ch_name)}")
 
         response = "{}\n\t\n" + "\n".join(log_mappings)
         self._send_text(response)
@@ -549,10 +521,10 @@ class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
         sys.stderr.write(f"[EPG] match-logos: {len(log_mappings)} channels ({real_logos} real logos)\n")
 
     def _serve_index(self):
-        with open('index.html', 'r', encoding='utf-8') as f:
+        with open('index.html', 'r') as f:
             html = f.read()
         self._send_html(html)
-        sys.stderr.write("[INDEX] serve index.html\n")
+        sys.stderr.write(f"[INDEX] serve index.html\n")
 
     def _send_html(self, html, status=200):
         self.send_response(status)
@@ -587,10 +559,7 @@ class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
                     })
 
             epg_data.sort(key=lambda p: p['time'])
-            sys.stderr.write(
-                f"[EPG] serve XMLTV /epg/{epg_hash}.json ch={xmltv_id} "
-                f"({len(epg_data)} progs, shift={time_shift}h)\n"
-            )
+            sys.stderr.write(f"[EPG] serve XMLTV /epg/{epg_hash}.json ch={xmltv_id} ({len(epg_data)} progs, shift={time_shift}h)\n")
             self._send_json({'epg_data': epg_data})
             return
 
@@ -659,23 +628,16 @@ class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(e.read())
             sys.stderr.write(f"[TMDB] HTTP {e.code} {target[:100]}\n")
-        except (urllib.error.URLError, TimeoutError, OSError) as e:
+        except Exception as e:
             self._send_json({"error": str(e)}, 502)
             sys.stderr.write(f"[TMDB] FAIL {target[:100]}: {e}\n")
 
     UA_PRESETS = {
-        'webos': ('Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 '
-                  '(KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36 '
-                  'LG Browser/9.00.00'),
-        'tizen': ('Mozilla/5.0 (SMART-TV; Linux; Tizen 5.5) AppleWebKit/537.36 '
-                  '(KHTML, like Gecko) SamsungTV/3.0 Chrome/76.0.3809.146 '
-                  'Safari/537.36'),
-        'viera': ('Mozilla/5.0 (Unknown; Linux; Viera/1.0) AppleWebKit/537.36 '
-                  '(KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36'),
-        'mag':   'Mozilla/5.0 (STB; Infomir MAG524) Maple 6.0 QtWebKit/3.0',
-        'dune':  ('Mozilla/5.0 (Dune HD; DuneOS) AppleWebKit/537.36 '
-                  '(KHTML, like Gecko) DuneHD/1.0 Chrome/68.0.3440.106 '
-                  'Safari/537.36'),
+        'webos':  'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36 LG Browser/9.00.00',
+        'tizen':  'Mozilla/5.0 (SMART-TV; Linux; Tizen 5.5) AppleWebKit/537.36 (KHTML, like Gecko) SamsungTV/3.0 Chrome/76.0.3809.146 Safari/537.36',
+        'viera':  'Mozilla/5.0 (Unknown; Linux; Viera/1.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
+        'mag':    'Mozilla/5.0 (STB; Infomir MAG524) Maple 6.0 QtWebKit/3.0',
+        'dune':   'Mozilla/5.0 (Dune HD; DuneOS) AppleWebKit/537.36 (KHTML, like Gecko) DuneHD/1.0 Chrome/68.0.3440.106 Safari/537.36',
     }
 
     def _handle_cp_proxy(self):
@@ -696,7 +658,7 @@ class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
                 content = resp.read().decode('utf-8')
             self._send_text(content)
             sys.stderr.write(f"[PROXY] OK {url_param[:80]} (ua={ua_id or 'default'})\n")
-        except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
+        except Exception as e:
             sys.stderr.write(f"[PROXY] FAIL {url_param[:80]}: {e}\n")
             self._send_text(f"Error: {e}", 502)
 
@@ -711,6 +673,9 @@ class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
             f.write(f"{ts} {self.path}\n{body}\n---\n")
         self._send_json({"status": "ok"})
 
+    def translate_path(self, path):
+        return super().translate_path(path)
+
     def guess_type(self, path):
         ext = os.path.splitext(path)[1].lower()
         return {
@@ -722,6 +687,9 @@ class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
             '.js':   'application/javascript',
             '.css':  'text/css',
         }.get(ext) or super().guess_type(path)
+
+    def log_message(self, format, *args):
+        sys.stderr.write("[%s] %s - %s\n" % (self.log_date_time_string(), self.client_address[0], format % args))
 
     # Webhook endpoints intentionally disabled — unauthenticated broadcast
     # polling is a security risk. Use local_proxy.py for local command queuing.
@@ -739,15 +707,14 @@ if __name__ == '__main__':
             # HTTPS sidecar listener; plain HTTP on PORT stays available for devices.
             import ssl
             import threading
-            if not HTTPS_PORTS:
-                HTTPS_PORTS.append(8443)
+            if HTTPS_PORT is None:
+                HTTPS_PORT = 8443
             ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             ctx.load_cert_chain(CERT_FILE, KEY_FILE)
-            for hp in HTTPS_PORTS:
-                httpsd = ReusableTCPServer((HOST, hp), OTTPlayHandler)
-                httpsd.socket = ctx.wrap_socket(httpsd.socket, server_side=True)
-                threading.Thread(target=httpsd.serve_forever, daemon=True).start()
-            print(f"OTT-play FOSS: https on ports {','.join(map(str, HTTPS_PORTS))} (trusted cert) + http://localhost:{PORT}")
+            httpsd = ReusableTCPServer((HOST, HTTPS_PORT), OTTPlayHandler)
+            httpsd.socket = ctx.wrap_socket(httpsd.socket, server_side=True)
+            threading.Thread(target=httpsd.serve_forever, daemon=True).start()
+            print(f"OTT-play FOSS: https://localhost:{HTTPS_PORT} (trusted cert) + http://localhost:{PORT}")
         else:
             print(f"OTT-play FOSS: http://localhost:{PORT}")
         print(f"Directory: {os.getcwd()}")
