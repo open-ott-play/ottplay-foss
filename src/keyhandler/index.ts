@@ -761,10 +761,7 @@ export function dispatchKey(keyCode: number, event?: Event): void {
 export function keyFun(fn: number): void {
     switch (fn) {
         case 0:
-            if (
-                (window as any).playType > -1 &&
-                typeof (window as any).recordsList === "function"
-            ) {
+            if ((window as any).playType > -1) {
                 (window as any).recordsList(
                     (window as any).catIndex,
                     (window as any).primaryIndex,
@@ -868,13 +865,11 @@ export function keyFun(fn: number): void {
             return;
         case 20:
             if ((window as any).playType < 0) {
-                if (typeof (window as any).shiftArchive === "function")
-                    (window as any).shiftArchive(-6e6);
+                (window as any).shiftArchive(-6e6);
                 return;
             }
             if (!(window as any).playType) {
-                if (typeof (window as any).timeShift === "function")
-                    (window as any).timeShift(0);
+                (window as any).timeShift(0);
                 return;
             }
             if (
@@ -883,42 +878,34 @@ export function keyFun(fn: number): void {
                     (window as any).epgArray[(window as any).curProg].time >
                 30
             ) {
-                if (typeof (window as any).playArchive === "function")
-                    (window as any).playArchive(
-                        (window as any).epgArray[(window as any).curProg].time
-                    );
+                (window as any).playArchive(
+                    (window as any).epgArray[(window as any).curProg].time
+                );
             } else {
-                if (typeof (window as any).playArchive === "function")
-                    (window as any).playArchive(
-                        (window as any).epgArray[(window as any).curProg - 1]
-                            .time
-                    );
+                (window as any).playArchive(
+                    (window as any).epgArray[(window as any).curProg - 1].time
+                );
             }
             return;
         case 21:
             if ((window as any).playType < 0) return;
             if (!(window as any).playType) {
-                if (typeof (window as any).shiftArchiveSelect === "function")
-                    (window as any).shiftArchiveSelect(-60);
+                (window as any).shiftArchiveSelect(-60);
                 return;
             }
             if (
                 (window as any).epgArray[(window as any).curProg + 1].time <
                 Date.now() / 1e3
             ) {
-                if (typeof (window as any).playArchive === "function")
-                    (window as any).playArchive(
-                        (window as any).epgArray[(window as any).curProg + 1]
-                            .time
-                    );
+                (window as any).playArchive(
+                    (window as any).epgArray[(window as any).curProg + 1].time
+                );
             } else {
-                if (typeof (window as any).showShift === "function")
-                    (window as any).showShift(_("Live"));
-                if (typeof (window as any).playChannel === "function")
-                    (window as any).playChannel(
-                        (window as any).catIndex,
-                        (window as any).primaryIndex
-                    );
+                (window as any).showShift(_("Live"));
+                (window as any).playChannel(
+                    (window as any).catIndex,
+                    (window as any).primaryIndex
+                );
             }
             return;
     }
