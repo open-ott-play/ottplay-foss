@@ -204,6 +204,7 @@
     "ignoreUnknown": true,
     "includes": [
       "src/**",
+      "stb/**",
       "build-concat.cjs",
       "biome.json",
       "package.json",

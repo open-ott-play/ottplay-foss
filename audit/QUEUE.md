@@ -11,7 +11,7 @@ Functions to audit for port parity (legacy → current):
 7. `setGetListItemFn`
 8. `setDetailListActionFn`
 9. `setListKeyHandlerFn`
-9. `searchChannel`
+10. `searchChannel`
 10. `searchMedia`
 11. `searchRec`
 12. `getFilteredHistory`
