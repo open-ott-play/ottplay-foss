@@ -27,6 +27,7 @@ Functions to audit for port parity (legacy → current):
 ---
 
 ## Done:
+- `setGetListItemFn` — missing in legacy (`stbPlayer.js`); present in TS at `src/app/state.ts:112`. No legacy counterpart to match. No fix needed.
 - `setEdit` — legacy `setEdit = function()` (`stbPlayer.js:L3863` var decl, `L7997` inside `edit_dealer()`); current `setEdit` assigned in `src/provider/index.ts:1427` inside `edit_dealer()`; fix: remove no-op stub from `src/app/init.ts:179` — TS-only default absent in legacy. Legacy declares `setEdit` uninitialized; no default body exists. All callers (`ui/index.ts:173`, `ui/index.ts:2915`, `keyhandler/index.ts:609`) guard with `typeof setEdit === "function"` before invoking, so the stub is unreachable dead code.
 - `closeList` — legacy `closeList()` (`stbPlayer.js:L1723`); current `closeList()` (`src/ui/index.ts:L776`); fix: add missing `$("#listPopUp").hide()`, PiP restore (`!sNoSmall && pipIndex != null → stbPlayPip(...)`), and preview-channel resume (`sPreview && previewChan → stbStop/playArchive/playChannel + previewChan = null`) — three blocks present in legacy but absent from TypeScript port.
 - `showEditKey1` — legacy `showEditKey1(e)` (`stbPlayer.js:L3988`); current `showEditKey1(_initKeys)` (`src/ui/index.ts:L2642`); fix: no mismatch — body parity exact (saveCPD, lang check, _keysSymbol[1/7/9], sNoColorKeys underlines, editPos, _keyCur clamp, _setPunct + showEdit).
