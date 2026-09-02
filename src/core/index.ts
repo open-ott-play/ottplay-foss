@@ -402,7 +402,7 @@ export function stbSetWindow(): void {
         w = window.innerWidth / 1280;
     $("#vdiv").css({
         height: 288 * h + "px",
-        left: listPos ? 758 * w + "px" : 10 * w + "px",
+        left: (window as any).sListPos ? 758 * w + "px" : 10 * w + "px",
         top: 50 * h + "px",
         width: 512 * w + "px",
     });
