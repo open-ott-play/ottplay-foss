@@ -1281,6 +1281,13 @@ export function startPlayer(): void {
     if (launchEl) {
         launchEl.innerHTML += "<br/>VER: " + PLAYER_VERSION;
     }
+    if (launchEl) {
+        var iid = (window as any).__iid as string | undefined;
+        launchEl.innerHTML +=
+            "<br/>IID: " + (iid ? "..." + iid.substr(-7) : "-");
+    }
+    if (typeof (window as any).benchy_startPlayer === "function")
+        setTimeout((window as any).benchy_startPlayer, 23);
 
     onPlayerStart();
 
@@ -1302,10 +1309,7 @@ export function startPlayer(): void {
 
         uiInit();
         initBackgroundIntervals();
-        (window as any).listPodval = (window as any).listPodvalElement;
-        if (typeof stbInit === "function") {
-            stbInit();
-            window.onkeydown = keyHandler;
+        if (typeof stbInit === "function" && (stbInit() as any) !== false) {
             onStbReady();
         }
     } catch (e) {
