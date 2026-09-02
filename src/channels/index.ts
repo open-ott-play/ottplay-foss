@@ -218,7 +218,6 @@ export let epgTimers: any[] = [],
     sSortAbc = 0;
 export let medHistory: MediaHistoryEntry[] = [],
     medFavorites: MediaHistoryEntry[] = [];
-export let historySearchText = "";
 
 /* ---- Playback & EPG state ---- */
 export let playType = 0,
