@@ -1714,14 +1714,17 @@ export function playArchive(e: number): void {
         name: "",
         time: Math.floor(e / 3600) * 3600,
         time_to: (Math.floor(e / 3600) + 1) * 3600,
-        descr: ""
+        descr: "",
     };
     playTime = 0;
     playType = Math.floor(e);
     forcePlay = true;
     if (!fileArchive || t != curProg) {
         if (w.sStopPlay) w.stbStop();
-        w.stbPlay(w.getArchiveUrl(r, e, s.time_to, s), fileArchive ? e - s.time : 0);
+        w.stbPlay(
+            w.getArchiveUrl(r, e, s.time_to, s),
+            fileArchive ? e - s.time : 0
+        );
     } else {
         w.stbSetPosTime(e - s.time);
     }
@@ -2597,13 +2600,7 @@ export function showActionsDialog(): void {
                 }
                 return true;
             case w.keys.RIGHT:
-                if (
-                    w.sPSchannels &&
-                    w.parentPIN != "*" &&
-                    typeof w.parentChannel === "function"
-                ) {
-                    w.parentChannel();
-                }
+                w.parentChannel();
                 return true;
             case w.keys.RETURN:
                 $(dialog!).hide();
