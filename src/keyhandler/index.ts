@@ -265,7 +265,15 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
                         (window as any).keyFun(21);
                     return;
                 case keys.N8:
-                    // Map N8 to STOP
+                    // Map N8 to STOP (legacy stbPlayer.js:L7224-7226)
+                    if (typeof (window as any).showShift === "function")
+                        (window as any).showShift(
+                            _(
+                                (window as any).playType
+                                    ? "Live"
+                                    : "Restart stream"
+                            )
+                        );
                     if (typeof (window as any).playChannel === "function") {
                         (window as any).playChannel(
                             (window as any).catIndex,
@@ -276,6 +284,13 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
                 case keys.N0:
                     // fall through to number input below
                     break;
+            }
+        } else {
+            // playType <= 0: live TV mode, N0 stops live if nProg empty (legacy stbPlayer.js:L7230-7234)
+            if (keyCode === keys.N0 && (window as any).nProg === "") {
+                if (typeof (window as any).liveStop === "function")
+                    (window as any).liveStop();
+                return;
             }
         }
         // Standard number input for channel selection
@@ -516,6 +531,19 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
 function handleListKey(keyCode: number, event: KeyboardEvent): boolean {
     event.preventDefault();
     event.stopPropagation();
+    // sArrowFun == 1: LEFT/RIGHT control volume instead of page navigation (legacy stbPlayer.js:L7138)
+    if ((window as any).sArrowFun === 1) {
+        switch (keyCode) {
+            case keys.LEFT:
+                if (typeof (window as any).changeVolume === "function")
+                    (window as any).changeVolume(-(window as any).sVolumeStep);
+                return true;
+            case keys.RIGHT:
+                if (typeof (window as any).changeVolume === "function")
+                    (window as any).changeVolume((window as any).sVolumeStep);
+                return true;
+        }
+    }
     // Original pattern: call page-specific handler FIRST with raw keyCode (number)
     if (typeof listKeyHandlerFn === "function") {
         var handled = listKeyHandlerFn(keyCode);
@@ -523,6 +551,10 @@ function handleListKey(keyCode: number, event: KeyboardEvent): boolean {
     }
     // Fallback: common list key handling (matching original keyHandler inline code)
     switch (keyCode) {
+        case keys.EXIT:
+            if (typeof (window as any).closeList === "function")
+                (window as any).closeList();
+            return true;
         case keys.UP:
             if (typeof (window as any).changeSelect === "function")
                 (window as any).changeSelect(-1);
@@ -532,17 +564,44 @@ function handleListKey(keyCode: number, event: KeyboardEvent): boolean {
                 (window as any).changeSelect(1);
             return true;
         case keys.LEFT:
+        case keys.RW:
+        case keys.CH_UP:
             if (typeof (window as any).changeSelect === "function")
                 (window as any).changeSelect(-((window as any).pageSize || 25));
             return true;
         case keys.RIGHT:
+        case keys.FF:
+        case keys.CH_DOWN:
             if (typeof (window as any).changeSelect === "function")
                 (window as any).changeSelect((window as any).pageSize || 25);
             return true;
-        case keys.RETURN:
-        case keys.EXIT:
-            if (typeof (window as any).closeList === "function")
-                (window as any).closeList();
+        case keys.PREV:
+            if ((window as any).sPNFun === 3) {
+                if (typeof (window as any).changeSelect === "function")
+                    (window as any).changeSelect(-(window as any).selIndex);
+            } else {
+                if (typeof (window as any).changeSelect === "function")
+                    (window as any).changeSelect(
+                        -((window as any).pageSize || 25)
+                    );
+            }
+            return true;
+        case keys.NEXT:
+            if ((window as any).sPNFun === 3) {
+                if (typeof (window as any).changeSelect === "function")
+                    (window as any).changeSelect(
+                        ((window as any).listArray
+                            ? (window as any).listArray.length
+                            : 0) -
+                            (window as any).selIndex -
+                            1
+                    );
+            } else {
+                if (typeof (window as any).changeSelect === "function")
+                    (window as any).changeSelect(
+                        (window as any).pageSize || 25
+                    );
+            }
             return true;
         // ENTER not handled by page-specific handler is consumed silently (matches original)
         case keys.ENTER:
