@@ -1997,13 +1997,15 @@ export function timeShift(n: number): void {
 
 /**
  * Show the channel list for a category and channel index.
- * Currently a stub that just refreshes the page display.
+ * Default implementation: refresh page display.
+ * Overwritten at provider init with `_channelsList()` from
+ * `src/provider/index.ts` (full legacy port).
  *
- * @param catIdx     - Category index.
- * @param channelIdx - Channel index within the category.
+ * @param _catIdx     - Category index (used by provider override).
+ * @param _channelIdx - Channel index within the category (used by provider override).
  * Side effects: Calls `window.showPage`.
  */
-export function channelsList(catIdx: number, channelIdx: number): void {
+export function channelsList(_catIdx: number, _channelIdx: number): void {
     if (typeof (window as any).showPage === "function")
         (window as any).showPage();
 }
