@@ -2617,12 +2617,46 @@ export function showActionsDialog(): void {
 }
 
 /**
- * Set the media search query string.
- * @param query - The search text to filter media items by.
- * Side effects: Sets `searchText`.
+ * Ported from stbPlayer.js searchMedia(e). Opens the inline editor with
+ * caption "String for search" seeded from stbGetItem("medSearch"); on submit
+ * persists the new query, sets window.mediaName to e.title, unshifts 0 into
+ * window.mediaSelects, and reloads the playlist with the search query
+ * appended to e.playlist_url.
+ *
+ * Side effects:
+ *  - Writes "medSearch" to stb storage on submit.
+ *  - Mutates window.mediaName and window.mediaSelects.
+ *  - Calls window.mediaList with the search-suffixed playlist URL.
+ *
+ * Caller: selectMedia() in stbPlayer.js — invoked only when
+ * `e.search_on` is truthy.
  */
-export function searchMedia(query: string): void {
-    searchText = query;
+export function searchMedia(e: any): void {
+    var w = window as any;
+    w.editCaption = w._("String for search");
+    var t =
+        (typeof w.stbGetItem === "function" ? w.stbGetItem("medSearch") : "") ||
+        "";
+    w.editvar = t;
+    w.setEdit = function (): void {
+        var inputEl = document.getElementById("editvar");
+        var inputVal = (inputEl && (inputEl as HTMLInputElement).value) || "";
+        var submitted = (window as any).editvar || "";
+        if (!inputVal && !submitted) return;
+        t = inputVal || submitted;
+        if (typeof w.stbSetItem === "function") w.stbSetItem("medSearch", t);
+        w.mediaName = e.title;
+        w.mediaSelects.unshift(0);
+        if (typeof w.mediaList === "function") {
+            w.mediaList(
+                e.playlist_url +
+                    (e.playlist_url.indexOf("?") == -1 ? "?" : "&") +
+                    "search=" +
+                    t
+            );
+        }
+    };
+    if (typeof w.showEditKey === "function") w.showEditKey();
 }
 
 /**
