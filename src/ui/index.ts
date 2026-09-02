@@ -1201,6 +1201,17 @@ export function initBackgroundIntervals(): void {
         ) {
             (window as any).playTime = ((window as any).playTime || 0) + 1;
         }
+        // Drive archive OSD progress bar (stbPlayer.js:1744-1746 tick).
+        // Skip live mode (playType === 0) — showChanelInfo already covers it.
+        var w_t = window as any;
+        if (
+            w_t.playType > 0 &&
+            typeof w_t.updateArchiveInfo === "function" &&
+            typeof w_t.stbIsPlaying === "function" &&
+            w_t.stbIsPlaying()
+        ) {
+            w_t.updateArchiveInfo(w_t.playType + (w_t.playTime || 0));
+        }
     }, 1000);
     setInterval(function () {
         if (typeof (window as any).updateChanelInfo === "function") {

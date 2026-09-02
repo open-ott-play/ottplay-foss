@@ -1,7 +1,5 @@
 /**
  * Channel management — data structures, navigation, favorites, parental control.
- *
- * Ported from stbPlayer.js (partial — ~130 of 314 original functions).
  */
 
 import {
@@ -11,8 +9,10 @@ import {
     stbPause,
     video as videoElement,
 } from "../core/index";
+import { translate as _ } from "../localization";
 import { settings } from "../settings/index";
 import { providerSetItem, storage } from "../storage/index";
+import { getThumbnail, time2time } from "../utils/helpers";
 
 export interface Channel {
     adult?: number;
@@ -1732,28 +1732,213 @@ export function playArchive(e: number): void {
 }
 
 /**
- * Update the archive playback info (current program index) based on
- * the current playback position. Called periodically during archive playback.
+ * Populate OSD with archive playback info at a given playback position.
  *
- * @param position - Current playback position in seconds (Unix timestamp).
+ * Called both from playArchive (on seek/start) and from the periodic
+ * tick in uiInit() (every second during archive playback).
+ *
+ * @param position - Archive position in seconds (Unix timestamp).
  *
  * Side effects:
  * - Updates `archivePos`, `curProg`, `_prog100`.
+ * - Populates DOM: #programm_name, #programm_name2, #programm_duration,
+ *   #begin_time, #end_time, #nprogramm_name, #nbegin_time, #nend_time,
+ *   #programm_descr, #progress, #progress_r, #progress_div background.
  * - Calls `window.updateChanelInfo` to refresh the OSD.
+ * - Calls `getEPGchanelCached` if seek crossed the EPG program window.
  */
 export function updateArchiveInfo(position: number): void {
-    if (playType <= 0) return;
     archivePos = position;
+    var w = window as any;
+    var channelId = curList[primaryIndex];
+    var prog: EPGEntry | null = null;
 
-    var now = playType + playTime;
+    // Update channel header info
+    var chEl = document.getElementById("channel_name");
+    if (chEl && channels[channelId]) {
+        chEl.innerHTML = channels[channelId].channel_name || "";
+    }
+    var piconEl = document.getElementById("picon");
+    if (piconEl && typeof w.getChannelPicon === "function") {
+        piconEl.style.backgroundImage =
+            'url("' + w.getChannelPicon(channelId) + '")';
+    }
+    var chNumEl = document.getElementById("channel_number");
+    if (chNumEl) chNumEl.innerHTML = "" + (primaryIndex + 1);
+
+    // Find current program in epgArray
+    var prevProg = curProg;
     var idx = epgArray.findIndex(function (e) {
-        return e.time <= now && e.time_to > now;
+        return e.time_to > position && e.time <= position;
     });
+
     if (idx !== -1) {
         curProg = idx;
-        _prog100 = epgArray[idx];
-        if (typeof (window as any).updateChanelInfo === "function") {
-            (window as any).updateChanelInfo(listChannel);
+        prog = epgArray[idx];
+    } else {
+        // Synthetic hour block when EPG is missing
+        curProg = idx;
+        var hourStart = Math.floor(position / 3600) * 3600;
+        prog = {
+            descr: "",
+            name: "",
+            time: hourStart,
+            time_to: hourStart + 3600,
+        };
+    }
+
+    _prog100 = prog;
+
+    // Program name
+    var progNameEl = document.getElementById("programm_name");
+    if (progNameEl) progNameEl.innerHTML = prog ? prog.name : "";
+    var progName2El = document.getElementById("programm_name2");
+    if (progName2El) progName2El.innerHTML = prog ? prog.name : "";
+
+    // Progress bar
+    var progressEl = document.getElementById("progress");
+    var progressREl = document.getElementById("progress_r");
+    var progressDivEl = document.getElementById("progress_div");
+    var duration = prog ? prog.time_to - prog.time : 1;
+    var elapsed = position - (prog ? prog.time : position);
+    var pct = Math.min(100, Math.max(0, (elapsed / duration) * 100));
+    if (progressEl) progressEl.style.width = pct + "%";
+    var nowSec = Date.now() / 1000;
+    var remainingPct =
+        prog && prog.time_to > nowSec
+            ? Math.min(
+                  100,
+                  Math.max(0, ((prog.time_to - nowSec) / duration) * 100)
+              )
+            : 0;
+    if (progressREl) progressREl.style.width = remainingPct + "%";
+    if (progressDivEl) progressDivEl.style.backgroundColor = "#600";
+
+    // Time labels
+    var beginTimeEl = document.getElementById("begin_time");
+    if (beginTimeEl && prog) beginTimeEl.textContent = time2time(prog.time);
+    var endTimeEl = document.getElementById("end_time");
+    if (endTimeEl && prog)
+        endTimeEl.textContent =
+            "+" + Math.round((prog.time_to - position) / 60);
+    else if (endTimeEl) endTimeEl.textContent = "";
+
+    // Duration / current time
+    // Inline time2str — not re-exported from utils/helpers
+    var progStartStr = (function () {
+        var d = new Date((prog ? prog.time : position) * 1000);
+        var days = (
+            typeof _ === "function"
+                ? _("Su Mo Tu We Th Fr Sa")
+                : "Su Mo Tu We Th Fr Sa"
+        ).split(" ");
+        return (
+            days[d.getDay()] +
+            "&nbsp;" +
+            ("0" + d.getDate()).slice(-2) +
+            "." +
+            ("0" + (d.getMonth() + 1)).slice(-2) +
+            "&nbsp;" +
+            ("0" + d.getHours()).slice(-2) +
+            ":" +
+            ("0" + d.getMinutes()).slice(-2)
+        );
+    })();
+    var durationEl = document.getElementById("programm_duration");
+    if (durationEl && prog) {
+        var arcTime = time2time(position);
+        var elapsedMin = Math.round((position - prog.time) / 60);
+        var totalMin = Math.round((prog.time_to - prog.time) / 60);
+        durationEl.innerHTML =
+            '<span id="arc_time" style="color:#a00;">' +
+            arcTime +
+            "</span> " +
+            progStartStr +
+            " - " +
+            time2time(prog.time_to) +
+            ' (<span id="cur_time">' +
+            (elapsedMin > 0 ? elapsedMin + "/" : "") +
+            "</span>" +
+            totalMin +
+            " " +
+            (typeof _ === "function" ? _("min") : "min") +
+            ")";
+    } else if (durationEl) {
+        durationEl.innerHTML = "";
+    }
+
+    // Description
+    var descrEl = document.getElementById("programm_descr");
+    if (descrEl && prog) {
+        var thumb = "";
+        if (typeof getThumbnail === "function") {
+            thumb = getThumbnail(prog.icon || "");
+        }
+        descrEl.innerHTML = thumb + (prog.descr || "");
+    } else if (descrEl) {
+        descrEl.innerHTML = "";
+    }
+
+    // Next program
+    var nextProgIdx = idx + 1;
+    if (nextProgIdx <= 0) {
+        nextProgIdx = epgArray.findIndex(function (e) {
+            return e.time > position;
+        });
+    }
+    var nprogramNameEl = document.getElementById("nprogramm_name");
+    var nbeginTimeEl = document.getElementById("nbegin_time");
+    var nendTimeEl = document.getElementById("nend_time");
+    if (
+        nextProgIdx > -1 &&
+        nextProgIdx < epgArray.length - 1 &&
+        epgArray[nextProgIdx]
+    ) {
+        var nextProg = epgArray[nextProgIdx];
+        if (nprogramNameEl) nprogramNameEl.innerHTML = nextProg.name;
+        if (nbeginTimeEl) nbeginTimeEl.textContent = time2time(nextProg.time);
+        if (nendTimeEl)
+            nendTimeEl.textContent =
+                "" + Math.round((nextProg.time_to - nextProg.time) / 60);
+    } else {
+        if (nprogramNameEl) nprogramNameEl.innerHTML = "  ";
+        if (nbeginTimeEl) nbeginTimeEl.textContent = "";
+        if (nendTimeEl) nendTimeEl.textContent = "";
+    }
+
+    // Trigger channel info refresh
+    if (typeof w.updateChanelInfo === "function") {
+        w.updateChanelInfo(listChannel);
+    }
+
+    // EPG re-fetch on seek-cross-boundary (stbPlayer.js:1744-1746)
+    // If curProg changed and bar is not visible, auto-show
+    if (w.sInfoChange && prevProg !== curProg && !$("#info1").is(":visible")) {
+        w.showChanelInfo(1);
+    }
+    // Re-fetch EPG if seek crossed program window boundary and we don't have
+    // enough future programs
+    if (prevProg !== curProg && typeof w.getEPGchanelCached === "function") {
+        // Check if next program is missing from epgArray
+        var needFetch = false;
+        if (nextProgIdx >= epgArray.length || !epgArray[nextProgIdx]) {
+            needFetch = true;
+        } else if (
+            nextProgIdx + 1 >= epgArray.length ||
+            !epgArray[nextProgIdx + 1]
+        ) {
+            needFetch = true;
+        }
+        if (needFetch) {
+            w.getEPGchanelCached(
+                channelId,
+                function (_chId: number, data: EPGEntry[] | null) {
+                    if (data && data.length) {
+                        epgArray = data;
+                        setCurProg(_chId, data, undefined as any);
+                    }
+                }
+            );
         }
     }
 }
@@ -2286,7 +2471,7 @@ export function bucketsKeyHandler(keyCode: number): boolean {
  * Open the channel search prompt, then re-render the current category
  * filtered by the entered query.
  *
- * Ported from stbPlayer.js searchChannel(). Hides the Actions popup, opens
+ * Hides the Actions popup, opens
  * the inline editor with caption "String for search" seeded from
  * stbGetItem("chSearch") (empty default), and on submit persists the new
  * query, filters the current category by channel_name, installs a fresh
@@ -2520,7 +2705,6 @@ export function searchChannel(): void {
 /**
  * Show the on-screen Actions dialog used when sNoNumbersKeys is set.
  *
- * Ported from the inline `function a()` inside the original
  * channelsKeyHandler: a 3×3 table of arrow-key action buttons (UP=move
  * channel up, DOWN=move channel down, LEFT=delete-or-sort,
  * RIGHT=parental-or-empty, ENTER=add-to-bucket) plus a YELLOW/TOOLS
@@ -2643,7 +2827,6 @@ export function showActionsDialog(): void {
 }
 
 /**
- * Ported from stbPlayer.js searchMedia(e). Opens the inline editor with
  * caption "String for search" seeded from stbGetItem("medSearch"); on submit
  * persists the new query, sets window.mediaName to e.title, unshifts 0 into
  * window.mediaSelects, and reloads the playlist with the search query
