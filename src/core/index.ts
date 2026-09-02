@@ -172,6 +172,14 @@ export function closeFullscreen(): void {
  *               default browser action (typing 'l' in input fields).
  */
 export function stbEventToKeyCode(event: any): number {
+    if (event && event.keyCode === 76) {
+        if (isNormalScreen()) openFullscreen();
+        else closeFullscreen();
+        // Prevent default action (typing 'l' in input fields) and stop propagation
+        if (event.preventDefault) event.preventDefault();
+        if (event.stopPropagation) event.stopPropagation();
+        return 0; // Indicate key was consumed
+    }
     return event ? event.keyCode : 0;
 }
 
@@ -236,22 +244,12 @@ export function stbPlay(url: string, position?: number): void {
             maxMaxBufferLength: 600,
             overrideNative: false,
             startLevel: -1,
-            // For PC: ensure CORS-friendly requests (latest hls.js is strict)
-            xhrSetup: function (xhr: XMLHttpRequest) {
-                xhr.withCredentials = false;
-            },
         });
         hlsInstance.loadSource(url);
         hlsInstance.attachMedia(video);
-        // PC + latest hls.js can stall silently on FHD (no ERROR fired, just 'waiting').
-        // Watchdog: if no FRAG_LOADED within 15s of MANIFEST_PARSED, fall back to shaka.
-        var _hlsWatchdog: any = null;
-        var _hlsConsecutiveErrors = 0;
-        var _hlsMaxErrors = 5;
         hlsInstance.on(Hls.Events.ERROR, function (_event: any, data: any) {
             if (data.fatal) {
                 console.error("[HLS] fatal error:", data.type, data.details);
-                _hlsConsecutiveErrors = 0;
                 if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
                     console.log("[HLS] trying recoverMediaError");
                     hlsInstance.recoverMediaError();
@@ -262,46 +260,12 @@ export function stbPlay(url: string, position?: number): void {
                     console.log("[HLS] unrecoverable, destroying");
                     hlsInstance.destroy();
                 }
-            } else {
-                // Non-fatal error (buffer stall, etc.) — count and potentially fallback
-                _hlsConsecutiveErrors++;
-                console.warn(
-                    "[HLS] non-fatal error " +
-                        _hlsConsecutiveErrors +
-                        "/" +
-                        _hlsMaxErrors +
-                        ": " +
-                        data.type +
-                        " (" +
-                        data.details +
-                        ")"
-                );
-                if (_hlsConsecutiveErrors >= _hlsMaxErrors) {
-                    console.warn(
-                        "[HLS] too many non-fatal errors, giving up on this stream"
-                    );
-                    try {
-                        hlsInstance.destroy();
-                    } catch (e) {}
-                    hlsInstance = null;
-                    _hlsConsecutiveErrors = 0;
-                } else {
-                    // Brief retry attempt — try to resume playback
-                    hlsInstance.startLoad();
-                }
             }
         });
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
-            if (_hlsWatchdog) clearTimeout(_hlsWatchdog);
             video!.play().catch(function (e) {
                 console.log("[HLS] play() rejected:", e);
             });
-        });
-        hlsInstance.on(Hls.Events.FRAG_LOADED, function () {
-            if (_hlsWatchdog) {
-                clearTimeout(_hlsWatchdog);
-                _hlsWatchdog = null;
-            }
         });
         hlsInstance.on(
             Hls.Events.AUDIO_TRACKS_UPDATED,
@@ -321,17 +285,12 @@ export function stbPlay(url: string, position?: number): void {
         shaka.Player.isBrowserSupported()
     ) {
         (window as any).player = new shaka.Player(video);
-        (window as any).player
-            .load(url)
-            .then(function () {
-                console.log("[Shaka] manifest loaded");
-                video!.play();
-            })
-            .catch(function (e) {
-                console.error("[Shaka] load failed:", e);
-                video!.src = url;
-                video!.play();
-            });
+        try {
+            (window as any).player.load(url);
+            video!.play();
+        } catch (e) {
+            console.error(e);
+        }
     } else {
         video!.src = url;
     }
@@ -682,7 +641,7 @@ export function stbInit(): void {
         video = document.getElementById("video") as HTMLVideoElement;
         video!.addEventListener("waiting", function () {
             $("#buffering").show();
-            $("#video_res").html("<br/>connecting...");
+            $("#video_res").html("<br/>connect...");
         });
         video!.addEventListener("loadstart", function () {
             $("#buffering").show();

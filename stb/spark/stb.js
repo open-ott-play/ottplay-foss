@@ -1,24 +1,60 @@
-version += ' spark-0219';
+version += " spark-0219";
 var keys = {
-    RIGHT: 39, LEFT: 37, DOWN: 40, UP: 38,
-    RETURN: 8, EXIT: 27, TOOLS: 84, FF: 70, RW: 82,
-    NEXT: 190, PREV: 188, ENTER: 13,
-    RED: 112, GREEN: 113, YELLOW: 114, BLUE: 115,
-    CH_LIST: 0, CH_UP: 33, CH_DOWN: 34,
-    N0: 48, N1: 49, N2: 50, N3: 51, N4: 52, N5: 53, N6: 54, N7: 55, N8: 56, N9: 57,
-    PRECH: 0, POWER: 0, PLAY: 80, STOP: 83, PAUSE: 80,
-    INFO: 73, REC: 0, MUTE: 77,
-    VOL_UP: 0, VOL_DOWN: 0, EPG: 0,
-    ZOOM: 0, ASPECT: 0, AUDIO: 0, SETUP: 84, PIP: 0, LANG: 0
+    ASPECT: 0,
+    AUDIO: 0,
+    BLUE: 115,
+    CH_DOWN: 34,
+    CH_LIST: 0,
+    CH_UP: 33,
+    DOWN: 40,
+    ENTER: 13,
+    EPG: 0,
+    EXIT: 27,
+    FF: 70,
+    GREEN: 113,
+    INFO: 73,
+    LANG: 0,
+    LEFT: 37,
+    MUTE: 77,
+    N0: 48,
+    N1: 49,
+    N2: 50,
+    N3: 51,
+    N4: 52,
+    N5: 53,
+    N6: 54,
+    N7: 55,
+    N8: 56,
+    N9: 57,
+    NEXT: 190,
+    PAUSE: 80,
+    PIP: 0,
+    PLAY: 80,
+    POWER: 0,
+    PRECH: 0,
+    PREV: 188,
+    REC: 0,
+    RED: 112,
+    RETURN: 8,
+    RIGHT: 39,
+    RW: 82,
+    SETUP: 84,
+    STOP: 83,
+    TOOLS: 84,
+    UP: 38,
+    VOL_DOWN: 0,
+    VOL_UP: 0,
+    YELLOW: 114,
+    ZOOM: 0,
 };
-var strEXIT = 'EXIT';
-var strRETURN = 'BACK';
-var _baseStbInit = typeof stbInit === 'function' ? stbInit : function(){};
+var strEXIT = "EXIT";
+var strRETURN = "BACK";
+var _baseStbInit = typeof stbInit === "function" ? stbInit : function () {};
 function stbInit() {
     _baseStbInit();
     try {
-        if (typeof STB !== 'undefined') {
-            console.log('[stb] Spark STB platform detected');
+        if (typeof STB !== "undefined") {
+            console.log("[stb] Spark STB platform detected");
         }
-    } catch(e) {}
+    } catch (e) {}
 }

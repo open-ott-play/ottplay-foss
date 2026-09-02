@@ -349,10 +349,10 @@ export function uiInit(): void {
         if (
             !(
                 w.playType ||
-                (w.channels &&
+                (w.chanels &&
                     w.curList &&
-                    w.channels[w.curList[w.primaryIndex]] &&
-                    w.channels[w.curList[w.primaryIndex]].rec)
+                    w.chanels[w.curList[w.primaryIndex]] &&
+                    w.chanels[w.curList[w.primaryIndex]].rec)
             )
         )
             return;
@@ -407,10 +407,10 @@ export function uiInit(): void {
         if (
             !(
                 w.playType ||
-                (w.channels &&
+                (w.chanels &&
                     w.curList &&
-                    w.channels[w.curList[w.primaryIndex]] &&
-                    w.channels[w.curList[w.primaryIndex]].rec)
+                    w.chanels[w.curList[w.primaryIndex]] &&
+                    w.chanels[w.curList[w.primaryIndex]].rec)
             )
         )
             return;
@@ -465,10 +465,10 @@ export function uiInit(): void {
         if (
             !(
                 w.playType ||
-                (w.channels &&
+                (w.chanels &&
                     w.curList &&
-                    w.channels[w.curList[w.primaryIndex]] &&
-                    w.channels[w.curList[w.primaryIndex]].rec)
+                    w.chanels[w.curList[w.primaryIndex]] &&
+                    w.chanels[w.curList[w.primaryIndex]].rec)
             )
         )
             return;
@@ -630,7 +630,7 @@ export function showPage(): void {
     if (listElement) listElement.style.display = "";
     var dataArr = listDataArray.length
         ? listDataArray
-        : (window as any).listDataArray || (window as any).listArray || [];
+        : (window as any).listDataArray || [];
     var pageStart =
         Math.floor(selIndex / settings.pageSize) * settings.pageSize;
     var pageEnd = Math.min(pageStart + settings.pageSize, dataArr.length);
@@ -714,7 +714,7 @@ export function showPage(): void {
 export function changeSelect(delta: number): void {
     var dataArr = listDataArray.length
         ? listDataArray
-        : (window as any).listDataArray || (window as any).listArray || [];
+        : (window as any).listDataArray || [];
     if (!dataArr.length) return;
     var oldIndex = selIndex;
     selIndex += delta;
@@ -977,8 +977,8 @@ export function updateChanelInfo(channelId: number): void {
     if (channelId !== curList[primaryIndex]) return;
     // Trigger EPG data load if needed; callback re-invokes when data arrives
     // Only fetch if channel doesn't already have valid EPG (prevents infinite recursion)
-    var _ch = (window as any).channels
-        ? (window as any).channels[channelId]
+    var _ch = (window as any).chanels
+        ? (window as any).chanels[channelId]
         : undefined;
     if (!(_ch && _ch.time_to) || _ch.time_to < Date.now() / 1000) {
         getCurProgData(channelId, function () {
@@ -1008,9 +1008,9 @@ export function updateChanelInfo(channelId: number): void {
         channelNumEl.innerHTML =
             "" + ((primaryIndex != null ? primaryIndex : -1) + 1);
 
-    // Channel info from global channels
-    var t = (window as any).channels
-        ? (window as any).channels[channelId]
+    // Channel info from global chanels
+    var t = (window as any).chanels
+        ? (window as any).chanels[channelId]
         : undefined;
     if (t) {
         if (channelNameEl) channelNameEl.innerHTML = t.channel_name || "";
@@ -1054,7 +1054,8 @@ export function updateChanelInfo(channelId: number): void {
         if (progressEl) progressEl.style.width = pct + "%";
         if (beginTimeEl) beginTimeEl.textContent = time2time(t.time);
         var remainingMin = Math.round((t.time_to - nowSec) / 60);
-        if (endTimeEl) endTimeEl.textContent = "+" + remainingMin;
+        if (endTimeEl)
+            endTimeEl.textContent = "+" + (remainingMin > 0 ? remainingMin : 0);
         if (programDurationEl) {
             programDurationEl.innerHTML =
                 time2str(t.time) +
@@ -1082,7 +1083,8 @@ export function updateChanelInfo(channelId: number): void {
             var nextDur = Math.round(
                 (t.nextpr[0].time_to - t.nextpr[0].time) / 60
             );
-            if (nendTimeEl) nendTimeEl.textContent = "" + nextDur;
+            if (nendTimeEl)
+                nendTimeEl.textContent = "" + (nextDur > 0 ? nextDur : 0);
         }
     } else {
         // No EPG — clear program fields
@@ -1612,7 +1614,7 @@ export function popupList(i?: any): void {
 
     var u = -1; // counter для добавленных элементов
     var playType: number = (window as any).playType || 0;
-    var channels: any = (window as any).channels || {};
+    var chanels: any = (window as any).chanels || {};
     var popStop: any = (window as any).popStop;
     var popPause: any = (window as any).popPause;
     var popTogglePip: any = (window as any).popTogglePip;
@@ -1670,7 +1672,7 @@ export function popupList(i?: any): void {
                     );
                 case popShift:
                 case popRecords:
-                    if (playType < 0 || !c || !channels[c] || channels[c].rec)
+                    if (playType < 0 || !c || !chanels[c] || chanels[c].rec)
                         break;
                     return;
                 case popTogglePip:
@@ -1794,13 +1796,15 @@ export function popupList(i?: any): void {
 
         // Пуш в массив как ОБЪЕКТ (не строку!)
         listArray.push({ action: action, desc: s, name: r });
+        listDataArray.push(r); // для совместимости с showPage
 
         if (action == noProvParam) a = listArray.length - 1;
         if (action == optionsList) o = listArray.length;
     });
 
     getListItemFn = function (item: any, _idx: number) {
-        return "&nbsp;&nbsp;" + (item.name || "");
+        // item может быть строкой (listDataArray) или объектом (listArray)
+        return "&nbsp;&nbsp;" + (item.name || item);
     };
 
     detailListActionFn = function () {
@@ -2599,7 +2603,7 @@ function _setLang(e: boolean): void {
     var s = Math.floor(r.length / 10);
     if (r.length % 10) r = (r + _keysP).substr(0, (s + 1) * 10);
     _keys = _keys1 + r + _keysA;
-    _keysSymbol[2].s = "!?,";
+    _keysSymbol[2].s = "!,?";
     _setCase(_keyUp);
     _keyCur = _keys.length - 9;
 }
