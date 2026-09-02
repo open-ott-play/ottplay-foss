@@ -85,6 +85,15 @@ export var strLANG = "SHIFT";
 
 /** Active hls.js instance for the main video!. */
 var hlsInstance: any = null;
+/** Interval handle that increments archive playTime every second. */
+var _playTimeInterval: ReturnType<typeof setInterval> | null = null;
+/** Clear the playTime ticker interval if one is running. */
+function clearPlayTimeInterval(): void {
+    if (_playTimeInterval !== null) {
+        clearInterval(_playTimeInterval);
+        _playTimeInterval = null;
+    }
+}
 /** Active hls.js instance for the PiP video!. */
 var hlsPipInstance: any = null;
 /** Whether the player is currently in fullscreen mode. */
@@ -205,6 +214,7 @@ export function stbPlay(url: string, position?: number): void {
     if ((window as any).player) {
         (window as any).player = null;
     }
+    clearPlayTimeInterval();
     // Auto-detect HEVC: if URL likely contains HEVC and browser can't handle it via MSE, use native HTML5
     var _forceNative = false;
     if (playerMode === 1 && typeof Hls !== "undefined" && Hls.isSupported()) {
@@ -248,14 +258,8 @@ export function stbPlay(url: string, position?: number): void {
             overrideNative: false,
             startLevel: -1,
         });
-        // ponytail: seek to position after manifest loaded (fragmented MP4, not native HLS)
+        // ponytail: seek to position at MANIFEST_PARSED — currentTime === 0 guaranteed
         var _startPos = position || 0;
-        hlsInstance.on(Hls.Events.LEVEL_LOADED, function (_e: any, _d: any) {
-            if (_startPos > 0 && video!.currentTime === 0) {
-                video!.currentTime = _startPos;
-                _startPos = 0;
-            }
-        });
         hlsInstance.loadSource(url);
         hlsInstance.attachMedia(video);
         hlsInstance.on(Hls.Events.ERROR, function (_event: any, data: any) {
@@ -278,6 +282,10 @@ export function stbPlay(url: string, position?: number): void {
             video!.play().catch(function (e) {
                 console.log("[HLS] play() rejected:", e);
             });
+            if (_startPos > 0) {
+                video!.currentTime = _startPos;
+                _startPos = 0;
+            }
         });
         hlsInstance.on(
             Hls.Events.AUDIO_TRACKS_UPDATED,
@@ -309,6 +317,18 @@ export function stbPlay(url: string, position?: number): void {
     // Only call play() for non-HLS modes — HLS.js triggers play after manifest parsed
     if (playerMode !== 1) {
         video!.play();
+        if (position && position > 0) {
+            video!.currentTime = position;
+        }
+    }
+    // Sync playType/playTime to window for external UI consumers
+    (window as any).playType = (window as any).playType ?? 0;
+    (window as any).playTime = (window as any).playTime ?? 0;
+    // Start playTime ticker for archive playback (playType > 0 set by playArchive)
+    if ((window as any).playType > 0) {
+        _playTimeInterval = setInterval(function () {
+            (window as any).playTime = ((window as any).playTime as number) + 1;
+        }, 1000);
     }
 }
 
@@ -323,6 +343,7 @@ export function stbStop(): void {
         hlsInstance.destroy();
         hlsInstance = null;
     }
+    clearPlayTimeInterval();
 }
 /**
  * Pause playback.

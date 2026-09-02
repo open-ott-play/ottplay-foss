@@ -1720,6 +1720,8 @@ export function playArchive(e: number): void {
     playTime = 0;
     playType = Math.floor(e);
     forcePlay = true;
+    w.playType = playType;
+    w.playTime = playTime;
     if (!fileArchive || t != curProg) {
         if (w.sStopPlay) w.stbStop();
         w.stbPlay(
