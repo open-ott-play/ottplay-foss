@@ -49,13 +49,6 @@ if [ "${LOCAL_ONLY:-1}" = "1" ]; then
     echo "loopback-only patch applied (LOCAL_ONLY=0 to skip)"
 fi
 
-# The pull above replaces local.json wholesale, wiping local overrides —
-# re-apply the deep-cache window (car/cellular tolerance) on top.
-# HLS_PROXY_DEEP_CACHE=0 to keep the synced values untouched.
-if [ "${HLS_PROXY_DEEP_CACHE:-1}" = "1" ]; then
-    "$SCRIPT_DIR/set-hls-proxy-deep-cache.sh" on
-fi
-
 echo "synced: $HOST:$CONTAINER:$SRC -> $DEST"
 echo "previous versions saved as *.bak / plugins.bak"
 echo "run locally: cd $DEST && ./hls-proxy   # port 8080 per local.json (container maps 8080->9999)"

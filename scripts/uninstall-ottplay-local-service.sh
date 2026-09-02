@@ -32,11 +32,9 @@ for PORT in ${OTTPLAY_PORT:-8095 8096 8097}; do
 done
 
 # Best-effort: drop the self-signed cert from System keychain trust.
-# Delete by SHA-1 — by CN (-c) it fails with "ambiguous" when duplicates exist.
 CRT="$HOME/ottplay-foss-local/certs/server.crt"
 if [ -f "$CRT" ]; then
-    SHA1="$(openssl x509 -in "$CRT" -noout -fingerprint -sha1 | sed 's/^.*=//;s/://g')"
-    sudo -n security delete-certificate -Z "$SHA1" /Library/Keychains/System.keychain 2>/dev/null \
+    sudo -n security delete-certificate -c "OTT-play Local" /Library/Keychains/System.keychain 2>/dev/null \
         && echo "cert removed from System keychain" || true
 fi
 echo "done (~/ottplay-foss-local kept; reinstall with install-ottplay-local-service.sh / install-ottplay-extra-instances.sh)"
