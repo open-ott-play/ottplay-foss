@@ -42,7 +42,6 @@ import {
     epg,
     epgList,
     favoritesArray,
-    forcePlay,
     getChannelUrl,
     getMediaDescr,
     handleNumberInput,

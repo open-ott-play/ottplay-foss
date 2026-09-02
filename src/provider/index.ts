@@ -669,7 +669,6 @@ declare var medFavorites: any[];
 declare var _prog100: any;
 declare var playType: number;
 declare var playTime: number;
-declare var forcePlay: boolean;
 declare var sStopPlay: number;
 declare var sInfoSwitch: number;
 declare var sInfoChange: number;

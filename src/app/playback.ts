@@ -111,7 +111,6 @@ export function _playMedia(item: any): void {
     if ((window as any).sInfoSwitch) showChanelInfo(settings.infoTimeout);
     (window as any).playTime = 0;
     (window as any).playType = -1e11;
-    (window as any).forcePlay = true;
     if ((window as any).sStopPlay) stbStop();
     if (typeof item.stream_url === "function")
         item.stream_url = item.stream_url();

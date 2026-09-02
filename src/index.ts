@@ -75,7 +75,6 @@ import {
     epgShow_miniproc,
     favoritesArray,
     fileArchive,
-    forcePlay,
     getChannelUrl,
     getCurProgData,
     getMediaDescr,
@@ -1549,7 +1548,7 @@ function _playChannel(catIdx: number, chIdx: number): void {
  * (#picon, #channel_name, #nprogramm_name, #nbegin_time, #nend_time,
  * #programm_name, #progress_div, #progress_r, #progress, #begin_time,
  * #end_time, #programm_name2, #programm_duration, #programm_descr).
- * Calls stbStop(), stbPlay(), showChanelInfo(). Sets forcePlay = true.
+ * Calls stbStop(), stbPlay(), showChanelInfo().
  *
  * Edge case: If stream_url is a function, calls it to get the URL.
  * If mediaUrls last element is -1, resets mediaSelects[0] to 0.
@@ -1593,7 +1592,6 @@ function _playMedia(item: any): void {
     if (sInfoSwitch) showChanelInfo(settings.infoTimeout);
     (window as any).playTime = 0;
     (window as any).playType = -1e11;
-    (window as any).forcePlay = true;
     if (sStopPlay) stbStop();
     if (typeof item.stream_url === "function")
         item.stream_url = item.stream_url();

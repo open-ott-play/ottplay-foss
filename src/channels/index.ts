@@ -222,8 +222,7 @@ export let medHistory: MediaHistoryEntry[] = [],
 
 /* ---- Playback & EPG state ---- */
 export let playType = 0,
-    playTime = 0,
-    forcePlay = false;
+    playTime = 0;
 export let _prog100: any = null,
     _tmedia: any = null;
 export let epgCash = 0;
@@ -1688,7 +1687,7 @@ export function getMediaDescr(item: any): string {
  * has not changed.
  *
  * @param e - Archive start time in seconds (Unix).
- * Side effects: Sets playTime, playType, forcePlay, fileArchive, archivePos;
+ * Side effects: Sets playTime, playType, fileArchive, archivePos;
  *               calls stbStop/stbPlay/stbSetPosTime via window globals.
  */
 export function playArchive(e: number): void {
@@ -1709,7 +1708,6 @@ export function playArchive(e: number): void {
     };
     playTime = 0;
     playType = Math.floor(e);
-    forcePlay = true;
     w.playType = playType;
     w.playTime = playTime;
     if (!fileArchive || t != curProg) {
