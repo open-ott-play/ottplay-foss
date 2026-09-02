@@ -2805,84 +2805,64 @@ export function clickKey(e: number): void {
  *             Symbol keys (charCode <= 9) invoke their action function instead of typing.
  */
 export function editKey1(e: number): void {
-    // Physical keyboard: if keyCode maps to a char in _keys, type it directly
-    var ch = String.fromCharCode(e);
-    if (ch && _keys.indexOf(ch) !== -1) {
-        var idx = _keys.indexOf(ch);
-        if (idx === _keyCur) {
-            // already on this key — type it
-            if (_keys.charCodeAt(idx) > 9) {
-                (window as any).editvar =
-                    (window as any).editvar.substr(0, editPos) +
-                    _keys[idx] +
-                    (window as any).editvar.substr(editPos);
-                editPos++;
-                _changeEdit();
-            } else {
-                if (
-                    _keysSymbol[_keys.charCodeAt(idx)] &&
-                    typeof _keysSymbol[_keys.charCodeAt(idx)].a === "function"
-                )
-                    _keysSymbol[_keys.charCodeAt(idx)].a();
-            }
-        } else {
-            // move cursor to the key and type
-            $("#ik" + _keyCur).css({ "background-color": "", color: "" });
-            _keyCur = idx;
-            $("#ik" + _keyCur).css({
-                "background-color": (window as any).curColorB,
-                color: (window as any).curColor,
-            });
-            (window as any).editvar =
-                (window as any).editvar.substr(0, editPos) +
-                _keys[_keyCur] +
-                (window as any).editvar.substr(editPos);
-            editPos++;
-            _changeEdit();
-        }
-        return;
-    }
-    function mv(d: number) {
-        $("#ik" + _keyCur).css({ "background-color": "", color: "" });
-        _keyCur += d;
-        $("#ik" + _keyCur).css({
-            "background-color": (window as any).curColorB,
-            color: (window as any).curColor,
-        });
-    }
     switch (e) {
         case (window as any).keys.UP:
-            mv(_keyCur > 9 ? -10 : _keys.length - 10);
+            {
+                $("#ik" + _keyCur).css({ "background-color": "", color: "" });
+                _keyCur += _keyCur > 9 ? -10 : _keys.length - 10;
+                $("#ik" + _keyCur).css({
+                    "background-color": (window as any).curColorB,
+                    color: (window as any).curColor,
+                });
+            }
             return;
         case (window as any).keys.DOWN:
-            mv(_keyCur < _keys.length - 10 ? 10 : -_keys.length + 10);
+            {
+                $("#ik" + _keyCur).css({ "background-color": "", color: "" });
+                _keyCur +=
+                    _keyCur < _keys.length - 10 ? 10 : -_keys.length + 10;
+                $("#ik" + _keyCur).css({
+                    "background-color": (window as any).curColorB,
+                    color: (window as any).curColor,
+                });
+            }
             return;
         case (window as any).keys.LEFT:
-            mv(_keyCur % 10 > 0 ? -1 : 9);
+            {
+                $("#ik" + _keyCur).css({ "background-color": "", color: "" });
+                _keyCur += _keyCur % 10 > 0 ? -1 : 9;
+                $("#ik" + _keyCur).css({
+                    "background-color": (window as any).curColorB,
+                    color: (window as any).curColor,
+                });
+            }
             return;
         case (window as any).keys.RIGHT:
-            mv(_keyCur % 10 < 9 ? 1 : -9);
+            {
+                $("#ik" + _keyCur).css({ "background-color": "", color: "" });
+                _keyCur += _keyCur % 10 < 9 ? 1 : -9;
+                $("#ik" + _keyCur).css({
+                    "background-color": (window as any).curColorB,
+                    color: (window as any).curColor,
+                });
+            }
             return;
         case (window as any).keys.TOOLS:
         case (window as any).keys.RED:
-            if (_keysSymbol[0] && typeof _keysSymbol[0].a === "function")
-                _keysSymbol[0].a();
+            _keysSymbol[0].a();
             return;
         case (window as any).keys.FF:
         case (window as any).keys.GREEN:
-            if (_keysSymbol[1] && typeof _keysSymbol[1].a === "function")
-                _keysSymbol[1].a();
+            _keysSymbol[1].a();
             return;
         case (window as any).keys.RW:
         case (window as any).keys.YELLOW:
-            if (_keysSymbol[7] && typeof _keysSymbol[7].a === "function")
-                _keysSymbol[7].a();
+            _keysSymbol[7].a();
             return;
         case (window as any).keys.PLAY:
         case (window as any).keys.PAUSE:
         case (window as any).keys.BLUE:
-            if (_keysSymbol[9] && typeof _keysSymbol[9].a === "function")
-                _keysSymbol[9].a();
+            _keysSymbol[9].a();
             return;
         case (window as any).keys.ENTER:
             if (_keys.charCodeAt(_keyCur) > 9) {
@@ -2893,12 +2873,7 @@ export function editKey1(e: number): void {
                 editPos++;
                 _changeEdit();
             } else {
-                if (
-                    _keysSymbol[_keys.charCodeAt(_keyCur)] &&
-                    typeof _keysSymbol[_keys.charCodeAt(_keyCur)].a ===
-                        "function"
-                )
-                    _keysSymbol[_keys.charCodeAt(_keyCur)].a();
+                _keysSymbol[_keys.charCodeAt(_keyCur)].a();
             }
             return;
         case (window as any).keys.EXIT:
@@ -2911,7 +2886,12 @@ export function editKey1(e: number): void {
         default: {
             var idx = _keys.indexOf(String.fromCharCode(e));
             if (idx > -1) {
-                mv(idx - _keyCur);
+                $("#ik" + _keyCur).css({ "background-color": "", color: "" });
+                _keyCur += idx - _keyCur;
+                $("#ik" + _keyCur).css({
+                    "background-color": (window as any).curColorB,
+                    color: (window as any).curColor,
+                });
                 editKey1((window as any).keys.ENTER);
             }
             return;
