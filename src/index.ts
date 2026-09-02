@@ -613,6 +613,7 @@ function initUIReferences(): void {
  */
 function setFontSize(): void {
     pageSize = settings.pageSize;
+    var $i1El = $i1 && typeof $i1.css === "function" ? $i1 : null;
     var e = window.innerHeight / 720;
     var t = window.innerWidth / 1280;
     var r = (window.innerHeight - 90 * e) / pageSize - settings.fontShift * e;
@@ -623,7 +624,7 @@ function setFontSize(): void {
     $("#permanentTime").css("font-size", r + "px");
 
     r = Math.max(r, 22 * e);
-    if ($i1 && typeof $i1.css === "function") $i1.css("font-size", r + "px");
+    if ($i1El) $i1El.css("font-size", r + "px");
     $("#numprog").css("font-size", r + "px");
     $("#dialogbox").css("font-size", r + "px");
 
@@ -771,7 +772,7 @@ function setFontSize(): void {
     try {
         var n2 = $("#testFont"),
             i2 = n2.css("font-size"),
-            l2 = $i1 && $i1.css ? $i1.css("font-size") : "22px";
+            l2 = $i1El ? $i1El.css("font-size") : "22px";
         n2.css("font-size", l2).text("9");
         var a2 = n2.width();
         n2.text("").css("font-size", i2);
