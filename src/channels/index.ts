@@ -1760,9 +1760,11 @@ export function updateArchiveInfo(position: number): void {
 
 /**
  * Stop archive playback and return to live TV for the current channel.
- * No-op if `playType <= 0` (already live).
+ * No-op if playback has not started, or if the current channel is not
+ * an archive-capable (`rec`) channel.
  *
- * Side effects: Calls `window.playChannel` to restart live playback.
+ * Side effects: refreshes the EPG window, resets playType/playTime, and
+ * pauses the underlying video element.
  */
 export function liveStop(): void {
     if (!stbIsPlaying()) return;
