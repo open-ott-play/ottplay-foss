@@ -1806,7 +1806,7 @@ window.stbOptions = function (): void {
         w.stbOptions();
     }
     var noyes = [w._("no") || "no", w._("yes") || "yes"];
-    w.listArray = [
+    setListArrays(w, [
         {
             name: w._("Editor") || "Editor",
             val: w.sEditor,
@@ -1834,7 +1834,7 @@ window.stbOptions = function (): void {
             val: 0,
             values: saveSettings,
         },
-    ];
+    ]);
     var captionEl = document.getElementById("listCaption");
     if (captionEl) captionEl.innerHTML = w._("Settings STB") || "Settings STB";
     if (typeof w._setSetup === "function") {
@@ -1855,6 +1855,11 @@ delete (window as any).addAoptions;
  *
  * Side effects: Updates window[key]; writes to stb/provider storage.
  */
+/** Dual-write listArray + listDataArray to window. Used by settings screens. */
+function setListArrays(w: any, data: any[]): void {
+    w.listArray = data;
+    w.listDataArray = data;
+}
 window.saveIfChanged = function (
     pos: number,
     key: string,
@@ -1956,7 +1961,7 @@ window.settingsInterface = function (): void {
     var noyes = [w._("no") || "no", w._("yes") || "yes"];
     var tz = (w.arrTimezone || ["system", "0"]).slice();
     tz[0] = w._(tz[0]) || tz[0];
-    w.listArray = [
+    setListArrays(w, [
         {
             name:
                 w._("Black screen while switching the channel") ||
@@ -2113,7 +2118,7 @@ window.settingsInterface = function (): void {
             val: 0,
             values: save,
         },
-    ];
+    ]);
     if (typeof w.stbSetBuffer === "function" && w.stbBufferSizes)
         w.listArray[18].values = w.stbBufferSizes;
     if (typeof w.stbPlayers !== "undefined" && Array.isArray(w.stbPlayers))
@@ -2165,7 +2170,7 @@ window.settingsInfobar = function (): void {
         w.optionsList(w.settingsInfobar);
     }
     var noyes = [w._("no") || "no", w._("yes") || "yes"];
-    w.listArray = [
+    setListArrays(w, [
         {
             name:
                 w._("Infobar display timeout, s") ||
@@ -2210,7 +2215,7 @@ window.settingsInfobar = function (): void {
             val: 0,
             values: save,
         },
-    ];
+    ]);
     var capEl = document.getElementById("listCaption");
     if (capEl) capEl.innerHTML = w._("Infobar settings") || "Infobar settings";
     if (typeof w._setSetup === "function")
@@ -2253,7 +2258,7 @@ window.settingsLists = function (): void {
         w.optionsList(w.settingsLists);
     }
     var noyes = [w._("no") || "no", w._("yes") || "yes"];
-    w.listArray = [
+    setListArrays(w, [
         {
             name:
                 w._("Not reduce video when showing the list (bugfix)") ||
@@ -2328,7 +2333,7 @@ window.settingsLists = function (): void {
             val: 0,
             values: save,
         },
-    ];
+    ]);
     var capEl = document.getElementById("listCaption");
     if (capEl) capEl.innerHTML = w._("Lists settings") || "Lists settings";
     if (typeof w._setSetup === "function")
@@ -2373,7 +2378,7 @@ window.settingsChannels = function (): void {
         w.optionsList(w.settingsChannels);
     }
     var noyes = [w._("no") || "no", w._("yes") || "yes"];
-    w.listArray = [
+    setListArrays(w, [
         {
             name:
                 w._("Show channel number in list") ||
@@ -2459,7 +2464,7 @@ window.settingsChannels = function (): void {
             val: 0,
             values: save,
         },
-    ];
+    ]);
     var capEl = document.getElementById("listCaption");
     if (capEl)
         capEl.innerHTML =
