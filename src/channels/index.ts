@@ -216,7 +216,6 @@ export let epgTimers: any[] = [],
     sSortAbc = 0;
 export let medHistory: MediaHistoryEntry[] = [],
     medFavorites: MediaHistoryEntry[] = [];
-export let historySearchText = "";
 
 /* ---- Playback & EPG state ---- */
 export let playType = 0,
@@ -2808,6 +2807,7 @@ export function searchRec(): void {
 }
 
 /**
+<<<<<<< Updated upstream
  * Set the history search query string.
  * @param query - The search text to filter history entries by.
  * Side effects: Sets `historySearchText`.
@@ -2847,6 +2847,8 @@ export function getFilteredChannelList(): number[] {
 }
 
 /**
+=======
+>>>>>>> Stashed changes
  * Set the channel sort mode.
  * @param mode - 0 = default (no sort), 1 = alphabetical (A-Z).
  * Side effects: Sets `sSortAbc`.
