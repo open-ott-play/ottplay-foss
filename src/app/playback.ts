@@ -63,10 +63,8 @@ export function _playChannel(catIdx: number, chIdx: number): void {
             getChannelUrl(channelId)
     );
     (window as any).updateChanelInfo(channelId);
-    if ((window as any).sInfoSwitch) showChanelInfo(settings.infoTimeout);
+    if ((window as any).sInfoSwitch) showChanelInfo(1);
     (window as any).playType = 0;
-    if (typeof (window as any).setPlayer === "function")
-        (window as any).setPlayer();
     stbPlay(getChannelUrl(channelId));
     clearTimeout((window as any)._tmedia);
     (window as any)._tmedia = setTimeout(checkMedia, 2000);
