@@ -2831,22 +2831,6 @@ export function getFilteredHistory(): MediaHistoryEntry[] {
 }
 
 /**
- * Returns channel IDs that match `searchText` (case‑insensitive) within the current category.
- * If the filter is empty, returns a copy of `curList`.
- */
-export function getFilteredChannelList(): number[] {
-    if (!searchText) return curList.slice();
-    const lower = searchText.toLowerCase();
-    return curList.filter((chId) => {
-        const ch = channels[chId];
-        return (
-            (ch?.channel_name?.toLowerCase().includes(lower) ?? false) ||
-            (ch?.name?.toLowerCase().includes(lower) ?? false)
-        );
-    });
-}
-
-/**
  * Set the channel sort mode.
  * @param mode - 0 = default (no sort), 1 = alphabetical (A-Z).
  * Side effects: Sets `sSortAbc`.
