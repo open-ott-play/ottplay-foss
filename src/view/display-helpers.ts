@@ -2,14 +2,13 @@
  * Display helper functions for UI manipulation
  */
 
-import { bodyColor, curColor, curColorB } from "../app/state";
+import { bodyColor, curColor, curColorB, fontFamilyList } from "../app/state";
 import { sEditor } from "../channels";
 import { setPipPosition, stbToggleStandby } from "../core";
 import { settings } from "../settings";
 import { hsvToRgb } from "../ui";
 
 // Globals used by setColor / setEditor / setSleepTimeout
-declare var fontFamilyList: any[];
 declare var $tooltipSpan: any;
 declare var tooltip: any;
 
@@ -45,10 +44,7 @@ export function setFontSize(): void {
         .css("background-color", "");
 
     const s = "Helvetica, Arial, sans-serif";
-    $("body").css(
-        "font-family",
-        (window as any).fontFamilyList[settings.fontSize] + s
-    );
+    $("body").css("font-family", fontFamilyList[settings.fontSize] + s);
 
     $("#info").css("padding", 20 * e + "px");
     $("#numprog").css({
