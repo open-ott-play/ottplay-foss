@@ -211,11 +211,7 @@
       "!index.html",
       "!dist/**",
       "!fonts/**",
-      "!node_modules/**",
-      "!stb/**",
-      "!js/**",
-      "!stbPlayer/**",
-      "!prov/**"
+      "!node_modules/**"
     ]
   },
   "formatter": {
