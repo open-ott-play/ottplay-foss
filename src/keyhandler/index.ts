@@ -368,6 +368,12 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
             break;
         case keys.PLAY:
         case keys.PAUSE:
+            // Live TV mode (playType == 0): pause/play stops live stream (legacy stbPlayer.js:L7243-7245)
+            if (!(window as any).playType) {
+                if (typeof (window as any).liveStop === "function")
+                    (window as any).liveStop();
+                break;
+            }
             if (
                 typeof (window as any).stbContinue === "function" &&
                 typeof (window as any).stbIsPlaying === "function"
@@ -504,6 +510,10 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
         case keys.CH_DOWN:
             if (typeof (window as any).minusProg === "function")
                 (window as any).minusProg();
+            break;
+        case keys.PRECH:
+            if (typeof (window as any).prevProg === "function")
+                (window as any).prevProg();
             break;
         case keys.LANG:
             if (!_keysSymbol[1].s) return;
