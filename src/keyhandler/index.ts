@@ -386,6 +386,15 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
             }
             break;
         case keys.STOP:
+            // Show "Live" or "Restart stream" before switching (legacy stbPlayer.js:L7253-7254)
+            if (typeof (window as any).showShift === "function")
+                (window as any).showShift(
+                    _(
+                        String(
+                            (window as any).playType ? "Live" : "Restart stream"
+                        )
+                    )
+                );
             if (typeof (window as any).playChannel === "function") {
                 (window as any).playChannel(
                     (window as any).catIndex,
