@@ -1,7 +1,7 @@
 /**
  * VEWD device stub.
  *
- * Keycodes for VEWD (Opera TV) HbbTV TVs.
+ * Keycodes for VEWD HbbTV TVs.
  * Sets window.keys.
  * stbInit: NO — legacy has no stbInit body
  */
