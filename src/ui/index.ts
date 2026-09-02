@@ -779,9 +779,38 @@ export function closeList(): void {
         if (listElement) listElement.style.display = "none";
         $("#list_osd").hide();
         $("#list_window").hide();
+        $("#listPopUp").hide();
         $("#permanentTime").toggle(settings.permanentTime !== 0);
         if (typeof (window as any).stbToFullScreen === "function")
             (window as any).stbToFullScreen();
+        if (!(window as any).sNoSmall && (window as any).pipIndex != null)
+            (window as any).stbPlayPip(
+                (window as any).getChannelUrl(
+                    (window as any).cats[
+                        (window as any).catsArray[(window as any).pipCatIndex]
+                    ][(window as any).pipIndex]
+                )
+            );
+        if ((window as any).sPreview && (window as any).previewChan) {
+            if (
+                (window as any).previewChan.ch_id !==
+                (window as any).curList[(window as any).primaryIndex]
+            ) {
+                if ((window as any).sStopPlay) (window as any).stbStop();
+                if ((window as any).playType > 0)
+                    (window as any).playArchive(
+                        (window as any).playType +
+                            (window as any).playTime -
+                            ((window as any).s10resum ? 10 : 0)
+                    );
+                else
+                    (window as any).playChannel(
+                        (window as any).catIndex,
+                        (window as any).primaryIndex
+                    );
+            }
+            (window as any).previewChan = null;
+        }
     } catch (e) {
         console.error(e);
     }
