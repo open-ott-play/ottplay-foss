@@ -27,6 +27,7 @@ Functions to audit for port parity (legacy → current):
 ---
 
 ## Done:
+- `showEditKey1` — legacy `showEditKey1(e)` (`stbPlayer.js:L3988`); current `showEditKey1(_initKeys)` (`src/ui/index.ts:L2642`); fix: no mismatch — body parity exact (saveCPD, lang check, _keysSymbol[1/7/9], sNoColorKeys underlines, editPos, _keyCur clamp, _setPunct + showEdit).
 - `editKey2` — legacy `stbPlayer.js:L7962` referenced only as `editKey = editKey2` in `setEditor()`; never defined as a function in legacy (assumed external global); current `src/ui/index.ts:L2931` `editKey2(code: number): void` with switch on `keys.ENTER`/`keys.EXIT`/`keys.RETURN`; callers: `src/index.ts:933` + `src/view/display-helpers.ts:329` alias `window.editKey = window.editKey2`; status: partial — legacy has no body to match; no TS fix needed.
 - `shiftArchive` — legacy `shiftArchive()` (`stbPlayer.js:L6148`) + `_shiftArchive()` (`stbPlayer.js:L6161`); current `shiftArchive()` + `_shiftArchive()` (`src/channels/index.ts:L1805`); fix: when `e === -6e6`, use assignment `_shiftSec = e` (not `_shiftSec += e`) before calling `_shiftArchive()` to match legacy L6150.
 - `btnDiv` — legacy `stbPlayer.js:L2651` `btnDiv(e, t, r, s, n)` with guard `if (!r || !e) return ""`, localized description, color class by key, number-key stripping, sNoColorKeys suppression, sNoNumbersKeys stripping; TS `src/ui/index.ts:L1210` matches: signature `btnDiv(keyLabel, label, description, num?, extra?)`, same guard logic, same color/sNumber/sNoColor handling, same HTML output; no discrepancies.
