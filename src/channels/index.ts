@@ -7,6 +7,8 @@
 import {
     videoPip as pipVideoElement,
     playerMode,
+    stbIsPlaying,
+    stbPause,
     video as videoElement,
 } from "../core/index";
 import { settings } from "../settings/index";
@@ -216,7 +218,6 @@ export let epgTimers: any[] = [],
     sSortAbc = 0;
 export let medHistory: MediaHistoryEntry[] = [],
     medFavorites: MediaHistoryEntry[] = [];
-export let historySearchText = "";
 
 /* ---- Playback & EPG state ---- */
 export let playType = 0,
@@ -1764,10 +1765,33 @@ export function updateArchiveInfo(position: number): void {
  * Side effects: Calls `window.playChannel` to restart live playback.
  */
 export function liveStop(): void {
-    if (playType <= 0) return;
-    if (typeof (window as any).playChannel === "function") {
-        (window as any).playChannel(catIndex, primaryIndex);
-    }
+    if (!stbIsPlaying()) return;
+    var e = curList[primaryIndex];
+    if (!channels[e].rec) return;
+    getEPGchanelCached(e, function (t: number, e: any) {
+        var r: any[] = [];
+        if (e !== null && e.length) {
+            r = e
+                .filter(function (e: any) {
+                    var ch = channels[t];
+                    return ch
+                        ? e.time > Date.now() / 1e3 - (ch.rec ?? 0) * 60 * 60
+                        : false;
+                })
+                .sort(function (e: any, t: any) {
+                    return e.time - t.time;
+                });
+        }
+        epgArray = r;
+        setCurProg(t, e, undefined as any);
+        playType = Math.round(Date.now() / 1e3);
+        playTime = 0;
+        if (typeof (window as any).showChanelInfo === "function")
+            (window as any).showChanelInfo(2);
+        if (typeof (window as any).showShift === "function")
+            (window as any).showShift((window as any)._("Pause"));
+        stbPause();
+    });
 }
 
 /**
@@ -2617,60 +2641,194 @@ export function showActionsDialog(): void {
 }
 
 /**
- * Set the media search query string.
- * @param query - The search text to filter media items by.
- * Side effects: Sets `searchText`.
+ * Ported from stbPlayer.js searchMedia(e). Opens the inline editor with
+ * caption "String for search" seeded from stbGetItem("medSearch"); on submit
+ * persists the new query, sets window.mediaName to e.title, unshifts 0 into
+ * window.mediaSelects, and reloads the playlist with the search query
+ * appended to e.playlist_url.
+ *
+ * Side effects:
+ *  - Writes "medSearch" to stb storage on submit.
+ *  - Mutates window.mediaName and window.mediaSelects.
+ *  - Calls window.mediaList with the search-suffixed playlist URL.
+ *
+ * Caller: selectMedia() in stbPlayer.js — invoked only when
+ * `e.search_on` is truthy.
  */
-export function searchMedia(query: string): void {
-    searchText = query;
+export function searchMedia(e: any): void {
+    var w = window as any;
+    w.editCaption = w._("String for search");
+    var t =
+        (typeof w.stbGetItem === "function" ? w.stbGetItem("medSearch") : "") ||
+        "";
+    w.editvar = t;
+    w.setEdit = function (): void {
+        var inputEl = document.getElementById("editvar");
+        var inputVal = (inputEl && (inputEl as HTMLInputElement).value) || "";
+        var submitted = (window as any).editvar || "";
+        if (!inputVal && !submitted) return;
+        t = inputVal || submitted;
+        if (typeof w.stbSetItem === "function") w.stbSetItem("medSearch", t);
+        w.mediaName = e.title;
+        w.mediaSelects.unshift(0);
+        if (typeof w.mediaList === "function") {
+            w.mediaList(
+                e.playlist_url +
+                    (e.playlist_url.indexOf("?") == -1 ? "?" : "&") +
+                    "search=" +
+                    t
+            );
+        }
+    };
+    if (typeof w.showEditKey === "function") w.showEditKey();
 }
 
 /**
- * Set the records search query string.
- * @param query - The search text to filter records by.
- * Side effects: Sets `searchText`.
+ * Open the records search dialog.
+ * Sets `window.editCaption` and `window.editvar` from persisted `medSearch`,
+ * assigns a new `window.setEdit` that filters `_crData.data` by name/descr
+ * and wires a dedicated listKeyHandler for the filtered result list.
+ * Finally invokes `window.showEditKey` to display the input UI.
+ *
+ * Side effects:
+ * - Mutates `window.editCaption`, `window.editvar`, `window.setEdit`,
+ *   `window.listArray`, `window.getListItemFn`, `window.detailListActionFn`,
+ *   `window.listKeyHandlerFn`, `_crData.selIndex`, `window.selIndex`.
+ * - Reads/writes `medSearch` via stbGetItem/stbSetItem.
+ * - Updates #listCaption and #listPodval innerHTML; hides #listPopUp.
+ * - Calls `window.showPage`.
  */
-export function searchRec(query: string): void {
-    searchText = query;
-}
-
-/**
- * Set the history search query string.
- * @param query - The search text to filter history entries by.
- * Side effects: Sets `historySearchText`.
- */
-export function searchHistoryChannel(query: string): void {
-    historySearchText = query;
-}
-
-/**
- * Returns history entries that match `historySearchText` (case‑insensitive).
- * If the filter is empty, returns a copy of `medHistory`.
- */
-export function getFilteredHistory(): MediaHistoryEntry[] {
-    if (!historySearchText) return medHistory.slice();
-    const lower = historySearchText.toLowerCase();
-    return medHistory.filter(
-        (entry) =>
-            (entry.name?.toLowerCase().includes(lower) ?? false) ||
-            (entry.title?.toLowerCase().includes(lower) ?? false)
-    );
-}
-
-/**
- * Returns channel IDs that match `searchText` (case‑insensitive) within the current category.
- * If the filter is empty, returns a copy of `curList`.
- */
-export function getFilteredChannelList(): number[] {
-    if (!searchText) return curList.slice();
-    const lower = searchText.toLowerCase();
-    return curList.filter((chId) => {
-        const ch = channels[chId];
-        return (
-            (ch?.channel_name?.toLowerCase().includes(lower) ?? false) ||
-            (ch?.name?.toLowerCase().includes(lower) ?? false)
-        );
-    });
+export function searchRec(): void {
+    var w = window as any;
+    w.editCaption = w._("String for search");
+    var e =
+        (typeof w.stbGetItem === "function" ? w.stbGetItem("medSearch") : "") ||
+        "";
+    w.editvar = e;
+    w.setEdit = function (): void {
+        if (!(w.editvar as string).length) return;
+        e = w.editvar;
+        if (typeof w.stbSetItem === "function") w.stbSetItem("medSearch", e);
+        setTimeout(function () {
+            w.selIndex = 0;
+            var t = e.toLowerCase();
+            w.listArray = w._crData.data.filter(function (e: any) {
+                return (
+                    e.name.toLowerCase().indexOf(t) !== -1 ||
+                    e.descr.toLowerCase().indexOf(t) !== -1
+                );
+            });
+            w.getListItemFn = function (e: any, _t: number): string {
+                return "&nbsp;&nbsp;" + e.name;
+            };
+            w.detailListActionFn = detailREC;
+            w.listKeyHandlerFn = function (key: number): boolean {
+                switch (key) {
+                    case w.keys.EXIT:
+                        if (typeof w.closeList === "function") w.closeList();
+                        return true;
+                    case w.keys.LEFT:
+                        if (w.sArrowFun != 2) return false;
+                    // falls through
+                    case w.keys.RETURN:
+                        if (typeof w.catRecordsList === "function")
+                            w.catRecordsList(w.listCatIndex);
+                        return true;
+                    case w.keys.RIGHT:
+                        if (w.sArrowFun != 2) return false;
+                    // falls through
+                    case w.keys.N2:
+                    case w.keys.INFO:
+                        if (typeof w.infoProgramm === "function")
+                            w.infoProgramm(w.listArray[w.selIndex].name);
+                        return true;
+                    case w.keys.RW:
+                        if (w.sRewFun != 1) return false;
+                        if (typeof w.catRecordsList === "function")
+                            w.catRecordsList(w.listCatIndex);
+                        return true;
+                    case w.keys.PREV:
+                        if (w.sPNFun != 1) return false;
+                        if (typeof w.catRecordsList === "function")
+                            w.catRecordsList(w.listCatIndex);
+                        return true;
+                    case w.keys.FF:
+                        if (w.sRewFun != 1) return false;
+                        if (typeof w.infoProgramm === "function")
+                            w.infoProgramm(w.listArray[w.selIndex].name);
+                        return true;
+                    case w.keys.NEXT:
+                        if (w.sPNFun != 1) return false;
+                        if (typeof w.infoProgramm === "function")
+                            w.infoProgramm(w.listArray[w.selIndex].name);
+                        return true;
+                    case w.keys.N0:
+                    case w.keys.YELLOW:
+                    case w.keys.TOOLS:
+                        w._crData.selIndex = w.selIndex;
+                        if (typeof w.searchRec === "function") w.searchRec();
+                        return true;
+                    case w.keys.ENTER: {
+                        var tCh = w.listArray[w.selIndex].ch_id;
+                        var r = w.listArray[w.selIndex].time;
+                        w._crData.selIndex = w._crData.data.findIndex(function (
+                            e: any
+                        ) {
+                            return e.ch_id == tCh && e.time == r;
+                        });
+                        if (typeof w.selectREC === "function") w.selectREC();
+                        return true;
+                    }
+                }
+                return false;
+            };
+            var captionEl = document.getElementById("listCaption");
+            if (captionEl)
+                captionEl.innerHTML =
+                    w._("Archive. Category: ") +
+                    w.catsArray[w.listCatIndex] +
+                    ". " +
+                    w._("Search") +
+                    ':"' +
+                    e +
+                    '" (' +
+                    w.listArray.length +
+                    ")";
+            var podvalEl = document.getElementById("listPodval");
+            if (podvalEl) {
+                podvalEl.innerHTML =
+                    w.btnDiv(
+                        w.keys.RETURN,
+                        w.strRETURN,
+                        "Records",
+                        w.sArrowFun == 2
+                            ? w.strLEFT
+                            : w.sRewFun == 1
+                              ? w.strRW
+                              : w.sPNFun == 1
+                                ? w.strPREV
+                                : ""
+                    ) +
+                    w.btnDiv(
+                        w.keys.N2,
+                        w.strInfo,
+                        "Description",
+                        "2",
+                        w.sArrowFun == 2
+                            ? w.strRIGHT
+                            : w.sRewFun == 1
+                              ? w.strFF
+                              : w.sPNFun == 1
+                                ? w.strNEXT
+                                : ""
+                    ) +
+                    w.btnDiv(w.keys.YELLOW, "", "Search", w.strTools, "0");
+            }
+            $("#listPopUp").hide();
+            if (typeof w.showPage === "function") w.showPage();
+        });
+    };
+    if (typeof w.showEditKey === "function") w.showEditKey();
 }
 
 /**

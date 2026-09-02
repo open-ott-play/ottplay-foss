@@ -37,7 +37,6 @@ export let listSelectionIndex = 0;
 export let listDataArray: any[] = [];
 export let getListItemFn: ((item: any, idx: number) => string) | null = null;
 export let detailListActionFn: (() => void) | null = null;
-export let listKeyHandlerFn: ((key: any) => boolean) | null = null;
 export let selIndex = 0;
 export let listArray: any[] = [];
 
@@ -116,9 +115,6 @@ export function setGetListItemFn(
 }
 export function setDetailListActionFn(val: (() => void) | null): void {
     detailListActionFn = val;
-}
-export function setListKeyHandlerFn(val: ((key: any) => boolean) | null): void {
-    listKeyHandlerFn = val;
 }
 
 // TMDb

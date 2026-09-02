@@ -8,7 +8,6 @@ import {
     setGetListItemFn,
     setIsListVisible,
     setListDataArray,
-    setListKeyHandlerFn,
     setListSelectionIndex,
 } from "../app/state";
 import { catIndex, catsArray, playArchive } from "../channels";
@@ -24,7 +23,7 @@ export function showChanelsList(): void {
     setListSelectionIndex(catIndex >= 0 ? catIndex : 0);
     setGetListItemFn((item: any, _idx: number) => "&nbsp;&nbsp;" + item);
     setDetailListActionFn(() => undefined);
-    setListKeyHandlerFn((key: number) => {
+    (window as any).listKeyHandler = function (key: number): boolean {
         switch (key) {
             case 13: // ENTER — close list; playback stays on current channel
                 closeList();
@@ -39,7 +38,7 @@ export function showChanelsList(): void {
                 break;
         }
         return false;
-    });
+    };
     showPage();
 }
 

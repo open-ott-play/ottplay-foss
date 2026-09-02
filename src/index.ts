@@ -1309,6 +1309,7 @@ export function startPlayer(): void {
 
         uiInit();
         initBackgroundIntervals();
+        (window as any).listPodval = (window as any).listPodvalElement;
         if (typeof stbInit === "function" && (stbInit() as any) !== false) {
             onStbReady();
         }

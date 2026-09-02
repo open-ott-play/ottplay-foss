@@ -173,10 +173,6 @@ export function onStbReady(): void {
         closeList();
 
         // Expose edit globals for provider scripts (stalker, edem, etc.)
-        if (typeof (window as any).setEdit === "undefined")
-            (window as any).setEdit = function () {
-                // ponytail: no-op stub for provider scripts
-            };
         if (typeof (window as any).editKey === "undefined")
             (window as any).editKey = (window as any).editKey1;
         if (typeof (window as any).showEditKey === "undefined")
