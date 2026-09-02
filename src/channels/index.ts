@@ -2626,12 +2626,151 @@ export function searchMedia(query: string): void {
 }
 
 /**
- * Set the records search query string.
- * @param query - The search text to filter records by.
- * Side effects: Sets `searchText`.
+ * Open the records search dialog.
+ * Sets `window.editCaption` and `window.editvar` from persisted `medSearch`,
+ * assigns a new `window.setEdit` that filters `_crData.data` by name/descr
+ * and wires a dedicated listKeyHandler for the filtered result list.
+ * Finally invokes `window.showEditKey` to display the input UI.
+ *
+ * Side effects:
+ * - Mutates `window.editCaption`, `window.editvar`, `window.setEdit`,
+ *   `window.listArray`, `window.getListItemFn`, `window.detailListActionFn`,
+ *   `window.listKeyHandlerFn`, `_crData.selIndex`, `window.selIndex`.
+ * - Reads/writes `medSearch` via stbGetItem/stbSetItem.
+ * - Updates #listCaption and #listPodval innerHTML; hides #listPopUp.
+ * - Calls `window.showPage`.
  */
-export function searchRec(query: string): void {
-    searchText = query;
+export function searchRec(): void {
+    var w = window as any;
+    w.editCaption = w._("String for search");
+    var e =
+        (typeof w.stbGetItem === "function" ? w.stbGetItem("medSearch") : "") ||
+        "";
+    w.editvar = e;
+    w.setEdit = function (): void {
+        if (!(w.editvar as string).length) return;
+        e = w.editvar;
+        if (typeof w.stbSetItem === "function") w.stbSetItem("medSearch", e);
+        setTimeout(function () {
+            w.selIndex = 0;
+            var t = e.toLowerCase();
+            w.listArray = w._crData.data.filter(function (e: any) {
+                return (
+                    e.name.toLowerCase().indexOf(t) !== -1 ||
+                    e.descr.toLowerCase().indexOf(t) !== -1
+                );
+            });
+            w.getListItemFn = function (e: any, _t: number): string {
+                return "&nbsp;&nbsp;" + e.name;
+            };
+            w.detailListActionFn = detailREC;
+            w.listKeyHandlerFn = function (key: number): boolean {
+                switch (key) {
+                    case w.keys.EXIT:
+                        if (typeof w.closeList === "function") w.closeList();
+                        return true;
+                    case w.keys.LEFT:
+                        if (w.sArrowFun != 2) return false;
+                    // falls through
+                    case w.keys.RETURN:
+                        if (typeof w.catRecordsList === "function")
+                            w.catRecordsList(w.listCatIndex);
+                        return true;
+                    case w.keys.RIGHT:
+                        if (w.sArrowFun != 2) return false;
+                    // falls through
+                    case w.keys.N2:
+                    case w.keys.INFO:
+                        if (typeof w.infoProgramm === "function")
+                            w.infoProgramm(w.listArray[w.selIndex].name);
+                        return true;
+                    case w.keys.RW:
+                        if (w.sRewFun != 1) return false;
+                        if (typeof w.catRecordsList === "function")
+                            w.catRecordsList(w.listCatIndex);
+                        return true;
+                    case w.keys.PREV:
+                        if (w.sPNFun != 1) return false;
+                        if (typeof w.catRecordsList === "function")
+                            w.catRecordsList(w.listCatIndex);
+                        return true;
+                    case w.keys.FF:
+                        if (w.sRewFun != 1) return false;
+                        if (typeof w.infoProgramm === "function")
+                            w.infoProgramm(w.listArray[w.selIndex].name);
+                        return true;
+                    case w.keys.NEXT:
+                        if (w.sPNFun != 1) return false;
+                        if (typeof w.infoProgramm === "function")
+                            w.infoProgramm(w.listArray[w.selIndex].name);
+                        return true;
+                    case w.keys.N0:
+                    case w.keys.YELLOW:
+                    case w.keys.TOOLS:
+                        w._crData.selIndex = w.selIndex;
+                        if (typeof w.searchRec === "function") w.searchRec();
+                        return true;
+                    case w.keys.ENTER: {
+                        var tCh = w.listArray[w.selIndex].ch_id;
+                        var r = w.listArray[w.selIndex].time;
+                        w._crData.selIndex = w._crData.data.findIndex(function (
+                            e: any
+                        ) {
+                            return e.ch_id == tCh && e.time == r;
+                        });
+                        if (typeof w.selectREC === "function") w.selectREC();
+                        return true;
+                    }
+                }
+                return false;
+            };
+            var captionEl = document.getElementById("listCaption");
+            if (captionEl)
+                captionEl.innerHTML =
+                    w._("Archive. Category: ") +
+                    w.catsArray[w.listCatIndex] +
+                    ". " +
+                    w._("Search") +
+                    ':"' +
+                    e +
+                    '" (' +
+                    w.listArray.length +
+                    ")";
+            var podvalEl = document.getElementById("listPodval");
+            if (podvalEl) {
+                podvalEl.innerHTML =
+                    w.btnDiv(
+                        w.keys.RETURN,
+                        w.strRETURN,
+                        "Records",
+                        w.sArrowFun == 2
+                            ? w.strLEFT
+                            : w.sRewFun == 1
+                              ? w.strRW
+                              : w.sPNFun == 1
+                                ? w.strPREV
+                                : ""
+                    ) +
+                    w.btnDiv(
+                        w.keys.N2,
+                        w.strInfo,
+                        "Description",
+                        "2",
+                        w.sArrowFun == 2
+                            ? w.strRIGHT
+                            : w.sRewFun == 1
+                              ? w.strFF
+                              : w.sPNFun == 1
+                                ? w.strNEXT
+                                : ""
+                    ) +
+                    w.btnDiv(w.keys.YELLOW, "", "Search", w.strTools, "0");
+            }
+            $("#listPopUp").hide();
+            if (typeof w.showPage === "function") w.showPage();
+        });
+    };
+    if (typeof w.showEditKey === "function") w.showEditKey();
 }
 
 /**
