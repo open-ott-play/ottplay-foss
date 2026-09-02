@@ -33,6 +33,7 @@ async function getModule() {
 const mockWindow: Record<string, any> = {
     _: (s: string) => s,
     chanels: {} as Record<number, any>,
+    channels: {} as Record<number, any>,
     confirmBox: null as any,
     curColor: "#fff",
     getEPGchanel: null as any,
@@ -66,6 +67,7 @@ function applyMocks(ch: Awaited<ReturnType<typeof getModule>>) {
 
 function clearMocks() {
     mockWindow.chanels = {};
+    mockWindow.channels = mockWindow.chanels; // alias — code reads window.channels
     mockWindow.listChannel = 0;
     mockWindow.primaryIndex = 0;
     mockWindow.selIndex = 0;
@@ -309,8 +311,8 @@ function testSetCurProg(ch: Awaited<ReturnType<typeof getModule>>) {
         "setCurProg writes to secondary epgCashObj cache"
     );
 
-    // Verify channel object was populated with current program
-    const chObj = mockWindow.chanels[channelId];
+    // Verify channel object was populated with current program (reads from window.channels, setCurProg's write target)
+    const chObj = mockWindow.channels[channelId];
     assert.strictEqual(
         chObj.name,
         "Current",
@@ -337,6 +339,7 @@ function testSetCurProg(ch: Awaited<ReturnType<typeof getModule>>) {
     epg[channelId] = undefined;
     epgCashObj[channelId] = undefined;
     mockWindow.chanels[channelId] = undefined;
+    mockWindow.channels[channelId] = undefined;
     channels[channelId] = undefined;
 
     console.log("  setCurProg: OK");
@@ -368,7 +371,7 @@ function testSetCurProgNoCurrentProgram(
 
     setCurProg(channelId, pastEntries);
 
-    const chObj = mockWindow.chanels[channelId];
+    const chObj = mockWindow.channels[channelId];
     assert.strictEqual(chObj.name, "", "name cleared when no current program");
     assert.strictEqual(chObj.time, 0, "time cleared");
     assert.strictEqual(chObj.time_to, 0, "time_to cleared");
@@ -387,6 +390,7 @@ function testSetCurProgNoCurrentProgram(
     epg[channelId] = undefined;
     epgCashObj[channelId] = undefined;
     mockWindow.chanels[channelId] = undefined;
+    mockWindow.channels[channelId] = undefined;
     channels[channelId] = undefined;
 
     console.log("  setCurProg no-current: OK");

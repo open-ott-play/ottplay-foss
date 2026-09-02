@@ -12,17 +12,17 @@ Functions to audit for port parity (legacy → current):
 8. `setDetailListActionFn`
 9. `setListKeyHandlerFn`
 10. `searchChannel`
-10. `searchMedia`
-11. `searchRec`
-12. `getFilteredHistory`
-13. `getFilteredChannelList`
-14. `playChannel`
-15. `stopPlayer`
-16. `setVolume`
-17. `getVolume`
-18. `toggleFullscreen`
-19. `setChannelList`
-20. `getChannelList`
+11. `searchMedia`
+12. `searchRec`
+13. `getFilteredHistory`
+14. `getFilteredChannelList`
+15. `playChannel`
+16. `stopPlayer`
+17. `setVolume`
+18. `getVolume`
+19. `toggleFullscreen`
+20. `setChannelList`
+21. `getChannelList`
 
 ---
 
