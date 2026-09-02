@@ -54,7 +54,11 @@ var _baseStbInit = typeof stbInit === "function" ? stbInit : function () {};
 // Hide LG splash/logo on launch — 2–5 s native delay otherwise
 function _hideSplash() {
     try {
-        if (typeof webOS !== "undefined" && webOS.system && typeof webOS.system.hideSplashScreen === "function") {
+        if (
+            typeof webOS !== "undefined" &&
+            webOS.system &&
+            typeof webOS.system.hideSplashScreen === "function"
+        ) {
             webOS.system.hideSplashScreen();
         }
     } catch (e) {}
@@ -62,7 +66,11 @@ function _hideSplash() {
 // Hide magic-remote cursor — STB remotes have no pointer, cursor = visual noise
 function _hideCursor() {
     try {
-        if (typeof webOS !== "undefined" && webOS.device && typeof webOS.device.cursorVisible === "function") {
+        if (
+            typeof webOS !== "undefined" &&
+            webOS.device &&
+            typeof webOS.device.cursorVisible === "function"
+        ) {
             webOS.device.cursorVisible(false);
         }
     } catch (e) {}
@@ -70,7 +78,11 @@ function _hideCursor() {
 // Lock window to landscape — WebOS supports portrait, we don't
 function _lockLandscape() {
     try {
-        if (typeof webOS !== "undefined" && webOS.platform && typeof webOS.platform.setWindowOrientation === "function") {
+        if (
+            typeof webOS !== "undefined" &&
+            webOS.platform &&
+            typeof webOS.platform.setWindowOrientation === "function"
+        ) {
             webOS.platform.setWindowOrientation("landscape");
         }
     } catch (e) {}
@@ -78,7 +90,11 @@ function _lockLandscape() {
 // Bring app to foreground — prevent OS from stealing focus during playback
 function _focusApp() {
     try {
-        if (typeof webOS !== "undefined" && webOS.app && typeof webOS.app.requestWindowFocus === "function") {
+        if (
+            typeof webOS !== "undefined" &&
+            webOS.app &&
+            typeof webOS.app.requestWindowFocus === "function"
+        ) {
             webOS.app.requestWindowFocus();
         }
     } catch (e) {}
@@ -87,9 +103,13 @@ function _focusApp() {
 function _showPipMenu() {
     try {
         if (typeof stbSetItem === "function") {
-            var hidden = (stbGetItem("sHideMenus") || "").split(",").filter(function(x) {
-                return x !== "" && x !== "popTogglePip" && x !== "popStopPip";
-            });
+            var hidden = (stbGetItem("sHideMenus") || "")
+                .split(",")
+                .filter(function (x) {
+                    return (
+                        x !== "" && x !== "popTogglePip" && x !== "popStopPip"
+                    );
+                });
             stbSetItem("sHideMenus", hidden.join(","));
         }
     } catch (e) {}
