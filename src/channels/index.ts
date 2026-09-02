@@ -7,6 +7,8 @@
 import {
     videoPip as pipVideoElement,
     playerMode,
+    stbIsPlaying,
+    stbPause,
     video as videoElement,
 } from "../core/index";
 import { settings } from "../settings/index";
@@ -1759,15 +1761,40 @@ export function updateArchiveInfo(position: number): void {
 
 /**
  * Stop archive playback and return to live TV for the current channel.
- * No-op if `playType <= 0` (already live).
+ * No-op if playback has not started, or if the current channel is not
+ * an archive-capable (`rec`) channel.
  *
- * Side effects: Calls `window.playChannel` to restart live playback.
+ * Side effects: refreshes the EPG window, resets playType/playTime, and
+ * pauses the underlying video element.
  */
 export function liveStop(): void {
-    if (playType <= 0) return;
-    if (typeof (window as any).playChannel === "function") {
-        (window as any).playChannel(catIndex, primaryIndex);
-    }
+    if (!stbIsPlaying()) return;
+    var e = curList[primaryIndex];
+    if (!channels[e].rec) return;
+    getEPGchanelCached(e, function (t: number, e: any) {
+        var r: any[] = [];
+        if (e !== null && e.length) {
+            r = e
+                .filter(function (e: any) {
+                    var ch = channels[t];
+                    return ch
+                        ? e.time > Date.now() / 1e3 - (ch.rec ?? 0) * 60 * 60
+                        : false;
+                })
+                .sort(function (e: any, t: any) {
+                    return e.time - t.time;
+                });
+        }
+        epgArray = r;
+        setCurProg(t, e, undefined as any);
+        playType = Math.round(Date.now() / 1e3);
+        playTime = 0;
+        if (typeof (window as any).showChanelInfo === "function")
+            (window as any).showChanelInfo(2);
+        if (typeof (window as any).showShift === "function")
+            (window as any).showShift((window as any)._("Pause"));
+        stbPause();
+    });
 }
 
 /**
