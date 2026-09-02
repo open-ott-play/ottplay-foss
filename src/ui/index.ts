@@ -630,7 +630,7 @@ export function showPage(): void {
     if (listElement) listElement.style.display = "";
     var dataArr = listDataArray.length
         ? listDataArray
-        : (window as any).listDataArray || [];
+        : (window as any).listDataArray || (window as any).listArray || [];
     var pageStart =
         Math.floor(selIndex / settings.pageSize) * settings.pageSize;
     var pageEnd = Math.min(pageStart + settings.pageSize, dataArr.length);
@@ -714,7 +714,7 @@ export function showPage(): void {
 export function changeSelect(delta: number): void {
     var dataArr = listDataArray.length
         ? listDataArray
-        : (window as any).listDataArray || [];
+        : (window as any).listDataArray || (window as any).listArray || [];
     if (!dataArr.length) return;
     var oldIndex = selIndex;
     selIndex += delta;
@@ -1796,15 +1796,13 @@ export function popupList(i?: any): void {
 
         // Пуш в массив как ОБЪЕКТ (не строку!)
         listArray.push({ action: action, desc: s, name: r });
-        listDataArray.push(r); // для совместимости с showPage
 
         if (action == noProvParam) a = listArray.length - 1;
         if (action == optionsList) o = listArray.length;
     });
 
     getListItemFn = function (item: any, _idx: number) {
-        // item может быть строкой (listDataArray) или объектом (listArray)
-        return "&nbsp;&nbsp;" + (item.name || item);
+        return "&nbsp;&nbsp;" + (item.name || "");
     };
 
     detailListActionFn = function () {
