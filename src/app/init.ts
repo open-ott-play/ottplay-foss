@@ -8,11 +8,7 @@ export const PLAYER_VERSION = "__OTTP_VERSION__";
 // duneAddSettings — set by provider scripts (stalker, edem, etc.)
 declare var duneAddSettings: ((_index: number) => void) | null;
 
-import {
-    benchy_startPlayer,
-    benchy_stbReady,
-    fix_mag_favoritesArray,
-} from "../benchy";
+import { benchy_startPlayer, benchy_stbReady } from "../benchy";
 import { cats, catsArray, sPlayers, sStopPlay } from "../channels";
 import {
     setPlayer,
@@ -128,7 +124,6 @@ export function startPlayer(): void {
         uiInit();
         initBackgroundIntervals();
         (window as any).listPodval = (window as any).listPodvalElement;
-        fix_mag_favoritesArray();
         if (typeof stbInit === "function") {
             stbInit();
             window.onkeydown = keyHandler;
@@ -232,7 +227,6 @@ export function onStbReady(): void {
         );
 
         if (TMDb && TMDb.prepare) TMDb.prepare();
-        benchy_stbReady();
     } catch (e) {
         var launchEl2 = document.getElementById("launch");
         if (launchEl2) {
