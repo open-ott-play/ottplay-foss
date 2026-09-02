@@ -61,7 +61,9 @@ function makeRedefinable(
             set,
         });
     } catch (_) {
-        // HMR / re-eval: property already exists as non-configurable; replace via assignment
+        // HMR / re-eval: property already exists as non-configurable.
+        // Put a plain accessor object on window so reads/writes route to our get/set.
+        // Skipping second defineProperty — would throw if plain accessor is non-configurable.
         (window as any)[name] = {
             get value() {
                 return get();
@@ -70,12 +72,6 @@ function makeRedefinable(
                 set(v);
             },
         };
-        Object.defineProperty(window, name, {
-            configurable: true,
-            enumerable: true,
-            get,
-            set,
-        });
     }
 }
 makeRedefinable(
