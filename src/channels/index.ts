@@ -7,6 +7,8 @@
 import {
     videoPip as pipVideoElement,
     playerMode,
+    stbIsPlaying,
+    stbPause,
     video as videoElement,
 } from "../core/index";
 import { settings } from "../settings/index";
