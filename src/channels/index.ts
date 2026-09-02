@@ -1707,31 +1707,23 @@ export function getMediaDescr(item: any): string {
 export function playArchive(e: number): void {
     var w = window as any;
     var t = curProg;
-    if (typeof updateArchiveInfo === "function") updateArchiveInfo(e);
-    if (w.sInfoRew && typeof w.showChanelInfo === "function")
-        w.showChanelInfo(1);
+    updateArchiveInfo(e);
+    if (w.sInfoRew) w.showChanelInfo(1);
     var r = curList[primaryIndex];
-    var prog = epgArray[curProg] || {
-        descr: "",
+    var s = epgArray[curProg] || {
         name: "",
         time: Math.floor(e / 3600) * 3600,
         time_to: (Math.floor(e / 3600) + 1) * 3600,
+        descr: ""
     };
     playTime = 0;
     playType = Math.floor(e);
     forcePlay = true;
-    (w as any).playType = playType;
-    (w as any).playTime = playTime;
-    (w as any).forcePlay = forcePlay;
-    archivePos = e;
-    var getUrl = w.getArchiveUrl;
-    if (!fileArchive || t !== curProg) {
-        if (w.sStopPlay && typeof w.stbStop === "function") w.stbStop();
-        var url = getUrl(r, e, prog.time_to, prog);
-        if (typeof w.stbPlay === "function")
-            w.stbPlay(url, fileArchive ? e - prog.time : 0);
-    } else if (typeof w.stbSetPosTime === "function") {
-        w.stbSetPosTime(e - prog.time);
+    if (!fileArchive || t != curProg) {
+        if (w.sStopPlay) w.stbStop();
+        w.stbPlay(w.getArchiveUrl(r, e, s.time_to, s), fileArchive ? e - s.time : 0);
+    } else {
+        w.stbSetPosTime(e - s.time);
     }
 }
 
@@ -1813,7 +1805,7 @@ function seekArchive(offset: number): void {
 export function shiftArchive(e: number): void {
     var w = window as any;
     if (e === -6e6) {
-        _shiftSec = e;
+        _shiftSec += e;
         _shiftArchive();
         return;
     }
