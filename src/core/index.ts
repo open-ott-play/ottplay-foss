@@ -196,17 +196,25 @@ export function stbEventToKeyCode(event: any): number {
  * Start playback of a given URL on the main video element.
  * Supports three engine modes: native HTML5, hls.js, and shaka-player.
  *
+ * Playback start timing (exactly once per stream start):
+ * - HLS path:    play() is invoked from the MANIFEST_PARSED event.
+ * - Shaka path:  play() is invoked immediately after player.load().
+ * - Native path: play() is invoked at the end of stbPlay().
+ *
  * @param url      - Stream URL to play.
- * @param position - Optional start offset in seconds (appended as `#t=` fragment).
+ * @param position - Optional start offset in seconds. Used as `#t=` fragment for
+ *                   HLS (browser handles it on attach), and as a direct
+ *                   currentTime assignment for native HTML5 (shaka does not
+ *                   need it — player.load() accepts a startTime option, but we
+ *                   keep currentTime for parity with the native path).
  *
  * Side effects:
  * - Destroys any previous hls.js or shaka instance.
  * - Attaches hls.js or shaka to the video element if that engine is active.
- * - Calls video!.play().
+ * - Calls video!.play() exactly once.
  * - Automatically restores previous audio/subtitle track settings via execCHarr.
  */
 export function stbPlay(url: string, position?: number): void {
-    if (position) url += "#t=" + position;
     if (hlsInstance) {
         hlsInstance.destroy();
         hlsInstance = null;
