@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # Install ottplay-foss locally on macOS: rsync this repo to ~/ottplay-foss-local,
-# build the player bundle, register a launchd user agent (autostart + KeepAlive)
-# serving python3 server.py, and load it.
+# build the player bundle + Rust server binary, register a launchd user agent
+# (autostart + KeepAlive) serving ottplay-server, and load it.
 #
 # Usage: scripts/install-ottplay-local-service.sh
 # Env overrides: OTTPLAY_SRC, OTTPLAY_DEST, OTTPLAY_PORT (default 8095 —
 #                8090 is taken by hls-proxy), OTTPLAY_HTTPS_PORTS
 #                (default "8443 8444 8445 8446" — one process, several HTTPS
 #                ports; each port is a separate browser origin, so Chrome
-#                keeps isolated player settings per port), OTTPLAY_LABEL.
+#                keeps isolated player settings per port), OTTPLAY_LABEL,
+#                OTTPLAY_RUST_SRC (default ~/victron/ottplay-foss-rust).
 # Binds loopback only (--host 127.0.0.1); docker deployments stay wildcard.
 set -euo pipefail
 
@@ -20,12 +21,12 @@ PORT="${OTTPLAY_PORT:-8095}"
 # Default: 8443 8444 8445 8446 (four origins for isolated player settings).
 HTTPS_PORTS="${OTTPLAY_HTTPS_PORTS:-8443 8444 8445 8446}"
 LABEL_BASE="${OTTPLAY_LABEL:-com.ottplay-foss-local}"
-PY="$(command -v python3)"
 CERT_DIR="$DEST/certs"
 CRT="$CERT_DIR/server.crt"
 KEY="$CERT_DIR/server.key"
+BIN="$DEST/ottplay-server"
 
-for tool in rsync node npm "$PY"; do
+for tool in rsync node npm cargo; do
     command -v "$tool" >/dev/null || { echo "error: $tool not found" >&2; exit 1; }
 done
 
@@ -67,7 +68,13 @@ else
     fi
 fi
 
-echo "[4/5] launchd service (http :$PORT, https :$HTTPS_PORTS)"
+echo "[4/5] build + install Rust binary"
+mkdir -p "$DEST"
+(cd "$RUST_SRC" && cargo build --release 1>&2)
+cp "$RUST_SRC/target/release/ottplay-server" "$BIN"
+chmod +x "$BIN"
+
+echo "[5/5] launchd service (http :$PORT, https :$HTTPS_PORTS)"
 mkdir -p "$HOME/Library/LaunchAgents" "$HOME/Library/Logs"
 
 # Stop old services (any variant of the label)
@@ -89,8 +96,8 @@ cat > "$PLIST" <<EOF
     <string>$LABEL</string>
     <key>ProgramArguments</key>
     <array>
-        <string>$PY</string>
-        <string>$DEST/server.py</string>
+        <string>$BIN</string>
+        <string>--port</string>
         <string>$PORT</string>
         <string>--host</string>
         <string>127.0.0.1</string>
@@ -124,7 +131,7 @@ EOF
 launchctl load "$PLIST"
 echo "  loaded $LABEL (https :$HTTPS_PORTS)"
 
-echo "[4/5] verify"
+echo "[6/6] verify"
 ok=""
 for _ in $(seq 1 60); do
     all_up=1

@@ -24,7 +24,7 @@ for LABEL in $LABELS; do
     fi
 done
 
-pkill -f "$HOME/ottplay-foss-local/server.py" 2>/dev/null \
+pkill -f "$HOME/ottplay-foss-local/ottplay-server" 2>/dev/null \
     && echo "stopped leftover process(es)" || true
 for PORT in ${OTTPLAY_PORT:-8095 8096 8097}; do
     # shellcheck disable=SC2046  # pids are numeric, splitting is safe
