@@ -9,13 +9,13 @@
 #                (default "8443 8444 8445 8446" — one process, several HTTPS
 #                ports; each port is a separate browser origin, so Chrome
 #                keeps isolated player settings per port), OTTPLAY_LABEL,
-#                OTTPLAY_RUST_SRC (default ~/victron/ottplay-foss-rust).
+#                OTTPLAY_RUST_SRC (default ~/victron/ottplay-foss).
 # Binds loopback only (--host 127.0.0.1); docker deployments stay wildcard.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC="${OTTPLAY_SRC:-$(cd "$SCRIPT_DIR/.." && pwd)}"
-RUST_SRC="${OTTPLAY_RUST_SRC:-$HOME/victron/ottplay-foss-rust}"
+RUST_SRC="${OTTPLAY_RUST_SRC:-$HOME/victron/ottplay-foss}"
 DEST="${OTTPLAY_DEST:-$HOME/ottplay-foss-local}"
 PORT="${OTTPLAY_PORT:-8095}"
 # OTTPLAY_HTTPS_PORTS: space-separated list of HTTPS ports (one per browser origin).
@@ -103,13 +103,12 @@ cat > "$PLIST" <<EOF
         <string>--host</string>
         <string>127.0.0.1</string>
 EOF
-# Append all HTTPS ports as repeated --https-port flags
-for HTTPS_PORT in $HTTPS_PORTS; do
-    cat >> "$PLIST" <<EOF
+# Rust binary: single HTTPS port only. Use the first one.
+FIRST_HTTPS="${HTTPS_PORTS%% *}"
+cat >> "$PLIST" <<EOF
         <string>--https-port</string>
-        <string>$HTTPS_PORT</string>
+        <string>$FIRST_HTTPS</string>
 EOF
-done
 cat >> "$PLIST" <<EOF
         <string>--cert</string>
         <string>$CRT</string>
@@ -130,16 +129,14 @@ cat >> "$PLIST" <<EOF
 </plist>
 EOF
 launchctl load "$PLIST"
-echo "  loaded $LABEL (https :$HTTPS_PORTS)"
+echo "  loaded $LABEL (https :$FIRST_HTTPS)"
 
 echo "[6/6] verify"
 ok=""
 for _ in $(seq 1 60); do
     all_up=1
-    for HTTPS_PORT in $HTTPS_PORTS; do
-        code="$(curl -m 3 -s --cacert "$CRT" -o /dev/null -w '%{http_code}' "https://localhost:$HTTPS_PORT/")" || all_up=0
-        [ "$code" = "200" ] || all_up=0
-    done
+    code="$(curl -m 3 -s --cacert "$CRT" -o /dev/null -w '%{http_code}' "https://localhost:$FIRST_HTTPS/")" || all_up=0
+    [ "$code" = "200" ] || all_up=0
     [ "$all_up" = "1" ] && { ok=1; break; }
     sleep 3
 done
@@ -147,15 +144,10 @@ if [ -z "$ok" ]; then
     echo "warning: not all services responding — check ~/Library/Logs/${LABEL}.log" >&2
     exit 1
 fi
-HTTPS_URLS=""
-for p in $HTTPS_PORTS; do
-    [ -n "$HTTPS_URLS" ] && HTTPS_URLS="$HTTPS_URLS, "
-    HTTPS_URLS="${HTTPS_URLS}https://localhost:$p"
-done
 if [ "$PORT" != "0" ]; then
     code_http="$(curl -s -o /dev/null -w '%{http_code}' -m 3 "http://127.0.0.1:$PORT/")"
-    echo "installed: http://127.0.0.1:$PORT/ (HTTP $code_http) + $HTTPS_URLS"
+    echo "installed: http://127.0.0.1:$PORT/ (HTTP $code_http) + https://localhost:$FIRST_HTTPS"
 else
-    echo "installed: $HTTPS_URLS"
+    echo "installed: https://localhost:$FIRST_HTTPS"
 fi
 echo "log: ~/Library/Logs/${LABEL}.log"
