@@ -46,9 +46,23 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/hls-proxy-lib.sh"
 if [ "${LOCAL_ONLY:-1}" = "1" ]; then
     hls_proxy_apply_loopback "$DEST/local.json"
+    # Pin local port: docker container maps 8080->9999; on macOS we use 8090 to
+    # avoid colliding with anything else and keep ottplay-foss on 8095. Set
+    # HLS_PROXY_LOCAL_PORT=0 to inherit from the docker config instead.
+    LOCAL_PORT="${HLS_PROXY_LOCAL_PORT:-8090}"
+    if [ "$LOCAL_PORT" != "0" ]; then
+        python3 - "$DEST/local.json" "$LOCAL_PORT" <<'EOF'
+import json, sys
+p, port = sys.argv[1], int(sys.argv[2])
+d = json.load(open(p))
+d.setdefault("SERVER", {})["port"] = port
+json.dump(d, open(p, "w"), indent=4, ensure_ascii=False)
+EOF
+        echo "local port pinned: $LOCAL_PORT (HLS_PROXY_LOCAL_PORT=0 to inherit)"
+    fi
     echo "loopback-only patch applied (LOCAL_ONLY=0 to skip)"
 fi
 
 echo "synced: $HOST:$CONTAINER:$SRC -> $DEST"
 echo "previous versions saved as *.bak / plugins.bak"
-echo "run locally: cd $DEST && ./hls-proxy   # port 8080 per local.json (container maps 8080->9999)"
+echo "run locally: cd $DEST && ./hls-proxy   # port 8090 per local.json (container maps 8080->9999)"

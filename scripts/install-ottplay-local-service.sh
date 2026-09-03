@@ -5,7 +5,7 @@
 #
 # Usage: scripts/install-ottplay-local-service.sh
 # Env overrides: OTTPLAY_SRC, OTTPLAY_DEST, OTTPLAY_PORT (default 8095 —
-#                8080 is taken by hls-proxy), OTTPLAY_HTTPS_PORT
+#                8090 is taken by hls-proxy), OTTPLAY_HTTPS_PORT
 #                (default PORT+348), OTTPLAY_LABEL.
 # Binds loopback only (--host 127.0.0.1); docker deployments stay wildcard.
 set -euo pipefail

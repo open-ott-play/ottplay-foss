@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Rebuild the whole local macOS stack from scratch, in order:
 #   1. pull live hls-proxy config from Synology docker
-#   2. install hls-proxy launchd agent (:8080)
+#   2. install hls-proxy launchd agent (:8090)
 #   3. install the single player process (~/ottplay-foss-local, http :8095,
 #      https :8443-8446 — one HTTPS port per browser origin = isolated
 #      player settings; ports via OTTPLAY_HTTPS_PORTS)
@@ -26,4 +26,4 @@ fi
 
 echo
 echo "=== local stack rebuilt ==="
-echo "hls-proxy :8080 | player http :8095, https :${OTTPLAY_HTTPS_PORTS:-8443 8444 8445 8446}"
+echo "hls-proxy :8090 | player http :8095, https :${OTTPLAY_HTTPS_PORTS:-8443 8444 8445 8446}"
