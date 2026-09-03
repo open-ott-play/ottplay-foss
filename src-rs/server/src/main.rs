@@ -126,6 +126,12 @@ async fn main() {
         .route("/webhook/poll", get(webhook_stub))
         .route("/webhook/notify", get(webhook_stub))
         .nest_service("/f", ServeDir::new("."))
+        .nest_service("/dist", ServeDir::new("dist"))
+        .nest_service("/stbPlayer", ServeDir::new("stbPlayer"))
+        .nest_service("/stb", ServeDir::new("stb"))
+        .nest_service("/fonts", ServeDir::new("fonts"))
+        .nest_service("/js", ServeDir::new("js"))
+        .nest_service("/prov", ServeDir::new("prov"))
         .layer(cors);
 
     let addr: SocketAddr = ([0, 0, 0, 0], cli.port).into();
