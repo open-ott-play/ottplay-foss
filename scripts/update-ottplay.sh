@@ -6,5 +6,6 @@ REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO"
 #git fetch origin main
 #git reset --hard origin/main
-echo "[2] reinstall stack"
+echo "[2] sync hls-proxy config"
+echo "[3] rebuild JS (npm install + npm run build) + reload launchd service"
 "$SCRIPT_DIR/reinstall-local-stack.sh"

@@ -405,9 +405,20 @@ export function uiInit(): void {
             if (typeof w.stbSetPosTime === "function") w.stbSetPosTime(r);
             return;
         }
-        var r2 = Math.round(
-            t * (w._prog100.time_to - w._prog100.time) + w._prog100.time
-        );
+        if (
+            w._prog100 &&
+            w._prog100.time_to != null &&
+            w._prog100.time != null
+        ) {
+            var r2 = Math.round(
+                t * (w._prog100.time_to - w._prog100.time) + w._prog100.time
+            );
+        } else {
+            // No EPG data — emulate position based on playTime (seconds elapsed)
+            var totalDur = 3600;
+            var elapsed = w.playType > 0 ? (w.playTime ?? 0) : 0;
+            var r2 = Math.round((elapsed / totalDur) * 3600);
+        }
         if (r2 < Date.now() / 1e3) {
             if (!w.playType) {
                 if (typeof w.timeShift === "function")
@@ -463,9 +474,20 @@ export function uiInit(): void {
             if (typeof w.stbSetPosTime === "function") w.stbSetPosTime(r);
             return;
         }
-        var r2 = Math.round(
-            t * (w._prog100.time_to - w._prog100.time) + w._prog100.time
-        );
+        if (
+            w._prog100 &&
+            w._prog100.time_to != null &&
+            w._prog100.time != null
+        ) {
+            var r2 = Math.round(
+                t * (w._prog100.time_to - w._prog100.time) + w._prog100.time
+            );
+        } else {
+            // No EPG data — emulate position based on playTime (seconds elapsed)
+            var totalDur = 3600;
+            var elapsed = w.playType > 0 ? (w.playTime ?? 0) : 0;
+            var r2 = Math.round((elapsed / totalDur) * 3600);
+        }
         if (r2 < Date.now() / 1e3) {
             if (!w.playType) {
                 if (typeof w.timeShift === "function")
@@ -518,11 +540,30 @@ export function uiInit(): void {
             var mn = Math.floor((r % 3600) / 60);
             var sc = r % 60;
             $tooltipSpan.text((hr ? hr + ":" : "") + _t2(mn) + ":" + _t2(sc));
-        } else {
+        } else if (
+            w._prog100 &&
+            w._prog100.time_to != null &&
+            w._prog100.time != null
+        ) {
             var r2 = Math.round(
                 frac * (w._prog100.time_to - w._prog100.time) + w._prog100.time
             );
             $tooltipSpan.text(pos2text(r2));
+        } else if (
+            w._prog100 &&
+            w._prog100.time != null &&
+            w._prog100.time_to != null
+        ) {
+            // Synthetic hour block — position = frac of the hour + hour start
+            var r3 = Math.round(
+                frac * (w._prog100.time_to - w._prog100.time) + w._prog100.time
+            );
+            $tooltipSpan.text(pos2text(r3));
+        } else {
+            // No EPG data — show playback position based on playTime (seconds elapsed)
+            var elapsed = w.playType > 0 ? (w.playTime ?? 0) : 0;
+            var r3 = Math.round(elapsed);
+            $tooltipSpan.text(pos2text(r3));
         }
     });
 }
@@ -658,9 +699,16 @@ export function showPage(): void {
         console.error(e);
     }
     if (listElement) listElement.style.display = "";
-    var dataArr = listDataArray.length
-        ? listDataArray
-        : (window as any).listDataArray || (window as any).listArray || [];
+    var dataArr =
+        (listDataArray && listDataArray.length ? listDataArray : null) ||
+        ((window as any).listDataArray && (window as any).listDataArray.length
+            ? (window as any).listDataArray
+            : null) ||
+        (listArray && listArray.length ? listArray : null) ||
+        ((window as any).listArray && (window as any).listArray.length
+            ? (window as any).listArray
+            : null) ||
+        [];
     var pageStart =
         Math.floor(selIndex / settings.pageSize) * settings.pageSize;
     var pageEnd = Math.min(pageStart + settings.pageSize, dataArr.length);
@@ -742,9 +790,16 @@ export function showPage(): void {
  *             `showPage()` is called if the new index is not yet rendered on the current page.
  */
 export function changeSelect(delta: number): void {
-    var dataArr = listDataArray.length
-        ? listDataArray
-        : (window as any).listDataArray || (window as any).listArray || [];
+    var dataArr =
+        (listDataArray && listDataArray.length ? listDataArray : null) ||
+        ((window as any).listDataArray && (window as any).listDataArray.length
+            ? (window as any).listDataArray
+            : null) ||
+        (listArray && listArray.length ? listArray : null) ||
+        ((window as any).listArray && (window as any).listArray.length
+            ? (window as any).listArray
+            : null) ||
+        [];
     if (!dataArr.length) return;
     var oldIndex = selIndex;
     selIndex += delta;
@@ -1145,6 +1200,36 @@ export function updateChanelInfo(channelId: number): void {
             if (nendTimeEl)
                 nendTimeEl.textContent = "" + (nextDur > 0 ? nextDur : 0);
         }
+    } else if (
+        (window as any)._prog100 &&
+        (window as any)._prog100.time &&
+        (window as any)._prog100.time_to
+    ) {
+        // No EPG but have synthetic archive prog — drive bar from _prog100
+        var _p = (window as any)._prog100;
+        var nowSec2 = Date.now() / 1000;
+        var dur = _p.time_to - _p.time;
+        var pct2 = dur > 0 ? ((nowSec2 - _p.time) / dur) * 100 : 0;
+        if (pct2 < 0) pct2 = 0;
+        if (pct2 > 100) pct2 = 100;
+        if (progressEl) progressEl.style.width = pct2 + "%";
+        var remPct2 =
+            _p.time_to > nowSec2
+                ? Math.min(
+                      100,
+                      Math.max(0, ((_p.time_to - nowSec2) / dur) * 100)
+                  )
+                : 0;
+        if (progressREl) progressREl.style.width = remPct2 + "%";
+        if (progressDivEl) progressDivEl.style.backgroundColor = "#600";
+        if (beginTimeEl) beginTimeEl.textContent = time2time(_p.time);
+        var remMin2 = Math.round((_p.time_to - nowSec2) / 60);
+        if (endTimeEl)
+            endTimeEl.textContent = "+" + (remMin2 > 0 ? remMin2 : 0);
+        if (programNameEl) programNameEl.innerHTML = "";
+        if (programName2El) programName2El.innerHTML = "";
+        if (programDurationEl) programDurationEl.textContent = "";
+        if (programDescrEl) programDescrEl.textContent = "";
     } else {
         // No EPG — clear program fields
         if (programNameEl) programNameEl.innerHTML = "&nbsp; ";
@@ -1608,6 +1693,10 @@ export function infoList(e?: string): void {
         }
         return false;
     };
+    // Sync listArray and window variables for consistency with legacy
+    listArray = listDataArray;
+    (window as any).listDataArray = listDataArray;
+    (window as any).listArray = listArray;
     if (listCaptionElement) listCaptionElement.innerHTML = _("Info");
     if (listPodvalElement)
         listPodvalElement.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
@@ -1651,7 +1740,7 @@ export function popupList(i?: any): void {
     }
 
     var a = 0,
-        o = 0; // для PIN проверки
+        o = 0; // for PIN check
 
     /**
      * Split a label string on "/" and return either the left or right part based on a condition.
@@ -1674,6 +1763,9 @@ export function popupList(i?: any): void {
     selIndex = 0;
     listArray = [];
     listDataArray = [];
+    // Sync listArray and window variables for consistency with legacy
+    (window as any).listDataArray = listDataArray;
+    (window as any).listArray = listArray;
 
     var c: any = false;
     try {
@@ -1682,7 +1774,7 @@ export function popupList(i?: any): void {
         console.error(e);
     }
 
-    var u = -1; // counter для добавленных элементов
+    var u = -1; // counter for added elements
     var playType: number = (window as any).playType || 0;
     var chanels: any = (window as any).chanels || {};
     var popStop: any = (window as any).popStop;
@@ -1690,6 +1782,8 @@ export function popupList(i?: any): void {
     var popTogglePip: any = (window as any).popTogglePip;
     var toggleAudioTrack: any = (window as any).toggleAudioTrack;
     var toggleSubtitle: any = (window as any).toggleSubtitle;
+    var toggleZoom: any = (window as any).toggleZoom;
+    var toggleAspectRatio: any = (window as any).toggleAspectRatio;
     var popShift: any = (window as any).popShift;
     var popRecords: any = (window as any).popRecords;
     var popStopPip: any = (window as any).popStopPip;
@@ -1770,7 +1864,7 @@ export function popupList(i?: any): void {
         u++;
         if (i == t || i == action) selIndex = u;
 
-        // Добавляем кнопки (номерные)
+        // Add number buttons
         var n = "";
         if (!sNoNumbersKeys) {
             switch (action) {
@@ -1808,7 +1902,7 @@ export function popupList(i?: any): void {
             if (n) r = '<div class="btn">' + n + "</div> " + r;
         }
 
-        // Добавляем цветные кнопки
+        // Add color buttons
         if (!sNoColorKeys) {
             n = "";
             switch (action) {
@@ -1828,7 +1922,7 @@ export function popupList(i?: any): void {
             if (n) r = '<div class="btn ' + n + '">&nbsp;</div> ' + r;
         }
 
-        // Подписи кнопок
+        // Button labels
         n = "";
         switch (action) {
             case infoList:
@@ -1846,10 +1940,10 @@ export function popupList(i?: any): void {
             case toggleSubtitle:
                 n = strSubt || "Subt";
                 break;
-            case (window as any).toggleZoom:
+            case toggleZoom:
                 n = strZoom || "Zoom";
                 break;
-            case (window as any).toggleAspectRatio:
+            case toggleAspectRatio:
                 n = strAspect || "Aspect";
                 break;
             case optionsList:
@@ -1864,7 +1958,7 @@ export function popupList(i?: any): void {
         }
         if (n) r = '<div class="btn">' + n + "</div> " + r;
 
-        // Пуш в массив как ОБЪЕКТ (не строку!)
+        // Push to array as OBJECT (not string!)
         listArray.push({ action: action, desc: s, name: r });
 
         if (action == noProvParam) a = listArray.length - 1;
@@ -1886,32 +1980,14 @@ export function popupList(i?: any): void {
     };
 
     listKeyHandlerFn = function (key: any): boolean {
-        console.log(
-            "DBG popupList handler: key=" +
-                key +
-                " selIndex=" +
-                selIndex +
-                " listArray.len=" +
-                listArray.length +
-                " item=" +
-                (listArray[selIndex] ? "exists" : "null")
-        );
         switch (typeof key === "number" ? key : key.keyCode) {
             case keys.RETURN:
                 closeList();
                 return true;
             case keys.ENTER: {
                 var item = listArray[selIndex];
-                console.log(
-                    "DBG popupList ENTER: item=" +
-                        (item ? "exists" : "null") +
-                        " item.action=" +
-                        (item && item.action ? typeof item.action : "undefined")
-                );
                 if (item && item.action && typeof item.action === "function") {
-                    console.log("DBG popupList ENTER: calling action");
                     item.action();
-                    console.log("DBG popupList ENTER: action returned");
                 }
                 return true;
             }
@@ -1996,7 +2072,12 @@ export function popupList(i?: any): void {
     if (listPodvalElement)
         listPodvalElement.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
 
-    // Явно показываем list_window перед showPage
+    // Sync listArray and listDataArray so showPage() and changeSelect() can read them
+    listDataArray = listArray;
+    (window as any).listArray = listArray;
+    (window as any).listDataArray = listArray;
+
+    // Explicitly show list_window before showPage
     $("#list_window").show();
     if (typeof (window as any).stbSetWindow === "function")
         (window as any).stbSetWindow();

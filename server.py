@@ -20,7 +20,8 @@ HOST = ''           # '' = all interfaces (docker); pass --host 127.0.0.1 for lo
 EPG_URLS = []
 VERBOSE = False
 NO_EPG = False
-HTTPS_PORT = None   # extra HTTPS listener, enabled when --cert/--key given
+# --https-port may be repeated; each value adds an HTTPS listener on one process.
+HTTPS_PORTS = []    # extra HTTPS listeners, enabled when --cert/--key given
 CERT_FILE = None
 KEY_FILE = None
 for i, arg in enumerate(sys.argv):
@@ -31,13 +32,15 @@ for i, arg in enumerate(sys.argv):
     if arg == '--verbose' or arg == '-v':
         VERBOSE = True
     if arg == '--https-port' and i + 1 < len(sys.argv):
-        HTTPS_PORT = int(sys.argv[i + 1])
+        HTTPS_PORTS.append(int(sys.argv[i + 1]))
     if arg == '--host' and i + 1 < len(sys.argv):
         HOST = sys.argv[i + 1]
     if arg == '--cert' and i + 1 < len(sys.argv):
         CERT_FILE = sys.argv[i + 1]
     if arg == '--key' and i + 1 < len(sys.argv):
         KEY_FILE = sys.argv[i + 1]
+# Backward-compat: HTTPS_PORT holds the first value (or None).
+HTTPS_PORT = HTTPS_PORTS[0] if HTTPS_PORTS else None
 
 if not EPG_URLS and not NO_EPG:
     EPG_URLS.append('http://epg.it999.ru/epg2.xml.gz')
@@ -704,17 +707,22 @@ if __name__ == '__main__':
     try:
         httpd = ReusableTCPServer((HOST, PORT), OTTPlayHandler)
         if CERT_FILE and KEY_FILE:
-            # HTTPS sidecar listener; plain HTTP on PORT stays available for devices.
+            # TLS sidecar: one SSLContext, N listeners (one per https port).
+            # Each port terminates TLS and dispatches to the same OTTPlayHandler
+            # over the SSL socket — no proxy hop, URLs stay plain.
             import ssl
             import threading
-            if HTTPS_PORT is None:
-                HTTPS_PORT = 8443
+            if not HTTPS_PORTS:
+                HTTPS_PORTS = [8443]
             ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             ctx.load_cert_chain(CERT_FILE, KEY_FILE)
-            httpsd = ReusableTCPServer((HOST, HTTPS_PORT), OTTPlayHandler)
-            httpsd.socket = ctx.wrap_socket(httpsd.socket, server_side=True)
-            threading.Thread(target=httpsd.serve_forever, daemon=True).start()
-            print(f"OTT-play FOSS: https://localhost:{HTTPS_PORT} (trusted cert) + http://localhost:{PORT}")
+            for hp in HTTPS_PORTS:
+                httpsd = ReusableTCPServer((HOST, hp), OTTPlayHandler)
+                httpsd.socket = ctx.wrap_socket(httpsd.socket, server_side=True)
+                threading.Thread(target=httpsd.serve_forever,
+                                 daemon=True,
+                                 name=f"https-{hp}").start()
+            print(f"OTT-play FOSS: https on ports {','.join(map(str, HTTPS_PORTS))} (trusted cert) + http://localhost:{PORT}")
         else:
             print(f"OTT-play FOSS: http://localhost:{PORT}")
         print(f"Directory: {os.getcwd()}")
