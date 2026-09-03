@@ -858,10 +858,9 @@ If a new provider is needed, drop a `prov/<name>/prov.js` file with the four fun
 | M3U provider | `prov/m3u/prov.js` |
 | Xtream provider | `prov/xtream/prov.js` |
 | Stalker provider | `prov/stalker/prov.js` |
-| EPG server side | `server.py` (XMLTV parse → JSON) |
+| EPG server side | `server.py` (archived — Rust ottplay-server now default) |
 | Local webhook proxy | `local_proxy.py` |
-| Build | `build-concat.cjs` |
-| Local webhook proxy | `local_proxy.py` |
+| Build | `vite.config.ts` (tsc + concat + terser) |
 
 ---
 
