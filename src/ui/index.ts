@@ -938,6 +938,15 @@ export function infoBox(message: string): void {
     };
 }
 
+function escapeHtml(text: string): string {
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
 /**
  * Show a confirmation dialog with Yes (ENTER) and No (RETURN) buttons.
  * Calls the appropriate callback based on the user's key press.
@@ -960,7 +969,7 @@ export function confirmBox(
     $("#dialogbox")
         .html(
             "<center>" +
-                _(message) +
+                escapeHtml(_(message)) +
                 "<br/><br/>" +
                 btnDiv(keys.ENTER, strENTER, "Yes") +
                 "</center>"
