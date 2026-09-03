@@ -15,6 +15,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC="${OTTPLAY_SRC:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+RUST_SRC="${OTTPLAY_RUST_SRC:-$HOME/victron/ottplay-foss-rust}"
 DEST="${OTTPLAY_DEST:-$HOME/ottplay-foss-local}"
 PORT="${OTTPLAY_PORT:-8095}"
 # OTTPLAY_HTTPS_PORTS: space-separated list of HTTPS ports (one per browser origin).
