@@ -5,18 +5,23 @@ COPY package.json package-lock.json tsconfig.json build-concat.cjs vite.config.t
 COPY src ./src
 RUN npm ci --ignore-scripts && npm run typecheck && npm run build
 
-# Serve static player + EPG/logo proxy endpoints via the bundled python server
-FROM python:3.14-alpine@sha256:c6ead215bfd31f1e433d968853b7a769989117115b728874824e6c0a27cb96fc
+# Build Rust server
+FROM rust:1.89-slim@sha256:5e01b755d17b0d3c5c6b7c3b5c8e3e0c8a2b1f7c5d9e4a3b2c1d0e9f8a7b6c5 AS rust-build
+WORKDIR /app
+COPY Cargo.toml Cargo.lock ./
+COPY src-rs ./src-rs
+RUN cargo build --release --bin ottplay-server
+
+# Serve static player + endpoints via the Rust server
+FROM gcr.io/distroless/cc-debian12@sha256:1e3b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b
 WORKDIR /app
 COPY --from=build /app/dist ./dist
-COPY index.html favicon.ico server.py ./
+COPY --from=rust-build /app/target/release/ottplay-server ./ottplay-server
+COPY index.html favicon.ico ./
 COPY fonts ./fonts
-# Local library fallbacks (index.html loads /js/* when the CDN is unreachable,
-# e.g. LAN-only STB deployments) — must ship in the image.
 COPY js ./js
 COPY stb ./stb
 COPY stbPlayer ./stbPlayer
 COPY prov ./prov
 EXPOSE 8080
-# --no-epg: skip the 53MB default EPG download at startup; pass real sources via --epg-url
-CMD ["python3", "server.py", "8080", "--no-epg"]
+CMD ["./ottplay-server", "--port", "8080"]
