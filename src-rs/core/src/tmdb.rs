@@ -59,10 +59,16 @@ fn build_url(path_tail: &str, query: &str, api_key: &str) -> Result<String> {
     Ok(url)
 }
 
-/// Read TMDB_API_KEY at startup. Panic if missing — server cannot work without it.
-pub fn api_key_from_env() -> String {
+/// Read TMDB_API_KEY at startup. Returns None if missing — server runs without it,
+/// /tmdb/* endpoints return 503 instead of panicking.
+pub fn api_key_from_env() -> Option<String> {
     match std::env::var("TMDB_API_KEY") {
-        Ok(k) if !k.is_empty() => k,
-        _ => panic!("TMDB_API_KEY env var not set"),
+        Ok(k) if !k.is_empty() => Some(k),
+        _ => None,
     }
+}
+
+/// Returns Err if no key — used by /tmdb/* handlers to short-circuit with 503.
+pub fn require_api_key() -> Result<String> {
+    api_key_from_env().ok_or_else(|| anyhow!("TMDB_API_KEY not set"))
 }
