@@ -275,6 +275,7 @@ export let mediaName = "";
 export let searchText = "",
     searchInput = "",
     searchTimeout: any = null;
+export let historySearchText = "";
 export let archivePos = 0,
     archiveStart = 0,
     archiveEnd = 0;
@@ -1794,11 +1795,12 @@ export function updateArchiveInfo(position: number): void {
     var pct = Math.min(100, Math.max(0, (elapsed / duration) * 100));
     if (progressEl) progressEl.style.width = pct + "%";
     var nowSec = Date.now() / 1000;
+    // remainingPct: use archive position (not clock time) since prog.time may be synthetic
     var remainingPct =
-        prog && prog.time_to > nowSec
+        prog && prog.time_to > position
             ? Math.min(
                   100,
-                  Math.max(0, ((prog.time_to - nowSec) / duration) * 100)
+                  Math.max(0, ((prog.time_to - position) / duration) * 100)
               )
             : 0;
     if (progressREl) progressREl.style.width = remainingPct + "%";
@@ -2828,8 +2830,48 @@ export function showActionsDialog(): void {
  * Caller: selectMedia() in stbPlayer.js — invoked only when
  * `e.search_on` is truthy.
  */
+/**
+ * Set the history search query string.
+ * @param query - The search text to filter history entries by.
+ * Side effects: Sets `historySearchText`.
+ */
+export function searchHistoryChannel(query: string): void {
+    historySearchText = query;
+}
+
+/**
+ * Returns history entries that match `historySearchText` (case-insensitive).
+ * If the filter is empty, returns a copy of `medHistory`.
+ */
+export function getFilteredHistory(): MediaHistoryEntry[] {
+    if (!historySearchText) return medHistory.slice();
+    const lower = historySearchText.toLowerCase();
+    return medHistory.filter(
+        (entry) =>
+            (entry.name?.toLowerCase().includes(lower) ?? false) ||
+            (entry.title?.toLowerCase().includes(lower) ?? false)
+    );
+}
+
+/**
+ * Returns channel IDs that match `searchText` (case-insensitive) within the
+ * current category. If the filter is empty, returns a copy of `curList`.
+ */
+export function getFilteredChannelList(): number[] {
+    if (!searchText) return curList.slice();
+    const lower = searchText.toLowerCase();
+    return curList.filter((chId) => {
+        const ch = channels[chId];
+        return (
+            (ch?.channel_name?.toLowerCase().includes(lower) ?? false) ||
+            (ch?.name?.toLowerCase().includes(lower) ?? false)
+        );
+    });
+}
+
 export function searchMedia(e: any): void {
     var w = window as any;
+    searchText = typeof e === "string" ? e : "";
     w.editCaption = w._("String for search");
     var t =
         (typeof w.stbGetItem === "function" ? w.stbGetItem("medSearch") : "") ||

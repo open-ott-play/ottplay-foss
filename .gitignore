@@ -30,3 +30,4 @@ GR*.md
 CA*.md
 TO*.md
 *.local.py
+.coverage

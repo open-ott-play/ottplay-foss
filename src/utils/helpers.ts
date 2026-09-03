@@ -151,8 +151,10 @@ export function getHeightK(): number {
 }
 
 // Expose globally for UI code that uses window.getWidthK / window.getHeightK
-(window as any).getWidthK = getWidthK;
-(window as any).getHeightK = getHeightK;
+if (typeof window !== "undefined") {
+    (window as any).getWidthK = getWidthK;
+    (window as any).getHeightK = getHeightK;
+}
 
 /**
  * Format a number to at least two digits, left-padding with `'0'` if needed.
