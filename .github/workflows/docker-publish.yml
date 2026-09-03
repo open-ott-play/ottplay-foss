@@ -6,9 +6,8 @@ on:
       - main
     tags:
       - 'v*'
-  pull_request:
-    branches:
-      - main
+  # PRs only need CI (lint/typecheck/build). Multi-arch docker is slow and
+  # was a required-check blocker; image push happens on main / v* only.
 
 permissions:
   contents: read
