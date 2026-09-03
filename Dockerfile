@@ -13,7 +13,7 @@ COPY src-rs ./src-rs
 RUN cargo build --release --bin ottplay-server
 
 # Serve static player + endpoints via the Rust server
-FROM gcr.io/distroless/cc-debian12@sha256:1e3b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b
+FROM gcr.io/distroless/cc-debian12@sha256:e5d81ddde149641e2a9ba55be4545bc125c67de07508b03ba4c22e6eb0ded5aa
 WORKDIR /app
 COPY --from=build /app/dist ./dist
 COPY --from=rust-build /app/target/release/ottplay-server ./ottplay-server
