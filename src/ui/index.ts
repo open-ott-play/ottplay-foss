@@ -207,7 +207,7 @@ var _keysSymbol: any[] = [
     },
 ];
 var _keyUp = false;
-var _keyE = false;
+var _keyE = true;
 
 // Select/value state
 var _curVal = 0;
@@ -2746,13 +2746,14 @@ function _setCase(e: boolean): void {
  * @analysis The layout is calculated to fit into 10-column rows. If the alphabet is short, punctuation is appended.
  */
 function _setLang(e: boolean): void {
-    var t: string = (window as any)._("alhabet") || _keysL;
+    // Legacy: var t = _("alhabet"); — localized alphabet from keyStrings
+    var t: string = _("alhabet");
     _keyE = e;
     var r = e ? _keysL : t;
     var s = Math.floor(r.length / 10);
     if (r.length % 10) r = (r + _keysP).substr(0, (s + 1) * 10);
     _keys = _keys1 + r + _keysA;
-    _keysSymbol[2].s = "!,?";
+    _keysSymbol[2].s = "!?,";
     _setCase(_keyUp);
     _keyCur = _keys.length - 9;
 }
@@ -2877,13 +2878,13 @@ export function showEdit(): void {
             btnDiv(
                 keys.RED,
                 "",
-                _keysSymbol[0] ? (_keyUp ? "&darr;a" : "&uarr;A") : "",
+                _keysSymbol[0].s ? (_keyUp ? "&darr;a" : "&uarr;A") : "",
                 strTools
             ) +
             btnDiv(
                 keys.GREEN,
                 "",
-                _keysSymbol[1] ? (_keyE ? _("lang") : "English") : "",
+                _keysSymbol[1].s ? (_keyE ? _("lang") : "English") : "",
                 strFF
             ) +
             btnDiv(keys.YELLOW, "", "Delete", strRW) +

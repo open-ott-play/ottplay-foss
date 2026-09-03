@@ -46,7 +46,16 @@ export function translate(key: string, ...args: any[]): string {
                 return '<span class="fontello">&#xf205;</span>';
         }
     }
-    var text = translations[key] !== undefined ? translations[key] : key;
+    // Legacy stbPlayer.js reads keyStrings directly. Lang scripts loaded via
+    // getScriptDOM set window.keyStrings but do not update `translations`, so
+    // prefer the live keyStrings table (needed for _("alhabet") / OSK Lang).
+    var ks = (window as any).keyStrings;
+    var text =
+        ks && ks[key] !== undefined
+            ? ks[key]
+            : translations[key] !== undefined
+              ? translations[key]
+              : key;
     for (var i = 0; i < args.length; i++) {
         text = text.replace(new RegExp("%" + (i + 1), "g"), args[i]);
     }
