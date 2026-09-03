@@ -1,6 +1,6 @@
 # OTT-play FOSS
 
-Self-contained IPTV/OTT player with a local Python HTTP server. Runs on Smart TVs (LG WebOS, Samsung Tizen, Panasonic, Sony, etc.), set-top boxes (Infomir MAG, Dune HD, Enigma2, Android TV), and desktop browsers.
+Self-contained IPTV/OTT player with a local Rust HTTP server. Runs on Smart TVs (LG WebOS, Samsung Tizen, Panasonic, Sony, etc.), set-top boxes (Infomir MAG, Dune HD, Enigma2, Android TV), and desktop browsers.
 
 ## Features
 
@@ -20,8 +20,9 @@ Self-contained IPTV/OTT player with a local Python HTTP server. Runs on Smart TV
 npm install
 npm run build          # production (minified → dist/stbPlayer.js)
 
-# 2. Start the server
-python3 server.py 8080
+# 2. Build + start the Rust server
+cargo build --release -p ottplay-server
+./target/release/ottplay-server --port 8080
 
 # 3. Open in browser
 # http://localhost:8080
@@ -35,8 +36,8 @@ Multi-arch images (amd64/arm64) are published to Docker Hub on every push to `ma
 
 ```bash
 docker run -d -p 8080:8080 alvit/ottplay-foss
-# with EPG source:
-docker run -d -p 8080:8080 alvit/ottplay-foss python3 server.py 8080 --epg-url <url>
+# with EPG source(s) (semicolon-separated):
+docker run -d -p 8080:8080 -e EPG_URLS="http://example.com/epg.xml.gz" alvit/ottplay-foss
 ```
 
 Tags: `latest` (main), `v1.2.3` / `1.2` (semver), `sha-<short>`.
@@ -350,7 +351,11 @@ automation:
 
 ## Server API Reference
 
-### Webhook Endpoints (server.py)
+### Webhook Endpoints (Rust `ottplay-server`)
+
+> The original `server.py` implementation is preserved under `archive/server.py`
+> for reference and as a STB fallback. The Rust binary serves the same
+> webhook paths; for production use the binary.
 
 | Method | Path | Description |
 |---|---|---|
@@ -375,18 +380,16 @@ automation:
 ### EPG
 
 ```bash
-# Add XMLTV EPG source
-python3 server.py 8080 --epg-url http://example.com/epg.xml.gz
-
-# Multiple sources
-python3 server.py 8080 --epg-url http://a.com/epg.xml --epg-url http://b.com/epg.xml.gz
+# Add XMLTV EPG source(s) via env var (semicolon-separated)
+EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 8080
 ```
 
 ## Project Structure
 
 ```
 .
-├── server.py              # Local HTTP server (Python)
+├── archive/
+│   └── server.py          # Original Python server (frozen for STB fallback)
 ├── local_proxy.py         # Standalone local command proxy
 ├── index.html             # Player entry point (device detection + poller)
 ├── dist/

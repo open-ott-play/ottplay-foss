@@ -91,11 +91,11 @@ Key observation: **the platform shim runs first, then the base `stbInit` runs ag
 
 ## 3. Module dependency graph
 
-`src/player.ts` is the entry point. It imports from every other module and re-exports the symbols onto `window.*` for backward compatibility with the legacy `stbPlayer.js` global-namespace design.
+`src/index.ts` is the live concat entry — last in `vite.config.ts` `MODULES` (must be last, redeclares legacy `function X` symbols). `src/player.ts` is a dead PR #54 stub (~474 lines), not in `MODULES`, not imported, kept for now pending the dead-code sweep (see TODO §1). The bundle itself exposes ~130 globals onto `window.*` for backward compatibility with the legacy `stbPlayer.js` global-namespace design.
 
 ```mermaid
 flowchart TB
-    Entry["src/player.ts<br/>(entry)"]:::entry
+    Entry["src/index.ts<br/>(live entry, last in MODULES)"]:::entry
     Polyfills["polyfills"]:::leaf
     Utils["utils"]:::leaf
     Storage["storage"]:::core
@@ -391,7 +391,7 @@ flowchart LR
     Extra --> Done
 ```
 
-The shim is concatenated into the final `dist/stbPlayer.js` by `build-concat.cjs`. Only one shim is ever active per build (the device ID is passed at build time or detected at runtime via `?device=lg`).
+The shim runs as a separate classic script (`stb/<device>/stb.js`) loaded *after* the main bundle in `index.html`. Only one shim is ever active per build (the device ID is passed at build time or detected at runtime via `?device=lg`).
 
 ---
 
@@ -848,7 +848,7 @@ If a new provider is needed, drop a `prov/<name>/prov.js` file with the four fun
 | Concern | File |
 |---|---|
 | Bundle entry | `index.html` |
-| TS entry | `src/player.ts` |
+| TS entry | `src/index.ts` (live, last in `MODULES`) |
 | Playback / PiP | `src/core/index.ts` |
 | Remote dispatch | `src/keyhandler/index.ts` |
 | Popup menu / filter | `src/ui/index.ts:1563` (build) and `src/ui/index.ts:1634` (filter) |

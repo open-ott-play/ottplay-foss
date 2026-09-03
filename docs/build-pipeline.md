@@ -2,28 +2,16 @@
 
 ## Current pipeline
 
-`npm run build` → Vite (`vite.config.ts`) → `tsc` → strip ES module syntax → concat → terser → `dist/stbPlayer.js`.
+`npm run build` → Vite (`vite.config.ts`) → `tsc` → strip ES module syntax → concat (`MODULES` order) → terser → `dist/stbPlayer.js`.
 
-Vite handles orchestration; Rollup bundler is **not** used. Both builds are identical.
-
-## Legacy fallback
-
-`npm run build:legacy` → `node build-concat.cjs` → same `tsc → strip → concat → terser` steps.
-
-Kept for emergency — same output, different entry point.
+Vite handles orchestration; Rollup bundler is **not** used. The concat + strip + terser steps live inline in `vite.config.ts` (`generateBundle` hook), invoked via the `enforce: "post"` plugin.
 
 ## Bundle size
 
-~268 KB minified (identical between both builds). ~130 window globals written.
-
-## Migration path
-
-Drop `build:legacy` when `build` proves stable across all device targets.
+~268 KB minified. ~130 window globals written by `src/index.ts`.
 
 ## Build scripts (package.json)
 
 | Script | Entrypoint | Notes |
 |--------|-----------|-------|
-| `build` | `vite.config.ts` | Primary — `vite build` triggers `build:build` hook |
-| `build:legacy` | `build-concat.cjs` | Fallback — identical output |
-| `build:vite` | `vite.config.ts` | Alias for `build` |
+| `build` | `vite.config.ts` | Only build script — `vite build` |
