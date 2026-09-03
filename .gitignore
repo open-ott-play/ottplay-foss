@@ -1,6 +1,7 @@
 # Build outputs
 build/
 dist/
+target/
 
 # Dependencies
 node_modules/
@@ -28,3 +29,4 @@ CL*.md
 GR*.md
 CA*.md
 TO*.md
+*.local.py
