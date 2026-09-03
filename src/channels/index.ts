@@ -886,76 +886,63 @@ export function epgShow_miniproc(
     mode: number,
     catIdx: number,
     chIdx: number,
-    channelId: any,
+    epgReturn: any,
     callback: (chId: any) => void
 ): void {
     var w = window as any;
-    if (epglisted) return;
-    // Legacy guard: skip fetch if same channel (use cached data)
-    if (epg_ch_id && epg_ch_id === channelId) {
-        callback(channelId);
-        return;
-    }
+    // Legacy stbPlayer.js:6534-6556
+    //   epgShow_miniproc(mode, catIdx, chIdx, epgreturn, cb)
+    //   a = cats[catsArray[listCatIndex]][listChannel]
+    //   getEPGchanelCached(a, ...)  // internal channel id, NOT ch.ch_id
     epglisted = mode;
-    epg_ch_id = channelId;
+    epgreturn = epgReturn;
+    w.epgreturn = epgReturn;
     w.listCatIndex = catIdx;
     w.listChannel = chIdx;
 
-    var ch = (channels[channelId] || {}) as Channel;
-    var providerChId = ch.ch_id;
+    var catList =
+        cats[catsArray[catIdx]] || w.cats[w.catsArray[catIdx]] || curList || [];
+    var a = catList[chIdx];
+    if (mode === 0 && !(channels[a] && channels[a].rec)) return;
+    if (epg_ch_id && epg_ch_id == a) {
+        callback(a);
+        return;
+    }
+    epg_ch_id = a;
 
+    if (typeof w.getEPGchanelCached !== "function") {
+        epglisted = 0;
+        return;
+    }
     if (mode) {
         $("#listPopUp")
             .html(
                 '<img src="' +
-                    w.host +
+                    (w.host || "") +
                     "/stbPlayer/buffering.gif?" +
-                    w.__av +
+                    (w.__av || "") +
                     '" height="40">'
             )
             .show();
     }
-
-    if (typeof w.getEPGchanelCached === "function") {
-        w.getEPGchanelCached(
-            providerChId,
-            function (id: any, data: EPGEntry[]) {
-                epglisted = 0;
-                if (id != providerChId) return;
-                if (!data || data.length === 0) {
-                    curEpgData = null;
-                    $("#listPopUp").hide();
-                    w.listChannel |= 65536;
-                    if (typeof w.infoBox === "function")
-                        w.infoBox(w._("Channel has no EPG"));
-                    return;
-                }
-                curEpgData = data;
-                if (callback) callback(channelId);
-                if (typeof (w as any).setCurProg === "function")
-                    (w as any).setCurProg(channelId, data, null);
-            }
-        );
-    } else {
+    w.getEPGchanelCached(a, function (id: any, data: EPGEntry[]) {
         epglisted = 0;
-    }
+        // Legacy: if (!t) — empty array is truthy and still opens the list
+        if (!data) {
+            curEpgData = null;
+            $("#listPopUp").hide();
+            w.listChannel |= 65536;
+            if (typeof w.infoBox === "function")
+                w.infoBox(w._("Channel has no EPG"));
+            return;
+        }
+        curEpgData = data;
+        if (callback) callback(id);
+        if (typeof (w as any).setCurProg === "function")
+            (w as any).setCurProg(id, data, null);
+    });
 }
 
-/**
- * Open the EPG list view for a specific channel.
- * Fetches EPG data if not already cached, then renders the list with
- * a "no EPG" fallback if the channel flag (65536) indicates absence.
- *
- * @param catIdx - Category index of the channel.
- * @param chIdx  - Channel index within the category.
- * @param force  - If true, bypasses some guards (currently unused in logic).
- *
- * Side effects:
- * - Calls `epgShow_miniproc` to fetch EPG data.
- * - Sets `window.listArray`, `window.getListItemFn`, etc. for the list UI.
- * - Hides #listPopUp.
- * - Calls `window.showPage` to refresh the visible list.
- */
 export function epgList(catIdx: number, chIdx: number, force: boolean): void {
     var w = window as any;
     epgreturn = force || false;
@@ -1007,7 +994,7 @@ export function epgList(catIdx: number, chIdx: number, force: boolean): void {
         if (typeof w.showPage === "function") w.showPage();
     }
 
-    epgShow_miniproc(1, catIdx, chIdx, curList[chIdx], onDataReady);
+    epgShow_miniproc(1, catIdx, chIdx, force || false, onDataReady);
 }
 
 /**
@@ -1415,24 +1402,74 @@ export function epgListAlpha(epgData: EPGEntry[], _options?: any): void {
  * @param records - Array of record objects, each expected to have `name` or `title`.
  * @returns Concatenated HTML string, or empty string if records is empty/null.
  */
-export function recordsList(records: any[]): string {
-    if (!(records && records.length)) return "";
-    return records
-        .map(
-            (r: any) =>
-                "<div>&nbsp;&nbsp;" + (r.name || r.title || "") + "</div>"
-        )
-        .join("");
+export function recordsList(
+    catIdx: number,
+    chIdx: number,
+    epgReturn: boolean
+): void {
+    var w = window as any;
+    // Legacy stbPlayer.js:6641-6656 recordsList(e, t, r)
+    if (
+        (w.listChannel & 65536) === 65536 &&
+        (w.listChannel & 65535) === chIdx &&
+        w.listCatIndex === catIdx
+    ) {
+        if (typeof w.infoBox === "function")
+            w.infoBox(w._("Channel has no EPG"));
+        return;
+    }
+
+    function onDataReady(channelId: any): void {
+        var e: EPGEntry[] = [];
+        var r: EPGEntry[] = [];
+        var ch = (channels[channelId] || {}) as Channel;
+        if (curEpgData !== null && curEpgData.length) {
+            var recHours = ch.rec || 0;
+            e = curEpgData
+                .filter(function (entry) {
+                    return entry.time > Date.now() / 1000 - recHours * 3600;
+                })
+                .sort(function (a, b) {
+                    return a.time - b.time;
+                });
+            var seen: string[] = [];
+            var sorted = curEpgData.slice().sort(function (a, b) {
+                return b.time - a.time;
+            });
+            r = sorted
+                .filter(function (entry) {
+                    if (entry.time < Date.now() / 1000 - recHours * 3600)
+                        return false;
+                    if (entry.time_to * 1000 > Date.now()) return false;
+                    if (seen.indexOf(entry.name) !== -1) return false;
+                    seen.push(entry.name);
+                    return true;
+                })
+                .sort(function (a, b) {
+                    return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+                });
+        }
+        w.selIndex = 0;
+        w.listArray = r;
+        listEpgArray = e;
+        w.getListItemFn = function (item: any, _idx: number) {
+            return "&nbsp;&nbsp;" + (item && item.name ? item.name : "");
+        };
+        w.detailListActionFn = function () {
+            if (typeof w.detailEPG === "function") w.detailEPG();
+        };
+        w.listKeyHandlerFn = epgKeyHandler;
+        var captionEl = document.getElementById("listCaption");
+        if (captionEl)
+            captionEl.innerHTML =
+                w._("Archive. Channel: ") + (ch.channel_name || "");
+        if (typeof epgPodval === "function") epgPodval();
+        $("#listPopUp").hide();
+        if (typeof w.showPage === "function") w.showPage();
+    }
+    epgShow_miniproc(0, catIdx, chIdx, epgReturn, onDataReady);
 }
 
-/**
- * Handle selection of a record from the records list.
- * Closes the list and delegates to `window.playMedia`.
- *
- * @param index - Index into `window.listArray` for the selected record.
- *
- * Side effects: Calls `window.closeList` and `window.playMedia`.
- */
 export function selectREC(index: number): void {
     var w = window as any;
     var item = w.listArray[index];
@@ -2111,39 +2148,106 @@ function step2text(e: number): string {
  */
 export function shiftArchiveSelect(initialDelta: number): void {
     var w = window as any;
+    // Legacy stbPlayer.js:6205-6304
     var chId = curList[primaryIndex];
     var ch = channels[chId];
     if (!playType && !(ch && ch.rec)) return;
     var i = 0;
     var t: any = null;
+    var keys = w.keys || {};
     function r(delta: number): void {
         clearTimeout(t);
         i += delta;
         var stepEl = document.getElementById("step");
-        if (stepEl) stepEl.innerHTML = step2text(i);
+        if (stepEl && typeof w.step2text === "function")
+            stepEl.innerHTML = w.step2text(i);
         t = setTimeout(function () {
-            var dialogbox = document.getElementById("dialogbox");
-            if (dialogbox) dialogbox.style.display = "none";
+            $("#dialogbox").hide();
+            if (w.tooltip) w.tooltip.style.display = "";
             shiftArchive(i);
         }, 3000);
     }
-    // Guard: keep existing dialog if open
-    var dialogbox = document.getElementById("dialogbox");
-    if (dialogbox) {
-        dialogbox.style.display = "";
-    }
+    var btnDiv = w.btnDiv;
+    $("#dialogbox")
+        .html(
+            w._("Rewind") +
+                ':<br/><span id="step" style="font-size: 150%;"></span><br/>' +
+                '<br><div class="btn" onclick="_doKey(keys.UP);">' +
+                (w.strUP || "") +
+                '</div>&nbsp;<div class="btn" onclick="_doKey(keys.DOWN);">' +
+                (w.strDOWN || "") +
+                "</div>&nbsp;+/- " +
+                w._("1 minute") +
+                "&nbsp;&nbsp;" +
+                '<div class="btn" onclick="_doKey(keys.LEFT);">' +
+                (w.strLEFT || "") +
+                '</div>&nbsp;<div class="btn" onclick="_doKey(keys.RIGHT);">' +
+                (w.strRIGHT || "") +
+                "</div>&nbsp;+/- " +
+                w._("10 Seconds") +
+                "<br/>" +
+                (typeof btnDiv === "function"
+                    ? btnDiv(keys.ENTER, w.strENTER, "Go to") +
+                      btnDiv(keys.RETURN, w.strRETURN, "Close")
+                    : "")
+        )
+        .show();
+    if (w.sInfoRew && typeof w.showChanelInfo === "function")
+        w.showChanelInfo(1);
     r(initialDelta);
+    w.dialogBoxKeyHandler = function (e: number): void {
+        switch (e) {
+            case keys.N1:
+                r(-(w.s13dur || 0));
+                return;
+            case keys.N3:
+                r(w.s13dur || 0);
+                return;
+            case keys.N4:
+                r(-(w.s46dur || 0));
+                return;
+            case keys.N6:
+                r(w.s46dur || 0);
+                return;
+            case keys.N7:
+                r(-(w.s79dur || 0));
+                return;
+            case keys.N9:
+                r(w.s79dur || 0);
+                return;
+            case keys.FF:
+            case keys.UP:
+                r(60);
+                return;
+            case keys.RW:
+            case keys.DOWN:
+                r(-60);
+                return;
+            case keys.RIGHT:
+                r(10);
+                return;
+            case keys.LEFT:
+                r(-10);
+                return;
+            case keys.EXIT:
+            case keys.RETURN:
+                $("#dialogbox").hide();
+                if (typeof w.infoBarHide === "function") w.infoBarHide();
+                if (w.tooltip) w.tooltip.style.display = "";
+                clearTimeout(t);
+                return;
+            case keys.ENTER:
+                $("#dialogbox").hide();
+                clearTimeout(t);
+                shiftArchive(i);
+                if (w.tooltip) w.tooltip.style.display = "";
+                return;
+            default:
+                return;
+        }
+    };
 }
 
-/**
- * Clock-skip / timeshift on live TV — jumps N seconds back into the stream.
- * Requires the current channel to have `rec` (catchup-days) set.
- * Fetches EPG, sets epgArray, then calls playArchive(now-n) for clock skip
- * without requiring an EPG entry, or playArchive(progStart) when n=0.
- *
- * @param n - Seconds to go back (positive), or 0 to jump to current program start.
- * Side effects: Sets epgArray, curProg; calls playArchive(); shows OSD.
- */
 export function timeShift(n: number): void {
     var w = window as any;
     var chId = curList[primaryIndex];
