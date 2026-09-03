@@ -1702,6 +1702,8 @@ export function popupList(i?: any): void {
     var noProvParam: any = (window as any).noProvParam;
     var popBuckets: any = (window as any).popBuckets;
     var popEpg: any = (window as any).popEpg;
+    var toggleZoom: any = (window as any).toggleZoom;
+    var toggleAspectRatio: any = (window as any).toggleAspectRatio;
 
     var sHideMenus: string[] = (window as any).sHideMenus || [];
     var popupActions: any[] = (window as any).popupActions || [];
@@ -1846,10 +1848,10 @@ export function popupList(i?: any): void {
             case toggleSubtitle:
                 n = strSubt || "Subt";
                 break;
-            case (window as any).toggleZoom:
+            case toggleZoom:
                 n = strZoom || "Zoom";
                 break;
-            case (window as any).toggleAspectRatio:
+            case toggleAspectRatio:
                 n = strAspect || "Aspect";
                 break;
             case optionsList:
@@ -1995,6 +1997,10 @@ export function popupList(i?: any): void {
     if (listCaptionElement) listCaptionElement.innerHTML = _("Menu");
     if (listPodvalElement)
         listPodvalElement.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
+
+    // Sync listArray to window so showPage() can read it (fallback in showPage reads window.listArray)
+    (window as any).listArray = listArray;
+    (window as any).listDataArray = listArray;
 
     // Явно показываем list_window перед showPage
     $("#list_window").show();
