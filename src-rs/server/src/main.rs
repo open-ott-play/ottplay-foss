@@ -37,7 +37,7 @@ static EPG_TO_XMLTV: Lazy<Arc<RwLock<HashMap<String, String>>>> =
 static TIME_SHIFT_BY_EPG: Lazy<Arc<RwLock<HashMap<String, i64>>>> =
     Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
 
-static TMDB_KEY: Lazy<String> = Lazy::new(ottplay_core::tmdb::api_key_from_env);
+static TMDB_KEY: Lazy<Option<String>> = Lazy::new(ottplay_core::tmdb::api_key_from_env);
 
 fn epg_urls() -> Vec<String> {
     std::env::var("EPG_URLS")
@@ -215,7 +215,7 @@ async fn tmdb_handler(
         .map(|(k, v)| format!("{}={}", k, urlencoding::encode(v)))
         .collect::<Vec<_>>()
         .join("&");
-    match ottplay_core::tmdb::proxy(&path, &query, &TMDB_KEY).await {
+    match ottplay_core::tmdb::proxy(&path, &query, TMDB_KEY.as_deref().unwrap_or("")).await {
         Ok((status, mut headers, body)) => {
             headers.insert("access-control-allow-origin", HeaderValue::from_static("*"));
             Ok((
