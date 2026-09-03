@@ -31,3 +31,5 @@ CA*.md
 TO*.md
 *.local.py
 .coverage
+
+uv.lock
