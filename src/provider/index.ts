@@ -519,7 +519,8 @@ export function optionsList(fn?: () => void): void {
         );
         switch (key) {
             case keys.RETURN:
-                popupList(-1);
+                // Legacy stbPlayer.js:4329: popupList(optionsList) pre-selects Settings
+                popupList(optionsList);
                 return true;
             case keys.ENTER:
                 console.log(
@@ -699,7 +700,7 @@ declare var optionsArr: { action: any; name?: string; desc?: string }[];
 declare var addBtn2menu: (arr: any[], action: any, label: string) => void;
 declare var getListItemFn: (item: any, idx: number) => string;
 declare var detailListActionFn: () => void;
-declare var popupList: (i?: number) => void;
+declare var popupList: (i?: any) => void;
 declare var optIndexOf: (action: any) => number;
 declare var confirmBox: (
     message: string,

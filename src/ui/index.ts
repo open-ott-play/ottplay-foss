@@ -938,6 +938,15 @@ export function infoBox(message: string): void {
     };
 }
 
+function escapeHtml(text: string): string {
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
 /**
  * Show a confirmation dialog with Yes (ENTER) and No (RETURN) buttons.
  * Calls the appropriate callback based on the user's key press.
@@ -953,39 +962,38 @@ export function confirmBox(
     onYes: () => void,
     onNo?: () => void
 ): void {
+    var w = window as any;
+    var wasPlaying =
+        typeof w.stbIsPlaying === "function" ? !!w.stbIsPlaying() : false;
+    // Legacy stbPlayer.js:7504-7511 — only Yes; any other key dismisses.
     $("#dialogbox")
         .html(
-            message +
+            "<center>" +
+                escapeHtml(_(message)) +
                 "<br/><br/>" +
                 btnDiv(keys.ENTER, strENTER, "Yes") +
-                btnDiv(keys.RETURN, strRETURN, "No")
+                "</center>"
         )
         .show();
-    (window as any).dialogBoxKeyHandler = function (e: number): void {
+    w.dialogBoxKeyHandler = function (e: number): void {
         $("#dialogbox").hide();
-        (window as any).dialogBoxKeyHandler = null;
+        w.dialogBoxKeyHandler = null;
         if (e === keys.ENTER) {
             if (onYes) onYes();
         } else {
-            if (onNo) onNo();
+            // Esc/RETURN must not leave video frozen (stbPause / overlay).
+            if (
+                wasPlaying &&
+                typeof w.stbContinue === "function" &&
+                typeof w.stbIsPlaying === "function" &&
+                !w.stbIsPlaying()
+            )
+                w.stbContinue();
+            if (typeof onNo === "function") onNo();
         }
     };
 }
 
-/**
- * Show a temporary select box (value picker) using the `numprog` element.
- * Supports single-item auto-select, timed auto-dismiss, and arrow-key navigation.
- *
- * @param s - Initial selected index.
- * @param n - Array of label strings to display.
- * @param i - Callback invoked with the selected index when confirmed.
- * @param a - Timeout in ms (default 3000). -1 = no auto-confirm (stay open until ENTER). 0 = auto-confirm after 2s.
- * @returns void
- * @sideeffect Clears `window.numTimeout`. Calls `closeList()`. Shows/hides `numprogElement`.
- *             Registers `window.selectBoxKeyHandler` for key events.
- * @analysis Single-element arrays call `showShift` and return early. The internal `r()` function re-renders
- *             the selection with highlighting. When `a === 0`, the current selection is auto-confirmed after 2s.
- */
 export function showSelectBox(
     s: number,
     n: string[],
@@ -1089,18 +1097,6 @@ export function updateChanelInfo(channelId: number): void {
     var curList = (window as any).curList || [];
     var primaryIndex = (window as any).primaryIndex;
     if (channelId !== curList[primaryIndex]) return;
-    // Trigger EPG data load if needed; callback re-invokes when data arrives
-    // Only fetch if channel doesn't already have valid EPG (prevents infinite recursion)
-    var _ch = (window as any).chanels
-        ? (window as any).chanels[channelId]
-        : undefined;
-    if (!(_ch && _ch.time_to) || _ch.time_to < Date.now() / 1000) {
-        getCurProgData(channelId, function () {
-            setTimeout(function () {
-                updateChanelInfo(channelId);
-            }, 0);
-        });
-    }
     var channelNumEl = document.getElementById("channel_number");
     var channelNameEl = document.getElementById("channel_name");
     var piconEl = document.getElementById("picon");
@@ -1155,8 +1151,10 @@ export function updateChanelInfo(channelId: number): void {
     if (nbeginTimeEl) nbeginTimeEl.textContent = "";
     if (nendTimeEl) nendTimeEl.textContent = "";
 
-    // EPG data (the channel object may have name/time/time_to from getCurProgData)
-    if (t && t.name && t.time && t.time_to) {
+    // EPG data — legacy stbPlayer.js:1258-1281 uses getCurProgData return,
+    // then always writes +remaining minutes and next-program duration.
+    var hasProg = getCurProgData(channelId, updateChanelInfo);
+    if (hasProg && t && t.time_to) {
         // Has current EPG program
         if (programNameEl) programNameEl.innerHTML = t.name;
         if (programName2El) programName2El.innerHTML = t.name;
@@ -1167,9 +1165,9 @@ export function updateChanelInfo(channelId: number): void {
         if (pct > 100) pct = 100;
         if (progressEl) progressEl.style.width = pct + "%";
         if (beginTimeEl) beginTimeEl.textContent = time2time(t.time);
-        var remainingMin = Math.round((t.time_to - nowSec) / 60);
+        // Legacy: $("#end_time").text("+" + Math.round((t.time_to - Date.now()/1e3)/60))
         if (endTimeEl)
-            endTimeEl.textContent = "+" + (remainingMin > 0 ? remainingMin : 0);
+            endTimeEl.textContent = "+" + Math.round((t.time_to - nowSec) / 60);
         if (programDurationEl) {
             programDurationEl.innerHTML =
                 time2str(t.time) +
@@ -1197,8 +1195,8 @@ export function updateChanelInfo(channelId: number): void {
             var nextDur = Math.round(
                 (t.nextpr[0].time_to - t.nextpr[0].time) / 60
             );
-            if (nendTimeEl)
-                nendTimeEl.textContent = "" + (nextDur > 0 ? nextDur : 0);
+            // Legacy: $("#nend_time").text(Math.round((next.time_to - next.time)/60))
+            if (nendTimeEl) nendTimeEl.textContent = "" + nextDur;
         }
     } else if (
         (window as any)._prog100 &&
@@ -1731,13 +1729,8 @@ export function popupList(i?: any): void {
     }
 
     var popupActions: any[] = (window as any).popupActions || [];
-    if (typeof i !== "undefined" && i !== 0) {
-        var action = typeof i === "number" ? popupActions[i - 1] : i;
-        if (action) {
-            if (typeof action === "function") action();
-            return;
-        }
-    }
+    // Legacy popupList(i) never executes i — it only pre-selects
+    // (stbPlayer.js:5557 / 5605: if (i == t || i == e) selIndex = u).
 
     var a = 0,
         o = 0; // for PIN check
@@ -2745,6 +2738,30 @@ function _setCase(e: boolean): void {
  * @sideeffect Modifies `_keys`, `_keyCur`, `_keyE`, `_keysSymbol[2].s`.
  * @analysis The layout is calculated to fit into 10-column rows. If the alphabet is short, punctuation is appended.
  */
+function _ottplaylang(): any {
+    try {
+        if (typeof (window as any).stbGetItem === "function")
+            return (window as any).stbGetItem("ottplaylang");
+    } catch (_e) {}
+    return undefined;
+}
+
+/** True when keyStrings.alhabet is a real alphabet, not the English placeholder. */
+function _hasLocalizedAlphabet(): boolean {
+    var t = _("alhabet");
+    return (
+        typeof t === "string" && t.length > 0 && t !== "alhabet" && t !== _keysL
+    );
+}
+
+/**
+ * Legacy stbPlayer.js:3993-3994 hides Lang only when ottplaylang == "_eng".
+ * Also show the key when a localized alphabet is actually loaded (keyStrings).
+ */
+function _showLangKey(): boolean {
+    return _ottplaylang() != "_eng" || _hasLocalizedAlphabet();
+}
+
 function _setLang(e: boolean): void {
     // Legacy: var t = _("alhabet"); — localized alphabet from keyStrings
     var t: string = _("alhabet");
@@ -2793,16 +2810,11 @@ var showEditKey: any = showEditKey1;
  */
 export function showEditKey1(_initKeys: any): void {
     saveCPD();
-    if (
-        typeof (window as any).stbGetItem === "function" &&
-        (window as any).stbGetItem("ottplaylang") === "_eng"
-    )
-        _keyE = true;
-    _keysSymbol[1].s =
-        typeof (window as any).stbGetItem === "function" &&
-        (window as any).stbGetItem("ottplaylang") === "_eng"
-            ? ""
-            : '<span style="font-family:fontello;padding:0.2em;">&#xe80E;</span>';
+    // Legacy stbPlayer.js:3993 uses == "_eng" (not ===)
+    if (_ottplaylang() == "_eng") _keyE = true;
+    _keysSymbol[1].s = _showLangKey()
+        ? '<span style="font-family:fontello;padding:0.2em;">&#xe80E;</span>'
+        : "";
     _keysSymbol[7].s =
         '<span style="font-family:fontello;padding:0.2em;">&#xe804;</span>';
     _keysSymbol[9].s = "Ok";
@@ -2884,7 +2896,11 @@ export function showEdit(): void {
             btnDiv(
                 keys.GREEN,
                 "",
-                _keysSymbol[1].s ? (_keyE ? _("lang") : "English") : "",
+                _keysSymbol[1].s
+                    ? _keyE
+                        ? _("lang") || "Lang"
+                        : "English"
+                    : "",
                 strFF
             ) +
             btnDiv(keys.YELLOW, "", "Delete", strRW) +
