@@ -223,12 +223,8 @@ export function stbPlay(url: string, position?: number): void {
         window.player = null;
     }
     clearPlayTimeInterval();
-    // Auto-detect HEVC: if URL likely contains HEVC and browser can't handle it via MSE, use native HTML5
+    // HEVC / decode-fail: try hls.js first, then drop the failing level, then native HTML5
     var _forceNative = false;
-    if (playerMode === 1 && typeof Hls !== "undefined" && Hls.isSupported()) {
-        // Check if this is an m3u8 that might contain HEVC — try HLS.js first, fallback on error
-        _forceNative = false;
-    }
     var _pm =
         playerMode === 1 &&
         !_forceNative &&
@@ -253,29 +249,71 @@ export function stbPlay(url: string, position?: number): void {
         typeof Hls !== "undefined" &&
         Hls.isSupported()
     ) {
-        hlsInstance = new Hls({
+        // #167 retry caps are archive-only: live FHD fragments are large and a
+        // single timeout was aborting the stream (then video error 3 DECODE).
+        var _isArchive =
+            (position && position > 0) ||
+            (typeof window.playType === "number" && window.playType > 0);
+        var hlsConfig: any = {
             backBufferLength: 90,
-            capLevelToPlayerSize: true,
+            capLevelToPlayerSize: false,
             enableWorker: true,
-            fragLoadingMaxRetry: 1,
-            levelLoadingMaxRetry: 1,
             lowLatencyMode: false,
-            manifestLoadingMaxRetry: 1,
             maxBufferLength: 30,
+            maxBufferSize: 120000000,
             maxMaxBufferLength: 600,
             overrideNative: false,
             startLevel: -1,
-        });
+        };
+        if (_isArchive) {
+            hlsConfig.fragLoadingMaxRetry = 1;
+            hlsConfig.levelLoadingMaxRetry = 1;
+            hlsConfig.manifestLoadingMaxRetry = 1;
+        }
+        hlsInstance = new Hls(hlsConfig);
         // ponytail: seek to position at MANIFEST_PARSED — currentTime === 0 guaranteed
         var _startPos = position || 0;
+        var _mediaRecovered = false;
         hlsInstance.loadSource(url);
         hlsInstance.attachMedia(video);
         hlsInstance.on(Hls.Events.ERROR, function (_event: any, data: any) {
             if (data.fatal) {
                 console.error("[HLS] fatal error:", data.type, data.details);
                 if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-                    console.log("[HLS] trying recoverMediaError");
-                    hlsInstance.recoverMediaError();
+                    var lvls = hlsInstance.levels || [];
+                    var failed =
+                        (data.frag && data.frag.level) ||
+                        data.level ||
+                        hlsInstance.currentLevel;
+                    if (lvls.length > 1 && failed > 0) {
+                        var cap = failed - 1;
+                        console.log(
+                            "[HLS] MEDIA_ERROR: drop level " +
+                                failed +
+                                " cap=" +
+                                cap
+                        );
+                        hlsInstance.autoLevelCapping = cap;
+                        if (typeof hlsInstance.removeLevel === "function") {
+                            hlsInstance.removeLevel(failed);
+                            hlsInstance.startLoad();
+                            return;
+                        }
+                        hlsInstance.currentLevel = cap;
+                    }
+                    if (!_mediaRecovered) {
+                        _mediaRecovered = true;
+                        console.log("[HLS] trying recoverMediaError");
+                        hlsInstance.recoverMediaError();
+                    } else {
+                        console.log(
+                            "[HLS] MEDIA_ERROR twice, fallback native HTML5"
+                        );
+                        hlsInstance.destroy();
+                        hlsInstance = null;
+                        video!.src = url;
+                        video!.play().catch(function () {});
+                    }
                 } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                     console.log("[HLS] trying startLoad");
                     hlsInstance.startLoad();
@@ -719,16 +757,24 @@ export function stbInit(): void {
                       ? "shaka"
                       : "html5";
             var err = video?.error;
+            var me = ["", "ABORTED", "NETWORK", "DECODE", "SRC_NOT_SUPPORTED"];
+            var errName = err?.code ? me[err.code] || String(err.code) : "";
             console.log(
                 "video > error: " +
                     (err?.code || "") +
+                    (errName ? "-" + errName : "") +
                     (err?.message ? " (" + err.message + ")" : "") +
                     " player=" +
                     _p
             );
             $("#buffering").hide();
             $("#video_res").html(
-                "<br/>error " + (err?.code ?? 0) + " (" + _p + ")"
+                "<br/>error " +
+                    (err?.code ?? 0) +
+                    (errName ? " " + errName : "") +
+                    " (" +
+                    _p +
+                    ")"
             );
         });
         video!.addEventListener("resize", function () {
