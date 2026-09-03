@@ -1,106 +1,25 @@
 /**
- * Popup menu helpers for OTT-play FOSS
- * Handles popup menu actions, arrays, and details
+ * Popup menu helpers for OTT-play FOSS — compatibility shim.
+ *
+ * This module used to carry its own copy of the popup label / action /
+ * detail literals. That copy had drifted out of alignment: its
+ * `popupDetail` was 23 entries long and put "Show rewind window" at index 8
+ * and "Show list of channel archive records without duplication" at index
+ * 13, one slot past the "Rewind" (7) and "Show list of channel archive
+ * records" (12) labels they describe.
+ *
+ * The canonical, index-aligned definitions now live in `../app/state`.
+ * This module re-exports them so nothing has to change import paths.
  */
 
-import {
-    toggleAspectRatio,
-    toggleAudioTrack,
-    toggleSubtitle,
-    toggleZoom,
-} from "../core";
-import { nofun, noProvParam, optionsList, restart } from "../provider";
-import {
-    exitPortal,
-    infoList,
-    popBuckets,
-    popEpg,
-    popMedia,
-    popPause,
-    popPrevProg,
-    popRecords,
-    popShift,
-    popStop,
-    popStopPip,
-    popTogglePip,
-} from "../ui";
-// Import required functions from their respective modules
-import { PLAYER_VERSION } from "../version";
-
-// Popup menu
-export const popupActions: any[] = [
-    toggleAspectRatio,
-    toggleZoom,
-    toggleAudioTrack,
-    toggleSubtitle,
-    popPrevProg,
-    popPause,
-    popStop,
-    popShift,
-    popTogglePip,
-    popStopPip,
-    popBuckets,
-    popEpg,
-    popRecords,
-    popMedia,
-    noProvParam,
-    nofun,
-    optionsList,
-    restart,
-    exitPortal,
-    infoList,
-];
-export const popupArray: string[] = (window as any).popupArray || [
-    "Toggle Aspect Ratio",
-    "Toggle Zoom Mode",
-    "Switch sound track",
-    "Switch subtitle",
-    "Return to previous channel",
-    "Pause/Play",
-    "Restart stream / Live",
-    "Rewind",
-    "Call PiP / PiP exchange",
-    "Close PiP",
-    "Category selection",
-    "Show EPG and archive for channel",
-    "Show list of channel archive records",
-    "Show Media Library",
-    "",
-    "",
-    "Settings",
-    "Restart player",
-    "Exit player",
-    "Information",
-];
-export const popupDetail: any[] = (window as any).popupDetail || [
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    "Show rewind window",
-    null,
-    null,
-    null,
-    null,
-    "Show list of channel archive records without duplication",
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-];
-export const savedPopup: {
-    ver: string;
-    popupActions: any[];
-    popupArray: string[];
-    popupDetail: string[];
-} = { popupActions: [], popupArray: [], popupDetail: [], ver: PLAYER_VERSION };
-export const version: string = PLAYER_VERSION;
+export {
+    initPopupActions,
+    POPUP_ACTION_NAMES,
+    POPUP_DETAILS,
+    POPUP_LABELS,
+    popupActions,
+    popupArray,
+    popupDetail,
+    savedPopup,
+    version,
+} from "../app/state";

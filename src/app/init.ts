@@ -41,6 +41,7 @@ import { __av, __cv, detectDevice, ott_device } from "./device";
 import { selectLang } from "./language";
 import {
     hostUrl,
+    initPopupActions,
     popupActions,
     popupArray,
     popupDetail,
@@ -180,6 +181,19 @@ export function onStbReady(): void {
 
         if (typeof (window as any).pperf_stamp === "function")
             (window as any).pperf_stamp("startPlayer -- control 1");
+
+        // Fill popupActions with the 20 default handlers before the snapshot
+        // below. They are resolved late off window.* because the handlers
+        // live in src/core, src/ui and src/provider — all of which already
+        // import from ./state, so importing them back into ./state would
+        // create a cycle. The typeof guard keeps this safe in the concat
+        // bundle (vite.config.ts strips every `import` line), where this
+        // identifier may not resolve to anything.
+        if (typeof initPopupActions === "function" && !initPopupActions()) {
+            console.warn(
+                "[init] popupActions: not all 20 popup handlers resolved off window.*"
+            );
+        }
 
         // Save current popup state (read by loadProv when switching providers)
         savedPopup.popupActions = popupActions.slice();

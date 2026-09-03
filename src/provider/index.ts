@@ -116,72 +116,30 @@ var pdsa: string[] = [
 // when loadProv is not called (e.g. PC/browser without a provider script).
 
 export var nofun = function () {};
-export var popupActions: any[] = [
-    toggleAspectRatio,
-    toggleZoom,
-    toggleAudioTrack,
-    toggleSubtitle,
-    popPrevProg,
-    popPause,
-    popStop,
-    popShift,
-    popTogglePip,
-    popStopPip,
-    popBuckets,
-    popEpg,
-    popRecords,
-    popMedia,
-    noProvParam,
-    nofun,
-    optionsList,
-    restart,
-    exitPortal,
-    infoList,
-];
-export var popupArray: string[] = [
-    "Toggle Aspect Ratio",
-    "Toggle Zoom Mode",
-    "Switch sound track",
-    "Switch subtitle",
-    "Return to previous channel",
-    "Pause/Play",
-    "Restart stream / Live",
-    "Rewind",
-    "Call PiP / PiP exchange",
-    "Close PiP",
-    "Category selection",
-    "Show EPG and archive for channel",
-    "Show list of channel archive records",
-    "Show Media Library",
-    "",
-    "",
-    "Settings",
-    "Restart player",
-    "Exit player",
-    "Information",
-];
-export var popupDetail: string[] = [
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "Show rewind window",
-    "",
-    "",
-    "",
-    "",
-    "Show list of channel archive records without duplication",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-];
+
+import { popupActions, popupArray, popupDetail } from "../app/state";
+
+/**
+ * Copy `window[name]` back into `target` in place, but ONLY when the global
+ * is a different array object than `target`.
+ *
+ * The popup arrays must stay the same objects for their whole lifetime
+ * (`src/app/state.ts` documents the mutation contract; ~47 prov/*\/prov.js
+ * plugins splice into them and locate their slot with
+ * `popupActions.indexOf(noProvParam)`). Because we publish those same
+ * objects on `window` before handing control to a provider script, the
+ * common case is `window[name] === target` and there is nothing to copy —
+ * copying anyway (clear + spread self) empties the array and blanks the
+ * menu. When a plugin does replace the global outright, adopt its contents
+ * and re-point the global back at the canonical array.
+ */
+function syncFromWindow(target: any[], name: string): void {
+    var src = (window as any)[name];
+    if (!Array.isArray(src) || src === target) return;
+    target.length = 0;
+    for (var i = 0; i < src.length; i++) target.push(src[i]);
+    (window as any)[name] = target;
+}
 
 // ─── External declarations (set by other modules at runtime) ───────────────────
 
@@ -828,12 +786,14 @@ export function loadProv(): void {
 
     // Restore base popup state (saved before any provider script ran)
     if (savedPopup.popupActions.length) {
-        popupActions = savedPopup.popupActions.slice();
-        popupArray = savedPopup.popupArray.slice();
-        popupDetail = savedPopup.popupDetail.slice();
+        popupActions.splice(0, popupActions.length, ...savedPopup.popupActions);
+        popupArray.splice(0, popupArray.length, ...savedPopup.popupArray);
+        popupDetail.splice(0, popupDetail.length, ...savedPopup.popupDetail);
     } else {
         // Fallback: hardcoded defaults
-        popupActions = [
+        popupActions.splice(
+            0,
+            popupActions.length,
             (window as any).toggleAspectRatio,
             (window as any).toggleZoom,
             (window as any).toggleAudioTrack,
@@ -853,9 +813,11 @@ export function loadProv(): void {
             (window as any).optionsList,
             (window as any).restart,
             (window as any).exitPortal,
-            (window as any).infoList,
-        ];
-        popupArray = [
+            (window as any).infoList
+        );
+        popupArray.splice(
+            0,
+            popupArray.length,
             "Toggle Aspect Ratio",
             "Toggle Zoom Mode",
             "Switch sound track",
@@ -875,8 +837,19 @@ export function loadProv(): void {
             "Settings",
             "Restart player",
             "Exit player",
-            "Information",
-        ];
+            "Information"
+        );
+        // Keep popupDetail the same length as popupArray and aligned with
+        // it: index 7 is "Rewind", index 12 is "Show list of channel
+        // archive records". popupList() reads popupDetail[t] for the same
+        // t it reads popupArray[t], so a length/offset drift here shows the
+        // wrong description against the wrong menu entry.
+        popupDetail.splice(0, popupDetail.length);
+        for (var pdIdx = 0; pdIdx < popupArray.length; pdIdx++)
+            popupDetail.push(null);
+        popupDetail[7] = "Show rewind window";
+        popupDetail[12] =
+            "Show list of channel archive records without duplication";
     }
 
     var matchResult = window.location.search.match(/\?([^&]+)/);
@@ -921,97 +894,40 @@ export function loadProv(): void {
         function () {
             try {
                 pperf_stamp("loadProv -- js ready");
-                console.log(
-                    "[loadProv] Script loaded, checking duneAddSettings"
-                );
                 if (typeof duneAddSettings === "function") {
                     $(launch_id).append("<br/>Loading settings...");
-                    console.log("[loadProv] duneAddSettings found, calling it");
-                    console.log(
-                        "[loadProv] popupActions.length:",
-                        popupActions.length,
-                        "noProvParam:",
-                        (window as any).noProvParam
-                    );
-                    console.log(
-                        "[loadProv] popupActions.indexOf(noProvParam):",
-                        popupActions.indexOf(noProvParam)
-                    );
+                    // Sync working arrays to window globals so the provider
+                    // script sees the current popup state (it mutates
+                    // window.popupActions/popupArray/popupDetail directly).
+                    (window as any).popupActions = popupActions;
+                    (window as any).popupArray = popupArray;
+                    (window as any).popupDetail = popupDetail;
                     var idx = popupActions.indexOf(noProvParam) + 1;
-                    console.log("[loadProv] idx after +1:", idx);
-                    console.log(
-                        "[loadProv] BEFORE duneAddSettings - popupArray.length:",
-                        popupArray.length,
-                        "popupActions.length:",
-                        popupActions.length
-                    );
-                    console.log(
-                        "[loadProv] popupArray before:",
-                        popupArray.slice()
-                    );
                     duneAddSettings(idx);
-                    console.log(
-                        "[loadProv] AFTER duneAddSettings - popupArray.length:",
-                        popupArray.length
-                    );
-                    console.log(
-                        "[loadProv] popupArray after:",
-                        popupArray.slice()
-                    );
-                    console.log(
-                        "[loadProv] duneAddSettings completed, popupArray:",
-                        popupArray.slice(0, 5),
-                        "..."
-                    );
-                    console.log("[loadProv] Now calling loadChannels");
-                    // Update window globals for popupList to read
-                    console.log("[loadProv] About to update window globals");
-                    console.log(
-                        "[loadProv] optionsList index:",
-                        popupActions.indexOf(optionsList)
-                    );
-                    console.log("[loadProv] idx:", idx);
-                    console.log(
-                        "[loadProv] popupActions.length before splice check:",
-                        popupActions.length
-                    );
-                    console.log(
-                        "[loadProv] popupArray before window update:",
-                        popupArray.slice()
-                    );
-                    (window as any).popupActions = popupActions;
-                    (window as any).popupArray = popupArray;
-                    (window as any).popupDetail = popupDetail;
-                    console.log(
-                        "[loadProv] window.popupArray length after update:",
-                        (window as any).popupArray.length
-                    );
-                    console.log(
-                        "[loadProv] window.popupArray full:",
-                        (window as any).popupArray.slice()
-                    );
-                    (window as any).popupActions = popupActions;
-                    (window as any).popupArray = popupArray;
-                    (window as any).popupDetail = popupDetail;
+                    // Sync the window globals back into the working arrays so
+                    // a provider's modifications become the new popup state.
+                    //
+                    // GUARDED ON PURPOSE. The three assignments above alias
+                    // window.popupActions/popupArray/popupDetail to the very
+                    // same array objects, and every prov/*/prov.js plugin
+                    // mutates them in place (.splice()/.push(), never
+                    // `= [...]`), so the working arrays are already current
+                    // here. The previous unguarded version did
+                    //     popupActions.length = 0;
+                    //     popupActions.push(...(window as any).popupActions);
+                    // which cleared the array and then spread that same,
+                    // now-empty array back into itself — leaving all three
+                    // arrays at length 0 and rendering the popup ("Menu")
+                    // completely blank. Only copy when a plugin genuinely
+                    // replaced the global with a different array object.
+                    syncFromWindow(popupActions, "popupActions");
+                    syncFromWindow(popupArray, "popupArray");
+                    syncFromWindow(popupDetail, "popupDetail");
                     if (Number.parseInt(stbGetItem("noProvParam") || "0")) {
                         var count = popupActions.indexOf(optionsList) - idx;
-                        console.log(
-                            "[loadProv] noProvParam=1, about to splice count:",
-                            count,
-                            "items from idx:",
-                            idx
-                        );
-                        console.log(
-                            "[loadProv] popupArray before splice:",
-                            popupArray.slice()
-                        );
                         popupArray.splice(idx, count);
                         popupDetail.splice(idx, count);
                         popupActions.splice(idx, count);
-                        console.log(
-                            "[loadProv] popupArray after splice:",
-                            popupArray.slice()
-                        );
                     }
                     if (
                         Number.parseInt(stbGetItem("noSelProv") || "0") +
