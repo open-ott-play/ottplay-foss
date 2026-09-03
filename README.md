@@ -416,6 +416,10 @@ python3 server.py 8080 --epg-url http://a.com/epg.xml --epg-url http://b.com/epg
 - **Android TV**: Android keycodes (`BACK=4`, `DPAD_*` 19-22, `ENTER=66`)
 - **HbbTV/Panasonic/Philips/Sony/etc.**: HbbTV codes (`RED=403`, `BLUE=406`, `VOL_UP=447`)
 
+## Documentation
+
+- [System Architecture](./.github/docs/system-architecture.md) — End-to-end architecture: startup sequence, key-press dispatch, channel tuning, PiP, EPG, archive/timeshift, and per-provider data flows.
+
 ## License
 
 FOSS — free and open source.
