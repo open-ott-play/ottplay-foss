@@ -199,7 +199,10 @@ fn build_tls_config(cert_path: &str, key_path: &str) -> Arc<ServerConfig> {
 }
 
 async fn root() -> impl IntoResponse {
-    Html(PLACEHOLDER_HTML)
+    match std::fs::read_to_string("index.html") {
+        Ok(html) => Html(html),
+        Err(_) => Html(PLACEHOLDER_HTML.to_string()),
+    }
 }
 
 async fn health() -> &'static str {
