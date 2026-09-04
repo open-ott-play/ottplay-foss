@@ -1,6 +1,7 @@
 //! XMLTV fetch + parse + fuzzy match.
 use std::collections::HashMap;
 use std::io::Read;
+use std::sync::LazyLock;
 
 use flate2::read::GzDecoder;
 use quick_xml::events::Event;
@@ -235,49 +236,68 @@ pub fn parse_xmltv_time(ts: &str) -> i64 {
 // Fuzzy matching (server.py L232-322)
 // ---------------------------------------------------------------------------
 
-pub fn normalize_name(name: &str) -> String {
-    let re_ts = Regex::new(r"[+-]\s*\d+\s*(ч|h|hours?)?").unwrap();
-    let re_paren = Regex::new(r"\([^)]*\)").unwrap();
-    let re_ws = Regex::new(r"\s+").unwrap();
-    let re_hd_pref = Regex::new(r"^(hd|fhd|uhd|4k)\s+").unwrap();
-    let re_hd_suf = Regex::new(r"\s+(hd|fhd|uhd|4k)$").unwrap();
+static RE_TS: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"[+-]\s*\d+\s*(ч|h|hours?)?").unwrap());
+static RE_PAREN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\([^)]*\)").unwrap());
+static RE_WS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s+").unwrap());
+static RE_HD_PREF: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(hd|fhd|uhd|4k)\s+").unwrap());
+static RE_HD_SUF: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\s+(hd|fhd|uhd|4k)$").unwrap());
+static RE_TS_CAP: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([+-])\s*(\d+)\s*(ч|h|hours?)?").unwrap());
 
+/// Precomputed XMLTV lookup: exact normalized-name map + list for fuzzy scan.
+#[derive(Clone, Debug, Default)]
+pub struct MatchIndex {
+    /// (xmltv_id, display_name, normalized_name)
+    pub entries: Vec<(String, String, String)>,
+    /// normalized_name → xmltv_id (first wins)
+    pub by_norm: HashMap<String, String>,
+}
+
+pub fn normalize_name(name: &str) -> String {
     let s = name.to_lowercase();
-    let s = re_ts.replace_all(&s, "").into_owned();
-    let s = re_paren.replace_all(&s, "").into_owned();
-    let s = re_ws.replace_all(&s, " ").into_owned();
+    let s = RE_TS.replace_all(&s, "").into_owned();
+    let s = RE_PAREN.replace_all(&s, "").into_owned();
+    let s = RE_WS.replace_all(&s, " ").into_owned();
     let s = s.trim().to_string();
-    let s = re_hd_pref.replace(&s, "").into_owned();
-    re_hd_suf.replace(&s, "").trim().to_string()
+    let s = RE_HD_PREF.replace(&s, "").into_owned();
+    RE_HD_SUF.replace(&s, "").trim().to_string()
 }
 
 pub fn build_index(channels: &Channels) -> Vec<(String, String, String)> {
-    channels
-        .iter()
-        .filter_map(|(id, c)| {
-            let n = normalize_name(&c.name);
-            if n.is_empty() {
-                None
-            } else {
-                Some((id.clone(), c.name.clone(), n))
-            }
-        })
-        .collect()
+    build_match_index(channels).entries
 }
 
-pub fn match_channel(name: &str, channels: &Channels) -> Option<(String, f32)> {
+pub fn build_match_index(channels: &Channels) -> MatchIndex {
+    let mut entries = Vec::with_capacity(channels.len());
+    let mut by_norm = HashMap::with_capacity(channels.len());
+    for (id, c) in channels {
+        let n = normalize_name(&c.name);
+        if n.is_empty() {
+            continue;
+        }
+        by_norm.entry(n.clone()).or_insert_with(|| id.clone());
+        entries.push((id.clone(), c.name.clone(), n));
+    }
+    MatchIndex { entries, by_norm }
+}
+
+/// Match against a prebuilt index (call once per batch, not per channel).
+pub fn match_in_index(name: &str, index: &MatchIndex) -> Option<(String, f32)> {
     let normalized = normalize_name(name);
     if normalized.is_empty() {
         return None;
     }
-    let index = build_index(channels);
+    if let Some(id) = index.by_norm.get(&normalized) {
+        return Some((id.clone(), 1.0));
+    }
     let mut best_id: Option<String> = None;
     let mut best_score: f32 = 0.0;
 
-    for (id, _name, xmltv_norm) in &index {
-        let score = if normalized == *xmltv_norm {
-            1.0
-        } else if normalized.contains(xmltv_norm.as_str()) {
+    for (id, _name, xmltv_norm) in &index.entries {
+        let score = if normalized.contains(xmltv_norm.as_str()) {
             xmltv_norm.len() as f32 / normalized.len() as f32
         } else if xmltv_norm.contains(normalized.as_str()) {
             normalized.len() as f32 / xmltv_norm.len() as f32
@@ -307,16 +327,19 @@ pub fn match_channel(name: &str, channels: &Channels) -> Option<(String, f32)> {
     }
 }
 
+pub fn match_channel(name: &str, channels: &Channels) -> Option<(String, f32)> {
+    let index = build_match_index(channels);
+    match_in_index(name, &index)
+}
+
 /// Strip time-shift suffix from channel name: "+4", "-2h", "+3ч".
 pub fn strip_time_shift(name: &str) -> String {
-    let re = Regex::new(r"[+-]\s*\d+\s*(ч|h|hours?)?").unwrap();
-    re.replace_all(name, "").trim().to_string()
+    RE_TS.replace_all(name, "").trim().to_string()
 }
 
 /// Extract time-shift hours from channel name. Returns signed hours (e.g. +4, -3).
 pub fn extract_time_shift(name: &str) -> i64 {
-    let re = Regex::new(r"([+-])\s*(\d+)\s*(ч|h|hours?)?").unwrap();
-    for cap in re.captures_iter(name) {
+    for cap in RE_TS_CAP.captures_iter(name) {
         let sign: i64 = if &cap[1] == "+" { 1 } else { -1 };
         let hours: i64 = cap[2].parse().unwrap_or(0);
         let hours = if hours > 24 { hours % 24 } else { hours };
