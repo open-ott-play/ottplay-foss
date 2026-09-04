@@ -1,8 +1,8 @@
 # Build Pipeline Audit — Phase 5.3
 
-## 5.3.1 — `build-concat.cjs`
+## 5.3.1 — `vite.config.ts` concat pipeline
 
-**Pipeline**: `tsc → stripModule (drop import/export) → concat → version replace → terser` (no mangle, names readable).
+**Pipeline** (live in `vite.config.ts` `generateBundle`, formerly `build-concat.cjs`): `tsc → stripModule (drop import/export) → concat (`MODULES` order) → version replace → terser` (no mangle, names readable).
 
 **17 modules concat order**: polyfills → lzstring → storage → localization → settings → helpers → encoding → channels/types → channels → core → ui → keyhandler → provider → commands → app/init → app/device → index.
 
