@@ -601,23 +601,25 @@ export function setCurProg(
     // Legacy always updates chanels[id] even when epgData is null/empty, and sets
     // time_request=now+3600 on miss so updateChanelInfo → getCurProgData cannot
     // re-queue forever (sync getEPGchanel(null) path).
+    var safeChannelId = Number(channelId);
+    if (!Number.isFinite(safeChannelId) || !Number.isInteger(safeChannelId)) return;
     var sorted: EPGEntry[] = [];
     var hasData = Array.isArray(epgData) && epgData.length > 0;
     if (hasData) {
         sorted = epgData!.slice().sort(function (a: EPGEntry, b: EPGEntry) {
             return a.time - b.time;
         });
-        epg[channelId] = sorted;
-        epgCashObj[channelId] = sorted;
+        epg[safeChannelId] = sorted;
+        epgCashObj[safeChannelId] = sorted;
     }
     var now = Date.now() / 1000;
     var idx = sorted.findIndex(function (entry: EPGEntry) {
         return entry.time_to >= now && entry.time <= now;
     });
     var ch = (window as any).chanels
-        ? (window as any).chanels[channelId]
+        ? (window as any).chanels[safeChannelId]
         : window.channels
-          ? window.channels[channelId]
+          ? window.channels[safeChannelId]
           : undefined;
     if (ch) {
         var nextCount =
@@ -645,7 +647,7 @@ export function setCurProg(
             if (typeof ch.outdated !== "undefined") delete ch.outdated;
         }
     }
-    if (callback) (callback as (chId: number) => void)(channelId);
+    if (callback) (callback as (chId: number) => void)(safeChannelId);
 }
 
 /**
