@@ -66,8 +66,10 @@ struct Cli {
     cert: Option<String>,
     #[arg(long)]
     key: Option<String>,
-    #[arg(long)]
-    https_port: Option<u16>,
+    /// HTTPS listen port(s). Repeatable: `--https-port 8443 --https-port 8444`.
+    /// When `--cert`/`--key` are set and no ports are given, defaults to `[8443]`.
+    #[arg(long, action = clap::ArgAction::Append)]
+    https_port: Vec<u16>,
 }
 
 #[tokio::main]
@@ -142,50 +144,57 @@ async fn main() {
 
     println!("ottplay-server: http://{}:{}", cli.host, cli.port);
 
-    // Phase 2.1: TLS sidecar on https_port (default 8443)
+    // TLS sidecars: one listener per --https-port, shared app + cert (Python HTTPS_PORTS parity).
     if let (Some(cert_path), Some(key_path)) = (&cli.cert, &cli.key) {
-        let https_port = cli.https_port.unwrap_or(8443);
+        let https_ports: Vec<u16> = if cli.https_port.is_empty() {
+            vec![8443]
+        } else {
+            cli.https_port.clone()
+        };
         let tls_config = build_tls_config(cert_path, key_path);
         let host_str = cli.host.clone();
-        let listener = TcpListener::bind((host_str.as_str(), https_port))
-            .await
-            .expect("cannot bind HTTPS port");
-        println!("ottplay-server: https://{}:{}", host_str, https_port);
-        let app_clone = app.clone();
-        tokio::spawn(async move {
-            let acceptor = TlsAcceptor::from(tls_config);
-            loop {
-                match listener.accept().await {
-                    Ok((stream, _)) => {
-                        let acceptor = acceptor.clone();
-                        let app = app_clone.clone();
-                        tokio::spawn(async move {
-                            let tls = match acceptor.accept(stream).await {
-                                Ok(s) => s,
-                                Err(e) => {
-                                    // CertificateUnknown / handshake noise must not panic workers.
-                                    tracing::warn!("TLS handshake failed: {e}");
-                                    return;
+        for https_port in https_ports {
+            let listener = TcpListener::bind((host_str.as_str(), https_port))
+                .await
+                .unwrap_or_else(|e| panic!("cannot bind HTTPS {host_str}:{https_port}: {e}"));
+            println!("ottplay-server: https://{}:{}", host_str, https_port);
+            let app_clone = app.clone();
+            let tls_config = tls_config.clone();
+            tokio::spawn(async move {
+                let acceptor = TlsAcceptor::from(tls_config);
+                loop {
+                    match listener.accept().await {
+                        Ok((stream, _)) => {
+                            let acceptor = acceptor.clone();
+                            let app = app_clone.clone();
+                            tokio::spawn(async move {
+                                let tls = match acceptor.accept(stream).await {
+                                    Ok(s) => s,
+                                    Err(e) => {
+                                        // CertificateUnknown / handshake noise must not panic workers.
+                                        tracing::warn!("TLS handshake failed: {e}");
+                                        return;
+                                    }
+                                };
+                                let io = hyper_util::rt::TokioIo::new(tls);
+                                if let Err(e) = hyper::server::conn::http1::Builder::new()
+                                    .serve_connection(io, hyper::service::service_fn(move |req| {
+                                        let app = app.clone();
+                                        app.clone().call(req)
+                                    }))
+                                    .await
+                                {
+                                    tracing::warn!("TLS serve connection error: {e}");
                                 }
-                            };
-                            let io = hyper_util::rt::TokioIo::new(tls);
-                            if let Err(e) = hyper::server::conn::http1::Builder::new()
-                                .serve_connection(io, hyper::service::service_fn(move |req| {
-                                    let app = app.clone();
-                                    app.clone().call(req)
-                                }))
-                                .await
-                            {
-                                tracing::warn!("TLS serve connection error: {e}");
-                            }
-                        });
-                    }
-                    Err(e) => {
-                        tracing::warn!("TLS accept error: {e}");
+                            });
+                        }
+                        Err(e) => {
+                            tracing::warn!("TLS accept error: {e}");
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
     }
 
     let listener = TcpListener::bind((cli.host.as_str(), cli.port))
