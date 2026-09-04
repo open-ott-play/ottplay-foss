@@ -1201,7 +1201,8 @@ export function updateChanelInfo(channelId: number): void {
     }
 
     // Reset progress & next program
-    if (progressDivEl) progressDivEl.style.backgroundColor = "#446";
+    if (progressDivEl)
+        progressDivEl.style.backgroundColor = "rgba(68,68,102,0.55)";
     if (progressREl) progressREl.style.width = "0%";
     if (nprogramNameEl) nprogramNameEl.innerHTML = "&nbsp; ";
     if (nbeginTimeEl) nbeginTimeEl.textContent = "";

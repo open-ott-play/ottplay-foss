@@ -102,14 +102,14 @@ export function setFontSize(): void {
         width: 1040 * t + "px",
     });
     $("#channel_number").css({ width: 70 * t + "px" });
-    $("#progress_div").css({ margin: 2 * e + "px 0px" });
-    $("#progress").css({ height: 6 * e + "px" });
-    $("#progress_r").css({ height: 6 * e + "px" });
+    $("#progress_div").css({ margin: 6 * e + "px 0px " + 4 * e + "px 0px" });
+    $("#progress").css({ height: 8 * e + "px" });
+    $("#progress_r").css({ height: 8 * e + "px" });
     $("#begin_time").css({ "font-size": 22 * e + "px", width: 70 * t + "px" });
     $("#end_time").css({ "font-size": 22 * e + "px", width: 70 * t + "px" });
     $("#programm_name").css({ width: 900 * t + "px" });
-    $("#nbegin_time").css({ "font-size": 22 * e + "px", width: 70 * t + "px" });
-    $("#nend_time").css({ "font-size": 22 * e + "px", width: 70 * t + "px" });
+    $("#nbegin_time").css({ "font-size": 20 * e + "px", width: 70 * t + "px" });
+    $("#nend_time").css({ "font-size": 20 * e + "px", width: 70 * t + "px" });
     $("#nprogramm_name").css({ width: 900 * t + "px" });
     $("#data").css({ "font-size": 22 * e + "px", width: 80 * t + "px" });
     $("#current_s").css({ "font-size": 16 * e + "px" });
