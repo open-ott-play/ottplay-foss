@@ -170,10 +170,10 @@ body {
     padding: 0 12px;
     overflow: hidden;
     font-weight: bold;
-    letter-spacing: 0.04em;
-    white-space: nowrap;
     line-height: 34px;
     color: #ffffff;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
     background-color: rgba(0, 0, 0, 0.42);
 }
@@ -186,8 +186,8 @@ body {
     font-size: 22px;
     font-weight: bold;
     text-align: right;
-    opacity: 1;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+    opacity: 1;
 }
 #list_s {
     font-size: 16px;
@@ -202,11 +202,11 @@ body {
     height: 34px;
     padding: 0 12px;
     line-height: 34px;
-    opacity: 1;
     color: #f2f2f8;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
     background-color: rgba(0, 0, 0, 0.42);
     border-top: 1px solid rgba(255, 255, 255, 0.14);
+    opacity: 1;
 }
 #listDetail {
     position: absolute;
@@ -270,8 +270,8 @@ body {
 #listEdit .osk-cap {
     margin-bottom: 0.45em;
     font-weight: bold;
-    letter-spacing: 0.03em;
     color: #ffffff;
+    letter-spacing: 0.03em;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
 }
 #listEdit #ee {
@@ -331,9 +331,9 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    border-radius: 3px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
 }
 .progress_div {
     float: right;
@@ -599,9 +599,9 @@ body {
     font-weight: bold;
     line-height: 1.3em;
     vertical-align: text-top;
+    color: #f8f8f8;
     text-align: center;
     text-decoration: none;
-    color: #f8f8f8;
     background-color: #4a4a52;
     border: 0.02em solid #212121;
     border-radius: 0.3em;
@@ -660,8 +660,8 @@ body {
 }
 .epg-name {
     font-weight: bold;
-    letter-spacing: 0.015em;
     color: #ffffff;
+    letter-spacing: 0.015em;
 }
 .epg-descr {
     padding-left: 78px;
