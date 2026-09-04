@@ -6,7 +6,7 @@ COPY src ./src
 RUN npm ci --ignore-scripts && npm run typecheck && npm run build
 
 # Build Rust server
-FROM rust:1.89@sha256:a31942999645514ff53f470d395a9b3f06e05149faa845732d0cdf132767dcbd AS rust-build
+FROM rust:1.98@sha256:620dbcd124499c59e2406d3741574b5c5838cf9eb9656f0c3a03948f79b02959 AS rust-build
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY src-rs ./src-rs
