@@ -942,9 +942,10 @@ export function epgShow_miniproc(
             .show();
     }
     w.getEPGchanelCached(a, function (id: any, data: EPGEntry[]) {
-        epglisted = 0;
-        // Legacy: if (!t) — empty array is truthy and still opens the list
+        // Legacy does not clear epglisted here — it is the list mode
+        // (by-time / alpha / records) used by epgPodval + RED / setEpgTimer.
         if (!data) {
+            epglisted = 0;
             curEpgData = null;
             $("#listPopUp").hide();
             w.listChannel |= 65536;
@@ -1079,15 +1080,40 @@ export function epgPodval(): void {
     var w = window as any;
     var podvalEl = document.getElementById("listPodval");
     if (!podvalEl) return;
-
-    var html =
-        w.btnDiv(w.keys.RETURN, w.strRETURN, "Close") +
-        w.btnDiv(w.keys.ENTER, w.strENTER, "Play") +
-        w.btnDiv(w.keys.RED, w.strInfo, "Description") +
-        w.btnDiv(w.keys.GREEN, "", "Set timer") +
-        w.btnDiv(w.keys.YELLOW, "", "TMDb");
-
-    podvalEl.innerHTML = html;
+    // Legacy stbPlayer.js:6528-6531
+    var ch = (channels[epg_ch_id] || {}) as Channel;
+    var redLabel =
+        epglisted == 2
+            ? ch.rec
+                ? "Records"
+                : "By time"
+            : epglisted
+              ? "By alphabet"
+              : "By time";
+    var yellowExtra =
+        w.sArrowFun == 2
+            ? w.strLEFT
+            : w.sRewFun == 1
+              ? w.strRW
+              : w.sPNFun == 1
+                ? w.strPREV
+                : "";
+    var descExtra =
+        w.sArrowFun == 2
+            ? w.strRIGHT
+            : w.sRewFun == 1
+              ? w.strFF
+              : w.sPNFun == 1
+                ? w.strNEXT
+                : "";
+    podvalEl.innerHTML =
+        w.btnDiv(w.keys.RED, "", redLabel, w.strSTOP, "0") +
+        w.btnDiv(w.keys.BLUE, "", "Category", w.strPlayPause, "1") +
+        w.btnDiv(w.keys.YELLOW, "", "Channel list", "3", yellowExtra) +
+        w.btnDiv(w.keys.N2, w.strInfo, "Description", "2", descExtra) +
+        '<span id="bTimer" style="display:none;">' +
+        w.btnDiv(w.keys.GREEN, "", "Timer", w.strTools, "8") +
+        "</span>";
 }
 
 /**
@@ -1118,7 +1144,12 @@ export function epgKeyHandler(keyCode: number): boolean {
                 w.channelsList(w.listCatIndex, w.listChannel);
             return true;
         case keys.RETURN:
-            if (typeof w.closeList === "function") w.closeList();
+            // Legacy: if (!epgreturn) closeList(); else channelsList(...)
+            if (!w.epgreturn) {
+                if (typeof w.closeList === "function") w.closeList();
+            } else if (typeof w.channelsList === "function") {
+                w.channelsList(w.listCatIndex, w.listChannel);
+            }
             return true;
         case keys.ENTER:
             selectEpg();
@@ -1198,8 +1229,7 @@ export function epgKeyHandler(keyCode: number): boolean {
         case keys.N8:
         case keys.TOOLS:
         case keys.GREEN:
-            if (typeof setEpgTimer === "function")
-                setEpgTimer(epg_ch_id, item.time);
+            if (typeof setEpgTimer === "function") setEpgTimer();
             return true;
         case keys.INFO:
             if (typeof w.infoProgramm === "function") w.infoProgramm(item.name);
@@ -1219,44 +1249,41 @@ export function epgKeyHandler(keyCode: number): boolean {
 export function detailEPG(channelId: number): void {
     var w = window as any;
     var item = w.listArray[w.selIndex];
-    if (!(item && w.listDetailElement)) return;
+    var detailEl = w.listDetailElement || document.getElementById("listDetail");
+    if (!(item && detailEl)) return;
 
-    var now = Math.floor(Date.now() / 1000);
-    var dur = Math.round((item.time_to - item.time) / 60);
-    var prog = Math.round((now - item.time) / 60);
-
-    var html =
-        '<div style="color:' +
-        w.curColor +
+    // Legacy stbPlayer.js:6507-6516
+    detailEl.innerHTML =
+        '<div id="_name"><div style="color:' +
+        (w.curColor || "") +
         ';">' +
         item.name +
-        "</div>" +
-        '<div style="font-size:smaller;">' +
-        formatEpgTime(item.time) +
+        '</div><div style="font-size:smaller;">' +
+        (typeof w.time2str === "function"
+            ? w.time2str(item.time)
+            : formatEpgTime(item.time)) +
         " - " +
-        formatEpgTime(item.time_to) +
+        (typeof w.time2time === "function"
+            ? w.time2time(item.time_to)
+            : formatEpgTime(item.time_to)) +
         " (" +
-        (prog > 0 && prog < dur ? prog + "/" : "") +
-        dur +
+        Math.round((item.time_to - item.time) / 60) +
         " " +
         w._("min") +
-        ")</div>" +
-        '<div id="_prd" style="font-size:smaller;overflow:hidden;">' +
+        ")</div></div>" +
+        '<div id="_descr" style="font-size:smaller;overflow:hidden;"><div id="_prd">' +
         (typeof w.getThumbnail === "function"
             ? w.getThumbnail(item.icon)
             : "") +
         (item.descr || "") +
-        "</div>";
+        "</div></div>";
 
-    w.listDetailElement.innerHTML = html;
-
-    var s =
-        ($("#listDetail").height() || 0) -
-        ($("#_prd").prev().height() || 0) -
-        ($("#_prd").prev().prev().height() || 0);
-    $("#_prd").height(s > 0 ? s : 100);
-    var px = $("#_prd").children().height() || 0;
-    if (typeof w.scrollUp === "function") w.scrollUp("_prd", px - s, 5000);
+    var t = ($("#listDetail").height() || 0) - ($("#_name").height() || 0);
+    $("#_descr").height(t);
+    t = ($("#_prd").height() || 0) + 10 - t;
+    if (typeof w.scrollUp === "function") w.scrollUp("_prd", t, 5000);
+    if (item.time > Date.now() / 1000) $("#bTimer").show();
+    else $("#bTimer").hide();
 }
 
 /**
@@ -1369,48 +1396,50 @@ export function loadEpgTimers(): void {
  * - On confirmation, mutates `epgTimers` array.
  * - Persists updated timers to STB storage (`stbSetItem`).
  */
-export function setEpgTimer(channelId: any, time: number): void {
+export function setEpgTimer(_channelId?: any, _time?: number): void {
     var w = window as any;
+    // Legacy stbPlayer.js:3735-3760 — uses list selection + epglisted mode
     var item = w.listArray[w.selIndex];
-    if (!item || item.time < Date.now() / 1000) return;
+    if (!epglisted || !item || item.time < Date.now() / 1000) return;
 
     var idx = epgTimers.findIndex(function (t) {
-        return t.ci == channelId && t.t == item.time;
+        return t.ci == epg_ch_id && t.t == item.time;
     });
     var msg = idx === -1 ? "Set timer?" : "Remove timer?";
 
-    if (typeof w.confirmBox === "function") {
-        w.confirmBox(w._(msg), function () {
-            if (idx === -1) {
-                var timer = {
-                    c: w.listCatIndex,
-                    ci: channelId,
-                    i: w.listChannel,
-                    n: item.name,
-                    t: item.time,
-                    te: item.time_to,
-                };
-                startEpgTimer(timer);
-                epgTimers.push(timer);
-            } else {
-                clearTimeout(epgTimers[idx].ti);
-                epgTimers.splice(idx, 1);
-            }
-            if (typeof w.stbSetItem === "function") {
-                var cleanTimers = epgTimers.map(function (t) {
-                    return {
-                        c: t.c,
-                        ci: t.ci,
-                        i: t.i,
-                        n: t.n,
-                        t: t.t,
-                        te: t.te,
-                    };
-                });
-                w.stbSetItem("epgTimers", JSON.stringify(cleanTimers));
-            }
+    if (typeof w.confirmBox !== "function") return;
+    w.confirmBox(w._(msg), function () {
+        if (idx === -1) {
+            var timer = {
+                c: w.listCatIndex,
+                ci: epg_ch_id,
+                i: w.listChannel,
+                n: item.name,
+                t: item.time,
+                te: item.time_to,
+            };
+            startEpgTimer(timer);
+            epgTimers.push(timer);
+        } else {
+            clearTimeout(epgTimers[idx].ti);
+            epgTimers.splice(idx, 1);
+        }
+        if (typeof w.showPage === "function") w.showPage();
+        var cleanTimers = epgTimers.map(function (t) {
+            return {
+                c: t.c,
+                ci: t.ci,
+                i: t.i,
+                n: t.n,
+                t: t.t,
+                te: t.te,
+            };
         });
-    }
+        if (typeof w.providerSetItem === "function")
+            w.providerSetItem("epgTimers", JSON.stringify(cleanTimers));
+        else if (typeof w.stbSetItem === "function")
+            w.stbSetItem("epgTimers", JSON.stringify(cleanTimers));
+    });
 }
 
 /**
@@ -1422,10 +1451,82 @@ export function setEpgTimer(channelId: any, time: number): void {
  *
  * Side effects: Delegates to `epgList` when invoked in legacy mode.
  */
-export function epgListAlpha(epgData: EPGEntry[], _options?: any): void {
-    if (typeof (epgData as any) === "number") {
-        epgList(epgData as any, arguments[1], arguments[2]);
+export function epgListAlpha(
+    catIdx: number | EPGEntry[],
+    chIdx?: number,
+    force?: boolean
+): void {
+    // Legacy stbPlayer.js:6602-6638 — alphabetical EPG list
+    if (typeof catIdx !== "number") return;
+    var w = window as any;
+    if (
+        (w.listChannel & 65536) === 65536 &&
+        (w.listChannel & 65535) === chIdx &&
+        w.listCatIndex === catIdx
+    ) {
+        if (typeof w.infoBox === "function")
+            w.infoBox(w._("Channel has no EPG"));
+        return;
     }
+
+    function onDataReady(channelId: any): void {
+        var byTime: EPGEntry[] = [];
+        var byName: EPGEntry[] = [];
+        var ch = (channels[channelId] || {}) as Channel;
+        if (curEpgData !== null && curEpgData.length) {
+            byTime = curEpgData
+                .filter(function (e) {
+                    return ch.rec
+                        ? e.time > Date.now() / 1000 - ch.rec * 3600
+                        : e.time_to > Date.now() / 1000 - 7200;
+                })
+                .sort(function (a, b) {
+                    return a.time - b.time;
+                });
+            byName = curEpgData
+                .filter(function (e) {
+                    return ch.rec
+                        ? e.time > Date.now() / 1000 - ch.rec * 3600
+                        : e.time_to > Date.now() / 1000;
+                })
+                .sort(function (a, b) {
+                    return a.name < b.name
+                        ? -1
+                        : a.name > b.name
+                          ? 1
+                          : a.time - b.time;
+                });
+        }
+        var nowTs =
+            w.playType > 0 &&
+            channelId == (w.curList && w.curList[w.primaryIndex])
+                ? w.playType + w.playTime
+                : Math.floor(Date.now() / 1000);
+        w.selIndex = byName.findIndex(function (e) {
+            return e.time_to >= nowTs && e.time <= nowTs;
+        });
+        if (w.selIndex === -1) w.selIndex = 0;
+        w.listArray = byName;
+        w.listDataArray = byName;
+        listEpgArray = byTime;
+        w.getListItem = itemEPG;
+        w.getListItemFn = itemEPG;
+        w.detailListAction = function () {
+            if (typeof window.detailEPG === "function")
+                window.detailEPG(channelId);
+        };
+        w.detailListActionFn = w.detailListAction;
+        w.listKeyHandler = epgKeyHandler;
+        w.listKeyHandlerFn = epgKeyHandler;
+        var captionEl = document.getElementById("listCaption");
+        if (captionEl)
+            captionEl.innerHTML =
+                w._("EPG and archive. Channel: ") + (ch.channel_name || "");
+        if (typeof epgPodval === "function") epgPodval();
+        $("#listPopUp").hide();
+        if (typeof w.showPage === "function") w.showPage();
+    }
+    epgShow_miniproc(2, catIdx, chIdx as number, force || false, onDataReady);
 }
 
 /**
@@ -3374,13 +3475,27 @@ export function channelsKeyHandler(keyCode: number): boolean {
             return true;
         }
 
+        case keys.N5:
         case keys.STOP:
         case keys.PIP:
+            // Legacy channelsKeyHandler: closeList then stbPlayPip
             if (typeof window.stbPlayPip === "function") {
-                var chId = window.listArray[window.selIndex];
-                if (chId) window.pipIndex = window.selIndex;
-                if (typeof window.getChannelUrl === "function") {
-                    window.stbPlayPip(window.getChannelUrl(chId));
+                var pipChId = window.listArray
+                    ? window.listArray[window.selIndex]
+                    : undefined;
+                if (
+                    window.listCatIndex == window.pipCatIndex &&
+                    window.pipIndex == window.selIndex
+                ) {
+                    if (typeof window.closeList === "function")
+                        window.closeList();
+                    return true;
+                }
+                if (typeof window.closeList === "function") window.closeList();
+                window.pipIndex = window.selIndex;
+                window.pipCatIndex = window.listCatIndex;
+                if (pipChId && typeof window.getChannelUrl === "function") {
+                    window.stbPlayPip(window.getChannelUrl(pipChId));
                 }
             }
             return true;

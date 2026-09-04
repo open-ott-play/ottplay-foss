@@ -132,6 +132,13 @@ makeRedefinable(
         detailListActionFn = v;
     }
 );
+makeRedefinable(
+    "aboutKeyHandler",
+    () => aboutKeyHandler,
+    (v) => {
+        aboutKeyHandler = v;
+    }
+);
 var itemWidth = 735;
 declare var curColor: string;
 declare var curColorB: string;
@@ -1648,11 +1655,13 @@ export function infoProgramm(title: string): void {
             btnDiv(keys.RETURN, strRETURN, "Close") +
             (title ? btnDiv(keys.N2, strInfo, "TMDb", "2", extra) : "");
     }
+    // Legacy stbPlayer.js:2251-2282 — TMDb keys search; any other key closes.
     aboutKeyHandler = function (e: number): boolean {
         if (title) {
             switch (e) {
                 case keys.RIGHT:
                     if ((window as any).sArrowFun !== 2) break;
+                // fallthrough
                 case keys.N2:
                 case keys.INFO:
                     if (
@@ -1661,11 +1670,47 @@ export function infoProgramm(title: string): void {
                     )
                         (window as any).TMDb.search(title);
                     return true;
+                case keys.FF:
+                    if ((window as any).sRewFun !== 1) break;
+                    if (
+                        (window as any).TMDb &&
+                        typeof (window as any).TMDb.search === "function"
+                    )
+                        (window as any).TMDb.search(title);
+                    return true;
+                case keys.NEXT:
+                    if ((window as any).sPNFun !== 1) break;
+                    if (
+                        (window as any).TMDb &&
+                        typeof (window as any).TMDb.search === "function"
+                    )
+                        (window as any).TMDb.search(title);
+                    return true;
             }
         }
-        return false;
+        restoreCPD();
+        $("#listAbout").hide().text("");
+        $("#_prd").css("margin-top", 0);
+        if ((window as any).detailTimer)
+            clearTimeout((window as any).detailTimer);
+        aboutKeyHandler = null;
+        return true;
     };
-    $("#listAbout").show();
+    // Show the saved detail HTML (program description) in the about overlay.
+    $("#listAbout")
+        .html(
+            '<div style="font-size:larger;">' +
+                String(ui_state.ld || "").replace(/\|/g, "<br/>") +
+                "</div>"
+        )
+        .show();
+    $("#_prd").css("margin-top", 0);
+    $("#_nextpr").text("");
+    var aboutH = ($("#listAbout").height() || 0) - ($("#_name").height() || 0);
+    $("#_descr").height(aboutH > 0 ? aboutH : 0);
+    var scrollPx = ($("#_prd").height() || 0) + 10 - aboutH;
+    if (typeof (window as any).scrollUp === "function")
+        (window as any).scrollUp("_prd", scrollPx, 10000);
 }
 
 /**
@@ -1698,6 +1743,7 @@ export function infoMedia(): void {
             switch (e) {
                 case keys.RIGHT:
                     if ((window as any).sArrowFun !== 2) break;
+                // fallthrough
                 case keys.N2:
                 case keys.INFO:
                     if (
@@ -1708,9 +1754,14 @@ export function infoMedia(): void {
                     return true;
             }
         }
-        return false;
+        restoreCPD();
+        $("#listAbout").hide().text("");
+        aboutKeyHandler = null;
+        return true;
     };
-    $("#listAbout").show();
+    $("#listAbout")
+        .html('<div id="_prd">' + (la[si].description || "") + "</div>")
+        .show();
 }
 
 /**
