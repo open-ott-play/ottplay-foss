@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "check:bundle": "bash scripts/check-bundle-identifiers.sh",
     "check": "ultracite check",
     "fix": "ultracite fix",
     "lint": "biome check .",
