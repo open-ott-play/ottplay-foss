@@ -958,12 +958,19 @@ export function epgShow_miniproc(
     });
 }
 
-export function epgList(catIdx: number, chIdx: number, force: boolean): void {
+/**
+ * Check whether the currently selected channel has no EPG (empty guard).
+ * Mirrors stbPlayer.js:6559-6565.
+ *
+ * @param catIdx - Current category index (`listCatIndex`).
+ * @param chIdx  - Current channel index within the category (`listChannel`).
+ * @returns `true` if the channel has no EPG (and an infoBox was shown), `false` otherwise.
+ */
+export function epgCheckEmpty_miniproc(
+    catIdx: number,
+    chIdx?: number
+): boolean {
     var w = window as any;
-    epgreturn = force || false;
-    w.epgreturn = epgreturn;
-
-    // Check if channel has EPG
     if (
         (w.listChannel & 65536) === 65536 &&
         (w.listChannel & 65535) === chIdx &&
@@ -971,8 +978,17 @@ export function epgList(catIdx: number, chIdx: number, force: boolean): void {
     ) {
         if (typeof w.infoBox === "function")
             w.infoBox(w._("Channel has no EPG"));
-        return;
+        return true;
     }
+    return false;
+}
+
+export function epgList(catIdx: number, chIdx: number, force: boolean): void {
+    var w = window as any;
+    epgreturn = force || false;
+    w.epgreturn = epgreturn;
+
+    if (epgCheckEmpty_miniproc(catIdx, chIdx)) return;
 
     function onDataReady(channelId: any) {
         var epgData: EPGEntry[] = [];
@@ -1441,13 +1457,14 @@ export function setEpgTimer(_channelId?: any, _time?: number): void {
 }
 
 /**
- * Legacy alias for `epgList`. When the first argument is a number (key-code style
- * invocation), redirects to the real `epgList` function.
+ * Alphabetical EPG list (mode=2). vs gold stbPlayer.js:6602.
+ * Not an alias — delegates to epgShow_miniproc(2, ...) then sorts by name.
  *
- * @param epgData  - In legacy mode, this is actually a numeric category index.
- * @param _options - Unused (kept for signature compatibility).
+ * @param catIdx - Category index.
+ * @param chIdx  - Channel index within the category.
+ * @param force  - If true, forces EPG refresh.
  *
- * Side effects: Delegates to `epgList` when invoked in legacy mode.
+ * Side effects: Same as epgShow_miniproc + sets listArray/listDataArray/listKeyHandler.
  */
 export function epgListAlpha(
     catIdx: number | EPGEntry[],
@@ -1457,15 +1474,7 @@ export function epgListAlpha(
     // Legacy stbPlayer.js:6602-6638 — alphabetical EPG list
     if (typeof catIdx !== "number") return;
     var w = window as any;
-    if (
-        (w.listChannel & 65536) === 65536 &&
-        (w.listChannel & 65535) === chIdx &&
-        w.listCatIndex === catIdx
-    ) {
-        if (typeof w.infoBox === "function")
-            w.infoBox(w._("Channel has no EPG"));
-        return;
-    }
+    if (epgCheckEmpty_miniproc(catIdx, chIdx)) return;
 
     function onDataReady(channelId: any): void {
         var byTime: EPGEntry[] = [];
@@ -1540,15 +1549,7 @@ export function recordsList(
 ): void {
     var w = window as any;
     // Legacy stbPlayer.js:6641-6656 recordsList(e, t, r)
-    if (
-        (w.listChannel & 65536) === 65536 &&
-        (w.listChannel & 65535) === chIdx &&
-        w.listCatIndex === catIdx
-    ) {
-        if (typeof w.infoBox === "function")
-            w.infoBox(w._("Channel has no EPG"));
-        return;
-    }
+    if (epgCheckEmpty_miniproc(catIdx, chIdx)) return;
 
     function onDataReady(channelId: any): void {
         var e: EPGEntry[] = [];
