@@ -223,7 +223,7 @@ export function stbPlay(url: string, position?: number): void {
         window.player = null;
     }
     clearPlayTimeInterval();
-    // HEVC / decode-fail: try hls.js first, then drop the failing level, then native HTML5
+    // Decode-fail: try hls.js first, drop failing level, recover once; native only if Safari
     var _forceNative = false;
     var _pm =
         playerMode === 1 &&
@@ -304,16 +304,59 @@ export function stbPlay(url: string, position?: number): void {
                     }
                     if (!_mediaRecovered) {
                         _mediaRecovered = true;
-                        console.log("[HLS] trying recoverMediaError");
+                        console.log(
+                            "[HLS] trying recoverMediaError" +
+                                (data.details
+                                    ? " (" + data.details + ")"
+                                    : "")
+                        );
                         hlsInstance.recoverMediaError();
                     } else {
-                        console.log(
-                            "[HLS] MEDIA_ERROR twice, fallback native HTML5"
-                        );
+                        // Chrome/Edge MSE cannot play HLS natively. Setting
+                        // video.src to an .m3u8 only yields SRC_NOT_SUPPORTED
+                        // and hides the real cause (often mp2/ac3 audio on
+                        // "HD Orig" streams — use remuxed "HD" / AAC instead).
+                        var canNative = false;
+                        try {
+                            canNative = !!(
+                                video &&
+                                typeof video.canPlayType === "function" &&
+                                video.canPlayType(
+                                    "application/vnd.apple.mpegurl"
+                                )
+                            );
+                        } catch (_e) {
+                            canNative = false;
+                        }
+                        var det = String((data && data.details) || "");
+                        var appendFail =
+                            det.indexOf("bufferAppend") !== -1 ||
+                            det.indexOf("bufferAppendError") !== -1;
                         hlsInstance.destroy();
                         hlsInstance = null;
-                        video!.src = url;
-                        video!.play().catch(function () {});
+                        if (canNative) {
+                            console.log(
+                                "[HLS] MEDIA_ERROR twice, fallback native HTML5"
+                            );
+                            video!.src = url;
+                            video!.play().catch(function () {});
+                        } else {
+                            console.log(
+                                "[HLS] MEDIA_ERROR twice, no native HLS" +
+                                    (det ? " details=" + det : "") +
+                                    (appendFail
+                                        ? " (likely unsupported audio e.g. mp2/ac3)"
+                                        : "")
+                            );
+                            $("#buffering").hide();
+                            $("#video_res").html(
+                                "<br/>error DECODE" +
+                                    (appendFail
+                                        ? " unsupported audio"
+                                        : "") +
+                                    " — try HD remux (not HD Orig)"
+                            );
+                        }
                     }
                 } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                     // levelParsingError / manifest parse are not transient —
