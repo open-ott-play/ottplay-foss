@@ -57,18 +57,44 @@ if [ ! -f "$CRT" ] || [ ! -f "$KEY" ]; then
         -subj "/CN=OTT-play Local" -addext "subjectAltName=$SAN" 1>&2
     echo "generated: $CRT (SAN: $SAN)"
 fi
-# Trust it system-wide so Chrome/Safari accept https://localhost without a warning.
+# Trust so Chrome/Safari accept https://localhost / https://127.0.0.1 without a warning.
+# Never rely on sudo -n alone — that fails silently without passwordless sudo.
 if security verify-cert -c "$CRT" >/dev/null 2>&1; then
     echo "cert already trusted"
 else
-    if sudo -n security add-trusted-cert -d -r trustRoot \
-        -k /Library/Keychains/System.keychain "$CRT"; then
-        echo "trusted: added to System keychain"
-    else
-        echo "error: could not add cert to System keychain (sudo failed or denied)." >&2
-        echo "  Re-run with an interactive sudo, or trust manually:" >&2
+    TRUSTED=0
+    # Prefer System keychain (all browsers / users). Interactive sudo when a TTY is available.
+    if [ -t 0 ] || [ -t 1 ]; then
+        echo "trust: adding to System keychain (admin password may be required)…"
+        if sudo security add-trusted-cert -d -r trustRoot \
+            -k /Library/Keychains/System.keychain "$CRT"; then
+            echo "trusted: added to System keychain"
+            TRUSTED=1
+        fi
+    elif sudo -n true 2>/dev/null; then
+        if sudo -n security add-trusted-cert -d -r trustRoot \
+            -k /Library/Keychains/System.keychain "$CRT"; then
+            echo "trusted: added to System keychain"
+            TRUSTED=1
+        fi
+    fi
+    # Fallback: login keychain (may pop SecurityAgent — Approve it).
+    if [ "$TRUSTED" -eq 0 ]; then
+        LOGIN_KC="$HOME/Library/Keychains/login.keychain-db"
+        [ -f "$LOGIN_KC" ] || LOGIN_KC="$HOME/Library/Keychains/login.keychain"
+        echo "trust: trying login keychain (Approve the Security dialog if shown)…"
+        if security add-trusted-cert -r trustRoot -k "$LOGIN_KC" "$CRT"; then
+            echo "trusted: added to login keychain"
+            TRUSTED=1
+        fi
+    fi
+    if [ "$TRUSTED" -eq 0 ]; then
+        echo "error: could not trust cert automatically." >&2
+        echo "  Trust manually, then fully quit and reopen Chrome:" >&2
         echo "  sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain '$CRT'" >&2
         echo "  Continuing without trust — browsers will warn until the cert is trusted." >&2
+    else
+        echo "note: fully quit and reopen Chrome so it picks up the new trust."
     fi
 fi
 
@@ -167,3 +193,6 @@ else
     echo "installed: $HTTPS_URLS"
 fi
 echo "log: ~/Library/Logs/${LABEL}.log"
+if ! security verify-cert -c "$CRT" >/dev/null 2>&1; then
+    echo "warning: cert still untrusted — browsers will show a warning until you trust it (see [3/6] above)." >&2
+fi
