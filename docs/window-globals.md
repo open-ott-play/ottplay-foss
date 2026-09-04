@@ -345,4 +345,3 @@ After the Vite build, the classic ES5 bundle must still contain these identifier
 | `optionsList` | settings / options UI entry used from keyhandler and boot paths |
 | `listKeyHandler` | providers assign bare listKeyHandler; must remain in bundle text |
 | `chanels` | legacy misspelling alias (window.chanels = channels); old plugins/HTML |
-
