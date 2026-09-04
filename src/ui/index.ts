@@ -746,7 +746,7 @@ export function showPage(): void {
         Math.floor(selIndex / settings.pageSize) * settings.pageSize;
     var pageEnd = Math.min(pageStart + settings.pageSize, dataArr.length);
     var itemHeight =
-        (window.innerHeight - 90 * getHeightK()) / settings.pageSize;
+        (window.innerHeight - 98 * getHeightK()) / settings.pageSize;
     var html = "";
     if (dataArr.length > settings.pageSize) {
         itemWidth = getWidthK() * 720;
