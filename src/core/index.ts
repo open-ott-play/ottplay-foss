@@ -306,9 +306,7 @@ export function stbPlay(url: string, position?: number): void {
                         _mediaRecovered = true;
                         console.log(
                             "[HLS] trying recoverMediaError" +
-                                (data.details
-                                    ? " (" + data.details + ")"
-                                    : "")
+                                (data.details ? " (" + data.details + ")" : "")
                         );
                         hlsInstance.recoverMediaError();
                     } else {
@@ -351,9 +349,7 @@ export function stbPlay(url: string, position?: number): void {
                             $("#buffering").hide();
                             $("#video_res").html(
                                 "<br/>error DECODE" +
-                                    (appendFail
-                                        ? " unsupported audio"
-                                        : "") +
+                                    (appendFail ? " unsupported audio" : "") +
                                     " — try HD remux (not HD Orig)"
                             );
                         }
