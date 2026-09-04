@@ -318,76 +318,140 @@ struct EpgParams {
 async fn match_channels_handler(body: Bytes) -> impl IntoResponse {
     // Legacy FOSS posts text (`{}\n\t\n...`), not JSON. Keep JSON array as a
     // fallback for native/app clients that already speak the typed API.
-    let cache = EPG_CACHE.read().await;
-    let mut epg_to_xmltv = EPG_TO_XMLTV.write().await;
-    let mut time_shift_by_epg = TIME_SHIFT_BY_EPG.write().await;
-    let body_str = String::from_utf8_lossy(&body);
-    if body_str.contains("
+    // Matching is CPU-heavy — run off the async runtime so /epg and UI stay responsive.
+    let body_owned = String::from_utf8_lossy(&body).into_owned();
+    let is_text = body_owned.contains("\n\t\n");
+    let channels_map = EPG_CACHE.read().await.channels.clone();
 
-") {
-        let text = ottplay_core::m3u::match_channels_text(
-            &body_str,
-            &cache.channels,
-            &mut epg_to_xmltv,
-            &mut time_shift_by_epg,
-        );
-        tracing::info!(
-            "[EPG] match-channels text: {} bytes in → {} bytes out",
-            body.len(),
-            text.len()
-        );
-        return (
-            [(
-                axum::http::header::CONTENT_TYPE,
-                "text/plain; charset=utf-8",
-            )],
-            text,
-        )
-            .into_response();
-    }
-    match serde_json::from_slice::<Vec<ottplay_core::m3u::M3uChannel>>(&body) {
-        Ok(channels) => {
-            let results = ottplay_core::m3u::match_channels(
-                channels,
-                &cache.channels,
+    if is_text {
+        let result = tokio::task::spawn_blocking(move || {
+            let mut epg_to_xmltv = std::collections::HashMap::new();
+            let mut time_shift_by_epg = std::collections::HashMap::new();
+            let text = ottplay_core::m3u::match_channels_text(
+                &body_owned,
+                &channels_map,
                 &mut epg_to_xmltv,
                 &mut time_shift_by_epg,
             );
-            Json(serde_json::to_value(results).unwrap()).into_response()
+            (text, epg_to_xmltv, time_shift_by_epg)
+        })
+        .await;
+        return match result {
+            Ok((text, epg_map, shift_map)) => {
+                {
+                    let mut m = EPG_TO_XMLTV.write().await;
+                    m.extend(epg_map);
+                    let mut s = TIME_SHIFT_BY_EPG.write().await;
+                    s.extend(shift_map);
+                }
+                tracing::info!(
+                    "[EPG] match-channels text: {} bytes in → {} bytes out",
+                    body.len(),
+                    text.len()
+                );
+                (
+                    [(
+                        axum::http::header::CONTENT_TYPE,
+                        "text/plain; charset=utf-8",
+                    )],
+                    text,
+                )
+                    .into_response()
+            }
+            Err(e) => {
+                tracing::error!("[EPG] match-channels join error: {e}");
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        };
+    }
+
+    let parsed: Result<Vec<ottplay_core::m3u::M3uChannel>, _> =
+        serde_json::from_slice(&body);
+    match parsed {
+        Ok(channels) => {
+            let result = tokio::task::spawn_blocking(move || {
+                let mut epg_to_xmltv = std::collections::HashMap::new();
+                let mut time_shift_by_epg = std::collections::HashMap::new();
+                let results = ottplay_core::m3u::match_channels(
+                    channels,
+                    &channels_map,
+                    &mut epg_to_xmltv,
+                    &mut time_shift_by_epg,
+                );
+                (results, epg_to_xmltv, time_shift_by_epg)
+            })
+            .await;
+            match result {
+                Ok((results, epg_map, shift_map)) => {
+                    {
+                        let mut m = EPG_TO_XMLTV.write().await;
+                        m.extend(epg_map);
+                        let mut s = TIME_SHIFT_BY_EPG.write().await;
+                        s.extend(shift_map);
+                    }
+                    Json(serde_json::to_value(results).unwrap()).into_response()
+                }
+                Err(e) => {
+                    tracing::error!("[EPG] match-channels join error: {e}");
+                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
+                }
+            }
         }
         Err(_) => StatusCode::BAD_REQUEST.into_response(),
     }
 }
 
 async fn match_logos_handler(body: Bytes) -> impl IntoResponse {
-    let cache = EPG_CACHE.read().await;
-    let body_str = String::from_utf8_lossy(&body);
-    if body_str.contains("
+    let body_owned = String::from_utf8_lossy(&body).into_owned();
+    let is_text = body_owned.contains("\n\t\n");
+    let channels_map = EPG_CACHE.read().await.channels.clone();
 
-") {
-        let text = ottplay_core::m3u::match_logos_text(&body_str, &cache.channels);
-        tracing::info!(
-            "[EPG] match-logos text: {} bytes in → {} bytes out",
-            body.len(),
-            text.len()
-        );
-        return (
-            [(
-                axum::http::header::CONTENT_TYPE,
-                "text/plain; charset=utf-8",
-            )],
-            text,
-        )
-            .into_response();
+    if is_text {
+        let result = tokio::task::spawn_blocking(move || {
+            ottplay_core::m3u::match_logos_text(&body_owned, &channels_map)
+        })
+        .await;
+        return match result {
+            Ok(text) => {
+                tracing::info!(
+                    "[EPG] match-logos text: {} bytes in → {} bytes out",
+                    body.len(),
+                    text.len()
+                );
+                (
+                    [(
+                        axum::http::header::CONTENT_TYPE,
+                        "text/plain; charset=utf-8",
+                    )],
+                    text,
+                )
+                    .into_response()
+            }
+            Err(e) => {
+                tracing::error!("[EPG] match-logos join error: {e}");
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        };
     }
+
     match serde_json::from_slice::<Vec<ottplay_core::m3u::LogoChannel>>(&body) {
         Ok(channels) => {
-            let results = ottplay_core::m3u::match_logos(channels, &cache.channels);
-            Json(serde_json::to_value(results).unwrap()).into_response()
+            let result = tokio::task::spawn_blocking(move || {
+                ottplay_core::m3u::match_logos(channels, &channels_map)
+            })
+            .await;
+            match result {
+                Ok(results) => Json(serde_json::to_value(results).unwrap()).into_response(),
+                Err(e) => {
+                    tracing::error!("[EPG] match-logos join error: {e}");
+                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
+                }
+            }
         }
         Err(_) => StatusCode::BAD_REQUEST.into_response(),
     }
 }
+
 
 async fn cp_proxy_handler(
     body: Bytes,
