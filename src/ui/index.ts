@@ -414,10 +414,11 @@ export function uiInit(): void {
                 t * (w._prog100.time_to - w._prog100.time) + w._prog100.time
             );
         } else {
-            // No EPG data — emulate position based on playTime (seconds elapsed)
-            var totalDur = 3600;
-            var elapsed = w.playType > 0 ? (w.playTime ?? 0) : 0;
-            var r2 = Math.round((elapsed / totalDur) * 3600);
+            // No EPG — map click onto virtual 1h/80% timeshift window (live)
+            // or hourless elapsed window (archive).
+            var virt = virtualTimeshiftProg();
+            w._prog100 = virt;
+            var r2 = Math.round(t * (virt.time_to - virt.time) + virt.time);
         }
         if (r2 < Date.now() / 1e3) {
             if (!w.playType) {
@@ -483,10 +484,11 @@ export function uiInit(): void {
                 t * (w._prog100.time_to - w._prog100.time) + w._prog100.time
             );
         } else {
-            // No EPG data — emulate position based on playTime (seconds elapsed)
-            var totalDur = 3600;
-            var elapsed = w.playType > 0 ? (w.playTime ?? 0) : 0;
-            var r2 = Math.round((elapsed / totalDur) * 3600);
+            // No EPG — map click onto virtual 1h/80% timeshift window (live)
+            // or hourless elapsed window (archive).
+            var virt = virtualTimeshiftProg();
+            w._prog100 = virt;
+            var r2 = Math.round(t * (virt.time_to - virt.time) + virt.time);
         }
         if (r2 < Date.now() / 1e3) {
             if (!w.playType) {
@@ -1092,6 +1094,29 @@ export function showSelectBox(
  *             Otherwise clears all program fields. When the channel is unavailable, shows "Channel is not available!!!".
  *             Progress percentage is clamped to 0-100.
  */
+
+/**
+ * Virtual timeshift window when EPG is missing: 1 hour lookback on the left,
+ * live playhead at ~80% (15 min headroom on the right).
+ */
+export function virtualTimeshiftProg(nowSec?: number): {
+    name: string;
+    descr: string;
+    time: number;
+    time_to: number;
+} {
+    var now = nowSec != null ? nowSec : Date.now() / 1000;
+    var lookback = 3600;
+    var fill = 0.8;
+    var total = lookback / fill;
+    return {
+        descr: "",
+        name: "",
+        time: now - lookback,
+        time_to: now - lookback + total,
+    };
+}
+
 export function updateChanelInfo(channelId: number): void {
     if (channelId == null) return;
     var curList = (window as any).curList || [];
@@ -1198,46 +1223,77 @@ export function updateChanelInfo(channelId: number): void {
             // Legacy: $("#nend_time").text(Math.round((next.time_to - next.time)/60))
             if (nendTimeEl) nendTimeEl.textContent = "" + nextDur;
         }
-    } else if (
-        (window as any)._prog100 &&
-        (window as any)._prog100.time &&
-        (window as any)._prog100.time_to
-    ) {
-        // No EPG but have synthetic archive prog — drive bar from _prog100
-        var _p = (window as any)._prog100;
-        var nowSec2 = Date.now() / 1000;
-        var dur = _p.time_to - _p.time;
-        var pct2 = dur > 0 ? ((nowSec2 - _p.time) / dur) * 100 : 0;
-        if (pct2 < 0) pct2 = 0;
-        if (pct2 > 100) pct2 = 100;
-        if (progressEl) progressEl.style.width = pct2 + "%";
-        var remPct2 =
-            _p.time_to > nowSec2
-                ? Math.min(
-                      100,
-                      Math.max(0, ((_p.time_to - nowSec2) / dur) * 100)
-                  )
-                : 0;
-        if (progressREl) progressREl.style.width = remPct2 + "%";
-        if (progressDivEl) progressDivEl.style.backgroundColor = "#600";
-        if (beginTimeEl) beginTimeEl.textContent = time2time(_p.time);
-        var remMin2 = Math.round((_p.time_to - nowSec2) / 60);
-        if (endTimeEl)
-            endTimeEl.textContent = "+" + (remMin2 > 0 ? remMin2 : 0);
-        if (programNameEl) programNameEl.innerHTML = "";
-        if (programName2El) programName2El.innerHTML = "";
-        if (programDurationEl) programDurationEl.textContent = "";
-        if (programDescrEl) programDescrEl.textContent = "";
     } else {
-        // No EPG — clear program fields
-        if (programNameEl) programNameEl.innerHTML = "&nbsp; ";
-        (window as any)._prog100 = 0;
-        if (progressEl) progressEl.style.width = "0%";
-        if (beginTimeEl) beginTimeEl.textContent = "";
-        if (endTimeEl) endTimeEl.textContent = "";
-        if (programName2El) programName2El.textContent = "";
-        if (programDurationEl) programDurationEl.textContent = "";
-        if (programDescrEl) programDescrEl.textContent = "";
+        // No current EPG program
+        var wAny = window as any;
+        var playType = wAny.playType || 0;
+        var canTimeshift = !playType && t && t.rec && Number(t.rec) > 0;
+        if (canTimeshift) {
+            // Live + catchup available, no EPG: 1h lookback, live at ~80%
+            var _p = virtualTimeshiftProg();
+            wAny._prog100 = _p;
+            var nowSec2 = Date.now() / 1000;
+            var dur = _p.time_to - _p.time;
+            var pct2 = dur > 0 ? ((nowSec2 - _p.time) / dur) * 100 : 80;
+            if (pct2 < 0) pct2 = 0;
+            if (pct2 > 100) pct2 = 100;
+            if (progressEl) progressEl.style.width = pct2 + "%";
+            var remPct2 =
+                _p.time_to > nowSec2
+                    ? Math.min(
+                          100,
+                          Math.max(0, ((_p.time_to - nowSec2) / dur) * 100)
+                      )
+                    : 0;
+            if (progressREl) progressREl.style.width = remPct2 + "%";
+            if (progressDivEl) progressDivEl.style.backgroundColor = "#600";
+            if (beginTimeEl) beginTimeEl.textContent = time2time(_p.time);
+            var remMin2 = Math.round((_p.time_to - nowSec2) / 60);
+            if (endTimeEl)
+                endTimeEl.textContent = "+" + (remMin2 > 0 ? remMin2 : 0);
+            if (programNameEl) programNameEl.innerHTML = "&nbsp; ";
+            if (programName2El) programName2El.innerHTML = "";
+            if (programDurationEl) programDurationEl.textContent = "";
+            if (programDescrEl) programDescrEl.textContent = "";
+        } else if (
+            playType > 0 &&
+            wAny._prog100 &&
+            wAny._prog100.time &&
+            wAny._prog100.time_to
+        ) {
+            // Archive with synthetic/_prog100 window — keep driving the bar
+            var _pa = wAny._prog100;
+            var nowA = Date.now() / 1000;
+            var posA = playType + (wAny.playTime || 0);
+            var durA = _pa.time_to - _pa.time;
+            var pctA = durA > 0 ? ((posA - _pa.time) / durA) * 100 : 0;
+            if (pctA < 0) pctA = 0;
+            if (pctA > 100) pctA = 100;
+            if (progressEl) progressEl.style.width = pctA + "%";
+            if (progressREl)
+                progressREl.style.width =
+                    _pa.time_to > nowA
+                        ? Math.min(
+                              100,
+                              Math.max(0, ((_pa.time_to - nowA) / durA) * 100)
+                          ) + "%"
+                        : "0%";
+            if (progressDivEl) progressDivEl.style.backgroundColor = "#600";
+            if (beginTimeEl) beginTimeEl.textContent = time2time(_pa.time);
+            if (endTimeEl)
+                endTimeEl.textContent =
+                    "+" + Math.max(0, Math.round((_pa.time_to - posA) / 60));
+        } else {
+            if (programNameEl) programNameEl.innerHTML = "&nbsp; ";
+            wAny._prog100 = 0;
+            if (progressEl) progressEl.style.width = "0%";
+            if (progressREl) progressREl.style.width = "0%";
+            if (beginTimeEl) beginTimeEl.textContent = "";
+            if (endTimeEl) endTimeEl.textContent = "";
+            if (programName2El) programName2El.textContent = "";
+            if (programDurationEl) programDurationEl.textContent = "";
+            if (programDescrEl) programDescrEl.textContent = "";
+        }
     }
 }
 
