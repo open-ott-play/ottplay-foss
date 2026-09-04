@@ -1390,6 +1390,7 @@ dependencies = [
  "flate2",
  "hyper",
  "hyper-util",
+ "md-5",
  "once_cell",
  "ottplay-core",
  "quick-xml",

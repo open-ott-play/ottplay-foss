@@ -17,7 +17,6 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
-use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::RwLock;
@@ -40,14 +39,21 @@ static TIME_SHIFT_BY_EPG: Lazy<Arc<RwLock<HashMap<String, i64>>>> =
 static TMDB_KEY: Lazy<Option<String>> = Lazy::new(ottplay_core::tmdb::api_key_from_env);
 
 fn epg_urls() -> Vec<String> {
-    std::env::var("EPG_URLS")
+    // Match archive/server.py: default EPG when EPG_URLS unset/empty.
+    const DEFAULT_EPG: &str = "http://epg.it999.ru/epg2.xml.gz";
+    let urls: Vec<String> = std::env::var("EPG_URLS")
         .unwrap_or_default()
         .split(';')
         .filter_map(|s| {
             let s = s.trim();
             if s.is_empty() { None } else { Some(s.to_string()) }
         })
-        .collect()
+        .collect();
+    if urls.is_empty() {
+        vec![DEFAULT_EPG.to_string()]
+    } else {
+        urls
+    }
 }
 
 #[derive(Parser)]
@@ -94,8 +100,6 @@ async fn main() {
                 }
             }
         });
-    } else {
-        println!("[EPG] No EPG_URLS set — EPG disabled");
     }
 
     let cli = Cli::parse();
@@ -108,11 +112,13 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(root))
+        .route("/index.html", get(root))
+        .route("/favicon.ico", get(favicon_handler))
         .route("/health", get(health))
         .route("/epg/:hash", get(epg_handler))
         .route("/tmdb/*path", get(tmdb_handler))
         .route("/logo/:id", get(logo_handler))
-        .route("/version/:path", get(version_handler))
+        .route("/version/*path", get(version_handler))
         .route("/m3u/match-channels", post(match_channels_handler))
         .route("/m3u/match-logos", post(match_logos_handler))
         .route("/m3u/cp.php", post(cp_proxy_handler))
@@ -134,7 +140,6 @@ async fn main() {
         .nest_service("/prov", ServeDir::new("prov"))
         .layer(cors);
 
-    let addr: SocketAddr = ([0, 0, 0, 0], cli.port).into();
     println!("ottplay-server: http://{}:{}", cli.host, cli.port);
 
     // Phase 2.1: TLS sidecar on https_port (default 8443)
@@ -155,15 +160,24 @@ async fn main() {
                         let acceptor = acceptor.clone();
                         let app = app_clone.clone();
                         tokio::spawn(async move {
-                            let tls = acceptor.accept(stream).await.expect("tls handshake");
+                            let tls = match acceptor.accept(stream).await {
+                                Ok(s) => s,
+                                Err(e) => {
+                                    // CertificateUnknown / handshake noise must not panic workers.
+                                    tracing::warn!("TLS handshake failed: {e}");
+                                    return;
+                                }
+                            };
                             let io = hyper_util::rt::TokioIo::new(tls);
-                            hyper::server::conn::http1::Builder::new()
+                            if let Err(e) = hyper::server::conn::http1::Builder::new()
                                 .serve_connection(io, hyper::service::service_fn(move |req| {
                                     let app = app.clone();
                                     app.clone().call(req)
                                 }))
                                 .await
-                                .expect("serve connection");
+                            {
+                                tracing::warn!("TLS serve connection error: {e}");
+                            }
                         });
                     }
                     Err(e) => {
@@ -174,7 +188,9 @@ async fn main() {
         });
     }
 
-    let listener = TcpListener::bind(&addr).await.unwrap();
+    let listener = TcpListener::bind((cli.host.as_str(), cli.port))
+        .await
+        .unwrap_or_else(|e| panic!("cannot bind HTTP {}:{}: {e}", cli.host, cli.port));
     axum::serve(listener, app).await.unwrap();
 }
 
@@ -211,6 +227,18 @@ async fn root() -> impl IntoResponse {
     }
 }
 
+async fn favicon_handler() -> impl IntoResponse {
+    match std::fs::read("favicon.ico") {
+        Ok(bytes) => (
+            StatusCode::OK,
+            [("content-type", "image/x-icon"), ("cache-control", "max-age=86400")],
+            bytes,
+        )
+            .into_response(),
+        Err(_) => StatusCode::NOT_FOUND.into_response(),
+    }
+}
+
 async fn health() -> &'static str {
     "OK"
 }
@@ -219,12 +247,16 @@ async fn tmdb_handler(
     Path(path): Path<String>,
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<(StatusCode, HeaderMap, Vec<u8>), StatusCode> {
+    let api_key = ottplay_core::tmdb::require_api_key().map_err(|_| {
+        tracing::warn!("[TMDB] TMDB_API_KEY not set");
+        StatusCode::SERVICE_UNAVAILABLE
+    })?;
     let query = params
         .iter()
         .map(|(k, v)| format!("{}={}", k, urlencoding::encode(v)))
         .collect::<Vec<_>>()
         .join("&");
-    match ottplay_core::tmdb::proxy(&path, &query, TMDB_KEY.as_deref().unwrap_or("")).await {
+    match ottplay_core::tmdb::proxy(&path, &query, &api_key).await {
         Ok((status, mut headers, body)) => {
             headers.insert("access-control-allow-origin", HeaderValue::from_static("*"));
             Ok((
@@ -346,43 +378,41 @@ fn generate_logo_svg(logo_id: &str, ch_name: &str) -> String {
     )
 }
 
-/// /version/:path — return JSON with file metadata + md5(prefix).
+/// /version/*path — return JSON with file metadata + md5 hex prefix (Python parity).
 async fn version_handler(
     Path(rel): Path<String>,
-) -> Json<serde_json::Value> {
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    use md5::{Digest, Md5};
     use std::fs;
     let stripped = rel.strip_prefix('/').unwrap_or(&rel);
+    // Reject path traversal; only serve real files under cwd.
+    if stripped.is_empty() || stripped.contains("..") {
+        return Err(StatusCode::NOT_FOUND);
+    }
     let filename = stripped.rsplit('/').next().unwrap_or("").to_string();
     let filepath = format!("./{stripped}");
     match fs::metadata(&filepath) {
-        Ok(meta) => {
+        Ok(meta) if meta.is_file() => {
             let bytes = fs::read(&filepath).unwrap_or_default();
-            let digest = format!("{:x}", md5_like_hash(&bytes));
+            let digest = format!("{:x}", Md5::digest(&bytes))
+                .chars()
+                .take(16)
+                .collect::<String>();
             let modified = meta
                 .modified()
                 .ok()
                 .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
                 .map(|d| d.as_secs() as i64)
                 .unwrap_or(0);
-            Json(serde_json::json!({
+            Ok(Json(serde_json::json!({
                 "file": filename,
                 "hash": digest,
                 "modified": modified,
                 "size": meta.len(),
-            }))
+            })))
         }
-        Err(_) => Json(serde_json::json!({"error": "not found"})),
+        _ => Err(StatusCode::NOT_FOUND),
     }
-}
-
-// md5-like stable digest (FNV-1a 64-bit)
-fn md5_like_hash(bytes: &[u8]) -> u64 {
-    let mut h: u64 = 0xcbf29ce484222325;
-    for b in bytes {
-        h ^= *b as u64;
-        h = h.wrapping_mul(0x100000001b3);
-    }
-    h
 }
 
 const PLACEHOLDER_HTML: &str =
