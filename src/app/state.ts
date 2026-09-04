@@ -58,6 +58,11 @@ export let previewTimer: any = null;
 
 // ─── Popup menu ("вкладка Menu") — CANONICAL DEFINITION ────────────────────
 //
+// CONCAT POLICY: this module must stay OFF vite MODULES. Runtime popup
+// arrays are allocated in src/index.ts (classic concat). This file is the
+// ESM/test source of truth for labels + initPopupActions(); adding it to
+// MODULES alongside index's `var popupActions` forks or SyntaxErrors on HS5.
+//
 // `popupArray` (labels), `popupActions` (handlers) and `popupDetail`
 // (per-entry descriptions) are the single source of truth for the popup
 // menu and MUST stay index-aligned 1:1.
