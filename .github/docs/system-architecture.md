@@ -28,7 +28,7 @@ Diagrams are written in [Mermaid](https://mermaid.js.org/). They render natively
 
 ## 1. High-level runtime
 
-The player is a single-page web app. The host (browser or TV runtime) loads one HTML file that pulls a pre-built `dist/stbPlayer.js` bundle. The bundle is a concatenation of the compiled TypeScript modules and a platform shim from `stb/<device>/stb.js`. Provider scripts are fetched separately and wired in at runtime.
+The player is a single-page web app. The host (browser or TV runtime) loads one HTML file that pulls a pre-built `dist/stbPlayer.js` bundle (concat of compiled TypeScript modules via `vite.config.ts` `MODULES`). A separate classic script `stb/<device>/stb.js` loads after the bundle, then `startPlayer()` runs. Provider scripts are fetched separately and wired in at runtime.
 
 ```mermaid
 flowchart LR
@@ -91,7 +91,7 @@ Key observation: **the platform shim runs first, then the base `stbInit` runs ag
 
 ## 3. Module dependency graph
 
-`src/index.ts` is the live concat entry — last in `vite.config.ts` `MODULES` (must be last, redeclares legacy `function X` symbols). `src/player.ts` is a dead PR #54 stub (~474 lines), not in `MODULES`, not imported, kept for now pending the dead-code sweep (see TODO §1). The bundle itself exposes ~130 globals onto `window.*` for backward compatibility with the legacy `stbPlayer.js` global-namespace design.
+`src/index.ts` is the live concat entry — last in `vite.config.ts` `MODULES` (must be last, redeclares legacy `function X` symbols). The old `src/player.ts` stub was removed. The bundle exposes ~130 globals onto `window.*` for backward compatibility with the legacy `stbPlayer.js` global-namespace design.
 
 ```mermaid
 flowchart TB
