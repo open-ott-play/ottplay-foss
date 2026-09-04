@@ -285,7 +285,11 @@ async fn epg_handler(
     Path(hash): Path<String>,
     Query(params): Query<EpgParams>,
 ) -> Json<serde_json::Value> {
+    // Client requests /epg/{hash}.json — strip optional .json suffix.
+    let hash = hash.strip_suffix(".json").unwrap_or(&hash).to_string();
     let cache = EPG_CACHE.read().await;
+    let map = EPG_TO_XMLTV.read().await;
+    let shifts = TIME_SHIFT_BY_EPG.read().await;
     let channel_id = params
         .ch
         .as_ref()
@@ -293,10 +297,12 @@ async fn epg_handler(
             ottplay_core::match_channel(ch, &cache.channels)
                 .map(|(id, _score)| id)
         })
+        .or_else(|| map.get(&hash).cloned())
         .unwrap_or_else(|| hash.clone());
     let time_shift: i64 = params
         .ts
         .map(|ts| ts as i64)
+        .or_else(|| shifts.get(&hash).copied())
         .unwrap_or(0);
     let result = ottplay_core::get_epg_slice(&cache, &hash, &channel_id, time_shift).await;
     Json(result)
@@ -309,27 +315,78 @@ struct EpgParams {
     ts: Option<i32>,
 }
 
-async fn match_channels_handler(
-    body: Bytes,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let channels: Vec<ottplay_core::m3u::M3uChannel> =
-        serde_json::from_slice(&body).map_err(|_| StatusCode::BAD_REQUEST)?;
+async fn match_channels_handler(body: Bytes) -> impl IntoResponse {
+    // Legacy FOSS posts text (`{}\n\t\n...`), not JSON. Keep JSON array as a
+    // fallback for native/app clients that already speak the typed API.
     let cache = EPG_CACHE.read().await;
     let mut epg_to_xmltv = EPG_TO_XMLTV.write().await;
     let mut time_shift_by_epg = TIME_SHIFT_BY_EPG.write().await;
-    let results =
-        ottplay_core::m3u::match_channels(channels, &cache.channels, &mut epg_to_xmltv, &mut time_shift_by_epg);
-    Ok(Json(serde_json::to_value(results).unwrap()))
+    let body_str = String::from_utf8_lossy(&body);
+    if body_str.contains("
+
+") {
+        let text = ottplay_core::m3u::match_channels_text(
+            &body_str,
+            &cache.channels,
+            &mut epg_to_xmltv,
+            &mut time_shift_by_epg,
+        );
+        tracing::info!(
+            "[EPG] match-channels text: {} bytes in → {} bytes out",
+            body.len(),
+            text.len()
+        );
+        return (
+            [(
+                axum::http::header::CONTENT_TYPE,
+                "text/plain; charset=utf-8",
+            )],
+            text,
+        )
+            .into_response();
+    }
+    match serde_json::from_slice::<Vec<ottplay_core::m3u::M3uChannel>>(&body) {
+        Ok(channels) => {
+            let results = ottplay_core::m3u::match_channels(
+                channels,
+                &cache.channels,
+                &mut epg_to_xmltv,
+                &mut time_shift_by_epg,
+            );
+            Json(serde_json::to_value(results).unwrap()).into_response()
+        }
+        Err(_) => StatusCode::BAD_REQUEST.into_response(),
+    }
 }
 
-async fn match_logos_handler(
-    body: Bytes,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let channels: Vec<ottplay_core::m3u::LogoChannel> =
-        serde_json::from_slice(&body).map_err(|_| StatusCode::BAD_REQUEST)?;
+async fn match_logos_handler(body: Bytes) -> impl IntoResponse {
     let cache = EPG_CACHE.read().await;
-    let results = ottplay_core::m3u::match_logos(channels, &cache.channels);
-    Ok(Json(serde_json::to_value(results).unwrap()))
+    let body_str = String::from_utf8_lossy(&body);
+    if body_str.contains("
+
+") {
+        let text = ottplay_core::m3u::match_logos_text(&body_str, &cache.channels);
+        tracing::info!(
+            "[EPG] match-logos text: {} bytes in → {} bytes out",
+            body.len(),
+            text.len()
+        );
+        return (
+            [(
+                axum::http::header::CONTENT_TYPE,
+                "text/plain; charset=utf-8",
+            )],
+            text,
+        )
+            .into_response();
+    }
+    match serde_json::from_slice::<Vec<ottplay_core::m3u::LogoChannel>>(&body) {
+        Ok(channels) => {
+            let results = ottplay_core::m3u::match_logos(channels, &cache.channels);
+            Json(serde_json::to_value(results).unwrap()).into_response()
+        }
+        Err(_) => StatusCode::BAD_REQUEST.into_response(),
+    }
 }
 
 async fn cp_proxy_handler(
