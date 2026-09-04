@@ -115,6 +115,11 @@ cat >> "$PLIST" <<EOF
         <string>--key</string>
         <string>$KEY</string>
     </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>EPG_URLS</key>
+        <string>http://epg.it999.ru/epg2.xml.gz</string>
+    </dict>
     <key>WorkingDirectory</key>
     <string>$DEST</string>
     <key>RunAtLoad</key>
