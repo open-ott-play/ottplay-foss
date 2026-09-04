@@ -602,7 +602,8 @@ export function setCurProg(
     // time_request=now+3600 on miss so updateChanelInfo → getCurProgData cannot
     // re-queue forever (sync getEPGchanel(null) path).
     var safeChannelId = Number(channelId);
-    if (!Number.isFinite(safeChannelId) || !Number.isInteger(safeChannelId)) return;
+    if (!Number.isFinite(safeChannelId) || !Number.isInteger(safeChannelId))
+        return;
     var sorted: EPGEntry[] = [];
     var hasData = Array.isArray(epgData) && epgData.length > 0;
     if (hasData) {
