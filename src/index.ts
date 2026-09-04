@@ -1404,6 +1404,8 @@ function onStbReady(): void {
             if (launchEl) {
                 launchEl.innerHTML += "<br/><b>No language selected !!!</b>";
                 launchEl.style.display = "none";
+                if (typeof (window as any).clearBootHide === "function")
+                    (window as any).clearBootHide();
             }
             selectLang();
             return;
@@ -1426,6 +1428,8 @@ function onStbReady(): void {
                     el.innerHTML += "<br/><b>No language selected !!!</b>";
                     el.style.display = "none";
                 }
+                if (typeof (window as any).clearBootHide === "function")
+                    (window as any).clearBootHide();
                 selectLang();
             }
         );

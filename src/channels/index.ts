@@ -811,6 +811,8 @@ export function onChanelsLoaded(): void {
     $("#dialogbox").hide();
     $("#launch").hide();
     $("#buffering").hide();
+    if (typeof (window as any).clearBootHide === "function")
+        (window as any).clearBootHide();
     console.log("player ready!");
 }
 
