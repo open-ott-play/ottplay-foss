@@ -8,7 +8,7 @@ var keyStrings = {
     "Add channel to favorites": "Add channel to favorites",
     All: "All",
     "Archive hours": "Archive hours",
-    alhabet: "alhabet",
+    alhabet: "абвгдеёжзийклмнопрстуфхцчшщъыьэюя",
     "Buffer Size, s": "Buffer Size, s",
     "built-in": "built-in",
     Category: "Category",
