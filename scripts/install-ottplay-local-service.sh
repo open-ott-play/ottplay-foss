@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Install ottplay-foss locally on macOS: rsync this repo to ~/ottplay-foss-local,
-# build the player bundle + Rust server binary, register a launchd user agent
-# (autostart + KeepAlive) serving ottplay-server, and load it.
+# Player half of the local macOS stack (called by install-local-stack.sh).
+# Syncs repo to ~/ottplay-foss-local, builds player + Rust binary, cert trust,
+# launchd agent with HTTP + all HTTPS ports (one --https-port each).
 #
+# Prefer: scripts/install-local-stack.sh
 # Usage: scripts/install-ottplay-local-service.sh
 # Env overrides: OTTPLAY_SRC, OTTPLAY_DEST, OTTPLAY_PORT (default 8095 —
 #                8090 is taken by hls-proxy), OTTPLAY_HTTPS_PORTS
@@ -31,21 +32,21 @@ for tool in rsync node npm cargo; do
     command -v "$tool" >/dev/null || { echo "error: $tool not found" >&2; exit 1; }
 done
 
-echo "[1/4] sync $SRC -> $DEST"
+echo "[1/6] sync $SRC -> $DEST"
 mkdir -p "$DEST"
 rsync -a --delete \
     --exclude .git --exclude node_modules --exclude logs \
     --exclude '*.local.py' --exclude 'certs' \
     "$SRC/" "$DEST/"
 
-echo "[2/4] npm install + build"
+echo "[2/6] npm install + build"
 cd "$DEST"
 npm install --no-audit --no-fund 1>&2
 npm run build 1>&2
 
 # Self-signed cert for https://localhost (Chrome warning-free once trusted).
 # SAN must cover every name the browser will use.
-echo "[3/4] certificate"
+echo "[3/6] certificate"
 mkdir -p "$CERT_DIR"
 if [ ! -f "$CRT" ] || [ ! -f "$KEY" ]; then
     LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || true)"
@@ -64,21 +65,23 @@ else
         -k /Library/Keychains/System.keychain "$CRT"; then
         echo "trusted: added to System keychain"
     else
-        echo "warning: could not add trust automatically; run manually:" >&2
+        echo "error: could not add cert to System keychain (sudo failed or denied)." >&2
+        echo "  Re-run with an interactive sudo, or trust manually:" >&2
         echo "  sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain '$CRT'" >&2
+        echo "  Continuing without trust — browsers will warn until the cert is trusted." >&2
     fi
 fi
 
-echo "[4/5] build + install Rust binary"
+echo "[4/6] build + install Rust binary"
 mkdir -p "$DEST"
 (cd "$RUST_SRC" && cargo build --release 1>&2)
 cp "$RUST_SRC/target/release/ottplay-server" "$BIN"
 chmod +x "$BIN"
 
-echo "[5/5] launchd service (http :$PORT, https :$HTTPS_PORTS)"
+echo "[5/6] launchd service (http :$PORT, https :$HTTPS_PORTS)"
 mkdir -p "$HOME/Library/LaunchAgents" "$HOME/Library/Logs"
 
-# Stop old services (any variant of the label)
+# Stop old services (any variant of the label, including legacy multi-instance)
 for plist in "$HOME/Library/LaunchAgents/${LABEL_BASE}-"*.plist \
              "$HOME/Library/LaunchAgents/${LABEL_BASE}.plist"; do
     [ -f "$plist" ] || continue
@@ -103,12 +106,13 @@ cat > "$PLIST" <<EOF
         <string>--host</string>
         <string>127.0.0.1</string>
 EOF
-# Rust binary: single HTTPS port only. Use the first one.
-FIRST_HTTPS="${HTTPS_PORTS%% *}"
-cat >> "$PLIST" <<EOF
+# One --https-port per origin (Rust clap ArgAction::Append).
+for HTTPS_PORT in $HTTPS_PORTS; do
+    cat >> "$PLIST" <<EOF
         <string>--https-port</string>
-        <string>$FIRST_HTTPS</string>
+        <string>$HTTPS_PORT</string>
 EOF
+done
 cat >> "$PLIST" <<EOF
         <string>--cert</string>
         <string>$CRT</string>
@@ -134,25 +138,32 @@ cat >> "$PLIST" <<EOF
 </plist>
 EOF
 launchctl load "$PLIST"
-echo "  loaded $LABEL (https :$FIRST_HTTPS)"
+echo "  loaded $LABEL (https :$HTTPS_PORTS)"
 
 echo "[6/6] verify"
 ok=""
 for _ in $(seq 1 60); do
     all_up=1
-    code="$(curl -m 3 -s --cacert "$CRT" -o /dev/null -w '%{http_code}' "https://localhost:$FIRST_HTTPS/")" || all_up=0
-    [ "$code" = "200" ] || all_up=0
+    for HTTPS_PORT in $HTTPS_PORTS; do
+        code="$(curl -m 3 -s --cacert "$CRT" -o /dev/null -w '%{http_code}' "https://localhost:$HTTPS_PORT/")" || all_up=0
+        [ "$code" = "200" ] || all_up=0
+    done
     [ "$all_up" = "1" ] && { ok=1; break; }
     sleep 3
 done
 if [ -z "$ok" ]; then
-    echo "warning: not all services responding — check ~/Library/Logs/${LABEL}.log" >&2
+    echo "warning: not all HTTPS ports responding — check ~/Library/Logs/${LABEL}.log" >&2
     exit 1
 fi
+HTTPS_URLS=""
+for p in $HTTPS_PORTS; do
+    [ -n "$HTTPS_URLS" ] && HTTPS_URLS="$HTTPS_URLS, "
+    HTTPS_URLS="${HTTPS_URLS}https://localhost:$p"
+done
 if [ "$PORT" != "0" ]; then
     code_http="$(curl -s -o /dev/null -w '%{http_code}' -m 3 "http://127.0.0.1:$PORT/")"
-    echo "installed: http://127.0.0.1:$PORT/ (HTTP $code_http) + https://localhost:$FIRST_HTTPS"
+    echo "installed: http://127.0.0.1:$PORT/ (HTTP $code_http) + $HTTPS_URLS"
 else
-    echo "installed: https://localhost:$FIRST_HTTPS"
+    echo "installed: $HTTPS_URLS"
 fi
 echo "log: ~/Library/Logs/${LABEL}.log"
