@@ -10,7 +10,7 @@
     "fix": "ultracite fix",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "test": "npx tsx tests/test_channel_filtering.ts && npx tsx tests/test-epg-matching.ts",
+    "test": "npx tsx tests/test_channel_filtering.ts && npx tsx tests/test-epg-matching.ts && npx tsx tests/test_listKeyHandler_alias.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
