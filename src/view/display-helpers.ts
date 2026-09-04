@@ -193,15 +193,18 @@ export function setFontSize(): void {
         n2.text("").css("font-size", i2);
         if (a2) {
             const w = a2 * 6;
+            // ~2 inline-block HTML whitespace gaps between begin/name/end
+            const gap = Math.max(8, Math.round(a2));
             $("#channel_number").css({ width: w + "px" });
             $("#begin_time").css({ "font-size": "inherit", width: w + "px" });
             $("#end_time").css({ "font-size": "inherit", width: w + "px" });
             // Legacy: channel.width - digitWidth*12 (= begin + end columns)
             const chW = $("#channel").width() || 1040 * t;
-            $("#programm_name").css({ width: chW - w * 2 + "px" });
+            const nameW = Math.max(40, chW - w * 2 - gap);
+            $("#programm_name").css({ width: nameW + "px" });
             $("#nbegin_time").css({ "font-size": "inherit", width: w + "px" });
             $("#nend_time").css({ "font-size": "inherit", width: w + "px" });
-            $("#nprogramm_name").css({ width: chW - w * 2 + "px" });
+            $("#nprogramm_name").css({ width: nameW + "px" });
         }
     } catch (ex) {
         console.error(ex);
