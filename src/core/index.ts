@@ -274,6 +274,7 @@ export function stbPlay(url: string, position?: number): void {
         // ponytail: seek to position at MANIFEST_PARSED — currentTime === 0 guaranteed
         var _startPos = position || 0;
         var _mediaRecovered = false;
+        var _networkRetries = 0;
         hlsInstance.loadSource(url);
         hlsInstance.attachMedia(video);
         hlsInstance.on(Hls.Events.ERROR, function (_event: any, data: any) {
@@ -315,8 +316,24 @@ export function stbPlay(url: string, position?: number): void {
                         video!.play().catch(function () {});
                     }
                 } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                    console.log("[HLS] trying startLoad");
-                    hlsInstance.startLoad();
+                    // levelParsingError / manifest parse are not transient —
+                    // startLoad() would loop forever (no-EPG archive bad URL,
+                    // purged segments, proxy HTML error pages).
+                    var det = String((data && data.details) || "");
+                    var parseFail =
+                        det.indexOf("Parsing") !== -1 ||
+                        det.indexOf("parsing") !== -1;
+                    if (parseFail || _networkRetries >= 2) {
+                        console.log(
+                            "[HLS] unrecoverable network/parse, destroying"
+                        );
+                        hlsInstance.destroy();
+                        hlsInstance = null;
+                    } else {
+                        _networkRetries++;
+                        console.log("[HLS] trying startLoad");
+                        hlsInstance.startLoad();
+                    }
                 } else {
                     console.log("[HLS] unrecoverable, destroying");
                     hlsInstance.destroy();

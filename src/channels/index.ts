@@ -1877,19 +1877,50 @@ export function playArchive(e: number): void {
     // stbPlay clears it too, but only on the happy path; if stbPlay throws
     // before ticker init, this would leak.
     clearPlayTimeInterval();
-    updateArchiveInfo(e);
-    if (w.sInfoRew) w.showChanelInfo(1);
-    var r = curList[primaryIndex];
-    var s = epgArray[curProg] || {
-        descr: "",
-        name: "",
-        time: Math.floor(e / 3600) * 3600,
-        time_to: (Math.floor(e / 3600) + 1) * 3600,
-    };
+    // Set archive playType before updateArchiveInfo so nested updateChanelInfo
+    // sees archive mode (not live virtual timeshift) when EPG is missing.
     playTime = 0;
     playType = Math.floor(e);
     w.playType = playType;
     w.playTime = playTime;
+    updateArchiveInfo(e);
+    if (w.sInfoRew) w.showChanelInfo(1);
+    var r = curList[primaryIndex];
+    // Prefer EPG program; else synthetic window from updateArchiveInfo (_prog100
+    // rolling 1h/80% when no EPG); else legacy clock-hour like stbPlayer.js.
+    var s = epgArray[curProg];
+    if (!s) {
+        if (
+            _prog100 &&
+            typeof _prog100.time === "number" &&
+            typeof _prog100.time_to === "number" &&
+            isFinite(_prog100.time) &&
+            isFinite(_prog100.time_to)
+        ) {
+            s = _prog100;
+        } else {
+            s = {
+                descr: "",
+                name: "",
+                time: Math.floor(e / 3600) * 3600,
+                time_to: (Math.floor(e / 3600) + 1) * 3600,
+            };
+        }
+    }
+    // Catchup URL templates / flussonic archive-{start}-{duration} need end > start.
+    // Clock-hour near the boundary can yield duration 0 → proxy HTML → levelParsingError.
+    if (!isFinite(e) || e <= 0) {
+        console.error("[playArchive] invalid archive start", e);
+        return;
+    }
+    if (!(s.time_to > e)) {
+        s = {
+            descr: s.descr || "",
+            name: s.name || "",
+            time: typeof s.time === "number" && isFinite(s.time) ? s.time : e,
+            time_to: e + 3600,
+        };
+    }
     if (!fileArchive || t != curProg) {
         if (w.sStopPlay) w.stbStop();
         w.stbPlay(
@@ -1960,6 +1991,7 @@ export function updateArchiveInfo(position: number): void {
     }
 
     _prog100 = prog;
+    w._prog100 = prog;
 
     // Program name
     var progNameEl = document.getElementById("programm_name");
