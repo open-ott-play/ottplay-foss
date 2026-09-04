@@ -1820,14 +1820,16 @@ export function updateArchiveInfo(position: number): void {
         curProg = idx;
         prog = epgArray[idx];
     } else {
-        // Synthetic hour block when EPG is missing
+        // No EPG: rolling 1h lookback window with playhead at ~80%
+        // (same as live virtualTimeshiftProg — avoids clock-hour "17:00" bars).
         curProg = idx;
-        var hourStart = Math.floor(position / 3600) * 3600;
+        var lookback = 3600;
+        var total = lookback / 0.8;
         prog = {
             descr: "",
             name: "",
-            time: hourStart,
-            time_to: hourStart + 3600,
+            time: position - lookback,
+            time_to: position - lookback + total,
         };
     }
 
