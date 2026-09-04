@@ -991,13 +991,29 @@ export function epgList(catIdx: number, chIdx: number, force: boolean): void {
                 });
         }
 
+        var nowTs =
+            w.playType > 0 &&
+            channelId == (w.curList && w.curList[w.primaryIndex])
+                ? w.playType + w.playTime
+                : Math.floor(Date.now() / 1000);
+        w.selIndex = epgData.findIndex(function (e) {
+            return e.time_to >= nowTs && e.time <= nowTs;
+        });
+        if (w.selIndex === -1) w.selIndex = 0;
+
+        // listDataArray must be replaced too — showPage prefers it over
+        // listArray, and popupList leaves Menu rows there.
         w.listArray = epgData;
+        w.listDataArray = epgData;
         listEpgArray = epgData;
+        w.getListItem = itemEPG;
         w.getListItemFn = itemEPG;
-        w.detailListActionFn = function () {
+        w.detailListAction = function () {
             if (typeof window.detailEPG === "function")
                 window.detailEPG(channelId);
         };
+        w.detailListActionFn = w.detailListAction;
+        w.listKeyHandler = epgKeyHandler;
         w.listKeyHandlerFn = epgKeyHandler;
 
         var captionEl = document.getElementById("listCaption");
@@ -1467,13 +1483,18 @@ export function recordsList(
         }
         w.selIndex = 0;
         w.listArray = r;
+        w.listDataArray = r;
         listEpgArray = e;
-        w.getListItemFn = function (item: any, _idx: number) {
+        var itemRec = function (item: any, _idx: number) {
             return "&nbsp;&nbsp;" + (item && item.name ? item.name : "");
         };
-        w.detailListActionFn = function () {
-            if (typeof w.detailEPG === "function") w.detailEPG();
+        w.getListItem = itemRec;
+        w.getListItemFn = itemRec;
+        w.detailListAction = function () {
+            if (typeof w.detailEPG === "function") w.detailEPG(channelId);
         };
+        w.detailListActionFn = w.detailListAction;
+        w.listKeyHandler = epgKeyHandler;
         w.listKeyHandlerFn = epgKeyHandler;
         var captionEl = document.getElementById("listCaption");
         if (captionEl)
@@ -1540,11 +1561,16 @@ export function catRecordsList(catIdx: number): void {
         }
 
         w.listArray = data;
+        w.listDataArray = data;
         mediaRecords = data;
-        w.getListItemFn = function (item: any, _idx: number) {
+        var itemFn = function (item: any, _idx: number) {
             return "&nbsp;&nbsp;" + (item.name || item.title || "");
         };
+        w.getListItem = itemFn;
+        w.getListItemFn = itemFn;
+        w.detailListAction = detailREC;
         w.detailListActionFn = detailREC;
+        w.listKeyHandler = mediaKeyHandler;
         w.listKeyHandlerFn = mediaKeyHandler;
 
         var captionEl = document.getElementById("listCaption");
@@ -1695,15 +1721,20 @@ export function showMediaList(): void {
         }
 
         w.listArray = data;
+        w.listDataArray = data;
         mediaListArr = data;
-        w.getListItemFn = function (item: any, _idx: number) {
+        var itemFn = function (item: any, _idx: number) {
             return "&nbsp;&nbsp;" + (item.name || item.title || "");
         };
-        w.detailListActionFn = function () {
+        w.getListItem = itemFn;
+        w.getListItemFn = itemFn;
+        w.detailListAction = function () {
             var detailEl = document.getElementById("listDetail");
             if (detailEl)
                 detailEl.innerHTML = getMediaDescr(w.listArray[w.selIndex]);
         };
+        w.detailListActionFn = w.detailListAction;
+        w.listKeyHandler = mediaKeyHandler;
         w.listKeyHandlerFn = mediaKeyHandler;
 
         var captionEl = document.getElementById("listCaption");

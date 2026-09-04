@@ -108,6 +108,30 @@ Object.defineProperty(window, "detailListAction", {
         detailListActionFn = v;
     },
 });
+// Bridge aliases used by channels/provider (epgList sets getListItemFn /
+// listDataArray on window). Without these, showPage keeps rendering the
+// previous Menu from module-local listDataArray after EPG/archive opens.
+makeRedefinable(
+    "listDataArray",
+    () => listDataArray,
+    (v) => {
+        listDataArray = v || [];
+    }
+);
+makeRedefinable(
+    "getListItemFn",
+    () => getListItemFn,
+    (v) => {
+        getListItemFn = v;
+    }
+);
+makeRedefinable(
+    "detailListActionFn",
+    () => detailListActionFn,
+    (v) => {
+        detailListActionFn = v;
+    }
+);
 var itemWidth = 735;
 declare var curColor: string;
 declare var curColorB: string;
