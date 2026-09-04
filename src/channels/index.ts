@@ -935,11 +935,7 @@ export function epgShow_miniproc(
     if (mode) {
         $("#listPopUp")
             .html(
-                '<img src="' +
-                    (w.host || "") +
-                    "/stbPlayer/buffering.gif?" +
-                    (w.__av || "") +
-                    '" height="40">'
+                '<div class="ott-spinner" style="width:40px;height:40px;"></div>'
             )
             .show();
     }
@@ -1778,11 +1774,7 @@ export function selectMedia(index: number): void {
         if (typeof w.getScriptDOM === "function") {
             $("#listPopUp")
                 .html(
-                    '<img src="' +
-                        w.host +
-                        "/stbPlayer/buffering.gif?" +
-                        w.__av +
-                        '" height="40">'
+                    '<div class="ott-spinner" style="width:40px;height:40px;"></div>'
                 )
                 .show();
             w.getScriptDOM(item.playlist_url, function () {

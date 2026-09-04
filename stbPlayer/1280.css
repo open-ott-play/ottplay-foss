@@ -93,9 +93,6 @@ body {
     padding: 100px;
     font-size: 16px;
     background-color: black;
-    background-image: url(/stbPlayer/buffering.gif);
-    background-repeat: no-repeat;
-    background-position: center center;
 }
 .logo {
     position: absolute;
@@ -484,19 +481,50 @@ body {
     opacity: 0.8;
     font-size: 0.95em;
 }
+@-webkit-keyframes ott-spin {
+    from {
+        -webkit-transform: rotate(0deg);
+    }
+    to {
+        -webkit-transform: rotate(360deg);
+    }
+}
+@keyframes ott-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+#buffering,
+#pip_buffering,
+.ott-spinner {
+    box-sizing: border-box;
+    border: 3px solid rgba(255, 255, 255, 0.22);
+    border-top-color: #fbc02d;
+    border-radius: 50%;
+    background: none;
+    -webkit-animation: ott-spin 0.7s linear infinite;
+    animation: ott-spin 0.7s linear infinite;
+}
 #buffering {
     position: absolute;
     display: none;
-    background-image: url(/stbPlayer/buffering.gif);
-    background-repeat: no-repeat;
-    background-position: center center;
+    width: 30px;
+    height: 30px;
 }
 #pip_buffering {
     position: absolute;
     display: none;
-    background-image: url(/stbPlayer/buffering.gif);
-    background-repeat: no-repeat;
-    background-position: center center;
+    width: 30px;
+    height: 30px;
+}
+.ott-spinner {
+    display: block;
+    width: 40px;
+    height: 40px;
+    margin: 0.6em auto;
 }
 #mute {
     position: absolute;

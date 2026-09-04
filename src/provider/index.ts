@@ -755,11 +755,7 @@ export function loadProv(): void {
         if (stbIsPlaying()) stbStop();
         $("#dialogbox")
             .html(
-                '<img src="' +
-                    host +
-                    "/stbPlayer/buffering.gif?" +
-                    __av +
-                    '" height="40">'
+                '<div class="ott-spinner" style="width:40px;height:40px;"></div>'
             )
             .show();
         launch_id = "#dialogbox";
@@ -1011,11 +1007,7 @@ export function loadChannels(): void {
         if (launch_id !== "#dialogbox")
             $("#dialogbox")
                 .html(
-                    '<center><img src="' +
-                        host +
-                        "/stbPlayer/buffering.gif?" +
-                        __av +
-                        '" height="40">'
+                    '<center><div class="ott-spinner" style="width:40px;height:40px;"></div></center>'
                 )
                 .show();
         launch_id = "#dialogbox";

@@ -710,14 +710,14 @@ function setFontSize(): void {
         padding: "0px " + 100 * t + "px",
     });
     $("#buffering").css({
-        "background-size": 30 * e + "px",
+        "border-width": Math.max(2, Math.round(3 * e)) + "px",
         height: 30 * e + "px",
         left: 10 * e + "px",
         top: 10 * e + "px",
         width: 30 * e + "px",
     });
     $("#pip_buffering").css({
-        "background-size": 30 * e + "px",
+        "border-width": Math.max(2, Math.round(3 * e)) + "px",
         height: 30 * e + "px",
         right: 10 * e + "px",
         top: 10 * e + "px",
@@ -784,10 +784,12 @@ function setFontSize(): void {
             $("#channel_number").css({ width: w + "px" });
             $("#begin_time").css({ "font-size": "inherit", width: w + "px" });
             $("#end_time").css({ "font-size": "inherit", width: w + "px" });
-            $("#programm_name").css({ width: 1200 * t - w - 20 * t + "px" });
+            // Legacy: channel.width - digitWidth*12 (= begin + end columns)
+            var chW = $("#channel").width() || 1040 * t;
+            $("#programm_name").css({ width: chW - w * 2 + "px" });
             $("#nbegin_time").css({ "font-size": "inherit", width: w + "px" });
             $("#nend_time").css({ "font-size": "inherit", width: w + "px" });
-            $("#nprogramm_name").css({ width: 1200 * t - w - 20 * t + "px" });
+            $("#nprogramm_name").css({ width: chW - w * 2 + "px" });
         }
     } catch (ex) {
         console.error(ex);
