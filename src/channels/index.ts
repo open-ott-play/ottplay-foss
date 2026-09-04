@@ -247,18 +247,17 @@ export function doGetCurProg(): void {
     if (arrayGetCurProg.length === 0) return;
     var entry = arrayGetCurProg.shift();
     var chId = entry!.ch_id;
-    // Use getEPGchanelCurCached if available (set by provider), else getEPGchanelCached
+    // Provider sets window.getEPGchanelCurCached = getEPGchanelCur (callback style).
     var fetchFn = window.getEPGchanelCurCached || getEPGchanelCached;
     if (typeof fetchFn === "function") {
-        fetchFn(chId, function (_id: any, epgData: EPGEntry[] | null) {
-            setCurProg(chId, epgData, function () {
-                entry!.callback(chId);
-            });
-            // Use setTimeout to prevent infinite recursion if callback triggers another fetch
+        fetchFn(chId, function (id: any, epgData: EPGEntry[] | null) {
+            // Legacy: setCurProg(e, t, r.callback) — callback receives channel id.
+            setCurProg(id, epgData, entry!.callback);
+            // Defer next queue item so a sync getEPGchanel(null) cannot nest forever
+            // before setCurProg has a chance to set time_request.
             setTimeout(doGetCurProg, 0);
         });
     } else {
-        // No fetch function available — skip and process next
         doGetCurProg();
     }
 }
@@ -557,29 +556,31 @@ export function getCurProgData(
     channelId: number,
     callback: (chId: number) => void
 ): boolean {
-    var ch = window.channels ? window.channels[channelId] : undefined;
+    // Legacy stbPlayer.js getCurProgData — uses chanels[], nextpr advance, then queue.
+    // Do NOT sync-invoke updateChanelInfo from a cache hit: that re-enters this
+    // function on the same stack when setCurProg cannot stick time_to / time_request.
+    var ch = (window as any).chanels
+        ? (window as any).chanels[channelId]
+        : window.channels
+          ? window.channels[channelId]
+          : undefined;
+    if (!ch) return false;
     var now = Date.now() / 1000;
-    // If channel object already has current EPG data, return true immediately (sync path)
-    if (ch && ch.time_to && ch.time_to >= now) return true;
-    // If EPG was recently requested and not yet expired, skip (prevent duplicate requests)
-    if (ch && ch.time_request && ch.time_request > now) return false;
-    // Check the EPG cache as fallback
-    var cached = epg[channelId];
-    if (cached) {
-        var idx = cached.findIndex(function (entry: EPGEntry) {
-            return entry.time_to >= now && entry.time <= now;
-        });
-        if (idx !== -1) {
-            setCurProg(channelId, cached, function () {
-                callback(channelId);
-            });
-            return true;
-        }
+    if (ch.time_to && ch.time_to >= now) return true;
+    if (ch.time_request && ch.time_request > now) return false;
+    var found = false;
+    if (ch.nextpr) {
+        var nofun =
+            typeof (window as any).nofun === "function"
+                ? (window as any).nofun
+                : function () {};
+        setCurProg(channelId, ch.nextpr, nofun);
+        ch.time_request = 0;
     }
-    // Queue EPG fetch from server (matches old stbPlayer doGetCurProg behavior)
+    if (ch.time_to && ch.time_to >= now) found = true;
     arrayGetCurProg.push({ callback: callback, ch_id: channelId });
     if (arrayGetCurProg.length < 2) doGetCurProg();
-    return false;
+    return found;
 }
 
 /**
@@ -595,44 +596,59 @@ export function getCurProgData(
 export function setCurProg(
     channelId: number,
     epgData: EPGEntry[] | null,
-    callback?: () => void
+    callback?: ((chId: number) => void) | (() => void)
 ): void {
-    if (epgData) {
-        epg[channelId] = epgData;
-        epgCashObj[channelId] = epgData;
-        // Populate channel object with current program (matching old stbPlayer behavior)
-        var ch = window.channels ? window.channels[channelId] : undefined;
-        if (ch) {
-            var sorted = epgData.slice().sort(function (
-                a: EPGEntry,
-                b: EPGEntry
-            ) {
-                return a.time - b.time;
-            });
-            var now = Date.now() / 1000;
-            var idx = sorted.findIndex(function (entry: EPGEntry) {
-                return entry.time_to >= now && entry.time <= now;
-            });
-            if (idx === -1) {
-                ch.name = "";
-                ch.time = 0;
-                ch.time_to = 0;
-                ch.descr = "";
-                ch.nextpr = null;
-                ch.time_request = now + 3600;
-                if (epgData.length > 0) ch.outdated = true;
-            } else {
-                var cur = sorted[idx];
-                ch.name = cur.name;
-                ch.time = cur.time;
-                ch.time_to = cur.time_to;
-                ch.descr = cur.descr || "";
-                ch.time_request = 0;
-                ch.nextpr = sorted.slice(idx + 1);
-            }
+    // Legacy always updates chanels[id] even when epgData is null/empty, and sets
+    // time_request=now+3600 on miss so updateChanelInfo → getCurProgData cannot
+    // re-queue forever (sync getEPGchanel(null) path).
+    var safeChannelId = Number(channelId);
+    if (!Number.isFinite(safeChannelId) || !Number.isInteger(safeChannelId))
+        return;
+    var sorted: EPGEntry[] = [];
+    var hasData = Array.isArray(epgData) && epgData.length > 0;
+    if (hasData) {
+        sorted = epgData!.slice().sort(function (a: EPGEntry, b: EPGEntry) {
+            return a.time - b.time;
+        });
+        epg[safeChannelId] = sorted;
+        epgCashObj[safeChannelId] = sorted;
+    }
+    var now = Date.now() / 1000;
+    var idx = sorted.findIndex(function (entry: EPGEntry) {
+        return entry.time_to >= now && entry.time <= now;
+    });
+    var ch = (window as any).chanels
+        ? (window as any).chanels[safeChannelId]
+        : window.channels
+          ? window.channels[safeChannelId]
+          : undefined;
+    if (ch) {
+        var nextCount =
+            typeof (window as any).sNextCount === "number"
+                ? (window as any).sNextCount
+                : 0;
+        if (idx === -1) {
+            ch.name = "";
+            ch.time = 0;
+            ch.time_to = 0;
+            ch.descr = "";
+            ch.nextpr = null;
+            ch.time_request = now + 3600;
+            if (hasData) ch.outdated = true;
+        } else {
+            var cur = sorted[idx];
+            ch.name = cur.name;
+            ch.time = cur.time;
+            ch.time_to = cur.time_to;
+            ch.descr = cur.descr || "";
+            ch.time_request = 0;
+            if (cur.icon !== undefined) ch.icon = cur.icon;
+            ch.nextpr = sorted.slice(idx + 1, idx + 1 + nextCount + 1);
+            if (ch.nextpr.length === 0) ch.nextpr = null;
+            if (typeof ch.outdated !== "undefined") delete ch.outdated;
         }
     }
-    if (callback) callback();
+    if (callback) (callback as (chId: number) => void)(safeChannelId);
 }
 
 /**
