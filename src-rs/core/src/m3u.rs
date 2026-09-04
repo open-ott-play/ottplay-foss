@@ -207,3 +207,123 @@ pub fn compute_epg_hash(identifier: &str) -> String {
     identifier.hash(&mut h);
     format!("{:016x}", h.finish() & 0xFFFFFFFFFFFF)
 }
+
+
+/// Parse one legacy match id-line: `id-h-h-namehash[~srcs]~urlencodedName`.
+fn parse_match_line(line: &str) -> Option<(String, String, String)> {
+    let line = line.trim();
+    if line.is_empty() {
+        return None;
+    }
+    let (hash_part, ch_name) = match line.rfind('~') {
+        Some(idx) => (
+            &line[..idx],
+            urlencoding::decode(&line[idx + 1..])
+                .unwrap_or_else(|_| line[idx + 1..].into())
+                .into_owned(),
+        ),
+        None => (line, String::new()),
+    };
+    let hash_core = hash_part.split('~').next().unwrap_or(hash_part);
+    let fields: Vec<&str> = hash_core.split('-').collect();
+    if fields.len() < 4 {
+        return None;
+    }
+    Some((fields[0].to_string(), fields[3].to_string(), ch_name))
+}
+
+/// Legacy FOSS text body for POST /m3u/match-channels.
+/// Body: `{json}\n\t\n{optional raw}\n\t\n{id lines}`
+/// Response: `{}\n\t\n{ch_id~local~epg_hash}\n\t\n{local~/}`
+pub fn match_channels_text(
+    body: &str,
+    xmltv_ch: &Channels,
+    epg_to_xmltv: &mut HashMap<String, String>,
+    time_shift_by_epg: &mut HashMap<String, i64>,
+) -> String {
+    let parts: Vec<&str> = body.split("\n\t\n").collect();
+    let id_section = parts.get(2).copied().unwrap_or("");
+    let mut ch_mappings: Vec<String> = Vec::new();
+
+    for line in id_section.lines() {
+        let Some((ch_id, name_hash, ch_name)) = parse_match_line(line) else {
+            continue;
+        };
+
+        if !xmltv_ch.is_empty() && !ch_name.is_empty() {
+            let time_shift = xmltv::extract_time_shift(&ch_name);
+            let base_name = xmltv::strip_time_shift(&ch_name);
+            if let Some((xmltv_id, _score)) = xmltv::match_channel(&base_name, xmltv_ch) {
+                let epg_hash = compute_epg_hash(&format!("{xmltv_id}|{time_shift}"));
+                epg_to_xmltv.insert(epg_hash.clone(), xmltv_id);
+                if time_shift != 0 {
+                    time_shift_by_epg.insert(epg_hash.clone(), time_shift);
+                }
+                ch_mappings.push(format!("{ch_id}~local~{epg_hash}"));
+                continue;
+            }
+        }
+
+        let epg_url = if !name_hash.is_empty() && name_hash != "0" {
+            name_hash
+        } else {
+            ch_id.clone()
+        };
+        ch_mappings.push(format!("{ch_id}~local~{epg_url}"));
+    }
+
+    format!(
+        "{{}}\n\t\n{}\n\t\nlocal~/",
+        ch_mappings.join("\n")
+    )
+}
+
+/// Legacy FOSS text body for POST /m3u/match-logos.
+/// Response: `{}\n\t\n{ch_id~logo_url}`
+pub fn match_logos_text(body: &str, xmltv_ch: &Channels) -> String {
+    let parts: Vec<&str> = body.split("\n\t\n").collect();
+    let id_section = parts.get(2).copied().unwrap_or("");
+    let mut log_mappings: Vec<String> = Vec::new();
+
+    for line in id_section.lines() {
+        let Some((ch_id, _name_hash, ch_name)) = parse_match_line(line) else {
+            continue;
+        };
+
+        let logo_url = if xmltv_ch.is_empty() || ch_name.is_empty() {
+            format!(
+                "/logo/{}.svg?ch={}",
+                ch_id,
+                urlencoding::encode(&ch_name)
+            )
+        } else {
+            let base_name = xmltv::strip_time_shift(&ch_name);
+            match xmltv::match_channel(&base_name, xmltv_ch) {
+                Some((xmltv_id, _)) => xmltv_ch
+                    .get(&xmltv_id)
+                    .and_then(|c| {
+                        if c.icon.is_empty() {
+                            None
+                        } else {
+                            Some(c.icon.clone())
+                        }
+                    })
+                    .unwrap_or_else(|| {
+                        format!(
+                            "/logo/{}.svg?ch={}",
+                            ch_id,
+                            urlencoding::encode(&ch_name)
+                        )
+                    }),
+                None => format!(
+                    "/logo/{}.svg?ch={}",
+                    ch_id,
+                    urlencoding::encode(&ch_name)
+                ),
+            }
+        };
+        log_mappings.push(format!("{ch_id}~{logo_url}"));
+    }
+
+    format!("{{}}\n\t\n{}", log_mappings.join("\n"))
+}
