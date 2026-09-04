@@ -584,6 +584,7 @@ export function stbPlayPip(url: string): void {
     }
     videoPip!.play();
     $("#videopip").show();
+    setPipPosition();
 }
 
 /**
@@ -606,27 +607,29 @@ export function stbStopPip(): void {
  * Side effects: Mutates #videopip CSS dimensions and position.
  */
 export function setPipPosition(): void {
-    var w = window.innerWidth / 1280,
-        h = window.innerHeight / 720,
-        m = Math.min(w, h);
-    $("#videopip").css({
-        height: pipPresets[pipSize].y * m + "px",
-        width: pipPresets[pipSize].x * m + "px",
-    });
-    switch (pipPosition) {
-        case 0:
-            $("#videopip").css({ right: 20 * m + "px", top: 20 * m + "px" });
-            break;
-        case 1:
-            $("#videopip").css({ bottom: 20 * m + "px", right: 20 * m + "px" });
-            break;
-        case 2:
-            $("#videopip").css({ bottom: 20 * m + "px", left: 20 * m + "px" });
-            break;
-        case 3:
-            $("#videopip").css({ left: 20 * m + "px", top: 20 * m + "px" });
-            break;
+    // Legacy setPipPosBuf reads sPipSize / sPipPos globals — keep in sync.
+    var win = window as any;
+    function num(v: any, fallback: number): number {
+        var n = typeof v === "number" ? v : parseInt(v, 10);
+        return isNaN(n) ? fallback : n;
     }
+    if (win.sPipSize !== undefined) pipSize = num(win.sPipSize, pipSize);
+    if (win.sPipPos !== undefined) pipPosition = num(win.sPipPos, pipPosition);
+    pipSize = Math.max(0, Math.min(pipPresets.length - 1, pipSize | 0));
+    pipPosition = (((pipPosition | 0) % 4) + 4) % 4;
+
+    var m = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    // Legacy: set all four sides (auto clears the opposite corner).
+    var css: any = {
+        bottom: pipPosition == 1 || pipPosition == 2 ? 20 * m + "px" : "auto",
+        height: pipPresets[pipSize].y * m + "px",
+        left: pipPosition > 1 ? 20 * m + "px" : "auto",
+        right: pipPosition < 2 ? 20 * m + "px" : "auto",
+        top: pipPosition == 0 || pipPosition == 3 ? 20 * m + "px" : "auto",
+        width: pipPresets[pipSize].x * m + "px",
+    };
+    $("#videopip").css(css);
+    $("#pip_buffering").css(css);
 }
 
 /**
