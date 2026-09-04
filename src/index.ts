@@ -366,7 +366,9 @@ var pipCatIndex = 0;
 var previewChan: any = null;
 var previewTimer: any = null;
 
-// Popup menu
+// Popup menu — SOLE concat-time allocator for popupActions/Array/Detail.
+// Keep src/app/state.ts OFF MODULES while these `var`s exist (const/let there
+// would SyntaxError or silently fork a second array). ESM tests import state.ts.
 var popupActions: any[] = [
     toggleAspectRatio,
     toggleZoom,
