@@ -2,6 +2,7 @@
  * Display helper functions for UI manipulation
  */
 
+import { pullSettingsFromWindow } from "../app/apply-settings";
 import { bodyColor, curColor, curColorB, fontFamilyList } from "../app/state";
 import { sEditor } from "../channels";
 import { setPipPosition, stbToggleStandby } from "../core";
@@ -16,6 +17,7 @@ declare var tooltip: any;
  * Set font size for various UI elements based on window dimensions and settings
  */
 export function setFontSize(): void {
+    pullSettingsFromWindow(settings);
     (window as any).pageSize = settings.pageSize;
     const e = window.innerHeight / 720;
     const t = window.innerWidth / 1280;
@@ -221,6 +223,7 @@ export function setFontSize(): void {
  * Position the channel list panel on the left or right side of the screen
  */
 export function setListPos(): void {
+    pullSettingsFromWindow(settings);
     const e = window.innerWidth / 1280;
     const t = window.innerHeight / 720;
     const r = settings.listPosition ? 0 : 522 * e;
@@ -239,6 +242,7 @@ export function setListPos(): void {
  * Apply highlight colors from HSV settings to the DOM.
  */
 export function setColor(): void {
+    pullSettingsFromWindow(settings);
     $("body").css("color", bodyColor);
     const selCv = settings.highlightColorSel.split(",");
     (window as any).curColorB =
@@ -334,6 +338,7 @@ export function setEditor(): void {
  * Apply the configured PiP window position and size.
  */
 export function setPipPosBuf(): void {
+    pullSettingsFromWindow(settings);
     setPipPosition();
 }
 

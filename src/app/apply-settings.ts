@@ -85,3 +85,83 @@ export function applySettingsToWindow(s: PlayerSettings): void {
     w.sSHLcolorB = s.highlightColorB;
     w.sLocalCmdUrl = s.localCmdUrl;
 }
+
+/**
+ * Copy window.s* globals (updated by settings menus / saveIfChanged) back
+ * into the typed settings object so apply helpers use the values just saved.
+ */
+export function pullSettingsFromWindow(s: PlayerSettings): PlayerSettings {
+    var w = window as any;
+    function num(v: any, fallback: number): number {
+        var n = typeof v === "number" ? v : parseInt(v, 10);
+        return isNaN(n) ? fallback : n;
+    }
+    if (w.sNoSmall !== undefined) s.noSmall = num(w.sNoSmall, s.noSmall);
+    if (w.sStopPlay !== undefined) s.stopPlay = num(w.sStopPlay, s.stopPlay);
+    if (w.sPipSize !== undefined) s.pipSize = num(w.sPipSize, s.pipSize);
+    if (w.sPipPos !== undefined) s.pipPosition = num(w.sPipPos, s.pipPosition);
+    if (w.sPageSize !== undefined) s.pageSize = num(w.sPageSize, s.pageSize);
+    if (w.sFontShift !== undefined)
+        s.fontShift = num(w.sFontShift, s.fontShift);
+    if (w.sFont !== undefined) s.fontSize = num(w.sFont, s.fontSize);
+    if (w.sArrowFun !== undefined) s.arrowFun = num(w.sArrowFun, s.arrowFun);
+    if (w.sRewFun !== undefined) s.rewFun = num(w.sRewFun, s.rewFun);
+    if (w.sPNFun !== undefined) s.pnFun = num(w.sPNFun, s.pnFun);
+    if (w.sTimezone !== undefined) s.timezone = num(w.sTimezone, s.timezone);
+    if (w.sSleepTimeout !== undefined)
+        s.sleepTimeout = num(w.sSleepTimeout, s.sleepTimeout);
+    if (w.sVolumeStep !== undefined)
+        s.volumeStep = num(w.sVolumeStep, s.volumeStep);
+    if (w.sInfoTimeout !== undefined)
+        s.infoTimeout = num(w.sInfoTimeout, s.infoTimeout);
+    if (w.sOsdOpacity !== undefined)
+        s.osdOpacity = num(w.sOsdOpacity, s.osdOpacity);
+    if (w.sListPos !== undefined)
+        s.listPosition = num(w.sListPos, s.listPosition);
+    if (w.sEditor !== undefined) s.editor = num(w.sEditor, s.editor);
+    if (w.sPermanentTime !== undefined)
+        s.permanentTime = num(w.sPermanentTime, s.permanentTime);
+    if (w.sGrapI !== undefined) s.grapI = num(w.sGrapI, s.grapI);
+    if (w.s10resum !== undefined)
+        s.res10Resume = num(w.s10resum, s.res10Resume);
+    if (w.sPrevCount !== undefined)
+        s.prevCount = num(w.sPrevCount, s.prevCount);
+    if (w.sMedCount !== undefined) s.medCount = num(w.sMedCount, s.medCount);
+    if (w.sPlayers !== undefined) s.players = num(w.sPlayers, s.players);
+    if (w.sBufSize !== undefined) s.bufSize = num(w.sBufSize, s.bufSize);
+    if (w.sAutorun !== undefined) s.autorun = num(w.sAutorun, s.autorun);
+    if (typeof w.sSHLcolor === "string") s.highlightColor = w.sSHLcolor;
+    if (typeof w.sSHLcolSel === "string") s.highlightColorSel = w.sSHLcolSel;
+    if (typeof w.sSHLcolorB === "string") s.highlightColorB = w.sSHLcolorB;
+    if (w.sShowNum !== undefined) s.showNumber = num(w.sShowNum, s.showNumber);
+    if (w.sShowPikon !== undefined)
+        s.showPicon = num(w.sShowPikon, s.showPicon);
+    if (w.sShowName !== undefined) s.showName = num(w.sShowName, s.showName);
+    if (w.sShowProgress !== undefined)
+        s.showProgress = num(w.sShowProgress, s.showProgress);
+    if (w.sShowArchive !== undefined)
+        s.showArchive = num(w.sShowArchive, s.showArchive);
+    if (w.sShowScroll !== undefined)
+        s.showScroll = num(w.sShowScroll, s.showScroll);
+    if (w.sShowDescr !== undefined)
+        s.showDescription = num(w.sShowDescr, s.showDescription);
+    if (w.sShowProgram !== undefined)
+        s.showProgram = num(w.sShowProgram, s.showProgram);
+    if (w.sPreview !== undefined) s.preview = num(w.sPreview, s.preview);
+    if (w.sNextCount !== undefined)
+        s.nextCount = num(w.sNextCount, s.nextCount);
+    if (w.sNextCountL !== undefined)
+        s.nextCountList = num(w.sNextCountL, s.nextCountList);
+    if (w.sFavorites !== undefined)
+        s.favorites = num(w.sFavorites, s.favorites);
+    if (w.sInfoSlide !== undefined)
+        s.infoSlide = num(w.sInfoSlide, s.infoSlide);
+    if (w.sInfoSwitch !== undefined)
+        s.infoSwitch = num(w.sInfoSwitch, s.infoSwitch);
+    if (w.sInfoChange !== undefined)
+        s.infoChange = num(w.sInfoChange, s.infoChange);
+    if (w.sInfoRew !== undefined) s.infoRew = num(w.sInfoRew, s.infoRew);
+    if (w.sThumbnail !== undefined)
+        s.thumbnail = num(w.sThumbnail, s.thumbnail);
+    return s;
+}
