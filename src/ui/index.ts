@@ -2802,6 +2802,22 @@ function _ottplaylang(): any {
     return undefined;
 }
 
+/** Cyrillic fallback when UI language has no OSK alphabet (e.g. old _eng.js). */
+var _keysRu = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя";
+
+/** Alphabet for the non-English OSK layout. */
+function _localizedAlphabet(): string {
+    var t = _("alhabet");
+    if (
+        typeof t === "string" &&
+        t.length > 0 &&
+        t !== "alhabet" &&
+        t !== _keysL
+    )
+        return t;
+    return _keysRu;
+}
+
 /** True when keyStrings.alhabet is a real alphabet, not the English placeholder. */
 function _hasLocalizedAlphabet(): boolean {
     var t = _("alhabet");
@@ -2811,16 +2827,16 @@ function _hasLocalizedAlphabet(): boolean {
 }
 
 /**
- * Legacy stbPlayer.js:3993-3994 hides Lang only when ottplaylang == "_eng".
- * Also show the key when a localized alphabet is actually loaded (keyStrings).
+ * Always show Lang: English UI still needs a Cyrillic layout for search/edit.
+ * (Legacy hid Lang when ottplaylang == "_eng".)
  */
 function _showLangKey(): boolean {
-    return _ottplaylang() != "_eng" || _hasLocalizedAlphabet();
+    return true;
 }
 
 function _setLang(e: boolean): void {
-    // Legacy: var t = _("alhabet"); — localized alphabet from keyStrings
-    var t: string = _("alhabet");
+    // Non-English layout: keyStrings.alhabet, or Russian fallback for _eng.
+    var t: string = _localizedAlphabet();
     _keyE = e;
     var r = e ? _keysL : t;
     var s = Math.floor(r.length / 10);
@@ -2954,7 +2970,10 @@ export function showEdit(): void {
                 "",
                 _keysSymbol[1].s
                     ? _keyE
-                        ? _("lang") || "Lang"
+                        ? // On English UI _("lang") is "English" — offer Русский instead.
+                          _ottplaylang() == "_eng"
+                            ? "Русский"
+                            : _("lang") || "Lang"
                         : "English"
                     : "",
                 strFF
