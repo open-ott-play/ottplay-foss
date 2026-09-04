@@ -1561,6 +1561,10 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                 " id=" +
                 chId
             );
+        // FOSS 1280.css .item uses padding:0 14px (border-box) and .img
+        // margin-right:8px — gold had neither. Without subtracting those,
+        // float:right .progress_div wraps and is clipped by overflow:hidden.
+        var styleExtra = 28 + (pikonSize ? 8 : 0);
         var textW =
             itemWith -
             numWidth -
@@ -1568,7 +1572,8 @@ function _channelsList(catIdx: number, channelIdx: number): void {
             pikonMargin -
             progWidth -
             2 * progMargin -
-            archWidth * 3;
+            archWidth * 3 -
+            styleExtra;
         var progName = getCurProgData(chId, updateChanelList) ? ch.name : "";
         if (ch.outdated === true)
             progName =
