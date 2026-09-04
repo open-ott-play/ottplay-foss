@@ -301,6 +301,16 @@ export function stbPlay(url: string, position?: number): void {
                             return;
                         }
                         hlsInstance.currentLevel = cap;
+                    } else {
+                        // hls-proxy always exposes a single STREAM-INF, so
+                        // drop-level never runs for proxied live channels.
+                        console.log(
+                            "[HLS] MEDIA_ERROR: skip drop level (levels=" +
+                                lvls.length +
+                                " failed=" +
+                                failed +
+                                ")"
+                        );
                     }
                     if (!_mediaRecovered) {
                         _mediaRecovered = true;
@@ -343,14 +353,14 @@ export function stbPlay(url: string, position?: number): void {
                                 "[HLS] MEDIA_ERROR twice, no native HLS" +
                                     (det ? " details=" + det : "") +
                                     (appendFail
-                                        ? " (likely unsupported audio e.g. mp2/ac3)"
+                                        ? " (HD Orig often mp2/ac3 + strict Chrome decode)"
                                         : "")
                             );
                             $("#buffering").hide();
                             $("#video_res").html(
                                 "<br/>error DECODE" +
-                                    (appendFail ? " unsupported audio" : "") +
-                                    " — try HD remux (not HD Orig)"
+                                    (appendFail ? " (HD Orig)" : "") +
+                                    " — try HD remux / AAC"
                             );
                         }
                     }
