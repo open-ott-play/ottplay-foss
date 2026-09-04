@@ -793,11 +793,7 @@ export function loadProv(): void {
         // one shared popupActions/popupArray/popupDetail identity).
         var wPop = window as any;
         if (wPop.popupActions && wPop.popupActions.length) {
-            popupActions.splice(
-                0,
-                popupActions.length,
-                ...wPop.popupActions
-            );
+            popupActions.splice(0, popupActions.length, ...wPop.popupActions);
             popupArray.splice(0, popupArray.length, ...wPop.popupArray);
             popupDetail.splice(0, popupDetail.length, ...wPop.popupDetail);
         } else {
