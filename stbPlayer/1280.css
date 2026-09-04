@@ -165,13 +165,13 @@ body {
     top: 0px;
     right: 0px;
     left: 0px;
+    box-sizing: border-box;
     height: 30px;
-    overflow: hidden;
-    white-space: nowrap;
     padding: 0 6px;
+    overflow: hidden;
     font-weight: bold;
     letter-spacing: 0.02em;
-    box-sizing: border-box;
+    white-space: nowrap;
 }
 #listTime {
     position: absolute;
@@ -179,8 +179,8 @@ body {
     right: 0px;
     width: 80px;
     font-size: 22px;
-    opacity: 0.92;
     text-align: right;
+    opacity: 0.92;
 }
 #list_s {
     font-size: 16px;
@@ -191,9 +191,9 @@ body {
     right: 0px;
     bottom: 0px;
     left: 0px;
+    box-sizing: border-box;
     height: 30px;
     padding: 0 6px;
-    box-sizing: border-box;
     opacity: 0.95;
 }
 #listDetail {
@@ -201,12 +201,12 @@ body {
     top: 330px;
     bottom: 31px;
     left: 0px;
+    box-sizing: border-box;
     width: 514px;
     padding: 8px 10px;
     overflow: hidden;
     line-height: 1.35;
     color: #d0d0d8;
-    box-sizing: border-box;
 }
 #listPopUp {
     position: absolute;
@@ -233,13 +233,13 @@ body {
     right: 0px;
     bottom: 31px;
     left: 522px;
+    box-sizing: border-box;
     display: none;
     padding: 12px 14px;
     overflow: hidden;
     font-size: smaller;
     line-height: 1.4;
     color: #d0d0d8;
-    box-sizing: border-box;
 }
 #listEdit {
     position: absolute;
@@ -247,10 +247,10 @@ body {
     right: 0px;
     bottom: 31px;
     left: 522px;
+    box-sizing: border-box;
     display: none;
     padding: 12px 14px;
     line-height: 1.35;
-    box-sizing: border-box;
 }
 #listEdit .osk-cap {
     margin-bottom: 0.35em;
@@ -258,36 +258,37 @@ body {
     letter-spacing: 0.02em;
 }
 #listEdit #ee {
+    box-sizing: border-box;
     width: 100%;
     min-height: 1.6em;
-    margin: 0 0 0.75em 0;
     padding: 0.45em 0.65em;
-    white-space: pre-wrap;
+    margin: 0 0 0.75em 0;
     word-wrap: break-word;
+    white-space: pre-wrap;
     background-color: rgba(0, 0, 0, 0.35);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 6px;
-    box-sizing: border-box;
 }
 #listEdit .osk-key {
+    box-sizing: border-box;
     display: inline-block;
     margin: 2px 1px;
-    text-align: center;
     vertical-align: middle;
+    text-align: center;
     background-color: rgba(255, 255, 255, 0.07);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 6px;
-    box-sizing: border-box;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
 }
 #listEdit #cursor {
     display: inline-block;
-    vertical-align: top;
     width: 3px;
     height: 1.2em;
+    vertical-align: top;
     border-radius: 1px;
 }
 #listEdit input#editvar {
+    box-sizing: border-box;
     width: 95%;
     padding: 0.35em 0.5em;
     font-size: 150%;
@@ -295,25 +296,24 @@ body {
     background-color: rgba(0, 0, 0, 0.45);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 6px;
-    box-sizing: border-box;
 }
 #listAbout .osk-key {
+    box-sizing: border-box;
     display: inline-block;
     margin: 2px 1px;
     overflow: hidden;
-    text-align: center;
     vertical-align: middle;
+    text-align: center;
     background-color: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 6px;
-    box-sizing: border-box;
 }
 .item {
+    box-sizing: border-box;
+    padding: 0 10px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    padding: 0 10px;
-    box-sizing: border-box;
     border-radius: 4px;
 }
 .progress_div {
@@ -343,15 +343,15 @@ body {
 }
 #picon {
     float: left;
+    box-sizing: border-box;
     width: 80px;
     height: 80px;
+    background-color: rgba(0, 0, 0, 0.25);
     background-repeat: no-repeat;
     background-position: center center;
     background-size: contain;
-    background-color: rgba(0, 0, 0, 0.25);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 10px;
-    box-sizing: border-box;
 }
 #channel {
     float: left;
@@ -417,8 +417,8 @@ body {
     width: 70px;
     font-size: 22px;
     vertical-align: bottom;
-    text-align: right;
     color: #e8e8e8;
+    text-align: right;
 }
 #programm_name {
     display: inline-block;
@@ -439,8 +439,8 @@ body {
     width: 70px;
     font-size: 20px;
     vertical-align: bottom;
-    text-align: right;
     color: #a8a8b8;
+    text-align: right;
 }
 #nprogramm_name {
     display: inline-block;
@@ -454,8 +454,8 @@ body {
     float: right;
     width: 80px;
     font-size: 22px;
-    white-space: nowrap;
     text-align: right;
+    white-space: nowrap;
     opacity: 0.92;
 }
 #current_s {
@@ -478,8 +478,8 @@ body {
     letter-spacing: 0.01em;
 }
 #programm_duration {
-    opacity: 0.8;
     font-size: 0.95em;
+    opacity: 0.8;
 }
 @-webkit-keyframes ott-spin {
     from {
@@ -501,10 +501,10 @@ body {
 #pip_buffering,
 .ott-spinner {
     box-sizing: border-box;
+    background: none;
     border: 3px solid rgba(255, 255, 255, 0.22);
     border-top-color: #fbc02d;
     border-radius: 50%;
-    background: none;
     -webkit-animation: ott-spin 0.7s linear infinite;
     animation: ott-spin 0.7s linear infinite;
 }
@@ -544,11 +544,11 @@ body {
     display: none;
     width: 14px;
     height: 20%;
+    overflow: hidden;
     background-color: #2e7d32;
     border: 4px solid rgba(0, 0, 0, 0.75);
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
-    overflow: hidden;
 }
 #volume {
     width: 100%;
