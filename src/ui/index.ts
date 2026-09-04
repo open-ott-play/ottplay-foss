@@ -3003,10 +3003,14 @@ export function showEditKey1(_initKeys: any): void {
  */
 export function showEdit(): void {
     var e = $("#listEdit");
-    var t = (e.width() || 600) / 12;
-    var r = ((window as any).editCaption || "") + ":<br/><br/>";
-    r +=
-        '<div id="ee" style="width:100%;white-space:pre-wrap;word-wrap:break-word;"></div>';
+    /* Slightly smaller than /12 so .osk-key margins fit a 10-key row. */
+    var t = ((e.width() || 600) / 12.4) | 0;
+    if (t < 24) t = 24;
+    var r =
+        '<div class="osk-cap">' +
+        ((window as any).editCaption || "") +
+        "</div>";
+    r += '<div id="ee"></div>';
     for (var s = 0; s < _keys.length; s++) {
         if (s % 10 === 0) r += "<br/>";
         var sym = _keysSymbol[_keys.charCodeAt(s)];
@@ -3014,13 +3018,13 @@ export function showEdit(): void {
         r +=
             '<div id="ik' +
             s +
-            '" onclick="clickKey(' +
+            '" class="osk-key" onclick="clickKey(' +
             s +
-            ');" style="display:inline-block;width:' +
+            ');" style="width:' +
             t +
             "px;height:" +
             t +
-            "px;text-align:center;vertical-align:middle;line-height:" +
+            "px;line-height:" +
             t +
             'px;">' +
             n +
@@ -3068,9 +3072,9 @@ export function showEdit(): void {
 export function _changeEdit(): void {
     $("#ee").html(
         (window as any).editvar.substr(0, editPos) +
-            '<div id="cursor" style="display:inline-block;vertical-align:top;background-color:' +
+            '<div id="cursor" style="background-color:' +
             (window as any).curColor +
-            ';width:3px;height:1.2em;"></div>' +
+            ';"></div>' +
             (window as any).editvar.substr(editPos)
     );
     clearInterval(cursorInterval);
@@ -3266,9 +3270,9 @@ export function showEditKey2(_initKeys?: number[]): void {
     html +=
         '<br/><input type="text" id="editvar" value="' +
         val.replace(/"/g, "&quot;") +
-        '" style="background-color: black; color:' +
+        '" style="color:' +
         ((window as any).curColor || "#fff") +
-        '; font-size:150%; width: 95%;" autofocus><br/><br/>';
+        ';" autofocus><br/><br/>';
     html +=
         "<br/>" +
         (
@@ -3506,11 +3510,11 @@ export function selectValue(t: any): void {
         html +=
             '<div id="ik' +
             i +
-            '" onclick="clickVal(' +
+            '" class="osk-key" onclick="clickVal(' +
             i +
-            ');" style="display:inline-block;width:' +
+            ');" style="width:' +
             98 / n +
-            "%;overflow:hidden;text-align:center;vertical-align:middle;line-height:" +
+            "%;line-height:" +
             lineHeight +
             'px;">' +
             r[i] +
