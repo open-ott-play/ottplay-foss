@@ -70,13 +70,19 @@ body {
 #numprog {
     top: 20px;
     left: 20px;
-    padding: 10px;
+    padding: 8px 14px;
+    font-weight: bold;
+    letter-spacing: 0.04em;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 #permanentTime {
     position: absolute;
     top: 20px;
     right: 20px;
-    padding: 10px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 #launch {
     position: absolute;
@@ -87,9 +93,6 @@ body {
     padding: 100px;
     font-size: 16px;
     background-color: black;
-    background-image: url(/stbPlayer/buffering.gif);
-    background-repeat: no-repeat;
-    background-position: center center;
 }
 .logo {
     position: absolute;
@@ -118,7 +121,7 @@ body {
     display: none;
 }
 .list_back {
-    background-color: black;
+    background-color: rgba(8, 8, 12, 0.92);
 }
 #_t {
     position: absolute;
@@ -162,8 +165,12 @@ body {
     top: 0px;
     right: 0px;
     left: 0px;
+    box-sizing: border-box;
     height: 30px;
+    padding: 0 6px;
     overflow: hidden;
+    font-weight: bold;
+    letter-spacing: 0.02em;
     white-space: nowrap;
 }
 #listTime {
@@ -172,34 +179,45 @@ body {
     right: 0px;
     width: 80px;
     font-size: 22px;
+    text-align: right;
+    opacity: 0.92;
 }
 #list_s {
     font-size: 16px;
+    opacity: 0.75;
 }
 #listPodval {
     position: absolute;
     right: 0px;
     bottom: 0px;
     left: 0px;
+    box-sizing: border-box;
     height: 30px;
+    padding: 0 6px;
+    opacity: 0.95;
 }
 #listDetail {
     position: absolute;
     top: 330px;
     bottom: 31px;
     left: 0px;
+    box-sizing: border-box;
     width: 514px;
-    padding: 4px;
+    padding: 8px 10px;
     overflow: hidden;
+    line-height: 1.35;
+    color: #d0d0d8;
 }
 #listPopUp {
     position: absolute;
     bottom: 31px;
     left: 0px;
     display: none;
-    padding: 10px;
+    padding: 12px 14px;
     margin: 10px;
-    background-color: black;
+    background-color: rgba(12, 12, 18, 0.96);
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
 }
 #listIn {
     position: absolute;
@@ -215,10 +233,13 @@ body {
     right: 0px;
     bottom: 31px;
     left: 522px;
+    box-sizing: border-box;
     display: none;
-    padding: 10px;
+    padding: 12px 14px;
     overflow: hidden;
     font-size: smaller;
+    line-height: 1.4;
+    color: #d0d0d8;
 }
 #listEdit {
     position: absolute;
@@ -226,40 +247,111 @@ body {
     right: 0px;
     bottom: 31px;
     left: 522px;
+    box-sizing: border-box;
     display: none;
-    padding: 10px;
+    padding: 12px 14px;
+    line-height: 1.35;
+}
+#listEdit .osk-cap {
+    margin-bottom: 0.35em;
+    font-weight: bold;
+    letter-spacing: 0.02em;
+}
+#listEdit #ee {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 1.6em;
+    padding: 0.45em 0.65em;
+    margin: 0 0 0.75em 0;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    background-color: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+}
+#listEdit .osk-key {
+    box-sizing: border-box;
+    display: inline-block;
+    margin: 2px 1px;
+    vertical-align: middle;
+    text-align: center;
+    background-color: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+#listEdit #cursor {
+    display: inline-block;
+    width: 3px;
+    height: 1.2em;
+    vertical-align: top;
+    border-radius: 1px;
+}
+#listEdit input#editvar {
+    box-sizing: border-box;
+    width: 95%;
+    padding: 0.35em 0.5em;
+    font-size: 150%;
+    color: #f0f0f0;
+    background-color: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+}
+#listAbout .osk-key {
+    box-sizing: border-box;
+    display: inline-block;
+    margin: 2px 1px;
+    overflow: hidden;
+    vertical-align: middle;
+    text-align: center;
+    background-color: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
 }
 .item {
+    box-sizing: border-box;
+    padding: 0 10px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    border-radius: 4px;
 }
 .progress_div {
     float: right;
-    background-color: #446;
+    overflow: hidden;
+    background-color: rgba(68, 68, 102, 0.55);
+    border-radius: 3px;
 }
 .img {
     float: left;
     height: 100%;
+    margin-right: 8px;
     background-repeat: no-repeat;
     background-position: center center;
     background-size: contain;
+    border-radius: 4px;
 }
 #info1 {
     right: 0px;
     bottom: 0px;
     left: 0px;
     display: none;
-    padding: 20px;
+    padding: 18px 22px 22px 22px;
     overflow: hidden;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
 }
 #picon {
     float: left;
+    box-sizing: border-box;
     width: 80px;
     height: 80px;
+    background-color: rgba(0, 0, 0, 0.25);
     background-repeat: no-repeat;
     background-position: center center;
     background-size: contain;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
 }
 #channel {
     float: left;
@@ -271,45 +363,61 @@ body {
 #channel_number {
     float: left;
     width: 70px;
+    font-weight: bold;
+    opacity: 0.9;
+}
+#channel_name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: bold;
+    letter-spacing: 0.01em;
 }
 #progress_div {
     width: 100%;
-    margin: 2px 0px;
-    background-color: #446;
+    margin: 6px 0px 4px 0px;
+    overflow: hidden;
+    background-color: rgba(68, 68, 102, 0.55);
+    border-radius: 4px;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 #progress {
-    height: 6px;
+    height: 8px;
+    border-radius: 4px 0 0 4px;
 }
 #progress_r {
     float: right;
-    height: 6px;
-    background-color: #446;
+    height: 8px;
+    background-color: rgba(68, 68, 102, 0.85);
 }
 #progress_div .tooltip {
     position: fixed;
     display: none;
     background-color: #600;
     border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
 }
 #progress_div .tooltip span {
     position: relative;
     top: -1.5em;
-    padding: 0px 0.3em;
+    padding: 0px 0.35em;
     text-align: center;
     background-color: #446;
-    border-radius: 0.2em;
+    border-radius: 0.25em;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 #begin_time {
     display: inline-block;
     width: 70px;
     font-size: 22px;
     vertical-align: bottom;
+    color: #e8e8e8;
 }
 #end_time {
     display: inline-block;
     width: 70px;
     font-size: 22px;
     vertical-align: bottom;
+    color: #e8e8e8;
     text-align: right;
 }
 #programm_name {
@@ -322,14 +430,16 @@ body {
 #nbegin_time {
     display: inline-block;
     width: 70px;
-    font-size: 22px;
+    font-size: 20px;
     vertical-align: bottom;
+    color: #a8a8b8;
 }
 #nend_time {
     display: inline-block;
     width: 70px;
-    font-size: 22px;
+    font-size: 20px;
     vertical-align: bottom;
+    color: #a8a8b8;
     text-align: right;
 }
 #nprogramm_name {
@@ -338,36 +448,83 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: bottom;
+    color: #a8a8b8;
 }
 #data {
     float: right;
     width: 80px;
     font-size: 22px;
+    text-align: right;
     white-space: nowrap;
+    opacity: 0.92;
 }
 #current_s {
     font-size: 16px;
+    opacity: 0.75;
 }
 #video_res {
     font-size: 16px;
+    opacity: 0.75;
 }
 #descr {
     padding: 0px 100px;
-    margin: 0px 0px 20px 0px;
+    margin: 0px 0px 16px 0px;
+    line-height: 1.35;
+    color: #d8d8e0;
+}
+#programm_name2 {
+    margin-bottom: 4px;
+    font-weight: bold;
+    letter-spacing: 0.01em;
+}
+#programm_duration {
+    font-size: 0.95em;
+    opacity: 0.8;
+}
+@-webkit-keyframes ott-spin {
+    from {
+        -webkit-transform: rotate(0deg);
+    }
+    to {
+        -webkit-transform: rotate(360deg);
+    }
+}
+@keyframes ott-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+#buffering,
+#pip_buffering,
+.ott-spinner {
+    box-sizing: border-box;
+    background: none;
+    border: 3px solid rgba(255, 255, 255, 0.22);
+    border-top-color: #fbc02d;
+    border-radius: 50%;
+    -webkit-animation: ott-spin 0.7s linear infinite;
+    animation: ott-spin 0.7s linear infinite;
 }
 #buffering {
     position: absolute;
     display: none;
-    background-image: url(/stbPlayer/buffering.gif);
-    background-repeat: no-repeat;
-    background-position: center center;
+    width: 30px;
+    height: 30px;
 }
 #pip_buffering {
     position: absolute;
     display: none;
-    background-image: url(/stbPlayer/buffering.gif);
-    background-repeat: no-repeat;
-    background-position: center center;
+    width: 30px;
+    height: 30px;
+}
+.ott-spinner {
+    display: block;
+    width: 40px;
+    height: 40px;
+    margin: 0.6em auto;
 }
 #mute {
     position: absolute;
@@ -385,15 +542,18 @@ body {
     top: 40%;
     left: 10px;
     display: none;
-    width: 15px;
+    width: 14px;
     height: 20%;
-    background-color: green;
-    border: 5px solid black;
+    overflow: hidden;
+    background-color: #2e7d32;
+    border: 4px solid rgba(0, 0, 0, 0.75);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
 #volume {
     width: 100%;
     height: 50%;
-    background-color: black;
+    background-color: rgba(0, 0, 0, 0.75);
 }
 #dialogbox {
     position: absolute;
@@ -401,29 +561,32 @@ body {
     min-width: 30%;
     max-width: 80%;
     max-height: 90%;
-    padding: 10px;
+    padding: 14px 16px;
     overflow: hidden;
+    line-height: 1.4;
+    border-radius: 10px;
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.55);
 }
 .btn {
     display: inline-block;
     min-width: 1em;
-    padding: 0em 0.3em;
+    padding: 0.05em 0.4em;
     margin-top: 0.08em;
     font-size: smaller;
     font-weight: bold;
-    line-height: 1.2em;
+    line-height: 1.25em;
     vertical-align: text-top;
     text-align: center;
     text-decoration: none;
-    background-color: #555;
+    background-color: #4a4a52;
     border: 0.02em solid #212121;
-    border-radius: 0.15em;
+    border-radius: 0.3em;
     box-shadow:
-        0 0.1em #ffffff33 inset,
-        0.02em 0.01em 0.1em 0 #00000080;
+        0 0.1em #ffffff22 inset,
+        0.02em 0.02em 0.12em 0 #00000080;
 }
 .btn:hover {
-    background: #333;
+    background: #3a3a42;
 }
 .red {
     background-color: #d32f2f;
@@ -462,12 +625,12 @@ body {
     color: #bdbdbd;
 }
 .epg-entry {
-    padding: 2px 0;
+    padding: 4px 0;
 }
 .epg-time {
     display: inline-block;
     width: 70px;
-    color: #bdbdbd;
+    color: #a8a8b8;
 }
 .epg-name {
     font-weight: bold;
@@ -475,5 +638,6 @@ body {
 .epg-descr {
     padding-left: 70px;
     font-size: smaller;
-    color: #bdbdbd;
+    line-height: 1.35;
+    color: #a8a8b8;
 }

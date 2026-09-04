@@ -761,7 +761,7 @@ export function showPage(): void {
             settings.pageSize +
             ');" style="float:right;height:100%;width:' +
             scrollWidth +
-            'px; border: 1px solid #f0f0f0;">';
+            'px; border: 1px solid rgba(240,240,240,0.35); border-radius: 4px; background-color: rgba(255,255,255,0.06);">';
         html +=
             '<div onclick="event.stopPropagation();changeSelect(-' +
             settings.pageSize +
@@ -769,7 +769,7 @@ export function showPage(): void {
             (currentPage / totalPages) * 100 +
             '%;"></div>';
         html +=
-            '<div style="background-color: #888;width:100%;height:' +
+            '<div style="background-color: rgba(180,180,200,0.85); border-radius: 3px; width:100%;height:' +
             100 / totalPages +
             '%;"></div></div>';
     } else {
@@ -1201,7 +1201,8 @@ export function updateChanelInfo(channelId: number): void {
     }
 
     // Reset progress & next program
-    if (progressDivEl) progressDivEl.style.backgroundColor = "#446";
+    if (progressDivEl)
+        progressDivEl.style.backgroundColor = "rgba(68,68,102,0.55)";
     if (progressREl) progressREl.style.width = "0%";
     if (nprogramNameEl) nprogramNameEl.innerHTML = "&nbsp; ";
     if (nbeginTimeEl) nbeginTimeEl.textContent = "";
@@ -3002,10 +3003,14 @@ export function showEditKey1(_initKeys: any): void {
  */
 export function showEdit(): void {
     var e = $("#listEdit");
-    var t = (e.width() || 600) / 12;
-    var r = ((window as any).editCaption || "") + ":<br/><br/>";
-    r +=
-        '<div id="ee" style="width:100%;white-space:pre-wrap;word-wrap:break-word;"></div>';
+    /* Slightly smaller than /12 so .osk-key margins fit a 10-key row. */
+    var t = ((e.width() || 600) / 12.4) | 0;
+    if (t < 24) t = 24;
+    var r =
+        '<div class="osk-cap">' +
+        ((window as any).editCaption || "") +
+        "</div>";
+    r += '<div id="ee"></div>';
     for (var s = 0; s < _keys.length; s++) {
         if (s % 10 === 0) r += "<br/>";
         var sym = _keysSymbol[_keys.charCodeAt(s)];
@@ -3013,13 +3018,13 @@ export function showEdit(): void {
         r +=
             '<div id="ik' +
             s +
-            '" onclick="clickKey(' +
+            '" class="osk-key" onclick="clickKey(' +
             s +
-            ');" style="display:inline-block;width:' +
+            ');" style="width:' +
             t +
             "px;height:" +
             t +
-            "px;text-align:center;vertical-align:middle;line-height:" +
+            "px;line-height:" +
             t +
             'px;">' +
             n +
@@ -3067,9 +3072,9 @@ export function showEdit(): void {
 export function _changeEdit(): void {
     $("#ee").html(
         (window as any).editvar.substr(0, editPos) +
-            '<div id="cursor" style="display:inline-block;vertical-align:top;background-color:' +
+            '<div id="cursor" style="background-color:' +
             (window as any).curColor +
-            ';width:3px;height:1.2em;"></div>' +
+            ';"></div>' +
             (window as any).editvar.substr(editPos)
     );
     clearInterval(cursorInterval);
@@ -3265,9 +3270,9 @@ export function showEditKey2(_initKeys?: number[]): void {
     html +=
         '<br/><input type="text" id="editvar" value="' +
         val.replace(/"/g, "&quot;") +
-        '" style="background-color: black; color:' +
+        '" style="color:' +
         ((window as any).curColor || "#fff") +
-        '; font-size:150%; width: 95%;" autofocus><br/><br/>';
+        ';" autofocus><br/><br/>';
     html +=
         "<br/>" +
         (
@@ -3505,11 +3510,11 @@ export function selectValue(t: any): void {
         html +=
             '<div id="ik' +
             i +
-            '" onclick="clickVal(' +
+            '" class="osk-key" onclick="clickVal(' +
             i +
-            ');" style="display:inline-block;width:' +
+            ');" style="width:' +
             98 / n +
-            "%;overflow:hidden;text-align:center;vertical-align:middle;line-height:" +
+            "%;line-height:" +
             lineHeight +
             'px;">' +
             r[i] +

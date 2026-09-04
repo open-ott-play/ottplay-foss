@@ -66,21 +66,22 @@
                 opacity: 0;
             }
         }
-        /* First paint: hide shell until 1280.css + player load.
-           Otherwise placeholder "1"s look like a column of I/l. */
-        #info,
-        #info1,
-        #list,
-        #list_osd,
-        #list_window,
-        #volume_div,
-        #mute,
-        #buffering,
-        #pip_buffering,
-        #permanentTime,
-        #numprog,
-        #dialogbox,
-        #notifications {
+        /* First paint: hide shell until CSS loads / boot ends.
+           Scoped to body.booting so !important can be lifted (jQuery .show
+           cannot override a permanent display:none !important). */
+        body.booting #info,
+        body.booting #info1,
+        body.booting #list,
+        body.booting #list_osd,
+        body.booting #list_window,
+        body.booting #volume_div,
+        body.booting #mute,
+        body.booting #buffering,
+        body.booting #pip_buffering,
+        body.booting #permanentTime,
+        body.booting #numprog,
+        body.booting #dialogbox,
+        body.booting #notifications {
             display: none !important;
         }
         #launch {
@@ -135,7 +136,7 @@
         }
         </style>
     </head>
-    <body style="background: #111; color: #ccc;">
+    <body class="booting" style="background: #111; color: #ccc;">
         <div id="permanentTime" class="osd"></div>
         <div id="info1" class="osd">
             <div id="descr">
@@ -368,6 +369,19 @@
                 if (el) el.textContent += (el.textContent ? "\n" : "") + msg;
             }
 
+
+            function clearBootHide() {
+                var b = document.body;
+                if (!b) return;
+                if (b.classList) b.classList.remove("booting");
+                else
+                    b.className = (" " + b.className + " ")
+                        .split(" booting ")
+                        .join(" ")
+                        .replace(/^\s+|\s+$/g, "");
+            }
+            window.clearBootHide = clearBootHide;
+
             function loadJS(url, cb, location, errorCb) {
                 var scriptTag = document.createElement("script");
                 scriptTag.src = url;
@@ -391,6 +405,11 @@
                 linkTag.href = url;
                 linkTag.type = "text/css";
                 linkTag.rel = "stylesheet";
+                linkTag.onload = function () {
+                    clearBootHide();
+                };
+                /* Some engines skip link onload — lift hide anyway. */
+                setTimeout(clearBootHide, 1500);
                 location.appendChild(linkTag);
             }
 
