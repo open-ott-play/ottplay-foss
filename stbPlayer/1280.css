@@ -669,3 +669,88 @@ body {
     line-height: 1.4;
     color: #c0c0cc;
 }
+
+/* liquid droplet loader for #buffering – 2026 */
+#buffering {
+    width: 48px;
+    height: 48px;
+    background: none;
+    border: none;
+    -webkit-animation: none;
+    animation: none;
+}
+#buffering::before,
+#buffering::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 28px;
+    height: 28px;
+    content: "";
+    background: #fbc02d;
+    border-radius: 50%;
+    opacity: 0.95;
+    -webkit-transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%);
+}
+#buffering::before {
+    -webkit-animation: liquid-morph 1.2s ease-in-out infinite;
+    animation: liquid-morph 1.2s ease-in-out infinite;
+}
+#buffering::after {
+    width: 20px;
+    height: 20px;
+    background: rgba(251, 192, 45, 0.7);
+    -webkit-animation: liquid-drift 1.2s ease-in-out infinite;
+    animation: liquid-drift 1.2s ease-in-out infinite;
+}
+@-webkit-keyframes liquid-morph {
+    0% {
+        -webkit-transform: translate(-50%, -50%) scale(1);
+        border-radius: 50%;
+    }
+    50% {
+        -webkit-transform: translate(-50%, -50%) scale(1.15);
+        border-radius: 45% 55% 60% 40% / 50% 60% 40% 50%;
+    }
+    100% {
+        -webkit-transform: translate(-50%, -50%) scale(1);
+        border-radius: 50%;
+    }
+}
+@keyframes liquid-morph {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+        border-radius: 50%;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.15);
+        border-radius: 45% 55% 60% 40% / 50% 60% 40% 50%;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        border-radius: 50%;
+    }
+}
+@-webkit-keyframes liquid-drift {
+    0% {
+        -webkit-transform: translate(-60%, -50%) scale(0.9);
+    }
+    50% {
+        -webkit-transform: translate(-40%, -55%) scale(1.05);
+    }
+    100% {
+        -webkit-transform: translate(-60%, -50%) scale(0.9);
+    }
+}
+@keyframes liquid-drift {
+    0% {
+        transform: translate(-60%, -50%) scale(0.9);
+    }
+    50% {
+        transform: translate(-40%, -55%) scale(1.05);
+    }
+    100% {
+        transform: translate(-60%, -50%) scale(0.9);
+    }
+}
