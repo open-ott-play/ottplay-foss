@@ -79,3 +79,6 @@ jobs:
 
       - name: Build bundle
         run: npm run build
+
+      - name: Bundle identifier snapshot (HS5)
+        run: bash scripts/check-bundle-identifiers.sh

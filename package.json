@@ -6,6 +6,7 @@
   "scripts": {
     "build": "vite build",
     "check": "ultracite check",
+    "check:bundle": "bash scripts/check-bundle-identifiers.sh",
     "fix": "ultracite fix",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
