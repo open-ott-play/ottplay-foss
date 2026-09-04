@@ -68,14 +68,14 @@ export function setFontSize(): void {
     $("#listPodval").css({ height: 30 * e + "px" });
     $("#listDetail").css({
         bottom: 30 * e + 1 + "px",
-        padding: 4 * e + "px " + 4 * t + "px",
+        padding: 8 * e + "px " + 10 * t + "px",
         top: 330 * e + "px",
         width: 514 * t + 1 + "px",
     });
     $("#listPopUp").css({
         bottom: 30 * e + 1 + "px",
         margin: 10 * e + "px",
-        padding: 10 * e + "px",
+        padding: 12 * e + "px " + 14 * t + "px",
     });
     $("#listIn").css({
         bottom: 30 * e + 1 + "px",
@@ -86,13 +86,13 @@ export function setFontSize(): void {
     $("#listAbout").css({
         bottom: 30 * e + 1 + "px",
         left: 522 * t + "px",
-        padding: 10 * e + "px " + 10 * t + "px",
+        padding: 12 * e + "px " + 14 * t + "px",
         top: 30 * e + 1 + "px",
     });
     $("#listEdit").css({
         bottom: 30 * e + 1 + "px",
         left: 522 * t + "px",
-        padding: 10 * e + "px " + 10 * t + "px",
+        padding: 12 * e + "px " + 14 * t + "px",
         top: 30 * e + 1 + "px",
     });
     $("#info1").css({ padding: 20 * e + "px " + 20 * t + "px" });
@@ -142,7 +142,10 @@ export function setFontSize(): void {
         left: 10 * t + "px",
         width: 15 * t + "px",
     });
-    $("#dialogbox").css({ margin: 10 * e + "px", padding: 10 * e + "px" });
+    $("#dialogbox").css({
+        margin: 10 * e + "px",
+        padding: 14 * e + "px " + 16 * t + "px",
+    });
     $("btn").css({
         "border-radius": 6 * e + "px",
         padding: "0px " + 6 * t + "px",

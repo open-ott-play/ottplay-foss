@@ -761,7 +761,7 @@ export function showPage(): void {
             settings.pageSize +
             ');" style="float:right;height:100%;width:' +
             scrollWidth +
-            'px; border: 1px solid #f0f0f0;">';
+            'px; border: 1px solid rgba(240,240,240,0.35); border-radius: 4px; background-color: rgba(255,255,255,0.06);">';
         html +=
             '<div onclick="event.stopPropagation();changeSelect(-' +
             settings.pageSize +
@@ -769,7 +769,7 @@ export function showPage(): void {
             (currentPage / totalPages) * 100 +
             '%;"></div>';
         html +=
-            '<div style="background-color: #888;width:100%;height:' +
+            '<div style="background-color: rgba(180,180,200,0.85); border-radius: 3px; width:100%;height:' +
             100 / totalPages +
             '%;"></div></div>';
     } else {

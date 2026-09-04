@@ -124,7 +124,7 @@ body {
     display: none;
 }
 .list_back {
-    background-color: black;
+    background-color: rgba(8, 8, 12, 0.92);
 }
 #_t {
     position: absolute;
@@ -171,6 +171,10 @@ body {
     height: 30px;
     overflow: hidden;
     white-space: nowrap;
+    padding: 0 6px;
+    font-weight: bold;
+    letter-spacing: 0.02em;
+    box-sizing: border-box;
 }
 #listTime {
     position: absolute;
@@ -178,9 +182,12 @@ body {
     right: 0px;
     width: 80px;
     font-size: 22px;
+    opacity: 0.92;
+    text-align: right;
 }
 #list_s {
     font-size: 16px;
+    opacity: 0.75;
 }
 #listPodval {
     position: absolute;
@@ -188,6 +195,9 @@ body {
     bottom: 0px;
     left: 0px;
     height: 30px;
+    padding: 0 6px;
+    box-sizing: border-box;
+    opacity: 0.95;
 }
 #listDetail {
     position: absolute;
@@ -195,17 +205,22 @@ body {
     bottom: 31px;
     left: 0px;
     width: 514px;
-    padding: 4px;
+    padding: 8px 10px;
     overflow: hidden;
+    line-height: 1.35;
+    color: #d0d0d8;
+    box-sizing: border-box;
 }
 #listPopUp {
     position: absolute;
     bottom: 31px;
     left: 0px;
     display: none;
-    padding: 10px;
+    padding: 12px 14px;
     margin: 10px;
-    background-color: black;
+    background-color: rgba(12, 12, 18, 0.96);
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
 }
 #listIn {
     position: absolute;
@@ -222,9 +237,12 @@ body {
     bottom: 31px;
     left: 522px;
     display: none;
-    padding: 10px;
+    padding: 12px 14px;
     overflow: hidden;
     font-size: smaller;
+    line-height: 1.4;
+    color: #d0d0d8;
+    box-sizing: border-box;
 }
 #listEdit {
     position: absolute;
@@ -233,23 +251,31 @@ body {
     bottom: 31px;
     left: 522px;
     display: none;
-    padding: 10px;
+    padding: 12px 14px;
+    box-sizing: border-box;
 }
 .item {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    padding: 0 10px;
+    box-sizing: border-box;
+    border-radius: 4px;
 }
 .progress_div {
     float: right;
-    background-color: #446;
+    overflow: hidden;
+    background-color: rgba(68, 68, 102, 0.55);
+    border-radius: 3px;
 }
 .img {
     float: left;
     height: 100%;
+    margin-right: 8px;
     background-repeat: no-repeat;
     background-position: center center;
     background-size: contain;
+    border-radius: 4px;
 }
 #info1 {
     right: 0px;
@@ -450,29 +476,32 @@ body {
     min-width: 30%;
     max-width: 80%;
     max-height: 90%;
-    padding: 10px;
+    padding: 14px 16px;
     overflow: hidden;
+    line-height: 1.4;
+    border-radius: 10px;
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.55);
 }
 .btn {
     display: inline-block;
     min-width: 1em;
-    padding: 0em 0.3em;
+    padding: 0.05em 0.4em;
     margin-top: 0.08em;
     font-size: smaller;
     font-weight: bold;
-    line-height: 1.2em;
+    line-height: 1.25em;
     vertical-align: text-top;
     text-align: center;
     text-decoration: none;
-    background-color: #555;
+    background-color: #4a4a52;
     border: 0.02em solid #212121;
-    border-radius: 0.15em;
+    border-radius: 0.3em;
     box-shadow:
-        0 0.1em #ffffff33 inset,
-        0.02em 0.01em 0.1em 0 #00000080;
+        0 0.1em #ffffff22 inset,
+        0.02em 0.02em 0.12em 0 #00000080;
 }
 .btn:hover {
-    background: #333;
+    background: #3a3a42;
 }
 .red {
     background-color: #d32f2f;
@@ -511,12 +540,12 @@ body {
     color: #bdbdbd;
 }
 .epg-entry {
-    padding: 2px 0;
+    padding: 4px 0;
 }
 .epg-time {
     display: inline-block;
     width: 70px;
-    color: #bdbdbd;
+    color: #a8a8b8;
 }
 .epg-name {
     font-weight: bold;
@@ -524,5 +553,6 @@ body {
 .epg-descr {
     padding-left: 70px;
     font-size: smaller;
-    color: #bdbdbd;
+    line-height: 1.35;
+    color: #a8a8b8;
 }
