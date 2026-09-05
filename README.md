@@ -4,12 +4,15 @@ Self-contained IPTV/OTT player with a local Rust HTTP server. Runs on Smart TVs 
 
 ## Features
 
-- **Playback**: HLS, DASH, plain HTTP streams via HLS.js and Shaka Player
-- **EPG**: XMLTV program guide with fuzzy channel matching, time-shift support
+- **Playback**: HLS, DASH, plain HTTP streams via HLS.js and Shaka Player; soft live reconnect on fatal HLS parse/network
+- **EPG**: XMLTV guide with fuzzy channel matching, time-shift/catch-up, denser guide rows, programme-title search (N5 in EPG), reminders before timers
+- **Favorites**: Multi-list favorites (switch/add/rename/delete from Actions → Favorite lists); parental PIN
+- **Settings**: Export/import settings + favorites as JSON; continue-watching archive resume bookmark
 - **Providers**: M3U playlists, Xtream Codes API, Stalker middleware
 - **Push commands**: Remote control via webhook — change channel, provider, playlist, show popups
 - **Per-device routing**: UUID-based addressing for multi-device setups
 - **Local proxy**: Optional local command server for 100% local automation (no central server needed)
+- **Debug**: Opt-in playback HUD / ring log via `?debug=1` (legacy Maple benchy / CSS-inject / `pperf_*` easter eggs removed — not in the classic bundle)
 - **24 device types**: Per-device remote control key mappings
 - **21 languages**: Full localization support
 
@@ -50,15 +53,19 @@ src/
 ├── utils/           # Utilities (encoding, helpers, LZString compression)
 ├── storage/         # Storage (localStorage/cookie abstraction)
 ├── localization/    # Translation (_(), language file loader)
-├── settings/        # ~100 player settings with typed interface
-├── channels/        # Channel management (data, navigation, favorites, parental)
-├── core/            # Playback (HLS.js/Shaka, fullscreen, PiP, audio/subtitle tracks)
+├── settings/        # ~100 player settings with typed interface (+ export/import envelope)
+├── channels/        # Channels, EPG, favorites lists, timers, continue-watching
+├── debug/           # Opt-in playback HUD / ring / ingest (`?debug=1`)
+├── core/            # Playback (HLS.js/Shaka, fullscreen, PiP, audio/subtitle, soft live restart)
 ├── ui/              # UI (info bar, dialogs, lists, volume, color)
 ├── keyhandler/      # Remote control key dispatch
 ├── provider/        # Providers (load, M3U/Xtream/Stalker)
 ├── commands/        # Push command handler (webhook commands)
-└── index.ts         # Entry point, wires all modules
+├── app/             # Device + init helpers
+└── index.ts         # Entry point, wires modules + window.* publish (concat last in MODULES)
 ```
+
+> Note: there is no `src/benchy/` — legacy developer CSS/JS live-reload and Maple `pperf_*` stamps were removed from the tree; they were never on the concat `MODULES` list.
 
 ## Device Detection
 

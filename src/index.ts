@@ -158,7 +158,7 @@ import {
     stbSetItem,
     storage,
 } from "./storage";
-import { client_feedb, PostFeedback, pperf_flush } from "./utils/helpers";
+import { client_feedb, PostFeedback } from "./utils/helpers";
 
 // Sync channels to window.channels and window.chanels (alias) so provider scripts and UI can access it globally
 (window as any).channels = channels;
@@ -1099,11 +1099,6 @@ function checkMedia(): void {
 function body_onUnload(): void {
     setCurrent(catIndex, primaryIndex);
     window.playType = 0;
-    // Report collected Maple 6 performance stamps (buffer is cleared;
-    // no-op and empty on other platforms). The server appends the payload
-    // to feedback.log.
-    var perf: string = pperf_flush();
-    if (perf) PostFeedback(perf);
 }
 
 /**
@@ -1149,8 +1144,6 @@ if (navigator.userAgent.search(/Maple/i) === -1) {
  * and logs to console. Stub for future startup logic.
  */
 function onPlayerStart(): void {
-    if (typeof (window as any).pperf_stamp === "function")
-        (window as any).pperf_stamp("onPlayerStart");
     console.log("onPlayerStart");
 }
 
@@ -1295,8 +1288,6 @@ function selectLang(): void {
  * Side effects: Calls loadChannels(), setPlayerMode(), and setPlayer().
  */
 function loadProvCallback(): void {
-    if (typeof (window as any).pperf_stamp === "function")
-        (window as any).pperf_stamp("loadProvCallback");
     if (typeof loadChannels === "function") loadChannels();
     setPlayerMode(sPlayers);
     if (typeof setPlayer === "function") setPlayer();
@@ -1325,14 +1316,10 @@ export function startPlayer(): void {
         launchEl.innerHTML +=
             "<br/>IID: " + (iid ? "..." + iid.substr(-7) : "-");
     }
-    if (typeof (window as any).benchy_startPlayer === "function")
-        setTimeout((window as any).benchy_startPlayer, 23);
 
     onPlayerStart();
 
     try {
-        if (typeof (window as any).pperf_stamp === "function")
-            (window as any).pperf_stamp("startPlayer -- start");
         console.log("startPlayer");
 
         if (launchEl) {
@@ -1385,9 +1372,6 @@ export function startPlayer(): void {
  * Wrapped in try/catch — exceptions are displayed in #launch.
  */
 function onStbReady(): void {
-    if (typeof (window as any).pperf_stamp === "function")
-        (window as any).pperf_stamp("onStbReady -- start");
-
     try {
         // Merge device-specific key mappings from window.keys (set by stb/{device}/stb.js)
         if (typeof (window as any).keys !== "undefined") {
@@ -1419,9 +1403,6 @@ function onStbReady(): void {
         if (typeof (window as any).showEditKey === "undefined")
             (window as any).showEditKey = (window as any).showEditKey1;
 
-        if (typeof (window as any).pperf_stamp === "function")
-            (window as any).pperf_stamp("startPlayer -- control 1");
-
         // Save current popup state (read by loadProv when switching providers)
         savedPopup.popupActions = popupActions.slice();
         savedPopup.popupArray = popupArray.slice();
@@ -1444,8 +1425,6 @@ function onStbReady(): void {
         }
 
         console.log("TRACE lang=" + lang + ", loading langJS");
-        if (typeof (window as any).pperf_stamp === "function")
-            (window as any).pperf_stamp("startPlayer -- loadLang -- js");
         getScriptDOM(
             hostUrl + "/stbPlayer/" + lang + ".js?" + PLAYER_VERSION,
             function () {
@@ -3609,7 +3588,6 @@ window.saveCPD = saveCPD;
 window.restoreCPD = restoreCPD;
 window.getMacAddress = getMacAddress;
 // client_feedb and PostFeedback from helpers.ts already global
-// pperf_stamp from helpers.ts already global
 window.ottpStorage = storage;
 window.lzstring = {
     compress: (window as any).compress,

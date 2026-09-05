@@ -158,7 +158,6 @@ var savedPopup: {
     popupDetail: string[];
 } = { popupActions: [], popupArray: [], popupDetail: [], ver: "" };
 declare var channelsList: any;
-declare var pperf_stamp: (label: string) => void;
 declare var stbIsPlaying: () => boolean;
 declare var stbStop: () => void;
 declare var stbSetItem: (key: string, val: string) => void;
@@ -732,8 +731,6 @@ declare var confirmBox: (
  * If noProvParam=1, splices provider settings out of popup arrays.
  */
 export function loadProv(): void {
-    pperf_stamp("loadProv -- start");
-
     /**
      * Handle provider script load failure.
      * Clears the pending provider, alerts the error (unless 'no' provider),
@@ -840,12 +837,10 @@ export function loadProv(): void {
         );
         delOption(edit_dealer);
     }
-    pperf_stamp("loadProv -- load js");
     getScriptDOM(
         host + "/prov/" + s + "/prov.js?" + __cv,
         function () {
             try {
-                pperf_stamp("loadProv -- js ready");
                 if (typeof duneAddSettings === "function") {
                     $(launch_id).append("<br/>Loading settings...");
                     // Sync working arrays to window globals so the provider
@@ -916,7 +911,6 @@ export function loadProv(): void {
                             : getEPGchanel;
                     // Expose for doGetCurProg queue processing
                     (window as any).getEPGchanelCurCached = getEPGchanelCur;
-                    pperf_stamp("loadProv -- loadChannels");
                     loadChannels();
                 } else {
                     console.error("duneAddSettings is not a function");

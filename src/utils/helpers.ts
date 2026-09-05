@@ -39,38 +39,6 @@ export function client_feedb(message: string): void {
     PostFeedback(message, "/report_feedb");
 }
 
-/**
- * Record a performance timestamp label (Maple 6 STB only).
- *
- * @param label - A string identifying the point in execution.
- *
- * @remarks
- * No-ops on non-Maple-6 devices. Appends a `"timestamp - label"` entry to
- * the internal `_perfLog` array for later retrieval / reporting.
- *
- * @sideEffects
- * Mutates the internal `_perfLog` array.
- */
-export function pperf_stamp(label: string): void {
-    if (navigator.userAgent.indexOf("Maple 6") === -1) return;
-    var now = Date.now();
-    _perfLog.push(now.toString(10) + " - " + label);
-}
-var _perfLog: string[] = [];
-
-/**
- * Return all recorded performance stamps as one newline-joined string and
- * clear the buffer. Empty string when nothing was recorded (non-Maple 6
- * devices never record).
- *
- * @returns The collected `"timestamp - label"` lines, or "".
- */
-export function pperf_flush(): string {
-    if (!_perfLog.length) return "";
-    var out: string = _perfLog.join("\n");
-    _perfLog = [];
-    return out;
-}
 var FeedbPOST: (msg: string) => void = function (msg: string): void {
     PostFeedback(msg, "/report_feedb");
 };
@@ -321,7 +289,6 @@ export function checkIfIncluded(url: string): boolean {
  * - Creates and appends a `<script>` element to `location`.
  * - Sets `crossOrigin = 'anonymous'` if the property is supported.
  * - On error: logs to console, calls `alert()`, and invokes `errorCb`.
- * - Records a `pperf_stamp` if `pperf_stamp` is available.
  */
 export function loadScript(
     url: string,
@@ -342,8 +309,6 @@ export function loadScript(
         if (typeof errorCb === "function") errorCb(err);
     };
     location.appendChild(script);
-    if (typeof pperf_stamp === "function")
-        pperf_stamp("startPlayer -- loadJS " + url);
 }
 
 /**
@@ -387,74 +352,6 @@ export function getScriptDOM(
 
 /**
  * Dynamic CSS rule manager.
- *
- * Provides `init()` and `getRule(selector)` for adding and reusing CSS
- * rules at runtime. Rules are added once and cached by selector string.
- *
- * @sideEffects
- * - `init()` creates a `<style>` element and inserts it into `<body>`.
- * - `getRule()` inserts a new CSS rule into the stylesheet if the
- *   selector has not been seen before.
- *
- * @remarks
- * On Maple STB devices, rules are created with a placeholder `quotes`
- * property (which is immediately removed) to work around a CSS parsing bug.
- */
-export var innerStyle: any = (function () {
-    var cssSheet: any;
-    var rules: Record<string, any> = {};
-    /**
-     * Initialise the internal `<style>` element and insert it at the top of
-     * `<body>`.
-     *
-     * @sideEffects
-     * Creates a `<style>` DOM element and inserts it as the first child of
-     * `<body>`; stores a reference to the element's CSSStyleSheet.
-     */
-    function init(): void {
-        (innerStyle as any).elHtml = document.createElement("style");
-        document.body.insertBefore(
-            (innerStyle as any).elHtml,
-            document.body.firstChild
-        );
-        cssSheet = (innerStyle as any).elHtml.sheet;
-    }
-
-    /**
-     * Get (or create) the CSS rule object for a given selector.
-     *
-     * @param selector - A CSS selector string (e.g. `'.my-class'`).
-     * @returns The corresponding CSS style rule object, or `undefined` if
-     *          the rule could not be inserted.
-     *
-     * @sideEffects
-     * On first invocation for a given selector, inserts a new empty rule
-     * (or `{quotes: inherit}` on Maple) into the stylesheet and caches it.
-     */
-    function getRule(selector: string): any {
-        var rule = rules[selector];
-        if (typeof rule === "undefined") {
-            var index = cssSheet.cssRules.length;
-            if (!(window as any).client_can.is_maple) {
-                cssSheet.insertRule(selector + " {}", 0);
-                rule = cssSheet.cssRules[0];
-            } else {
-                cssSheet.insertRule(selector + " {quotes: inherit;}", 0);
-                rule = cssSheet.cssRules[index];
-                if (typeof rule !== "undefined")
-                    rule.style.removeProperty("quotes");
-            }
-            if (cssSheet.cssRules.length <= index) {
-                client_feedb("Cannot add empty CSS rule");
-                rule = undefined;
-            }
-            rules[selector] = rule;
-        }
-        return rule;
-    }
-    return { getRule: getRule, init: init };
-})();
-
 /**
  * Generate an HTML `<div>` string for a channel thumbnail / preview image.
  *
