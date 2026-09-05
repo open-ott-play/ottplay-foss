@@ -1434,6 +1434,9 @@ export function epgKeyHandler(keyCode: number): boolean {
         case keys.INFO:
             if (typeof w.infoProgramm === "function") w.infoProgramm(item.name);
             return true;
+        case keys.N5:
+            searchEpgByTitle();
+            return true;
     }
     return false;
 }
@@ -2978,6 +2981,194 @@ export function bucketsKeyHandler(keyCode: number): boolean {
  * (and LEFT when sArrowFun===2) returns to the unfiltered channelsList
  * preserving the prior position (listChannel).
  */
+/**
+ * Search EPG programmes by title across the in-memory `epg` cache
+ * (per-channel programmes already fetched by getEPGchanelCached).
+ * No network fetch — only the loaded window is searched.
+ *
+ * Flow:
+ * 1. Prompt via the same `showEditKey` UX as searchChannel (caption "Search programme").
+ * 2. Filter `epg[ch_id]` entries by case-insensitive substring on `name`.
+ * 3. Render results as a list with `channel_name + programme + time`.
+ * 4. ENTER on a result → open EPG for that channel and select the programme.
+ *
+ * Side effects:
+ * - Mutates `window.editCaption`, `window.editvar`, `window.setEdit`,
+ *   `window.listArray`, `window.listDataArray`, `window.listKeyHandlerFn`,
+ *   `window.getListItemFn`, `window.selIndex`, `_crData.selIndex`.
+ * - Reads/writes `epgSearch` via stbGetItem/stbSetItem.
+ * - Updates #listCaption and #listPodval innerHTML; hides #listPopUp.
+ * - Calls `window.showPage` and `window.showShift`.
+ */
+export function searchEpgByTitle(): void {
+    var w = window as any;
+    $("#listPopUp").hide();
+
+    function runSearch(query: string): void {
+        var q = (query || "").toLowerCase();
+        if (!q) {
+            if (typeof w.showShift === "function")
+                w.showShift(w._("Not found"));
+            return;
+        }
+        var results: any[] = [];
+        var chIds = Object.keys(epg);
+        for (var i = 0; i < chIds.length; i++) {
+            var chId = Number(chIds[i]);
+            var progs = epg[chId];
+            if (!progs || !progs.length) continue;
+            for (var j = 0; j < progs.length; j++) {
+                var p = progs[j];
+                if (p && p.name && p.name.toLowerCase().indexOf(q) !== -1) {
+                    var ch = channels[chId] || ({} as Channel);
+                    results.push({
+                        ch_id: chId,
+                        ch_name: ch.channel_name || ch.name || "",
+                        name: p.name,
+                        rec: ch.rec || 0,
+                        time: p.time,
+                        time_to: p.time_to,
+                    });
+                }
+            }
+        }
+        results.sort(function (a, b) {
+            return a.time - b.time;
+        });
+
+        if (!results.length) {
+            if (typeof w.showShift === "function")
+                w.showShift(w._("Not found"));
+            return;
+        }
+
+        var caption =
+            w._("Search programme") +
+            ':"' +
+            query +
+            '" (' +
+            results.length +
+            ")";
+
+        function renderItem(item: any, _idx: number): string {
+            return (
+                "&nbsp;&nbsp;" +
+                (channels[item.ch_id] &&
+                channels[item.ch_id].rec &&
+                item.time < Date.now() / 1000
+                    ? '<div class="btn green">&nbsp;</div> '
+                    : "") +
+                formatEpgTime(item.time) +
+                " - " +
+                formatEpgTime(item.time_to) +
+                " " +
+                (item.ch_name ? "[" + item.ch_name + "] " : "") +
+                (item.name || "")
+            );
+        }
+
+        function openForChannel(item: any): void {
+            // Find the (catIndex, primaryIndex) of item.ch_id across catsArray
+            var catIdx = -1;
+            var primaryIndex = -1;
+            for (var ci = 0; ci < catsArray.length; ci++) {
+                var list = cats[catsArray[ci]] || [];
+                var pi = list.indexOf(item.ch_id);
+                if (pi !== -1) {
+                    catIdx = ci;
+                    primaryIndex = pi;
+                    break;
+                }
+            }
+            if (catIdx === -1) return;
+            if (typeof setCurrent === "function")
+                setCurrent(catIdx, primaryIndex, true);
+            epg_ch_id = item.ch_id;
+            w.epg_ch_id = item.ch_id;
+            if (typeof epgList === "function")
+                epgList(catIdx, primaryIndex, false);
+            setTimeout(function () {
+                var idx = -1;
+                var arr = (w.listArray as any[]) || [];
+                for (var k = 0; k < arr.length; k++) {
+                    if (
+                        arr[k] &&
+                        arr[k].time === item.time &&
+                        arr[k].name === item.name
+                    ) {
+                        idx = k;
+                        break;
+                    }
+                }
+                if (idx !== -1) {
+                    w.selIndex = idx;
+                    if (typeof w.showPage === "function") w.showPage();
+                    if (typeof selectEpg === "function") selectEpg();
+                }
+            }, 50);
+        }
+
+        w.listArray = results;
+        w.listDataArray = results;
+        w.selIndex = 0;
+        w.getListItem = renderItem;
+        w.getListItemFn = renderItem;
+        w.detailListAction = function (): void {};
+        w.detailListActionFn = w.detailListAction;
+        w.listKeyHandler = function (k: number): boolean {
+            if (k === w.keys.EXIT || k === w.keys.RETURN) {
+                if (typeof w.closeList === "function") w.closeList();
+                return true;
+            }
+            if (k === w.keys.ENTER) {
+                var sel = (w.listArray as any[])[w.selIndex];
+                if (sel) openForChannel(sel);
+                return true;
+            }
+            return false;
+        };
+        w.listKeyHandlerFn = w.listKeyHandler;
+
+        var captionEl = document.getElementById("listCaption");
+        if (captionEl) captionEl.textContent = caption;
+
+        var podvalEl = document.getElementById("listPodval");
+        if (podvalEl) {
+            podvalEl.innerHTML =
+                (typeof w.btnDiv === "function"
+                    ? w.btnDiv(w.keys.RETURN, w.strRETURN, "Close", "")
+                    : "") +
+                (typeof w.btnDiv === "function"
+                    ? w.btnDiv(w.keys.ENTER, "", "Open", "")
+                    : "");
+        }
+
+        if (typeof w.showPage === "function") w.showPage();
+    }
+
+    var editCaption = w._("Search programme");
+    var saved =
+        typeof w.stbGetItem === "function"
+            ? w.stbGetItem("epgSearch") || ""
+            : "";
+    var editvar = saved;
+    var setEdit = function (): void {
+        var inputEl = document.getElementById("editvar");
+        var inputVal = (inputEl && (inputEl as HTMLInputElement).value) || "";
+        var submitted = window.editvar || "";
+        if (!inputVal && !submitted) return;
+        saved = inputVal || submitted;
+        window.editvar = saved;
+        if (typeof w.stbSetItem === "function")
+            w.stbSetItem("epgSearch", saved);
+        runSearch(saved);
+    };
+    w.editCaption = editCaption;
+    w.editvar = editvar;
+    w.setEdit = setEdit;
+    if (typeof w.showEditKey === "function") w.showEditKey();
+}
+
 export function searchChannel(): void {
     var w = window as any;
     $("#listPopUp").hide();
