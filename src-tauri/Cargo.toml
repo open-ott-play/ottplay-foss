@@ -1,0 +1,29 @@
+[package]
+name = "ottplay-tauri"
+version = "0.1.0"
+description = "Tauri desktop shell for ottplay-foss (Mode B), reusing ottplay-core"
+edition = "2021"
+authors = ["4alvit <4alvit@users.noreply.github.com>"]
+license = "MIT"
+repository = "https://github.com/4alvit/ottplay-foss"
+
+[lib]
+name = "ottplay_tauri_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync"] }
+tracing = "0.1"
+anyhow = "1"
+ottplay-core = { path = "../src-rs/core" }
