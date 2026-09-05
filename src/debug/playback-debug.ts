@@ -811,6 +811,15 @@ function ottDebugEnable(): void {
             ) {
                 return;
             }
+            // On-screen keyboard / list editor — let letters type into editvar.
+            try {
+                if (
+                    typeof (window as any).$ !== "undefined" &&
+                    (window as any).$("#listEdit").is(":visible")
+                ) {
+                    return;
+                }
+            } catch (_eVis) {}
             var match = false;
             if (e.key === "d" || e.key === "D") {
                 match = true;

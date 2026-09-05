@@ -3067,11 +3067,11 @@ export function showEdit(): void {
                 "",
                 _keysSymbol[1].s
                     ? _keyE
-                        ? // On English UI _("lang") is "English" — offer Русский instead.
+                        ? // Offer the other layout in the *current* UI language.
                           _ottplaylang() == "_eng"
-                            ? "Русский"
+                            ? _("Russian") || "Russian"
                             : _("lang") || "Lang"
-                        : "English"
+                        : _("English") || "English"
                     : "",
                 strFF
             ) +

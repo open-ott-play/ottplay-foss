@@ -587,8 +587,8 @@ body {
     box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65);
 }
 .btn {
-    display: inline-block;
     box-sizing: border-box;
+    display: inline-block;
     min-width: 1em;
     max-height: 1.6em;
     padding: 0.05em 0.45em;
@@ -636,9 +636,9 @@ body {
     font-style: normal;
     font-weight: normal;
     font-variant: normal;
-    text-transform: none;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-transform: none;
 }
 .btn .fontello {
     font-weight: normal;

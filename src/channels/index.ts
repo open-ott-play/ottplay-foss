@@ -722,13 +722,20 @@ function refreshFavoritesViewIfActive(): void {
 }
 
 /**
- * Multi-favorites list manager UI.
+ * Multi-favorites list manager UI (proper #list menu, not showSelectBox OSD).
  * Pick a list to switch immediately; last row opens add/rename/delete.
- * Note: showSelectBox always closeList() — OSD picker sits over video.
  * Calls saveChannelsCats() after every mutation.
  */
 export function popFavLists(): void {
     var w = window as any;
+    var keys = w.keys;
+
+    // Kill any leftover showSelectBox OSD from older builds.
+    try {
+        var numEl = document.getElementById("numprog");
+        if (numEl) numEl.style.display = "none";
+        w.selectBoxKeyHandler = null;
+    } catch (_) {}
 
     function switchTo(listName: string): void {
         setActiveFavoritesList(listName);
@@ -737,7 +744,6 @@ export function popFavLists(): void {
         w.showShift(
             (w._ ? w._("Active list") : "Active list") + ": " + listName
         );
-        if (typeof w.showPage === "function") w.showPage();
     }
 
     function addNewList(): void {
@@ -748,6 +754,7 @@ export function popFavLists(): void {
             if (name && addFavoritesList(name)) {
                 switchTo(name);
                 w.showShift(w._ ? w._("List created") : "List created");
+                showMain();
             }
             w.setEdit = function () {};
         };
@@ -756,109 +763,199 @@ export function popFavLists(): void {
         }
     }
 
-    function editList(listName: string): void {
+    function showEditActions(listName: string): void {
         var names = listFavoritesLists();
         var canDelete = names.length > 1;
-        var items: string[] = [];
-        items.push(w._ ? w._("Rename") : "Rename");
-        if (canDelete) items.push(w._ ? w._("Delete") : "Delete");
-        items.push(w._ ? w._("Cancel") : "Cancel");
+        var rows: string[] = [];
+        rows.push(w._ ? w._("Rename") : "Rename");
+        if (canDelete) rows.push(w._ ? w._("Delete") : "Delete");
+        rows.push(w._ ? w._("Cancel") : "Cancel");
 
-        w.showSelectBox(
-            0,
-            items,
-            function (idx: number) {
-                if (idx === 0) {
-                    w.editCaption =
-                        (w._ ? w._("Rename to") : "Rename to") +
-                        ": " +
-                        listName;
-                    w.editvar = listName;
-                    w.setEdit = function () {
-                        var newName = (w.editvar || "").trim();
-                        if (
-                            newName &&
-                            newName !== listName &&
-                            renameFavoritesList(listName, newName)
-                        ) {
-                            switchTo(newName);
-                            w.showShift(
-                                w._ ? w._("List renamed") : "List renamed"
-                            );
-                        }
-                        w.setEdit = function () {};
-                    };
-                    if (typeof w.showEditKey === "function") {
-                        w.showEditKey(w.keys.ENTER);
-                    }
-                } else if (idx === 1 && canDelete) {
-                    w.confirmBox(
-                        (w._ ? w._("Delete list") : "Delete list") +
+        w.selIndex = 0;
+        w.listArray = rows;
+        w.listDataArray = rows;
+        w.getListItemFn = function (item: string): string {
+            return "&nbsp;&nbsp;" + item;
+        };
+        w.detailListActionFn = function () {};
+        w.listKeyHandlerFn = function (key: number): boolean {
+            if (!keys) return false;
+            switch (key) {
+                case keys.RETURN:
+                    showManage();
+                    return true;
+                case keys.ENTER: {
+                    var idx = w.selIndex | 0;
+                    if (idx === 0) {
+                        w.editCaption =
+                            (w._ ? w._("Rename to") : "Rename to") +
                             ": " +
-                            listName +
-                            "?",
-                        function () {
-                            deleteFavoritesList(listName);
-                            saveChannelsCats();
-                            refreshFavoritesViewIfActive();
-                            w.showShift(
-                                w._ ? w._("List deleted") : "List deleted"
-                            );
-                            if (typeof w.showPage === "function") w.showPage();
+                            listName;
+                        w.editvar = listName;
+                        w.setEdit = function () {
+                            var newName = (w.editvar || "").trim();
+                            if (
+                                newName &&
+                                newName !== listName &&
+                                renameFavoritesList(listName, newName)
+                            ) {
+                                switchTo(newName);
+                                w.showShift(
+                                    w._ ? w._("List renamed") : "List renamed"
+                                );
+                                showMain();
+                            }
+                            w.setEdit = function () {};
+                        };
+                        if (typeof w.showEditKey === "function") {
+                            w.showEditKey(w.keys.ENTER);
                         }
-                    );
+                    } else if (idx === 1 && canDelete) {
+                        w.confirmBox(
+                            (w._ ? w._("Delete list") : "Delete list") +
+                                ": " +
+                                listName +
+                                "?",
+                            function () {
+                                deleteFavoritesList(listName);
+                                saveChannelsCats();
+                                refreshFavoritesViewIfActive();
+                                w.showShift(
+                                    w._ ? w._("List deleted") : "List deleted"
+                                );
+                                showMain();
+                            }
+                        );
+                    } else {
+                        showManage();
+                    }
+                    return true;
                 }
-            },
-            -1
-        );
+            }
+            return false;
+        };
+        var cap = document.getElementById("listCaption");
+        if (cap)
+            cap.innerHTML =
+                (w._ ? w._("Favorite lists") : "Favorite lists") +
+                ": " +
+                listName;
+        var pod = document.getElementById("listPodval");
+        if (pod && typeof w.btnDiv === "function") {
+            pod.innerHTML = w.btnDiv(keys.RETURN, w.strRETURN, "Close");
+        }
+        try {
+            if (typeof $ !== "undefined") $("#listPopUp").hide();
+        } catch (_) {}
+        if (typeof w.showPage === "function") w.showPage();
     }
 
-    function manageMenu(): void {
+    function showManage(): void {
         var names = listFavoritesLists();
         var activeName = getActiveFavoritesListName();
-        var display = names.map(function (n: string) {
+        var rows = names.map(function (n: string) {
             return n === activeName
-                ? n + (w._ ? " (" + w._("current") + ")" : " (current)")
+                ? "\u2713 " +
+                      n +
+                      (w._ ? " (" + w._("current") + ")" : " (current)")
                 : n;
         });
-        display.push(w._ ? w._("Add new list") : "Add new list");
+        rows.push(w._ ? w._("Add new list") : "Add new list");
 
-        w.showSelectBox(
-            Math.max(0, names.indexOf(activeName)),
-            display,
-            function (idx: number) {
-                if (idx === names.length) {
-                    addNewList();
-                } else {
-                    editList(names[idx]);
+        w.selIndex = Math.max(0, names.indexOf(activeName));
+        w.listArray = rows;
+        w.listDataArray = rows;
+        w.getListItemFn = function (item: string): string {
+            return "&nbsp;&nbsp;" + item;
+        };
+        w.detailListActionFn = function () {};
+        w.listKeyHandlerFn = function (key: number): boolean {
+            if (!keys) return false;
+            switch (key) {
+                case keys.RETURN:
+                    showMain();
+                    return true;
+                case keys.ENTER: {
+                    var idx = w.selIndex | 0;
+                    if (idx === names.length) {
+                        addNewList();
+                    } else if (idx >= 0 && idx < names.length) {
+                        showEditActions(names[idx]);
+                    }
+                    return true;
                 }
-            },
-            -1
-        );
+            }
+            return false;
+        };
+        var cap = document.getElementById("listCaption");
+        if (cap)
+            cap.innerHTML = w._
+                ? w._("Add / rename / delete\u2026")
+                : "Add / rename / delete\u2026";
+        var pod = document.getElementById("listPodval");
+        if (pod && typeof w.btnDiv === "function") {
+            pod.innerHTML = w.btnDiv(keys.RETURN, w.strRETURN, "Close");
+        }
+        try {
+            if (typeof $ !== "undefined") $("#listPopUp").hide();
+        } catch (_) {}
+        if (typeof w.showPage === "function") w.showPage();
     }
 
-    // Main: pick a list to switch; last row opens manage (rename/delete/add).
-    var names = listFavoritesLists();
-    var activeName = getActiveFavoritesListName();
-    var displayNames = names.map(function (n: string) {
-        return n === activeName ? "\u2713 " + n : n;
-    });
-    displayNames.push(
-        w._ ? w._("Add / rename / delete\u2026") : "Add / rename / delete\u2026"
-    );
+    function showMain(): void {
+        var names = listFavoritesLists();
+        var activeName = getActiveFavoritesListName();
+        var rows = names.map(function (n: string) {
+            return n === activeName ? "\u2713 " + n : n;
+        });
+        rows.push(
+            w._
+                ? w._("Add / rename / delete\u2026")
+                : "Add / rename / delete\u2026"
+        );
 
-    w.showSelectBox(
-        Math.max(0, names.indexOf(activeName)),
-        displayNames,
-        function (idx: number) {
-            if (idx === names.length) {
-                manageMenu();
-            } else {
-                switchTo(names[idx]);
+        w.selIndex = Math.max(0, names.indexOf(activeName));
+        w.listArray = rows;
+        w.listDataArray = rows;
+        w.getListItemFn = function (item: string): string {
+            return "&nbsp;&nbsp;" + item;
+        };
+        w.detailListActionFn = function () {};
+        w.listKeyHandlerFn = function (key: number): boolean {
+            if (!keys) return false;
+            switch (key) {
+                case keys.RETURN:
+                    if (typeof w.popupList === "function") w.popupList();
+                    else if (typeof w.closeList === "function") w.closeList();
+                    return true;
+                case keys.ENTER: {
+                    var idx = w.selIndex | 0;
+                    if (idx === names.length) {
+                        showManage();
+                    } else if (idx >= 0 && idx < names.length) {
+                        switchTo(names[idx]);
+                        showMain();
+                    }
+                    return true;
+                }
             }
-        },
-        -1
-    );
+            return false;
+        };
+        var cap = document.getElementById("listCaption");
+        if (cap) cap.innerHTML = w._ ? w._("Favorite lists") : "Favorite lists";
+        var pod = document.getElementById("listPodval");
+        if (pod && typeof w.btnDiv === "function") {
+            pod.innerHTML =
+                w.btnDiv(keys.RETURN, w.strRETURN, "Close") +
+                w.btnDiv(keys.ENTER, "Ok", w._ ? w._("Switch") : "Switch");
+        }
+        try {
+            if (typeof $ !== "undefined") $("#listPopUp").hide();
+        } catch (_) {}
+        if (typeof w.showPage === "function") w.showPage();
+    }
+
+    showMain();
 }
 
 /** Load `favoritesLists` from storage; migrate from legacy `favoritesArray`. */
