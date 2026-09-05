@@ -636,6 +636,7 @@ export function setActiveFavoritesList(name: string): boolean {
     syncFavoritesArrayFromActive();
     if (cats && typeof window !== "undefined" && (window as any)._)
         cats[(window as any)._("Favorites")] = favoritesArray;
+    refreshFavoritesViewIfActive();
     return true;
 }
 
@@ -695,6 +696,32 @@ export function deleteFavoritesList(name: string): boolean {
 }
 
 /**
+ * If the user is currently viewing the Favorites category, rebind module
+ * `curList` / `window.curList` to the freshly-synced `cats["Favorites"]`
+ * array, clamp indices, and update `window.activeFavList`.
+ * Called after every mutation that changes the active list content.
+ */
+function refreshFavoritesViewIfActive(): void {
+    if (typeof window === "undefined") return;
+    var w = window as any;
+    if (!w._ || !catsArray || !cats) return;
+    var favLabel = w._("Favorites");
+    var ci = catsArray.indexOf(favLabel);
+    if (ci === -1) return;
+    if (w.catIndex !== ci) return;
+    curList = cats[favLabel] || [];
+    w.curList = curList;
+    if (primaryIndex >= curList.length)
+        primaryIndex = Math.max(0, curList.length - 1);
+    if (primaryIndex < 0) primaryIndex = 0;
+    w.primaryIndex = primaryIndex;
+    if (typeof w.selIndex === "number" && w.selIndex >= curList.length) {
+        w.selIndex = primaryIndex;
+    }
+    w.activeFavList = getActiveFavoritesListName();
+}
+
+/**
  * Multi-favorites list manager UI.
  * Shows a select-box with the current list and sub-actions (add/rename/delete).
  * Calls saveChannelsCats() after every mutation.
@@ -722,6 +749,7 @@ export function popFavLists(): void {
                         if (name && addFavoritesList(name)) {
                             setActiveFavoritesList(name);
                             saveChannelsCats();
+                            refreshFavoritesViewIfActive();
                             w.showShift(
                                 w._ ? w._("List created") : "List created"
                             );
@@ -737,6 +765,7 @@ export function popFavLists(): void {
                     var selName = names[idx];
                     setActiveFavoritesList(selName);
                     saveChannelsCats();
+                    refreshFavoritesViewIfActive();
                     w.showShift(selName);
                     if (typeof w.showPage === "function") w.showPage();
                 }
@@ -763,6 +792,7 @@ export function popFavLists(): void {
                     // Switch
                     setActiveFavoritesList(listName);
                     saveChannelsCats();
+                    refreshFavoritesViewIfActive();
                     w.showShift(listName);
                     if (typeof w.showPage === "function") w.showPage();
                 } else if (idx === 1) {
@@ -781,6 +811,7 @@ export function popFavLists(): void {
                         ) {
                             setActiveFavoritesList(newName);
                             saveChannelsCats();
+                            refreshFavoritesViewIfActive();
                             w.showShift(
                                 w._ ? w._("List renamed") : "List renamed"
                             );
@@ -801,6 +832,7 @@ export function popFavLists(): void {
                         function () {
                             deleteFavoritesList(listName);
                             saveChannelsCats();
+                            refreshFavoritesViewIfActive();
                             w.showShift(
                                 w._ ? w._("List deleted") : "List deleted"
                             );
