@@ -440,7 +440,7 @@ export function restoreContinueWatch(): boolean {
         if (resumeIdx === -1) return false; // channel no longer present
         var playLiveFallback = function (): boolean {
             try {
-                window.playChannel(cw.catIndex, cw.channelIndex);
+                window.playChannel(resumeCatIndex, resumeIdx);
                 return true;
             } catch (_e) {
                 console.error(_e);
