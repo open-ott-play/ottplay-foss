@@ -16,7 +16,7 @@ HS5 / MAG devices load `dist/stbPlayer.js` as a classic (non-module) `<script>`.
 
 ## Bundle size
 
-~268 KB minified. ~339 window globals published by `src/index.ts`.
+~322 KB minified. ~335 window globals published by `src/index.ts`.
 
 ## MODULES load-order checklist
 

@@ -18,21 +18,17 @@ This file is an inventory only. CI enforces a small must-keep identifier snapsho
 | `client_can` | 306 |
 | `editKey` | 944 |
 | `showEditKey` | 945 |
-| `showEditKey2` | 968 |
 | `playTime` | 1058 |
 | `playType` | 1059 |
 | `keyStrings` | 1215 |
 | `listPodval` | 1324 |
 | `setEdit` | 1389 |
-| `clearBootHide` | 1420 |
-| `ott_device` | 1471 |
 | `startPlayer` | 1474 |
 | `onStbReady` | 1477 |
 | `keyHandler` | 1479 |
 | `_doKey` | 1480 |
 | `keys` | 1481 |
-| `__TAURI__` | 1526 |
-| `getEPGchanel` | 1529 |
+| `getEPGchanel` | 1530 |
 | `_tmedia` | 1551 |
 | `_prog100` | 1599 |
 | `_playChannel` | 1627 |
@@ -50,6 +46,7 @@ This file is an inventory only. CI enforces a small must-keep identifier snapsho
 | `confirmBox` | 1641 |
 | `updateChanelInfo` | 1642 |
 | `updateMediaInfo` | 1643 |
+| `refreshAudioBadge` | 1723 |
 | `stbPlay` | 1644 |
 | `stbStop` | 1645 |
 | `stbPause` | 1646 |
@@ -75,9 +72,9 @@ This file is an inventory only. CI enforces a small must-keep identifier snapsho
 | `selIndex` | 1681 |
 | `getListItem` | 1682 |
 | `detailListAction` | 1694 |
-| `refreshchanelsList` | 1711 |
+| `refreshchanelsList` | 1712 |
 | `listKeyHandlerFn` | 1735 |
-| `stbToggleStandby` | 1768 |
+| `stbToggleStandby` | 1770 |
 | `listDataArray` | 1778 |
 | `stbOptions` | 1794 |
 | `saveIfChanged` | 1883 |
@@ -89,8 +86,8 @@ This file is an inventory only. CI enforces a small must-keep identifier snapsho
 | `settingsMenu` | 2736 |
 | `settingsManage` | 2794 |
 | `cloudSendSettings` | 2906 |
-| `exportSettingsUI` | 2924 |
-| `importSettingsUI` | 2948 |
+| `exportSettingsUI` | 2926 |
+| `importSettingsUI` | 2950 |
 | `cloudLoadSettings` | 3014 |
 | `edit_dealer` | 3167 |
 | `edit_dealer_remote` | 3168 |
@@ -220,23 +217,23 @@ This file is an inventory only. CI enforces a small must-keep identifier snapsho
 | `popMedia` | 3462 |
 | `exitPortal` | 3463 |
 | `aboutKeyHandler` | 3502 |
-| `popFavLists` | 3550 |
-| `getActiveFavoritesListName` | 3551 |
-| `setActiveFavoritesList` | 3552 |
-| `addFavoritesList` | 3553 |
-| `renameFavoritesList` | 3554 |
-| `deleteFavoritesList` | 3555 |
-| `listFavoritesLists` | 3556 |
+| `popFavLists` | 3552 |
+| `getActiveFavoritesListName` | 3553 |
+| `setActiveFavoritesList` | 3554 |
+| `addFavoritesList` | 3555 |
+| `renameFavoritesList` | 3556 |
+| `deleteFavoritesList` | 3557 |
+| `listFavoritesLists` | 3558 |
 | `infoArr` | 3615 |
 | `pluginInfo` | 3616 |
 | `buttonsInfo` | 3617 |
 | `infoList` | 3618 |
-| `isListVisible` | 3619 |
-| `exportSettings` | 3619 |
-| `isEditMode` | 3620 |
-| `importSettings` | 3620 |
-| `isSelectBox` | 3621 |
-| `editCaption` | 3622 |
+| `isListVisible` | 3815 |
+| `exportSettings` | 3621 |
+| `isEditMode` | 3816 |
+| `importSettings` | 3622 |
+| `isSelectBox` | 3817 |
+| `editCaption` | 3818 |
 | `editValue` | 3623 |
 | `curColor` | 3624 |
 | `curColorB` | 3625 |
@@ -285,8 +282,7 @@ This file is an inventory only. CI enforces a small must-keep identifier snapsho
 | `sPipPos` | 3691 |
 | `sPageSize` | 3692 |
 | `sFontShift` | 3693 |
-| `sFont` | 3694 |
-| `stbInfo` | 3694 |
+| `sFont` | 3890 |
 | `sArrowFun` | 3695 |
 | `sRewFun` | 3696 |
 | `sPNFun` | 3697 |
@@ -362,4 +358,4 @@ After the Vite build, the classic ES5 bundle must still contain these identifier
 | `optionsList` | settings / options UI entry used from keyhandler and boot paths |
 | `listKeyHandler` | providers assign bare listKeyHandler; must remain in bundle text |
 | `chanels` | legacy misspelling alias (window.chanels = channels); old plugins/HTML |
-**Unique names assigned in `src/index.ts`:** 339
+**Unique names assigned in `src/index.ts`:** 335
