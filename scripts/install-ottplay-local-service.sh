@@ -37,6 +37,7 @@ mkdir -p "$DEST"
 rsync -a --delete \
     --exclude .git --exclude node_modules --exclude logs \
     --exclude '*.local.py' --exclude 'certs' \
+    --exclude 'debug.enabled' --exclude 'debug-playback.log' --exclude 'debug-playback.log.1' \
     "$SRC/" "$DEST/"
 
 echo "[2/6] npm install + build"
