@@ -1382,11 +1382,16 @@ export function startEpgTimer(timer: any): void {
                         0,
                         Math.ceil((timer.t * 1000 - Date.now()) / 60000)
                     );
+                    var ch = channels[timer.ci]
+                        ? channels[timer.ci].channel_name
+                        : "";
                     w.showShift(
-                        w._("Reminder: {0} — {1} in {2} min", [
-                            timer.n || w._("channel"),
-                            minutesLeft,
-                        ])
+                        w._(
+                            "Reminder: %1 — %2 in %3 min",
+                            ch,
+                            timer.n || "",
+                            minutesLeft
+                        )
                     );
                 }
             },
