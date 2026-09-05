@@ -6,7 +6,6 @@ HS5 / MAG plugins (`prov.js`, device `stb/*.js`) are classic scripts. They read 
 
 This file is an inventory only. CI enforces a small must-keep identifier snapshot in `dist/stbPlayer.js` (see `scripts/check-bundle-identifiers.sh`). Do not grow `window` without adding a row here.
 
-**Unique names assigned in `src/index.ts`:** 320
 
 ## Inventory
 
@@ -19,16 +18,21 @@ This file is an inventory only. CI enforces a small must-keep identifier snapsho
 | `client_can` | 306 |
 | `editKey` | 944 |
 | `showEditKey` | 945 |
+| `showEditKey2` | 968 |
 | `playTime` | 1058 |
 | `playType` | 1059 |
 | `keyStrings` | 1215 |
 | `listPodval` | 1324 |
 | `setEdit` | 1389 |
+| `clearBootHide` | 1420 |
+| `ott_device` | 1471 |
 | `startPlayer` | 1474 |
 | `onStbReady` | 1477 |
 | `keyHandler` | 1479 |
 | `_doKey` | 1480 |
 | `keys` | 1481 |
+| `__TAURI__` | 1526 |
+| `getEPGchanel` | 1529 |
 | `_tmedia` | 1551 |
 | `_prog100` | 1599 |
 | `_playChannel` | 1627 |
@@ -71,7 +75,9 @@ This file is an inventory only. CI enforces a small must-keep identifier snapsho
 | `selIndex` | 1681 |
 | `getListItem` | 1682 |
 | `detailListAction` | 1694 |
+| `refreshchanelsList` | 1711 |
 | `listKeyHandlerFn` | 1735 |
+| `stbToggleStandby` | 1768 |
 | `listDataArray` | 1778 |
 | `stbOptions` | 1794 |
 | `saveIfChanged` | 1883 |
@@ -83,6 +89,8 @@ This file is an inventory only. CI enforces a small must-keep identifier snapsho
 | `settingsMenu` | 2736 |
 | `settingsManage` | 2794 |
 | `cloudSendSettings` | 2906 |
+| `exportSettingsUI` | 2924 |
+| `importSettingsUI` | 2948 |
 | `cloudLoadSettings` | 3014 |
 | `edit_dealer` | 3167 |
 | `edit_dealer_remote` | 3168 |
@@ -212,12 +220,21 @@ This file is an inventory only. CI enforces a small must-keep identifier snapsho
 | `popMedia` | 3462 |
 | `exitPortal` | 3463 |
 | `aboutKeyHandler` | 3502 |
+| `popFavLists` | 3550 |
+| `getActiveFavoritesListName` | 3551 |
+| `setActiveFavoritesList` | 3552 |
+| `addFavoritesList` | 3553 |
+| `renameFavoritesList` | 3554 |
+| `deleteFavoritesList` | 3555 |
+| `listFavoritesLists` | 3556 |
 | `infoArr` | 3615 |
 | `pluginInfo` | 3616 |
 | `buttonsInfo` | 3617 |
 | `infoList` | 3618 |
 | `isListVisible` | 3619 |
+| `exportSettings` | 3619 |
 | `isEditMode` | 3620 |
+| `importSettings` | 3620 |
 | `isSelectBox` | 3621 |
 | `editCaption` | 3622 |
 | `editValue` | 3623 |
@@ -269,6 +286,7 @@ This file is an inventory only. CI enforces a small must-keep identifier snapsho
 | `sPageSize` | 3692 |
 | `sFontShift` | 3693 |
 | `sFont` | 3694 |
+| `stbInfo` | 3694 |
 | `sArrowFun` | 3695 |
 | `sRewFun` | 3696 |
 | `sPNFun` | 3697 |
@@ -332,7 +350,6 @@ This file is an inventory only. CI enforces a small must-keep identifier snapsho
 | `sSHLcolorB` | 3756 |
 | `sLocalCmdUrl` | 3757 |
 | `settingsCommands` | 3846 |
-
 ## CI must-keep
 
 After the Vite build, the classic ES5 bundle must still contain these identifier strings (mangle stays off). The list key handler name is required by plugins even when index primarily assigns the Fn alias / wiring elsewhere in concat.
@@ -345,3 +362,4 @@ After the Vite build, the classic ES5 bundle must still contain these identifier
 | `optionsList` | settings / options UI entry used from keyhandler and boot paths |
 | `listKeyHandler` | providers assign bare listKeyHandler; must remain in bundle text |
 | `chanels` | legacy misspelling alias (window.chanels = channels); old plugins/HTML |
+**Unique names assigned in `src/index.ts`:** 339
