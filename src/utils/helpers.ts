@@ -39,26 +39,6 @@ export function client_feedb(message: string): void {
     PostFeedback(message, "/report_feedb");
 }
 
-/**
- * Record a performance timestamp label (Maple 6 STB only).
- *
- * @param label - A string identifying the point in execution.
- *
- * @remarks
- * No-ops on non-Maple-6 devices. Appends a `"timestamp - label"` entry to
- * the internal `_perfLog` array for later retrieval / reporting.
- *
- * @sideEffects
- * Mutates the internal `_perfLog` array.
- */
-
-/**
- * Return all recorded performance stamps as one newline-joined string and
- * clear the buffer. Empty string when nothing was recorded (non-Maple 6
- * devices never record).
- *
- * @returns The collected `"timestamp - label"` lines, or "".
- */
 var FeedbPOST: (msg: string) => void = function (msg: string): void {
     PostFeedback(msg, "/report_feedb");
 };

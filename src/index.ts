@@ -1099,9 +1099,6 @@ function checkMedia(): void {
 function body_onUnload(): void {
     setCurrent(catIndex, primaryIndex);
     window.playType = 0;
-    // Report collected Maple 6 performance stamps (buffer is cleared;
-    // no-op and empty on other platforms). The server appends the payload
-    // to feedback.log.
 }
 
 /**
