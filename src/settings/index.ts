@@ -44,6 +44,7 @@ import { storage } from "../storage/index";
  * @property noNumbersKeys     - Disable numeric key shortcuts (0/1).
  * @property timezone          - UTC offset override (applied via polyfill).
  * @property sleepTimeout      - Inactivity sleep timer (minutes).
+ * @property epgRemindMinutes  - Minutes before an EPG timer to show a reminder OSD (0 = off).
  * @property volumeStep        - Volume increment per key press (%).
  * @property infoTimeout       - Info OSD auto-hide timeout (seconds).
  * @property infoSlide         - Info OSD slide animation enabled (0/1).
@@ -96,6 +97,7 @@ export interface PlayerSettings {
     deviceUuid: string;
     editor: number;
     eFun: number;
+    epgRemindMinutes: number;
     favorites: number;
     ffFun: number;
     fontShift: number;
@@ -180,6 +182,7 @@ export function defaultSettings(): PlayerSettings {
         deviceUuid: "",
         editor: 0,
         eFun: 0,
+        epgRemindMinutes: 5,
         favorites: 0,
         ffFun: 19,
         fontShift: 4,
@@ -275,6 +278,7 @@ export function loadSettings(): PlayerSettings {
         deviceUuid: s.get("sDeviceUuid") || "",
         editor: s.getI("sEditor", 0),
         eFun: s.getI("sEfun", 0),
+        epgRemindMinutes: s.getI("sEpgRemindMinutes", 5),
         favorites: s.getI("sFavorites", 0),
         ffFun: s.getI("sFFfun", 19),
         fontShift: s.getI("sFontShift", 4),
@@ -391,6 +395,7 @@ export function saveSettings(s: PlayerSettings): void {
     store.setI("sNoNumbersKeys", s.noNumbersKeys);
     store.setI("sTimezone", s.timezone);
     store.setI("sSleepTimeout", s.sleepTimeout);
+    store.setI("sEpgRemindMinutes", s.epgRemindMinutes);
     store.setI("sVolumeStep", s.volumeStep);
     store.setI("sInfoTimeout", s.infoTimeout);
     store.setI("sInfoSlide", s.infoSlide);
