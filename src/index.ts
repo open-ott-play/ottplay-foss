@@ -1449,6 +1449,13 @@ function onStbReady(): void {
             }
         );
 
+        // Re-apply Tauri IPC override after provider script loads.
+        // This ensures the getEPGchanel override persists even when provider scripts
+        // attempt to reset window.getEPGchanel (as they do in loadProv → getScriptDOM callback).
+        if (typeof window.__TAURI__ !== "undefined") {
+            setupTauriEpgOverride();
+        }
+
         if (TMDb && TMDb.prepare) TMDb.prepare();
     } catch (e) {
         var launchEl2 = document.getElementById("launch");
@@ -1489,6 +1496,71 @@ window.onStbReady = onStbReady;
 window.keyHandler = keyHandler;
 window._doKey = dispatchKey;
 window.keys = keys;
+
+// Tauri IPC detection and EPG override
+// When running under Tauri (Mode B), override getEPGchanel to use invoke()
+// When running in browser/STB (Mode A), leave getEPGchanel unchanged for provider HTTP fetch
+
+/**
+ * Shared Tauri invoke helper. Uses @tauri-apps/api/core if available,
+ * falls back to window.__TAURI__.invoke for bundled apps.
+ */
+function tauriInvoke<T>(
+    command: string,
+    args: Record<string, unknown>
+): Promise<T> {
+    // Prefer core.invoke (Tauri v2 core API), fallback to global __TAURI__
+    const core = (window as any).__TAURI__?.core;
+    if (core?.invoke) {
+        return core.invoke(command, args) as Promise<T>;
+    }
+    return (window as any).__TAURI__.invoke(command, args) as Promise<T>;
+}
+
+/**
+ * Setup Tauri EPG override for getEPGchanel. Uses Tauri IPC instead of HTTP fetch.
+ * Mode A (browser/STB): leaves getEPGchanel unchanged — provider HTTP fetch path.
+ * Mode B (Tauri): passes playlist channel name so the Rust backend can resolve
+ *   it to the XMLTV channel ID via match_channel, mirroring the server's
+ *   /epg/{hash} handler. This ensures cache.programs[channel_id] looks up the
+ *   correct xmltv_id instead of a numeric playlist chId.
+ * time_shift_hours is always 0 (future EPG only, no historical data).
+ */
+function setupTauriEpgOverride(): void {
+    if (typeof window.__TAURI__ === "undefined") return; // only apply in Tauri Mode B
+
+    const orig = window.getEPGchanel;
+    window.getEPGchanel = function (
+        chId: string,
+        callback: (id: string, data: any[]) => void
+    ): void {
+        const channelIdNum = parseInt(chId, 10);
+        if (isNaN(channelIdNum)) {
+            callback(chId, []);
+            return;
+        }
+
+        // Get the channel name from the channels map so the Rust backend can
+        // resolve it to the matching XMLTV channel ID via match_channel.
+        // channels is imported into scope from ./channels.
+        const ch = channels[channelIdNum];
+        const channelName = ch?.channel_name || ch?.name || "";
+
+        tauriInvoke<any>("get_epg", {
+            ch: channelName,
+            channel_id: channelIdNum.toString(),
+            hash: "",
+            time_shift_hours: 0,
+        })
+            .then((result) => {
+                callback(chId, result?.epg_data || []);
+            })
+            .catch((error: any) => {
+                console.error("[Tauri] get_epg failed:", error);
+                callback(chId, []);
+            });
+    };
+}
 
 /* ---------------------------------------------------------------------------
  * Core channel / media playback
@@ -1665,6 +1737,64 @@ window.stbGetLen = stbGetLen;
 window.stbToFullScreen = stbToFullScreen;
 window.stbSetWindow = stbSetWindow;
 window.stbToggleAspectRatio = stbToggleAspectRatio;
+
+// Tauri Mode B: override stbToFullScreen to use native window fullscreen.
+// Keeps CSS zoom path; toggles actual OS window fullscreen via Tauri IPC.
+if (typeof window.__TAURI__ !== "undefined") {
+    (function () {
+        const orig = window.stbToFullScreen;
+        window.stbToFullScreen = function (): void {
+            orig(); // keep CSS zoom + aspect ratio
+            tauriInvoke<any>("set_fullscreen", { fullscreen: true }).catch(
+                (e: any) => console.warn("[Tauri] set_fullscreen failed:", e)
+            );
+        };
+    })();
+
+    // Tauri Mode B: override stbSetWindow to exit native fullscreen after orig.
+    if (typeof window.stbSetWindow === "function") {
+        const orig = window.stbSetWindow;
+        window.stbSetWindow = function (): void {
+            orig(); // keep CSS zoom + aspect ratio
+            tauriInvoke<any>("set_fullscreen", { fullscreen: false }).catch(
+                (e: any) => console.warn("[Tauri] set_fullscreen failed:", e)
+            );
+        };
+    }
+}
+
+// Tauri Mode B: override stbToggleStandby for best-effort sleep prevention.
+// Enter standby → allow_sleep (machine may sleep). Exit standby → prevent_sleep (keep awake).
+if (typeof window.__TAURI__ !== "undefined") {
+    (function () {
+        const orig = window.stbToggleStandby;
+        let _standby = false;
+        window.stbToggleStandby = function (): void {
+            _standby = !_standby;
+            if (_standby) {
+                // Entering standby: allow machine to sleep.
+                tauriInvoke<any>("allow_sleep", {})
+                    .then((r) => {
+                        if (!r?.ok) console.warn("[Tauri] allow_sleep:", r);
+                    })
+                    .catch((e: any) =>
+                        console.warn("[Tauri] allow_sleep failed:", e)
+                    );
+            } else {
+                // Exiting standby: prevent sleep while app is active.
+                tauriInvoke<any>("prevent_sleep", {})
+                    .then((r) => {
+                        if (!r?.ok) console.warn("[Tauri] prevent_sleep:", r);
+                    })
+                    .catch((e: any) =>
+                        console.warn("[Tauri] prevent_sleep failed:", e)
+                    );
+            }
+            // Preserve original standby DOM behavior
+            if (typeof orig === "function") orig();
+        };
+    })();
+}
 window.stbToggleAudioTrack = stbToggleAudioTrack;
 window.stbToggleSubtitle = stbToggleSubtitle;
 window.stbAudioTracksExists = stbAudioTracksExists;
