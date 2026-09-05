@@ -490,21 +490,29 @@ export function importSettings(
         return;
     }
 
-    if (!env || env.version !== 1 || !env.settings) {
+    if (
+        !env ||
+        env.version !== 1 ||
+        !env.settings ||
+        typeof env.settings !== "object"
+    ) {
         if (onConfirm) onConfirm(false);
         return;
     }
 
+    // Coerce arrays to ensure they are proper arrays
+    if (!Array.isArray(env.parentalArray)) env.parentalArray = [];
+    if (!Array.isArray(env.favoritesArray)) env.favoritesArray = [];
+
     if (typeof window.confirmBox === "function") {
         window.confirmBox(
             "Overwrite current settings?",
-            function (ok: boolean) {
-                if (!ok) {
-                    if (onConfirm) onConfirm(false);
-                    return;
-                }
+            function () {
                 applyImport(env);
                 if (onConfirm) onConfirm(true);
+            },
+            function () {
+                if (onConfirm) onConfirm(false);
             }
         );
     } else {
@@ -529,4 +537,7 @@ function applyImport(env: ExportEnvelopeV1): void {
     if (typeof window.showShift === "function") {
         window.showShift("Settings imported");
     }
+    // Restart so live window.s* globals and channels module
+    // favoritesArray/parentalArray pick up the new data.
+    if (typeof window.restart === "function") window.restart();
 }

@@ -125,6 +125,8 @@ import {
 // Settings
 import {
     defaultSettings,
+    exportSettings,
+    importSettings,
     loadSettings,
     type PlayerSettings,
     saveSettings,
@@ -3614,6 +3616,8 @@ window.parentalArray = parentalArray;
 window.playType = playType;
 window.playTime = playTime;
 window.settings = settings;
+window.exportSettings = exportSettings;
+window.importSettings = importSettings;
 window.parentPIN = parentPIN;
 window.hideMenus = hideMenus;
 window.pageSize = pageSize;
