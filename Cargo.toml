@@ -1,3 +1,8 @@
 [workspace]
 resolver = "2"
-members = ["src-rs/core", "src-rs/server"]
+members = ["src-rs/core", "src-rs/server", "src-tauri"]
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

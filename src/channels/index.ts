@@ -513,7 +513,32 @@ export function getEPGchanelCached(
         callback(channelId, cached);
         return;
     }
-    // Fall through to provider fetch
+    // Mode B (Tauri desktop): no provider sets window.getEPGchanel.
+    // Use in-process Rust EPG via invoke() instead of HTTP fetch.
+    if (typeof (window as any).__TAURI__ !== "undefined") {
+        var ch = channels[channelId];
+        var hash = String(channelId);
+        var timeShiftHours = ch && typeof ch.rec === "number" ? ch.rec : 0;
+        (window as any).__TAURI__.core
+            .invoke("get_epg", {
+                channel_id: String(channelId),
+                hash: hash,
+                time_shift_hours: timeShiftHours,
+            })
+            .then(function (result: any) {
+                if (result && Array.isArray(result.epg_data)) {
+                    epg[channelId] = result.epg_data;
+                    callback(channelId, result.epg_data);
+                } else {
+                    callback(channelId, null);
+                }
+            })
+            .catch(function (_err: any) {
+                callback(channelId, null);
+            });
+        return;
+    }
+    // Fall through to provider fetch (Mode A / browser / STB)
     var w = window as any;
     if (typeof w.getEPGchanel === "function") {
         w.getEPGchanel(channelId, callback);
@@ -913,6 +938,7 @@ export function epgShow_miniproc(
     //   a = cats[catsArray[listCatIndex]][listChannel]
     //   getEPGchanelCached(a, ...)  // internal channel id, NOT ch.ch_id
     epglisted = mode;
+    w.epglisted = mode;
     epgreturn = epgReturn;
     w.epgreturn = epgReturn;
     w.listCatIndex = catIdx;
@@ -927,6 +953,7 @@ export function epgShow_miniproc(
         return;
     }
     epg_ch_id = a;
+    w.epg_ch_id = a;
 
     if (typeof w.getEPGchanelCached !== "function") {
         epglisted = 0;
@@ -1414,10 +1441,10 @@ export function setEpgTimer(_channelId?: any, _time?: number): void {
     var w = window as any;
     // Legacy stbPlayer.js:3735-3760 — uses list selection + epglisted mode
     var item = w.listArray[w.selIndex];
-    if (!epglisted || !item || item.time < Date.now() / 1000) return;
+    if (!w.epglisted || !item || item.time < Date.now() / 1000) return;
 
     var idx = epgTimers.findIndex(function (t) {
-        return t.ci == epg_ch_id && t.t == item.time;
+        return t.ci == w.epg_ch_id && t.t == item.time;
     });
     var msg = idx === -1 ? "Set timer?" : "Remove timer?";
 
@@ -1426,7 +1453,7 @@ export function setEpgTimer(_channelId?: any, _time?: number): void {
         if (idx === -1) {
             var timer = {
                 c: w.listCatIndex,
-                ci: epg_ch_id,
+                ci: w.epg_ch_id,
                 i: w.listChannel,
                 n: item.name,
                 t: item.time,
