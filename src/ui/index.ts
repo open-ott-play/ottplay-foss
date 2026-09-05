@@ -701,6 +701,7 @@ export function showChanelInfo(timeoutSec: number): void {
     } else {
         infoBarHide();
     }
+    refreshAudioBadge();
 }
 
 /**
@@ -1401,6 +1402,22 @@ export function updateMediaInfo(): void {
     var resEl = document.getElementById("video_res");
     if (resEl && video && video.videoWidth)
         resEl.innerHTML = "<br/>" + video.videoWidth + "x" + video.videoHeight;
+    refreshAudioBadge();
+}
+
+/**
+ * Show or hide the multi-audio badge in the video info bar.
+ * Reads `stbAudioTracksExists()` from core and toggles `#audio_badge` visibility.
+ *
+ * @sideeffect Mutates `#audio_badge` display style.
+ */
+export function refreshAudioBadge(): void {
+    var badge = document.getElementById("audio_badge");
+    if (!badge) return;
+    var hasMulti =
+        typeof (window as any).stbAudioTracksExists === "function" &&
+        (window as any).stbAudioTracksExists();
+    badge.style.display = hasMulti ? "inline-block" : "none";
 }
 
 /**
