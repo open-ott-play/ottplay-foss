@@ -97,6 +97,7 @@ import {
     primaryIndex,
     recordsList,
     removeFromFavorites,
+    restoreContinueWatch,
     saveChannelsCats,
     sEditor,
     selectEpg,
@@ -1080,6 +1081,8 @@ function checkMedia(): void {
  * Persist the current channel position and reset playType on page unload.
  *
  * Side effects: Calls setCurrent() and sets window.playType = 0.
+ * When in archive/vod mode (playType > 0 or === -1e11), the continue-watch
+ * bookmark is saved with the live position cleared and archive fields kept.
  */
 function body_onUnload(): void {
     setCurrent(catIndex, primaryIndex);
