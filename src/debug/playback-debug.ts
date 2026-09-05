@@ -379,11 +379,8 @@ function ottDebugUpdateHud(): void {
     _ottDbgHudEl.innerHTML = lines.join("<br/>");
 }
 
-function ottDebugFlushIngest(): void {
-    if (!_ottDbgEnabled || !_ottDbgPending.length) return;
-    var batch = _ottDbgPending.slice();
-    _ottDbgPending = [];
-    var body = JSON.stringify({
+function ottDebugBuildIngestBody(batch: OttDebugEvent[]): string {
+    return JSON.stringify({
         events: batch,
         origin: ottDebugOrigin(),
         playerId: ottDebugEnsurePlayerId(),
@@ -391,13 +388,23 @@ function ottDebugFlushIngest(): void {
         session: _ottDbgSession || "-",
         ua: ottDebugUaShort() || undefined,
     });
+}
+
+function ottDebugFlushIngest(): void {
+    if (!_ottDbgEnabled || !_ottDbgPending.length) return;
+    var batch = _ottDbgPending.slice();
+    _ottDbgPending = [];
+    var body = ottDebugBuildIngestBody(batch);
     try {
         if (typeof fetch === "function") {
             fetch("/debug/ingest", {
                 body: body,
                 headers: { "Content-Type": "application/json" },
                 method: "POST",
-            }).catch(function () {});
+            }).catch(function () {
+                // Network fail — re-queue so urgent/beacon flush can retry.
+                _ottDbgPending = batch.concat(_ottDbgPending);
+            });
             return;
         }
     } catch (_e) {}
@@ -406,7 +413,44 @@ function ottDebugFlushIngest(): void {
         xhr.open("POST", "/debug/ingest", true);
         xhr.setRequestHeader("Content-Type", "application/json");
         xhr.send(body);
-    } catch (_e2) {}
+    } catch (_e2) {
+        _ottDbgPending = batch.concat(_ottDbgPending);
+    }
+}
+
+/** Unload/hide flush: Beacon when available, else sync XHR (HS5-safe feature-detect). */
+function ottDebugFlushIngestUrgent(): void {
+    if (!_ottDbgEnabled || !_ottDbgPending.length) return;
+    var batch = _ottDbgPending.slice();
+    _ottDbgPending = [];
+    var body = ottDebugBuildIngestBody(batch);
+    var sent = false;
+    try {
+        if (
+            typeof navigator !== "undefined" &&
+            typeof (navigator as any).sendBeacon === "function"
+        ) {
+            if (typeof Blob !== "undefined") {
+                var blob = new Blob([body], { type: "application/json" });
+                sent = !!(navigator as any).sendBeacon("/debug/ingest", blob);
+            } else {
+                // String body → text/plain; server parses JSON from bytes anyway.
+                sent = !!(navigator as any).sendBeacon("/debug/ingest", body);
+            }
+        }
+    } catch (_e) {}
+    if (!sent) {
+        try {
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/debug/ingest", false);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.send(body);
+            sent = true;
+        } catch (_e2) {}
+    }
+    if (!sent) {
+        _ottDbgPending = batch.concat(_ottDbgPending);
+    }
 }
 
 function ottDebugClearStallTimer(): void {
@@ -633,7 +677,22 @@ function ottDebugAttachHls(hls: any): void {
 function ottDebugOnVisibilityFlush(): void {
     if (!_ottDbgEnabled) return;
     try {
-        ottDebugFlushIngest();
+        // Final stats into pending without async auto-flush (ottDebugPush would
+        // fire fetch for msg===stats); Beacon/sync XHR must carry the last batch.
+        ottDebugRefreshSamples();
+        var ev: OttDebugEvent = ottDebugTagEvent({
+            cat: "sys",
+            msg: "unload-stats",
+            session: _ottDbgSession || "-",
+            t: Date.now(),
+        });
+        ev.data = ottDebugCounters();
+        _ottDbgRing.push(ev);
+        if (_ottDbgRing.length > OTT_DEBUG_RING_MAX) {
+            _ottDbgRing.splice(0, _ottDbgRing.length - OTT_DEBUG_RING_MAX);
+        }
+        _ottDbgPending.push(ev);
+        ottDebugFlushIngestUrgent();
     } catch (_e) {}
 }
 
@@ -653,6 +712,11 @@ function ottDebugInstallFlushHooks(): void {
         if (typeof window !== "undefined" && window.addEventListener) {
             window.addEventListener(
                 "pagehide",
+                ottDebugOnVisibilityFlush,
+                false
+            );
+            window.addEventListener(
+                "beforeunload",
                 ottDebugOnVisibilityFlush,
                 false
             );
