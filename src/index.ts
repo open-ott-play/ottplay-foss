@@ -671,45 +671,45 @@ function setFontSize(): void {
     $("logo").css({ margin: 100 * e + "px" });
     $("#list").css({ margin: 10 * e + "px " + 10 * t + "px" });
     $("#listCaption").css({
-        height: 34 * e + "px",
-        "line-height": 34 * e + "px",
+        height: 42 * e + "px",
+        "line-height": 42 * e + "px",
         padding: "0 " + 12 * t + "px",
     });
     $("#listTime").css({ "font-size": 22 * e + "px", width: 88 * t + "px" });
     $("#list_s").css({ "font-size": 16 * e + "px" });
     $("#listPodval").css({
-        height: 34 * e + "px",
-        "line-height": 34 * e + "px",
+        height: 42 * e + "px",
+        "line-height": 42 * e + "px",
         padding: "0 " + 12 * t + "px",
     });
     $("#listDetail").css({
-        bottom: 34 * e + 1 + "px",
+        bottom: 42 * e + 1 + "px",
         padding: 10 * e + "px " + 14 * t + "px",
         top: 330 * e + "px",
         width: 514 * t + 1 + "px",
     });
     $("#listPopUp").css({
-        bottom: 34 * e + 1 + "px",
+        bottom: 42 * e + 1 + "px",
         margin: 10 * e + "px",
         padding: 14 * e + "px " + 18 * t + "px",
     });
     $("#listIn").css({
-        bottom: 34 * e + 1 + "px",
+        bottom: 42 * e + 1 + "px",
         left: 522 * t + "px",
         padding: 2 * e + "px 0px",
-        top: 34 * e + 1 + "px",
+        top: 42 * e + 1 + "px",
     });
     $("#listAbout").css({
-        bottom: 34 * e + 1 + "px",
+        bottom: 42 * e + 1 + "px",
         left: 522 * t + "px",
         padding: 14 * e + "px " + 16 * t + "px",
-        top: 34 * e + 1 + "px",
+        top: 42 * e + 1 + "px",
     });
     $("#listEdit").css({
-        bottom: 34 * e + 1 + "px",
+        bottom: 42 * e + 1 + "px",
         left: 522 * t + "px",
         padding: 14 * e + "px " + 16 * t + "px",
-        top: 34 * e + 1 + "px",
+        top: 42 * e + 1 + "px",
     });
     $("#info1").css({ padding: 20 * e + "px " + 20 * t + "px" });
     $("#picon").css({ height: 80 * e + "px", width: 80 * t + "px" });
