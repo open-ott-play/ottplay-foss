@@ -6,4 +6,3 @@ members = ["src-rs/core", "src-rs/server", "src-tauri"]
 lto = true
 codegen-units = 1
 strip = true
-
