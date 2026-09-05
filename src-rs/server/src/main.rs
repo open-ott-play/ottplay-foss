@@ -134,9 +134,11 @@ async fn main() {
         .route("/webhook/poll", get(webhook_stub))
         .route("/webhook/notify", get(webhook_stub))
         // Playback debug ingest/tail (local realtime debug)
+        .route("/debug/config", get(debug_config))
         .route("/debug/ingest", post(debug_ingest))
         .route("/debug/tail", get(debug_tail))
         .route("/debug/status", get(debug_status))
+        .route("/debug/summary", get(debug_summary))
         .nest_service("/f", ServeDir::new("."))
         .nest_service("/dist", ServeDir::new("dist"))
         .nest_service("/stbPlayer", ServeDir::new("stbPlayer"))
@@ -602,10 +604,19 @@ async fn webhook_stub() -> impl axum::response::IntoResponse {
 }
 
 const DEBUG_LOG: &str = "debug-playback.log";
-const DEBUG_LOG_MAX: u64 = 10 * 1024 * 1024;
+const DEBUG_LOG_MAX: u64 = 20 * 1024 * 1024;
+const DEBUG_SUMMARY_SCAN_MAX: u64 = 2 * 1024 * 1024;
 
 fn debug_log_path() -> std::path::PathBuf {
     std::path::PathBuf::from(DEBUG_LOG)
+}
+
+/// Enabled when OTTPLAY_DEBUG=1 or cwd file `debug.enabled` exists (empty OK).
+fn debug_is_enabled() -> bool {
+    if std::env::var("OTTPLAY_DEBUG").ok().as_deref() == Some("1") {
+        return true;
+    }
+    std::path::Path::new("debug.enabled").exists()
 }
 
 fn rotate_debug_log_if_needed() {
@@ -622,18 +633,36 @@ fn rotate_debug_log_if_needed() {
 struct DebugIngestBody {
     session: Option<String>,
     events: Option<Vec<serde_json::Value>>,
+    port: Option<serde_json::Value>,
+    origin: Option<String>,
+    #[serde(rename = "playerId")]
+    player_id: Option<String>,
+    ua: Option<String>,
 }
 
-/// POST /debug/ingest — append JSONL events to debug-playback.log (rotate ~10MB).
+/// GET /debug/config — {enabled:bool} for client auto-enable (all HTTPS ports).
+async fn debug_config() -> impl IntoResponse {
+    (
+        StatusCode::OK,
+        [(axum::http::header::CONTENT_TYPE, "application/json")],
+        serde_json::json!({ "enabled": debug_is_enabled() }).to_string(),
+    )
+}
+
+/// POST /debug/ingest — append JSONL events to debug-playback.log (rotate ~20MB).
 async fn debug_ingest(body: Option<Bytes>) -> impl IntoResponse {
     let raw = body
         .map(|b| String::from_utf8_lossy(&b).into_owned())
         .unwrap_or_default();
     let parsed: Result<DebugIngestBody, _> = serde_json::from_str(&raw);
-    let (session, events) = match parsed {
+    let (session, events, batch_port, batch_origin, batch_player, batch_ua) = match parsed {
         Ok(b) => (
             b.session.unwrap_or_else(|| "-".to_string()),
             b.events.unwrap_or_default(),
+            b.port,
+            b.origin,
+            b.player_id,
+            b.ua,
         ),
         Err(_) => {
             // Accept opaque JSON blob as a single line
@@ -648,23 +677,55 @@ async fn debug_ingest(body: Option<Bytes>) -> impl IntoResponse {
             return (
                 StatusCode::OK,
                 [(axum::http::header::CONTENT_TYPE, "application/json")],
-                r#"{"ok":true}"#,
+                r#"{"ok":true}"#.to_string(),
             );
         }
     };
     rotate_debug_log_if_needed();
     use std::io::Write;
     let path = debug_log_path();
+    let recv_ts = Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
     let _ = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open(&path)
         .and_then(|mut f| {
             for ev in events {
-                let line = serde_json::json!({
+                let mut line = serde_json::json!({
                     "session": session,
                     "event": ev,
+                    "recvAt": recv_ts,
                 });
+                // Merge batch-level tags (client also stamps each event).
+                if let Some(ref p) = batch_port {
+                    line["port"] = p.clone();
+                }
+                if let Some(ref o) = batch_origin {
+                    line["origin"] = serde_json::json!(o);
+                }
+                if let Some(ref pid) = batch_player {
+                    line["playerId"] = serde_json::json!(pid);
+                }
+                if let Some(ref ua) = batch_ua {
+                    line["ua"] = serde_json::json!(ua);
+                }
+                // Prefer per-event tags when present on the event object.
+                let ev_port = line.get("event").and_then(|e| e.get("port")).cloned();
+                let ev_origin = line.get("event").and_then(|e| e.get("origin")).cloned();
+                let ev_player = line.get("event").and_then(|e| e.get("playerId")).cloned();
+                let ev_ua = line.get("event").and_then(|e| e.get("ua")).cloned();
+                if let Some(p) = ev_port {
+                    line["port"] = p;
+                }
+                if let Some(o) = ev_origin {
+                    line["origin"] = o;
+                }
+                if let Some(pid) = ev_player {
+                    line["playerId"] = pid;
+                }
+                if let Some(ua) = ev_ua {
+                    line["ua"] = ua;
+                }
                 writeln!(f, "{line}")?;
             }
             Ok(())
@@ -672,7 +733,7 @@ async fn debug_ingest(body: Option<Bytes>) -> impl IntoResponse {
     (
         StatusCode::OK,
         [(axum::http::header::CONTENT_TYPE, "application/json")],
-        r#"{"ok":true}"#,
+        r#"{"ok":true}"#.to_string(),
     )
 }
 
@@ -735,4 +796,139 @@ async fn debug_status() -> impl IntoResponse {
             .to_string(),
         ),
     }
+}
+
+/// GET /debug/summary — scan last ~2MB of debug-playback.log → per-port counts.
+async fn debug_summary() -> impl IntoResponse {
+    let path = debug_log_path();
+    let file_bytes = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+    let content = match std::fs::read(&path) {
+        Ok(bytes) => {
+            let start = if bytes.len() as u64 > DEBUG_SUMMARY_SCAN_MAX {
+                bytes.len() - DEBUG_SUMMARY_SCAN_MAX as usize
+            } else {
+                0
+            };
+            // Align to next newline if we truncated mid-line.
+            let slice = if start > 0 {
+                match bytes[start..].iter().position(|&b| b == b'\n') {
+                    Some(i) => &bytes[start + i + 1..],
+                    None => &bytes[start..],
+                }
+            } else {
+                &bytes[..]
+            };
+            String::from_utf8_lossy(slice).into_owned()
+        }
+        Err(_) => String::new(),
+    };
+
+    #[derive(Default)]
+    struct PortStats {
+        events: u64,
+        stalls: u64,
+        errors: u64,
+        sessions: std::collections::HashSet<String>,
+    }
+
+    let mut by_port: HashMap<String, PortStats> = HashMap::new();
+    let mut total_lines: u64 = 0;
+
+    for line in content.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        total_lines += 1;
+        let v: serde_json::Value = match serde_json::from_str(line) {
+            Ok(v) => v,
+            Err(_) => {
+                // Opaque / legacy tab lines — bucket under "unknown"
+                let e = by_port.entry("unknown".to_string()).or_default();
+                e.events += 1;
+                if line.to_ascii_lowercase().contains("stall") {
+                    e.stalls += 1;
+                }
+                if line.to_ascii_lowercase().contains("error") {
+                    e.errors += 1;
+                }
+                continue;
+            }
+        };
+
+        let port = v
+            .get("port")
+            .and_then(|p| match p {
+                serde_json::Value::String(s) => Some(s.clone()),
+                serde_json::Value::Number(n) => Some(n.to_string()),
+                _ => None,
+            })
+            .or_else(|| {
+                v.get("event")
+                    .and_then(|e| e.get("port"))
+                    .and_then(|p| match p {
+                        serde_json::Value::String(s) => Some(s.clone()),
+                        serde_json::Value::Number(n) => Some(n.to_string()),
+                        _ => None,
+                    })
+            })
+            .unwrap_or_else(|| "unknown".to_string());
+
+        let session = v
+            .get("session")
+            .and_then(|s| s.as_str())
+            .or_else(|| v.get("event").and_then(|e| e.get("session")).and_then(|s| s.as_str()))
+            .unwrap_or("-")
+            .to_string();
+
+        let cat = v
+            .get("event")
+            .and_then(|e| e.get("cat"))
+            .and_then(|c| c.as_str())
+            .unwrap_or("");
+        let msg = v
+            .get("event")
+            .and_then(|e| e.get("msg"))
+            .and_then(|m| m.as_str())
+            .unwrap_or("");
+        let e = by_port.entry(port).or_default();
+        e.events += 1;
+        e.sessions.insert(session);
+        let msg_lc = msg.to_ascii_lowercase();
+        if cat == "stall" || msg_lc.contains("stall") {
+            e.stalls += 1;
+        }
+        // Explicit error events (video error / hls ERROR*) — not every line mentioning the word.
+        if msg == "error"
+            || msg_lc.starts_with("error")
+            || msg.contains("ERROR")
+            || (cat == "video" && msg_lc == "error")
+        {
+            e.errors += 1;
+        }
+    }
+
+    let mut by_port_json = serde_json::Map::new();
+    for (port, stats) in by_port {
+        by_port_json.insert(
+            port,
+            serde_json::json!({
+                "events": stats.events,
+                "stalls": stats.stalls,
+                "errors": stats.errors,
+                "sessions": stats.sessions.len() as u64,
+            }),
+        );
+    }
+
+    (
+        StatusCode::OK,
+        [(axum::http::header::CONTENT_TYPE, "application/json")],
+        serde_json::json!({
+            "byPort": by_port_json,
+            "totalLines": total_lines,
+            "fileBytes": file_bytes,
+        })
+        .to_string(),
+    )
 }
