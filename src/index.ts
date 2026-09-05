@@ -1519,11 +1519,17 @@ function tauriInvoke<T>(
 
 /**
  * Setup Tauri EPG override for getEPGchanel. Uses Tauri IPC instead of HTTP fetch.
- * Note: hash parameter is intentionally empty string since ottplay-core::get_epg_slice
- * ignores it (only uses channel_id to lookup programs). Empty hash is safe.
+ * Mode A (browser/STB): leaves getEPGchanel unchanged — provider HTTP fetch path.
+ * Mode B (Tauri): passes playlist channel name so the Rust backend can resolve
+ *   it to the XMLTV channel ID via match_channel, mirroring the server's
+ *   /epg/{hash} handler. This ensures cache.programs[channel_id] looks up the
+ *   correct xmltv_id instead of a numeric playlist chId.
  * time_shift_hours is always 0 (future EPG only, no historical data).
  */
 function setupTauriEpgOverride(): void {
+    if (typeof window.__TAURI__ === "undefined") return; // only apply in Tauri Mode B
+
+    const orig = window.getEPGchanel;
     window.getEPGchanel = function (
         chId: string,
         callback: (id: string, data: any[]) => void
@@ -1534,7 +1540,14 @@ function setupTauriEpgOverride(): void {
             return;
         }
 
+        // Get the channel name from the channels map so the Rust backend can
+        // resolve it to the matching XMLTV channel ID via match_channel.
+        // channels is imported into scope from ./channels.
+        const ch = channels[channelIdNum];
+        const channelName = ch?.channel_name || ch?.name || "";
+
         tauriInvoke<any>("get_epg", {
+            ch: channelName,
             channel_id: channelIdNum.toString(),
             hash: "",
             time_shift_hours: 0,
@@ -1737,10 +1750,21 @@ if (typeof window.__TAURI__ !== "undefined") {
             );
         };
     })();
+
+    // Tauri Mode B: override stbSetWindow to exit native fullscreen after orig.
+    if (typeof window.stbSetWindow === "function") {
+        const orig = window.stbSetWindow;
+        window.stbSetWindow = function (): void {
+            orig(); // keep CSS zoom + aspect ratio
+            tauriInvoke<any>("set_fullscreen", { fullscreen: false }).catch(
+                (e: any) => console.warn("[Tauri] set_fullscreen failed:", e)
+            );
+        };
+    }
 }
 
 // Tauri Mode B: override stbToggleStandby for best-effort sleep prevention.
-// Enters standby: calls prevent_sleep IPC. Exits: calls allow_sleep IPC.
+// Enter standby → allow_sleep (machine may sleep). Exit standby → prevent_sleep (keep awake).
 if (typeof window.__TAURI__ !== "undefined") {
     (function () {
         const orig = window.stbToggleStandby;
@@ -1748,20 +1772,22 @@ if (typeof window.__TAURI__ !== "undefined") {
         window.stbToggleStandby = function (): void {
             _standby = !_standby;
             if (_standby) {
-                tauriInvoke<any>("prevent_sleep", {})
-                    .then((r) => {
-                        if (!r?.ok) console.warn("[Tauri] prevent_sleep:", r);
-                    })
-                    .catch((e: any) =>
-                        console.warn("[Tauri] prevent_sleep failed:", e)
-                    );
-            } else {
+                // Entering standby: allow machine to sleep.
                 tauriInvoke<any>("allow_sleep", {})
                     .then((r) => {
                         if (!r?.ok) console.warn("[Tauri] allow_sleep:", r);
                     })
                     .catch((e: any) =>
                         console.warn("[Tauri] allow_sleep failed:", e)
+                    );
+            } else {
+                // Exiting standby: prevent sleep while app is active.
+                tauriInvoke<any>("prevent_sleep", {})
+                    .then((r) => {
+                        if (!r?.ok) console.warn("[Tauri] prevent_sleep:", r);
+                    })
+                    .catch((e: any) =>
+                        console.warn("[Tauri] prevent_sleep failed:", e)
                     );
             }
             // Preserve original standby DOM behavior

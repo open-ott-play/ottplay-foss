@@ -74,16 +74,18 @@ pub fn init_xmltv_urls() -> Vec<String> {
     }
 }
 
-/// `invoke('get_epg', {hash, channel_id, time_shift_hours})` → JSON EPG slice.
+/// `invoke('get_epg', {hash, channel_id, ch, time_shift_hours})` → JSON EPG slice.
 ///
-/// Flattened args — JS passes individual fields; Rust receives them as direct parameters
-/// instead of a nested struct. Empty hash is OK since `get_epg_slice` only uses `channel_id`
-/// to look up programs (hash is reserved for future filtering).
+/// Mirrors `src-rs/server/src/main.rs::epg_handler`:
+/// 1. If `ch` (playlist channel name) provided, fuzzy-match → xmltv_id.
+/// 2. Else if `hash` non-empty, lookup `epg_to_xmltv` map (not in Tauri state; use hash as xmltv_id).
+/// 3. Else fall back to `channel_id` (numeric playlist chId — rarely matches XMLTV id).
 #[tauri::command]
 pub async fn get_epg(
     state: tauri::State<'_, TauriState>,
     hash: String,
     channel_id: String,
+    ch: Option<String>,
     time_shift_hours: i64,
 ) -> Result<JsonValue, String> {
     let cache_guard = state.xmltv_cache.read().await;
@@ -108,21 +110,44 @@ pub async fn get_epg(
         let mut w = state.xmltv_cache.write().await;
         *w = Some(fresh);
         let cache = w.as_ref().ok_or("EPG cache still empty")?;
+        let xmltv_id = resolve_xmltv_id(&cache, &hash, &channel_id, ch.as_deref());
         return Ok(ottplay_core::get_epg_slice(
             cache,
             &hash,
-            &channel_id,
+            &xmltv_id,
             time_shift_hours,
         ).await);
     }
 
     let cache = cache.ok_or("EPG cache empty")?;
+    let xmltv_id = resolve_xmltv_id(cache, &hash, &channel_id, ch.as_deref());
     Ok(ottplay_core::get_epg_slice(
         cache,
         &hash,
-        &channel_id,
+        &xmltv_id,
         time_shift_hours,
     ).await)
+}
+
+/// Resolve xmltv_id like server's epg_handler:
+/// - if `ch` provided → fuzzy match against XMLTV channels
+/// - else if `hash` non-empty → use as xmltv_id (epg_to_xmltv map not in Tauri state)
+/// - else → fallback to `channel_id`
+fn resolve_xmltv_id(
+    cache: &ottplay_core::xmltv::XmltvCache,
+    hash: &str,
+    channel_id: &str,
+    ch: Option<&str>,
+) -> String {
+    if let Some(name) = ch {
+        if let Some((id, _score)) = ottplay_core::match_channel(name, &cache.channels) {
+            return id;
+        }
+    }
+    if !hash.is_empty() {
+        return hash.to_string();
+    }
+    channel_id.to_string()
 }
 
 /// `invoke('set_fullscreen', {fullscreen})` → toggle window fullscreen.
@@ -139,18 +164,14 @@ pub async fn set_fullscreen(
 
 /// `invoke('prevent_sleep', {})` → best-effort display sleep prevention.
 ///
-/// Platform notes:
-/// - macOS: IOServicePort idle assertion via IOKit (best-effort)
-/// - Linux: inotify-based idle inhibitor (best-effort)
-/// - Windows: SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
+/// Platform notes (mirror server.py::prevent_sleep patterns):
+/// - macOS: `caffeinate -i -s` (spawns native sleep-prevention assertion process)
+/// - Linux: `systemd-inhibit` (spawns process that blocks idle/sleep via D-Bus)
+/// - Windows: `SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)` via FFI
 /// Falls back gracefully when native APIs are unavailable.
 #[tauri::command]
 pub async fn prevent_sleep() -> Result<SleepResult, String> {
-    // Best-effort: attempt native idle prevention; silently degrade if unsupported.
-    // Actual platform-specific implementation varies by target OS.
-    let prevented = cfg!(target_os = "macos")
-        || cfg!(target_os = "linux")
-        || cfg!(target_os = "windows");
+    let prevented = prevent_sleep_native();
     Ok(SleepResult {
         ok: true,
         prevented,
@@ -162,12 +183,110 @@ pub async fn prevent_sleep() -> Result<SleepResult, String> {
     })
 }
 
+/// Spawned process handle for platforms that use a keepalive process (macOS/Linux).
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+static SLEEP_PROC: std::sync::OnceLock<std::sync::Mutex<Option<u32>>> =
+    std::sync::OnceLock::new();
+
+/// Platform-specific sleep prevention.
+#[cfg(target_os = "macos")]
+fn prevent_sleep_native() -> bool {
+    // macOS: `caffeinate -i -s` prevents idle sleep + system sleep for as long
+    // as the child process runs. We spawn it and store the PID so allow_sleep
+    // can terminate it.
+    let child = match std::process::Command::new("caffeinate")
+        .args(["-i", "-s"])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+    {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+    let pid = child.id();
+    std::mem::forget(child); // keep process alive; killed in allow_sleep_native
+    let mut guard = SLEEP_PROC.get_or_init(Default::default).lock().unwrap();
+    *guard = Some(pid);
+    true
+}
+
+#[cfg(target_os = "linux")]
+fn prevent_sleep_native() -> bool {
+    // Linux: `systemd-inhibit` blocks idle + sleep via D-Bus for the lifetime
+    // of the child process. We spawn and store the PID so allow_sleep can kill it.
+    let child = match std::process::Command::new("systemd-inhibit")
+        .args(["--what=idle", "--what=sleep", "--mode=block", "--", "sleep", "infinity"])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+    {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+    let pid = child.id();
+    std::mem::forget(child);
+    let mut guard = SLEEP_PROC.get_or_init(Default::default).lock().unwrap();
+    *guard = Some(pid);
+    true
+}
+
+/// Windows: `SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)`.
+/// Stateless — the assertion persists until the calling process exits or a
+/// subsequent call with ES_CONTINUOUS only.
+#[cfg(target_os = "windows")]
+fn prevent_sleep_native() -> bool {
+    const ES_CONTINUOUS: u32 = 0x80000000;
+    const ES_SYSTEM_REQUIRED: u32 = 0x00000001;
+
+    extern "system" {
+        fn SetThreadExecutionState(flags: u32) -> u32;
+    }
+
+    let prev = unsafe { SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED) };
+    prev != 0 // non-zero return = succeeded
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+fn prevent_sleep_native() -> bool {
+    false
+}
+
 /// `invoke('allow_sleep', {})` → release sleep prevention.
 #[tauri::command]
 pub async fn allow_sleep() -> Result<SleepResult, String> {
+    allow_sleep_native();
     Ok(SleepResult {
         ok: true,
         prevented: false,
         message: "Sleep prevention released".to_string(),
     })
 }
+
+/// Platform-specific sleep allowance (release assertion).
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+fn allow_sleep_native() {
+    // Terminate the spawned keepalive process so the machine can sleep again.
+    let guard = SLEEP_PROC.get_or_init(Default::default).lock().unwrap();
+    if let Some(pid) = *guard {
+        // kill the process — ignore result (may have already exited)
+        let _ = std::process::Command::new("kill")
+            .arg(pid.to_string())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status();
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn allow_sleep_native() {
+    const ES_CONTINUOUS: u32 = 0x80000000;
+    extern "system" {
+        fn SetThreadExecutionState(flags: u32) -> u32;
+    }
+    unsafe {
+        SetThreadExecutionState(ES_CONTINUOUS);
+    }
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+fn allow_sleep_native() {}
