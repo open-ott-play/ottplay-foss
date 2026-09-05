@@ -414,26 +414,30 @@ export function restoreContinueWatch(): boolean {
             )
         )
             return false;
-        // 3) Category-aware channel lookup — don't require channel to already be in current curList.
-        var chIdx: number = -1;
+        // 3) Category-aware channel lookup — track which list won so Yes callback can use it directly.
+        var resumeCatIndex: number = -1;
+        var resumeIdx: number = -1;
         if (
             cats &&
             catsArray &&
             typeof cw.catIndex === "number" &&
             cats[catsArray[cw.catIndex]]
         ) {
-            chIdx = cats[catsArray[cw.catIndex]].indexOf(cw.channelId);
+            resumeCatIndex = cw.catIndex;
+            resumeIdx = cats[catsArray[cw.catIndex]].indexOf(cw.channelId);
         }
-        if (chIdx === -1) chIdx = curList.indexOf(cw.channelId);
-        if (
-            chIdx === -1 &&
-            cats &&
-            cats[_("All")] &&
-            cats[_("All")].indexOf(cw.channelId) !== -1
-        ) {
-            chIdx = cats[_("All")].indexOf(cw.channelId);
+        if (resumeIdx === -1) {
+            resumeCatIndex = catIndex;
+            resumeIdx = curList.indexOf(cw.channelId);
         }
-        if (chIdx === -1) return false; // channel no longer present
+        if (resumeIdx === -1 && cats && cats[_("All")]) {
+            var allIdx = cats[_("All")].indexOf(cw.channelId);
+            if (allIdx !== -1) {
+                resumeCatIndex = catsArray.indexOf(_("All"));
+                resumeIdx = allIdx;
+            }
+        }
+        if (resumeIdx === -1) return false; // channel no longer present
         var playLiveFallback = function (): boolean {
             try {
                 window.playChannel(cw.catIndex, cw.channelIndex);
@@ -460,22 +464,22 @@ export function restoreContinueWatch(): boolean {
                     // 2) Option A: assign state directly without calling setCurrent,
                     // so continueWatch is NOT rewritten with live playType=0 before
                     // playArchive runs. This preserves the archive bookmark.
-                    if (
-                        typeof cw.catIndex === "number" &&
-                        cats &&
-                        catsArray &&
-                        cats[catsArray[cw.catIndex]]
-                    ) {
-                        catIndex = cw.catIndex;
-                        curList = cats[catsArray[catIndex]];
-                        primaryIndex = curList.indexOf(cw.channelId);
-                        if (primaryIndex === -1) {
+                    catIndex = resumeCatIndex;
+                    curList =
+                        (cats && catsArray && cats[catsArray[catIndex]]) ||
+                        curList;
+                    primaryIndex = curList.indexOf(cw.channelId);
+                    if (primaryIndex === -1) {
+                        // Re-validate once: list may have churned between dialog open and Yes.
+                        primaryIndex = resumeIdx;
+                        if (
+                            primaryIndex < 0 ||
+                            primaryIndex >= curList.length ||
+                            curList[primaryIndex] !== cw.channelId
+                        ) {
                             playLiveFallback();
                             return;
                         }
-                    } else {
-                        playLiveFallback();
-                        return;
                     }
                     // Sync to window globals for legacy code compat
                     window.catIndex = catIndex;
@@ -484,7 +488,7 @@ export function restoreContinueWatch(): boolean {
                     // Now play archive — archive mode already gated above.
                     if (typeof window.playArchive === "function") {
                         window.playArchive(cw.playType);
-                        // ponytail: defer seek until playback starts; harmless if already playing.
+                        // Defer seek until playback has a chance to start.
                         if (typeof cw.playTime === "number") {
                             setTimeout(function () {
                                 window.stbSetPosTime(cw.playTime);
