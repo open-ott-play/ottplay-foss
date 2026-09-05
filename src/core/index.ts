@@ -491,6 +491,8 @@ export function stbPlay(url: string, position?: number): void {
                 execCHarr("aAudios", function (i: number) {
                     if (hlsInstance) hlsInstance.audioTrack = i;
                 });
+                if (typeof (window as any).refreshAudioBadge === "function")
+                    (window as any).refreshAudioBadge();
             }
         );
         execCHarr("aSubs", function (i: number) {

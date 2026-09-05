@@ -249,6 +249,7 @@ import {
     popStopPip,
     popTogglePip,
     popupList,
+    refreshAudioBadge,
     restoreCPD,
     saveCPD,
     selColorDialog,
@@ -1719,6 +1720,7 @@ window.infoBox = infoBox;
 window.confirmBox = confirmBox;
 window.updateChanelInfo = updateChanelInfo;
 window.updateMediaInfo = updateMediaInfoDisplay;
+window.refreshAudioBadge = refreshAudioBadge;
 window.stbPlay = stbPlay;
 window.stbStop = stbStop;
 window.stbPause = stbPause;
