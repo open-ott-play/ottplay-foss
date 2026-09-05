@@ -161,11 +161,11 @@ body {
     right: 0px;
     left: 0px;
     box-sizing: border-box;
-    height: 42px;
+    height: 52px;
     padding: 0 12px;
-    overflow: hidden;
+    overflow: visible;
     font-weight: bold;
-    line-height: 42px;
+    line-height: 52px;
     color: #ffffff;
     letter-spacing: 0.04em;
     white-space: nowrap;
@@ -194,9 +194,10 @@ body {
     bottom: 0px;
     left: 0px;
     box-sizing: border-box;
-    height: 42px;
+    height: 52px;
     padding: 0 12px;
-    line-height: 42px;
+    overflow: visible;
+    line-height: 52px;
     color: #f2f2f8;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
     background-color: rgba(0, 0, 0, 0.42);
@@ -206,7 +207,7 @@ body {
 #listDetail {
     position: absolute;
     top: 330px;
-    bottom: 43px;
+    bottom: 53px;
     left: 0px;
     box-sizing: border-box;
     width: 514px;
@@ -218,7 +219,7 @@ body {
 }
 #listPopUp {
     position: absolute;
-    bottom: 43px;
+    bottom: 53px;
     left: 0px;
     display: none;
     padding: 14px 18px;
@@ -232,17 +233,17 @@ body {
 }
 #listIn {
     position: absolute;
-    top: 43px;
+    top: 53px;
     right: 0px;
-    bottom: 43px;
+    bottom: 53px;
     left: 522px;
     padding: 2px 0px;
 }
 #listAbout {
     position: absolute;
-    top: 43px;
+    top: 53px;
     right: 0px;
-    bottom: 43px;
+    bottom: 53px;
     left: 522px;
     box-sizing: border-box;
     display: none;
@@ -253,9 +254,9 @@ body {
 }
 #listEdit {
     position: absolute;
-    top: 43px;
+    top: 53px;
     right: 0px;
-    bottom: 43px;
+    bottom: 53px;
     left: 522px;
     box-sizing: border-box;
     display: none;
@@ -587,12 +588,14 @@ body {
 }
 .btn {
     display: inline-block;
+    box-sizing: border-box;
     min-width: 1em;
-    padding: 0.08em 0.5em;
-    margin-top: 0;
+    max-height: 1.6em;
+    padding: 0.05em 0.45em;
+    margin: 0 0.05em;
     font-size: smaller;
     font-weight: bold;
-    line-height: 1.25em;
+    line-height: 1.15;
     vertical-align: middle;
     color: #f8f8f8;
     text-align: center;
@@ -634,6 +637,12 @@ body {
     font-weight: normal;
     font-variant: normal;
     text-transform: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+.btn .fontello {
+    font-weight: normal;
+    line-height: 1;
 }
 #plogo {
     background-position: top right;
