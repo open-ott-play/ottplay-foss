@@ -404,10 +404,36 @@ export function restoreContinueWatch(): boolean {
         if (!cw || !cw.v || !cw.mode || cw.channelId == null) return false;
         var ageMs = Date.now() - (cw.updatedAt || 0);
         if (ageMs > 7 * 24 * 60 * 60 * 1000) return false; // stale: > 7 days
-        // Verify the channel still exists in the current playlist.
-        var chIdx: number = curList.indexOf(cw.channelId);
-        if (chIdx === -1) return false; // channel no longer in playlist
-        if (cw.mode !== "archive" && cw.mode !== "vod") return false; // live: normal path
+        // 1) Resume dialog = archive only (positive playType sentinel required).
+        // VOD / live → return false so caller does live playback.
+        if (
+            !(
+                cw.mode === "archive" &&
+                typeof cw.playType === "number" &&
+                cw.playType > 0
+            )
+        )
+            return false;
+        // 3) Category-aware channel lookup — don't require channel to already be in current curList.
+        var chIdx: number = -1;
+        if (
+            cats &&
+            catsArray &&
+            typeof cw.catIndex === "number" &&
+            cats[catsArray[cw.catIndex]]
+        ) {
+            chIdx = cats[catsArray[cw.catIndex]].indexOf(cw.channelId);
+        }
+        if (chIdx === -1) chIdx = curList.indexOf(cw.channelId);
+        if (
+            chIdx === -1 &&
+            cats &&
+            cats[_("All")] &&
+            cats[_("All")].indexOf(cw.channelId) !== -1
+        ) {
+            chIdx = cats[_("All")].indexOf(cw.channelId);
+        }
+        if (chIdx === -1) return false; // channel no longer present
         var playLiveFallback = function (): boolean {
             try {
                 window.playChannel(cw.catIndex, cw.channelIndex);
@@ -431,44 +457,38 @@ export function restoreContinueWatch(): boolean {
                     "<br><br>" +
                     _("Bookmark age: %1 days", Math.floor(ageMs / 86400000)),
                 function () {
-                    // Resolve bookmarked channel in the current playlist before
-                    // starting archive/vod playback. Do NOT playArchive against
-                    // whatever happens to be primaryIndex — find channelId by id.
-                    var list: number[] = curList;
+                    // 2) Option A: assign state directly without calling setCurrent,
+                    // so continueWatch is NOT rewritten with live playType=0 before
+                    // playArchive runs. This preserves the archive bookmark.
                     if (
+                        typeof cw.catIndex === "number" &&
                         cats &&
                         catsArray &&
-                        catsArray[cw.catIndex] &&
                         cats[catsArray[cw.catIndex]]
                     ) {
-                        list = cats[catsArray[cw.catIndex]];
-                    }
-                    var resumeIdx: number = list.indexOf(cw.channelId);
-                    if (resumeIdx === -1) {
-                        // channel not in the bookmarked category — try current list
-                        resumeIdx = curList.indexOf(cw.channelId);
-                    }
-                    if (resumeIdx === -1) {
-                        // channel no longer present — fall back to live
+                        catIndex = cw.catIndex;
+                        curList = cats[catsArray[catIndex]];
+                        primaryIndex = curList.indexOf(cw.channelId);
+                        if (primaryIndex === -1) {
+                            playLiveFallback();
+                            return;
+                        }
+                    } else {
                         playLiveFallback();
                         return;
                     }
-                    try {
-                        setCurrent(
-                            cw.catIndex,
-                            resumeIdx,
-                            cw.mode === "archive"
-                        );
-                    } catch (_e) {
-                        console.error(_e);
-                    }
-                    if (
-                        typeof window.playArchive === "function" &&
-                        cw.playType
-                    ) {
+                    // Sync to window globals for legacy code compat
+                    window.catIndex = catIndex;
+                    window.curList = curList;
+                    window.primaryIndex = primaryIndex;
+                    // Now play archive — archive mode already gated above.
+                    if (typeof window.playArchive === "function") {
                         window.playArchive(cw.playType);
+                        // ponytail: defer seek until playback starts; harmless if already playing.
                         if (typeof cw.playTime === "number") {
-                            window.stbSetPosTime(cw.playTime);
+                            setTimeout(function () {
+                                window.stbSetPosTime(cw.playTime);
+                            }, 500);
                         }
                     } else {
                         playLiveFallback();
