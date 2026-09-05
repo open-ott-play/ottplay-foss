@@ -1053,8 +1053,13 @@ export function itemEPG(item: EPGEntry, index: number): string {
 
     var ch = (channels[epg_ch_id] || {}) as Channel;
     var prefix = "";
-    if (ch.rec && item.time < Date.now() / 1000)
-        prefix += '<div class="btn green">&nbsp;</div> ';
+    var isPast = item.time < Date.now() / 1000;
+    if (ch.rec && isPast)
+        prefix +=
+            '<div class="btn green">&nbsp;</div> ' +
+            '<span class="epg-archive-tag">' +
+            (w._ ? w._("Archive") : "Archive") +
+            "</span> ";
     if (isCurrent) prefix += '<div class="btn red">&nbsp;</div> ';
 
     return (
@@ -1313,7 +1318,14 @@ export function epgPodval(): void {
         w.btnDiv(w.keys.N2, w.strInfo, "Description", "2", descExtra) +
         '<span id="bTimer" style="display:none;">' +
         w.btnDiv(w.keys.GREEN, "", "Timer", w.strTools, "8") +
-        "</span>";
+        "</span>" +
+        (ch.rec
+            ? '<span class="epg-podval-archive">' +
+              (w._
+                  ? w._("Archive: ENTER on past programs")
+                  : "Archive: ENTER on past programs") +
+              "</span>"
+            : "");
 }
 
 /**

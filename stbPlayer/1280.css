@@ -644,16 +644,18 @@ body {
     color: #bdbdbd;
 }
 .epg-entry {
-    padding: 7px 0;
+    padding: 3px 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .epg-time {
     display: inline-block;
     width: 78px;
+    font-size: 13px;
     font-weight: bold;
     color: #d0d0dc;
 }
 .epg-name {
+    font-size: 14px;
     font-weight: bold;
     color: #ffffff;
     letter-spacing: 0.015em;
@@ -661,8 +663,21 @@ body {
 .epg-descr {
     padding-left: 78px;
     font-size: smaller;
-    line-height: 1.4;
+    line-height: 1.3;
     color: #c0c0cc;
+}
+.epg-archive-tag {
+    margin-right: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    vertical-align: middle;
+    color: lime;
+}
+.epg-podval-archive {
+    margin-left: 12px;
+    font-size: 12px;
+    vertical-align: middle;
+    color: lime;
 }
 
 /* polymorphic liquid loader for #buffering – 2026 */
