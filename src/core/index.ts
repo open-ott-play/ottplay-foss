@@ -195,12 +195,22 @@ export function closeFullscreen(): void {
  */
 export function stbEventToKeyCode(event: any): number {
     if (event && event.keyCode === 76) {
-        if (isNormalScreen()) openFullscreen();
-        else closeFullscreen();
-        // Prevent default action (typing 'l' in input fields) and stop propagation
-        if (event.preventDefault) event.preventDefault();
-        if (event.stopPropagation) event.stopPropagation();
-        return 0; // Indicate key was consumed
+        // Do not steal L/l while the on-screen editor / VKB is open.
+        var editing = false;
+        try {
+            if (
+                typeof (window as any).$ !== "undefined" &&
+                (window as any).$("#listEdit").is(":visible")
+            )
+                editing = true;
+        } catch (_) {}
+        if (!editing) {
+            if (isNormalScreen()) openFullscreen();
+            else closeFullscreen();
+            if (event.preventDefault) event.preventDefault();
+            if (event.stopPropagation) event.stopPropagation();
+            return 0; // Indicate key was consumed
+        }
     }
     return event ? event.keyCode : 0;
 }

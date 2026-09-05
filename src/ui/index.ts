@@ -747,7 +747,7 @@ export function showPage(): void {
         Math.floor(selIndex / settings.pageSize) * settings.pageSize;
     var pageEnd = Math.min(pageStart + settings.pageSize, dataArr.length);
     var itemHeight =
-        (window.innerHeight - 114 * getHeightK()) / settings.pageSize;
+        (window.innerHeight - 130 * getHeightK()) / settings.pageSize;
     var html = "";
     if (dataArr.length > settings.pageSize) {
         itemWidth = getWidthK() * 720;
@@ -789,7 +789,7 @@ export function showPage(): void {
             ' style="height:' +
             itemHeight +
             "px; line-height:" +
-            itemHeight +
+            Math.max(1, itemHeight - 4) +
             "px; width:" +
             itemWidth +
             "px;";
@@ -3067,11 +3067,11 @@ export function showEdit(): void {
                 "",
                 _keysSymbol[1].s
                     ? _keyE
-                        ? // On English UI _("lang") is "English" — offer Русский instead.
+                        ? // Offer the other layout in the *current* UI language.
                           _ottplaylang() == "_eng"
-                            ? "Русский"
+                            ? _("Russian") || "Russian"
                             : _("lang") || "Lang"
-                        : "English"
+                        : _("English") || "English"
                     : "",
                 strFF
             ) +
