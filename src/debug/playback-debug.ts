@@ -816,8 +816,8 @@ function ottDebugEnable(): void {
                 match = true;
             } else if (e.keyCode === 68) {
                 var k = (window as any).keys;
+                // MAG/Maple map 68 to PLAY/PREV — do not steal those keys.
                 if (!k || (k.PLAY !== 68 && k.PREV !== 68)) match = true;
-                match = true;
             }
             if (match) {
                 e.preventDefault();
