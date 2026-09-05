@@ -1,7 +1,7 @@
 /**
  * Playback realtime debug (opt-in). Concat module — no imports; exposes window.__ottDebug.
  * Zero cost when off: intervals/network/HUD only after isDebugEnabled() at boot.
- * HS5-safe: ES5 classic script, block/br HUD CSS only (no flex/gap/grid).
+ * HS5-safe: ES5 classic script, full-width wrapping HUD banner (no flex/gap/grid).
  * Multi-port: tags port/origin/playerId on every event; auto-enable via GET /debug/config.
  */
 
@@ -211,11 +211,12 @@ function ottDebugEnsureHud(): void {
     if (_ottDbgHudEl || !_ottDbgHudOn) return;
     var el = document.createElement("div");
     el.id = "ott_debug_hud";
+    // Full-width top banner; HS5-safe (no flex/gap/grid). Fields wrap as flowing text.
     el.style.cssText =
-        "position:absolute;top:8px;right:8px;z-index:99999;" +
-        "background:rgba(0,0,0,0.75);color:#0f0;font:11px/1.35 monospace;" +
-        "padding:8px 10px;max-width:360px;pointer-events:none;" +
-        "white-space:pre;display:block;";
+        "position:absolute;top:6px;left:4px;right:4px;width:auto;max-width:none;" +
+        "z-index:99999;background:rgba(0,0,0,0.75);color:#0f0;" +
+        "font:11px/1.35 monospace;padding:4px 8px;pointer-events:none;" +
+        "white-space:normal;text-align:left;display:block;box-sizing:border-box;";
     el.innerHTML = "ottDebug…";
     var parent = document.body || document.documentElement;
     if (parent) parent.appendChild(el);
@@ -314,9 +315,10 @@ function ottDebugUpdateHud(): void {
         _ottDbgVideo ||
         (document.getElementById("video") as HTMLVideoElement | null);
     ottDebugRefreshSamples();
-    var lines: string[] = [];
-    lines.push("ottDebug sess=" + (_ottDbgSession || "-"));
-    lines.push(
+    // Flowing top-banner text (wraps horizontally); join with " · ", not <br/> per field.
+    var parts: string[] = [];
+    parts.push("ottDebug sess=" + (_ottDbgSession || "-"));
+    parts.push(
         "port=" +
             (ottDebugPort() || "-") +
             " id=" +
@@ -330,19 +332,19 @@ function ottDebugUpdateHud(): void {
             "s"
     );
     if (!v) {
-        lines.push("(no video)");
-        _ottDbgHudEl.innerHTML = lines.join("<br/>");
+        parts.push("(no video)");
+        _ottDbgHudEl.innerHTML = parts.join(" · ");
         return;
     }
-    lines.push(
+    parts.push(
         (v.paused ? "paused" : "playing") +
             " rs=" +
             v.readyState +
             " ns=" +
             v.networkState
     );
-    lines.push("bufAhead=" + ottDebugBufferAhead(v) + "s");
-    lines.push(
+    parts.push("bufAhead=" + ottDebugBufferAhead(v) + "s");
+    parts.push(
         "video " +
             (v.videoWidth || 0) +
             "x" +
@@ -353,7 +355,7 @@ function ottDebugUpdateHud(): void {
     var hls = _ottDbgHls;
     if (hls) {
         var lvls = hls.levels || [];
-        lines.push(
+        parts.push(
             "hls lvl=" +
                 hls.currentLevel +
                 "/" +
@@ -366,17 +368,17 @@ function ottDebugUpdateHud(): void {
                 hls.autoLevelCapping
         );
     } else {
-        lines.push("hls: -");
+        parts.push("hls: -");
     }
     var stallAge =
         _ottDbgStallSince > 0
             ? Math.round((Date.now() - _ottDbgStallSince) / 1000) + "s"
             : "-";
-    lines.push("stallAge=" + stallAge + " err=" + (_ottDbgLastError || "-"));
+    parts.push("stallAge=" + stallAge + " err=" + (_ottDbgLastError || "-"));
     var dropped = ottDebugDroppedFrames(v);
-    if (dropped >= 0) lines.push("droppedFrames=" + dropped);
-    lines.push("ring=" + _ottDbgRing.length + "/" + OTT_DEBUG_RING_MAX);
-    _ottDbgHudEl.innerHTML = lines.join("<br/>");
+    if (dropped >= 0) parts.push("droppedFrames=" + dropped);
+    parts.push("ring=" + _ottDbgRing.length + "/" + OTT_DEBUG_RING_MAX);
+    _ottDbgHudEl.innerHTML = parts.join(" · ");
 }
 
 function ottDebugBuildIngestBody(batch: OttDebugEvent[]): string {
