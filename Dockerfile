@@ -10,7 +10,10 @@ FROM rust:1.98@sha256:620dbcd124499c59e2406d3741574b5c5838cf9eb9656f0c3a03948f79
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY src-rs ./src-rs
-RUN cargo build --release --bin ottplay-server
+# Workspace lists src-tauri (desktop shell). Server image only builds
+# ottplay-server — drop that member so cargo does not need /app/src-tauri.
+RUN sed -i 's/, "src-tauri"//' Cargo.toml \
+ && cargo build --release --bin ottplay-server
 
 # Serve static player + endpoints via the Rust server
 FROM gcr.io/distroless/cc-debian12@sha256:e5d81ddde149641e2a9ba55be4545bc125c67de07508b03ba4c22e6eb0ded5aa
