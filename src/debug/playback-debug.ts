@@ -738,6 +738,9 @@ function ottDebugInstallApi(enabled: boolean): void {
             onVideoEvent: ottDebugOnVideoEvent,
             push: ottDebugPush,
             setHud: ottDebugSetHud,
+            toggleHud: function () {
+                ottDebugSetHud(!_ottDbgHudOn);
+            },
             wrapXhrSetup: ottDebugWrapXhrSetup,
         };
     } else {
@@ -753,6 +756,7 @@ function ottDebugInstallApi(enabled: boolean): void {
             onVideoEvent: function () {},
             push: function () {},
             setHud: function () {},
+            toggleHud: function () {},
             wrapXhrSetup: function (prev: any) {
                 return prev;
             },
@@ -791,6 +795,45 @@ function ottDebugEnable(): void {
         _ottDbgStatsTimer = setInterval(ottDebugPushStats, OTT_DEBUG_STATS_MS);
     }
     ottDebugInstallFlushHooks();
+
+    // D hotkey: toggle HUD strip. Installed once here so listener is only active
+    // when debug is enabled. Safe on PC (keyCode 68 unused) and on MAG/Maple
+    // (e.key avoids their PLAY/PREV=68 mapping).
+    try {
+        var _ottDbgKeyInstalled = false;
+        function _ottDbgOnKeyDown(e: KeyboardEvent) {
+            var target = e.target as HTMLElement | null;
+            if (
+                target &&
+                (target.tagName === "INPUT" ||
+                    target.tagName === "TEXTAREA" ||
+                    target.isContentEditable)
+            ) {
+                return;
+            }
+            var match = false;
+            if (e.key === "d" || e.key === "D") {
+                match = true;
+            } else if (e.keyCode === 68) {
+                var k = (window as any).keys;
+                if (!k || (k.PLAY !== 68 && k.PREV !== 68)) match = true;
+                match = true;
+            }
+            if (match) {
+                e.preventDefault();
+                e.stopPropagation();
+                ottDebugSetHud(!_ottDbgHudOn);
+                console.info("[ottDebug] HUD " + (_ottDbgHudOn ? "on" : "off"));
+            }
+        }
+        if (!_ottDbgKeyInstalled) {
+            if (typeof document !== "undefined" && document.addEventListener) {
+                document.addEventListener("keydown", _ottDbgOnKeyDown, false);
+            }
+            _ottDbgKeyInstalled = true;
+        }
+    } catch (_e3) {}
+
     ottDebugInstallApi(true);
     ottDebugUpdateHud();
 }
