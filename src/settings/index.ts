@@ -433,3 +433,100 @@ export function saveSettings(s: PlayerSettings): void {
     store.set("sLocalCmdUrl", s.localCmdUrl);
     store.set("sDeviceUuid", s.deviceUuid);
 }
+
+/**
+ * Export envelope version 1.
+ */
+export interface ExportEnvelopeV1 {
+    favoritesArray: number[];
+    parentalArray: number[];
+    settings: PlayerSettings;
+    timestamp: number;
+    version: 1;
+}
+
+/**
+ * Export current settings + channels state to JSON string (envelope v1).
+ *
+ * @returns JSON string containing settings, parentalArray, favoritesArray.
+ *
+ * @remarks
+ * Uses providerGetJson to read parentalArray/favoritesArray from storage
+ * (same keys used by channels/index.ts saveChannelsCats).
+ */
+export function exportSettings(): string {
+    const env: ExportEnvelopeV1 = {
+        favoritesArray: window.providerGetJson?.("favoritesArray", []) || [],
+        parentalArray: window.providerGetJson?.("parentalArray", []) || [],
+        settings: settings,
+        timestamp: Date.now(),
+        version: 1,
+    };
+    return JSON.stringify(env, null, 2);
+}
+
+/**
+ * Import settings + channels state from JSON string (envelope v1).
+ *
+ * @param jsonStr - JSON string from exportSettings().
+ * @param onConfirm - Callback when user confirms overwrite (for UI confirmBox).
+ *
+ * @remarks
+ * Parses envelope, validates version, then:
+ * 1. Restores PlayerSettings via saveSettings()
+ * 2. Writes parentalArray/favoritesArray via providerSetItem()
+ * 3. Reloads settings module state via loadSettings()
+ * 4. Shows success via showShift()
+ */
+export function importSettings(
+    jsonStr: string,
+    onConfirm?: (ok: boolean) => void
+): void {
+    let env: ExportEnvelopeV1;
+    try {
+        env = JSON.parse(jsonStr) as ExportEnvelopeV1;
+    } catch (_e) {
+        if (onConfirm) onConfirm(false);
+        return;
+    }
+
+    if (!env || env.version !== 1 || !env.settings) {
+        if (onConfirm) onConfirm(false);
+        return;
+    }
+
+    if (typeof window.confirmBox === "function") {
+        window.confirmBox(
+            "Overwrite current settings?",
+            function (ok: boolean) {
+                if (!ok) {
+                    if (onConfirm) onConfirm(false);
+                    return;
+                }
+                applyImport(env);
+                if (onConfirm) onConfirm(true);
+            }
+        );
+    } else {
+        applyImport(env);
+        if (onConfirm) onConfirm(true);
+    }
+}
+
+function applyImport(env: ExportEnvelopeV1): void {
+    saveSettings(env.settings);
+    if (typeof window.providerSetItem === "function") {
+        window.providerSetItem(
+            "parentalArray",
+            JSON.stringify(env.parentalArray || [])
+        );
+        window.providerSetItem(
+            "favoritesArray",
+            JSON.stringify(env.favoritesArray || [])
+        );
+    }
+    loadSettings();
+    if (typeof window.showShift === "function") {
+        window.showShift("Settings imported");
+    }
+}

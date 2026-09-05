@@ -2920,6 +2920,47 @@ window.settingsMenu = function (): void {
 };
 
 /**
+ * Export settings UI handler — serialises settings + channel arrays
+ * to JSON envelope v1 and triggers browser download.
+ *
+ * Side effects: Creates a Blob download; no storage mutation.
+ */
+window.exportSettingsUI = function (): void {
+    var w = window as any;
+    if (typeof w.exportSettings !== "function") return;
+    var jsonStr = w.exportSettings();
+    var blob = new Blob([jsonStr], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "ottplay-settings-v1.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    if (typeof w.showShift === "function") {
+        w.showShift("Settings exported");
+    }
+};
+
+/**
+ * Import settings UI handler — reads JSON from a prompt textarea,
+ * confirms overwrite, then applies.
+ *
+ * Side effects: Calls confirmBox → loadSettings + providerSetItem;
+ * shows success via showShift.
+ */
+window.importSettingsUI = function (): void {
+    var w = window as any;
+    if (typeof w.importSettings !== "function") return;
+    var val = prompt("Paste settings JSON:", "");
+    if (val && val.trim()) {
+        w.importSettings(val.trim(), function (ok: boolean) {
+            /* importSettings handles confirmBox and showShift internally */
+        });
+    }
+};
+
+/**
  * Show the "Manage settings" screen.
  * Options: save settings (cloud), load settings (cloud), clear settings,
  * enter provider code, enter provider code (remote).
@@ -2960,6 +3001,15 @@ window.settingsManage = function (): void {
         {
             action: w.cloudLoadSettings,
             name: w._("Load settings") || "Load settings",
+        },
+        { action: w.nofun || function () {}, name: "" },
+        {
+            action: w.exportSettingsUI,
+            name: w._("Export settings") || "Export settings",
+        },
+        {
+            action: w.importSettingsUI,
+            name: w._("Import settings") || "Import settings",
         },
         { action: w.nofun || function () {}, name: "" },
         {
