@@ -1449,6 +1449,13 @@ function onStbReady(): void {
             }
         );
 
+        // Re-apply Tauri IPC override after provider script loads.
+        // This ensures the getEPGchanel override persists even when provider scripts
+        // attempt to reset window.getEPGchanel (as they do in loadProv → getScriptDOM callback).
+        if (typeof window.__TAURI__ !== "undefined") {
+            setupTauriEpgOverride();
+        }
+
         if (TMDb && TMDb.prepare) TMDb.prepare();
     } catch (e) {
         var launchEl2 = document.getElementById("launch");
@@ -1489,6 +1496,58 @@ window.onStbReady = onStbReady;
 window.keyHandler = keyHandler;
 window._doKey = dispatchKey;
 window.keys = keys;
+
+// Tauri IPC detection and EPG override
+// When running under Tauri (Mode B), override getEPGchanel to use invoke()
+// When running in browser/STB (Mode A), leave getEPGchanel unchanged for provider HTTP fetch
+
+/**
+ * Shared Tauri invoke helper. Uses @tauri-apps/api/core if available,
+ * falls back to window.__TAURI__.invoke for bundled apps.
+ */
+function tauriInvoke<T>(
+    command: string,
+    args: Record<string, unknown>
+): Promise<T> {
+    // Prefer core.invoke (Tauri v2 core API), fallback to global __TAURI__
+    const core = (window as any).__TAURI__?.core;
+    if (core?.invoke) {
+        return core.invoke(command, args) as Promise<T>;
+    }
+    return (window as any).__TAURI__.invoke(command, args) as Promise<T>;
+}
+
+/**
+ * Setup Tauri EPG override for getEPGchanel. Uses Tauri IPC instead of HTTP fetch.
+ * Note: hash parameter is intentionally empty string since ottplay-core::get_epg_slice
+ * ignores it (only uses channel_id to lookup programs). Empty hash is safe.
+ * time_shift_hours is always 0 (future EPG only, no historical data).
+ */
+function setupTauriEpgOverride(): void {
+    window.getEPGchanel = function (
+        chId: string,
+        callback: (id: string, data: any[]) => void
+    ): void {
+        const channelIdNum = parseInt(chId, 10);
+        if (isNaN(channelIdNum)) {
+            callback(chId, []);
+            return;
+        }
+
+        tauriInvoke<any>("get_epg", {
+            channel_id: channelIdNum.toString(),
+            hash: "",
+            time_shift_hours: 0,
+        })
+            .then((result) => {
+                callback(chId, result?.epg_data || []);
+            })
+            .catch((error: any) => {
+                console.error("[Tauri] get_epg failed:", error);
+                callback(chId, []);
+            });
+    };
+}
 
 /* ---------------------------------------------------------------------------
  * Core channel / media playback
