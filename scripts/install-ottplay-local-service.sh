@@ -34,6 +34,8 @@ done
 
 echo "[1/6] sync $SRC -> $DEST"
 mkdir -p "$DEST"
+# Preserve live debug flag/log across --delete. Permanent archive lives outside
+# DEST (~/victron/ottplay-debug-archive/) so it needs no rsync exclude.
 rsync -a --delete \
     --exclude .git --exclude node_modules --exclude logs \
     --exclude '*.local.py' --exclude 'certs' \

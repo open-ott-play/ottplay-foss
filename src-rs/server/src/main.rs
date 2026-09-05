@@ -139,6 +139,7 @@ async fn main() {
         .route("/debug/tail", get(debug_tail))
         .route("/debug/status", get(debug_status))
         .route("/debug/summary", get(debug_summary))
+        .route("/debug/archive-status", get(debug_archive_status))
         .nest_service("/f", ServeDir::new("."))
         .nest_service("/dist", ServeDir::new("dist"))
         .nest_service("/stbPlayer", ServeDir::new("stbPlayer"))
@@ -611,6 +612,51 @@ fn debug_log_path() -> std::path::PathBuf {
     std::path::PathBuf::from(DEBUG_LOG)
 }
 
+/// Permanent archive outside the local stack tree (survives rsync --delete / reinstall).
+/// Prefer OTTPLAY_DEBUG_ARCHIVE, else ../ottplay-debug-archive if present, else
+/// $HOME/victron/ottplay-debug-archive.
+fn debug_archive_dir() -> std::path::PathBuf {
+    if let Ok(p) = std::env::var("OTTPLAY_DEBUG_ARCHIVE") {
+        let t = p.trim();
+        if !t.is_empty() {
+            return std::path::PathBuf::from(t);
+        }
+    }
+    let rel = std::path::PathBuf::from("../ottplay-debug-archive");
+    if rel.is_dir() {
+        return rel;
+    }
+    if let Ok(home) = std::env::var("HOME") {
+        return std::path::PathBuf::from(home).join("victron/ottplay-debug-archive");
+    }
+    rel
+}
+
+fn ensure_debug_archive_dir() -> Option<std::path::PathBuf> {
+    let dir = debug_archive_dir();
+    match std::fs::create_dir_all(&dir) {
+        Ok(()) => Some(dir),
+        Err(_) => None,
+    }
+}
+
+fn debug_archive_today_path() -> Option<std::path::PathBuf> {
+    let dir = ensure_debug_archive_dir()?;
+    let day = Utc::now().format("%Y%m%d");
+    Some(dir.join(format!("debug-playback-{day}.jsonl")))
+}
+
+fn append_debug_archive_line(line: &str) {
+    if let Some(path) = debug_archive_today_path() {
+        use std::io::Write;
+        let _ = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .and_then(|mut f| writeln!(f, "{line}"));
+    }
+}
+
 /// Enabled when OTTPLAY_DEBUG=1 or cwd file `debug.enabled` exists (empty OK).
 fn debug_is_enabled() -> bool {
     if std::env::var("OTTPLAY_DEBUG").ok().as_deref() == Some("1") {
@@ -623,6 +669,12 @@ fn rotate_debug_log_if_needed() {
     let path = debug_log_path();
     if let Ok(meta) = std::fs::metadata(&path) {
         if meta.len() > DEBUG_LOG_MAX {
+            // Snapshot into permanent archive before rotating live log → .1
+            if let Some(dir) = ensure_debug_archive_dir() {
+                let stamp = Utc::now().format("%Y%m%d-%H%M%S");
+                let dest = dir.join(format!("debug-playback-rotated-{stamp}.log"));
+                let _ = std::fs::copy(&path, &dest);
+            }
             let bak = path.with_extension("log.1");
             let _ = std::fs::rename(&path, &bak);
         }
@@ -669,11 +721,13 @@ async fn debug_ingest(body: Option<Bytes>) -> impl IntoResponse {
             rotate_debug_log_if_needed();
             use std::io::Write;
             let ts = Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ");
+            let opaque_line = format!("{ts}\t-\t{raw}");
             let _ = std::fs::OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(debug_log_path())
-                .and_then(|mut f| writeln!(f, "{ts}\t-\t{raw}"));
+                .and_then(|mut f| writeln!(f, "{opaque_line}"));
+            append_debug_archive_line(&opaque_line);
             return (
                 StatusCode::OK,
                 [(axum::http::header::CONTENT_TYPE, "application/json")],
@@ -726,7 +780,9 @@ async fn debug_ingest(body: Option<Bytes>) -> impl IntoResponse {
                 if let Some(ua) = ev_ua {
                     line["ua"] = ua;
                 }
-                writeln!(f, "{line}")?;
+                let line_str = line.to_string();
+                writeln!(f, "{line_str}")?;
+                append_debug_archive_line(&line_str);
             }
             Ok(())
         });
@@ -928,6 +984,46 @@ async fn debug_summary() -> impl IntoResponse {
             "byPort": by_port_json,
             "totalLines": total_lines,
             "fileBytes": file_bytes,
+        })
+        .to_string(),
+    )
+}
+
+/// GET /debug/archive-status — list permanent archive dir files + sizes.
+async fn debug_archive_status() -> impl IntoResponse {
+    let dir = debug_archive_dir();
+    let _ = ensure_debug_archive_dir();
+    let mut files: Vec<serde_json::Value> = Vec::new();
+    if let Ok(rd) = std::fs::read_dir(&dir) {
+        for ent in rd.flatten() {
+            let name = ent.file_name().to_string_lossy().into_owned();
+            let meta = ent.metadata().ok();
+            let size = meta.as_ref().map(|m| m.len()).unwrap_or(0);
+            let mtime = meta
+                .as_ref()
+                .and_then(|m| m.modified().ok())
+                .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            files.push(serde_json::json!({
+                "name": name,
+                "size": size,
+                "mtime": mtime,
+            }));
+        }
+    }
+    files.sort_by(|a, b| {
+        let an = a.get("name").and_then(|v| v.as_str()).unwrap_or("");
+        let bn = b.get("name").and_then(|v| v.as_str()).unwrap_or("");
+        an.cmp(bn)
+    });
+    (
+        StatusCode::OK,
+        [(axum::http::header::CONTENT_TYPE, "application/json")],
+        serde_json::json!({
+            "ok": true,
+            "dir": dir.to_string_lossy(),
+            "files": files,
         })
         .to_string(),
     )
