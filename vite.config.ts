@@ -18,6 +18,7 @@ const MODULES = [
     "build/utils/encoding.js",
     "build/channels/types.js",
     "build/channels/index.js",
+    "build/debug/playback-debug.js",
     "build/core/index.js",
     "build/ui/index.js",
     "build/keyhandler/index.js",

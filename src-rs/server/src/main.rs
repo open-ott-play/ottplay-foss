@@ -133,6 +133,10 @@ async fn main() {
         // Phase 2.6: Webhook stubs (return 403)
         .route("/webhook/poll", get(webhook_stub))
         .route("/webhook/notify", get(webhook_stub))
+        // Playback debug ingest/tail (local realtime debug)
+        .route("/debug/ingest", post(debug_ingest))
+        .route("/debug/tail", get(debug_tail))
+        .route("/debug/status", get(debug_status))
         .nest_service("/f", ServeDir::new("."))
         .nest_service("/dist", ServeDir::new("dist"))
         .nest_service("/stbPlayer", ServeDir::new("stbPlayer"))
@@ -595,4 +599,140 @@ async fn webhook_stub() -> impl axum::response::IntoResponse {
         [(axum::http::header::CONTENT_TYPE, "text/plain; charset=utf-8")],
         "Webhook disabled for security. Use local_proxy.py.",
     )
+}
+
+const DEBUG_LOG: &str = "debug-playback.log";
+const DEBUG_LOG_MAX: u64 = 10 * 1024 * 1024;
+
+fn debug_log_path() -> std::path::PathBuf {
+    std::path::PathBuf::from(DEBUG_LOG)
+}
+
+fn rotate_debug_log_if_needed() {
+    let path = debug_log_path();
+    if let Ok(meta) = std::fs::metadata(&path) {
+        if meta.len() > DEBUG_LOG_MAX {
+            let bak = path.with_extension("log.1");
+            let _ = std::fs::rename(&path, &bak);
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct DebugIngestBody {
+    session: Option<String>,
+    events: Option<Vec<serde_json::Value>>,
+}
+
+/// POST /debug/ingest — append JSONL events to debug-playback.log (rotate ~10MB).
+async fn debug_ingest(body: Option<Bytes>) -> impl IntoResponse {
+    let raw = body
+        .map(|b| String::from_utf8_lossy(&b).into_owned())
+        .unwrap_or_default();
+    let parsed: Result<DebugIngestBody, _> = serde_json::from_str(&raw);
+    let (session, events) = match parsed {
+        Ok(b) => (
+            b.session.unwrap_or_else(|| "-".to_string()),
+            b.events.unwrap_or_default(),
+        ),
+        Err(_) => {
+            // Accept opaque JSON blob as a single line
+            rotate_debug_log_if_needed();
+            use std::io::Write;
+            let ts = Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ");
+            let _ = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(debug_log_path())
+                .and_then(|mut f| writeln!(f, "{ts}\t-\t{raw}"));
+            return (
+                StatusCode::OK,
+                [(axum::http::header::CONTENT_TYPE, "application/json")],
+                r#"{"ok":true}"#,
+            );
+        }
+    };
+    rotate_debug_log_if_needed();
+    use std::io::Write;
+    let path = debug_log_path();
+    let _ = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .and_then(|mut f| {
+            for ev in events {
+                let line = serde_json::json!({
+                    "session": session,
+                    "event": ev,
+                });
+                writeln!(f, "{line}")?;
+            }
+            Ok(())
+        });
+    (
+        StatusCode::OK,
+        [(axum::http::header::CONTENT_TYPE, "application/json")],
+        r#"{"ok":true}"#,
+    )
+}
+
+#[derive(Deserialize)]
+struct DebugTailQuery {
+    n: Option<usize>,
+}
+
+/// GET /debug/tail?n=100 — last n lines of debug-playback.log as text/plain.
+async fn debug_tail(Query(q): Query<DebugTailQuery>) -> impl IntoResponse {
+    let n = q.n.unwrap_or(100).min(5000);
+    let path = debug_log_path();
+    let content = std::fs::read_to_string(&path).unwrap_or_default();
+    let lines: Vec<&str> = content.lines().collect();
+    let start = if lines.len() > n { lines.len() - n } else { 0 };
+    let out = lines[start..].join("\n");
+    (
+        StatusCode::OK,
+        [(axum::http::header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+        out,
+    )
+}
+
+/// GET /debug/status — {ok, size, mtime, lines_approx}.
+async fn debug_status() -> impl IntoResponse {
+    let path = debug_log_path();
+    match std::fs::metadata(&path) {
+        Ok(meta) => {
+            let size = meta.len();
+            let mtime = meta
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            let lines_approx = std::fs::read_to_string(&path)
+                .map(|s| s.lines().count())
+                .unwrap_or(0);
+            (
+                StatusCode::OK,
+                [(axum::http::header::CONTENT_TYPE, "application/json")],
+                serde_json::json!({
+                    "ok": true,
+                    "size": size,
+                    "mtime": mtime,
+                    "lines_approx": lines_approx,
+                })
+                .to_string(),
+            )
+        }
+        Err(_) => (
+            StatusCode::OK,
+            [(axum::http::header::CONTENT_TYPE, "application/json")],
+            serde_json::json!({
+                "ok": true,
+                "size": 0,
+                "mtime": 0,
+                "lines_approx": 0,
+            })
+            .to_string(),
+        ),
+    }
 }

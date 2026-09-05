@@ -230,6 +230,13 @@ export function stbPlay(url: string, position?: number): void {
         window.player = null;
     }
     clearPlayTimeInterval();
+    if (
+        window.__ottDebug &&
+        window.__ottDebug.enabled &&
+        typeof window.__ottDebug.beginSession === "function"
+    ) {
+        window.__ottDebug.beginSession(url);
+    }
     // Decode-fail: try hls.js first, drop failing level, recover once; native only if Safari
     var _forceNative = false;
     var _pm =
@@ -277,7 +284,23 @@ export function stbPlay(url: string, position?: number): void {
             hlsConfig.levelLoadingMaxRetry = 1;
             hlsConfig.manifestLoadingMaxRetry = 1;
         }
+        if (
+            window.__ottDebug &&
+            window.__ottDebug.enabled &&
+            typeof window.__ottDebug.wrapXhrSetup === "function"
+        ) {
+            hlsConfig.xhrSetup = window.__ottDebug.wrapXhrSetup(
+                hlsConfig.xhrSetup
+            );
+        }
         hlsInstance = new Hls(hlsConfig);
+        if (
+            window.__ottDebug &&
+            window.__ottDebug.enabled &&
+            typeof window.__ottDebug.attachHls === "function"
+        ) {
+            window.__ottDebug.attachHls(hlsInstance);
+        }
         // ponytail: seek to position at MANIFEST_PARSED — currentTime === 0 guaranteed
         var _startPos = position || 0;
         var _mediaRecovered = false;
@@ -945,6 +968,13 @@ function videoEvent(event: Event): void {
                 console.error(
                     "[video] MediaError: code=" + me.code + " msg=" + me.message
                 );
+        }
+        if (
+            window.__ottDebug &&
+            window.__ottDebug.enabled &&
+            typeof window.__ottDebug.onVideoEvent === "function"
+        ) {
+            window.__ottDebug.onVideoEvent(event);
         }
     }
 }
