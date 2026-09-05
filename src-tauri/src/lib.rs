@@ -15,6 +15,8 @@ pub fn run() {
             commands::tauri_commands::ping,
             commands::tauri_commands::get_epg,
             commands::tauri_commands::set_fullscreen,
+            commands::tauri_commands::prevent_sleep,
+            commands::tauri_commands::allow_sleep,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

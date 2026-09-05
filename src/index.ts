@@ -1724,6 +1724,51 @@ window.stbGetLen = stbGetLen;
 window.stbToFullScreen = stbToFullScreen;
 window.stbSetWindow = stbSetWindow;
 window.stbToggleAspectRatio = stbToggleAspectRatio;
+
+// Tauri Mode B: override stbToFullScreen to use native window fullscreen.
+// Keeps CSS zoom path; toggles actual OS window fullscreen via Tauri IPC.
+if (typeof window.__TAURI__ !== "undefined") {
+    (function () {
+        const orig = window.stbToFullScreen;
+        window.stbToFullScreen = function (): void {
+            orig(); // keep CSS zoom + aspect ratio
+            tauriInvoke<any>("set_fullscreen", { fullscreen: true }).catch(
+                (e: any) => console.warn("[Tauri] set_fullscreen failed:", e)
+            );
+        };
+    })();
+}
+
+// Tauri Mode B: override stbToggleStandby for best-effort sleep prevention.
+// Enters standby: calls prevent_sleep IPC. Exits: calls allow_sleep IPC.
+if (typeof window.__TAURI__ !== "undefined") {
+    (function () {
+        const orig = window.stbToggleStandby;
+        let _standby = false;
+        window.stbToggleStandby = function (): void {
+            _standby = !_standby;
+            if (_standby) {
+                tauriInvoke<any>("prevent_sleep", {})
+                    .then((r) => {
+                        if (!r?.ok) console.warn("[Tauri] prevent_sleep:", r);
+                    })
+                    .catch((e: any) =>
+                        console.warn("[Tauri] prevent_sleep failed:", e)
+                    );
+            } else {
+                tauriInvoke<any>("allow_sleep", {})
+                    .then((r) => {
+                        if (!r?.ok) console.warn("[Tauri] allow_sleep:", r);
+                    })
+                    .catch((e: any) =>
+                        console.warn("[Tauri] allow_sleep failed:", e)
+                    );
+            }
+            // Preserve original standby DOM behavior
+            if (typeof orig === "function") orig();
+        };
+    })();
+}
 window.stbToggleAudioTrack = stbToggleAudioTrack;
 window.stbToggleSubtitle = stbToggleSubtitle;
 window.stbAudioTracksExists = stbAudioTracksExists;
