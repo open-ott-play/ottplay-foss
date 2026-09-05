@@ -459,8 +459,8 @@ function testGetCurProgDataCacheHit(ch: Awaited<ReturnType<typeof getModule>>) {
     });
     assert.strictEqual(
         result3,
-        true,
-        "returns true on cache hit with current program"
+        false,
+        "returns false on async cache hit (callback fired later)"
     );
     assert.strictEqual(
         callbackCalled,
@@ -568,6 +568,8 @@ function testSetEpgTimerAddRemove(ch: Awaited<ReturnType<typeof getModule>>) {
     mockWindow.selIndex = 0;
     mockWindow.listCatIndex = 0;
     mockWindow.listChannel = 0;
+    mockWindow.epglisted = true;
+    mockWindow.epg_ch_id = channelId;
 
     let confirmMsg = "";
     let confirmCb: () => void = () => {
