@@ -350,6 +350,7 @@ declare var catsArray: string[];
 declare var cats: Record<string, string[]>;
 declare var parentalArray: string[];
 declare var favoritesArray: string[];
+declare var getActiveFavoritesListName: () => string;
 declare var prevArr: any[];
 declare var cList: string[];
 declare var channels: Record<string, any>;
@@ -1652,8 +1653,15 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     listDetail.innerHTML = "";
     detailListAction = detailProg;
     listKeyHandlerFn = channelsKeyHandler;
-    listCaptionElement.innerHTML =
-        _("Channel list. Category: ") + (catsArray[listCatIndex] || "");
+    // Step 3 FCC: show active favorites list name in caption when on Favorites
+    var catName = catsArray[listCatIndex] || "";
+    if (catName === "Favorites" || catName === _("Favorites")) {
+        var favListName = getActiveFavoritesListName();
+        if (favListName && favListName !== "Favorites") {
+            catName = catName + " - " + favListName;
+        }
+    }
+    listCaptionElement.innerHTML = _("Channel list. Category: ") + catName;
     listPodval!.innerHTML =
         btnDiv(
             keys.RED,
