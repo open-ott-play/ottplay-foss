@@ -694,6 +694,150 @@ export function deleteFavoritesList(name: string): boolean {
     return true;
 }
 
+/**
+ * Multi-favorites list manager UI.
+ * Shows a select-box with the current list and sub-actions (add/rename/delete).
+ * Calls saveChannelsCats() after every mutation.
+ */
+export function popFavLists(): void {
+    var w = window as any;
+
+    function submenu(): void {
+        var names = listFavoritesLists();
+        var activeIdx = names.indexOf(getActiveFavoritesListName());
+        names.push(w._ ? w._("Add new list") : "Add new list");
+
+        w.showSelectBox(
+            Math.max(0, activeIdx),
+            names,
+            function (idx: number) {
+                if (idx === names.length - 1) {
+                    // "Add new list"
+                    w.editCaption = w._
+                        ? w._("New list name")
+                        : "New list name";
+                    w.editvar = "";
+                    w.setEdit = function () {
+                        var name = (w.editvar || "").trim();
+                        if (name && addFavoritesList(name)) {
+                            setActiveFavoritesList(name);
+                            saveChannelsCats();
+                            w.showShift(
+                                w._ ? w._("List created") : "List created"
+                            );
+                            if (typeof w.showPage === "function") w.showPage();
+                        }
+                        w.setEdit = function () {};
+                    };
+                    if (typeof w.showEditKey === "function") {
+                        w.showEditKey(w.keys.ENTER);
+                    }
+                } else {
+                    // Select existing list
+                    var selName = names[idx];
+                    setActiveFavoritesList(selName);
+                    saveChannelsCats();
+                    w.showShift(selName);
+                    if (typeof w.showPage === "function") w.showPage();
+                }
+            },
+            -1 // manual dismiss
+        );
+    }
+
+    function actionMenu(listName: string): void {
+        var names = listFavoritesLists();
+        var canDelete = names.length > 1;
+
+        var items: string[] = [];
+        items.push(w._ ? w._("Switch to this list") : "Switch to this list");
+        items.push(w._ ? w._("Rename") : "Rename");
+        if (canDelete) items.push(w._ ? w._("Delete") : "Delete");
+        items.push(w._ ? w._("Cancel") : "Cancel");
+
+        w.showSelectBox(
+            0,
+            items,
+            function (idx: number) {
+                if (idx === 0) {
+                    // Switch
+                    setActiveFavoritesList(listName);
+                    saveChannelsCats();
+                    w.showShift(listName);
+                    if (typeof w.showPage === "function") w.showPage();
+                } else if (idx === 1) {
+                    // Rename
+                    w.editCaption =
+                        (w._ ? w._("Rename to") : "Rename to") +
+                        ": " +
+                        listName;
+                    w.editvar = listName;
+                    w.setEdit = function () {
+                        var newName = (w.editvar || "").trim();
+                        if (
+                            newName &&
+                            newName !== listName &&
+                            renameFavoritesList(listName, newName)
+                        ) {
+                            setActiveFavoritesList(newName);
+                            saveChannelsCats();
+                            w.showShift(
+                                w._ ? w._("List renamed") : "List renamed"
+                            );
+                            if (typeof w.showPage === "function") w.showPage();
+                        }
+                        w.setEdit = function () {};
+                    };
+                    if (typeof w.showEditKey === "function") {
+                        w.showEditKey(w.keys.ENTER);
+                    }
+                } else if (idx === 2 && canDelete) {
+                    // Delete
+                    w.confirmBox(
+                        (w._ ? w._("Delete list") : "Delete list") +
+                            ": " +
+                            listName +
+                            "?",
+                        function () {
+                            deleteFavoritesList(listName);
+                            saveChannelsCats();
+                            w.showShift(
+                                w._ ? w._("List deleted") : "List deleted"
+                            );
+                            if (typeof w.showPage === "function") w.showPage();
+                        }
+                    );
+                }
+            },
+            -1
+        );
+    }
+
+    function mainMenu(): void {
+        var names = listFavoritesLists();
+        var activeName = getActiveFavoritesListName();
+        var displayNames = names.map(function (n: string) {
+            return n === activeName ? n + " *" : n;
+        });
+        displayNames.push(w._ ? w._("Manage lists") : "Manage lists");
+
+        w.showSelectBox(
+            0,
+            displayNames,
+            function (idx: number) {
+                if (idx === names.length) {
+                    submenu();
+                } else {
+                    actionMenu(names[idx]);
+                }
+            },
+            -1
+        );
+    }
+
+    mainMenu();
+}
+
 /** Load `favoritesLists` from storage; migrate from legacy `favoritesArray`. */
 function loadFavoritesLists(): void {
     if (

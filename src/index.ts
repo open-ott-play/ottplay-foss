@@ -50,6 +50,7 @@ import {
     _tmedia,
     aAspects,
     aAudios,
+    addFavoritesList,
     addToFavorites,
     aSubs,
     aZooms,
@@ -60,6 +61,7 @@ import {
     channels,
     channelsList,
     curList,
+    deleteFavoritesList,
     detailEPG,
     enterPinAndSetAccess,
     enterPinCode,
@@ -75,6 +77,7 @@ import {
     epgShow_miniproc,
     favoritesArray,
     fileArchive,
+    getActiveFavoritesListName,
     getChannelUrl,
     getCurProgData,
     getMediaDescr,
@@ -82,6 +85,7 @@ import {
     ifParentalAccessChId,
     itemEPG,
     listEpgArray,
+    listFavoritesLists,
     medFavorites,
     medHistory,
     mediaSelects,
@@ -92,14 +96,17 @@ import {
     playArchive,
     playTime,
     playType,
+    popFavLists,
     prevArr,
     prevChannel,
     primaryIndex,
     recordsList,
     removeFromFavorites,
+    renameFavoritesList,
     saveChannelsCats,
     sEditor,
     selectEpg,
+    setActiveFavoritesList,
     setCurProg,
     setCurrent,
     setEpgTimer,
@@ -437,6 +444,12 @@ var popupDetail: any[] = (window as any).popupDetail || [
     null,
     null,
 ];
+
+// FCC multi-fav UI: append "Favorite lists" to the popup menu
+popupActions.push(popFavLists);
+popupArray.push("Favorite lists");
+popupDetail.push(null);
+
 var savedPopup: {
     ver: string;
     popupActions: any[];
@@ -3555,6 +3568,13 @@ window.getChannelUrl = getChannelUrl;
 window.addToFavorites = addToFavorites;
 window.removeFromFavorites = removeFromFavorites;
 window.saveChannelsCats = saveChannelsCats;
+window.popFavLists = popFavLists;
+window.getActiveFavoritesListName = getActiveFavoritesListName;
+window.setActiveFavoritesList = setActiveFavoritesList;
+window.addFavoritesList = addFavoritesList;
+window.renameFavoritesList = renameFavoritesList;
+window.deleteFavoritesList = deleteFavoritesList;
+window.listFavoritesLists = listFavoritesLists;
 window.epgList = epgList;
 window.epgListAlpha = epgListAlpha;
 window.epgShow_miniproc = epgShow_miniproc;
