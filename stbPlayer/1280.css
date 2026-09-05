@@ -777,3 +777,8 @@ body {
         filter: hue-rotate(360deg);
     }
 }
+
+/* digital zoom: crop scaled #video (Toggle Zoom Mode) */
+#vdiv {
+    overflow: hidden;
+}

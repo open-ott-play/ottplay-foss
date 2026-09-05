@@ -102,6 +102,13 @@ var isFullscreen = true;
  * Current aspect ratio index: 0 = "contain" (letterbox), 1 = "cover" (crop).
  */
 var aspectRatio = 0;
+/**
+ * Digital zoom index for HTML5: 0 = 100%, 1 = 125%, 2 = 150%, 3 = 175%.
+ * Persisted per-channel in aZooms. Legacy only toggled body.stb-zoom with no CSS.
+ */
+var zoomLevel = 0;
+var zoomScales = [1, 1.25, 1.5, 1.75];
+var zoomLabels = ["100%", "125%", "150%", "175%"];
 
 /** Active PiP size preset index (0 = small, 1 = medium, 2 = large). */
 export var pipSize = 0;
@@ -536,6 +543,7 @@ export function stbToFullScreen(): void {
     $("#video").css({ height: "100%", left: 0, top: 0, width: "100%" });
     $("#vdiv").css({ height: "100%", left: 0, top: 0, width: "100%" });
     applyAspectRatio();
+    applyZoom();
 }
 
 /**
@@ -587,6 +595,7 @@ export function stbInfo(): void {
 export function setAspect(v: number): void {
     aspectRatio = v;
     applyAspectRatio();
+    applyZoom();
 }
 
 /**
@@ -811,6 +820,7 @@ export function stbInit(): void {
                 );
             if (typeof execCHarr === "function") {
                 execCHarr("aAspects", setAspect);
+                execCHarr("aZooms", setZoom);
                 execCHarr("aSubs", setSubtitleTrack);
                 execCHarr("aAudios", setAudioTrack);
             }
@@ -1060,12 +1070,38 @@ export function stbToggleSubtitle(): void {
 }
 
 /**
- * Toggle a CSS class `stb-zoom` on the document body for zoom effects.
- *
- * Side effects: Mutates document.body.classList.
+ * Apply the current zoomLevel to #video (CSS transform scale) and body.stb-zoom.
+ * Overflow crop is on #vdiv (see 1280.css). HS5-safe: also sets -webkit-transform.
+ */
+export function applyZoom(): void {
+    var scale = zoomScales[zoomLevel] || 1;
+    var el = document.getElementById("video") as HTMLElement | null;
+    if (el) {
+        var t = scale === 1 ? "" : "scale(" + scale + ")";
+        el.style.transform = t;
+        (el.style as any).webkitTransform = t;
+        el.style.transformOrigin = "center center";
+        (el.style as any).webkitTransformOrigin = "center center";
+    }
+    if (scale > 1) document.body.classList.add("stb-zoom");
+    else document.body.classList.remove("stb-zoom");
+}
+
+/** Set zoom index and apply immediately. */
+export function setZoom(v: number): void {
+    zoomLevel = v;
+    applyZoom();
+}
+
+/**
+ * Open a selection box for digital zoom (100–175%). Persists via saveCHarr(aZooms).
+ * Replaces the old body.stb-zoom toggle that had no CSS and looked like a no-op.
  */
 export function stbToggleZoom(): void {
-    document.body.classList.toggle("stb-zoom");
+    showSelectBox(zoomLevel, zoomLabels, function (v: number) {
+        setZoom(v);
+        saveCHarr("aZooms", v);
+    });
 }
 
 /** Internal standby state flag. */
