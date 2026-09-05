@@ -124,6 +124,7 @@ export const persistedKeys: string[] = [
     "sPlayers",
     "medHistory",
     "medFavorites",
+    "continueWatch",
 ];
 
 /* ---- All exported settings variables (mapped from stored preferences) ---- */
@@ -357,6 +358,159 @@ export function setCurrent(
     providerSetItem("catIndex", String(catIndex));
     // Also save prevArr if it was updated
     if (prevArr.length) providerSetItem("prevArr", JSON.stringify(prevArr));
+    // Continue-watching bookmark: single last-session record, mode-tagged.
+    // Live = catIndex/primaryIndex only. Archive/vod also captures playType (unix
+    // start sentinel) + playTime (offset seconds if used). Channel id is
+    // resolved from the live curList so the bookmark survives primaryIndex churn.
+    try {
+        var mode: string =
+            playType > 0 ? "archive" : playType < 0 ? "vod" : "live";
+        var cw: any = {
+            catIndex: catIndex,
+            channelId: (curList && curList[primaryIndex]) || undefined,
+            channelIndex: primaryIndex,
+            mode: mode,
+            updatedAt: Date.now(),
+            v: 1,
+        };
+        if (mode === "archive" || mode === "vod") {
+            cw.playType = playType;
+            cw.playTime = playTime;
+        }
+        providerSetItem("continueWatch", JSON.stringify(cw));
+    } catch (_e) {
+        // best-effort: never let bookmark persistence break channel switch
+    }
+}
+
+/**
+ * Restore continue-watching bookmark on startup.
+ *
+ * Reads the `continueWatch` provider key. If the saved mode is archive or
+ * vod for a channel still present in the current playlist and the bookmark
+ * is younger than 7 days, shows a `confirmBox` "Resume from archive?" dialog.
+ * On Yes: plays archive at the saved position (reusing `window.playArchive`).
+ * On No: returns false so the caller falls back to normal live playback.
+ *
+ * Returns true if a resume was offered (archive/vod dialog shown), false
+ * otherwise (no bookmark / stale / channel missing / live mode) — the caller
+ * should then run the normal `playChannel` path.
+ *
+ * Must be called after the playlist is populated.
+ */
+export function restoreContinueWatch(): boolean {
+    try {
+        var cw: any = window.providerGetJson("continueWatch", null);
+        if (!cw || !cw.v || !cw.mode || cw.channelId == null) return false;
+        var ageMs = Date.now() - (cw.updatedAt || 0);
+        if (ageMs > 7 * 24 * 60 * 60 * 1000) return false; // stale: > 7 days
+        // 1) Resume dialog = archive only (positive playType sentinel required).
+        // VOD / live → return false so caller does live playback.
+        if (
+            !(
+                cw.mode === "archive" &&
+                typeof cw.playType === "number" &&
+                cw.playType > 0
+            )
+        )
+            return false;
+        // 3) Category-aware channel lookup — track which list won so Yes callback can use it directly.
+        var resumeCatIndex: number = -1;
+        var resumeIdx: number = -1;
+        if (
+            cats &&
+            catsArray &&
+            typeof cw.catIndex === "number" &&
+            cats[catsArray[cw.catIndex]]
+        ) {
+            resumeCatIndex = cw.catIndex;
+            resumeIdx = cats[catsArray[cw.catIndex]].indexOf(cw.channelId);
+        }
+        if (resumeIdx === -1) {
+            resumeCatIndex = catIndex;
+            resumeIdx = curList.indexOf(cw.channelId);
+        }
+        if (resumeIdx === -1 && cats && cats[_("All")]) {
+            var allIdx = cats[_("All")].indexOf(cw.channelId);
+            if (allIdx !== -1) {
+                resumeCatIndex = catsArray.indexOf(_("All"));
+                resumeIdx = allIdx;
+            }
+        }
+        if (resumeIdx === -1) return false; // channel no longer present
+        var playLiveFallback = function (): boolean {
+            try {
+                window.playChannel(resumeCatIndex, resumeIdx);
+                return true;
+            } catch (_e) {
+                console.error(_e);
+                primaryIndex = 0;
+                catIndex = sFavorites ? 1 : 0;
+                try {
+                    window.playChannel(catIndex, primaryIndex);
+                } catch (e2) {
+                    console.error(e2);
+                }
+                return false;
+            }
+        };
+
+        if (typeof window.confirmBox === "function") {
+            window.confirmBox(
+                _("Resume from archive?") +
+                    "<br><br>" +
+                    _("Bookmark age: %1 days", Math.floor(ageMs / 86400000)),
+                function () {
+                    // 2) Option A: assign state directly without calling setCurrent,
+                    // so continueWatch is NOT rewritten with live playType=0 before
+                    // playArchive runs. This preserves the archive bookmark.
+                    catIndex = resumeCatIndex;
+                    curList =
+                        (cats && catsArray && cats[catsArray[catIndex]]) ||
+                        curList;
+                    primaryIndex = curList.indexOf(cw.channelId);
+                    if (primaryIndex === -1) {
+                        // Re-validate once: list may have churned between dialog open and Yes.
+                        primaryIndex = resumeIdx;
+                        if (
+                            primaryIndex < 0 ||
+                            primaryIndex >= curList.length ||
+                            curList[primaryIndex] !== cw.channelId
+                        ) {
+                            playLiveFallback();
+                            return;
+                        }
+                    }
+                    // Sync to window globals for legacy code compat
+                    window.catIndex = catIndex;
+                    window.curList = curList;
+                    window.primaryIndex = primaryIndex;
+                    // Now play archive — archive mode already gated above.
+                    if (typeof window.playArchive === "function") {
+                        window.playArchive(cw.playType);
+                        // Defer seek until playback has a chance to start.
+                        if (typeof cw.playTime === "number") {
+                            setTimeout(function () {
+                                window.stbSetPosTime(cw.playTime);
+                            }, 500);
+                        }
+                    } else {
+                        playLiveFallback();
+                    }
+                },
+                function () {
+                    playLiveFallback();
+                }
+            );
+        } else {
+            // No confirmBox available — skip archive, let caller play live.
+            return false;
+        }
+        return true;
+    } catch (_e) {
+        // never block startup on bookmark restore
+        return false;
+    }
 }
 
 /**
@@ -785,19 +939,24 @@ export function onChanelsLoaded(): void {
             curList = cats[catsArray[catIndex]] || [];
             if (primaryIndex < 0 || primaryIndex >= curList.length)
                 primaryIndex = 0;
-            // Start playback
+            // Start playback: restore continue-watching bookmark if available.
+            // If no archive/vod bookmark is offered, fall back to the normal
+            // live playChannel path (live bookmarks are already encoded in
+            // catIndex/primaryIndex persisted by setCurrent).
             var el = document.getElementById("launch");
             if (el) el.innerHTML += "<br/>Start playback...";
-            try {
-                window.playChannel(catIndex, primaryIndex);
-            } catch (e) {
-                console.error(e);
-                primaryIndex = 0;
-                catIndex = sFavorites ? 1 : 0;
+            if (!restoreContinueWatch()) {
                 try {
                     window.playChannel(catIndex, primaryIndex);
-                } catch (e2) {
-                    console.error(e2);
+                } catch (e) {
+                    console.error(e);
+                    primaryIndex = 0;
+                    catIndex = sFavorites ? 1 : 0;
+                    try {
+                        window.playChannel(catIndex, primaryIndex);
+                    } catch (e2) {
+                        console.error(e2);
+                    }
                 }
             }
             try {
@@ -3369,14 +3528,14 @@ export function sortChannels(mode: number): void {
 
 /**
  * Resolve the current channel ID (as a string key) for per-channel array lookups.
- * Special case: when playType is -1e11 (media mode) and the array is for aspects or zooms,
+ * Special case: when playType is negative (media mode) and the array is for aspects or zooms,
  * returns the fixed key "-1media".
  *
  * @param arrayName - The name of the array being accessed (used for media-mode logic).
  * @returns String key for the current channel, or null if unavailable.
  */
 function _ch_id(arrayName: string): string | null {
-    if (playType === -1e11)
+    if (playType < 0)
         return arrayName === "aAspects" || arrayName === "aZooms"
             ? "-1media"
             : null;
