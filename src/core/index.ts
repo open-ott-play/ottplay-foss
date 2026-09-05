@@ -85,6 +85,10 @@ export var strLANG = "SHIFT";
 
 /** Active hls.js instance for the main video!. */
 var hlsInstance: any = null;
+/** One-shot live auto-restart after fatal HLS parse/network (reset on success / new play). */
+var _liveRestartUsed = false;
+/** Guard so recursive stbPlay from live restart does not clear _liveRestartUsed. */
+var _inLiveRestart = false;
 /** Interval handle that increments archive playTime every second. */
 var _playTimeInterval: ReturnType<typeof setInterval> | null = null;
 /** Clear the playTime ticker interval if one is running. */
@@ -222,6 +226,9 @@ export function stbEventToKeyCode(event: any): number {
  * - Automatically restores previous audio/subtitle track settings via execCHarr.
  */
 export function stbPlay(url: string, position?: number): void {
+    if (!_inLiveRestart) {
+        _liveRestartUsed = false;
+    }
     if (hlsInstance) {
         hlsInstance.destroy();
         hlsInstance = null;
@@ -403,6 +410,33 @@ export function stbPlay(url: string, position?: number): void {
                         det.indexOf("Parsing") !== -1 ||
                         det.indexOf("parsing") !== -1;
                     if (parseFail || _networkRetries >= 2) {
+                        // Live: one-shot destroy + same-URL reload after parse
+                        // fail (e.g. proxy HTML 403). Archive: destroy only (#220).
+                        if (parseFail && !_isArchive && !_liveRestartUsed) {
+                            _liveRestartUsed = true;
+                            console.log(
+                                "[HLS] live: restart same URL after fatal parse/network"
+                            );
+                            if (
+                                window.__ottDebug &&
+                                window.__ottDebug.enabled &&
+                                typeof window.__ottDebug.push === "function"
+                            ) {
+                                window.__ottDebug.push("hls", "live-restart", {
+                                    details: det,
+                                    url: url,
+                                });
+                            }
+                            hlsInstance.destroy();
+                            hlsInstance = null;
+                            _inLiveRestart = true;
+                            try {
+                                stbPlay(url, 0);
+                            } finally {
+                                _inLiveRestart = false;
+                            }
+                            return;
+                        }
                         console.log(
                             "[HLS] unrecoverable network/parse, destroying"
                         );
@@ -421,6 +455,7 @@ export function stbPlay(url: string, position?: number): void {
             }
         });
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
+            _liveRestartUsed = false;
             video!.play().catch(function (e) {
                 console.log("[HLS] play() rejected:", e);
             });
