@@ -223,7 +223,7 @@ export function stbPlay(url: string, position?: number): void {
         window.player = null;
     }
     clearPlayTimeInterval();
-    // HEVC / decode-fail: try hls.js first, then drop the failing level, then native HTML5
+    // Decode-fail: try hls.js first, drop failing level, recover once; native only if Safari
     var _forceNative = false;
     var _pm =
         playerMode === 1 &&
@@ -274,6 +274,7 @@ export function stbPlay(url: string, position?: number): void {
         // ponytail: seek to position at MANIFEST_PARSED — currentTime === 0 guaranteed
         var _startPos = position || 0;
         var _mediaRecovered = false;
+        var _networkRetries = 0;
         hlsInstance.loadSource(url);
         hlsInstance.attachMedia(video);
         hlsInstance.on(Hls.Events.ERROR, function (_event: any, data: any) {
@@ -300,23 +301,88 @@ export function stbPlay(url: string, position?: number): void {
                             return;
                         }
                         hlsInstance.currentLevel = cap;
+                    } else {
+                        // hls-proxy always exposes a single STREAM-INF, so
+                        // drop-level never runs for proxied live channels.
+                        console.log(
+                            "[HLS] MEDIA_ERROR: skip drop level (levels=" +
+                                lvls.length +
+                                " failed=" +
+                                failed +
+                                ")"
+                        );
                     }
                     if (!_mediaRecovered) {
                         _mediaRecovered = true;
-                        console.log("[HLS] trying recoverMediaError");
+                        console.log(
+                            "[HLS] trying recoverMediaError" +
+                                (data.details ? " (" + data.details + ")" : "")
+                        );
                         hlsInstance.recoverMediaError();
                     } else {
+                        // Chrome/Edge MSE cannot play HLS natively. Setting
+                        // video.src to an .m3u8 only yields SRC_NOT_SUPPORTED
+                        // and hides the real cause (often mp2/ac3 audio on
+                        // "HD Orig" streams — use remuxed "HD" / AAC instead).
+                        var canNative = false;
+                        try {
+                            canNative = !!(
+                                video &&
+                                typeof video.canPlayType === "function" &&
+                                video.canPlayType(
+                                    "application/vnd.apple.mpegurl"
+                                )
+                            );
+                        } catch (_e) {
+                            canNative = false;
+                        }
+                        var det = String((data && data.details) || "");
+                        var appendFail =
+                            det.indexOf("bufferAppend") !== -1 ||
+                            det.indexOf("bufferAppendError") !== -1;
+                        hlsInstance.destroy();
+                        hlsInstance = null;
+                        if (canNative) {
+                            console.log(
+                                "[HLS] MEDIA_ERROR twice, fallback native HTML5"
+                            );
+                            video!.src = url;
+                            video!.play().catch(function () {});
+                        } else {
+                            console.log(
+                                "[HLS] MEDIA_ERROR twice, no native HLS" +
+                                    (det ? " details=" + det : "") +
+                                    (appendFail
+                                        ? " (HD Orig often mp2/ac3 + strict Chrome decode)"
+                                        : "")
+                            );
+                            $("#buffering").hide();
+                            $("#video_res").html(
+                                "<br/>error DECODE" +
+                                    (appendFail ? " (HD Orig)" : "") +
+                                    " — try HD remux / AAC"
+                            );
+                        }
+                    }
+                } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                    // levelParsingError / manifest parse are not transient —
+                    // startLoad() would loop forever (no-EPG archive bad URL,
+                    // purged segments, proxy HTML error pages).
+                    var det = String((data && data.details) || "");
+                    var parseFail =
+                        det.indexOf("Parsing") !== -1 ||
+                        det.indexOf("parsing") !== -1;
+                    if (parseFail || _networkRetries >= 2) {
                         console.log(
-                            "[HLS] MEDIA_ERROR twice, fallback native HTML5"
+                            "[HLS] unrecoverable network/parse, destroying"
                         );
                         hlsInstance.destroy();
                         hlsInstance = null;
-                        video!.src = url;
-                        video!.play().catch(function () {});
+                    } else {
+                        _networkRetries++;
+                        console.log("[HLS] trying startLoad");
+                        hlsInstance.startLoad();
                     }
-                } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                    console.log("[HLS] trying startLoad");
-                    hlsInstance.startLoad();
                 } else {
                     console.log("[HLS] unrecoverable, destroying");
                     hlsInstance.destroy();

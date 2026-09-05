@@ -787,66 +787,20 @@ export function loadProv(): void {
         popupArray.splice(0, popupArray.length, ...savedPopup.popupArray);
         popupDetail.splice(0, popupDetail.length, ...savedPopup.popupDetail);
     } else {
-        // Fallback: hardcoded defaults
-        popupActions.splice(
-            0,
-            popupActions.length,
-            (window as any).toggleAspectRatio,
-            (window as any).toggleZoom,
-            (window as any).toggleAudioTrack,
-            (window as any).toggleSubtitle,
-            (window as any).popPrevProg,
-            (window as any).popPause,
-            (window as any).popStop,
-            (window as any).popShift,
-            (window as any).popTogglePip,
-            (window as any).popStopPip,
-            (window as any).popBuckets,
-            (window as any).popEpg,
-            (window as any).popRecords,
-            (window as any).popMedia,
-            (window as any).noProvParam,
-            (window as any).nofun,
-            (window as any).optionsList,
-            (window as any).restart,
-            (window as any).exitPortal,
-            (window as any).infoList
-        );
-        popupArray.splice(
-            0,
-            popupArray.length,
-            "Toggle Aspect Ratio",
-            "Toggle Zoom Mode",
-            "Switch sound track",
-            "Switch subtitle",
-            "Return to previous channel",
-            "Pause/Play",
-            "Restart stream / Live",
-            "Rewind",
-            "Call PiP / PiP exchange",
-            "Close PiP",
-            "Category selection",
-            "Show EPG and archive for channel",
-            "Show list of channel archive records",
-            "Show Media Library",
-            "",
-            "",
-            "Settings",
-            "Restart player",
-            "Exit player",
-            "Information"
-        );
-        // Keep popupDetail the same length as popupArray and aligned with
-        // it: index 7 is "Rewind", index 12 is "Show list of channel
-        // archive records". popupList() reads popupDetail[t] for the same
-        // t it reads popupArray[t], so a length/offset drift here shows the
-        // wrong description against the wrong menu entry.
-        popupDetail.splice(0, popupDetail.length);
-        for (var pdIdx = 0; pdIdx < popupArray.length; pdIdx++)
-            popupDetail.push(null);
-        popupDetail[7] = "Show rewind window";
-        popupDetail[12] =
-            "Show list of channel archive records without duplication";
+        // Fallback when savedPopup was never snapshotted: reuse the single
+        // concat allocator published on window.* by src/index.ts. Do not
+        // hardcode a second 20-label table here (HS5 / prov.js depend on
+        // one shared popupActions/popupArray/popupDetail identity).
+        var wPop = window as any;
+        if (wPop.popupActions && wPop.popupActions.length) {
+            popupActions.splice(0, popupActions.length, ...wPop.popupActions);
+            popupArray.splice(0, popupArray.length, ...wPop.popupArray);
+            popupDetail.splice(0, popupDetail.length, ...wPop.popupDetail);
+        } else {
+            console.warn(
+                "[loadProv] popup fallback: window.popupActions empty; menu may be wrong"
+            );
+        }
     }
 
     var matchResult = window.location.search.match(/\?([^&]+)/);
@@ -1607,6 +1561,10 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                 " id=" +
                 chId
             );
+        // FOSS 1280.css .item uses padding:0 14px (border-box) and .img
+        // margin-right:8px — gold had neither. Without subtracting those,
+        // float:right .progress_div wraps and is clipped by overflow:hidden.
+        var styleExtra = 28 + (pikonSize ? 8 : 0);
         var textW =
             itemWith -
             numWidth -
@@ -1614,7 +1572,8 @@ function _channelsList(catIdx: number, channelIdx: number): void {
             pikonMargin -
             progWidth -
             2 * progMargin -
-            archWidth * 3;
+            archWidth * 3 -
+            styleExtra;
         var progName = getCurProgData(chId, updateChanelList) ? ch.name : "";
         if (ch.outdated === true)
             progName =

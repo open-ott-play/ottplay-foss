@@ -366,7 +366,9 @@ var pipCatIndex = 0;
 var previewChan: any = null;
 var previewTimer: any = null;
 
-// Popup menu
+// Popup menu — SOLE concat-time allocator for popupActions/Array/Detail.
+// Keep src/app/state.ts OFF MODULES while these `var`s exist (const/let there
+// would SyntaxError or silently fork a second array). ESM tests import state.ts.
 var popupActions: any[] = [
     toggleAspectRatio,
     toggleZoom,
@@ -628,7 +630,7 @@ function setFontSize(): void {
     $("#numprog").css("font-size", r + "px");
     $("#dialogbox").css("font-size", r + "px");
 
-    r = Math.min(r, 25 * e);
+    r = Math.min(r, 28 * e);
     $("#listCaption").css("font-size", r + "px");
     $("#listPodval").css("font-size", r + "px");
     $("#permanentTime")
@@ -653,38 +655,46 @@ function setFontSize(): void {
     $("#launch").css({ "font-size": 16 * e + "px", padding: 100 * e + "px" });
     $("logo").css({ margin: 100 * e + "px" });
     $("#list").css({ margin: 10 * e + "px " + 10 * t + "px" });
-    $("#listCaption").css({ height: 30 * e + "px" });
-    $("#listTime").css({ "font-size": 22 * e + "px", width: 80 * t + "px" });
+    $("#listCaption").css({
+        height: 34 * e + "px",
+        "line-height": 34 * e + "px",
+        padding: "0 " + 12 * t + "px",
+    });
+    $("#listTime").css({ "font-size": 22 * e + "px", width: 88 * t + "px" });
     $("#list_s").css({ "font-size": 16 * e + "px" });
-    $("#listPodval").css({ height: 30 * e + "px" });
+    $("#listPodval").css({
+        height: 34 * e + "px",
+        "line-height": 34 * e + "px",
+        padding: "0 " + 12 * t + "px",
+    });
     $("#listDetail").css({
-        bottom: 30 * e + 1 + "px",
-        padding: 8 * e + "px " + 10 * t + "px",
+        bottom: 34 * e + 1 + "px",
+        padding: 10 * e + "px " + 14 * t + "px",
         top: 330 * e + "px",
         width: 514 * t + 1 + "px",
     });
     $("#listPopUp").css({
-        bottom: 30 * e + 1 + "px",
+        bottom: 34 * e + 1 + "px",
         margin: 10 * e + "px",
-        padding: 12 * e + "px " + 14 * t + "px",
+        padding: 14 * e + "px " + 18 * t + "px",
     });
     $("#listIn").css({
-        bottom: 30 * e + 1 + "px",
+        bottom: 34 * e + 1 + "px",
         left: 522 * t + "px",
-        padding: 4 * e + "px 0px",
-        top: 30 * e + 1 + "px",
+        padding: 2 * e + "px 0px",
+        top: 34 * e + 1 + "px",
     });
     $("#listAbout").css({
-        bottom: 30 * e + 1 + "px",
+        bottom: 34 * e + 1 + "px",
         left: 522 * t + "px",
-        padding: 12 * e + "px " + 14 * t + "px",
-        top: 30 * e + 1 + "px",
+        padding: 14 * e + "px " + 16 * t + "px",
+        top: 34 * e + 1 + "px",
     });
     $("#listEdit").css({
-        bottom: 30 * e + 1 + "px",
+        bottom: 34 * e + 1 + "px",
         left: 522 * t + "px",
-        padding: 12 * e + "px " + 14 * t + "px",
-        top: 30 * e + 1 + "px",
+        padding: 14 * e + "px " + 16 * t + "px",
+        top: 34 * e + 1 + "px",
     });
     $("#info1").css({ padding: 20 * e + "px " + 20 * t + "px" });
     $("#picon").css({ height: 80 * e + "px", width: 80 * t + "px" });
@@ -869,7 +879,7 @@ function setColor(): void {
         ) +
         ")";
 
-    $("#listCaption").css("border-bottom", "1px solid " + curColor);
+    $("#listCaption").css("border-bottom", "2px solid " + curColor);
     $("#listPodval").css("border-top", "1px solid " + curColor);
     $("#listPopUp").css("border", "1px solid " + curColor);
     $("#progress").css("background-color", curColor);
