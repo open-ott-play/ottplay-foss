@@ -97,7 +97,6 @@ import {
     primaryIndex,
     recordsList,
     removeFromFavorites,
-    restoreContinueWatch,
     saveChannelsCats,
     sEditor,
     selectEpg,

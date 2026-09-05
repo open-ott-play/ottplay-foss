@@ -364,7 +364,7 @@ export function setCurrent(
     // resolved from the live curList so the bookmark survives primaryIndex churn.
     try {
         var mode: string =
-            playType > 0 ? "archive" : playType === -1e11 ? "vod" : "live";
+            playType > 0 ? "archive" : playType < 0 ? "vod" : "live";
         var cw: any = {
             catIndex: catIndex,
             channelId: (curList && curList[primaryIndex]) || undefined,
@@ -408,24 +408,74 @@ export function restoreContinueWatch(): boolean {
         var chIdx: number = curList.indexOf(cw.channelId);
         if (chIdx === -1) return false; // channel no longer in playlist
         if (cw.mode !== "archive" && cw.mode !== "vod") return false; // live: normal path
+        var playLiveFallback = function (): boolean {
+            try {
+                window.playChannel(cw.catIndex, cw.channelIndex);
+                return true;
+            } catch (_e) {
+                console.error(_e);
+                primaryIndex = 0;
+                catIndex = sFavorites ? 1 : 0;
+                try {
+                    window.playChannel(catIndex, primaryIndex);
+                } catch (e2) {
+                    console.error(e2);
+                }
+                return false;
+            }
+        };
+
         if (typeof window.confirmBox === "function") {
             window.confirmBox(
                 _("Resume from archive?") +
                     "<br><br>" +
-                    _("Bookmark age: %1 days").replace(
-                        "%1",
-                        String(Math.floor(ageMs / 86400000))
-                    ),
+                    _("Bookmark age: %1 days", Math.floor(ageMs / 86400000)),
                 function () {
+                    // Resolve bookmarked channel in the current playlist before
+                    // starting archive/vod playback. Do NOT playArchive against
+                    // whatever happens to be primaryIndex — find channelId by id.
+                    var list: number[] = curList;
+                    if (
+                        cats &&
+                        catsArray &&
+                        catsArray[cw.catIndex] &&
+                        cats[catsArray[cw.catIndex]]
+                    ) {
+                        list = cats[catsArray[cw.catIndex]];
+                    }
+                    var resumeIdx: number = list.indexOf(cw.channelId);
+                    if (resumeIdx === -1) {
+                        // channel not in the bookmarked category — try current list
+                        resumeIdx = curList.indexOf(cw.channelId);
+                    }
+                    if (resumeIdx === -1) {
+                        // channel no longer present — fall back to live
+                        playLiveFallback();
+                        return;
+                    }
+                    try {
+                        setCurrent(
+                            cw.catIndex,
+                            resumeIdx,
+                            cw.mode === "archive"
+                        );
+                    } catch (_e) {
+                        console.error(_e);
+                    }
                     if (
                         typeof window.playArchive === "function" &&
                         cw.playType
                     ) {
                         window.playArchive(cw.playType);
-                        if (cw.playTime) window.stbSetPosTime(cw.playTime);
+                        if (typeof cw.playTime === "number") {
+                            window.stbSetPosTime(cw.playTime);
+                        }
                     } else {
-                        window.playChannel(cw.catIndex, cw.channelIndex);
+                        playLiveFallback();
                     }
+                },
+                function () {
+                    playLiveFallback();
                 }
             );
         } else {
@@ -3454,14 +3504,14 @@ export function sortChannels(mode: number): void {
 
 /**
  * Resolve the current channel ID (as a string key) for per-channel array lookups.
- * Special case: when playType is -1e11 (media mode) and the array is for aspects or zooms,
+ * Special case: when playType is negative (media mode) and the array is for aspects or zooms,
  * returns the fixed key "-1media".
  *
  * @param arrayName - The name of the array being accessed (used for media-mode logic).
  * @returns String key for the current channel, or null if unavailable.
  */
 function _ch_id(arrayName: string): string | null {
-    if (playType === -1e11)
+    if (playType < 0)
         return arrayName === "aAspects" || arrayName === "aZooms"
             ? "-1media"
             : null;
