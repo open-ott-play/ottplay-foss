@@ -8,7 +8,6 @@
     "devUrl": "http://localhost:5173",
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
-
   },
   "app": {
     "withGlobalTauri": true,

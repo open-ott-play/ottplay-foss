@@ -2,8 +2,5 @@
   "identifier": "default",
   "description": "Capability for all windows",
   "windows": ["main"],
-  "permissions": [
-    "core:default",
-    "core:window:default"
-  ]
+  "permissions": ["core:default", "core:window:default"]
 }
