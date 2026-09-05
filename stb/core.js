@@ -646,8 +646,36 @@ function stbToggleStandby() {
             (ott_device || "unknown")
     );
 }
+var _zoomLevel = 0;
+var _zoomScales = [1, 1.25, 1.5, 1.75];
+var _zoomLabels = ["100%", "125%", "150%", "175%"];
+function applyZoom() {
+    var scale = _zoomScales[_zoomLevel] || 1;
+    var el = document.getElementById("video");
+    if (el) {
+        var tr = scale === 1 ? "" : "scale(" + scale + ")";
+        el.style.transform = tr;
+        el.style.webkitTransform = tr;
+        el.style.transformOrigin = "center center";
+        el.style.webkitTransformOrigin = "center center";
+    }
+    if (scale > 1) document.body.classList.add("stb-zoom");
+    else document.body.classList.remove("stb-zoom");
+}
+function setZoom(v) {
+    _zoomLevel = v;
+    applyZoom();
+}
 function stbToggleZoom() {
-    document.body.classList.toggle("stb-zoom");
+    if (typeof showSelectBox === "function") {
+        showSelectBox(_zoomLevel, _zoomLabels, function (v) {
+            setZoom(v);
+            if (typeof saveCHarr === "function") saveCHarr("aZooms", v);
+        });
+    } else {
+        _zoomLevel = (_zoomLevel + 1) % _zoomScales.length;
+        applyZoom();
+    }
 }
 function saveOpt() {
     if (typeof stbGetAllItems !== "function") return;
