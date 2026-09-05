@@ -1527,6 +1527,37 @@ export function startEpgTimer(timer: any): void {
     var delay = timer.t * 1000 - Date.now();
     if (delay < 0) delay = 0;
 
+    if (timer.ri) clearTimeout(timer.ri);
+
+    var leadMs = (settings.epgRemindMinutes || 0) * 60 * 1000;
+    if (leadMs > 0) {
+        var remindAt = timer.t * 1000 - leadMs;
+        var delayRemind = remindAt - Date.now();
+        if (delayRemind < 0 && timer.t * 1000 - Date.now() > 0) delayRemind = 0;
+        timer.ri = setTimeout(
+            function () {
+                if (typeof w.showShift === "function") {
+                    var minutesLeft = Math.max(
+                        0,
+                        Math.ceil((timer.t * 1000 - Date.now()) / 60000)
+                    );
+                    var ch = channels[timer.ci]
+                        ? channels[timer.ci].channel_name
+                        : "";
+                    w.showShift(
+                        w._(
+                            "Reminder: %1 — %2 in %3 min",
+                            ch,
+                            timer.n || "",
+                            minutesLeft
+                        )
+                    );
+                }
+            },
+            delayRemind > 0 ? delayRemind : 0
+        );
+    }
+
     timer.ti = setTimeout(function () {
         var msg =
             w._("Timer: switch to channel?") +
@@ -1622,6 +1653,7 @@ export function setEpgTimer(_channelId?: any, _time?: number): void {
             epgTimers.push(timer);
         } else {
             clearTimeout(epgTimers[idx].ti);
+            clearTimeout(epgTimers[idx].ri);
             epgTimers.splice(idx, 1);
         }
         if (typeof w.showPage === "function") w.showPage();
