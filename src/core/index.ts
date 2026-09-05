@@ -89,6 +89,8 @@ var hlsInstance: any = null;
 var _liveRestartUsed = false;
 /** Guard so recursive stbPlay from live restart does not clear _liveRestartUsed. */
 var _inLiveRestart = false;
+/** A restart is queued — skip duplicate fatal handlers to avoid stacking black screens. */
+var _liveRestartPending = false;
 /** Interval handle that increments archive playTime every second. */
 var _playTimeInterval: ReturnType<typeof setInterval> | null = null;
 /** Clear the playTime ticker interval if one is running. */
@@ -228,6 +230,7 @@ export function stbEventToKeyCode(event: any): number {
 export function stbPlay(url: string, position?: number): void {
     if (!_inLiveRestart) {
         _liveRestartUsed = false;
+        _liveRestartPending = false;
     }
     if (hlsInstance) {
         hlsInstance.destroy();
@@ -413,7 +416,15 @@ export function stbPlay(url: string, position?: number): void {
                         // Live: one-shot destroy + same-URL reload after parse
                         // fail (e.g. proxy HTML 403). Archive: destroy only (#220).
                         if (parseFail && !_isArchive && !_liveRestartUsed) {
+                            // ponytail: one-shot — skip duplicate fatal handlers while restart is in flight
+                            if (_liveRestartPending) {
+                                console.log(
+                                    "[HLS] live: restart already pending, skipping duplicate fatal"
+                                );
+                                return;
+                            }
                             _liveRestartUsed = true;
+                            _liveRestartPending = true;
                             console.log(
                                 "[HLS] live: restart same URL after fatal parse/network"
                             );
@@ -429,12 +440,21 @@ export function stbPlay(url: string, position?: number): void {
                             }
                             hlsInstance.destroy();
                             hlsInstance = null;
-                            _inLiveRestart = true;
-                            try {
-                                stbPlay(url, 0);
-                            } finally {
-                                _inLiveRestart = false;
+                            // User-visible feedback: "Reconnecting…" clears on MANIFEST_PARSED / playing
+                            if (typeof showShift === "function") {
+                                showShift(_("Reconnecting…"));
                             }
+                            // ponytail: 300–500ms backoff before re-stbPlay (not a retry loop — still one-shot)
+                            var _delay = 300 + Math.floor(Math.random() * 200);
+                            setTimeout(function () {
+                                _inLiveRestart = true;
+                                try {
+                                    stbPlay(url, 0);
+                                } finally {
+                                    _inLiveRestart = false;
+                                    _liveRestartPending = false;
+                                }
+                            }, _delay);
                             return;
                         }
                         console.log(
@@ -456,6 +476,7 @@ export function stbPlay(url: string, position?: number): void {
         });
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
             _liveRestartUsed = false;
+            _liveRestartPending = false;
             video!.play().catch(function (e) {
                 console.log("[HLS] play() rejected:", e);
             });
