@@ -22,6 +22,8 @@ var keyStrings = {
     Category: "Категории",
     "Channel ": "Канал ",
     "Channel is not available!!!": "Канал не доступен!!!",
+    "Channel link": "Ссылка на канал",
+    "Channel link is required!": "Необходимо ввести ссылку на канал!",
     "Channel list": "Список каналов",
     "Channel list not received !!!": "Не получен список каналов!!!",
     "Channel list not received !!!<br/><br/>Enter the provider data and restart the player !!!<br/><br/>":
@@ -36,11 +38,14 @@ var keyStrings = {
     Edit: "Редактировать",
     "Edit access key": "Редактирование ключа доступа",
     "Edit category name": "Редактирование названия категории",
+    "Edit channel link": "Редактирование ссылки на канал",
     "Edit playlist data": "Редактирование данных плейлиста",
     "Edit VPortal link": "Редактирование ссылки VPortal",
     Editor: "Редактор",
     English: "Английский",
     "Enter access key for": "Ввод ключа доступа",
+    "Enter channel link (subdomain.host) from the cabinet":
+        "Введите ссылку на канал (поддомен.host) из личного кабинета",
     "Enter Media Library URL": "Ввод адреса медиатеки",
     "Enter parental code": "Введите родительский код",
     "Enter playlist archive hours":
@@ -59,6 +64,8 @@ var keyStrings = {
     Favorites: "Избранные",
     "For enter value open": "Для ввода значения откройте",
     Info: "Инфо",
+    "Invalid channel link! Use Latin letters, digits (min 5), e.g. subdomain.host":
+        "Некорректная ссылка на канал! Латиница и цифры (мин. 5), например subdomain.host",
     "List created": "Список создан",
     "List deleted": "Список удалён",
     "List renamed": "Список переименован",

@@ -1,4 +1,4 @@
-version += " edem-0220";
+version += " edem-0221";
 var edkey,
     edlist,
     vpurl,
@@ -33,30 +33,54 @@ providerHasItemValue = function (e) {
 };
 
 function _scheme() {
-    return typeof scheme === "string" && scheme ? scheme : "http://";
+    if (typeof scheme === "string" && scheme) return scheme;
+    try {
+        if (
+            typeof window !== "undefined" &&
+            window.location &&
+            window.location.protocol &&
+            window.location.protocol.indexOf("http") === 0
+        ) {
+            return window.location.protocol + "//";
+        }
+    } catch (e) {}
+    return "https://";
 }
 
 function _getParams() {
     edkey = providerGetItem("key") || "";
     edlist = parseInt(providerGetItem("list"), 10) || 0;
     vpurl = providerGetItem("vpurl") || "";
-    edcdn = providerGetItem("edcdn") || "drmplay.rostelekom.xyz";
+    edcdn = providerGetItem("edcdn") || "";
 }
 
 function getChannelPicon(ch_id) {
     return chanels[ch_id] ? chanels[ch_id].logo || "" : "";
 }
 
+function _edcdnHost() {
+    var host = (edcdn || "").trim();
+    if (!host) return "";
+    host = host.replace(/^https?:\/\//i, "").split("/")[0];
+    return host;
+}
+
 function getChannelUrl(ch_id) {
+    var host = _edcdnHost();
+    if (!host) return "";
     var url = chanels[ch_id] ? chanels[ch_id].url || "" : "";
     if (url) {
-        return url
-            .replace("localhost", edcdn || "drmplay.rostelekom.xyz")
+        url = url
+            .replace("localhost", host)
             .replace("00000000000000", edkey || "1");
+        if (_scheme() === "https://" && url.indexOf("http://") === 0) {
+            url = "https://" + url.substring(7);
+        }
+        return url;
     }
     return (
-        "http://" +
-        (edcdn || "drmplay.rostelekom.xyz") +
+        _scheme() +
+        host +
         "/iptv/" +
         (edkey || "1") +
         "/" +
@@ -236,6 +260,14 @@ function getChanelsArray(callback) {
                 infoBox(
                     "<br>" +
                         _("Access key is required!") +
+                        "<br><br>" +
+                        btnDiv(keys.ENTER, strENTER, "Close")
+                );
+            } else if (!_edcdnHost()) {
+                doEditData();
+                infoBox(
+                    "<br>" +
+                        _("Channel link is required!") +
                         "<br><br>" +
                         btnDiv(keys.ENTER, strENTER, "Close")
                 );
@@ -695,8 +727,12 @@ function doEditData() {
     selIndex = 0;
     _getParams();
     var r = _(" (after changing, load playlist)"),
+        cdnLabel = _edcdnHost() || "—",
         aDetail = [
             _("Enter access key for") + " " + provName,
+            _("Enter channel link (subdomain.host) from the cabinet") +
+                ":<br><br>" +
+                r,
             _("Select playlist template source for EPG and logos") +
                 ":<br>" +
                 edTlist.join(", ") +
@@ -708,6 +744,7 @@ function doEditData() {
         ];
     listArray = [
         _("Access key"),
+        _("Channel link") + ": " + cdnLabel,
         _("List type") + ": " + edTlist[edlist],
         _("VPortal link"),
         "",
@@ -722,7 +759,7 @@ function doEditData() {
         listDetail.innerHTML = aDetail[selIndex] || "";
         listPodval.innerHTML =
             btnDiv(keys.RETURN, strRETURN, "Close") +
-            (selIndex != 1
+            (selIndex != 2
                 ? ""
                 : btnDiv(
                       keys.ENTER,
@@ -731,7 +768,7 @@ function doEditData() {
                       strLEFT,
                       strRIGHT
                   )) +
-            (selIndex != 0 && selIndex != 2
+            ([0, 1, 3].indexOf(selIndex) == -1
                 ? ""
                 : btnDiv(keys.ENTER, strENTER, "Change value"));
     };
@@ -741,20 +778,23 @@ function doEditData() {
             case keys.LEFT:
                 a = -1;
             case keys.RIGHT:
-                // LEFT/RIGHT rotate list type (row 1); on other rows fall through to ENTER where applicable.
-                if (code != keys.ENTER && selIndex != 1) return false;
+                // LEFT/RIGHT rotate list type (row 2); on other rows fall through to ENTER where applicable.
+                if (code != keys.ENTER && selIndex != 2) return false;
             case keys.ENTER:
                 switch (selIndex) {
                     case 0:
                         edemKey();
                         return true;
                     case 1:
-                        doEditList(a);
+                        edemCdn();
                         return true;
                     case 2:
+                        doEditList(a);
+                        return true;
+                    case 3:
                         vportal();
                         return true;
-                    case 4:
+                    case 5:
                         loadChannels();
                         return true;
                 }
@@ -794,9 +834,38 @@ function doEditList(a) {
     if (edlist == edTlist.length) edlist = 0;
     if (edlist < 0) edlist = edTlist.length - 1;
     providerSetItem("list", edlist);
-    listArray[1] = _("List type") + ": " + edTlist[edlist];
+    listArray[2] = _("List type") + ": " + edTlist[edlist];
     listDataArray = listArray;
     showPage();
+}
+
+function edemCdn() {
+    editCaption = _("Edit channel link");
+    editvar = edcdn || "";
+    setEdit = function () {
+        var v = (editvar || "").trim();
+        if (v) {
+            v = v.replace(/^https?:\/\//i, "").split("/")[0];
+            if (!/^[A-Za-z0-9][A-Za-z0-9.-]{4,}$/.test(v)) {
+                alert(
+                    _(
+                        "Invalid channel link! Use Latin letters, digits (min 5), e.g. subdomain.host"
+                    )
+                );
+                showEditKey();
+                return;
+            }
+        }
+        if (edcdn == v) return;
+        edcdn = v;
+        providerSetItem("edcdn", edcdn);
+        listArray[1] = _("Channel link") + ": " + (_edcdnHost() || "—");
+        listDataArray = listArray;
+        if (typeof playChannel === "function")
+            playChannel(catIndex, primaryIndex);
+        showPage();
+    };
+    showEditKey();
 }
 
 function vportal() {

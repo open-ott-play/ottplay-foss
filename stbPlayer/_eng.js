@@ -38,6 +38,8 @@ var keyStrings = {
     Category: "Category",
     "Channel ": "Channel ",
     "Channel is not available!!!": "Channel is not available!",
+    "Channel link": "Channel link",
+    "Channel link is required!": "Channel link is required!",
     "Channel list": "Channel list",
     "Channel list not received !!!": "Channel list not received!",
     "Channel list not received !!!<br/><br/>Enter the provider data and restart the player !!!<br/><br/>":
@@ -57,11 +59,14 @@ var keyStrings = {
     Edit: "Edit",
     "Edit access key": "Edit access key",
     "Edit category name": "Edit category name",
+    "Edit channel link": "Edit channel link",
     "Edit playlist data": "Edit playlist details",
     "Edit VPortal link": "Edit VPortal link",
     Editor: "Editor",
     English: "English",
     "Enter access key for": "Enter access key for",
+    "Enter channel link (subdomain.host) from the cabinet":
+        "Enter the channel link (subdomain.host) from the cabinet",
     "Enter Media Library URL": "Enter media library URL",
     "Enter Provider Code": "Enter provider code",
     "Enter Provider Code on PC or Phone":
@@ -92,6 +97,8 @@ var keyStrings = {
     Info: "Info",
     "Infobar display timeout, s": "Info bar display timeout, s",
     "Infobar settings": "Info bar settings",
+    "Invalid channel link! Use Latin letters, digits (min 5), e.g. subdomain.host":
+        "Invalid channel link! Use Latin letters and digits (min 5), e.g. subdomain.host",
     "List created": "List created",
     "List deleted": "List deleted",
     "List renamed": "List renamed",

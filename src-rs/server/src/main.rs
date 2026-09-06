@@ -466,11 +466,48 @@ async fn match_logos_handler(body: Bytes) -> impl IntoResponse {
 }
 
 
+fn form_decode_value(raw: &str) -> String {
+    let plus_as_space = raw.replace('+', "%20");
+    urlencoding::decode(&plus_as_space)
+        .map(|c| c.into_owned())
+        .unwrap_or_else(|_| raw.replace('+', " "))
+}
+
+/// Accept JSON `{url, ua?}` or `application/x-www-form-urlencoded` (`url=` / `ua=`).
+/// Providers POST jQuery form bodies (`{url: "@"+cpurl}`), not JSON.
+fn parse_cp_proxy_params(body: &[u8]) -> Option<ottplay_core::m3u::ProxyParams> {
+    if let Ok(params) = serde_json::from_slice::<ottplay_core::m3u::ProxyParams>(body) {
+        if !params.url.is_empty() {
+            return Some(params);
+        }
+    }
+    let s = String::from_utf8_lossy(body);
+    let mut url = String::new();
+    let mut ua = String::new();
+    for pair in s.split('&') {
+        if pair.is_empty() {
+            continue;
+        }
+        let mut parts = pair.splitn(2, '=');
+        let key = parts.next().unwrap_or("");
+        let val = parts.next().unwrap_or("");
+        match key {
+            "url" => url = form_decode_value(val),
+            "ua" => ua = form_decode_value(val),
+            _ => {}
+        }
+    }
+    if url.is_empty() {
+        None
+    } else {
+        Some(ottplay_core::m3u::ProxyParams { url, ua })
+    }
+}
+
 async fn cp_proxy_handler(
     body: Bytes,
 ) -> Result<(StatusCode, HeaderMap, Vec<u8>), StatusCode> {
-    let params: ottplay_core::m3u::ProxyParams =
-        serde_json::from_slice(&body).map_err(|_| StatusCode::BAD_REQUEST)?;
+    let params = parse_cp_proxy_params(&body).ok_or(StatusCode::BAD_REQUEST)?;
     match ottplay_core::m3u::proxy_stream(params).await {
         Ok((mut headers, body)) => {
             headers.insert("access-control-allow-origin", HeaderValue::from_static("*"));
