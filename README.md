@@ -470,6 +470,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 ## Documentation
 
 - [System Architecture](./.github/docs/system-architecture.md) — End-to-end architecture: startup sequence, key-press dispatch, channel tuning, PiP, EPG, archive/timeshift, and per-provider data flows.
+- [Channels Phase D Cluster Map](./docs/channels-phase-d-map.md) — clusters in `src/channels/index.ts` with extract recommendations (Phase D1).
 
 ## License
 
