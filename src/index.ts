@@ -3518,15 +3518,32 @@ function buttonsInfo(): void {
     };
 }
 
+function toggleDebugHudInfo(): void {
+    if (
+        (window as any).__ottDebug &&
+        typeof (window as any).__ottDebug.toggleHud === "function"
+    ) {
+        (window as any).__ottDebug.toggleHud();
+    } else {
+        (window as any).infoBox(_("Debug HUD is not available"));
+    }
+}
+
 var infoArr: any[] = [
     { action: buttonsInfo, name: "Description of remote control buttons" },
     { action: nofun },
     { action: pluginInfo, desc: "Player and device info", name: "About" },
+    {
+        action: toggleDebugHudInfo,
+        desc: "Toggle on-screen debug HUD",
+        name: "Debug HUD",
+    },
 ];
 
 window.infoArr = infoArr;
 window.pluginInfo = pluginInfo;
 window.buttonsInfo = buttonsInfo;
+window.toggleDebugHudInfo = toggleDebugHudInfo;
 window.infoList = infoList;
 window.isListVisible = isListVisible;
 window.isEditMode = isEditMode;
