@@ -1,6 +1,8 @@
-version += " shara_tv-0219";
-p_pref = "shara-tv";
+version += " sharatv-0906";
+var login, pass;
+p_pref = "shtv";
 parental = /XXX|Взрослые|Для взрослых|Эротика|18\+|Adults/i;
+
 if (typeof stbGetItem === "function") {
     providerGetItem = function (e) {
         return stbGetItem(p_pref + e);
@@ -25,315 +27,285 @@ providerHasItem = function (e) {
 providerHasItemValue = function (e) {
     return ottpStorage.hasValue(p_pref + e);
 };
-var _shara_tv_cfg = { m3u: "", pass: "", server: "", user: "" };
-function _shara_tv_load() {
+
+function _getParams() {
+    login = providerGetItem("login") || "";
+    pass = providerGetItem("pass") || "";
+}
+
+function getProviderParams() {
+    _getParams();
     try {
-        var d = providerGetItem("cfg");
-        if (d) _shara_tv_cfg = JSON.parse(d);
+        $("#login").val(login);
+        $("#pass").val(pass);
     } catch (e) {}
-    if (!(_shara_tv_cfg.server || _shara_tv_cfg.m3u))
-        _shara_tv_cfg = { m3u: "", pass: "", server: "", user: "" };
+    if (login.length != 8 || pass.length != 8)
+        alert("Для доступа необходимо ввести Логин и пароль!");
+    return login.length == 8 && pass.length == 8;
 }
-function _shara_tv_save() {
-    providerSetItem("cfg", JSON.stringify(_shara_tv_cfg));
+
+function setProviderParams() {
+    providerSetItem("login", decodeURIComponent($("#login").val().trim()));
+    var changed = login != providerGetItem("login");
+    providerSetItem("pass", decodeURIComponent($("#pass").val().trim()));
+    changed = changed || pass != providerGetItem("pass");
+    _getParams();
+    if (login.length != 8 || pass.length != 8)
+        alert("Для доступа необходимо ввести Логин и пароль!");
+    return changed;
 }
-function getChannelPicon(e) {
-    return chanels[e] ? chanels[e].logo || "" : "";
+
+function getChannelPicon(ch_id) {
+    return chanels[ch_id] ? chanels[ch_id].logo || "" : "";
 }
-function getChannelUrl(e) {
-    return chanels[e] ? chanels[e].url || "" : "";
+
+function getChannelUrl(ch_id) {
+    return chanels[ch_id] ? chanels[ch_id].url || "" : "";
 }
-function getEPGchanel(s, e) {
-    e(s, null);
+
+function getArchiveUrl(ch_id, time, time_to) {
+    return getChannelUrl(ch_id) + "?utc=" + Math.floor(time);
 }
-function addChan2cat(catName, hash) {
-    if (!(catName && hash)) return;
-    if (!cats[catName]) {
-        catsArray.push(catName);
-        cats[catName] = [];
+
+if (typeof catsArray == "undefined") var catsArray = [];
+
+function addChan2cat(cat, ci) {
+    if (!(cat && ci)) return;
+    if (!cats[cat]) {
+        catsArray.push(cat);
+        cats[cat] = [];
     }
-    cats[catName].push(hash);
+    cats[cat].push(ci);
 }
-function getChanelsArray(cb) {
-    _shara_tv_load();
-    if (_shara_tv_cfg.server && _shara_tv_cfg.user && _shara_tv_cfg.pass)
-        _shara_tv_xtream(cb);
-    else if (_shara_tv_cfg.m3u) _shara_tv_m3u(cb);
-    else {
-        alert(_("Configure Shara-TV in Settings -> Provider Settings"));
-        cb();
-    }
+
+function getAttribute(text, attribute) {
+    var a = text.split(attribute + "=");
+    if (a.length == 1 || a[1].length == 0) return "";
+    if (a[1][0] == '"') return a[1].split('"')[1] || "";
+    return a[1].split(/[ ,]+/)[0] || "";
 }
-function _shara_tv_m3u(cb) {
-    $(launch_id).append(_("Loading M3U..."));
-    $.ajax({
-        error: function () {
-            $.ajax({
-                data: { url: "@" + _shara_tv_cfg.m3u },
-                dataType: "text",
-                error: function () {
-                    alert(_("Failed to load!"));
-                    cb();
-                },
-                method: "post",
-                success: function (d) {
-                    _shara_tv_parseM3U(d, cb);
-                },
-                timeout: 15e3,
-                url: host + "/m3u/cp.php",
-            });
-        },
-        success: function (d) {
-            _shara_tv_parseM3U(d, cb);
-        },
-        timeout: 15e3,
-        url: _shara_tv_cfg.m3u,
-    });
+
+function getAint(text, attribute) {
+    return parseInt(getAttribute(text, attribute), 10) || 0;
 }
-function _shara_tv_parseM3U(data, cb) {
-    cList = [];
-    chanels = {};
-    cats = {};
-    catsArray = [];
-    try {
-        var lines = data.split("#EXTINF:");
-        var hdr = lines[0] || "";
-        lines.shift();
-        var lc = "";
-        lines.forEach(function (b) {
-            var p = b.split("\n");
-            var inf = p[0] || "";
-            var url = "";
-            for (var i = 1; i < p.length; i++) {
-                if (p[i].trim() && p[i].trim()[0] !== "#") {
-                    url = p[i].trim();
-                    break;
-                }
-            }
-            if (!url) return;
-            var name = "???";
-            var ci = inf.indexOf(",");
-            if (ci > 0) name = inf.substr(ci + 1).trim();
-            var cat = "";
-            var gm = inf.match(/group-title="([^"]*)"/i);
-            if (gm) cat = gm[1];
-            var logo = "";
-            var lm = inf.match(/tvg-logo="([^"]*)"/i);
-            if (lm) logo = lm[1];
-            if (!cat) cat = lc || "Other";
-            lc = cat;
-            var h = xxHash32S(url, true);
-            addChan2cat(cat, h);
-            if (cList.indexOf(h) === -1) {
-                cList.push(h);
-                chanels[h] = {
-                    ca: "",
-                    caso: "",
-                    category: { class: catsArray.indexOf(cat) + 2, name: cat },
-                    channel_name: name,
-                    epg: "",
-                    logo: logo,
-                    rec: 0,
-                    time: 0,
-                    time_to: 0,
-                    tn: name,
-                    url: url,
-                };
-            }
+
+function getChanelsArray(callback) {
+    _getParams();
+
+    function loadPlaylist(url, success, cb) {
+        if (typeof launch_id == "undefined") launch_id = "#launch";
+        if (!url) {
+            cb();
+            return;
+        }
+        var cpurl = url;
+        if (typeof stbInterceptRequest === "function") {
+            stbInterceptRequest(url);
+            url +=
+                (url.indexOf("?") == -1 ? "?" : "&") +
+                "url=" +
+                encodeURIComponent(url);
+        }
+        $.ajax({
+            dataType: "text",
+            error: function () {
+                $(launch_id).append("p...");
+                $.ajax({
+                    data: { url: "@" + cpurl },
+                    dataType: "text",
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        console.log(
+                            "channels : jqXHR:" +
+                                JSON.stringify(jqXHR) +
+                                "; textStatus: " +
+                                textStatus +
+                                ", errorThrown: " +
+                                errorThrown
+                        );
+                        alert(_("Failed to load channel list!"));
+                        cb();
+                    },
+                    method: "post",
+                    success: success,
+                    timeout: 30000,
+                    url: host + "/m3u/cp.php",
+                });
+            },
+            success: success,
+            timeout: 30000,
+            url: url,
         });
-    } catch (e) {
-        console.error(e);
     }
-    cb();
-}
-function _shara_tv_xtream(cb) {
-    $(launch_id).append(_("Loading from API..."));
-    var api =
-        _shara_tv_cfg.server +
-        "/player_api.php?username=" +
-        encodeURIComponent(_shara_tv_cfg.user) +
-        "&password=" +
-        encodeURIComponent(_shara_tv_cfg.pass);
-    $.ajax({ dataType: "json", timeout: 15e3, type: "GET", url: api })
-        .done(function (r) {
+
+    function aSuccess(data) {
+        try {
             cList = [];
             chanels = {};
             cats = {};
             catsArray = [];
-            if (!(r && r.live_streams)) {
-                _shara_tv_cfg.m3u =
-                    api.replace("/player_api.php", "/get.php") +
-                    "&type=m3u_plus&output=ts";
-                _shara_tv_m3u(cb);
-                return;
-            }
-            var cm = {};
-            if (r.categories)
-                r.categories.forEach(function (c) {
-                    cm[c.category_id] = c.category_name || "Unknown";
-                });
-            r.live_streams.forEach(function (s) {
-                var h = xxHash32S(s.name, true);
-                var cn = cm[s.category_id] || "Other";
-                addChan2cat(cn, h);
-                if (cList.indexOf(h) === -1) {
-                    cList.push(h);
-                    chanels[h] = {
-                        ca: "",
-                        caso: "",
+            var arrEXTINF = data.split("#EXTINF:");
+            arrEXTINF.shift();
+            arrEXTINF.forEach(function (val) {
+                var e = val.split("\n"),
+                    cat = getAttribute(e[0], "group-title"),
+                    epg = getAttribute(e[0], "tvg-id"),
+                    logo = getAttribute(e[0], "tvg-logo"),
+                    rec = getAint(e[0], "catchup-days") * 24,
+                    aurl = getAttribute(e[0], "catchup-source"),
+                    cn = "??? Нет названия канала",
+                    url = "";
+                try {
+                    cn = e[0].split(",")[1].trim();
+                } catch (ex) {}
+                try {
+                    url = e[1].trim();
+                } catch (ex) {}
+                if (url.indexOf("#EXTGRP:") != -1) {
+                    try {
+                        url = e[2].trim();
+                    } catch (ex) {}
+                    if (!cat) {
+                        try {
+                            cat = e[1].split("#EXTGRP:")[1].trim();
+                        } catch (ex) {}
+                    }
+                }
+                var ci = "";
+                try {
+                    ci = url.split("/")[3] || "";
+                } catch (ex) {}
+                if (url && ci && cList.indexOf(ci) == -1) {
+                    addChan2cat(cat, ci);
+                    cList.push(ci);
+                    chanels[ci] = {
+                        aurl: aurl,
                         category: {
-                            class: catsArray.indexOf(cn) + 2,
-                            name: cn,
+                            class: catsArray.indexOf(cat) + 2,
+                            name: cat,
                         },
-                        channel_name: s.name,
-                        epg: String(s.stream_id),
-                        logo: s.stream_icon || "",
-                        rec: 0,
+                        ch_id: ci,
+                        channel_name: cn,
+                        epg: epg,
+                        logo: logo,
+                        rec: rec,
                         time: 0,
                         time_to: 0,
-                        tn: s.name,
-                        url:
-                            _shara_tv_cfg.server +
-                            "/live/" +
-                            encodeURIComponent(_shara_tv_cfg.user) +
-                            "/" +
-                            encodeURIComponent(_shara_tv_cfg.pass) +
-                            "/" +
-                            s.stream_id +
-                            ".m3u8",
+                        url: url,
                     };
                 }
             });
-            cb();
-        })
-        .fail(function () {
-            _shara_tv_cfg.m3u =
-                _shara_tv_cfg.server.replace(/\/+$/, "") +
-                "/get.php?username=" +
-                encodeURIComponent(_shara_tv_cfg.user) +
-                "&password=" +
-                encodeURIComponent(_shara_tv_cfg.pass) +
-                "&type=m3u_plus&output=ts";
-            _shara_tv_m3u(cb);
-        });
-}
-function duneAddSettings(e) {
-    _shara_tv_load();
-    popupArray.splice(e, 1, "");
-    popupDetail.splice(e, 1, _("Shara-TV settings"));
-    popupActions.splice(e, 1, _shara_tv_edit);
-    var idx = popupActions.indexOf(_shara_tv_edit);
-    if (idx > -1) {
-        var lbl = _("Shara-TV settings");
-        if (_shara_tv_cfg.server && _shara_tv_cfg.user)
-            lbl +=
-                ": " +
-                _shara_tv_cfg.server.replace(/^https?:\/\//, "").split("/")[0] +
-                " (" +
-                _shara_tv_cfg.user +
-                ")";
-        else if (_shara_tv_cfg.m3u)
-            lbl += ": " + _shara_tv_cfg.m3u.substr(0, 40) + "...";
-        popupArray[idx] = lbl;
-    }
-}
-function _shara_tv_edit() {
-    selIndex = 0;
-    _shara_tv_load();
-    var srv = _shara_tv_cfg.server,
-        usr = _shara_tv_cfg.user,
-        pwd = _shara_tv_cfg.pass,
-        m3u = _shara_tv_cfg.m3u;
-    function bl() {
-        listArray = [
-            _("Server") + ": " + (srv || ""),
-            _("Login") + ": " + (usr || ""),
-            _("Password") + ": " + (pwd ? "********" : ""),
-            _("M3U") + ": " + (m3u ? m3u.substr(0, 45) : ""),
-            "",
-            _("Save and load"),
-        ];
-    }
-    var ii = [
-        _("API server URL"),
-        _("Username"),
-        _("Password"),
-        _("M3U URL (fallback)"),
-        "",
-        _("Save & load channels"),
-    ];
-    bl();
-    getListItem = function (e, r) {
-        return "&nbsp;&nbsp;" + e;
-    };
-    detailListAction = function () {
-        listDetail.innerHTML = ii[selIndex] || "";
-    };
-    listKeyHandler = function (e) {
-        switch (e) {
-            case keys.ENTER:
-                switch (selIndex) {
-                    case 0:
-                        editCaption = _("Server URL");
-                        editvar = srv;
-                        setEdit = function () {
-                            srv = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 1:
-                        editCaption = _("Username");
-                        editvar = usr;
-                        setEdit = function () {
-                            usr = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 2:
-                        editCaption = _("Password");
-                        editvar = pwd;
-                        setEdit = function () {
-                            pwd = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 3:
-                        editCaption = _("M3U URL");
-                        editvar = m3u;
-                        setEdit = function () {
-                            m3u = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 5:
-                        _shara_tv_cfg.server = srv;
-                        _shara_tv_cfg.user = usr;
-                        _shara_tv_cfg.pass = pwd;
-                        _shara_tv_cfg.m3u = m3u;
-                        _shara_tv_save();
-                        duneAddSettings(0);
-                        loadChannels();
-                        return true;
-                }
-                return true;
-            case keys.RETURN:
-                popupList(popupActions.indexOf(noProvParam) + 1);
-                return true;
-            default:
-                return false;
+            if (login.length != 8 || pass.length != 8) {
+                try {
+                    popupList(popupActions.indexOf(noProvParam) + 1);
+                } catch (ex) {}
+                infoBox("Для доступа необходимо ввести Логин и пароль!");
+            }
+        } catch (e) {
+            console.log(
+                "Exception: name " +
+                    e.name +
+                    ", message " +
+                    e.message +
+                    ", typeof " +
+                    typeof e
+            );
+            alert(
+                "Ошибка обработки списка каналов! Проверьте правильность данных!!"
+            );
         }
-    };
-    listDetail.innerHTML = "";
-    listCaption.innerHTML = _("Shara-TV");
-    listPodval.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
-    $("#listPopUp").hide();
-    showPage();
+        callback();
+    }
+
+    if (!login || !pass || login.length != 8 || pass.length != 8) {
+        try {
+            popupList(popupActions.indexOf(noProvParam) + 1);
+        } catch (ex) {}
+        infoBox(
+            !login || !pass
+                ? "Логин или пароль отсутсвуют!"
+                : "Для доступа необходимо ввести Логин и пароль!"
+        );
+        callback();
+        return;
+    }
+
+    loadPlaylist(
+        "http://tvfor.pro/g/" + login + ":" + pass + "/1/playlist.m3u",
+        aSuccess,
+        callback
+    );
 }
+
+function getEPGchanel(ch_id, callback) {
+    var d = null;
+    if (!(chanels[ch_id] && chanels[ch_id].epg)) {
+        callback(ch_id, d);
+        return;
+    }
+    $.ajax({
+        complete: function () {
+            callback(ch_id, d);
+        },
+        dataType: "json",
+        success: function (data) {
+            if (data !== null) d = data.epg_data;
+        },
+        timeout: 10000,
+        url:
+            "http://epg.drm-play.com/shara-tv/epg/" +
+            chanels[ch_id].epg +
+            ".json",
+    });
+}
+
+var provName = "shara-tv";
+
+function duneAddSettings(ind) {
+    if (isNaN(parseInt(providerGetItem("sShowArchive"), 10)))
+        providerSetItem("sShowArchive", 1);
+    _getParams();
+    popupArray.splice(ind, 0, provName + ": Логин", provName + ": Пароль");
+    popupDetail.splice(
+        ind,
+        0,
+        "Ввод логина " +
+            provName +
+            " (после изменения нужно перезапустить плеер)",
+        "Ввод пароля " +
+            provName +
+            " (после изменения нужно перезапустить плеер)"
+    );
+    popupActions.splice(ind, 0, edit_login, edit_pass);
+}
+
+function edit_login() {
+    editCaption = "Редактирование логина " + provName;
+    editvar = login;
+    setEdit = function () {
+        if (editvar.length != 8) {
+            alert("Для доступа необходимо ввести Логин (8 символов)!");
+            showEditKey([0, 2]);
+            return;
+        }
+        login = editvar;
+        providerSetItem("login", login);
+    };
+    showEditKey([0, 2]);
+}
+
+function edit_pass() {
+    editCaption = "Редактирование пароля " + provName;
+    editvar = pass;
+    setEdit = function () {
+        if (editvar.length != 8) {
+            alert("Для доступа необходимо ввести Пароль (8 символов)!");
+            showEditKey([0, 2]);
+            return;
+        }
+        pass = editvar;
+        providerSetItem("pass", pass);
+    };
+    showEditKey([0, 2]);
+}
+
+_getParams();
