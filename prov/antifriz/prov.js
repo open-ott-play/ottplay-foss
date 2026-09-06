@@ -1,6 +1,9 @@
-version += " antifriz-0219";
-p_pref = "antifriz";
+version += " antifriz-0906";
+var key, mpeg;
+p_pref = "az";
 parental = /XXX|Взрослые|Для взрослых|Эротика|18\+|Adults/i;
+mp4 = false;
+
 if (typeof stbGetItem === "function") {
     providerGetItem = function (e) {
         return stbGetItem(p_pref + e);
@@ -25,315 +28,609 @@ providerHasItem = function (e) {
 providerHasItemValue = function (e) {
     return ottpStorage.hasValue(p_pref + e);
 };
-var _antifriz_cfg = { m3u: "", pass: "", server: "", user: "" };
-function _antifriz_load() {
-    try {
-        var d = providerGetItem("cfg");
-        if (d) _antifriz_cfg = JSON.parse(d);
-    } catch (e) {}
-    if (!(_antifriz_cfg.server || _antifriz_cfg.m3u))
-        _antifriz_cfg = { m3u: "", pass: "", server: "", user: "" };
+
+function _getParams() {
+    key = providerGetItem("key") || "";
+    mpeg = parseInt(providerGetItem("mpeg"), 10) || 0;
 }
-function _antifriz_save() {
-    providerSetItem("cfg", JSON.stringify(_antifriz_cfg));
+
+function getChannelPicon(ch_id) {
+    return chanels[ch_id] ? chanels[ch_id].logo || "" : "";
 }
-function getChannelPicon(e) {
-    return chanels[e] ? chanels[e].logo || "" : "";
+
+function getServ(ch_id) {
+    return chanels[ch_id] ? chanels[ch_id].server : "";
 }
-function getChannelUrl(e) {
-    return chanels[e] ? chanels[e].url || "" : "";
+
+var __hls = navigator.userAgent.indexOf("Tizen") === -1 ? 0 : 2;
+
+function getChannelUrl(ch_id) {
+    var _m = mpeg || __hls;
+    return (
+        "http://" +
+        getServ(ch_id) +
+        ":80/" +
+        ch_id +
+        "/" +
+        ["index.m3u8", "mpegts", "video.m3u8", "mono.m3u8", "index.mpd"][_m] +
+        "?token=" +
+        chanels[ch_id].token
+    );
 }
-function getEPGchanel(s, e) {
-    e(s, null);
+
+function getArchiveUrl(ch_id, time, time_to) {
+    var _m = mpeg || __hls;
+    if (time_to < time) time_to = Date.now() / 1000 + 600;
+    if (_m == 1 || time > Date.now() / 1000 - 600)
+        return (
+            "http://" +
+            getServ(ch_id) +
+            ":80/" +
+            ch_id +
+            "/" +
+            [
+                "timeshift_abs-",
+                "timeshift_abs/",
+                "video-timeshift_abs-",
+                "mono-timeshift_abs-",
+                "timeshift_abs-",
+            ][_m] +
+            Math.floor(time) +
+            [".m3u8", "", ".m3u8", ".m3u8", ".mpd"][_m] +
+            "?token=" +
+            chanels[ch_id].token
+        );
+    if (browserName() == "dune") time_to = Math.floor(time_to) + 7200;
+    return (
+        "http://" +
+        getServ(ch_id) +
+        ":80/" +
+        ch_id +
+        "/" +
+        ["index-", "", "video-", "mono-", "index-"][_m] +
+        Math.floor(time) +
+        "-" +
+        Math.floor(time_to - time) +
+        [".m3u8", "", ".m3u8", ".m3u8", ".mpd"][_m] +
+        "?token=" +
+        chanels[ch_id].token
+    );
 }
-function addChan2cat(catName, hash) {
-    if (!(catName && hash)) return;
-    if (!cats[catName]) {
-        catsArray.push(catName);
-        cats[catName] = [];
+
+if (typeof catsArray == "undefined") var catsArray = [];
+
+function addChan2cat(cat, ci) {
+    if (!(cat && ci)) return;
+    if (!cats[cat]) {
+        catsArray.push(cat);
+        cats[cat] = [];
     }
-    cats[catName].push(hash);
+    cats[cat].push(ci);
 }
-function getChanelsArray(cb) {
-    _antifriz_load();
-    if (_antifriz_cfg.server && _antifriz_cfg.user && _antifriz_cfg.pass)
-        _antifriz_xtream(cb);
-    else if (_antifriz_cfg.m3u) _antifriz_m3u(cb);
-    else {
-        alert(_("Configure АнтиФриз.ТВ in Settings -> Provider Settings"));
-        cb();
-    }
+
+function getAttribute(text, attribute) {
+    var a = text.split(attribute + "=");
+    if (a.length == 1 || a[1].length == 0) return "";
+    if (a[1][0] == '"') return a[1].split('"')[1] || "";
+    return a[1].split(/[ ,]+/)[0] || "";
 }
-function _antifriz_m3u(cb) {
-    $(launch_id).append(_("Loading M3U..."));
-    $.ajax({
-        error: function () {
-            $.ajax({
-                data: { url: "@" + _antifriz_cfg.m3u },
-                dataType: "text",
-                error: function () {
-                    alert(_("Failed to load!"));
-                    cb();
-                },
-                method: "post",
-                success: function (d) {
-                    _antifriz_parseM3U(d, cb);
-                },
-                timeout: 15e3,
-                url: host + "/m3u/cp.php",
-            });
-        },
-        success: function (d) {
-            _antifriz_parseM3U(d, cb);
-        },
-        timeout: 15e3,
-        url: _antifriz_cfg.m3u,
-    });
-}
-function _antifriz_parseM3U(data, cb) {
-    cList = [];
-    chanels = {};
-    cats = {};
-    catsArray = [];
-    try {
-        var lines = data.split("#EXTINF:");
-        var hdr = lines[0] || "";
-        lines.shift();
-        var lc = "";
-        lines.forEach(function (b) {
-            var p = b.split("\n");
-            var inf = p[0] || "";
-            var url = "";
-            for (var i = 1; i < p.length; i++) {
-                if (p[i].trim() && p[i].trim()[0] !== "#") {
-                    url = p[i].trim();
-                    break;
-                }
-            }
-            if (!url) return;
-            var name = "???";
-            var ci = inf.indexOf(",");
-            if (ci > 0) name = inf.substr(ci + 1).trim();
-            var cat = "";
-            var gm = inf.match(/group-title="([^"]*)"/i);
-            if (gm) cat = gm[1];
-            var logo = "";
-            var lm = inf.match(/tvg-logo="([^"]*)"/i);
-            if (lm) logo = lm[1];
-            if (!cat) cat = lc || "Other";
-            lc = cat;
-            var h = xxHash32S(url, true);
-            addChan2cat(cat, h);
-            if (cList.indexOf(h) === -1) {
-                cList.push(h);
-                chanels[h] = {
-                    ca: "",
-                    caso: "",
-                    category: { class: catsArray.indexOf(cat) + 2, name: cat },
-                    channel_name: name,
-                    epg: "",
-                    logo: logo,
-                    rec: 0,
-                    time: 0,
-                    time_to: 0,
-                    tn: name,
-                    url: url,
-                };
-            }
+
+function getChanelsArray(callback) {
+    _getParams();
+
+    function loadPlaylist(url, success, cb) {
+        if (typeof launch_id == "undefined") launch_id = "#launch";
+        if (!url) {
+            cb();
+            return;
+        }
+        var cpurl = url;
+        if (typeof stbInterceptRequest === "function") {
+            stbInterceptRequest(url);
+            url +=
+                (url.indexOf("?") == -1 ? "?" : "&") +
+                "url=" +
+                encodeURIComponent(url);
+        }
+        $.ajax({
+            dataType: "text",
+            error: function () {
+                $(launch_id).append("p...");
+                $.ajax({
+                    data: { url: "@" + cpurl },
+                    dataType: "text",
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        console.log(
+                            "channels : jqXHR:" +
+                                JSON.stringify(jqXHR) +
+                                "; textStatus: " +
+                                textStatus +
+                                ", errorThrown: " +
+                                errorThrown
+                        );
+                        alert(_("Failed to load channel list!"));
+                        cb();
+                    },
+                    method: "post",
+                    success: success,
+                    timeout: 30000,
+                    url: host + "/m3u/cp.php",
+                });
+            },
+            success: success,
+            timeout: 30000,
+            url: url,
         });
-    } catch (e) {
-        console.error(e);
     }
-    cb();
-}
-function _antifriz_xtream(cb) {
-    $(launch_id).append(_("Loading from API..."));
-    var api =
-        _antifriz_cfg.server +
-        "/player_api.php?username=" +
-        encodeURIComponent(_antifriz_cfg.user) +
-        "&password=" +
-        encodeURIComponent(_antifriz_cfg.pass);
-    $.ajax({ dataType: "json", timeout: 15e3, type: "GET", url: api })
-        .done(function (r) {
+
+    function aSuccess(data) {
+        try {
             cList = [];
             chanels = {};
             cats = {};
             catsArray = [];
-            if (!(r && r.live_streams)) {
-                _antifriz_cfg.m3u =
-                    api.replace("/player_api.php", "/get.php") +
-                    "&type=m3u_plus&output=ts";
-                _antifriz_m3u(cb);
-                return;
-            }
-            var cm = {};
-            if (r.categories)
-                r.categories.forEach(function (c) {
-                    cm[c.category_id] = c.category_name || "Unknown";
-                });
-            r.live_streams.forEach(function (s) {
-                var h = xxHash32S(s.name, true);
-                var cn = cm[s.category_id] || "Other";
-                addChan2cat(cn, h);
-                if (cList.indexOf(h) === -1) {
-                    cList.push(h);
-                    chanels[h] = {
-                        ca: "",
-                        caso: "",
+            var arrEXTINF = data.split("#EXTINF:");
+            arrEXTINF.shift();
+            arrEXTINF.forEach(function (val) {
+                var e = val.split(","),
+                    cat = getAttribute(e[0], "group-title"),
+                    rec = parseInt(getAttribute(e[0], "tvg-rec"), 10) || 0,
+                    epg = getAttribute(e[0], "tvg-id"),
+                    logo = getAttribute(e[0], "tvg-logo").replace(
+                        "https:",
+                        "http:"
+                    ),
+                    e1 = e[1].split("\n"),
+                    cn = e1[0],
+                    url = e1[2] || e1[1] || "",
+                    parts = url.split("/"),
+                    ci = (parts[5] || "").split(".")[0],
+                    serv = (parts[2] || "").split(":")[0],
+                    token = parts[4] || "";
+                if (!ci || !url) return;
+                addChan2cat(cat, ci);
+                if (cList.indexOf(ci) == -1) {
+                    cList.push(ci);
+                    chanels[ci] = {
                         category: {
-                            class: catsArray.indexOf(cn) + 2,
-                            name: cn,
+                            class: catsArray.indexOf(cat) + 2,
+                            name: cat,
                         },
-                        channel_name: s.name,
-                        epg: String(s.stream_id),
-                        logo: s.stream_icon || "",
-                        rec: 0,
+                        channel_name: cn,
+                        epg: epg,
+                        epg_id: epg,
+                        logo: logo,
+                        rec: rec * 24,
+                        server: serv,
                         time: 0,
                         time_to: 0,
-                        tn: s.name,
-                        url:
-                            _antifriz_cfg.server +
-                            "/live/" +
-                            encodeURIComponent(_antifriz_cfg.user) +
-                            "/" +
-                            encodeURIComponent(_antifriz_cfg.pass) +
-                            "/" +
-                            s.stream_id +
-                            ".m3u8",
+                        token: token,
+                        url: url,
                     };
                 }
             });
-            cb();
-        })
-        .fail(function () {
-            _antifriz_cfg.m3u =
-                _antifriz_cfg.server.replace(/\/+$/, "") +
-                "/get.php?username=" +
-                encodeURIComponent(_antifriz_cfg.user) +
-                "&password=" +
-                encodeURIComponent(_antifriz_cfg.pass) +
-                "&type=m3u_plus&output=ts";
-            _antifriz_m3u(cb);
-        });
-}
-function duneAddSettings(e) {
-    _antifriz_load();
-    popupArray.splice(e, 1, "");
-    popupDetail.splice(e, 1, _("АнтиФриз.ТВ settings"));
-    popupActions.splice(e, 1, _antifriz_edit);
-    var idx = popupActions.indexOf(_antifriz_edit);
-    if (idx > -1) {
-        var lbl = _("АнтиФриз.ТВ settings");
-        if (_antifriz_cfg.server && _antifriz_cfg.user)
-            lbl +=
-                ": " +
-                _antifriz_cfg.server.replace(/^https?:\/\//, "").split("/")[0] +
-                " (" +
-                _antifriz_cfg.user +
-                ")";
-        else if (_antifriz_cfg.m3u)
-            lbl += ": " + _antifriz_cfg.m3u.substr(0, 40) + "...";
-        popupArray[idx] = lbl;
-    }
-}
-function _antifriz_edit() {
-    selIndex = 0;
-    _antifriz_load();
-    var srv = _antifriz_cfg.server,
-        usr = _antifriz_cfg.user,
-        pwd = _antifriz_cfg.pass,
-        m3u = _antifriz_cfg.m3u;
-    function bl() {
-        listArray = [
-            _("Server") + ": " + (srv || ""),
-            _("Login") + ": " + (usr || ""),
-            _("Password") + ": " + (pwd ? "********" : ""),
-            _("M3U") + ": " + (m3u ? m3u.substr(0, 45) : ""),
-            "",
-            _("Save and load"),
-        ];
-    }
-    var ii = [
-        _("API server URL"),
-        _("Username"),
-        _("Password"),
-        _("M3U URL (fallback)"),
-        "",
-        _("Save & load channels"),
-    ];
-    bl();
-    getListItem = function (e, r) {
-        return "&nbsp;&nbsp;" + e;
-    };
-    detailListAction = function () {
-        listDetail.innerHTML = ii[selIndex] || "";
-    };
-    listKeyHandler = function (e) {
-        switch (e) {
-            case keys.ENTER:
-                switch (selIndex) {
-                    case 0:
-                        editCaption = _("Server URL");
-                        editvar = srv;
-                        setEdit = function () {
-                            srv = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 1:
-                        editCaption = _("Username");
-                        editvar = usr;
-                        setEdit = function () {
-                            usr = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 2:
-                        editCaption = _("Password");
-                        editvar = pwd;
-                        setEdit = function () {
-                            pwd = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 3:
-                        editCaption = _("M3U URL");
-                        editvar = m3u;
-                        setEdit = function () {
-                            m3u = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 5:
-                        _antifriz_cfg.server = srv;
-                        _antifriz_cfg.user = usr;
-                        _antifriz_cfg.pass = pwd;
-                        _antifriz_cfg.m3u = m3u;
-                        _antifriz_save();
-                        duneAddSettings(0);
-                        loadChannels();
-                        return true;
-                }
-                return true;
-            case keys.RETURN:
-                popupList(popupActions.indexOf(noProvParam) + 1);
-                return true;
-            default:
-                return false;
+            if (key.length != 8) {
+                try {
+                    popupList(popupActions.indexOf(noProvParam) + 1);
+                } catch (ex) {}
+                infoBox(
+                    "Для доступа необходимо ввести ключ! (Ключ доступа для приложений - 8 символов)"
+                );
+            }
+        } catch (e) {
+            console.log(
+                "Exception: name " +
+                    e.name +
+                    ", message " +
+                    e.message +
+                    ", typeof " +
+                    typeof e
+            );
+            alert(_("Failed to load channel list!"));
         }
-    };
-    listDetail.innerHTML = "";
-    listCaption.innerHTML = _("АнтиФриз.ТВ");
-    listPodval.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
-    $("#listPopUp").hide();
-    showPage();
+        callback();
+    }
+
+    if (key.length != 8) {
+        try {
+            popupList(popupActions.indexOf(noProvParam) + 1);
+        } catch (ex) {}
+        infoBox(
+            "Для доступа необходимо ввести ключ! (Ключ доступа для приложений - 8 символов)"
+        );
+        callback();
+        return;
+    }
+
+    loadPlaylist(
+        "http://af-play.com/playlist/" + key + ".m3u8",
+        aSuccess,
+        callback
+    );
 }
+
+if (typeof sNextCount == "undefined") sNextCount = -1;
+
+function _getEPGchanel(ch_id, callback, all) {
+    var d = [];
+    var epgId = chanels[ch_id]
+        ? chanels[ch_id].epg_id || chanels[ch_id].epg || ""
+        : "";
+    if (!epgId) {
+        callback(ch_id, d);
+        return;
+    }
+    $.ajax({
+        cache: false,
+        complete: function () {
+            callback(ch_id, d);
+        },
+        dataType: "json",
+        success: function (data) {
+            if (data)
+                data.forEach(function (val) {
+                    d.push({
+                        descr: val.descr,
+                        name: val.name,
+                        time: val.time,
+                        time_to: val.time_to,
+                    });
+                });
+        },
+        timeout: 30000,
+        url:
+            "http://protected-api.com/epg/" +
+            (all
+                ? epgId + "?date="
+                : "current/" + epgId + "?num=" + (sNextCount + 1)),
+    });
+}
+
+function getEPGchanel(ch_id, callback) {
+    _getEPGchanel(ch_id, callback, true);
+}
+
+function getEPGchanelCur(ch_id, callback) {
+    _getEPGchanel(ch_id, callback, false);
+}
+
+/* xml2json — Stefan Goessner / Creative Commons GNU LGPL 2.1 */
+function xml2json1(xml, tab) {
+    var X = {
+        escape: function (txt) {
+            return txt
+                .replace(/[\\]/g, "\\\\")
+                .replace(/[\"]/g, '\\"')
+                .replace(/[\n]/g, "\\n")
+                .replace(/[\r]/g, "\\r");
+        },
+        innerXml: function (node) {
+            var s = "";
+            if ("innerHTML" in node) s = node.innerHTML;
+            else {
+                var asXml = function (n) {
+                    var s = "";
+                    if (n.nodeType == 1) {
+                        s += "<" + n.nodeName;
+                        for (var i = 0; i < n.attributes.length; i++)
+                            s +=
+                                " " +
+                                n.attributes[i].nodeName +
+                                '="' +
+                                (n.attributes[i].nodeValue || "").toString() +
+                                '"';
+                        if (n.firstChild) {
+                            s += ">";
+                            for (var c = n.firstChild; c; c = c.nextSibling)
+                                s += asXml(c);
+                            s += "</" + n.nodeName + ">";
+                        } else s += "/>";
+                    } else if (n.nodeType == 3) s += n.nodeValue;
+                    else if (n.nodeType == 4)
+                        s += "<![CDATA[" + n.nodeValue + "]]>";
+                    return s;
+                };
+                for (var c = node.firstChild; c; c = c.nextSibling)
+                    s += asXml(c);
+            }
+            return s;
+        },
+        removeWhite: function (e) {
+            e.normalize();
+            for (var n = e.firstChild; n; ) {
+                if (n.nodeType == 3) {
+                    if (!n.nodeValue.match(/[^ \f\n\r\t\v]/)) {
+                        var nxt = n.nextSibling;
+                        e.removeChild(n);
+                        n = nxt;
+                    } else n = n.nextSibling;
+                } else if (n.nodeType == 1) {
+                    X.removeWhite(n);
+                    n = n.nextSibling;
+                } else n = n.nextSibling;
+            }
+            return e;
+        },
+        toJson: function (o, name, ind) {
+            var json = name ? '"' + name + '"' : "";
+            if (o instanceof Array) {
+                for (var i = 0, n = o.length; i < n; i++)
+                    o[i] = X.toJson(o[i], "", ind + "\t");
+                json +=
+                    (name ? ":[" : "[") +
+                    (o.length > 1
+                        ? "\n" +
+                          ind +
+                          "\t" +
+                          o.join(",\n" + ind + "\t") +
+                          "\n" +
+                          ind
+                        : o.join("")) +
+                    "]";
+            } else if (o == null) json += (name && ":") + "null";
+            else if (typeof o == "object") {
+                var arr = [];
+                for (var m in o)
+                    arr[arr.length] = X.toJson(o[m], m, ind + "\t");
+                json +=
+                    (name ? ":{" : "{") +
+                    (arr.length > 1
+                        ? "\n" +
+                          ind +
+                          "\t" +
+                          arr.join(",\n" + ind + "\t") +
+                          "\n" +
+                          ind
+                        : arr.join("")) +
+                    "}";
+            } else if (typeof o == "string")
+                json += (name && ":") + '"' + o.toString() + '"';
+            else json += (name && ":") + o.toString();
+            return json;
+        },
+        toObj: function (xml) {
+            var o = {};
+            if (xml.nodeType == 1) {
+                if (xml.attributes.length)
+                    for (var i = 0; i < xml.attributes.length; i++)
+                        o["@" + xml.attributes[i].nodeName] = (
+                            xml.attributes[i].nodeValue || ""
+                        ).toString();
+                if (xml.firstChild) {
+                    var textChild = 0,
+                        cdataChild = 0,
+                        hasElementChild = false;
+                    for (var n = xml.firstChild; n; n = n.nextSibling) {
+                        if (n.nodeType == 1) hasElementChild = true;
+                        else if (
+                            n.nodeType == 3 &&
+                            n.nodeValue.match(/[^ \f\n\r\t\v]/)
+                        )
+                            textChild++;
+                        else if (n.nodeType == 4) cdataChild++;
+                    }
+                    if (hasElementChild) {
+                        if (textChild < 2 && cdataChild < 2) {
+                            X.removeWhite(xml);
+                            for (var n = xml.firstChild; n; n = n.nextSibling) {
+                                if (n.nodeType == 3)
+                                    o["#text"] = X.escape(n.nodeValue);
+                                else if (n.nodeType == 4)
+                                    o["#cdata"] = X.escape(n.nodeValue);
+                                else if (o[n.nodeName]) {
+                                    if (o[n.nodeName] instanceof Array)
+                                        o[n.nodeName][o[n.nodeName].length] =
+                                            X.toObj(n);
+                                    else
+                                        o[n.nodeName] = [
+                                            o[n.nodeName],
+                                            X.toObj(n),
+                                        ];
+                                } else o[n.nodeName] = X.toObj(n);
+                            }
+                        } else {
+                            if (!xml.attributes.length)
+                                o = X.escape(X.innerXml(xml));
+                            else o["#text"] = X.escape(X.innerXml(xml));
+                        }
+                    } else if (textChild) {
+                        if (!xml.attributes.length)
+                            o = X.escape(X.innerXml(xml));
+                        else o["#text"] = X.escape(X.innerXml(xml));
+                    } else if (cdataChild) {
+                        if (cdataChild > 1) o = X.escape(X.innerXml(xml));
+                        else
+                            for (var n = xml.firstChild; n; n = n.nextSibling)
+                                o = X.escape(n.nodeValue);
+                    }
+                }
+                if (!xml.attributes.length && !xml.firstChild) o = null;
+            } else if (xml.nodeType == 9) {
+                o = X.toObj(xml.documentElement);
+            }
+            return o;
+        },
+    };
+    if (xml.nodeType == 9) xml = xml.documentElement;
+    var json = X.toJson(X.toObj(X.removeWhite(xml)), xml.nodeName, "\t");
+    return (
+        "{\n" +
+        tab +
+        (tab ? json.replace(/\t/g, tab) : json.replace(/\t|\n/g, "")) +
+        "\n}"
+    );
+}
+
+function getMediaArrayXML(murl, callback) {
+    mediaUrls[mediaUrls.length - 1] = murl;
+    if (murl === "") {
+        callback();
+        return;
+    }
+    $("#dialogbox")
+        .html(
+            '<img src="' +
+                host +
+                '/stbPlayer/buffering.gif" height="40"> ' +
+                _("Download! Wait ...")
+        )
+        .show();
+    if (typeof box_mac !== "undefined" && box_mac)
+        murl +=
+            (murl.indexOf("?") == -1 ? "?" : "&") +
+            "box_client=ott-foss&box_mac=" +
+            box_mac;
+    $.ajax({
+        complete: function () {
+            $("#dialogbox").hide();
+            callback();
+        },
+        dataType: "text",
+        success: function (data) {
+            try {
+                var i = data.indexOf("<?xml");
+                if (i !== -1) {
+                    if (i > 0) data = data.substr(i);
+                    var jj;
+                    try {
+                        data = xml2json1(jQuery.parseXML(data), " ");
+                    } catch (e) {
+                        alert("Error XML !!!");
+                        return;
+                    }
+                } else {
+                    i = data.indexOf("#EXTM3U");
+                    if (i !== -1) {
+                        getMediaArrayEXTM3U(data);
+                        return;
+                    }
+                }
+                try {
+                    jj = JSON.parse(data);
+                } catch (e) {
+                    alert("Error JSON !!!");
+                    return;
+                }
+                if (jj.items) jj = jj.items;
+                mediaName = jj.playlist_name || jj.title || mediaName || "?";
+                var cc = jj.channel || jj.channels;
+                mediaRecords = !cc ? [] : Array.isArray(cc) ? cc : [cc];
+                if (jj.next_page_url)
+                    mediaRecords.push({
+                        description: "...",
+                        logo_30x30: "",
+                        playlist_url: jj.next_page_url,
+                        title: "...",
+                    });
+            } catch (e) {
+                console.log(e);
+            }
+        },
+        timeout: 60000,
+        url: murl,
+    });
+}
+
+function getMediaArrayEXTM3U(data) {
+    function item2descr(n, i) {
+        return (
+            "<table>" +
+            "<h2><center>" +
+            n +
+            "</center></h2>" +
+            (i
+                ? '<img id="detal" height="285" src="' +
+                  i +
+                  '" style="float: left; margin-right: 5px; margin-bottom: 5px; border-width: 0px; border-style: solid;" width="210">'
+                : "") +
+            "</table>"
+        );
+    }
+    try {
+        mediaName = mediaName || "?";
+        mediaRecords = [];
+        var arrEXTINF = data.split("#EXTINF:");
+        arrEXTINF.shift();
+        arrEXTINF.forEach(function (val) {
+            var e = val.split("\n");
+            var logo = getAttribute(e[0], "tvg-logo");
+            var cn = "??? Нет названия";
+            try {
+                cn = e[0].split(",")[1].trim();
+            } catch (ex) {}
+            var url = "",
+                n = 1;
+            try {
+                url = e[1].trim();
+            } catch (ex) {}
+            while (url.indexOf("#") === 0) {
+                try {
+                    url = e[++n].trim();
+                } catch (ex) {
+                    url = "";
+                }
+            }
+            if (url)
+                mediaRecords.push({
+                    description: item2descr(cn, logo),
+                    logo_30x30: logo,
+                    stream_url: url,
+                    title: cn,
+                });
+        });
+    } catch (e) {
+        alert("Error M3U !!!");
+    }
+}
+
+function getMediaArray(murl, callback) {
+    _getParams();
+    if (murl === "") murl = "http://media.af-play.com/" + key + ".xml";
+    getMediaArrayXML(murl, callback);
+}
+
+var cbTarr = ["HLS", "MPEGTS"];
+
+function duneAddSettings(ind) {
+    if (isNaN(parseInt(providerGetItem("sShowArchive"), 10)))
+        providerSetItem("sShowArchive", 1);
+    _getParams();
+    popupArray.splice(ind, 0, "Ключ доступа", "Тип потоков: " + cbTarr[mpeg]);
+    popupDetail.splice(
+        ind,
+        0,
+        "Ввод ключа доступа для приложений",
+        "Выберите тип потоков: HLS или MPEGTS"
+    );
+    popupActions.splice(ind, 0, doEditKey, doEditType);
+}
+
+function doEditKey() {
+    editCaption = "Редактирование ключа доступа для приложений";
+    editvar = key;
+    setEdit = function () {
+        if (key == editvar) return;
+        if (editvar.length != 8) {
+            alert(
+                "Для доступа необходимо ввести ключ! (Ключ доступа для приложений - 8 символов)"
+            );
+            showEditKey([0, 1, 2]);
+            return;
+        }
+        providerSetItem("key", editvar);
+        restart();
+    };
+    showEditKey([0, 1, 2]);
+}
+
+function doEditType() {
+    if (++mpeg == 2) mpeg = 0;
+    providerSetItem("mpeg", mpeg);
+    popupArray[popupActions.indexOf(doEditType)] =
+        "Тип потоков: " + cbTarr[mpeg];
+    popupList(doEditType);
+    if (!playType) playChannel(catIndex, primaryIndex);
+    else if (playType > 0) playArchive(playType + playTime);
+}
+
+_getParams();
