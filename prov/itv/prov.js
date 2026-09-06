@@ -1,6 +1,10 @@
-version += " itv-0219";
+version += " itv-0906";
+var itvkey,
+    itvmpeg,
+    wwwapi = "http://api.01cdn.wf/";
 p_pref = "itv";
-parental = /XXX|Взрослые|Для взрослых|Эротика|18\+|Adults/i;
+parental = /XXX|Взрослые|Для взрослых|Эротика|18\+|Adults|Взрослый/i;
+
 if (typeof stbGetItem === "function") {
     providerGetItem = function (e) {
         return stbGetItem(p_pref + e);
@@ -25,313 +29,293 @@ providerHasItem = function (e) {
 providerHasItemValue = function (e) {
     return ottpStorage.hasValue(p_pref + e);
 };
-var _itv_cfg = { m3u: "", pass: "", server: "", user: "" };
-function _itv_load() {
+
+function _getParams() {
+    itvkey = providerGetItem("key") || "";
+    itvmpeg = parseInt(providerGetItem("mpeg"), 10) || 0;
+}
+
+function getProviderParams() {
+    _getParams();
     try {
-        var d = providerGetItem("cfg");
-        if (d) _itv_cfg = JSON.parse(d);
+        $("#itvkey").val(itvkey);
     } catch (e) {}
-    if (!(_itv_cfg.server || _itv_cfg.m3u))
-        _itv_cfg = { m3u: "", pass: "", server: "", user: "" };
+    if (itvkey.length < 10 || itvkey.length > 12)
+        alert(
+            "Для доступа необходимо ввести ключ! (Ключ для плеера 10-12 символов)"
+        );
+    return itvkey;
 }
-function _itv_save() {
-    providerSetItem("cfg", JSON.stringify(_itv_cfg));
+
+function setProviderParams() {
+    providerSetItem("key", decodeURIComponent($("#itvkey").val().trim()));
+    var changed = itvkey != providerGetItem("key");
+    _getParams();
+    if (itvkey.length < 10 || itvkey.length > 12)
+        alert(
+            "Для доступа необходимо ввести ключ! (Ключ для плеера 10-12 символов)"
+        );
+    return changed;
 }
-function getChannelPicon(e) {
-    return chanels[e] ? chanels[e].logo || "" : "";
+
+function getChannelPicon(ch_id) {
+    return wwwapi + "icon/" + ch_id;
 }
-function getChannelUrl(e) {
-    return chanels[e] ? chanels[e].url || "" : "";
+
+function getChannelUrl(ch_id) {
+    return (
+        "http://" +
+        chanels[ch_id].server_cdn +
+        "/" +
+        ch_id +
+        "/" +
+        ["index.m3u8", "mpegts", "video.m3u8"][itvmpeg] +
+        "?token=" +
+        chanels[ch_id].token
+    );
 }
-function getEPGchanel(s, e) {
-    e(s, null);
+
+function getArchiveUrl(ch_id, time, time_to) {
+    if (time_to < time) time_to = Date.now() / 1000 + 600;
+    // MPEGTS or last 10 minutes → absolute timeshift
+    if (itvmpeg == 1 || time > Date.now() / 1000 - 600)
+        return (
+            "http://" +
+            chanels[ch_id].server_cdn +
+            "/" +
+            ch_id +
+            "/" +
+            ["timeshift_abs-", "timeshift_abs/", "timeshift_abs_video-"][
+                itvmpeg
+            ] +
+            Math.floor(time) +
+            [".m3u8", "", ".m3u8"][itvmpeg] +
+            "?token=" +
+            chanels[ch_id].token
+        );
+    if (browserName() == "dune") time_to = Math.floor(time_to) + 7200;
+    return (
+        "http://" +
+        chanels[ch_id].server_cdn +
+        "/" +
+        ch_id +
+        "/" +
+        ["index-", "", "video-"][itvmpeg] +
+        Math.floor(time) +
+        "-" +
+        Math.floor(time_to - time) +
+        ".m3u8?token=" +
+        chanels[ch_id].token
+    );
 }
-function addChan2cat(catName, hash) {
-    if (!(catName && hash)) return;
-    if (!cats[catName]) {
-        catsArray.push(catName);
-        cats[catName] = [];
+
+if (typeof catsArray == "undefined") var catsArray = [];
+
+function addChan2cat(cat, ci) {
+    if (!(cat && ci)) return;
+    if (!cats[cat]) {
+        catsArray.push(cat);
+        cats[cat] = [];
     }
-    cats[catName].push(hash);
+    cats[cat].push(ci);
 }
-function getChanelsArray(cb) {
-    _itv_load();
-    if (_itv_cfg.server && _itv_cfg.user && _itv_cfg.pass) _itv_xtream(cb);
-    else if (_itv_cfg.m3u) _itv_m3u(cb);
-    else {
-        alert(_("Configure ITV.LIVE in Settings -> Provider Settings"));
-        cb();
-    }
-}
-function _itv_m3u(cb) {
-    $(launch_id).append(_("Loading M3U..."));
-    $.ajax({
-        error: function () {
-            $.ajax({
-                data: { url: "@" + _itv_cfg.m3u },
-                dataType: "text",
-                error: function () {
-                    alert(_("Failed to load!"));
-                    cb();
-                },
-                method: "post",
-                success: function (d) {
-                    _itv_parseM3U(d, cb);
-                },
-                timeout: 15e3,
-                url: host + "/m3u/cp.php",
-            });
-        },
-        success: function (d) {
-            _itv_parseM3U(d, cb);
-        },
-        timeout: 15e3,
-        url: _itv_cfg.m3u,
-    });
-}
-function _itv_parseM3U(data, cb) {
+
+function getChanelsArray(callback) {
+    _getParams();
     cList = [];
     chanels = {};
     cats = {};
     catsArray = [];
-    try {
-        var lines = data.split("#EXTINF:");
-        var hdr = lines[0] || "";
-        lines.shift();
-        var lc = "";
-        lines.forEach(function (b) {
-            var p = b.split("\n");
-            var inf = p[0] || "";
-            var url = "";
-            for (var i = 1; i < p.length; i++) {
-                if (p[i].trim() && p[i].trim()[0] !== "#") {
-                    url = p[i].trim();
-                    break;
-                }
-            }
-            if (!url) return;
-            var name = "???";
-            var ci = inf.indexOf(",");
-            if (ci > 0) name = inf.substr(ci + 1).trim();
-            var cat = "";
-            var gm = inf.match(/group-title="([^"]*)"/i);
-            if (gm) cat = gm[1];
-            var logo = "";
-            var lm = inf.match(/tvg-logo="([^"]*)"/i);
-            if (lm) logo = lm[1];
-            if (!cat) cat = lc || "Other";
-            lc = cat;
-            var h = xxHash32S(url, true);
-            addChan2cat(cat, h);
-            if (cList.indexOf(h) === -1) {
-                cList.push(h);
-                chanels[h] = {
-                    ca: "",
-                    caso: "",
-                    category: { class: catsArray.indexOf(cat) + 2, name: cat },
-                    channel_name: name,
-                    epg: "",
-                    logo: logo,
-                    rec: 0,
-                    time: 0,
-                    time_to: 0,
-                    tn: name,
-                    url: url,
-                };
-            }
-        });
-    } catch (e) {
-        console.error(e);
+
+    if (itvkey.length < 10 || itvkey.length > 12) {
+        try {
+            popupList(popupActions.indexOf(noProvParam) + 1);
+        } catch (ex) {}
+        infoBox(
+            "Для доступа необходимо ввести ключ! (Ключ для плеера 10-12 символов)"
+        );
+        callback();
+        return;
     }
-    cb();
-}
-function _itv_xtream(cb) {
-    $(launch_id).append(_("Loading from API..."));
-    var api =
-        _itv_cfg.server +
-        "/player_api.php?username=" +
-        encodeURIComponent(_itv_cfg.user) +
-        "&password=" +
-        encodeURIComponent(_itv_cfg.pass);
-    $.ajax({ dataType: "json", timeout: 15e3, type: "GET", url: api })
-        .done(function (r) {
-            cList = [];
-            chanels = {};
-            cats = {};
-            catsArray = [];
-            if (!(r && r.live_streams)) {
-                _itv_cfg.m3u =
-                    api.replace("/player_api.php", "/get.php") +
-                    "&type=m3u_plus&output=ts";
-                _itv_m3u(cb);
-                return;
-            }
-            var cm = {};
-            if (r.categories)
-                r.categories.forEach(function (c) {
-                    cm[c.category_id] = c.category_name || "Unknown";
-                });
-            r.live_streams.forEach(function (s) {
-                var h = xxHash32S(s.name, true);
-                var cn = cm[s.category_id] || "Other";
-                addChan2cat(cn, h);
-                if (cList.indexOf(h) === -1) {
-                    cList.push(h);
-                    chanels[h] = {
-                        ca: "",
-                        caso: "",
+
+    $.ajax({
+        complete: function () {
+            callback();
+        },
+        dataType: "json",
+        error: function (jqXHR, textStatus, errorThrown) {
+            console.log(
+                "channels : jqXHR:" +
+                    JSON.stringify(jqXHR) +
+                    "; textStatus: " +
+                    textStatus +
+                    ", errorThrown: " +
+                    errorThrown
+            );
+            alert(_("Failed to load channel list!"));
+        },
+        success: function (data) {
+            if (!(data && data.channels)) return;
+            data.channels.forEach(function (val) {
+                if (cList.indexOf(val.ch_id) == -1) {
+                    addChan2cat(val.cat_name, val.ch_id);
+                    cList.push(val.ch_id);
+                    chanels[val.ch_id] = {
                         category: {
-                            class: catsArray.indexOf(cn) + 2,
-                            name: cn,
+                            class: catsArray.indexOf(val.cat_name) + 2,
+                            name: val.cat_name,
                         },
-                        channel_name: s.name,
-                        epg: String(s.stream_id),
-                        logo: s.stream_icon || "",
-                        rec: 0,
+                        channel_name: val.channel_name,
+                        rec: val.rec_time,
+                        server_cdn: val.server_cdn,
                         time: 0,
                         time_to: 0,
-                        tn: s.name,
-                        url:
-                            _itv_cfg.server +
-                            "/live/" +
-                            encodeURIComponent(_itv_cfg.user) +
-                            "/" +
-                            encodeURIComponent(_itv_cfg.pass) +
-                            "/" +
-                            s.stream_id +
-                            ".m3u8",
+                        token: val.token,
                     };
                 }
             });
-            cb();
-        })
-        .fail(function () {
-            _itv_cfg.m3u =
-                _itv_cfg.server.replace(/\/+$/, "") +
-                "/get.php?username=" +
-                encodeURIComponent(_itv_cfg.user) +
-                "&password=" +
-                encodeURIComponent(_itv_cfg.pass) +
-                "&type=m3u_plus&output=ts";
-            _itv_m3u(cb);
-        });
+        },
+        timeout: 30000,
+        url: wwwapi + "data/" + itvkey,
+    });
 }
-function duneAddSettings(e) {
-    _itv_load();
-    popupArray.splice(e, 1, "");
-    popupDetail.splice(e, 1, _("ITV.LIVE settings"));
-    popupActions.splice(e, 1, _itv_edit);
-    var idx = popupActions.indexOf(_itv_edit);
-    if (idx > -1) {
-        var lbl = _("ITV.LIVE settings");
-        if (_itv_cfg.server && _itv_cfg.user)
-            lbl +=
-                ": " +
-                _itv_cfg.server.replace(/^https?:\/\//, "").split("/")[0] +
-                " (" +
-                _itv_cfg.user +
-                ")";
-        else if (_itv_cfg.m3u) lbl += ": " + _itv_cfg.m3u.substr(0, 40) + "...";
-        popupArray[idx] = lbl;
-    }
+
+if (typeof sNextCount == "undefined") sNextCount = -1;
+
+function _getEPGchanel(ch_id, callback, all) {
+    var d = [];
+    $.ajax({
+        complete: function () {
+            callback(ch_id, d);
+        },
+        dataType: "json",
+        success: function (data) {
+            try {
+                data.res.forEach(function (val) {
+                    d.push({
+                        descr: val.desc,
+                        name: val.title,
+                        time: val.startTime,
+                        time_to: val.stopTime,
+                    });
+                });
+            } catch (e) {}
+        },
+        timeout: 10000,
+        url: wwwapi + "epg/" + ch_id + (all ? "" : "/" + (sNextCount + 2)),
+    });
 }
-function _itv_edit() {
-    selIndex = 0;
-    _itv_load();
-    var srv = _itv_cfg.server,
-        usr = _itv_cfg.user,
-        pwd = _itv_cfg.pass,
-        m3u = _itv_cfg.m3u;
-    function bl() {
-        listArray = [
-            _("Server") + ": " + (srv || ""),
-            _("Login") + ": " + (usr || ""),
-            _("Password") + ": " + (pwd ? "********" : ""),
-            _("M3U") + ": " + (m3u ? m3u.substr(0, 45) : ""),
-            "",
-            _("Save and load"),
-        ];
-    }
-    var ii = [
-        _("API server URL"),
-        _("Username"),
-        _("Password"),
-        _("M3U URL (fallback)"),
-        "",
-        _("Save & load channels"),
-    ];
-    bl();
-    getListItem = function (e, r) {
-        return "&nbsp;&nbsp;" + e;
-    };
-    detailListAction = function () {
-        listDetail.innerHTML = ii[selIndex] || "";
-    };
-    listKeyHandler = function (e) {
-        switch (e) {
-            case keys.ENTER:
-                switch (selIndex) {
-                    case 0:
-                        editCaption = _("Server URL");
-                        editvar = srv;
-                        setEdit = function () {
-                            srv = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 1:
-                        editCaption = _("Username");
-                        editvar = usr;
-                        setEdit = function () {
-                            usr = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 2:
-                        editCaption = _("Password");
-                        editvar = pwd;
-                        setEdit = function () {
-                            pwd = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 3:
-                        editCaption = _("M3U URL");
-                        editvar = m3u;
-                        setEdit = function () {
-                            m3u = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 5:
-                        _itv_cfg.server = srv;
-                        _itv_cfg.user = usr;
-                        _itv_cfg.pass = pwd;
-                        _itv_cfg.m3u = m3u;
-                        _itv_save();
-                        duneAddSettings(0);
-                        loadChannels();
-                        return true;
-                }
-                return true;
-            case keys.RETURN:
-                popupList(popupActions.indexOf(noProvParam) + 1);
-                return true;
-            default:
-                return false;
+
+function getEPGchanel(ch_id, callback) {
+    _getEPGchanel(ch_id, callback, true);
+}
+
+function getEPGchanelCur(ch_id, callback) {
+    _getEPGchanel(ch_id, callback, false);
+}
+
+var itvTarr = ["HLS(a)", "MPEGTS", "HLS(v)"];
+
+function duneAddSettings(ind) {
+    if (
+        isNaN(parseInt(providerGetItem("mpeg"), 10)) &&
+        navigator.userAgent.indexOf("Tizen") != -1
+    )
+        providerSetItem("mpeg", 2);
+    if (isNaN(parseInt(providerGetItem("sShowArchive"), 10)))
+        providerSetItem("sShowArchive", 1);
+    _getParams();
+    popupArray.splice(
+        ind,
+        0,
+        "Ключ доступа iTV.Live",
+        "Тип потоков: " + itvTarr[itvmpeg],
+        "Информация о подписке"
+    );
+    popupDetail.splice(
+        ind,
+        0,
+        "Ввод ключа доступа iTV.Live (Ключ для плеера)",
+        "Выберите тип потоков:<br>" + itvTarr.join(", "),
+        ""
+    );
+    popupActions.splice(ind, 0, doEditKey, doEditType, doUserInfo);
+}
+
+function doEditKey() {
+    editCaption = "Редактирование ключа доступа iTV.Live (Ключ для плеера)";
+    editvar = itvkey;
+    setEdit = function () {
+        if (itvkey == editvar) return;
+        if (editvar.length < 10 || editvar.length > 12) {
+            alert(
+                "Для доступа необходимо ввести ключ! (Ключ для плеера 10-12 символов)"
+            );
+            showEditKey([0, 1]);
+            return;
         }
+        providerSetItem("key", editvar);
+        restart();
     };
-    listDetail.innerHTML = "";
-    listCaption.innerHTML = _("ITV.LIVE");
-    listPodval.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
-    $("#listPopUp").hide();
-    showPage();
+    showEditKey([0, 1]);
 }
+
+function doEditType() {
+    if (++itvmpeg == itvTarr.length) itvmpeg = 0;
+    providerSetItem("mpeg", itvmpeg);
+    popupArray[popupActions.indexOf(doEditType)] =
+        "Тип потоков: " + itvTarr[itvmpeg];
+    try {
+        listArray[selIndex].name = "Тип потоков: " + itvTarr[itvmpeg];
+    } catch (e) {}
+    showPage();
+    if (!playType) playChannel(catIndex, primaryIndex);
+    else if (playType > 0) playArchive(playType + playTime);
+}
+
+function doUserInfo() {
+    aboutKeyHandler = function () {
+        $("#listAbout").hide();
+        return true;
+    };
+    $("#listAbout").html("Загрузка. Подождите...").show();
+    $.ajax({
+        dataType: "json",
+        error: function (jqXHR, textStatus, errorThrown) {
+            $("#listAbout").html(
+                "get_user_info failed!<br/><br/>jqXHR:" +
+                    JSON.stringify(jqXHR) +
+                    "<br/>textStatus: " +
+                    textStatus +
+                    "<br/>errorThrown: " +
+                    errorThrown
+            );
+        },
+        success: function (data) {
+            if (data !== null) {
+                var pi = [];
+                try {
+                    data.package_info.forEach(function (val) {
+                        pi.push(val.name);
+                    });
+                } catch (e) {}
+                var ui = data.user_info || {};
+                $("#listAbout").html(
+                    "Информация о подписке:<br/>" +
+                        "<br/>Логин: " +
+                        (ui.login || "") +
+                        "<br/>Баланс,$: " +
+                        (ui.cash || "") +
+                        "<br/>Система: " +
+                        ["", "Предоплата", "Постоплата"][ui.pay_system || 0] +
+                        "<br/>Пакеты: " +
+                        pi.join(", ")
+                );
+            }
+        },
+        timeout: 30000,
+        url: wwwapi + "data/" + itvkey,
+    });
+}
+
+_getParams();
