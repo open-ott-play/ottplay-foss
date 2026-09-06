@@ -9,7 +9,7 @@
 
 Core channel management, navigation, and list operations.
 
-**State vars:** `channels`, `cats`, `catsArray`, `curList`, `cList`, `providerPrefix`, `favoritesArray`, `favoritesLists`, `parentalArray`, `playType`, `archivePos`, `fileArchive`, `searchText`, `sSortAbc`
+**State vars (core):** `channels`, `cats`, `catsArray`, `curList`, `cList`, `providerPrefix`, `playType` (also hosts shared settings/`persistedKeys`; favorites/EPG/archive state live in their clusters below)
 
 **Symbols:**
 - `setCurrent`, `nextChannel`, `prevChannel`, `handleNumberInput` — navigation
@@ -58,9 +58,9 @@ Program guide data, timer management, detailed EPG view.
 
 ---
 
-### 3. Favorites Multi-list (lines 594–730)
+### 3. Favorites Multi-list (lines 594–1005)
 
-Favorites CRUD, multi-list management, alias handling.
+Favorites CRUD, multi-list management, alias handling, list picker UI.
 
 **State vars:** `favoritesArray`, `favoritesLists`
 
@@ -71,12 +71,14 @@ Favorites CRUD, multi-list management, alias handling.
 - `getActiveFavoritesListName`, `setActiveFavoritesList` (628, 633) — switch lists
 - `listFavoritesLists` (643), `addFavoritesList` (662), `renameFavoritesList` (671), `deleteFavoritesList` (684) — CRUD
 - `refreshFavoritesViewIfActive` (704)
+- `popFavLists` (729) — UI picker (uses `showEditKey` / listArray)
+- `loadFavoritesLists` (962) — storage load + migrate from single-array shape
 
-**Window:** `addToFavorites`, `removeFromFavorites`, `popFavLists`, `getActiveFavoritesListName`, `setActiveFavoritesListName/List`, `add/rename/deleteFavoritesList`, `listFavoritesLists`, `favoritesArray`
+**Window (src/index.ts):** `addToFavorites`, `removeFromFavorites`, `popFavLists`, `getActiveFavoritesListName`, `setActiveFavoritesList`, `addFavoritesList`, `renameFavoritesList`, `deleteFavoritesList`, `listFavoritesLists`, `favoritesArray`
 
-**Inbound:** `index.ts` popupActions.push(popFavLists); provider clears `favoritesArray`; settings export/import.
+**Inbound:** `index.ts` `popupActions.push(popFavLists)`; provider clears `favoritesArray` + reads `getActiveFavoritesListName`; settings export/import `favoritesArray`.
 
-**Risk:** Medium. Mutates `cats["Favorites"]`, calls `saveChannelsCats`. Multi-list CRUD (~616–700) is relatively leaf-like.
+**Risk:** Medium. Mutates `cats["Favorites"]`, calls `saveChannelsCats`. Multi-list CRUD + `loadFavoritesLists` (~616–700, 962+) are relatively leaf-like; `popFavLists` is UI-heavy — leave in `channels/index.ts` for D2.
 
 ---
 
@@ -87,7 +89,7 @@ Timeshift, playback resume, media history.
 **State vars:** `archivePos`, `fileArchive`, `mediaListArr`, `mediaNames`, `mediaRecords`, `mediaName`, `medHistory`
 
 **Symbols:**
-- `playArchive` (541), `updateArchiveInfo` (2602), `liveStop` (2810)
+- `playArchive` (2524), `updateArchiveInfo` (2602), `liveStop` (2810)
 - `shiftArchive` (2874), `shiftArchiveSelect` (2976), `timeShift` (3078)
 - `recordsList` (2195), `selectREC` (2260), `detailREC` (2274), `catRecordsList` (2292)
 - `mediaKeyHandler` (2351), `addToMedFavorites` (2391)
@@ -117,18 +119,16 @@ Filter helpers, history search, media search.
 
 ---
 
-### 6. Parental Control (lines 1024–4760)
+### 6. Other — parental, continue-watch, timers overlap (lines 421–535, 1024–1070, 4571–4887)
 
-PIN entry, lock checking, access management.
+PIN entry, lock checking, continue-watch resume; EPG timers overlap cluster 2.
 
 **Symbols:**
-- `hasParentalLock` (1024), `ifParentalAccess` (1037), `ifParentalAccessChId` (1058)
-- `getEPGchanelCached` (1075) — EPG fetch
-- `_enterPinCode` (4571), `enterPinCode` (4676)
-- `setParentAccess` (4699), `enterPinAndSetAccess` (4721)
-- `parentControlSetup` (4751)
+- Parental: `hasParentalLock` (1024), `ifParentalAccess` (1037), `ifParentalAccessChId` (1058), `_enterPinCode` (4571), `enterPinCode` (4676), `setParentAccess` (4699), `enterPinAndSetAccess` (4721), `parentControlSetup` (4751); state `parentPIN`
+- Continue-watch: `restoreContinueWatch` (421) — reads `continueWatch` storage, may call `playArchive` / `playChannel`
+- Timers: `epgTimers` + `startEpgTimer` / `loadEpgTimers` / `setEpgTimer` (documented under EPG)
 
-**Window:** parent control APIs from index.ts (~3099–3103).
+**Window:** parental APIs from `src/index.ts` (~3099–3103); continue-watch is internal to `onChanelsLoaded`.
 
 ---
 
@@ -152,10 +152,10 @@ PIN entry, lock checking, access management.
 - `syncFavoritesArrayFromActive`
 - `activeFavoritesList`
 
-**Keep in channels/index.ts:**
-- `addToFavorites`, `removeFromFavorites` (wires to `popupActions`)
+**Keep in channels/index.ts for D2:**
+- `addToFavorites`, `removeFromFavorites` (call into leaf sync helpers)
 - `refreshFavoritesViewIfActive`, `popFavLists` (UI-heavy)
-- `favoritesArray`, `favoritesLists` state vars (re-exported via import)
+- Prefer moving `favoritesLists` + `loadFavoritesLists` with the leaf; keep `favoritesArray` alias wiring in index or re-export from leaf **without** dual MODULES membership (Phase D3)
 
 **Import pattern (strip-safe):**
 ```ts
@@ -181,7 +181,7 @@ export {
 ## D2 Implementation Checklist
 
 - [ ] Create `src/channels/favorites-lists.ts` with extracted favorites multi-list functions
-- [ ] Add file to `vite.config.ts` MODULES before `channels/index.ts` (if strip-safe) OR import from channels/index.ts
+- [ ] Prefer import-only submodule (NOT also on MODULES); only add to MODULES before `channels/index.js` if a spike proves strip-safe and no dual binding
 - [ ] Verify `favoritesArray` alias behavior preserved
 - [ ] Run `npx tsc --noEmit` for type check
 - [ ] Run `npm run build` and verify bundle identifiers
