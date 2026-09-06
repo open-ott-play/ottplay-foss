@@ -94,14 +94,7 @@ function addChan2cat(cat, ci) {
 }
 
 function murmurhash3_32_gc(key, seed) {
-    var remainder,
-        bytes,
-        h1,
-        h1b,
-        c1,
-        c2,
-        k1,
-        i;
+    var remainder, bytes, h1, h1b, c1, c2, k1, i;
     remainder = key.length & 3;
     bytes = key.length - remainder;
     h1 = seed;
@@ -131,7 +124,8 @@ function murmurhash3_32_gc(key, seed) {
                 0xffffffff) >>>
             0;
         h1 =
-            (((h1b & 0xffff) + 0x6b64 +
+            (((h1b & 0xffff) +
+                0x6b64 +
                 ((((h1b >>> 16) + 0xe654) & 0xffff) << 16)) &
                 0xffffffff) >>>
             0;
@@ -145,14 +139,12 @@ function murmurhash3_32_gc(key, seed) {
         case 1:
             k1 ^= key.charCodeAt(i) & 0xff;
             k1 =
-                (((k1 & 0xffff) * c1 +
-                    ((((k1 >>> 16) * c1) & 0xffff) << 16)) &
+                (((k1 & 0xffff) * c1 + ((((k1 >>> 16) * c1) & 0xffff) << 16)) &
                     0xffffffff) >>>
                 0;
             k1 = (k1 << 15) | (k1 >>> 17);
             k1 =
-                (((k1 & 0xffff) * c2 +
-                    ((((k1 >>> 16) * c2) & 0xffff) << 16)) &
+                (((k1 & 0xffff) * c2 + ((((k1 >>> 16) * c2) & 0xffff) << 16)) &
                     0xffffffff) >>>
                 0;
             h1 ^= k1;
@@ -203,25 +195,25 @@ function getChanelsArray(callback) {
                 encodeURIComponent(url);
         }
         $.ajax({
-            url: url,
             dataType: "text",
-            timeout: 30000,
-            success: success,
             error: function () {
                 $(launch_id).append("p...");
                 $.ajax({
-                    url: host + "/m3u/cp.php",
                     data: { url: "@" + cpurl },
-                    method: "post",
                     dataType: "text",
-                    timeout: 30000,
-                    success: success,
                     error: function () {
                         alert(_("Failed to load channel list!"));
                         cb();
                     },
+                    method: "post",
+                    success: success,
+                    timeout: 30000,
+                    url: host + "/m3u/cp.php",
                 });
             },
+            success: success,
+            timeout: 30000,
+            url: url,
         });
     }
 
@@ -232,19 +224,19 @@ function getChanelsArray(callback) {
         }
         $(launch_id).append(_("epgs..."));
         $.ajax({
-            url: _scheme() + "epg.drm-play.com/m3u/gelist.php",
+            complete: function () {
+                cb();
+            },
             data: { list: JSON.stringify(cepg) },
             method: "post",
-            timeout: 120000,
             success: function (data) {
                 if (data)
                     cList.forEach(function (val) {
                         if (data[val]) chanels[val].epg_url = data[val];
                     });
             },
-            complete: function () {
-                cb();
-            },
+            timeout: 120000,
+            url: _scheme() + "epg.drm-play.com/m3u/gelist.php",
         });
     }
 
@@ -255,19 +247,19 @@ function getChanelsArray(callback) {
         }
         $(launch_id).append(_("logos..."));
         $.ajax({
-            url: _scheme() + "epg.drm-play.com/m3u/geicons.php",
+            complete: function () {
+                cb();
+            },
             data: { list: JSON.stringify(clogo) },
             method: "post",
-            timeout: 120000,
             success: function (data) {
                 if (data)
                     cList.forEach(function (val) {
                         if (data[val]) chanels[val].logo = data[val];
                     });
             },
-            complete: function () {
-                cb();
-            },
+            timeout: 120000,
+            url: _scheme() + "epg.drm-play.com/m3u/geicons.php",
         });
     }
 
@@ -352,25 +344,25 @@ function getChanelsArray(callback) {
                 if (url && cList.indexOf(ci) == -1) {
                     cList.push(ci);
                     chanels[ci] = {
-                        channel_name: cn,
+                        ca: ca,
+                        caso: caso,
                         category: {
                             class: catsArray.indexOf(cat) + 2,
                             name: cat,
                         },
+                        channel_name: cn,
+                        epg: epg,
+                        logo: logo,
                         rec: rec,
                         time: 0,
                         time_to: 0,
-                        url: url,
-                        logo: logo,
-                        epg: epg,
                         tn: tn,
-                        ca: ca,
-                        caso: caso,
+                        url: url,
                         utvg: utvg,
                     };
                     cepg[ci] =
                         epg && utvg
-                            ? { n: tn || cn, e: epg, u: utvg }
+                            ? { e: epg, n: tn || cn, u: utvg }
                             : utvg
                               ? { n: cn, u: utvg }
                               : { n: tn || cn };
@@ -449,9 +441,7 @@ function getEPGurl(ch_id) {
     if (edsp == 1) return chanels[ch_id] ? chanels[ch_id].epg_url : null;
     if (!(chanels[ch_id] && chanels[ch_id].epg)) return null;
     return (
-        (edlist == 1 ? "iptv-e2-soveni" : "edem") +
-        "/epg/" +
-        chanels[ch_id].epg
+        (edlist == 1 ? "iptv-e2-soveni" : "edem") + "/epg/" + chanels[ch_id].epg
     );
 }
 
@@ -465,15 +455,15 @@ function getEPGchanel(ch_id, callback) {
         return;
     }
     $.ajax({
-        url: _epgDomen + encodeURIComponent(epg_url) + ".json",
-        dataType: "json",
-        timeout: 10000,
-        success: function (data) {
-            if (data !== null) d = data.epg_data;
-        },
         complete: function () {
             callback(ch_id, d);
         },
+        dataType: "json",
+        success: function (data) {
+            if (data !== null) d = data.epg_data;
+        },
+        timeout: 10000,
+        url: _epgDomen + encodeURIComponent(epg_url) + ".json",
     });
 }
 
@@ -591,22 +581,22 @@ function createMedia(val, parent) {
     switch (val.type) {
         case "stream":
             return {
-                title: val.title,
-                logo_30x30: val.imglr || val.img,
                 description: item2descr(val, parent),
-                stream_url: val.url,
+                logo_30x30: val.imglr || val.img,
                 request: val.request,
+                stream_url: val.url,
+                title: val.title,
             };
         case "category":
         case "multistream":
             return {
-                title: val.title,
-                logo_30x30: val.imglr || val.img,
                 description: item2descr(val, parent),
+                logo_30x30: val.imglr || val.img,
                 playlist_url: {
                     mediaName: val.title,
                     request: val.request,
                 },
+                title: val.title,
             };
     }
 }
@@ -622,8 +612,17 @@ function addMedias2(params) {
         )
         .show();
     $.ajax({
-        url: _vpurl,
-        type: "post",
+        complete: function () {
+            while (
+                mediaRecords[selIndex] &&
+                typeof mediaRecords[selIndex].description === "function"
+            ) {
+                mediaRecords.length = selIndex;
+                selIndex--;
+            }
+            showPage();
+            $("#dialogbox").hide();
+        },
         data: JSON.stringify(params),
         success: function (data) {
             try {
@@ -639,17 +638,8 @@ function addMedias2(params) {
                         });
             } catch (e) {}
         },
-        complete: function () {
-            while (
-                mediaRecords[selIndex] &&
-                typeof mediaRecords[selIndex].description === "function"
-            ) {
-                mediaRecords.length = selIndex;
-                selIndex--;
-            }
-            showPage();
-            $("#dialogbox").hide();
-        },
+        type: "post",
+        url: _vpurl,
     });
     return _("Download! Wait ...");
 }
@@ -673,14 +663,16 @@ function edem_playMedia(med) {
         av = [],
         i = 0,
         variants;
-    var params = { key: _vpkey, app: "ott-play" };
+    var params = { app: "ott-play", key: _vpkey };
     for (var key in med.request) {
         params[key] = med.request[key];
     }
     $.ajax({
-        url: _vpurl,
-        type: "post",
+        async: false,
         data: JSON.stringify(params),
+        error: function (jqXHR) {
+            alert("Error: " + JSON.stringify(jqXHR));
+        },
         success: function (data) {
             if (data !== null)
                 if (data.type == "error") alert(data.description);
@@ -689,10 +681,8 @@ function edem_playMedia(med) {
                     variants = data.variants;
                 }
         },
-        error: function (jqXHR) {
-            alert("Error: " + JSON.stringify(jqXHR));
-        },
-        async: false,
+        type: "post",
+        url: _vpurl,
     });
     $("#dialogbox").hide();
     if (variants)
@@ -735,14 +725,14 @@ var _getMediaArray = function (murl, callback) {
         mediaRecords = [];
         murl.filters.forEach(function (val) {
             mediaRecords.push({
-                title: val.title,
-                logo_30x30: "",
                 description: val.title,
+                logo_30x30: "",
                 playlist_url: {
                     a: "filter",
-                    mediaName: val.title,
                     items: val.items,
+                    mediaName: val.title,
                 },
+                title: val.title,
             });
         });
         callback();
@@ -751,19 +741,19 @@ var _getMediaArray = function (murl, callback) {
         mediaRecords = [];
         murl.items.forEach(function (val) {
             mediaRecords.push({
-                title: val.title,
-                logo_30x30: "",
                 description: val.title,
+                logo_30x30: "",
                 playlist_url: {
                     mediaName: val.title,
                     request: val.request,
                 },
+                title: val.title,
             });
         });
         callback();
         return;
     }
-    var params = { key: _vpkey, app: "ott-play" };
+    var params = { app: "ott-play", key: _vpkey };
     for (var key in murl.request) {
         params[key] = murl.request[key];
     }
@@ -778,9 +768,14 @@ var _getMediaArray = function (murl, callback) {
         )
         .show();
     $.ajax({
-        url: _vpurl,
-        type: "post",
+        complete: function () {
+            $("#dialogbox").hide();
+            callback();
+        },
         data: JSON.stringify(params),
+        error: function (jqXHR) {
+            alert("medias : jqXHR:" + JSON.stringify(jqXHR));
+        },
         success: function (data) {
             try {
                 mediaRecords = [];
@@ -806,35 +801,35 @@ var _getMediaArray = function (murl, callback) {
                                             j++
                                         ) {
                                             mediaRecords.push({
+                                                description: function () {
+                                                    return addMedias2(params);
+                                                },
+                                                logo_30x30: "",
+                                                stream_url: "",
                                                 title:
                                                     j +
                                                     1 +
                                                     " " +
                                                     _("Download! Wait ..."),
-                                                logo_30x30: "",
-                                                description: function () {
-                                                    return addMedias2(params);
-                                                },
-                                                stream_url: "",
                                             });
                                         }
                                 });
                             if (data.controls) {
                                 if (data.controls.search)
                                     mediaRecords.push({
-                                        title: _("Search"),
                                         description: _("Search"),
                                         playlist_url: "search",
                                         search_on: 1,
+                                        title: _("Search"),
                                     });
                                 if (data.controls.filters)
                                     mediaRecords.push({
-                                        title: _("Filters"),
                                         description: _("Filters"),
                                         playlist_url: {
                                             a: "filters",
                                             filters: data.controls.filters,
                                         },
+                                        title: _("Filters"),
                                     });
                             }
                             break;
@@ -844,13 +839,8 @@ var _getMediaArray = function (murl, callback) {
                 alert(e);
             }
         },
-        error: function (jqXHR) {
-            alert("medias : jqXHR:" + JSON.stringify(jqXHR));
-        },
-        complete: function () {
-            $("#dialogbox").hide();
-            callback();
-        },
+        type: "post",
+        url: _vpurl,
     });
 };
 
@@ -883,7 +873,7 @@ function doEditData() {
         aDetail = [
             "Выбор входа в " +
                 provName +
-                " по ключу доступа или по ссылке на плейлист из личного кабинета <br><br> После изменения, перезагрузите плейлист.<br>Выбор \"Ссылка на плейлист\" доступен после ввода ссылки в разделе \"Ссылка плейлист\"",
+                ' по ключу доступа или по ссылке на плейлист из личного кабинета <br><br> После изменения, перезагрузите плейлист.<br>Выбор "Ссылка на плейлист" доступен после ввода ссылки в разделе "Ссылка плейлист"',
             "Ввод ключа доступа " + provName,
             "Выберите источник шаблона плейлиста, епг и логотипов:<br>" +
                 edTlist.join(", ") +
@@ -1038,8 +1028,7 @@ function vportal() {
 }
 
 function edplaylist() {
-    editCaption =
-        "Редактирование ссылки плейлиста из личного кабинета iLook";
+    editCaption = "Редактирование ссылки плейлиста из личного кабинета iLook";
     editvar = edurl;
     setEdit = function () {
         if (edurl == editvar) return;
