@@ -14,6 +14,33 @@ import { translate as _ } from "../localization";
 import { settings } from "../settings/index";
 import { providerSetItem, storage } from "../storage/index";
 import { getThumbnail, time2time } from "../utils/helpers";
+import {
+    activeFavoritesList,
+    addFavoritesList,
+    bindFavoritesViewRefresh,
+    deleteFavoritesList,
+    type FavoritesListsBlob,
+    favoritesArray,
+    favoritesLists,
+    getActiveFavoritesListName,
+    listFavoritesLists,
+    loadFavoritesLists,
+    renameFavoritesList,
+    setActiveFavoritesList,
+    syncFavoritesArrayFromActive,
+} from "./favorites-lists";
+
+export type { FavoritesListsBlob };
+export {
+    addFavoritesList,
+    deleteFavoritesList,
+    favoritesArray,
+    favoritesLists,
+    getActiveFavoritesListName,
+    listFavoritesLists,
+    renameFavoritesList,
+    setActiveFavoritesList,
+};
 
 export interface Channel {
     adult?: number;
@@ -215,27 +242,9 @@ export let version = "",
     catIndex = -1;
 export let cList: number[] = [],
     prevArr: PreviousChannel[] = [];
-export let favoritesArray: number[] = [],
-    parentalArray: number[] = [];
+export let parentalArray: number[] = [];
 
-/**
- * Multi-favorites lists (Smart groups) — `{ v:1, lists, order, active }`.
- * Migrated on first load from legacy `favoritesArray`. UI hooks exported below
- * (setActiveFavoritesList, addFavoritesList, etc.); `favoritesArray` is kept
- * in sync as the active list for back-compat with existing reads.
- */
-export interface FavoritesListsBlob {
-    active: string;
-    lists: Record<string, number[]>;
-    order: string[];
-    v: 1;
-}
-export let favoritesLists: FavoritesListsBlob = {
-    active: "Favorites",
-    lists: { Favorites: [] },
-    order: ["Favorites"],
-    v: 1,
-};
+/* Multi-favorites lists state + CRUD: src/channels/favorites-lists.ts (Phase D2). */
 export let epgTimers: any[] = [],
     sSortAbc = 0;
 export let medHistory: MediaHistoryEntry[] = [],
@@ -611,89 +620,7 @@ export function removeFromFavorites(channelId: number): void {
     if (i2 !== -1) lst.splice(i2, 1);
 }
 
-/* ---- Multi-favorites lists (lean helpers; caller wires UI) ---- */
-
-function syncFavoritesArrayFromActive(): void {
-    // Keep `favoritesArray` as an alias of the active list so existing readers
-    // (cats["Favorites"], single-favorites flows) keep working unchanged.
-    favoritesArray = activeFavoritesList().slice();
-}
-
-function activeFavoritesList(): number[] {
-    if (!favoritesLists.lists[favoritesLists.active])
-        favoritesLists.lists[favoritesLists.active] = [];
-    return favoritesLists.lists[favoritesLists.active];
-}
-
-export function getActiveFavoritesListName(): string {
-    return favoritesLists.active;
-}
-
-/** Switch the active list. Updates `favoritesArray` alias and `cats["Favorites"]`. */
-export function setActiveFavoritesList(name: string): boolean {
-    if (!favoritesLists.lists[name]) return false;
-    favoritesLists.active = name;
-    syncFavoritesArrayFromActive();
-    if (cats && typeof window !== "undefined" && (window as any)._)
-        cats[(window as any)._("Favorites")] = favoritesArray;
-    refreshFavoritesViewIfActive();
-    return true;
-}
-
-export function listFavoritesLists(): string[] {
-    // Stable order: declared `order` first, then any lists added out-of-band.
-    var seen: Record<string, boolean> = {};
-    var out: string[] = [];
-    favoritesLists.order.forEach(function (n) {
-        if (favoritesLists.lists[n] && !seen[n]) {
-            out.push(n);
-            seen[n] = true;
-        }
-    });
-    Object.keys(favoritesLists.lists).forEach(function (n) {
-        if (!seen[n]) {
-            out.push(n);
-            seen[n] = true;
-        }
-    });
-    return out;
-}
-
-export function addFavoritesList(name: string): boolean {
-    name = (name || "").trim();
-    if (!name || favoritesLists.lists[name]) return false;
-    favoritesLists.lists[name] = [];
-    if (favoritesLists.order.indexOf(name) === -1)
-        favoritesLists.order.push(name);
-    return true;
-}
-
-export function renameFavoritesList(oldName: string, newName: string): boolean {
-    newName = (newName || "").trim();
-    if (!newName || newName === oldName) return false;
-    if (!favoritesLists.lists[oldName] || favoritesLists.lists[newName])
-        return false;
-    favoritesLists.lists[newName] = favoritesLists.lists[oldName];
-    delete favoritesLists.lists[oldName];
-    var oi = favoritesLists.order.indexOf(oldName);
-    if (oi !== -1) favoritesLists.order[oi] = newName;
-    if (favoritesLists.active === oldName) favoritesLists.active = newName;
-    return true;
-}
-
-export function deleteFavoritesList(name: string): boolean {
-    if (!favoritesLists.lists[name]) return false;
-    if (Object.keys(favoritesLists.lists).length <= 1) return false; // keep >=1
-    delete favoritesLists.lists[name];
-    var oi = favoritesLists.order.indexOf(name);
-    if (oi !== -1) favoritesLists.order.splice(oi, 1);
-    if (favoritesLists.active === name)
-        favoritesLists.active = favoritesLists.order[0] || "Favorites";
-    syncFavoritesArrayFromActive();
-    if (cats && typeof window !== "undefined" && (window as any)._)
-        cats[(window as any)._("Favorites")] = favoritesArray;
-    return true;
-}
+/* ---- Multi-favorites lists CRUD: ./favorites-lists.ts ---- */
 
 /**
  * If the user is currently viewing the Favorites category, rebind module
@@ -720,6 +647,8 @@ function refreshFavoritesViewIfActive(): void {
     }
     w.activeFavList = getActiveFavoritesListName();
 }
+
+bindFavoritesViewRefresh(refreshFavoritesViewIfActive);
 
 /**
  * Multi-favorites list manager UI (proper #list menu, not showSelectBox OSD).
@@ -956,45 +885,6 @@ export function popFavLists(): void {
     }
 
     showMain();
-}
-
-/** Load `favoritesLists` from storage; migrate from legacy `favoritesArray`. */
-function loadFavoritesLists(): void {
-    if (
-        typeof window === "undefined" ||
-        typeof (window as any).providerGetJson !== "function"
-    )
-        return;
-    var raw: any = null;
-    try {
-        raw = (window as any).providerGetJson("favoritesLists", null);
-    } catch (_) {}
-    if (raw && raw.v === 1 && raw.lists && typeof raw.lists === "object") {
-        favoritesLists = {
-            active:
-                raw.active || Object.keys(raw.lists || {})[0] || "Favorites",
-            lists: raw.lists || {},
-            order: Array.isArray(raw.order)
-                ? raw.order
-                : Object.keys(raw.lists || {}),
-            v: 1,
-        };
-        if (!favoritesLists.lists[favoritesLists.active])
-            favoritesLists.active =
-                Object.keys(favoritesLists.lists)[0] || "Favorites";
-        syncFavoritesArrayFromActive();
-        return;
-    }
-    // Migrate from legacy favoritesArray.
-    var legacy: number[] =
-        (window as any).providerGetJson("favoritesArray", []) || [];
-    favoritesLists = {
-        active: "Favorites",
-        lists: { Favorites: legacy.slice() },
-        order: ["Favorites"],
-        v: 1,
-    };
-    favoritesArray = legacy.slice();
 }
 
 /**
