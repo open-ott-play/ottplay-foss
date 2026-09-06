@@ -13,6 +13,11 @@
 #   PORT        host port             (default 8080)
 #   EXTRA_ARGS  extra docker run args
 #
+# Optional future SWOP auto-allow (not implemented yet — docs only):
+#   SWOP_BASE_URL / SWOP_ADMIN_TOKEN / SWOP_CLIENT_ID on the deploy host.
+#   See README "Remote text entry (swop)" and ottplay-swop Access control.
+#   Never bake ADMIN_TOKEN into the image or git.
+#
 
 set -euo pipefail
 
