@@ -18,6 +18,7 @@ const MODULES = [
     "build/utils/helpers.js",
     "build/utils/encoding.js",
     "build/channels/types.js",
+    "build/channels/favorites-lists.js",
     "build/channels/index.js",
     "build/debug/playback-debug.js",
     "build/core/index.js",
