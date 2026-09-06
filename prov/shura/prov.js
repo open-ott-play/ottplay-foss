@@ -1,6 +1,8 @@
-version += " shura-0219";
-p_pref = "shura";
+version += " shura-0906";
+var shserver, shkey, mpeg;
+p_pref = "sh";
 parental = /XXX|Взрослые|Для взрослых|Эротика|18\+|Adults/i;
+
 if (typeof stbGetItem === "function") {
     providerGetItem = function (e) {
         return stbGetItem(p_pref + e);
@@ -25,315 +27,312 @@ providerHasItem = function (e) {
 providerHasItemValue = function (e) {
     return ottpStorage.hasValue(p_pref + e);
 };
-var _shura_cfg = { m3u: "", pass: "", server: "", user: "" };
-function _shura_load() {
-    try {
-        var d = providerGetItem("cfg");
-        if (d) _shura_cfg = JSON.parse(d);
-    } catch (e) {}
-    if (!(_shura_cfg.server || _shura_cfg.m3u))
-        _shura_cfg = { m3u: "", pass: "", server: "", user: "" };
+
+function _getParams() {
+    shkey = providerGetItem("key") || "";
+    shserver = providerGetItem("server");
+    if (!shserver) shserver = "1";
+    mpeg = parseInt(providerGetItem("mpeg"), 10) || 0;
 }
-function _shura_save() {
-    providerSetItem("cfg", JSON.stringify(_shura_cfg));
+
+function getChannelPicon(ch_id) {
+    return "http://s" + shserver + ".tvshka.net:81/picon/" + ch_id + ".png";
 }
-function getChannelPicon(e) {
-    return chanels[e] ? chanels[e].logo || "" : "";
+
+function getChannelUrl(ch_id) {
+    return (
+        "http://s" +
+        shserver +
+        ".tvshka.net/~" +
+        shkey +
+        "/" +
+        ch_id +
+        "/" +
+        (mpeg ? "" : "hls/pl.m3u8")
+    );
 }
-function getChannelUrl(e) {
-    return chanels[e] ? chanels[e].url || "" : "";
+
+function getArchiveUrl(ch_id, time, time_to) {
+    return getChannelUrl(ch_id) + "?archive=" + Math.floor(time);
 }
-function getEPGchanel(s, e) {
-    e(s, null);
-}
-function addChan2cat(catName, hash) {
-    if (!(catName && hash)) return;
-    if (!cats[catName]) {
-        catsArray.push(catName);
-        cats[catName] = [];
+
+if (typeof catsArray == "undefined") var catsArray = [];
+
+function addChan2cat(cat, ci) {
+    if (!(cat && ci)) return;
+    if (!cats[cat]) {
+        catsArray.push(cat);
+        cats[cat] = [];
     }
-    cats[catName].push(hash);
+    cats[cat].push(ci);
 }
-function getChanelsArray(cb) {
-    _shura_load();
-    if (_shura_cfg.server && _shura_cfg.user && _shura_cfg.pass)
-        _shura_xtream(cb);
-    else if (_shura_cfg.m3u) _shura_m3u(cb);
-    else {
-        alert(_("Configure Шура ТВ in Settings -> Provider Settings"));
-        cb();
-    }
+
+function getAttribute(text, attribute) {
+    var a = text.split(attribute + "=");
+    if (a.length == 1 || a[1].length == 0) return "";
+    if (a[1][0] == '"') return a[1].split('"')[1] || "";
+    return a[1].split(/[ ,]+/)[0] || "";
 }
-function _shura_m3u(cb) {
-    $(launch_id).append(_("Loading M3U..."));
-    $.ajax({
-        error: function () {
-            $.ajax({
-                data: { url: "@" + _shura_cfg.m3u },
-                dataType: "text",
-                error: function () {
-                    alert(_("Failed to load!"));
-                    cb();
-                },
-                method: "post",
-                success: function (d) {
-                    _shura_parseM3U(d, cb);
-                },
-                timeout: 15e3,
-                url: host + "/m3u/cp.php",
+
+function getChanelsArray(callback) {
+    _getParams();
+
+    function aSuccess(data) {
+        try {
+            var arrEXTINF = data.split("#EXTINF:");
+            arrEXTINF.shift();
+            cats = {};
+            catsArray = [];
+            arrEXTINF.forEach(function (val) {
+                var e = val.split("\n"),
+                    cat = getAttribute(e[0], "group-title"),
+                    ci = null;
+                try {
+                    ci = e[1].split("/")[4];
+                } catch (ex) {}
+                if (ci && chanels[ci]) {
+                    addChan2cat(cat, ci);
+                    chanels[ci].category = {
+                        class: catsArray.indexOf(cat) + 2,
+                        name: cat,
+                    };
+                }
             });
-        },
-        success: function (d) {
-            _shura_parseM3U(d, cb);
-        },
-        timeout: 15e3,
-        url: _shura_cfg.m3u,
-    });
-}
-function _shura_parseM3U(data, cb) {
+        } catch (e) {
+            console.log(
+                "Exception: name " +
+                    e.name +
+                    ", message " +
+                    e.message +
+                    ", typeof " +
+                    typeof e
+            );
+        }
+        if (!shkey || shkey.length < 8) {
+            try {
+                popupList(popupActions.indexOf(noProvParam) + 1);
+            } catch (ex) {}
+            infoBox("Для доступа необходимо ввести ключ!");
+        }
+        callback();
+    }
+
+    function loadCategories() {
+        var www =
+            "http://pl.tvshka.net/?uid=shxxxxxxxxxxx&srv=1&type=halva";
+        $.ajax({
+            dataType: "text",
+            error: function () {
+                $.ajax({
+                    data: { url: "@" + www },
+                    dataType: "text",
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        console.log(
+                            "channels : jqXHR:" +
+                                JSON.stringify(jqXHR) +
+                                "; textStatus: " +
+                                textStatus +
+                                ", errorThrown: " +
+                                errorThrown
+                        );
+                        if (!shkey || shkey.length < 8) {
+                            try {
+                                popupList(
+                                    popupActions.indexOf(noProvParam) + 1
+                                );
+                            } catch (ex) {}
+                            infoBox("Для доступа необходимо ввести ключ!");
+                        }
+                        callback();
+                    },
+                    method: "post",
+                    success: aSuccess,
+                    timeout: 10000,
+                    url: host + "/m3u/cp.php",
+                });
+            },
+            success: aSuccess,
+            timeout: 10000,
+            url: www,
+        });
+    }
+
     cList = [];
     chanels = {};
     cats = {};
     catsArray = [];
-    try {
-        var lines = data.split("#EXTINF:");
-        var hdr = lines[0] || "";
-        lines.shift();
-        var lc = "";
-        lines.forEach(function (b) {
-            var p = b.split("\n");
-            var inf = p[0] || "";
-            var url = "";
-            for (var i = 1; i < p.length; i++) {
-                if (p[i].trim() && p[i].trim()[0] !== "#") {
-                    url = p[i].trim();
-                    break;
-                }
-            }
-            if (!url) return;
-            var name = "???";
-            var ci = inf.indexOf(",");
-            if (ci > 0) name = inf.substr(ci + 1).trim();
-            var cat = "";
-            var gm = inf.match(/group-title="([^"]*)"/i);
-            if (gm) cat = gm[1];
-            var logo = "";
-            var lm = inf.match(/tvg-logo="([^"]*)"/i);
-            if (lm) logo = lm[1];
-            if (!cat) cat = lc || "Other";
-            lc = cat;
-            var h = xxHash32S(url, true);
-            addChan2cat(cat, h);
-            if (cList.indexOf(h) === -1) {
-                cList.push(h);
-                chanels[h] = {
-                    ca: "",
-                    caso: "",
-                    category: { class: catsArray.indexOf(cat) + 2, name: cat },
-                    channel_name: name,
-                    epg: "",
-                    logo: logo,
-                    rec: 0,
+
+    $.ajax({
+        complete: function () {
+            loadCategories();
+        },
+        data: { type: "jsonp", uid: "shxxxxxxxxxxx" },
+        dataType: "jsonp",
+        error: function (jqXHR, textStatus, errorThrown) {
+            console.log(
+                "channels : jqXHR:" +
+                    JSON.stringify(jqXHR) +
+                    "; textStatus:" +
+                    textStatus +
+                    " ,errorThrown: " +
+                    errorThrown
+            );
+        },
+        success: function (data) {
+            if (!data || !data.forEach) return;
+            data.forEach(function (val) {
+                cList.push(val.id);
+                chanels[val.id] = {
+                    category: { class: 0 },
+                    channel_name: val.name,
+                    rec: val.archive,
                     time: 0,
                     time_to: 0,
-                    tn: name,
-                    url: url,
                 };
-            }
-        });
-    } catch (e) {
-        console.error(e);
-    }
-    cb();
-}
-function _shura_xtream(cb) {
-    $(launch_id).append(_("Loading from API..."));
-    var api =
-        _shura_cfg.server +
-        "/player_api.php?username=" +
-        encodeURIComponent(_shura_cfg.user) +
-        "&password=" +
-        encodeURIComponent(_shura_cfg.pass);
-    $.ajax({ dataType: "json", timeout: 15e3, type: "GET", url: api })
-        .done(function (r) {
-            cList = [];
-            chanels = {};
-            cats = {};
-            catsArray = [];
-            if (!(r && r.live_streams)) {
-                _shura_cfg.m3u =
-                    api.replace("/player_api.php", "/get.php") +
-                    "&type=m3u_plus&output=ts";
-                _shura_m3u(cb);
-                return;
-            }
-            var cm = {};
-            if (r.categories)
-                r.categories.forEach(function (c) {
-                    cm[c.category_id] = c.category_name || "Unknown";
-                });
-            r.live_streams.forEach(function (s) {
-                var h = xxHash32S(s.name, true);
-                var cn = cm[s.category_id] || "Other";
-                addChan2cat(cn, h);
-                if (cList.indexOf(h) === -1) {
-                    cList.push(h);
-                    chanels[h] = {
-                        ca: "",
-                        caso: "",
-                        category: {
-                            class: catsArray.indexOf(cn) + 2,
-                            name: cn,
-                        },
-                        channel_name: s.name,
-                        epg: String(s.stream_id),
-                        logo: s.stream_icon || "",
-                        rec: 0,
-                        time: 0,
-                        time_to: 0,
-                        tn: s.name,
-                        url:
-                            _shura_cfg.server +
-                            "/live/" +
-                            encodeURIComponent(_shura_cfg.user) +
-                            "/" +
-                            encodeURIComponent(_shura_cfg.pass) +
-                            "/" +
-                            s.stream_id +
-                            ".m3u8",
-                    };
-                }
             });
-            cb();
-        })
-        .fail(function () {
-            _shura_cfg.m3u =
-                _shura_cfg.server.replace(/\/+$/, "") +
-                "/get.php?username=" +
-                encodeURIComponent(_shura_cfg.user) +
-                "&password=" +
-                encodeURIComponent(_shura_cfg.pass) +
-                "&type=m3u_plus&output=ts";
-            _shura_m3u(cb);
-        });
+        },
+        timeout: 10000,
+        url: "http://pl.tvshka.net",
+    });
 }
-function duneAddSettings(e) {
-    _shura_load();
-    popupArray.splice(e, 1, "");
-    popupDetail.splice(e, 1, _("Шура ТВ settings"));
-    popupActions.splice(e, 1, _shura_edit);
-    var idx = popupActions.indexOf(_shura_edit);
-    if (idx > -1) {
-        var lbl = _("Шура ТВ settings");
-        if (_shura_cfg.server && _shura_cfg.user)
-            lbl +=
-                ": " +
-                _shura_cfg.server.replace(/^https?:\/\//, "").split("/")[0] +
-                " (" +
-                _shura_cfg.user +
-                ")";
-        else if (_shura_cfg.m3u)
-            lbl += ": " + _shura_cfg.m3u.substr(0, 40) + "...";
-        popupArray[idx] = lbl;
-    }
+
+function val2epg(v) {
+    return {
+        descr: v.text,
+        duration: v.duration,
+        name: v.name,
+        time: v.start_time,
+        time_to: v.start_time + v.duration,
+    };
 }
-function _shura_edit() {
-    selIndex = 0;
-    _shura_load();
-    var srv = _shura_cfg.server,
-        usr = _shura_cfg.user,
-        pwd = _shura_cfg.pass,
-        m3u = _shura_cfg.m3u;
-    function bl() {
-        listArray = [
-            _("Server") + ": " + (srv || ""),
-            _("Login") + ": " + (usr || ""),
-            _("Password") + ": " + (pwd ? "********" : ""),
-            _("M3U") + ": " + (m3u ? m3u.substr(0, 45) : ""),
-            "",
-            _("Save and load"),
-        ];
-    }
-    var ii = [
-        _("API server URL"),
-        _("Username"),
-        _("Password"),
-        _("M3U URL (fallback)"),
-        "",
-        _("Save & load channels"),
-    ];
-    bl();
-    getListItem = function (e, r) {
-        return "&nbsp;&nbsp;" + e;
+
+function getEPGchanel(ch_id, callback) {
+    var d = null;
+    $.ajax({
+        complete: function () {
+            $.ajax({
+                complete: function () {
+                    callback(ch_id, d);
+                },
+                dataType: "jsonp",
+                success: function (data) {
+                    if (data !== null) {
+                        if (!d) d = [];
+                        if (chanels[ch_id] && chanels[ch_id].rec == "0")
+                            data.pop();
+                        data.forEach(function (val) {
+                            d.unshift(val2epg(val));
+                        });
+                    }
+                },
+                timeout: 10000,
+                url:
+                    "http://s" +
+                    shserver +
+                    ".tvshka.net/" +
+                    ch_id +
+                    "/epg/" +
+                    (chanels[ch_id] && chanels[ch_id].rec == "0"
+                        ? "pf.jsonp"
+                        : "archive.jsonp"),
+            });
+        },
+        dataType: "jsonp",
+        success: function (data) {
+            if (data !== null) {
+                d = [];
+                data.forEach(function (val) {
+                    d.push(val2epg(val));
+                });
+            }
+        },
+        timeout: 10000,
+        url:
+            "http://s" + shserver + ".tvshka.net/" + ch_id + "/epg/week.jsonp",
+    });
+}
+
+function getEPGchanelCur(ch_id, callback) {
+    var d = null;
+    $.ajax({
+        complete: function () {
+            callback(ch_id, d);
+        },
+        dataType: "jsonp",
+        success: function (data) {
+            if (data !== null) {
+                d = [];
+                data.forEach(function (val) {
+                    d.push(val2epg(val));
+                });
+            }
+        },
+        timeout: 10000,
+        url: "http://s" + shserver + ".tvshka.net/" + ch_id + "/epg/pf.jsonp",
+    });
+}
+
+var cbTarr = ["HLS", "MPEGTS"];
+
+function duneAddSettings(ind) {
+    if (isNaN(parseInt(providerGetItem("sShowArchive"), 10)))
+        providerSetItem("sShowArchive", 1);
+    _getParams();
+    popupArray.splice(
+        ind,
+        0,
+        "Шура ТВ: номер сервера",
+        "Шура ТВ: Ключ доступа",
+        "Шура ТВ: Тип потоков: " + cbTarr[mpeg]
+    );
+    popupDetail.splice(
+        ind,
+        0,
+        "Ввод номера сервера Шура ТВ",
+        "Ввод ключа доступа Шура ТВ",
+        "Выберите тип потоков: HLS или MPEGTS"
+    );
+    popupActions.splice(ind, 0, edit_shserver, edit_shkey, doEditType);
+}
+
+function edit_shserver() {
+    editCaption =
+        "Редактирование номера сервера Шура ТВ<br/>Только 1, 2, 3 или 5 !!!";
+    editvar = shserver;
+    setEdit = function () {
+        shserver = editvar;
+        providerSetItem("server", shserver);
+        playChannel(catIndex, primaryIndex);
     };
-    detailListAction = function () {
-        listDetail.innerHTML = ii[selIndex] || "";
-    };
-    listKeyHandler = function (e) {
-        switch (e) {
-            case keys.ENTER:
-                switch (selIndex) {
-                    case 0:
-                        editCaption = _("Server URL");
-                        editvar = srv;
-                        setEdit = function () {
-                            srv = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 1:
-                        editCaption = _("Username");
-                        editvar = usr;
-                        setEdit = function () {
-                            usr = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 2:
-                        editCaption = _("Password");
-                        editvar = pwd;
-                        setEdit = function () {
-                            pwd = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 3:
-                        editCaption = _("M3U URL");
-                        editvar = m3u;
-                        setEdit = function () {
-                            m3u = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 5:
-                        _shura_cfg.server = srv;
-                        _shura_cfg.user = usr;
-                        _shura_cfg.pass = pwd;
-                        _shura_cfg.m3u = m3u;
-                        _shura_save();
-                        duneAddSettings(0);
-                        loadChannels();
-                        return true;
-                }
-                return true;
-            case keys.RETURN:
-                popupList(popupActions.indexOf(noProvParam) + 1);
-                return true;
-            default:
-                return false;
+    showEditKey([0]);
+}
+
+function edit_shkey() {
+    editCaption = "Редактирование ключа доступа Шура ТВ";
+    editvar = shkey;
+    setEdit = function () {
+        if (editvar && editvar.length < 8) {
+            alert("Для доступа необходимо ввести ключ!");
+            setTimeout(function () {
+                showEditKey([0, 1, 2]);
+            });
+            return;
         }
+        shkey = editvar;
+        providerSetItem("key", shkey);
+        playChannel(catIndex, primaryIndex);
     };
-    listDetail.innerHTML = "";
-    listCaption.innerHTML = _("Шура ТВ");
-    listPodval.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
-    $("#listPopUp").hide();
-    showPage();
+    showEditKey([0, 1, 2]);
 }
+
+function doEditType() {
+    if (++mpeg == 2) mpeg = 0;
+    providerSetItem("mpeg", mpeg);
+    popupArray[popupActions.indexOf(doEditType)] =
+        "Шура ТВ: Тип потоков: " + cbTarr[mpeg];
+    popupList(doEditType);
+    if (!playType) playChannel(catIndex, primaryIndex);
+    else if (playType > 0) playArchive(playType + playTime);
+}
+
+_getParams();
