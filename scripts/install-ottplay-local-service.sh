@@ -12,6 +12,13 @@
 #                keeps isolated player settings per port), OTTPLAY_LABEL,
 #                OTTPLAY_RUST_SRC (default ~/victron/ottplay-foss).
 # Binds loopback only (--host 127.0.0.1); docker deployments stay wildcard.
+#
+# Optional remote text entry (swop) — do NOT commit private Worker hostnames:
+#   export SWOP_BASE_URL=https://your-worker.example
+#   export SWOP_ADMIN_TOKEN=...   # host-only; wrangler secret; never git
+# Then re-run this script. It writes gitignored $DEST/local/swop.json
+# ({swopBaseUrl, clientId}) served at /local/swop.json, and POSTs clientId
+# to $SWOP_BASE_URL/admin/clients when SWOP_ADMIN_TOKEN is set.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -38,9 +45,36 @@ mkdir -p "$DEST"
 # DEST (~/victron/ottplay-debug-archive/) so it needs no rsync exclude.
 rsync -a --delete \
     --exclude .git --exclude node_modules --exclude logs \
-    --exclude '*.local.py' --exclude 'certs' \
+    --exclude '*.local.py' --exclude 'certs' --exclude 'local' \
     --exclude 'debug.enabled' --exclude 'debug-playback.log' --exclude 'debug-playback.log.1' \
     "$SRC/" "$DEST/"
+
+# Operator-local swop inject (gitignored under $DEST/local — never from committed SRC)
+mkdir -p "$DEST/local"
+UUID_FILE="$DEST/local/device-uuid.txt"
+if [ ! -f "$UUID_FILE" ]; then
+    echo "dev_$(openssl rand -hex 8)" > "$UUID_FILE"
+fi
+SWOP_CLIENT_ID="$(tr -d '[:space:]' < "$UUID_FILE")"
+if [ -n "${SWOP_BASE_URL:-}" ]; then
+    SWOP_BASE_TRIMMED="$(printf '%s' "$SWOP_BASE_URL" | sed 's:/*$::')"
+    printf '%s\n' "{\"swopBaseUrl\":\"$SWOP_BASE_TRIMMED\",\"clientId\":\"$SWOP_CLIENT_ID\"}"         > "$DEST/local/swop.json"
+    echo "wrote $DEST/local/swop.json (swopBaseUrl from env; clientId=$SWOP_CLIENT_ID)"
+    if [ -n "${SWOP_ADMIN_TOKEN:-}" ]; then
+        if curl -fsS -X POST "$SWOP_BASE_TRIMMED/admin/clients" \
+            -H "Authorization: Bearer $SWOP_ADMIN_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"clientId\":\"$SWOP_CLIENT_ID\",\"note\":\"ottplay-local\"}" >/dev/null; then
+            echo "allowlisted $SWOP_CLIENT_ID on swop Worker"
+        else
+            echo "warning: failed to allowlist $SWOP_CLIENT_ID (check SWOP_ADMIN_TOKEN / Worker)" >&2
+        fi
+    else
+        echo "note: set SWOP_ADMIN_TOKEN to auto-allowlist $SWOP_CLIENT_ID"
+    fi
+elif [ -f "$DEST/local/swop.json" ]; then
+    echo "kept existing $DEST/local/swop.json (SWOP_BASE_URL unset)"
+fi
 
 echo "[2/6] npm install + build"
 cd "$DEST"

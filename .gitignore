@@ -33,3 +33,6 @@ TO*.md
 .coverage
 
 uv.lock
+
+# Operator-local overrides (swop base URL, device id) — never commit
+/local/
