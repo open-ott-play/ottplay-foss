@@ -1,4 +1,4 @@
-version += " edem-0221";
+version += " edem-0222";
 var edkey,
     edlist,
     vpurl,
@@ -66,20 +66,19 @@ function _edcdnHost() {
 }
 
 function getChannelUrl(ch_id) {
+    _getParams();
     var host = _edcdnHost();
     if (!host) return "";
     var url = chanels[ch_id] ? chanels[ch_id].url || "" : "";
     if (url) {
-        url = url
+        return url
             .replace("localhost", host)
             .replace("00000000000000", edkey || "1");
-        if (_scheme() === "https://" && url.indexOf("http://") === 0) {
-            url = "https://" + url.substring(7);
-        }
-        return url;
     }
+    // CDN streams are typically HTTP-only; keep http:// for playback URLs.
+    // HTTPS is reserved for template playlist / EPG JSON fetches via _scheme().
     return (
-        _scheme() +
+        "http://" +
         host +
         "/iptv/" +
         (edkey || "1") +
@@ -90,6 +89,7 @@ function getChannelUrl(ch_id) {
 }
 
 function getArchiveUrl(ch_id, time, time_to) {
+    _getParams();
     return (
         getChannelUrl(ch_id) +
         "?utc=" +
@@ -317,10 +317,10 @@ function getEPGchanel(ch_id, callback) {
         },
         dataType: "json",
         success: function (data) {
-            if (data !== null) d = data.epg_data;
+            if (data && data.epg_data) d = data.epg_data;
         },
         timeout: 10000,
-        url: _epgDomen + encodeURIComponent(epg_url) + ".json",
+        url: _epgDomen + epg_url + ".json",
     });
 }
 
@@ -730,7 +730,9 @@ function doEditData() {
         cdnLabel = _edcdnHost() || "—",
         aDetail = [
             _("Enter access key for") + " " + provName,
-            _("Enter channel link (subdomain.host) from the cabinet") +
+            _(
+                "Enter the full CDN host from the cabinet stream URL (e.g. subdomain.cdn-domain.tld), not a bare subdomain"
+            ) +
                 ":<br><br>" +
                 r,
             _("Select playlist template source for EPG and logos") +
@@ -849,7 +851,7 @@ function edemCdn() {
             if (!/^[A-Za-z0-9][A-Za-z0-9.-]{4,}$/.test(v)) {
                 alert(
                     _(
-                        "Invalid channel link! Use Latin letters, digits (min 5), e.g. subdomain.host"
+                        "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)"
                     )
                 );
                 showEditKey();
