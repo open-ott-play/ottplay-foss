@@ -13,9 +13,27 @@ Self-contained IPTV/OTT player with a local Rust HTTP server. Runs on Smart TVs 
 - **Remote text entry (swop)**: Phone keyboard via Cloudflare Worker when TV/phone are on different networks (allowlisted Device UUID; ♥™ on VKB)
 - **Per-device routing**: UUID-based addressing for multi-device setups
 - **Local proxy**: Optional local command server for 100% local automation (no central server needed)
-- **Debug**: Opt-in playback HUD / ring log via `?debug=1` (legacy Maple benchy / CSS-inject / `pperf_*` easter eggs removed — not in the classic bundle)
+- **Debug**: Opt-in playback HUD / ring log via `?debug=1`
 - **24 device types**: Per-device remote control key mappings
 - **21 languages**: Full localization support
+
+## Debug HUD
+
+Enable debug mode via one of:
+- URL: `?debug=1` or `?debug=true`
+- Local storage: `localStorage.setItem("ottplay_debug", "1")`
+- Window property: `window.__OTT_DEBUG__ = true`
+- Server: when `/debug/config` returns `{enabled: true}`
+
+When debug is enabled:
+- Press **D** to toggle the on-screen HUD strip (`ottDebugSetHud` / `__ottDebug.toggleHud()`)
+  - Skips when focus is on INPUT/TEXTAREA/listEdit
+  - Uses `e.key` to avoid MAG/Maple PLAY/PREV=68 conflict
+- Info menu → **Debug HUD** → calls `__ottDebug.toggleHud()`
+- Manage settings → **Debug HUD**:
+  - If debug already loaded: toggles HUD visibility
+  - Else: sets `ottplay_debug=1` + `ottplay_debug_hud=1` and prompts restart
+- Persistence: HUD state saved to `localStorage.ottplay_debug_hud` ("1"/"0") by `ottDebugSetHud`
 
 ## Quick Start
 
