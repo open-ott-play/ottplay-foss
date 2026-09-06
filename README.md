@@ -10,6 +10,7 @@ Self-contained IPTV/OTT player with a local Rust HTTP server. Runs on Smart TVs 
 - **Settings**: Export/import settings + favorites as JSON; continue-watching archive resume bookmark
 - **Providers**: M3U playlists, Xtream Codes API, Stalker middleware
 - **Push commands**: Remote control via webhook — change channel, provider, playlist, show popups
+- **Remote text entry (swop)**: Planned phone keyboard via Cloudflare Worker when TV/phone are on different networks (allowlisted Device UUID; client wiring TODO)
 - **Per-device routing**: UUID-based addressing for multi-device setups
 - **Local proxy**: Optional local command server for 100% local automation (no central server needed)
 - **Debug**: Opt-in playback HUD / ring log via `?debug=1` (legacy Maple benchy / CSS-inject / `pperf_*` easter eggs removed — not in the classic bundle)
@@ -112,6 +113,23 @@ HA/curl → POST http://192.168.1.50:8081/api/webhook/commands  (on demand)
 #### Device UUID
 
 The player generates a unique device UUID on first run (stored in localStorage). **Player settings → Remote control** shows your Device ID (e.g., `dev_a1b2c3d4e5`). Use this ID for per-device routing with `local_proxy.py` or your own backend.
+
+#### Remote text entry (swop)
+
+Purpose: type on a phone for ♥™ / remote virtual keyboard when the TV and phone
+are on **different networks**, via a Cloudflare Worker session handoff.
+
+- Worker repo: [ottplay-swop](https://github.com/open-ott-play/ottplay-swop)
+- **Client id** = this player Device UUID (`deviceId`); the Worker operator must
+  **allowlist** it before `POST /session` / `GET /val` succeed
+- Planned setting: `swopBaseUrl` (empty = remote text entry disabled)
+- Planned headers on `/session` and `/val`: `X-Swop-Client-Id` (or
+  `X-Ottplay-Client-Id`)
+- **`deploy.sh` today** only pulls/runs Docker — it does **not** register clients.
+  Planned optional `SWOP_*` env on the deploy host can auto-allow + inject an id
+  for *operator* installs (see [ottplay-swop Access control](https://github.com/open-ott-play/ottplay-swop#access-control)).
+  Not enabled by default; never bake `ADMIN_TOKEN` into the image.
+- **Status:** Worker allowlist shipped; foss client wiring still **TODO**
 
 > **Security note**: The central server's `/webhook/poll` and `/webhook/notify` endpoints have been disabled because unauthenticated broadcast polling is a security risk — any client can send/receive commands for any device_id. For local use, `local_proxy.py` provides the same functionality within your trusted home network.
 
