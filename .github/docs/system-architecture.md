@@ -551,33 +551,35 @@ sequenceDiagram
     participant User as User opens EPG
     participant UI as src/ui/index.ts
     participant Ch as src/channels/index.ts
-    participant Prov as prov/<name>/prov.js
-    participant Cache as epg map<br/>in-memory
+    participant Prov as provider script
+    participant Cache as epg in-memory map
     participant Server as server.py
+    participant XtreamAPI as Xtream API
+    participant Portal as Stalker portal
 
     User->>UI: press EPG key
     UI->>Ch: showEPG()
-    Ch->>Ch: "build epgList for all channels<br/>curList.forEach(epgList)"
-    loop per channel - lazy
+    Ch->>Ch: build epgList for all channels
+    loop per channel lazy
         Ch->>Ch: doGetCurProg queue
-        Note over Ch: "batches all requests<br/>shifts one per tick"
-        Ch->>Prov: "window.getEPGchanel(chId, cb)"
+        Note over Ch: batches requests, one per tick
+        Ch->>Prov: getEPGchanel(chId, cb)
         alt M3U provider
             Prov->>Server: GET /m3u/match-channels
-            Note over Server: maps M3U names → channel IDs
-            Server-->>Prov: name→id mapping
-            Prov->>Server: GET /epg/<hash>.json
+            Note over Server: maps M3U names to channel IDs
+            Server-->>Prov: name to id mapping
+            Prov->>Server: GET /epg/hash.json
             Server->>Server: parse XMLTV, slice by channel
             Server-->>Prov: epg_data JSON
-        alt Xtream Codes provider
-            Prov->>XtreamAPI: GET /player_api.php<br/>?action=get_short_epg<br/>&stream_id=<id>
-            XtreamAPI-->>Prov: "{epg_listings: [...]}"
-        alt Stalker provider
-            Prov->>Portal: POST /stalker_portal/api/<br/>{jsonrpc:"2.0",method:"get_epg",<br/>params:{ch_id,from,to,mac}}
-            Portal-->>Prov: "{result: [{start,end,title,desc}]}"
+        else Xtream Codes provider
+            Prov->>XtreamAPI: GET player_api get_short_epg
+            XtreamAPI-->>Prov: epg_listings array
+        else Stalker provider
+            Prov->>Portal: POST get_epg JSON-RPC
+            Portal-->>Prov: result program array
         end
-        Prov-->>Ch: epgData: EPGEntry[]
-        Ch->>Cache: "setCurProg(chId, epgData)<br/>epg[chId] = epgData"
+        Prov-->>Ch: epgData EPGEntry list
+        Ch->>Cache: setCurProg(chId, epgData)
         Ch->>UI: render current program in OSD
     end
     Ch->>UI: render full program list
