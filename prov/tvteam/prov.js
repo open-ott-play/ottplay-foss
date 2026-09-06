@@ -1,6 +1,8 @@
-version += " tvteam-0219";
+version += " tvteam-0906";
+var tvteamwww;
 p_pref = "tvteam";
 parental = /XXX|Взрослые|Для взрослых|Эротика|18\+|Adults/i;
+
 if (typeof stbGetItem === "function") {
     providerGetItem = function (e) {
         return stbGetItem(p_pref + e);
@@ -25,315 +27,270 @@ providerHasItem = function (e) {
 providerHasItemValue = function (e) {
     return ottpStorage.hasValue(p_pref + e);
 };
-var _tvteam_cfg = { m3u: "", pass: "", server: "", user: "" };
-function _tvteam_load() {
+
+function _getParams() {
+    tvteamwww = providerGetItem("www") || "https://tv.team/pl/11/";
+}
+
+function _normalizePlaylistUrl(url) {
+    url = (url || "").trim();
+    if (url && url.indexOf("/playlist.m3u8") == -1) url += "/playlist.m3u8";
+    return url;
+}
+
+function _captureTokenFromUrl() {
+    if (typeof browserName === "function" && browserName() == "dune") return;
+    var _t = "";
     try {
-        var d = providerGetItem("cfg");
-        if (d) _tvteam_cfg = JSON.parse(d);
-    } catch (e) {}
-    if (!(_tvteam_cfg.server || _tvteam_cfg.m3u))
-        _tvteam_cfg = { m3u: "", pass: "", server: "", user: "" };
-}
-function _tvteam_save() {
-    providerSetItem("cfg", JSON.stringify(_tvteam_cfg));
-}
-function getChannelPicon(e) {
-    return chanels[e] ? chanels[e].logo || "" : "";
-}
-function getChannelUrl(e) {
-    return chanels[e] ? chanels[e].url || "" : "";
-}
-function getEPGchanel(s, e) {
-    e(s, null);
-}
-function addChan2cat(catName, hash) {
-    if (!(catName && hash)) return;
-    if (!cats[catName]) {
-        catsArray.push(catName);
-        cats[catName] = [];
-    }
-    cats[catName].push(hash);
-}
-function getChanelsArray(cb) {
-    _tvteam_load();
-    if (_tvteam_cfg.server && _tvteam_cfg.user && _tvteam_cfg.pass)
-        _tvteam_xtream(cb);
-    else if (_tvteam_cfg.m3u) _tvteam_m3u(cb);
-    else {
-        alert(_("Configure TV.Team in Settings -> Provider Settings"));
-        cb();
-    }
-}
-function _tvteam_m3u(cb) {
-    $(launch_id).append(_("Loading M3U..."));
-    $.ajax({
-        error: function () {
-            $.ajax({
-                data: { url: "@" + _tvteam_cfg.m3u },
-                dataType: "text",
-                error: function () {
-                    alert(_("Failed to load!"));
-                    cb();
-                },
-                method: "post",
-                success: function (d) {
-                    _tvteam_parseM3U(d, cb);
-                },
-                timeout: 15e3,
-                url: host + "/m3u/cp.php",
-            });
-        },
-        success: function (d) {
-            _tvteam_parseM3U(d, cb);
-        },
-        timeout: 15e3,
-        url: _tvteam_cfg.m3u,
-    });
-}
-function _tvteam_parseM3U(data, cb) {
-    cList = [];
-    chanels = {};
-    cats = {};
-    catsArray = [];
-    try {
-        var lines = data.split("#EXTINF:");
-        var hdr = lines[0] || "";
-        lines.shift();
-        var lc = "";
-        lines.forEach(function (b) {
-            var p = b.split("\n");
-            var inf = p[0] || "";
-            var url = "";
-            for (var i = 1; i < p.length; i++) {
-                if (p[i].trim() && p[i].trim()[0] !== "#") {
-                    url = p[i].trim();
-                    break;
-                }
-            }
-            if (!url) return;
-            var name = "???";
-            var ci = inf.indexOf(",");
-            if (ci > 0) name = inf.substr(ci + 1).trim();
-            var cat = "";
-            var gm = inf.match(/group-title="([^"]*)"/i);
-            if (gm) cat = gm[1];
-            var logo = "";
-            var lm = inf.match(/tvg-logo="([^"]*)"/i);
-            if (lm) logo = lm[1];
-            if (!cat) cat = lc || "Other";
-            lc = cat;
-            var h = xxHash32S(url, true);
-            addChan2cat(cat, h);
-            if (cList.indexOf(h) === -1) {
-                cList.push(h);
-                chanels[h] = {
-                    ca: "",
-                    caso: "",
-                    category: { class: catsArray.indexOf(cat) + 2, name: cat },
-                    channel_name: name,
-                    epg: "",
-                    logo: logo,
-                    rec: 0,
-                    time: 0,
-                    time_to: 0,
-                    tn: name,
-                    url: url,
-                };
+        var params = window.location.href.split("?")[1].split("&");
+        params.forEach(function (item) {
+            var p = item.split("=");
+            if (p[0] == "token") {
+                _t = p[1];
+                throw {};
             }
         });
-    } catch (e) {
-        console.error(e);
+    } catch (e) {}
+    if (_t) {
+        tvteamwww =
+            "https://tv.team/pl/11/" + _t + "/playlist.m3u8";
+        providerSetItem("www", tvteamwww);
+        window.location.href = window.location.href.split("?")[0];
     }
-    cb();
 }
-function _tvteam_xtream(cb) {
-    $(launch_id).append(_("Loading from API..."));
-    var api =
-        _tvteam_cfg.server +
-        "/player_api.php?username=" +
-        encodeURIComponent(_tvteam_cfg.user) +
-        "&password=" +
-        encodeURIComponent(_tvteam_cfg.pass);
-    $.ajax({ dataType: "json", timeout: 15e3, type: "GET", url: api })
-        .done(function (r) {
+
+function getProviderParams() {
+    _captureTokenFromUrl();
+    _getParams();
+    try {
+        $("#tvteamwww").val(tvteamwww);
+    } catch (e) {}
+    if (!tvteamwww) alert("Для доступа необходимо ввести адрес плейлиста!");
+    return tvteamwww;
+}
+
+function setProviderParams() {
+    providerSetItem(
+        "www",
+        decodeURIComponent($("#tvteamwww").val().trim())
+    );
+    var wwwchanged = tvteamwww != providerGetItem("www");
+    _getParams();
+    if (tvteamwww.length < 8)
+        alert("Для доступа необходимо ввести адрес плейлиста!");
+    return wwwchanged;
+}
+
+function getChannelPicon(ch_id) {
+    return chanels[ch_id] ? chanels[ch_id].logo || "" : "";
+}
+
+function getChannelUrl(ch_id) {
+    return chanels[ch_id] ? chanels[ch_id].url || "" : "";
+}
+
+function getArchiveUrl(ch_id, time, time_to) {
+    var u = chanels[ch_id].url,
+        c = u.indexOf("?") == -1 ? "?" : "&";
+    return (
+        u +
+        c +
+        "utc=" +
+        Math.floor(time) +
+        "&lutc=" +
+        Math.floor(Date.now() / 1000)
+    );
+}
+
+if (typeof catsArray == "undefined") var catsArray = [];
+
+function addChan2cat(cat, ci) {
+    if (!(cat && ci)) return;
+    if (!cats[cat]) {
+        catsArray.push(cat);
+        cats[cat] = [];
+    }
+    cats[cat].push(ci);
+}
+
+function getAttribute(text, attribute) {
+    var a = text.split(attribute + "=");
+    if (a.length == 1 || a[1].length == 0) return "";
+    if (a[1][0] == '"') return a[1].split('"')[1] || "";
+    return a[1].split(/[ ,]+/)[0] || "";
+}
+
+function getChanelsArray(callback) {
+    _captureTokenFromUrl();
+    _getParams();
+
+    function loadPlaylist(url, success, cb) {
+        if (typeof launch_id == "undefined") launch_id = "#launch";
+        if (!url) {
+            cb();
+            return;
+        }
+        var cpurl = url;
+        if (typeof stbInterceptRequest === "function") {
+            stbInterceptRequest(url);
+            url +=
+                (url.indexOf("?") == -1 ? "?" : "&") +
+                "url=" +
+                encodeURIComponent(url);
+        }
+        $.ajax({
+            dataType: "text",
+            error: function () {
+                $(launch_id).append("p...");
+                $.ajax({
+                    data: { url: "@" + cpurl },
+                    dataType: "text",
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        console.log(
+                            "channels : jqXHR:" +
+                                JSON.stringify(jqXHR) +
+                                "; textStatus: " +
+                                textStatus +
+                                ", errorThrown: " +
+                                errorThrown
+                        );
+                        alert(_("Failed to load channel list!"));
+                        cb();
+                    },
+                    method: "post",
+                    success: success,
+                    timeout: 30000,
+                    url: host + "/m3u/cp.php",
+                });
+            },
+            success: success,
+            timeout: 30000,
+            url: url,
+        });
+    }
+
+    function aSuccess(data) {
+        try {
             cList = [];
             chanels = {};
             cats = {};
             catsArray = [];
-            if (!(r && r.live_streams)) {
-                _tvteam_cfg.m3u =
-                    api.replace("/player_api.php", "/get.php") +
-                    "&type=m3u_plus&output=ts";
-                _tvteam_m3u(cb);
-                return;
-            }
-            var cm = {};
-            if (r.categories)
-                r.categories.forEach(function (c) {
-                    cm[c.category_id] = c.category_name || "Unknown";
-                });
-            r.live_streams.forEach(function (s) {
-                var h = xxHash32S(s.name, true);
-                var cn = cm[s.category_id] || "Other";
-                addChan2cat(cn, h);
-                if (cList.indexOf(h) === -1) {
-                    cList.push(h);
-                    chanels[h] = {
-                        ca: "",
-                        caso: "",
+            var arrEXTINF = data.split("#EXTINF:");
+            arrEXTINF.shift();
+            arrEXTINF.forEach(function (val) {
+                var e = val.split("\n"),
+                    cat = getAttribute(e[0], "group-title"),
+                    logo = getAttribute(e[0], "tvg-logo"),
+                    ci = getAttribute(e[0], "tvg-name"),
+                    rec =
+                        (parseInt(getAttribute(e[0], "timeshift"), 10) || 0) *
+                        7 *
+                        24,
+                    cn = _("??? No channel name"),
+                    url = "";
+                try {
+                    cn = e[0].split(",")[1].trim();
+                } catch (ex) {}
+                try {
+                    url = e[1].trim();
+                } catch (ex) {}
+                if (url.indexOf("#EXTGRP:") != -1) {
+                    try {
+                        url = e[2].trim();
+                    } catch (ex) {}
+                    if (!cat) {
+                        try {
+                            cat = e[1].split("#EXTGRP:")[1].trim();
+                        } catch (ex) {}
+                    }
+                }
+                if (!(url && ci)) return;
+                addChan2cat(cat, ci);
+                if (cList.indexOf(ci) == -1) {
+                    cList.push(ci);
+                    chanels[ci] = {
                         category: {
-                            class: catsArray.indexOf(cn) + 2,
-                            name: cn,
+                            class: catsArray.indexOf(cat) + 2,
+                            name: cat,
                         },
-                        channel_name: s.name,
-                        epg: String(s.stream_id),
-                        logo: s.stream_icon || "",
-                        rec: 0,
+                        channel_name: cn,
+                        logo: logo,
+                        rec: rec,
                         time: 0,
                         time_to: 0,
-                        tn: s.name,
-                        url:
-                            _tvteam_cfg.server +
-                            "/live/" +
-                            encodeURIComponent(_tvteam_cfg.user) +
-                            "/" +
-                            encodeURIComponent(_tvteam_cfg.pass) +
-                            "/" +
-                            s.stream_id +
-                            ".m3u8",
+                        url: url,
                     };
                 }
             });
-            cb();
-        })
-        .fail(function () {
-            _tvteam_cfg.m3u =
-                _tvteam_cfg.server.replace(/\/+$/, "") +
-                "/get.php?username=" +
-                encodeURIComponent(_tvteam_cfg.user) +
-                "&password=" +
-                encodeURIComponent(_tvteam_cfg.pass) +
-                "&type=m3u_plus&output=ts";
-            _tvteam_m3u(cb);
-        });
-}
-function duneAddSettings(e) {
-    _tvteam_load();
-    popupArray.splice(e, 1, "");
-    popupDetail.splice(e, 1, _("TV.Team settings"));
-    popupActions.splice(e, 1, _tvteam_edit);
-    var idx = popupActions.indexOf(_tvteam_edit);
-    if (idx > -1) {
-        var lbl = _("TV.Team settings");
-        if (_tvteam_cfg.server && _tvteam_cfg.user)
-            lbl +=
-                ": " +
-                _tvteam_cfg.server.replace(/^https?:\/\//, "").split("/")[0] +
-                " (" +
-                _tvteam_cfg.user +
-                ")";
-        else if (_tvteam_cfg.m3u)
-            lbl += ": " + _tvteam_cfg.m3u.substr(0, 40) + "...";
-        popupArray[idx] = lbl;
-    }
-}
-function _tvteam_edit() {
-    selIndex = 0;
-    _tvteam_load();
-    var srv = _tvteam_cfg.server,
-        usr = _tvteam_cfg.user,
-        pwd = _tvteam_cfg.pass,
-        m3u = _tvteam_cfg.m3u;
-    function bl() {
-        listArray = [
-            _("Server") + ": " + (srv || ""),
-            _("Login") + ": " + (usr || ""),
-            _("Password") + ": " + (pwd ? "********" : ""),
-            _("M3U") + ": " + (m3u ? m3u.substr(0, 45) : ""),
-            "",
-            _("Save and load"),
-        ];
-    }
-    var ii = [
-        _("API server URL"),
-        _("Username"),
-        _("Password"),
-        _("M3U URL (fallback)"),
-        "",
-        _("Save & load channels"),
-    ];
-    bl();
-    getListItem = function (e, r) {
-        return "&nbsp;&nbsp;" + e;
-    };
-    detailListAction = function () {
-        listDetail.innerHTML = ii[selIndex] || "";
-    };
-    listKeyHandler = function (e) {
-        switch (e) {
-            case keys.ENTER:
-                switch (selIndex) {
-                    case 0:
-                        editCaption = _("Server URL");
-                        editvar = srv;
-                        setEdit = function () {
-                            srv = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 1:
-                        editCaption = _("Username");
-                        editvar = usr;
-                        setEdit = function () {
-                            usr = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 2:
-                        editCaption = _("Password");
-                        editvar = pwd;
-                        setEdit = function () {
-                            pwd = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 3:
-                        editCaption = _("M3U URL");
-                        editvar = m3u;
-                        setEdit = function () {
-                            m3u = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 5:
-                        _tvteam_cfg.server = srv;
-                        _tvteam_cfg.user = usr;
-                        _tvteam_cfg.pass = pwd;
-                        _tvteam_cfg.m3u = m3u;
-                        _tvteam_save();
-                        duneAddSettings(0);
-                        loadChannels();
-                        return true;
-                }
-                return true;
-            case keys.RETURN:
-                popupList(popupActions.indexOf(noProvParam) + 1);
-                return true;
-            default:
-                return false;
+            if (!tvteamwww || tvteamwww.length < 8) {
+                try {
+                    popupList(popupActions.indexOf(noProvParam) + 1);
+                } catch (ex) {}
+                infoBox("Для доступа необходимо ввести адрес плейлиста!");
+            }
+        } catch (e) {
+            console.log(
+                "Exception: name " +
+                    e.name +
+                    ", message " +
+                    e.message +
+                    ", typeof " +
+                    typeof e
+            );
+            alert(_("Failed to load channel list!"));
         }
-    };
-    listDetail.innerHTML = "";
-    listCaption.innerHTML = _("TV.Team");
-    listPodval.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
-    $("#listPopUp").hide();
-    showPage();
+        callback();
+    }
+
+    if (!tvteamwww || tvteamwww.length < 8) {
+        try {
+            popupList(popupActions.indexOf(noProvParam) + 1);
+        } catch (ex) {}
+        infoBox("Для доступа необходимо ввести адрес плейлиста!");
+        callback();
+        return;
+    }
+
+    loadPlaylist(tvteamwww, aSuccess, callback);
 }
+
+function getEPGchanel(ch_id, callback) {
+    var d = null;
+    $.ajax({
+        complete: function () {
+            callback(ch_id, d);
+        },
+        dataType: "json",
+        success: function (data) {
+            if (data !== null) d = data.epg_data;
+        },
+        timeout: 10000,
+        // REF also lists http://epg.drm-play.com/tvteam/epg/{id}.json
+        url: "http://tvteam.eu/" + ch_id + ".json",
+    });
+}
+
+function duneAddSettings(ind) {
+    if (isNaN(parseInt(providerGetItem("sShowArchive"), 10)))
+        providerSetItem("sShowArchive", 1);
+    _getParams();
+    popupArray.splice(ind, 1, "tv.team : Адрес плейлиста");
+    popupDetail.splice(
+        ind,
+        1,
+        "Ввод адреса плейлиста tv.team</b>Тип плейлиста: <b>OTTPlayer</b><br/><br/>Вы можете не вводить окончание адреса плейлиста \"/playlist.m3u8\" - оно будет добавлено автоматически"
+    );
+    popupActions.splice(ind, 1, tvteamUrl);
+}
+
+function tvteamUrl() {
+    editCaption = "Редактирование адреса плейлиста tv.team";
+    editvar = tvteamwww;
+    setEdit = function () {
+        tvteamwww = _normalizePlaylistUrl(editvar);
+        providerSetItem("www", tvteamwww);
+    };
+    showEditKey();
+}
+
+_getParams();
