@@ -147,6 +147,8 @@ async fn main() {
         .nest_service("/fonts", ServeDir::new("fonts"))
         .nest_service("/js", ServeDir::new("js"))
         .nest_service("/prov", ServeDir::new("prov"))
+        // Operator-local overrides (gitignored); 404 if directory missing
+        .nest_service("/local", ServeDir::new("local"))
         .layer(cors);
 
     println!("ottplay-server: http://{}:{}", cli.host, cli.port);

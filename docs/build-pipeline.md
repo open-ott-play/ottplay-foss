@@ -35,13 +35,14 @@ The `MODULES` array in `vite.config.ts` defines concatenation order. All files a
 | 9 | `build/channels/index.js` | core, ui, keyhandler |
 | 10 | `build/debug/playback-debug.js` | core (debug wiring) |
 | 11 | `build/core/index.js` | ui, keyhandler, commands |
-| 12 | `build/ui/index.js` | keyhandler, provider |
-| 13 | `build/keyhandler/index.js` | provider |
-| 14 | `build/provider/index.js` | commands, app/init |
-| 15 | `build/commands/index.js` | app/init, app/device |
-| 16 | `build/app/init.js` | app/device |
-| 17 | `build/app/device.js` | — |
-| 18 | `build/index.js` | last (assembler; imports all) |
+| 12 | `build/swop/index.js` | ui (♥™ remote text entry) |
+| 13 | `build/ui/index.js` | keyhandler, provider |
+| 14 | `build/keyhandler/index.js` | provider |
+| 15 | `build/provider/index.js` | commands, app/init |
+| 16 | `build/commands/index.js` | app/init, app/device |
+| 17 | `build/app/init.js` | app/device |
+| 18 | `build/app/device.js` | — |
+| 19 | `build/index.js` | last (assembler; imports all) |
 
 Adding a new leaf module: put it before `build/index.js` at the correct depth. Do not add a module to MODULES that redeclares a `const`/`let` already in `build/index.js`.
 
