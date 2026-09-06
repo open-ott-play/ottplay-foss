@@ -209,15 +209,15 @@ export function swopLoadValue(): void {
     var sessionTimer = setTimeout(cleanup, SESSION_TIMEOUT_MS);
 
     function showMsg(html: string, isError?: boolean): void {
-        $("#listEdit")
+        var listEdit = $("#listEdit");
+        listEdit
             .html(
                 '<div style="text-align:center;font-size:larger;' +
                     (isError ? "color:red;" : "") +
-                    '"><br/><br/>' +
-                    html +
-                    "</div>"
+                    '"><br/><br/><span class="swop-msg-text"></span></div>'
             )
             .show();
+        listEdit.find(".swop-msg-text").text(html == null ? "" : String(html));
     }
 
     function returnToVkb(value: string): void {
