@@ -187,4 +187,3 @@ export {
 - [ ] Run `npm run build` and verify bundle identifiers
 - [ ] Test on Chrome desktop + one HS5/`prov.js` path
 - [ ] Single squash PR (no code moves in other files)
-
