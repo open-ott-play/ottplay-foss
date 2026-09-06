@@ -896,6 +896,7 @@ function doEditData() {
         (sNoNumbersKeys ? "" : '<div class="btn">8</div> ') +
             _("Load playlist"),
     ];
+    listDataArray = listArray;
     getListItem = function (item, i) {
         return "&nbsp;&nbsp;" + item;
     };
