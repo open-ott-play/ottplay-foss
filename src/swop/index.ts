@@ -95,7 +95,11 @@ export function getSwopBaseUrl(): string {
         (typeof w.sSwopBaseUrl === "string" && w.sSwopBaseUrl) ||
         settings.swopBaseUrl ||
         "";
-    return String(u).trim().replace(/\/+$/, "");
+    var s = String(u).trim();
+    while (s.length > 0 && s.charAt(s.length - 1) === "/") {
+        s = s.slice(0, -1);
+    }
+    return s;
 }
 
 function persistSwopBaseUrl(url: string): void {
