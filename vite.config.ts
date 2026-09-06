@@ -13,6 +13,7 @@ const MODULES = [
     "build/utils/lzstring.js",
     "build/storage/index.js",
     "build/localization/index.js",
+    "build/settings/cloud.js",
     "build/settings/index.js",
     "build/utils/helpers.js",
     "build/utils/encoding.js",
