@@ -52,8 +52,7 @@ function _captureTokenFromUrl() {
         });
     } catch (e) {}
     if (_t) {
-        tvteamwww =
-            "https://tv.team/pl/11/" + _t + "/playlist.m3u8";
+        tvteamwww = "https://tv.team/pl/11/" + _t + "/playlist.m3u8";
         providerSetItem("www", tvteamwww);
         window.location.href = window.location.href.split("?")[0];
     }
@@ -70,10 +69,7 @@ function getProviderParams() {
 }
 
 function setProviderParams() {
-    providerSetItem(
-        "www",
-        decodeURIComponent($("#tvteamwww").val().trim())
-    );
+    providerSetItem("www", decodeURIComponent($("#tvteamwww").val().trim()));
     var wwwchanged = tvteamwww != providerGetItem("www");
     _getParams();
     if (tvteamwww.length < 8)
@@ -278,7 +274,7 @@ function duneAddSettings(ind) {
     popupDetail.splice(
         ind,
         1,
-        "Ввод адреса плейлиста tv.team</b>Тип плейлиста: <b>OTTPlayer</b><br/><br/>Вы можете не вводить окончание адреса плейлиста \"/playlist.m3u8\" - оно будет добавлено автоматически"
+        'Ввод адреса плейлиста tv.team</b>Тип плейлиста: <b>OTTPlayer</b><br/><br/>Вы можете не вводить окончание адреса плейлиста "/playlist.m3u8" - оно будет добавлено автоматически'
     );
     popupActions.splice(ind, 1, tvteamUrl);
 }
