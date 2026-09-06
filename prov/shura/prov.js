@@ -118,8 +118,7 @@ function getChanelsArray(callback) {
     }
 
     function loadCategories() {
-        var www =
-            "http://pl.tvshka.net/?uid=shxxxxxxxxxxx&srv=1&type=halva";
+        var www = "http://pl.tvshka.net/?uid=shxxxxxxxxxxx&srv=1&type=halva";
         $.ajax({
             dataType: "text",
             error: function () {
@@ -247,8 +246,7 @@ function getEPGchanel(ch_id, callback) {
             }
         },
         timeout: 10000,
-        url:
-            "http://s" + shserver + ".tvshka.net/" + ch_id + "/epg/week.jsonp",
+        url: "http://s" + shserver + ".tvshka.net/" + ch_id + "/epg/week.jsonp",
     });
 }
 
