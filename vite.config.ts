@@ -20,6 +20,7 @@ const MODULES = [
     "build/channels/index.js",
     "build/debug/playback-debug.js",
     "build/core/index.js",
+    "build/swop/index.js",
     "build/ui/index.js",
     "build/keyhandler/index.js",
     "build/provider/index.js",

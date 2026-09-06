@@ -7,6 +7,7 @@ import { video } from "../core";
 import { dispatchKey, keys } from "../keyhandler";
 import { translate as _ } from "../localization";
 import { settings } from "../settings";
+import { swopLoadValue } from "../swop";
 import {
     formatTwoDigits,
     getHeightK,
@@ -183,7 +184,12 @@ var _keysSymbol: any[] = [
         },
         s: "",
     },
-    { a: (window as any).loadValue || function () {}, s: "&hearts;&trade;" },
+    {
+        a: function () {
+            swopLoadValue();
+        },
+        s: "&hearts;&trade;",
+    },
     {
         a: function () {
             if (editPos) {

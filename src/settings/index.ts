@@ -155,6 +155,7 @@ export interface PlayerSettings {
     showScroll: number;
     sleepTimeout: number;
     stopPlay: number;
+    swopBaseUrl: string;
     thumbnail: number;
     timezone: number;
     volumeStep: number;
@@ -240,6 +241,7 @@ export function defaultSettings(): PlayerSettings {
         showScroll: 1,
         sleepTimeout: 0,
         stopPlay: 0,
+        swopBaseUrl: "",
         thumbnail: 1,
         timezone: 0,
         volumeStep: 5,
@@ -340,6 +342,7 @@ export function loadSettings(): PlayerSettings {
         showScroll: s.getI("sShowScroll", 1),
         sleepTimeout: s.getI("sSleepTimeout", 0),
         stopPlay: s.getI("sStopPlay", 0),
+        swopBaseUrl: s.get("sSwopBaseUrl") || "",
         thumbnail: s.getI("sThumbnail", 1),
         timezone: s.getI("sTimezone", 0),
         volumeStep: s.getI("sVolumeStep", 5),
@@ -436,6 +439,7 @@ export function saveSettings(s: PlayerSettings): void {
     store.set("sSHLcolor", s.highlightColor);
     store.set("sSHLcolorB", s.highlightColorB);
     store.set("sLocalCmdUrl", s.localCmdUrl);
+    store.set("sSwopBaseUrl", s.swopBaseUrl);
     store.set("sDeviceUuid", s.deviceUuid);
 }
 

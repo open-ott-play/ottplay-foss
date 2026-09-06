@@ -1382,6 +1382,11 @@ function onStbReady(): void {
         loadSettings();
         // Sync PlayerSettings → window.* for settings submenu compatibility
         applySettingsToWindow(settings);
+        // Device UUID for remote control / swop allowlist; optional /local/swop.json
+        if (typeof (window as any).ensureDeviceClientId === "function")
+            (window as any).ensureDeviceClientId();
+        if (typeof (window as any).applyLocalSwopConfig === "function")
+            (window as any).applyLocalSwopConfig();
         initUIReferences();
 
         // Apply settings
@@ -3951,6 +3956,7 @@ function applySettingsToWindow(s: PlayerSettings): void {
     window.sSHLcolor = s.highlightColor;
     window.sSHLcolorB = s.highlightColorB;
     window.sLocalCmdUrl = s.localCmdUrl;
+    window.sSwopBaseUrl = s.swopBaseUrl;
 }
 
 /**
@@ -4042,11 +4048,14 @@ function pullSettingsFromWindow(): void {
 window.settingsCommands = function (): void {
     var w = window as any;
     w.saveCPD();
+    if (typeof w.ensureDeviceClientId === "function") w.ensureDeviceClientId();
     var uid =
         w.deviceUUID ||
         w.localStorage.getItem("ott_device_uuid") ||
+        w.localStorage.getItem("deviceId") ||
         "not generated";
     var lurl = w.sLocalCmdUrl || "";
+    var swopUrl = w.sSwopBaseUrl || "";
     var html =
         "<br/>" +
         "<b>Device ID (UUID):</b><br/>" +
@@ -4058,6 +4067,7 @@ window.settingsCommands = function (): void {
         "<br/>" +
         "This unique ID identifies your device. Use it to target commands<br/>" +
         "to this specific player from Home Assistant or other automation.<br/>" +
+        "For remote text entry (♥™), the Worker operator must allowlist this ID.<br/>" +
         "<br/>" +
         "<b>Local command URL:</b><br/>" +
         (lurl
@@ -4065,11 +4075,19 @@ window.settingsCommands = function (): void {
             : "not set") +
         "<br/>" +
         "<br/>" +
+        "<b>Remote text entry (swop) base URL:</b><br/>" +
+        (swopUrl
+            ? '<span style="font-family:monospace;word-break:break-all;">' +
+              swopUrl +
+              "</span>"
+            : "not configured (♥™ no-op)") +
+        "<br/>" +
+        "<br/>" +
         "<b>Push commands (via webhook):</b><br/>" +
         "popup_message, channel_by_number, channel_by_name,<br/>" +
         "random_channel, change_provider, change_playlist<br/>" +
         "<br/>" +
-        "Press ENTER to change local URL, RETURN to go back.";
+        "ENTER = local URL, 2 = swop base URL, RETURN = back.";
     $("#listAbout").show().html(html);
     w.aboutKeyHandler = function (e: number): boolean {
         if (e === w.keys.RETURN) {
@@ -4079,7 +4097,6 @@ window.settingsCommands = function (): void {
             return true;
         }
         if (e === w.keys.ENTER) {
-            // Prompt for new local URL
             var newUrl = prompt(
                 "Local command URL (leave empty to use central server):",
                 lurl
@@ -4088,6 +4105,29 @@ window.settingsCommands = function (): void {
                 w.sLocalCmdUrl = newUrl.trim();
                 if (typeof w.stbSetItem === "function")
                     w.stbSetItem("sLocalCmdUrl", w.sLocalCmdUrl);
+                w.settingsCommands();
+            }
+            return true;
+        }
+        if (e === w.keys.N2 || e === 50) {
+            var newSwop = prompt(
+                "Swop base URL (empty disables remote text entry):",
+                swopUrl
+            );
+            if (newSwop !== null) {
+                w.sSwopBaseUrl = newSwop.trim().replace(/\/+$/, "");
+                if (typeof w.stbSetItem === "function")
+                    w.stbSetItem("sSwopBaseUrl", w.sSwopBaseUrl);
+                try {
+                    if (w.settings) {
+                        w.settings.swopBaseUrl = w.sSwopBaseUrl;
+                    }
+                } catch (_e) {}
+                // Keep typed settings in sync when module binding is available
+                try {
+                    settings.swopBaseUrl = w.sSwopBaseUrl;
+                    saveSettings(settings);
+                } catch (_e2) {}
                 w.settingsCommands();
             }
             return true;
@@ -4116,7 +4156,7 @@ optionsArr.push({ action: edit_dealer, name: "Enter Provider Code" });
 optionsArr.push({ action: _o.settingsManage, name: "Manage settings" });
 optionsArr.push({
     action: _o.settingsCommands,
-    desc: "Device ID and local command URL settings",
+    desc: "Device ID, local command URL, and swop (remote text entry) settings",
     name: "Remote control",
 });
 optionsArr.push({ action: selectLang, name: "Change interface language" });
