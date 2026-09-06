@@ -65,8 +65,6 @@ var keyStrings = {
     Editor: "Editor",
     English: "English",
     "Enter access key for": "Enter access key for",
-    "Enter channel link (subdomain.host) from the cabinet":
-        "Enter the channel link (subdomain.host) from the cabinet",
     "Enter Media Library URL": "Enter media library URL",
     "Enter Provider Code": "Enter provider code",
     "Enter Provider Code on PC or Phone":
@@ -75,6 +73,8 @@ var keyStrings = {
     "Enter playlist archive hours": "Enter playlist archive hours",
     "Enter playlist Name": "Enter playlist name",
     "Enter playlist URL": "Enter playlist URL",
+    "Enter the full CDN host from the cabinet stream URL (e.g. subdomain.cdn-domain.tld), not a bare subdomain":
+        "Enter the full CDN host from the cabinet stream URL (e.g. subdomain.cdn-domain.tld), not a bare subdomain",
     "Enter the VPortal link as shown in the cabinet":
         "Enter the VPortal link as shown in the cabinet",
     EPG: "EPG",
@@ -97,8 +97,8 @@ var keyStrings = {
     Info: "Info",
     "Infobar display timeout, s": "Info bar display timeout, s",
     "Infobar settings": "Info bar settings",
-    "Invalid channel link! Use Latin letters, digits (min 5), e.g. subdomain.host":
-        "Invalid channel link! Use Latin letters and digits (min 5), e.g. subdomain.host",
+    "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
+        "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)",
     "List created": "List created",
     "List deleted": "List deleted",
     "List renamed": "List renamed",

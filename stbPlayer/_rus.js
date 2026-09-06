@@ -44,14 +44,14 @@ var keyStrings = {
     Editor: "Редактор",
     English: "Английский",
     "Enter access key for": "Ввод ключа доступа",
-    "Enter channel link (subdomain.host) from the cabinet":
-        "Введите ссылку на канал (поддомен.host) из личного кабинета",
     "Enter Media Library URL": "Ввод адреса медиатеки",
     "Enter parental code": "Введите родительский код",
     "Enter playlist archive hours":
         "Ввод количества часов архива для плейлиста",
     "Enter playlist Name": "Ввод названия плейлиста",
     "Enter playlist URL": "Ввод адреса плейлиста",
+    "Enter the full CDN host from the cabinet stream URL (e.g. subdomain.cdn-domain.tld), not a bare subdomain":
+        "Введите полный хост CDN из URL потока в личном кабинете (например subdomain.cdn-domain.tld), не один поддомен",
     "Enter the VPortal link as shown in the cabinet":
         "Введите ссылку VPortal так как она выглядит в кабинете",
     EPG: "Программа",
@@ -64,8 +64,8 @@ var keyStrings = {
     Favorites: "Избранные",
     "For enter value open": "Для ввода значения откройте",
     Info: "Инфо",
-    "Invalid channel link! Use Latin letters, digits (min 5), e.g. subdomain.host":
-        "Некорректная ссылка на канал! Латиница и цифры (мин. 5), например subdomain.host",
+    "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
+        "Некорректная ссылка на канал! Укажите полный хост как в URL потока в кабинете (например subdomain.cdn-domain.tld)",
     "List created": "Список создан",
     "List deleted": "Список удалён",
     "List renamed": "Список переименован",
