@@ -2,8 +2,6 @@ version += " edem-0220";
 var edkey,
     edlist,
     vpurl,
-    edurl,
-    edsp,
     edcdn,
     provName = "Edem.tv / iLook.tv";
 p_pref = "ed";
@@ -42,8 +40,6 @@ function _getParams() {
     edkey = providerGetItem("key") || "";
     edlist = parseInt(providerGetItem("list"), 10) || 0;
     vpurl = providerGetItem("vpurl") || "";
-    edurl = providerGetItem("edurl") || "";
-    edsp = parseInt(providerGetItem("edsp"), 10) || 0;
     edcdn = providerGetItem("edcdn") || "drmplay.rostelekom.xyz";
 }
 
@@ -52,9 +48,6 @@ function getChannelPicon(ch_id) {
 }
 
 function getChannelUrl(ch_id) {
-    if (edsp == 1) {
-        return chanels[ch_id] ? chanels[ch_id].url || "" : "";
-    }
     var url = chanels[ch_id] ? chanels[ch_id].url || "" : "";
     if (url) {
         return url
@@ -91,79 +84,6 @@ function addChan2cat(cat, ci) {
         cats[cat] = [];
     }
     cats[cat].push(ci);
-}
-
-function murmurhash3_32_gc(key, seed) {
-    var remainder, bytes, h1, h1b, c1, c2, k1, i;
-    remainder = key.length & 3;
-    bytes = key.length - remainder;
-    h1 = seed;
-    c1 = 0xcc9e2d51;
-    c2 = 0x1b873593;
-    i = 0;
-    while (i < bytes) {
-        k1 =
-            (key.charCodeAt(i) & 0xff) |
-            ((key.charCodeAt(++i) & 0xff) << 8) |
-            ((key.charCodeAt(++i) & 0xff) << 16) |
-            ((key.charCodeAt(++i) & 0xff) << 24);
-        ++i;
-        k1 =
-            (((k1 & 0xffff) * c1 + ((((k1 >>> 16) * c1) & 0xffff) << 16)) &
-                0xffffffff) >>>
-            0;
-        k1 = (k1 << 15) | (k1 >>> 17);
-        k1 =
-            (((k1 & 0xffff) * c2 + ((((k1 >>> 16) * c2) & 0xffff) << 16)) &
-                0xffffffff) >>>
-            0;
-        h1 ^= k1;
-        h1 = (h1 << 13) | (h1 >>> 19);
-        h1b =
-            (((h1 & 0xffff) * 5 + ((((h1 >>> 16) * 5) & 0xffff) << 16)) &
-                0xffffffff) >>>
-            0;
-        h1 =
-            (((h1b & 0xffff) +
-                0x6b64 +
-                ((((h1b >>> 16) + 0xe654) & 0xffff) << 16)) &
-                0xffffffff) >>>
-            0;
-    }
-    k1 = 0;
-    switch (remainder) {
-        case 3:
-            k1 ^= (key.charCodeAt(i + 2) & 0xff) << 16;
-        case 2:
-            k1 ^= (key.charCodeAt(i + 1) & 0xff) << 8;
-        case 1:
-            k1 ^= key.charCodeAt(i) & 0xff;
-            k1 =
-                (((k1 & 0xffff) * c1 + ((((k1 >>> 16) * c1) & 0xffff) << 16)) &
-                    0xffffffff) >>>
-                0;
-            k1 = (k1 << 15) | (k1 >>> 17);
-            k1 =
-                (((k1 & 0xffff) * c2 + ((((k1 >>> 16) * c2) & 0xffff) << 16)) &
-                    0xffffffff) >>>
-                0;
-            h1 ^= k1;
-    }
-    h1 ^= key.length;
-    h1 ^= h1 >>> 16;
-    h1 =
-        (((h1 & 0xffff) * 0x85ebca6b +
-            ((((h1 >>> 16) * 0x85ebca6b) & 0xffff) << 16)) &
-            0xffffffff) >>>
-        0;
-    h1 ^= h1 >>> 13;
-    h1 =
-        (((h1 & 0xffff) * 0xc2b2ae35 +
-            ((((h1 >>> 16) * 0xc2b2ae35) & 0xffff) << 16)) &
-            0xffffffff) >>>
-        0;
-    h1 ^= h1 >>> 16;
-    return h1 >>> 0;
 }
 
 function getAttribute(text, attribute) {
@@ -217,61 +137,13 @@ function getChanelsArray(callback) {
         });
     }
 
-    function getEpgList(cepg, cb) {
-        if (!cList.length) {
-            cb();
-            return;
-        }
-        $(launch_id).append(_("epgs..."));
-        $.ajax({
-            complete: function () {
-                cb();
-            },
-            data: { list: JSON.stringify(cepg) },
-            method: "post",
-            success: function (data) {
-                if (data)
-                    cList.forEach(function (val) {
-                        if (data[val]) chanels[val].epg_url = data[val];
-                    });
-            },
-            timeout: 120000,
-            url: _scheme() + "epg.drm-play.com/m3u/gelist.php",
-        });
-    }
-
-    function getLogoList(clogo, cb) {
-        if (!cList.length) {
-            cb();
-            return;
-        }
-        $(launch_id).append(_("logos..."));
-        $.ajax({
-            complete: function () {
-                cb();
-            },
-            data: { list: JSON.stringify(clogo) },
-            method: "post",
-            success: function (data) {
-                if (data)
-                    cList.forEach(function (val) {
-                        if (data[val]) chanels[val].logo = data[val];
-                    });
-            },
-            timeout: 120000,
-            url: _scheme() + "epg.drm-play.com/m3u/geicons.php",
-        });
-    }
-
     function aSuccess(data) {
         try {
             cList = [];
             chanels = {};
             cats = {};
             catsArray = [];
-            var ccat = "",
-                cepg = {},
-                clogo = false;
+            var ccat = "";
             var arrEXTINF = data.split("#EXTINF:"),
                 l1 = arrEXTINF[0],
                 g_utvg =
@@ -292,7 +164,6 @@ function getChanelsArray(callback) {
             arrEXTINF.shift();
             arrEXTINF.forEach(function (val) {
                 var e = val.split("\n"),
-                    lutvg = "edem",
                     cat = getAttribute(e[0], "group-title"),
                     epg = getAttribute(e[0], "tvg-id"),
                     tn = getAttribute(e[0], "tvg-name"),
@@ -337,9 +208,7 @@ function getChanelsArray(callback) {
                 }
                 if (cat == "") cat = ccat;
                 else ccat = cat;
-                var ci;
-                if (edsp == 1) ci = murmurhash3_32_gc(url, 10);
-                else ci = (e[1] || url).split("/")[5];
+                var ci = (e[1] || url).split("/")[5];
                 addChan2cat(cat, ci);
                 if (url && cList.indexOf(ci) == -1) {
                     cList.push(ci);
@@ -360,30 +229,14 @@ function getChanelsArray(callback) {
                         url: url,
                         utvg: utvg,
                     };
-                    cepg[ci] =
-                        epg && utvg
-                            ? { e: epg, n: tn || cn, u: utvg }
-                            : utvg
-                              ? { n: cn, u: utvg }
-                              : { n: tn || cn };
-                    if (!logo) {
-                        if (!clogo) clogo = {};
-                        var tn_l = tn + "|" + lutvg,
-                            cn_l = cn + "|" + lutvg;
-                        clogo[ci] = lutvg ? cn_l || tn_l : tn || cn;
-                    }
                 }
             });
-            if (edsp == 0 && !edkey) {
+            if (!edkey) {
                 doEditData();
                 infoBox(
-                    "<br>Необходимо ввести ключ доступа!<br><br>" +
-                        btnDiv(keys.ENTER, strENTER, "Close")
-                );
-            } else if (edsp == 1 && !edurl) {
-                doEditData();
-                infoBox(
-                    "<br>Необходимо ввести ссылку на плейлист!<br><br>" +
+                    "<br>" +
+                        _("Access key is required!") +
+                        "<br><br>" +
                         btnDiv(keys.ENTER, strENTER, "Close")
                 );
             }
@@ -399,46 +252,18 @@ function getChanelsArray(callback) {
             alert(_("Failed to load channel list!"));
         }
         callback();
-        if (edsp == 1) {
-            getEpgList(cepg, function () {
-                if (
-                    typeof curList !== "undefined" &&
-                    curList &&
-                    curList[primaryIndex] &&
-                    chanels[curList[primaryIndex]]
-                ) {
-                    chanels[curList[primaryIndex]].time_request = 0;
-                    if (typeof updateChanelInfo === "function")
-                        updateChanelInfo(curList[primaryIndex]);
-                }
-            });
-            if (clogo)
-                getLogoList(clogo, function () {
-                    if (
-                        typeof curList !== "undefined" &&
-                        curList &&
-                        curList[primaryIndex] &&
-                        typeof updateChanelInfo === "function"
-                    )
-                        updateChanelInfo(curList[primaryIndex]);
-                });
-        }
     }
 
-    var u;
-    if (edsp == 1) u = edurl;
-    else
-        u =
-            _scheme() +
-            "epg.drm-play.com/edem/edem_epg_ico" +
-            (edlist ? edlist : "") +
-            ".m3u8";
+    var u =
+        _scheme() +
+        "epg.drm-play.com/edem/edem_epg_ico" +
+        (edlist ? edlist : "") +
+        ".m3u8";
 
     loadPlaylist(u, aSuccess, callback);
 }
 
 function getEPGurl(ch_id) {
-    if (edsp == 1) return chanels[ch_id] ? chanels[ch_id].epg_url : null;
     if (!(chanels[ch_id] && chanels[ch_id].epg)) return null;
     return (
         (edlist == 1 ? "iptv-e2-soveni" : "edem") + "/epg/" + chanels[ch_id].epg
@@ -849,14 +674,14 @@ if (typeof playMedia !== "undefined" || typeof _playMedia !== "undefined") {
 }
 
 var edTlist = [
-    "epg.one (Стандартный)",
+    _("epg.one (Standard)"),
     "soveni",
-    "epg.one (Тематический)",
-    "epg.one (Упорядоченный)",
+    _("epg.one (Thematic)"),
+    _("epg.one (Ordered)"),
 ];
 var vpAlert =
-    "Введите ссылку VPortal так как она выглядит кабинете:<br><b>portal::[key:...";
-var edsp_v = [" Ключ доступа", " Ссылка на плейлист"];
+    _("Enter the VPortal link as shown in the cabinet") +
+    ":<br><b>portal::[key:...</b>";
 
 function duneAddSettings(ind) {
     _getParams();
@@ -871,27 +696,20 @@ function doEditData() {
     _getParams();
     var r = _(" (after changing, load playlist)"),
         aDetail = [
-            "Выбор входа в " +
-                provName +
-                ' по ключу доступа или по ссылке на плейлист из личного кабинета <br><br> После изменения, перезагрузите плейлист.<br>Выбор "Ссылка на плейлист" доступен после ввода ссылки в разделе "Ссылка плейлист"',
-            "Ввод ключа доступа " + provName,
-            "Выберите источник шаблона плейлиста, епг и логотипов:<br>" +
+            _("Enter access key for") + " " + provName,
+            _("Select playlist template source for EPG and logos") +
+                ":<br>" +
                 edTlist.join(", ") +
                 "<br><br>" +
                 r,
             vpAlert,
-            "Введите ссылку на плейлист iLook из личного кабинета",
             "",
             _("Load playlist"),
         ];
     listArray = [
-        'Вход по: <span style="color:red;font-size:100%;"> ' +
-            edsp_v[edsp] +
-            "</span>",
-        "Ключ доступа",
-        "Тип листа: " + edTlist[edlist],
-        "Ссылка VPortal",
-        "Ссылка плейлист",
+        _("Access key"),
+        _("List type") + ": " + edTlist[edlist],
+        _("VPortal link"),
         "",
         (sNoNumbersKeys ? "" : '<div class="btn">8</div> ') +
             _("Load playlist"),
@@ -904,15 +722,6 @@ function doEditData() {
         listDetail.innerHTML = aDetail[selIndex] || "";
         listPodval.innerHTML =
             btnDiv(keys.RETURN, strRETURN, "Close") +
-            ([0, 2].indexOf(selIndex) == -1
-                ? ""
-                : btnDiv(
-                      keys.ENTER,
-                      strENTER,
-                      "Change value",
-                      strLEFT,
-                      strRIGHT
-                  )) +
             (selIndex != 1
                 ? ""
                 : btnDiv(
@@ -921,7 +730,10 @@ function doEditData() {
                       "Change value",
                       strLEFT,
                       strRIGHT
-                  ));
+                  )) +
+            (selIndex != 0 && selIndex != 2
+                ? ""
+                : btnDiv(keys.ENTER, strENTER, "Change value"));
     };
     listKeyHandler = function (code) {
         var a = 1;
@@ -929,28 +741,20 @@ function doEditData() {
             case keys.LEFT:
                 a = -1;
             case keys.RIGHT:
-                // Allow LEFT/RIGHT to rotate entry mode / list type (0,2);
-                // on key row (1) same as ENTER (open editor).
-                if (code != keys.ENTER && [0, 1, 2].indexOf(selIndex) == -1)
-                    return false;
+                // LEFT/RIGHT rotate list type (row 1); on other rows fall through to ENTER where applicable.
+                if (code != keys.ENTER && selIndex != 1) return false;
             case keys.ENTER:
                 switch (selIndex) {
                     case 0:
-                        doEditEdsp(a);
-                        return true;
-                    case 1:
                         edemKey();
                         return true;
-                    case 2:
+                    case 1:
                         doEditList(a);
                         return true;
-                    case 3:
+                    case 2:
                         vportal();
                         return true;
                     case 4:
-                        edplaylist();
-                        return true;
-                    case 6:
                         loadChannels();
                         return true;
                 }
@@ -972,7 +776,7 @@ function doEditData() {
 }
 
 function edemKey() {
-    editCaption = "Редактирование ключа доступа";
+    editCaption = _("Edit access key");
     editvar = edkey;
     setEdit = function () {
         if (edkey == editvar) return;
@@ -990,25 +794,13 @@ function doEditList(a) {
     if (edlist == edTlist.length) edlist = 0;
     if (edlist < 0) edlist = edTlist.length - 1;
     providerSetItem("list", edlist);
-    listArray[2] = "Тип листа: " + edTlist[edlist];
-    showPage();
-}
-
-function doEditEdsp(a) {
-    edsp += a;
-    if (edsp == edsp_v.length) edsp = 0;
-    if (edsp < 0) edsp = edsp_v.length - 1;
-    if (edurl == "") edsp = 0;
-    providerSetItem("edsp", edsp);
-    listArray[0] =
-        'Вход по: <span style="color:red;font-size:100%;"> ' +
-        edsp_v[edsp] +
-        "</span>";
+    listArray[1] = _("List type") + ": " + edTlist[edlist];
+    listDataArray = listArray;
     showPage();
 }
 
 function vportal() {
-    editCaption = "Редактирование ссылки VPortal";
+    editCaption = _("Edit VPortal link");
     editvar = vpurl;
     setEdit = function () {
         if (vpurl == editvar) return;
@@ -1024,21 +816,6 @@ function vportal() {
         mediaUrls = null;
         mediaNames = [];
         mediaSelects = [0];
-    };
-    showEditKey();
-}
-
-function edplaylist() {
-    editCaption = "Редактирование ссылки плейлиста из личного кабинета iLook";
-    editvar = edurl;
-    setEdit = function () {
-        if (edurl == editvar) return;
-        edurl = editvar;
-        providerSetItem("edurl", edurl);
-        if (edurl == "" || edurl == 0 || edurl === -1) {
-            edsp = 0;
-            providerSetItem("edsp", edsp);
-        }
     };
     showEditKey();
 }
