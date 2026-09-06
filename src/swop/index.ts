@@ -212,7 +212,15 @@ export function swopLoadValue(): void {
 
     var sessionTimer = setTimeout(cleanup, SESSION_TIMEOUT_MS);
 
-    function showMsg(html: string, isError?: boolean): void {
+    function escapeHtml(s: string): string {
+        return String(s)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+
+    function showMsg(msg: string, isError?: boolean, asHtml?: boolean): void {
         var listEdit = $("#listEdit");
         listEdit
             .html(
@@ -221,7 +229,11 @@ export function swopLoadValue(): void {
                     '"><br/><br/><span class="swop-msg-text"></span></div>'
             )
             .show();
-        listEdit.find(".swop-msg-text").text(html == null ? "" : String(html));
+        var el = listEdit.find(".swop-msg-text");
+        var s = msg == null ? "" : String(msg);
+        // Success UI needs <br/> + styled spans; plain errors stay text-escaped.
+        if (asHtml) el.html(s);
+        else el.text(s);
     }
 
     function returnToVkb(value: string): void {
@@ -333,14 +345,16 @@ export function swopLoadValue(): void {
                     '<br/><span style="font-size:larger;word-break:break-all;color:' +
                     color +
                     '">' +
-                    url +
+                    escapeHtml(url) +
                     "</span><br/><br/>" +
                     (_("and enter code") || "code") +
                     ' <span style="font-size:200%;color:' +
                     color +
                     '">' +
-                    code +
-                    "</span>"
+                    escapeHtml(code) +
+                    "</span>",
+                false,
+                true
             );
             pollTimer = setTimeout(poll, 3000);
         },
