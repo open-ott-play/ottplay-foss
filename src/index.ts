@@ -3011,6 +3011,29 @@ window.settingsManage = function (): void {
                 w._("Enter Provider Code on PC or Phone") ||
                 "Enter Provider Code on PC or Phone",
         },
+        {
+            action: function () {
+                if (
+                    typeof (window as any).__ottDebug !== "undefined" &&
+                    typeof (window as any).__ottDebug.toggleHud === "function"
+                ) {
+                    (window as any).__ottDebug.toggleHud();
+                } else {
+                    try {
+                        if (typeof localStorage !== "undefined") {
+                            localStorage.setItem("ottplay_debug", "1");
+                            localStorage.setItem("ottplay_debug_hud", "1");
+                        }
+                    } catch (_e) {}
+                    if (typeof (window as any).infoBox === "function") {
+                        (window as any).infoBox(
+                            "Debug enabled. Restart to apply."
+                        );
+                    }
+                }
+            },
+            name: "Debug HUD",
+        },
     ];
     if (typeof w.stbClearAllItems !== "function") w.listArray.splice(2, 2);
     if (typeof w.stbGetAllItems !== "function") w.listArray.splice(0, 1);
