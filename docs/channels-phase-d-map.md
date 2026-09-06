@@ -1,7 +1,7 @@
 # channels/index.ts Phase D1 Cluster Map
 
 **Last updated:** 2026-09-06
-**File size:** ~4887 lines
+**File size:** ~4750 lines (after D2 favorites + D search filter leaf)
 
 ## Cluster Inventory
 
@@ -12,6 +12,7 @@ Core channel management, navigation, and list operations.
 **State vars (core):** `channels`, `cats`, `catsArray`, `curList`, `cList`, `providerPrefix`, `playType` (also hosts shared settings/`persistedKeys`; favorites/EPG/archive state live in their clusters below)
 
 **Symbols:**
+
 - `setCurrent`, `nextChannel`, `prevChannel`, `handleNumberInput` — navigation
 - `getChannelUrl` — stream URL resolution
 - `onChanelsLoaded` — provider load entry point (lines 1268–1418)
@@ -39,6 +40,7 @@ Program guide data, timer management, detailed EPG view.
 **State vars:** `epg`, `epgCash`, `epgCashObj`, `epgCashArr`, `epgTimers`, `curEpgData`, `epgArray`, `arrayGetCurProg`
 
 **Symbols:**
+
 - `getEPGchanelCached` (1075), `getEPGchanelCurCached` (1125), `getEpgFromCash` (1136)
 - `getCurProgData` (1148), `setCurProg` (1189), `doGetCurProg` — program lookup
 - `formatEpgTime` (1426) — timestamp formatting
@@ -58,13 +60,14 @@ Program guide data, timer management, detailed EPG view.
 
 ---
 
-### 3. Favorites Multi-list (lines 594–1005)
+### 3. Favorites Multi-list (leaf: `favorites-lists.ts`, D2 #271)
 
 Favorites CRUD, multi-list management, alias handling, list picker UI.
 
-**State vars:** `favoritesArray`, `favoritesLists`
+**State vars (leaf):** `favoritesArray`, `favoritesLists`
 
 **Symbols:**
+
 - `addToFavorites`, `removeFromFavorites` — single-item ops
 - `syncFavoritesArrayFromActive` (616) — keep alias in sync
 - `activeFavoritesList` (622) — get current list
@@ -89,6 +92,7 @@ Timeshift, playback resume, media history.
 **State vars:** `archivePos`, `fileArchive`, `mediaListArr`, `mediaNames`, `mediaRecords`, `mediaName`, `medHistory`
 
 **Symbols:**
+
 - `playArchive` (2524), `updateArchiveInfo` (2602), `liveStop` (2810)
 - `shiftArchive` (2874), `shiftArchiveSelect` (2976), `timeShift` (3078)
 - `recordsList` (2195), `selectREC` (2260), `detailREC` (2274), `catRecordsList` (2292)
@@ -103,19 +107,24 @@ Timeshift, playback resume, media history.
 
 ---
 
-### 5. Search (lines 3600–4070)
+### 5. Search (filter leaf + UI in index)
 
-Filter helpers, history search, media search.
+Filter helpers live in `src/channels/search.ts` (Phase D extract). Edit-key / popup UI stays in `channels/index.ts`.
 
-**Symbols:**
-- `searchChannel` (3601) — filters current channel list by name
-- `getFilteredChannelList` (3979) — returns filtered ID array
-- `searchHistoryChannel` (3957), `getFilteredHistory` (3965) — history history search
-- `searchEpgByTitle` (3432) — EPG programme title search
-- `searchMedia` (3991), `searchRec` (4035) — media/records search
-- `showActionsDialog` (3829) — also used for search button in popup
+**State vars (leaf):** `searchText`, `historySearchText`
 
-**Risk:** Low-medium. Search helpers are relatively isolated.
+**Symbols (leaf — on MODULES before channels/index):**
+
+- `searchHistoryChannel`, `getFilteredHistory`, `getFilteredChannelList`
+
+**Symbols (remain in index):**
+
+- `searchChannel` — channel-list search popup (`showEditKey`)
+- `searchEpgByTitle` — EPG programme title search (EPG-coupled; not extracted)
+- `searchMedia`, `searchRec` — media/records search UX
+- `showActionsDialog` — actions popup (search button wiring)
+
+**Risk:** Filter helpers isolated via MODULES-before-channels (same as D2). UI stays in index.
 
 ---
 
@@ -124,6 +133,7 @@ Filter helpers, history search, media search.
 PIN entry, lock checking, continue-watch resume; EPG timers overlap cluster 2.
 
 **Symbols:**
+
 - Parental: `hasParentalLock` (1024), `ifParentalAccess` (1037), `ifParentalAccessChId` (1058), `_enterPinCode` (4571), `enterPinCode` (4676), `setParentAccess` (4699), `enterPinAndSetAccess` (4721), `parentControlSetup` (4751); state `parentPIN`
 - Continue-watch: `restoreContinueWatch` (421) — reads `continueWatch` storage, may call `playArchive` / `playChannel`
 - Timers: `epgTimers` + `startEpgTimer` / `loadEpgTimers` / `setEpgTimer` (documented under EPG)
@@ -132,58 +142,56 @@ PIN entry, lock checking, continue-watch resume; EPG timers overlap cluster 2.
 
 ---
 
-## Recommended D2 Target
+## D2 Done (2026-09-06, #271)
 
-**Extract favorites multi-list leaf** as `src/channels/favorites-lists.ts`.
+Extracted favorites multi-list leaf as `src/channels/favorites-lists.ts`.
 
-**Rationale:**
-- CRUD helpers (lines 643–696) are the most isolated non-EPG functions
-- No `window.*` dual-publishing risk
-- `favoritesArray` alias pattern preserved by importing, not duplicating
-- Avoids EPG coupling
+- On MODULES immediately before `channels/index.js`
+- Index imports + re-exports; **no dual function bodies**
+- Kept `popFavLists` / `addToFavorites` UI wiring in index
 
-**Extract these exports only:**
-- `getActiveFavoritesListName`
-- `setActiveFavoritesList`
-- `listFavoritesLists`
-- `addFavoritesList`
-- `renameFavoritesList`
-- `deleteFavoritesList`
-- `syncFavoritesArrayFromActive`
-- `activeFavoritesList`
+---
 
-**Keep in channels/index.ts for D2:**
-- `addToFavorites`, `removeFromFavorites` (call into leaf sync helpers)
-- `refreshFavoritesViewIfActive`, `popFavLists` (UI-heavy)
-- Prefer moving `favoritesLists` + `loadFavoritesLists` with the leaf; keep `favoritesArray` alias wiring in index or re-export from leaf **without** dual MODULES membership (Phase D3)
+## D3 Decision (strip / MODULES)
 
-**Import pattern (strip-safe):**
+**Chosen path:** submodule **ON MODULES** immediately before `channels/index.js` (proven by D2 / #271).
+
+**Rejected for this bundle:** pure import-only submodule (not on MODULES). Concat `stripModule()` drops `import` lines, so import-only leaves lose their bodies unless also listed on MODULES.
+
+**Strip caveat:** leaf must declare the single body; index may import/re-export but must not redeclare the same `function`/`let`. Never dual-list the same binding on MODULES.
+
+**Pattern to keep:**
+
 ```ts
-// No redeclaration: import the bindings themselves
-export {
-   getActiveFavoritesListName,
-    setActiveFavoritesList,
-    ...etc
-} from "./favorites-lists";
+// channels/index.ts — re-export only; body lives in leaf on MODULES
+export { getFilteredChannelList, getFilteredHistory, ... } from "./search";
 ```
 
+MODULES order (channels slice):
+`types.js` → `favorites-lists.js` → `search.js` → `index.js`
+
 ---
 
-## NOT Recommended for D2
+## Search filter leaf (with D3)
 
-- **EPG cluster** — densest coupling, AVOID
-- **Playlist load** — core hub, MODULES collision risk
+Done in same change-set: `src/channels/search.ts` on MODULES before `channels/index.js`. UI (`searchChannel` / edit-key / `searchMedia` / `searchRec`) stays in index. Avoid EPG.
+
+---
+
+## Still avoid
+
+- **EPG cluster** — densest coupling
+- **Playlist load** — core hub
 - **Archive/Records** — ties to player/EPG
-- **Search** — low priority vs favorites; `searchEpgByTitle` lives in EPG cluster
+- Dual bodies / import-only leaves for classic concat+strip
 
 ---
 
-## D2 Implementation Checklist
+## D2 / D3 Checklist
 
-- [ ] Create `src/channels/favorites-lists.ts` with extracted favorites multi-list functions
-- [ ] Prefer import-only submodule (NOT also on MODULES); only add to MODULES before `channels/index.js` if a spike proves strip-safe and no dual binding
-- [ ] Verify `favoritesArray` alias behavior preserved
-- [ ] Run `npx tsc --noEmit` for type check
-- [ ] Run `npm run build` and verify bundle identifiers
-- [ ] Test on Chrome desktop + one HS5/`prov.js` path
-- [ ] Single squash PR (no code moves in other files)
+- [x] Create `src/channels/favorites-lists.ts` (D2 / #271)
+- [x] D3 decision: MODULES-before-channels (not import-only)
+- [x] Create `src/channels/search.ts` with filter helpers; MODULES before `channels/index.js`
+- [x] Index re-exports; no dual bodies
+- [x] Run `npx tsc --noEmit` / biome / vite build / `check:bundle`
+- [ ] HS5 smoke (D4): favorites, EPG open, provider switch, `listKeyHandler` ENTER

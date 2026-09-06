@@ -19,6 +19,7 @@ const MODULES = [
     "build/utils/encoding.js",
     "build/channels/types.js",
     "build/channels/favorites-lists.js",
+    "build/channels/search.js",
     "build/channels/index.js",
     "build/debug/playback-debug.js",
     "build/core/index.js",
