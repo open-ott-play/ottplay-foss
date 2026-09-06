@@ -197,6 +197,11 @@ function ottDebugClear(): void {
 
 function ottDebugSetHud(on: boolean): void {
     _ottDbgHudOn = !!on;
+    try {
+        if (typeof localStorage !== "undefined") {
+            localStorage.setItem("ottplay_debug_hud", on ? "1" : "0");
+        }
+    } catch (_e) {}
     if (!_ottDbgEnabled) return;
     if (_ottDbgHudOn) {
         ottDebugEnsureHud();
@@ -781,6 +786,16 @@ function ottDebugEnable(): void {
         playerId: _ottDbgPlayerId,
         port: ottDebugPort(),
     });
+
+    // Restore HUD preference from localStorage
+    try {
+        if (
+            typeof localStorage !== "undefined" &&
+            localStorage.getItem("ottplay_debug_hud") === "1"
+        ) {
+            _ottDbgHudOn = true;
+        }
+    } catch (_e) {}
 
     if (_ottDbgHudTimer === null) {
         _ottDbgHudTimer = setInterval(ottDebugUpdateHud, OTT_DEBUG_HUD_MS);
