@@ -1,6 +1,11 @@
-version += " 1ott-0219";
+version += " 1ott-0906";
+var __id,
+    __pin,
+    _pName = "1OTT.NET",
+    url_srv = "http://list.1ott.net";
 p_pref = "1ott";
 parental = /XXX|Взрослые|Для взрослых|Эротика|18\+|Adults/i;
+
 if (typeof stbGetItem === "function") {
     providerGetItem = function (e) {
         return stbGetItem(p_pref + e);
@@ -25,314 +30,291 @@ providerHasItem = function (e) {
 providerHasItemValue = function (e) {
     return ottpStorage.hasValue(p_pref + e);
 };
-var _1ott_cfg = { m3u: "", pass: "", server: "", user: "" };
-function _1ott_load() {
-    try {
-        var d = providerGetItem("cfg");
-        if (d) _1ott_cfg = JSON.parse(d);
-    } catch (e) {}
-    if (!(_1ott_cfg.server || _1ott_cfg.m3u))
-        _1ott_cfg = { m3u: "", pass: "", server: "", user: "" };
+
+function _getParams() {
+    __id = providerGetItem("id") || "";
+    __pin = providerGetItem("pin") || "";
 }
-function _1ott_save() {
-    providerSetItem("cfg", JSON.stringify(_1ott_cfg));
+
+function getChannelPicon(ch_id) {
+    return chanels[ch_id] ? chanels[ch_id].logo || "" : "";
 }
-function getChannelPicon(e) {
-    return chanels[e] ? chanels[e].logo || "" : "";
+
+function getChannelUrl(ch_id) {
+    return chanels[ch_id] ? chanels[ch_id].url || "" : "";
 }
-function getChannelUrl(e) {
-    return chanels[e] ? chanels[e].url || "" : "";
+
+function getArchiveUrl(ch_id, time, time_to) {
+    return chanels[ch_id].url + "?utc=" + Math.floor(time);
 }
-function getEPGchanel(s, e) {
-    e(s, null);
-}
-function addChan2cat(catName, hash) {
-    if (!(catName && hash)) return;
-    if (!cats[catName]) {
-        catsArray.push(catName);
-        cats[catName] = [];
+
+if (typeof catsArray == "undefined") var catsArray = [];
+
+function addChan2cat(cat, ci) {
+    if (!(cat && ci)) return;
+    if (!cats[cat]) {
+        catsArray.push(cat);
+        cats[cat] = [];
     }
-    cats[catName].push(hash);
+    cats[cat].push(ci);
 }
-function getChanelsArray(cb) {
-    _1ott_load();
-    if (_1ott_cfg.server && _1ott_cfg.user && _1ott_cfg.pass) _1ott_xtream(cb);
-    else if (_1ott_cfg.m3u) _1ott_m3u(cb);
-    else {
-        alert(_("Configure 1OTT.NET in Settings -> Provider Settings"));
-        cb();
-    }
+
+function getAttribute(text, attribute) {
+    var a = text.split(attribute + "=");
+    if (a.length == 1 || a[1].length == 0) return "";
+    if (a[1][0] == '"') return a[1].split('"')[1] || "";
+    return a[1].split(/[ ,]+/)[0] || "";
 }
-function _1ott_m3u(cb) {
-    $(launch_id).append(_("Loading M3U..."));
-    $.ajax({
-        error: function () {
-            $.ajax({
-                data: { url: "@" + _1ott_cfg.m3u },
-                dataType: "text",
-                error: function () {
-                    alert(_("Failed to load!"));
-                    cb();
-                },
-                method: "post",
-                success: function (d) {
-                    _1ott_parseM3U(d, cb);
-                },
-                timeout: 15e3,
-                url: host + "/m3u/cp.php",
-            });
-        },
-        success: function (d) {
-            _1ott_parseM3U(d, cb);
-        },
-        timeout: 15e3,
-        url: _1ott_cfg.m3u,
-    });
+
+function getAint(text, attribute) {
+    return parseInt(getAttribute(text, attribute), 10) || 0;
 }
-function _1ott_parseM3U(data, cb) {
-    cList = [];
-    chanels = {};
-    cats = {};
-    catsArray = [];
-    try {
-        var lines = data.split("#EXTINF:");
-        var hdr = lines[0] || "";
-        lines.shift();
-        var lc = "";
-        lines.forEach(function (b) {
-            var p = b.split("\n");
-            var inf = p[0] || "";
-            var url = "";
-            for (var i = 1; i < p.length; i++) {
-                if (p[i].trim() && p[i].trim()[0] !== "#") {
-                    url = p[i].trim();
-                    break;
-                }
-            }
-            if (!url) return;
-            var name = "???";
-            var ci = inf.indexOf(",");
-            if (ci > 0) name = inf.substr(ci + 1).trim();
-            var cat = "";
-            var gm = inf.match(/group-title="([^"]*)"/i);
-            if (gm) cat = gm[1];
-            var logo = "";
-            var lm = inf.match(/tvg-logo="([^"]*)"/i);
-            if (lm) logo = lm[1];
-            if (!cat) cat = lc || "Other";
-            lc = cat;
-            var h = xxHash32S(url, true);
-            addChan2cat(cat, h);
-            if (cList.indexOf(h) === -1) {
-                cList.push(h);
-                chanels[h] = {
-                    ca: "",
-                    caso: "",
-                    category: { class: catsArray.indexOf(cat) + 2, name: cat },
-                    channel_name: name,
-                    epg: "",
-                    logo: logo,
-                    rec: 0,
-                    time: 0,
-                    time_to: 0,
-                    tn: name,
-                    url: url,
-                };
-            }
+
+function getChanelsArray(callback) {
+    _getParams();
+
+    function loadPlaylist(url, success, cb) {
+        if (typeof launch_id == "undefined") launch_id = "#launch";
+        if (!url) {
+            cb();
+            return;
+        }
+        var cpurl = url;
+        if (typeof stbInterceptRequest === "function") {
+            stbInterceptRequest(url);
+            url +=
+                (url.indexOf("?") == -1 ? "?" : "&") +
+                "url=" +
+                encodeURIComponent(url);
+        }
+        $.ajax({
+            dataType: "text",
+            error: function () {
+                $(launch_id).append("p...");
+                $.ajax({
+                    data: { url: "@" + cpurl },
+                    dataType: "text",
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        console.log(
+                            "channels : jqXHR:" +
+                                JSON.stringify(jqXHR) +
+                                "; textStatus: " +
+                                textStatus +
+                                ", errorThrown: " +
+                                errorThrown
+                        );
+                        alert(_("Failed to load channel list!"));
+                        cb();
+                    },
+                    method: "post",
+                    success: success,
+                    timeout: 30000,
+                    url: host + "/m3u/cp.php",
+                });
+            },
+            success: success,
+            timeout: 30000,
+            url: url,
         });
-    } catch (e) {
-        console.error(e);
     }
-    cb();
-}
-function _1ott_xtream(cb) {
-    $(launch_id).append(_("Loading from API..."));
-    var api =
-        _1ott_cfg.server +
-        "/player_api.php?username=" +
-        encodeURIComponent(_1ott_cfg.user) +
-        "&password=" +
-        encodeURIComponent(_1ott_cfg.pass);
-    $.ajax({ dataType: "json", timeout: 15e3, type: "GET", url: api })
-        .done(function (r) {
+
+    function aSuccess(data) {
+        try {
             cList = [];
             chanels = {};
             cats = {};
             catsArray = [];
-            if (!(r && r.live_streams)) {
-                _1ott_cfg.m3u =
-                    api.replace("/player_api.php", "/get.php") +
-                    "&type=m3u_plus&output=ts";
-                _1ott_m3u(cb);
-                return;
-            }
-            var cm = {};
-            if (r.categories)
-                r.categories.forEach(function (c) {
-                    cm[c.category_id] = c.category_name || "Unknown";
-                });
-            r.live_streams.forEach(function (s) {
-                var h = xxHash32S(s.name, true);
-                var cn = cm[s.category_id] || "Other";
-                addChan2cat(cn, h);
-                if (cList.indexOf(h) === -1) {
-                    cList.push(h);
-                    chanels[h] = {
-                        ca: "",
-                        caso: "",
+            var arrEXTINF = data.split("#EXTINF:");
+            arrEXTINF.shift();
+            arrEXTINF.forEach(function (val) {
+                var e = val.split("\n"),
+                    cat = getAttribute(e[0], "group-title"),
+                    epg = getAttribute(e[0], "tvg-id"),
+                    logo = getAttribute(e[0], "tvg-logo"),
+                    rec = getAint(e[0], "catchup-days") * 24,
+                    cn = _("??? No channel name"),
+                    url = "";
+                try {
+                    cn = e[0].split(",")[1].trim();
+                } catch (ex) {}
+                try {
+                    url = e[1].trim();
+                } catch (ex) {}
+                var ci = url.split("/")[4] || epg;
+                addChan2cat(cat, ci);
+                if (url && ci && cList.indexOf(ci) == -1) {
+                    cList.push(ci);
+                    chanels[ci] = {
                         category: {
-                            class: catsArray.indexOf(cn) + 2,
-                            name: cn,
+                            class: catsArray.indexOf(cat) + 2,
+                            name: cat,
                         },
-                        channel_name: s.name,
-                        epg: String(s.stream_id),
-                        logo: s.stream_icon || "",
-                        rec: 0,
+                        channel_name: cn,
+                        epg: epg,
+                        logo: logo,
+                        rec: rec,
                         time: 0,
                         time_to: 0,
-                        tn: s.name,
-                        url:
-                            _1ott_cfg.server +
-                            "/live/" +
-                            encodeURIComponent(_1ott_cfg.user) +
-                            "/" +
-                            encodeURIComponent(_1ott_cfg.pass) +
-                            "/" +
-                            s.stream_id +
-                            ".m3u8",
+                        url: url,
                     };
                 }
             });
-            cb();
-        })
-        .fail(function () {
-            _1ott_cfg.m3u =
-                _1ott_cfg.server.replace(/\/+$/, "") +
-                "/get.php?username=" +
-                encodeURIComponent(_1ott_cfg.user) +
-                "&password=" +
-                encodeURIComponent(_1ott_cfg.pass) +
-                "&type=m3u_plus&output=ts";
-            _1ott_m3u(cb);
-        });
-}
-function duneAddSettings(e) {
-    _1ott_load();
-    popupArray.splice(e, 1, "");
-    popupDetail.splice(e, 1, _("1OTT.NET settings"));
-    popupActions.splice(e, 1, _1ott_edit);
-    var idx = popupActions.indexOf(_1ott_edit);
-    if (idx > -1) {
-        var lbl = _("1OTT.NET settings");
-        if (_1ott_cfg.server && _1ott_cfg.user)
-            lbl +=
-                ": " +
-                _1ott_cfg.server.replace(/^https?:\/\//, "").split("/")[0] +
-                " (" +
-                _1ott_cfg.user +
-                ")";
-        else if (_1ott_cfg.m3u)
-            lbl += ": " + _1ott_cfg.m3u.substr(0, 40) + "...";
-        popupArray[idx] = lbl;
+            if (!__id || !__pin) {
+                try {
+                    popupList(popupActions.indexOf(noProvParam) + 1);
+                } catch (ex) {}
+                infoBox("Для доступа необходимо ввести ID и PIN!");
+            }
+        } catch (e) {
+            console.log(
+                "Exception: name " +
+                    e.name +
+                    ", message " +
+                    e.message +
+                    ", typeof " +
+                    typeof e
+            );
+            alert(_("Failed to load channel list!"));
+        }
+        callback();
     }
-}
-function _1ott_edit() {
-    selIndex = 0;
-    _1ott_load();
-    var srv = _1ott_cfg.server,
-        usr = _1ott_cfg.user,
-        pwd = _1ott_cfg.pass,
-        m3u = _1ott_cfg.m3u;
-    function bl() {
-        listArray = [
-            _("Server") + ": " + (srv || ""),
-            _("Login") + ": " + (usr || ""),
-            _("Password") + ": " + (pwd ? "********" : ""),
-            _("M3U") + ": " + (m3u ? m3u.substr(0, 45) : ""),
-            "",
-            _("Save and load"),
-        ];
+
+    if (!__id || !__pin) {
+        try {
+            popupList(popupActions.indexOf(noProvParam) + 1);
+        } catch (ex) {}
+        infoBox("Для доступа необходимо ввести ID и PIN!");
+        callback();
+        return;
     }
-    var ii = [
-        _("API server URL"),
-        _("Username"),
-        _("Password"),
-        _("M3U URL (fallback)"),
-        "",
-        _("Save & load channels"),
+
+    loadPlaylist(
+        url_srv + "/PinApi/" + __id + "/" + __pin,
+        function (data) {
+            try {
+                loadPlaylist(
+                    url_srv +
+                        "/api/" +
+                        JSON.parse(data).token +
+                        "/high/ottnav.m3u8",
+                    aSuccess,
+                    callback
+                );
+            } catch (e) {
+                alert(_("Failed to load channel list!"));
+                callback();
+            }
+        },
+        callback
+    );
+}
+
+function getEPGurl(ch_id) {
+    return "propg.net/epg/" + chanels[ch_id].epg;
+}
+
+_epgDomen = "http://epg.drm-play.com/";
+
+function getEPGchanel(ch_id, callback) {
+    var d = null,
+        epg_url = getEPGurl(ch_id);
+    if (!epg_url || !(chanels[ch_id] && chanels[ch_id].epg)) {
+        callback(ch_id, d);
+        return;
+    }
+    $.ajax({
+        complete: function () {
+            callback(ch_id, d);
+        },
+        dataType: "json",
+        success: function (data) {
+            if (data !== null) d = data.epg_data;
+        },
+        timeout: 10000,
+        url: _epgDomen + encodeURIComponent(epg_url) + ".json",
+    });
+}
+
+function duneAddSettings(ind) {
+    if (isNaN(parseInt(providerGetItem("sShowArchive"), 10)))
+        providerSetItem("sShowArchive", 1);
+    if (typeof delPopup === "function") delPopup(restart);
+    _getParams();
+    popupArray.splice(ind, 1, _("Settings") + " " + _pName);
+    popupDetail.splice(ind, 1, "");
+    popupActions.splice(ind, 1, __Settings);
+}
+
+function __Settings() {
+    var r = _(" (after changing, restart player)");
+    listArray = [
+        {
+            action: edit_login,
+            desc: _("Редактирование ID") + r,
+            name: _("ID"),
+        },
+        {
+            action: edit_pass,
+            desc: _("Редактирование PIN") + r,
+            name: _("PIN"),
+        },
+        {},
+        {
+            action: restart,
+            desc: _("Restart player"),
+            name:
+                (sNoNumbersKeys ? "" : '<div class="btn">8</div> ') +
+                _("Restart player"),
+        },
     ];
-    bl();
-    getListItem = function (e, r) {
-        return "&nbsp;&nbsp;" + e;
+    selIndex = 0;
+    getListItem = function (item, i) {
+        return "&nbsp;&nbsp;" + (item.name || "");
     };
     detailListAction = function () {
-        listDetail.innerHTML = ii[selIndex] || "";
+        listDetail.innerHTML = _(
+            listArray[selIndex].desc || listArray[selIndex].name || ""
+        );
     };
-    listKeyHandler = function (e) {
-        switch (e) {
-            case keys.ENTER:
-                switch (selIndex) {
-                    case 0:
-                        editCaption = _("Server URL");
-                        editvar = srv;
-                        setEdit = function () {
-                            srv = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 1:
-                        editCaption = _("Username");
-                        editvar = usr;
-                        setEdit = function () {
-                            usr = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 2:
-                        editCaption = _("Password");
-                        editvar = pwd;
-                        setEdit = function () {
-                            pwd = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 3:
-                        editCaption = _("M3U URL");
-                        editvar = m3u;
-                        setEdit = function () {
-                            m3u = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 5:
-                        _1ott_cfg.server = srv;
-                        _1ott_cfg.user = usr;
-                        _1ott_cfg.pass = pwd;
-                        _1ott_cfg.m3u = m3u;
-                        _1ott_save();
-                        duneAddSettings(0);
-                        loadChannels();
-                        return true;
-                }
-                return true;
+    listKeyHandler = function (code) {
+        switch (code) {
             case keys.RETURN:
                 popupList(popupActions.indexOf(noProvParam) + 1);
+                return true;
+            case keys.ENTER:
+                if (listArray[selIndex].action) listArray[selIndex].action();
+                return true;
+            case keys.N8:
+                restart();
                 return true;
             default:
                 return false;
         }
     };
-    listDetail.innerHTML = "";
-    listCaption.innerHTML = _("1OTT.NET");
+    listCaption.innerHTML = _("Settings") + " " + _pName;
     listPodval.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
     $("#listPopUp").hide();
     showPage();
 }
+
+function edit_login() {
+    editCaption = _("Редактирование ID") + " " + _pName;
+    editvar = __id;
+    setEdit = function () {
+        __id = editvar;
+        providerSetItem("id", __id);
+    };
+    showEditKey([0]);
+}
+
+function edit_pass() {
+    editCaption = _("Редактирование PIN") + " " + _pName;
+    editvar = __pin;
+    setEdit = function () {
+        __pin = editvar;
+        providerSetItem("pin", __pin);
+    };
+    showEditKey([0]);
+}
+
+_getParams();
