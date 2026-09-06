@@ -1,6 +1,8 @@
-version += " ottclub-0219";
-p_pref = "ottclub";
+version += " ottclub-0220";
+var ottwww, ottkey;
+p_pref = "";
 parental = /XXX|Взрослые|Для взрослых|Эротика|18\+|Adults/i;
+
 if (typeof stbGetItem === "function") {
     providerGetItem = function (e) {
         return stbGetItem(p_pref + e);
@@ -25,315 +27,176 @@ providerHasItem = function (e) {
 providerHasItemValue = function (e) {
     return ottpStorage.hasValue(p_pref + e);
 };
-var _ottclub_cfg = { m3u: "", pass: "", server: "", user: "" };
-function _ottclub_load() {
-    try {
-        var d = providerGetItem("cfg");
-        if (d) _ottclub_cfg = JSON.parse(d);
-    } catch (e) {}
-    if (!(_ottclub_cfg.server || _ottclub_cfg.m3u))
-        _ottclub_cfg = { m3u: "", pass: "", server: "", user: "" };
+
+function _getParams() {
+    ottwww = providerGetItem("ottwww") || "";
+    ottkey = providerGetItem("ottkey") || "";
 }
-function _ottclub_save() {
-    providerSetItem("cfg", JSON.stringify(_ottclub_cfg));
+
+function getChannelPicon(ch_id) {
+    if (!(chanels[ch_id] && chanels[ch_id].img)) return "";
+    return "http://" + ottwww + "/images/" + chanels[ch_id].img;
 }
-function getChannelPicon(e) {
-    return chanels[e] ? chanels[e].logo || "" : "";
+
+function getChannelUrl(ch_id) {
+    return "http://" + ottwww + "/stream/" + ottkey + "/" + ch_id + ".m3u8";
 }
-function getChannelUrl(e) {
-    return chanels[e] ? chanels[e].url || "" : "";
+
+function getArchiveUrl(ch_id, time, time_to) {
+    return (
+        getChannelUrl(ch_id) +
+        (time_to < Date.now() / 1000 && browserName() != "dune"
+            ? "?archive=" + time + "&archive_end=" + time_to
+            : "?timeshift=" + time + "&timenow=" + Date.now() / 1000)
+    );
 }
-function getEPGchanel(s, e) {
-    e(s, null);
-}
-function addChan2cat(catName, hash) {
-    if (!(catName && hash)) return;
-    if (!cats[catName]) {
-        catsArray.push(catName);
-        cats[catName] = [];
-    }
-    cats[catName].push(hash);
-}
-function getChanelsArray(cb) {
-    _ottclub_load();
-    if (_ottclub_cfg.server && _ottclub_cfg.user && _ottclub_cfg.pass)
-        _ottclub_xtream(cb);
-    else if (_ottclub_cfg.m3u) _ottclub_m3u(cb);
-    else {
-        alert(_("Configure OTTCLUB in Settings -> Provider Settings"));
-        cb();
-    }
-}
-function _ottclub_m3u(cb) {
-    $(launch_id).append(_("Loading M3U..."));
-    $.ajax({
-        error: function () {
-            $.ajax({
-                data: { url: "@" + _ottclub_cfg.m3u },
-                dataType: "text",
-                error: function () {
-                    alert(_("Failed to load!"));
-                    cb();
-                },
-                method: "post",
-                success: function (d) {
-                    _ottclub_parseM3U(d, cb);
-                },
-                timeout: 15e3,
-                url: host + "/m3u/cp.php",
-            });
-        },
-        success: function (d) {
-            _ottclub_parseM3U(d, cb);
-        },
-        timeout: 15e3,
-        url: _ottclub_cfg.m3u,
+
+$.support.cors = true;
+
+function _ottclub_addCats() {
+    if (typeof catsArray == "undefined") catsArray = [];
+    if (typeof cats == "undefined") cats = {};
+    cList.forEach(function (ch_id) {
+        var ch = chanels[ch_id];
+        if (!ch) return;
+        if (!ch.channel_name && ch.name) ch.channel_name = ch.name;
+        var cat = "";
+        if (ch.category) {
+            if (typeof ch.category === "string") cat = ch.category;
+            else if (ch.category.name) cat = ch.category.name;
+        } else if (ch.group) cat = ch.group;
+        else if (ch.group_title) cat = ch.group_title;
+        if (!cat) return;
+        if (!cats[cat]) {
+            catsArray.push(cat);
+            cats[cat] = [];
+        }
+        cats[cat].push(ch_id);
+        ch.category = {
+            class: catsArray.indexOf(cat) + 2,
+            name: cat,
+        };
     });
 }
-function _ottclub_parseM3U(data, cb) {
-    cList = [];
-    chanels = {};
-    cats = {};
-    catsArray = [];
-    try {
-        var lines = data.split("#EXTINF:");
-        var hdr = lines[0] || "";
-        lines.shift();
-        var lc = "";
-        lines.forEach(function (b) {
-            var p = b.split("\n");
-            var inf = p[0] || "";
-            var url = "";
-            for (var i = 1; i < p.length; i++) {
-                if (p[i].trim() && p[i].trim()[0] !== "#") {
-                    url = p[i].trim();
-                    break;
-                }
+
+function getChanelsArray(callback) {
+    _getParams();
+    $.ajax({
+        complete: function () {
+            if (ottwww.length < 4 || ottkey.length < 8) {
+                try {
+                    popupList(popupActions.indexOf(noProvParam) + 1);
+                } catch (e) {}
+                infoBox(
+                    "Для доступа необходимо ввести ключ и адрес плейлиста!"
+                );
             }
-            if (!url) return;
-            var name = "???";
-            var ci = inf.indexOf(",");
-            if (ci > 0) name = inf.substr(ci + 1).trim();
-            var cat = "";
-            var gm = inf.match(/group-title="([^"]*)"/i);
-            if (gm) cat = gm[1];
-            var logo = "";
-            var lm = inf.match(/tvg-logo="([^"]*)"/i);
-            if (lm) logo = lm[1];
-            if (!cat) cat = lc || "Other";
-            lc = cat;
-            var h = xxHash32S(url, true);
-            addChan2cat(cat, h);
-            if (cList.indexOf(h) === -1) {
-                cList.push(h);
-                chanels[h] = {
-                    ca: "",
-                    caso: "",
-                    category: { class: catsArray.indexOf(cat) + 2, name: cat },
-                    channel_name: name,
-                    epg: "",
-                    logo: logo,
-                    rec: 0,
-                    time: 0,
-                    time_to: 0,
-                    tn: name,
-                    url: url,
-                };
-            }
-        });
-    } catch (e) {
-        console.error(e);
-    }
-    cb();
-}
-function _ottclub_xtream(cb) {
-    $(launch_id).append(_("Loading from API..."));
-    var api =
-        _ottclub_cfg.server +
-        "/player_api.php?username=" +
-        encodeURIComponent(_ottclub_cfg.user) +
-        "&password=" +
-        encodeURIComponent(_ottclub_cfg.pass);
-    $.ajax({ dataType: "json", timeout: 15e3, type: "GET", url: api })
-        .done(function (r) {
-            cList = [];
-            chanels = {};
-            cats = {};
-            catsArray = [];
-            if (!(r && r.live_streams)) {
-                _ottclub_cfg.m3u =
-                    api.replace("/player_api.php", "/get.php") +
-                    "&type=m3u_plus&output=ts";
-                _ottclub_m3u(cb);
-                return;
-            }
-            var cm = {};
-            if (r.categories)
-                r.categories.forEach(function (c) {
-                    cm[c.category_id] = c.category_name || "Unknown";
+            callback();
+        },
+        dataType: "text",
+        error: function (jqXHR, textStatus, errorThrown) {
+            console.log(
+                "channels : jqXHR:" +
+                    JSON.stringify(jqXHR) +
+                    "; textStatus: " +
+                    textStatus +
+                    ", errorThrown: " +
+                    errorThrown
+            );
+            alert(
+                "Не удалось загрузить список каналов! Проверьте правильность адреса плейлиста!!"
+            );
+        },
+        success: function (data) {
+            try {
+                cList = data.split('"ch_id":"');
+                cList.shift();
+                cList.forEach(function (val, i) {
+                    cList[i] = val.split('","')[0];
                 });
-            r.live_streams.forEach(function (s) {
-                var h = xxHash32S(s.name, true);
-                var cn = cm[s.category_id] || "Other";
-                addChan2cat(cn, h);
-                if (cList.indexOf(h) === -1) {
-                    cList.push(h);
-                    chanels[h] = {
-                        ca: "",
-                        caso: "",
-                        category: {
-                            class: catsArray.indexOf(cn) + 2,
-                            name: cn,
-                        },
-                        channel_name: s.name,
-                        epg: String(s.stream_id),
-                        logo: s.stream_icon || "",
-                        rec: 0,
-                        time: 0,
-                        time_to: 0,
-                        tn: s.name,
-                        url:
-                            _ottclub_cfg.server +
-                            "/live/" +
-                            encodeURIComponent(_ottclub_cfg.user) +
-                            "/" +
-                            encodeURIComponent(_ottclub_cfg.pass) +
-                            "/" +
-                            s.stream_id +
-                            ".m3u8",
-                    };
-                }
-            });
-            cb();
-        })
-        .fail(function () {
-            _ottclub_cfg.m3u =
-                _ottclub_cfg.server.replace(/\/+$/, "") +
-                "/get.php?username=" +
-                encodeURIComponent(_ottclub_cfg.user) +
-                "&password=" +
-                encodeURIComponent(_ottclub_cfg.pass) +
-                "&type=m3u_plus&output=ts";
-            _ottclub_m3u(cb);
-        });
+                chanels = JSON.parse(data);
+                cats = {};
+                catsArray = [];
+                cList.forEach(function (ch_id) {
+                    if (!chanels[ch_id]) return;
+                    chanels[ch_id].rec = chanels[ch_id].rec ? 7 * 24 : 0;
+                    if (!chanels[ch_id].channel_name && chanels[ch_id].name)
+                        chanels[ch_id].channel_name = chanels[ch_id].name;
+                    epg[ch_id] = [chanels[ch_id]];
+                });
+                _ottclub_addCats();
+            } catch (e) {
+                cList = [];
+                chanels = {};
+                console.log(
+                    "Exception: name " +
+                        e.name +
+                        ", message " +
+                        e.message +
+                        ", typeof " +
+                        typeof e
+                );
+                alert(
+                    "Не удалось обработать список каналов! Проверьте правильность адреса плейлиста!!"
+                );
+            }
+        },
+        url: "http://" + ottwww + "/api/channel_now",
+    });
 }
-function duneAddSettings(e) {
-    _ottclub_load();
-    popupArray.splice(e, 1, "");
-    popupDetail.splice(e, 1, _("OTTCLUB settings"));
-    popupActions.splice(e, 1, _ottclub_edit);
-    var idx = popupActions.indexOf(_ottclub_edit);
-    if (idx > -1) {
-        var lbl = _("OTTCLUB settings");
-        if (_ottclub_cfg.server && _ottclub_cfg.user)
-            lbl +=
-                ": " +
-                _ottclub_cfg.server.replace(/^https?:\/\//, "").split("/")[0] +
-                " (" +
-                _ottclub_cfg.user +
-                ")";
-        else if (_ottclub_cfg.m3u)
-            lbl += ": " + _ottclub_cfg.m3u.substr(0, 40) + "...";
-        popupArray[idx] = lbl;
-    }
+
+function getEPGchanel(ch_id, callback) {
+    var d = null;
+    $.ajax({
+        complete: function () {
+            callback(ch_id, d);
+        },
+        dataType: "json",
+        success: function (data) {
+            if (data) d = data.epg_data;
+        },
+        timeout: 30000,
+        url: "http://" + ottwww + "/api/channel/" + ch_id,
+    });
 }
-function _ottclub_edit() {
-    selIndex = 0;
-    _ottclub_load();
-    var srv = _ottclub_cfg.server,
-        usr = _ottclub_cfg.user,
-        pwd = _ottclub_cfg.pass,
-        m3u = _ottclub_cfg.m3u;
-    function bl() {
-        listArray = [
-            _("Server") + ": " + (srv || ""),
-            _("Login") + ": " + (usr || ""),
-            _("Password") + ": " + (pwd ? "********" : ""),
-            _("M3U") + ": " + (m3u ? m3u.substr(0, 45) : ""),
-            "",
-            _("Save and load"),
-        ];
-    }
-    var ii = [
-        _("API server URL"),
-        _("Username"),
-        _("Password"),
-        _("M3U URL (fallback)"),
-        "",
-        _("Save & load channels"),
-    ];
-    bl();
-    getListItem = function (e, r) {
-        return "&nbsp;&nbsp;" + e;
+
+function duneAddSettings(ind) {
+    if (typeof delPopup === "function") delPopup(restart);
+    _getParams();
+    popupArray.splice(
+        ind,
+        0,
+        "OTTCLUB: Адрес плейлиста",
+        "OTTCLUB: Ключ доступа"
+    );
+    popupDetail.splice(
+        ind,
+        0,
+        "Ввод адреса плейлиста OTTCLUB (После изменения плеер перезапустится!)",
+        ""
+    );
+    popupActions.splice(ind, 0, edit_ottwww, edit_ottkey);
+}
+
+function edit_ottwww() {
+    editCaption = "Редактирование адреса плейлиста OTTCLUB";
+    editvar = ottwww;
+    setEdit = function () {
+        if (ottwww == editvar) return;
+        providerSetItem("ottwww", editvar);
+        restart();
     };
-    detailListAction = function () {
-        listDetail.innerHTML = ii[selIndex] || "";
+    showEditKey([0, 2]);
+}
+
+function edit_ottkey() {
+    editCaption = "Редактирование ключа доступа OTTCLUB";
+    editvar = ottkey;
+    setEdit = function () {
+        if (ottkey == editvar) return;
+        ottkey = editvar;
+        providerSetItem("ottkey", ottkey);
+        playChannel(catIndex, primaryIndex);
     };
-    listKeyHandler = function (e) {
-        switch (e) {
-            case keys.ENTER:
-                switch (selIndex) {
-                    case 0:
-                        editCaption = _("Server URL");
-                        editvar = srv;
-                        setEdit = function () {
-                            srv = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 1:
-                        editCaption = _("Username");
-                        editvar = usr;
-                        setEdit = function () {
-                            usr = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 2:
-                        editCaption = _("Password");
-                        editvar = pwd;
-                        setEdit = function () {
-                            pwd = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 3:
-                        editCaption = _("M3U URL");
-                        editvar = m3u;
-                        setEdit = function () {
-                            m3u = editvar.trim();
-                            bl();
-                            showPage();
-                        };
-                        showEditKey(keys.ENTER);
-                        return true;
-                    case 5:
-                        _ottclub_cfg.server = srv;
-                        _ottclub_cfg.user = usr;
-                        _ottclub_cfg.pass = pwd;
-                        _ottclub_cfg.m3u = m3u;
-                        _ottclub_save();
-                        duneAddSettings(0);
-                        loadChannels();
-                        return true;
-                }
-                return true;
-            case keys.RETURN:
-                popupList(popupActions.indexOf(noProvParam) + 1);
-                return true;
-            default:
-                return false;
-        }
-    };
-    listDetail.innerHTML = "";
-    listCaption.innerHTML = _("OTTCLUB");
-    listPodval.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
-    $("#listPopUp").hide();
-    showPage();
+    showEditKey([0, 1]);
 }
