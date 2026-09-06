@@ -28,6 +28,7 @@ const MODULES = [
     "build/commands/index.js",
     "build/app/init.js",
     "build/app/device.js",
+    "build/settings/sleepTimer.js",
     "build/index.js",
 ];
 

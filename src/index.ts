@@ -140,6 +140,7 @@ import {
     settings,
 } from "./settings";
 import { cloudLoadSettings, cloudSendSettings } from "./settings/cloud";
+import { setSleepTimeout } from "./settings/sleepTimer";
 // Storage
 import {
     getMacAddress,
@@ -341,9 +342,7 @@ var parentPIN = "1234";
 // Hide menus list
 var hideMenus: string[] = [];
 
-// Sleep timer
-var sleepTimer: any = null;
-
+// Sleep timer — now in src/settings/sleepTimer.ts (Phase C)
 // Info timeout
 var infoTimeout: any = null;
 
@@ -985,25 +984,6 @@ function setEditor(): void {
 function setPipPosBuf(): void {
     pullSettingsFromWindow();
     setPipPosition();
-}
-
-/**
- * Set (or clear) the sleep timer. After settings.sleepTimeout minutes,
- * the player enters standby via stbToggleStandby().
- *
- * Side effects: Sets/clears a setTimeout; calls stbToggleStandby() when
- * the timer fires.
- */
-function setSleepTimeout(): void {
-    if (sleepTimer) clearTimeout(sleepTimer);
-    if (settings.sleepTimeout > 0) {
-        sleepTimer = setTimeout(
-            function () {
-                stbToggleStandby();
-            },
-            settings.sleepTimeout * 60 * 1000
-        );
-    }
 }
 
 // Channel list functions
