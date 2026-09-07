@@ -22,6 +22,8 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync"] }
 tracing = "0.1"
 anyhow = "1"
 ottplay-core = { path = "../src-rs/core" }
+tiny_http = "0.12.0"
+url = "2.5.8"
 
 # Required for production embed of frontendDist. Plain `cargo build`
 # without this leaves cfg(dev) on and never embeds assets (white screen).

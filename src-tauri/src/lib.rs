@@ -20,10 +20,15 @@ const DEFAULT_WEB_URL: &str = "";
 
 pub fn run() {
     let epg_urls = commands::tauri_commands::init_xmltv_urls();
+    let command_queues = commands::queue::new_shared();
+    // Bind the Mode B command queue HTTP server (localhost:18081) on a
+    // background thread. Mirror of `local_proxy.py` for the native shell.
+    commands::queue::spawn_http_server(command_queues.clone());
     tauri::Builder::default()
         .manage(TauriState {
             xmltv_cache: Arc::new(RwLock::new(None)),
             epg_urls: Arc::new(RwLock::new(epg_urls.clone())),
+            command_queues: command_queues.clone(),
         })
         .invoke_handler(tauri::generate_handler![
             commands::tauri_commands::ping,
@@ -38,6 +43,8 @@ pub fn run() {
             commands::tauri_commands::stop_pip,
             commands::tauri_commands::set_pip_bounds,
             commands::tauri_commands::exit_app,
+            commands::queue::queue_poll,
+            commands::queue::queue_enqueue,
         ])
         .setup(|app| {
             let raw = std::env::var("OTTPLAY_WEB_URL").unwrap_or_else(|_| DEFAULT_WEB_URL.into());
