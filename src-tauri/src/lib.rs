@@ -51,6 +51,9 @@ pub fn run() {
             commands::tauri_commands::exit_app,
             commands::queue::queue_poll,
             commands::queue::queue_enqueue,
+            commands::misc::get_version,
+            commands::misc::feedback_get,
+            commands::misc::feedback_post,
         ])
         .setup(|app| {
             let raw = std::env::var("OTTPLAY_WEB_URL").unwrap_or_else(|_| DEFAULT_WEB_URL.into());

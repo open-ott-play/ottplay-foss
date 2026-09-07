@@ -24,6 +24,8 @@ anyhow = "1"
 ottplay-core = { path = "../src-rs/core" }
 tiny_http = "0.12.0"
 url = "2.5.8"
+md5 = "0.7"
+chrono = { version = "0.4", features = ["serde"] }
 
 # Required for production embed of frontendDist. Plain `cargo build`
 # without this leaves cfg(dev) on and never embeds assets (white screen).
