@@ -6,8 +6,9 @@ on:
       - main
     tags:
       - 'v*'
+  workflow_dispatch:
   # PRs only need CI (lint/typecheck/build). Multi-arch docker is slow and
-  # was a required-check blocker; image push happens on main / v* only.
+  # was a required-check blocker; image push happens on main / v* / workflow_dispatch.
 
 permissions:
   contents: read

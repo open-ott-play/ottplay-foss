@@ -5,18 +5,23 @@ COPY package.json package-lock.json tsconfig.json vite.config.ts ./
 COPY src ./src
 RUN npm ci --ignore-scripts && npm run typecheck && npm run build
 
-# Build Rust server
-FROM rust:1.98@sha256:620dbcd124499c59e2406d3741574b5c5838cf9eb9656f0c3a03948f79b02959 AS rust-build
+# Build Rust server against musl so the published image does not need
+# GLIBC_2.38+ (Hub :latest built on a newer glibc toolchain failed on
+# Synology DSM Docker / x86_64). Alpine = musl host target by default.
+FROM rust:1.98-alpine@sha256:a10e64dd139b7387337c7fbe8aca31b959b57b2fd4c8ae20a02cf1d6ea424dce AS rust-build
+RUN apk add --no-cache musl-dev build-base
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY src-rs ./src-rs
 # Workspace lists src-tauri (desktop shell). Server image only builds
-# ottplay-server — drop that member so cargo does not need /app/src-tauri.
+# ottplay-server - drop that member so cargo does not need /app/src-tauri.
 RUN sed -i 's/, "src-tauri"//' Cargo.toml \
  && cargo build --release --bin ottplay-server
 
-# Serve static player + endpoints via the Rust server
-FROM gcr.io/distroless/cc-debian12@sha256:e5d81ddde149641e2a9ba55be4545bc125c67de07508b03ba4c22e6eb0ded5aa
+# Musl runtime (no glibc). ca-certificates for outbound HTTPS (EPG / M3U).
+FROM alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d
+RUN apk add --no-cache ca-certificates \
+ && adduser -D -H -u 65532 -g nonroot nonroot
 WORKDIR /app
 COPY --from=build /app/dist ./dist
 COPY --from=rust-build /app/target/release/ottplay-server ./ottplay-server
@@ -26,5 +31,6 @@ COPY js ./js
 COPY stb ./stb
 COPY stbPlayer ./stbPlayer
 COPY prov ./prov
+USER nonroot
 EXPOSE 8080
 CMD ["./ottplay-server", "--port", "8080"]
