@@ -983,6 +983,35 @@ export function getEPGchanelCached(
         callback(channelId, cached);
         return;
     }
+    // Mode B (Capacitor mobile): use native XMLTV EPG plugin.
+    if (typeof (window as any).Capacitor !== "undefined") {
+        var ch = channels[channelId];
+        var hash = String(channelId);
+        var timeShiftHours = ch && typeof ch.rec === "number" ? ch.rec : 0;
+        var xmltvUrl =
+            ch && (ch as any).epg_url != null
+                ? String((ch as any).epg_url)
+                : "";
+        (window as any).Capacitor.Plugins.MobileXmltvEpg.getEpg({
+            ch: ch?.channel_name || ch?.name || "",
+            channel_id: String(channelId),
+            hash: hash,
+            time_shift_hours: timeShiftHours,
+            xmltv_url: xmltvUrl,
+        })
+            .then(function (result: any) {
+                if (result && Array.isArray(result.epg_data)) {
+                    epg[channelId] = result.epg_data;
+                    callback(channelId, result.epg_data);
+                } else {
+                    callback(channelId, null);
+                }
+            })
+            .catch(function (_err: any) {
+                callback(channelId, null);
+            });
+        return;
+    }
     // Mode B (Tauri desktop): no provider sets window.getEPGchanel.
     // Use in-process Rust EPG via invoke() instead of HTTP fetch.
     if (typeof (window as any).__TAURI__ !== "undefined") {
