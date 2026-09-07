@@ -1624,18 +1624,14 @@ function setupTauriCompanionShim(): void {
             url.indexOf("/m3u/match-channels") !== -1 ||
             url.indexOf("/m3u/match-logos") !== -1
         ) {
-            // No companion match API in embed. Per-channel EPG uses get_epg
-            // invoke (setupTauriEpgOverride). Resolve empty so load continues.
-            const dfd = $.Deferred();
-            setTimeout(() => {
-                try {
-                    if (typeof opts.success === "function") {
-                        opts.success("", "success", dfd);
-                    }
-                } catch (_e) {}
-                dfd.resolve("");
-            }, 0);
-            return dfd.promise(dfd) as any;
+            // Route match-channels / match-logos through native Tauri commands.
+            // The body is opts.data (FOSS text protocol).
+            const body = typeof opts.data === "string" ? opts.data : "";
+            const cmd =
+                url.indexOf("/m3u/match-channels") !== -1
+                    ? "match_channels"
+                    : "match_logos";
+            return jqFromInvoke(tauriInvoke<string>(cmd, { body, url }), opts);
         }
 
         return origAjax(opts);
@@ -1661,11 +1657,16 @@ function setupTauriEpgOverride(): void {
         // channels is imported into scope from ./channels.
         const ch = channels[channelIdNum];
         const channelName = ch?.channel_name || ch?.name || "";
+        // Prefer epg_url hash from match_channels when present.
+        const epgHash =
+            ch && (ch as any).epg_url != null
+                ? String((ch as any).epg_url)
+                : "";
 
         tauriInvoke<any>("get_epg", {
             ch: channelName,
             channel_id: channelIdNum.toString(),
-            hash: "",
+            hash: epgHash,
             time_shift_hours: 0,
         })
             .then((result) => {
