@@ -537,33 +537,6 @@ var pageSize = 25;
 // Mode B embed routes those URLs through setupTauriCompanionShim → tmdb_proxy.
 // Poster/backdrop images use the public image CDN (img tags; no CORS proxy needed).
 var TMDb: any = {
-    la: {
-        _eng: "en",
-        _arm: "hy",
-        _bel: "be",
-        _fra: "fr",
-        _ger: "de",
-        _gre: "el",
-        _heb: "he",
-        _hun: "hu",
-        _lat: "lv",
-        _lit: "lt",
-        _pol: "pl",
-        _por: "pt",
-        _rou: "ro",
-        _rus: "ru",
-        _spa: "es",
-        _tur: "tr",
-        _ukr: "uk",
-    },
-    media_type_id: "",
-    data: null as any,
-    results: [] as any[],
-    sel: -1,
-    query: "",
-    hk: 1,
-    fun: "css",
-    prepare: function () {},
     apiPath: function (tail: string): string {
         const h = String((window as any).host || "");
         const path = "/tmdb/s/" + String(tail || "").replace(/^\//, "");
@@ -572,6 +545,8 @@ var TMDb: any = {
         }
         return path;
     },
+    data: null as any,
+    fun: "css",
     get: function (media_type: string, id: any) {
         const $ = (window as any).$;
         const _ =
@@ -688,110 +663,45 @@ var TMDb: any = {
         }
         TMDb.media_type_id = media_type + "/" + id;
         $.ajax({
-            url: TMDb.apiPath(media_type + "/" + id),
-            data: { language: api_lang, append_to_response: "credits" },
-            dataType: "json",
-            timeout: 30000,
             cache: false,
-            success: function (data: any) {
-                TMDb.data = data;
-                show();
-            },
+            data: { append_to_response: "credits", language: api_lang },
+            dataType: "json",
             error: function (jqXHR: any) {
                 $("#dialogbox").html("<br>Get TMDb error!<br><br>");
                 console.log("getTMDB jqXHR:" + JSON.stringify(jqXHR));
             },
+            success: function (data: any) {
+                TMDb.data = data;
+                show();
+            },
+            timeout: 30000,
+            url: TMDb.apiPath(media_type + "/" + id),
         });
     },
-    setSel: function (i: number) {
-        if (TMDb.sel === i) return;
-        const $ = (window as any).$;
-        try {
-            $("#tmdb" + TMDb.sel)[TMDb.fun](
-                { width: 150 * TMDb.hk + "px" },
-                200
-            );
-        } catch (_e) {}
-        TMDb.sel = i;
-        try {
-            $("#_sel").text(TMDb.sel + 1);
-            $("#tmdb" + TMDb.sel)[TMDb.fun](
-                { width: 200 * TMDb.hk + "px" },
-                200
-            );
-        } catch (_e2) {}
+    hk: 1,
+    la: {
+        _arm: "hy",
+        _bel: "be",
+        _eng: "en",
+        _fra: "fr",
+        _ger: "de",
+        _gre: "el",
+        _heb: "he",
+        _hun: "hu",
+        _lat: "lv",
+        _lit: "lt",
+        _pol: "pl",
+        _por: "pt",
+        _rou: "ro",
+        _rus: "ru",
+        _spa: "es",
+        _tur: "tr",
+        _ukr: "uk",
     },
-    setSelect: function (i: number) {
-        if (TMDb.sel === i) {
-            const keys = (window as any).keys || {};
-            if ((window as any)._doKey) (window as any)._doKey(keys.ENTER);
-        } else TMDb.setSel(i);
-    },
-    select: function () {
-        const $ = (window as any).$;
-        const keys = (window as any).keys || {};
-        TMDb.hk = (window as any).getHeightK ? (window as any).getHeightK() : 1;
-        TMDb.fun = (window as any).sInfoSlide ? "animate" : "css";
-        let s =
-            '<span id="_sel">1</span>/' +
-            TMDb.results.length +
-            '<div id="_tmdb" style="clear:both;overflow:hidden;"><div id="tmdb" style="white-space:nowrap;position:relative;">';
-        TMDb.results.forEach(function (val: any, ind: number) {
-            const poster = val.poster_path
-                ? "https://image.tmdb.org/t/p/w500/" + val.poster_path
-                : "";
-            s +=
-                '<div id="tmdb' +
-                ind +
-                '" style="display: inline-block; height:' +
-                300 * TMDb.hk +
-                "px; width:" +
-                150 * TMDb.hk +
-                "px; background-position: center; background-size: contain; background-repeat: no-repeat; background-image: url(" +
-                poster +
-                ');" onclick="TMDb.setSelect(' +
-                ind +
-                ');"></div>';
-        });
-        s += "</div></div>";
-        $("#dialogbox").html(s).show();
-        if (TMDb.sel === -1) TMDb.setSel(0);
-        else {
-            const i = TMDb.sel;
-            TMDb.sel = -1;
-            TMDb.setSel(i);
-        }
-        (window as any).dialogBoxKeyHandler = function (key: any) {
-            switch (key) {
-                case keys.UP:
-                    TMDb.setSel(0);
-                    break;
-                case keys.DOWN:
-                    TMDb.setSel(TMDb.results.length - 1);
-                    break;
-                case keys.LEFT:
-                    if (TMDb.sel) TMDb.setSel(TMDb.sel - 1);
-                    break;
-                case keys.RIGHT:
-                    if (TMDb.sel < TMDb.results.length - 1)
-                        TMDb.setSel(TMDb.sel + 1);
-                    break;
-                case keys.ENTER:
-                    TMDb.get(
-                        TMDb.results[TMDb.sel].media_type,
-                        TMDb.results[TMDb.sel].id
-                    );
-                    break;
-                case keys.RETURN:
-                case keys.EXIT:
-                    $("#dialogbox").hide();
-                    break;
-                default:
-                    break;
-            }
-            return true;
-        };
-    },
+    media_type_id: "",
+    prepare: function () {},
+    query: "",
+    results: [] as any[],
     search: function (nam: string, itr?: number) {
         const $ = (window as any).$;
         const _ =
@@ -858,16 +768,18 @@ var TMDb: any = {
             .html("<br>" + _("Search") + ":<br>" + name + "<br><br>")
             .show();
         $.ajax({
-            url: TMDb.apiPath("search/multi"),
+            cache: false,
             data: {
-                language: api_lang,
-                query: name,
-                page: 1,
                 include_adult: true,
+                language: api_lang,
+                page: 1,
+                query: name,
             },
             dataType: "json",
-            timeout: 30000,
-            cache: false,
+            error: function (jqXHR: any) {
+                $("#dialogbox").html("<br>Search TMDb error!<br><br>");
+                console.log("searchTMDB jqXHR:" + JSON.stringify(jqXHR));
+            },
             success: function (data: any) {
                 data.results = (data.results || []).filter(function (val: any) {
                     return (
@@ -897,11 +809,99 @@ var TMDb: any = {
                         return;
                 }
             },
-            error: function (jqXHR: any) {
-                $("#dialogbox").html("<br>Search TMDb error!<br><br>");
-                console.log("searchTMDB jqXHR:" + JSON.stringify(jqXHR));
-            },
+            timeout: 30000,
+            url: TMDb.apiPath("search/multi"),
         });
+    },
+    sel: -1,
+    select: function () {
+        const $ = (window as any).$;
+        const keys = (window as any).keys || {};
+        TMDb.hk = (window as any).getHeightK ? (window as any).getHeightK() : 1;
+        TMDb.fun = (window as any).sInfoSlide ? "animate" : "css";
+        let s =
+            '<span id="_sel">1</span>/' +
+            TMDb.results.length +
+            '<div id="_tmdb" style="clear:both;overflow:hidden;"><div id="tmdb" style="white-space:nowrap;position:relative;">';
+        TMDb.results.forEach(function (val: any, ind: number) {
+            const poster = val.poster_path
+                ? "https://image.tmdb.org/t/p/w500/" + val.poster_path
+                : "";
+            s +=
+                '<div id="tmdb' +
+                ind +
+                '" style="display: inline-block; height:' +
+                300 * TMDb.hk +
+                "px; width:" +
+                150 * TMDb.hk +
+                "px; background-position: center; background-size: contain; background-repeat: no-repeat; background-image: url(" +
+                poster +
+                ');" onclick="TMDb.setSelect(' +
+                ind +
+                ');"></div>';
+        });
+        s += "</div></div>";
+        $("#dialogbox").html(s).show();
+        if (TMDb.sel === -1) TMDb.setSel(0);
+        else {
+            const i = TMDb.sel;
+            TMDb.sel = -1;
+            TMDb.setSel(i);
+        }
+        (window as any).dialogBoxKeyHandler = function (key: any) {
+            switch (key) {
+                case keys.UP:
+                    TMDb.setSel(0);
+                    break;
+                case keys.DOWN:
+                    TMDb.setSel(TMDb.results.length - 1);
+                    break;
+                case keys.LEFT:
+                    if (TMDb.sel) TMDb.setSel(TMDb.sel - 1);
+                    break;
+                case keys.RIGHT:
+                    if (TMDb.sel < TMDb.results.length - 1)
+                        TMDb.setSel(TMDb.sel + 1);
+                    break;
+                case keys.ENTER:
+                    TMDb.get(
+                        TMDb.results[TMDb.sel].media_type,
+                        TMDb.results[TMDb.sel].id
+                    );
+                    break;
+                case keys.RETURN:
+                case keys.EXIT:
+                    $("#dialogbox").hide();
+                    break;
+                default:
+                    break;
+            }
+            return true;
+        };
+    },
+    setSel: function (i: number) {
+        if (TMDb.sel === i) return;
+        const $ = (window as any).$;
+        try {
+            $("#tmdb" + TMDb.sel)[TMDb.fun](
+                { width: 150 * TMDb.hk + "px" },
+                200
+            );
+        } catch (_e) {}
+        TMDb.sel = i;
+        try {
+            $("#_sel").text(TMDb.sel + 1);
+            $("#tmdb" + TMDb.sel)[TMDb.fun](
+                { width: 200 * TMDb.hk + "px" },
+                200
+            );
+        } catch (_e2) {}
+    },
+    setSelect: function (i: number) {
+        if (TMDb.sel === i) {
+            const keys = (window as any).keys || {};
+            if ((window as any)._doKey) (window as any)._doKey(keys.ENTER);
+        } else TMDb.setSel(i);
     },
 };
 
