@@ -3273,6 +3273,15 @@ window.stbToggleZoom = stbToggleZoom;
 window.stbCSS = stbCSS;
 window.stbInit = stbInit;
 window.stbExit = stbExit;
+
+// Tauri Mode B: real app exit (window.close() does not quit Tauri).
+if (typeof window.__TAURI__ !== "undefined") {
+    window.stbExit = function (): void {
+        tauriInvoke<any>("exit_app", {}).catch((e: any) =>
+            console.warn("[Tauri] exit_app failed:", e)
+        );
+    };
+}
 window.setPlayer = setPlayer;
 window.stbGetItem = stbGetItem;
 window.stbSetItem = stbSetItem;

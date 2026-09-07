@@ -5,5 +5,19 @@
   "remote": {
     "urls": ["http://127.0.0.1:8095/*", "http://localhost:8095/*"]
   },
-  "permissions": ["core:default", "core:window:default"]
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "allow-ping",
+    "allow-get-epg",
+    "allow-set-fullscreen",
+    "allow-prevent-sleep",
+    "allow-allow-sleep",
+    "allow-get-volume",
+    "allow-set-volume",
+    "allow-play-pip",
+    "allow-stop-pip",
+    "allow-set-pip-bounds",
+    "allow-exit-app"
+  ]
 }
