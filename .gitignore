@@ -38,5 +38,13 @@ TO*.md
 
 uv.lock
 
+# Secrets / local env
+.env
+.env.*
+*.pem
+*.jks
+*.keystore
+google-services.json
+
 # Operator-local overrides (swop base URL, device id) — never commit
 /local/
