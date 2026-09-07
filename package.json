@@ -5,6 +5,11 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "build:mobile": "vite build && npx cap copy && npx cap sync",
+    "cap:android": "npx cap open android",
+    "cap:copy": "vite build && npx cap copy",
+    "cap:ios": "npx cap open ios",
+    "cap:sync": "npx cap sync",
     "check": "ultracite check",
     "check:bundle": "bash scripts/check-bundle-identifiers.sh",
     "dev": "vite",
@@ -13,6 +18,12 @@
     "lint:fix": "biome check --write .",
     "test": "npx tsx tests/test_channel_filtering.ts && npx tsx tests/test-epg-matching.ts && npx tsx tests/test_listKeyHandler_alias.ts",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.1",
+    "@capacitor/cli": "^8.5.1",
+    "@capacitor/core": "^8.5.1",
+    "@capacitor/ios": "^8.5.1"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.11",

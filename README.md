@@ -35,6 +35,19 @@ When debug is enabled:
   - Else: sets `ottplay_debug=1` + `ottplay_debug_hud=1` and prompts restart
 - Persistence: HUD state saved to `localStorage.ottplay_debug_hud` ("1"/"0") by `ottDebugSetHud`
 
+## Mobile Apps (iOS / Android)
+
+Capacitor wraps the same TypeScript frontend for native iOS and Android.
+
+```bash
+npm install
+npm run build:mobile          # vite build + cap copy + cap sync
+npm run cap:ios               # open in Xcode
+npm run cap:android           # open in Android Studio
+```
+
+See [docs/capacitor-mobile.md](docs/capacitor-mobile.md) for prerequisites, configuration, and gaps.
+
 ## Quick Start
 
 ```bash

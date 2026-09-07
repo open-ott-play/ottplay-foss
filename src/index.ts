@@ -2316,13 +2316,13 @@ if (typeof window.__TAURI__ !== "undefined") {
                 try {
                     const mo = new MutationObserver(() => syncFromLaunch());
                     mo.observe(launch, {
-                        attributes: true,
                         attributeFilter: [
                             "style",
                             "class",
                             "data-done",
                             "hidden",
                         ],
+                        attributes: true,
                         childList: true,
                         subtree: true,
                     });
