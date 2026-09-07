@@ -8,6 +8,7 @@
 
 import { translate as _ } from "../localization";
 import { saveSettings, settings } from "../settings";
+import { makeQrSvg } from "../utils/qrcode";
 
 declare var $: any;
 declare var keys: any;
@@ -338,6 +339,12 @@ export function swopLoadValue(): void {
                 (data.url && String(data.url)) ||
                 base + "/?c=" + encodeURIComponent(code);
             var color = curColor || "gold";
+            var qrSvg = "";
+            try {
+                qrSvg = makeQrSvg(url, 240);
+            } catch (_qrErr) {
+                qrSvg = "";
+            }
             showMsg(
                 (_("Request sended!") || "Request sent!") +
                     "<br/><br/>" +
@@ -347,6 +354,11 @@ export function swopLoadValue(): void {
                     '">' +
                     escapeHtml(url) +
                     "</span><br/><br/>" +
+                    (qrSvg
+                        ? '<div style="margin:8px auto;padding:12px;background:#ffffff;display:inline-block;line-height:0;border-radius:4px">' +
+                          qrSvg +
+                          "</div><br/><br/>"
+                        : "") +
                     (_("and enter code") || "code") +
                     ' <span style="font-size:200%;color:' +
                     color +

@@ -17,6 +17,7 @@ const MODULES = [
     "build/settings/index.js",
     "build/utils/helpers.js",
     "build/utils/encoding.js",
+    "build/utils/qrcode.js",
     "build/channels/types.js",
     "build/channels/favorites-lists.js",
     "build/channels/search.js",

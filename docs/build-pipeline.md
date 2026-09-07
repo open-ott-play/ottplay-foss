@@ -31,6 +31,7 @@ The `MODULES` array in `vite.config.ts` defines concatenation order. All files a
 | 5 | `build/settings/index.js` | anything using `settings.*` |
 | 6 | `build/utils/helpers.js` | most of the app (utility helpers) |
 | 7 | `build/utils/encoding.js` | anything encoding base64 |
+| 7b | `build/utils/qrcode.js` | swop invite QR (makeQrSvg) |
 | 8 | `build/channels/types.js` | channels/index.js |
 | 9 | `build/channels/index.js` | core, ui, keyhandler |
 | 10 | `build/debug/playback-debug.js` | core (debug wiring) |
