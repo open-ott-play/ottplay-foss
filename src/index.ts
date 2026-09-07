@@ -1925,6 +1925,7 @@ if (typeof window.__TAURI__ !== "undefined") {
             '[id^="list"],.osd,#info,#info1,#numprog,#dialogbox,#volume_div,#mute,' +
             "#permanentTime,#launch,#notifications,#buffering,#pip_buffering,#videopip," +
             "#progress_div,#progress,#progress_r,#progress_span,#descr,#channel,#data," +
+            "#ott-tauri-loading-logs," +
             'button,input,select,textarea,a,.btn,.osk-key,[onclick],[contenteditable="true"],' +
             '[role="button"],[role="listbox"],[role="option"],[role="menu"],[role="menuitem"]';
 
@@ -2078,6 +2079,264 @@ if (typeof window.__TAURI__ !== "undefined") {
             },
             true
         );
+    })();
+}
+
+// Tauri Mode B: if the #launch Loading screen stays up ≥20s, show a side panel
+// with a recent console / [Tauri] log tail — polite diagnostics, not an infinite
+// blank spinner. Mode A / Chrome companion unchanged (gated on __TAURI__).
+if (typeof window.__TAURI__ !== "undefined") {
+    (function setupTauriLoadingLogPanel() {
+        const MAX_LINES = 120;
+        const DELAY_MS = 20_000;
+        const PANEL_ID = "ott-tauri-loading-logs";
+        const STYLE_ID = "ott-tauri-loading-logs-style";
+        const lines: string[] = [];
+        let visibleSince: number | null = null;
+        let showTimer: ReturnType<typeof setTimeout> | null = null;
+        let panel: HTMLElement | null = null;
+        let preEl: HTMLPreElement | null = null;
+        let rafPending = false;
+
+        function formatArg(a: unknown): string {
+            if (a == null) return String(a);
+            if (typeof a === "string") return a;
+            if (typeof a === "number" || typeof a === "boolean")
+                return String(a);
+            if (a instanceof Error) {
+                return a.stack || a.message || String(a);
+            }
+            try {
+                return JSON.stringify(a);
+            } catch (_e) {
+                try {
+                    return String(a);
+                } catch (_e2) {
+                    return "[unprintable]";
+                }
+            }
+        }
+
+        function pad2(n: number): string {
+            return (n < 10 ? "0" : "") + n;
+        }
+
+        function stamp(): string {
+            const d = new Date();
+            return (
+                pad2(d.getHours()) +
+                ":" +
+                pad2(d.getMinutes()) +
+                ":" +
+                pad2(d.getSeconds())
+            );
+        }
+
+        function pushLine(level: string, args: unknown[]): void {
+            const body = args.map(formatArg).join(" ");
+            lines.push("[" + stamp() + "] " + level + " " + body);
+            if (lines.length > MAX_LINES) {
+                lines.splice(0, lines.length - MAX_LINES);
+            }
+            if (panel && panel.style.display !== "none" && preEl) {
+                if (rafPending) return;
+                rafPending = true;
+                requestAnimationFrame(() => {
+                    rafPending = false;
+                    if (!preEl) return;
+                    preEl.textContent = lines.join("\n");
+                    preEl.scrollTop = preEl.scrollHeight;
+                });
+            }
+        }
+
+        function wrapConsole(): void {
+            (["log", "warn", "error"] as const).forEach((level) => {
+                const orig = console[level].bind(console);
+                console[level] = (...args: unknown[]) => {
+                    try {
+                        pushLine(level, args);
+                    } catch (_e) {
+                        /* never break logging */
+                    }
+                    return orig(...args);
+                };
+            });
+        }
+
+        function ensureStyles(): void {
+            if (document.getElementById(STYLE_ID)) return;
+            const style = document.createElement("style");
+            style.id = STYLE_ID;
+            style.textContent =
+                "#" +
+                PANEL_ID +
+                " {\n" +
+                "  position: fixed;\n" +
+                "  top: 0;\n" +
+                "  right: 0;\n" +
+                "  bottom: 0;\n" +
+                "  width: min(42vw, 420px);\n" +
+                "  z-index: 2147483000;\n" +
+                "  display: none;\n" +
+                "  flex-direction: column;\n" +
+                "  box-sizing: border-box;\n" +
+                "  padding: 10px 12px 12px;\n" +
+                "  background: rgba(8, 10, 14, 0.82);\n" +
+                "  color: #c8d0d8;\n" +
+                "  border-left: 1px solid rgba(255, 255, 255, 0.12);\n" +
+                "  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;\n" +
+                "  font-size: 11px;\n" +
+                "  line-height: 1.35;\n" +
+                "  -webkit-app-region: no-drag;\n" +
+                "  pointer-events: auto;\n" +
+                "}\n" +
+                "#" +
+                PANEL_ID +
+                " .ott-tauri-ll-title {\n" +
+                "  flex: 0 0 auto;\n" +
+                "  margin: 0 0 8px;\n" +
+                "  color: #f0c040;\n" +
+                "  font-size: 12px;\n" +
+                "  letter-spacing: 0.02em;\n" +
+                "  -webkit-app-region: no-drag;\n" +
+                "}\n" +
+                "#" +
+                PANEL_ID +
+                " .ott-tauri-ll-pre {\n" +
+                "  flex: 1 1 auto;\n" +
+                "  margin: 0;\n" +
+                "  padding: 0;\n" +
+                "  overflow: auto;\n" +
+                "  white-space: pre-wrap;\n" +
+                "  word-break: break-word;\n" +
+                "  color: #b8c0c8;\n" +
+                "  background: transparent;\n" +
+                "  -webkit-app-region: no-drag;\n" +
+                "}\n";
+            (document.head || document.documentElement).appendChild(style);
+        }
+
+        function ensurePanel(): void {
+            ensureStyles();
+            panel = document.getElementById(PANEL_ID) as HTMLElement | null;
+            if (panel) {
+                preEl = panel.querySelector(
+                    ".ott-tauri-ll-pre"
+                ) as HTMLPreElement | null;
+                return;
+            }
+            panel = document.createElement("div");
+            panel.id = PANEL_ID;
+            panel.setAttribute("role", "complementary");
+            panel.setAttribute("aria-label", "Loading diagnostics");
+            panel.style.setProperty("-webkit-app-region", "no-drag");
+
+            const title = document.createElement("div");
+            title.className = "ott-tauri-ll-title";
+            title.textContent =
+                "Still loading — recent logs (Tauri diagnostics)";
+
+            preEl = document.createElement("pre");
+            preEl.className = "ott-tauri-ll-pre";
+
+            panel.appendChild(title);
+            panel.appendChild(preEl);
+            (document.body || document.documentElement).appendChild(panel);
+        }
+
+        function showPanel(): void {
+            ensurePanel();
+            if (!panel || !preEl) return;
+            panel.style.display = "flex";
+            preEl.textContent = lines.join("\n");
+            preEl.scrollTop = preEl.scrollHeight;
+        }
+
+        function hidePanel(): void {
+            if (panel) panel.style.display = "none";
+        }
+
+        function isLaunchLoading(): boolean {
+            const el = document.getElementById("launch");
+            if (!el) return false;
+            if (el.getAttribute("data-done") === "1") return false;
+            // jQuery .hide() / inline display:none
+            if (el.style.display === "none") return false;
+            try {
+                const cs = window.getComputedStyle(el);
+                if (cs.display === "none" || cs.visibility === "hidden") {
+                    return false;
+                }
+                // Off-screen / zero-size counts as gone
+                const r = el.getBoundingClientRect();
+                if (r.width < 2 || r.height < 2) return false;
+            } catch (_e) {
+                return el.style.display !== "none";
+            }
+            return true;
+        }
+
+        function clearShowTimer(): void {
+            if (showTimer != null) {
+                clearTimeout(showTimer);
+                showTimer = null;
+            }
+        }
+
+        function syncFromLaunch(): void {
+            if (isLaunchLoading()) {
+                if (visibleSince == null) visibleSince = Date.now();
+                const elapsed = Date.now() - visibleSince;
+                if (elapsed >= DELAY_MS) {
+                    clearShowTimer();
+                    showPanel();
+                    return;
+                }
+                if (showTimer == null) {
+                    showTimer = setTimeout(() => {
+                        showTimer = null;
+                        if (isLaunchLoading()) showPanel();
+                    }, DELAY_MS - elapsed);
+                }
+            } else {
+                visibleSince = null;
+                clearShowTimer();
+                hidePanel();
+            }
+        }
+
+        wrapConsole();
+        pushLine("log", ["[Tauri] loading log panel armed (shows after 20s)"]);
+
+        const arm = (): void => {
+            syncFromLaunch();
+            const launch = document.getElementById("launch");
+            if (launch) {
+                try {
+                    const mo = new MutationObserver(() => syncFromLaunch());
+                    mo.observe(launch, {
+                        attributes: true,
+                        attributeFilter: [
+                            "style",
+                            "class",
+                            "data-done",
+                            "hidden",
+                        ],
+                        childList: true,
+                        subtree: true,
+                    });
+                } catch (_e) {}
+            }
+            // Style changes via CSS / jQuery may not always fire; light poll.
+            setInterval(syncFromLaunch, 1000);
+        };
+
+        if (document.body) arm();
+        else
+            document.addEventListener("DOMContentLoaded", arm, {
+                once: true,
+            });
     })();
 }
 
