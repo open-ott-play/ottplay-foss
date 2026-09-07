@@ -57,22 +57,25 @@ See `capacitor.config.ts`:
 - `android.minSdkVersion: 24` — effective minSdk 24 (matches android/variables.gradle)
 - `server.hostname: "localhost"` — app-relative URL resolution
 
-## Gaps (Phase 3+)
+## Native command queue
 
-### Native command queue
+The desktop/local proxy command queue (`POST /api/webhook/commands`, `GET /api/webhook/commands`) is now wired to a native HTTP server on mobile via the `MobileCommandQueue` Capacitor plugin.
 
-The desktop/local proxy command queue (`POST /api/webhook/commands`, `GET /api/webhook/commands`) is not yet wired to a native HTTP server on mobile.
+**Implementation**:
 
-**Current state**: The web layer polls a configurable command URL from player settings. For mobile, the native layer must host an HTTP server on `localhost:18081` and the web layer must point to it.
+- **iOS**: Swift plugin (`ios/App/App/Plugins/MobileCommandQueue.swift`) — NWListener-based HTTP server on `127.0.0.1:18081`. Enqueue/poll/expire/CORS/OPTIONS match `local_proxy.py` exactly.
+- **Android**: Kotlin plugin (`android/app/src/main/java/play/ott/foss/MobileCommandQueuePlugin.kt`) — `ServerSocket`-based HTTP server on `127.0.0.1:18081` with identical contract.
+- **Web layer**: `src/index.ts` detects `window.Capacitor`, sets `local_poll_url` to `http://127.0.0.1:18081/api/webhook/commands`, and polls via `MobileCommandQueue.get()` every 10s.
+- **JS package**: `mobile-command-queue/src/index.ts` — real native bridge; WebPlugin remains a no-op fallback for non-Capacitor builds.
 
-**What is needed**:
+**Contract** (same as `local_proxy.py` / Tauri `queue.rs`):
 
-- **iOS**: Swift Capacitor plugin hosting a lightweight HTTP server on port 18081. Exposes `POST /api/webhook/commands` (queue command) and `GET /api/webhook/commands` (return + clear queue). Same 60s expiry logic as `local_proxy.py`.
-- **Android**: Kotlin Capacitor plugin — same HTTP server logic.
-- **Web layer**: Detect Capacitor environment, set default command URL to `http://localhost:18081/api/webhook/commands`.
-- **Package**: `@capacitor-community/local-server` or custom plugin.
+- POST `/api/webhook/commands` (alias `/webhook/notify`) — enqueue JSON body, attach `ts`, optional `?device_id=`, respond `{"status":"ok","queued":N}`
+- GET `/api/webhook/commands` (alias `/webhook/poll`) — return pending array then clear; expire entries older than 60s
+- Caps: per-device 50 (trim to 25), broadcast 100 (trim to 50)
+- CORS headers, OPTIONS handling
 
-See `docs/port-native-apps.md` Phase 2 for full contract.
+See `mobile-command-queue/README.md` for usage.
 
 ### XMLTV/EPG caching
 

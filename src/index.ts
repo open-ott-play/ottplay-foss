@@ -4889,6 +4889,67 @@ if (typeof window.__TAURI__ !== "undefined") {
     _queuePollStart();
 }
 
+// Capacitor Mode C: native plugin hosts HTTP server on 127.0.0.1:18081.
+// Falls back to web no-op if plugin unavailable (Mode A / web build).
+if (
+    typeof (window as any).Capacitor !== "undefined" &&
+    (window as any).Capacitor.Plugins
+) {
+    const _capQueue = (window as any).Capacitor.Plugins.MobileCommandQueue;
+    if (_capQueue) {
+        // Capacitor Mode C: drain via native plugin `get()` only.
+        // Do NOT set local_poll_url — that would also trigger the HTTP :18081 poller.
+        let _capPollTimer: ReturnType<typeof setInterval> | null = null;
+        const _capPollOnce = async (): Promise<void> => {
+            try {
+                const res = await _capQueue.get({ deviceId: "" });
+                const cmds = res?.commands ?? [];
+                if (Array.isArray(cmds)) {
+                    cmds.forEach((cmd: any) => {
+                        if (cmd && typeof handleCommand === "function") {
+                            try {
+                                handleCommand(cmd as Command);
+                            } catch (_e) {
+                                console.warn(
+                                    "[cap_queue] handleCommand failed:",
+                                    _e
+                                );
+                            }
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn("[cap_queue] poll failed:", e);
+            }
+        };
+        const _capPollStart = async (): Promise<void> => {
+            if (_capPollTimer) return;
+            try {
+                await _capQueue.start();
+            } catch (_e) {
+                console.warn("[cap_queue] start failed:", _e);
+            }
+            await _capPollOnce();
+            _capPollTimer = setInterval(() => {
+                _capPollOnce();
+            }, 10000);
+        };
+        const _capPollStop = (): void => {
+            if (_capPollTimer) {
+                clearInterval(_capPollTimer);
+                _capPollTimer = null;
+            }
+            _capQueue.stop?.();
+        };
+        (window as any).__ottCapQueue = {
+            poll: _capPollOnce,
+            start: _capPollStart,
+            stop: _capPollStop,
+        };
+        _capPollStart();
+    }
+}
+
 /* ---------------------------------------------------------------------------
  * Sync PlayerSettings → window.* for settings submenu compatibility
  * --------------------------------------------------------------------------- */

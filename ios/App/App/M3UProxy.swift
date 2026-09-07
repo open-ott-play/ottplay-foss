@@ -17,7 +17,13 @@ private func resolveUA(_ input: String?) -> String {
 }
 
 @objc(M3UProxyPlugin)
-public class M3UProxyPlugin: CAPPlugin {
+public class M3UProxyPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "M3UProxyPlugin"
+    public let jsName = "M3UProxy"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "proxyFetch", returnType: CAPPluginReturnPromise),
+    ]
+
     private static let DEFAULT_TIMEOUT: TimeInterval = 15
 
     @objc func proxyFetch(_ call: CAPPluginCall) {
