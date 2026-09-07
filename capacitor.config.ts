@@ -12,7 +12,11 @@ const config: CapacitorConfig = {
         backgroundAudio: true,
         contentInset: "automatic",
     },
-    plugins: {},
+    plugins: {
+        MobileCommandQueue: {
+            // command queue auto-starts via plugin.load on native side
+        },
+    },
     server: {
         hostname: "localhost",
     },
