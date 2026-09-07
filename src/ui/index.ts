@@ -1994,15 +1994,15 @@ export function popupList(i?: any): void {
                     if ((window as any).pipIndex == null) return;
                     break;
                 case popStop:
-                    r = splitSlash(r, playType >= 0);
+                    // Match product getPart12(n, playType): live (0) →
+                    // "Restart stream"; archive/media (truthy) → "Live".
+                    r = splitSlash(r, !!playType);
                     break;
                 case popMedia:
                     if (typeof (window as any).getMediaArray !== "function")
                         return;
                     break;
-                case popPrevProg:
-                    if (playType >= 0) return;
-                    break;
+                // popPrevProg: product always lists it (no playType filter).
             }
         } catch (e) {
             console.error(e);
