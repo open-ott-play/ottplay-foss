@@ -22,3 +22,11 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync"] }
 tracing = "0.1"
 anyhow = "1"
 ottplay-core = { path = "../src-rs/core" }
+
+# Required for production embed of frontendDist. Plain `cargo build`
+# without this leaves cfg(dev) on and never embeds assets (white screen).
+# `tauri build` also injects tauri/custom-protocol; keep the crate feature so
+# release cargo builds embed correctly too.
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
