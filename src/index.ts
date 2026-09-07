@@ -1657,11 +1657,16 @@ function setupTauriEpgOverride(): void {
         // channels is imported into scope from ./channels.
         const ch = channels[channelIdNum];
         const channelName = ch?.channel_name || ch?.name || "";
+        // Prefer epg_url hash from match_channels when present.
+        const epgHash =
+            ch && (ch as any).epg_url != null
+                ? String((ch as any).epg_url)
+                : "";
 
         tauriInvoke<any>("get_epg", {
             ch: channelName,
             channel_id: channelIdNum.toString(),
-            hash: "",
+            hash: epgHash,
             time_shift_hours: 0,
         })
             .then((result) => {

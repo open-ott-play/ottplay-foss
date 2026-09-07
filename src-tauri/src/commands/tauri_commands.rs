@@ -237,7 +237,7 @@ pub fn init_xmltv_urls() -> Vec<String> {
 ///
 /// Mirrors `src-rs/server/src/main.rs::epg_handler`:
 /// 1. If `ch` (playlist channel name) provided, fuzzy-match → xmltv_id.
-/// 2. Else if `hash` non-empty, lookup `epg_to_xmltv` map (not in Tauri state; use hash as xmltv_id).
+/// 2. Else if `hash` non-empty, lookup `epg_to_xmltv` map (fallback: use hash as xmltv_id).
 /// 3. Else fall back to `channel_id` (numeric playlist chId — rarely matches XMLTV id).
 #[tauri::command]
 pub async fn get_epg(
@@ -247,6 +247,15 @@ pub async fn get_epg(
     ch: Option<String>,
     time_shift_hours: i64,
 ) -> Result<JsonValue, String> {
+    let epg_map = state.epg_to_xmltv.read().await;
+    let shift_map = state.time_shift_by_epg.read().await;
+    let mut shift = time_shift_hours;
+    if shift == 0 {
+        if let Some(s) = shift_map.get(&hash) {
+            shift = *s;
+        }
+    }
+
     let cache_guard = state.xmltv_cache.read().await;
     let cache = cache_guard.as_ref();
 
@@ -269,34 +278,35 @@ pub async fn get_epg(
         let mut w = state.xmltv_cache.write().await;
         *w = Some(fresh);
         let cache = w.as_ref().ok_or("EPG cache still empty")?;
-        let xmltv_id = resolve_xmltv_id(&cache, &hash, &channel_id, ch.as_deref());
+        let xmltv_id = resolve_xmltv_id(cache, &hash, &channel_id, ch.as_deref(), &epg_map);
         return Ok(ottplay_core::get_epg_slice(
             cache,
             &hash,
             &xmltv_id,
-            time_shift_hours,
+            shift,
         ).await);
     }
 
     let cache = cache.ok_or("EPG cache empty")?;
-    let xmltv_id = resolve_xmltv_id(cache, &hash, &channel_id, ch.as_deref());
+    let xmltv_id = resolve_xmltv_id(cache, &hash, &channel_id, ch.as_deref(), &epg_map);
     Ok(ottplay_core::get_epg_slice(
         cache,
         &hash,
         &xmltv_id,
-        time_shift_hours,
+        shift,
     ).await)
 }
 
 /// Resolve xmltv_id like server's epg_handler:
 /// - if `ch` provided → fuzzy match against XMLTV channels
-/// - else if `hash` non-empty → use as xmltv_id (epg_to_xmltv map not in Tauri state)
+/// - else if `hash` non-empty → lookup epg_to_xmltv, else use hash as xmltv_id
 /// - else → fallback to `channel_id`
 fn resolve_xmltv_id(
     cache: &ottplay_core::xmltv::XmltvCache,
     hash: &str,
     channel_id: &str,
     ch: Option<&str>,
+    epg_to_xmltv: &std::collections::HashMap<String, String>,
 ) -> String {
     if let Some(name) = ch {
         if let Some((id, _score)) = ottplay_core::match_channel(name, &cache.channels) {
@@ -304,6 +314,9 @@ fn resolve_xmltv_id(
         }
     }
     if !hash.is_empty() {
+        if let Some(id) = epg_to_xmltv.get(hash) {
+            return id.clone();
+        }
         return hash.to_string();
     }
     channel_id.to_string()
