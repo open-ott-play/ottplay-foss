@@ -515,7 +515,14 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
         case keys.SUBTITLE:
             if (typeof (window as any).stbToggleSubtitle === "function")
                 (window as any).stbToggleSubtitle();
-            if (isNormalScreen()) openFullscreen();
+            // L is normally consumed in stbEventToKeyCode. If it reaches here,
+            // still prefer in-page layout fullscreen under Tauri (WKWebView).
+            if (typeof (window as any).__TAURI__ !== "undefined") {
+                try {
+                    if (typeof (window as any).stbToFullScreen === "function")
+                        (window as any).stbToFullScreen();
+                } catch (_e) {}
+            } else if (isNormalScreen()) openFullscreen();
             else closeFullscreen();
             break;
         case keys.SETUP:
@@ -1496,6 +1503,9 @@ function body_handleTouchEnd(e: any): void {
  */
 function body_onClick(e: any): void {
     if (!e) e = event as any;
+    // After a real window drag (mousedown→move→mouseup), ignore the synthetic
+    // click so Channel list / menus do not open from the drag release.
+    if ((window as any).__ottTauriSuppressClick) return;
     if (e.clientY === undefined) return;
     var t = document.body.getBoundingClientRect().height || window.innerHeight;
     if (e.clientY < t * 0.2) (window as any).popupList();
@@ -1512,6 +1522,7 @@ function body_onClick(e: any): void {
  */
 function list_OnClick(e: any): void {
     if (!e) e = event as any;
+    if ((window as any).__ottTauriSuppressClick) return;
     (window as any)._doKey((window as any).keys.RETURN, e);
 }
 

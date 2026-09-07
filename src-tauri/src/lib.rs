@@ -28,6 +28,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::tauri_commands::ping,
             commands::tauri_commands::get_epg,
+            commands::tauri_commands::proxy_fetch,
             commands::tauri_commands::set_fullscreen,
             commands::tauri_commands::prevent_sleep,
             commands::tauri_commands::allow_sleep,

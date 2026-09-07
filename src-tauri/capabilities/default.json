@@ -1,9 +1,21 @@
 {
   "identifier": "default",
   "description": "Capability for all windows",
-  "windows": ["main", "pip"],
+  "windows": [
+    "main",
+    "pip"
+  ],
   "remote": {
-    "urls": ["http://127.0.0.1:8095/*", "http://localhost:8095/*"]
+    "urls": [
+      "http://127.0.0.1:8095/*",
+      "http://localhost:8095/*",
+      "http://tauri.localhost/*",
+      "https://tauri.localhost/*",
+      "http://asset.localhost/*",
+      "https://asset.localhost/*",
+      "tauri://localhost/*",
+      "asset://localhost/*"
+    ]
   },
   "permissions": [
     "core:default",
@@ -11,6 +23,7 @@
     "core:window:allow-start-dragging",
     "allow-ping",
     "allow-get-epg",
+    "allow-proxy-fetch",
     "allow-set-fullscreen",
     "allow-prevent-sleep",
     "allow-allow-sleep",

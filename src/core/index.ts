@@ -243,8 +243,35 @@ export function stbEventToKeyCode(event: any): number {
                 editing = true;
         } catch (_) {}
         if (!editing) {
-            if (isNormalScreen()) openFullscreen();
-            else closeFullscreen();
+            var inTauri = typeof (window as any).__TAURI__ !== "undefined";
+            if (inTauri) {
+                // WKWebView document fullscreen is unreliable / a no-op.
+                // Match product intent: in-page layout fullscreen (stbToFullScreen).
+                // If the channel list is open, close it (closeList → stbToFullScreen).
+                try {
+                    var listOpen = !!(window as any).isListVisible;
+                    try {
+                        if (
+                            typeof (window as any).$ !== "undefined" &&
+                            (window as any).$("#list").is(":visible")
+                        )
+                            listOpen = true;
+                    } catch (_e2) {}
+                    if (
+                        listOpen &&
+                        typeof (window as any).closeList === "function"
+                    ) {
+                        (window as any).closeList();
+                    } else if (
+                        typeof (window as any).stbToFullScreen === "function"
+                    ) {
+                        (window as any).stbToFullScreen();
+                    }
+                } catch (_e3) {}
+            } else {
+                if (isNormalScreen()) openFullscreen();
+                else closeFullscreen();
+            }
             if (event.preventDefault) event.preventDefault();
             if (event.stopPropagation) event.stopPropagation();
             return 0; // Indicate key was consumed
