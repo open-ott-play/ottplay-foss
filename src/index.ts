@@ -1722,30 +1722,12 @@ window.stbToFullScreen = stbToFullScreen;
 window.stbSetWindow = stbSetWindow;
 window.stbToggleAspectRatio = stbToggleAspectRatio;
 
-// Tauri Mode B: override stbToFullScreen to use native window fullscreen.
-// Keeps CSS zoom path; toggles actual OS window fullscreen via Tauri IPC.
-if (typeof window.__TAURI__ !== "undefined") {
-    (function () {
-        const orig = window.stbToFullScreen;
-        window.stbToFullScreen = function (): void {
-            orig(); // keep CSS zoom + aspect ratio
-            tauriInvoke<any>("set_fullscreen", { fullscreen: true }).catch(
-                (e: any) => console.warn("[Tauri] set_fullscreen failed:", e)
-            );
-        };
-    })();
-
-    // Tauri Mode B: override stbSetWindow to exit native fullscreen after orig.
-    if (typeof window.stbSetWindow === "function") {
-        const orig = window.stbSetWindow;
-        window.stbSetWindow = function (): void {
-            orig(); // keep CSS zoom + aspect ratio
-            tauriInvoke<any>("set_fullscreen", { fullscreen: false }).catch(
-                (e: any) => console.warn("[Tauri] set_fullscreen failed:", e)
-            );
-        };
-    }
-}
+// Tauri Mode B: do NOT wire stbToFullScreen/stbSetWindow to native
+// set_fullscreen. Those APIs are in-page video layout (full viewport vs
+// small window beside the list). Native macOS fullscreen steals Escape to
+// exit the space, so Escape never reaches exitPortal / the exit confirm.
+// OS fullscreen remains available via L → openFullscreen (document API) or
+// an explicit set_fullscreen invoke; keep the Rust command for that.
 
 // Tauri Mode B: override stbToggleStandby for best-effort sleep prevention.
 // Enter standby → allow_sleep (machine may sleep). Exit standby → prevent_sleep (keep awake).
