@@ -129,7 +129,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   tauri:
-    name: Build Tauri (${{ matrix.platform }})
+    name: Build Tauri (${{ matrix.platform }} ${{ matrix.target || 'host' }})
     needs: release
     permissions:
       contents: write
@@ -191,6 +191,7 @@ jobs:
         run: npm run build --ignore-scripts
 
       - name: Build desktop package
+        shell: bash
         run: |
           if [ -n "${TAURI_TARGET:-}" ]; then
             npx tauri build --ci --target "$TAURI_TARGET"
@@ -265,16 +266,17 @@ jobs:
         run: |
           SCHEME=$(xcodebuild -list -project ios/App/App.xcodeproj | awk '/Schemes:/{getline; gsub(/^[ \t]+/,""); print; exit}')
           if [ -z "$SCHEME" ]; then
-            echo "No scheme found"
-            exit 1
+            echo "No scheme discovered via xcodebuild -list; falling back to App"
+            SCHEME=App
           fi
           echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
-          echo "Discovered scheme: $SCHEME"
+          echo "Using scheme: $SCHEME"
 
       - name: iOS – archive (unsigned)
         if: matrix.type == 'ios'
         run: |
           SCHEME="${{ steps.discover.outputs.scheme }}"
+          SCHEME="${SCHEME:-App}"
           xcodebuild clean archive \
             -project "ios/App/App.xcodeproj" \
             -scheme "$SCHEME" \
