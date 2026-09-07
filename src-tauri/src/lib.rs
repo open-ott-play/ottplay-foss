@@ -1,6 +1,7 @@
 mod commands;
 
 use commands::tauri_commands::TauriState;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tauri::Manager;
 use tokio::sync::RwLock;
@@ -28,11 +29,15 @@ pub fn run() {
         .manage(TauriState {
             xmltv_cache: Arc::new(RwLock::new(None)),
             epg_urls: Arc::new(RwLock::new(epg_urls.clone())),
+            epg_to_xmltv: Arc::new(RwLock::new(HashMap::new())),
+            time_shift_by_epg: Arc::new(RwLock::new(HashMap::new())),
             command_queues: command_queues.clone(),
         })
         .invoke_handler(tauri::generate_handler![
             commands::tauri_commands::ping,
             commands::tauri_commands::get_epg,
+            commands::m3u::match_channels,
+            commands::m3u::match_logos,
             commands::tauri_commands::proxy_fetch,
             commands::tauri_commands::set_fullscreen,
             commands::tauri_commands::prevent_sleep,

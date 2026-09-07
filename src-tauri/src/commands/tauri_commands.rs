@@ -8,6 +8,7 @@
 //! In-process: calls ottplay-core directly. No HTTP server mounted (see §3.1 note).
 //! A localhost axum router can be added later for devtools/debugging.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::Serialize;
@@ -30,6 +31,10 @@ pub struct TauriState {
     /// Falls back to http://epg.it999.ru/epg2.xml.gz when unset, so get_epg
     /// is never stuck on empty URLs (Mode B Tauri only).
     pub epg_urls: Arc<RwLock<Vec<String>>>,
+    /// epg_hash → xmltv_id map populated by match_channels.
+    pub epg_to_xmltv: Arc<RwLock<HashMap<String, String>>>,
+    /// epg_hash → time_shift_hours map populated by match_channels.
+    pub time_shift_by_epg: Arc<RwLock<HashMap<String, i64>>>,
     /// In-memory command queue for Mode B native webhook / polling API.
     pub command_queues: SharedQueues,
 }

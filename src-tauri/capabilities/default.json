@@ -31,6 +31,8 @@
     "allow-set-pip-bounds",
     "allow-exit-app",
     "allow-queue-poll",
-    "allow-queue-enqueue"
+    "allow-queue-enqueue",
+    "allow-match-channels",
+    "allow-match-logos"
   ]
 }

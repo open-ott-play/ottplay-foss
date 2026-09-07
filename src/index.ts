@@ -1624,18 +1624,14 @@ function setupTauriCompanionShim(): void {
             url.indexOf("/m3u/match-channels") !== -1 ||
             url.indexOf("/m3u/match-logos") !== -1
         ) {
-            // No companion match API in embed. Per-channel EPG uses get_epg
-            // invoke (setupTauriEpgOverride). Resolve empty so load continues.
-            const dfd = $.Deferred();
-            setTimeout(() => {
-                try {
-                    if (typeof opts.success === "function") {
-                        opts.success("", "success", dfd);
-                    }
-                } catch (_e) {}
-                dfd.resolve("");
-            }, 0);
-            return dfd.promise(dfd) as any;
+            // Route match-channels / match-logos through native Tauri commands.
+            // The body is opts.data (FOSS text protocol).
+            const body = typeof opts.data === "string" ? opts.data : "";
+            const cmd =
+                url.indexOf("/m3u/match-channels") !== -1
+                    ? "match_channels"
+                    : "match_logos";
+            return jqFromInvoke(tauriInvoke<string>(cmd, { body, url }), opts);
         }
 
         return origAjax(opts);
