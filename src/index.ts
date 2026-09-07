@@ -712,10 +712,16 @@ var TMDb: any = {
         const api_lang =
             TMDb.la[(window as any).stbGetItem?.("ottplaylang")] || "en";
         itr = itr || 0;
-        nam = nam.replace(
-            /"|\u00AB|\u00BB|&quot;|&amp;|&lt;|&gt;|&laquo;|&raquo;|\s[\(\[].*[\)\]]\s?|\s?\S\/\S\s/g,
-            ""
-        );
+        nam = String(nam || "");
+        nam = nam.replace(/["\u00AB\u00BB]/g, "");
+        nam = nam.replace(/&(?:quot|amp|lt|gt|laquo|raquo);/gi, "");
+        for (let _i = 0; _i < 8; _i++) {
+            const next = nam.replace(/\([^()]*\)|\[[^\[\]]*\]/g, "");
+            if (next === nam) break;
+            nam = next;
+        }
+        nam = nam.replace(/\s?\S\/\S\s/g, " ");
+        nam = nam.replace(/\s+/g, " ").trim();
         let name = nam;
         const an = name.split(" ");
         (window as any).dialogBoxKeyHandler = function () {
