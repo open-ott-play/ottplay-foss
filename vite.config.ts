@@ -1,5 +1,12 @@
 import { execSync } from "child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import {
+    cpSync,
+    existsSync,
+    mkdirSync,
+    readdirSync,
+    readFileSync,
+    writeFileSync,
+} from "fs";
 import { dirname, join, resolve } from "path";
 import { minify } from "terser";
 import { fileURLToPath } from "url";
@@ -52,6 +59,73 @@ function stripModule(code: string): string {
             return line;
         })
         .join("\n");
+}
+
+// Copy the static assets needed by the boot script so the embedded
+// frontendDist works without a companion server.
+function copyStaticAssets(srcRoot: string, outRoot: string): void {
+    // 1) stb/<vendor>/stb.js
+    const stbDir = join(srcRoot, "stb");
+    if (existsSync(stbDir)) {
+        const vendors = readdirSync(stbDir, { withFileTypes: true })
+            .filter((dent) => dent.isDirectory())
+            .map((dent) => dent.name);
+        for (const vendor of vendors) {
+            const srcFile = join(stbDir, vendor, "stb.js");
+            if (existsSync(srcFile)) {
+                const destDir = join(outRoot, "stb", vendor);
+                mkdirSync(destDir, { recursive: true });
+                cpSync(srcFile, join(destDir, "stb.js"));
+            }
+        }
+    }
+
+    // 2) stbPlayer/1280.css
+    const cssSrc = join(srcRoot, "stbPlayer", "1280.css");
+    if (existsSync(cssSrc)) {
+        const cssDest = join(outRoot, "stbPlayer");
+        mkdirSync(cssDest, { recursive: true });
+        cpSync(cssSrc, join(cssDest, "1280.css"));
+    }
+
+    // 3) stbPlayer/*.png, *.gif (and any other images used)
+    const imgSrc = join(srcRoot, "stbPlayer");
+    if (existsSync(imgSrc)) {
+        const imgDest = join(outRoot, "stbPlayer");
+        mkdirSync(imgDest, { recursive: true });
+        const files = readdirSync(imgSrc);
+        for (const file of files) {
+            if (/\.(png|gif|ico|jpg|jpeg)$/i.test(file)) {
+                cpSync(join(imgSrc, file), join(imgDest, file));
+            }
+        }
+    }
+
+    // 4) favicon.ico
+    const faviconSrc = join(srcRoot, "favicon.ico");
+    if (existsSync(faviconSrc)) {
+        cpSync(faviconSrc, join(outRoot, "favicon.ico"));
+    }
+
+    // 5) js/* (hls.min.js, jquery-1.11.1.min.js, shaka-player.compiled.js)
+    const jsSrc = join(srcRoot, "js");
+    if (existsSync(jsSrc)) {
+        const jsDest = join(outRoot, "js");
+        mkdirSync(jsDest, { recursive: true });
+        const jsFiles = [
+            "hls.min.js",
+            "jquery-1.11.1.min.js",
+            "shaka-player.compiled.js",
+        ];
+        for (const file of jsFiles) {
+            const srcFile = join(jsSrc, file);
+            if (existsSync(srcFile)) {
+                cpSync(srcFile, join(jsDest, file));
+            }
+        }
+    }
+
+    console.log("Copied static assets for embedded frontendDist");
 }
 
 // Vite wrapper: run tsc → concatenate (same as build-concat.cjs) → minify with terser.
@@ -133,6 +207,14 @@ export default defineConfig({
                         "Wrote dist/index.html with version=" + version
                     );
                 }
+
+                // Copy the static assets the boot script loads by URL so the
+                // embedded frontendDist is self-contained (Tauri Mode B).
+                // Paths the boot script resolves against `host`:
+                //   /stb/<vendor>/stb.js  /stbPlayer/1280.css  /stbPlayer/*.png|gif
+                //   /js/hls.min.js  /js/jquery-1.11.1.min.js  /js/shaka-player.compiled.js
+                //   /favicon.ico
+                copyStaticAssets(__dirname, outDir);
             },
             name: "vite-concat-pipeline",
         },

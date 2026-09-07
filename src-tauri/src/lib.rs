@@ -7,13 +7,16 @@ use tokio::sync::RwLock;
 
 /// Default URL for the desktop shell webview.
 ///
-/// The bundled `frontendDist` (`../dist`) only contains `index.html` + `stbPlayer.js`.
-/// Boot still expects Mode A paths (`/dist/…`, `/stb/…`, `/stbPlayer/…`, `/js/…`) plus CDN
-/// scripts, so a pure asset load shows a blank/white window. Point the webview at the
-/// local companion (Mode A) until a full static stage + boot-path fix lands.
+/// Debug builds point at the local companion (`:8095`) so Mode A paths work while
+/// developing. Release builds default to empty so the app uses embedded
+/// `frontendDist` (`../dist`).
 ///
-/// Override with `OTTPLAY_WEB_URL`. Set it to empty to keep embedded `frontendDist`.
+/// Override with `OTTPLAY_WEB_URL` in either mode. Set it to empty to keep
+/// embedded `frontendDist`.
+#[cfg(debug_assertions)]
 const DEFAULT_WEB_URL: &str = "http://127.0.0.1:8095/";
+#[cfg(not(debug_assertions))]
+const DEFAULT_WEB_URL: &str = "";
 
 pub fn run() {
     let epg_urls = commands::tauri_commands::init_xmltv_urls();
@@ -37,16 +40,23 @@ pub fn run() {
         ])
         .setup(|app| {
             let raw = std::env::var("OTTPLAY_WEB_URL").unwrap_or_else(|_| DEFAULT_WEB_URL.into());
-            if raw.trim().is_empty() {
-                tracing::info!("OTTPLAY_WEB_URL empty — using embedded frontendDist");
-                return Ok(());
-            }
-            let url = tauri::Url::parse(&raw).map_err(|e| {
-                Box::<dyn std::error::Error>::from(format!("invalid OTTPLAY_WEB_URL {raw:?}: {e}"))
-            })?;
             if let Some(window) = app.get_webview_window("main") {
-                tracing::info!("navigating main webview to {url}");
-                window.navigate(url)?;
+                if raw.trim().is_empty() {
+                    // No URL set — navigate to the embedded frontendDist
+                    // (../dist per tauri.conf.json frontendDist).  Tauri
+                    // serves the bundled assets at the app origin, so the
+                    // boot script's absolute paths resolve correctly.
+                    tracing::info!("OTTPLAY_WEB_URL empty — using embedded frontendDist");
+                    window.eval("window.location.href = '/index.html'")?;
+                } else {
+                    let url = tauri::Url::parse(&raw).map_err(|e| {
+                        Box::<dyn std::error::Error>::from(format!(
+                            "invalid OTTPLAY_WEB_URL {raw:?}: {e}"
+                        ))
+                    })?;
+                    tracing::info!("navigating main webview to {url}");
+                    window.navigate(url)?;
+                }
             }
             Ok(())
         })
