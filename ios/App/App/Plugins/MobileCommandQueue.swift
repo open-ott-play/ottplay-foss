@@ -44,29 +44,13 @@ public class MobileCommandQueue: CAPPlugin {
             }
 
             do {
-                let endpoint = NWEndpoint.Host("127.0.0.1")
-                let port = NWEndpoint.Port(rawValue: 18081)!
                 let params = NWParameters.tcp
-                params.allowLocalEndpointReuse = true
-
-                self.listener = try NWListener(
-                    using: params
+                params.requiredLocalEndpoint = NWEndpoint.hostPort(
+                    host: "127.0.0.1",
+                    port: 18081
                 )
 
-                // We need to bind to 127.0.0.1:18081 manually via endpoint
-                // NWListener uses the system-chosen address; to bind to 127.0.0.1:
-                // Since NWListener doesn't directly support specifying the local address,
-                // we use a workaround: create a TCP server on 127.0.0.1:18081.
-                // Actually, NWListener picks the local address automatically.
-                // We'll accept connections and handle the address in the handler.
-
-                self.isRunningFlag = true
-                self.logger.info("Command queue listener started")
-
-                DispatchQueue.main.async { [weak self] in
-                    self?.notifyListeners("isRunning", data: ["running": true])
-                    call.resolve()
-                }
+                self.listener = try NWListener(using: params)
 
                 self.listener?.stateUpdateHandler = { state in
                     if state == .failed {
@@ -79,8 +63,15 @@ public class MobileCommandQueue: CAPPlugin {
                     self?.handleConnection(connection)
                 }
 
+                self.isRunningFlag = true
                 self.listener?.start(queue: self.queue)
 
+                self.logger.info("Command queue listener started on 127.0.0.1:18081")
+
+                DispatchQueue.main.async { [weak self] in
+                    self?.notifyListeners("isRunning", data: ["running": true])
+                    call.resolve()
+                }
             } catch {
                 self.logger.error("Failed to start listener: \(error)")
                 DispatchQueue.main.async { [weak self] in
@@ -121,13 +112,7 @@ public class MobileCommandQueue: CAPPlugin {
             return
         }
 
-        // Try to get deviceId from options
-        let deviceId: String
-        if let deviceIdOpt = call.options?["deviceId"] as? String {
-            deviceId = deviceIdOpt
-        } else {
-            deviceId = ""
-        }
+        let deviceId: String = call.options?["deviceId"] as? String ?? ""
 
         queue.async { [weak self] in
             guard let self = self else {
@@ -173,10 +158,7 @@ public class MobileCommandQueue: CAPPlugin {
     }
 
     @objc func get(_ call: CAPPluginCall) {
-        guard let deviceId = call.options?["deviceId"] as? String else {
-            call.reject("deviceId is required")
-            return
-        }
+        let deviceId: String = call.options?["deviceId"] as? String ?? ""
 
         queue.async { [weak self] in
             guard let self = self else {
@@ -208,7 +190,9 @@ public class MobileCommandQueue: CAPPlugin {
     }
 
     private func handleConnection(_ connection: NWConnection) {
-        connection.receiveMessage { [weak self] data, _, isComplete, error in
+        var accumulated = Data()
+
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
             guard let self = self else { return }
 
             if let error = error {
@@ -217,80 +201,67 @@ public class MobileCommandQueue: CAPPlugin {
                 return
             }
 
-            if let data = data, isComplete {
-                self.processRequest(data, connection: connection)
+            if let data = data {
+                accumulated.append(data)
+
+                if let raw = String(data: accumulated, encoding: .utf8) {
+                    if raw.contains("\r\n\r\n") {
+                        self.processRequest(raw, connection: connection)
+                    }
+                }
             }
 
             if isComplete {
                 connection.cancel()
-            } else {
-                // Continue receiving from this connection
+            } else if !(data?.isEmpty ?? true) {
+                // Continue receiving for this request
                 self.handleConnection(connection)
+            } else {
+                connection.cancel()
             }
         }
     }
 
-    private func processRequest(_ data: Data, connection: NWConnection) {
-        guard let raw = String(data: data, encoding: .utf8) else {
-            sendResponse(connection, status: 400, body: ["error": "Invalid UTF-8"])
-            return
-        }
-
-        // Parse the HTTP request line
-        let firstLineEnd = raw.firstIndex(of: "\n")
-        guard let firstLineStart = raw.range(of: "\r\n")?.lowerBound else {
-            sendResponse(connection, status: 400, body: ["error": "Invalid request"])
-            return
-        }
-        guard let firstLine = raw[..<firstLineStart] as? String else {
+    private func processRequest(_ raw: String, connection: NWConnection) {
+        guard let requestLineEnd = raw.firstIndex(of: "\n") else {
             sendResponse(connection, status: 400, body: ["error": "Invalid request"])
             return
         }
 
-        let components = firstLine.components(separatedBy: " ")
+        let requestLine = String(raw[..<requestLineEnd]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let components = requestLine.components(separatedBy: " ")
         guard components.count >= 3 else {
             sendResponse(connection, status: 400, body: ["error": "Invalid request line"])
             return
         }
 
         let method = components[0]
-        let path = components[1]
+        let rawPath = components[1]
+        let path = rawPath.split(separator: "?").first.map(String.init) ?? rawPath
 
-        // Parse query parameters for device_id
-        let deviceId = extractDeviceId(from: path)
+        let deviceId = extractDeviceId(from: rawPath)
 
-        // Handle OPTIONS (CORS preflight)
         if method == "OPTIONS" {
             sendCorsResponse(connection)
             return
         }
 
-        let pathString = path
-
-        if method == "POST" && (pathString == "/api/webhook/commands" || pathString == "/webhook/notify") {
+        if method == "POST" && (path == "/api/webhook/commands" || path == "/webhook/notify") {
             handlePostBody(raw, connection: connection, deviceId: deviceId)
-        } else if method == "GET" && (pathString == "/api/webhook/commands" || pathString == "/webhook/poll") {
+        } else if method == "GET" && (path == "/api/webhook/commands" || path == "/webhook/poll") {
             handleGetFromRequest(deviceId: deviceId, connection: connection)
         } else {
-            sendResponse(connection, status: 404, body: ["error": "Not Found", "path": pathString])
+            sendResponse(connection, status: 404, body: ["error": "Not Found", "path": path])
         }
     }
 
     private func handlePostBody(_ raw: String, connection: NWConnection, deviceId: String) {
-        // Find the body - it comes after \r\n\r\n
-        let headersEnd = raw.range(of: "\r\n\r\n")
-        guard let bodyStart = headersEnd?.upperBound else {
-            queue.async { [weak self] in
-                self?.queue.async { [weak self] in
-                    self?.queue.async {
-                        call.resolve(["queued": 0])
-                    }
-                }
-            }
+        guard let headersEnd = raw.range(of: "\r\n\r\n") else {
+            sendResponse(connection, status: 400, body: ["error": "Missing headers"])
             return
         }
 
-        let body = String(raw[bodyStart...])
+        let body = String(raw[headersEnd.upperBound...])
 
         queue.async { [weak self] in
             guard let self = self else { return }
@@ -298,7 +269,6 @@ public class MobileCommandQueue: CAPPlugin {
             let timestamp = Date().timeIntervalSince1970
             var commandDict: [String: Any] = [:]
 
-            // Parse JSON body
             if let data = body.data(using: .utf8),
                let parsed = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
                 commandDict = parsed
@@ -328,31 +298,33 @@ public class MobileCommandQueue: CAPPlugin {
                 queued = self.deviceCommands[deviceId]?.count ?? 0
             }
 
-            DispatchQueue.main.async {
-                call.resolve(["queued": queued])
-            }
+            sendResponse(connection, status: 200, body: ["status": "ok", "queued": queued])
         }
     }
 
     private func handleGetFromRequest(deviceId: String, connection: NWConnection) {
-        let cutoff = Date().timeIntervalSince1970 - expireSecs
+        queue.async { [weak self] in
+            guard let self = self else { return }
 
-        var result: [[String: Any]] = []
+            let cutoff = Date().timeIntervalSince1970 - self.expireSecs
 
-        if deviceId.isEmpty {
-            let recent = broadcastCommands.filter { $0.timestamp > cutoff }
-            let dicts = recent.compactMap { $0.data as? [String: Any] }
-            result = dicts
-            broadcastCommands.removeAll()
-        } else {
-            let entries = deviceCommands[deviceId] ?? []
-            let recent = entries.filter { $0.timestamp > cutoff }
-            let dicts = recent.compactMap { $0.data as? [String: Any] }
-            result = dicts
-            deviceCommands[deviceId] = []
+            var result: [[String: Any]] = []
+
+            if deviceId.isEmpty {
+                let recent = self.broadcastCommands.filter { $0.timestamp > cutoff }
+                let dicts = recent.compactMap { $0.data as? [String: Any] }
+                result = dicts
+                self.broadcastCommands.removeAll()
+            } else {
+                let entries = self.deviceCommands[deviceId] ?? []
+                let recent = entries.filter { $0.timestamp > cutoff }
+                let dicts = recent.compactMap { $0.data as? [String: Any] }
+                result = dicts
+                self.deviceCommands[deviceId] = []
+            }
+
+            sendResponse(connection, status: 200, body: result)
         }
-
-        sendResponse(connection, status: 200, body: result)
     }
 
     private func extractDeviceId(from path: String) -> String {

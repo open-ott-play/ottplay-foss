@@ -1,5 +1,6 @@
 package play.ott.foss
 
+import android.util.Log
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -12,8 +13,6 @@ import java.net.Socket
 import java.net.URLDecoder
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.ArrayList
-import kotlin.system.exitProcess
-
 @CapacitorPlugin(name = "MobileCommandQueue")
 class MobileCommandQueuePlugin : Plugin() {
 
@@ -51,7 +50,7 @@ class MobileCommandQueuePlugin : Plugin() {
                     notifyListeners("isRunning", JSObject().apply { put("running", true) })
                     call.resolve()
                 }
-                Logger.d("Command queue listening on http://127.0.0.1:18081")
+                Log.d("MobileCommandQueue", "Command queue listening on http://127.0.0.1:18081")
 
                 while (isActive) {
                     try {
@@ -59,13 +58,13 @@ class MobileCommandQueuePlugin : Plugin() {
                         launch { handleClient(client) }
                     } catch (e: IOException) {
                         if (isRunningFlag) {
-                            Logger.e("Accept error: ${e.message}")
+                            Log.e("MobileCommandQueue", "Accept error: ${e.message}")
                         }
                         break
                     }
                 }
             } catch (e: IOException) {
-                Logger.e("Failed to bind 127.0.0.1:18081: ${e.message}")
+                Log.e("MobileCommandQueue", "Failed to bind 127.0.0.1:18081: ${e.message}")
                 withContext(Dispatchers.Main) {
                     call.reject("Failed to bind HTTP server: ${e.message}")
                 }
@@ -229,7 +228,7 @@ class MobileCommandQueuePlugin : Plugin() {
                 }
             }
         } catch (e: IOException) {
-            Logger.e("Client error: ${e.message}")
+            Log.e("MobileCommandQueue", "Client error: ${e.message}")
         }
     }
 

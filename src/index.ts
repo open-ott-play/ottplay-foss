@@ -4892,13 +4892,8 @@ if (
 ) {
     const _capQueue = (window as any).Capacitor.Plugins.MobileCommandQueue;
     if (_capQueue) {
-        // Default poll URL to native server when none set in localStorage.
-        if (!localStorage.getItem("local_poll_url")) {
-            localStorage.setItem(
-                "local_poll_url",
-                "http://127.0.0.1:18081/api/webhook/commands"
-            );
-        }
+        // Capacitor Mode C: drain via native plugin `get()` only.
+        // Do NOT set local_poll_url — that would also trigger the HTTP :18081 poller.
         let _capPollTimer: ReturnType<typeof setInterval> | null = null;
         const _capPollOnce = async (): Promise<void> => {
             try {
