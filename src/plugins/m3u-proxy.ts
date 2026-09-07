@@ -16,12 +16,14 @@ export interface M3UProxyPlugin {
     }): Promise<{ body: string }>;
 }
 
+import { registerPlugin } from "@capacitor/core";
+
 const UA_PRESETS: Record<string, string> = {
-    webos: "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36 LG Browser/9.00.00",
+    dune: "Mozilla/5.0 (Dune HD; DuneOS) AppleWebKit/537.36 (KHTML, like Gecko) DuneHD/1.0 Chrome/68.0.3440.106 Safari/537.36",
+    mag: "Mozilla/5.0 (STB; Infomir MAG524) Maple 6.0 QtWebKit/3.0",
     tizen: "Mozilla/5.0 (SMART-TV; Linux; Tizen 5.5) AppleWebKit/537.36 (KHTML, like Gecko) SamsungTV/3.0 Chrome/76.0.3809.146 Safari/537.36",
     viera: "Mozilla/5.0 (Unknown; Linux; Viera/1.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36",
-    mag: "Mozilla/5.0 (STB; Infomir MAG524) Maple 6.0 QtWebKit/3.0",
-    dune: "Mozilla/5.0 (Dune HD; DuneOS) AppleWebKit/537.36 (KHTML, like Gecko) DuneHD/1.0 Chrome/68.0.3440.106 Safari/537.36",
+    webos: "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36 LG Browser/9.00.00",
 };
 
 function resolveUA(input?: string): string {
@@ -45,7 +47,7 @@ class M3UProxyWeb {
 
 const M3UProxy: any =
     typeof (window as any).Capacitor !== "undefined"
-        ? (window as any).Capacitor.registerPlugin<M3UProxyPlugin>("M3UProxy", {
+        ? registerPlugin("M3UProxy", {
               web: M3UProxyWeb,
           })
         : M3UProxyWeb;
@@ -133,7 +135,11 @@ function setupCapacitorCompanionShim(): void {
             const ua = extractUA(data);
             const referer = extractReferer(data);
             return jqFromPromise(
-                M3UProxy.proxyFetch({ url: target, referer, userAgent: ua }),
+                M3UProxy.proxyFetch({
+                    referer,
+                    url: target,
+                    userAgent: ua,
+                }).then((res) => res.body),
                 opts
             );
         }

@@ -46,34 +46,26 @@ public class M3UProxyPlugin: CAPPlugin {
         }
         request.timeoutInterval = M3UProxyPlugin.DEFAULT_TIMEOUT
 
-        let semaphore = DispatchSemaphore(value: 0)
-        var responseError: Error?
-        var responseBody = ""
-
         let task = URLSession.shared.dataTask(with: request) { [weak self] data, _, error in
             if let error = error {
-                responseError = error
-                semaphore.signal()
+                DispatchQueue.main.async {
+                    call.reject("proxy_fetch failed: \(error.localizedDescription)")
+                }
                 return
             }
             guard let data = data, let body = String(data: data, encoding: .utf8) else {
-                responseError = NSError(domain: "M3UProxy", code: -1, userInfo: [NSLocalizedDescriptionKey: "empty response"])
-                semaphore.signal()
+                let nsError = NSError(domain: "M3UProxy", code: -1, userInfo: [NSLocalizedDescriptionKey: "empty response"])
+                DispatchQueue.main.async {
+                    call.reject("proxy_fetch failed: \(nsError.localizedDescription)")
+                }
                 return
             }
-            responseBody = body
             os_log("[M3UProxy] OK %{public}s (status=%d)", urlStr, (data as NSData).length)
-            semaphore.signal()
+            DispatchQueue.main.async {
+                call.resolve(["body": body])
+            }
         }
 
         task.resume()
-        _ = semaphore.wait(timeout: .now() + M3UProxyPlugin.DEFAULT_TIMEOUT + 2)
-
-        if let error = responseError {
-            call.reject("proxy_fetch failed: \(error.localizedDescription)")
-            return
-        }
-
-        call.resolve(["body": responseBody])
     }
 }
