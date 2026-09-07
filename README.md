@@ -67,7 +67,9 @@ On first load: press **F2 (Settings) → Providers → M3U**, enter your playlis
 
 ## Docker
 
-Multi-arch images (amd64/arm64) are published to Docker Hub on every push to `main` and on `v*` tags:
+Multi-arch images (amd64/arm64) are published to Docker Hub on every push to `main`, on `v*` tags, and via `workflow_dispatch`.
+
+The server binary is built on **musl** (Alpine) and shipped on Alpine — it does **not** require GLIBC_2.38+. That keeps `alvit/ottplay-foss` runnable on Synology DSM Docker (x86_64) and other older-glibc hosts.
 
 ```bash
 docker run -d -p 8080:8080 alvit/ottplay-foss
@@ -75,7 +77,7 @@ docker run -d -p 8080:8080 alvit/ottplay-foss
 docker run -d -p 8080:8080 -e EPG_URLS="http://example.com/epg.xml.gz" alvit/ottplay-foss
 ```
 
-Tags: `latest` (main), `v1.2.3` / `1.2` (semver), `sha-<short>`.
+Tags: `latest` (main), `1.2.3` / `1.2` (semver from `v*` tags), `sha-<short>`.
 
 ## Build from Source
 
