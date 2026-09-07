@@ -178,7 +178,7 @@ jobs:
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: .
-          shared-key: tauri-${{ matrix.platform }}
+          shared-key: tauri-${{ matrix.platform }}-${{ matrix.target || 'host' }}
 
       - name: Install Linux deps
         if: matrix.platform == 'ubuntu-latest' || matrix.platform == 'ubuntu-24.04-arm'
@@ -200,6 +200,7 @@ jobs:
         working-directory: src-tauri
         env:
           CI: true
+          TAURI_TARGET: ${{ matrix.target }}
 
       - name: Collect desktop bundles
         shell: bash
@@ -343,15 +344,28 @@ jobs:
         run: |
           cd android
           ./gradlew assembleRelease
+          # AAB optional; do not fail the job if bundle task is unavailable
+          ./gradlew bundleRelease || echo "bundleRelease skipped"
 
       - name: Android – upload to release
         if: matrix.type == 'android'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
         run: |
           APK=$(find android/app/build/outputs/apk -name '*release*.apk' | head -1)
           if [ -z "$APK" ]; then
             echo "No release APK found"
+            find android/app/build/outputs -type f \( -name '*.apk' -o -name '*.aab' \) || true
             exit 1
           fi
-          gh release upload "${{ needs.release.outputs.tag }}" "$APK" --clobber
+          OUT="$GITHUB_WORKSPACE/ottplay-foss-android-unsigned.apk"
+          cp "$APK" "$OUT"
+          UPLOAD=("$OUT")
+          AAB=$(find android/app/build/outputs/bundle -name '*release*.aab' 2>/dev/null | head -1 || true)
+          if [ -n "$AAB" ]; then
+            AAB_OUT="$GITHUB_WORKSPACE/ottplay-foss-android-unsigned.aab"
+            cp "$AAB" "$AAB_OUT"
+            UPLOAD+=("$AAB_OUT")
+          fi
+          gh release upload "$RELEASE_TAG" "${UPLOAD[@]}" --clobber
