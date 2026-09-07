@@ -2050,21 +2050,6 @@ function setupTauriCompanionShim(): void {
         }
         const url = String(opts.url || "");
 
-        // Mode B: intercept /tmdb/s/* (API) and /tmdb/i/* (images) via Tauri command
-        if (url.indexOf("/tmdb/") !== -1) {
-            const tail = url.slice(url.indexOf("/tmdb/") + 6); // strip "/tmdb/"
-            const qIdx = tail.indexOf("?");
-            const pathTail = qIdx !== -1 ? tail.slice(0, qIdx) : tail;
-            const query = qIdx !== -1 ? tail.slice(qIdx + 1) : "";
-            return jqFromInvoke(
-                tauriInvoke<string>("tmdb_proxy", {
-                    path_tail: pathTail,
-                    query,
-                }),
-                opts
-            );
-        }
-
         if (url.indexOf("/m3u/cp.php") !== -1) {
             let target = "";
             const data = opts.data;
