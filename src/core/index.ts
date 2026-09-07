@@ -760,12 +760,30 @@ export function stbAudioTracksExists(): boolean {
 }
 
 /**
- * Count available subtitle tracks (hls.js subtitle tracks or native text tracks).
- * @returns Number of subtitle/text tracks.
+ * True when a native textTrack looks like a real, selectable subtitle/caption
+ * (not metadata, and not an anonymous WebKit placeholder with no label/lang).
+ */
+function isUsableNativeSubtitleTrack(t: any): boolean {
+    var kind = (t && t.kind) || "";
+    if (kind && kind !== "subtitles" && kind !== "captions") return false;
+    return !!(t && (t.label || t.name || t.language || t.lang));
+}
+
+/**
+ * Count available subtitle tracks worth offering in the Menu / picker.
+ * hls.js: EXT-X-MEDIA subtitleTracks (0 when muxed remux has none — Chrome path).
+ * Native HTML5 (Tauri/WKWebView): only subtitles/captions with label or language;
+ * anonymous WebKit placeholders must not surface as "Switch subtitle".
+ * @returns Number of usable subtitle/text tracks.
  */
 export function stbSubtitleExists(): number {
     if (hlsInstance) return hlsInstance.subtitleTracks.length;
-    return video!.textTracks.length;
+    var tt = video!.textTracks;
+    var n = 0;
+    for (var i = 0; i < tt.length; i++) {
+        if (isUsableNativeSubtitleTrack(tt[i])) n++;
+    }
+    return n;
 }
 
 /**
@@ -1169,37 +1187,69 @@ function setSubtitleTrack(index: number): void {
  * Side effects: Shows a select-box UI; calls setSubtitleTrack; writes to aSubs storage.
  */
 export function stbToggleSubtitle(): void {
-    var cur = 0,
-        tracks = hlsInstance
-            ? hlsInstance.subtitleTracks
-            : (video as any).textTracks;
-    var labels = [tracks.length ? _("Off") : _("Not found")];
+    var cur = 0;
+    var labels: string[];
+    // Map picker index (1..N; 0 = Off) -> engine track index for setSubtitleTrack.
+    var indexMap: number[] = [-1];
+
     if (hlsInstance) {
-        tracks = hlsInstance.subtitleTracks;
+        var hTracks = hlsInstance.subtitleTracks || [];
+        labels = [hTracks.length ? _("Off") : _("Not found")];
         cur = hlsInstance.subtitleTrack + 1;
+        for (var hi = 0; hi < hTracks.length; hi++) {
+            indexMap.push(hi);
+            var hName =
+                (hTracks[hi] as any).name ||
+                (hTracks[hi] as any).label ||
+                "#" + (hi + 1);
+            var hLang =
+                (hTracks[hi] as any).lang ||
+                (hTracks[hi] as any).language ||
+                "?";
+            labels.push(
+                hi + 1 + "/" + hTracks.length + " (" + hName + "/" + hLang + ")"
+            );
+        }
+    } else {
+        var nTracks = (video as any).textTracks;
+        var usable: { eng: number; t: any }[] = [];
+        for (var ni = 0; ni < nTracks.length; ni++) {
+            if (isUsableNativeSubtitleTrack(nTracks[ni]))
+                usable.push({ eng: ni, t: nTracks[ni] });
+        }
+        labels = [usable.length ? _("Off") : _("Not found")];
+        for (var ui = 0; ui < usable.length; ui++) {
+            indexMap.push(usable[ui].eng);
+            if ((usable[ui].t as any).mode === "showing") cur = ui + 1;
+            var nName =
+                (usable[ui].t as any).label ||
+                (usable[ui].t as any).name ||
+                "#" + (ui + 1);
+            var nLang =
+                (usable[ui].t as any).language ||
+                (usable[ui].t as any).lang ||
+                "?";
+            labels.push(
+                ui + 1 + "/" + usable.length + " (" + nName + "/" + nLang + ")"
+            );
+        }
     }
-    for (var i = 0; i < tracks.length; i++) {
-        if (!hlsInstance && (tracks[i] as any).mode === "showing") cur = i + 1;
-        labels.push(
-            i +
-                1 +
-                "/" +
-                tracks.length +
-                " (" +
-                ((tracks[i] as any).label || (tracks[i] as any).name) +
-                "/" +
-                ((tracks[i] as any).language || (tracks[i] as any).lang) +
-                ")"
-        );
+
+    if (labels.length < 2) {
+        // No real tracks — brief OSD, do not open a stuck picker.
+        showSelectBox(0, labels, function () {}, 1500);
+        return;
     }
+
     showSelectBox(
         cur,
         labels,
         function (v: number) {
-            if (v !== cur) {
-                setSubtitleTrack(v);
-                saveCHarr("aSubs", v);
-            }
+            if (v === cur) return;
+            var eng = indexMap[v];
+            // setSubtitleTrack expects 0 = Off, 1..N = engine index + 1
+            setSubtitleTrack(eng < 0 ? 0 : eng + 1);
+            saveCHarr("aSubs", eng < 0 ? 0 : eng + 1);
         },
         -1
     );
