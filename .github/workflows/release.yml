@@ -48,8 +48,6 @@ jobs:
         run: npm run build --ignore-scripts
 
       - name: Package deployable bundle
-        # Same content the Docker image serves statically (minus server.py):
-        # usable for self-hosting without Docker.
         run: |
           tar -czf ottplay-foss-dist.tar.gz \
             index.html favicon.ico dist fonts js stb stbPlayer prov
@@ -95,7 +93,6 @@ jobs:
         with:
           path: ottplay-foss-dist
 
-      # Flatten artifacts: move contents of ottplay-foss-dist into dist/
       - name: Flatten artifacts
         run: |
           mkdir -p dist
@@ -103,7 +100,6 @@ jobs:
           ls -la dist/
 
       - name: Create downloadable tarball
-        # Already created in build job; just ensure it's present
         run: |
           ls -la dist/ottplay-foss-dist.tar.gz || echo "Tarball not found"
 
@@ -142,8 +138,15 @@ jobs:
       matrix:
         include:
           - platform: macos-latest
+            target: aarch64-apple-darwin
+          - platform: macos-latest
+            target: x86_64-apple-darwin
           - platform: ubuntu-latest
+            target: ''
+          - platform: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
           - platform: windows-latest
+            target: ''
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -167,6 +170,10 @@ jobs:
         with:
           toolchain: stable
 
+      - name: Install Rust target
+        if: matrix.target != ''
+        run: rustup target add ${{ matrix.target }}
+
       - name: Rust cache
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
@@ -174,7 +181,7 @@ jobs:
           shared-key: tauri-${{ matrix.platform }}
 
       - name: Install Linux deps
-        if: matrix.platform == 'ubuntu-latest'
+        if: matrix.platform == 'ubuntu-latest' || matrix.platform == 'ubuntu-24.04-arm'
         run: bash scripts/ci-tauri-linux-deps.sh
 
       - name: Install JS dependencies
@@ -184,7 +191,12 @@ jobs:
         run: npm run build --ignore-scripts
 
       - name: Build desktop package
-        run: npx tauri build --ci
+        run: |
+          if [ -n "${TAURI_TARGET:-}" ]; then
+            npx tauri build --ci --target "$TAURI_TARGET"
+          else
+            npx tauri build --ci
+          fi
         working-directory: src-tauri
         env:
           CI: true
@@ -192,6 +204,8 @@ jobs:
       - name: Collect desktop bundles
         shell: bash
         run: bash scripts/ci-tauri-collect-artifacts.sh
+        env:
+          TAURI_TARGET: ${{ matrix.target }}
 
       - name: Upload desktop assets to release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
@@ -201,3 +215,143 @@ jobs:
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  mobile:
+    name: Build mobile (${{ matrix.type }})
+    needs: release
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            type: ios
+          - platform: ubuntu-latest
+            type: android
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 60
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install JS dependencies
+        run: npm ci --ignore-scripts
+
+      # --------- iOS ---------
+      - name: iOS – build web + sync
+        if: matrix.type == 'ios'
+        run: npm run build:mobile
+        env:
+          CI: true
+
+      - name: iOS – discover scheme
+        if: matrix.type == 'ios'
+        id: discover
+        run: |
+          SCHEME=$(xcodebuild -list -project ios/App/App.xcodeproj | awk '/Schemes:/{getline; gsub(/^[ \t]+/,""); print; exit}')
+          if [ -z "$SCHEME" ]; then
+            echo "No scheme found"
+            exit 1
+          fi
+          echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
+          echo "Discovered scheme: $SCHEME"
+
+      - name: iOS – archive (unsigned)
+        if: matrix.type == 'ios'
+        run: |
+          SCHEME="${{ steps.discover.outputs.scheme }}"
+          xcodebuild clean archive \
+            -project "ios/App/App.xcodeproj" \
+            -scheme "$SCHEME" \
+            -sdk iphoneos \
+            -configuration Release \
+            -archivePath "${{ github.workspace }}/ottplay-foss-ios.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            -destination 'generic/platform=iOS' \
+            ONLY_ACTIVE_ARCH=NO \
+            ARCHS=arm64
+
+      - name: iOS – package IPA
+        if: matrix.type == 'ios'
+        run: |
+          XCA="${{ github.workspace }}/ottplay-foss-ios.xcarchive"
+          APP_DIR="$XCA/Products/Applications"
+          if [ ! -d "$APP_DIR" ]; then
+            echo "No .app found in archive at $APP_DIR"
+            ls -R "$XCA"
+            exit 1
+          fi
+          mkdir -p Payload
+          cp -R "$APP_DIR/"*.app Payload/
+          zip -qr "${{ github.workspace }}/ottplay-foss-ios-unsigned.ipa" Payload
+          rm -rf Payload
+          echo "Created ottplay-foss-ios-unsigned.ipa"
+
+      - name: iOS – upload to release
+        if: matrix.type == 'ios'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ needs.release.outputs.tag }}" \
+            "${{ github.workspace }}/ottplay-foss-ios-unsigned.ipa" --clobber
+
+      # --------- Android ---------
+      - name: Android – setup Java
+        if: matrix.type == 'android'
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Android – setup SDK
+        if: matrix.type == 'android'
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+
+      - name: Android – install SDK components
+        if: matrix.type == 'android'
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root="$ANDROID_HOME" \
+            "platforms;android-36" \
+            "build-tools;34.0.0" \
+            "platform-tools" 2>&1 | tail -5
+          echo "✓ Android SDK components installed"
+
+      - name: Android – build web + sync
+        if: matrix.type == 'android'
+        run: npm run build:mobile
+        env:
+          CI: true
+
+      - name: Android – assemble release
+        if: matrix.type == 'android'
+        run: |
+          cd android
+          ./gradlew assembleRelease
+
+      - name: Android – upload to release
+        if: matrix.type == 'android'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APK=$(find android/app/build/outputs/apk -name '*release*.apk' | head -1)
+          if [ -z "$APK" ]; then
+            echo "No release APK found"
+            exit 1
+          fi
+          gh release upload "${{ needs.release.outputs.tag }}" "$APK" --clobber
