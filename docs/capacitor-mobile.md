@@ -3,6 +3,18 @@
 Capacitor wraps the OTT-play FOSS web frontend for native iOS and Android deployment.
 Both platforms share the same TypeScript source and Capacitor configuration.
 
+## Status
+
+Capacitor 4.1–4.3 are on `main`. Next: **4.4 native media**.
+
+## Shipped
+
+- **4.1 shell** — PR #295 (`capacitor.config`, iOS/Android projects, dist/ embed)
+- **4.2 XMLTV/EPG** — PR #309 — `MobileXmltvEpg` (Swift XMLParser + Kotlin streaming XML/OkHttp; TS routing in `getEPGchanelCached()`)
+- **4.3 command queue** — PR #305 (Tauri peer #296) — `MobileCommandQueue` on `127.0.0.1:18081` (NWListener / ServerSocket)
+- **M3U stream proxy** — PR #307 — `M3UProxy` + web shim for `/m3u/cp.php`
+- **Release artifacts** — PR #310 — multiarch Tauri + Capacitor IPA/APK
+
 ## Build
 
 ```bash
@@ -98,11 +110,13 @@ Implemented. Capacitor plugin `M3UProxy` provides native HTTP client for `/m3u/c
 - **Return**: response body as text string (text playlists).
 - **Smoke**: Capacitor app → provider POST `/m3u/cp.php` → native fetch returns body; Tauri/Mode A unchanged.
 
-### App Store submission
+## Remaining gaps (4.4+)
 
-- iOS TestFlight / App Store: icon 1024×1024, screenshots, privacy policy URL
-- Android internal track: same icons, app signing key
-- Touch vs remote input already separate in `src/keyhandler/`
+- **4.4 Native media** — volume get/set, PiP play/stop, fullscreen, standby/wake (AVAudioSession / AudioManager; AVPictureInPictureController / PictureInPictureManager API 26+; WKWebView/WebView fullscreen; idle timer / WakeLock). Not yet wired for Capacitor.
+- **4.5 Background audio polish** — config flags exist (`ios.backgroundAudio` / `android.backgroundAudio`); lock-screen / OS controls and playback-edge cases still need device polish.
+- **4.6 Key / touch mapping** — hardware keyboard, D-Pad, remote, swipe gestures on mobile.
+- **Store / TestFlight** — iOS TestFlight / App Store and Android internal track (icon 1024x1024, screenshots, privacy policy URL, signing).
+- **Device smoke** — real device/simulator passes for queue / EPG / M3U/media paths.
 
 ## Mode A and Tauri
 

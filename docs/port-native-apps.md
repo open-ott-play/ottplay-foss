@@ -1,6 +1,6 @@
 # Porting ottplay-foss to Native Apps
 
-Status: analysis / planning. No implementation.
+Status: Tauri Phase 1 companion backends (match/logos/SVG/TMDB/misc/queue) + Capacitor 4.1–4.3 on main; next Cap 4.4 native media. Phased plan below kept as roadmap.
 
 ## Two Operating Modes
 
