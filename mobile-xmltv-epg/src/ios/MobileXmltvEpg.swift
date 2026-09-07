@@ -1,4 +1,5 @@
 import Capacitor
+import Compression
 
 @objc(MobileXmltvEpg)
 public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
