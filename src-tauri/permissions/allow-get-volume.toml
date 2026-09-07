@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-get-volume"
+description = "Enables the get_volume command."
+commands.allow = ["get_volume"]

@@ -33,6 +33,7 @@ pub fn run() {
             commands::tauri_commands::play_pip,
             commands::tauri_commands::stop_pip,
             commands::tauri_commands::set_pip_bounds,
+            commands::tauri_commands::exit_app,
         ])
         .setup(|app| {
             let raw = std::env::var("OTTPLAY_WEB_URL").unwrap_or_else(|_| DEFAULT_WEB_URL.into());

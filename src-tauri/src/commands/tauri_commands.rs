@@ -658,3 +658,16 @@ pub async fn set_pip_bounds(
     }
     Ok(PipResult { ok: true })
 }
+
+/// `invoke('exit_app')` → close main window and exit the process.
+///
+/// Browser `window.close()` does not quit a Tauri app; Escape → confirm → Enter
+/// calls `stbExit()`, which must invoke this under `__TAURI__`.
+#[tauri::command]
+pub fn exit_app(app: tauri::AppHandle) {
+    use tauri::Manager;
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.close();
+    }
+    app.exit(0);
+}
