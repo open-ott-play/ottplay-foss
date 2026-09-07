@@ -28,6 +28,8 @@ pub fn run() {
             commands::tauri_commands::set_fullscreen,
             commands::tauri_commands::prevent_sleep,
             commands::tauri_commands::allow_sleep,
+            commands::tauri_commands::get_volume,
+            commands::tauri_commands::set_volume,
         ])
         .setup(|app| {
             let raw = std::env::var("OTTPLAY_WEB_URL").unwrap_or_else(|_| DEFAULT_WEB_URL.into());

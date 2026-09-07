@@ -194,7 +194,45 @@ export function closeFullscreen(): void {
  *               default browser action (typing 'l' in input fields).
  */
 export function stbEventToKeyCode(event: any): number {
-    if (event && event.keyCode === 76) {
+    if (!event) return 0;
+
+    // Prefer classic keyCode/which; some hosts (incl. Tauri webview) report 0.
+    var keyCode =
+        typeof event.keyCode === "number" && event.keyCode
+            ? event.keyCode
+            : typeof event.which === "number" && event.which
+              ? event.which
+              : 0;
+
+    if (!keyCode) {
+        var key = event.key || "";
+        var code = event.code || "";
+        // Map common keys when keyCode/which is missing (sync; no Tauri invoke).
+        if (key === "ArrowLeft" || code === "ArrowLeft") keyCode = 37;
+        else if (key === "ArrowUp" || code === "ArrowUp") keyCode = 38;
+        else if (key === "ArrowRight" || code === "ArrowRight") keyCode = 39;
+        else if (key === "ArrowDown" || code === "ArrowDown") keyCode = 40;
+        else if (key === "Enter" || code === "Enter" || code === "NumpadEnter")
+            keyCode = 13;
+        else if (key === "Escape" || code === "Escape") keyCode = 27;
+        else if (key === " " || key === "Spacebar" || code === "Space")
+            keyCode = 32;
+        else if (key === "Backspace" || code === "Backspace") keyCode = 8;
+        else if (key === "Delete" || code === "Delete") keyCode = 46;
+        else if (key === "PageUp" || code === "PageUp") keyCode = 33;
+        else if (key === "PageDown" || code === "PageDown") keyCode = 34;
+        else if (key === "Home" || code === "Home") keyCode = 36;
+        else if (key === "End" || code === "End") keyCode = 35;
+        else if (key === "AudioVolumeMute" || code === "AudioVolumeMute")
+            keyCode = 173; // keys.MUTE
+        else if (key === "AudioVolumeDown" || code === "AudioVolumeDown")
+            keyCode = 174; // keys.VOL_DOWN
+        else if (key === "AudioVolumeUp" || code === "AudioVolumeUp")
+            keyCode = 175; // keys.VOL_UP
+        else if (key === "l" || key === "L" || code === "KeyL") keyCode = 76;
+    }
+
+    if (keyCode === 76) {
         // Do not steal L/l while the on-screen editor / VKB is open.
         var editing = false;
         try {
@@ -212,7 +250,7 @@ export function stbEventToKeyCode(event: any): number {
             return 0; // Indicate key was consumed
         }
     }
-    return event ? event.keyCode : 0;
+    return keyCode;
 }
 
 /**
