@@ -1,10 +1,7 @@
 {
   "identifier": "default",
   "description": "Capability for all windows",
-  "windows": [
-    "main",
-    "pip"
-  ],
+  "windows": ["main", "pip"],
   "remote": {
     "urls": [
       "http://127.0.0.1:8095/*",
@@ -32,6 +29,8 @@
     "allow-play-pip",
     "allow-stop-pip",
     "allow-set-pip-bounds",
-    "allow-exit-app"
+    "allow-exit-app",
+    "allow-queue-poll",
+    "allow-queue-enqueue"
   ]
 }

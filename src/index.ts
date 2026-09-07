@@ -284,7 +284,7 @@ import {
 declare var $: any;
 
 // Command handler (push commands via webhook)
-import { handleCommand, showPopup } from "./commands";
+import { type Command, handleCommand, showPopup } from "./commands";
 // Key handler
 import { dispatchKey, keyHandler, keys } from "./keyhandler";
 // Provider — only import what actually exists
@@ -4230,6 +4230,52 @@ window.version = "<br/>Version: " + PLAYER_VERSION;
 // Command handler (push commands via webhook)
 window.handleCommand = handleCommand;
 window.showPopup = showPopup;
+
+// Tauri Mode B: poll the native command queue (queue_poll invoke) instead of
+// the local_proxy.py GET endpoint. Mirrors the STB poll cadence (~10s) so
+// push commands (popup_message, channel switches, …) arrive promptly.
+// Mode A (browser/STB): untouched — local_proxy.py on :8081 handles polling.
+if (typeof window.__TAURI__ !== "undefined") {
+    let _queuePollTimer: ReturnType<typeof setInterval> | null = null;
+    const _queuePollOnce = (): void => {
+        tauriInvoke<any[]>("queue_poll", { device_id: "" })
+            .then((cmds: any[]) => {
+                if (Array.isArray(cmds)) {
+                    cmds.forEach((cmd: any) => {
+                        if (cmd && typeof handleCommand === "function") {
+                            try {
+                                handleCommand(cmd as Command);
+                            } catch (_e) {
+                                console.warn(
+                                    "[queue_poll] handleCommand failed:",
+                                    _e
+                                );
+                            }
+                        }
+                    });
+                }
+            })
+            .catch((e: any) => console.warn("[queue_poll] poll failed:", e));
+    };
+    const _queuePollStart = (): void => {
+        if (_queuePollTimer) return;
+        _queuePollOnce(); // immediate first drain
+        _queuePollTimer = setInterval(_queuePollOnce, 10000);
+    };
+    const _queuePollStop = (): void => {
+        if (_queuePollTimer) {
+            clearInterval(_queuePollTimer);
+            _queuePollTimer = null;
+        }
+    };
+    (window as any).__ottQueuePoll = {
+        poll: _queuePollOnce,
+        start: _queuePollStart,
+        stop: _queuePollStop,
+    };
+    // Auto-start once the player is ready.
+    _queuePollStart();
+}
 
 /* ---------------------------------------------------------------------------
  * Sync PlayerSettings → window.* for settings submenu compatibility

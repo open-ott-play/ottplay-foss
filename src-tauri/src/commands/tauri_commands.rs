@@ -13,6 +13,7 @@ use std::sync::Arc;
 use serde::Serialize;
 use serde_json::Value as JsonValue;
 use tokio::sync::RwLock;
+use super::queue::SharedQueues;
 
 #[derive(Serialize)]
 pub struct SleepResult {
@@ -29,6 +30,8 @@ pub struct TauriState {
     /// Falls back to http://epg.it999.ru/epg2.xml.gz when unset, so get_epg
     /// is never stuck on empty URLs (Mode B Tauri only).
     pub epg_urls: Arc<RwLock<Vec<String>>>,
+    /// In-memory command queue for Mode B native webhook / polling API.
+    pub command_queues: SharedQueues,
 }
 
 /// Health-check payload mirroring inverter-desktop's ping pattern.

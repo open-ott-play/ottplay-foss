@@ -3,6 +3,9 @@ build/
 dist/
 target/
 
+# Tauri frontend dist
+src-tauri/frontend/
+
 # Dependencies
 node_modules/
 
