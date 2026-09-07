@@ -1778,6 +1778,113 @@ if (typeof window.__TAURI__ !== "undefined") {
     })();
 }
 
+// Tauri Mode B: frameless window — whole-window drag; interactive UI is no-drag.
+// decorations:false removes the system title bar; without a drag region the
+// window cannot be moved. Gate on __TAURI__ so Chrome companion is unchanged.
+if (typeof window.__TAURI__ !== "undefined") {
+    (function () {
+        const CLASS = "ott-tauri-frameless";
+        const STYLE_ID = "ott-tauri-frameless-drag";
+        // Interactive / overlay surfaces that must keep pointer clicks.
+        const NO_DRAG_SEL =
+            '[id^="list"],.osd,#info,#info1,#numprog,#dialogbox,#volume_div,#mute,' +
+            "#permanentTime,#launch,#notifications,#buffering,#pip_buffering,#videopip," +
+            "#progress_div,#progress,#progress_r,#progress_span,#descr,#channel,#data," +
+            'button,input,select,textarea,a,.btn,.osk-key,[onclick],[contenteditable="true"],' +
+            '[role="button"],[role="listbox"],[role="option"],[role="menu"],[role="menuitem"]';
+
+        document.documentElement.classList.add(CLASS);
+        if (document.body) document.body.classList.add(CLASS);
+
+        // CSS app-region: video/empty chrome is draggable; overlays stay clickable.
+        if (!document.getElementById(STYLE_ID)) {
+            const style = document.createElement("style");
+            style.id = STYLE_ID;
+            const noDragCss = NO_DRAG_SEL.split(",")
+                .map((s) => "html." + CLASS + " " + s.trim())
+                .join(",\n");
+            style.textContent =
+                "html." +
+                CLASS +
+                ", html." +
+                CLASS +
+                " body {\n  -webkit-app-region: drag;\n}\n" +
+                noDragCss +
+                " {\n  -webkit-app-region: no-drag;\n}\n";
+            document.head.appendChild(style);
+        }
+
+        // data-tauri-drag-region also triggers start-dragging (allow-start-dragging).
+        if (
+            document.body &&
+            !document.body.hasAttribute("data-tauri-drag-region")
+        ) {
+            document.body.setAttribute("data-tauri-drag-region", "");
+        }
+
+        const markNoDrag = (root: ParentNode) => {
+            root.querySelectorAll(NO_DRAG_SEL).forEach((el) => {
+                (el as HTMLElement).style.setProperty(
+                    "-webkit-app-region",
+                    "no-drag"
+                );
+            });
+        };
+        markNoDrag(document);
+        try {
+            const mo = new MutationObserver((mutations) => {
+                for (const m of mutations) {
+                    m.addedNodes.forEach((n) => {
+                        if (n.nodeType !== 1) return;
+                        const el = n as HTMLElement;
+                        if (el.matches?.(NO_DRAG_SEL)) {
+                            el.style.setProperty(
+                                "-webkit-app-region",
+                                "no-drag"
+                            );
+                        }
+                        markNoDrag(el);
+                    });
+                }
+            });
+            mo.observe(document.documentElement, {
+                childList: true,
+                subtree: true,
+            });
+        } catch (_e) {}
+
+        // WKWebView fallback: if CSS app-region is ignored, mousedown on
+        // non-interactive targets still starts a native window drag.
+        const startDragging = (): void => {
+            try {
+                const tw = (window as any).__TAURI__?.window;
+                const cur =
+                    typeof tw?.getCurrentWindow === "function"
+                        ? tw.getCurrentWindow()
+                        : tw?.appWindow;
+                if (cur && typeof cur.startDragging === "function") {
+                    void cur.startDragging();
+                    return;
+                }
+            } catch (_e) {}
+            try {
+                void tauriInvoke<any>("plugin:window|start_dragging", {});
+            } catch (_e2) {}
+        };
+        document.addEventListener(
+            "mousedown",
+            (ev: MouseEvent) => {
+                if (ev.button !== 0) return;
+                const t = ev.target;
+                if (!(t instanceof Element)) return;
+                if (t.closest(NO_DRAG_SEL)) return;
+                startDragging();
+            },
+            true
+        );
+    })();
+}
+
 window.stbToggleAudioTrack = stbToggleAudioTrack;
 window.stbToggleSubtitle = stbToggleSubtitle;
 window.stbAudioTracksExists = stbAudioTracksExists;
