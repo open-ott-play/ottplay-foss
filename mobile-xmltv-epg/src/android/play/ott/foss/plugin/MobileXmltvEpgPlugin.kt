@@ -1,5 +1,6 @@
 package play.ott.foss.plugin
 
+import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -81,7 +82,7 @@ class MobileXmltvEpgPlugin : Plugin() {
 
     @PluginMethod
     fun prefetch(call: PluginCall) {
-        val urlStr = call.getString("xmltv_url") ?: DEFAULT_URL
+        val urlStr = call.getString("xmltv_url")?.trim()?.takeIf { it.isNotEmpty() } ?: DEFAULT_URL
         val request = Request.Builder().url(urlStr).build()
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) { call.reject(e.localizedMessage ?: "fetch failed") }
@@ -298,7 +299,7 @@ class MobileXmltvEpgPlugin : Plugin() {
         val shift = timeShiftHours * 3600
 
         val epgData = JSObject()
-        val list = mutableListOf<JSObject>()
+        val list = JSArray()
         for (prog in progs) {
             val start = prog.start + shift
             val stop = prog.stop + shift
@@ -310,7 +311,7 @@ class MobileXmltvEpgPlugin : Plugin() {
                 put("descr", prog.desc)
                 put("icon", "")
             }
-            list.add(entry)
+            list.put(entry)
         }
         epgData.put("epg_data", list)
         return epgData

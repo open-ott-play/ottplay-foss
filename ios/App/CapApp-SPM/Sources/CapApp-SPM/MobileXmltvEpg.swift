@@ -1,7 +1,13 @@
 import Capacitor
 
 @objc(MobileXmltvEpg)
-public class MobileXmltvEpg: CAPPlugin {
+public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "MobileXmltvEpgPlugin"
+    public let jsName = "MobileXmltvEpg"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "getEpg", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "prefetch", returnType: CAPPluginReturnPromise),
+    ]
     private lazy var cacheURL: URL = {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         return docs.appendingPathComponent("epg2.xml.gz")
