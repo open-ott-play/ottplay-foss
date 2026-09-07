@@ -28,6 +28,7 @@ test.m3u
 CL*.md
 GR*.md
 CA*.md
+!docs/capacitor-mobile.md
 TO*.md
 *.local.py
 .coverage

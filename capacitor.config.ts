@@ -4,7 +4,7 @@ const config: CapacitorConfig = {
     android: {
         allowMixedContent: true,
         backgroundAudio: true,
-        minSdkVersion: 22,
+        minSdkVersion: 24,
     },
     appId: "play.ott.foss",
     appName: "OTT-play FOSS",

@@ -19,6 +19,9 @@
     "test": "npx tsx tests/test_channel_filtering.ts && npx tsx tests/test-epg-matching.ts && npx tsx tests/test_listKeyHandler_alias.ts",
     "typecheck": "tsc --noEmit"
   },
+  "overrides": {
+    "uuid": "11.1.1"
+  },
   "dependencies": {
     "@capacitor/android": "^8.5.1",
     "@capacitor/cli": "^8.5.1",

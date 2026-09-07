@@ -169,7 +169,10 @@
       "!index.html",
       "!dist/**",
       "!fonts/**",
-      "!node_modules/**"
+      "!node_modules/**",
+      "!ios/**",
+      "!android/**",
+      "!src-tauri/**"
     ]
   },
   "formatter": {
