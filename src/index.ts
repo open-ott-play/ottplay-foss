@@ -3337,6 +3337,44 @@ window.btnDiv = btnDiv;
 window.setPipPosition = setPipPosition;
 window.pullSettingsFromWindow = pullSettingsFromWindow;
 window.getPipPosition = setPipPosition;
+
+// Tauri Mode B: native always-on-top PiP window (CSS fallback on invoke failure).
+if (typeof window.__TAURI__ !== "undefined") {
+    (function () {
+        const origPlay = window.stbPlayPip;
+        const origStop = window.stbStopPip;
+        const origSetPos = window.setPipPosition;
+        window.stbPlayPip = function (url: string): void {
+            tauriInvoke<any>("play_pip", { url })
+                .then(() => {
+                    try {
+                        const el = document.getElementById("videopip");
+                        if (el) (el as HTMLElement).style.display = "none";
+                    } catch (_e) {}
+                })
+                .catch((e: any) => {
+                    console.warn("[Tauri] play_pip failed, CSS fallback:", e);
+                    if (typeof origPlay === "function") origPlay(url);
+                });
+        };
+        window.stbStopPip = function (): void {
+            tauriInvoke<any>("stop_pip", {}).catch((e: any) =>
+                console.warn("[Tauri] stop_pip failed:", e)
+            );
+            if (typeof origStop === "function") origStop();
+        };
+        window.setPipPosition = function (): void {
+            if (typeof origSetPos === "function") origSetPos();
+            const w = window as any;
+            const position = Number(w.sPipPos) || 0;
+            const size = Number(w.sPipSize) || 0;
+            tauriInvoke<any>("set_pip_bounds", { position, size }).catch(
+                (e: any) => console.warn("[Tauri] set_pip_bounds failed:", e)
+            );
+        };
+        window.getPipPosition = window.setPipPosition;
+    })();
+}
 window.setSleepTimeout = setSleepTimeout;
 window.setEditor = setEditor;
 window.setColor = setColor;

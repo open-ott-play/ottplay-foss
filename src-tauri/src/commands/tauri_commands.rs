@@ -3,6 +3,7 @@
 //! Commands exposed to JS via `invoke()`:
 //! - `ping`         — health check
 //! - `get_epg`      — per-channel EPG slice (wraps `ottplay_core::get_epg_slice`)
+//! - `play_pip` / `stop_pip` / `set_pip_bounds` — native always-on-top PiP window
 //!
 //! In-process: calls ottplay-core directly. No HTTP server mounted (see §3.1 note).
 //! A localhost axum router can be added later for devtools/debugging.
@@ -440,3 +441,220 @@ fn allow_sleep_native() {
 
 #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
 fn allow_sleep_native() {}
+/// Result payload for native PiP commands.
+#[derive(Serialize)]
+pub struct PipResult {
+    pub ok: bool,
+}
+
+const PIP_LABEL: &str = "pip";
+const PIP_CANVAS_W: f64 = 1280.0;
+const PIP_CANVAS_H: f64 = 720.0;
+const PIP_MARGIN: f64 = 20.0;
+
+/// Map size index to logical inner size (matches core pipPresets).
+fn pip_size(size: i32) -> (f64, f64) {
+    match size.clamp(0, 2) {
+        0 => (256.0, 144.0),
+        1 => (384.0, 216.0),
+        _ => (512.0, 288.0),
+    }
+}
+
+/// Corner positions: 0 TR, 1 BR, 2 BL, 3 TL against a logical canvas.
+fn pip_logical_xy(position: i32, w: f64, h: f64, canvas_w: f64, canvas_h: f64) -> (f64, f64) {
+    let pos = ((position % 4) + 4) % 4;
+    match pos {
+        0 => (canvas_w - w - PIP_MARGIN, PIP_MARGIN),
+        1 => (canvas_w - w - PIP_MARGIN, canvas_h - h - PIP_MARGIN),
+        2 => (PIP_MARGIN, canvas_h - h - PIP_MARGIN),
+        _ => (PIP_MARGIN, PIP_MARGIN),
+    }
+}
+
+
+/// Bootstrap / reload a full-bleed video inside the PiP webview.
+/// HLS (.m3u8) loads hls.js@1.6.16 from jsDelivr; other URLs use video.src.
+fn pip_player_script(url: &str) -> String {
+    let url_json = serde_json::to_string(url).unwrap_or_else(|_| "\"\"".to_string());
+    format!(
+        r#" (function(){{
+  var url = {url_json};
+  try {{
+    document.documentElement.style.cssText = 'margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;';
+    if (document.body) {{
+      document.body.style.cssText = 'margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;';
+      document.body.innerHTML = '';
+    }}
+  }} catch (e) {{}}
+  var video = document.createElement('video');
+  video.id = 'ottplay-pip-video';
+  video.autoplay = true;
+  video.controls = false;
+  video.playsInline = true;
+  video.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#000;display:block;';
+  (document.body || document.documentElement).appendChild(video);
+  function playDirect() {{
+    video.src = url;
+    var p = video.play();
+    if (p && p.catch) p.catch(function(){{}});
+  }}
+  var isHls = /\.m3u8(\?|$)/i.test(url);
+  if (isHls) {{
+    function startHls() {{
+      if (window.Hls && Hls.isSupported()) {{
+        if (window.__ottplayPipHls) {{
+          try {{ window.__ottplayPipHls.destroy(); }} catch (e) {{}}
+        }}
+        var hls = new Hls();
+        window.__ottplayPipHls = hls;
+        hls.loadSource(url);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, function () {{
+          var p = video.play();
+          if (p && p.catch) p.catch(function(){{}});
+        }});
+      }} else if (video.canPlayType('application/vnd.apple.mpegurl')) {{
+        playDirect();
+      }} else {{
+        playDirect();
+      }}
+    }}
+    if (window.Hls) {{
+      startHls();
+    }} else {{
+      var s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js';
+      s.onload = startHls;
+      s.onerror = playDirect;
+      (document.head || document.documentElement).appendChild(s);
+    }}
+  }} else {{
+    playDirect();
+  }}
+}})();
+"#
+    )
+}
+
+
+fn pip_stop_script() -> &'static str {
+    r#"(function(){
+  var v = document.getElementById('ottplay-pip-video');
+  if (v) {
+    try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) {}
+  }
+  if (window.__ottplayPipHls) {
+    try { window.__ottplayPipHls.destroy(); } catch (e) {}
+    window.__ottplayPipHls = null;
+  }
+})();"#
+}
+
+fn apply_pip_bounds(
+    win: &tauri::WebviewWindow,
+    position: i32,
+    size: i32,
+) -> Result<(), String> {
+    let (w, h) = pip_size(size);
+
+    // Prefer primary monitor logical size; fall back to 1280x720 MVP canvas.
+    let (origin_x, origin_y, canvas_w, canvas_h) = match win.primary_monitor() {
+        Ok(Some(mon)) => {
+            let scale = mon.scale_factor();
+            let mon_size = mon.size();
+            let pos = mon.position();
+            (
+                pos.x as f64 / scale,
+                pos.y as f64 / scale,
+                mon_size.width as f64 / scale,
+                mon_size.height as f64 / scale,
+            )
+        }
+        _ => (0.0, 0.0, PIP_CANVAS_W, PIP_CANVAS_H),
+    };
+
+    let (x, y) = pip_logical_xy(position, w, h, canvas_w, canvas_h);
+    win.set_size(tauri::LogicalSize::new(w, h))
+        .map_err(|e| e.to_string())?;
+    win.set_position(tauri::LogicalPosition::new(origin_x + x, origin_y + y))
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+
+/// invoke play_pip {url} -> native always-on-top PiP webview that plays the stream.
+#[tauri::command]
+pub async fn play_pip(app: tauri::AppHandle, url: String) -> Result<PipResult, String> {
+    use tauri::Manager;
+    use tauri::webview::PageLoadEvent;
+
+    if let Some(win) = app.get_webview_window(PIP_LABEL) {
+        let _ = win.show();
+        let _ = win.unminimize();
+        let _ = win.set_focus();
+        win.eval(&pip_player_script(&url))
+            .map_err(|e| e.to_string())?;
+        return Ok(PipResult { ok: true });
+    }
+
+    // about:blank + eval avoids booting the full companion UI inside PiP.
+    let web_url = tauri::WebviewUrl::External(
+        "about:blank"
+            .parse()
+            .map_err(|e| format!("invalid pip url: {e}"))?,
+    );
+
+    let (w, h) = pip_size(2);
+    let script_on_load = pip_player_script(&url);
+    let script_immediate = script_on_load.clone();
+
+    let win = tauri::WebviewWindowBuilder::new(&app, PIP_LABEL, web_url)
+        .title("OttPlay PiP")
+        .inner_size(w, h)
+        .resizable(true)
+        .visible(true)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .on_page_load(move |window, payload| {
+            if matches!(payload.event(), PageLoadEvent::Finished) {
+                let _ = window.eval(&script_on_load);
+            }
+        })
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    // Best-effort immediate eval (about:blank may already be finished).
+    let _ = win.eval(&script_immediate);
+    let _ = apply_pip_bounds(&win, 0, 2);
+
+    Ok(PipResult { ok: true })
+}
+
+/// invoke stop_pip -> pause/clear video and close the PiP window.
+#[tauri::command]
+pub async fn stop_pip(app: tauri::AppHandle) -> Result<PipResult, String> {
+    use tauri::Manager;
+
+    if let Some(win) = app.get_webview_window(PIP_LABEL) {
+        let _ = win.eval(pip_stop_script());
+        let _ = win.hide();
+        let _ = win.close();
+    }
+    Ok(PipResult { ok: true })
+}
+
+/// invoke set_pip_bounds {position, size} -> corner + preset size for the PiP window.
+#[tauri::command]
+pub async fn set_pip_bounds(
+    app: tauri::AppHandle,
+    position: i32,
+    size: i32,
+) -> Result<PipResult, String> {
+    use tauri::Manager;
+
+    if let Some(win) = app.get_webview_window(PIP_LABEL) {
+        apply_pip_bounds(&win, position, size)?;
+    }
+    Ok(PipResult { ok: true })
+}

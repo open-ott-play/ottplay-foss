@@ -1,7 +1,7 @@
 {
   "identifier": "default",
   "description": "Capability for all windows",
-  "windows": ["main"],
+  "windows": ["main", "pip"],
   "remote": {
     "urls": ["http://127.0.0.1:8095/*", "http://localhost:8095/*"]
   },
