@@ -310,4 +310,4 @@ STB/TV builds continue as today:
 
 4. **Tauri mobile** — Tauri v2 mobile is production-ready but ecosystem is smaller than Capacitor. Phase 2 uses Capacitor. Revisit Tauri mobile in a future phase.
 
-5. **Biome config drift** — `biome.json` schema (2.5.10) doesn't match installed CLI (2.4.16). Fix: `npx biome migrate` or align versions. Blocks pre-push hooks. Unrelated to native app work but should be resolved separately.
+5. **Biome config drift** (resolved) — `biome.json` schema now matches installed CLI (2.5.11). Pre-push hook uses `check` without `--write` to avoid spurious mutation of clean trees. Run `npm run lint:fix` locally before committing, or `npx biome check --write` to apply fixes.
