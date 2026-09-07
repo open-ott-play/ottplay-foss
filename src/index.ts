@@ -1578,17 +1578,25 @@ function tauriLogoSvg(logoId: string, chName: string): string {
 }
 
 /**
- * Replace `/logo/{id}.svg?ch={name}` patterns in match-logos result
- * text with inline data URIs so Mode B embed can paint logos without
- * a companion HTTP server. Absolute http(s) icon URLs pass through.
+ * Replace `/logo/{id}.svg` (optional `?ch={name}`) patterns in match-logos
+ * result text with inline data URIs so Mode B embed can paint logos without
+ * a companion HTTP server. Matches relative and absolute-host /logo/*.svg
+ * forms (e.g. http://tauri.localhost/logo/...). Other absolute http(s)
+ * icon URLs that are not /logo/*.svg paths pass through unchanged.
+ * Empty/missing ch → tauriLogoSvg picks a letter from the id hash.
  */
 function rewriteLogoUrls(text: string): string {
     return text.replace(
-        /([^~\n]+)~\/logo\/([^?\n]+)\.svg\?ch=([^&\n]*)/g,
-        function (_m: string, chId: string, logoId: string, chName: string) {
-            let name = chName;
+        /([^~\n]+)~(?:https?:\/\/[^\/~\n]+)?\/logo\/([^?\n\/]+)\.svg(?:\?ch=([^&\n]*))?/g,
+        function (
+            _m: string,
+            chId: string,
+            logoId: string,
+            chName: string | undefined
+        ) {
+            let name = chName || "";
             try {
-                name = decodeURIComponent(chName);
+                name = decodeURIComponent(name);
             } catch (_e) {
                 /* keep raw */
             }
