@@ -1,5 +1,13 @@
 import { execSync } from "child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import {
+    cpSync,
+    existsSync,
+    mkdirSync,
+    readdirSync,
+    readFileSync,
+    rmSync,
+    writeFileSync,
+} from "fs";
 import { dirname, join, resolve } from "path";
 import { minify } from "terser";
 import { fileURLToPath } from "url";
@@ -54,9 +62,100 @@ function stripModule(code: string): string {
         .join("\n");
 }
 
+// Stage a Mode A-like web root for Tauri Mode B (frontendDist).
+// Boot resolves host + "/dist/stbPlayer.js", "/stb/...", "/fonts/...", etc.
+// Vite still writes Mode A artifacts to dist/ (stbPlayer.js + index.html);
+// Tauri serves the *contents* of frontendDist as "/", so we nest
+// dist/stbPlayer.js inside the stage dir instead of pointing at ../dist.
+function stageTauriFrontend(
+    srcRoot: string,
+    distDir: string,
+    stageDir: string
+): void {
+    rmSync(stageDir, { force: true, recursive: true });
+    mkdirSync(stageDir, { recursive: true });
+
+    // index.html at web root (version already substituted in dist/)
+    const indexSrc = join(distDir, "index.html");
+    if (existsSync(indexSrc)) {
+        cpSync(indexSrc, join(stageDir, "index.html"));
+    }
+
+    // Nested dist/stbPlayer.js so /dist/stbPlayer.js resolves
+    const bundleSrc = join(distDir, "stbPlayer.js");
+    if (existsSync(bundleSrc)) {
+        mkdirSync(join(stageDir, "dist"), { recursive: true });
+        cpSync(bundleSrc, join(stageDir, "dist", "stbPlayer.js"));
+    }
+
+    // stb/<vendor>/stb.js
+    const stbDir = join(srcRoot, "stb");
+    if (existsSync(stbDir)) {
+        const vendors = readdirSync(stbDir, { withFileTypes: true })
+            .filter((dent) => dent.isDirectory())
+            .map((dent) => dent.name);
+        for (const vendor of vendors) {
+            const srcFile = join(stbDir, vendor, "stb.js");
+            if (existsSync(srcFile)) {
+                const destDir = join(stageDir, "stb", vendor);
+                mkdirSync(destDir, { recursive: true });
+                cpSync(srcFile, join(destDir, "stb.js"));
+            }
+        }
+    }
+
+    // stbPlayer: CSS, images, language packs (_*.js)
+    const stbPlayerSrc = join(srcRoot, "stbPlayer");
+    if (existsSync(stbPlayerSrc)) {
+        const dest = join(stageDir, "stbPlayer");
+        mkdirSync(dest, { recursive: true });
+        for (const file of readdirSync(stbPlayerSrc)) {
+            if (
+                file === "1280.css" ||
+                /^_.*\.js$/i.test(file) ||
+                /\.(png|gif|ico|jpg|jpeg)$/i.test(file)
+            ) {
+                cpSync(join(stbPlayerSrc, file), join(dest, file));
+            }
+        }
+    }
+
+    // js player libs
+    const jsSrc = join(srcRoot, "js");
+    if (existsSync(jsSrc)) {
+        const jsDest = join(stageDir, "js");
+        mkdirSync(jsDest, { recursive: true });
+        for (const file of [
+            "hls.min.js",
+            "jquery-1.11.1.min.js",
+            "shaka-player.compiled.js",
+        ]) {
+            const srcFile = join(jsSrc, file);
+            if (existsSync(srcFile)) {
+                cpSync(srcFile, join(jsDest, file));
+            }
+        }
+    }
+
+    // fonts/ + prov/ (full trees used at runtime)
+    for (const dir of ["fonts", "prov"] as const) {
+        const src = join(srcRoot, dir);
+        if (existsSync(src)) {
+            cpSync(src, join(stageDir, dir), { recursive: true });
+        }
+    }
+
+    const faviconSrc = join(srcRoot, "favicon.ico");
+    if (existsSync(faviconSrc)) {
+        cpSync(faviconSrc, join(stageDir, "favicon.ico"));
+    }
+
+    console.log("Staged Tauri frontend at", stageDir);
+}
+
 // Vite wrapper: run tsc → concatenate (same as build-concat.cjs) → minify with terser.
 // Vite's role is orchestration — Rollup's bundler is not used because the
-// legacy build needs ES module syntax stripped to expose ~130 window globals.
+// rewrite build needs ES module syntax stripped to expose ~130 window globals.
 export default defineConfig({
     appType: "custom",
     build: {
@@ -105,7 +204,7 @@ export default defineConfig({
                         " bytes)"
                 );
 
-                // Step 3: minify with terser (same options as legacy)
+                // Step 3: minify with terser (same options as rewrite)
                 console.log("Step 3: minify with terser...");
                 const result = await minify(bundle, {
                     compress: { defaults: false },
@@ -133,6 +232,15 @@ export default defineConfig({
                         "Wrote dist/index.html with version=" + version
                     );
                 }
+
+                // Stage Mode A-like tree for Tauri Mode B (src-tauri/frontend).
+                // Mode A companion still serves dist/stbPlayer.js + repo-root
+                // stb/fonts/prov/js — URL shapes unchanged.
+                stageTauriFrontend(
+                    __dirname,
+                    outDir,
+                    resolve(__dirname, "src-tauri/frontend")
+                );
             },
             name: "vite-concat-pipeline",
         },
