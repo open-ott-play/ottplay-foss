@@ -2223,7 +2223,7 @@ function setupTauriCompanionShim(): void {
                     method === "POST" || method === "PUT" || method === "PATCH"
                         ? tauriInvoke<{ status: string; message?: string }>(
                               "feedback_post",
-                              { path: pathOnly, body }
+                              { body, path: pathOnly }
                           )
                         : tauriInvoke<{ status: string; message?: string }>(
                               "feedback_get",
