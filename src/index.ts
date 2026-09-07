@@ -1779,12 +1779,30 @@ if (typeof window.__TAURI__ !== "undefined") {
         };
     })();
 }
+
+// Tauri Mode B: sync OS mixer with video.volume (video remains source of truth).
+if (typeof window.__TAURI__ !== "undefined") {
+    (function () {
+        const origGet = window.stbGetVolume;
+        const origSet = window.stbSetVolume;
+        // Keep get sync — video.volume is the app source of truth.
+        window.stbGetVolume = origGet;
+        window.stbSetVolume = function (v: number): void {
+            origSet(v);
+            tauriInvoke<any>("set_volume", { volume: v }).catch((e: any) =>
+                console.warn("[Tauri] set_volume failed:", e)
+            );
+        };
+    })();
+}
+
 window.stbToggleAudioTrack = stbToggleAudioTrack;
 window.stbToggleSubtitle = stbToggleSubtitle;
 window.stbAudioTracksExists = stbAudioTracksExists;
 window.stbSubtitleExists = stbSubtitleExists;
 window.stbPlayPip = stbPlayPip;
 window.stbStopPip = stbStopPip;
+
 window.stbSetBuffer = stbSetBuffer;
 /**
  * Generic settings-list setup function. Assigned to window._setSetup.
