@@ -1985,7 +1985,8 @@ function rewriteLogoUrls(text: string): string {
  * hang on tauri.localhost. Route cp.php through proxy_fetch invoke; route
  * match-* through native commands (after #298). Logo SVG paths from
  * match-logos are rewritten to data URIs so CSS backgrounds paint without
- * companion `/logo/...` HTTP.
+ * companion `/logo/...` HTTP. Version (`/version/<rel>`) and feedback
+ * (`/feedback/*`, `/api/*`, `/report_feedb`) route through misc commands.
  */
 function setupTauriCompanionShim(): void {
     if (!isTauriEmbedMode()) return;
@@ -2159,6 +2160,84 @@ function setupTauriCompanionShim(): void {
             });
             // jqFromInvoke types as Promise<string> but forwards whatever resolves.
             return jqFromInvoke(invokePromise as Promise<any>, opts);
+        }
+
+        // Mode A companion: GET /version/<rel> → file metadata JSON.
+        if (url.indexOf("/version/") !== -1) {
+            let rel = url.slice(url.indexOf("/version/") + "/version/".length);
+            const qIdx = rel.indexOf("?");
+            if (qIdx !== -1) {
+                rel = rel.slice(0, qIdx);
+            }
+            rel = rel.replace(/^\/+/, "");
+            const invokePromise = tauriInvoke<{
+                file: string;
+                hash: string;
+                modified: number;
+                size: number;
+            }>("get_version", { rel }).then((info) => {
+                const text = JSON.stringify(info);
+                if (opts.dataType === "json") {
+                    return info;
+                }
+                return text;
+            });
+            return jqFromInvoke(invokePromise as Promise<any>, opts);
+        }
+
+        // Mode A companion: GET/POST /feedback/*, /api/*, POST /report_feedb.
+        // PostFeedback flushes to {host}/api/feedback — must work in embed.
+        {
+            let pathOnly = url;
+            const qIdx = pathOnly.indexOf("?");
+            if (qIdx !== -1) {
+                pathOnly = pathOnly.slice(0, qIdx);
+            }
+            try {
+                pathOnly = new URL(pathOnly, "http://tauri.localhost").pathname;
+            } catch (_e) {
+                /* keep pathOnly */
+            }
+            const isReport = pathOnly === "/report_feedb";
+            const isFeedback =
+                pathOnly === "/feedback" ||
+                pathOnly.indexOf("/feedback/") === 0;
+            const isApi =
+                pathOnly === "/api" || pathOnly.indexOf("/api/") === 0;
+            if (isReport || isFeedback || isApi) {
+                const method = String(
+                    opts.type || opts.method || "GET"
+                ).toUpperCase();
+                let body = "";
+                const data = opts.data;
+                if (typeof data === "string") {
+                    body = data;
+                } else if (data != null && typeof data === "object") {
+                    try {
+                        body = JSON.stringify(data);
+                    } catch (_e) {
+                        body = String(data);
+                    }
+                }
+                const invokePromise = (
+                    method === "POST" || method === "PUT" || method === "PATCH"
+                        ? tauriInvoke<{ status: string; message?: string }>(
+                              "feedback_post",
+                              { body, path: pathOnly }
+                          )
+                        : tauriInvoke<{ status: string; message?: string }>(
+                              "feedback_get",
+                              { path: pathOnly }
+                          )
+                ).then((res) => {
+                    const text = JSON.stringify(res);
+                    if (opts.dataType === "json") {
+                        return res;
+                    }
+                    return text;
+                });
+                return jqFromInvoke(invokePromise as Promise<any>, opts);
+            }
         }
 
         return origAjax(opts);
