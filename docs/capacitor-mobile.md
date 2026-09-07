@@ -84,7 +84,14 @@ XMLTV fetch + gzip + parse currently happens in the web layer via `server.py` en
 
 ### M3U stream proxy
 
-`/m3u/cp.php` stream proxy adds `Referer` / `User-Agent` headers. Native HTTP client must do the same.
+Implemented. Capacitor plugin `M3UProxy` provides native HTTP client for `/m3u/cp.php` on iOS/Android.
+
+- **Plugin**: `src/plugins/m3u-proxy.ts` + `ios/App/App/M3UProxy.swift` + `android/app/src/main/java/play/ott/foss/M3UProxyPlugin.kt`
+- **Web shim**: `setupCapacitorCompanionShim()` intercepts jQuery `$.ajax` calls to `/m3u/cp.php`, extracts target URL + `ua`/`referer` from POST body, routes through `M3UProxy.proxyFetch()`.
+- **UA presets**: webos, tizen, viera, mag, dune — mirrored from `src-rs/core/src/m3u.rs` and `archive/server.py`.
+- **Referer**: defaults to URL origin if not provided.
+- **Return**: response body as text string (text playlists).
+- **Smoke**: Capacitor app → provider POST `/m3u/cp.php` → native fetch returns body; Tauri/Mode A unchanged.
 
 ### App Store submission
 
