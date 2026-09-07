@@ -1,5 +1,6 @@
 package play.ott.foss.plugin
 
+import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
