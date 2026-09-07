@@ -40,6 +40,7 @@ const MODULES = [
     "build/app/init.js",
     "build/app/device.js",
     "build/settings/sleepTimer.js",
+    "build/plugins/m3u-proxy.js",
     "build/index.js",
 ];
 

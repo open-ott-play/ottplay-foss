@@ -37,6 +37,9 @@ import { applyPolyfills } from "./polyfills";
 
 applyPolyfills();
 
+// M3U proxy + Capacitor companion shim
+import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
+
 // Utils
 import * as encoding from "./utils/encoding";
 
@@ -1811,6 +1814,8 @@ function onStbReady(): void {
         if (typeof window.__TAURI__ !== "undefined") {
             setupTauriEpgOverride();
             setupTauriCompanionShim();
+        } else if (typeof (window as any).Capacitor !== "undefined") {
+            setupCapacitorCompanionShim();
         }
 
         if (TMDb && TMDb.prepare) TMDb.prepare();
