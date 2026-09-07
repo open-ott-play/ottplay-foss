@@ -4237,7 +4237,7 @@ window.showPopup = showPopup;
 // Mode A (browser/STB): untouched — local_proxy.py on :8081 handles polling.
 if (typeof window.__TAURI__ !== "undefined") {
     let _queuePollTimer: ReturnType<typeof setInterval> | null = null;
-    function _queuePollOnce(): void {
+    const _queuePollOnce = (): void => {
         tauriInvoke<any[]>("queue_poll", { device_id: "" })
             .then((cmds: any[]) => {
                 if (Array.isArray(cmds)) {
@@ -4256,19 +4256,19 @@ if (typeof window.__TAURI__ !== "undefined") {
                 }
             })
             .catch((e: any) => console.warn("[queue_poll] poll failed:", e));
-    }
-    function _queuePollStart(): void {
+    };
+    const _queuePollStart = (): void => {
         if (_queuePollTimer) return;
         _queuePollOnce(); // immediate first drain
         _queuePollTimer = setInterval(_queuePollOnce, 10000);
-    }
-    function _queuePollStop(): void {
+    };
+    const _queuePollStop = (): void => {
         if (_queuePollTimer) {
             clearInterval(_queuePollTimer);
             _queuePollTimer = null;
         }
-    }
-    window.__ottQueuePoll = {
+    };
+    (window as any).__ottQueuePoll = {
         poll: _queuePollOnce,
         start: _queuePollStart,
         stop: _queuePollStop,
