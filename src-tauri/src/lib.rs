@@ -9,7 +9,7 @@ use tokio::sync::RwLock;
 ///
 /// Debug builds point at the local companion (`:8095`) so Mode A paths work while
 /// developing. Release builds default to empty so the app uses embedded
-/// `frontendDist` (`../dist`).
+/// `frontendDist` (`frontend/` — Mode A-like staged tree).
 ///
 /// Override with `OTTPLAY_WEB_URL` in either mode. Set it to empty to keep
 /// embedded `frontendDist`.
@@ -42,12 +42,9 @@ pub fn run() {
             let raw = std::env::var("OTTPLAY_WEB_URL").unwrap_or_else(|_| DEFAULT_WEB_URL.into());
             if let Some(window) = app.get_webview_window("main") {
                 if raw.trim().is_empty() {
-                    // No URL set — navigate to the embedded frontendDist
-                    // (../dist per tauri.conf.json frontendDist).  Tauri
-                    // serves the bundled assets at the app origin, so the
-                    // boot script's absolute paths resolve correctly.
+                    // Leave the default frontendDist load (index.html from
+                    // src-tauri/frontend). Do not eval-navigate.
                     tracing::info!("OTTPLAY_WEB_URL empty — using embedded frontendDist");
-                    window.eval("window.location.href = '/index.html'")?;
                 } else {
                     let url = tauri::Url::parse(&raw).map_err(|e| {
                         Box::<dyn std::error::Error>::from(format!(
