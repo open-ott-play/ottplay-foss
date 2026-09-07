@@ -41,17 +41,18 @@ pub async fn get_version(
     app: tauri::AppHandle,
     rel: String,
 ) -> Result<VersionInfo, String> {
-    // Reject path traversal and empty paths
-    if rel.contains("..") || rel.is_empty() {
+    // Reject path traversal and empty paths (Mode A version_handler parity).
+    let stripped = rel.trim_start_matches('/').to_string();
+    if stripped.is_empty() || stripped.contains("..") {
         return Err("Invalid path: traversal or empty not allowed".to_string());
     }
 
-    // Resolve relative to app resources directory
-    let resolved = app
+    // Prefer resource dir (bundled frontendDist); fall back to cwd like Mode A.
+    let base = app
         .path()
         .resource_dir()
-        .map_err(|e| format!("Failed to get resource dir: {e}"))?
-        .join(&rel);
+        .unwrap_or_else(|_| std::env::current_dir().unwrap_or_else(|_| ".".into()));
+    let resolved = base.join(&stripped);
 
     // Verify it's a file
     let metadata = std::fs::metadata(&resolved)
@@ -116,6 +117,8 @@ pub async fn feedback_post(
         .path()
         .app_data_dir()
         .map_err(|e| format!("Failed to get app data dir: {e}"))?;
+    std::fs::create_dir_all(&log_path)
+        .map_err(|e| format!("Failed to create app data dir: {e}"))?;
     log_path.push("feedback.log");
 
     // Append in Mode A format: `{ts} {path}\n{body}\n---\n`
