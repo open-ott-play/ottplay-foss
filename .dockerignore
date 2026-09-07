@@ -12,3 +12,15 @@ test.m3u
 .github/
 .DS_Store
 *.md
+
+# Never send credentials into the build context
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa*
+.mcp.json
+deploy.sh
+local_proxy.py
+.venv/
