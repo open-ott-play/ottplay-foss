@@ -1785,70 +1785,45 @@ if (typeof window.__TAURI__ !== "undefined") {
     (function () {
         const CLASS = "ott-tauri-frameless";
         const STYLE_ID = "ott-tauri-frameless-drag";
+        // Interactive / overlay surfaces that must keep pointer clicks.
+        const NO_DRAG_SEL =
+            '[id^="list"],.osd,#info,#info1,#numprog,#dialogbox,#volume_div,#mute,' +
+            "#permanentTime,#launch,#notifications,#buffering,#pip_buffering,#videopip," +
+            "#progress_div,#progress,#progress_r,#progress_span,#descr,#channel,#data," +
+            'button,input,select,textarea,a,.btn,.osk-key,[onclick],[contenteditable="true"],' +
+            '[role="button"],[role="listbox"],[role="option"],[role="menu"],[role="menuitem"]';
+
         document.documentElement.classList.add(CLASS);
         if (document.body) document.body.classList.add(CLASS);
-        // Prefer CSS app-region so the video canvas (empty chrome) is draggable
-        // across the whole window; known overlays + interactive controls stay clickable.
+
+        // CSS app-region: video/empty chrome is draggable; overlays stay clickable.
         if (!document.getElementById(STYLE_ID)) {
             const style = document.createElement("style");
             style.id = STYLE_ID;
-            style.textContent = `
-html.${CLASS}, html.${CLASS} body {
-  -webkit-app-region: drag;
-}
-html.${CLASS} #list,
-html.${CLASS} #list_window,
-html.${CLASS} #listPopUp,
-html.${CLASS} #listAbout,
-html.${CLASS} #listEdit,
-html.${CLASS} #listCaption,
-html.${CLASS} #listPodval,
-html.${CLASS} #listDetail,
-html.${CLASS} #listIn,
-html.${CLASS} #listTime,
-html.${CLASS} #list_osd,
-html.${CLASS} #info1,
-html.${CLASS} #info,
-html.${CLASS} #numprog,
-html.${CLASS} #dialogbox,
-html.${CLASS} #volume_div,
-html.${CLASS} #mute,
-html.${CLASS} #permanentTime,
-html.${CLASS} #launch,
-html.${CLASS} #notifications,
-html.${CLASS} #buffering,
-html.${CLASS} #pip_buffering,
-html.${CLASS} #videopip,
-html.${CLASS} button,
-html.${CLASS} input,
-html.${CLASS} select,
-html.${CLASS} textarea,
-html.${CLASS} a,
-html.${CLASS} .btn,
-html.${CLASS} .osk-key,
-html.${CLASS} [onclick],
-html.${CLASS} [contenteditable="true"],
-html.${CLASS} [role="button"],
-html.${CLASS} [role="listbox"],
-html.${CLASS} [role="option"],
-html.${CLASS} [role="menu"],
-html.${CLASS} [role="menuitem"] {
-  -webkit-app-region: no-drag;
-}
-`;
+            const noDragCss = NO_DRAG_SEL.split(",")
+                .map((s) => "html." + CLASS + " " + s.trim())
+                .join(",\n");
+            style.textContent =
+                "html." +
+                CLASS +
+                ", html." +
+                CLASS +
+                " body {\n  -webkit-app-region: drag;\n}\n" +
+                noDragCss +
+                " {\n  -webkit-app-region: no-drag;\n}\n";
             document.head.appendChild(style);
         }
-        // Also mark body as a Tauri drag region (permission: allow-start-dragging).
-        // Interactive children keep no-drag via CSS above.
-        if (document.body && !document.body.hasAttribute("data-tauri-drag-region")) {
+
+        // data-tauri-drag-region also triggers start-dragging (allow-start-dragging).
+        if (
+            document.body &&
+            !document.body.hasAttribute("data-tauri-drag-region")
+        ) {
             document.body.setAttribute("data-tauri-drag-region", "");
         }
-        // Dynamic overlays (Menu rows, select box, OSK) get [onclick] — CSS covers them.
-        // Still tag late-added interactive nodes without onclick for safety.
+
         const markNoDrag = (root: ParentNode) => {
-            const sel =
-                "button,input,select,textarea,a,.btn,.osk-key,[onclick],[contenteditable=\"true\"]";
-            root.querySelectorAll(sel).forEach((el) => {
+            root.querySelectorAll(NO_DRAG_SEL).forEach((el) => {
                 (el as HTMLElement).style.setProperty(
                     "-webkit-app-region",
                     "no-drag"
@@ -1862,14 +1837,13 @@ html.${CLASS} [role="menuitem"] {
                     m.addedNodes.forEach((n) => {
                         if (n.nodeType !== 1) return;
                         const el = n as HTMLElement;
-                        if (
-                            el.matches?.(
-                                "button,input,select,textarea,a,.btn,.osk-key,[onclick],[contenteditable=\"true\"]"
-                            )
-                        ) {
-                            el.style.setProperty("-webkit-app-region", "no-drag");
+                        if (el.matches?.(NO_DRAG_SEL)) {
+                            el.style.setProperty(
+                                "-webkit-app-region",
+                                "no-drag"
+                            );
                         }
-                        if (el.querySelectorAll) markNoDrag(el);
+                        markNoDrag(el);
                     });
                 }
             });
@@ -1878,6 +1852,36 @@ html.${CLASS} [role="menuitem"] {
                 subtree: true,
             });
         } catch (_e) {}
+
+        // WKWebView fallback: if CSS app-region is ignored, mousedown on
+        // non-interactive targets still starts a native window drag.
+        const startDragging = (): void => {
+            try {
+                const tw = (window as any).__TAURI__?.window;
+                const cur =
+                    typeof tw?.getCurrentWindow === "function"
+                        ? tw.getCurrentWindow()
+                        : tw?.appWindow;
+                if (cur && typeof cur.startDragging === "function") {
+                    void cur.startDragging();
+                    return;
+                }
+            } catch (_e) {}
+            try {
+                void tauriInvoke<any>("plugin:window|start_dragging", {});
+            } catch (_e2) {}
+        };
+        document.addEventListener(
+            "mousedown",
+            (ev: MouseEvent) => {
+                if (ev.button !== 0) return;
+                const t = ev.target;
+                if (!(t instanceof Element)) return;
+                if (t.closest(NO_DRAG_SEL)) return;
+                startDragging();
+            },
+            true
+        );
     })();
 }
 
