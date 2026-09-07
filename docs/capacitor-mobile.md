@@ -79,11 +79,13 @@ See `mobile-command-queue/README.md` for usage.
 
 ### XMLTV/EPG caching
 
-XMLTV fetch + gzip + parse currently happens in the web layer via `server.py` endpoints. For full offline support:
+Implemented in `mobile-xmltv-epg/`. Provides `MobileXmltvEpg.getEpg()` with parity to Tauri `get_epg`:
 
-- Fetch + cache XMLTV in native layer (Capacitor Filesystem plugin)
-- Same EPG merge/dedup logic stays in TypeScript
-- Cache TTL: 2 hours in IndexedDB
+- **iOS**: Swift `XMLParser`-based XMLTV parse + `URLSession` fetch + gzip via `compression_stream`. Cache in Documents dir with 2h TTL.
+- **Android**: Kotlin streaming XML parse + `OkHttp` fetch + `GZIPInputStream`. Cache in app cache/files dir with 2h TTL.
+- **Channel resolution**: `ch` fuzzy-match (exact normalized → substring) → `hash` map/hash-as-id → `channel_id` fallback.
+- **Frontend**: `getEPGchanelCached()` in `src/channels/index.ts` detects `window.Capacitor` and routes through `MobileXmltvEpg.getEpg()`. Falls back to Tauri or provider HTTP as before.
+- **Offline**: stale cache served on fetch failure.
 
 ### M3U stream proxy
 

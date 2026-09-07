@@ -70,14 +70,13 @@ The built HTML/JS bundle is embedded as app assets. No server needed.
 
 ### Tier 2 — XMLTV / EPG
 
-Port `server.py` XMLTV logic to native:
+Implemented in `mobile-xmltv-epg/` (Capacitor) and `src-tauri/src/commands/tauri_commands.rs` (Tauri).
 
-- Fetch + gzip decompress + XML parse → native HTTP client + gzip library
-- Cache TTL 2h → `SQLite` on desktop, `IndexedDB` on mobile
-- Logo SVG generation → TypeScript SVG string generation (no native needed)
-- Merge + dedup + channel ID normalization → TypeScript (can stay as-is)
-
-All other EPG logic stays in TypeScript. No URL changes needed — in native, the `/epg/<hash>.json` calls become in-process function calls.
+- **Capacitor (mobile)**: `MobileXmltvEpg` plugin — Swift `XMLParser` + `URLSession` (iOS), Kotlin streaming XML + `OkHttp` (Android). Cache: app files/cache dir, 2h TTL, stale-offline.
+- **Tauri (desktop)**: `get_epg` command in Rust — delegates to `src-rs/core` (`fetch_xmltv`, `get_epg_slice`, `match_channel`). SQLite-backed cache.
+- **Channel resolution** (both): `ch` fuzzy-match (normalized exact → substring) → `hash` epg_to_xmltv map / hash-as-id → `channel_id` fallback.
+- **Frontend routing**: `getEPGchanelCached()` detects `window.Capacitor` → `MobileXmltvEpg.getEpg()`, `window.__TAURI__` → `__TAURI__.core.invoke("get_epg")`, else provider `window.getEPGchanel` (Mode A).
+- **Default URL**: `https://cdn.epg.one/epg2.xml.gz` (redirect chain from `http://epg.it999.ru/epg2.xml.gz`).
 
 ### Tier 3 — M3U provider mapping
 
@@ -176,7 +175,7 @@ Media constraints:
 
 | Data | Native storage |
 |---|---|
-| XMLTV cache | SQLite (desktop), IndexedDB (mobile) |
+| XMLTV cache | SQLite via src-rs (desktop), Filesystem dir + 2h TTL (mobile) |
 | Channel favorites / history | `localStorage` via Capacitor Filesystem plugin or Tauri Store plugin |
 | Settings | Same — `localStorage` persisted |
 | Command queue | In-memory Rust `HashMap` (desktop) / in-memory Swift/Kotlin map (mobile) |
