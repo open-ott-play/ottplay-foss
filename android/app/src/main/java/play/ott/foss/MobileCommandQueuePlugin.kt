@@ -330,6 +330,7 @@ class MobileCommandQueuePlugin : Plugin() {
         }
         val json = when (body) {
             is String -> body
+            is Collection<*> -> org.json.JSONArray(body.toTypedArray()).toString()
             else -> org.json.JSONObject.wrap(body).toString()
         }
 

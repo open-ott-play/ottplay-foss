@@ -18,7 +18,17 @@ struct CommandEntry {
 }
 
 @objc(MobileCommandQueue)
-public class MobileCommandQueue: CAPPlugin {
+public class MobileCommandQueue: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "MobileCommandQueuePlugin"
+    public let jsName = "MobileCommandQueue"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "start", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "post", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "get", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "isRunning", returnType: CAPPluginReturnPromise),
+    ]
+
     private var listener: NWListener?
     private var isRunningFlag = false
     private let expireSecs: TimeInterval = 60.0
