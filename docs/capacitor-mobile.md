@@ -104,6 +104,22 @@ Implemented. Capacitor plugin `M3UProxy` provides native HTTP client for `/m3u/c
 - Android internal track: same icons, app signing key
 - Touch vs remote input already separate in `src/keyhandler/`
 
+### 4.4 Native media
+
+Implemented. Capacitor plugin `MobileNativeMedia` provides OS-level media + power controls on iOS/Android.
+
+- **Plugin**: `mobile-native-media/src/index.ts` + `ios/App/App/Plugins/MobileNativeMedia.swift` + `android/app/src/main/java/play/ott/foss/MobileNativeMediaPlugin.kt`
+- **JS shim**: `src/plugins/mobile-native-media.ts`; wired in `src/index.ts` under `window.Capacitor` gate only.
+- **Surface**: wraps `stbGetVolume` / `stbSetVolume` / `stbPlayPip` / `stbStopPip` / `stbToFullScreen` / `stbSetWindow` / `stbToggleStandby` so Mode A/Tauri paths stay untouched.
+
+**Behavior by API**:
+- **Volume**: `getVolume` returns `{ok, volume(0-100)}`; `setVolume` clamps 0-100. iOS uses `AVAudioSession.outputVolume` for get; set drives `MPVolumeView` slider (public path, no private APIs). Android uses `AudioManager.STREAM_MUSIC`. Both return `{ok:false, unsupported:true}` on failure.
+- **PiP**: `playPip` / `stopPip`. iOS uses `AVPictureInPictureController` with an `AVPlayerLayer` attached to the WKWebView; fails if not supported. Android requires API 26+; uses `PictureInPictureParams` with 16:9 aspect ratio. Loud failure on older platforms.
+- **Fullscreen**: `setFullscreen(boolean)`. Android uses `FLAG_FULLSCREEN` + immersive sticky system UI flags on the WebView. iOS returns success; documented limitation: native full-window fullscreen requires a supported WKWebView configuration path; do not fake it.
+- **Standby / wake**: `allowSleep` releases idle timer / WakeLock; `preventSleep` disables idle timer / acquires WakeLock. Mirrors Tauri `prevent_sleep` / `allow_sleep` intent.
+
+**Failure contract**: never fake success. Every method resolves with `{ok:false}` or `{unsupported:true}` when native path is unavailable; no silent fallback.
+
 ## Mode A and Tauri
 
 Mode A browser/STB and Tauri desktop remain unchanged by this Capacitor scaffold.
