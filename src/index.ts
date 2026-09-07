@@ -533,9 +533,382 @@ var bodyColor = "#f0f0f0";
 // Page size
 var pageSize = 25;
 
-// TMDb
+// TMDb — FOSS uses companion `/tmdb/s/*` (API key injected server-side).
+// Mode B embed routes those URLs through setupTauriCompanionShim → tmdb_proxy.
+// Poster/backdrop images use the public image CDN (img tags; no CORS proxy needed).
 var TMDb: any = {
+    apiPath: function (tail: string): string {
+        const h = String((window as any).host || "");
+        const path = "/tmdb/s/" + String(tail || "").replace(/^\//, "");
+        if (h && h !== "-" && /^https?:\/\//i.test(h)) {
+            return h.replace(/\/$/, "") + path;
+        }
+        return path;
+    },
+    data: null as any,
+    fun: "css",
+    get: function (media_type: string, id: any) {
+        const $ = (window as any).$;
+        const _ =
+            (window as any)._ ||
+            function (s: string) {
+                return s;
+            };
+        const getHeightK =
+            (window as any).getHeightK ||
+            function () {
+                return 1;
+            };
+        const api_lang =
+            TMDb.la[(window as any).stbGetItem?.("ottplaylang")] || "en";
+        function item2descr(item: any): string {
+            function it(val: any, title?: string): string {
+                return val
+                    ? (title ? "<b>" + _(title) + ": </b>" : "") + val + "<br>"
+                    : "";
+            }
+            const genre: string[] = [];
+            const country: string[] = [];
+            const actors: string[] = [];
+            const director: string[] = [];
+            const script: string[] = [];
+            if (item.genres) {
+                item.genres.forEach(function (val: any) {
+                    genre.push(val.name);
+                });
+            }
+            if (item.production_countries) {
+                item.production_countries.forEach(function (val: any) {
+                    country.push(val.name);
+                });
+            }
+            if (item.credits && item.credits.cast) {
+                item.credits.cast.slice(0, 10).forEach(function (val: any) {
+                    actors.push(val.name);
+                });
+            }
+            if (item.credits && item.credits.crew) {
+                item.credits.crew.forEach(function (val: any) {
+                    if (val.job === "Director") director.push(val.name);
+                    else if (val.job === "Screenplay") script.push(val.name);
+                });
+            }
+            const hk = getHeightK();
+            const poster = item.poster_path
+                ? "https://image.tmdb.org/t/p/w500/" + item.poster_path
+                : "";
+            const backdrop = item.backdrop_path
+                ? "https://image.tmdb.org/t/p/w500/" + item.backdrop_path
+                : "";
+            return (
+                '<div id="_prdD" style="margin: -' +
+                10 * hk +
+                "px; background-position: right -200px top; background-size: cover; background-repeat: no-repeat; background-image: url(" +
+                backdrop +
+                ');"><div style="padding:' +
+                20 * hk +
+                'px; background: rgba(13, 37, 63, 0.8);"><table>' +
+                (poster
+                    ? '<img height="' +
+                      300 * hk +
+                      '" width="' +
+                      200 * hk +
+                      '" src="' +
+                      poster +
+                      '" style="float: left; margin-right: ' +
+                      10 * hk +
+                      "px; margin-bottom: " +
+                      10 * hk +
+                      'px; border-width: 0px;" onerror="this.width=0;this.height=0;">'
+                    : "") +
+                '<div style="text-align:center;font-size:larger;">' +
+                (item.title || item.name) +
+                "</div><br>" +
+                it((item.release_date || "").split("-")[0], "Year") +
+                it(
+                    Math.round(item.runtime || item.episode_run_time || 0) +
+                        " " +
+                        _("min"),
+                    "Duration"
+                ) +
+                it(genre.join(", "), "Genre") +
+                it(country.join(", "), "Country") +
+                it(actors.join(", "), "Actors") +
+                it(director.join(", "), "Director") +
+                it(script.join(", "), "Script") +
+                it(item.vote_average, "Rating") +
+                (item.overview ? "<hr>" + item.overview : "") +
+                "</table></div></div>"
+            );
+        }
+        function show() {
+            $("#dialogbox").html(item2descr(TMDb.data)).show();
+            (window as any).dialogBoxKeyHandler = function (key: any) {
+                const keys = (window as any).keys || {};
+                if (key === keys.RETURN || key === keys.EXIT) {
+                    $("#dialogbox").hide();
+                    if (TMDb.results && TMDb.results.length > 1) {
+                        setTimeout(function () {
+                            TMDb.select();
+                        }, 0);
+                    }
+                    return true;
+                }
+                return false;
+            };
+        }
+        if (TMDb.media_type_id === media_type + "/" + id) {
+            show();
+            return;
+        }
+        TMDb.media_type_id = media_type + "/" + id;
+        $.ajax({
+            cache: false,
+            data: { append_to_response: "credits", language: api_lang },
+            dataType: "json",
+            error: function (jqXHR: any) {
+                $("#dialogbox").html("<br>Get TMDb error!<br><br>");
+                console.log("getTMDB jqXHR:" + JSON.stringify(jqXHR));
+            },
+            success: function (data: any) {
+                TMDb.data = data;
+                show();
+            },
+            timeout: 30000,
+            url: TMDb.apiPath(media_type + "/" + id),
+        });
+    },
+    hk: 1,
+    la: {
+        _arm: "hy",
+        _bel: "be",
+        _eng: "en",
+        _fra: "fr",
+        _ger: "de",
+        _gre: "el",
+        _heb: "he",
+        _hun: "hu",
+        _lat: "lv",
+        _lit: "lt",
+        _pol: "pl",
+        _por: "pt",
+        _rou: "ro",
+        _rus: "ru",
+        _spa: "es",
+        _tur: "tr",
+        _ukr: "uk",
+    },
+    media_type_id: "",
     prepare: function () {},
+    query: "",
+    results: [] as any[],
+    search: function (nam: string, itr?: number) {
+        const $ = (window as any).$;
+        const _ =
+            (window as any)._ ||
+            function (s: string) {
+                return s;
+            };
+        const api_lang =
+            TMDb.la[(window as any).stbGetItem?.("ottplaylang")] || "en";
+        itr = itr || 0;
+        nam = String(nam || "");
+        nam = nam.replace(/["\u00AB\u00BB]/g, "");
+        nam = nam.replace(/&(?:quot|amp|lt|gt|laquo|raquo);/gi, "");
+        for (let _i = 0; _i < 8; _i++) {
+            const next = nam.replace(/\([^()]*\)|\[[^\[\]]*\]/g, "");
+            if (next === nam) break;
+            nam = next;
+        }
+        nam = nam.replace(/\s?\S\/\S\s/g, " ");
+        nam = nam.replace(/\s+/g, " ").trim();
+        let name = nam;
+        const an = name.split(" ");
+        (window as any).dialogBoxKeyHandler = function () {
+            $("#dialogbox").hide();
+        };
+        if (!itr) {
+            if (nam !== TMDb.query) TMDb.query = nam;
+            else
+                switch (TMDb.results.length) {
+                    case 0:
+                        $("#dialogbox").html("<br>" + _("Not found") + "!<br>");
+                        return;
+                    case 1:
+                        TMDb.get(
+                            TMDb.results[0].media_type,
+                            TMDb.results[0].id
+                        );
+                        return;
+                    default:
+                        TMDb.select();
+                        return;
+                }
+        }
+        switch (itr) {
+            case 0:
+                break;
+            case 1:
+                an.pop();
+                name = an.join(" ");
+                break;
+            case 2:
+                an.shift();
+                name = an.join(" ");
+                break;
+            case 3:
+                an.shift();
+                an.pop();
+                name = an.join(" ");
+                break;
+            default:
+                an.pop();
+                name = an.join(" ");
+                break;
+        }
+        if (!name) {
+            $("#dialogbox").html("<br>" + _("Not found") + "!<br>");
+            return;
+        }
+        $("#dialogbox")
+            .html("<br>" + _("Search") + ":<br>" + name + "<br><br>")
+            .show();
+        $.ajax({
+            cache: false,
+            data: {
+                include_adult: true,
+                language: api_lang,
+                page: 1,
+                query: name,
+            },
+            dataType: "json",
+            error: function (jqXHR: any) {
+                $("#dialogbox").html("<br>Search TMDb error!<br><br>");
+                console.log("searchTMDB jqXHR:" + JSON.stringify(jqXHR));
+            },
+            success: function (data: any) {
+                data.results = (data.results || []).filter(function (val: any) {
+                    return (
+                        val.media_type === "movie" || val.media_type === "tv"
+                    );
+                });
+                TMDb.results = data.results;
+                if (data.results.length > 1) {
+                    TMDb.results = data.results.filter(function (val: any) {
+                        return (val.title || val.name) === TMDb.query;
+                    });
+                    if (!TMDb.results.length) TMDb.results = data.results;
+                }
+                TMDb.sel = -1;
+                switch (TMDb.results.length) {
+                    case 0:
+                        TMDb.search(name, 1);
+                        return;
+                    case 1:
+                        TMDb.get(
+                            TMDb.results[0].media_type,
+                            TMDb.results[0].id
+                        );
+                        return;
+                    default:
+                        TMDb.select();
+                        return;
+                }
+            },
+            timeout: 30000,
+            url: TMDb.apiPath("search/multi"),
+        });
+    },
+    sel: -1,
+    select: function () {
+        const $ = (window as any).$;
+        const keys = (window as any).keys || {};
+        TMDb.hk = (window as any).getHeightK ? (window as any).getHeightK() : 1;
+        TMDb.fun = (window as any).sInfoSlide ? "animate" : "css";
+        let s =
+            '<span id="_sel">1</span>/' +
+            TMDb.results.length +
+            '<div id="_tmdb" style="clear:both;overflow:hidden;"><div id="tmdb" style="white-space:nowrap;position:relative;">';
+        TMDb.results.forEach(function (val: any, ind: number) {
+            const poster = val.poster_path
+                ? "https://image.tmdb.org/t/p/w500/" + val.poster_path
+                : "";
+            s +=
+                '<div id="tmdb' +
+                ind +
+                '" style="display: inline-block; height:' +
+                300 * TMDb.hk +
+                "px; width:" +
+                150 * TMDb.hk +
+                "px; background-position: center; background-size: contain; background-repeat: no-repeat; background-image: url(" +
+                poster +
+                ');" onclick="TMDb.setSelect(' +
+                ind +
+                ');"></div>';
+        });
+        s += "</div></div>";
+        $("#dialogbox").html(s).show();
+        if (TMDb.sel === -1) TMDb.setSel(0);
+        else {
+            const i = TMDb.sel;
+            TMDb.sel = -1;
+            TMDb.setSel(i);
+        }
+        (window as any).dialogBoxKeyHandler = function (key: any) {
+            switch (key) {
+                case keys.UP:
+                    TMDb.setSel(0);
+                    break;
+                case keys.DOWN:
+                    TMDb.setSel(TMDb.results.length - 1);
+                    break;
+                case keys.LEFT:
+                    if (TMDb.sel) TMDb.setSel(TMDb.sel - 1);
+                    break;
+                case keys.RIGHT:
+                    if (TMDb.sel < TMDb.results.length - 1)
+                        TMDb.setSel(TMDb.sel + 1);
+                    break;
+                case keys.ENTER:
+                    TMDb.get(
+                        TMDb.results[TMDb.sel].media_type,
+                        TMDb.results[TMDb.sel].id
+                    );
+                    break;
+                case keys.RETURN:
+                case keys.EXIT:
+                    $("#dialogbox").hide();
+                    break;
+                default:
+                    break;
+            }
+            return true;
+        };
+    },
+    setSel: function (i: number) {
+        if (TMDb.sel === i) return;
+        const $ = (window as any).$;
+        try {
+            $("#tmdb" + TMDb.sel)[TMDb.fun](
+                { width: 150 * TMDb.hk + "px" },
+                200
+            );
+        } catch (_e) {}
+        TMDb.sel = i;
+        try {
+            $("#_sel").text(TMDb.sel + 1);
+            $("#tmdb" + TMDb.sel)[TMDb.fun](
+                { width: 200 * TMDb.hk + "px" },
+                200
+            );
+        } catch (_e2) {}
+    },
+    setSelect: function (i: number) {
+        if (TMDb.sel === i) {
+            const keys = (window as any).keys || {};
+            if ((window as any)._doKey) (window as any)._doKey(keys.ENTER);
+        } else TMDb.setSel(i);
+    },
 };
 
 // Feedback
@@ -1720,6 +2093,72 @@ function setupTauriCompanionShim(): void {
                 ),
                 opts
             );
+        }
+
+        // Mode A companion TMDB proxy: GET /tmdb/s/* (API) and /tmdb/i/* (images).
+        // Embed has no companion — route through tmdb_proxy invoke (key stays in Rust).
+        if (url.indexOf("/tmdb/") !== -1) {
+            let pathPart = url;
+            let query = "";
+            const qIdx = pathPart.indexOf("?");
+            if (qIdx !== -1) {
+                query = pathPart.slice(qIdx + 1);
+                pathPart = pathPart.slice(0, qIdx);
+            }
+            // Merge opts.data query fields when jQuery passes data separately.
+            const data = opts.data;
+            if (data) {
+                let extra = "";
+                if (typeof data === "string") {
+                    extra = data;
+                } else if (typeof data === "object") {
+                    const parts: string[] = [];
+                    for (const k of Object.keys(data)) {
+                        parts.push(
+                            encodeURIComponent(k) +
+                                "=" +
+                                encodeURIComponent(String((data as any)[k]))
+                        );
+                    }
+                    extra = parts.join("&");
+                }
+                if (extra) {
+                    query = query ? query + "&" + extra : extra;
+                }
+            }
+            // Never forward a client api_key — Rust injects TMDB_API_KEY.
+            if (query) {
+                query = query
+                    .split("&")
+                    .filter((p) => p && !/^api_key=/i.test(p))
+                    .join("&");
+            }
+            const invokePromise = tauriInvoke<{
+                status: number;
+                content_type: string;
+                body: string;
+                body_base64: string | null;
+            }>("tmdb_proxy", { path: pathPart, query }).then((res) => {
+                if (res.body_base64) {
+                    const mime = res.content_type || "application/octet-stream";
+                    return "data:" + mime + ";base64," + res.body_base64;
+                }
+                const text = res.body || "";
+                if (
+                    opts.dataType === "json" ||
+                    (res.content_type &&
+                        res.content_type.indexOf("json") !== -1)
+                ) {
+                    try {
+                        return JSON.parse(text);
+                    } catch (_e) {
+                        return text;
+                    }
+                }
+                return text;
+            });
+            // jqFromInvoke types as Promise<string> but forwards whatever resolves.
+            return jqFromInvoke(invokePromise as Promise<any>, opts);
         }
 
         return origAjax(opts);

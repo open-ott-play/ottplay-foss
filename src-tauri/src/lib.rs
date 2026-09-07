@@ -38,6 +38,7 @@ pub fn run() {
             commands::tauri_commands::get_epg,
             commands::m3u::match_channels,
             commands::m3u::match_logos,
+            commands::tmdb::tmdb_proxy,
             commands::tauri_commands::proxy_fetch,
             commands::tauri_commands::set_fullscreen,
             commands::tauri_commands::prevent_sleep,

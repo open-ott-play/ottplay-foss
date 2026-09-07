@@ -1,7 +1,10 @@
 {
   "identifier": "default",
   "description": "Capability for all windows",
-  "windows": ["main", "pip"],
+  "windows": [
+    "main",
+    "pip"
+  ],
   "remote": {
     "urls": [
       "http://127.0.0.1:8095/*",
@@ -33,6 +36,7 @@
     "allow-queue-poll",
     "allow-queue-enqueue",
     "allow-match-channels",
-    "allow-match-logos"
+    "allow-match-logos",
+    "allow-tmdb-proxy"
   ]
 }
