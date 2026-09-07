@@ -1527,10 +1527,92 @@ function isTauriEmbedMode(): boolean {
 }
 
 /**
+ * Generate a 120x90 SVG logo badge using the same djb2 colour-hash
+ * as the Rust server (src-rs/server/src/main.rs generate_logo_svg).
+ * Used to inline logo data URIs in Mode B where no companion server
+ * hosts /logo/... endpoints.
+ *
+ * Keep this as a local function in index.ts (not a separate module):
+ * the Vite stripModule + concat pipeline removes import/export lines.
+ * ES5 target — use Math.imul / >>> 0 instead of BigInt.
+ */
+function tauriLogoSvg(logoId: string, chName: string): string {
+    const COLORS = [
+        "#e74c3c",
+        "#3498db",
+        "#2ecc71",
+        "#f39c12",
+        "#9b59b6",
+        "#1abc9c",
+        "#e67e22",
+        "#34495e",
+        "#16a085",
+        "#c0392b",
+        "#2980b9",
+        "#27ae60",
+        "#d35400",
+        "#8e44ad",
+        "#f1c40f",
+    ];
+    let h = 5381;
+    for (let i = 0; i < logoId.length; i++) {
+        h = (Math.imul(h, 33) + logoId.charCodeAt(i)) >>> 0;
+    }
+    const color = COLORS[h % COLORS.length];
+    const trimmed = chName.trim();
+    let letter: string;
+    if (trimmed) {
+        letter = trimmed.charAt(0).toUpperCase();
+    } else {
+        letter = String.fromCharCode(65 + (h % 26));
+    }
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="90" viewBox="0 0 120 90">' +
+        '<rect width="120" height="90" rx="8" fill="' +
+        color +
+        '"/>' +
+        '<text x="60" y="58" text-anchor="middle" font-family="Arial,sans-serif" font-size="36" font-weight="bold" fill="white">' +
+        letter +
+        "</text></svg>"
+    );
+}
+
+/**
+ * Replace `/logo/{id}.svg` (optional `?ch={name}`) patterns in match-logos
+ * result text with inline data URIs so Mode B embed can paint logos without
+ * a companion HTTP server. Matches relative and absolute-host /logo/*.svg
+ * forms (e.g. http://tauri.localhost/logo/...). Other absolute http(s)
+ * icon URLs that are not /logo/*.svg paths pass through unchanged.
+ * Empty/missing ch → tauriLogoSvg picks a letter from the id hash.
+ */
+function rewriteLogoUrls(text: string): string {
+    return text.replace(
+        /([^~\n]+)~(?:https?:\/\/[^\/~\n]+)?\/logo\/([^?\n\/]+)\.svg(?:\?ch=([^&\n]*))?/g,
+        function (
+            _m: string,
+            chId: string,
+            logoId: string,
+            chName: string | undefined
+        ) {
+            let name = chName || "";
+            try {
+                name = decodeURIComponent(name);
+            } catch (_e) {
+                /* keep raw */
+            }
+            const svg = tauriLogoSvg(logoId, name);
+            return chId + "~data:image/svg+xml," + encodeURIComponent(svg);
+        }
+    );
+}
+
+/**
  * Mode B: providers POST to host+"/m3u/cp.php" (CORS proxy) and
  * match-channels/logos. Embed has no Mode A HTTP server — those URLs 404 or
- * hang on tauri.localhost. Route cp.php through proxy_fetch invoke; short-
- * circuit match-* so playlist load does not wait on 120s timeouts.
+ * hang on tauri.localhost. Route cp.php through proxy_fetch invoke; route
+ * match-* through native commands (after #298). Logo SVG paths from
+ * match-logos are rewritten to data URIs so CSS backgrounds paint without
+ * companion `/logo/...` HTTP.
  */
 function setupTauriCompanionShim(): void {
     if (!isTauriEmbedMode()) return;
@@ -1631,7 +1713,13 @@ function setupTauriCompanionShim(): void {
                 url.indexOf("/m3u/match-channels") !== -1
                     ? "match_channels"
                     : "match_logos";
-            return jqFromInvoke(tauriInvoke<string>(cmd, { body, url }), opts);
+            const isLogos = cmd === "match_logos";
+            return jqFromInvoke(
+                tauriInvoke<string>(cmd, { body, url }).then((text: string) =>
+                    isLogos ? rewriteLogoUrls(text) : text
+                ),
+                opts
+            );
         }
 
         return origAjax(opts);
