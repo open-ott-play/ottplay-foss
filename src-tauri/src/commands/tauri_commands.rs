@@ -671,3 +671,16 @@ pub fn exit_app(app: tauri::AppHandle) {
     }
     app.exit(0);
 }
+
+/// `invoke('proxy_fetch', { url })` — GET a remote URL (playlist / companion
+/// `cp.php` stand-in) without CORS. Leading `@` is stripped (provider form).
+/// Used only for text-sized bodies (M3U playlists), not media streams.
+#[tauri::command]
+pub async fn proxy_fetch(url: String) -> Result<String, String> {
+    let params = ottplay_core::m3u::ProxyParams {
+        url,
+        ua: String::new(),
+    };
+    let (_headers, body) = ottplay_core::m3u::proxy_stream(params).await?;
+    Ok(String::from_utf8_lossy(&body).into_owned())
+}

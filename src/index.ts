@@ -1437,6 +1437,7 @@ function onStbReady(): void {
         // attempt to reset window.getEPGchanel (as they do in loadProv → getScriptDOM callback).
         if (typeof window.__TAURI__ !== "undefined") {
             setupTauriEpgOverride();
+            setupTauriCompanionShim();
         }
 
         if (TMDb && TMDb.prepare) TMDb.prepare();
@@ -1509,6 +1510,138 @@ function tauriInvoke<T>(
  *   correct xmltv_id instead of a numeric playlist chId.
  * time_shift_hours is always 0 (future EPG only, no historical data).
  */
+
+/**
+ * True when the webview is the embedded frontendDist (Mode B), not the
+ * companion server on :8095. Companion keeps real /m3u/* HTTP routes.
+ */
+function isTauriEmbedMode(): boolean {
+    if (typeof window.__TAURI__ === "undefined") return false;
+    try {
+        const host = String(window.location.host || "");
+        if (/:(8095)\b/.test(host)) return false;
+        return true;
+    } catch (_e) {
+        return true;
+    }
+}
+
+/**
+ * Mode B: providers POST to host+"/m3u/cp.php" (CORS proxy) and
+ * match-channels/logos. Embed has no Mode A HTTP server — those URLs 404 or
+ * hang on tauri.localhost. Route cp.php through proxy_fetch invoke; short-
+ * circuit match-* so playlist load does not wait on 120s timeouts.
+ */
+function setupTauriCompanionShim(): void {
+    if (!isTauriEmbedMode()) return;
+    const $ = (window as any).$;
+    if (
+        !$ ||
+        typeof $.ajax !== "function" ||
+        typeof $.Deferred !== "function"
+    ) {
+        console.warn("[Tauri] companion shim: jQuery ajax unavailable");
+        return;
+    }
+    if ((window as any).__ottTauriAjaxShim) return;
+    (window as any).__ottTauriAjaxShim = true;
+    const origAjax = $.ajax.bind($);
+
+    function jqFromInvoke(invokePromise: Promise<string>, opts: any): any {
+        const dfd = $.Deferred();
+        invokePromise.then(
+            (text: string) => {
+                try {
+                    if (typeof opts.success === "function") {
+                        opts.success(text, "success", dfd);
+                    }
+                } catch (_e) {}
+                try {
+                    if (typeof opts.complete === "function") {
+                        opts.complete(dfd, "success");
+                    }
+                } catch (_e3) {}
+                dfd.resolve(text);
+            },
+            (err: any) => {
+                const msg = err != null ? String(err) : "proxy_fetch failed";
+                try {
+                    if (typeof opts.error === "function") {
+                        opts.error(
+                            { responseText: msg, status: 0 },
+                            "error",
+                            msg
+                        );
+                    }
+                } catch (_e2) {}
+                try {
+                    if (typeof opts.complete === "function") {
+                        opts.complete(dfd, "error");
+                    }
+                } catch (_e3) {}
+                dfd.reject(msg);
+            }
+        );
+        // jQuery 1.x: callers chain .done/.fail/.always on the return value.
+        return dfd.promise(dfd) as any;
+    }
+
+    $.ajax = function (urlOrOpts: any, maybeOpts?: any) {
+        let opts: any;
+        if (typeof urlOrOpts === "string") {
+            opts = Object.assign({ url: urlOrOpts }, maybeOpts || {});
+        } else {
+            opts = Object.assign({}, urlOrOpts || {});
+        }
+        const url = String(opts.url || "");
+
+        if (url.indexOf("/m3u/cp.php") !== -1) {
+            let target = "";
+            const data = opts.data;
+            if (typeof data === "string") {
+                const m = /(?:^|&)url=([^&]*)/.exec(data);
+                if (m) target = decodeURIComponent(m[1].replace(/\+/g, " "));
+            } else if (data && typeof data === "object") {
+                target = String((data as any).url || "");
+            }
+            if (!target) {
+                const dfd = $.Deferred();
+                dfd.reject("proxy_fetch: missing url");
+                try {
+                    if (typeof opts.error === "function") {
+                        opts.error({ status: 0 }, "error", "missing url");
+                    }
+                } catch (_e) {}
+                return dfd.promise(dfd) as any;
+            }
+            return jqFromInvoke(
+                tauriInvoke<string>("proxy_fetch", { url: target }),
+                opts
+            );
+        }
+
+        if (
+            url.indexOf("/m3u/match-channels") !== -1 ||
+            url.indexOf("/m3u/match-logos") !== -1
+        ) {
+            // No companion match API in embed. Per-channel EPG uses get_epg
+            // invoke (setupTauriEpgOverride). Resolve empty so load continues.
+            const dfd = $.Deferred();
+            setTimeout(() => {
+                try {
+                    if (typeof opts.success === "function") {
+                        opts.success("", "success", dfd);
+                    }
+                } catch (_e) {}
+                dfd.resolve("");
+            }, 0);
+            return dfd.promise(dfd) as any;
+        }
+
+        return origAjax(opts);
+    };
+}
+
 function setupTauriEpgOverride(): void {
     if (typeof window.__TAURI__ === "undefined") return; // only apply in Tauri Mode B
 
@@ -1782,9 +1915,11 @@ if (typeof window.__TAURI__ !== "undefined") {
 // decorations:false removes the system title bar; without a drag region the
 // window cannot be moved. Gate on __TAURI__ so Chrome companion is unchanged.
 if (typeof window.__TAURI__ !== "undefined") {
+    setupTauriCompanionShim();
     (function () {
         const CLASS = "ott-tauri-frameless";
         const STYLE_ID = "ott-tauri-frameless-drag";
+        const DRAG_THRESHOLD_PX = 6;
         // Interactive / overlay surfaces that must keep pointer clicks.
         const NO_DRAG_SEL =
             '[id^="list"],.osd,#info,#info1,#numprog,#dialogbox,#volume_div,#mute,' +
@@ -1853,8 +1988,6 @@ if (typeof window.__TAURI__ !== "undefined") {
             });
         } catch (_e) {}
 
-        // WKWebView fallback: if CSS app-region is ignored, mousedown on
-        // non-interactive targets still starts a native window drag.
         const startDragging = (): void => {
             try {
                 const tw = (window as any).__TAURI__?.window;
@@ -1871,14 +2004,77 @@ if (typeof window.__TAURI__ !== "undefined") {
                 void tauriInvoke<any>("plugin:window|start_dragging", {});
             } catch (_e2) {}
         };
+
+        let downX = 0;
+        let downY = 0;
+        let tracking = false;
+        let didDrag = false;
+        let startedNativeDrag = false;
+
+        const armSuppressClick = (): void => {
+            (window as any).__ottTauriSuppressClick = true;
+            window.setTimeout(() => {
+                (window as any).__ottTauriSuppressClick = false;
+            }, 400);
+        };
+
         document.addEventListener(
             "mousedown",
             (ev: MouseEvent) => {
                 if (ev.button !== 0) return;
                 const t = ev.target;
                 if (!(t instanceof Element)) return;
-                if (t.closest(NO_DRAG_SEL)) return;
-                startDragging();
+                if (t.closest(NO_DRAG_SEL)) {
+                    tracking = false;
+                    return;
+                }
+                tracking = true;
+                didDrag = false;
+                startedNativeDrag = false;
+                downX = ev.clientX;
+                downY = ev.clientY;
+            },
+            true
+        );
+
+        document.addEventListener(
+            "mousemove",
+            (ev: MouseEvent) => {
+                if (!tracking || (ev.buttons & 1) === 0) return;
+                const dx = ev.clientX - downX;
+                const dy = ev.clientY - downY;
+                if (dx * dx + dy * dy < DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX) {
+                    return;
+                }
+                didDrag = true;
+                if (!startedNativeDrag) {
+                    startedNativeDrag = true;
+                    startDragging();
+                }
+            },
+            true
+        );
+
+        document.addEventListener(
+            "mouseup",
+            (_ev: MouseEvent) => {
+                if (didDrag) armSuppressClick();
+                tracking = false;
+                didDrag = false;
+                startedNativeDrag = false;
+            },
+            true
+        );
+
+        // Capture-phase click kill: body.onclick / list handlers must not run
+        // after a window drag, regardless of where the pointer was.
+        document.addEventListener(
+            "click",
+            (ev: MouseEvent) => {
+                if (!(window as any).__ottTauriSuppressClick) return;
+                ev.preventDefault();
+                ev.stopPropagation();
+                ev.stopImmediatePropagation();
             },
             true
         );
