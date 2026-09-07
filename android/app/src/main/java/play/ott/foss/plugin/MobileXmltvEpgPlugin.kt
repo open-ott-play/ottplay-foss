@@ -38,7 +38,7 @@ class MobileXmltvEpgPlugin : Plugin() {
 
     @PluginMethod
     fun getEpg(call: PluginCall) {
-        val urlStr = call.getString("xmltv_url") ?: DEFAULT_URL
+        val urlStr = call.getString("xmltv_url")?.trim()?.takeIf { it.isNotEmpty() } ?: DEFAULT_URL
         val ch = call.getString("ch")
         val hash = call.getString("hash") ?: ""
         val channelId = call.getString("channel_id") ?: ""

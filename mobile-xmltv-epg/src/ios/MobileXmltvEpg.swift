@@ -2,25 +2,26 @@ import Capacitor
 
 @objc(MobileXmltvEpg)
 public class MobileXmltvEpg: CAPPlugin {
-    private let cacheURL: URL
-    private let metaURL: URL
+    private lazy var cacheURL: URL = {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        return docs.appendingPathComponent("epg2.xml.gz")
+    }()
+    private lazy var metaURL: URL = {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        return docs.appendingPathComponent("epg2.meta")
+    }()
     private let ttl: TimeInterval = 2 * 3600
     private let defaultURL = "https://cdn.epg.one/epg2.xml.gz"
 
-    public override func load() {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        cacheURL = docs.appendingPathComponent("epg2.xml.gz")
-        metaURL = docs.appendingPathComponent("epg2.meta")
-    }
-
     @objc func getEpg(_ call: CAPPluginCall) {
-        let urlStr = call.getString("xmltv_url") ?? defaultURL
+        let urlStr = (call.getString("xmltv_url") ?? defaultURL).trimmingCharacters(in: .whitespacesAndNewlines)
+        let finalURL = urlStr.isEmpty ? defaultURL : urlStr
         let ch = call.getString("ch")
         let hash = call.getString("hash") ?? ""
         let channelId = call.getString("channel_id") ?? ""
         let timeShift = call.getInt("time_shift_hours") ?? 0
 
-        guard let url = URL(string: urlStr) else {
+        guard let url = URL(string: finalURL) else {
             call.reject("invalid url")
             return
         }
@@ -37,8 +38,9 @@ public class MobileXmltvEpg: CAPPlugin {
                 let parsed = self?.parseXmltv(xmlStr) ?? ([:], [:])
                 call.resolve(self?.buildSlice(parsed, channelId: channelId, ch: ch, hash: hash, timeShiftHours: timeShift) ?? ["epg_data": []])
             case .failure(let err):
-                if let stale = try? String(contentsOf: self!.cacheURL),
-                   let xml = self?.gunzip(Array(stale.utf8)) {
+                if let stale = try? Data(contentsOf: self!.cacheURL),
+                   let xmlData = self?.gunzip(stale),
+                   let xml = String(data: xmlData, encoding: .utf8) {
                     let parsed = self?.parseXmltv(xml) ?? ([:], [:])
                     call.resolve(self?.buildSlice(parsed, channelId: channelId, ch: ch, hash: hash, timeShiftHours: timeShift) ?? ["epg_data": []])
                 } else {
@@ -49,8 +51,9 @@ public class MobileXmltvEpg: CAPPlugin {
     }
 
     @objc func prefetch(_ call: CAPPluginCall) {
-        let urlStr = call.getString("xmltv_url") ?? defaultURL
-        guard let url = URL(string: urlStr) else {
+        let urlStr = (call.getString("xmltv_url") ?? defaultURL).trimmingCharacters(in: .whitespacesAndNewlines)
+        let finalURL = urlStr.isEmpty ? defaultURL : urlStr
+        guard let url = URL(string: finalURL) else {
             call.reject("invalid url")
             return
         }

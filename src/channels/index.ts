@@ -993,9 +993,9 @@ export function getEPGchanelCached(
                 ? String((ch as any).epg_url)
                 : "";
         (window as any).Capacitor.Plugins.MobileXmltvEpg.getEpg({
+            ch: ch?.channel_name || ch?.name || "",
             channel_id: String(channelId),
             hash: hash,
-            ch: ch?.channel_name || ch?.name || "",
             time_shift_hours: timeShiftHours,
             xmltv_url: xmltvUrl,
         })

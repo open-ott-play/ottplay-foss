@@ -2,18 +2,19 @@ import { registerPlugin, WebPlugin } from "@capacitor/core";
 
 export interface MobileXmltvEpgPlugin {
     getEpg(options: {
-        hash: string;
-        channel_id: string;
         ch?: string;
+        channel_id: string;
+        hash: string;
         time_shift_hours?: number;
-    }): Promise<{ xml?: string; cached?: boolean }>;
+        xmltv_url?: string;
+    }): Promise<{ epg_data: any[] }>;
     prefetch(): Promise<void>;
 }
 
 class MobileXmltvEpgWeb extends WebPlugin implements MobileXmltvEpgPlugin {
-    async getEpg(): Promise<{ xml?: string; cached?: boolean }> {
+    async getEpg(): Promise<{ epg_data: any[] }> {
         console.warn("[MobileXmltvEpg] native not available in web");
-        return {};
+        return { epg_data: [] };
     }
 
     async prefetch(): Promise<void> {
