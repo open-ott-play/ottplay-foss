@@ -1778,6 +1778,109 @@ if (typeof window.__TAURI__ !== "undefined") {
     })();
 }
 
+// Tauri Mode B: frameless window — whole-window drag; interactive UI is no-drag.
+// decorations:false removes the system title bar; without a drag region the
+// window cannot be moved. Gate on __TAURI__ so Chrome companion is unchanged.
+if (typeof window.__TAURI__ !== "undefined") {
+    (function () {
+        const CLASS = "ott-tauri-frameless";
+        const STYLE_ID = "ott-tauri-frameless-drag";
+        document.documentElement.classList.add(CLASS);
+        if (document.body) document.body.classList.add(CLASS);
+        // Prefer CSS app-region so the video canvas (empty chrome) is draggable
+        // across the whole window; known overlays + interactive controls stay clickable.
+        if (!document.getElementById(STYLE_ID)) {
+            const style = document.createElement("style");
+            style.id = STYLE_ID;
+            style.textContent = `
+html.${CLASS}, html.${CLASS} body {
+  -webkit-app-region: drag;
+}
+html.${CLASS} #list,
+html.${CLASS} #list_window,
+html.${CLASS} #listPopUp,
+html.${CLASS} #listAbout,
+html.${CLASS} #listEdit,
+html.${CLASS} #listCaption,
+html.${CLASS} #listPodval,
+html.${CLASS} #listDetail,
+html.${CLASS} #listIn,
+html.${CLASS} #listTime,
+html.${CLASS} #list_osd,
+html.${CLASS} #info1,
+html.${CLASS} #info,
+html.${CLASS} #numprog,
+html.${CLASS} #dialogbox,
+html.${CLASS} #volume_div,
+html.${CLASS} #mute,
+html.${CLASS} #permanentTime,
+html.${CLASS} #launch,
+html.${CLASS} #notifications,
+html.${CLASS} #buffering,
+html.${CLASS} #pip_buffering,
+html.${CLASS} #videopip,
+html.${CLASS} button,
+html.${CLASS} input,
+html.${CLASS} select,
+html.${CLASS} textarea,
+html.${CLASS} a,
+html.${CLASS} .btn,
+html.${CLASS} .osk-key,
+html.${CLASS} [onclick],
+html.${CLASS} [contenteditable="true"],
+html.${CLASS} [role="button"],
+html.${CLASS} [role="listbox"],
+html.${CLASS} [role="option"],
+html.${CLASS} [role="menu"],
+html.${CLASS} [role="menuitem"] {
+  -webkit-app-region: no-drag;
+}
+`;
+            document.head.appendChild(style);
+        }
+        // Also mark body as a Tauri drag region (permission: allow-start-dragging).
+        // Interactive children keep no-drag via CSS above.
+        if (document.body && !document.body.hasAttribute("data-tauri-drag-region")) {
+            document.body.setAttribute("data-tauri-drag-region", "");
+        }
+        // Dynamic overlays (Menu rows, select box, OSK) get [onclick] — CSS covers them.
+        // Still tag late-added interactive nodes without onclick for safety.
+        const markNoDrag = (root: ParentNode) => {
+            const sel =
+                "button,input,select,textarea,a,.btn,.osk-key,[onclick],[contenteditable=\"true\"]";
+            root.querySelectorAll(sel).forEach((el) => {
+                (el as HTMLElement).style.setProperty(
+                    "-webkit-app-region",
+                    "no-drag"
+                );
+            });
+        };
+        markNoDrag(document);
+        try {
+            const mo = new MutationObserver((mutations) => {
+                for (const m of mutations) {
+                    m.addedNodes.forEach((n) => {
+                        if (n.nodeType !== 1) return;
+                        const el = n as HTMLElement;
+                        if (
+                            el.matches?.(
+                                "button,input,select,textarea,a,.btn,.osk-key,[onclick],[contenteditable=\"true\"]"
+                            )
+                        ) {
+                            el.style.setProperty("-webkit-app-region", "no-drag");
+                        }
+                        if (el.querySelectorAll) markNoDrag(el);
+                    });
+                }
+            });
+            mo.observe(document.documentElement, {
+                childList: true,
+                subtree: true,
+            });
+        } catch (_e) {}
+    })();
+}
+
 window.stbToggleAudioTrack = stbToggleAudioTrack;
 window.stbToggleSubtitle = stbToggleSubtitle;
 window.stbAudioTracksExists = stbAudioTracksExists;
