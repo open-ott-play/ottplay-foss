@@ -1100,10 +1100,23 @@ export function showSelectBox(
     if (numprogElement) numprogElement.style.display = "";
     (window as any).selectBoxKeyHandler = function (e: number): boolean {
         clearTimeout((window as any).numTimeout);
+        // Click on a row: onclick="_doKey(-100 + index)"
+        if (e <= -100) {
+            var clickIdx = e + 100;
+            if (clickIdx >= 0 && clickIdx < n.length) {
+                s = clickIdx;
+                i(s);
+                if (numprogElement) numprogElement.style.display = "none";
+                (window as any).selectBoxKeyHandler = null;
+            }
+            return true;
+        }
         switch (e) {
             case keys.ENTER:
                 if (!a) i(s);
+            // falls through
             case keys.RETURN:
+            case keys.EXIT:
                 if (numprogElement) numprogElement.style.display = "none";
                 (window as any).selectBoxKeyHandler = null;
                 return true;

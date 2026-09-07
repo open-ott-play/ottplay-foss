@@ -126,6 +126,17 @@ export function keyHandler(event: KeyboardEvent): void {
         /* ignore */
     }
 
+    /* OSD select box (audio / subtitle / aspect / zoom numprog picker).
+     * showSelectBox registers window.selectBoxKeyHandler; without this branch
+     * the overlay stays on screen and ignores arrows / Enter / Escape. */
+    if (typeof (window as any).selectBoxKeyHandler === "function") {
+        event.preventDefault();
+        event.stopPropagation();
+        if ((window as any).selectBoxKeyHandler(keyCode)) return;
+        // Keep focus while the picker is open (do not fall through to channel keys).
+        return;
+    }
+
     /* listAbout — value selector (grid of options) */
     try {
         if (typeof $ !== "undefined" && $("#listAbout").is(":visible")) {
