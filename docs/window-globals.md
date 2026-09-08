@@ -16,8 +16,12 @@ This file is an inventory only. CI enforces a small must-keep identifier snapsho
 | `itemWith` | 303 |
 | `client_can_https` | 305 |
 | `client_can` | 306 |
-| `editKey` | 944 |
-| `showEditKey` | 945 |
+| `editKey` | 1775 |
+| `showEditKey` | 1777 |
+| `editKey1` | 5070 |
+| `editKey2` | 5071 |
+| `showEditKey1` | 5072 |
+| `showEditKey2` | 5073 |
 | `playTime` | 1058 |
 | `playType` | 1059 |
 | `keyStrings` | 1215 |
@@ -161,7 +165,7 @@ This file is an inventory only. CI enforces a small must-keep identifier snapsho
 | `pullSettingsFromWindow` | 3386 |
 | `getPipPosition` | 3387 |
 | `setSleepTimeout` | 3388 |
-| `setEditor` | 3389 |
+| `setEditor` | 5074 |
 | `setColor` | 3390 |
 | `setListPos` | 3391 |
 | `setFontSize` | 3392 |

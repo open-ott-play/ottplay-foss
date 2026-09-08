@@ -109,7 +109,6 @@ import {
     removeFromFavorites,
     renameFavoritesList,
     saveChannelsCats,
-    sEditor,
     selectEpg,
     setActiveFavoritesList,
     setCurProg,
@@ -237,6 +236,8 @@ import {
     closeList,
     colorDialog,
     confirmBox,
+    editKey1,
+    editKey2,
     exitPortal,
     hsvToRgb,
     infoBarHide,
@@ -262,6 +263,8 @@ import {
     selColorDialog,
     setSelect,
     showChanelInfo,
+    showEditKey1,
+    showEditKey2,
     showPage,
     showSelectBox,
     showShift,
@@ -1338,18 +1341,23 @@ function stbSetOsdOpacity(val: number): void {
 }
 
 /**
- * Select the editor implementation (built-in or native) based on sEditor.
- * Routes editKey / showEditKey to showEditKey1 or showEditKey2 on window.
+ * Select the editor implementation (built-in OSK or native input line) based on
+ * settings.editor (window.sEditor). Routes editKey / showEditKey to showEditKey1
+ * or showEditKey2 on window — same choice as original stbPlayer.js setEditor().
  *
- * Side effects: Assigns window.editKey and window.showEditKey.
+ * Side effects: pullSettingsFromWindow(); assigns window.editKey and window.showEditKey.
  */
 function setEditor(): void {
-    if (sEditor && typeof (window as any).showEditKey2 === "function") {
-        (window as any).editKey = (window as any).editKey2;
-        (window as any).showEditKey = (window as any).showEditKey2;
+    // Match setListPos/setColor: settings may have been updated via window.s*
+    // (first-run / STB settings) while the channels module binding stays at 0.
+    pullSettingsFromWindow();
+    var w = window as any;
+    if (settings.editor && typeof w.showEditKey2 === "function") {
+        w.editKey = w.editKey2;
+        w.showEditKey = w.showEditKey2;
     } else {
-        (window as any).editKey = (window as any).editKey1;
-        (window as any).showEditKey = (window as any).showEditKey1;
+        w.editKey = w.editKey1;
+        w.showEditKey = w.showEditKey1;
     }
 }
 
@@ -5056,6 +5064,13 @@ if (typeof window.__TAURI__ !== "undefined") {
     })();
 }
 window.setSleepTimeout = setSleepTimeout;
+// Input editors must be on window: setEditor / first-run / settings typeof checks
+// mirror monolith bare-function typeof after classic-script concat. Module exports
+// alone are not visible as window.showEditKey2.
+window.editKey1 = editKey1;
+window.editKey2 = editKey2;
+window.showEditKey1 = showEditKey1;
+window.showEditKey2 = showEditKey2;
 window.setEditor = setEditor;
 window.setColor = setColor;
 window.setListPos = setListPos;
