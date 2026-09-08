@@ -1,6 +1,6 @@
 # Porting ottplay-foss to Native Apps
 
-Status: Mode B Tauri Phase 1 companion backends + Capacitor 4.1–4.6 on `main` (store readiness #315, iOS PiP #316, Stalker portal #317, MediaSession #318+#321, DASH ExoPlayer #319, Tauri updater/notarize #320, Stalker `host_ott/swop` #322, Mag `load.php` path allowlist + cookie/header hooks #324, Cap tvOS unsupported docs + iOS UIPress #325, Dev PC `showEditKey2` #326, command-queue curl/HA smoke #328, Mode A companion smoke #329). Remaining: human TestFlight/Play, Mag JsHttpRequest client/VOD, device smoke, DRM. Cap tvOS unsupported upstream (documented; not an open Cap work item). Command-queue HA/curl verified via `scripts/smoke-command-queue.sh` (#328). Phased plan below kept as roadmap.
+Status: Mode B Tauri Phase 1 companion backends + Capacitor 4.1–4.6 on `main` (store readiness #315, iOS PiP #316, Stalker portal #317, MediaSession #318+#321, DASH ExoPlayer #319, Tauri updater/notarize #320, Stalker `host_ott/swop` #322, Mag `load.php` path allowlist + cookie/header hooks #324, Cap tvOS unsupported docs + iOS UIPress #325, Dev PC `showEditKey2` #326, command-queue curl/HA smoke #328, Mode A companion smoke #329, M3U stream-proxy header smoke #332, Mode A `/logo` concurrent bench smoke #333, XMLTV cache refresh / warm-up smoke #334). Remaining: human TestFlight/Play, Mag JsHttpRequest client/VOD, device smoke, DRM. Cap tvOS unsupported upstream (documented; not an open Cap work item). Command-queue HA/curl verified via `scripts/smoke-command-queue.sh` (#328). Phased plan below kept as roadmap.
 
 ## Two Operating Modes
 
@@ -124,7 +124,7 @@ Native app implements its own local command queue (not `local_proxy.py`):
 
 The native command queue stores commands in memory (expire after 60s, same as `local_proxy.py`).
 
-**Smoke / HA:** `scripts/smoke-command-queue.sh` (#328; default `http://127.0.0.1:18081`) — curl POST/GET (+ optional HA `rest_command` notes). Mode A companion remains `python3 local_proxy.py 8081` for LAN Home Assistant — Cap/Tauri are loopback-only. Mode A HTTP companion smoke is `scripts/smoke-modea-companion.sh` (#329). See `docs/capacitor-mobile.md` § Smoke test and root `README.md` Push Command System.
+**Smoke / HA:** `scripts/smoke-command-queue.sh` (#328; default `http://127.0.0.1:18081`) — curl POST/GET (+ optional HA `rest_command` notes). Mode A companion remains `python3 local_proxy.py 8081` for LAN Home Assistant — Cap/Tauri are loopback-only. Mode A HTTP companion smoke is `scripts/smoke-modea-companion.sh` (#329); also M3U stream-proxy headers (#332), `/logo` bench (#333), XMLTV warm-up (#334). See `docs/capacitor-mobile.md` § Smoke test and root `README.md` Push Command System.
 
 ---
 
