@@ -5,7 +5,7 @@ Both platforms share the same TypeScript source and Capacitor configuration.
 
 ## Status
 
-Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315), iOS AVPlayer PiP (#316), Stalker portal (#317), MediaSession (#318+#321), DASH ExoPlayer (#319), Tauri updater/notarize (#320), Stalker `host_ott/swop` (#322), Mag `load.php` path allowlist + cookie/header hooks (#324), Cap tvOS unsupported docs + iOS UIPress remote gaps (#325), Dev PC input-line editor `showEditKey2` (#326), command-queue curl/HA smoke (#328), Mode A companion HTTP smoke (#329), M3U stream-proxy header smoke (#332), Mode A `/logo` concurrent bench smoke (#333), XMLTV cache refresh / warm-up smoke (#334), Mode A E2E play-path smoke (#336), and Capacitor device-smoke checklist + helper (see `docs/mode-b-device-smoke.md`). Remaining: human TestFlight/Play upload, Mag JsHttpRequest client/VOD, human UI marks on the device-smoke checklist, DRM. Cap tvOS is **unsupported upstream** (documented; no stub target).
+Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315), iOS AVPlayer PiP (#316), Stalker portal (#317), MediaSession (#318+#321), DASH ExoPlayer (#319), Tauri updater/notarize (#320), Stalker `host_ott/swop` (#322), Mag `load.php` path allowlist + cookie/header hooks (#324), Cap tvOS unsupported docs + iOS UIPress remote gaps (#325), Dev PC input-line editor `showEditKey2` (#326), command-queue curl/HA smoke (#328), Mode A companion HTTP smoke (#329), M3U stream-proxy header smoke (#332), Mode A `/logo` concurrent bench smoke (#333), XMLTV cache refresh / warm-up smoke (#334), Mode A E2E play-path smoke (#336), Capacitor device-smoke checklist + helper (see `docs/mode-b-device-smoke.md`), and Tauri desktop-smoke checklist + helper (see `docs/mode-b-tauri-smoke.md`). Remaining: human TestFlight/Play upload, Mag JsHttpRequest client/VOD, human UI marks on the device-smoke checklist, DRM. Cap tvOS is **unsupported upstream** (documented; no stub target).
 
 ## Shipped
 
@@ -32,6 +32,7 @@ Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315
 - **XMLTV cache refresh / warm-up smoke** — PR #334 — `scripts/smoke-xmltv-cache-refresh.sh` (optional `--restart-cmd`)
 - **Mode A E2E play-path smoke** — PR #336 — `scripts/smoke-modea-e2e-play.sh` (companion HTTP play-path; not Cap UI)
 - **Capacitor device smoke checklist + helper** — `docs/mode-b-device-smoke.md` + `scripts/smoke-capacitor-device.sh` (sim/emulator checklist; soft queue curl; human UI marks remain)
+- **Tauri desktop smoke checklist + helper** — `docs/mode-b-tauri-smoke.md` + `scripts/smoke-tauri-desktop.sh` (desktop toolchain/artifact/companion helpers; human launch/play/PiP marks remain)
 
 ## Build
 
