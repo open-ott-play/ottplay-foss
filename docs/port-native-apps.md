@@ -62,6 +62,10 @@ See root README § Mode A companion smoke. Does not cover `local_proxy.py` comma
 
 `scripts/smoke-xmltv-cache-refresh.sh` — Mode A companion XMLTV/EPG cache warm-up: `GET /health`, probe `GET /epg/:hash` (always 200 + `epg_data`), optional `EPG_HASH`, optional `--restart-cmd` then wait for `/health` (fetch-before-bind gate). Default `BASE_URL=http://127.0.0.1:8095`. Does not kill by default. See root README § XMLTV cache refresh / warm-up smoke.
 
+### Mode A E2E play-path smoke
+
+`scripts/smoke-modea-e2e-play.sh` — companion **play-path / stream readiness** (HTTP only, **not** headed UI): health/index, player-shell static assets, optional `EPG_HASH`, secret-free `POST /m3u/match-channels`, and `POST /m3u/cp.php` against a local (or `MEDIA_URL`) media fixture asserting HTTP 200 + body/`Content-Type`. Default `BASE_URL=http://127.0.0.1:8095`. See root README § Mode A E2E play-path smoke.
+
 
 ### Separate process: `local_proxy.py` (port 8081)
 
