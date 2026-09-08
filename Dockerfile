@@ -19,7 +19,7 @@ RUN sed -i 's/, "src-tauri"//' Cargo.toml \
  && cargo build --release --bin ottplay-server
 
 # Musl runtime (no glibc). ca-certificates for outbound HTTPS (EPG / M3U).
-FROM alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d
+FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 RUN apk add --no-cache ca-certificates \
  && adduser -D -H -u 65532 -g nonroot nonroot
 WORKDIR /app
