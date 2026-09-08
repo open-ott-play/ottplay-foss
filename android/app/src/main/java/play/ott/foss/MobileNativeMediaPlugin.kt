@@ -1,8 +1,8 @@
 package play.ott.foss
 
 import android.app.PictureInPictureParams
-import android.content.Context
 import android.content.Context.AUDIO_SERVICE
+import android.content.Intent
 import android.media.AudioManager
 import android.os.Build
 import android.util.Log
@@ -24,6 +24,7 @@ class MobileNativeMediaPlugin : Plugin() {
     }
 
     private var isFullscreen = false
+    private var backgroundAudioActive = false
 
     @PluginMethod
     fun getVolume(call: PluginCall) {
@@ -147,6 +148,108 @@ class MobileNativeMediaPlugin : Plugin() {
             bridge.webView?.keepScreenOn = true
         }
         call.resolve(JSObject().apply { put("ok", true) })
+    }
+
+    /**
+     * Start the mediaPlayback foreground service so HLS/<video> can keep
+     * playing when the activity is backgrounded. Real ContextCompat.startForegroundService —
+     * never reports ok without attempting to start the service.
+     */
+    @PluginMethod
+    fun startBackgroundAudio(call: PluginCall) {
+        val title = call.getString("title") ?: "OTT-play FOSS"
+        val artist = call.getString("artist") ?: "Now playing"
+        val ctx = bridge.context
+        val intent = Intent(ctx, MediaPlaybackService::class.java).apply {
+            action = MediaPlaybackService.ACTION_START
+            putExtra(MediaPlaybackService.EXTRA_TITLE, title)
+            putExtra(MediaPlaybackService.EXTRA_ARTIST, artist)
+        }
+        try {
+            ContextCompat.startForegroundService(ctx, intent)
+            backgroundAudioActive = true
+            call.resolve(JSObject().apply { put("ok", true) })
+        } catch (e: Exception) {
+            Log.e(TAG, "startBackgroundAudio failed", e)
+            backgroundAudioActive = false
+            call.resolve(JSObject().apply {
+                put("ok", false)
+                put("error", e.message ?: "startForegroundService failed")
+            })
+        }
+    }
+
+    /** Pause MediaSession state; keep FGS alive while paused briefly. */
+    @PluginMethod
+    fun pauseBackgroundAudio(call: PluginCall) {
+        if (!backgroundAudioActive) {
+            call.resolve(JSObject().apply { put("ok", true) })
+            return
+        }
+        val ctx = bridge.context
+        val intent = Intent(ctx, MediaPlaybackService::class.java).apply {
+            action = MediaPlaybackService.ACTION_PAUSE
+        }
+        try {
+            ctx.startService(intent)
+            call.resolve(JSObject().apply { put("ok", true) })
+        } catch (e: Exception) {
+            Log.e(TAG, "pauseBackgroundAudio failed", e)
+            call.resolve(JSObject().apply {
+                put("ok", false)
+                put("error", e.message ?: "pause failed")
+            })
+        }
+    }
+
+    /** Resume MediaSession / notification after pause. */
+    @PluginMethod
+    fun resumeBackgroundAudio(call: PluginCall) {
+        val title = call.getString("title") ?: "OTT-play FOSS"
+        val artist = call.getString("artist") ?: "Now playing"
+        val ctx = bridge.context
+        val intent = Intent(ctx, MediaPlaybackService::class.java).apply {
+            action = MediaPlaybackService.ACTION_RESUME
+            putExtra(MediaPlaybackService.EXTRA_TITLE, title)
+            putExtra(MediaPlaybackService.EXTRA_ARTIST, artist)
+        }
+        try {
+            if (backgroundAudioActive) {
+                ctx.startService(intent)
+            } else {
+                ContextCompat.startForegroundService(ctx, intent)
+                backgroundAudioActive = true
+            }
+            call.resolve(JSObject().apply { put("ok", true) })
+        } catch (e: Exception) {
+            Log.e(TAG, "resumeBackgroundAudio failed", e)
+            call.resolve(JSObject().apply {
+                put("ok", false)
+                put("error", e.message ?: "resume failed")
+            })
+        }
+    }
+
+    /** Stop and tear down the mediaPlayback foreground service. */
+    @PluginMethod
+    fun stopBackgroundAudio(call: PluginCall) {
+        val ctx = bridge.context
+        val intent = Intent(ctx, MediaPlaybackService::class.java).apply {
+            action = MediaPlaybackService.ACTION_STOP
+        }
+        try {
+            ctx.startService(intent)
+            ctx.stopService(Intent(ctx, MediaPlaybackService::class.java))
+            backgroundAudioActive = false
+            call.resolve(JSObject().apply { put("ok", true) })
+        } catch (e: Exception) {
+            Log.e(TAG, "stopBackgroundAudio failed", e)
+            backgroundAudioActive = false
+            call.resolve(JSObject().apply {
+                put("ok", false)
+                put("error", e.message ?: "stopService failed")
+            })
+        }
     }
 
     private fun webViewWrap(webView: WebView?, systemUi: View) {

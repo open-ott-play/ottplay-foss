@@ -2601,6 +2601,54 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
             );
             if (typeof origSetWin === "function") origSetWin();
         };
+
+        // Capacitor 4.5: background audio — iOS AVAudioSession.playback +
+        // Android mediaPlayback FGS. Wired to play/stop/pause/continue only
+        // on Cap path (Mode A / Tauri unchanged).
+        const bgMeta = (): { title: string; artist: string } => {
+            let title = "OTT-play FOSS";
+            let artist = "Now playing";
+            try {
+                const ch =
+                    (document.getElementById("channel") as HTMLElement | null)
+                        ?.textContent ||
+                    (document.getElementById("cname") as HTMLElement | null)
+                        ?.textContent ||
+                    "";
+                if (ch && ch.trim()) title = ch.trim();
+            } catch (_e) {}
+            return { artist, title };
+        };
+        const origPlay = window.stbPlay;
+        const origStop = window.stbStop;
+        const origPause = window.stbPause;
+        const origContinue = window.stbContinue;
+        window.stbPlay = function (url: string, position?: number): void {
+            if (typeof origPlay === "function") origPlay(url, position);
+            const meta = bgMeta();
+            cap.startBackgroundAudio(meta).catch((e: any) =>
+                console.warn("[Capacitor] startBackgroundAudio failed:", e)
+            );
+        };
+        window.stbStop = function (): void {
+            cap.stopBackgroundAudio().catch((e: any) =>
+                console.warn("[Capacitor] stopBackgroundAudio failed:", e)
+            );
+            if (typeof origStop === "function") origStop();
+        };
+        window.stbPause = function (): void {
+            if (typeof origPause === "function") origPause();
+            cap.pauseBackgroundAudio().catch((e: any) =>
+                console.warn("[Capacitor] pauseBackgroundAudio failed:", e)
+            );
+        };
+        window.stbContinue = function (): void {
+            if (typeof origContinue === "function") origContinue();
+            const meta = bgMeta();
+            cap.resumeBackgroundAudio(meta).catch((e: any) =>
+                console.warn("[Capacitor] resumeBackgroundAudio failed:", e)
+            );
+        };
     })();
 }
 
