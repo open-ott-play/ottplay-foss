@@ -5468,11 +5468,23 @@ optionsArr.push({
 optionsArr.push({ action: selectLang, name: "Change interface language" });
 
 // Mode B only: Tauri updater check (GitHub Releases latest.json). Mode A untouched.
+// Match other @tauri-apps usage: window.__TAURI__ / tauriInvoke — not import().
+// Dynamic import hits TS1323 (module:ES2015); static import is stripped by concat
+// and cannot resolve bare specifiers in the Mode A/B stbPlayer.js bundle.
 if (typeof window.__TAURI__ !== "undefined") {
     void (async () => {
         try {
-            const { check } = await import("@tauri-apps/plugin-updater");
-            const update = await check();
+            type UpdaterMeta = {
+                rid: number;
+                currentVersion: string;
+                version: string;
+                date?: string;
+                body?: string;
+            };
+            const update = await tauriInvoke<UpdaterMeta | null>(
+                "plugin:updater|check",
+                {}
+            );
             if (!update) return;
             const ver = update.version;
             // Soft prompt — do not force install on startup.
@@ -5482,7 +5494,15 @@ if (typeof window.__TAURI__ !== "undefined") {
                     `OttPlay FOSS ${ver} is available. Download and install now?`
                 )
             ) {
-                await update.downloadAndInstall();
+                const ChannelCtor = (window as any).__TAURI__?.core?.Channel;
+                if (typeof ChannelCtor !== "function") {
+                    throw new Error("Tauri Channel unavailable for updater");
+                }
+                const onEvent = new ChannelCtor();
+                await tauriInvoke("plugin:updater|download_and_install", {
+                    onEvent,
+                    rid: update.rid,
+                });
                 // Relaunch is optional; ask the user to restart if plugin-process is absent.
                 try {
                     const processApi = (window as any).__TAURI__?.process;
