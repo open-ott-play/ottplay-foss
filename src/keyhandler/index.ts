@@ -952,6 +952,13 @@ var touch_min_sensX = Math.round(
     touch_min_sensY * (screen.width / screen.height) * 2
 );
 
+// Capacitor gate: touch handlers are active only in native iOS/Android.
+// Mode A (browser/STB) and Tauri desktop keep existing behavior — no touch
+// gesture layer, no synthetic MouseEvent click from touch.
+function capacitorOnly(): boolean {
+    return typeof (window as any).Capacitor !== "undefined";
+}
+
 // Tap detection
 /**
  * Detect whether a touch interaction qualifies as a "tap" (stationary press) rather than a swipe.
@@ -1316,6 +1323,7 @@ export function prevProg(): void {
  *             The initial move reference (`xMove1`/`yMove1`) is set equal to the start coordinates.
  */
 function handleTouchStart(e: any): void {
+    if (!capacitorOnly()) return;
     e.preventDefault();
     tCount = e.touches.length;
     if (tCount === 4) {
@@ -1345,6 +1353,7 @@ function handleTouchStart(e: any): void {
  *             A non-zero dir causes the move reference point to be reset to prevent repeated dispatches.
  */
 function handleTouchMove(e: any): void {
+    if (!capacitorOnly()) return;
     if (!(xDown && yDown)) return;
     e.preventDefault();
     xUp = Math.round(e.touches[0].screenX);
@@ -1407,6 +1416,7 @@ function handleTouchEnd(e: any): void {
  *             so that regular click handlers fire naturally.
  */
 function body_handleTouchEnd(e: any): void {
+    if (!capacitorOnly()) return;
     if (!(xDown && yDown)) return;
     e.preventDefault();
     if (e.touches.length === 0) {
@@ -1461,7 +1471,7 @@ function body_handleTouchEnd(e: any): void {
                     break;
             }
         } else if (tCount === 1) {
-            // 1-finger tap → click event
+            // 1-finger tap → ENTER via existing keyhandler path
             if (
                 checkTap(
                     xDown!,
@@ -1471,16 +1481,8 @@ function body_handleTouchEnd(e: any): void {
                     touch_min_sensX / 2,
                     touch_min_sensY / 2
                 )
-            ) {
-                var clickEvent = new MouseEvent("click", {
-                    bubbles: true,
-                    cancelable: true,
-                    clientX: e.changedTouches[0].clientX,
-                    clientY: e.changedTouches[0].clientY,
-                    view: window,
-                });
-                e.target.dispatchEvent(clickEvent);
-            }
+            )
+                (window as any)._doKey((window as any).keys.ENTER);
         }
         xDown = null;
         yDown = null;
@@ -1526,13 +1528,15 @@ function list_OnClick(e: any): void {
     (window as any)._doKey((window as any).keys.RETURN, e);
 }
 
-document.body.addEventListener("touchstart", handleTouchStart, {
-    passive: false,
-});
-document.body.addEventListener("touchmove", handleTouchMove, {
-    passive: false,
-});
-document.body.addEventListener("touchend", body_handleTouchEnd, {
-    passive: false,
-});
+if (capacitorOnly()) {
+    document.body.addEventListener("touchstart", handleTouchStart, {
+        passive: false,
+    });
+    document.body.addEventListener("touchmove", handleTouchMove, {
+        passive: false,
+    });
+    document.body.addEventListener("touchend", body_handleTouchEnd, {
+        passive: false,
+    });
+}
 document.body.onclick = body_onClick;

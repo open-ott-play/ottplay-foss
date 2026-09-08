@@ -5,7 +5,7 @@ Both platforms share the same TypeScript source and Capacitor configuration.
 
 ## Status
 
-Capacitor 4.1–4.5 are on `main` (or this PR). Next: **4.6 key / touch mapping**.
+Capacitor 4.1–4.6 are on `main` (or this PR).
 
 ## Shipped
 
@@ -15,7 +15,8 @@ Capacitor 4.1–4.5 are on `main` (or this PR). Next: **4.6 key / touch mapping*
 - **M3U stream proxy** — PR #307 — `M3UProxy` + web shim for `/m3u/cp.php`
 - **Release artifacts** — PR #310 — multiarch Tauri + Capacitor IPA/APK
 - **4.4 Native media** — PR #312 — `MobileNativeMedia` (volume / wake real; iOS PiP/fullscreen unsupported)
-- **4.5 Background audio** — this PR — AVAudioSession `.playback` + Android `mediaPlayback` FGS
+- **4.5 Background audio** — PR #312 — AVAudioSession `.playback` + Android `mediaPlayback` FGS
+- **4.6 Key / touch mapping** — this PR — Cap-only touch gestures, Android D-Pad/gamepad/media keyCode injection, iOS hardware keyboard path
 
 ## Build
 
@@ -112,9 +113,8 @@ Implemented. Capacitor plugin `M3UProxy` provides native HTTP client for `/m3u/c
 - **Return**: response body as text string (text playlists).
 - **Smoke**: Capacitor app → provider POST `/m3u/cp.php` → native fetch returns body; Tauri/Mode A unchanged.
 
-## Remaining gaps (4.6+)
+## Remaining gaps
 
-- **4.6 Key / touch mapping** — hardware keyboard, D-Pad, remote, swipe gestures on mobile.
 - **Store / TestFlight** — iOS TestFlight / App Store and Android internal track (icon 1024x1024, screenshots, privacy policy URL, signing).
 - **Device smoke** — real device/simulator passes for queue / EPG / M3U/media paths.
 
@@ -157,6 +157,16 @@ Implemented. Cap-only wiring keeps HLS/`<video>` audio alive when the app backgr
 - **Caveat / follow-up**: richer notification transport controls that drive the WebView `<video>` (and Android 13+ runtime notification permission UX) still need device polish.
 
 **Failure contract**: start/stop report `{ok:false, error}` when the native start/stop path throws; web fallbacks return `{ok:false, unsupported:true}`.
+
+### 4.6 Key / touch mapping
+
+Shipped. Hardware keyboard, D-Pad/gamepad, and mobile touch gestures now feed the same keyhandler path used by browser/STB and Tauri.
+
+- **Touch layer (JS)** — `src/keyhandler/index.ts` touch handlers are gated behind `window.Capacitor`. Existing swipe detection → arrow keys (`_doKey(37/38/39/40)`); 2-finger tap → ENTER; 3-finger tap → SETUP; 1-finger tap → ENTER via `_doKey` (no synthetic `MouseEvent` click on Cap).
+- **Android D-Pad/media/gamepad** — `MainActivity.dispatchKeyEvent` intercepts `DPAD_*`, `ENTER/CENTER`, `BACK`, `VOLUME_*`, `MEDIA_PLAY_PAUSE/STOP/NEXT/PREVIOUS` on `ACTION_DOWN` and calls `WebView.evaluateJavascript("window._doKey(<code>)"`). Everything else falls through to `super`.
+- **iOS hardware keyboard** — WKWebView delivers `keydown` into the page by default. Arrow/Enter/Escape/media-ish keys already map via `stbEventToKeyCode` → `keyHandler`. No extra Siri Remote / Apple TV remote stack is built here; that remains out of scope for the Capacitor phone targets.
+
+**Caveat**: iOS `MainViewController.swift` SourceKit may show `UIKit` import error in non-Xcode tooling; the module is correct inside the Xcode build context.
 
 ## Mode A and Tauri
 
