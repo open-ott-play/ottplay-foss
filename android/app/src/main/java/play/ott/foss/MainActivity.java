@@ -49,17 +49,26 @@ public class MainActivity extends BridgeActivity {
                 case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
                     jsCode = 36;
                     break;
+                case KeyEvent.KEYCODE_BUTTON_A:
+                case KeyEvent.KEYCODE_BUTTON_SELECT:
+                    jsCode = 13; // ENTER
+                    break;
+                case KeyEvent.KEYCODE_BUTTON_B:
+                    jsCode = 27; // EXIT
+                    break;
                 default:
                     break;
             }
 
             if (jsCode >= 0) {
-                WebView webView = getBridge().getWebView();
-                if (webView != null) {
-                    webView.evaluateJavascript(
-                            "window._doKey && window._doKey(" + jsCode + ")",
-                            null
-                    );
+                if (getBridge() != null) {
+                    WebView webView = getBridge().getWebView();
+                    if (webView != null) {
+                        webView.evaluateJavascript(
+                                "window._doKey && window._doKey(" + jsCode + ")",
+                                null
+                        );
+                    }
                 }
                 return true;
             }
