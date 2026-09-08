@@ -27,6 +27,7 @@ pub fn run() {
     // background thread. Mirror of `local_proxy.py` for the native shell.
     commands::queue::spawn_http_server(command_queues.clone());
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(MediaSessionState::default())
         .manage(TauriState {
             xmltv_cache: Arc::new(RwLock::new(None)),

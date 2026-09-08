@@ -5466,3 +5466,44 @@ optionsArr.push({
     name: "Remote control",
 });
 optionsArr.push({ action: selectLang, name: "Change interface language" });
+
+// Mode B only: Tauri updater check (GitHub Releases latest.json). Mode A untouched.
+if (typeof window.__TAURI__ !== "undefined") {
+    void (async () => {
+        try {
+            const { check } = await import("@tauri-apps/plugin-updater");
+            const update = await check();
+            if (!update) return;
+            const ver = update.version;
+            // Soft prompt — do not force install on startup.
+            if (
+                typeof window.confirm === "function" &&
+                window.confirm(
+                    `OttPlay FOSS ${ver} is available. Download and install now?`
+                )
+            ) {
+                await update.downloadAndInstall();
+                // Relaunch is optional; ask the user to restart if plugin-process is absent.
+                try {
+                    const processApi = (window as any).__TAURI__?.process;
+                    if (processApi?.relaunch) {
+                        await processApi.relaunch();
+                    } else if (typeof window.alert === "function") {
+                        window.alert(
+                            "Update installed. Please restart OttPlay FOSS."
+                        );
+                    }
+                } catch {
+                    if (typeof window.alert === "function") {
+                        window.alert(
+                            "Update installed. Please restart OttPlay FOSS."
+                        );
+                    }
+                }
+            }
+        } catch (err) {
+            // Missing latest.json / placeholder pubkey / offline: non-fatal.
+            console.debug("Tauri updater check skipped:", err);
+        }
+    })();
+}

@@ -44,6 +44,7 @@
     "allow-start-media-session",
     "allow-pause-media-session",
     "allow-resume-media-session",
-    "allow-stop-media-session"
+    "allow-stop-media-session",
+    "updater:default"
   ]
 }

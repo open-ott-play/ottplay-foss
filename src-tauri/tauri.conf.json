@@ -36,5 +36,16 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IHBsYWNlaG9sZGVyIC0gcmVwbGFjZSB3aXRoIG91dHB1dCBvZiBgbnB4IHRhdXJpIHNpZ25lciBnZW5lcmF0ZWAK",
+      "endpoints": [
+        "https://github.com/open-ott-play/ottplay-foss/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }
