@@ -24,10 +24,21 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     ]
 
     private var pipController: AVPictureInPictureController?
+    private var pipPlayer: AVPlayer?
     private var pipLayer: AVPlayerLayer?
-    private var isFullscreen = false
+    private var pipItemObservation: NSKeyValueObservation?
+    private var pipPossibleObservation: NSKeyValueObservation?
+    private var pendingPipCall: CAPPluginCall?
+    private var pipResolved = false
+    private var fullscreenActive = false
     private var remoteCommandsConfigured = false
     private var backgroundAudioActive = false
+
+    /// Shared flag read by MainViewController (avoids Cap bridge plugin-lookup API drift).
+    private(set) static var sharedFullscreenActive = false
+
+    /// Read by MainViewController for status-bar / home-indicator chrome.
+    var isFullscreenActive: Bool { fullscreenActive }
 
     public override func load() {
         // Configure playback session early so WKWebView HLS/<video> can continue
@@ -104,8 +115,22 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func playPip(_ call: CAPPluginCall) {
-        // Honest unsupported until a real AVPlayer (with media item) is wired.
-        // Empty AVPlayer(playerItem: nil) PiP is fake and must not report ok:true.
+        guard let urlString = call.getString("url"), !urlString.isEmpty else {
+            call.resolve([
+                "ok": false,
+                "error": "missing url",
+            ])
+            return
+        }
+
+        guard let url = URL(string: urlString) else {
+            call.resolve([
+                "ok": false,
+                "error": "invalid url",
+            ])
+            return
+        }
+
         guard AVPictureInPictureController.isPictureInPictureSupported() else {
             call.resolve([
                 "ok": false,
@@ -113,45 +138,155 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
             ])
             return
         }
-        call.resolve([
-            "ok": false,
-            "unsupported": true,
-        ])
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+
+            self.teardownPip(keepCall: false)
+            self.pendingPipCall = call
+            self.pipResolved = false
+
+            guard let bridge = self.bridge else {
+                self.resolvePipOnce([
+                    "ok": false,
+                    "error": "bridge unavailable",
+                ])
+                return
+            }
+
+            _ = self.configurePlaybackSession()
+
+            let player = AVPlayer(url: url)
+            let layer = AVPlayerLayer(player: player)
+
+            let container: UIView? =
+                (bridge.webView as? UIView) ??
+                bridge.viewController?.view
+
+            guard let targetView = container else {
+                self.resolvePipOnce([
+                    "ok": false,
+                    "error": "no container view",
+                ])
+                return
+            }
+
+            // Small 16:9 layer in hierarchy (required for AVPictureInPictureController).
+            let size = CGSize(width: 160, height: 90)
+            layer.frame = CGRect(
+                x: max(8, targetView.bounds.width - size.width - 8),
+                y: max(8, targetView.bounds.height - size.height - 8),
+                width: size.width,
+                height: size.height
+            )
+            layer.videoGravity = .resizeAspect
+            layer.isHidden = false
+            targetView.layer.addSublayer(layer)
+
+            guard let pipController = AVPictureInPictureController(playerLayer: layer) else {
+                layer.removeFromSuperlayer()
+                self.resolvePipOnce([
+                    "ok": false,
+                    "error": "pip controller unavailable",
+                ])
+                return
+            }
+            pipController.delegate = self
+            if #available(iOS 14.0, *) {
+                pipController.requiresLinearPlayback = false
+            }
+            if #available(iOS 14.2, *) {
+                pipController.canStartPictureInPictureAutomaticallyFromInline = true
+            }
+
+            self.pipPlayer = player
+            self.pipLayer = layer
+            self.pipController = pipController
+
+            player.play()
+
+            // Observe item readiness + pip-possible; hop to main before Cap/UIKit work.
+            self.pipItemObservation = player.currentItem?.observe(
+                \.status,
+                options: [.initial, .new]
+            ) { [weak self] item, _ in
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    if item.status == .failed {
+                        self.resolvePipOnce([
+                            "ok": false,
+                            "error": item.error?.localizedDescription ?? "player item failed",
+                        ])
+                        self.teardownPip(keepCall: true)
+                        return
+                    }
+                    if item.status == .readyToPlay {
+                        self.tryStartPip()
+                    }
+                }
+            }
+
+            self.pipPossibleObservation = pipController.observe(
+                \.isPictureInPicturePossible,
+                options: [.initial, .new]
+            ) { [weak self] controller, _ in
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    if controller.isPictureInPicturePossible {
+                        self.tryStartPip()
+                    }
+                }
+            }
+
+            // Honest timeout — never leave the Cap call hanging, never fake ok:true.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+                guard let self = self, !self.pipResolved else { return }
+                self.resolvePipOnce([
+                    "ok": false,
+                    "error": "pip not possible",
+                ])
+                self.teardownPip(keepCall: true)
+            }
+        }
     }
 
     @objc func stopPip(_ call: CAPPluginCall) {
-        pipController?.stopPictureInPicture()
-        pipLayer?.removeFromSuperlayer()
-        pipLayer = nil
-        pipController = nil
-        call.resolve([
-            "ok": true,
-        ])
+        DispatchQueue.main.async { [weak self] in
+            self?.teardownPip(keepCall: false)
+            call.resolve(["ok": true])
+        }
     }
 
     @objc func setFullscreen(_ call: CAPPluginCall) {
-        let fullscreen = call.getBool("fullscreen", false)
-        isFullscreen = fullscreen
-        // Honest unsupported until real UIKit video chrome exists.
-        // Do not fake ok:true with an empty body.
-        call.resolve([
-            "ok": false,
-            "unsupported": true,
-        ])
+        let target = call.getBool("fullscreen", false)
+        fullscreenActive = target
+        MobileNativeMedia.sharedFullscreenActive = target
+
+        guard let viewController = bridge?.viewController else {
+            call.resolve([
+                "ok": false,
+                "unsupported": true,
+            ])
+            return
+        }
+
+        DispatchQueue.main.async {
+            viewController.setNeedsStatusBarAppearanceUpdate()
+            if #available(iOS 11.0, *) {
+                viewController.setNeedsUpdateOfHomeIndicatorAutoHidden()
+            }
+            call.resolve(["ok": true])
+        }
     }
 
     @objc func allowSleep(_ call: CAPPluginCall) {
         UIApplication.shared.isIdleTimerDisabled = false
-        call.resolve([
-            "ok": true,
-        ])
+        call.resolve(["ok": true])
     }
 
     @objc func preventSleep(_ call: CAPPluginCall) {
         UIApplication.shared.isIdleTimerDisabled = true
-        call.resolve([
-            "ok": true,
-        ])
+        call.resolve(["ok": true])
     }
 
     /// Activate AVAudioSession category `.playback` and publish Now Playing metadata
@@ -171,9 +306,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         configureRemoteCommandsIfNeeded()
         updateNowPlaying(title: title, artist: artist, rate: 1.0)
         backgroundAudioActive = true
-        call.resolve([
-            "ok": true,
-        ])
+        call.resolve(["ok": true])
     }
 
     @objc func pauseBackgroundAudio(_ call: CAPPluginCall) {
@@ -183,9 +316,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
             next[MPNowPlayingInfoPropertyPlaybackRate] = 0.0
             MPNowPlayingInfoCenter.default().nowPlayingInfo = next
         }
-        call.resolve([
-            "ok": true,
-        ])
+        call.resolve(["ok": true])
     }
 
     @objc func resumeBackgroundAudio(_ call: CAPPluginCall) {
@@ -201,9 +332,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         configureRemoteCommandsIfNeeded()
         updateNowPlaying(title: title, artist: artist, rate: 1.0)
         backgroundAudioActive = true
-        call.resolve([
-            "ok": true,
-        ])
+        call.resolve(["ok": true])
     }
 
     @objc func stopBackgroundAudio(_ call: CAPPluginCall) {
@@ -211,9 +340,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         backgroundAudioActive = false
         // Keep session category as playback for the next channel; do not deactivate
         // aggressively (other Cap audio paths may still need the session).
-        call.resolve([
-            "ok": true,
-        ])
+        call.resolve(["ok": true])
     }
 
     private func configurePlaybackSession() -> Bool {
@@ -232,7 +359,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func updateNowPlaying(title: String, artist: String, rate: Double) {
-        var info: [String: Any] = [
+        let info: [String: Any] = [
             MPMediaItemPropertyTitle: title,
             MPMediaItemPropertyArtist: artist,
             MPNowPlayingInfoPropertyPlaybackRate: rate,
@@ -286,26 +413,78 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     private func evalVideoJS(_ script: String) {
         DispatchQueue.main.async { [weak self] in
             guard let bridge = self?.bridge else { return }
-            // Cap bridge webView is a WKWebView subclass.
             if let webView = bridge.webView as? WKWebView {
                 webView.evaluateJavaScript(script, completionHandler: nil)
             }
         }
     }
 
-    deinit {
+    private func tryStartPip() {
+        guard !pipResolved else { return }
+        guard let controller = pipController, controller.isPictureInPicturePossible else { return }
+        guard let player = pipPlayer, player.currentItem?.status == .readyToPlay else { return }
+
+        _ = configurePlaybackSession()
+        player.play()
+        // Do not resolve ok:true here — wait for didStart / failedToStart / timeout.
+        controller.startPictureInPicture()
+    }
+
+    private func resolvePipOnce(_ result: [String: Any]) {
+        guard !pipResolved else { return }
+        pipResolved = true
+        pendingPipCall?.resolve(result)
+        pendingPipCall = nil
+        pipItemObservation = nil
+        pipPossibleObservation = nil
+    }
+
+    /// Tear down native PiP resources. When `keepCall` is true, leave pending resolve alone
+    /// (caller already resolved or will resolve).
+    private func teardownPip(keepCall: Bool) {
+        pipItemObservation = nil
+        pipPossibleObservation = nil
+        if pipController?.isPictureInPictureActive == true {
+            pipController?.stopPictureInPicture()
+        }
+        pipPlayer?.pause()
+        pipPlayer?.replaceCurrentItem(with: nil)
         pipLayer?.removeFromSuperlayer()
         pipController = nil
+        pipPlayer = nil
         pipLayer = nil
+        if !keepCall {
+            pendingPipCall = nil
+            pipResolved = false
+        }
+    }
+
+    deinit {
+        teardownPip(keepCall: false)
     }
 }
 
 extension MobileNativeMedia: AVPictureInPictureControllerDelegate {
+    public func pictureInPictureControllerDidStartPictureInPicture(
+        _ pictureInPictureController: AVPictureInPictureController
+    ) {
+        resolvePipOnce(["ok": true])
+    }
+
+    public func pictureInPictureController(
+        _ pictureInPictureController: AVPictureInPictureController,
+        failedToStartPictureInPictureWithError error: Error
+    ) {
+        resolvePipOnce([
+            "ok": false,
+            "error": error.localizedDescription,
+        ])
+        teardownPip(keepCall: true)
+    }
+
     public func pictureInPictureControllerDidStopPictureInPicture(
         _ pictureInPictureController: AVPictureInPictureController
     ) {
-        pipLayer?.removeFromSuperlayer()
-        pipLayer = nil
-        pipController = nil
+        teardownPip(keepCall: false)
     }
 }

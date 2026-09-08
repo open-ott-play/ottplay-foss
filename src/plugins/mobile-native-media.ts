@@ -26,7 +26,11 @@ export interface MobileNativeMediaPlugin {
         error?: string;
     }>;
     /** Enter picture-in-picture. Fails loudly when unavailable. */
-    playPip(): Promise<{ ok: boolean; unsupported?: boolean }>;
+    playPip(opts: { url: string }): Promise<{
+        ok: boolean;
+        unsupported?: boolean;
+        error?: string;
+    }>;
     /** Acquire sleep prevention → keep device awake. */
     preventSleep(): Promise<{ ok: boolean; unsupported?: boolean }>;
     /** Resume background audio after pause. */
@@ -85,7 +89,11 @@ class MobileNativeMediaWeb
         return { ok: false, unsupported: true, volume: 0 };
     }
 
-    async playPip(): Promise<{ ok: boolean; unsupported?: boolean }> {
+    async playPip(_opts: { url: string }): Promise<{
+        ok: boolean;
+        unsupported?: boolean;
+        error?: string;
+    }> {
         console.warn("[MobileNativeMedia] web fallback: playPip unsupported");
         return { ok: false, unsupported: true };
     }

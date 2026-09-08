@@ -2564,12 +2564,20 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         const origPlayPip = window.stbPlayPip;
         const origStopPip = window.stbStopPip;
         window.stbPlayPip = function (url: string): void {
-            cap.playPip()
-                .then(() => {
-                    try {
-                        const el = document.getElementById("videopip");
-                        if (el) (el as HTMLElement).style.display = "none";
-                    } catch (_e) {}
+            cap.playPip({ url })
+                .then((res: { ok?: boolean }) => {
+                    if (res && res.ok) {
+                        try {
+                            const el = document.getElementById("videopip");
+                            if (el) (el as HTMLElement).style.display = "none";
+                        } catch (_e) {}
+                        return;
+                    }
+                    console.warn(
+                        "[Capacitor] playPip not ok, CSS fallback:",
+                        res
+                    );
+                    if (typeof origPlayPip === "function") origPlayPip(url);
                 })
                 .catch((e: any) => {
                     console.warn(
