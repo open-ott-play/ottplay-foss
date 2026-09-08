@@ -6,20 +6,23 @@
  *   `<portal>/stalker_portal/api/` (and `/stalker_portal/stream/` text).
  * - Dealer/cloud entry (`edit_dealer_remote`, cloud settings) POST
  *   form-urlencoded bodies to `host_ott/swop/a.php`.
+ * - Mag path-shaped URLs (`/load.php`, `/c/portal`) are **allowlisted** so
+ *   Mode B can proxy Cookie / Authorization (and other safe headers) without
+ *   CORS. FOSS does **not** ship a Mag JsHttpRequest / get_profile client —
+ *   classic Mag handshake/channel-list still requires proprietary Mag
+ *   middleware (or a portal that speaks FOSS JSON-RPC).
  *
  * Native apps have no companion HTTP server and WebView CORS blocks those
  * origins. This module:
  * - exposes Capacitor `StalkerPortal.portalRequest` (native HTTP);
  * - `setupStalkerPortalShim()` intercepts jQuery `$.ajax` for the paths
  *   above and routes through Tauri `stalker_portal_fetch` or Cap
- *   `portalRequest`.
+ *   `portalRequest`;
+ * - forwards ajax `headers` (Authorization / Cookie / …) and merges
+ *   returned `Set-Cookie` into a Mode-B-only in-memory jar per host.
  *
  * Mode A (browser + companion) never installs this shim.
- * Hard rule: never fake a successful portal/swop response.
- *
- * Still out of scope: Mag `c/portal` / `load.php`, VOD, proprietary host
- * defaults (caller must set `host_ott` / `host_ott_proto` as STB firmware
- * does).
+ * Hard rule: never fake a successful portal/swop/Mag response.
  */
 
 import { registerPlugin } from "@capacitor/core";
@@ -30,10 +33,12 @@ export interface StalkerPortalPlugin {
         method?: string;
         body?: string;
         contentType?: string;
+        headers?: Record<string, string>;
     }): Promise<{
         status: number;
         body: string;
         contentType: string;
+        setCookie?: string[];
     }>;
 }
 
@@ -43,10 +48,12 @@ class StalkerPortalWeb implements StalkerPortalPlugin {
         method?: string;
         body?: string;
         contentType?: string;
+        headers?: Record<string, string>;
     }): Promise<{
         status: number;
         body: string;
         contentType: string;
+        setCookie?: string[];
     }> {
         // Web fallback must not pretend the portal answered.
         throw new Error(
@@ -74,8 +81,18 @@ function isHostOttSwopUrl(url: string): boolean {
     return url.indexOf("/swop/a.php") !== -1;
 }
 
+/**
+ * Classic Mag / Ministra path shapes. FOSS provider never calls these;
+ * allowlisted so Mode B can proxy Mag-speaking callers with headers/cookies.
+ */
+function isMagLoadPhpUrl(url: string): boolean {
+    return url.indexOf("/load.php") !== -1 || url.indexOf("/c/portal") !== -1;
+}
+
 function isShimmedUrl(url: string): boolean {
-    return isStalkerPortalUrl(url) || isHostOttSwopUrl(url);
+    return (
+        isStalkerPortalUrl(url) || isHostOttSwopUrl(url) || isMagLoadPhpUrl(url)
+    );
 }
 
 function tauriInvoke<T>(
@@ -89,21 +106,80 @@ function tauriInvoke<T>(
     return (window as any).__TAURI__.invoke(command, args) as Promise<T>;
 }
 
+/** Mode-B-only cookie jar: host → cookie-pair map (name → name=value). */
+type CookieJar = Record<string, Record<string, string>>;
+
+function getCookieJar(): CookieJar {
+    const w = window as any;
+    if (!w.__ottStalkerCookieJar) w.__ottStalkerCookieJar = {};
+    return w.__ottStalkerCookieJar as CookieJar;
+}
+
+function hostKeyFromUrl(url: string): string {
+    try {
+        const u = new URL(url);
+        return u.protocol + "//" + u.host;
+    } catch (_e) {
+        return url;
+    }
+}
+
+function parseSetCookieToPairs(setCookie: string[]): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const raw of setCookie || []) {
+        if (!raw) continue;
+        const first = String(raw).split(";")[0].trim();
+        const eq = first.indexOf("=");
+        if (eq <= 0) continue;
+        const name = first.slice(0, eq).trim();
+        if (!name) continue;
+        out[name] = first;
+    }
+    return out;
+}
+
+function mergeSetCookie(url: string, setCookie: string[] | undefined): void {
+    if (!setCookie || !setCookie.length) return;
+    const jar = getCookieJar();
+    const host = hostKeyFromUrl(url);
+    if (!jar[host]) jar[host] = {};
+    const pairs = parseSetCookieToPairs(setCookie);
+    for (const name of Object.keys(pairs)) {
+        jar[host][name] = pairs[name];
+    }
+}
+
+function cookieHeaderForUrl(url: string): string {
+    const jar = getCookieJar();
+    const host = hostKeyFromUrl(url);
+    const map = jar[host];
+    if (!map) return "";
+    const parts: string[] = [];
+    for (const name of Object.keys(map)) {
+        parts.push(map[name]);
+    }
+    return parts.join("; ");
+}
+
 /**
  * Encode ajax `data` the way jQuery would for the target URL.
  * Stalker JSON-RPC uses JSON bodies; swop/a.php uses form-urlencoded
  * (jQuery default for object `data` without `contentType: application/json`).
+ * Mag load.php callers typically pass query strings / form bodies themselves.
  */
 function encodeAjaxBody(
     opts: any,
     url: string
 ): { body: string | undefined; contentType: string } {
     const swop = isHostOttSwopUrl(url);
+    const mag = isMagLoadPhpUrl(url);
     const explicitCt =
         typeof opts.contentType === "string" ? opts.contentType : "";
     const defaultCt = swop
         ? "application/x-www-form-urlencoded; charset=UTF-8"
-        : "application/json";
+        : mag
+          ? "application/x-www-form-urlencoded; charset=UTF-8"
+          : "application/json";
     const contentType = explicitCt || defaultCt;
 
     if (typeof opts.data === "string") {
@@ -115,6 +191,7 @@ function encodeAjaxBody(
     if (typeof opts.data === "object") {
         const wantForm =
             swop ||
+            mag ||
             contentType.indexOf("application/x-www-form-urlencoded") !== -1;
         if (wantForm) {
             const $ = (window as any).$;
@@ -148,10 +225,34 @@ function encodeAjaxBody(
     return { body: undefined, contentType };
 }
 
+/** Collect ajax headers + jar Cookie when caller did not set Cookie. */
+function collectRequestHeaders(
+    opts: any,
+    url: string
+): Record<string, string> | undefined {
+    const out: Record<string, string> = {};
+    const src = opts.headers;
+    if (src && typeof src === "object") {
+        for (const key of Object.keys(src)) {
+            const val = src[key];
+            if (val == null) continue;
+            out[key] = String(val);
+        }
+    }
+    const hasCookie = Object.keys(out).some(
+        (k) => k.toLowerCase() === "cookie"
+    );
+    if (!hasCookie) {
+        const fromJar = cookieHeaderForUrl(url);
+        if (fromJar) out.Cookie = fromJar;
+    }
+    return Object.keys(out).length ? out : undefined;
+}
+
 /**
- * Install `$.ajax` wrapper that routes Stalker portal + host_ott swop URLs
- * through native transport. Other URLs keep the previous ajax implementation
- * (Mode B companion shim or raw jQuery).
+ * Install `$.ajax` wrapper that routes Stalker portal + host_ott swop + Mag
+ * path-shaped URLs through native transport. Other URLs keep the previous
+ * ajax implementation (Mode B companion shim or raw jQuery).
  */
 export function setupStalkerPortalShim(): void {
     const $ = (window as any).$;
@@ -243,6 +344,7 @@ export function setupStalkerPortalShim(): void {
         const encoded = encodeAjaxBody(opts, url);
         const body = encoded.body;
         const contentType = encoded.contentType;
+        const headers = collectRequestHeaders(opts, url);
 
         const isTauri = typeof (window as any).__TAURI__ !== "undefined";
 
@@ -251,12 +353,15 @@ export function setupStalkerPortalShim(): void {
                 status: number;
                 body: string;
                 contentType: string;
+                setCookie?: string[];
             }>("stalker_portal_fetch", {
                 body,
                 contentType,
+                headers,
                 method,
                 url,
             }).then((res) => {
+                mergeSetCookie(url, res.setCookie);
                 if (!(res.status >= 200 && res.status < 300)) {
                     throw new Error(
                         "stalker HTTP " +
@@ -278,26 +383,41 @@ export function setupStalkerPortalShim(): void {
         const capPromise = StalkerPortal.portalRequest({
             body,
             contentType,
+            headers,
             method,
             url,
-        }).then((res) => {
-            if (!(res.status >= 200 && res.status < 300)) {
-                throw new Error(
-                    "stalker HTTP " +
-                        res.status +
-                        ": " +
-                        (res.body || "").slice(0, 200)
+        }).then(
+            (res: {
+                status: number;
+                body: string;
+                contentType: string;
+                setCookie?: string[];
+            }) => {
+                mergeSetCookie(url, res.setCookie);
+                if (!(res.status >= 200 && res.status < 300)) {
+                    throw new Error(
+                        "stalker HTTP " +
+                            res.status +
+                            ": " +
+                            (res.body || "").slice(0, 200)
+                    );
+                }
+                return parseResponseBody(
+                    res.body || "",
+                    opts,
+                    url,
+                    res.contentType || ""
                 );
             }
-            return parseResponseBody(
-                res.body || "",
-                opts,
-                url,
-                res.contentType || ""
-            );
-        });
+        );
         return jqFromPromise(capPromise, opts);
     };
 }
 
-export { StalkerPortal };
+export {
+    isHostOttSwopUrl,
+    isMagLoadPhpUrl,
+    isShimmedUrl,
+    isStalkerPortalUrl,
+    StalkerPortal,
+};

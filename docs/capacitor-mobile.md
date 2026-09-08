@@ -5,7 +5,7 @@ Both platforms share the same TypeScript source and Capacitor configuration.
 
 ## Status
 
-Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315), iOS AVPlayer PiP (#316), Stalker portal (#317), MediaSession (#318+#321), DASH ExoPlayer (#319), Tauri updater/notarize (#320), and Stalker `host_ott/swop` (#322). Remaining: human TestFlight/Play upload, Mag `load.php`/VOD, device smoke, DRM. Cap tvOS is **unsupported upstream** (documented; no stub target).
+Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315), iOS AVPlayer PiP (#316), Stalker portal (#317), MediaSession (#318+#321), DASH ExoPlayer (#319), Tauri updater/notarize (#320), Stalker `host_ott/swop` (#322), and Mode B Mag path allowlist + cookie/header forward (docs + enabling hooks; Mag client still not in FOSS). Remaining: human TestFlight/Play upload, Mag JsHttpRequest client/VOD, device smoke, DRM. Cap tvOS is **unsupported upstream** (documented; no stub target).
 
 ## Shipped
 
@@ -122,17 +122,31 @@ Implemented. Capacitor plugin `M3UProxy` provides native HTTP client for `/m3u/c
 
 Implemented (Option A-style ajax routing → native HTTP). Stalker provider scripts POST JSON-RPC to `<portal>/stalker_portal/api/`; dealer/cloud entry (`edit_dealer_remote`, cloud settings) POSTs form-urlencoded bodies to `host_ott/swop/a.php`. Mode B has no companion and WebView CORS would block those origins.
 
-- **Web shim**: `setupStalkerPortalShim()` in `src/plugins/stalker-portal.ts` intercepts jQuery `$.ajax` for `/stalker_portal/api/` (and `/stalker_portal/stream/` text fetches) **and** `/swop/a.php`. Mode A never installs the shim.
-- **Tauri**: `stalker_portal_fetch` (`src-tauri/src/commands/stalker.rs`) — POST/GET with 15s timeout; optional `contentType` (JSON for portal, `application/x-www-form-urlencoded` for swop).
-- **Capacitor**: `StalkerPortal.portalRequest` — `ios/App/App/Plugins/StalkerPortalPlugin.swift` + `android/.../StalkerPortalPlugin.kt` (passes through `contentType`).
-- **Works**: portal handshake + `get_channels` / channel-list load + provider-built stream URLs (player still opens stream URL directly); Mode B `host_ott/swop/a.php` dealer/cloud POSTs when `host_ott` / `host_ott_proto` are set (same contract as STB firmware). Response body is returned to existing JS (`edit_dealer_remote` still `getScriptDOM`s dealer script from same-origin `host`).
-- **Still limited / TODO**: Classic Mag `c/portal` / `load.php` flavors, token/cookie auth variants, and VOD are outside the FOSS `prov/stalker` JSON-RPC path. No proprietary `host_ott` default is baked into FOSS builds — Mode B callers must set those globals (STB firmware does on Mag). Cloud settings UI already no-ops when unset.
-- **Smoke**: Mode B → configure portal URL + MAC → handshake + channel list without companion `:8095`. With `host_ott` set → Enter Provider Code (remote) / cloud send-load POSTs reach `swop/a.php` via native HTTP. Mode A browser+`server.py` unchanged (talks to real `host_ott` over normal XHR).
+- **Web shim**: `setupStalkerPortalShim()` in `src/plugins/stalker-portal.ts` intercepts jQuery `$.ajax` for `/stalker_portal/api/` (and `/stalker_portal/stream/` text fetches), `/swop/a.php`, and Mag path shapes `/load.php` + `/c/portal`. Mode A never installs the shim.
+- **Tauri**: `stalker_portal_fetch` (`src-tauri/src/commands/stalker.rs`) — POST/GET with 15s timeout; optional `contentType`; optional `headers` (Cookie / Authorization / …); returns `setCookie[]`.
+- **Capacitor**: `StalkerPortal.portalRequest` — same contract on iOS/Android (allowlist + header forward + `setCookie`).
+- **Cookie jar (Mode B only)**: shim merges returned `Set-Cookie` into `window.__ottStalkerCookieJar` per host and re-attaches as `Cookie` on later shimmed requests when the caller did not set Cookie.
+- **Works**: FOSS JSON-RPC portal handshake + `get_channels` / channel-list load + provider-built stream URLs (player still opens stream URL directly); Mode B `host_ott/swop/a.php` dealer/cloud POSTs when `host_ott` / `host_ott_proto` are set. Response body is returned to existing JS (`edit_dealer_remote` still `getScriptDOM`s dealer script from same-origin `host`).
+- **Mag path allowlist (enabling hook, not a Mag client)**: `/load.php` and `/c/portal` URLs are proxied with caller-supplied headers/cookies. FOSS `prov/stalker/prov.js` does **not** call those URLs and does **not** speak JsHttpRequest / Mag `get_profile`. No proprietary `host_ott` / CPS host / Mag token default is baked into FOSS builds.
+- **Smoke**: Mode B → configure portal URL + MAC → handshake + channel list without companion `:8095`. With `host_ott` set → Enter Provider Code (remote) / cloud send-load POSTs reach `swop/a.php` via native HTTP. Mode A browser+`server.py` unchanged (talks to real `host_ott` over normal XHR). Mag `load.php` handshake/channel-list is **not** expected to succeed from FOSS alone.
+
+### Classic Mag `load.php` / `c/portal` — not available in FOSS
+
+Typical Mag / Ministra STB middleware is a different protocol from FOSS JSON-RPC:
+
+| Mag (firmware / proprietary provider) | FOSS (`prov/stalker/prov.js`) |
+| --- | --- |
+| `…/stalker_portal/server/load.php?JsHttpRequest=1-xml&type=…&action=…` | `POST …/stalker_portal/api/` JSON-RPC (`handshake`, `get_channels`, `get_epg`) |
+| `Authorization: Bearer <token>` + `Cookie: mac=<MAC>; path=/;` (often via CPS/`cps.php` proxy or native header inject) | MAC in JSON-RPC `params.mac` only; FOSS does not send Mag Bearer/Cookie |
+| Multi-step `handshake` → Mag-fingerprint `get_profile` → `get_genres` / `get_all_channels` → `create_link` | Single JSON-RPC handshake + `get_channels`; stream URL built in JS |
+| Depends on Mag STB middleware client + cookie/token jar | Works against portals that expose the FOSS JSON-RPC API |
+
+**What FOSS ships for Mag paths:** Mode B allowlist + safe Cookie/Authorization header forward + in-memory `Set-Cookie` jar. **What FOSS does not ship:** JsHttpRequest client, Mag `get_profile` STB fingerprint strings, CPS proxy, baked Mag tokens/hosts, or fake-success stubs. Operators needing classic Mag portals should use STB firmware Mode A or a portal that speaks FOSS JSON-RPC. VOD over Mag `load.php` remains out of scope.
 
 ## Remaining gaps
 
 - **Store / TestFlight / Play** — prepared (#315 / section below). Human upload still required.
-- **Mag `load.php` / VOD** — classic Mag `c/portal` / `load.php` flavors, token/cookie auth variants, and VOD remain outside the FOSS `prov/stalker` JSON-RPC path.
+- **Mag JsHttpRequest client / VOD** — classic Mag handshake/channel-list/VOD client is **not** in FOSS (see section above). Mode B only allowlists Mag URL shapes + header/cookie forward.
 - **Cap tvOS** — **does not work** / unsupported upstream (see §Cap tvOS below). No stub target.
 - **Device smoke** — real device/simulator passes for queue / EPG / M3U/media / Stalker / swop paths.
 - **DRM** — Widevine / FairPlay / encrypted DASH out of scope for current Cap/Tauri paths.

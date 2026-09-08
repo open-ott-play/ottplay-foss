@@ -1,6 +1,6 @@
 # Porting ottplay-foss to Native Apps
 
-Status: Mode B Tauri Phase 1 companion backends + Capacitor 4.1–4.6 on `main` (store readiness #315, iOS PiP #316, Stalker portal #317, MediaSession #318+#321, DASH ExoPlayer #319, Tauri updater/notarize #320, Stalker `host_ott/swop` #322). Remaining: human TestFlight/Play, Mag `load.php`/VOD, Cap tvOS, device smoke, DRM. Phased plan below kept as roadmap.
+Status: Mode B Tauri Phase 1 companion backends + Capacitor 4.1–4.6 on `main` (store readiness #315, iOS PiP #316, Stalker portal #317, MediaSession #318+#321, DASH ExoPlayer #319, Tauri updater/notarize #320, Stalker `host_ott/swop` #322, Mag path allowlist + cookie/header forward hooks). Remaining: human TestFlight/Play, Mag JsHttpRequest client/VOD, Cap tvOS, device smoke, DRM. Phased plan below kept as roadmap.
 
 ## Two Operating Modes
 
@@ -102,13 +102,14 @@ The native command queue stores commands in memory (expire after 60s, same as `l
 
 ---
 
-### Tier 7 — Stalker portal + host_ott swop
+### Tier 7 — Stalker portal + host_ott swop (+ Mag path allowlist)
 
 - `<portal>/stalker_portal/api/` JSON-RPC (handshake, get_channels, get_epg) → native HTTP via ajax shim (`setupStalkerPortalShim`)
 - `host_ott/swop/a.php` dealer/cloud POSTs (form-urlencoded) → same shim / native HTTP when Cap/Tauri
-- Tauri: `stalker_portal_fetch` (also allows `/swop/a.php`); Capacitor: `StalkerPortal.portalRequest`
+- Mag path shapes `/load.php` and `/c/portal` → same shim allowlist + optional Cookie/Authorization headers + `Set-Cookie` jar (Mode B). **Not** a Mag JsHttpRequest client — FOSS provider never calls these URLs.
+- Tauri: `stalker_portal_fetch`; Capacitor: `StalkerPortal.portalRequest`
 - Stream play URLs remain direct player opens (not companion-proxied)
-- TODO: Mag `load.php` / VOD still out of scope; no baked-in proprietary `host_ott` default
+- Classic Mag handshake/channel-list/VOD client is **not available in FOSS** (see `docs/capacitor-mobile.md`); no baked-in proprietary `host_ott` / CPS / Mag token default
 
 
 ## Recommended Stack Per OS
@@ -314,7 +315,7 @@ STB/TV builds continue as today:
 
 2. **iOS DASH** — Capacitor WKWebView cannot play DASH (no MSE). Cap `DashExoPlayer` returns honest `{ok:false, unsupported:true}`; Android plays via ExoPlayer/Media3 in `DashExoPlayer`.
 
-3. **Stalker portal interception** *(mitigated for FOSS JSON-RPC + host_ott swop)* — `prov/stalker/prov.js` POSTs to `<portal>/stalker_portal/api/`; dealer/cloud entry POSTs to `host_ott/swop/a.php`. Mode B routes those ajax calls through `setupStalkerPortalShim()` → Tauri `stalker_portal_fetch` / Cap `StalkerPortal.portalRequest` (Option A-style). Mode A unchanged (real `host_ott` over normal XHR). Still out of scope: classic Mag `load.php` portals and VOD; FOSS builds do not bake a proprietary `host_ott` default.
+3. **Stalker portal interception** *(mitigated for FOSS JSON-RPC + host_ott swop; Mag paths allowlisted only)* — `prov/stalker/prov.js` POSTs to `<portal>/stalker_portal/api/`; dealer/cloud entry POSTs to `host_ott/swop/a.php`. Mode B routes those ajax calls through `setupStalkerPortalShim()` → Tauri `stalker_portal_fetch` / Cap `StalkerPortal.portalRequest` (Option A-style), and also allowlists Mag `/load.php` + `/c/portal` with Cookie/Authorization forward + `Set-Cookie` jar. Mode A unchanged (real `host_ott` over normal XHR). Classic Mag JsHttpRequest client / VOD is **not** in FOSS; FOSS builds do not bake a proprietary `host_ott` / CPS / Mag token default.
 
 4. **Tauri mobile** — Tauri v2 mobile is production-ready but ecosystem is smaller than Capacitor. Phase 2 uses Capacitor. Revisit Tauri mobile in a future phase.
 
