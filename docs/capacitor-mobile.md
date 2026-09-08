@@ -17,6 +17,7 @@ Capacitor 4.1–4.6 shipped on `main`. Store readiness prepared; human TestFligh
 - **4.4 Native media** — PR #312 + #316 — `MobileNativeMedia` (volume / wake real; iOS PiP via AVPlayer; fullscreen via MainViewController chrome)
 - **4.5 Background audio** — PR #313 — AVAudioSession `.playback` + Android `mediaPlayback` FGS; lock-screen WebView/AVPlayer drive + Tauri souvlaki MediaSession polish in follow-up PR
 - **4.6 Key / touch mapping** — Cap tap→ENTER + Android D-Pad/gamepad/media _doKey inject + iOS HW keyboard path
+- **4.7 DASH native playback** — this PR — Android ExoPlayer/Media3 `DashExoPlayer` plugin + iOS honest reject
 - **Stalker portal shim** — this PR — Cap/Tauri native HTTP for `<portal>/stalker_portal/api/` (handshake + channel list)
 
 ## Build
@@ -240,6 +241,19 @@ Shipped. Hardware keyboard, D-Pad/gamepad, and mobile touch gestures now feed th
 - **iOS hardware keyboard** — WKWebView delivers `keydown` into the page by default. Arrow/Enter/Escape/media-ish keys already map via `stbEventToKeyCode` → `keyHandler`. No extra Siri Remote / Apple TV remote stack is built here; that remains out of scope for the Capacitor phone targets.
 
 **Caveat**: iOS `MainViewController.swift` SourceKit may show `UIKit` import error in non-Xcode tooling; the module is correct inside the Xcode build context.
+
+### 4.7 DASH native playback
+
+Implemented. Capacitor plugin `DashExoPlayer` provides native DASH playback on Android via Media3/ExoPlayer; iOS returns honest `{ok:false, unsupported:true}` because WKWebView lacks MSE.
+
+- **Plugin**: `android/app/src/main/java/play/ott/foss/DashExoPlayerPlugin.kt` + `DashPlayerService`
+- **TS bridge**: `isDashSupported` / `playDash({url, position})` / `pauseDash` / `stopDash` added to `MobileNativeMediaPlugin` interface in `src/plugins/mobile-native-media.ts` (alphabetical, linted).
+- **JS shim**: `src/index.ts` Capacitor block now gates DASH on `.mpd` URL: if `isDashSupported` resolves truthy, calls native `playDash`; otherwise falls back to `stbPlay` (existing path). `_nativeDash` flag routes `stop`/`pause` to native methods while active.
+- **iOS**: `MobileNativeMedia.swift` registers `isDashSupported`/`playDash`/`pauseDash`/`stopDash` and always resolves `{ok:false, unsupported:true}`.
+- **Android deps**: `media3-exoplayer`, `media3-exoplayer-dash`, `media3-session` in `android/app/build.gradle`.
+- **Service**: `DashPlayerService` declared in `AndroidManifest.xml` with `foregroundServiceType="mediaPlayback"`.
+
+**Failure contract**: same as 4.4/4.5 — never fake success. Android supports `.mpd` natively; iOS rejects DASH up-front so UI can show proper error instead of SRC_NOT_SUPPORTED.
 
 ## Mode A and Tauri
 

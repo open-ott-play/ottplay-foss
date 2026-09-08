@@ -19,12 +19,27 @@ export interface MobileNativeMediaPlugin {
         unsupported?: boolean;
         volume: number;
     }>;
+    /** True when the platform can play DASH natively. */
+    isDashSupported(): Promise<{
+        ok: boolean;
+        unsupported?: boolean;
+    }>;
     /** Pause background audio session / MediaSession (FGS may stay up). */
     pauseBackgroundAudio(): Promise<{
         ok: boolean;
         unsupported?: boolean;
         error?: string;
     }>;
+    /** Pause the native player. */
+    pauseDash(): Promise<{ ok: boolean; unsupported?: boolean }>;
+    /**
+     * Start native DASH playback, replacing any current native session.
+     * @param opts.url - DASH manifest URL (.mpd). @param opts.position - optional start time in seconds.
+     */
+    playDash(opts: {
+        url: string;
+        position?: number;
+    }): Promise<{ ok: boolean; unsupported?: boolean; error?: string }>;
     /** Enter picture-in-picture. Fails loudly when unavailable. */
     playPip(opts: { url: string }): Promise<{
         ok: boolean;
@@ -63,6 +78,8 @@ export interface MobileNativeMediaPlugin {
         unsupported?: boolean;
         error?: string;
     }>;
+    /** Stop and tear down the native player. */
+    stopDash(): Promise<{ ok: boolean; unsupported?: boolean }>;
     /** Exit picture-in-picture. */
     stopPip(): Promise<{ ok: boolean; unsupported?: boolean }>;
 }
@@ -174,6 +191,34 @@ class MobileNativeMediaWeb
         console.warn(
             "[MobileNativeMedia] web fallback: stopBackgroundAudio unsupported"
         );
+        return { ok: false, unsupported: true };
+    }
+
+    async isDashSupported(): Promise<{
+        ok: boolean;
+        unsupported?: boolean;
+    }> {
+        console.warn(
+            "[MobileNativeMedia] web fallback: isDashSupported unsupported"
+        );
+        return { ok: false, unsupported: true };
+    }
+
+    async playDash(_opts: {
+        url: string;
+        position?: number;
+    }): Promise<{ ok: boolean; unsupported?: boolean; error?: string }> {
+        console.warn("[MobileNativeMedia] web fallback: playDash unsupported");
+        return { ok: false, unsupported: true };
+    }
+
+    async pauseDash(): Promise<{ ok: boolean; unsupported?: boolean }> {
+        console.warn("[MobileNativeMedia] web fallback: pauseDash unsupported");
+        return { ok: false, unsupported: true };
+    }
+
+    async stopDash(): Promise<{ ok: boolean; unsupported?: boolean }> {
+        console.warn("[MobileNativeMedia] web fallback: stopDash unsupported");
         return { ok: false, unsupported: true };
     }
 }

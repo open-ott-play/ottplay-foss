@@ -2632,31 +2632,75 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         const origStop = window.stbStop;
         const origPause = window.stbPause;
         const origContinue = window.stbContinue;
+        let _nativeDash = false;
+
+        function isDashUrl(url: string): boolean {
+            return /\.mpd(\?|$)/i.test(url);
+        }
+
         window.stbPlay = function (url: string, position?: number): void {
-            if (typeof origPlay === "function") origPlay(url, position);
-            const meta = bgMeta();
-            cap.startBackgroundAudio(meta).catch((e: any) =>
-                console.warn("[Capacitor] startBackgroundAudio failed:", e)
-            );
+            if (isDashUrl(url) && cap.isDashSupported) {
+                cap.isDashSupported()
+                    .then(function (r: any) {
+                        if (r && r.ok && !r.unsupported) {
+                            _nativeDash = true;
+                            if (typeof origStop === "function") origStop();
+                            return cap.playDash({
+                                url: url,
+                                position: position,
+                            });
+                        }
+                        _nativeDash = false;
+                        if (typeof origPlay === "function")
+                            origPlay(url, position);
+                        const meta = bgMeta();
+                        return cap.startBackgroundAudio(meta);
+                    })
+                    .catch(function (e: any) {
+                        console.warn("[Capacitor] DASH path failed:", e);
+                        _nativeDash = false;
+                        if (typeof origPlay === "function")
+                            origPlay(url, position);
+                    });
+            } else {
+                if (typeof origPlay === "function") origPlay(url, position);
+                const meta = bgMeta();
+                cap.startBackgroundAudio(meta).catch((e: any) =>
+                    console.warn("[Capacitor] startBackgroundAudio failed:", e)
+                );
+            }
         };
         window.stbStop = function (): void {
-            cap.stopBackgroundAudio().catch((e: any) =>
-                console.warn("[Capacitor] stopBackgroundAudio failed:", e)
-            );
+            if (_nativeDash) {
+                cap.stopDash().catch((e: any) =>
+                    console.warn("[Capacitor] stopDash failed:", e)
+                );
+                _nativeDash = false;
+            } else {
+                cap.stopBackgroundAudio().catch((e: any) =>
+                    console.warn("[Capacitor] stopBackgroundAudio failed:", e)
+                );
+            }
             if (typeof origStop === "function") origStop();
         };
         window.stbPause = function (): void {
-            if (typeof origPause === "function") origPause();
+            if (_nativeDash) {
+                cap.pauseDash().catch((e: any) =>
+                    console.warn("[Capacitor] pauseDash failed:", e)
+                );
+            } else if (typeof origPause === "function") origPause();
             cap.pauseBackgroundAudio().catch((e: any) =>
                 console.warn("[Capacitor] pauseBackgroundAudio failed:", e)
             );
         };
         window.stbContinue = function (): void {
-            if (typeof origContinue === "function") origContinue();
-            const meta = bgMeta();
-            cap.resumeBackgroundAudio(meta).catch((e: any) =>
-                console.warn("[Capacitor] resumeBackgroundAudio failed:", e)
-            );
+            if (_nativeDash) {
+                cap.resumeBackgroundAudio(meta).catch((e: any) =>
+                    console.warn("[Capacitor] resumeBackgroundAudio failed:", e)
+                );
+            } else {
+                if (typeof origContinue === "function") origContinue();
+            }
         };
     })();
 }
