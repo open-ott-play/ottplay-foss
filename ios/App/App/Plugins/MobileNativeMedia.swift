@@ -1,4 +1,5 @@
 import Capacitor
+import UIKit
 import AVFoundation
 import AVKit
 import MediaPlayer
@@ -20,6 +21,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "pauseBackgroundAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "resumeBackgroundAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopBackgroundAudio", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "updateBackgroundAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "exitApp", returnType: CAPPluginReturnPromise),
     ]
 
@@ -33,6 +35,9 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     private var fullscreenActive = false
     private var remoteCommandsConfigured = false
     private var backgroundAudioActive = false
+    private var mediaSeekable = false
+    private var artworkURLString: String?
+    private var artworkLoadID = 0
 
     /// Shared flag read by MainViewController (avoids Cap bridge plugin-lookup API drift).
     private(set) static var sharedFullscreenActive = false
@@ -204,7 +209,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
             self.pipController = pipController
 
             self.configureRemoteCommandsIfNeeded()
-            self.updateNowPlaying(title: "OTT-play FOSS", artist: "Picture in Picture", rate: 1.0)
+            self.updateNowPlaying(title: "OTT-play FOSS", artist: "Picture in Picture", rate: 1.0, seekable: false)
             self.backgroundAudioActive = true
 
             player.play()
@@ -296,21 +301,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     /// Activate AVAudioSession category `.playback` and publish Now Playing metadata
     /// so WKWebView video audio can continue in background (UIBackgroundModes: audio).
     @objc func startBackgroundAudio(_ call: CAPPluginCall) {
-        let title = call.getString("title") ?? "OTT-play FOSS"
-        let artist = call.getString("artist") ?? "Now playing"
-
-        guard configurePlaybackSession() else {
-            call.resolve([
-                "ok": false,
-                "error": "AVAudioSession setCategory/setActive failed",
-            ])
-            return
-        }
-
-        configureRemoteCommandsIfNeeded()
-        updateNowPlaying(title: title, artist: artist, rate: 1.0)
-        backgroundAudioActive = true
-        call.resolve(["ok": true])
+        applyBackgroundAudio(call: call, rate: 1.0, requireSession: true)
     }
 
     @objc func pauseBackgroundAudio(_ call: CAPPluginCall) {
@@ -324,26 +315,62 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func resumeBackgroundAudio(_ call: CAPPluginCall) {
+        applyBackgroundAudio(call: call, rate: 1.0, requireSession: true)
+    }
+
+    @objc func updateBackgroundAudio(_ call: CAPPluginCall) {
+        // Refresh metadata/timeline without requiring a new audio session.
+        applyBackgroundAudio(call: call, rate: 1.0, requireSession: false)
+    }
+
+    @objc func stopBackgroundAudio(_ call: CAPPluginCall) {
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        backgroundAudioActive = false
+        mediaSeekable = false
+        artworkURLString = nil
+        setSeekCommandEnabled(false)
+        // Keep session category as playback for the next channel; do not deactivate
+        // aggressively (other Cap audio paths may still need the session).
+        call.resolve(["ok": true])
+    }
+
+    private func applyBackgroundAudio(call: CAPPluginCall, rate: Double, requireSession: Bool) {
         let title = call.getString("title") ?? "OTT-play FOSS"
         let artist = call.getString("artist") ?? "Now playing"
-        guard configurePlaybackSession() else {
+        let artworkUrl = call.getString("artworkUrl")
+        let durationSec = call.getDouble("durationSec")
+        let positionSec = call.getDouble("positionSec")
+        let seekable = call.getBool("seekable") ?? false
+
+        if requireSession {
+            guard configurePlaybackSession() else {
+                call.resolve([
+                    "ok": false,
+                    "error": "AVAudioSession setCategory/setActive failed",
+                ])
+                return
+            }
+        } else if !backgroundAudioActive && !configurePlaybackSession() {
             call.resolve([
                 "ok": false,
                 "error": "AVAudioSession setCategory/setActive failed",
             ])
             return
         }
-        configureRemoteCommandsIfNeeded()
-        updateNowPlaying(title: title, artist: artist, rate: 1.0)
-        backgroundAudioActive = true
-        call.resolve(["ok": true])
-    }
 
-    @objc func stopBackgroundAudio(_ call: CAPPluginCall) {
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
-        backgroundAudioActive = false
-        // Keep session category as playback for the next channel; do not deactivate
-        // aggressively (other Cap audio paths may still need the session).
+        configureRemoteCommandsIfNeeded()
+        mediaSeekable = seekable
+        setSeekCommandEnabled(seekable)
+        updateNowPlaying(
+            title: title,
+            artist: artist,
+            rate: rate,
+            durationSec: durationSec,
+            positionSec: positionSec,
+            seekable: seekable,
+            artworkUrl: artworkUrl
+        )
+        backgroundAudioActive = true
         call.resolve(["ok": true])
     }
 
@@ -362,13 +389,72 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    private func updateNowPlaying(title: String, artist: String, rate: Double) {
-        let info: [String: Any] = [
+    private func updateNowPlaying(
+        title: String,
+        artist: String,
+        rate: Double,
+        durationSec: Double? = nil,
+        positionSec: Double? = nil,
+        seekable: Bool = false,
+        artworkUrl: String? = nil
+    ) {
+        var info: [String: Any] = [
             MPMediaItemPropertyTitle: title,
             MPMediaItemPropertyArtist: artist,
             MPNowPlayingInfoPropertyPlaybackRate: rate,
         ]
+        // Live IPTV: do not advertise a scrubbable timeline.
+        if seekable, let durationSec, durationSec.isFinite, durationSec > 0 {
+            info[MPMediaItemPropertyPlaybackDuration] = durationSec
+            if let positionSec, positionSec.isFinite, positionSec >= 0 {
+                info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = positionSec
+            }
+        }
+        // Preserve prior artwork while a new fetch is in flight.
+        if let existing = MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] {
+            info[MPMediaItemPropertyArtwork] = existing
+        }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+        maybeLoadArtwork(artworkUrl)
+    }
+
+    private func maybeLoadArtwork(_ artworkUrl: String?) {
+        guard let artworkUrl, !artworkUrl.isEmpty else { return }
+        if artworkURLString == artworkUrl {
+            return
+        }
+        artworkURLString = artworkUrl
+        artworkLoadID += 1
+        let loadID = artworkLoadID
+
+        if artworkUrl.hasPrefix("data:"), let comma = artworkUrl.firstIndex(of: ",") {
+            let b64 = String(artworkUrl[artworkUrl.index(after: comma)...])
+            if let data = Data(base64Encoded: b64), let image = UIImage(data: data) {
+                applyArtwork(image, loadID: loadID)
+            }
+            return
+        }
+        guard let url = URL(string: artworkUrl) else { return }
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard let self = self, self.artworkLoadID == loadID else { return }
+            guard let data, let image = UIImage(data: data) else { return }
+            DispatchQueue.main.async {
+                self.applyArtwork(image, loadID: loadID)
+            }
+        }.resume()
+    }
+
+    private func applyArtwork(_ image: UIImage, loadID: Int) {
+        guard artworkLoadID == loadID else { return }
+        let art = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+        var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+        info[MPMediaItemPropertyArtwork] = art
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+
+    private func setSeekCommandEnabled(_ enabled: Bool) {
+        let center = MPRemoteCommandCenter.shared()
+        center.changePlaybackPositionCommand.isEnabled = enabled
     }
 
     /// Lock-screen / Control Center remote commands.
@@ -439,6 +525,35 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         }
         center.previousTrackCommand.addTarget { [weak self] _ in
             self?.evalVideoJS("(function(){if(window._doKey)window._doKey(36);})();")
+            return .success
+        }
+        // Live: leave disabled. VOD/archive: scrub via <video>/stbSetPosTime.
+        center.changePlaybackPositionCommand.isEnabled = false
+        center.changePlaybackPositionCommand.addTarget { [weak self] event in
+            guard let self = self else { return .commandFailed }
+            guard self.mediaSeekable else {
+                // Honest live behavior: do not claim success.
+                return .noActionableNowPlayingItem
+            }
+            guard let seekEvent = event as? MPChangePlaybackPositionCommandEvent else {
+                return .commandFailed
+            }
+            let t = seekEvent.positionTime
+            guard t.isFinite, t >= 0 else { return .commandFailed }
+            if let player = self.pipPlayer, self.isNativePipControllable {
+                let time = CMTime(seconds: t, preferredTimescale: 600)
+                player.seek(to: time)
+                self.updateNowPlayingRate(player.rate == 0 ? 0.0 : 1.0)
+                return .success
+            }
+            let js = String(
+                format: "(function(){var t=%f; if(window.stbSetPosTime){window.stbSetPosTime(t);} else {var v=document.querySelector('video'); if(v && isFinite(v.duration)){v.currentTime=t;}} })();",
+                t
+            )
+            self.evalVideoJS(js)
+            var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+            info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = t
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = info
             return .success
         }
     }

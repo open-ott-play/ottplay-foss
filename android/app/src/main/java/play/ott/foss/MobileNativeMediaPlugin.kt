@@ -217,6 +217,18 @@ class MobileNativeMediaPlugin : Plugin() {
             action = MediaPlaybackService.ACTION_START
             putExtra(MediaPlaybackService.EXTRA_TITLE, title)
             putExtra(MediaPlaybackService.EXTRA_ARTIST, artist)
+            val artworkUrl = call.getString("artworkUrl")
+            if (artworkUrl != null) putExtra(MediaPlaybackService.EXTRA_ARTWORK_URL, artworkUrl)
+            val seekable = call.getBoolean("seekable", false) ?: false
+            putExtra(MediaPlaybackService.EXTRA_SEEKABLE, seekable)
+            val durationSec = call.getDouble("durationSec")
+            if (durationSec != null && seekable) {
+                putExtra(MediaPlaybackService.EXTRA_DURATION_MS, (durationSec * 1000.0).toLong())
+            }
+            val positionSec = call.getDouble("positionSec")
+            if (positionSec != null && seekable) {
+                putExtra(MediaPlaybackService.EXTRA_POSITION_MS, (positionSec * 1000.0).toLong())
+            }
         }
         try {
             ContextCompat.startForegroundService(ctx, intent)
@@ -269,6 +281,18 @@ class MobileNativeMediaPlugin : Plugin() {
             action = MediaPlaybackService.ACTION_RESUME
             putExtra(MediaPlaybackService.EXTRA_TITLE, title)
             putExtra(MediaPlaybackService.EXTRA_ARTIST, artist)
+            val artworkUrl = call.getString("artworkUrl")
+            if (artworkUrl != null) putExtra(MediaPlaybackService.EXTRA_ARTWORK_URL, artworkUrl)
+            val seekable = call.getBoolean("seekable", false) ?: false
+            putExtra(MediaPlaybackService.EXTRA_SEEKABLE, seekable)
+            val durationSec = call.getDouble("durationSec")
+            if (durationSec != null && seekable) {
+                putExtra(MediaPlaybackService.EXTRA_DURATION_MS, (durationSec * 1000.0).toLong())
+            }
+            val positionSec = call.getDouble("positionSec")
+            if (positionSec != null && seekable) {
+                putExtra(MediaPlaybackService.EXTRA_POSITION_MS, (positionSec * 1000.0).toLong())
+            }
         }
         try {
             if (backgroundAudioActive) {
@@ -305,6 +329,47 @@ class MobileNativeMediaPlugin : Plugin() {
         val ret = JSObject()
         ret.put("ok", true)
         call.resolve(ret)
+    }
+
+    /** Refresh MediaSession metadata / timeline without restarting the FGS. */
+    @PluginMethod
+    fun updateBackgroundAudio(call: PluginCall) {
+        val title = call.getString("title") ?: "OTT-play FOSS"
+        val artist = call.getString("artist") ?: "Now playing"
+        val ctx = bridge.context
+        bindMediaWebView()
+        if (!backgroundAudioActive) {
+            // Not started yet — treat as start so first metadata still lands.
+            startBackgroundAudio(call)
+            return
+        }
+        val intent = Intent(ctx, MediaPlaybackService::class.java).apply {
+            action = MediaPlaybackService.ACTION_UPDATE
+            putExtra(MediaPlaybackService.EXTRA_TITLE, title)
+            putExtra(MediaPlaybackService.EXTRA_ARTIST, artist)
+            val artworkUrl = call.getString("artworkUrl")
+            if (artworkUrl != null) putExtra(MediaPlaybackService.EXTRA_ARTWORK_URL, artworkUrl)
+            val seekable = call.getBoolean("seekable", false) ?: false
+            putExtra(MediaPlaybackService.EXTRA_SEEKABLE, seekable)
+            val durationSec = call.getDouble("durationSec")
+            if (durationSec != null && seekable) {
+                putExtra(MediaPlaybackService.EXTRA_DURATION_MS, (durationSec * 1000.0).toLong())
+            }
+            val positionSec = call.getDouble("positionSec")
+            if (positionSec != null && seekable) {
+                putExtra(MediaPlaybackService.EXTRA_POSITION_MS, (positionSec * 1000.0).toLong())
+            }
+        }
+        try {
+            ctx.startService(intent)
+            call.resolve(JSObject().apply { put("ok", true) })
+        } catch (e: Exception) {
+            Log.e(TAG, "updateBackgroundAudio failed", e)
+            call.resolve(JSObject().apply {
+                put("ok", false)
+                put("error", e.message ?: "update failed")
+            })
+        }
     }
 
     /** Stop and tear down the mediaPlayback foreground service. */
