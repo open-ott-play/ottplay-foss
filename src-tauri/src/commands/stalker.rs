@@ -1,8 +1,9 @@
-//! Stalker portal transport for Tauri Mode B.
+//! Stalker portal + host_ott swop transport for Tauri Mode B.
 //!
 //! Provider scripts (`prov/stalker/prov.js`) POST JSON-RPC to
-//! `<portal>/stalker_portal/api/`. Embed Mode B has no companion HTTP
-//! server and WebView CORS would block the portal origin — forward from Rust.
+//! `<portal>/stalker_portal/api/`. Dealer/cloud entry POSTs form bodies to
+//! `host_ott/swop/a.php`. Embed Mode B has no companion HTTP server and
+//! WebView CORS would block those origins — forward from Rust.
 
 use reqwest::Client;
 use serde::Serialize;
@@ -17,23 +18,35 @@ pub struct StalkerPortalResult {
     pub content_type: String,
 }
 
-/// `invoke('stalker_portal_fetch', { url, method, body })` — forward a
-/// Stalker portal request from the webview without CORS.
+fn is_allowed_url(url: &str) -> bool {
+    url.contains("/stalker_portal/api/")
+        || url.contains("/stalker_portal/stream/")
+        || url.contains("/swop/a.php")
+}
+
+/// `invoke('stalker_portal_fetch', { url, method, body, contentType })` —
+/// forward a Stalker portal or host_ott swop request from the webview
+/// without CORS.
 ///
 /// Timeout mirrors provider scripts (`15s`). When `body` is present,
-/// `Content-Type: application/json` is set (provider JSON-RPC).
+/// `contentType` (default `application/json`) is set as Content-Type.
+/// Swop dealer/cloud POSTs use `application/x-www-form-urlencoded`.
 #[tauri::command]
 pub async fn stalker_portal_fetch(
     url: String,
     method: Option<String>,
     body: Option<String>,
+    content_type: Option<String>,
 ) -> Result<StalkerPortalResult, String> {
     let url = url.trim().to_string();
     if url.is_empty() {
         return Err("stalker_portal_fetch: missing url".into());
     }
-    if !(url.contains("/stalker_portal/api/") || url.contains("/stalker_portal/stream/")) {
-        return Err("stalker_portal_fetch: url is not a stalker_portal path".into());
+    if !is_allowed_url(&url) {
+        return Err(
+            "stalker_portal_fetch: url is not a stalker_portal or swop/a.php path"
+                .into(),
+        );
     }
 
     let method_str = method.unwrap_or_else(|| "GET".to_string()).to_uppercase();
@@ -48,9 +61,11 @@ pub async fn stalker_portal_fetch(
     let mut req = client.request(method, &url);
     if let Some(b) = body {
         if !b.is_empty() {
-            req = req
-                .header("Content-Type", "application/json")
-                .body(b);
+            let ct = content_type
+                .as_deref()
+                .filter(|s| !s.is_empty())
+                .unwrap_or("application/json");
+            req = req.header("Content-Type", ct).body(b);
         }
     }
 
