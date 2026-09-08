@@ -1,4 +1,5 @@
-/// Mode B native HTTP for Stalker `/stalker_portal/api/` and `host_ott/swop/a.php`.
+/// Mode B native HTTP for Stalker `/stalker_portal/api/`, `host_ott/swop/a.php`,
+/// and Mag path-shaped `/load.php`|`/c/portal` URLs (allowlist + header forward only).
 import Capacitor
 import Foundation
 import os.log
@@ -13,9 +14,27 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private static let DEFAULT_TIMEOUT: TimeInterval = 15
 
+    private func isAllowedUrl(_ url: String) -> Bool {
+        return url.contains("/stalker_portal/api/")
+            || url.contains("/stalker_portal/stream/")
+            || url.contains("/swop/a.php")
+            || url.contains("/load.php")
+            || url.contains("/c/portal")
+    }
+
+    private func isForbiddenHeader(_ name: String) -> Bool {
+        let n = name.lowercased()
+        return n == "host" || n == "content-length" || n == "connection"
+            || n == "transfer-encoding" || n == "upgrade"
+    }
+
     @objc func portalRequest(_ call: CAPPluginCall) {
         guard let rawURL = call.getString("url"), !rawURL.isEmpty else {
             call.reject("missing url")
+            return
+        }
+        guard isAllowedUrl(rawURL) else {
+            call.reject("url is not an allowed stalker/swop/load.php/c/portal path")
             return
         }
         guard let url = URL(string: rawURL) else {
@@ -26,14 +45,29 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
         let method = (call.getString("method") ?? "GET").uppercased()
         let bodyString = call.getString("body") ?? ""
         let contentType = call.getString("contentType") ?? "application/json"
+        let headers = call.getObject("headers") as? [String: Any]
 
         var request = URLRequest(url: url)
         request.httpMethod = method
-        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = StalkerPortalPlugin.DEFAULT_TIMEOUT
+
+        var contentTypeFromHeaders = false
+        if let headers = headers {
+            for (key, value) in headers {
+                if isForbiddenHeader(key) { continue }
+                guard let str = value as? String else { continue }
+                if key.lowercased() == "content-type" {
+                    contentTypeFromHeaders = true
+                }
+                request.setValue(str, forHTTPHeaderField: key)
+            }
+        }
         if !bodyString.isEmpty {
+            if !contentTypeFromHeaders {
+                request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+            }
             request.httpBody = bodyString.data(using: .utf8)
         }
-        request.timeoutInterval = StalkerPortalPlugin.DEFAULT_TIMEOUT
 
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
@@ -49,15 +83,32 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
                 }
                 return
             }
-            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            let http = response as? HTTPURLResponse
+            let status = http?.statusCode ?? 0
             let contentType = response.mimeType ?? "application/octet-stream"
             let body = String(data: data, encoding: .utf8) ?? ""
+            var setCookie: [String] = []
+            if let fields = http?.allHeaderFields {
+                for (k, v) in fields {
+                    if String(describing: k).lowercased() == "set-cookie",
+                       let s = v as? String {
+                        setCookie.append(s)
+                    }
+                }
+                // URLSession may coalesce; also check value(forHTTPHeaderField:)
+                if setCookie.isEmpty,
+                   let single = http?.value(forHTTPHeaderField: "Set-Cookie"),
+                   !single.isEmpty {
+                    setCookie.append(single)
+                }
+            }
             os.log("[StalkerPortal] OK %{public}s (status=%d)", rawURL, status)
             DispatchQueue.main.async {
                 call.resolve([
                     "status": NSNumber(value: status),
                     "body": body,
                     "contentType": contentType,
+                    "setCookie": setCookie,
                 ])
             }
         }
