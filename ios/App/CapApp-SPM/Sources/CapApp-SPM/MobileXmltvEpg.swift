@@ -106,7 +106,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         let stream = UnsafeMutablePointer<compression_stream>.allocate(capacity: 1)
         defer { stream.deallocate() }
 
-        guard compression_stream_init(stream, COMPRESSION_STREAM_DECODE, COMPRESSION_GZIP) != COMPRESSION_STATUS_ERROR else {
+        guard compression_stream_init(stream, COMPRESSION_STREAM_DECODE, COMPRESSION_STREAM_GZIP) != COMPRESSION_STATUS_ERROR else {
             return nil
         }
         defer { compression_stream_destroy(stream) }
@@ -128,7 +128,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
             if produced > 0 {
                 result.append(dstBuffer, count: produced)
             }
-        } while stream.pointee.status != COMPRESSION_STATUS_END
+        } while compression_status(stream) != COMPRESSION_STATUS_END
 
         return result
     }

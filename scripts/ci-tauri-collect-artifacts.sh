@@ -40,8 +40,8 @@ for f in \
   "$BASE"/appimage/*.AppImage.sig \
   "$BASE"/msi/*.msi \
   "$BASE"/msi/*.msi.sig \
-  "$BASE"/nsis/*setup*.exe \
-  "$BASE"/nsis/*setup*.exe.sig \
+  "$BASE"/nsis/*.exe \
+  "$BASE"/nsis/*.exe.sig \
   "$BASE"/macos/*.app.tar.gz \
   "$BASE"/macos/*.app.tar.gz.sig
 do

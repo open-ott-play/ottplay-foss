@@ -355,6 +355,12 @@ jobs:
         run: |
           SCHEME="${{ steps.discover.outputs.scheme }}"
           SCHEME="${SCHEME:-App}"
+          DEST=$(xcodebuild -project "ios/App/App.xcodeproj" -scheme "$SCHEME" -sdk iphoneos -showDestinations 2>/dev/null | awk '/iOS Device/{print $NF; exit}')
+          if [ -z "$DEST" ]; then
+            echo "No iOS Device destination found; falling back to generic/platform=iOS"
+            DEST="generic/platform=iOS"
+          fi
+          echo "Using destination: $DEST"
           xcodebuild clean archive \
             -project "ios/App/App.xcodeproj" \
             -scheme "$SCHEME" \
@@ -364,7 +370,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
             DEVELOPMENT_TEAM="" \
-            -destination 'generic/platform=iOS' \
+            -destination "$DEST" \
             ONLY_ACTIVE_ARCH=NO \
             ARCHS=arm64
 
