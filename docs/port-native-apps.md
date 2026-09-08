@@ -1,12 +1,12 @@
 # Porting ottplay-foss to Native Apps
 
-Status: Tauri Phase 1 companion backends (match/logos/SVG/TMDB/misc/queue) + Capacitor 4.1–4.3 on main; next Cap 4.4 native media. Phased plan below kept as roadmap.
+Status: Mode B Tauri Phase 1 companion backends + Capacitor 4.1–4.6 on `main` (store readiness #315, iOS PiP #316, Stalker portal #317, MediaSession #318+#321, DASH ExoPlayer #319, Tauri updater/notarize #320, Stalker `host_ott/swop` #322). Remaining: human TestFlight/Play, Mag `load.php`/VOD, Cap tvOS, device smoke, DRM. Phased plan below kept as roadmap.
 
 ## Two Operating Modes
 
 The project serves two distinct deployment models:
 
-### Mode A — Legacy STB / Browser (Dune HS5, MAG, etc.)
+### Mode A — STB / Browser (Dune HS5, MAG, etc.)
 Player runs in a browser or WebView on the STB hardware. `python3 server.py` provides the backend companion. Both the frontend bundle and the Python server are required. This mode is preserved indefinitely.
 
 ### Mode B — Native Apps (iOS, Android, macOS, Windows, Linux)

@@ -5,7 +5,7 @@ Both platforms share the same TypeScript source and Capacitor configuration.
 
 ## Status
 
-Capacitor 4.1–4.6 shipped on `main`. Store readiness prepared; human TestFlight / Play upload still required.
+Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315), iOS AVPlayer PiP (#316), Stalker portal (#317), MediaSession (#318+#321), DASH ExoPlayer (#319), Tauri updater/notarize (#320), and Stalker `host_ott/swop` (#322). Remaining: human TestFlight/Play upload, Mag `load.php`/VOD, Cap tvOS, device smoke, DRM.
 
 ## Shipped
 
@@ -15,10 +15,13 @@ Capacitor 4.1–4.6 shipped on `main`. Store readiness prepared; human TestFligh
 - **M3U stream proxy** — PR #307 — `M3UProxy` + web shim for `/m3u/cp.php`
 - **Release artifacts** — PR #310 — multiarch Tauri + Capacitor IPA/APK
 - **4.4 Native media** — PR #312 + #316 — `MobileNativeMedia` (volume / wake real; iOS PiP via AVPlayer; fullscreen via MainViewController chrome)
-- **4.5 Background audio** — PR #313 + #318 + artwork/seek follow-up — AVAudioSession `.playback` + Android `mediaPlayback` FGS; lock-screen WebView/AVPlayer drive + Tauri souvlaki; channel artwork + honest live-vs-VOD seek
-- **4.6 Key / touch mapping** — Cap tap→ENTER + Android D-Pad/gamepad/media _doKey inject + iOS HW keyboard path
-- **4.7 DASH native playback** — this PR — Android ExoPlayer/Media3 `DashExoPlayer` plugin + iOS honest reject
-- **Stalker portal shim** — this PR — Cap/Tauri native HTTP for `<portal>/stalker_portal/api/` (handshake + channel list)
+- **4.5 Background audio + MediaSession** — PR #313 + #318 + #321 — AVAudioSession `.playback` + Android `mediaPlayback` FGS; lock-screen WebView/AVPlayer drive + Tauri souvlaki; channel artwork + honest live-vs-VOD seek
+- **4.6 Key / touch mapping** — PR #314 — Cap tap→ENTER + Android D-Pad/gamepad/media `_doKey` inject + iOS HW keyboard path
+- **Store readiness** — PR #315 — TestFlight/Play checklist, signing hooks, icons, version bump script (human upload still required)
+- **Stalker portal shim** — PR #317 — Cap/Tauri native HTTP for `<portal>/stalker_portal/api/` (handshake + channel list)
+- **Stalker `host_ott/swop`** — PR #322 — dealer/cloud `swop/a.php` form-urlencoded POSTs via same Cap/Tauri shim (no proprietary `host_ott` default)
+- **4.7 DASH native playback** — PR #319 — Android ExoPlayer/Media3 `DashExoPlayer` plugin + iOS honest reject
+- **Tauri updater / notarize** — PR #320 — desktop updater plugin + optional notarize/signing CI hooks (see `docs/tauri-updater-notarize.md`)
 
 ## Build
 
@@ -128,8 +131,11 @@ Implemented (Option A-style ajax routing → native HTTP). Stalker provider scri
 
 ## Remaining gaps
 
-- **Store / TestFlight** — prepared below. Human upload still required.
-- **Device smoke** — real device/simulator passes for queue / EPG / M3U/media / Stalker paths.
+- **Store / TestFlight / Play** — prepared (#315 / section below). Human upload still required.
+- **Mag `load.php` / VOD** — classic Mag `c/portal` / `load.php` flavors, token/cookie auth variants, and VOD remain outside the FOSS `prov/stalker` JSON-RPC path.
+- **Cap tvOS** — Apple TV / Siri Remote out of Cap phone/iPad scope.
+- **Device smoke** — real device/simulator passes for queue / EPG / M3U/media / Stalker / swop paths.
+- **DRM** — Widevine / FairPlay / encrypted DASH out of scope for current Cap/Tauri paths.
 
 ## Phase 3 — Store / TestFlight readiness
 
