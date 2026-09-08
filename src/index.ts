@@ -37,6 +37,7 @@ import { applyPolyfills } from "./polyfills";
 
 applyPolyfills();
 
+import { DashExoPlayer } from "./plugins/dash-exo-player";
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
 import { MobileNativeMedia } from "./plugins/mobile-native-media";
 import { setupStalkerPortalShim } from "./plugins/stalker-portal";
@@ -2632,31 +2633,97 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         const origStop = window.stbStop;
         const origPause = window.stbPause;
         const origContinue = window.stbContinue;
-        window.stbPlay = function (url: string, position?: number): void {
+        // Native DASH via DashExoPlayer (Android Media3). iOS returns unsupported.
+        const dash = DashExoPlayer;
+        let _nativeDash = false;
+
+        function isDashUrl(url: string): boolean {
+            return /\.mpd(\?|$)/i.test(url);
+        }
+
+        function playViaWeb(url: string, position?: number): void {
             if (typeof origPlay === "function") origPlay(url, position);
             const meta = bgMeta();
             cap.startBackgroundAudio(meta).catch((e: any) =>
                 console.warn("[Capacitor] startBackgroundAudio failed:", e)
             );
+        }
+
+        window.stbPlay = function (url: string, position?: number): void {
+            if (!isDashUrl(url) || !dash || !dash.isDashSupported) {
+                playViaWeb(url, position);
+                return;
+            }
+            dash.isDashSupported()
+                .then(function (r: any) {
+                    if (!(r && r.ok && !r.unsupported)) {
+                        _nativeDash = false;
+                        playViaWeb(url, position);
+                        return;
+                    }
+                    _nativeDash = true;
+                    if (typeof origStop === "function") origStop();
+                    return dash
+                        .playDash({
+                            position: position,
+                            url: url,
+                        })
+                        .then(function (pr: any) {
+                            if (!(pr && pr.ok)) {
+                                console.warn(
+                                    "[Capacitor] playDash not ok, web fallback:",
+                                    pr
+                                );
+                                _nativeDash = false;
+                                playViaWeb(url, position);
+                            }
+                        });
+                })
+                .catch(function (e: any) {
+                    console.warn("[Capacitor] DASH path failed:", e);
+                    _nativeDash = false;
+                    playViaWeb(url, position);
+                });
         };
         window.stbStop = function (): void {
-            cap.stopBackgroundAudio().catch((e: any) =>
-                console.warn("[Capacitor] stopBackgroundAudio failed:", e)
-            );
+            if (_nativeDash) {
+                dash.stopDash().catch((e: any) =>
+                    console.warn("[Capacitor] stopDash failed:", e)
+                );
+                _nativeDash = false;
+            } else {
+                cap.stopBackgroundAudio().catch((e: any) =>
+                    console.warn("[Capacitor] stopBackgroundAudio failed:", e)
+                );
+            }
             if (typeof origStop === "function") origStop();
         };
         window.stbPause = function (): void {
-            if (typeof origPause === "function") origPause();
-            cap.pauseBackgroundAudio().catch((e: any) =>
-                console.warn("[Capacitor] pauseBackgroundAudio failed:", e)
-            );
+            if (_nativeDash) {
+                dash.pauseDash().catch((e: any) =>
+                    console.warn("[Capacitor] pauseDash failed:", e)
+                );
+            } else if (typeof origPause === "function") {
+                origPause();
+            }
+            if (!_nativeDash) {
+                cap.pauseBackgroundAudio().catch((e: any) =>
+                    console.warn("[Capacitor] pauseBackgroundAudio failed:", e)
+                );
+            }
         };
         window.stbContinue = function (): void {
-            if (typeof origContinue === "function") origContinue();
-            const meta = bgMeta();
-            cap.resumeBackgroundAudio(meta).catch((e: any) =>
-                console.warn("[Capacitor] resumeBackgroundAudio failed:", e)
-            );
+            if (_nativeDash) {
+                dash.resumeDash().catch((e: any) =>
+                    console.warn("[Capacitor] resumeDash failed:", e)
+                );
+            } else {
+                if (typeof origContinue === "function") origContinue();
+                const meta = bgMeta();
+                cap.resumeBackgroundAudio(meta).catch((e: any) =>
+                    console.warn("[Capacitor] resumeBackgroundAudio failed:", e)
+                );
+            }
         };
     })();
 }

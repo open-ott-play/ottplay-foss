@@ -126,8 +126,8 @@ Key: embed the TypeScript bundle as `dist/` assets. Rust `include_bytes!` or Tau
 **Caveat:** Tauri mobile is real but ecosystem is thinner. Start with Capacitor for derisking.
 
 Media constraints:
-- **HLS** — first-class native support. `hls.js` auto-delegates to `<video>` tag on iOS.
-- **DASH** — no MSE in WKWebView. Shaka Player falls back to HLS or fails. Most IPTV providers serve HLS.
+- **HLS** — first-class native support. `hls.js` auto-detects and delegates.
+- **DASH** — no MSE in WKWebView. Cap `DashExoPlayer` resolves `{ok:false, unsupported:true}` (no AVPlayer DASH path).
 - **FairPlay** — not accessible from Capacitor JS. Only relevant for premium providers; standard IPTV uses none.
 - **Background audio** — `UIBackgroundModes: audio` in Info.plist (Capacitor config).
 - **Local command port** — iOS blocks ports < 1024. Use `localhost:18081`.
@@ -161,15 +161,15 @@ Media constraints:
 
 ### iOS
 - **HLS** — native via `<video>` tag. `hls.js` auto-detects and delegates.
-- **DASH** — unavailable (no MSE). Shaka Player fails.
+- **DASH** — Cap `DashExoPlayer` resolves `{ok:false, unsupported:true}` (no MSE / no AVPlayer DASH path). Shaka Player fails.
 - **FairPlay DRM** — only via native AVPlayer, not accessible from Capacitor.
 - **PiP** — `PictureInPicture` Web API on iOS 14+, or Capacitor plugin wrapping `AVPictureInPictureController`.
 - **Background audio** — `UIBackgroundModes: audio` in Info.plist.
 
 ### Android
 - **HLS** — via Chrome WebView MSE.
-- **DASH** — via MSE + Widevine L1/L3 on Chrome 74+.
-- **ExoPlayer** — not directly accessible. WebView handles most streams.
+- **DASH** — Cap `DashExoPlayer` (Media3/ExoPlayer + PlayerView overlay) for `.mpd` when Cap path is used; Chrome WebView MSE/Shaka still available as fallback.
+- **ExoPlayer** — wrapped in `DashExoPlayerPlugin` (Media3) for DASH/HLS native fallback with visible PlayerView.
 - **PiP** — `PictureInPicture` Web API on Android 8+.
 - **Background** — `foregroundServiceType="mediaPlayback"`.
 
@@ -310,7 +310,7 @@ STB/TV builds continue as today:
 
 1. **Dune HS5 compatibility** — Dune HS5 runs the player in a browser/WebView. `server.py` must keep serving the same URLs with the same response formats. Any backend change must be tested against a real Dune HS5 device.
 
-2. **iOS DASH** — if any provider serves DASH-only streams (no HLS fallback), Capacitor WKWebView cannot play them. Verify target providers before committing. Workaround: native ExoPlayer Capacitor plugin.
+2. **iOS DASH** — Capacitor WKWebView cannot play DASH (no MSE). Cap `DashExoPlayer` returns honest `{ok:false, unsupported:true}`; Android plays via ExoPlayer/Media3 in `DashExoPlayer`.
 
 3. **Stalker portal interception** *(mitigated for FOSS JSON-RPC path)* — `prov/stalker/prov.js` POSTs to `<portal>/stalker_portal/api/`. Mode B routes those ajax calls through `setupStalkerPortalShim()` → Tauri `stalker_portal_fetch` / Cap `StalkerPortal.portalRequest` (Option A-style). Mode A unchanged. Still out of scope: STB `host_ott/swop/a.php` dealer/cloud remote entry, classic Mag `load.php` portals, and VOD.
 

@@ -21,6 +21,7 @@
 		6A7B8C9D0E1F2A3B4C5D6E7 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A7B8C9D0E1F2A3B4C5D6E8 /* MainViewController.swift */; };
 		A3B2C1D2FEDC1B000F3C39C /* M3UProxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3B2C1D1FEDC1B000F3C39C /* M3UProxy.swift */; };
 		B4C3D2E1FEDC1B000F3C39D /* StalkerPortalPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C3D2E0FEDC1B000F3C39D /* StalkerPortalPlugin.swift */; };
+		C5D4E3F3FEDC1B000F3C39E /* DashExoPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5D4E3F2FEDC1B000F3C39E /* DashExoPlayer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +38,7 @@
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		6A7B8C9D0E1F2A3B4C5D6EA /* MobileCommandQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileCommandQueue.swift; sourceTree = "<group>"; };
 		B4C3D2E0FEDC1B000F3C39D /* StalkerPortalPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StalkerPortalPlugin.swift; sourceTree = "<group>"; };
+		C5D4E3F2FEDC1B000F3C39E /* DashExoPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashExoPlayer.swift; sourceTree = "<group>"; };
 		65871D83BE744D7284BAE975 /* MobileNativeMedia.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileNativeMedia.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		6A7B8C9D0E1F2A3B4C5D6E8 /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
@@ -77,6 +79,7 @@
 				6A7B8C9D0E1F2A3B4C5D6EA /* MobileCommandQueue.swift */,
 				65871D83BE744D7284BAE975 /* MobileNativeMedia.swift */,
 				B4C3D2E0FEDC1B000F3C39D /* StalkerPortalPlugin.swift */,
+				C5D4E3F2FEDC1B000F3C39E /* DashExoPlayer.swift */,
 			);
 			path = Plugins;
 			sourceTree = "<group>";
@@ -187,6 +190,7 @@
 				5F2A4B6D1FED79650016851F /* MobileCommandQueue.swift in Sources */,
 				04BC0D8B75264E3D90FEB2C9 /* MobileNativeMedia.swift in Sources */,
 				B4C3D2E1FEDC1B000F3C39D /* StalkerPortalPlugin.swift in Sources */,
+				C5D4E3F3FEDC1B000F3C39E /* DashExoPlayer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

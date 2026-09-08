@@ -17,6 +17,7 @@ Capacitor 4.1–4.6 shipped on `main`. Store readiness prepared; human TestFligh
 - **4.4 Native media** — PR #312 + #316 — `MobileNativeMedia` (volume / wake real; iOS PiP via AVPlayer; fullscreen via MainViewController chrome)
 - **4.5 Background audio** — PR #313 — AVAudioSession `.playback` + Android `mediaPlayback` FGS; lock-screen WebView/AVPlayer drive + Tauri souvlaki MediaSession polish in follow-up PR
 - **4.6 Key / touch mapping** — Cap tap→ENTER + Android D-Pad/gamepad/media _doKey inject + iOS HW keyboard path
+- **4.7 DASH native playback** — this PR — Android ExoPlayer/Media3 `DashExoPlayer` plugin + iOS honest reject
 - **Stalker portal shim** — this PR — Cap/Tauri native HTTP for `<portal>/stalker_portal/api/` (handshake + channel list)
 
 ## Build
@@ -240,6 +241,20 @@ Shipped. Hardware keyboard, D-Pad/gamepad, and mobile touch gestures now feed th
 - **iOS hardware keyboard** — WKWebView delivers `keydown` into the page by default. Arrow/Enter/Escape/media-ish keys already map via `stbEventToKeyCode` → `keyHandler`. No extra Siri Remote / Apple TV remote stack is built here; that remains out of scope for the Capacitor phone targets.
 
 **Caveat**: iOS `MainViewController.swift` SourceKit may show `UIKit` import error in non-Xcode tooling; the module is correct inside the Xcode build context.
+
+### 4.7 DASH native playback
+
+Implemented. Capacitor plugin `DashExoPlayer` provides native DASH (and HLS) playback on Android via Media3/ExoPlayer with a `PlayerView` overlay on the Cap Activity; iOS returns honest `{ok:false, unsupported:true}` because WKWebView lacks MSE and this app does not ship an AVPlayer DASH path.
+
+- **Android plugin**: `android/app/src/main/java/play/ott/foss/DashExoPlayerPlugin.kt` (Media3 exoplayer + dash + hls + ui)
+- **iOS plugin**: `ios/App/App/Plugins/DashExoPlayer.swift` — unsupported reject only (registered in `MainViewController`)
+- **JS**: `src/plugins/dash-exo-player.ts` + Capacitor `stbPlay` wrapper in `src/index.ts`: `.mpd` URLs call `isDashSupported` → `playDash`; `_nativeDash` routes stop/pause/continue to native methods
+- **Mode A / Tauri**: unchanged (desktop MSE / Shaka still used)
+
+**Failure contract**: never fake success. Android resolves `{ok:true}` only after ExoPlayer prepare/play starts; iOS rejects DASH up-front so UI can show a clear error instead of SRC_NOT_SUPPORTED from Shaka.
+
+**Out of scope**: Widevine/DRM, FairPlay, encrypted DASH.
+
 
 ## Mode A and Tauri
 
