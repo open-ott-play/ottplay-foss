@@ -50,6 +50,11 @@ These modes are **mutually exclusive at runtime** — a native app does not conn
 
 See root README § Mode A companion smoke. Does not cover `local_proxy.py` command-queue (use `scripts/smoke-command-queue.sh`).
 
+### M3U stream-proxy header smoke
+
+`scripts/smoke-m3u-stream-proxy-headers.sh` — POST `/m3u/cp.php` at a local (or `ECHO_URL`) header echo and assert Mode A upstream headers match `ottplay-core` / `archive/server.py`: **User-Agent** inject (presets + default `OTT-play-FOSS/1.0`), **no Referer**. Default `BASE_URL=http://127.0.0.1:8095`. See root README § M3U stream-proxy header smoke.
+
+
 ### Separate process: `local_proxy.py` (port 8081)
 
 This is **not** part of server.py. It runs as a standalone companion for the webhook-based remote command system (Home Assistant, Node-RED, curl). It is **not** used by the native apps.

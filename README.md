@@ -82,6 +82,32 @@ EPG_HASH=<channel-hash> ./scripts/smoke-modea-companion.sh
 
 Checks live in `scripts/modea-smoke-checks.json`. No secrets. Command-queue / `local_proxy.py` (:8081) is covered separately by `scripts/smoke-command-queue.sh` (when present).
 
+## M3U stream-proxy header smoke
+
+Compares upstream request headers that Mode A companion `POST /m3u/cp.php` injects when fetching a controllable echo URL (local mock by default — no IPTV providers, no secrets).
+
+Contract (from `src-rs/core/src/m3u.rs` + `archive/server.py`):
+- Injects **User-Agent** only (`OTT-play-FOSS/1.0` default, or presets `webos` / `tizen` / `viera` / `mag` / `dune`).
+- Does **not** inject **Referer** (Capacitor `M3UProxy` does; Mode A does not).
+- Strips a leading `@` from `url` (provider jQuery form).
+
+```bash
+# Companion must be listening (local install default :8095)
+./scripts/smoke-m3u-stream-proxy-headers.sh
+
+# Docker / cargo CLI default (:8080) — echo must be reachable from the companion process
+BASE_URL=http://127.0.0.1:8080 ./scripts/smoke-m3u-stream-proxy-headers.sh
+
+# Optional public echo (httpbin /headers JSON shape)
+ECHO_URL=https://httpbingo.org/headers ./scripts/smoke-m3u-stream-proxy-headers.sh
+
+# Also exercise JSON {url,ua} body
+./scripts/smoke-m3u-stream-proxy-headers.sh --json
+```
+
+Exit: `0` pass, `1` not listening, `2` header/HTTP mismatch, `3` usage/deps. Sibling of `smoke-modea-companion.sh` / `smoke-command-queue.sh`.
+
+
 ## Docker
 
 Multi-arch images (amd64/arm64) are published to Docker Hub on every push to `main`, on `v*` tags, and via `workflow_dispatch`.
