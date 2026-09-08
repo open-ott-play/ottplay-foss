@@ -1,14 +1,17 @@
 package play.ott.foss
 
+import android.Manifest
 import android.app.PictureInPictureParams
 import android.content.Context.AUDIO_SERVICE
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.os.Build
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
 import android.webkit.WebView
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -21,10 +24,58 @@ class MobileNativeMediaPlugin : Plugin() {
 
     companion object {
         private const val TAG = "MobileNativeMedia"
+        private const val REQ_POST_NOTIFICATIONS = 44051
     }
 
     private var isFullscreen = false
     private var backgroundAudioActive = false
+
+    override fun load() {
+        super.load()
+        bindMediaWebView()
+    }
+
+    override fun handleOnResume() {
+        super.handleOnResume()
+        bindMediaWebView()
+    }
+
+    override fun handleOnDestroy() {
+        MediaPlaybackService.clearWebView(bridge.webView)
+        super.handleOnDestroy()
+    }
+
+    private fun bindMediaWebView() {
+        try {
+            MediaPlaybackService.bindWebView(bridge.webView)
+        } catch (e: Exception) {
+            Log.w(TAG, "bindWebView failed", e)
+        }
+    }
+
+    /**
+     * Android 13+ requires runtime POST_NOTIFICATIONS for the FGS media notification.
+     * Best-effort: request if missing, then still start the service (notification may
+     * be suppressed until the user grants).
+     */
+    private fun ensurePostNotificationsPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val act = activity ?: return
+        if (ContextCompat.checkSelfPermission(act, Manifest.permission.POST_NOTIFICATIONS)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        try {
+            ActivityCompat.requestPermissions(
+                act,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                REQ_POST_NOTIFICATIONS
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "POST_NOTIFICATIONS request failed", e)
+        }
+    }
 
     @PluginMethod
     fun getVolume(call: PluginCall) {
@@ -160,6 +211,8 @@ class MobileNativeMediaPlugin : Plugin() {
         val title = call.getString("title") ?: "OTT-play FOSS"
         val artist = call.getString("artist") ?: "Now playing"
         val ctx = bridge.context
+        bindMediaWebView()
+        ensurePostNotificationsPermission()
         val intent = Intent(ctx, MediaPlaybackService::class.java).apply {
             action = MediaPlaybackService.ACTION_START
             putExtra(MediaPlaybackService.EXTRA_TITLE, title)
@@ -189,6 +242,8 @@ class MobileNativeMediaPlugin : Plugin() {
         val ctx = bridge.context
         val intent = Intent(ctx, MediaPlaybackService::class.java).apply {
             action = MediaPlaybackService.ACTION_PAUSE
+            // JS already paused <video>; only sync MediaSession / notification.
+            putExtra(MediaPlaybackService.EXTRA_SESSION_ONLY, true)
         }
         try {
             ctx.startService(intent)
@@ -208,6 +263,8 @@ class MobileNativeMediaPlugin : Plugin() {
         val title = call.getString("title") ?: "OTT-play FOSS"
         val artist = call.getString("artist") ?: "Now playing"
         val ctx = bridge.context
+        bindMediaWebView()
+        ensurePostNotificationsPermission()
         val intent = Intent(ctx, MediaPlaybackService::class.java).apply {
             action = MediaPlaybackService.ACTION_RESUME
             putExtra(MediaPlaybackService.EXTRA_TITLE, title)

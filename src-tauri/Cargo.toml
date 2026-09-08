@@ -27,6 +27,9 @@ url = "2.5.8"
 md5 = "0.7"
 chrono = { version = "0.4", features = ["serde"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+# OS MediaSession / MPRIS / Now Playing / SMTC for Mode B lock-screen style controls.
+souvlaki = { version = "0.8", default-features = false, features = ["use_zbus"] }
+raw-window-handle = "0.6"
 
 # Required for production embed of frontendDist. Plain `cargo build`
 # without this leaves cfg(dev) on and never embeds assets (white screen).

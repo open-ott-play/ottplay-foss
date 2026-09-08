@@ -1,3 +1,4 @@
+pub mod media_session;
 pub mod m3u;
 pub mod misc;
 pub mod queue;

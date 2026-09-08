@@ -2661,6 +2661,57 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
     })();
 }
 
+// Tauri Mode B: OS MediaSession / MPRIS / Now Playing (souvlaki) — lock-screen style
+// transport. Cap path above is unchanged; Mode A unchanged.
+if (typeof window.__TAURI__ !== "undefined") {
+    (function () {
+        const bgMeta = (): { title: string; artist: string } => {
+            let title = "OTT-play FOSS";
+            let artist = "Now playing";
+            try {
+                const ch =
+                    (document.getElementById("channel") as HTMLElement | null)
+                        ?.textContent ||
+                    (document.getElementById("cname") as HTMLElement | null)
+                        ?.textContent ||
+                    "";
+                if (ch && ch.trim()) title = ch.trim();
+            } catch (_e) {}
+            return { artist, title };
+        };
+        const origPlay = window.stbPlay;
+        const origStop = window.stbStop;
+        const origPause = window.stbPause;
+        const origContinue = window.stbContinue;
+        window.stbPlay = function (url: string, position?: number): void {
+            if (typeof origPlay === "function") origPlay(url, position);
+            const meta = bgMeta();
+            tauriInvoke<any>("start_media_session", meta).catch((e: any) =>
+                console.warn("[Tauri] start_media_session failed:", e)
+            );
+        };
+        window.stbStop = function (): void {
+            tauriInvoke<any>("stop_media_session", {}).catch((e: any) =>
+                console.warn("[Tauri] stop_media_session failed:", e)
+            );
+            if (typeof origStop === "function") origStop();
+        };
+        window.stbPause = function (): void {
+            if (typeof origPause === "function") origPause();
+            tauriInvoke<any>("pause_media_session", {}).catch((e: any) =>
+                console.warn("[Tauri] pause_media_session failed:", e)
+            );
+        };
+        window.stbContinue = function (): void {
+            if (typeof origContinue === "function") origContinue();
+            const meta = bgMeta();
+            tauriInvoke<any>("resume_media_session", meta).catch((e: any) =>
+                console.warn("[Tauri] resume_media_session failed:", e)
+            );
+        };
+    })();
+}
+
 // Tauri Mode B: frameless window — whole-window drag; interactive UI is no-drag.
 // decorations:false removes the system title bar; without a drag region the
 // window cannot be moved. Gate on __TAURI__ so Chrome companion is unchanged.

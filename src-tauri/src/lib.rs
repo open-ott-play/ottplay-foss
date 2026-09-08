@@ -1,5 +1,6 @@
 mod commands;
 
+use commands::media_session::MediaSessionState;
 use commands::tauri_commands::TauriState;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -26,6 +27,7 @@ pub fn run() {
     // background thread. Mirror of `local_proxy.py` for the native shell.
     commands::queue::spawn_http_server(command_queues.clone());
     tauri::Builder::default()
+        .manage(MediaSessionState::default())
         .manage(TauriState {
             xmltv_cache: Arc::new(RwLock::new(None)),
             epg_urls: Arc::new(RwLock::new(epg_urls.clone())),
@@ -49,6 +51,10 @@ pub fn run() {
             commands::tauri_commands::stop_pip,
             commands::tauri_commands::set_pip_bounds,
             commands::tauri_commands::exit_app,
+            commands::media_session::start_media_session,
+            commands::media_session::pause_media_session,
+            commands::media_session::resume_media_session,
+            commands::media_session::stop_media_session,
             commands::queue::queue_poll,
             commands::queue::queue_enqueue,
             commands::misc::get_version,
