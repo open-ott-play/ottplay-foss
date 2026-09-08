@@ -107,6 +107,28 @@ ECHO_URL=https://httpbingo.org/headers ./scripts/smoke-m3u-stream-proxy-headers.
 
 Exit: `0` pass, `1` not listening, `2` header/HTTP mismatch, `3` usage/deps. Sibling of `smoke-modea-companion.sh` / `smoke-command-queue.sh`.
 
+## Logo concurrent bench smoke
+
+Concurrent `GET /logo/<id>.svg` (optional `?ch=`) latency smoke against Mode A companion. Reports OK/fail counts and p50/p95/p99. Default is CI-local practical load (`CONCURRENCY=200`, `TOTAL=1000`); full 10k soak is optional (`--full` / `LOGO_BENCH_FULL=1` / `TOTAL=10000`).
+
+```bash
+# Companion must be listening (local install default :8095)
+./scripts/smoke-logo-concurrent-bench.sh
+
+# Docker / cargo CLI default (:8080)
+BASE_URL=http://127.0.0.1:8080 ./scripts/smoke-logo-concurrent-bench.sh
+
+# Tune load
+CONCURRENCY=100 TOTAL=500 ./scripts/smoke-logo-concurrent-bench.sh
+./scripts/smoke-logo-concurrent-bench.sh --concurrency 100 --total 500
+
+# Optional soak (machine must tolerate it)
+./scripts/smoke-logo-concurrent-bench.sh --full
+# LOGO_BENCH_FULL=1 ./scripts/smoke-logo-concurrent-bench.sh
+```
+
+Exit: `0` pass, `1` not listening / connection failed, `2` high error rate, `3` usage. Sibling of `smoke-modea-companion.sh` / `smoke-m3u-stream-proxy-headers.sh` / `smoke-command-queue.sh`.
+
 
 ## Docker
 
