@@ -230,6 +230,26 @@ class MobileNativeMediaPlugin : Plugin() {
         }
     }
 
+    /** Finish Activity / leave Cap app (fallback if App.exitApp unavailable). */
+    @PluginMethod
+    fun exitApp(call: PluginCall) {
+        val act = activity
+        if (act == null) {
+            call.reject("no activity")
+            return
+        }
+        act.runOnUiThread {
+            try {
+                act.finishAndRemoveTask()
+            } catch (_e: Exception) {
+                act.finish()
+            }
+        }
+        val ret = JSObject()
+        ret.put("ok", true)
+        call.resolve(ret)
+    }
+
     /** Stop and tear down the mediaPlayback foreground service. */
     @PluginMethod
     fun stopBackgroundAudio(call: PluginCall) {

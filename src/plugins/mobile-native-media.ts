@@ -11,6 +11,8 @@ import { registerPlugin, WebPlugin } from "@capacitor/core";
 export interface MobileNativeMediaPlugin {
     /** Release sleep prevention → device may idle/sleep. */
     allowSleep(): Promise<{ ok: boolean; unsupported?: boolean }>;
+    /** Finish the native Activity / leave the Cap app. */
+    exitApp(): Promise<{ ok: boolean; unsupported?: boolean; error?: string }>;
     /** OS output volume 0–100. Fails loudly when platform cannot report. */
     getVolume(): Promise<{
         ok: boolean;
@@ -106,6 +108,15 @@ class MobileNativeMediaWeb
         console.warn(
             "[MobileNativeMedia] web fallback: allowSleep unsupported"
         );
+        return { ok: false, unsupported: true };
+    }
+
+    async exitApp(): Promise<{
+        ok: boolean;
+        unsupported?: boolean;
+        error?: string;
+    }> {
+        console.warn("[MobileNativeMedia] web fallback: exitApp unsupported");
         return { ok: false, unsupported: true };
     }
 

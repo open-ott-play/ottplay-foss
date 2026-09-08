@@ -163,7 +163,7 @@ Implemented. Cap-only wiring keeps HLS/`<video>` audio alive when the app backgr
 Shipped. Hardware keyboard, D-Pad/gamepad, and mobile touch gestures now feed the same keyhandler path used by browser/STB and Tauri.
 
 - **Touch layer (JS)** — `src/keyhandler/index.ts` swipe → arrows (`_doKey(37/38/39/40)`), 2-finger tap → ENTER, 3-finger tap → SETUP remain global (Mode A/Tauri unchanged). Cap-only: 1-finger tap → ENTER via `_doKey` (Mode A keeps synthetic `MouseEvent` click).
-- **Android D-Pad/media/gamepad** — `MainActivity.dispatchKeyEvent` intercepts `DPAD_*`, `ENTER/CENTER`, `BACK`, `VOLUME_*`, `MEDIA_*`, `BUTTON_A/SELECT`→ENTER, `BUTTON_B`→EXIT on `ACTION_DOWN` and calls `WebView.evaluateJavascript("window._doKey(<code>)")`. Everything else falls through to `super`.
+- **Android D-Pad/media/gamepad** — `MainActivity.dispatchKeyEvent` intercepts `DPAD_*`, `ENTER/CENTER`, `BACK`→EXIT (`_doKey(27)`), `VOLUME_*`, `MEDIA_*`, `BUTTON_A/SELECT`→ENTER, `BUTTON_B`→EXIT on `ACTION_DOWN` and calls `WebView.evaluateJavascript("window._doKey(<code>)")` (consumes only when inject succeeds). EXIT confirm Yes uses Cap `App.exitApp()` / bridge finish (not bare `window.close()`). Everything else falls through to `super`.
 - **iOS hardware keyboard** — WKWebView delivers `keydown` into the page by default. Arrow/Enter/Escape/media-ish keys already map via `stbEventToKeyCode` → `keyHandler`. No extra Siri Remote / Apple TV remote stack is built here; that remains out of scope for the Capacitor phone targets.
 
 **Caveat**: iOS `MainViewController.swift` SourceKit may show `UIKit` import error in non-Xcode tooling; the module is correct inside the Xcode build context.

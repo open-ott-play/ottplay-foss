@@ -4567,6 +4567,44 @@ if (typeof window.__TAURI__ !== "undefined") {
         );
     };
 }
+
+// Capacitor Mode C: real app exit (window.close() does not finish Activity).
+// Prefer @capacitor/app App.exitApp(); fall back to MobileNativeMedia.exitApp
+// (bridge finish) if App plugin is unavailable. Cap-only; Mode A + Tauri unchanged.
+if (typeof (window as any).Capacitor !== "undefined") {
+    window.stbExit = function (): void {
+        const Cap = (window as any).Capacitor;
+        const plugins = Cap && Cap.Plugins ? Cap.Plugins : null;
+        try {
+            const App = plugins && plugins.App;
+            if (App && typeof App.exitApp === "function") {
+                App.exitApp();
+                return;
+            }
+        } catch (e: any) {
+            console.warn("[Capacitor] App.exitApp failed:", e);
+        }
+        try {
+            const media = plugins && plugins.MobileNativeMedia;
+            if (media && typeof media.exitApp === "function") {
+                media
+                    .exitApp()
+                    .catch((e: any) =>
+                        console.warn(
+                            "[Capacitor] MobileNativeMedia.exitApp failed:",
+                            e
+                        )
+                    );
+                return;
+            }
+        } catch (e: any) {
+            console.warn("[Capacitor] MobileNativeMedia.exitApp failed:", e);
+        }
+        try {
+            window.close();
+        } catch (_e) {}
+    };
+}
 window.setPlayer = setPlayer;
 window.stbGetItem = stbGetItem;
 window.stbSetItem = stbSetItem;

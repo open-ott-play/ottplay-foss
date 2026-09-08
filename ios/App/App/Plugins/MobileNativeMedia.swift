@@ -20,6 +20,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "pauseBackgroundAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "resumeBackgroundAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopBackgroundAudio", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "exitApp", returnType: CAPPluginReturnPromise),
     ]
 
     private var pipController: AVPictureInPictureController?
@@ -32,6 +33,14 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         // Configure playback session early so WKWebView HLS/<video> can continue
         // when backgrounded (pairs with Info.plist UIBackgroundModes: audio).
         _ = configurePlaybackSession()
+    }
+
+    @objc func exitApp(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            // Cap iOS has no Activity.finish; exit(0) matches App.exitApp semantics.
+            call.resolve(["ok": true])
+            exit(0)
+        }
     }
 
     @objc func getVolume(_ call: CAPPluginCall) {

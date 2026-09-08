@@ -61,6 +61,8 @@ public class MainActivity extends BridgeActivity {
             }
 
             if (jsCode >= 0) {
+                // Only consume when inject succeeded. If bridge/webview is null
+                // during early boot, fall through so keys are not swallowed forever.
                 if (getBridge() != null) {
                     WebView webView = getBridge().getWebView();
                     if (webView != null) {
@@ -68,9 +70,10 @@ public class MainActivity extends BridgeActivity {
                                 "window._doKey && window._doKey(" + jsCode + ")",
                                 null
                         );
+                        return true;
                     }
                 }
-                return true;
+                return super.dispatchKeyEvent(event);
             }
         }
         return super.dispatchKeyEvent(event);
