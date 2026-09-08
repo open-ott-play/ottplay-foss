@@ -5,7 +5,7 @@ Both platforms share the same TypeScript source and Capacitor configuration.
 
 ## Status
 
-Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315), iOS AVPlayer PiP (#316), Stalker portal (#317), MediaSession (#318+#321), DASH ExoPlayer (#319), Tauri updater/notarize (#320), Stalker `host_ott/swop` (#322), Mag `load.php` path allowlist + cookie/header hooks (#324), Cap tvOS unsupported docs + iOS UIPress remote gaps (#325), Dev PC input-line editor `showEditKey2` (#326), command-queue curl/HA smoke (#328), Mode A companion HTTP smoke (#329), M3U stream-proxy header smoke (#332), Mode A `/logo` concurrent bench smoke (#333), and XMLTV cache refresh / warm-up smoke (#334). Remaining: human TestFlight/Play upload, Mag JsHttpRequest client/VOD, device smoke, DRM. Cap tvOS is **unsupported upstream** (documented; no stub target).
+Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315), iOS AVPlayer PiP (#316), Stalker portal (#317), MediaSession (#318+#321), DASH ExoPlayer (#319), Tauri updater/notarize (#320), Stalker `host_ott/swop` (#322), Mag `load.php` path allowlist + cookie/header hooks (#324), Cap tvOS unsupported docs + iOS UIPress remote gaps (#325), Dev PC input-line editor `showEditKey2` (#326), command-queue curl/HA smoke (#328), Mode A companion HTTP smoke (#329), M3U stream-proxy header smoke (#332), Mode A `/logo` concurrent bench smoke (#333), XMLTV cache refresh / warm-up smoke (#334), Mode A E2E play-path smoke (#336), and Capacitor device-smoke checklist + helper (see `docs/mode-b-device-smoke.md`). Remaining: human TestFlight/Play upload, Mag JsHttpRequest client/VOD, human UI marks on the device-smoke checklist, DRM. Cap tvOS is **unsupported upstream** (documented; no stub target).
 
 ## Shipped
 
@@ -30,6 +30,8 @@ Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315
 - **M3U stream-proxy header smoke** — PR #332 — `scripts/smoke-m3u-stream-proxy-headers.sh` (UA inject / no Referer)
 - **Mode A `/logo` concurrent bench smoke** — PR #333 — `scripts/smoke-logo-concurrent-bench.sh` (p50/p95/p99)
 - **XMLTV cache refresh / warm-up smoke** — PR #334 — `scripts/smoke-xmltv-cache-refresh.sh` (optional `--restart-cmd`)
+- **Mode A E2E play-path smoke** — PR #336 — `scripts/smoke-modea-e2e-play.sh` (companion HTTP play-path; not Cap UI)
+- **Capacitor device smoke checklist + helper** — `docs/mode-b-device-smoke.md` + `scripts/smoke-capacitor-device.sh` (sim/emulator checklist; soft queue curl; human UI marks remain)
 
 ## Build
 
@@ -107,6 +109,8 @@ The desktop/local proxy command queue (`POST /api/webhook/commands`, `GET /api/w
 See `mobile-command-queue/README.md` for usage.
 
 ### Smoke test (curl) + Home Assistant
+
+For the full Mode B **device** checklist (Simulator / emulator / sideload + human UI marks), see [`docs/mode-b-device-smoke.md`](mode-b-device-smoke.md) and `scripts/smoke-capacitor-device.sh`.
 
 Use `scripts/smoke-command-queue.sh` to POST then GET the queue. Default base URL is `http://127.0.0.1:18081` (Tauri Mode B / Capacitor loopback). Exits with a clear **not listening** message if nothing is bound.
 
@@ -194,7 +198,7 @@ Typical Mag / Ministra STB middleware is a different protocol from FOSS JSON-RPC
 - **Store / TestFlight / Play** — prepared (#315 / section below). Human upload still required.
 - **Mag JsHttpRequest client / VOD** — classic Mag handshake/channel-list/VOD client is **not** in FOSS (see section above). Mode B only allowlists Mag URL shapes + header/cookie forward (#324).
 - **Cap tvOS** — **does not work** / unsupported upstream (see §Cap tvOS below; #325). No stub target — not an open Cap work item.
-- **Device smoke** — real device/simulator passes for queue / EPG / M3U/media / Stalker / swop paths. Curl smokes for command-queue (#328), Mode A companion (#329), M3U stream-proxy headers (#332), `/logo` concurrent bench (#333), and XMLTV cache warm-up (#334) are shipped.
+- **Device smoke** — FOSS checklist + helper shipped: [`docs/mode-b-device-smoke.md`](mode-b-device-smoke.md) + `scripts/smoke-capacitor-device.sh` (native dir / toolchain checks, optional build-sync/open, soft command-queue curl on `:18081`). **Human still marks** sim/emulator/device UI passes (queue / EPG / M3U/media / Stalker / swop). Unpaid store only (Simulator + sideload APK). Curl companions (#328/#329/#332/#333/#334/#336) remain separate.
 - **DRM** — Widevine / FairPlay / encrypted DASH out of scope for current Cap/Tauri paths.
 
 ## Phase 3 — Store / TestFlight readiness
