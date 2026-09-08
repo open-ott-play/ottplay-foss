@@ -5,7 +5,7 @@ Both platforms share the same TypeScript source and Capacitor configuration.
 
 ## Status
 
-Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315), iOS AVPlayer PiP (#316), Stalker portal (#317), MediaSession (#318+#321), DASH ExoPlayer (#319), Tauri updater/notarize (#320), Stalker `host_ott/swop` (#322), and Mode B Mag path allowlist + cookie/header forward (docs + enabling hooks; Mag client still not in FOSS). Remaining: human TestFlight/Play upload, Mag JsHttpRequest client/VOD, Cap tvOS, device smoke, DRM.
+Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315), iOS AVPlayer PiP (#316), Stalker portal (#317), MediaSession (#318+#321), DASH ExoPlayer (#319), Tauri updater/notarize (#320), Stalker `host_ott/swop` (#322), and Mode B Mag path allowlist + cookie/header forward (docs + enabling hooks; Mag client still not in FOSS). Remaining: human TestFlight/Play upload, Mag JsHttpRequest client/VOD, device smoke, DRM. Cap tvOS is **unsupported upstream** (documented; no stub target).
 
 ## Shipped
 
@@ -16,7 +16,7 @@ Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315
 - **Release artifacts** — PR #310 — multiarch Tauri + Capacitor IPA/APK
 - **4.4 Native media** — PR #312 + #316 — `MobileNativeMedia` (volume / wake real; iOS PiP via AVPlayer; fullscreen via MainViewController chrome)
 - **4.5 Background audio + MediaSession** — PR #313 + #318 + #321 — AVAudioSession `.playback` + Android `mediaPlayback` FGS; lock-screen WebView/AVPlayer drive + Tauri souvlaki; channel artwork + honest live-vs-VOD seek
-- **4.6 Key / touch mapping** — PR #314 — Cap tap→ENTER + Android D-Pad/gamepad/media `_doKey` inject + iOS HW keyboard path
+- **4.6 Key / touch mapping** — PR #314 + tvOS follow-up — Cap tap→ENTER + Android D-Pad/gamepad/media `_doKey` inject + iOS HW keyboard + UIPress play/menu/select; Cap tvOS documented unsupported
 - **Store readiness** — PR #315 — TestFlight/Play checklist, signing hooks, icons, version bump script (human upload still required)
 - **Stalker portal shim** — PR #317 — Cap/Tauri native HTTP for `<portal>/stalker_portal/api/` (handshake + channel list)
 - **Stalker `host_ott/swop`** — PR #322 — dealer/cloud `swop/a.php` form-urlencoded POSTs via same Cap/Tauri shim (no proprietary `host_ott` default)
@@ -147,7 +147,7 @@ Typical Mag / Ministra STB middleware is a different protocol from FOSS JSON-RPC
 
 - **Store / TestFlight / Play** — prepared (#315 / section below). Human upload still required.
 - **Mag JsHttpRequest client / VOD** — classic Mag handshake/channel-list/VOD client is **not** in FOSS (see section above). Mode B only allowlists Mag URL shapes + header/cookie forward.
-- **Cap tvOS** — Apple TV / Siri Remote out of Cap phone/iPad scope.
+- **Cap tvOS** — **does not work** / unsupported upstream (see §Cap tvOS below). No stub target.
 - **Device smoke** — real device/simulator passes for queue / EPG / M3U/media / Stalker / swop paths.
 - **DRM** — Widevine / FairPlay / encrypted DASH out of scope for current Cap/Tauri paths.
 
@@ -258,9 +258,34 @@ Shipped. Hardware keyboard, D-Pad/gamepad, and mobile touch gestures now feed th
 
 - **Touch layer (JS)** — `src/keyhandler/index.ts` swipe → arrows (`_doKey(37/38/39/40)`), 2-finger tap → ENTER, 3-finger tap → SETUP remain global (Mode A/Tauri unchanged). Cap-only: 1-finger tap → ENTER via `_doKey` (Mode A keeps synthetic `MouseEvent` click).
 - **Android D-Pad/media/gamepad** — `MainActivity.dispatchKeyEvent` intercepts `DPAD_*`, `ENTER/CENTER`, `BACK`→EXIT (`_doKey(27)`), `VOLUME_*`, `MEDIA_*`, `BUTTON_A/SELECT`→ENTER, `BUTTON_B`→EXIT on `ACTION_DOWN` and calls `WebView.evaluateJavascript("window._doKey(<code>)")` (consumes only when inject succeeds). EXIT confirm Yes uses Cap `App.exitApp()` / bridge finish (not bare `window.close()`). Everything else falls through to `super`.
-- **iOS hardware keyboard** — WKWebView delivers `keydown` into the page by default. Arrow/Enter/Escape/media-ish keys already map via `stbEventToKeyCode` → `keyHandler`. No extra Siri Remote / Apple TV remote stack is built here; that remains out of scope for the Capacitor phone targets.
+- **iOS hardware keyboard** — WKWebView delivers `keydown` into the page by default. Arrow/Enter/Escape already map via `stbEventToKeyCode` → `keyHandler`. Shared `stbEventToKeyCode` also maps `MediaPlayPause`/`MediaPlay`/`MediaPause`→80, `MediaStop`→83, `GoBack`/`BrowserBack`→27 when hosts report `event.key` with `keyCode` 0.
+- **iOS UIPress (iPad-adjacent remotes)** — `MainViewController.pressesBegan` injects `_doKey` for `.playPause`→80, `.menu`→27, `.select`→13. Arrows/Escape stay on the WKWebView keydown path to avoid double-fire. This is **not** Apple TV / Siri Remote on tvOS.
 
 **Caveat**: iOS `MainViewController.swift` SourceKit may show `UIKit` import error in non-Xcode tooling; the module is correct inside the Xcode build context.
+
+### Cap tvOS / Apple TV — **does not work**
+
+**Verdict: unsupported.** There is no production Capacitor tvOS path for this project (Capacitor **8.5.x**), and none upstream for Cap 7/8.
+
+| Check | Result |
+|---|---|
+| `npx cap add tvos` | **Does not exist.** Cap CLI platforms are `ios` / `android` / `web` only. No `@capacitor/tvos` package. |
+| Capacitor runtime | Built on **WKWebView**. Apple marks `WKWebView` `__TVOS_PROHIBITED` (since tvOS 9); App Store rejects private-API webview workarounds. |
+| Ionic / Cap team | Confirmed on the Capacitor forum: Apple TV apps with Capacitor are not possible for this reason. |
+| This repo | Phone/iPad Cap targets only. **No stub tvOS Xcode target** (a non-building stub would be worse than honest docs). |
+
+**What works on Cap iOS/Android instead**
+
+- iPhone / iPad: touch gestures + hardware keyboard → `_doKey` / `stbEventToKeyCode` / `keyHandler` (#314 + UIPress gaps above).
+- Android TV / D-Pad / gamepad / media keys: `MainActivity.dispatchKeyEvent` → `_doKey` (#314).
+- Lock-screen / Now Playing transport: MediaSession / `MPRemoteCommandCenter` (#318/#321) — play/pause/next/prev, not a lean-back Siri Remote UI.
+
+**If a real Apple TV app is required later**
+
+- Separate native **SwiftUI + AVKit** client (or `react-native-tvos`), not Capacitor.
+- Waiting for Capacitor tvOS is not a plan — WKWebView prohibition is an Apple platform constraint, not a Cap feature gap.
+
+Mode A browser/STB and Tauri desktop are unchanged by this decision (shared `stbEventToKeyCode` media-key string maps are additive only).
 
 ### 4.7 DASH native playback
 

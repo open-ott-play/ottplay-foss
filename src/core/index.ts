@@ -229,6 +229,19 @@ export function stbEventToKeyCode(event: any): number {
             keyCode = 174; // keys.VOL_DOWN
         else if (key === "AudioVolumeUp" || code === "AudioVolumeUp")
             keyCode = 175; // keys.VOL_UP
+        else if (
+            key === "MediaPlayPause" ||
+            code === "MediaPlayPause" ||
+            key === "MediaPlay" ||
+            code === "MediaPlay" ||
+            key === "MediaPause" ||
+            code === "MediaPause"
+        )
+            keyCode = 80; // keys.PLAY / keys.PAUSE
+        else if (key === "MediaStop" || code === "MediaStop")
+            keyCode = 83; // keys.STOP
+        else if (key === "GoBack" || code === "GoBack" || key === "BrowserBack")
+            keyCode = 27; // keys.EXIT (menu/back remotes; Android BACK parity)
         else if (key === "l" || key === "L" || code === "KeyL") keyCode = 76;
     }
 
