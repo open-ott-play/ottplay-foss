@@ -5,7 +5,7 @@ Both platforms share the same TypeScript source and Capacitor configuration.
 
 ## Status
 
-Capacitor 4.1–4.6 are on `main` (or this PR).
+Capacitor 4.1–4.6 shipped on `main`. Store readiness prepared; human TestFlight / Play upload still required.
 
 ## Shipped
 
@@ -115,8 +115,67 @@ Implemented. Capacitor plugin `M3UProxy` provides native HTTP client for `/m3u/c
 
 ## Remaining gaps
 
-- **Store / TestFlight** — iOS TestFlight / App Store and Android internal track (icon 1024x1024, screenshots, privacy policy URL, signing).
+- **Store / TestFlight** — prepared below. Human upload still required.
 - **Device smoke** — real device/simulator passes for queue / EPG / M3U/media paths.
+
+## Phase 3 — Store / TestFlight readiness
+
+Prepared. Human upload still required.
+
+### Apple (TestFlight / App Store)
+
+- **Team ID**: Set `DEVELOPMENT_TEAM` in Xcode project (`ios/App/App.xcodeproj/project.pbxproj`).
+- **Bundle ID**: `play.ott.foss` (matches Android `applicationId`).
+- **Capabilities**: Background audio already declared in `Info.plist`. No other capabilities required.
+- **Certificates / Profiles**: Distribution certificate + App Store provisioning profile via Xcode or App Store Connect.
+- **Info.plist usage strings**: Background audio (`UIBackgroundModes: audio`) — already present. Web content media playback (`NSAppTransportSecurity` with `NSAllowsArbitraryLoadsInWebContent`) — required for HTTP IPTV streams loaded in WKWebView. No camera/photo/mic/contacts strings added because the app does not use those features.
+- **Privacy nutrition labels**: No personal data collected. App plays publicly available IPTV streams. No tracking, no analytics, no device info exfiltration.
+- **Screenshots**:
+  - iPhone 6.7": 1284 × 2778 px
+  - iPhone 6.5": 1242 × 2688 px
+  - iPhone 5.5": 1242 × 2208 px
+  - iPad 12.9": 2048 × 2732 px
+- **TestFlight steps**: Build archive in Xcode → Organizer → Distribute → App Store Connect → TestFlight. Add internal testers by Apple ID. External testing requires App Review.
+- **App Store review notes**: Mention IPTV streams require active subscriptions from content providers. App does not host or modify content.
+
+### Google Play (internal track)
+
+- **App ID**: `play.ott.foss`
+- **AAB preferred**: Build release AAB via `./gradlew bundleRelease`.
+- **Upload key vs Play App Signing**:
+  - Recommended: Let Google manage signing. Generate upload key locally, upload to Play Console.
+  - Not recommended for new apps: Opt out of Play App Signing.
+- **Service account**: For CI upload, create service account in Play Console, download JSON, store as GitHub secret.
+- **Internal track**: Upload AAB → Internal testing → add tester emails → publish.
+
+### Privacy policy
+
+FOSS apps need a public privacy page. Do NOT invent a live URL. Use placeholder until project publishes one:
+
+`https://example.com/TODO-privacy-policy`
+
+Replace with actual URL before store submission.
+
+### CI relationship to signing
+
+- **#310 path (default)**: CI builds unsigned IPA/APK. Suitable for AdHoc/TestFlight manual upload or internal testing.
+- **Signed builds**: When `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` env vars are present (local dev or GitHub secrets), `android/app/build.gradle` configures `signingConfigs.release`. CI can produce signed AAB for Play upload.
+- **iOS signing**: Always requires Xcode / codesign locally or in CI with p12 + provisioning profile. No automated signing in current CI.
+
+### Screenshot sizes
+
+| Platform | Size | Dimensions |
+|----------|------|------------|
+| iPhone 6.7" | Required | 1284 × 2778 px |
+| iPhone 6.5" | Required | 1242 × 2688 px |
+| iPhone 5.5" | Required | 1242 × 2208 px |
+| iPad 12.9" | Recommended | 2048 × 2732 px |
+| Android phone | Required | 1080 × 1920 min |
+| Android tablet | Recommended | 1200 × 1920 min |
+
+### Versioning
+
+Single source of truth: `package.json` version. `scripts/bump-mobile-version.sh` syncs to Android `build.gradle` and iOS `project.pbxproj`. Current aligned version: `1.0.0`.
 
 ### 4.4 Native media
 
