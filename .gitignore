@@ -44,6 +44,7 @@ uv.lock
 *.pem
 *.jks
 *.keystore
+*.p12
 google-services.json
 
 # Operator-local overrides (swop base URL, device id) — never commit
