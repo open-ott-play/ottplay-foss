@@ -4,9 +4,17 @@
 //! `<portal>/stalker_portal/api/`. Dealer/cloud entry POSTs form bodies to
 //! `host_ott/swop/a.php`. Embed Mode B has no companion HTTP server and
 //! WebView CORS would block those origins — forward from Rust.
+//!
+//! Classic Mag `load.php` / `c/portal` / JsHttpRequest is **not** implemented
+//! in FOSS (needs proprietary Mag middleware client + MAC Cookie /
+//! Authorization Bearer handshake). Those URL shapes are allowlisted so a
+//! caller that already speaks Mag can proxy headers/cookies through Mode B
+//! without CORS — the shim never invents a successful Mag handshake.
 
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use reqwest::Client;
 use serde::Serialize;
+use std::collections::HashMap;
 use std::time::Duration;
 
 /// Result shape for `invoke('stalker_portal_fetch')`.
@@ -16,27 +24,43 @@ pub struct StalkerPortalResult {
     pub status: u16,
     pub body: String,
     pub content_type: String,
+    /// Raw `Set-Cookie` values from the portal (empty when none). Callers
+    /// that maintain a cookie jar (Mag-style) can merge these.
+    pub set_cookie: Vec<String>,
 }
 
 fn is_allowed_url(url: &str) -> bool {
     url.contains("/stalker_portal/api/")
         || url.contains("/stalker_portal/stream/")
         || url.contains("/swop/a.php")
+        // Classic Mag / Ministra path shapes (allowlist only — no Mag client).
+        || url.contains("/load.php")
+        || url.contains("/c/portal")
 }
 
-/// `invoke('stalker_portal_fetch', { url, method, body, contentType })` —
-/// forward a Stalker portal or host_ott swop request from the webview
-/// without CORS.
+fn is_forbidden_request_header(name: &str) -> bool {
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "host" | "content-length" | "connection" | "transfer-encoding" | "upgrade"
+    )
+}
+
+/// `invoke('stalker_portal_fetch', { url, method, body, contentType, headers })` —
+/// forward a Stalker portal, Mag path-shaped URL, or host_ott swop request
+/// from the webview without CORS.
 ///
 /// Timeout mirrors provider scripts (`15s`). When `body` is present,
-/// `contentType` (default `application/json`) is set as Content-Type.
-/// Swop dealer/cloud POSTs use `application/x-www-form-urlencoded`.
+/// `contentType` (default `application/json`) is set as Content-Type unless
+/// overridden by `headers`. Swop dealer/cloud POSTs use
+/// `application/x-www-form-urlencoded`. Optional `headers` forwards Mag-style
+/// `Authorization` / `Cookie` (and other safe headers) from the caller.
 #[tauri::command]
 pub async fn stalker_portal_fetch(
     url: String,
     method: Option<String>,
     body: Option<String>,
     content_type: Option<String>,
+    headers: Option<HashMap<String, String>>,
 ) -> Result<StalkerPortalResult, String> {
     let url = url.trim().to_string();
     if url.is_empty() {
@@ -44,7 +68,7 @@ pub async fn stalker_portal_fetch(
     }
     if !is_allowed_url(&url) {
         return Err(
-            "stalker_portal_fetch: url is not a stalker_portal or swop/a.php path"
+            "stalker_portal_fetch: url is not an allowed stalker/swop/load.php/c/portal path"
                 .into(),
         );
     }
@@ -59,14 +83,44 @@ pub async fn stalker_portal_fetch(
         .map_err(|e| e.to_string())?;
 
     let mut req = client.request(method, &url);
+
+    let mut header_map = HeaderMap::new();
+    let mut content_type_from_headers = false;
+    if let Some(hdrs) = headers {
+        for (name, value) in hdrs {
+            if name.trim().is_empty() || is_forbidden_request_header(&name) {
+                continue;
+            }
+            let Ok(hn) = HeaderName::from_bytes(name.as_bytes()) else {
+                continue;
+            };
+            let Ok(hv) = HeaderValue::from_str(&value) else {
+                continue;
+            };
+            if hn.as_str() == "content-type" {
+                content_type_from_headers = true;
+            }
+            header_map.append(hn, hv);
+        }
+    }
+
     if let Some(b) = body {
         if !b.is_empty() {
-            let ct = content_type
-                .as_deref()
-                .filter(|s| !s.is_empty())
-                .unwrap_or("application/json");
-            req = req.header("Content-Type", ct).body(b);
+            if !content_type_from_headers {
+                let ct = content_type
+                    .as_deref()
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or("application/json");
+                if let Ok(hv) = HeaderValue::from_str(ct) {
+                    header_map.insert(reqwest::header::CONTENT_TYPE, hv);
+                }
+            }
+            req = req.body(b);
         }
+    }
+
+    if !header_map.is_empty() {
+        req = req.headers(header_map);
     }
 
     let resp = req.send().await.map_err(|e| e.to_string())?;
@@ -78,6 +132,13 @@ pub async fn stalker_portal_fetch(
         .unwrap_or("application/octet-stream")
         .to_string();
 
+    let set_cookie: Vec<String> = resp
+        .headers()
+        .get_all(reqwest::header::SET_COOKIE)
+        .iter()
+        .filter_map(|v| v.to_str().ok().map(|s| s.to_string()))
+        .collect();
+
     let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
     let body = String::from_utf8_lossy(&bytes).into_owned();
 
@@ -85,5 +146,33 @@ pub async fn stalker_portal_fetch(
         status,
         body,
         content_type,
+        set_cookie,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_allowed_url;
+
+    #[test]
+    fn allows_foss_jsonrpc_and_swop() {
+        assert!(is_allowed_url("https://p.example/stalker_portal/api/"));
+        assert!(is_allowed_url("https://p.example/stalker_portal/stream/1.m3u8"));
+        assert!(is_allowed_url("https://host.example/swop/a.php"));
+    }
+
+    #[test]
+    fn allows_mag_path_shapes_without_claiming_client() {
+        assert!(is_allowed_url(
+            "http://portal/stalker_portal/server/load.php?JsHttpRequest=1-xml&type=stb&action=handshake"
+        ));
+        assert!(is_allowed_url("http://portal/c/portal/"));
+        assert!(is_allowed_url("http://portal/server/load.php"));
+    }
+
+    #[test]
+    fn rejects_unrelated_urls() {
+        assert!(!is_allowed_url("https://evil.example/api/"));
+        assert!(!is_allowed_url("https://cdn.example/video.m3u8"));
+    }
 }
