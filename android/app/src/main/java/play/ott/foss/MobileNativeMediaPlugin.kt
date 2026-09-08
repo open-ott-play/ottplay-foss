@@ -80,7 +80,7 @@ class MobileNativeMediaPlugin : Plugin() {
         }
 
         val activity = bridge.activity
-        val webView = bridge.webView ?: run {
+        if (bridge.webView == null) {
             call.resolve(JSObject().apply { put("ok", false) })
             return
         }
@@ -89,8 +89,13 @@ class MobileNativeMediaPlugin : Plugin() {
             .setAspectRatio(android.util.Rational(16, 9))
             .build()
 
-        activity.enterPictureInPictureMode(params)
-        call.resolve(JSObject().apply { put("ok", true) })
+        try {
+            activity.enterPictureInPictureMode(params)
+            call.resolve(JSObject().apply { put("ok", true) })
+        } catch (e: Exception) {
+            Log.w(TAG, "playPip failed", e)
+            call.resolve(JSObject().apply { put("ok", false) })
+        }
     }
 
     @PluginMethod
@@ -131,8 +136,9 @@ class MobileNativeMediaPlugin : Plugin() {
     fun allowSleep(call: PluginCall) {
         bridge.activity.runOnUiThread {
             bridge.webView?.clearFocus()
+            bridge.webView?.keepScreenOn = false
         }
-        call.resolve(JSObject().apply { put("ok", true } })
+        call.resolve(JSObject().apply { put("ok", true) })
     }
 
     @PluginMethod
@@ -140,7 +146,7 @@ class MobileNativeMediaPlugin : Plugin() {
         bridge.activity.runOnUiThread {
             bridge.webView?.keepScreenOn = true
         }
-        call.resolve(JSObject().apply { put("ok", true } })
+        call.resolve(JSObject().apply { put("ok", true) })
     }
 
     private fun webViewWrap(webView: WebView?, systemUi: View) {

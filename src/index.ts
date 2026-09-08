@@ -2534,14 +2534,9 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         // Capacitor Mode C: override stbToggleStandby for native idle timer control.
         // Enter standby → allowSleep (device may sleep). Exit standby → preventSleep (keep awake).
         const origStandby = window.stbToggleStandby;
+        let _standby = false;
         window.stbToggleStandby = function (): void {
-            let _standby = false;
-            if (typeof origStandby === "function") {
-                // Capture original toggle behavior via a shadow flag.
-                // We call orig() after the native call so DOM state is always correct.
-                _standby = document.body.style.backgroundColor === "#000";
-                _standby = !_standby;
-            }
+            _standby = !_standby;
             if (_standby) {
                 cap.allowSleep().catch((e: any) =>
                     console.warn("[Capacitor] allowSleep failed:", e)
@@ -2560,7 +2555,7 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         window.stbGetVolume = origGet;
         window.stbSetVolume = function (v: number): void {
             origSet(v);
-            cap.setVolume(v).catch((e: any) =>
+            cap.setVolume({ volume: v }).catch((e: any) =>
                 console.warn("[Capacitor] setVolume failed:", e)
             );
         };
@@ -2595,13 +2590,13 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         const origToFull = window.stbToFullScreen;
         const origSetWin = window.stbSetWindow;
         window.stbToFullScreen = function (): void {
-            cap.setFullscreen(true).catch((e: any) =>
+            cap.setFullscreen({ fullscreen: true }).catch((e: any) =>
                 console.warn("[Capacitor] setFullscreen true failed:", e)
             );
             if (typeof origToFull === "function") origToFull();
         };
         window.stbSetWindow = function (): void {
-            cap.setFullscreen(false).catch((e: any) =>
+            cap.setFullscreen({ fullscreen: false }).catch((e: any) =>
                 console.warn("[Capacitor] setFullscreen false failed:", e)
             );
             if (typeof origSetWin === "function") origSetWin();

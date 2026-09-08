@@ -1,5 +1,7 @@
 import Capacitor
 import AVFoundation
+import AVKit
+import MediaPlayer
 import WebKit
 
 @objc(MobileNativeMedia)
@@ -81,41 +83,19 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func playPip(_ call: CAPPluginCall) {
+        // Honest unsupported until a real AVPlayer (with media item) is wired.
+        // Empty AVPlayer(playerItem: nil) PiP is fake and must not report ok:true.
         guard AVPictureInPictureController.isPictureInPictureSupported() else {
             call.resolve([
                 "ok": false,
+                "unsupported": true,
             ])
             return
         }
-
-        guard let webView = self.bridge?.webView else {
-            call.resolve([
-                "ok": false,
-            ])
-            return
-        }
-
-        let player = AVPlayer(playerItem: nil)
-        let layer = AVPlayerLayer(player: player)
-        layer.frame = webView.bounds
-        layer.videoGravity = .resizeAspect
-        webView.layer.addSublayer(layer)
-        pipLayer = layer
-
-        let controller = AVPictureInPictureController(contentSource: .playerLayer(layer))
-        controller.delegate = self
-        pipController = controller
-
-        do {
-            try controller.startPictureInPicture()
-            call.resolve([
-                "ok": true,
-            ])
-        } catch {
-            call.resolve([
-                "ok": false,
-            ])
-        }
+        call.resolve([
+            "ok": false,
+            "unsupported": true,
+        ])
     }
 
     @objc func stopPip(_ call: CAPPluginCall) {
@@ -131,32 +111,12 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     @objc func setFullscreen(_ call: CAPPluginCall) {
         let fullscreen = call.getBool("fullscreen", false)
         isFullscreen = fullscreen
-
-        guard let webView = self.bridge?.webView else {
-            call.resolve([
-                "ok": false,
-            ])
-            return
-        }
-
-        // Use the web view's scroll view chrome to hide system bars.
-        // This is the supported WKWebView path; it does not attempt the
-        // deprecated prefersStatusBarHidden override.
-        if #available(iOS 16.0, *) {
-            let scene = webView.windowScene
-            let options: UIStatusBarManager.Level?
-            if fullscreen {
-                // Hide home indicator + status bar via auto-hide on iOS 16+.
-                // Fallback: keep default behavior.
-            }
-            call.resolve([
-                "ok": true,
-            ])
-        } else {
-            call.resolve([
-                "ok": true,
-            ])
-        }
+        // Honest unsupported until real UIKit video chrome exists.
+        // Do not fake ok:true with an empty body.
+        call.resolve([
+            "ok": false,
+            "unsupported": true,
+        ])
     }
 
     @objc func allowSleep(_ call: CAPPluginCall) {

@@ -108,17 +108,18 @@ Implemented. Capacitor plugin `M3UProxy` provides native HTTP client for `/m3u/c
 
 Implemented. Capacitor plugin `MobileNativeMedia` provides OS-level media + power controls on iOS/Android.
 
-- **Plugin**: `mobile-native-media/src/index.ts` + `ios/App/App/Plugins/MobileNativeMedia.swift` + `android/app/src/main/java/play/ott/foss/MobileNativeMediaPlugin.kt`
-- **JS shim**: `src/plugins/mobile-native-media.ts`; wired in `src/index.ts` under `window.Capacitor` gate only.
+- **Plugin**: `src/plugins/mobile-native-media.ts` (inlined under `src/` for tsc) + `ios/App/App/Plugins/MobileNativeMedia.swift` + `android/app/src/main/java/play/ott/foss/MobileNativeMediaPlugin.kt`
+- **JS shim**: wired in `src/index.ts` under `window.Capacitor` gate only.
 - **Surface**: wraps `stbGetVolume` / `stbSetVolume` / `stbPlayPip` / `stbStopPip` / `stbToFullScreen` / `stbSetWindow` / `stbToggleStandby` so Mode A/Tauri paths stay untouched.
+- **Call shape**: Cap methods take option objects — `setVolume({ volume })`, `setFullscreen({ fullscreen })` — matching native `getInt`/`getBool`.
 
 **Behavior by API**:
-- **Volume**: `getVolume` returns `{ok, volume(0-100)}`; `setVolume` clamps 0-100. iOS uses `AVAudioSession.outputVolume` for get; set drives `MPVolumeView` slider (public path, no private APIs). Android uses `AudioManager.STREAM_MUSIC`. Both return `{ok:false, unsupported:true}` on failure.
-- **PiP**: `playPip` / `stopPip`. iOS uses `AVPictureInPictureController` with an `AVPlayerLayer` attached to the WKWebView; fails if not supported. Android requires API 26+; uses `PictureInPictureParams` with 16:9 aspect ratio. Loud failure on older platforms.
-- **Fullscreen**: `setFullscreen(boolean)`. Android uses `FLAG_FULLSCREEN` + immersive sticky system UI flags on the WebView. iOS returns success; documented limitation: native full-window fullscreen requires a supported WKWebView configuration path; do not fake it.
-- **Standby / wake**: `allowSleep` releases idle timer / WakeLock; `preventSleep` disables idle timer / acquires WakeLock. Mirrors Tauri `prevent_sleep` / `allow_sleep` intent.
+- **Volume**: `getVolume` returns `{ok, volume(0-100)}`; `setVolume({ volume })` clamps 0-100. iOS uses `AVAudioSession.outputVolume` for get; set drives `MPVolumeView` slider (public path, no private APIs). Android uses `AudioManager.STREAM_MUSIC`. Both return `{ok:false, unsupported:true}` on failure.
+- **PiP**: `playPip` / `stopPip`. Android requires API 26+; uses `PictureInPictureParams` with 16:9 aspect ratio (`supportsPictureInPicture` on the activity); wraps `enterPictureInPictureMode` in try/catch and fails loudly on older platforms. iOS returns `{ok:false, unsupported:true}` until a real `AVPlayer` (with media item) is wired — empty `AVPlayer(playerItem: nil)` must not report success.
+- **Fullscreen**: `setFullscreen({ fullscreen })`. Android uses `FLAG_FULLSCREEN` + immersive sticky system UI flags on the WebView. iOS returns `{ok:false, unsupported:true}` until real UIKit video chrome exists — do not fake `ok:true` with an empty body.
+- **Standby / wake**: `allowSleep` releases idle timer / clears `keepScreenOn`; `preventSleep` disables idle timer / sets `keepScreenOn`. Web fallbacks return `{ok:false, unsupported:true}` (not fake ok). Cap standby shim uses a real `_standby` flag (same pattern as Tauri), not a `backgroundColor` heuristic. Mirrors Tauri `prevent_sleep` / `allow_sleep` intent.
 
-**Failure contract**: never fake success. Every method resolves with `{ok:false}` or `{unsupported:true}` when native path is unavailable; no silent fallback.
+**Failure contract**: never fake success. Every method resolves with `{ok:false}` and/or `{unsupported:true}` when the native path is unavailable; no silent fallback.
 
 ## Mode A and Tauri
 

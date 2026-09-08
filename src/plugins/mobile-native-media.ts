@@ -1,5 +1,100 @@
 /**
- * MobileNativeMedia plugin — thin re-export so src/index.ts can import
- * from the plugins directory alongside m3u-proxy.
+ * MobileNativeMedia — Capacitor 4.4 native media bridges.
+ *
+ * Real native calls; WebPlugin fallback no-ops with console.warn.
+ * Gate on `window.Capacitor` in src/index.ts so Mode A / Tauri stay untouched.
+ * Inlined under src/ so tsc rootDir is satisfied.
  */
-export { MobileNativeMedia } from "../mobile-native-media/src/index";
+
+import { registerPlugin, WebPlugin } from "@capacitor/core";
+
+export interface MobileNativeMediaPlugin {
+    /** Release sleep prevention → device may idle/sleep. */
+    allowSleep(): Promise<{ ok: boolean; unsupported?: boolean }>;
+    /** OS output volume 0–100. Fails loudly when platform cannot report. */
+    getVolume(): Promise<{
+        ok: boolean;
+        unsupported?: boolean;
+        volume: number;
+    }>;
+    /** Enter picture-in-picture. Fails loudly when unavailable. */
+    playPip(): Promise<{ ok: boolean; unsupported?: boolean }>;
+    /** Acquire sleep prevention → keep device awake. */
+    preventSleep(): Promise<{ ok: boolean; unsupported?: boolean }>;
+    /** Full-window fullscreen (immersive on Android). */
+    setFullscreen(opts: { fullscreen: boolean }): Promise<{
+        ok: boolean;
+        unsupported?: boolean;
+    }>;
+    /** Set OS output volume 0–100. Fails loudly when platform cannot set. */
+    setVolume(opts: { volume: number }): Promise<{
+        ok: boolean;
+        unsupported?: boolean;
+        volume: number;
+    }>;
+    /** Exit picture-in-picture. */
+    stopPip(): Promise<{ ok: boolean; unsupported?: boolean }>;
+}
+
+class MobileNativeMediaWeb
+    extends WebPlugin
+    implements MobileNativeMediaPlugin
+{
+    async getVolume(): Promise<{
+        ok: boolean;
+        unsupported?: boolean;
+        volume: number;
+    }> {
+        console.warn("[MobileNativeMedia] web fallback: getVolume unsupported");
+        return { ok: false, unsupported: true, volume: 0 };
+    }
+
+    async setVolume(_opts: { volume: number }): Promise<{
+        ok: boolean;
+        unsupported?: boolean;
+        volume: number;
+    }> {
+        console.warn("[MobileNativeMedia] web fallback: setVolume unsupported");
+        return { ok: false, unsupported: true, volume: 0 };
+    }
+
+    async playPip(): Promise<{ ok: boolean; unsupported?: boolean }> {
+        console.warn("[MobileNativeMedia] web fallback: playPip unsupported");
+        return { ok: false, unsupported: true };
+    }
+
+    async stopPip(): Promise<{ ok: boolean; unsupported?: boolean }> {
+        console.warn("[MobileNativeMedia] web fallback: stopPip unsupported");
+        return { ok: false, unsupported: true };
+    }
+
+    async setFullscreen(_opts: {
+        fullscreen: boolean;
+    }): Promise<{ ok: boolean; unsupported?: boolean }> {
+        console.warn(
+            "[MobileNativeMedia] web fallback: setFullscreen unsupported"
+        );
+        return { ok: false, unsupported: true };
+    }
+
+    async allowSleep(): Promise<{ ok: boolean; unsupported?: boolean }> {
+        console.warn(
+            "[MobileNativeMedia] web fallback: allowSleep unsupported"
+        );
+        return { ok: false, unsupported: true };
+    }
+
+    async preventSleep(): Promise<{ ok: boolean; unsupported?: boolean }> {
+        console.warn(
+            "[MobileNativeMedia] web fallback: preventSleep unsupported"
+        );
+        return { ok: false, unsupported: true };
+    }
+}
+
+export const MobileNativeMedia = registerPlugin<MobileNativeMediaPlugin>(
+    "MobileNativeMedia",
+    {
+        web: () => new MobileNativeMediaWeb(),
+    }
+);
