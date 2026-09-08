@@ -115,16 +115,16 @@ Implemented. Capacitor plugin `M3UProxy` provides native HTTP client for `/m3u/c
 - **Return**: response body as text string (text playlists).
 - **Smoke**: Capacitor app → provider POST `/m3u/cp.php` → native fetch returns body; Tauri/Mode A unchanged.
 
-### Stalker portal shim
+### Stalker portal + host_ott swop shim
 
-Implemented (Option A-style ajax routing → native HTTP). Stalker provider scripts POST JSON-RPC to `<portal>/stalker_portal/api/`; Mode B has no companion and WebView CORS would block the portal origin.
+Implemented (Option A-style ajax routing → native HTTP). Stalker provider scripts POST JSON-RPC to `<portal>/stalker_portal/api/`; dealer/cloud entry (`edit_dealer_remote`, cloud settings) POSTs form-urlencoded bodies to `host_ott/swop/a.php`. Mode B has no companion and WebView CORS would block those origins.
 
-- **Web shim**: `setupStalkerPortalShim()` in `src/plugins/stalker-portal.ts` intercepts jQuery `$.ajax` for `/stalker_portal/api/` (and `/stalker_portal/stream/` text fetches). Mode A never installs the shim.
-- **Tauri**: `stalker_portal_fetch` command (`src-tauri/src/commands/stalker.rs`) — POST/GET with 15s timeout, JSON Content-Type when body present.
-- **Capacitor**: `StalkerPortal.portalRequest` — `ios/App/App/Plugins/StalkerPortalPlugin.swift` + `android/.../StalkerPortalPlugin.kt`.
-- **Works**: portal handshake + `get_channels` / channel-list load + provider-built stream URLs (player still opens stream URL directly).
-- **Still limited**: STB `host_ott/swop/a.php` dealer/cloud remote entry (needs external cloud; not shimmed). Classic Mag `c/portal` / `load.php` flavors, token/cookie auth variants, and VOD are outside the FOSS `prov/stalker` JSON-RPC path.
-- **Smoke**: Mode B → configure portal URL + MAC → handshake + channel list without companion `:8095`. Mode A browser+`server.py` unchanged.
+- **Web shim**: `setupStalkerPortalShim()` in `src/plugins/stalker-portal.ts` intercepts jQuery `$.ajax` for `/stalker_portal/api/` (and `/stalker_portal/stream/` text fetches) **and** `/swop/a.php`. Mode A never installs the shim.
+- **Tauri**: `stalker_portal_fetch` (`src-tauri/src/commands/stalker.rs`) — POST/GET with 15s timeout; optional `contentType` (JSON for portal, `application/x-www-form-urlencoded` for swop).
+- **Capacitor**: `StalkerPortal.portalRequest` — `ios/App/App/Plugins/StalkerPortalPlugin.swift` + `android/.../StalkerPortalPlugin.kt` (passes through `contentType`).
+- **Works**: portal handshake + `get_channels` / channel-list load + provider-built stream URLs (player still opens stream URL directly); Mode B `host_ott/swop/a.php` dealer/cloud POSTs when `host_ott` / `host_ott_proto` are set (same contract as STB firmware). Response body is returned to existing JS (`edit_dealer_remote` still `getScriptDOM`s dealer script from same-origin `host`).
+- **Still limited / TODO**: Classic Mag `c/portal` / `load.php` flavors, token/cookie auth variants, and VOD are outside the FOSS `prov/stalker` JSON-RPC path. No proprietary `host_ott` default is baked into FOSS builds — Mode B callers must set those globals (STB firmware does on Mag). Cloud settings UI already no-ops when unset.
+- **Smoke**: Mode B → configure portal URL + MAC → handshake + channel list without companion `:8095`. With `host_ott` set → Enter Provider Code (remote) / cloud send-load POSTs reach `swop/a.php` via native HTTP. Mode A browser+`server.py` unchanged (talks to real `host_ott` over normal XHR).
 
 ## Remaining gaps
 

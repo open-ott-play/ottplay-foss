@@ -1,3 +1,4 @@
+/// Mode B native HTTP for Stalker `/stalker_portal/api/` and `host_ott/swop/a.php`.
 import Capacitor
 import Foundation
 import os.log

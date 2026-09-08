@@ -1,4 +1,4 @@
 [[permission]]
 identifier = "allow-stalker-portal-fetch"
-description = "Enables the stalker_portal_fetch command (CORS-free Stalker portal JSON-RPC for Mode B)."
+description = "Enables the stalker_portal_fetch command (CORS-free Stalker portal JSON-RPC and host_ott/swop/a.php dealer/cloud for Mode B)."
 commands.allow = ["stalker_portal_fetch"]

@@ -102,11 +102,13 @@ The native command queue stores commands in memory (expire after 60s, same as `l
 
 ---
 
-### Tier 7 — Stalker portal
+### Tier 7 — Stalker portal + host_ott swop
 
 - `<portal>/stalker_portal/api/` JSON-RPC (handshake, get_channels, get_epg) → native HTTP via ajax shim (`setupStalkerPortalShim`)
-- Tauri: `stalker_portal_fetch`; Capacitor: `StalkerPortal.portalRequest`
+- `host_ott/swop/a.php` dealer/cloud POSTs (form-urlencoded) → same shim / native HTTP when Cap/Tauri
+- Tauri: `stalker_portal_fetch` (also allows `/swop/a.php`); Capacitor: `StalkerPortal.portalRequest`
 - Stream play URLs remain direct player opens (not companion-proxied)
+- TODO: Mag `load.php` / VOD still out of scope; no baked-in proprietary `host_ott` default
 
 
 ## Recommended Stack Per OS
@@ -312,7 +314,7 @@ STB/TV builds continue as today:
 
 2. **iOS DASH** — Capacitor WKWebView cannot play DASH (no MSE). Cap `DashExoPlayer` returns honest `{ok:false, unsupported:true}`; Android plays via ExoPlayer/Media3 in `DashExoPlayer`.
 
-3. **Stalker portal interception** *(mitigated for FOSS JSON-RPC path)* — `prov/stalker/prov.js` POSTs to `<portal>/stalker_portal/api/`. Mode B routes those ajax calls through `setupStalkerPortalShim()` → Tauri `stalker_portal_fetch` / Cap `StalkerPortal.portalRequest` (Option A-style). Mode A unchanged. Still out of scope: STB `host_ott/swop/a.php` dealer/cloud remote entry, classic Mag `load.php` portals, and VOD.
+3. **Stalker portal interception** *(mitigated for FOSS JSON-RPC + host_ott swop)* — `prov/stalker/prov.js` POSTs to `<portal>/stalker_portal/api/`; dealer/cloud entry POSTs to `host_ott/swop/a.php`. Mode B routes those ajax calls through `setupStalkerPortalShim()` → Tauri `stalker_portal_fetch` / Cap `StalkerPortal.portalRequest` (Option A-style). Mode A unchanged (real `host_ott` over normal XHR). Still out of scope: classic Mag `load.php` portals and VOD; FOSS builds do not bake a proprietary `host_ott` default.
 
 4. **Tauri mobile** — Tauri v2 mobile is production-ready but ecosystem is smaller than Capacitor. Phase 2 uses Capacitor. Revisit Tauri mobile in a future phase.
 

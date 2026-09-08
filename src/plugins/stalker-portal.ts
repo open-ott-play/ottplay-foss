@@ -1,17 +1,25 @@
 /**
- * Stalker portal shim — Mode B native transport for portal JSON-RPC.
+ * Stalker portal + host_ott swop shim — Mode B native HTTP transport.
  *
- * Stalker provider scripts (`prov/stalker/prov.js`) POST to
- * `<portal>/stalker_portal/api/`. Native apps have no companion HTTP
- * server and WebView CORS blocks the portal origin. This module:
+ * Covers:
+ * - Stalker provider scripts (`prov/stalker/prov.js`) POST JSON-RPC to
+ *   `<portal>/stalker_portal/api/` (and `/stalker_portal/stream/` text).
+ * - Dealer/cloud entry (`edit_dealer_remote`, cloud settings) POST
+ *   form-urlencoded bodies to `host_ott/swop/a.php`.
  *
+ * Native apps have no companion HTTP server and WebView CORS blocks those
+ * origins. This module:
  * - exposes Capacitor `StalkerPortal.portalRequest` (native HTTP);
- * - `setupStalkerPortalShim()` intercepts jQuery `$.ajax` for
- *   `/stalker_portal/api/` (and `/stalker_portal/stream/` text fetches)
- *   and routes through Tauri `stalker_portal_fetch` or Cap `portalRequest`.
+ * - `setupStalkerPortalShim()` intercepts jQuery `$.ajax` for the paths
+ *   above and routes through Tauri `stalker_portal_fetch` or Cap
+ *   `portalRequest`.
  *
  * Mode A (browser + companion) never installs this shim.
- * Hard rule: never fake a successful portal response.
+ * Hard rule: never fake a successful portal/swop response.
+ *
+ * Still out of scope: Mag `c/portal` / `load.php`, VOD, proprietary host
+ * defaults (caller must set `host_ott` / `host_ott_proto` as STB firmware
+ * does).
  */
 
 import { registerPlugin } from "@capacitor/core";
@@ -61,6 +69,15 @@ function isStalkerPortalUrl(url: string): boolean {
     );
 }
 
+/** STB dealer/cloud handshake endpoint (`host_ott_proto + host_ott + /swop/a.php`). */
+function isHostOttSwopUrl(url: string): boolean {
+    return url.indexOf("/swop/a.php") !== -1;
+}
+
+function isShimmedUrl(url: string): boolean {
+    return isStalkerPortalUrl(url) || isHostOttSwopUrl(url);
+}
+
 function tauriInvoke<T>(
     command: string,
     args: Record<string, unknown>
@@ -73,9 +90,68 @@ function tauriInvoke<T>(
 }
 
 /**
- * Install `$.ajax` wrapper that routes Stalker portal URLs through native
- * transport. Other URLs keep the previous ajax implementation (Mode B
- * companion shim or raw jQuery).
+ * Encode ajax `data` the way jQuery would for the target URL.
+ * Stalker JSON-RPC uses JSON bodies; swop/a.php uses form-urlencoded
+ * (jQuery default for object `data` without `contentType: application/json`).
+ */
+function encodeAjaxBody(
+    opts: any,
+    url: string
+): { body: string | undefined; contentType: string } {
+    const swop = isHostOttSwopUrl(url);
+    const explicitCt =
+        typeof opts.contentType === "string" ? opts.contentType : "";
+    const defaultCt = swop
+        ? "application/x-www-form-urlencoded; charset=UTF-8"
+        : "application/json";
+    const contentType = explicitCt || defaultCt;
+
+    if (typeof opts.data === "string") {
+        return { body: opts.data, contentType };
+    }
+    if (opts.data == null) {
+        return { body: undefined, contentType };
+    }
+    if (typeof opts.data === "object") {
+        const wantForm =
+            swop ||
+            contentType.indexOf("application/x-www-form-urlencoded") !== -1;
+        if (wantForm) {
+            const $ = (window as any).$;
+            try {
+                if ($ && typeof $.param === "function") {
+                    return { body: $.param(opts.data), contentType };
+                }
+            } catch (_e) {}
+            // Minimal fallback if $.param missing
+            try {
+                const parts: string[] = [];
+                for (const key of Object.keys(opts.data)) {
+                    const val = opts.data[key];
+                    parts.push(
+                        encodeURIComponent(key) +
+                            "=" +
+                            encodeURIComponent(val == null ? "" : String(val))
+                    );
+                }
+                return { body: parts.join("&"), contentType };
+            } catch (_e2) {
+                return { body: undefined, contentType };
+            }
+        }
+        try {
+            return { body: JSON.stringify(opts.data), contentType };
+        } catch (_e3) {
+            return { body: undefined, contentType };
+        }
+    }
+    return { body: undefined, contentType };
+}
+
+/**
+ * Install `$.ajax` wrapper that routes Stalker portal + host_ott swop URLs
+ * through native transport. Other URLs keep the previous ajax implementation
+ * (Mode B companion shim or raw jQuery).
  */
 export function setupStalkerPortalShim(): void {
     const $ = (window as any).$;
@@ -129,8 +205,18 @@ export function setupStalkerPortalShim(): void {
         return dfd.promise(dfd) as any;
     }
 
-    function parseBodyIfJson(body: string, opts: any): any {
-        if (opts.dataType === "json" && typeof body === "string" && body) {
+    function parseResponseBody(
+        body: string,
+        opts: any,
+        url: string,
+        respContentType: string
+    ): any {
+        const wantJson =
+            opts.dataType === "json" ||
+            isHostOttSwopUrl(url) ||
+            (respContentType &&
+                respContentType.indexOf("application/json") !== -1);
+        if (wantJson && typeof body === "string" && body) {
             try {
                 return JSON.parse(body);
             } catch (_e) {
@@ -149,21 +235,14 @@ export function setupStalkerPortalShim(): void {
         }
         const url = String(opts.url || "");
 
-        if (!isStalkerPortalUrl(url)) {
+        if (!isShimmedUrl(url)) {
             return origAjax(urlOrOpts, maybeOpts);
         }
 
         const method = String(opts.type || opts.method || "GET").toUpperCase();
-        let body: string | undefined;
-        if (typeof opts.data === "string") {
-            body = opts.data;
-        } else if (opts.data != null && typeof opts.data === "object") {
-            try {
-                body = JSON.stringify(opts.data);
-            } catch (_e) {
-                body = undefined;
-            }
-        }
+        const encoded = encodeAjaxBody(opts, url);
+        const body = encoded.body;
+        const contentType = encoded.contentType;
 
         const isTauri = typeof (window as any).__TAURI__ !== "undefined";
 
@@ -172,7 +251,12 @@ export function setupStalkerPortalShim(): void {
                 status: number;
                 body: string;
                 contentType: string;
-            }>("stalker_portal_fetch", { body, method, url }).then((res) => {
+            }>("stalker_portal_fetch", {
+                body,
+                contentType,
+                method,
+                url,
+            }).then((res) => {
                 if (!(res.status >= 200 && res.status < 300)) {
                     throw new Error(
                         "stalker HTTP " +
@@ -181,15 +265,16 @@ export function setupStalkerPortalShim(): void {
                             (res.body || "").slice(0, 200)
                     );
                 }
-                return parseBodyIfJson(res.body || "", opts);
+                return parseResponseBody(
+                    res.body || "",
+                    opts,
+                    url,
+                    res.contentType || ""
+                );
             });
             return jqFromPromise(invokePromise, opts);
         }
 
-        const contentType =
-            typeof opts.contentType === "string"
-                ? opts.contentType
-                : "application/json";
         const capPromise = StalkerPortal.portalRequest({
             body,
             contentType,
@@ -204,7 +289,12 @@ export function setupStalkerPortalShim(): void {
                         (res.body || "").slice(0, 200)
                 );
             }
-            return parseBodyIfJson(res.body || "", opts);
+            return parseResponseBody(
+                res.body || "",
+                opts,
+                url,
+                res.contentType || ""
+            );
         });
         return jqFromPromise(capPromise, opts);
     };
