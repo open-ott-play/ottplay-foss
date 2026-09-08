@@ -5,7 +5,7 @@ Both platforms share the same TypeScript source and Capacitor configuration.
 
 ## Status
 
-Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315), iOS AVPlayer PiP (#316), Stalker portal (#317), MediaSession (#318+#321), DASH ExoPlayer (#319), Tauri updater/notarize (#320), Stalker `host_ott/swop` (#322), Mag `load.php` path allowlist + cookie/header hooks (#324), Cap tvOS unsupported docs + iOS UIPress remote gaps (#325), Dev PC input-line editor `showEditKey2` (#326), command-queue curl/HA smoke (#328), and Mode A companion HTTP smoke (#329). Remaining: human TestFlight/Play upload, Mag JsHttpRequest client/VOD, device smoke, DRM. Cap tvOS is **unsupported upstream** (documented; no stub target).
+Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315), iOS AVPlayer PiP (#316), Stalker portal (#317), MediaSession (#318+#321), DASH ExoPlayer (#319), Tauri updater/notarize (#320), Stalker `host_ott/swop` (#322), Mag `load.php` path allowlist + cookie/header hooks (#324), Cap tvOS unsupported docs + iOS UIPress remote gaps (#325), Dev PC input-line editor `showEditKey2` (#326), command-queue curl/HA smoke (#328), Mode A companion HTTP smoke (#329), M3U stream-proxy header smoke (#332), Mode A `/logo` concurrent bench smoke (#333), and XMLTV cache refresh / warm-up smoke (#334). Remaining: human TestFlight/Play upload, Mag JsHttpRequest client/VOD, device smoke, DRM. Cap tvOS is **unsupported upstream** (documented; no stub target).
 
 ## Shipped
 
@@ -27,6 +27,9 @@ Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315
 - **Dev PC input-line editor** — PR #326 — restore `showEditKey2` / window publish for native input-line editor path
 - **Command-queue curl smoke + HA docs** — PR #328 — `scripts/smoke-command-queue.sh` + HA usage notes (all modes)
 - **Mode A companion smoke** — PR #329 — `scripts/smoke-modea-companion.sh` (EPG/M3U/static)
+- **M3U stream-proxy header smoke** — PR #332 — `scripts/smoke-m3u-stream-proxy-headers.sh` (UA inject / no Referer)
+- **Mode A `/logo` concurrent bench smoke** — PR #333 — `scripts/smoke-logo-concurrent-bench.sh` (p50/p95/p99)
+- **XMLTV cache refresh / warm-up smoke** — PR #334 — `scripts/smoke-xmltv-cache-refresh.sh` (optional `--restart-cmd`)
 
 ## Build
 
@@ -191,7 +194,7 @@ Typical Mag / Ministra STB middleware is a different protocol from FOSS JSON-RPC
 - **Store / TestFlight / Play** — prepared (#315 / section below). Human upload still required.
 - **Mag JsHttpRequest client / VOD** — classic Mag handshake/channel-list/VOD client is **not** in FOSS (see section above). Mode B only allowlists Mag URL shapes + header/cookie forward (#324).
 - **Cap tvOS** — **does not work** / unsupported upstream (see §Cap tvOS below; #325). No stub target — not an open Cap work item.
-- **Device smoke** — real device/simulator passes for queue / EPG / M3U/media / Stalker / swop paths. Curl smokes for command-queue (#328) and Mode A companion (#329) are shipped.
+- **Device smoke** — real device/simulator passes for queue / EPG / M3U/media / Stalker / swop paths. Curl smokes for command-queue (#328), Mode A companion (#329), M3U stream-proxy headers (#332), `/logo` concurrent bench (#333), and XMLTV cache warm-up (#334) are shipped.
 - **DRM** — Widevine / FairPlay / encrypted DASH out of scope for current Cap/Tauri paths.
 
 ## Phase 3 — Store / TestFlight readiness
