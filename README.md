@@ -323,6 +323,18 @@ python3 local_proxy.py 8081
 | `POST` | `/api/webhook/commands?device_id=dev_xxx` | Queue for specific device |
 | `GET` | `/api/webhook/commands?device_id=dev_xxx` | Retrieve for specific device |
 
+### Smoke script (all modes)
+
+```bash
+# Mode B / Capacitor (default 127.0.0.1:18081)
+./scripts/smoke-command-queue.sh
+
+# Mode A local_proxy on :8081
+BASE_URL=http://127.0.0.1:8081 ./scripts/smoke-command-queue.sh
+```
+
+Android emulator/device: `adb forward tcp:18081 tcp:18081` first. Cap/Tauri are loopback-only — use this Mode A proxy for LAN Home Assistant. Details: `docs/capacitor-mobile.md` § Smoke test.
+
 ### CORS
 
 The proxy sends full CORS headers (`Access-Control-Allow-Origin: *`), so the player can poll it from any domain.

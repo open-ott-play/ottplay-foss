@@ -97,8 +97,11 @@ Implemented in `mobile-xmltv-epg/` (Capacitor) and `src-tauri/src/commands/tauri
 Native app implements its own local command queue (not `local_proxy.py`):
 - `POST /api/webhook/commands` → native HTTP server on `localhost:18081` (desktop) or high port (iOS, Android)
 - `GET /api/webhook/commands` → poll from the app's web layer
+- Aliases: `POST /webhook/notify`, `GET /webhook/poll`; optional `?device_id=` (query only)
 
 The native command queue stores commands in memory (expire after 60s, same as `local_proxy.py`).
+
+**Smoke / HA:** `scripts/smoke-command-queue.sh` (default `http://127.0.0.1:18081`). Mode A companion remains `python3 local_proxy.py 8081` for LAN Home Assistant — Cap/Tauri are loopback-only. See `docs/capacitor-mobile.md` § Smoke test and root `README.md` Push Command System.
 
 ---
 

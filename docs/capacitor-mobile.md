@@ -85,7 +85,7 @@ The desktop/local proxy command queue (`POST /api/webhook/commands`, `GET /api/w
 
 - **iOS**: Swift plugin (`ios/App/App/Plugins/MobileCommandQueue.swift`) — NWListener-based HTTP server on `127.0.0.1:18081`. Enqueue/poll/expire/CORS/OPTIONS match `local_proxy.py` exactly.
 - **Android**: Kotlin plugin (`android/app/src/main/java/play/ott/foss/MobileCommandQueuePlugin.kt`) — `ServerSocket`-based HTTP server on `127.0.0.1:18081` with identical contract.
-- **Web layer**: `src/index.ts` detects `window.Capacitor`, sets `local_poll_url` to `http://127.0.0.1:18081/api/webhook/commands`, and polls via `MobileCommandQueue.get()` every 10s.
+- **Web layer**: `src/index.ts` detects `window.Capacitor` + `MobileCommandQueue`, starts the native listener, and drains via `MobileCommandQueue.get()` every 10s. It does **not** set `local_poll_url` (that would also arm the Mode A HTTP poller against the same port).
 - **JS package**: `mobile-command-queue/src/index.ts` — real native bridge; WebPlugin remains a no-op fallback for non-Capacitor builds.
 
 **Contract** (same as `local_proxy.py` / Tauri `queue.rs`):
@@ -94,8 +94,46 @@ The desktop/local proxy command queue (`POST /api/webhook/commands`, `GET /api/w
 - GET `/api/webhook/commands` (alias `/webhook/poll`) — return pending array then clear; expire entries older than 60s
 - Caps: per-device 50 (trim to 25), broadcast 100 (trim to 50)
 - CORS headers, OPTIONS handling
+- Device routing is **query-only** (`?device_id=`). No device-id header; Cap/Tauri pollers currently use broadcast (`device_id` empty).
 
 See `mobile-command-queue/README.md` for usage.
+
+### Smoke test (curl) + Home Assistant
+
+Use `scripts/smoke-command-queue.sh` to POST then GET the queue. Default base URL is `http://127.0.0.1:18081` (Tauri Mode B / Capacitor loopback). Exits with a clear **not listening** message if nothing is bound.
+
+```bash
+# Tauri Mode B — app running (binds 127.0.0.1:18081)
+./scripts/smoke-command-queue.sh
+./scripts/smoke-command-queue.sh --aliases   # also /webhook/notify + /webhook/poll
+
+# Mode A companion — local_proxy.py (default port 8081, all interfaces)
+python3 local_proxy.py 8081
+BASE_URL=http://127.0.0.1:8081 ./scripts/smoke-command-queue.sh
+
+# Capacitor iOS Simulator — Mac shares localhost with the sim
+./scripts/smoke-command-queue.sh
+
+# Capacitor Android emulator / USB device — forward host→device loopback
+adb forward tcp:18081 tcp:18081
+./scripts/smoke-command-queue.sh
+```
+
+Optional per-device: `DEVICE_ID=dev_… ./scripts/smoke-command-queue.sh` (matches Player settings → Device ID / `?device_id=`).
+
+**LAN Home Assistant**: Cap and Tauri bind **loopback only**, so HA on another host cannot reach `:18081` without a tunnel. For HA on the LAN, run Mode A `local_proxy.py` on a reachable host (often `:8081`) and point the player Local command URL there. Minimal curl-equivalent `rest_command` (no secrets):
+
+```yaml
+rest_command:
+  ott_tv_command:
+    url: "http://192.168.1.50:8081/api/webhook/commands"
+    method: POST
+    headers:
+      Content-Type: application/json
+    payload: '{"command":"popup_message","message":"{{ message }}","popup_duration":5}'
+```
+
+Full Mode A command catalog + longer HA examples live in the root `README.md` (Push Command System / Local Proxy Server).
 
 ### XMLTV/EPG caching
 
