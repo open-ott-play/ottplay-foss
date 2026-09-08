@@ -490,3 +490,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 ## License
 
 FOSS — free and open source.
+
+## Desktop updater / notarization (Mode B)
+
+Optional Tauri auto-updater (GitHub Releases) and macOS notarization hooks are documented in [docs/tauri-updater-notarize.md](docs/tauri-updater-notarize.md). Release CI skips signing/notarize when secrets are absent.

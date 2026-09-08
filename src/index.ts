@@ -5533,3 +5533,64 @@ optionsArr.push({
     name: "Remote control",
 });
 optionsArr.push({ action: selectLang, name: "Change interface language" });
+
+// Mode B only: Tauri updater check (GitHub Releases latest.json). Mode A untouched.
+// Match other @tauri-apps usage: window.__TAURI__ / tauriInvoke — not import().
+// Dynamic import hits TS1323 (module:ES2015); static import is stripped by concat
+// and cannot resolve bare specifiers in the Mode A/B stbPlayer.js bundle.
+if (typeof window.__TAURI__ !== "undefined") {
+    void (async () => {
+        try {
+            type UpdaterMeta = {
+                rid: number;
+                currentVersion: string;
+                version: string;
+                date?: string;
+                body?: string;
+            };
+            const update = await tauriInvoke<UpdaterMeta | null>(
+                "plugin:updater|check",
+                {}
+            );
+            if (!update) return;
+            const ver = update.version;
+            // Soft prompt — do not force install on startup.
+            if (
+                typeof window.confirm === "function" &&
+                window.confirm(
+                    `OttPlay FOSS ${ver} is available. Download and install now?`
+                )
+            ) {
+                const ChannelCtor = (window as any).__TAURI__?.core?.Channel;
+                if (typeof ChannelCtor !== "function") {
+                    throw new Error("Tauri Channel unavailable for updater");
+                }
+                const onEvent = new ChannelCtor();
+                await tauriInvoke("plugin:updater|download_and_install", {
+                    onEvent,
+                    rid: update.rid,
+                });
+                // Relaunch is optional; ask the user to restart if plugin-process is absent.
+                try {
+                    const processApi = (window as any).__TAURI__?.process;
+                    if (processApi?.relaunch) {
+                        await processApi.relaunch();
+                    } else if (typeof window.alert === "function") {
+                        window.alert(
+                            "Update installed. Please restart OttPlay FOSS."
+                        );
+                    }
+                } catch {
+                    if (typeof window.alert === "function") {
+                        window.alert(
+                            "Update installed. Please restart OttPlay FOSS."
+                        );
+                    }
+                }
+            }
+        } catch (err) {
+            // Missing latest.json / placeholder pubkey / offline: non-fatal.
+            console.debug("Tauri updater check skipped:", err);
+        }
+    })();
+}

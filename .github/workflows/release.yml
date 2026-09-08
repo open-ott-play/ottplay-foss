@@ -190,18 +190,96 @@ jobs:
       - name: Build frontend
         run: npm run build --ignore-scripts
 
+      # Optional secrets (all skip-safe when absent):
+      #   TAURI_SIGNING_PRIVATE_KEY[+_PASSWORD] — updater .sig + createUpdaterArtifacts
+      #   APPLE_CERTIFICATE[+_PASSWORD], APPLE_SIGNING_IDENTITY — macOS codesign
+      #   APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID — notarization
+      # Map APPLE_APP_SPECIFIC_PASSWORD -> APPLE_PASSWORD (what Tauri CLI expects).
+      - name: Detect optional signing / notarize secrets
+        id: signs
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
+            echo "tauri_signing=true" >> "$GITHUB_OUTPUT"
+            echo "Updater signing key present — will create updater artifacts"
+          else
+            echo "tauri_signing=false" >> "$GITHUB_OUTPUT"
+            echo "No TAURI_SIGNING_PRIVATE_KEY — unsigned updater artifacts skipped"
+          fi
+          if [ "${{ matrix.platform }}" = "macos-latest" ] \
+            && [ -n "${APPLE_CERTIFICATE:-}" ] \
+            && [ -n "${APPLE_ID:-}" ] \
+            && [ -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" ] \
+            && [ -n "${APPLE_TEAM_ID:-}" ]; then
+            echo "apple_notarize=true" >> "$GITHUB_OUTPUT"
+            echo "Apple signing+notarize secrets present"
+          else
+            echo "apple_notarize=false" >> "$GITHUB_OUTPUT"
+            echo "Apple notarize secrets absent or non-macOS — unsigned macOS path"
+          fi
+
+      - name: Import Apple certificate (optional)
+        if: steps.signs.outputs.apple_notarize == 'true'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # Throwaway keychain; never echo cert/password material.
+          CERT_PATH="$RUNNER_TEMP/apple_cert.p12"
+          KEYCHAIN="$RUNNER_TEMP/ottplay-signing.keychain-db"
+          echo -n "$APPLE_CERTIFICATE" | base64 --decode > "$CERT_PATH"
+          KC_PASS="${KEYCHAIN_PASSWORD:-$(openssl rand -base64 32)}"
+          security create-keychain -p "$KC_PASS" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KC_PASS" "$KEYCHAIN"
+          security import "$CERT_PATH" -P "${APPLE_CERTIFICATE_PASSWORD:-}" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security list-keychain -d user -s "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KC_PASS" "$KEYCHAIN"
+          rm -f "$CERT_PATH"
+          echo "KEYCHAIN_PATH=$KEYCHAIN" >> "$GITHUB_ENV"
+
       - name: Build desktop package
         shell: bash
         run: |
+          EXTRA_CONFIG=()
+          if [ "${TAURI_SIGNING:-}" = "true" ]; then
+            EXTRA_CONFIG+=(--config '{"bundle":{"createUpdaterArtifacts":true}}')
+          fi
           if [ -n "${TAURI_TARGET:-}" ]; then
-            npx tauri build --ci --target "$TAURI_TARGET"
+            npx tauri build --ci --target "$TAURI_TARGET" "${EXTRA_CONFIG[@]}"
           else
-            npx tauri build --ci
+            npx tauri build --ci "${EXTRA_CONFIG[@]}"
           fi
         working-directory: src-tauri
         env:
           CI: true
           TAURI_TARGET: ${{ matrix.target }}
+          TAURI_SIGNING: ${{ steps.signs.outputs.tauri_signing }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # macOS codesign + notarize (no-ops when empty / non-mac)
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Cleanup Apple keychain (optional)
+        if: always() && steps.signs.outputs.apple_notarize == 'true'
+        shell: bash
+        run: |
+          if [ -n "${KEYCHAIN_PATH:-}" ]; then
+            security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true
+          fi
 
       - name: Collect desktop bundles
         shell: bash

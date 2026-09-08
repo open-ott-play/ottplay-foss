@@ -27,7 +27,8 @@
     "@capacitor/app": "^8.1.1",
     "@capacitor/cli": "^8.5.1",
     "@capacitor/core": "^8.5.1",
-    "@capacitor/ios": "^8.5.1"
+    "@capacitor/ios": "^8.5.1",
+    "@tauri-apps/plugin-updater": "^2.9.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
