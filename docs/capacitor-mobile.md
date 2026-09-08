@@ -16,7 +16,8 @@ Capacitor 4.1–4.6 shipped on `main`. Store readiness prepared; human TestFligh
 - **Release artifacts** — PR #310 — multiarch Tauri + Capacitor IPA/APK
 - **4.4 Native media** — PR #312 + #316 — `MobileNativeMedia` (volume / wake real; iOS PiP via AVPlayer; fullscreen via MainViewController chrome)
 - **4.5 Background audio** — PR #313 — AVAudioSession `.playback` + Android `mediaPlayback` FGS
-- **4.6 Key / touch mapping** — this PR — Cap tap→ENTER + Android D-Pad/gamepad/media _doKey inject + iOS HW keyboard path
+- **4.6 Key / touch mapping** — Cap tap→ENTER + Android D-Pad/gamepad/media _doKey inject + iOS HW keyboard path
+- **Stalker portal shim** — this PR — Cap/Tauri native HTTP for `<portal>/stalker_portal/api/` (handshake + channel list)
 
 ## Build
 
@@ -113,10 +114,21 @@ Implemented. Capacitor plugin `M3UProxy` provides native HTTP client for `/m3u/c
 - **Return**: response body as text string (text playlists).
 - **Smoke**: Capacitor app → provider POST `/m3u/cp.php` → native fetch returns body; Tauri/Mode A unchanged.
 
+### Stalker portal shim
+
+Implemented (Option A-style ajax routing → native HTTP). Stalker provider scripts POST JSON-RPC to `<portal>/stalker_portal/api/`; Mode B has no companion and WebView CORS would block the portal origin.
+
+- **Web shim**: `setupStalkerPortalShim()` in `src/plugins/stalker-portal.ts` intercepts jQuery `$.ajax` for `/stalker_portal/api/` (and `/stalker_portal/stream/` text fetches). Mode A never installs the shim.
+- **Tauri**: `stalker_portal_fetch` command (`src-tauri/src/commands/stalker.rs`) — POST/GET with 15s timeout, JSON Content-Type when body present.
+- **Capacitor**: `StalkerPortal.portalRequest` — `ios/App/App/Plugins/StalkerPortalPlugin.swift` + `android/.../StalkerPortalPlugin.kt`.
+- **Works**: portal handshake + `get_channels` / channel-list load + provider-built stream URLs (player still opens stream URL directly).
+- **Still limited**: STB `host_ott/swop/a.php` dealer/cloud remote entry (needs external cloud; not shimmed). Classic Mag `c/portal` / `load.php` flavors, token/cookie auth variants, and VOD are outside the FOSS `prov/stalker` JSON-RPC path.
+- **Smoke**: Mode B → configure portal URL + MAC → handshake + channel list without companion `:8095`. Mode A browser+`server.py` unchanged.
+
 ## Remaining gaps
 
 - **Store / TestFlight** — prepared below. Human upload still required.
-- **Device smoke** — real device/simulator passes for queue / EPG / M3U/media paths.
+- **Device smoke** — real device/simulator passes for queue / EPG / M3U/media / Stalker paths.
 
 ## Phase 3 — Store / TestFlight readiness
 
