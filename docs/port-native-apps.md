@@ -40,6 +40,16 @@ These modes are **mutually exclusive at runtime** — a native app does not conn
 | `/webhook/poll` | **403** — disabled | N/A |
 | `/webhook/notify` | **403** — disabled | N/A |
 
+### Mode A companion smoke
+
+```bash
+./scripts/smoke-modea-companion.sh
+# BASE_URL=http://127.0.0.1:8080 ./scripts/smoke-modea-companion.sh   # docker/cargo
+# EPG_HASH=<hash> ./scripts/smoke-modea-companion.sh                 # optional /epg
+```
+
+See root README § Mode A companion smoke. Does not cover `local_proxy.py` command-queue (use `scripts/smoke-command-queue.sh`).
+
 ### Separate process: `local_proxy.py` (port 8081)
 
 This is **not** part of server.py. It runs as a standalone companion for the webhook-based remote command system (Home Assistant, Node-RED, curl). It is **not** used by the native apps.

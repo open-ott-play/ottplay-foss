@@ -65,6 +65,23 @@ cargo build --release -p ottplay-server
 
 On first load: press **F2 (Settings) → Providers → M3U**, enter your playlist URL.
 
+## Mode A companion smoke
+
+Curl-based smoke for the Mode A companion (`ottplay-server` / `archive/server.py` parity): index, static dirs, `/logo`, `/version`, optional `/epg`, and a no-fetch probe of `POST /m3u/cp.php`.
+
+```bash
+# Local install default (:8095 — scripts/install-ottplay-local-service.sh)
+./scripts/smoke-modea-companion.sh
+
+# Docker / cargo CLI default (:8080)
+BASE_URL=http://127.0.0.1:8080 ./scripts/smoke-modea-companion.sh
+
+# Optional EPG slice (empty cache → warning, not failure)
+EPG_HASH=<channel-hash> ./scripts/smoke-modea-companion.sh
+```
+
+Checks live in `scripts/modea-smoke-checks.json`. No secrets. Command-queue / `local_proxy.py` (:8081) is covered separately by `scripts/smoke-command-queue.sh` (when present).
+
 ## Docker
 
 Multi-arch images (amd64/arm64) are published to Docker Hub on every push to `main`, on `v*` tags, and via `workflow_dispatch`.
