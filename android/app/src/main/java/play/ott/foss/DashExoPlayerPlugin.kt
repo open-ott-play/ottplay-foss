@@ -4,275 +4,298 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.Service
-import android.content.Intent
-import android.content.pm.ServiceInfo
-import android.media.session.MediaSession
-import android.media.session.PlaybackState
+import android.graphics.Color
 import android.os.Build
-import android.os.IBinder
 import android.util.Log
+import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.core.app.NotificationCompat
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 
+/**
+ * Capacitor plugin wrapping Media3/ExoPlayer for native DASH (and HLS) playback.
+ * Renders into a PlayerView overlay on the Cap Activity so video is visible.
+ * DRM/Widevine is out of scope.
+ */
 @CapacitorPlugin(name = "DashExoPlayer")
 class DashExoPlayerPlugin : Plugin() {
 
     companion object {
-        const val ACTION_START = "play.ott.foss.action.START_DASH"
-        const val ACTION_STOP = "play.ott.foss.action.STOP_DASH"
-        const val ACTION_PAUSE = "play.ott.foss.action.PAUSE_DASH"
-        const val EXTRA_URL = "url"
-        const val EXTRA_POSITION = "position"
+        private const val TAG = "DashExoPlayer"
+        private const val CHANNEL_ID = "dash_player"
+        private const val NOTIFICATION_ID = 4406
     }
+
+    private var player: ExoPlayer? = null
+    private var playerView: PlayerView? = null
+    private var overlay: FrameLayout? = null
 
     @PluginMethod
     fun isDashSupported(call: PluginCall) {
-        call.resolve(JSObject().apply { put("ok", true) })
+        call.resolve(
+            JSObject().apply {
+                put("ok", true)
+                put("unsupported", false)
+            }
+        )
     }
 
     @PluginMethod
     fun playDash(call: PluginCall) {
-        val url = call.getString("url") ?: run {
-            call.resolve(JSObject().apply { put("ok", false); put("error", "missing url") })
+        val url = call.getString("url")
+        if (url.isNullOrBlank()) {
+            call.resolve(
+                JSObject().apply {
+                    put("ok", false)
+                    put("error", "missing url")
+                }
+            )
             return
         }
-        val position = (call.getDouble("position", 0.0) ?: 0.0).toLong()
-        val intent = Intent(context, DashPlayerService::class.java).apply {
-            action = ACTION_START
-            putExtra(EXTRA_URL, url)
-            putExtra(EXTRA_POSITION, position)
+        // JS passes seconds (stbPlay position); ExoPlayer seeks in ms.
+        val positionMs = ((call.getDouble("position") ?: 0.0) * 1000.0).toLong()
+        val act = activity
+        if (act == null) {
+            call.resolve(
+                JSObject().apply {
+                    put("ok", false)
+                    put("error", "no activity")
+                }
+            )
+            return
         }
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+        act.runOnUiThread {
+            try {
+                ensureOverlay(act)
+                releasePlayerKeepOverlay()
+                val p = ExoPlayer.Builder(act).build()
+                player = p
+                playerView?.player = p
+                val mime = mimeForUrl(url)
+                val itemBuilder = MediaItem.Builder().setUri(url)
+                if (mime != null) {
+                    itemBuilder.setMimeType(mime)
+                }
+                p.setMediaItem(itemBuilder.build())
+                p.addListener(
+                    object : Player.Listener {
+                        override fun onPlayerError(error: PlaybackException) {
+                            Log.e(TAG, "ExoPlayer error", error)
+                        }
+                    }
+                )
+                p.prepare()
+                if (positionMs > 0) {
+                    p.seekTo(positionMs)
+                }
+                p.playWhenReady = true
+                showOverlay()
+                notifyPlaying(true)
+                call.resolve(JSObject().apply { put("ok", true) })
+            } catch (e: Exception) {
+                Log.e(TAG, "playDash failed", e)
+                call.resolve(
+                    JSObject().apply {
+                        put("ok", false)
+                        put("error", e.message ?: "playDash failed")
+                    }
+                )
             }
-            call.resolve(JSObject().apply { put("ok", true) })
-        } catch (e: Exception) {
-            call.resolve(JSObject().apply { put("ok", false); put("error", e.message) })
         }
     }
 
     @PluginMethod
     fun pauseDash(call: PluginCall) {
-        val intent = Intent(context, DashPlayerService::class.java).apply { action = ACTION_PAUSE }
-        context.startService(intent)
-        call.resolve(JSObject().apply { put("ok", true) })
+        val act = activity
+        if (act == null) {
+            call.resolve(
+                JSObject().apply {
+                    put("ok", false)
+                    put("error", "no activity")
+                }
+            )
+            return
+        }
+        act.runOnUiThread {
+            player?.playWhenReady = false
+            notifyPlaying(false)
+            call.resolve(JSObject().apply { put("ok", true) })
+        }
+    }
+
+    @PluginMethod
+    fun resumeDash(call: PluginCall) {
+        val act = activity
+        if (act == null) {
+            call.resolve(
+                JSObject().apply {
+                    put("ok", false)
+                    put("error", "no activity")
+                }
+            )
+            return
+        }
+        act.runOnUiThread {
+            val p = player
+            if (p == null) {
+                call.resolve(
+                    JSObject().apply {
+                        put("ok", false)
+                        put("error", "no active player")
+                    }
+                )
+                return@runOnUiThread
+            }
+            p.playWhenReady = true
+            showOverlay()
+            notifyPlaying(true)
+            call.resolve(JSObject().apply { put("ok", true) })
+        }
     }
 
     @PluginMethod
     fun stopDash(call: PluginCall) {
-        val intent = Intent(context, DashPlayerService::class.java).apply { action = ACTION_STOP }
-        context.startService(intent)
-        call.resolve(JSObject().apply { put("ok", true) })
-    }
-}
-
-class DashPlayerService : Service() {
-
-    companion object {
-        const val TAG = "DashPlayerService"
-        const val CHANNEL_ID = "dash_player"
-        const val NOTIFICATION_ID = 4406
-        const val SESSION_TAG = "ottplay_dash"
-    }
-
-    private var player: ExoPlayer? = null
-    private var mediaSession: MediaSession? = null
-
-    override fun onCreate() {
-        super.onCreate()
-        ensureChannel()
-        mediaSession = MediaSession(this, SESSION_TAG).apply {
-            isActive = true
-            setFlags(
-                MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or
-                    MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS
-            )
-            setCallback(object : MediaSession.Callback() {
-                override fun onPlay() { player?.play(); updateSessionState(true) }
-                override fun onPause() { player?.pause(); updateSessionState(false) }
-                override fun onStop() {
-                    player?.stop()
-                    player?.release()
-                    player = null
-                    stopSelfSafe()
+        val act = activity
+        if (act == null) {
+            call.resolve(
+                JSObject().apply {
+                    put("ok", false)
+                    put("error", "no activity")
                 }
-            })
+            )
+            return
+        }
+        act.runOnUiThread {
+            tearDown()
+            call.resolve(JSObject().apply { put("ok", true) })
         }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            DashExoPlayerPlugin.ACTION_START -> {
-                val url = intent.getStringExtra(DashExoPlayerPlugin.EXTRA_URL) ?: return START_NOT_STICKY
-                val position = intent.getLongExtra(DashExoPlayerPlugin.EXTRA_POSITION, 0L)
-                releasePlayer()
-                val p = ExoPlayer.Builder(this).build()
-                player = p
-                val mediaItem = MediaItem.Builder()
-                    .setUri(url)
-                    .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_MPD)
-                    .build()
-                p.setMediaItem(mediaItem)
-                p.prepare()
-                if (position > 0) p.seekTo(position)
-                p.play()
-                p.addListener(object : Player.Listener {
-                    override fun onPlaybackStateChanged(state: Int) {
-                        if (state == Player.STATE_ENDED) {
-                            stopSelfSafe()
-                        }
-                    }
-                    override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                        Log.e(TAG, "ExoPlayer error", error)
-                    }
-                })
-                promoteForeground()
-                updateSessionState(true)
-            }
-            DashExoPlayerPlugin.ACTION_PAUSE -> {
-                player?.pause()
-                updateSessionState(false)
-            }
-            DashExoPlayerPlugin.ACTION_STOP -> {
-                releasePlayer()
-                stopSelfSafe()
-            }
-            else -> { /* ignore */ }
+    override fun handleOnDestroy() {
+        tearDown()
+        super.handleOnDestroy()
+    }
+
+    private fun mimeForUrl(url: String): String? {
+        val path = url.lowercase().substringBefore('?')
+        return when {
+            path.endsWith(".mpd") -> MimeTypes.APPLICATION_MPD
+            path.endsWith(".m3u8") -> MimeTypes.APPLICATION_M3U8
+            else -> null
         }
-        return START_STICKY
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
-
-    override fun onDestroy() {
-        releasePlayer()
-        mediaSession?.isActive = false
-        mediaSession?.release()
-        mediaSession = null
-        stopForegroundCompat()
-        super.onDestroy()
+    private fun ensureOverlay(act: android.app.Activity) {
+        if (overlay != null && playerView != null) return
+        val root = act.findViewById<ViewGroup>(android.R.id.content)
+        val wrap = FrameLayout(act).apply {
+            layoutParams =
+                FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            setBackgroundColor(Color.BLACK)
+            visibility = View.GONE
+            isClickable = true
+            elevation = 100f
+        }
+        val pv =
+            PlayerView(act).apply {
+                layoutParams =
+                    FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        Gravity.CENTER
+                    )
+                useController = true
+                setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
+            }
+        wrap.addView(pv)
+        root.addView(wrap)
+        overlay = wrap
+        playerView = pv
     }
 
-    private fun releasePlayer() {
-        player?.stop()
+    private fun showOverlay() {
+        overlay?.visibility = View.VISIBLE
+    }
+
+    private fun hideOverlay() {
+        overlay?.visibility = View.GONE
+    }
+
+    private fun releasePlayerKeepOverlay() {
+        playerView?.player = null
         player?.release()
         player = null
-        updateSessionState(false)
     }
 
-    private fun promoteForeground() {
-        val notification = buildNotification()
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(
-                    NOTIFICATION_ID,
-                    notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                startForeground(NOTIFICATION_ID, notification)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "startForeground failed", e)
-            stopSelf()
+    private fun tearDown() {
+        releasePlayerKeepOverlay()
+        hideOverlay()
+        val ov = overlay
+        if (ov != null) {
+            (ov.parent as? ViewGroup)?.removeView(ov)
         }
+        overlay = null
+        playerView = null
+        cancelNotification()
     }
 
-    private fun updateSessionState(playing: Boolean) {
-        val state = if (playing) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED
-        val actions =
-            PlaybackState.ACTION_PLAY or
-                PlaybackState.ACTION_PAUSE or
-                PlaybackState.ACTION_STOP or
-                PlaybackState.ACTION_PLAY_PAUSE
-        mediaSession?.setPlaybackState(
-            PlaybackState.Builder()
-                .setActions(actions)
-                .setState(state, PlaybackState.PLAYBACK_POSITION_UNKNOWN, if (playing) 1f else 0f)
+    private fun notifyPlaying(playing: Boolean) {
+        val ctx = context ?: return
+        ensureChannel()
+        val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
+        val contentPi =
+            PendingIntent.getActivity(
+                ctx,
+                0,
+                launch,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        val notification: Notification =
+            NotificationCompat.Builder(ctx, CHANNEL_ID)
+                .setContentTitle("OTT-play FOSS")
+                .setContentText(if (playing) "Native DASH/HLS playback" else "Paused")
+                .setSmallIcon(android.R.drawable.ic_media_play)
+                .setContentIntent(contentPi)
+                .setOngoing(playing)
+                .setCategory(Notification.CATEGORY_TRANSPORT)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .build()
-        )
+        val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
+        nm.notify(NOTIFICATION_ID, notification)
     }
 
-    private fun buildNotification(): Notification {
-        val launch = packageManager.getLaunchIntentForPackage(packageName)
-        val contentPi = PendingIntent.getActivity(
-            this,
-            0,
-            launch,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val nm = getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-            nm.getNotificationChannel(CHANNEL_ID) == null
-        ) {
-            val ch = NotificationChannel(
-                CHANNEL_ID,
-                "DASH playback",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply { setShowBadge(false) }
-            nm.createNotificationChannel(ch)
-        }
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("OTT-play FOSS")
-            .setContentText("DASH playback")
-            .setSmallIcon(android.R.drawable.ic_media_play)
-            .setContentIntent(contentPi)
-            .setOngoing(player?.isPlaying == true)
-            .setCategory(Notification.CATEGORY_TRANSPORT)
-            .setVisibility(Notification.VISIBILITY_PUBLIC)
-            .addAction(
-                NotificationCompat.Action(
-                    android.R.drawable.ic_media_pause,
-                    "Pause",
-                    pending(2, DashExoPlayerPlugin.ACTION_PAUSE)
-                )
-            )
-            .addAction(
-                NotificationCompat.Action(
-                    android.R.drawable.ic_media_stop,
-                    "Stop",
-                    pending(1, DashExoPlayerPlugin.ACTION_STOP)
-                )
-            )
-            .build()
-    }
-
-    private fun pending(requestCode: Int, action: String): PendingIntent {
-        return PendingIntent.getService(
-            this,
-            requestCode,
-            Intent(this, DashPlayerService::class.java).setAction(action),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-    }
-
-    private fun stopSelfSafe() {
-        stopForegroundCompat()
-        stopSelf()
-    }
-
-    private fun stopForegroundCompat() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-        } else {
-            @Suppress("DEPRECATION")
-            stopForeground(true)
-        }
+    private fun cancelNotification() {
+        val ctx = context ?: return
+        val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
+        nm.cancel(NOTIFICATION_ID)
     }
 
     private fun ensureChannel() {
-        // Channel created lazily in buildNotification; nothing to do here.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val ctx = context ?: return
+        val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
+        if (nm.getNotificationChannel(CHANNEL_ID) != null) return
+        nm.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ID,
+                "Native DASH/HLS playback",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply { setShowBadge(false) }
+        )
     }
 }

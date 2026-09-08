@@ -244,16 +244,17 @@ Shipped. Hardware keyboard, D-Pad/gamepad, and mobile touch gestures now feed th
 
 ### 4.7 DASH native playback
 
-Implemented. Capacitor plugin `DashExoPlayer` provides native DASH playback on Android via Media3/ExoPlayer; iOS returns honest `{ok:false, unsupported:true}` because WKWebView lacks MSE.
+Implemented. Capacitor plugin `DashExoPlayer` provides native DASH (and HLS) playback on Android via Media3/ExoPlayer with a `PlayerView` overlay on the Cap Activity; iOS returns honest `{ok:false, unsupported:true}` because WKWebView lacks MSE and this app does not ship an AVPlayer DASH path.
 
-- **Plugin**: `android/app/src/main/java/play/ott/foss/DashExoPlayerPlugin.kt` + `DashPlayerService`
-- **TS bridge**: `isDashSupported` / `playDash({url, position})` / `pauseDash` / `stopDash` added to `MobileNativeMediaPlugin` interface in `src/plugins/mobile-native-media.ts` (alphabetical, linted).
-- **JS shim**: `src/index.ts` Capacitor block now gates DASH on `.mpd` URL: if `isDashSupported` resolves truthy, calls native `playDash`; otherwise falls back to `stbPlay` (existing path). `_nativeDash` flag routes `stop`/`pause` to native methods while active.
-- **iOS**: `MobileNativeMedia.swift` registers `isDashSupported`/`playDash`/`pauseDash`/`stopDash` and always resolves `{ok:false, unsupported:true}`.
-- **Android deps**: `media3-exoplayer`, `media3-exoplayer-dash`, `media3-session` in `android/app/build.gradle`.
-- **Service**: `DashPlayerService` declared in `AndroidManifest.xml` with `foregroundServiceType="mediaPlayback"`.
+- **Android plugin**: `android/app/src/main/java/play/ott/foss/DashExoPlayerPlugin.kt` (Media3 exoplayer + dash + hls + ui)
+- **iOS plugin**: `ios/App/App/Plugins/DashExoPlayer.swift` — unsupported reject only (registered in `MainViewController`)
+- **JS**: `src/plugins/dash-exo-player.ts` + Capacitor `stbPlay` wrapper in `src/index.ts`: `.mpd` URLs call `isDashSupported` → `playDash`; `_nativeDash` routes stop/pause/continue to native methods
+- **Mode A / Tauri**: unchanged (desktop MSE / Shaka still used)
 
-**Failure contract**: same as 4.4/4.5 — never fake success. Android supports `.mpd` natively; iOS rejects DASH up-front so UI can show proper error instead of SRC_NOT_SUPPORTED.
+**Failure contract**: never fake success. Android resolves `{ok:true}` only after ExoPlayer prepare/play starts; iOS rejects DASH up-front so UI can show a clear error instead of SRC_NOT_SUPPORTED from Shaka.
+
+**Out of scope**: Widevine/DRM, FairPlay, encrypted DASH.
+
 
 ## Mode A and Tauri
 

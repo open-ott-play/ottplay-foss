@@ -127,7 +127,7 @@ Key: embed the TypeScript bundle as `dist/` assets. Rust `include_bytes!` or Tau
 
 Media constraints:
 - **HLS** — first-class native support. `hls.js` auto-detects and delegates.
-- **DASH** — no MSE in WKWebView. `DashExoPlayer` plugin not available here; resolves `{ok:false, unsupported:true}`.
+- **DASH** — no MSE in WKWebView. Cap `DashExoPlayer` resolves `{ok:false, unsupported:true}` (no AVPlayer DASH path).
 - **FairPlay** — not accessible from Capacitor JS. Only relevant for premium providers; standard IPTV uses none.
 - **Background audio** — `UIBackgroundModes: audio` in Info.plist (Capacitor config).
 - **Local command port** — iOS blocks ports < 1024. Use `localhost:18081`.
@@ -168,8 +168,8 @@ Media constraints:
 
 ### Android
 - **HLS** — via Chrome WebView MSE.
-- **DASH** — native via `DashExoPlayer` (Media3/ExoPlayer) when WKWebView/Chrome MSE cannot handle `.mpd`.
-- **ExoPlayer** — wrapped in `DashExoPlayerPlugin` for DASH/HLS native fallback.
+- **DASH** — Cap `DashExoPlayer` (Media3/ExoPlayer + PlayerView overlay) for `.mpd` when Cap path is used; Chrome WebView MSE/Shaka still available as fallback.
+- **ExoPlayer** — wrapped in `DashExoPlayerPlugin` (Media3) for DASH/HLS native fallback with visible PlayerView.
 - **PiP** — `PictureInPicture` Web API on Android 8+.
 - **Background** — `foregroundServiceType="mediaPlayback"`.
 

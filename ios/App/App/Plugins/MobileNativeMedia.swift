@@ -21,10 +21,6 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "resumeBackgroundAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopBackgroundAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "exitApp", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "isDashSupported", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "playDash", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "pauseDash", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "stopDash", returnType: CAPPluginReturnPromise),
     ]
 
     private var pipController: AVPictureInPictureController?
@@ -353,34 +349,9 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: - DASH (honest reject — WKWebView has no MSE)
 
-    @objc func isDashSupported(_ call: CAPPluginCall) {
-        call.resolve([
-            "ok": false,
-            "unsupported": true,
-        ])
-    }
 
-    @objc func playDash(_ call: CAPPluginCall) {
-        call.resolve([
-            "ok": false,
-            "unsupported": true,
-            "error": "WKWebView cannot play DASH natively",
-        ])
-    }
 
-    @objc func pauseDash(_ call: CAPPluginCall) {
-        call.resolve([
-            "ok": false,
-            "unsupported": true,
-        ])
-    }
 
-    @objc func stopDash(_ call: CAPPluginCall) {
-        call.resolve([
-            "ok": false,
-            "unsupported": true,
-        ])
-    }
 
     private func configurePlaybackSession() -> Bool {
         let session = AVAudioSession.sharedInstance()
