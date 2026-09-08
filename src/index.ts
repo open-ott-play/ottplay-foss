@@ -39,6 +39,8 @@ applyPolyfills();
 
 // M3U proxy + Capacitor companion shim
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
+// Capacitor 4.4 native media bridges (volume, PiP, fullscreen, standby)
+import { MobileNativeMedia } from "./plugins/mobile-native-media";
 
 // Utils
 import * as encoding from "./utils/encoding";
@@ -2519,6 +2521,85 @@ if (typeof window.__TAURI__ !== "undefined") {
             tauriInvoke<any>("set_volume", { volume: v }).catch((e: any) =>
                 console.warn("[Tauri] set_volume failed:", e)
             );
+        };
+    })();
+}
+
+// Capacitor Mode C: native media bridges (volume, PiP, fullscreen, standby).
+// Mirrors Tauri Mode B shims below; gates on window.Capacitor so Mode A stays untouched.
+if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
+    (function () {
+        const cap = MobileNativeMedia;
+
+        // Capacitor Mode C: override stbToggleStandby for native idle timer control.
+        // Enter standby → allowSleep (device may sleep). Exit standby → preventSleep (keep awake).
+        const origStandby = window.stbToggleStandby;
+        let _standby = false;
+        window.stbToggleStandby = function (): void {
+            _standby = !_standby;
+            if (_standby) {
+                cap.allowSleep().catch((e: any) =>
+                    console.warn("[Capacitor] allowSleep failed:", e)
+                );
+            } else {
+                cap.preventSleep().catch((e: any) =>
+                    console.warn("[Capacitor] preventSleep failed:", e)
+                );
+            }
+            if (typeof origStandby === "function") origStandby();
+        };
+
+        // Capacitor Mode C: sync OS mixer with video.volume (video remains source of truth).
+        const origGet = window.stbGetVolume;
+        const origSet = window.stbSetVolume;
+        window.stbGetVolume = origGet;
+        window.stbSetVolume = function (v: number): void {
+            origSet(v);
+            cap.setVolume({ volume: v }).catch((e: any) =>
+                console.warn("[Capacitor] setVolume failed:", e)
+            );
+        };
+
+        // Capacitor Mode C: native always-on-top PiP window.
+        const origPlayPip = window.stbPlayPip;
+        const origStopPip = window.stbStopPip;
+        window.stbPlayPip = function (url: string): void {
+            cap.playPip()
+                .then(() => {
+                    try {
+                        const el = document.getElementById("videopip");
+                        if (el) (el as HTMLElement).style.display = "none";
+                    } catch (_e) {}
+                })
+                .catch((e: any) => {
+                    console.warn(
+                        "[Capacitor] playPip failed, CSS fallback:",
+                        e
+                    );
+                    if (typeof origPlayPip === "function") origPlayPip(url);
+                });
+        };
+        window.stbStopPip = function (): void {
+            cap.stopPip().catch((e: any) =>
+                console.warn("[Capacitor] stopPip failed:", e)
+            );
+            if (typeof origStopPip === "function") origStopPip();
+        };
+
+        // Capacitor Mode C: full-window fullscreen.
+        const origToFull = window.stbToFullScreen;
+        const origSetWin = window.stbSetWindow;
+        window.stbToFullScreen = function (): void {
+            cap.setFullscreen({ fullscreen: true }).catch((e: any) =>
+                console.warn("[Capacitor] setFullscreen true failed:", e)
+            );
+            if (typeof origToFull === "function") origToFull();
+        };
+        window.stbSetWindow = function (): void {
+            cap.setFullscreen({ fullscreen: false }).catch((e: any) =>
+                console.warn("[Capacitor] setFullscreen false failed:", e)
+            );
+            if (typeof origSetWin === "function") origSetWin();
         };
     })();
 }
