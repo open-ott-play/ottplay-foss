@@ -2564,7 +2564,7 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         const origPlayPip = window.stbPlayPip;
         const origStopPip = window.stbStopPip;
         window.stbPlayPip = function (url: string): void {
-            cap.playPip()
+            cap.playPip({ url })
                 .then(() => {
                     try {
                         const el = document.getElementById("videopip");
