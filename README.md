@@ -50,6 +50,8 @@ See [docs/capacitor-mobile.md](docs/capacitor-mobile.md) for prerequisites, conf
 
 Device smoke (Mode B sim/emulator checklist + helper; unpaid store / sideload): [docs/mode-b-device-smoke.md](docs/mode-b-device-smoke.md) — `./scripts/smoke-capacitor-device.sh --help`.
 
+Tauri desktop smoke (Mode B launch/play/PiP checklist + helper; unpaid/unsigned OK): [docs/mode-b-tauri-smoke.md](docs/mode-b-tauri-smoke.md) — `./scripts/smoke-tauri-desktop.sh --help`.
+
 ## Quick Start
 
 ```bash
@@ -207,6 +209,19 @@ Human marks UI passes; helper automates toolchain / native dirs / soft command-q
 ```
 
 Details: [docs/mode-b-device-smoke.md](docs/mode-b-device-smoke.md). Sibling of `smoke-command-queue.sh` (Cap loopback) — do not confuse with Mode A smokes above.
+
+
+## Tauri desktop smoke (Mode B)
+
+Desktop checklist + helper for Mode B Tauri (window / channel play / PiP). Not Mode A companion HTTP and not Cap device smoke.
+
+```bash
+./scripts/smoke-tauri-desktop.sh --help
+./scripts/smoke-tauri-desktop.sh
+./scripts/smoke-tauri-desktop.sh --check-companion
+```
+
+Details: [docs/mode-b-tauri-smoke.md](docs/mode-b-tauri-smoke.md). Unpaid/unsigned OK; human still marks headed launch/play/PiP.
 
 ## Docker
 
