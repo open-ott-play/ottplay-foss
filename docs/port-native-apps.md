@@ -1,6 +1,6 @@
 # Porting ottplay-foss to Native Apps
 
-Status: Mode B Tauri Phase 1 companion backends + Capacitor 4.1–4.6 on `main` (store readiness #315, iOS PiP #316, Stalker portal #317, MediaSession #318+#321, DASH ExoPlayer #319, Tauri updater/notarize #320, Stalker `host_ott/swop` #322, Mag path allowlist + cookie/header forward hooks). Remaining: human TestFlight/Play, Mag JsHttpRequest client/VOD, Cap tvOS, device smoke, DRM. Phased plan below kept as roadmap.
+Status: Mode B Tauri Phase 1 companion backends + Capacitor 4.1–4.6 on `main` (store readiness #315, iOS PiP #316, Stalker portal #317, MediaSession #318+#321, DASH ExoPlayer #319, Tauri updater/notarize #320, Stalker `host_ott/swop` #322, Mag `load.php` path allowlist + cookie/header hooks #324, Cap tvOS unsupported docs + iOS UIPress #325). Remaining: human TestFlight/Play, Mag JsHttpRequest client/VOD, device smoke, DRM. Cap tvOS unsupported upstream (documented; not an open Cap work item). In flight: Dev PC `showEditKey2` (#326). Phased plan below kept as roadmap.
 
 ## Two Operating Modes
 
