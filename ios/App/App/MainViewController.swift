@@ -8,4 +8,16 @@ class MainViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(MobileXmltvEpg())
         bridge?.registerPluginInstance(MobileNativeMedia())
     }
+
+    open override var prefersStatusBarHidden: Bool {
+        MobileNativeMedia.sharedFullscreenActive
+    }
+
+    open override var preferredStatusBarUpdateAnimation: UIStatusBarAnimation {
+        .slide
+    }
+
+    open override var prefersHomeIndicatorAutoHidden: Bool {
+        MobileNativeMedia.sharedFullscreenActive
+    }
 }

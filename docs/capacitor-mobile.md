@@ -14,7 +14,7 @@ Capacitor 4.1–4.6 shipped on `main`. Store readiness prepared; human TestFligh
 - **4.3 command queue** — PR #305 (Tauri peer #296) — `MobileCommandQueue` on `127.0.0.1:18081` (NWListener / ServerSocket)
 - **M3U stream proxy** — PR #307 — `M3UProxy` + web shim for `/m3u/cp.php`
 - **Release artifacts** — PR #310 — multiarch Tauri + Capacitor IPA/APK
-- **4.4 Native media** — PR #312 — `MobileNativeMedia` (volume / wake real; iOS PiP/fullscreen unsupported)
+- **4.4 Native media** — PR #312 + #316 — `MobileNativeMedia` (volume / wake real; iOS PiP via AVPlayer; fullscreen via MainViewController chrome)
 - **4.5 Background audio** — PR #313 — AVAudioSession `.playback` + Android `mediaPlayback` FGS
 - **4.6 Key / touch mapping** — this PR — Cap tap→ENTER + Android D-Pad/gamepad/media _doKey inject + iOS HW keyboard path
 
@@ -189,7 +189,7 @@ Implemented. Capacitor plugin `MobileNativeMedia` provides OS-level media + powe
 **Behavior by API**:
 - **Volume**: `getVolume` returns `{ok, volume(0-100)}`; `setVolume({ volume })` clamps 0-100. iOS uses `AVAudioSession.outputVolume` for get; set drives `MPVolumeView` slider (public path, no private APIs). Android uses `AudioManager.STREAM_MUSIC`. Both return `{ok:false, unsupported:true}` on failure.
 - **PiP**: `playPip` / `stopPip`. Android requires API 26+; uses `PictureInPictureParams` with 16:9 aspect ratio (`supportsPictureInPicture` on the activity); wraps `enterPictureInPictureMode` in try/catch and fails loudly on older platforms. iOS uses real `AVPlayer` + `AVPlayerLayer` + `AVPictureInPictureController` pipeline: `playPip({ url })` requires non-empty URL, creates native player/item, attaches layer to bridge view, observes `status` via KVO, starts PiP when `isPictureInPicturePossible` or times out after 4s. Returns `{ok:false, error:"pip not possible"}` instead of fake success. `stopPip` tears down player/layer/controller.
-- **Fullscreen**: `setFullscreen({ fullscreen })`. Android uses `FLAG_FULLSCREEN` + immersive sticky system UI flags on the WebView. iOS drives `CAPBridgeViewController` status bar + home-indicator visibility via plugin flag — honest `prefersStatusBarHidden` / `homeIndicatorAutoHidden` overrides; no fake `ok:true`.
+- **Fullscreen**: `setFullscreen({ fullscreen })`. Android uses `FLAG_FULLSCREEN` + immersive sticky system UI flags on the WebView. iOS drives `MainViewController` status bar + home-indicator visibility via plugin flag — honest `prefersStatusBarHidden` / `prefersHomeIndicatorAutoHidden` overrides (subclass, not an invalid extension override); no fake `ok:true`. Cap JS only hides `#videopip` when `playPip` returns `{ok:true}` — otherwise CSS PiP fallback.
 - **Standby / wake**: `allowSleep` releases idle timer / clears `keepScreenOn`; `preventSleep` disables idle timer / sets `keepScreenOn`. Web fallbacks return `{ok:false, unsupported:true}` (not fake ok). Cap standby shim uses a real `_standby` flag (same pattern as Tauri), not a `backgroundColor` heuristic. Mirrors Tauri `prevent_sleep` / `allow_sleep` intent.
 
 **Failure contract**: never fake success. Every method resolves with `{ok:false}` and/or `{unsupported:true}` when the native path is unavailable; no silent fallback.
