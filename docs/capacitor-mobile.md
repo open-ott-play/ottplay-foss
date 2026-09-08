@@ -15,7 +15,7 @@ Capacitor 4.1–4.6 shipped on `main`. Store readiness prepared; human TestFligh
 - **M3U stream proxy** — PR #307 — `M3UProxy` + web shim for `/m3u/cp.php`
 - **Release artifacts** — PR #310 — multiarch Tauri + Capacitor IPA/APK
 - **4.4 Native media** — PR #312 + #316 — `MobileNativeMedia` (volume / wake real; iOS PiP via AVPlayer; fullscreen via MainViewController chrome)
-- **4.5 Background audio** — PR #313 — AVAudioSession `.playback` + Android `mediaPlayback` FGS; lock-screen WebView/AVPlayer drive + Tauri souvlaki MediaSession polish in follow-up PR
+- **4.5 Background audio** — PR #313 + #318 + artwork/seek follow-up — AVAudioSession `.playback` + Android `mediaPlayback` FGS; lock-screen WebView/AVPlayer drive + Tauri souvlaki; channel artwork + honest live-vs-VOD seek
 - **4.6 Key / touch mapping** — Cap tap→ENTER + Android D-Pad/gamepad/media _doKey inject + iOS HW keyboard path
 - **4.7 DASH native playback** — this PR — Android ExoPlayer/Media3 `DashExoPlayer` plugin + iOS honest reject
 - **Stalker portal shim** — this PR — Cap/Tauri native HTTP for `<portal>/stalker_portal/api/` (handshake + channel list)
@@ -221,14 +221,14 @@ Implemented. Cap-only wiring keeps HLS/`<video>` audio alive when the app backgr
 - Configures `AVAudioSession` category `.playback` (mode `.moviePlayback`, AirPlay / A2DP options) on plugin load and on `startBackgroundAudio` / `resumeBackgroundAudio`.
 - Publishes `MPNowPlayingInfoCenter` metadata (title/artist) and `MPRemoteCommandCenter` play/pause/toggle/stop/next/prev.
 - **Target switch**: when native AVPlayer PiP (#316) is active (`pipPlayer != nil`), remote commands drive `AVPlayer` play/pause/stop (teardown). When only in-app WKWebView video is playing, commands `evaluateJavaScript` on `<video>` (and `_doKey` 35/36 for next/prev).
-- **Caveat / follow-up**: seeking, artwork, and deeper Now Playing timeline sync remain open.
+- **Artwork / seek**: `artworkUrl` fetched into `MPMediaItemArtwork` when the URL is reachable (http/https or data:). `changePlaybackPositionCommand` enabled only when JS reports `seekable` with a finite duration (archive/VOD). Live IPTV leaves seek disabled and returns `.noActionableNowPlayingItem` (honest no-op). Position ticks via `updateBackgroundAudio`.
 
 **Android**
 - Manifest: `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `WAKE_LOCK`, `POST_NOTIFICATIONS`.
 - Service: `MediaPlaybackService` with `android:foregroundServiceType="mediaPlayback"`; started via real `ContextCompat.startForegroundService` (no no-op stub).
 - Notification + `MediaSession` transport (play/pause/stop/next/prev) drives Cap WebView via `evaluateJavascript` on bound `WebView` ( `<video>` play/pause/stop; `_doKey` 35/36 for next/prev). Plugin binds/clears the WebView weak ref on load/resume/destroy.
 - Android 13+ (`TIRAMISU`): `POST_NOTIFICATIONS` requested at runtime when starting/resuming the FGS if missing (best-effort; service still starts if the user has not granted yet).
-- **Caveat / follow-up**: artwork / seek bar; notification may stay quiet until the user grants POST_NOTIFICATIONS.
+- **Artwork / seek**: optional `artworkUrl` decoded to notification `largeIcon` + `METADATA_KEY_ART` / `ALBUM_ART`. `ACTION_SEEK_TO` advertised only when `seekable` + duration known; live ignores `onSeekTo` without claiming success. Timeline refresh via `updateBackgroundAudio` / `ACTION_UPDATE`. Notification may stay quiet until the user grants POST_NOTIFICATIONS.
 
 **Failure contract**: start/stop report `{ok:false, error}` when the native start/stop path throws; web fallbacks return `{ok:false, unsupported:true}`.
 
@@ -260,4 +260,4 @@ Implemented. Capacitor plugin `DashExoPlayer` provides native DASH (and HLS) pla
 
 Mode A browser/STB remains unchanged by Capacitor media paths (gated on `window.Capacitor`).
 
-Tauri Mode B OS media controls (separate from Cap): `start_media_session` / `pause_media_session` / `resume_media_session` / `stop_media_session` via **souvlaki** (MPRIS / macOS Now Playing / Windows SMTC). Wired from `stbPlay` / `stbStop` / `stbPause` / `stbContinue` under `__TAURI__` only; transport events eval `<video>` / `_doKey` on the main webview.
+Tauri Mode B OS media controls (separate from Cap): `start_media_session` / `pause_media_session` / `resume_media_session` / `update_media_session` / `stop_media_session` via **souvlaki** (MPRIS / macOS Now Playing / Windows SMTC). Wired from `stbPlay` / `stbStop` / `stbPause` / `stbContinue` under `__TAURI__` only; transport events eval `<video>` / `_doKey` on the main webview. `artworkUrl` maps to souvlaki `cover_url` when the backend supports it. Seek (`SetPosition` / `Seek` / `SeekBy`) runs only when JS marks `seekable` (finite duration / non-live); live is an honest no-op.

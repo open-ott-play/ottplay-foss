@@ -12,6 +12,12 @@ import android.media.session.PlaybackState
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import java.util.concurrent.Executors
+import java.net.URL
+import java.net.HttpURLConnection
+import android.util.Base64
+import android.graphics.BitmapFactory
+import android.graphics.Bitmap
 import android.webkit.WebView
 import java.lang.ref.WeakReference
 
@@ -35,6 +41,11 @@ class MediaPlaybackService : Service() {
         const val ACTION_PREV = "play.ott.foss.action.PREV_MEDIA_PLAYBACK"
         const val EXTRA_TITLE = "title"
         const val EXTRA_ARTIST = "artist"
+        const val EXTRA_ARTWORK_URL = "artworkUrl"
+        const val EXTRA_DURATION_MS = "durationMs"
+        const val EXTRA_POSITION_MS = "positionMs"
+        const val EXTRA_SEEKABLE = "seekable"
+        const val ACTION_UPDATE = "play.ott.foss.action.UPDATE_MEDIA_PLAYBACK"
 
         private const val TAG = "MediaPlaybackService"
         private const val CHANNEL_ID = "ott_media_playback"
@@ -108,12 +119,28 @@ class MediaPlaybackService : Service() {
                 "(function(){if(window._doKey)window._doKey($KEY_PREV);})();"
             )
         }
+
+        private fun driveSeek(seconds: Double) {
+            // Prefer stbSetPosTime so archive/VOD path stays consistent with app seekers.
+            evalOnWebView(
+                "(function(){var t=$seconds;" +
+                    "if(window.stbSetPosTime){window.stbSetPosTime(t);}" +
+                    "else{var v=document.querySelector('video');" +
+                    "if(v&&isFinite(v.duration)){v.currentTime=t;}}})();"
+            )
+        }
     }
 
     private var mediaSession: MediaSession? = null
     private var title: String = "OTT-play FOSS"
     private var artist: String = "Now playing"
     private var playing: Boolean = true
+    private var seekable: Boolean = false
+    private var durationMs: Long = -1L
+    private var positionMs: Long = 0L
+    private var artworkUrl: String? = null
+    private var artworkBitmap: Bitmap? = null
+    private val artworkExecutor = Executors.newSingleThreadExecutor()
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -152,6 +179,16 @@ class MediaPlaybackService : Service() {
                 override fun onSkipToPrevious() {
                     drivePrev()
                 }
+
+                override fun onSeekTo(pos: Long) {
+                    // Live IPTV: ignore without claiming a successful seek.
+                    if (!seekable || durationMs <= 0L) return
+                    val clamped = pos.coerceIn(0L, durationMs)
+                    positionMs = clamped
+                    driveSeek(clamped / 1000.0)
+                    updatePlaybackState()
+                    updateNotification()
+                }
             })
             isActive = true
         }
@@ -176,8 +213,7 @@ class MediaPlaybackService : Service() {
             }
             ACTION_PLAY -> {
                 playing = true
-                title = intent.getStringExtra(EXTRA_TITLE) ?: title
-                artist = intent.getStringExtra(EXTRA_ARTIST) ?: artist
+                applyMetaFromIntent(intent)
                 drivePlay()
                 updatePlaybackState()
                 promoteForeground()
@@ -185,8 +221,7 @@ class MediaPlaybackService : Service() {
             }
             ACTION_RESUME -> {
                 playing = true
-                title = intent.getStringExtra(EXTRA_TITLE) ?: title
-                artist = intent.getStringExtra(EXTRA_ARTIST) ?: artist
+                applyMetaFromIntent(intent)
                 // Plugin resume: JS already continued playback; refresh session only.
                 updatePlaybackState()
                 promoteForeground()
@@ -200,10 +235,15 @@ class MediaPlaybackService : Service() {
                 drivePrev()
                 return START_STICKY
             }
+            ACTION_UPDATE -> {
+                applyMetaFromIntent(intent)
+                updatePlaybackState()
+                updateNotification()
+                return START_STICKY
+            }
             ACTION_START, null -> {
                 playing = true
-                title = intent?.getStringExtra(EXTRA_TITLE) ?: title
-                artist = intent?.getStringExtra(EXTRA_ARTIST) ?: artist
+                applyMetaFromIntent(intent)
                 updatePlaybackState()
                 promoteForeground()
                 return START_STICKY
@@ -212,10 +252,75 @@ class MediaPlaybackService : Service() {
         }
     }
 
+    private fun applyMetaFromIntent(intent: Intent?) {
+        if (intent == null) return
+        title = intent.getStringExtra(EXTRA_TITLE) ?: title
+        artist = intent.getStringExtra(EXTRA_ARTIST) ?: artist
+        if (intent.hasExtra(EXTRA_SEEKABLE)) {
+            seekable = intent.getBooleanExtra(EXTRA_SEEKABLE, false)
+        }
+        if (intent.hasExtra(EXTRA_DURATION_MS)) {
+            durationMs = intent.getLongExtra(EXTRA_DURATION_MS, -1L)
+        }
+        if (intent.hasExtra(EXTRA_POSITION_MS)) {
+            positionMs = intent.getLongExtra(EXTRA_POSITION_MS, 0L)
+        }
+        val nextArt = intent.getStringExtra(EXTRA_ARTWORK_URL)
+        if (nextArt != null && nextArt != artworkUrl) {
+            artworkUrl = nextArt
+            loadArtworkAsync(nextArt)
+        } else if (nextArt.isNullOrEmpty()) {
+            // Keep prior artwork unless explicitly cleared by empty string.
+            if (nextArt != null && nextArt.isEmpty()) {
+                artworkUrl = null
+                artworkBitmap = null
+            }
+        }
+        if (!seekable) {
+            durationMs = -1L
+        }
+    }
+
+    private fun loadArtworkAsync(url: String) {
+        artworkExecutor.execute {
+            val bmp = decodeArtwork(url) ?: return@execute
+            artworkBitmap = bmp
+            // Refresh on main/service thread
+            android.os.Handler(mainLooper).post {
+                updatePlaybackState()
+                updateNotification()
+            }
+        }
+    }
+
+    private fun decodeArtwork(url: String): Bitmap? {
+        return try {
+            if (url.startsWith("data:", ignoreCase = true)) {
+                val comma = url.indexOf(',')
+                if (comma < 0) return null
+                val b64 = url.substring(comma + 1)
+                val bytes = Base64.decode(b64, Base64.DEFAULT)
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            } else {
+                val conn = URL(url).openConnection() as HttpURLConnection
+                conn.connectTimeout = 5000
+                conn.readTimeout = 5000
+                conn.instanceFollowRedirects = true
+                conn.inputStream.use { stream ->
+                    BitmapFactory.decodeStream(stream)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "artwork load failed: $url", e)
+            null
+        }
+    }
+
     override fun onDestroy() {
         mediaSession?.isActive = false
         mediaSession?.release()
         mediaSession = null
+        artworkExecutor.shutdownNow()
         stopForegroundCompat()
         super.onDestroy()
     }
@@ -246,25 +351,37 @@ class MediaPlaybackService : Service() {
 
     private fun updatePlaybackState() {
         val state = if (playing) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED
-        val actions =
+        var actions =
             PlaybackState.ACTION_PLAY or
                 PlaybackState.ACTION_PAUSE or
                 PlaybackState.ACTION_STOP or
                 PlaybackState.ACTION_PLAY_PAUSE or
                 PlaybackState.ACTION_SKIP_TO_NEXT or
                 PlaybackState.ACTION_SKIP_TO_PREVIOUS
+        // Only advertise seek when duration is known (VOD/archive). Live: no SEEK_TO.
+        if (seekable && durationMs > 0L) {
+            actions = actions or PlaybackState.ACTION_SEEK_TO
+        }
+        val pos =
+            if (seekable && durationMs > 0L) positionMs
+            else PlaybackState.PLAYBACK_POSITION_UNKNOWN
         mediaSession?.setPlaybackState(
             PlaybackState.Builder()
                 .setActions(actions)
-                .setState(state, PlaybackState.PLAYBACK_POSITION_UNKNOWN, if (playing) 1f else 0f)
+                .setState(state, pos, if (playing) 1f else 0f)
                 .build()
         )
-        mediaSession?.setMetadata(
-            android.media.MediaMetadata.Builder()
-                .putString(android.media.MediaMetadata.METADATA_KEY_TITLE, title)
-                .putString(android.media.MediaMetadata.METADATA_KEY_ARTIST, artist)
-                .build()
-        )
+        val meta = android.media.MediaMetadata.Builder()
+            .putString(android.media.MediaMetadata.METADATA_KEY_TITLE, title)
+            .putString(android.media.MediaMetadata.METADATA_KEY_ARTIST, artist)
+        if (seekable && durationMs > 0L) {
+            meta.putLong(android.media.MediaMetadata.METADATA_KEY_DURATION, durationMs)
+        }
+        artworkBitmap?.let { bmp ->
+            meta.putBitmap(android.media.MediaMetadata.METADATA_KEY_ALBUM_ART, bmp)
+            meta.putBitmap(android.media.MediaMetadata.METADATA_KEY_ART, bmp)
+        }
+        mediaSession?.setMetadata(meta.build())
     }
 
     private fun servicePi(requestCode: Int, action: String): PendingIntent {
@@ -310,6 +427,7 @@ class MediaPlaybackService : Service() {
             .setContentTitle(title)
             .setContentText(artist)
             .setSmallIcon(android.R.drawable.ic_media_play)
+            .also { b -> artworkBitmap?.let { b.setLargeIcon(it) } }
             .setContentIntent(contentPi)
             .setOngoing(playing)
             .setOnlyAlertOnce(true)

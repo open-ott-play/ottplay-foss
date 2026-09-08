@@ -8,6 +8,20 @@
 
 import { registerPlugin, WebPlugin } from "@capacitor/core";
 
+/** Metadata pushed into OS Now Playing / MediaSession (Mode B Cap only). */
+export interface BackgroundAudioMeta {
+    artist?: string;
+    /** Optional channel logo / artwork URL (http/https or data:). Fetched when possible. */
+    artworkUrl?: string;
+    /** Duration in seconds when known (VOD/archive). Omit / non-finite for live. */
+    durationSec?: number;
+    /** Position in seconds when known. */
+    positionSec?: number;
+    /** When false/omitted, OS seek controls are disabled / no-op (live IPTV). */
+    seekable?: boolean;
+    title?: string;
+}
+
 export interface MobileNativeMediaPlugin {
     /** Release sleep prevention → device may idle/sleep. */
     allowSleep(): Promise<{ ok: boolean; unsupported?: boolean }>;
@@ -34,10 +48,9 @@ export interface MobileNativeMediaPlugin {
     /** Acquire sleep prevention → keep device awake. */
     preventSleep(): Promise<{ ok: boolean; unsupported?: boolean }>;
     /** Resume background audio after pause. */
-    resumeBackgroundAudio(opts?: {
-        title?: string;
-        artist?: string;
-    }): Promise<{ ok: boolean; unsupported?: boolean; error?: string }>;
+    resumeBackgroundAudio(
+        opts?: BackgroundAudioMeta
+    ): Promise<{ ok: boolean; unsupported?: boolean; error?: string }>;
     /** Full-window fullscreen (immersive on Android). */
     setFullscreen(opts: { fullscreen: boolean }): Promise<{
         ok: boolean;
@@ -53,10 +66,9 @@ export interface MobileNativeMediaPlugin {
      * Enable background playback: iOS AVAudioSession `.playback` + Now Playing;
      * Android mediaPlayback foreground service (real startForegroundService).
      */
-    startBackgroundAudio(opts?: {
-        title?: string;
-        artist?: string;
-    }): Promise<{ ok: boolean; unsupported?: boolean; error?: string }>;
+    startBackgroundAudio(
+        opts?: BackgroundAudioMeta
+    ): Promise<{ ok: boolean; unsupported?: boolean; error?: string }>;
     /** Tear down background audio / stop mediaPlayback FGS. */
     stopBackgroundAudio(): Promise<{
         ok: boolean;
@@ -65,6 +77,13 @@ export interface MobileNativeMediaPlugin {
     }>;
     /** Exit picture-in-picture. */
     stopPip(): Promise<{ ok: boolean; unsupported?: boolean }>;
+    /**
+     * Refresh Now Playing / MediaSession metadata + timeline without restarting
+     * the session. Seekable=false keeps OS seek disabled (live).
+     */
+    updateBackgroundAudio(
+        opts?: BackgroundAudioMeta
+    ): Promise<{ ok: boolean; unsupported?: boolean; error?: string }>;
 }
 
 class MobileNativeMediaWeb
@@ -135,10 +154,9 @@ class MobileNativeMediaWeb
         return { ok: false, unsupported: true };
     }
 
-    async startBackgroundAudio(_opts?: {
-        title?: string;
-        artist?: string;
-    }): Promise<{ ok: boolean; unsupported?: boolean; error?: string }> {
+    async startBackgroundAudio(
+        _opts?: BackgroundAudioMeta
+    ): Promise<{ ok: boolean; unsupported?: boolean; error?: string }> {
         console.warn(
             "[MobileNativeMedia] web fallback: startBackgroundAudio unsupported"
         );
@@ -156,12 +174,20 @@ class MobileNativeMediaWeb
         return { ok: false, unsupported: true };
     }
 
-    async resumeBackgroundAudio(_opts?: {
-        title?: string;
-        artist?: string;
-    }): Promise<{ ok: boolean; unsupported?: boolean; error?: string }> {
+    async resumeBackgroundAudio(
+        _opts?: BackgroundAudioMeta
+    ): Promise<{ ok: boolean; unsupported?: boolean; error?: string }> {
         console.warn(
             "[MobileNativeMedia] web fallback: resumeBackgroundAudio unsupported"
+        );
+        return { ok: false, unsupported: true };
+    }
+
+    async updateBackgroundAudio(
+        _opts?: BackgroundAudioMeta
+    ): Promise<{ ok: boolean; unsupported?: boolean; error?: string }> {
+        console.warn(
+            "[MobileNativeMedia] web fallback: updateBackgroundAudio unsupported"
         );
         return { ok: false, unsupported: true };
     }

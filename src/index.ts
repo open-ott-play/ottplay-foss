@@ -2614,20 +2614,121 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
 
         // Capacitor 4.5: background audio — iOS AVAudioSession.playback +
         // Android mediaPlayback FGS. Wired to play/stop/pause/continue only
-        // on Cap path (Mode A / Tauri unchanged).
-        const bgMeta = (): { title: string; artist: string } => {
+        // on Cap path (Mode A / Tauri unchanged). Artwork + honest seek
+        // (live disables OS seek; VOD/archive when duration known).
+
+        const bgMeta = (): {
+            artist: string;
+            artworkUrl?: string;
+            durationSec?: number;
+            positionSec?: number;
+            seekable: boolean;
+            title: string;
+        } => {
             let title = "OTT-play FOSS";
             let artist = "Now playing";
+            let artworkUrl: string | undefined;
+            let durationSec: number | undefined;
+            let positionSec: number | undefined;
+            let seekable = false;
             try {
-                const ch =
+                const chName =
                     (document.getElementById("channel") as HTMLElement | null)
                         ?.textContent ||
                     (document.getElementById("cname") as HTMLElement | null)
                         ?.textContent ||
                     "";
-                if (ch && ch.trim()) title = ch.trim();
+                if (chName && chName.trim()) title = chName.trim();
+                const w = window as any;
+                const curList = w.curList;
+                const primaryIndex = w.primaryIndex;
+                let chId: any;
+                if (
+                    Array.isArray(curList) &&
+                    typeof primaryIndex === "number" &&
+                    curList[primaryIndex] != null
+                ) {
+                    chId = curList[primaryIndex];
+                }
+                if (chId != null) {
+                    if (typeof w.getChannelPicon === "function") {
+                        const pic = w.getChannelPicon(String(chId));
+                        if (pic && typeof pic === "string" && pic.trim()) {
+                            artworkUrl = pic.trim();
+                        }
+                    }
+                    const ch =
+                        (w.channels &&
+                            (w.channels[chId] || w.channels[String(chId)])) ||
+                        null;
+                    if (ch) {
+                        const icon = ch.icon || ch.logo_30x30 || ch.logo || "";
+                        if (
+                            !artworkUrl &&
+                            icon &&
+                            typeof icon === "string" &&
+                            icon.trim()
+                        ) {
+                            artworkUrl = icon.trim();
+                        }
+                        if (ch.channel_name && !chName) {
+                            title = String(ch.channel_name);
+                        }
+                    }
+                }
+                // Live IPTV (playType === 0): not seekable. Archive/VOD only when
+                // duration is finite and usable.
+                const playType =
+                    typeof w.playType === "number" ? w.playType : 0;
+                const dur =
+                    typeof w.stbGetLen === "function"
+                        ? Number(w.stbGetLen())
+                        : NaN;
+                const pos =
+                    typeof w.stbGetPosTime === "function"
+                        ? Number(w.stbGetPosTime())
+                        : NaN;
+                if (
+                    playType !== 0 &&
+                    Number.isFinite(dur) &&
+                    dur > 0 &&
+                    dur < 1e7
+                ) {
+                    seekable = true;
+                    durationSec = dur;
+                    if (Number.isFinite(pos) && pos >= 0) positionSec = pos;
+                }
             } catch (_e) {}
-            return { artist, title };
+            const out: {
+                artist: string;
+                artworkUrl?: string;
+                durationSec?: number;
+                positionSec?: number;
+                seekable: boolean;
+                title: string;
+            } = { artist, seekable, title };
+            if (artworkUrl) out.artworkUrl = artworkUrl;
+            if (durationSec != null) out.durationSec = durationSec;
+            if (positionSec != null) out.positionSec = positionSec;
+            return out;
+        };
+
+        let _bgPosTimer: ReturnType<typeof setInterval> | null = null;
+        const stopBgPosTimer = (): void => {
+            if (_bgPosTimer != null) {
+                clearInterval(_bgPosTimer);
+                _bgPosTimer = null;
+            }
+        };
+        const startBgPosTimer = (): void => {
+            stopBgPosTimer();
+            _bgPosTimer = setInterval(() => {
+                try {
+                    const meta = bgMeta();
+                    if (!meta.seekable) return;
+                    cap.updateBackgroundAudio(meta).catch(() => {});
+                } catch (_e) {}
+            }, 2000);
         };
         const origPlay = window.stbPlay;
         const origStop = window.stbStop;
@@ -2647,6 +2748,13 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
             cap.startBackgroundAudio(meta).catch((e: any) =>
                 console.warn("[Capacitor] startBackgroundAudio failed:", e)
             );
+            // Duration often arrives after manifest; refresh shortly + tick if seekable.
+            setTimeout(() => {
+                const m = bgMeta();
+                cap.updateBackgroundAudio(m).catch(() => {});
+                if (m.seekable) startBgPosTimer();
+                else stopBgPosTimer();
+            }, 1500);
         }
 
         window.stbPlay = function (url: string, position?: number): void {
@@ -2686,6 +2794,7 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                 });
         };
         window.stbStop = function (): void {
+            stopBgPosTimer();
             if (_nativeDash) {
                 dash.stopDash().catch((e: any) =>
                     console.warn("[Capacitor] stopDash failed:", e)
@@ -2707,6 +2816,7 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                 origPause();
             }
             if (!_nativeDash) {
+                stopBgPosTimer();
                 cap.pauseBackgroundAudio().catch((e: any) =>
                     console.warn("[Capacitor] pauseBackgroundAudio failed:", e)
                 );
@@ -2723,28 +2833,130 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                 cap.resumeBackgroundAudio(meta).catch((e: any) =>
                     console.warn("[Capacitor] resumeBackgroundAudio failed:", e)
                 );
+                if (meta.seekable) startBgPosTimer();
             }
         };
     })();
 }
 
 // Tauri Mode B: OS MediaSession / MPRIS / Now Playing (souvlaki) — lock-screen style
-// transport. Cap path above is unchanged; Mode A unchanged.
+// transport + artwork/seek when souvlaki + duration allow. Cap path unchanged; Mode A unchanged.
 if (typeof window.__TAURI__ !== "undefined") {
     (function () {
-        const bgMeta = (): { title: string; artist: string } => {
+        const bgMeta = (): {
+            artist: string;
+            artworkUrl?: string;
+            durationSec?: number;
+            positionSec?: number;
+            seekable: boolean;
+            title: string;
+        } => {
             let title = "OTT-play FOSS";
             let artist = "Now playing";
+            let artworkUrl: string | undefined;
+            let durationSec: number | undefined;
+            let positionSec: number | undefined;
+            let seekable = false;
             try {
-                const ch =
+                const chName =
                     (document.getElementById("channel") as HTMLElement | null)
                         ?.textContent ||
                     (document.getElementById("cname") as HTMLElement | null)
                         ?.textContent ||
                     "";
-                if (ch && ch.trim()) title = ch.trim();
+                if (chName && chName.trim()) title = chName.trim();
+                const w = window as any;
+                const curList = w.curList;
+                const primaryIndex = w.primaryIndex;
+                let chId: any;
+                if (
+                    Array.isArray(curList) &&
+                    typeof primaryIndex === "number" &&
+                    curList[primaryIndex] != null
+                ) {
+                    chId = curList[primaryIndex];
+                }
+                if (chId != null) {
+                    if (typeof w.getChannelPicon === "function") {
+                        const pic = w.getChannelPicon(String(chId));
+                        if (pic && typeof pic === "string" && pic.trim()) {
+                            artworkUrl = pic.trim();
+                        }
+                    }
+                    const ch =
+                        (w.channels &&
+                            (w.channels[chId] || w.channels[String(chId)])) ||
+                        null;
+                    if (ch) {
+                        const icon = ch.icon || ch.logo_30x30 || ch.logo || "";
+                        if (
+                            !artworkUrl &&
+                            icon &&
+                            typeof icon === "string" &&
+                            icon.trim()
+                        ) {
+                            artworkUrl = icon.trim();
+                        }
+                        if (ch.channel_name && !chName) {
+                            title = String(ch.channel_name);
+                        }
+                    }
+                }
+                // Live IPTV (playType === 0): not seekable. Archive/VOD only when
+                // duration is finite and usable.
+                const playType =
+                    typeof w.playType === "number" ? w.playType : 0;
+                const dur =
+                    typeof w.stbGetLen === "function"
+                        ? Number(w.stbGetLen())
+                        : NaN;
+                const pos =
+                    typeof w.stbGetPosTime === "function"
+                        ? Number(w.stbGetPosTime())
+                        : NaN;
+                if (
+                    playType !== 0 &&
+                    Number.isFinite(dur) &&
+                    dur > 0 &&
+                    dur < 1e7
+                ) {
+                    seekable = true;
+                    durationSec = dur;
+                    if (Number.isFinite(pos) && pos >= 0) positionSec = pos;
+                }
             } catch (_e) {}
-            return { artist, title };
+            const out: {
+                artist: string;
+                artworkUrl?: string;
+                durationSec?: number;
+                positionSec?: number;
+                seekable: boolean;
+                title: string;
+            } = { artist, seekable, title };
+            if (artworkUrl) out.artworkUrl = artworkUrl;
+            if (durationSec != null) out.durationSec = durationSec;
+            if (positionSec != null) out.positionSec = positionSec;
+            return out;
+        };
+
+        let _msPosTimer: ReturnType<typeof setInterval> | null = null;
+        const stopMsPosTimer = (): void => {
+            if (_msPosTimer != null) {
+                clearInterval(_msPosTimer);
+                _msPosTimer = null;
+            }
+        };
+        const startMsPosTimer = (): void => {
+            stopMsPosTimer();
+            _msPosTimer = setInterval(() => {
+                try {
+                    const meta = bgMeta();
+                    if (!meta.seekable) return;
+                    tauriInvoke<any>("update_media_session", meta).catch(
+                        () => {}
+                    );
+                } catch (_e) {}
+            }, 2000);
         };
         const origPlay = window.stbPlay;
         const origStop = window.stbStop;
@@ -2756,8 +2968,15 @@ if (typeof window.__TAURI__ !== "undefined") {
             tauriInvoke<any>("start_media_session", meta).catch((e: any) =>
                 console.warn("[Tauri] start_media_session failed:", e)
             );
+            setTimeout(() => {
+                const m = bgMeta();
+                tauriInvoke<any>("update_media_session", m).catch(() => {});
+                if (m.seekable) startMsPosTimer();
+                else stopMsPosTimer();
+            }, 1500);
         };
         window.stbStop = function (): void {
+            stopMsPosTimer();
             tauriInvoke<any>("stop_media_session", {}).catch((e: any) =>
                 console.warn("[Tauri] stop_media_session failed:", e)
             );
@@ -2765,6 +2984,7 @@ if (typeof window.__TAURI__ !== "undefined") {
         };
         window.stbPause = function (): void {
             if (typeof origPause === "function") origPause();
+            stopMsPosTimer();
             tauriInvoke<any>("pause_media_session", {}).catch((e: any) =>
                 console.warn("[Tauri] pause_media_session failed:", e)
             );
@@ -2775,6 +2995,7 @@ if (typeof window.__TAURI__ !== "undefined") {
             tauriInvoke<any>("resume_media_session", meta).catch((e: any) =>
                 console.warn("[Tauri] resume_media_session failed:", e)
             );
+            if (meta.seekable) startMsPosTimer();
         };
     })();
 }

@@ -56,6 +56,7 @@ pub fn run() {
             commands::media_session::pause_media_session,
             commands::media_session::resume_media_session,
             commands::media_session::stop_media_session,
+            commands::media_session::update_media_session,
             commands::queue::queue_poll,
             commands::queue::queue_enqueue,
             commands::misc::get_version,
