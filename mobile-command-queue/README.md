@@ -33,6 +33,19 @@ commands.forEach(cmd => handleCommand(cmd));
 
 ## Frontend wiring
 
-`src/index.ts` detects `window.Capacitor`, sets `local_poll_url` to `http://127.0.0.1:18081/api/webhook/commands`, and starts a 10s poller via `MobileCommandQueue.get()`.
+`src/index.ts` detects `window.Capacitor` + `MobileCommandQueue`, calls `start()`, and drains via `MobileCommandQueue.get()` every 10s. It does **not** set `local_poll_url` (avoids double-polling the HTTP port).
 
 Mode A (browser/STB) and Tauri Mode B are unaffected.
+
+## Smoke test
+
+```bash
+# App (or iOS Simulator) listening on 127.0.0.1:18081
+./scripts/smoke-command-queue.sh
+
+# Android emulator / device
+adb forward tcp:18081 tcp:18081
+./scripts/smoke-command-queue.sh
+```
+
+See `docs/capacitor-mobile.md` § Smoke test (curl) + Home Assistant.
