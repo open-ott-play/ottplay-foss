@@ -203,6 +203,10 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
             self.pipLayer = layer
             self.pipController = pipController
 
+            self.configureRemoteCommandsIfNeeded()
+            self.updateNowPlaying(title: "OTT-play FOSS", artist: "Picture in Picture", rate: 1.0)
+            self.backgroundAudioActive = true
+
             player.play()
 
             // Observe item readiness + pip-possible; hop to main before Cap/UIKit work.
@@ -367,8 +371,9 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
-    /// Best-effort lock-screen play/pause → WKWebView `<video>` via evaluateJavaScript.
-    /// Not a native AVPlayer pipeline; documented as limited / follow-up for richer controls.
+    /// Lock-screen / Control Center remote commands.
+    /// When native AVPlayer PiP (#316) is active, drive `pipPlayer`.
+    /// Otherwise drive WKWebView `<video>` via evaluateJavaScript (in-app web path).
     private func configureRemoteCommandsIfNeeded() {
         if remoteCommandsConfigured { return }
         remoteCommandsConfigured = true
@@ -377,31 +382,82 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         center.pauseCommand.isEnabled = true
         center.togglePlayPauseCommand.isEnabled = true
         center.stopCommand.isEnabled = true
+        center.nextTrackCommand.isEnabled = true
+        center.previousTrackCommand.isEnabled = true
 
         center.playCommand.addTarget { [weak self] _ in
-            self?.evalVideoJS("var v=document.querySelector('video'); if(v){v.play();} true;")
-            self?.updateNowPlayingRate(1.0)
+            guard let self = self else { return .commandFailed }
+            if self.controlNativePipPlayer(play: true) {
+                self.updateNowPlayingRate(1.0)
+                return .success
+            }
+            self.evalVideoJS("var v=document.querySelector('video'); if(v){v.play();} true;")
+            self.updateNowPlayingRate(1.0)
             return .success
         }
         center.pauseCommand.addTarget { [weak self] _ in
-            self?.evalVideoJS("var v=document.querySelector('video'); if(v){v.pause();} true;")
-            self?.updateNowPlayingRate(0.0)
+            guard let self = self else { return .commandFailed }
+            if self.controlNativePipPlayer(play: false) {
+                self.updateNowPlayingRate(0.0)
+                return .success
+            }
+            self.evalVideoJS("var v=document.querySelector('video'); if(v){v.pause();} true;")
+            self.updateNowPlayingRate(0.0)
             return .success
         }
         center.togglePlayPauseCommand.addTarget { [weak self] _ in
-            self?.evalVideoJS(
+            guard let self = self else { return .commandFailed }
+            if let player = self.pipPlayer, self.isNativePipControllable {
+                let shouldPlay = player.rate == 0
+                _ = self.controlNativePipPlayer(play: shouldPlay)
+                self.updateNowPlayingRate(shouldPlay ? 1.0 : 0.0)
+                return .success
+            }
+            self.evalVideoJS(
                 "var v=document.querySelector('video'); if(v){ if(v.paused){v.play();} else {v.pause();} } true;"
             )
             return .success
         }
         center.stopCommand.addTarget { [weak self] _ in
-            self?.evalVideoJS(
+            guard let self = self else { return .commandFailed }
+            if self.isNativePipControllable {
+                self.teardownPip(keepCall: false)
+                MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+                self.backgroundAudioActive = false
+                return .success
+            }
+            self.evalVideoJS(
                 "var v=document.querySelector('video'); if(v){v.pause(); v.removeAttribute('src'); v.load();} true;"
             )
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
-            self?.backgroundAudioActive = false
+            self.backgroundAudioActive = false
             return .success
         }
+        center.nextTrackCommand.addTarget { [weak self] _ in
+            self?.evalVideoJS("(function(){if(window._doKey)window._doKey(35);})();")
+            return .success
+        }
+        center.previousTrackCommand.addTarget { [weak self] _ in
+            self?.evalVideoJS("(function(){if(window._doKey)window._doKey(36);})();")
+            return .success
+        }
+    }
+
+    /// True when native AVPlayer PiP resources exist (active or starting).
+    private var isNativePipControllable: Bool {
+        pipPlayer != nil
+    }
+
+    /// Play/pause the native PiP AVPlayer when present. Returns false if web path should be used.
+    @discardableResult
+    private func controlNativePipPlayer(play: Bool) -> Bool {
+        guard let player = pipPlayer else { return false }
+        if play {
+            player.play()
+        } else {
+            player.pause()
+        }
+        return true
     }
 
     private func updateNowPlayingRate(_ rate: Double) {

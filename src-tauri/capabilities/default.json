@@ -40,6 +40,10 @@
     "allow-tmdb-proxy",
     "allow-version",
     "allow-feedback",
-    "allow-stalker-portal-fetch"
+    "allow-stalker-portal-fetch",
+    "allow-start-media-session",
+    "allow-pause-media-session",
+    "allow-resume-media-session",
+    "allow-stop-media-session"
   ]
 }
