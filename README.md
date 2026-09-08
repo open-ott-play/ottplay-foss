@@ -162,6 +162,37 @@ EPG_HASH=<channel-hash> ./scripts/smoke-xmltv-cache-refresh.sh
 Exit: `0` pass, `1` not listening, `2` assertion / warm-up failed, `3` usage. Sibling of `smoke-modea-companion.sh` / `smoke-m3u-stream-proxy-headers.sh` / `smoke-logo-concurrent-bench.sh` / `smoke-command-queue.sh`.
 
 
+## Mode A E2E play-path smoke
+
+Companion-side **play-path / stream readiness** smoke (HTTP only — **not** headed UI E2E). Against a running Mode A companion it checks:
+
+- Health or index reachable
+- Static player-shell assets (`/`, `/stbPlayer/1280.css`, `/js/jquery-…`, `/f/…`)
+- Optional `GET /epg/<hash>.json` when `EPG_HASH` is set
+- `POST /m3u/match-channels` with a secret-free JSON fixture (empty list + one synthetic channel)
+- Stream-proxy **play**: `POST /m3u/cp.php` to a controllable media fixture (local HLS playlist by default, or `MEDIA_URL`) and assert HTTP 200 + non-empty body / expected `Content-Type` (first bytes through the proxy)
+
+No private IPTV credentials. Sibling of `smoke-modea-companion.sh` (presence), `smoke-m3u-stream-proxy-headers.sh` (UA/Referer), `smoke-xmltv-cache-refresh.sh`.
+
+```bash
+# Companion must be listening (local install default :8095)
+./scripts/smoke-modea-e2e-play.sh
+
+# Docker / cargo CLI default (:8080) — fixture host must be reachable from the companion
+BASE_URL=http://127.0.0.1:8080 ./scripts/smoke-modea-e2e-play.sh
+
+# Optional EPG slice
+EPG_HASH=<channel-hash> ./scripts/smoke-modea-e2e-play.sh
+
+# Optional external media/echo (skips body equality; still requires HTTP 200 + non-empty)
+MEDIA_URL=https://httpbingo.org/bytes/64 ./scripts/smoke-modea-e2e-play.sh
+
+# Tiny MPEG-TS fixture + leading '@' strip on the play POST
+./scripts/smoke-modea-e2e-play.sh --ts-fixture --with-at-strip
+```
+
+Exit: `0` pass, `1` not listening, `2` assertion failed, `3` usage/deps.
+
 ## Docker
 
 Multi-arch images (amd64/arm64) are published to Docker Hub on every push to `main`, on `v*` tags, and via `workflow_dispatch`.
