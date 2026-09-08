@@ -25,6 +25,12 @@ export interface MobileNativeMediaPlugin {
         unsupported?: boolean;
         error?: string;
     }>;
+    /** Enter picture-in-picture. Fails loudly when unavailable. */
+    playPip(opts: { url: string }): Promise<{
+        ok: boolean;
+        unsupported?: boolean;
+        error?: string;
+    }>;
     /** Acquire sleep prevention → keep device awake. */
     preventSleep(): Promise<{ ok: boolean; unsupported?: boolean }>;
     /** Resume background audio after pause. */

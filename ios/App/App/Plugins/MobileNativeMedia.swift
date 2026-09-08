@@ -347,12 +347,6 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         call.resolve(["ok": true])
     }
 
-    // MARK: - DASH (honest reject — WKWebView has no MSE)
-
-
-
-
-
     private func configurePlaybackSession() -> Bool {
         let session = AVAudioSession.sharedInstance()
         do {

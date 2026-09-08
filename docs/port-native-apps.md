@@ -161,7 +161,7 @@ Media constraints:
 
 ### iOS
 - **HLS** — native via `<video>` tag. `hls.js` auto-detects and delegates.
-- **DASH** — unavailable (no MSE). Shaka Player fails.
+- **DASH** — Cap `DashExoPlayer` resolves `{ok:false, unsupported:true}` (no MSE / no AVPlayer DASH path). Shaka Player fails.
 - **FairPlay DRM** — only via native AVPlayer, not accessible from Capacitor.
 - **PiP** — `PictureInPicture` Web API on iOS 14+, or Capacitor plugin wrapping `AVPictureInPictureController`.
 - **Background audio** — `UIBackgroundModes: audio` in Info.plist.
@@ -310,7 +310,7 @@ STB/TV builds continue as today:
 
 1. **Dune HS5 compatibility** — Dune HS5 runs the player in a browser/WebView. `server.py` must keep serving the same URLs with the same response formats. Any backend change must be tested against a real Dune HS5 device.
 
-2. **iOS DASH** — Capacitor WKWebView cannot play DASH (no MSE). `MobileNativeMedia` returns honest `{ok:false, unsupported:true}`; Android falls back to ExoPlayer/Media3 via `DashExoPlayer`.
+2. **iOS DASH** — Capacitor WKWebView cannot play DASH (no MSE). Cap `DashExoPlayer` returns honest `{ok:false, unsupported:true}`; Android plays via ExoPlayer/Media3 in `DashExoPlayer`.
 
 3. **Stalker portal interception** *(mitigated for FOSS JSON-RPC path)* — `prov/stalker/prov.js` POSTs to `<portal>/stalker_portal/api/`. Mode B routes those ajax calls through `setupStalkerPortalShim()` → Tauri `stalker_portal_fetch` / Cap `StalkerPortal.portalRequest` (Option A-style). Mode A unchanged. Still out of scope: STB `host_ott/swop/a.php` dealer/cloud remote entry, classic Mag `load.php` portals, and VOD.
 

@@ -129,7 +129,17 @@ class DashExoPlayerPlugin : Plugin() {
             return
         }
         act.runOnUiThread {
-            player?.playWhenReady = false
+            val p = player
+            if (p == null) {
+                call.resolve(
+                    JSObject().apply {
+                        put("ok", false)
+                        put("error", "no active player")
+                    }
+                )
+                return@runOnUiThread
+            }
+            p.playWhenReady = false
             notifyPlaying(false)
             call.resolve(JSObject().apply { put("ok", true) })
         }

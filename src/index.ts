@@ -2665,8 +2665,8 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                     if (typeof origStop === "function") origStop();
                     return dash
                         .playDash({
-                            url: url,
                             position: position,
+                            url: url,
                         })
                         .then(function (pr: any) {
                             if (!(pr && pr.ok)) {
