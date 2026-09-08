@@ -952,6 +952,12 @@ var touch_min_sensX = Math.round(
     touch_min_sensY * (screen.width / screen.height) * 2
 );
 
+// Cap-only tweaks (e.g. 1-finger tap → ENTER). Swipe/multi-finger stay global
+// so Mode A browser/STB and Tauri keep existing touch behavior.
+function capacitorOnly(): boolean {
+    return typeof (window as any).Capacitor !== "undefined";
+}
+
 // Tap detection
 /**
  * Detect whether a touch interaction qualifies as a "tap" (stationary press) rather than a swipe.
@@ -1461,7 +1467,7 @@ function body_handleTouchEnd(e: any): void {
                     break;
             }
         } else if (tCount === 1) {
-            // 1-finger tap → click event
+            // Cap: 1-finger tap → ENTER (channel/list nav). Mode A/Tauri: synthetic click.
             if (
                 checkTap(
                     xDown!,
@@ -1472,14 +1478,18 @@ function body_handleTouchEnd(e: any): void {
                     touch_min_sensY / 2
                 )
             ) {
-                var clickEvent = new MouseEvent("click", {
-                    bubbles: true,
-                    cancelable: true,
-                    clientX: e.changedTouches[0].clientX,
-                    clientY: e.changedTouches[0].clientY,
-                    view: window,
-                });
-                e.target.dispatchEvent(clickEvent);
+                if (capacitorOnly()) {
+                    (window as any)._doKey((window as any).keys.ENTER);
+                } else {
+                    var clickEvent = new MouseEvent("click", {
+                        bubbles: true,
+                        cancelable: true,
+                        clientX: e.changedTouches[0].clientX,
+                        clientY: e.changedTouches[0].clientY,
+                        view: window,
+                    });
+                    e.target.dispatchEvent(clickEvent);
+                }
             }
         }
         xDown = null;
