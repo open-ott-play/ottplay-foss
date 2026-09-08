@@ -37,10 +37,9 @@ import { applyPolyfills } from "./polyfills";
 
 applyPolyfills();
 
-// M3U proxy + Capacitor companion shim
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
-// Capacitor 4.4 native media bridges (volume, PiP, fullscreen, standby)
 import { MobileNativeMedia } from "./plugins/mobile-native-media";
+import { setupStalkerPortalShim } from "./plugins/stalker-portal";
 
 // Utils
 import * as encoding from "./utils/encoding";
@@ -1816,8 +1815,10 @@ function onStbReady(): void {
         if (typeof window.__TAURI__ !== "undefined") {
             setupTauriEpgOverride();
             setupTauriCompanionShim();
+            setupStalkerPortalShim();
         } else if (typeof (window as any).Capacitor !== "undefined") {
             setupCapacitorCompanionShim();
+            setupStalkerPortalShim();
         }
 
         if (TMDb && TMDb.prepare) TMDb.prepare();

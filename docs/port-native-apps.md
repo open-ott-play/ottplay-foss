@@ -102,6 +102,13 @@ The native command queue stores commands in memory (expire after 60s, same as `l
 
 ---
 
+### Tier 7 — Stalker portal
+
+- `<portal>/stalker_portal/api/` JSON-RPC (handshake, get_channels, get_epg) → native HTTP via ajax shim (`setupStalkerPortalShim`)
+- Tauri: `stalker_portal_fetch`; Capacitor: `StalkerPortal.portalRequest`
+- Stream play URLs remain direct player opens (not companion-proxied)
+
+
 ## Recommended Stack Per OS
 
 ### macOS, Windows, Linux — Tauri v2
@@ -305,7 +312,7 @@ STB/TV builds continue as today:
 
 2. **iOS DASH** — if any provider serves DASH-only streams (no HLS fallback), Capacitor WKWebView cannot play them. Verify target providers before committing. Workaround: native ExoPlayer Capacitor plugin.
 
-3. **Stalker portal interception** — provider scripts in `src/provider/index.ts` call `host_ott/swop/a.php` and the configured portal base URL. In native apps there's no external portal server. Provider scripts must route through a shim (Option A: `window.__ottplay_rpc` calls → native `#[tauri::command]`; Option B: native HTTP server intercepts portal patterns). Option A is cleaner, requires small refactor of `src/provider/index.ts`.
+3. **Stalker portal interception** *(mitigated for FOSS JSON-RPC path)* — `prov/stalker/prov.js` POSTs to `<portal>/stalker_portal/api/`. Mode B routes those ajax calls through `setupStalkerPortalShim()` → Tauri `stalker_portal_fetch` / Cap `StalkerPortal.portalRequest` (Option A-style). Mode A unchanged. Still out of scope: STB `host_ott/swop/a.php` dealer/cloud remote entry, classic Mag `load.php` portals, and VOD.
 
 4. **Tauri mobile** — Tauri v2 mobile is production-ready but ecosystem is smaller than Capacitor. Phase 2 uses Capacitor. Revisit Tauri mobile in a future phase.
 

@@ -39,6 +39,7 @@
     "allow-match-logos",
     "allow-tmdb-proxy",
     "allow-version",
-    "allow-feedback"
+    "allow-feedback",
+    "allow-stalker-portal-fetch"
   ]
 }

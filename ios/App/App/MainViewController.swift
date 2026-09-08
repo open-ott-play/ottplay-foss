@@ -7,6 +7,7 @@ class MainViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(M3UProxyPlugin())
         bridge?.registerPluginInstance(MobileXmltvEpg())
         bridge?.registerPluginInstance(MobileNativeMedia())
+        bridge?.registerPluginInstance(StalkerPortalPlugin())
     }
 
     open override var prefersStatusBarHidden: Bool {
