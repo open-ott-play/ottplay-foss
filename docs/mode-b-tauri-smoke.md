@@ -59,7 +59,7 @@ Or via helper:
 ./scripts/smoke-tauri-desktop.sh --check-src-tauri
 ./scripts/smoke-tauri-desktop.sh --build
 ./scripts/smoke-tauri-desktop.sh --check-companion
-./scripts/smoke-tauri-desktop.sh --queue
+./scripts/smoke-tauri-desktop.sh --check-queue
 ```
 
 Set `OTTPLAY_WEB_URL=http://127.0.0.1:8095` for debug webview pointing at a local Mode A companion.
