@@ -5,7 +5,7 @@ Both platforms share the same TypeScript source and Capacitor configuration.
 
 ## Status
 
-Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315), iOS AVPlayer PiP (#316), Stalker portal (#317), MediaSession (#318+#321), DASH ExoPlayer (#319), Tauri updater/notarize (#320), Stalker `host_ott/swop` (#322), Mag `load.php` path allowlist + cookie/header hooks (#324), and Cap tvOS unsupported docs + iOS UIPress remote gaps (#325). Remaining: human TestFlight/Play upload, Mag JsHttpRequest client/VOD, device smoke, DRM. Cap tvOS is **unsupported upstream** (documented; no stub target). In flight (not on `main`): Dev PC input-line editor `showEditKey2` (#326).
+Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315), iOS AVPlayer PiP (#316), Stalker portal (#317), MediaSession (#318+#321), DASH ExoPlayer (#319), Tauri updater/notarize (#320), Stalker `host_ott/swop` (#322), Mag `load.php` path allowlist + cookie/header hooks (#324), Cap tvOS unsupported docs + iOS UIPress remote gaps (#325), Dev PC input-line editor `showEditKey2` (#326), command-queue curl/HA smoke (#328), and Mode A companion HTTP smoke (#329). Remaining: human TestFlight/Play upload, Mag JsHttpRequest client/VOD, device smoke, DRM. Cap tvOS is **unsupported upstream** (documented; no stub target).
 
 ## Shipped
 
@@ -24,6 +24,9 @@ Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315
 - **Tauri updater / notarize** — PR #320 — desktop updater plugin + optional notarize/signing CI hooks (see `docs/tauri-updater-notarize.md`)
 - **Mag `load.php` path allowlist** — PR #324 — Mode B allowlist for `/load.php` + `/c/portal` with Cookie/Authorization forward + `Set-Cookie` jar (honest Mag gap; **no** JsHttpRequest client)
 - **Cap tvOS unsupported + iOS UIPress** — PR #325 — Cap tvOS documented N/A; iOS UIPress play/menu/select + `stbEventToKeyCode` media/back string maps
+- **Dev PC input-line editor** — PR #326 — restore `showEditKey2` / window publish for native input-line editor path
+- **Command-queue curl smoke + HA docs** — PR #328 — `scripts/smoke-command-queue.sh` + HA usage notes (all modes)
+- **Mode A companion smoke** — PR #329 — `scripts/smoke-modea-companion.sh` (EPG/M3U/static)
 
 ## Build
 
@@ -188,9 +191,8 @@ Typical Mag / Ministra STB middleware is a different protocol from FOSS JSON-RPC
 - **Store / TestFlight / Play** — prepared (#315 / section below). Human upload still required.
 - **Mag JsHttpRequest client / VOD** — classic Mag handshake/channel-list/VOD client is **not** in FOSS (see section above). Mode B only allowlists Mag URL shapes + header/cookie forward (#324).
 - **Cap tvOS** — **does not work** / unsupported upstream (see §Cap tvOS below; #325). No stub target — not an open Cap work item.
-- **Device smoke** — real device/simulator passes for queue / EPG / M3U/media / Stalker / swop paths.
+- **Device smoke** — real device/simulator passes for queue / EPG / M3U/media / Stalker / swop paths. Curl smokes for command-queue (#328) and Mode A companion (#329) are shipped.
 - **DRM** — Widevine / FairPlay / encrypted DASH out of scope for current Cap/Tauri paths.
-- **In flight:** Dev PC input-line editor `showEditKey2` (#326) — open PR; do not treat as merged until it lands.
 
 ## Phase 3 — Store / TestFlight readiness
 
