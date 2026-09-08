@@ -14,9 +14,7 @@
     "expect_code": "200",
     "body_contains": "OK",
     "required": false,
-    "soft_codes": [
-      "404"
-    ]
+    "soft_codes": ["404"]
   },
   {
     "name": "dist_bundle",
