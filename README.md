@@ -130,6 +130,38 @@ CONCURRENCY=100 TOTAL=500 ./scripts/smoke-logo-concurrent-bench.sh
 Exit: `0` pass, `1` not listening / connection failed, `2` high error rate, `3` usage. Sibling of `smoke-modea-companion.sh` / `smoke-m3u-stream-proxy-headers.sh` / `smoke-command-queue.sh`.
 
 
+## XMLTV cache refresh / warm-up smoke
+
+Verifies Mode A companion XMLTV/EPG cache behavior honestly against `src-rs` (no invented APIs):
+
+- In-memory `EPG_CACHE` served via `GET /epg/:hash` → always `{"epg_data":[...]}` (HTTP 200).
+- Process start fetches `EPG_URLS` **before** binding the listener; background refresh every **2h**.
+- Optional SQLite persist when `DATABASE_URL` is set (no public cache-status endpoint).
+- `GET /health` → `OK` is the automated warm-up gate after an optional restart.
+
+Default path only curls — **does not kill processes**. Pass `--restart-cmd` / `RESTART_CMD` for automated kill+restart, or follow the manual `launchctl` steps in `--help`.
+
+```bash
+# Companion must be listening (local install default :8095)
+./scripts/smoke-xmltv-cache-refresh.sh
+
+# Docker / cargo CLI default (:8080)
+BASE_URL=http://127.0.0.1:8080 ./scripts/smoke-xmltv-cache-refresh.sh
+
+# Optional real channel hash (before/after restart if --restart-cmd set)
+EPG_HASH=<channel-hash> ./scripts/smoke-xmltv-cache-refresh.sh
+
+# Optional restart + wait for /health (warm-up). Example macOS local install:
+./scripts/smoke-xmltv-cache-refresh.sh --restart-cmd \
+  'launchctl unload ~/Library/LaunchAgents/com.ottplay-foss-local.plist && launchctl load ~/Library/LaunchAgents/com.ottplay-foss-local.plist'
+
+# Optional local peek at archive/server.py .cache (Python companion only)
+./scripts/smoke-xmltv-cache-refresh.sh --check-disk-cache /path/to/workdir/.cache
+```
+
+Exit: `0` pass, `1` not listening, `2` assertion / warm-up failed, `3` usage. Sibling of `smoke-modea-companion.sh` / `smoke-m3u-stream-proxy-headers.sh` / `smoke-logo-concurrent-bench.sh` / `smoke-command-queue.sh`.
+
+
 ## Docker
 
 Multi-arch images (amd64/arm64) are published to Docker Hub on every push to `main`, on `v*` tags, and via `workflow_dispatch`.

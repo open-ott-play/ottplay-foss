@@ -58,6 +58,11 @@ See root README § Mode A companion smoke. Does not cover `local_proxy.py` comma
 
 `scripts/smoke-logo-concurrent-bench.sh` — concurrent `GET /logo/<id>.svg` (optional `?ch=`) with OK/fail + p50/p95/p99. Default `BASE_URL=http://127.0.0.1:8095`, `CONCURRENCY=200`, `TOTAL=1000`; optional `--full` / `LOGO_BENCH_FULL=1` for 10k soak. See root README § Logo concurrent bench smoke.
 
+### XMLTV cache refresh / warm-up smoke
+
+`scripts/smoke-xmltv-cache-refresh.sh` — Mode A companion XMLTV/EPG cache warm-up: `GET /health`, probe `GET /epg/:hash` (always 200 + `epg_data`), optional `EPG_HASH`, optional `--restart-cmd` then wait for `/health` (fetch-before-bind gate). Default `BASE_URL=http://127.0.0.1:8095`. Does not kill by default. See root README § XMLTV cache refresh / warm-up smoke.
+
+
 ### Separate process: `local_proxy.py` (port 8081)
 
 This is **not** part of server.py. It runs as a standalone companion for the webhook-based remote command system (Home Assistant, Node-RED, curl). It is **not** used by the native apps.
