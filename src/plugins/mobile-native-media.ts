@@ -1,5 +1,5 @@
 /**
- * MobileNativeMedia — Capacitor 4.4 native media bridges.
+ * MobileNativeMedia — Capacitor 4.4 native media + 4.5 background audio bridges.
  *
  * Real native calls; WebPlugin fallback no-ops with console.warn.
  * Gate on `window.Capacitor` in src/index.ts so Mode A / Tauri stay untouched.
@@ -17,10 +17,21 @@ export interface MobileNativeMediaPlugin {
         unsupported?: boolean;
         volume: number;
     }>;
+    /** Pause background audio session / MediaSession (FGS may stay up). */
+    pauseBackgroundAudio(): Promise<{
+        ok: boolean;
+        unsupported?: boolean;
+        error?: string;
+    }>;
     /** Enter picture-in-picture. Fails loudly when unavailable. */
     playPip(): Promise<{ ok: boolean; unsupported?: boolean }>;
     /** Acquire sleep prevention → keep device awake. */
     preventSleep(): Promise<{ ok: boolean; unsupported?: boolean }>;
+    /** Resume background audio after pause. */
+    resumeBackgroundAudio(opts?: {
+        title?: string;
+        artist?: string;
+    }): Promise<{ ok: boolean; unsupported?: boolean; error?: string }>;
     /** Full-window fullscreen (immersive on Android). */
     setFullscreen(opts: { fullscreen: boolean }): Promise<{
         ok: boolean;
@@ -31,6 +42,20 @@ export interface MobileNativeMediaPlugin {
         ok: boolean;
         unsupported?: boolean;
         volume: number;
+    }>;
+    /**
+     * Enable background playback: iOS AVAudioSession `.playback` + Now Playing;
+     * Android mediaPlayback foreground service (real startForegroundService).
+     */
+    startBackgroundAudio(opts?: {
+        title?: string;
+        artist?: string;
+    }): Promise<{ ok: boolean; unsupported?: boolean; error?: string }>;
+    /** Tear down background audio / stop mediaPlayback FGS. */
+    stopBackgroundAudio(): Promise<{
+        ok: boolean;
+        unsupported?: boolean;
+        error?: string;
     }>;
     /** Exit picture-in-picture. */
     stopPip(): Promise<{ ok: boolean; unsupported?: boolean }>;
@@ -87,6 +112,48 @@ class MobileNativeMediaWeb
     async preventSleep(): Promise<{ ok: boolean; unsupported?: boolean }> {
         console.warn(
             "[MobileNativeMedia] web fallback: preventSleep unsupported"
+        );
+        return { ok: false, unsupported: true };
+    }
+
+    async startBackgroundAudio(_opts?: {
+        title?: string;
+        artist?: string;
+    }): Promise<{ ok: boolean; unsupported?: boolean; error?: string }> {
+        console.warn(
+            "[MobileNativeMedia] web fallback: startBackgroundAudio unsupported"
+        );
+        return { ok: false, unsupported: true };
+    }
+
+    async pauseBackgroundAudio(): Promise<{
+        ok: boolean;
+        unsupported?: boolean;
+        error?: string;
+    }> {
+        console.warn(
+            "[MobileNativeMedia] web fallback: pauseBackgroundAudio unsupported"
+        );
+        return { ok: false, unsupported: true };
+    }
+
+    async resumeBackgroundAudio(_opts?: {
+        title?: string;
+        artist?: string;
+    }): Promise<{ ok: boolean; unsupported?: boolean; error?: string }> {
+        console.warn(
+            "[MobileNativeMedia] web fallback: resumeBackgroundAudio unsupported"
+        );
+        return { ok: false, unsupported: true };
+    }
+
+    async stopBackgroundAudio(): Promise<{
+        ok: boolean;
+        unsupported?: boolean;
+        error?: string;
+    }> {
+        console.warn(
+            "[MobileNativeMedia] web fallback: stopBackgroundAudio unsupported"
         );
         return { ok: false, unsupported: true };
     }

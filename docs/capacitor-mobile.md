@@ -5,7 +5,7 @@ Both platforms share the same TypeScript source and Capacitor configuration.
 
 ## Status
 
-Capacitor 4.1–4.3 are on `main`. Next: **4.4 native media**.
+Capacitor 4.1–4.5 are on `main` (or this PR). Next: **4.6 key / touch mapping**.
 
 ## Shipped
 
@@ -14,6 +14,8 @@ Capacitor 4.1–4.3 are on `main`. Next: **4.4 native media**.
 - **4.3 command queue** — PR #305 (Tauri peer #296) — `MobileCommandQueue` on `127.0.0.1:18081` (NWListener / ServerSocket)
 - **M3U stream proxy** — PR #307 — `M3UProxy` + web shim for `/m3u/cp.php`
 - **Release artifacts** — PR #310 — multiarch Tauri + Capacitor IPA/APK
+- **4.4 Native media** — PR #312 — `MobileNativeMedia` (volume / wake real; iOS PiP/fullscreen unsupported)
+- **4.5 Background audio** — this PR — AVAudioSession `.playback` + Android `mediaPlayback` FGS
 
 ## Build
 
@@ -110,10 +112,8 @@ Implemented. Capacitor plugin `M3UProxy` provides native HTTP client for `/m3u/c
 - **Return**: response body as text string (text playlists).
 - **Smoke**: Capacitor app → provider POST `/m3u/cp.php` → native fetch returns body; Tauri/Mode A unchanged.
 
-## Remaining gaps (4.4+)
+## Remaining gaps (4.6+)
 
-- **4.4 Native media** — volume get/set, PiP play/stop, fullscreen, standby/wake (AVAudioSession / AudioManager; AVPictureInPictureController / PictureInPictureManager API 26+; WKWebView/WebView fullscreen; idle timer / WakeLock). Not yet wired for Capacitor.
-- **4.5 Background audio polish** — config flags exist (`ios.backgroundAudio` / `android.backgroundAudio`); lock-screen / OS controls and playback-edge cases still need device polish.
 - **4.6 Key / touch mapping** — hardware keyboard, D-Pad, remote, swipe gestures on mobile.
 - **Store / TestFlight** — iOS TestFlight / App Store and Android internal track (icon 1024x1024, screenshots, privacy policy URL, signing).
 - **Device smoke** — real device/simulator passes for queue / EPG / M3U/media paths.
@@ -134,6 +134,29 @@ Implemented. Capacitor plugin `MobileNativeMedia` provides OS-level media + powe
 - **Standby / wake**: `allowSleep` releases idle timer / clears `keepScreenOn`; `preventSleep` disables idle timer / sets `keepScreenOn`. Web fallbacks return `{ok:false, unsupported:true}` (not fake ok). Cap standby shim uses a real `_standby` flag (same pattern as Tauri), not a `backgroundColor` heuristic. Mirrors Tauri `prevent_sleep` / `allow_sleep` intent.
 
 **Failure contract**: never fake success. Every method resolves with `{ok:false}` and/or `{unsupported:true}` when the native path is unavailable; no silent fallback.
+
+
+### 4.5 Background audio
+
+Implemented. Cap-only wiring keeps HLS/`<video>` audio alive when the app backgrounds.
+
+- **Config (already on main)**: `capacitor.config.ts` `ios.backgroundAudio: true` / `android.backgroundAudio: true`; iOS `Info.plist` `UIBackgroundModes` → `audio`.
+- **Plugin extensions**: `startBackgroundAudio` / `pauseBackgroundAudio` / `resumeBackgroundAudio` / `stopBackgroundAudio` on `MobileNativeMedia`.
+- **JS shim**: Cap gate in `src/index.ts` wraps `stbPlay` / `stbStop` / `stbPause` / `stbContinue` only when `window.Capacitor` is defined. Mode A + Tauri unchanged.
+
+**iOS**
+- Confirms `UIBackgroundModes: audio` remains.
+- Configures `AVAudioSession` category `.playback` (mode `.moviePlayback`, AirPlay / A2DP options) on plugin load and on `startBackgroundAudio` / `resumeBackgroundAudio`.
+- Publishes `MPNowPlayingInfoCenter` metadata (title/artist) and best-effort `MPRemoteCommandCenter` play/pause/stop via `evaluateJavaScript` on the WKWebView `<video>`.
+- **Caveat / follow-up**: remote commands are not a native `AVPlayer` pipeline. Seeking, artwork, and rock-solid lock-screen sync without a native player remain open.
+
+**Android**
+- Manifest: `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `WAKE_LOCK`, `POST_NOTIFICATIONS`.
+- Service: `MediaPlaybackService` with `android:foregroundServiceType="mediaPlayback"`; started via real `ContextCompat.startForegroundService` (no no-op stub).
+- Notification + `MediaSession` skeleton (title/artist, play/pause/stop actions on the session).
+- **Caveat / follow-up**: richer notification transport controls that drive the WebView `<video>` (and Android 13+ runtime notification permission UX) still need device polish.
+
+**Failure contract**: start/stop report `{ok:false, error}` when the native start/stop path throws; web fallbacks return `{ok:false, unsupported:true}`.
 
 ## Mode A and Tauri
 
