@@ -48,6 +48,8 @@ npm run cap:android           # open in Android Studio
 
 See [docs/capacitor-mobile.md](docs/capacitor-mobile.md) for prerequisites, configuration, and gaps.
 
+Device smoke (Mode B sim/emulator checklist + helper; unpaid store / sideload): [docs/mode-b-device-smoke.md](docs/mode-b-device-smoke.md) — `./scripts/smoke-capacitor-device.sh --help`.
+
 ## Quick Start
 
 ```bash
@@ -192,6 +194,19 @@ MEDIA_URL=https://httpbingo.org/bytes/64 ./scripts/smoke-modea-e2e-play.sh
 ```
 
 Exit: `0` pass, `1` not listening, `2` assertion failed, `3` usage/deps.
+
+## Capacitor device smoke (Mode B)
+
+Simulator / emulator (optional real-device) **checklist** for Mode B Cap — not Mode A companion HTTP.
+Human marks UI passes; helper automates toolchain / native dirs / soft command-queue curl.
+
+```bash
+./scripts/smoke-capacitor-device.sh --help
+./scripts/smoke-capacitor-device.sh --check-native
+./scripts/smoke-capacitor-device.sh --queue          # soft-skip if Cap :18081 down
+```
+
+Details: [docs/mode-b-device-smoke.md](docs/mode-b-device-smoke.md). Sibling of `smoke-command-queue.sh` (Cap loopback) — do not confuse with Mode A smokes above.
 
 ## Docker
 
