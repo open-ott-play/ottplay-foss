@@ -205,22 +205,24 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
 
             player.play()
 
-            // Observe item readiness + pip-possible; resolve once when start succeeds.
+            // Observe item readiness + pip-possible; hop to main before Cap/UIKit work.
             self.pipItemObservation = player.currentItem?.observe(
                 \.status,
                 options: [.initial, .new]
             ) { [weak self] item, _ in
-                guard let self = self else { return }
-                if item.status == .failed {
-                    self.resolvePipOnce([
-                        "ok": false,
-                        "error": item.error?.localizedDescription ?? "player item failed",
-                    ])
-                    self.teardownPip(keepCall: true)
-                    return
-                }
-                if item.status == .readyToPlay {
-                    self.tryStartPip()
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    if item.status == .failed {
+                        self.resolvePipOnce([
+                            "ok": false,
+                            "error": item.error?.localizedDescription ?? "player item failed",
+                        ])
+                        self.teardownPip(keepCall: true)
+                        return
+                    }
+                    if item.status == .readyToPlay {
+                        self.tryStartPip()
+                    }
                 }
             }
 
@@ -228,9 +230,11 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
                 \.isPictureInPicturePossible,
                 options: [.initial, .new]
             ) { [weak self] controller, _ in
-                guard let self = self else { return }
-                if controller.isPictureInPicturePossible {
-                    self.tryStartPip()
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    if controller.isPictureInPicturePossible {
+                        self.tryStartPip()
+                    }
                 }
             }
 
@@ -422,8 +426,8 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
 
         _ = configurePlaybackSession()
         player.play()
+        // Do not resolve ok:true here — wait for didStart / failedToStart / timeout.
         controller.startPictureInPicture()
-        resolvePipOnce(["ok": true])
     }
 
     private func resolvePipOnce(_ result: [String: Any]) {
