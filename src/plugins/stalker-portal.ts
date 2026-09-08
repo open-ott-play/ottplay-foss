@@ -172,7 +172,7 @@ export function setupStalkerPortalShim(): void {
                 status: number;
                 body: string;
                 contentType: string;
-            }>("stalker_portal_fetch", { url, method, body }).then((res) => {
+            }>("stalker_portal_fetch", { body, method, url }).then((res) => {
                 if (!(res.status >= 200 && res.status < 300)) {
                     throw new Error(
                         "stalker HTTP " +
@@ -191,10 +191,10 @@ export function setupStalkerPortalShim(): void {
                 ? opts.contentType
                 : "application/json";
         const capPromise = StalkerPortal.portalRequest({
-            url,
-            method,
             body,
             contentType,
+            method,
+            url,
         }).then((res) => {
             if (!(res.status >= 200 && res.status < 300)) {
                 throw new Error(
