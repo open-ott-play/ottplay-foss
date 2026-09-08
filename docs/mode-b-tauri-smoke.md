@@ -6,8 +6,9 @@
 > Helper: `./scripts/smoke-tauri-desktop.sh` - does **not** assert headed play/PiP.
 
 Repeatable **macOS / Windows / Linux** smoke for Mode B Tauri desktop.
-FOSS closes what can be automated without a headed GUI in CI: build/sync/open helpers,
-native project presence checks, and optional companion curl on :8095 and optional desktop compile helpers.
+FOSS closes what can be automated without a headed GUI in CI: toolchain checks,
+`src-tauri/` presence, optional unsigned compile, optional companion curl on `:8095`,
+and optional command-queue curl on `:18081` when the desktop app is running.
 **A human still marks the UI checklist** on a desktop window (debug or built app).
 
 This is **Mode B desktop** (Tauri). Do **not** confuse with Mode A companion smokes
@@ -24,109 +25,96 @@ Related:
 
 | Step | Automated? | Notes |
 | --- | --- | --- |
-| Tools present (`node` / `npm`; optional `cargo` / `rustc`) | Yes (helper) | Soft unless `--require-*` |
+| Tools present (`node` / `npm`; optional `cargo` / `rustc`) | Yes (helper) | Soft unless `--require-cargo` |
 | `src-tauri/` present | Yes (helper) | Scaffold presence only |
-| `npm run build:mobile` / `npm run cap:sync` | Optional (helper flags) | Local; flaky in headless CI if Xcode/SDK missing |
-| Open Xcode / Android Studio | Optional (helper flags) | Human continues in IDE |
+| `npm run build` / `npx tauri build --ci` | Optional (`--build`) | Unsigned CI build inside `src-tauri/` |
+| Companion curl on `:8095` | Optional (helper flags) | Soft-skip if not up unless `--require-companion` |
 | Command-queue POST/GET on `:18081` | Yes when app listening | Soft-skip if not up unless `--require-queue` |
-| UI: queue drain / EPG / M3U play / Stalker / swop | **Human** | Simulator, emulator, or real device |
+| UI: window launch / paint / play / PiP | **Human** | Debug or built desktop app |
 | Paid notarize / code signing | **Out of scope** | Unpaid: unsigned / local debug OK |
 
 ## Prerequisites (unpaid signing OK)
 
 Paid Apple Developer / notarization / Authenticode are **not** required for this smoke.
 
-### iOS (Simulator or local device)
+- **macOS**: Node.js >= 18; Rust toolchain (`cargo` / `rustc`) for build; Xcode Command Line Tools for Tauri system deps
+- **Windows**: Node.js >= 18; Rust toolchain; Visual Studio Build Tools
+- **Linux**: Node.js >= 18; Rust toolchain; system libs (`webkit2gtk`, `libssl`, etc. per Tauri docs)
 
-- macOS + Xcode 15+ (Simulator)
-- Node.js >= 18, CocoaPods
-- Free Apple ID is enough for Simulator and limited personal-team device runs
-- **No** TestFlight / App Store Connect upload required here (see store readiness in `tauri-updater-notarize.md`)
+No Xcode, Android Studio, CocoaPods, `adb`, or Cap/iOS/Android SDK required.
 
-### Android (emulator or sideload)
-
-- Android Studio (or SDK + emulator) **or** a physical device with USB debugging
-- Node.js >= 18, `$ANDROID_HOME` when using SDK CLI
-- Install **unsigned / debug APK** via Android Studio Run or `adb install` — **no** Play Console
-
-### Optional real device
-
-- Same UI checklist as simulator/emulator
-- Android USB: `adb forward tcp:18081 tcp:18081` so host curl reaches Cap loopback
-- iOS Simulator shares Mac localhost — no forward needed
-- Physical iOS device: Cap binds device loopback; host curl from Mac cannot reach it without a tunnel — prefer Simulator for the automated queue curl, or mark queue UI-only on device
-
-## Build + sync + open
+## Build / run
 
 ```bash
 npm install
-npm run build:mobile          # vite build + cap copy + cap sync
-npm run cap:ios               # open Xcode (macOS)
-npm run cap:android           # open Android Studio
+npm run build                  # vite production build
+npm run tauri dev              # debug window
+npm run tauri build            # unsigned release build
 ```
 
-Or via helper (best-effort; does not boot simulators by itself):
+Or via helper:
 
 ```bash
 ./scripts/smoke-tauri-desktop.sh --help
-./scripts/smoke-tauri-desktop.sh --check-native
-./scripts/smoke-tauri-desktop.sh --build-sync
-./scripts/smoke-tauri-desktop.sh --open-ios      # or --open-android
+./scripts/smoke-tauri-desktop.sh --check-src-tauri
+./scripts/smoke-tauri-desktop.sh --build
+./scripts/smoke-tauri-desktop.sh --check-companion
+./scripts/smoke-tauri-desktop.sh --queue
 ```
 
-In Xcode: pick an iPhone Simulator → Run.
-In Android Studio: pick an AVD (or USB device) → Run.
-Wait until the player UI loads and Cap starts `MobileCommandQueue` on `127.0.0.1:18081`.
+Set `OTTPLAY_WEB_URL=http://127.0.0.1:8095` for debug webview pointing at a local Mode A companion.
 
-## Automated companion: command-queue curl
+## Automated companion curl
 
-With the Cap app running (Simulator, or emulator/device after `adb forward`):
+When a Mode A companion is listening on `:8095`:
 
 ```bash
-# iOS Simulator (Mac localhost shared)
-./scripts/smoke-command-queue.sh
-./scripts/smoke-command-queue.sh --aliases
-
-# Android emulator / USB device
-adb forward tcp:18081 tcp:18081
-./scripts/smoke-command-queue.sh
-
-# Helper wraps the soft-skip behavior
-./scripts/smoke-tauri-desktop.sh --queue
-./scripts/smoke-tauri-desktop.sh --queue --require-queue   # fail if not listening
+./scripts/smoke-tauri-desktop.sh --check-companion
+./scripts/smoke-tauri-desktop.sh --check-companion --require-companion   # fail if down
 ```
 
-Expect a popup (or queued command drain) in the app when POST succeeds. Soft-skip is intentional when the app is not running — CI without a booted sim should not hard-fail.
+Soft-skip is intentional when the companion is not running — CI without a local companion should not hard-fail.
+
+## Automated command-queue curl
+
+With the Tauri desktop app running (binds `127.0.0.1:18081`):
+
+```bash
+./scripts/smoke-tauri-desktop.sh --check-queue
+./scripts/smoke-tauri-desktop.sh --check-queue --require-queue   # fail if not listening
+```
+
+Expect a popup (or queued command drain) in the app when POST succeeds.
 
 ## Manual UI checklist (human marks)
 
-Run on **iOS Simulator and/or Android emulator** (optional: real device). Skip rows that need credentials you do not have; note the skip honestly.
+Run on **macOS / Windows / Linux** desktop window. Skip rows that need credentials you do not have; note the skip honestly.
 
 ### A. Launch + shell
 
 - [ ] App launches without native crash; web UI paints
-- [ ] Settings open (F2 / equivalent / on-screen)
-- [ ] Device ID visible under Player / Remote settings (optional note)
+- [ ] Settings open (F2 / equivalent)
+- [ ] Window title / size / position behave normally
 
-### B. Command queue (Mode B loopback)
-
-- [ ] With app running, `./scripts/smoke-command-queue.sh` returns exit `0`
-- [ ] Enqueued `popup_message` appears (or is drained) in the player
-- [ ] Android: `adb forward tcp:18081 tcp:18081` used when curling from host
-
-### C. EPG / XMLTV (Cap `MobileXmltvEpg`)
-
-- [ ] Configure a public or operator XMLTV/EPG source you are allowed to use (no secrets in repo)
-- [ ] Channel guide / now-next populates for at least one channel
-- [ ] Airplane mode or kill network briefly → stale cache still serves if previously warm (honest offline path)
-
-### D. M3U / media play
+### B. Playback
 
 - [ ] Add an M3U provider (playlist URL you control or a public test list)
 - [ ] Channel list loads
 - [ ] Start playback on one stream (HLS / progressive as available)
 - [ ] Pause / resume; volume or wake-lock behavior sanity-check
-- [ ] Optional Android DASH: ExoPlayer path only when content is DASH; iOS honest reject for unsupported DASH is OK
+
+### C. PiP (native)
+
+- [ ] Start playback, trigger native PiP (`play_pip`)
+- [ ] Window becomes always-on-top compact player
+- [ ] Stop PiP (`stop_pip`) returns to normal window
+- [ ] Resize / move via `set_pip_bounds` if exercised
+
+### D. EPG / XMLTV
+
+- [ ] Configure a public or operator XMLTV/EPG source you are allowed to use (no secrets in repo)
+- [ ] Channel guide / now-next populates for at least one channel
+- [ ] Airplane mode or kill network briefly → stale cache still serves if previously warm (honest offline path)
 
 ### E. Stalker portal (FOSS JSON-RPC)
 
@@ -139,19 +127,19 @@ Run on **iOS Simulator and/or Android emulator** (optional: real device). Skip r
 
 - [ ] With `host_ott` / `host_ott_proto` set, Enter Provider Code (remote) or cloud send/load reaches `swop/a.php` via native shim (no CORS failure)
 - [ ] **Skip** if no `host_ott` — mark "skipped: no host_ott"
-- [ ] Mag `load.php` classic handshake is **not** expected in FOSS (allowlist only) — do not fail Cap smoke for Mag JsHttpRequest gaps
+- [ ] Mag `load.php` classic handshake is **not** expected in FOSS (allowlist only) — do not fail smoke for Mag JsHttpRequest gaps
 
 ### G. Optional Mode A companions (do not mix into Mode B pass/fail)
 
 Only when you also run a Mode A companion for comparison:
 
 ```bash
-# Separate stack — not Cap UI
+# Separate stack — not Tauri UI
 ./scripts/smoke-modea-companion.sh
 ./scripts/smoke-modea-e2e-play.sh
 ```
 
-Record Mode A results separately. Cap device smoke **passes** without Mode A.
+Record Mode A results separately. Tauri desktop smoke **passes** without Mode A.
 
 ## Helper script exit codes
 
@@ -159,17 +147,16 @@ Record Mode A results separately. Cap device smoke **passes** without Mode A.
 
 | Code | Meaning |
 | --- | --- |
-| `0` | Checks passed (queue soft-skip counts as pass unless `--require-queue`) |
-| `1` | Hard failure (missing required tool/dir, build/sync failed, queue required but down) |
-| `2` | Queue smoke ran but contract assertion failed |
+| `0` | Checks passed (queue/companion soft-skip counts as pass unless `--require-*`) |
+| `1` | Hard failure (missing required tool/dir, build failed, queue/companion required but down) |
+| `2` | Queue/companion smoke ran but contract assertion failed |
 | `3` | Usage / unknown flag / missing baseline deps (`node`/`npm`/`curl` when needed) |
 
 ## Honest remaining human work
 
-- Marking the UI checklist above on sim/emulator/device
+- Marking the UI checklist above on desktop window
 - Any portal / playlist / `host_ott` credentials (operator-owned; never commit)
-- Paid TestFlight / Play Console upload (store readiness docs only)
-- Physical iOS device queue curl from a Mac host without a tunnel
-- Headless CI that boots Xcode Simulator / Android emulator (intentionally not required here — flaky and account/SDK heavy)
+- Paid notarize / code signing (store readiness docs only)
+- Headless CI that runs a headed Tauri window (intentionally not required here — flaky without xvfb/headless GL)
 
-When the human checklist is done for your targets, the Mode B **device smoke** gap is closed for FOSS; DRM and Mag JsHttpRequest remain separate Remaining items in `tauri-updater-notarize.md`.
+When the human checklist is done for your targets, the Mode B **desktop smoke** gap is closed for FOSS; DRM and Mag JsHttpRequest remain separate Remaining items in `tauri-updater-notarize.md`.
