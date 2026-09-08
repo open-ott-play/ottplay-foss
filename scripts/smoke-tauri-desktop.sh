@@ -39,7 +39,6 @@ DO_BUILD=0
 DO_SYNC_ONLY=0
 DO_CHECK_COMPANION=0
 REQUIRE_COMPANION=0
-QUEUE_ALIASES=0
 CHECK_IOS_TOOLS=0
 CHECK_ANDROID_TOOLS=0
 REQUIRE_IOS_TOOLS=0
@@ -64,7 +63,6 @@ Flags:
   --sync-only            Run: npm run cap:sync  (no vite rebuild)
   --check-companion                Soft curl companion if BASE_URL / OTTPLAY_WEB_URL listening
   --require-companion        With --check-companion: exit 1 if not listening (default: soft-skip)
-  --aliases              Pass --aliases through to smoke-command-queue.sh
   --check-ios-tools      Warn if xcrun missing (soft)
   --check-android-tools  Warn if adb missing (soft)
   --require-ios-tools    Fail if xcrun missing
@@ -91,7 +89,6 @@ while [[ $# -gt 0 ]]; do
     --sync-only) DO_SYNC_ONLY=1; EXPLICIT_ACTION=1; shift ;;
     --check-companion) DO_CHECK_COMPANION=1; EXPLICIT_ACTION=1; shift ;;
     --require-companion) REQUIRE_COMPANION=1; shift ;;
-    --aliases) QUEUE_ALIASES=1; shift ;;
     --check-ios-tools) CHECK_IOS_TOOLS=1; EXPLICIT_ACTION=1; shift ;;
     --check-android-tools) CHECK_ANDROID_TOOLS=1; EXPLICIT_ACTION=1; shift ;;
     --require-ios-tools) REQUIRE_IOS_TOOLS=1; CHECK_IOS_TOOLS=1; EXPLICIT_ACTION=1; shift ;;
@@ -154,13 +151,7 @@ fi
 if [[ "$DO_CHECK_SRC" -eq 1 ]]; then
   missing=0
   if [[ ! -d "$ROOT/src-tauri" ]]; then
-    echo "error: missing src-tauri/ — run ( cd "$ROOT/src-tauri" && npx tauri build --ci ) or npm run cap:sync first" >&2
-    missing=1
-  else
-    echo "ok: src-tauri/ present"
-  fi
-  if [[ ! -d "$ROOT/src-tauri" ]]; then
-    echo "error: missing src-tauri/ — run ( cd "$ROOT/src-tauri" && npx tauri build --ci ) or npm run cap:sync first" >&2
+    echo "error: missing src-tauri/ - compile via Tauri CLI or helper --build first" >&2
     missing=1
   else
     echo "ok: src-tauri/ present"
@@ -171,9 +162,9 @@ if [[ "$DO_CHECK_SRC" -eq 1 ]]; then
 fi
 
 if [[ "$DO_BUILD" -eq 1 ]]; then
-  echo "running: ( cd "$ROOT/src-tauri" && npx tauri build --ci )"
+  echo "running: Tauri CLI unsigned CI build in src-tauri/"
   ( cd "$ROOT/src-tauri" && npx tauri build --ci )
-  echo "ok: build-sync finished"
+  echo "ok: build finished"
 fi
 
 if [[ "$DO_SYNC_ONLY" -eq 1 ]]; then
