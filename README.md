@@ -52,6 +52,238 @@ Device smoke (Mode B sim/emulator checklist + helper; unpaid store / sideload): 
 
 Tauri desktop smoke (Mode B launch/play/PiP checklist + helper; unpaid/unsigned OK): [docs/mode-b-tauri-smoke.md](docs/mode-b-tauri-smoke.md) — `./scripts/smoke-tauri-desktop.sh --help`.
 
+## Installation
+
+| Platform | Package | Notes |
+|---|---|---|
+| **macOS** | `.dmg` / `.app.zip` | Universal Apple Silicon + Intel; unsigned — remove quarantine |
+| **Windows** | `.msi` / `.exe` | x64 |
+| **Linux** | `.AppImage`, `.deb`, `.rpm` | Various distributions |
+| **iOS** | `.ipa` via AltStore / TestFlight / Xcode | Sideload only — not on App Store yet |
+| **Android** | `.apk` direct install or ADB | arm64-v8a, armeabi-v7a, x86_64 |
+
+All installers are attached to every tagged release: [https://github.com/open-ott-play/ottplay-foss/releases/latest](https://github.com/open-ott-play/ottplay-foss/releases/latest)
+
+> **Note:** Desktop, iOS, and Android packages are **unsigned** unless a release was built with the project's signing secrets. On macOS this means Gatekeeper quarantine; on iOS the IPA must be sideloaded; on Android you must allow unknown sources. The player itself works without signing.
+
+---
+
+### macOS
+
+1. Download `OttPlay.FOSS_*_aarch64-apple-darwin.dmg` (Apple Silicon) or `OttPlay.FOSS_*_x86_64-apple-darwin.dmg` (Intel) from [Releases](https://github.com/open-ott-play/ottplay-foss/releases/latest)
+2. Open the `.dmg`
+3. Drag **OttPlay FOSS.app** to Applications
+4. On first run: Right-click → Open → Open
+
+If you see "OttPlay FOSS.app is damaged and can't be opened", macOS has quarantined the download. Remove the attribute and retry:
+
+```bash
+# On the downloaded .dmg:
+xattr -d com.apple.quarantine ~/Downloads/OttPlay.FOSS_*_aarch64-apple-darwin.dmg
+
+# Or on the .app after copying to Applications:
+xattr -cr /Applications/OttPlay\ FOSS.app
+```
+
+---
+
+### Windows
+
+1. Download `.msi` or `.exe` from [Releases](https://github.com/open-ott-play/ottplay-foss/releases/latest)
+2. Run installer, follow prompts
+3. Launch from Start Menu or Desktop shortcut
+
+---
+
+### Linux
+
+**AppImage (recommended):**
+
+```bash
+chmod +x OttPlay.FOSS_*_x86_64.AppImage
+./OttPlay.FOSS_*_x86_64.AppImage
+```
+
+**Debian/Ubuntu (.deb):**
+
+```bash
+sudo dpkg -i ottplay-foss_*.deb
+sudo apt-get install -f
+```
+
+**RHEL/Fedora (.rpm):**
+
+```bash
+sudo rpm -i ottplay-foss_*.rpm
+```
+
+---
+
+### iOS Installation
+
+iOS requires sideloading since the app is not on the App Store. Two options:
+
+#### Option 1: AltStore (Recommended for personal use)
+
+AltStore allows sideloading apps with a free Apple ID (no paid developer account needed).
+
+**Prerequisites:**
+
+- iPhone/iPad running iOS 14 or later
+- A free [Apple ID](https://appleid.apple.com/)
+- AltServer installed on your Mac or PC
+
+**Step 1: Install AltServer**
+
+1. Download AltServer for your platform:
+   - **macOS**: Download from [AltStore.io](https://altstore.io/) or via Homebrew:
+     ```bash
+     brew install --cask altstore
+     ```
+   - **Windows**: Download from [AltStore.io](https://altstore.io/)
+
+2. Start AltServer (it runs in the menu bar/system tray)
+
+**Step 2: Install AltStore on your device**
+
+1. Open AltServer on your Mac/PC
+2. Connect your iPhone/iPad via USB
+3. On iOS: Go to Settings → General → Device Management → tap your Apple ID
+4. Trust the profile if prompted
+
+**Step 3: Sideload the app**
+
+1. Download the `.ipa` from [Releases](https://github.com/open-ott-play/ottplay-foss/releases/latest)
+2. Double-click the `.ipa` to open it in AltStore
+3. Select your connected device
+4. Wait for installation to complete
+
+**Refresh requirement:** AltStore apps expire after 7 days. Keep AltServer running to auto-refresh, or right-click AltStore icon → Refresh apps.
+
+**Step 4: Trust the app**
+
+1. On iOS: Settings → General → VPN & Device Management
+2. Find "OttPlay FOSS" under your Apple ID
+3. Tap Trust → Confirm
+
+#### Option 2: TestFlight (If available)
+
+If a TestFlight beta is available:
+
+1. Accept the TestFlight invite
+2. Install TestFlight from App Store
+3. Open the beta link and tap "Install"
+
+#### Option 3: Xcode (For developers)
+
+1. Download `.ipa` from [Releases](https://github.com/open-ott-play/ottplay-foss/releases/latest)
+2. Connect your device via USB
+3. Open Xcode → Window → Devices and Simulators
+4. Select your device → Click "+" → Select the `.ipa`
+5. On first install, enable "Trust this app" in device settings
+
+**Troubleshooting iOS:**
+
+- App won't open: Settings → General → Device Management → Trust the app
+- AltStore offline: Ensure AltServer is running and device connected
+- Refresh failed: Check internet connection, try again
+
+---
+
+### Android Installation
+
+#### Option 1: Direct Install (APK)
+
+1. Download the `.apk` from [Releases](https://github.com/open-ott-play/ottplay-foss/releases/latest)
+2. Transfer to your Android device
+3. Open the APK file
+4. If prompted about unknown sources: Settings → Security → Allow unknown sources
+5. Tap Install
+
+**Note:** You may need to enable "Install unknown apps" for your browser or file manager.
+
+#### Option 2: ADB Installation (Recommended for developers)
+
+ADB gives you more control and is useful for debugging.
+
+**Prerequisites:**
+
+```bash
+# macOS
+brew install android-platform-tools
+
+# Ubuntu/Debian
+sudo apt install adb
+
+# Windows — download from:
+# https://developer.android.com/studio/releases/platform-tools
+```
+
+**Step 1: Enable USB Debugging**
+
+1. Go to Settings → About Phone
+2. Tap "Build Number" 7 times → Developer mode enabled
+3. Go back to Settings → Developer Options
+4. Enable "USB Debugging"
+5. Connect your device via USB
+
+**Step 2: Verify connection**
+
+```bash
+adb devices
+# Should show: "xxxxxxxx    device"
+```
+
+If you see "unauthorized", check your phone for a pairing confirmation dialog.
+
+**Step 3: Install APK**
+
+```bash
+wget https://github.com/open-ott-play/ottplay-foss/releases/latest/download/ottplay-foss-android-unsigned.apk
+
+adb install ottplay-foss-android-unsigned.apk
+```
+
+**Step 4: Launch**
+
+```bash
+# Option A: From command line
+adb shell am start -n play.ott.foss/.MainActivity
+
+# Option B: Tap the app icon on your device
+```
+
+**Useful ADB Commands**
+
+```bash
+# View logs (for debugging)
+adb logcat -s "OttPlay FOSS"
+
+# Reinstall (keeps app data)
+adb install -r ottplay-foss-android-unsigned.apk
+
+# Uninstall
+adb uninstall play.ott.foss
+```
+
+#### Option 3: Via Local Network (Wireless ADB)
+
+```bash
+# Connect via USB first, then enable wireless
+adb tcpip 5555
+
+# Disconnect USB, find device IP on phone
+# Settings → About Phone → Status → IP address
+
+# Connect wirelessly
+adb connect <device-ip>:5555
+
+# Install
+adb install ottplay-foss-android-unsigned.apk
+```
+
+---
+
 ## Quick Start
 
 ```bash
