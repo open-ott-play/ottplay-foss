@@ -3010,35 +3010,54 @@ if (typeof window.__TAURI__ !== "undefined") {
     })();
 }
 
-// Tauri Mode B: frameless window — whole-window drag; interactive UI is no-drag.
+// Tauri Mode B: frameless window — dedicated drag strip (not whole body).
 // decorations:false removes the system title bar; without a drag region the
 // window cannot be moved. Gate on __TAURI__ so Chrome companion is unchanged.
+// Body must NOT be a global CSS drag region: that outlives attribute toggles
+// and made mid-click list/menu presses start window move (#366 only cleared
+// data-tauri-drag-region). Use #ott-tauri-drag-strip + #listCaption instead.
 if (typeof window.__TAURI__ !== "undefined") {
     setupTauriCompanionShim();
     (function () {
         const CLASS = "ott-tauri-frameless";
         const STYLE_ID = "ott-tauri-frameless-drag";
+        const STRIP_ID = "ott-tauri-drag-strip";
         const DRAG_THRESHOLD_PX = 6;
         // Interactive / overlay surfaces that must keep pointer clicks.
-        // NOTE: [onclick] removed — too broad, eats the Menu header/top chrome.
-        // Include #list / #listCaption so menu surfaces never start window drag
-        // (mid-drag move was landing clicks on the wrong #itN / setSelect).
+        // List rows (.item / #it*) and #listIn must never start window drag.
         const NO_DRAG_SEL =
-            "#list,#listCaption,#listIn,#listAbout,#listEdit,#listPopUp,#listDetail,#listPodval," +
+            "#listIn,#listAbout,#listEdit,#listPopUp,#listDetail,#listPodval," +
             "#list_osd,#list_window,.osd,#info,#info1,#numprog,#dialogbox,#volume_div,#mute," +
             "#permanentTime,#launch,#notifications,#buffering,#pip_buffering,#videopip,#video," +
             "#progress_div,#progress,#progress_r,#progress_span,#descr,#channel,#data," +
-            "#ott-tauri-loading-logs," +
+            '#ott-tauri-loading-logs,.item,[id^="it"],' +
             'button,input,select,textarea,a,.btn,.osk-key,[role="button"],[role="listbox"],[role="option"],[role="menu"],[role="menuitem"],[contenteditable="true"]';
+        const DRAG_SEL = "#" + STRIP_ID + ",#listCaption";
 
         document.documentElement.classList.add(CLASS);
         if (document.body) document.body.classList.add(CLASS);
 
-        // CSS app-region: video/empty chrome is draggable; overlays stay clickable.
+        // Ensure a thin always-available drag strip (visible chrome when list closed).
+        const ensureDragStrip = (): HTMLElement | null => {
+            let strip = document.getElementById(STRIP_ID);
+            if (strip) return strip;
+            if (!document.body) return null;
+            strip = document.createElement("div");
+            strip.id = STRIP_ID;
+            strip.setAttribute("aria-hidden", "true");
+            document.body.appendChild(strip);
+            return strip;
+        };
+        ensureDragStrip();
+
+        // CSS: never make html/body drag. Only the dedicated strip / caption drag.
         if (!document.getElementById(STYLE_ID)) {
             const style = document.createElement("style");
             style.id = STYLE_ID;
             const noDragCss = NO_DRAG_SEL.split(",")
+                .map((s) => "html." + CLASS + " " + s.trim())
+                .join(",\n");
+            const dragCss = DRAG_SEL.split(",")
                 .map((s) => "html." + CLASS + " " + s.trim())
                 .join(",\n");
             style.textContent =
@@ -3046,15 +3065,21 @@ if (typeof window.__TAURI__ !== "undefined") {
                 CLASS +
                 ", html." +
                 CLASS +
-                " body {\n  -webkit-app-region: drag;\n}\n" +
+                " body {\n  -webkit-app-region: no-drag;\n}\n" +
+                "#" +
+                STRIP_ID +
+                " {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  height: 22px;\n  z-index: 2147483000;\n  -webkit-app-region: drag;\n  app-region: drag;\n  pointer-events: auto;\n  background: transparent;\n}\n" +
+                dragCss +
+                " {\n  -webkit-app-region: drag;\n  app-region: drag;\n}\n" +
                 noDragCss +
-                " {\n  -webkit-app-region: no-drag;\n}\n";
+                " {\n  -webkit-app-region: no-drag;\n  app-region: no-drag;\n}\n" +
+                // Caption is a drag handle, but its interactive children stay clickable.
+                "html." +
+                CLASS +
+                " #listCaption * {\n  -webkit-app-region: no-drag;\n  app-region: no-drag;\n}\n";
             document.head.appendChild(style);
         }
 
-        // data-tauri-drag-region also triggers start-dragging (allow-start-dragging).
-        // Disable it while list / listEdit overlays are open so menu clicks cannot
-        // start a native window drag that moves the pointer onto another row.
         const listOverlayOpen = (): boolean => {
             try {
                 if (typeof $ === "undefined") return false;
@@ -3068,12 +3093,42 @@ if (typeof window.__TAURI__ !== "undefined") {
                 return false;
             }
         };
+
+        // While list overlays are open: force html/body no-drag (inline beats any
+        // leftover CSS), hide the top strip (caption becomes the move handle),
+        // and never leave data-tauri-drag-region on body.
         const syncBodyDragRegion = (): void => {
-            if (!document.body) return;
-            if (listOverlayOpen()) {
-                document.body.removeAttribute("data-tauri-drag-region");
-            } else if (!document.body.hasAttribute("data-tauri-drag-region")) {
-                document.body.setAttribute("data-tauri-drag-region", "");
+            const open = listOverlayOpen();
+            const html = document.documentElement;
+            const body = document.body;
+            const strip = ensureDragStrip();
+            if (html) {
+                html.style.setProperty("-webkit-app-region", "no-drag");
+                html.style.setProperty("app-region", "no-drag");
+            }
+            if (body) {
+                body.style.setProperty("-webkit-app-region", "no-drag");
+                body.style.setProperty("app-region", "no-drag");
+                body.removeAttribute("data-tauri-drag-region");
+            }
+            if (strip) {
+                strip.style.display = open ? "none" : "";
+                strip.style.setProperty("-webkit-app-region", "drag");
+                strip.style.setProperty("app-region", "drag");
+                if (!open) strip.setAttribute("data-tauri-drag-region", "");
+                else strip.removeAttribute("data-tauri-drag-region");
+            }
+            const caption = document.getElementById("listCaption");
+            if (caption) {
+                if (open) {
+                    caption.style.setProperty("-webkit-app-region", "drag");
+                    caption.style.setProperty("app-region", "drag");
+                    caption.setAttribute("data-tauri-drag-region", "");
+                } else {
+                    caption.style.setProperty("-webkit-app-region", "no-drag");
+                    caption.style.setProperty("app-region", "no-drag");
+                    caption.removeAttribute("data-tauri-drag-region");
+                }
             }
         };
         syncBodyDragRegion();
@@ -3087,6 +3142,7 @@ if (typeof window.__TAURI__ !== "undefined") {
                     "-webkit-app-region",
                     "no-drag"
                 );
+                (el as HTMLElement).style.setProperty("app-region", "no-drag");
             });
         };
         markNoDrag(document);
@@ -3101,6 +3157,7 @@ if (typeof window.__TAURI__ !== "undefined") {
                                 "-webkit-app-region",
                                 "no-drag"
                             );
+                            el.style.setProperty("app-region", "no-drag");
                         }
                         markNoDrag(el);
                     });
@@ -3129,6 +3186,11 @@ if (typeof window.__TAURI__ !== "undefined") {
             } catch (_e2) {}
         };
 
+        const isDragHandle = (t: Element): boolean => {
+            if (t.closest(NO_DRAG_SEL)) return false;
+            return !!t.closest(DRAG_SEL);
+        };
+
         let downX = 0;
         let downY = 0;
         let tracking = false;
@@ -3149,8 +3211,9 @@ if (typeof window.__TAURI__ !== "undefined") {
                 const t = ev.target;
                 if (!(t instanceof Element)) return;
                 syncBodyDragRegion();
-                if (t.closest(NO_DRAG_SEL) || listOverlayOpen()) {
-                    // Never start window drag from list / edit overlays.
+                // Only dedicated strip / caption may start JS window drag.
+                // List rows and menu chrome never do.
+                if (!isDragHandle(t)) {
                     tracking = false;
                     return;
                 }
