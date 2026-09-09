@@ -96,6 +96,7 @@
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
 				504EC3131FED79650016851F /* Info.plist */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
+				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				50B271D01FEDC1A000F3C39B /* public */,
 				6A7B8C9D0E1F2A3B4C5D6E9 /* Plugins */,
 			);
