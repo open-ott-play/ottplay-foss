@@ -357,9 +357,10 @@ body {
     background-color: rgba(68, 68, 102, 0.55);
     border-radius: 3px;
 }
-/* Settings / submenu name+value rows (replaces float:left/right). */
+/* Settings / submenu name+value rows (replaces float:left/right).
+   Keep in sync with inline styles in window._setSetup — WKWebView needs both. */
 .item-label {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -367,7 +368,7 @@ body {
     white-space: nowrap;
 }
 .item-value {
-    flex: 0 1 auto;
+    flex: 0 0 auto;
     max-width: 42%;
     margin-left: auto;
     overflow: hidden;

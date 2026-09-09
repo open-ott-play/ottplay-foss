@@ -3740,13 +3740,27 @@ window._setSetup = function (
 ): void {
     (window as any).selIndex = 0;
     (window as any).getListItem = function (item: any, _idx: number): string {
-        // Flex name|value — float:left/right inside .item{display:flex} is
-        // ignored (DOM order showed value then name → "unformatted" in Tauri).
+        // Name|value must be flex children with INLINE styles. Class-only
+        // .item-label/.item-value fails in Tauri/WKWebView when 1280.css is
+        // late/missing/stale; :8443 looked "formatted" because the old markup
+        // used inline width:23%/75% (floats are ignored under .item{display:flex}).
+        // Same pattern as showPage()'s inline display:flex on .item.
+        var labelStyle =
+            "flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;" +
+            "white-space:nowrap;line-height:normal;";
+        var valueStyle =
+            "flex:0 0 auto;max-width:42%;margin-left:auto;overflow:hidden;" +
+            "text-overflow:ellipsis;white-space:nowrap;line-height:normal;" +
+            "text-align:right;";
         return (
-            '<div class="item-label">&nbsp;&nbsp;' +
+            '<div class="item-label" style="' +
+            labelStyle +
+            '">&nbsp;&nbsp;' +
             item.name +
             "</div>" +
-            '<div class="item-value">' +
+            '<div class="item-value" style="' +
+            valueStyle +
+            '">' +
             (item.values[item.val] || item.cur) +
             "&nbsp;&nbsp;</div>"
         );
