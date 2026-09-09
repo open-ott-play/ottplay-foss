@@ -41,6 +41,7 @@ const MODULES = [
     "build/app/device.js",
     "build/settings/sleepTimer.js",
     "build/plugins/m3u-proxy.js",
+    "build/plugins/stalker-portal.js",
     "build/index.js",
 ];
 
