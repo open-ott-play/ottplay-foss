@@ -3015,9 +3015,15 @@ if (typeof window.__TAURI__ !== "undefined") {
 // window cannot be moved. Gate on __TAURI__ so Chrome companion is unchanged.
 // Nuclear rule: NEVER put -webkit-app-region:drag or data-tauri-drag-region on
 // #listCaption / body / html / list chrome. Drag ONLY via #ott-tauri-drag-strip,
-// and ONLY while list overlays are closed. Do not use $("#list").is(":visible")
-// alone — #list has no CSS display:none, so after showPage clears inline style
-// it stays :visible and falsely sticks overlay-open / hides the strip.
+// and ONLY while list overlays are closed.
+//
+// Critical (macOS WKWebView / Tauri): do NOT set -webkit-app-region:drag on the
+// strip. WebKit then swallows mousedown so neither Tauri's data-tauri-drag-region
+// handler nor our startDragging runs, the window never moves, and mouseup/click
+// leaks to body.onclick (top 20% → Menu). Use data-tauri-drag-region + JS
+// start_dragging only; keep the strip as app-region:no-drag so events fire.
+// Do not use $("#list").is(":visible") — #list has no CSS display:none, so after
+// showPage clears inline style it stays :visible and falsely hides the strip.
 if (typeof window.__TAURI__ !== "undefined") {
     setupTauriCompanionShim();
     (function () {
@@ -3051,8 +3057,9 @@ if (typeof window.__TAURI__ !== "undefined") {
         };
         ensureDragStrip();
 
-        // CSS: html/body/list chrome always no-drag (!important). Strip uses
-        // drag !important so it wins over body no-drag. Hidden while overlay.
+        // CSS: html/body/list chrome always no-drag. Strip is also no-drag so
+        // WKWebView delivers mousedown; Tauri drag.js + our startDragging move
+        // the window. Hidden while overlay.
         if (!document.getElementById(STYLE_ID)) {
             const style = document.createElement("style");
             style.id = STYLE_ID;
@@ -3078,7 +3085,7 @@ if (typeof window.__TAURI__ !== "undefined") {
                 ' [id^="it"] {\n  -webkit-app-region: no-drag !important;\n  app-region: no-drag !important;\n}\n' +
                 "#" +
                 STRIP_ID +
-                " {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  height: 28px;\n  z-index: 2147483000;\n  pointer-events: auto;\n  background: transparent;\n  -webkit-app-region: drag !important;\n  app-region: drag !important;\n}\n" +
+                " {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  height: 32px;\n  z-index: 2147483000;\n  pointer-events: auto;\n  background: transparent;\n  -webkit-app-region: no-drag !important;\n  app-region: no-drag !important;\n}\n" +
                 "html." +
                 CLASS +
                 "." +
@@ -3093,9 +3100,8 @@ if (typeof window.__TAURI__ !== "undefined") {
 
         const listOverlayOpen = (): boolean => {
             try {
-                // Prefer the explicit list flag — $("#list").is(":visible") is
-                // sticky because #list has no stylesheet display:none.
-                if ((window as any).isListVisible) return true;
+                // DOM visibility only — never $("#list"):visible (sticky) and
+                // never bare isListVisible (can disagree with hidden overlays).
                 if (typeof $ === "undefined") return false;
                 return (
                     $("#list_window").is(":visible") ||
@@ -3115,7 +3121,7 @@ if (typeof window.__TAURI__ !== "undefined") {
         };
 
         // Sync strip drag state. Caption/body/html never get drag or the
-        // data-tauri-drag-region attribute.
+        // data-tauri-drag-region attribute. Strip stays no-drag CSS + attribute.
         const syncBodyDragRegion = (): void => {
             const open = listOverlayOpen();
             const html = document.documentElement;
@@ -3155,12 +3161,17 @@ if (typeof window.__TAURI__ !== "undefined") {
                     strip.removeAttribute("data-tauri-drag-region");
                 } else {
                     strip.style.display = "";
+                    // Keep no-drag so mousedown reaches JS (Tauri drag.js + us).
                     strip.style.setProperty(
                         "-webkit-app-region",
-                        "drag",
+                        "no-drag",
                         "important"
                     );
-                    strip.style.setProperty("app-region", "drag", "important");
+                    strip.style.setProperty(
+                        "app-region",
+                        "no-drag",
+                        "important"
+                    );
                     strip.style.setProperty(
                         "pointer-events",
                         "auto",
@@ -3222,6 +3233,15 @@ if (typeof window.__TAURI__ !== "undefined") {
         } catch (_e) {}
 
         const startDragging = (): void => {
+            // Match Tauri's injected drag.js: internals invoke is the most
+            // reliable path on macOS WKWebView (no label required).
+            try {
+                const internals = (window as any).__TAURI_INTERNALS__;
+                if (internals && typeof internals.invoke === "function") {
+                    void internals.invoke("plugin:window|start_dragging");
+                    return;
+                }
+            } catch (_e0) {}
             try {
                 const tw = (window as any).__TAURI__?.window;
                 const cur =
@@ -3241,17 +3261,26 @@ if (typeof window.__TAURI__ !== "undefined") {
         // JS drag ONLY from the dedicated strip, and only when overlays closed.
         const isDragHandle = (t: Element): boolean => {
             if (listOverlayOpen()) return false;
+            if (t.id === STRIP_ID) return true;
             if (t.closest(NO_DRAG_SEL)) return false;
             return !!t.closest(DRAG_SEL);
         };
 
         let startedNativeDrag = false;
+        let suppressTimer: ReturnType<typeof setTimeout> | null = null;
 
         const armSuppressClick = (): void => {
             (window as any).__ottTauriSuppressClick = true;
-            window.setTimeout(() => {
+            if (suppressTimer != null) {
+                try {
+                    window.clearTimeout(suppressTimer);
+                } catch (_e) {}
+            }
+            // Long enough to cover mouseup→click after a failed/short drag.
+            suppressTimer = window.setTimeout(() => {
                 (window as any).__ottTauriSuppressClick = false;
-            }, 400);
+                suppressTimer = null;
+            }, 750);
         };
 
         document.addEventListener(
@@ -3263,11 +3292,12 @@ if (typeof window.__TAURI__ !== "undefined") {
                 syncBodyDragRegion();
                 startedNativeDrag = false;
                 if (!isDragHandle(t)) return;
-                // Start native drag immediately on strip mousedown — more
-                // reliable on macOS WKWebView than CSS region alone.
+                // Arm suppress BEFORE startDragging so a failed drag still
+                // cannot open Menu via body.onclick (top 20% band).
                 startedNativeDrag = true;
                 armSuppressClick();
                 startDragging();
+                // Do not stopImmediatePropagation — Tauri's drag.js also listens.
                 ev.preventDefault();
             },
             true
@@ -3282,7 +3312,7 @@ if (typeof window.__TAURI__ !== "undefined") {
             true
         );
 
-        // Capture-phase click kill after a strip drag only.
+        // Capture-phase click kill after a strip drag / strip press only.
         document.addEventListener(
             "click",
             (ev: MouseEvent) => {
@@ -3302,6 +3332,13 @@ if (typeof window.__TAURI__ !== "undefined") {
                 ev.preventDefault();
                 ev.stopPropagation();
                 ev.stopImmediatePropagation();
+                (window as any).__ottTauriSuppressClick = false;
+                if (suppressTimer != null) {
+                    try {
+                        window.clearTimeout(suppressTimer);
+                    } catch (_e) {}
+                    suppressTimer = null;
+                }
             },
             true
         );
