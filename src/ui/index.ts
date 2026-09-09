@@ -340,6 +340,14 @@ export function uiInit(): void {
     });
     $("#listEdit").on("hide", function () {
         $("#listIn").show();
+        var editEl = document.getElementById(
+            "editvar"
+        ) as HTMLInputElement | null;
+        var handler = editEl && (editEl as any).__ottEditKey2Handler;
+        if (editEl && typeof handler === "function") {
+            editEl.removeEventListener("keydown", handler);
+            delete (editEl as any).__ottEditKey2Handler;
+        }
         $("#listEdit").text("");
     });
     $("#dialogbox").on("show", function () {
@@ -3326,7 +3334,27 @@ export function showEditKey2(_initKeys?: number[]): void {
             }
         )(keys.ENTER || 13, strEnter, "- save");
     $("#listEdit").show().html(html);
-    document.getElementById("editvar")?.focus();
+    var editEl = document.getElementById("editvar") as HTMLInputElement | null;
+    if (editEl) {
+        var prev = (editEl as any).__ottEditKey2Handler;
+        if (typeof prev === "function") {
+            editEl.removeEventListener("keydown", prev);
+        }
+        var onKeyDown = function (ev: KeyboardEvent): void {
+            if (ev.key === "Enter") {
+                ev.preventDefault();
+                ev.stopPropagation();
+                editKey2(keys.ENTER || 13);
+            } else if (ev.key === "Escape") {
+                ev.preventDefault();
+                ev.stopPropagation();
+                editKey2(keys.EXIT || 27);
+            }
+        };
+        (editEl as any).__ottEditKey2Handler = onKeyDown;
+        editEl.addEventListener("keydown", onKeyDown);
+        editEl.focus();
+    }
 }
 
 /* ---------------------------------------------------------------------------

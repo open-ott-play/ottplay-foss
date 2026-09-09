@@ -100,7 +100,9 @@ var isSelectBox = false;
  * @analysis Falls through modes in order; once a mode handles the key, later modes are skipped. Dialog box always takes priority.
  */
 export function keyHandler(event: KeyboardEvent): void {
-    // If an input, textarea, or contenteditable element is focused, let browser handle the key
+    // If an input, textarea, or contenteditable is focused, let the browser handle
+    // printable typing. But when #listEdit is open (native playlist-name editor),
+    // still route Enter/Escape so accept/cancel reaches handleEditKey → editKey2.
     const target = event.target as HTMLElement | null;
     if (
         target &&
@@ -108,7 +110,18 @@ export function keyHandler(event: KeyboardEvent): void {
             target.tagName === "TEXTAREA" ||
             target.isContentEditable)
     ) {
-        return;
+        const isEnterOrEsc = event.key === "Enter" || event.key === "Escape";
+        let listEditVisible = false;
+        try {
+            listEditVisible =
+                typeof $ !== "undefined" && $("#listEdit").is(":visible");
+        } catch (_e) {
+            /* ignore */
+        }
+        if (!(listEditVisible && isEnterOrEsc)) {
+            return;
+        }
+        // Fall through: preventDefault below once keyCode is known.
     }
     var keyCode = stbEventToKeyCode(event);
     if (!keyCode) return;
@@ -162,6 +175,10 @@ export function keyHandler(event: KeyboardEvent): void {
 
     try {
         if (typeof $ !== "undefined" && $("#listEdit").is(":visible")) {
+            // Native #editvar focus: swallow Enter/Escape so the input does not
+            // keep the dialog open / insert a newline.
+            event.preventDefault();
+            event.stopPropagation();
             handleEditKey(keyCode, event);
             return;
         }

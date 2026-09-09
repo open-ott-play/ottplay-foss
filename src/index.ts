@@ -3021,8 +3021,10 @@ if (typeof window.__TAURI__ !== "undefined") {
         const DRAG_THRESHOLD_PX = 6;
         // Interactive / overlay surfaces that must keep pointer clicks.
         // NOTE: [onclick] removed — too broad, eats the Menu header/top chrome.
+        // Include #list / #listCaption so menu surfaces never start window drag
+        // (mid-drag move was landing clicks on the wrong #itN / setSelect).
         const NO_DRAG_SEL =
-            "#listIn,#listAbout,#listEdit,#listPopUp,#listDetail,#listPodval," +
+            "#list,#listCaption,#listIn,#listAbout,#listEdit,#listPopUp,#listDetail,#listPodval," +
             "#list_osd,#list_window,.osd,#info,#info1,#numprog,#dialogbox,#volume_div,#mute," +
             "#permanentTime,#launch,#notifications,#buffering,#pip_buffering,#videopip,#video," +
             "#progress_div,#progress,#progress_r,#progress_span,#descr,#channel,#data," +
@@ -3051,12 +3053,33 @@ if (typeof window.__TAURI__ !== "undefined") {
         }
 
         // data-tauri-drag-region also triggers start-dragging (allow-start-dragging).
-        if (
-            document.body &&
-            !document.body.hasAttribute("data-tauri-drag-region")
-        ) {
-            document.body.setAttribute("data-tauri-drag-region", "");
-        }
+        // Disable it while list / listEdit overlays are open so menu clicks cannot
+        // start a native window drag that moves the pointer onto another row.
+        const listOverlayOpen = (): boolean => {
+            try {
+                if (typeof $ === "undefined") return false;
+                return (
+                    $("#list").is(":visible") ||
+                    $("#list_window").is(":visible") ||
+                    $("#list_osd").is(":visible") ||
+                    $("#listEdit").is(":visible")
+                );
+            } catch (_e) {
+                return false;
+            }
+        };
+        const syncBodyDragRegion = (): void => {
+            if (!document.body) return;
+            if (listOverlayOpen()) {
+                document.body.removeAttribute("data-tauri-drag-region");
+            } else if (!document.body.hasAttribute("data-tauri-drag-region")) {
+                document.body.setAttribute("data-tauri-drag-region", "");
+            }
+        };
+        syncBodyDragRegion();
+        try {
+            window.setInterval(syncBodyDragRegion, 400);
+        } catch (_e) {}
 
         const markNoDrag = (root: ParentNode) => {
             root.querySelectorAll(NO_DRAG_SEL).forEach((el) => {
@@ -3125,7 +3148,9 @@ if (typeof window.__TAURI__ !== "undefined") {
                 if (ev.button !== 0) return;
                 const t = ev.target;
                 if (!(t instanceof Element)) return;
-                if (t.closest(NO_DRAG_SEL)) {
+                syncBodyDragRegion();
+                if (t.closest(NO_DRAG_SEL) || listOverlayOpen()) {
+                    // Never start window drag from list / edit overlays.
                     tracking = false;
                     return;
                 }
@@ -3159,7 +3184,9 @@ if (typeof window.__TAURI__ !== "undefined") {
         document.addEventListener(
             "mouseup",
             (_ev: MouseEvent) => {
-                if (didDrag) armSuppressClick();
+                // Any native/JS drag must suppress the following click so list
+                // item onclick / setSelect does not fire on the wrong row.
+                if (didDrag || startedNativeDrag) armSuppressClick();
                 tracking = false;
                 didDrag = false;
                 startedNativeDrag = false;
