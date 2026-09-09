@@ -2486,9 +2486,9 @@ window.stbToggleAspectRatio = stbToggleAspectRatio;
 // Tauri Mode B: do NOT wire stbToFullScreen/stbSetWindow to native
 // set_fullscreen. Those APIs are in-page video layout (full viewport vs
 // small window beside the list). macOS uses simple fullscreen so L and
-// Escape still reach the webview (Escape exits FS before exitPortal when
-// __ottTauriNativeFs). OS/window fullscreen is toggled by Key L →
-// toggle_fullscreen invoke (see stbEventToKeyCode); no global KeyL.
+// Escape still reach the webview. Key L → toggle_fullscreen; Escape →
+// set_fullscreen(false) when __ottTauriNativeFs (before exitPortal). No
+// global KeyL.
 
 // Tauri Mode B: override stbToggleStandby for best-effort sleep prevention.
 // Enter standby → allow_sleep (machine may sleep). Exit standby → prevent_sleep (keep awake).
@@ -3012,21 +3012,22 @@ if (typeof window.__TAURI__ !== "undefined") {
     })();
 }
 
-// Tauri Mode B: frameless window — dedicated drag strip ONLY (never body/caption).
+// Tauri Mode B: frameless window — JS whole-surface drag when overlays closed.
 // decorations:false removes the system title bar; without a drag region the
 // window cannot be moved. Gate on __TAURI__ so Chrome companion is unchanged.
 // Nuclear rule: NEVER put -webkit-app-region:drag or data-tauri-drag-region on
-// #listCaption / body / html / list chrome. Drag ONLY via top chrome band /
-// #ott-tauri-drag-strip, and ONLY while list overlays are closed.
+// #listCaption / body / html / list chrome. Never CSS body/html drag while
+// Menu / Channel list / listEdit are open (rows must keep pointer hits).
 //
 // Critical (macOS WKWebView / Tauri):
-// 1) Do NOT set -webkit-app-region:drag on the strip — WebKit swallows mousedown
+// 1) Do NOT set -webkit-app-region:drag on strip/body — WebKit swallows mousedown
 //    so neither Tauri's data-tauri-drag-region handler nor our startDragging runs.
 // 2) Do NOT rely solely on hit-testing the strip element. Native <video> layers
 //    often composite ABOVE HTML regardless of z-index, so mousedown lands on
-//    #video/#launch even when the strip is "on top". Fix: capture-phase
-//    mousedown on document for clientY within the top chrome band → startDragging,
-//    even when the event target is #video/#launch (NOT CSS body drag).
+//    #video/#launch. Fix: capture-phase mousedown on document when overlays are
+//    closed → pending startDragging on empty chrome/video (NOT CSS body drag),
+//    except interactive controls in NO_DRAG_SEL. Top ~36px strip stays a visual
+//    affordance; drag works across the whole empty plane.
 // Do not use $("#list").is(":visible") — #list has no CSS display:none, so after
 // showPage clears inline style it stays :visible and falsely hides the strip.
 if (typeof window.__TAURI__ !== "undefined") {
@@ -3040,8 +3041,8 @@ if (typeof window.__TAURI__ !== "undefined") {
         const STRIP_H = 36;
         // Interactive / overlay surfaces that must keep pointer clicks.
         // #list / #listCaption / rows must never be CSS or JS drag handles.
-        // NOTE: #video/#launch are intentionally NOT in this blocklist for the
-        // top-band clientY path — WKWebView video often sits above the strip.
+        // NOTE: #video/#launch are intentionally NOT in this blocklist —
+        // WKWebView video often sits above HTML; whole-surface drag must reach them.
         const NO_DRAG_SEL =
             "#list,#listCaption,#listIn,#listAbout,#listEdit,#listPopUp,#listDetail,#listPodval," +
             "#list_osd,#list_window,.osd,#info,#info1,#numprog,#dialogbox,#volume_div,#mute," +
@@ -3050,9 +3051,9 @@ if (typeof window.__TAURI__ !== "undefined") {
             '#ott-tauri-loading-logs,.item,[id^="it"],.list-scroll,' +
             'button,input,select,textarea,a,.btn,.osk-key,[role="button"],[role="listbox"],[role="option"],[role="menu"],[role="menuitem"],[contenteditable="true"]';
         const DRAG_SEL = "#" + STRIP_ID;
-        // Surfaces that may sit above the strip but should still start a drag
-        // when the click is in the top chrome band (overlays closed).
-        const TOP_BAND_OK_SEL =
+        // Empty chrome / video surfaces that may start a window drag when
+        // overlays are closed (never list/menu chrome — those are in NO_DRAG_SEL).
+        const SURFACE_OK_SEL =
             "#video,#vdiv,#launch,#ott-tauri-drag-strip,body,html";
 
         document.documentElement.classList.add(CLASS);
@@ -3304,39 +3305,36 @@ if (typeof window.__TAURI__ !== "undefined") {
             })();
         };
 
-        // JS drag from strip OR top chrome band (for video-over-HTML), overlays closed.
-        const isDragHandle = (t: Element, clientY: number): boolean => {
+        // JS drag from entire empty plane (strip + chrome + #video), overlays closed.
+        // Never CSS -webkit-app-region:drag on body — overlays must keep row hits.
+        const isDragHandle = (t: Element, _clientY: number): boolean => {
             if (listOverlayOpen()) return false;
             // Never drag from list/menu chrome or form controls.
             if (t.closest(NO_DRAG_SEL)) return false;
             if (t.id === STRIP_ID) return true;
             if (t.closest(DRAG_SEL)) return true;
-            // Top band: allow even when target is #video/#launch (native layer).
-            if (
-                typeof clientY === "number" &&
-                clientY >= 0 &&
-                clientY < STRIP_H
-            ) {
-                if (t.closest(TOP_BAND_OK_SEL) || t === document.body) {
-                    return true;
-                }
-                // Also allow bare documentElement / empty areas.
-                if (t === document.documentElement) return true;
-                // If target is not an interactive control, still drag from band.
-                const tag = (t as HTMLElement).tagName;
-                if (tag === "VIDEO" || tag === "DIV" || tag === "BODY") {
-                    return true;
-                }
-            }
+            // Whole empty surface: allow even when target is #video/#launch.
+            if (t.closest(SURFACE_OK_SEL) || t === document.body) return true;
+            if (t === document.documentElement) return true;
+            const tag = (t as HTMLElement).tagName;
+            if (tag === "VIDEO" || tag === "BODY" || tag === "HTML")
+                return true;
+            // Non-interactive DIV chrome outside NO_DRAG_SEL.
+            if (tag === "DIV") return true;
             return false;
         };
 
         let startedNativeDrag = false;
         let suppressTimer: ReturnType<typeof setTimeout> | null = null;
-        // Pending top-chrome mousedown: suppress Menu even if the pointer
-        // barely moves; only call startDragging after a small movement so a
-        // stationary click does not race body.onclick → popupList.
-        let pendingChromeDown: { x: number; y: number } | null = null;
+        // Pending surface mousedown: only call startDragging after a small
+        // movement so a stationary click still reaches body.onclick (Menu /
+        // ENTER / info). Top strip presses also arm click-suppress immediately
+        // so a barely-moved grab does not open Menu via the top 20% band.
+        let pendingChromeDown: {
+            x: number;
+            y: number;
+            strip: boolean;
+        } | null = null;
         const DRAG_MOVE_PX = 4;
 
         const armSuppressClick = (): void => {
@@ -3367,10 +3365,20 @@ if (typeof window.__TAURI__ !== "undefined") {
                 syncBodyDragRegion();
                 clearPendingChrome();
                 if (!isDragHandle(t, ev.clientY)) return;
-                // Arm suppress on chrome mousedown (before any move) so Menu
-                // cannot open via body.onclick even if drag barely moved.
-                pendingChromeDown = { x: ev.clientX, y: ev.clientY };
-                armSuppressClick();
+                const onStrip =
+                    t.id === STRIP_ID ||
+                    !!t.closest(DRAG_SEL) ||
+                    (typeof ev.clientY === "number" &&
+                        ev.clientY >= 0 &&
+                        ev.clientY < STRIP_H);
+                pendingChromeDown = {
+                    strip: onStrip,
+                    x: ev.clientX,
+                    y: ev.clientY,
+                };
+                // Strip/top band: arm suppress immediately (top 20% → Menu).
+                // Rest of plane: suppress only after a real drag starts.
+                if (onStrip) armSuppressClick();
                 // Do not startDragging yet — wait for small movement.
                 // Do not stopImmediatePropagation — Tauri's drag.js also listens.
                 ev.preventDefault();
@@ -3401,15 +3409,21 @@ if (typeof window.__TAURI__ !== "undefined") {
         document.addEventListener(
             "mouseup",
             (_ev: MouseEvent) => {
-                // After any top-chrome mousedown, suppress Menu on the
-                // following click — even when drag never started / barely moved.
-                if (pendingChromeDown || startedNativeDrag) armSuppressClick();
+                // Suppress Menu after a real drag, or after a top-strip press
+                // (even if the pointer barely moved). Plain clicks elsewhere
+                // on the empty plane must still open Menu / ENTER / info.
+                if (
+                    startedNativeDrag ||
+                    (pendingChromeDown && pendingChromeDown.strip)
+                ) {
+                    armSuppressClick();
+                }
                 clearPendingChrome();
             },
             true
         );
 
-        // Capture-phase click kill after a strip drag / strip press only.
+        // Capture-phase click kill after a surface drag / strip press only.
         document.addEventListener(
             "click",
             (ev: MouseEvent) => {
