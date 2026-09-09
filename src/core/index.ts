@@ -188,6 +188,7 @@ export function closeFullscreen(): void {
  * Always uses Rust `toggle_fullscreen` (effective FS then flip; macOS uses
  * simple fullscreen so webview keys still work) — do not trust
  * `__ottTauriNativeFs` or JS Window API naming. No global shortcuts.
+ * Escape should call stbSetTauriNativeFullscreen(false), not this toggle.
  */
 export function stbToggleTauriNativeFullscreen(): Promise<void> {
     return (async function () {
@@ -310,6 +311,67 @@ export function stbToggleTauriNativeFullscreen(): Promise<void> {
 }
 
 /**
+ * Explicitly set Tauri native/simple fullscreen on or off.
+ * Escape uses want=false (force exit). Prefer Rust set_fullscreen so the
+ * track flag and saved outer geometry stay aligned with reality.
+ */
+export function stbSetTauriNativeFullscreen(want: boolean): Promise<void> {
+    return (async function () {
+        try {
+            var nextFs: boolean | null = null;
+            var inv: any = null;
+            try {
+                var coreApi = (window as any).__TAURI__?.core;
+                if (coreApi && typeof coreApi.invoke === "function")
+                    inv = function (cmd: string, args?: any) {
+                        return coreApi.invoke(cmd, args);
+                    };
+            } catch (_e0) {}
+            if (!inv) {
+                try {
+                    var internals = (window as any).__TAURI_INTERNALS__;
+                    if (internals && typeof internals.invoke === "function")
+                        inv = function (cmd: string, args?: any) {
+                            return internals.invoke(cmd, args);
+                        };
+                } catch (_e1) {}
+            }
+            if (!inv) {
+                try {
+                    console.warn("[Tauri] set_fullscreen: no invoke path");
+                } catch (_e) {}
+                return;
+            }
+            var res: any = await Promise.resolve(
+                inv("set_fullscreen", { fullscreen: !!want })
+            );
+            if (res && typeof res.fullscreen === "boolean")
+                nextFs = res.fullscreen;
+            else nextFs = !!want;
+            (window as any).__ottTauriNativeFs = nextFs;
+            try {
+                if (nextFs && typeof (window as any).closeList === "function") {
+                    var listOpen = !!(window as any).isListVisible;
+                    try {
+                        if (
+                            typeof (window as any).$ !== "undefined" &&
+                            ((window as any).$("#list_window").is(":visible") ||
+                                (window as any).$("#list_osd").is(":visible"))
+                        )
+                            listOpen = true;
+                    } catch (_e2) {}
+                    if (listOpen) (window as any).closeList();
+                }
+            } catch (_e3) {}
+        } catch (_eSet) {
+            try {
+                console.warn("[Tauri] set_fullscreen failed:", _eSet);
+            } catch (_e) {}
+        }
+    })();
+}
+
+/**
  * Process a raw key event to toggle fullscreen when keyCode === 76 ('L').
  *
  * @param event - A raw keyboard event object (or null/undefined).
@@ -372,13 +434,13 @@ export function stbEventToKeyCode(event: any): number {
         else if (key === "l" || key === "L" || code === "KeyL") keyCode = 76;
     }
 
-    // Escape while Tauri native/simple fullscreen → exit FS first (do not
-    // open exitPortal). Relies on macOS simple fullscreen so Escape reaches
-    // the webview; never register a system-wide letter shortcut.
+    // Escape while Tauri native/simple fullscreen → force EXIT (not toggle).
+    // Do not open exitPortal. Relies on macOS simple fullscreen so Escape
+    // reaches the webview; never register a system-wide letter shortcut.
     if (keyCode === 27) {
         var inTauriEsc = typeof (window as any).__TAURI__ !== "undefined";
         if (inTauriEsc && (window as any).__ottTauriNativeFs) {
-            void stbToggleTauriNativeFullscreen();
+            void stbSetTauriNativeFullscreen(false);
             if (event.preventDefault) event.preventDefault();
             if (event.stopPropagation) event.stopPropagation();
             return 0;
