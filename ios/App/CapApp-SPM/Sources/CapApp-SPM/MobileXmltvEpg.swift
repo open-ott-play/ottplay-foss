@@ -107,30 +107,35 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         let dstBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
         defer { dstBuffer.deallocate() }
 
-        var stream = UnsafeMutablePointer<z_stream>.allocate(capacity: 1)
-        defer { stream.deallocate() }
-        stream.pointee = z_stream()
+        var stream = z_stream()
+        let windowBits: Int32 = 16 + MAX_WBITS
+        guard inflateInit2_(&stream, windowBits, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size)) == Z_OK else {
+            return nil
+        }
+        defer { inflateEnd(&stream) }
 
-        guard inflateInit2(stream, 16 + MAX_WBITS) == Z_OK else { return nil }
-        defer { inflateEnd(stream) }
+        return data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) -> Data? in
+            guard let inBase = raw.bindMemory(to: Bytef.self).baseAddress else { return nil }
+            stream.next_in = UnsafeMutablePointer(mutating: inBase)
+            stream.avail_in = uInt(raw.count)
 
-        stream.pointee.next_in = (data as NSData).bytes.bindMemory(to: UInt8.self, capacity: data.count)
-        stream.pointee.avail_in = data.count
+            var result = Data()
+            var ret: Int32 = Z_OK
+            repeat {
+                stream.next_out = dstBuffer
+                stream.avail_out = uInt(bufferSize)
+                ret = inflate(&stream, Z_NO_FLUSH)
+                if ret != Z_OK && ret != Z_STREAM_END {
+                    return nil
+                }
+                let produced = bufferSize - Int(stream.avail_out)
+                if produced > 0 {
+                    result.append(dstBuffer, count: produced)
+                }
+            } while ret != Z_STREAM_END
 
-        var result = Data()
-        var ret: Int32 = Z_OK
-        repeat {
-            stream.pointee.next_out = dstBuffer
-            stream.pointee.avail_out = bufferSize
-            ret = inflate(stream, Z_NO_FLUSH)
-            if ret != Z_OK && ret != Z_STREAM_END { return nil }
-            let produced = bufferSize - stream.pointee.avail_out
-            if produced > 0 {
-                result.append(dstBuffer, count: produced)
-            }
-        } while ret != Z_STREAM_END
-
-        return result
+            return result
+        }
     }
 
     // MARK: - XMLTV Parse

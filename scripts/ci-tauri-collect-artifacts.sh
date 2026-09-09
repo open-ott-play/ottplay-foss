@@ -4,9 +4,9 @@ TARGET="${TAURI_TARGET:-}"
 mkdir -p tauri-artifacts
 shopt -s nullglob
 if [ -n "$TARGET" ]; then
-  BASE="src-tauri/target/$TARGET/release/bundle"
+  BASE="target/$TARGET/release/bundle"
 else
-  BASE="src-tauri/target/release/bundle"
+  BASE="target/release/bundle"
 fi
 
 copy_one() {
