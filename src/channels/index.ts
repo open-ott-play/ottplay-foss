@@ -1038,11 +1038,12 @@ export function getEPGchanelCached(
             callback(channelId, null);
             return;
         }
+        // Tauri 2 command args are camelCase (channel_id → channelId).
         invokeFn("get_epg", {
             ch: channelName,
-            channel_id: String(channelId),
+            channelId: String(channelId),
             hash: hash,
-            time_shift_hours: timeShiftHours,
+            timeShiftHours: timeShiftHours,
         })
             .then(function (result: any) {
                 if (result && Array.isArray(result.epg_data)) {
