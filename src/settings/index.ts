@@ -278,7 +278,15 @@ export function loadSettings(): PlayerSettings {
         bFun: s.getI("sBfun", 9),
         bufSize: s.getI("sBufSize", 0),
         deviceUuid: s.get("sDeviceUuid") || "",
-        editor: s.getI("sEditor", 0),
+        editor: (() => {
+            const raw = storage.get("sEditor");
+            const parsed = raw !== null ? parseInt(raw, 10) : NaN;
+            if (!isNaN(parsed)) return parsed;
+            const dev =
+                (typeof window !== "undefined" && (window as any).ott_device) ||
+                "";
+            return /^(pc|pc2|tauri|desktop|nodejs)$/.test(dev) ? 1 : 0;
+        })(),
         eFun: s.getI("sEfun", 0),
         epgRemindMinutes: s.getI("sEpgRemindMinutes", 5),
         favorites: s.getI("sFavorites", 0),
