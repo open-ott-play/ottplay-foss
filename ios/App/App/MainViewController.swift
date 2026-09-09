@@ -20,15 +20,6 @@ class MainViewController: CAPBridgeViewController {
         .slide
     }
 
-    override var prefersHomeIndicatorAutoHidden: Bool {
-        MobileNativeMedia.sharedFullscreenActive
-    }
-
-    /// iPad / iPhone adjacent remotes (Bluetooth media remotes, some Game Controller
-    /// / Apple TV Remote app presses) surface as `UIPress`, not WKWebView keydown.
-    /// Map lean-back presses that miss the web path into `_doKey`.
-    /// Arrows / Escape from hardware keyboards already reach WKWebView as keydown —
-    /// leave those to the existing `stbEventToKeyCode` path (avoid double-fire).
     open override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         var handled = false
         for press in presses {

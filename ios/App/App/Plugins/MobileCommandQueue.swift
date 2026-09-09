@@ -117,7 +117,7 @@ public class MobileCommandQueue: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func post(_ call: CAPPluginCall) {
-        guard let data = call.getArray("data") else {
+        guard var commandDict = call.getObject("data") as? [String: Any] else {
             call.reject("No data provided")
             return
         }
@@ -130,13 +130,7 @@ public class MobileCommandQueue: CAPPlugin, CAPBridgedPlugin {
                 return
             }
 
-            guard let raw = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else {
-                DispatchQueue.main.async { call.reject("Invalid JSON body") }
-                return
-            }
-
             let timestamp = Date().timeIntervalSince1970
-            var commandDict: [String: Any] = raw
             commandDict["ts"] = timestamp
 
             let entry = CommandEntry(data: commandDict, timestamp: timestamp)
