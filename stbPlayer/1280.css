@@ -350,10 +350,31 @@ body {
     border-radius: 3px;
 }
 .progress_div {
-    float: right;
+    /* Flex row child inside .item — never float (WKWebView/Tauri). */
+    float: none;
+    flex-shrink: 0;
     overflow: hidden;
     background-color: rgba(68, 68, 102, 0.55);
     border-radius: 3px;
+}
+/* Settings / submenu name+value rows (replaces float:left/right). */
+.item-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: normal;
+    white-space: nowrap;
+}
+.item-value {
+    flex: 0 1 auto;
+    max-width: 42%;
+    margin-left: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: normal;
+    white-space: nowrap;
+    text-align: right;
 }
 .img {
     /* float:left + height:100% forced channel rows onto two lines when

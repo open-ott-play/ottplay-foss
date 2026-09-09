@@ -50,6 +50,9 @@ pub struct PingResult {
 #[derive(Serialize)]
 pub struct FullscreenResult {
     pub ok: bool,
+    /// Current fullscreen state after the command (Rust is source of truth).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fullscreen: Option<bool>,
 }
 
 /// `invoke('ping')` → liveness probe.
@@ -322,16 +325,50 @@ fn resolve_xmltv_id(
     channel_id.to_string()
 }
 
-/// `invoke('set_fullscreen', {fullscreen})` → toggle window fullscreen.
-#[tauri::command]
-pub async fn set_fullscreen(
-    window: tauri::Window,
+/// Apply fullscreen and keep the macOS KeyL exit shortcut in sync.
+pub fn apply_fullscreen(
+    app: &tauri::AppHandle,
+    window: &tauri::Window,
     fullscreen: bool,
-) -> Result<FullscreenResult, String> {
+) -> Result<(), String> {
     window
         .set_fullscreen(fullscreen)
         .map_err(|e| e.to_string())?;
-    Ok(FullscreenResult { ok: true })
+    // KeyL only while native fullscreen AND focused — exit works when
+    // WKWebView swallows keys in macOS Spaces FS; never steal L while windowed.
+    let focused = window.is_focused().unwrap_or(false);
+    crate::sync_fullscreen_exit_shortcut(app, fullscreen && focused);
+    Ok(())
+}
+
+/// `invoke('set_fullscreen', {fullscreen})` → set window fullscreen.
+#[tauri::command]
+pub async fn set_fullscreen(
+    app: tauri::AppHandle,
+    window: tauri::Window,
+    fullscreen: bool,
+) -> Result<FullscreenResult, String> {
+    apply_fullscreen(&app, &window, fullscreen)?;
+    Ok(FullscreenResult {
+        ok: true,
+        fullscreen: Some(fullscreen),
+    })
+}
+
+/// `invoke('toggle_fullscreen')` → read `is_fullscreen()` then flip.
+/// Single Rust source of truth — no JS cache / API naming guesswork.
+#[tauri::command]
+pub async fn toggle_fullscreen(
+    app: tauri::AppHandle,
+    window: tauri::Window,
+) -> Result<FullscreenResult, String> {
+    let cur = window.is_fullscreen().map_err(|e| e.to_string())?;
+    let next = !cur;
+    apply_fullscreen(&app, &window, next)?;
+    Ok(FullscreenResult {
+        ok: true,
+        fullscreen: Some(next),
+    })
 }
 
 /// `invoke('prevent_sleep', {})` → best-effort display sleep prevention.

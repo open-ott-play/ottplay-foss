@@ -25,6 +25,7 @@
     "allow-get-epg",
     "allow-proxy-fetch",
     "allow-set-fullscreen",
+    "allow-toggle-fullscreen",
     "allow-prevent-sleep",
     "allow-allow-sleep",
     "allow-get-volume",
@@ -46,6 +47,10 @@
     "allow-resume-media-session",
     "allow-stop-media-session",
     "allow-update-media-session",
-    "updater:default"
+    "updater:default",
+    "window-state:default",
+    "global-shortcut:allow-is-registered",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister"
   ]
 }

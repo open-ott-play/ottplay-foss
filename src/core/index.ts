@@ -185,83 +185,105 @@ export function closeFullscreen(): void {
 
 /**
  * Toggle native OS/window fullscreen on Tauri (macOS WKWebView).
- * Always prefers live `isFullscreen()` (async Promise on Tauri 2) over the
- * `__ottTauriNativeFs` cache so exit (`setFullscreen(false)`) works after enter.
+ * Always uses Rust `toggle_fullscreen` (live `is_fullscreen()` then flip) —
+ * do not trust `__ottTauriNativeFs` or JS Window API naming.
  */
 export function stbToggleTauriNativeFullscreen(): Promise<void> {
     return (async function () {
         try {
-            var tw = (window as any).__TAURI__?.window;
-            var curWin =
-                typeof tw?.getCurrentWindow === "function"
-                    ? tw.getCurrentWindow()
-                    : null;
-            var curFs = !!(window as any).__ottTauriNativeFs;
-            if (curWin && typeof curWin.isFullscreen === "function") {
-                try {
-                    var probed: any = curWin.isFullscreen();
-                    if (probed && typeof probed.then === "function") {
-                        probed = await probed;
-                    }
-                    if (typeof probed === "boolean") curFs = probed;
-                } catch (_probe) {}
-            }
-            var nextFs = !curFs;
-            (window as any).__ottTauriNativeFs = nextFs;
+            var nextFs: boolean | null = null;
+            var err: any = null;
 
-            var applied = false;
-            // Prefer Tauri 2 Window.setFullscreen (plugin:window|set_fullscreen).
-            if (curWin && typeof curWin.setFullscreen === "function") {
-                try {
-                    await Promise.resolve(curWin.setFullscreen(nextFs));
-                    applied = true;
-                } catch (eSet) {
-                    try {
-                        console.warn(
-                            "[Tauri] setFullscreen failed, trying invoke:",
-                            eSet
-                        );
-                    } catch (_e) {}
+            var invokeToggle = async function (inv: any): Promise<boolean> {
+                var res: any = await Promise.resolve(inv("toggle_fullscreen"));
+                if (res && typeof res.fullscreen === "boolean") {
+                    nextFs = res.fullscreen;
+                    return true;
                 }
-            }
-            if (!applied) {
-                try {
-                    var coreApi = (window as any).__TAURI__?.core;
-                    if (coreApi && typeof coreApi.invoke === "function") {
-                        await coreApi.invoke("set_fullscreen", {
-                            fullscreen: nextFs,
-                        });
-                        applied = true;
-                    }
-                } catch (eInv) {
-                    try {
-                        console.warn(
-                            "[Tauri] set_fullscreen invoke failed:",
-                            eInv
-                        );
-                    } catch (_e) {}
+                // Older shell without fullscreen field — still treat as success.
+                nextFs = !(window as any).__ottTauriNativeFs;
+                return true;
+            };
+
+            try {
+                var coreApi = (window as any).__TAURI__?.core;
+                if (coreApi && typeof coreApi.invoke === "function") {
+                    await invokeToggle(function (cmd: string) {
+                        return coreApi.invoke(cmd);
+                    });
                 }
+            } catch (e1) {
+                err = e1;
             }
-            if (!applied) {
+
+            if (nextFs === null) {
                 try {
                     var internals = (window as any).__TAURI_INTERNALS__;
                     if (internals && typeof internals.invoke === "function") {
-                        await Promise.resolve(
-                            internals.invoke("set_fullscreen", {
-                                fullscreen: nextFs,
-                            })
-                        );
-                        applied = true;
+                        await invokeToggle(function (cmd: string) {
+                            return internals.invoke(cmd);
+                        });
                     }
-                } catch (_inv2) {}
+                } catch (e2) {
+                    err = e2;
+                }
             }
-            if (!applied) {
-                (window as any).__ottTauriNativeFs = curFs;
+
+            // Last resort: probe + set_fullscreen(bool) if toggle_fullscreen missing.
+            if (nextFs === null) {
                 try {
-                    console.warn("[Tauri] all setFullscreen paths failed");
+                    var tw = (window as any).__TAURI__?.window;
+                    var curWin =
+                        typeof tw?.getCurrentWindow === "function"
+                            ? tw.getCurrentWindow()
+                            : typeof tw?.getCurrent === "function"
+                              ? tw.getCurrent()
+                              : null;
+                    // Tauri 2 may expose webviewWindow.getCurrent instead.
+                    if (!curWin) {
+                        var twv = (window as any).__TAURI__?.webviewWindow;
+                        if (typeof twv?.getCurrent === "function")
+                            curWin = twv.getCurrent();
+                    }
+                    var curFs = !!(window as any).__ottTauriNativeFs;
+                    if (curWin && typeof curWin.isFullscreen === "function") {
+                        try {
+                            var probed: any = curWin.isFullscreen();
+                            if (probed && typeof probed.then === "function")
+                                probed = await probed;
+                            if (typeof probed === "boolean") curFs = probed;
+                        } catch (_probe) {}
+                    }
+                    var want = !curFs;
+                    var core2 = (window as any).__TAURI__?.core;
+                    if (core2 && typeof core2.invoke === "function") {
+                        await core2.invoke("set_fullscreen", {
+                            fullscreen: want,
+                        });
+                        nextFs = want;
+                    } else if (
+                        curWin &&
+                        typeof curWin.setFullscreen === "function"
+                    ) {
+                        await Promise.resolve(curWin.setFullscreen(want));
+                        nextFs = want;
+                    }
+                } catch (e3) {
+                    err = e3;
+                }
+            }
+
+            if (nextFs === null) {
+                try {
+                    console.warn(
+                        "[Tauri] toggle_fullscreen failed:",
+                        err || "no invoke path"
+                    );
                 } catch (_e) {}
                 return;
             }
+
+            (window as any).__ottTauriNativeFs = nextFs;
 
             // Collapse in-page list so video fills the window when entering FS.
             try {
