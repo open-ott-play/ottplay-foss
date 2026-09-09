@@ -3015,9 +3015,9 @@ if (typeof window.__TAURI__ !== "undefined") {
 // window cannot be moved. Gate on __TAURI__ so Chrome companion is unchanged.
 // Nuclear rule: NEVER put -webkit-app-region:drag or data-tauri-drag-region on
 // #listCaption / body / html / list chrome. Drag ONLY via #ott-tauri-drag-strip,
-// and ONLY while list / listEdit / list_window / list_osd are all closed.
-// Caption-as-drag-handle (#368) still let WebKit steal menu presses so mouseup
-// landed on the wrong #itN / void.
+// and ONLY while list overlays are closed. Do not use $("#list").is(":visible")
+// alone — #list has no CSS display:none, so after showPage clears inline style
+// it stays :visible and falsely sticks overlay-open / hides the strip.
 if (typeof window.__TAURI__ !== "undefined") {
     setupTauriCompanionShim();
     (function () {
@@ -3025,7 +3025,6 @@ if (typeof window.__TAURI__ !== "undefined") {
         const OVERLAY_CLASS = "ott-tauri-overlay-open";
         const STYLE_ID = "ott-tauri-frameless-drag";
         const STRIP_ID = "ott-tauri-drag-strip";
-        const DRAG_THRESHOLD_PX = 6;
         // Interactive / overlay surfaces that must keep pointer clicks.
         // #list / #listCaption / rows must never be CSS or JS drag handles.
         const NO_DRAG_SEL =
@@ -3033,7 +3032,7 @@ if (typeof window.__TAURI__ !== "undefined") {
             "#list_osd,#list_window,.osd,#info,#info1,#numprog,#dialogbox,#volume_div,#mute," +
             "#permanentTime,#launch,#notifications,#buffering,#pip_buffering,#videopip,#video," +
             "#progress_div,#progress,#progress_r,#progress_span,#descr,#channel,#data," +
-            '#ott-tauri-loading-logs,.item,[id^="it"],' +
+            '#ott-tauri-loading-logs,.item,[id^="it"],.list-scroll,' +
             'button,input,select,textarea,a,.btn,.osk-key,[role="button"],[role="listbox"],[role="option"],[role="menu"],[role="menuitem"],[contenteditable="true"]';
         const DRAG_SEL = "#" + STRIP_ID;
 
@@ -3052,8 +3051,8 @@ if (typeof window.__TAURI__ !== "undefined") {
         };
         ensureDragStrip();
 
-        // CSS: html/body/list chrome always no-drag (!important). Strip drags
-        // only when overlay class is absent.
+        // CSS: html/body/list chrome always no-drag (!important). Strip uses
+        // drag !important so it wins over body no-drag. Hidden while overlay.
         if (!document.getElementById(STYLE_ID)) {
             const style = document.createElement("style");
             style.id = STYLE_ID;
@@ -3079,7 +3078,7 @@ if (typeof window.__TAURI__ !== "undefined") {
                 ' [id^="it"] {\n  -webkit-app-region: no-drag !important;\n  app-region: no-drag !important;\n}\n' +
                 "#" +
                 STRIP_ID +
-                " {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  height: 22px;\n  z-index: 2147483000;\n  pointer-events: auto;\n  background: transparent;\n  -webkit-app-region: drag;\n  app-region: drag;\n}\n" +
+                " {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  height: 28px;\n  z-index: 2147483000;\n  pointer-events: auto;\n  background: transparent;\n  -webkit-app-region: drag !important;\n  app-region: drag !important;\n}\n" +
                 "html." +
                 CLASS +
                 "." +
@@ -3094,9 +3093,11 @@ if (typeof window.__TAURI__ !== "undefined") {
 
         const listOverlayOpen = (): boolean => {
             try {
+                // Prefer the explicit list flag — $("#list").is(":visible") is
+                // sticky because #list has no stylesheet display:none.
+                if ((window as any).isListVisible) return true;
                 if (typeof $ === "undefined") return false;
                 return (
-                    $("#list").is(":visible") ||
                     $("#list_window").is(":visible") ||
                     $("#list_osd").is(":visible") ||
                     $("#listEdit").is(":visible")
@@ -3128,6 +3129,11 @@ if (typeof window.__TAURI__ !== "undefined") {
             forceNoDragEl(document.getElementById("listCaption"));
             forceNoDragEl(document.getElementById("list"));
             forceNoDragEl(document.getElementById("listIn"));
+            forceNoDragEl(document.getElementById("listEdit"));
+            if (open) {
+                // Never leave a stuck click-suppress while the menu is open.
+                (window as any).__ottTauriSuppressClick = false;
+            }
             if (strip) {
                 if (open) {
                     strip.style.display = "none";
@@ -3141,18 +3147,32 @@ if (typeof window.__TAURI__ !== "undefined") {
                         "no-drag",
                         "important"
                     );
+                    strip.style.setProperty(
+                        "pointer-events",
+                        "none",
+                        "important"
+                    );
                     strip.removeAttribute("data-tauri-drag-region");
                 } else {
                     strip.style.display = "";
-                    strip.style.setProperty("-webkit-app-region", "drag");
-                    strip.style.setProperty("app-region", "drag");
+                    strip.style.setProperty(
+                        "-webkit-app-region",
+                        "drag",
+                        "important"
+                    );
+                    strip.style.setProperty("app-region", "drag", "important");
+                    strip.style.setProperty(
+                        "pointer-events",
+                        "auto",
+                        "important"
+                    );
                     strip.setAttribute("data-tauri-drag-region", "");
                 }
             }
         };
         syncBodyDragRegion();
         try {
-            window.setInterval(syncBodyDragRegion, 400);
+            window.setInterval(syncBodyDragRegion, 250);
         } catch (_e) {}
 
         const markNoDrag = (root: ParentNode) => {
@@ -3177,6 +3197,7 @@ if (typeof window.__TAURI__ !== "undefined") {
                     m.addedNodes.forEach((n) => {
                         if (n.nodeType !== 1) return;
                         const el = n as HTMLElement;
+                        if (el.id === STRIP_ID) return;
                         if (el.matches?.(NO_DRAG_SEL)) {
                             el.style.setProperty(
                                 "-webkit-app-region",
@@ -3224,10 +3245,6 @@ if (typeof window.__TAURI__ !== "undefined") {
             return !!t.closest(DRAG_SEL);
         };
 
-        let downX = 0;
-        let downY = 0;
-        let tracking = false;
-        let didDrag = false;
         let startedNativeDrag = false;
 
         const armSuppressClick = (): void => {
@@ -3244,37 +3261,14 @@ if (typeof window.__TAURI__ !== "undefined") {
                 const t = ev.target;
                 if (!(t instanceof Element)) return;
                 syncBodyDragRegion();
-                if (!isDragHandle(t)) {
-                    tracking = false;
-                    return;
-                }
-                tracking = true;
-                didDrag = false;
                 startedNativeDrag = false;
-                downX = ev.clientX;
-                downY = ev.clientY;
-            },
-            true
-        );
-
-        document.addEventListener(
-            "mousemove",
-            (ev: MouseEvent) => {
-                if (!tracking || (ev.buttons & 1) === 0) return;
-                if (listOverlayOpen()) {
-                    tracking = false;
-                    return;
-                }
-                const dx = ev.clientX - downX;
-                const dy = ev.clientY - downY;
-                if (dx * dx + dy * dy < DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX) {
-                    return;
-                }
-                didDrag = true;
-                if (!startedNativeDrag) {
-                    startedNativeDrag = true;
-                    startDragging();
-                }
+                if (!isDragHandle(t)) return;
+                // Start native drag immediately on strip mousedown — more
+                // reliable on macOS WKWebView than CSS region alone.
+                startedNativeDrag = true;
+                armSuppressClick();
+                startDragging();
+                ev.preventDefault();
             },
             true
         );
@@ -3282,22 +3276,29 @@ if (typeof window.__TAURI__ !== "undefined") {
         document.addEventListener(
             "mouseup",
             (_ev: MouseEvent) => {
-                // Any native/JS drag must suppress the following click so list
-                // item onclick / setSelect does not fire on the wrong row.
-                if (didDrag || startedNativeDrag) armSuppressClick();
-                tracking = false;
-                didDrag = false;
+                if (startedNativeDrag) armSuppressClick();
                 startedNativeDrag = false;
             },
             true
         );
 
-        // Capture-phase click kill: body.onclick / list handlers must not run
-        // after a window drag, regardless of where the pointer was.
+        // Capture-phase click kill after a strip drag only.
         document.addEventListener(
             "click",
             (ev: MouseEvent) => {
                 if (!(window as any).__ottTauriSuppressClick) return;
+                // Never kill clicks inside list chrome even if suppress stuck.
+                const t = ev.target;
+                if (t instanceof Element) {
+                    if (
+                        t.closest(
+                            '#list,#listIn,#listEdit,.item,[id^="it"],#listCaption,#listPodval'
+                        )
+                    ) {
+                        (window as any).__ottTauriSuppressClick = false;
+                        return;
+                    }
+                }
                 ev.preventDefault();
                 ev.stopPropagation();
                 ev.stopImmediatePropagation();
