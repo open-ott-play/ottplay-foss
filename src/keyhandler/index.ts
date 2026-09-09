@@ -9,6 +9,7 @@ import {
     isNormalScreen,
     openFullscreen,
     stbEventToKeyCode,
+    stbToggleTauriNativeFullscreen,
 } from "../core";
 import { translate as _ } from "../localization";
 import { settings } from "../settings";
@@ -536,25 +537,7 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
             // not go through stbEventToKeyCode), toggle native FS on Tauri
             // and document FS elsewhere — do NOT also toggle subtitles on L.
             if (typeof (window as any).__TAURI__ !== "undefined") {
-                try {
-                    var curFs = !!(window as any).__ottTauriNativeFs;
-                    var nextFs = !curFs;
-                    (window as any).__ottTauriNativeFs = nextFs;
-                    var core = (window as any).__TAURI__?.core;
-                    if (core && typeof core.invoke === "function") {
-                        void core.invoke("set_fullscreen", {
-                            fullscreen: nextFs,
-                        });
-                    } else {
-                        var tw = (window as any).__TAURI__?.window;
-                        var w =
-                            typeof tw?.getCurrentWindow === "function"
-                                ? tw.getCurrentWindow()
-                                : null;
-                        if (w && typeof w.setFullscreen === "function")
-                            void w.setFullscreen(nextFs);
-                    }
-                } catch (_e) {}
+                void stbToggleTauriNativeFullscreen();
             } else if (isNormalScreen()) openFullscreen();
             else closeFullscreen();
             break;

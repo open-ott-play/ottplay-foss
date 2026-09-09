@@ -3331,6 +3331,11 @@ if (typeof window.__TAURI__ !== "undefined") {
 
         let startedNativeDrag = false;
         let suppressTimer: ReturnType<typeof setTimeout> | null = null;
+        // Pending top-chrome mousedown: suppress Menu even if the pointer
+        // barely moves; only call startDragging after a small movement so a
+        // stationary click does not race body.onclick → popupList.
+        let pendingChromeDown: { x: number; y: number } | null = null;
+        const DRAG_MOVE_PX = 4;
 
         const armSuppressClick = (): void => {
             (window as any).__ottTauriSuppressClick = true;
@@ -3346,6 +3351,11 @@ if (typeof window.__TAURI__ !== "undefined") {
             }, 750);
         };
 
+        const clearPendingChrome = (): void => {
+            pendingChromeDown = null;
+            startedNativeDrag = false;
+        };
+
         document.addEventListener(
             "mousedown",
             (ev: MouseEvent) => {
@@ -3353,13 +3363,13 @@ if (typeof window.__TAURI__ !== "undefined") {
                 const t = ev.target;
                 if (!(t instanceof Element)) return;
                 syncBodyDragRegion();
-                startedNativeDrag = false;
+                clearPendingChrome();
                 if (!isDragHandle(t, ev.clientY)) return;
-                // Arm suppress BEFORE startDragging so a failed drag still
-                // cannot open Menu via body.onclick (top 20% band).
-                startedNativeDrag = true;
+                // Arm suppress on chrome mousedown (before any move) so Menu
+                // cannot open via body.onclick even if drag barely moved.
+                pendingChromeDown = { x: ev.clientX, y: ev.clientY };
                 armSuppressClick();
-                startDragging();
+                // Do not startDragging yet — wait for small movement.
                 // Do not stopImmediatePropagation — Tauri's drag.js also listens.
                 ev.preventDefault();
             },
@@ -3367,10 +3377,32 @@ if (typeof window.__TAURI__ !== "undefined") {
         );
 
         document.addEventListener(
+            "mousemove",
+            (ev: MouseEvent) => {
+                if (!pendingChromeDown || startedNativeDrag) return;
+                if (ev.buttons !== undefined && (ev.buttons & 1) === 0) {
+                    // Button released without our mouseup (OS steal) — keep suppress.
+                    armSuppressClick();
+                    clearPendingChrome();
+                    return;
+                }
+                const dx = ev.clientX - pendingChromeDown.x;
+                const dy = ev.clientY - pendingChromeDown.y;
+                if (dx * dx + dy * dy < DRAG_MOVE_PX * DRAG_MOVE_PX) return;
+                startedNativeDrag = true;
+                armSuppressClick();
+                startDragging();
+            },
+            true
+        );
+
+        document.addEventListener(
             "mouseup",
             (_ev: MouseEvent) => {
-                if (startedNativeDrag) armSuppressClick();
-                startedNativeDrag = false;
+                // After any top-chrome mousedown, suppress Menu on the
+                // following click — even when drag never started / barely moved.
+                if (pendingChromeDown || startedNativeDrag) armSuppressClick();
+                clearPendingChrome();
             },
             true
         );

@@ -184,6 +184,109 @@ export function closeFullscreen(): void {
 }
 
 /**
+ * Toggle native OS/window fullscreen on Tauri (macOS WKWebView).
+ * Always prefers live `isFullscreen()` (async Promise on Tauri 2) over the
+ * `__ottTauriNativeFs` cache so exit (`setFullscreen(false)`) works after enter.
+ */
+export function stbToggleTauriNativeFullscreen(): Promise<void> {
+    return (async function () {
+        try {
+            var tw = (window as any).__TAURI__?.window;
+            var curWin =
+                typeof tw?.getCurrentWindow === "function"
+                    ? tw.getCurrentWindow()
+                    : null;
+            var curFs = !!(window as any).__ottTauriNativeFs;
+            if (curWin && typeof curWin.isFullscreen === "function") {
+                try {
+                    var probed: any = curWin.isFullscreen();
+                    if (probed && typeof probed.then === "function") {
+                        probed = await probed;
+                    }
+                    if (typeof probed === "boolean") curFs = probed;
+                } catch (_probe) {}
+            }
+            var nextFs = !curFs;
+            (window as any).__ottTauriNativeFs = nextFs;
+
+            var applied = false;
+            // Prefer Tauri 2 Window.setFullscreen (plugin:window|set_fullscreen).
+            if (curWin && typeof curWin.setFullscreen === "function") {
+                try {
+                    await Promise.resolve(curWin.setFullscreen(nextFs));
+                    applied = true;
+                } catch (eSet) {
+                    try {
+                        console.warn(
+                            "[Tauri] setFullscreen failed, trying invoke:",
+                            eSet
+                        );
+                    } catch (_e) {}
+                }
+            }
+            if (!applied) {
+                try {
+                    var coreApi = (window as any).__TAURI__?.core;
+                    if (coreApi && typeof coreApi.invoke === "function") {
+                        await coreApi.invoke("set_fullscreen", {
+                            fullscreen: nextFs,
+                        });
+                        applied = true;
+                    }
+                } catch (eInv) {
+                    try {
+                        console.warn(
+                            "[Tauri] set_fullscreen invoke failed:",
+                            eInv
+                        );
+                    } catch (_e) {}
+                }
+            }
+            if (!applied) {
+                try {
+                    var internals = (window as any).__TAURI_INTERNALS__;
+                    if (internals && typeof internals.invoke === "function") {
+                        await Promise.resolve(
+                            internals.invoke("set_fullscreen", {
+                                fullscreen: nextFs,
+                            })
+                        );
+                        applied = true;
+                    }
+                } catch (_inv2) {}
+            }
+            if (!applied) {
+                (window as any).__ottTauriNativeFs = curFs;
+                try {
+                    console.warn("[Tauri] all setFullscreen paths failed");
+                } catch (_e) {}
+                return;
+            }
+
+            // Collapse in-page list so video fills the window when entering FS.
+            try {
+                if (nextFs && typeof (window as any).closeList === "function") {
+                    var listOpen = !!(window as any).isListVisible;
+                    try {
+                        if (
+                            typeof (window as any).$ !== "undefined" &&
+                            ((window as any).$("#list_window").is(":visible") ||
+                                (window as any).$("#list_osd").is(":visible"))
+                        )
+                            listOpen = true;
+                    } catch (_e2) {}
+                    if (listOpen) (window as any).closeList();
+                }
+            } catch (_e3) {}
+        } catch (_eFs) {
+            try {
+                console.warn("[Tauri] L fullscreen toggle failed:", _eFs);
+            } catch (_e) {}
+        }
+    })();
+}
+
+/**
  * Process a raw key event to toggle fullscreen when keyCode === 76 ('L').
  *
  * @param event - A raw keyboard event object (or null/undefined).
@@ -193,6 +296,7 @@ export function closeFullscreen(): void {
  * Side effects: Toggles fullscreen when 'L' is pressed and prevents the
  *               default browser action (typing 'l' in input fields).
  */
+
 export function stbEventToKeyCode(event: any): number {
     if (!event) return 0;
 
@@ -259,107 +363,11 @@ export function stbEventToKeyCode(event: any): number {
             var inTauri = typeof (window as any).__TAURI__ !== "undefined";
             if (inTauri) {
                 // WKWebView document.fullscreen is a no-op. In-page
-                // stbToFullScreen is layout-only (not a real OS toggle) and
-                // does nothing when already "full". Toggle native window
-                // fullscreen via set_fullscreen (Tauri 2 / macOS).
-                try {
-                    var curFs = !!(window as any).__ottTauriNativeFs;
-                    try {
-                        var tw = (window as any).__TAURI__?.window;
-                        var curWin =
-                            typeof tw?.getCurrentWindow === "function"
-                                ? tw.getCurrentWindow()
-                                : null;
-                        if (
-                            curWin &&
-                            typeof curWin.isFullscreen === "function"
-                        ) {
-                            var probed = curWin.isFullscreen();
-                            if (probed && typeof probed.then === "function") {
-                                // async probe — fall through with cached flag
-                            } else if (typeof probed === "boolean") {
-                                curFs = probed;
-                            }
-                        }
-                    } catch (_probe) {}
-                    var nextFs = !curFs;
-                    (window as any).__ottTauriNativeFs = nextFs;
-                    var invoked = false;
-                    try {
-                        var core = (window as any).__TAURI__?.core;
-                        if (core && typeof core.invoke === "function") {
-                            void core
-                                .invoke("set_fullscreen", {
-                                    fullscreen: nextFs,
-                                })
-                                .catch(function (e: any) {
-                                    console.warn(
-                                        "[Tauri] set_fullscreen failed:",
-                                        e
-                                    );
-                                    (window as any).__ottTauriNativeFs =
-                                        !nextFs;
-                                });
-                            invoked = true;
-                        }
-                    } catch (_inv) {}
-                    if (!invoked) {
-                        try {
-                            var internals = (window as any).__TAURI_INTERNALS__;
-                            if (
-                                internals &&
-                                typeof internals.invoke === "function"
-                            ) {
-                                void internals.invoke("set_fullscreen", {
-                                    fullscreen: nextFs,
-                                });
-                                invoked = true;
-                            }
-                        } catch (_inv2) {}
-                    }
-                    if (!invoked) {
-                        try {
-                            var tw2 = (window as any).__TAURI__?.window;
-                            var w2 =
-                                typeof tw2?.getCurrentWindow === "function"
-                                    ? tw2.getCurrentWindow()
-                                    : null;
-                            if (w2 && typeof w2.setFullscreen === "function") {
-                                void w2.setFullscreen(nextFs);
-                                invoked = true;
-                            }
-                        } catch (_inv3) {}
-                    }
-                    // Also collapse in-page list so video fills the window.
-                    try {
-                        if (
-                            nextFs &&
-                            typeof (window as any).closeList === "function"
-                        ) {
-                            var listOpen = !!(window as any).isListVisible;
-                            try {
-                                if (
-                                    typeof (window as any).$ !== "undefined" &&
-                                    ((window as any)
-                                        .$("#list_window")
-                                        .is(":visible") ||
-                                        (window as any)
-                                            .$("#list_osd")
-                                            .is(":visible"))
-                                )
-                                    listOpen = true;
-                            } catch (_e2) {}
-                            if (listOpen) (window as any).closeList();
-                        }
-                    } catch (_e3) {}
-                } catch (_eFs) {
-                    try {
-                        console.warn(
-                            "[Tauri] L fullscreen toggle failed:",
-                            _eFs
-                        );
-                    } catch (_e) {}
-                }
+                // stbToFullScreen is layout-only (not a real OS toggle).
+                // Await isFullscreen() (Tauri 2 / macOS Promise) then
+                // setFullscreen(false) when already full — do not trust
+                // only the JS cache (desync → L enters but never exits).
+                void stbToggleTauriNativeFullscreen();
             } else {
                 if (isNormalScreen()) openFullscreen();
                 else closeFullscreen();
