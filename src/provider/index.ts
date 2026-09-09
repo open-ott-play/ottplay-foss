@@ -1531,7 +1531,8 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     listCatIndex = catIdx;
     listArray = cats[catsArray[listCatIndex]] || [];
     var wk = getWidthK();
-    var itemH = (window.innerHeight - 90 * getHeightK()) / pageSize;
+    // Match showPage row height (130 chrome) so pikon/progress fit the flex .item.
+    var itemH = (window.innerHeight - 130 * getHeightK()) / pageSize;
     var numWidth = 0;
     if (sShowNum)
         try {
@@ -1544,7 +1545,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
             console.error(e);
         }
     var archWidth = sShowArchive ? 3 * wk : 0;
-    var pikonSize = [0, itemH - 2, itemH * 1.5][sShowPikon];
+    var pikonSize = [0, itemH - 2, itemH * 1.5][sShowPikon] || 0;
     var pikonMargin = pikonSize || !archWidth ? 6 * wk : 0;
     var progWidth = sShowProgress ? 40 * wk : 0;
     var progBarH = Math.floor(itemH / 3.5);
@@ -1559,24 +1560,11 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                 " id=" +
                 chId
             );
-        // FOSS 1280.css .item uses padding:0 14px (border-box) + .img{float:left;
-        // height:100%}. Harden single-line row: flex nowrap, float:none, explicit
-        // height (never height:100% which fights flex), skip empty pikon, and
-        // line-height:normal so parent .item line-height cannot look like wrap.
-        // Number+name must stay one row (Category: All).
-        var imgMargin = pikonSize ? 8 : 0; // 1280.css .img margin-right only when shown
-        var styleExtra = 28 + imgMargin;
-        var textW = Math.max(
-            40,
-            itemWith -
-                numWidth -
-                pikonSize -
-                (pikonSize ? pikonMargin : 0) -
-                progWidth -
-                2 * progMargin -
-                archWidth * 3 -
-                styleExtra
-        );
+        // .item is already display:flex (1280.css + showPage). Emit direct flex
+        // children — a nested width:100% flex wrapper + max-width:textW from
+        // itemWith made WKWebView/Tauri clip progress and wrap number/name.
+        // Browser :8443 tolerated it; Tauri did not. Escape picUrl so tvg-logo /
+        // data URIs cannot break the style attribute and drop the rest of the row.
         var progName = getCurProgData(chId, updateChanelList) ? ch.name : "";
         if (ch.outdated === true)
             progName =
@@ -1592,8 +1580,6 @@ function _channelsList(catIdx: number, channelIdx: number): void {
             parentalArray.indexOf(chId) === -1
                 ? ""
                 : "color:#a00;";
-        // Provider scripts define getChannelPicon; fall back to ch.logo so
-        // Mode B never throws mid-row (blank ERROR rows / missing icons).
         var picUrl = "";
         try {
             if (typeof getChannelPicon === "function")
@@ -1604,14 +1590,16 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                 if ((ch as any).logo) picUrl = String((ch as any).logo);
             } catch (_pic2) {}
         }
-        var rowStyle =
-            "display:flex;flex-direction:row;align-items:center;flex-wrap:nowrap;" +
-            "width:100%;max-width:100%;min-width:0;overflow:hidden;box-sizing:border-box;" +
-            "height:100%;line-height:normal;white-space:nowrap;";
+        var safePic = String(picUrl)
+            .replace(/\\/g, "\\\\")
+            .replace(/'/g, "%27")
+            .replace(/"/g, "%22")
+            .replace(/[\r\n\f]/g, "");
+        var iconH = Math.max(
+            1,
+            Math.min(pikonSize || 0, Math.floor(itemH) - 2)
+        );
         return (
-            '<div style="' +
-            rowStyle +
-            '">' +
             (numWidth
                 ? '<div style="flex:0 0 ' +
                   numWidth +
@@ -1635,21 +1623,19 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   'px"></div>'
                 : "") +
             (pikonSize
-                ? '<div class="img" style="float:none !important;display:block;flex:0 0 ' +
+                ? '<div class="img" style="flex:0 0 ' +
                   pikonSize +
                   "px;width:" +
                   pikonSize +
                   "px;height:" +
-                  pikonSize +
-                  "px;max-height:100%;margin:0 0 0 " +
+                  iconH +
+                  "px;max-height:100%;margin-left:" +
                   pikonMargin +
-                  "px;background-image:url('" +
-                  picUrl +
+                  "px;margin-right:8px;background-image:url('" +
+                  safePic +
                   "');\"></div>"
                 : "") +
-            '<div style="flex:1 1 auto;min-width:0;max-width:' +
-            textW +
-            "px;color:" +
+            '<div style="flex:1 1 auto;min-width:0;color:' +
             bodyColor +
             ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:normal;">&nbsp;' +
             (sShowName ? ch.channel_name + "&nbsp;" : "") +
@@ -1663,13 +1649,13 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   "</span></div>"
                 : "</div>") +
             (progWidth
-                ? '<div class="progress_div" style="float:none !important;flex:0 0 ' +
+                ? '<div class="progress_div" style="flex:0 0 ' +
                   progWidth +
                   "px;width:" +
                   progWidth +
                   "px;margin:" +
                   progMargin +
-                  'px;background-color:rgba(68,68,102,0.55);"><div id="pr' +
+                  'px;margin-left:auto;background-color:rgba(68,68,102,0.55);"><div id="pr' +
                   chId +
                   '" style="width:' +
                   pct +
@@ -1678,8 +1664,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   "px;background-color:" +
                   curColor +
                   ';font-size:1px;"></div></div>'
-                : "") +
-            "</div>"
+                : "")
         );
     };
     listDetail.innerHTML = "";

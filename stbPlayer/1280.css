@@ -374,15 +374,14 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     line-height: normal;
-    white-space: nowrap;
     text-align: right;
+    white-space: nowrap;
 }
 .img {
-    /* float:left + height:100% forced channel rows onto two lines when
-       paired with flex number+name; keep icon in-flow on one row. */
+    /* Channel-row picon: in-flow flex child (never float). Explicit inline
+       width/height from _channelsList; avoid height:auto collapse in WKWebView. */
     float: none;
     flex-shrink: 0;
-    height: auto;
     max-height: 100%;
     margin-right: 8px;
     background-repeat: no-repeat;
