@@ -1012,18 +1012,38 @@ export function getEPGchanelCached(
             });
         return;
     }
-    // Mode B (Tauri desktop): no provider sets window.getEPGchanel.
-    // Use in-process Rust EPG via invoke() instead of HTTP fetch.
+    // Mode B (Tauri desktop): in-process Rust EPG via invoke() (not HTTP).
+    // Pass playlist channel name + epg_url hash so resolve_xmltv_id can match
+    // (numeric channelId alone almost never equals an XMLTV id).
     if (typeof (window as any).__TAURI__ !== "undefined") {
         var ch = channels[channelId];
-        var hash = String(channelId);
+        var channelName = (ch && (ch.channel_name || ch.name)) || "";
+        var hash =
+            ch && (ch as any).epg_url != null
+                ? String((ch as any).epg_url)
+                : "";
         var timeShiftHours = ch && typeof ch.rec === "number" ? ch.rec : 0;
-        (window as any).__TAURI__.core
-            .invoke("get_epg", {
-                channel_id: String(channelId),
-                hash: hash,
-                time_shift_hours: timeShiftHours,
-            })
+        var coreApi = (window as any).__TAURI__.core;
+        var invokeFn =
+            coreApi && typeof coreApi.invoke === "function"
+                ? function (cmd: string, args: any) {
+                      return coreApi.invoke(cmd, args);
+                  }
+                : typeof (window as any).__TAURI__.invoke === "function"
+                  ? function (cmd: string, args: any) {
+                        return (window as any).__TAURI__.invoke(cmd, args);
+                    }
+                  : null;
+        if (!invokeFn) {
+            callback(channelId, null);
+            return;
+        }
+        invokeFn("get_epg", {
+            ch: channelName,
+            channel_id: String(channelId),
+            hash: hash,
+            time_shift_hours: timeShiftHours,
+        })
             .then(function (result: any) {
                 if (result && Array.isArray(result.epg_data)) {
                     epg[channelId] = result.epg_data;

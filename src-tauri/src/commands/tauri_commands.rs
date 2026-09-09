@@ -325,20 +325,69 @@ fn resolve_xmltv_id(
     channel_id.to_string()
 }
 
-/// Apply fullscreen and keep the macOS KeyL exit shortcut in sync.
+/// Tracks macOS simple-fullscreen intent.
+///
+/// `Window::is_fullscreen()` is false while in `set_simple_fullscreen`, so
+/// toggle/exit must consult this flag. Never use a system-wide letter shortcut.
+#[cfg(target_os = "macos")]
+static MACOS_SIMPLE_FS: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+/// True when the window is in Spaces fullscreen or our macOS simple fullscreen.
+fn is_effectively_fullscreen(window: &tauri::Window) -> Result<bool, String> {
+    #[cfg(target_os = "macos")]
+    {
+        if MACOS_SIMPLE_FS.load(std::sync::atomic::Ordering::SeqCst) {
+            return Ok(true);
+        }
+    }
+    window.is_fullscreen().map_err(|e| e.to_string())
+}
+
+/// Apply fullscreen without registering any global letter shortcut.
+///
+/// On macOS prefer `set_simple_fullscreen` so the webview still receives L and
+/// Escape (Spaces/native fullscreen eats those keys). If the window is already
+/// in Spaces fullscreen (e.g. green-button), exit via `set_fullscreen(false)`.
+/// Other platforms keep `set_fullscreen`.
 pub fn apply_fullscreen(
-    app: &tauri::AppHandle,
+    _app: &tauri::AppHandle,
     window: &tauri::Window,
     fullscreen: bool,
 ) -> Result<(), String> {
-    window
-        .set_fullscreen(fullscreen)
-        .map_err(|e| e.to_string())?;
-    // KeyL only while native fullscreen AND focused — exit works when
-    // WKWebView swallows keys in macOS Spaces FS; never steal L while windowed.
-    let focused = window.is_focused().unwrap_or(false);
-    crate::sync_fullscreen_exit_shortcut(app, fullscreen && focused);
-    Ok(())
+    #[cfg(target_os = "macos")]
+    {
+        use std::sync::atomic::Ordering;
+        let native = window.is_fullscreen().unwrap_or(false);
+        if fullscreen {
+            if native {
+                // Already Spaces FS — leave as-is; JS cannot get keys there.
+                MACOS_SIMPLE_FS.store(false, Ordering::SeqCst);
+                return Ok(());
+            }
+            window
+                .set_simple_fullscreen(true)
+                .map_err(|e| e.to_string())?;
+            MACOS_SIMPLE_FS.store(true, Ordering::SeqCst);
+        } else {
+            if native {
+                window
+                    .set_fullscreen(false)
+                    .map_err(|e| e.to_string())?;
+            }
+            // Always clear simple FS flag/mode on exit intent.
+            let _ = window.set_simple_fullscreen(false);
+            MACOS_SIMPLE_FS.store(false, Ordering::SeqCst);
+        }
+        return Ok(());
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        window
+            .set_fullscreen(fullscreen)
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
 }
 
 /// `invoke('set_fullscreen', {fullscreen})` → set window fullscreen.
@@ -355,14 +404,14 @@ pub async fn set_fullscreen(
     })
 }
 
-/// `invoke('toggle_fullscreen')` → read `is_fullscreen()` then flip.
+/// `invoke('toggle_fullscreen')` → flip effective fullscreen (simple FS on macOS).
 /// Single Rust source of truth — no JS cache / API naming guesswork.
 #[tauri::command]
 pub async fn toggle_fullscreen(
     app: tauri::AppHandle,
     window: tauri::Window,
 ) -> Result<FullscreenResult, String> {
-    let cur = window.is_fullscreen().map_err(|e| e.to_string())?;
+    let cur = is_effectively_fullscreen(&window)?;
     let next = !cur;
     apply_fullscreen(&app, &window, next)?;
     Ok(FullscreenResult {
