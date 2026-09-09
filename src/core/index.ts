@@ -258,29 +258,108 @@ export function stbEventToKeyCode(event: any): number {
         if (!editing) {
             var inTauri = typeof (window as any).__TAURI__ !== "undefined";
             if (inTauri) {
-                // WKWebView document fullscreen is unreliable / a no-op.
-                // Match product intent: in-page layout fullscreen (stbToFullScreen).
-                // If the channel list is open, close it (closeList → stbToFullScreen).
+                // WKWebView document.fullscreen is a no-op. In-page
+                // stbToFullScreen is layout-only (not a real OS toggle) and
+                // does nothing when already "full". Toggle native window
+                // fullscreen via set_fullscreen (Tauri 2 / macOS).
                 try {
-                    var listOpen = !!(window as any).isListVisible;
+                    var curFs = !!(window as any).__ottTauriNativeFs;
+                    try {
+                        var tw = (window as any).__TAURI__?.window;
+                        var curWin =
+                            typeof tw?.getCurrentWindow === "function"
+                                ? tw.getCurrentWindow()
+                                : null;
+                        if (
+                            curWin &&
+                            typeof curWin.isFullscreen === "function"
+                        ) {
+                            var probed = curWin.isFullscreen();
+                            if (probed && typeof probed.then === "function") {
+                                // async probe — fall through with cached flag
+                            } else if (typeof probed === "boolean") {
+                                curFs = probed;
+                            }
+                        }
+                    } catch (_probe) {}
+                    var nextFs = !curFs;
+                    (window as any).__ottTauriNativeFs = nextFs;
+                    var invoked = false;
+                    try {
+                        var core = (window as any).__TAURI__?.core;
+                        if (core && typeof core.invoke === "function") {
+                            void core
+                                .invoke("set_fullscreen", {
+                                    fullscreen: nextFs,
+                                })
+                                .catch(function (e: any) {
+                                    console.warn(
+                                        "[Tauri] set_fullscreen failed:",
+                                        e
+                                    );
+                                    (window as any).__ottTauriNativeFs =
+                                        !nextFs;
+                                });
+                            invoked = true;
+                        }
+                    } catch (_inv) {}
+                    if (!invoked) {
+                        try {
+                            var internals = (window as any).__TAURI_INTERNALS__;
+                            if (
+                                internals &&
+                                typeof internals.invoke === "function"
+                            ) {
+                                void internals.invoke("set_fullscreen", {
+                                    fullscreen: nextFs,
+                                });
+                                invoked = true;
+                            }
+                        } catch (_inv2) {}
+                    }
+                    if (!invoked) {
+                        try {
+                            var tw2 = (window as any).__TAURI__?.window;
+                            var w2 =
+                                typeof tw2?.getCurrentWindow === "function"
+                                    ? tw2.getCurrentWindow()
+                                    : null;
+                            if (w2 && typeof w2.setFullscreen === "function") {
+                                void w2.setFullscreen(nextFs);
+                                invoked = true;
+                            }
+                        } catch (_inv3) {}
+                    }
+                    // Also collapse in-page list so video fills the window.
                     try {
                         if (
-                            typeof (window as any).$ !== "undefined" &&
-                            (window as any).$("#list").is(":visible")
-                        )
-                            listOpen = true;
-                    } catch (_e2) {}
-                    if (
-                        listOpen &&
-                        typeof (window as any).closeList === "function"
-                    ) {
-                        (window as any).closeList();
-                    } else if (
-                        typeof (window as any).stbToFullScreen === "function"
-                    ) {
-                        (window as any).stbToFullScreen();
-                    }
-                } catch (_e3) {}
+                            nextFs &&
+                            typeof (window as any).closeList === "function"
+                        ) {
+                            var listOpen = !!(window as any).isListVisible;
+                            try {
+                                if (
+                                    typeof (window as any).$ !== "undefined" &&
+                                    ((window as any)
+                                        .$("#list_window")
+                                        .is(":visible") ||
+                                        (window as any)
+                                            .$("#list_osd")
+                                            .is(":visible"))
+                                )
+                                    listOpen = true;
+                            } catch (_e2) {}
+                            if (listOpen) (window as any).closeList();
+                        }
+                    } catch (_e3) {}
+                } catch (_eFs) {
+                    try {
+                        console.warn(
+                            "[Tauri] L fullscreen toggle failed:",
+                            _eFs
+                        );
+                    } catch (_e) {}
+                }
             } else {
                 if (isNormalScreen()) openFullscreen();
                 else closeFullscreen();

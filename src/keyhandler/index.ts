@@ -530,14 +530,30 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
                 (window as any).stbToggleAudioTrack();
             break;
         case keys.SUBTITLE:
-            if (typeof (window as any).stbToggleSubtitle === "function")
-                (window as any).stbToggleSubtitle();
-            // L is normally consumed in stbEventToKeyCode. If it reaches here,
-            // still prefer in-page layout fullscreen under Tauri (WKWebView).
+            // keys.SUBTITLE === 76 === Key L. stbEventToKeyCode normally
+            // consumes L for fullscreen and returns 0, so this case should
+            // not run for a plain L press. If it does reach here (host did
+            // not go through stbEventToKeyCode), toggle native FS on Tauri
+            // and document FS elsewhere — do NOT also toggle subtitles on L.
             if (typeof (window as any).__TAURI__ !== "undefined") {
                 try {
-                    if (typeof (window as any).stbToFullScreen === "function")
-                        (window as any).stbToFullScreen();
+                    var curFs = !!(window as any).__ottTauriNativeFs;
+                    var nextFs = !curFs;
+                    (window as any).__ottTauriNativeFs = nextFs;
+                    var core = (window as any).__TAURI__?.core;
+                    if (core && typeof core.invoke === "function") {
+                        void core.invoke("set_fullscreen", {
+                            fullscreen: nextFs,
+                        });
+                    } else {
+                        var tw = (window as any).__TAURI__?.window;
+                        var w =
+                            typeof tw?.getCurrentWindow === "function"
+                                ? tw.getCurrentWindow()
+                                : null;
+                        if (w && typeof w.setFullscreen === "function")
+                            void w.setFullscreen(nextFs);
+                    }
                 } catch (_e) {}
             } else if (isNormalScreen()) openFullscreen();
             else closeFullscreen();
