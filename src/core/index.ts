@@ -185,8 +185,9 @@ export function closeFullscreen(): void {
 
 /**
  * Toggle native OS/window fullscreen on Tauri (macOS WKWebView).
- * Always uses Rust `toggle_fullscreen` (live `is_fullscreen()` then flip) —
- * do not trust `__ottTauriNativeFs` or JS Window API naming.
+ * Always uses Rust `toggle_fullscreen` (effective FS then flip; macOS uses
+ * simple fullscreen so webview keys still work) — do not trust
+ * `__ottTauriNativeFs` or JS Window API naming. No global shortcuts.
  */
 export function stbToggleTauriNativeFullscreen(): Promise<void> {
     return (async function () {
@@ -371,6 +372,19 @@ export function stbEventToKeyCode(event: any): number {
         else if (key === "l" || key === "L" || code === "KeyL") keyCode = 76;
     }
 
+    // Escape while Tauri native/simple fullscreen → exit FS first (do not
+    // open exitPortal). Relies on macOS simple fullscreen so Escape reaches
+    // the webview; never register a system-wide letter shortcut.
+    if (keyCode === 27) {
+        var inTauriEsc = typeof (window as any).__TAURI__ !== "undefined";
+        if (inTauriEsc && (window as any).__ottTauriNativeFs) {
+            void stbToggleTauriNativeFullscreen();
+            if (event.preventDefault) event.preventDefault();
+            if (event.stopPropagation) event.stopPropagation();
+            return 0;
+        }
+    }
+
     if (keyCode === 76) {
         // Do not steal L/l while the on-screen editor / VKB is open.
         var editing = false;
@@ -386,9 +400,8 @@ export function stbEventToKeyCode(event: any): number {
             if (inTauri) {
                 // WKWebView document.fullscreen is a no-op. In-page
                 // stbToFullScreen is layout-only (not a real OS toggle).
-                // Await isFullscreen() (Tauri 2 / macOS Promise) then
-                // setFullscreen(false) when already full — do not trust
-                // only the JS cache (desync → L enters but never exits).
+                // Rust toggle_fullscreen uses macOS simple fullscreen so L
+                // stays in the webview (no global KeyL).
                 void stbToggleTauriNativeFullscreen();
             } else {
                 if (isNormalScreen()) openFullscreen();

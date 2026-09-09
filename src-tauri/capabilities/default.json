@@ -48,9 +48,6 @@
     "allow-stop-media-session",
     "allow-update-media-session",
     "updater:default",
-    "window-state:default",
-    "global-shortcut:allow-is-registered",
-    "global-shortcut:allow-register",
-    "global-shortcut:allow-unregister"
+    "window-state:default"
   ]
 }

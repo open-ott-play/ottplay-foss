@@ -2287,12 +2287,14 @@ function setupTauriEpgOverride(): void {
             ch && (ch as any).epg_url != null
                 ? String((ch as any).epg_url)
                 : "";
+        const timeShiftHours =
+            ch && typeof (ch as any).rec === "number" ? (ch as any).rec : 0;
 
         tauriInvoke<any>("get_epg", {
             ch: channelName,
             channel_id: channelIdNum.toString(),
             hash: epgHash,
-            time_shift_hours: 0,
+            time_shift_hours: timeShiftHours,
         })
             .then((result) => {
                 callback(chId, result?.epg_data || []);
@@ -2483,10 +2485,10 @@ window.stbToggleAspectRatio = stbToggleAspectRatio;
 
 // Tauri Mode B: do NOT wire stbToFullScreen/stbSetWindow to native
 // set_fullscreen. Those APIs are in-page video layout (full viewport vs
-// small window beside the list). Native macOS fullscreen steals Escape to
-// exit the space, so Escape never reaches exitPortal / the exit confirm.
-// OS/window fullscreen is toggled by Key L → toggle_fullscreen invoke
-// (see stbEventToKeyCode); keep the Rust command for that.
+// small window beside the list). macOS uses simple fullscreen so L and
+// Escape still reach the webview (Escape exits FS before exitPortal when
+// __ottTauriNativeFs). OS/window fullscreen is toggled by Key L →
+// toggle_fullscreen invoke (see stbEventToKeyCode); no global KeyL.
 
 // Tauri Mode B: override stbToggleStandby for best-effort sleep prevention.
 // Enter standby → allow_sleep (machine may sleep). Exit standby → prevent_sleep (keep awake).
