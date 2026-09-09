@@ -63,7 +63,7 @@ public class MobileCommandQueue: CAPPlugin, CAPBridgedPlugin {
                 self.listener = try NWListener(using: params)
 
                 self.listener?.stateUpdateHandler = { state in
-                    if state == .failed {
+                    if case .failed(_) = state {
                         self.logger.error("Listener failed")
                         self.isRunningFlag = false
                     }
@@ -117,7 +117,7 @@ public class MobileCommandQueue: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func post(_ call: CAPPluginCall) {
-        guard let data = call.data else {
+        guard let data = call.getArray("data") else {
             call.reject("No data provided")
             return
         }

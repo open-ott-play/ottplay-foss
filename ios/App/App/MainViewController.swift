@@ -1,8 +1,9 @@
 import UIKit
 import Capacitor
+import CapApp_SPM
 
 class MainViewController: CAPBridgeViewController {
-    override open func capacitorDidLoad() {
+    override func capacitorDidLoad() {
         bridge?.registerPluginInstance(MobileCommandQueue())
         bridge?.registerPluginInstance(M3UProxyPlugin())
         bridge?.registerPluginInstance(MobileXmltvEpg())
@@ -11,15 +12,15 @@ class MainViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(StalkerPortalPlugin())
     }
 
-    open override var prefersStatusBarHidden: Bool {
+    override var prefersStatusBarHidden: Bool {
         MobileNativeMedia.sharedFullscreenActive
     }
 
-    open override var preferredStatusBarUpdateAnimation: UIStatusBarAnimation {
+    override var preferredStatusBarUpdateAnimation: UIStatusBarAnimation {
         .slide
     }
 
-    open override var prefersHomeIndicatorAutoHidden: Bool {
+    override var prefersHomeIndicatorAutoHidden: Bool {
         MobileNativeMedia.sharedFullscreenActive
     }
 
