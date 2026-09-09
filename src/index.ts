@@ -3018,13 +3018,13 @@ if (typeof window.__TAURI__ !== "undefined") {
         const STYLE_ID = "ott-tauri-frameless-drag";
         const DRAG_THRESHOLD_PX = 6;
         // Interactive / overlay surfaces that must keep pointer clicks.
+        // NOTE: [onclick] removed — too broad, eats the Menu header/top chrome.
         const NO_DRAG_SEL =
             '[id^="list"],.osd,#info,#info1,#numprog,#dialogbox,#volume_div,#mute,' +
-            "#permanentTime,#launch,#notifications,#buffering,#pip_buffering,#videopip," +
+            "#permanentTime,#launch,#notifications,#buffering,#pip_buffering,#videopip,#video," +
             "#progress_div,#progress,#progress_r,#progress_span,#descr,#channel,#data," +
             "#ott-tauri-loading-logs," +
-            'button,input,select,textarea,a,.btn,.osk-key,[onclick],[contenteditable="true"],' +
-            '[role="button"],[role="listbox"],[role="option"],[role="menu"],[role="menuitem"]';
+            'button,input,select,textarea,a,.btn,.osk-key,[role="button"],[role="listbox"],[role="option"],[role="menu"],[role="menuitem"],[contenteditable="true"]';
 
         document.documentElement.classList.add(CLASS);
         if (document.body) document.body.classList.add(CLASS);
