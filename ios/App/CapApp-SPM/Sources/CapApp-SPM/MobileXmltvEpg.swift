@@ -128,7 +128,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
             if produced > 0 {
                 result.append(dstBuffer, count: produced)
             }
-        } while compression_status(stream) != COMPRESSION_STATUS_END
+        } while status != COMPRESSION_STATUS_END
 
         return result
     }
