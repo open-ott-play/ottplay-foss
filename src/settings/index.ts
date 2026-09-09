@@ -281,11 +281,23 @@ export function loadSettings(): PlayerSettings {
         editor: (() => {
             const raw = storage.get("sEditor");
             const parsed = raw !== null ? parseInt(raw, 10) : NaN;
-            if (!isNaN(parsed)) return parsed;
             const dev =
                 (typeof window !== "undefined" && (window as any).ott_device) ||
                 "";
-            return /^(pc|pc2|tauri|desktop|nodejs)$/.test(dev) ? 1 : 0;
+            const isPc = /^(pc|pc2|tauri|desktop|nodejs)$/.test(dev);
+
+            if (isPc && !storage.get("sEditorPcNativeMigrated")) {
+                if (isNaN(parsed) || parsed === 0) {
+                    storage.setI("sEditor", 1);
+                    storage.set("sEditorPcNativeMigrated", "1");
+                    return 1;
+                }
+                storage.set("sEditorPcNativeMigrated", "1");
+                return parsed;
+            }
+
+            if (!isNaN(parsed)) return parsed;
+            return isPc ? 1 : 0;
         })(),
         eFun: s.getI("sEfun", 0),
         epgRemindMinutes: s.getI("sEpgRemindMinutes", 5),
