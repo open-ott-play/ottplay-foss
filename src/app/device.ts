@@ -31,7 +31,6 @@ export function detectDevice(): string {
     if (ua.indexOf("spark") !== -1) return "spark";
     if (ua.indexOf("nodejs") !== -1 || ua.indexOf("electron") !== -1)
         return "nodejs";
-    if (typeof (window as any).__TAURI__ !== "undefined") return "tauri";
     return "pc";
 }
 
