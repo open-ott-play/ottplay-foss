@@ -3268,12 +3268,12 @@ export function editKey1(e: number): void {
 
 /**
  * Handle key events for the native HTML input editor (edit mode variant 2).
- * ENTER saves the value via `setEdit`, RETURN/EXIT discards and restores.
+ * ENTER saves via `setEdit` then closes the editor; RETURN/EXIT discards and restores.
  *
  * @param code - The numeric key code.
  * @returns void
- * @sideeffect Reads `#(window as any).editvar` value on ENTER and calls `window.setEdit()`. On RETURN/EXIT, hides `#listEdit`
- *             and calls `window.restoreCPD()`.
+ * @sideeffect Reads `#editvar` value on ENTER, calls `window.setEdit()`, then hides `#listEdit`
+ *             and calls `window.restoreCPD()` (same teardown as RETURN/EXIT).
  */
 export function editKey2(code: number): void {
     switch (code) {
@@ -3281,6 +3281,11 @@ export function editKey2(code: number): void {
             (window as any).editvar = ($("#editvar").val() as string) || "";
             if (typeof (window as any).setEdit === "function")
                 (window as any).setEdit();
+            // Same teardown as EXIT/RETURN so #listEdit closes after save;
+            // jQuery .hide() triggers uiInit hide handler which clears __ottEditKey2Handler.
+            $("#listEdit").hide();
+            if (typeof (window as any).restoreCPD === "function")
+                (window as any).restoreCPD();
             break;
         case (window as any).keys.EXIT:
         case (window as any).keys.RETURN:
