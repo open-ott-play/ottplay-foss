@@ -1559,18 +1559,19 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                 " id=" +
                 chId
             );
-        // FOSS 1280.css .item uses padding:0 14px (border-box). Prefer flex
-        // nowrap over competing floats: number+img+name used to wrap onto a
-        // second line when numWidth+pikon+margins+textW+progress exceeded
-        // itemWith (Category: All looked like "number" then "name").
-        // .img always has margin-right:8px even when pikonSize is 0.
-        var styleExtra = 28 + 8;
+        // FOSS 1280.css .item uses padding:0 14px (border-box) + .img{float:left;
+        // height:100%}. Harden single-line row: flex nowrap, float:none, explicit
+        // height (never height:100% which fights flex), skip empty pikon, and
+        // line-height:normal so parent .item line-height cannot look like wrap.
+        // Number+name must stay one row (Category: All).
+        var imgMargin = pikonSize ? 8 : 0; // 1280.css .img margin-right only when shown
+        var styleExtra = 28 + imgMargin;
         var textW = Math.max(
             40,
             itemWith -
                 numWidth -
                 pikonSize -
-                pikonMargin -
+                (pikonSize ? pikonMargin : 0) -
                 progWidth -
                 2 * progMargin -
                 archWidth * 3 -
@@ -1591,12 +1592,20 @@ function _channelsList(catIdx: number, channelIdx: number): void {
             parentalArray.indexOf(chId) === -1
                 ? ""
                 : "color:#a00;";
+        var rowStyle =
+            "display:flex;flex-direction:row;align-items:center;flex-wrap:nowrap;" +
+            "width:100%;max-width:100%;min-width:0;overflow:hidden;box-sizing:border-box;" +
+            "height:100%;line-height:normal;white-space:nowrap;";
         return (
-            '<div style="display:flex;align-items:center;flex-wrap:nowrap;width:100%;min-width:0;overflow:hidden;box-sizing:border-box;">' +
+            '<div style="' +
+            rowStyle +
+            '">' +
             (numWidth
                 ? '<div style="flex:0 0 ' +
                   numWidth +
-                  "px;text-align:right;" +
+                  "px;max-width:" +
+                  numWidth +
+                  "px;text-align:right;line-height:normal;white-space:nowrap;overflow:hidden;" +
                   parentalStyle +
                   '">' +
                   (idx + 1) +
@@ -1613,20 +1622,24 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   (itemH - archWidth * 2) +
                   'px"></div>'
                 : "") +
-            '<div class="img" style="float:none;flex:0 0 auto;background-image:url(\'' +
-            (pikonSize ? getChannelPicon(chId) : "") +
-            "'); width:" +
-            pikonSize +
-            "px;margin-left:" +
-            pikonMargin +
-            'px;"></div>' +
-            '<div style="flex:1 1 auto;min-width:' +
-            Math.min(40, textW) +
-            "px;max-width:" +
+            (pikonSize
+                ? '<div class="img" style="float:none !important;display:block;flex:0 0 ' +
+                  pikonSize +
+                  "px;width:" +
+                  pikonSize +
+                  "px;height:" +
+                  pikonSize +
+                  "px;max-height:100%;margin:0 0 0 " +
+                  pikonMargin +
+                  "px;background-image:url('" +
+                  getChannelPicon(chId) +
+                  "');\"></div>"
+                : "") +
+            '<div style="flex:1 1 auto;min-width:0;max-width:' +
             textW +
             "px;color:" +
             bodyColor +
-            ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">&nbsp;' +
+            ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:normal;">&nbsp;' +
             (sShowName ? ch.channel_name + "&nbsp;" : "") +
             (sShowProgram
                 ? '<span id="pn' +
@@ -1638,7 +1651,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   "</span></div>"
                 : "</div>") +
             (progWidth
-                ? '<div class="progress_div" style="float:none;flex:0 0 ' +
+                ? '<div class="progress_div" style="float:none !important;flex:0 0 ' +
                   progWidth +
                   "px;width:" +
                   progWidth +

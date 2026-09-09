@@ -851,13 +851,12 @@ export function showPage(): void {
             i +
             ')" class="item"';
         html +=
-            ' style="height:' +
+            ' style="display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;' +
+            "height:" +
             itemHeight +
-            "px; line-height:" +
-            Math.max(1, itemHeight - 4) +
-            "px; width:" +
+            "px;line-height:normal;width:" +
             itemWidth +
-            "px;";
+            "px;overflow:hidden;white-space:nowrap;";
         if (selected)
             html +=
                 "color:" +

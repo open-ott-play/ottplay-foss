@@ -2485,8 +2485,8 @@ window.stbToggleAspectRatio = stbToggleAspectRatio;
 // set_fullscreen. Those APIs are in-page video layout (full viewport vs
 // small window beside the list). Native macOS fullscreen steals Escape to
 // exit the space, so Escape never reaches exitPortal / the exit confirm.
-// OS fullscreen remains available via L → openFullscreen (document API) or
-// an explicit set_fullscreen invoke; keep the Rust command for that.
+// OS/window fullscreen is toggled by Key L → set_fullscreen invoke
+// (see stbEventToKeyCode); keep the Rust command for that.
 
 // Tauri Mode B: override stbToggleStandby for best-effort sleep prevention.
 // Enter standby → allow_sleep (machine may sleep). Exit standby → prevent_sleep (keep awake).
@@ -3014,14 +3014,17 @@ if (typeof window.__TAURI__ !== "undefined") {
 // decorations:false removes the system title bar; without a drag region the
 // window cannot be moved. Gate on __TAURI__ so Chrome companion is unchanged.
 // Nuclear rule: NEVER put -webkit-app-region:drag or data-tauri-drag-region on
-// #listCaption / body / html / list chrome. Drag ONLY via #ott-tauri-drag-strip,
-// and ONLY while list overlays are closed.
+// #listCaption / body / html / list chrome. Drag ONLY via top chrome band /
+// #ott-tauri-drag-strip, and ONLY while list overlays are closed.
 //
-// Critical (macOS WKWebView / Tauri): do NOT set -webkit-app-region:drag on the
-// strip. WebKit then swallows mousedown so neither Tauri's data-tauri-drag-region
-// handler nor our startDragging runs, the window never moves, and mouseup/click
-// leaks to body.onclick (top 20% → Menu). Use data-tauri-drag-region + JS
-// start_dragging only; keep the strip as app-region:no-drag so events fire.
+// Critical (macOS WKWebView / Tauri):
+// 1) Do NOT set -webkit-app-region:drag on the strip — WebKit swallows mousedown
+//    so neither Tauri's data-tauri-drag-region handler nor our startDragging runs.
+// 2) Do NOT rely solely on hit-testing the strip element. Native <video> layers
+//    often composite ABOVE HTML regardless of z-index, so mousedown lands on
+//    #video/#launch even when the strip is "on top". Fix: capture-phase
+//    mousedown on document for clientY within the top chrome band → startDragging,
+//    even when the event target is #video/#launch (NOT CSS body drag).
 // Do not use $("#list").is(":visible") — #list has no CSS display:none, so after
 // showPage clears inline style it stays :visible and falsely hides the strip.
 if (typeof window.__TAURI__ !== "undefined") {
@@ -3031,16 +3034,24 @@ if (typeof window.__TAURI__ !== "undefined") {
         const OVERLAY_CLASS = "ott-tauri-overlay-open";
         const STYLE_ID = "ott-tauri-frameless-drag";
         const STRIP_ID = "ott-tauri-drag-strip";
+        // Thick enough to find; subtle fill so it is not invisible chrome.
+        const STRIP_H = 36;
         // Interactive / overlay surfaces that must keep pointer clicks.
         // #list / #listCaption / rows must never be CSS or JS drag handles.
+        // NOTE: #video/#launch are intentionally NOT in this blocklist for the
+        // top-band clientY path — WKWebView video often sits above the strip.
         const NO_DRAG_SEL =
             "#list,#listCaption,#listIn,#listAbout,#listEdit,#listPopUp,#listDetail,#listPodval," +
             "#list_osd,#list_window,.osd,#info,#info1,#numprog,#dialogbox,#volume_div,#mute," +
-            "#permanentTime,#launch,#notifications,#buffering,#pip_buffering,#videopip,#video," +
+            "#permanentTime,#notifications,#buffering,#pip_buffering,#videopip," +
             "#progress_div,#progress,#progress_r,#progress_span,#descr,#channel,#data," +
             '#ott-tauri-loading-logs,.item,[id^="it"],.list-scroll,' +
             'button,input,select,textarea,a,.btn,.osk-key,[role="button"],[role="listbox"],[role="option"],[role="menu"],[role="menuitem"],[contenteditable="true"]';
         const DRAG_SEL = "#" + STRIP_ID;
+        // Surfaces that may sit above the strip but should still start a drag
+        // when the click is in the top chrome band (overlays closed).
+        const TOP_BAND_OK_SEL =
+            "#video,#vdiv,#launch,#ott-tauri-drag-strip,body,html";
 
         document.documentElement.classList.add(CLASS);
         if (document.body) document.body.classList.add(CLASS);
@@ -3052,14 +3063,15 @@ if (typeof window.__TAURI__ !== "undefined") {
             strip = document.createElement("div");
             strip.id = STRIP_ID;
             strip.setAttribute("aria-hidden", "true");
+            strip.title = "Drag window";
             document.body.appendChild(strip);
             return strip;
         };
         ensureDragStrip();
 
         // CSS: html/body/list chrome always no-drag. Strip is also no-drag so
-        // WKWebView delivers mousedown; Tauri drag.js + our startDragging move
-        // the window. Hidden while overlay.
+        // WKWebView delivers mousedown; our startDragging moves the window.
+        // Subtle visible top chrome so the handle is discoverable.
         if (!document.getElementById(STYLE_ID)) {
             const style = document.createElement("style");
             style.id = STYLE_ID;
@@ -3085,7 +3097,12 @@ if (typeof window.__TAURI__ !== "undefined") {
                 ' [id^="it"] {\n  -webkit-app-region: no-drag !important;\n  app-region: no-drag !important;\n}\n' +
                 "#" +
                 STRIP_ID +
-                " {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  height: 32px;\n  z-index: 2147483000;\n  pointer-events: auto;\n  background: transparent;\n  -webkit-app-region: no-drag !important;\n  app-region: no-drag !important;\n}\n" +
+                " {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  height: " +
+                STRIP_H +
+                "px;\n  z-index: 2147483000;\n  pointer-events: auto;\n  cursor: grab;\n" +
+                "  background: linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0.18) 70%, transparent);\n" +
+                "  border-bottom: 1px solid rgba(255,255,255,0.08);\n" +
+                "  -webkit-app-region: no-drag !important;\n  app-region: no-drag !important;\n}\n" +
                 "html." +
                 CLASS +
                 "." +
@@ -3161,6 +3178,7 @@ if (typeof window.__TAURI__ !== "undefined") {
                     strip.removeAttribute("data-tauri-drag-region");
                 } else {
                     strip.style.display = "";
+                    strip.style.height = STRIP_H + "px";
                     // Keep no-drag so mousedown reaches JS (Tauri drag.js + us).
                     strip.style.setProperty(
                         "-webkit-app-region",
@@ -3233,37 +3251,82 @@ if (typeof window.__TAURI__ !== "undefined") {
         } catch (_e) {}
 
         const startDragging = (): void => {
-            // Match Tauri's injected drag.js: internals invoke is the most
-            // reliable path on macOS WKWebView (no label required).
-            try {
-                const internals = (window as any).__TAURI_INTERNALS__;
-                if (internals && typeof internals.invoke === "function") {
-                    void internals.invoke("plugin:window|start_dragging");
-                    return;
+            // Prefer getCurrentWindow().startDragging() (Tauri 2 public API),
+            // then internals invoke (what drag.js uses), then core invoke.
+            const tryPaths: Array<() => Promise<unknown> | void> = [
+                () => {
+                    const tw = (window as any).__TAURI__?.window;
+                    const cur =
+                        typeof tw?.getCurrentWindow === "function"
+                            ? tw.getCurrentWindow()
+                            : null;
+                    if (cur && typeof cur.startDragging === "function") {
+                        return cur.startDragging();
+                    }
+                    throw new Error("no getCurrentWindow().startDragging");
+                },
+                () => {
+                    const internals = (window as any).__TAURI_INTERNALS__;
+                    if (internals && typeof internals.invoke === "function") {
+                        return internals.invoke("plugin:window|start_dragging");
+                    }
+                    throw new Error("no __TAURI_INTERNALS__.invoke");
+                },
+                () => {
+                    const core = (window as any).__TAURI__?.core;
+                    if (core && typeof core.invoke === "function") {
+                        return core.invoke("plugin:window|start_dragging");
+                    }
+                    throw new Error("no __TAURI__.core.invoke");
+                },
+                () => tauriInvoke<any>("plugin:window|start_dragging", {}),
+                () => tauriInvoke<any>("start_dragging", {}),
+            ];
+            (async () => {
+                for (const fn of tryPaths) {
+                    try {
+                        await Promise.resolve(fn());
+                        return;
+                    } catch (e) {
+                        try {
+                            console.warn(
+                                "[Tauri] startDragging path failed:",
+                                e
+                            );
+                        } catch (_e) {}
+                    }
                 }
-            } catch (_e0) {}
-            try {
-                const tw = (window as any).__TAURI__?.window;
-                const cur =
-                    typeof tw?.getCurrentWindow === "function"
-                        ? tw.getCurrentWindow()
-                        : tw?.appWindow;
-                if (cur && typeof cur.startDragging === "function") {
-                    void cur.startDragging();
-                    return;
-                }
-            } catch (_e) {}
-            try {
-                void tauriInvoke<any>("plugin:window|start_dragging", {});
-            } catch (_e2) {}
+                try {
+                    console.warn("[Tauri] all startDragging paths failed");
+                } catch (_e) {}
+            })();
         };
 
-        // JS drag ONLY from the dedicated strip, and only when overlays closed.
-        const isDragHandle = (t: Element): boolean => {
+        // JS drag from strip OR top chrome band (for video-over-HTML), overlays closed.
+        const isDragHandle = (t: Element, clientY: number): boolean => {
             if (listOverlayOpen()) return false;
-            if (t.id === STRIP_ID) return true;
+            // Never drag from list/menu chrome or form controls.
             if (t.closest(NO_DRAG_SEL)) return false;
-            return !!t.closest(DRAG_SEL);
+            if (t.id === STRIP_ID) return true;
+            if (t.closest(DRAG_SEL)) return true;
+            // Top band: allow even when target is #video/#launch (native layer).
+            if (
+                typeof clientY === "number" &&
+                clientY >= 0 &&
+                clientY < STRIP_H
+            ) {
+                if (t.closest(TOP_BAND_OK_SEL) || t === document.body) {
+                    return true;
+                }
+                // Also allow bare documentElement / empty areas.
+                if (t === document.documentElement) return true;
+                // If target is not an interactive control, still drag from band.
+                const tag = (t as HTMLElement).tagName;
+                if (tag === "VIDEO" || tag === "DIV" || tag === "BODY") {
+                    return true;
+                }
+            }
+            return false;
         };
 
         let startedNativeDrag = false;
@@ -3291,7 +3354,7 @@ if (typeof window.__TAURI__ !== "undefined") {
                 if (!(t instanceof Element)) return;
                 syncBodyDragRegion();
                 startedNativeDrag = false;
-                if (!isDragHandle(t)) return;
+                if (!isDragHandle(t, ev.clientY)) return;
                 // Arm suppress BEFORE startDragging so a failed drag still
                 // cannot open Menu via body.onclick (top 20% band).
                 startedNativeDrag = true;
