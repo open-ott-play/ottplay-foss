@@ -643,6 +643,10 @@ function getChanelsArray(a) {
     }
     var t = m3uArr.M3Us[m3uArr.active].www;
     if (!t) {
+        try {
+            $(launch_id).hide();
+            if (typeof clearBootHide === "function") clearBootHide();
+        } catch (e) {}
         doEditM3Ua();
         return;
     }
