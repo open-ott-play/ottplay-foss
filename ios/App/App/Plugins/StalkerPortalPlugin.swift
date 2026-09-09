@@ -102,7 +102,7 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
                     setCookie.append(single)
                 }
             }
-            os.log("[StalkerPortal] OK %{public}s (status=%d)", rawURL, status)
+            Logger(subsystem: "play.ott.foss", category: "StalkerPortal").debug("[StalkerPortal] OK %{public}s (status=%d)", rawURL, status)
             DispatchQueue.main.async {
                 call.resolve([
                     "status": NSNumber(value: status),
