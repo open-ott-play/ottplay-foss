@@ -840,6 +840,18 @@ export function showPage(): void {
         itemWidth = getWidthK() * 735;
         (window as any).itemWith = itemWidth;
     }
+    // Never let row width exceed the live #listIn box (window-state restore /
+    // non-1280 sizes used to overflow → wrap / clipped values in WKWebView).
+    try {
+        var listInBox = listInElement || document.getElementById("listIn");
+        if (listInBox && (listInBox as HTMLElement).clientWidth > 40) {
+            var avail =
+                (listInBox as HTMLElement).clientWidth -
+                (dataArr.length > settings.pageSize ? 12 * getWidthK() : 0);
+            if (avail > 40) itemWidth = Math.min(itemWidth, Math.floor(avail));
+            (window as any).itemWith = itemWidth;
+        }
+    } catch (_wCap) {}
     for (var i = pageStart; i < pageEnd; i++) {
         var selected = i === selIndex;
         html +=

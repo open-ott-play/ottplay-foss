@@ -1592,6 +1592,18 @@ function _channelsList(catIdx: number, channelIdx: number): void {
             parentalArray.indexOf(chId) === -1
                 ? ""
                 : "color:#a00;";
+        // Provider scripts define getChannelPicon; fall back to ch.logo so
+        // Mode B never throws mid-row (blank ERROR rows / missing icons).
+        var picUrl = "";
+        try {
+            if (typeof getChannelPicon === "function")
+                picUrl = getChannelPicon(chId) || "";
+            else if ((ch as any).logo) picUrl = String((ch as any).logo);
+        } catch (_pic) {
+            try {
+                if ((ch as any).logo) picUrl = String((ch as any).logo);
+            } catch (_pic2) {}
+        }
         var rowStyle =
             "display:flex;flex-direction:row;align-items:center;flex-wrap:nowrap;" +
             "width:100%;max-width:100%;min-width:0;overflow:hidden;box-sizing:border-box;" +
@@ -1632,7 +1644,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   "px;max-height:100%;margin:0 0 0 " +
                   pikonMargin +
                   "px;background-image:url('" +
-                  getChannelPicon(chId) +
+                  picUrl +
                   "');\"></div>"
                 : "") +
             '<div style="flex:1 1 auto;min-width:0;max-width:' +
@@ -1657,7 +1669,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   progWidth +
                   "px;margin:" +
                   progMargin +
-                  'px;"><div id="pr' +
+                  'px;background-color:rgba(68,68,102,0.55);"><div id="pr' +
                   chId +
                   '" style="width:' +
                   pct +

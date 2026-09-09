@@ -1,6 +1,6 @@
 [package]
 name = "ottplay-tauri"
-version = "1.1.17"
+version = "1.1.18"
 description = "Tauri desktop shell for ottplay-foss (Mode B), reusing ottplay-core"
 edition = "2021"
 authors = ["4alvit <4alvit@users.noreply.github.com>"]
@@ -15,8 +15,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2" }
+tauri = { version = "2", features = [] }
 tauri-plugin-updater = "2"
+tauri-plugin-global-shortcut = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync"] }
@@ -31,6 +32,7 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 # OS MediaSession / MPRIS / Now Playing / SMTC for Mode B lock-screen style controls.
 souvlaki = { version = "0.8", default-features = false, features = ["use_zbus"] }
 raw-window-handle = "0.6"
+tauri-plugin-window-state = "2"
 
 # Required for production embed of frontendDist. Plain `cargo build`
 # without this leaves cfg(dev) on and never embeds assets (white screen).

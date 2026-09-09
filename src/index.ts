@@ -2485,7 +2485,7 @@ window.stbToggleAspectRatio = stbToggleAspectRatio;
 // set_fullscreen. Those APIs are in-page video layout (full viewport vs
 // small window beside the list). Native macOS fullscreen steals Escape to
 // exit the space, so Escape never reaches exitPortal / the exit confirm.
-// OS/window fullscreen is toggled by Key L → set_fullscreen invoke
+// OS/window fullscreen is toggled by Key L → toggle_fullscreen invoke
 // (see stbEventToKeyCode); keep the Rust command for that.
 
 // Tauri Mode B: override stbToggleStandby for best-effort sleep prevention.
@@ -3724,13 +3724,15 @@ window._setSetup = function (
 ): void {
     (window as any).selIndex = 0;
     (window as any).getListItem = function (item: any, _idx: number): string {
+        // Flex name|value — float:left/right inside .item{display:flex} is
+        // ignored (DOM order showed value then name → "unformatted" in Tauri).
         return (
-            '<div style="float:right; width:23%; overflow:hidden; text-align:right;">' +
-            (item.values[item.val] || item.cur) +
-            "&nbsp;&nbsp;</div>" +
-            '<div style="float:left; width:75%; overflow:hidden;">&nbsp;&nbsp;' +
+            '<div class="item-label">&nbsp;&nbsp;' +
             item.name +
-            "</div>"
+            "</div>" +
+            '<div class="item-value">' +
+            (item.values[item.val] || item.cur) +
+            "&nbsp;&nbsp;</div>"
         );
     };
     var detailEl = document.getElementById("listDetail");
@@ -5335,6 +5337,32 @@ window.showEditKey2 = showEditKey2;
 window.setEditor = setEditor;
 window.setColor = setColor;
 window.setListPos = setListPos;
+
+// Keep list chrome (#listIn left/width, fonts, colors) in sync when the
+// frameless window is resized or restored by tauri-plugin-window-state.
+if (typeof window !== "undefined" && !(window as any).__ottListResizeBound) {
+    (window as any).__ottListResizeBound = true;
+    var __ottListResizeTimer: any = null;
+    window.addEventListener("resize", function () {
+        if (__ottListResizeTimer) clearTimeout(__ottListResizeTimer);
+        __ottListResizeTimer = setTimeout(function () {
+            try {
+                if (typeof (window as any).setListPos === "function")
+                    (window as any).setListPos();
+                if (typeof (window as any).setFontSize === "function")
+                    (window as any).setFontSize();
+                if (typeof (window as any).setColor === "function")
+                    (window as any).setColor();
+                if (
+                    (window as any).isListVisible &&
+                    typeof (window as any).showPage === "function"
+                )
+                    (window as any).showPage();
+            } catch (_eResize) {}
+        }, 120);
+    });
+}
+
 window.setFontSize = setFontSize;
 window.setTimezone = setTimezone;
 window.saveCPD = saveCPD;
