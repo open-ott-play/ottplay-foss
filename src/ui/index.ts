@@ -400,7 +400,8 @@ export function uiInit(): void {
         // inline onclick cannot double-fire setSelect→ENTER.
         if (!(listInEl as any).__ottListClickBound) {
             (listInEl as any).__ottListClickBound = true;
-            listInEl.addEventListener(
+            var listInClickRoot: HTMLElement = listInEl;
+            listInClickRoot.addEventListener(
                 "click",
                 function (ev: MouseEvent): void {
                     if ((window as any).__ottTauriSuppressClick) return;
@@ -410,7 +411,7 @@ export function uiInit(): void {
                     var item = t.closest(".item") as HTMLElement | null;
                     if (!item) {
                         var y = ev.clientY;
-                        var nodes = listInEl.querySelectorAll(".item");
+                        var nodes = listInClickRoot.querySelectorAll(".item");
                         for (var ii = 0; ii < nodes.length; ii++) {
                             var el = nodes[ii] as HTMLElement;
                             var rr = el.getBoundingClientRect();
