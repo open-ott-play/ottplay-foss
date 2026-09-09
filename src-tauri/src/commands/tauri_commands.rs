@@ -325,13 +325,39 @@ fn resolve_xmltv_id(
     channel_id.to_string()
 }
 
-/// Tracks macOS simple-fullscreen intent.
+/// Tracks macOS simple-fullscreen intent + pre-FS outer geometry.
 ///
 /// `Window::is_fullscreen()` is false while in `set_simple_fullscreen`, so
 /// toggle/exit must consult this flag. Never use a system-wide letter shortcut.
+///
+/// Frameless (`decorations: false`) windows can look "stuck" fullscreen when
+/// tao's simple-FS exit no-ops or restores a screen-sized frame: we therefore
+/// save outer position/size ourselves and force-restore on exit.
 #[cfg(target_os = "macos")]
 static MACOS_SIMPLE_FS: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
+
+#[cfg(target_os = "macos")]
+#[derive(Clone, Copy, Debug)]
+struct SavedOuter {
+    x: i32,
+    y: i32,
+    w: u32,
+    h: u32,
+}
+
+#[cfg(target_os = "macos")]
+static MACOS_SAVED_OUTER: std::sync::Mutex<Option<SavedOuter>> =
+    std::sync::Mutex::new(None);
+
+/// Drain the wry/tao main-thread queue after a fire-and-forget setter.
+///
+/// `set_simple_fullscreen` only enqueues from async command threads; a
+/// following getter round-trip waits until prior messages (including that
+/// setter) have been applied.
+fn sync_window_queue(window: &tauri::Window) {
+    let _ = window.is_fullscreen();
+}
 
 /// True when the window is in Spaces fullscreen or our macOS simple fullscreen.
 fn is_effectively_fullscreen(window: &tauri::Window) -> Result<bool, String> {
@@ -347,9 +373,10 @@ fn is_effectively_fullscreen(window: &tauri::Window) -> Result<bool, String> {
 /// Apply fullscreen without registering any global letter shortcut.
 ///
 /// On macOS prefer `set_simple_fullscreen` so the webview still receives L and
-/// Escape (Spaces/native fullscreen eats those keys). If the window is already
-/// in Spaces fullscreen (e.g. green-button), exit via `set_fullscreen(false)`.
-/// Other platforms keep `set_fullscreen`.
+/// Escape (Spaces/native fullscreen eats those keys). Exit always clears both
+/// Spaces and simple FS, then restores the pre-enter outer frame so L/Escape
+/// cannot leave the window stuck at monitor size. Other platforms keep
+/// `set_fullscreen`.
 pub fn apply_fullscreen(
     _app: &tauri::AppHandle,
     window: &tauri::Window,
@@ -358,26 +385,53 @@ pub fn apply_fullscreen(
     #[cfg(target_os = "macos")]
     {
         use std::sync::atomic::Ordering;
-        let native = window.is_fullscreen().unwrap_or(false);
         if fullscreen {
+            if is_effectively_fullscreen(window)? {
+                // Already FS — do not overwrite saved outer geometry.
+                return Ok(());
+            }
+            let native = window.is_fullscreen().unwrap_or(false);
             if native {
                 // Already Spaces FS — leave as-is; JS cannot get keys there.
                 MACOS_SIMPLE_FS.store(false, Ordering::SeqCst);
                 return Ok(());
             }
+            // Remember windowed outer frame before simple FS expands to screen.
+            if let (Ok(pos), Ok(size)) = (window.outer_position(), window.outer_size()) {
+                if let Ok(mut guard) = MACOS_SAVED_OUTER.lock() {
+                    *guard = Some(SavedOuter {
+                        x: pos.x,
+                        y: pos.y,
+                        w: size.width,
+                        h: size.height,
+                    });
+                }
+            }
             window
                 .set_simple_fullscreen(true)
                 .map_err(|e| e.to_string())?;
+            sync_window_queue(window);
             MACOS_SIMPLE_FS.store(true, Ordering::SeqCst);
         } else {
-            if native {
-                window
-                    .set_fullscreen(false)
-                    .map_err(|e| e.to_string())?;
-            }
-            // Always clear simple FS flag/mode on exit intent.
+            // Force-leave Spaces FS and simple FS regardless of which is active.
+            let _ = window.set_fullscreen(false);
             let _ = window.set_simple_fullscreen(false);
+            sync_window_queue(window);
             MACOS_SIMPLE_FS.store(false, Ordering::SeqCst);
+            // Explicit geometry restore — tao exit can no-op or restore a
+            // screen-sized frame on frameless windows, which looks like
+            // "L enters but never exits".
+            let saved = MACOS_SAVED_OUTER
+                .lock()
+                .ok()
+                .and_then(|mut g| g.take());
+            if let Some(s) = saved {
+                if s.w > 0 && s.h > 0 {
+                    let _ = window.set_size(tauri::PhysicalSize::new(s.w, s.h));
+                    let _ = window.set_position(tauri::PhysicalPosition::new(s.x, s.y));
+                    sync_window_queue(window);
+                }
+            }
         }
         return Ok(());
     }
@@ -398,9 +452,10 @@ pub async fn set_fullscreen(
     fullscreen: bool,
 ) -> Result<FullscreenResult, String> {
     apply_fullscreen(&app, &window, fullscreen)?;
+    let actual = is_effectively_fullscreen(&window).unwrap_or(fullscreen);
     Ok(FullscreenResult {
         ok: true,
-        fullscreen: Some(fullscreen),
+        fullscreen: Some(actual),
     })
 }
 
@@ -414,9 +469,11 @@ pub async fn toggle_fullscreen(
     let cur = is_effectively_fullscreen(&window)?;
     let next = !cur;
     apply_fullscreen(&app, &window, next)?;
+    // Report live effective state (flag + is_fullscreen), not the intent bit.
+    let actual = is_effectively_fullscreen(&window).unwrap_or(next);
     Ok(FullscreenResult {
         ok: true,
-        fullscreen: Some(next),
+        fullscreen: Some(actual),
     })
 }
 
