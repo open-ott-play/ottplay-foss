@@ -236,7 +236,7 @@ pub fn init_xmltv_urls() -> Vec<String> {
     }
 }
 
-/// `invoke('get_epg', {hash, channel_id, ch, time_shift_hours})` → JSON EPG slice.
+/// `invoke('get_epg', {hash, channelId, ch, timeShiftHours})` → JSON EPG slice (Tauri 2 camelCase).
 ///
 /// Mirrors `src-rs/server/src/main.rs::epg_handler`:
 /// 1. If `ch` (playlist channel name) provided, fuzzy-match → xmltv_id.

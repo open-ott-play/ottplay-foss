@@ -85,6 +85,7 @@ import {
     getActiveFavoritesListName,
     getChannelUrl,
     getCurProgData,
+    getEPGchanelCached,
     getMediaDescr,
     handleNumberInput,
     ifParentalAccessChId,
@@ -1896,11 +1897,9 @@ function tauriInvoke<T>(
 /**
  * Setup Tauri EPG override for getEPGchanel. Uses Tauri IPC instead of HTTP fetch.
  * Mode A (browser/STB): leaves getEPGchanel unchanged — provider HTTP fetch path.
- * Mode B (Tauri): passes playlist channel name so the Rust backend can resolve
- *   it to the XMLTV channel ID via match_channel, mirroring the server's
- *   /epg/{hash} handler. This ensures cache.programs[channel_id] looks up the
- *   correct xmltv_id instead of a numeric playlist chId.
- * time_shift_hours is always 0 (future EPG only, no historical data).
+ * Mode B (Tauri): passes playlist channel name + epg_url hash so Rust can resolve
+ *   xmltv_id via match_channel / epg_to_xmltv (same as companion /epg/{hash}).
+ * Invoke arg keys must be Tauri 2 camelCase: channelId, timeShiftHours.
  */
 
 /**
@@ -2290,11 +2289,12 @@ function setupTauriEpgOverride(): void {
         const timeShiftHours =
             ch && typeof (ch as any).rec === "number" ? (ch as any).rec : 0;
 
+        // Tauri 2 command args are camelCase (channel_id → channelId).
         tauriInvoke<any>("get_epg", {
             ch: channelName,
-            channel_id: channelIdNum.toString(),
+            channelId: channelIdNum.toString(),
             hash: epgHash,
-            time_shift_hours: timeShiftHours,
+            timeShiftHours: timeShiftHours,
         })
             .then((result) => {
                 callback(chId, result?.epg_data || []);
@@ -5252,6 +5252,7 @@ window.checkMedia = checkMedia;
 window.setCurrent = setCurrent;
 window.setCurProg = setCurProg;
 window.getCurProgData = getCurProgData;
+window.getEPGchanelCached = getEPGchanelCached;
 window.nextChannel = nextChannel;
 window.prevChannel = prevChannel;
 window.handleNumberInput = handleNumberInput;
