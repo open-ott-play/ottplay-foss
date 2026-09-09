@@ -1559,19 +1559,23 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                 " id=" +
                 chId
             );
-        // FOSS 1280.css .item uses padding:0 14px (border-box) and .img
-        // margin-right:8px — gold had neither. Without subtracting those,
-        // float:right .progress_div wraps and is clipped by overflow:hidden.
-        var styleExtra = 28 + (pikonSize ? 8 : 0);
-        var textW =
+        // FOSS 1280.css .item uses padding:0 14px (border-box). Prefer flex
+        // nowrap over competing floats: number+img+name used to wrap onto a
+        // second line when numWidth+pikon+margins+textW+progress exceeded
+        // itemWith (Category: All looked like "number" then "name").
+        // .img always has margin-right:8px even when pikonSize is 0.
+        var styleExtra = 28 + 8;
+        var textW = Math.max(
+            40,
             itemWith -
-            numWidth -
-            pikonSize -
-            pikonMargin -
-            progWidth -
-            2 * progMargin -
-            archWidth * 3 -
-            styleExtra;
+                numWidth -
+                pikonSize -
+                pikonMargin -
+                progWidth -
+                2 * progMargin -
+                archWidth * 3 -
+                styleExtra
+        );
         var progName = getCurProgData(chId, updateChanelList) ? ch.name : "";
         if (ch.outdated === true)
             progName =
@@ -1588,8 +1592,9 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                 ? ""
                 : "color:#a00;";
         return (
+            '<div style="display:flex;align-items:center;flex-wrap:nowrap;width:100%;min-width:0;overflow:hidden;box-sizing:border-box;">' +
             (numWidth
-                ? '<div style="float:left;width:' +
+                ? '<div style="flex:0 0 ' +
                   numWidth +
                   "px;text-align:right;" +
                   parentalStyle +
@@ -1598,7 +1603,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   "</div>"
                 : "") +
             (archWidth
-                ? '<div style="float:left;width:' +
+                ? '<div style="flex:0 0 ' +
                   archWidth +
                   "px;" +
                   (ch.rec ? "background-color:lime;" : "") +
@@ -1608,18 +1613,20 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   (itemH - archWidth * 2) +
                   'px"></div>'
                 : "") +
-            '<div class="img" style="background-image:url(\'' +
+            '<div class="img" style="float:none;flex:0 0 auto;background-image:url(\'' +
             (pikonSize ? getChannelPicon(chId) : "") +
             "'); width:" +
             pikonSize +
             "px;margin-left:" +
             pikonMargin +
             'px;"></div>' +
-            '<div style="float:left; width:' +
+            '<div style="flex:1 1 auto;min-width:' +
+            Math.min(40, textW) +
+            "px;max-width:" +
             textW +
-            "px; color:" +
+            "px;color:" +
             bodyColor +
-            '; overflow:hidden;">&nbsp;' +
+            ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">&nbsp;' +
             (sShowName ? ch.channel_name + "&nbsp;" : "") +
             (sShowProgram
                 ? '<span id="pn' +
@@ -1631,7 +1638,9 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   "</span></div>"
                 : "</div>") +
             (progWidth
-                ? '<div class="progress_div" style="width:' +
+                ? '<div class="progress_div" style="float:none;flex:0 0 ' +
+                  progWidth +
+                  "px;width:" +
                   progWidth +
                   "px;margin:" +
                   progMargin +
@@ -1644,7 +1653,8 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   "px;background-color:" +
                   curColor +
                   ';font-size:1px;"></div></div>'
-                : "")
+                : "") +
+            "</div>"
         );
     };
     listDetail.innerHTML = "";
