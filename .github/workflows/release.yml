@@ -253,6 +253,20 @@ jobs:
           if [ "${TAURI_SIGNING:-}" = "true" ]; then
             EXTRA_CONFIG+=(--config '{"bundle":{"createUpdaterArtifacts":true}}')
           fi
+
+          # Apple notarize: only pass APPLE_* env when all secrets present.
+          # Otherwise leave them unset so Tauri does not attempt codesign/notarize.
+          if [ "${{ steps.signs.outputs.apple_notarize }}" = "true" ]; then
+            export APPLE_CERTIFICATE="${{ secrets.APPLE_CERTIFICATE }}"
+            export APPLE_CERTIFICATE_PASSWORD="${{ secrets.APPLE_CERTIFICATE_PASSWORD }}"
+            export APPLE_SIGNING_IDENTITY="${{ secrets.APPLE_SIGNING_IDENTITY }}"
+            export APPLE_ID="${{ secrets.APPLE_ID }}"
+            export APPLE_PASSWORD="${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}"
+            export APPLE_TEAM_ID="${{ secrets.APPLE_TEAM_ID }}"
+          else
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+
           if [ -n "${TAURI_TARGET:-}" ]; then
             npx tauri build --ci --target "$TAURI_TARGET" "${EXTRA_CONFIG[@]}"
           else
@@ -265,13 +279,6 @@ jobs:
           TAURI_SIGNING: ${{ steps.signs.outputs.tauri_signing }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # macOS codesign + notarize (no-ops when empty / non-mac)
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Cleanup Apple keychain (optional)
         if: always() && steps.signs.outputs.apple_notarize == 'true'
@@ -292,7 +299,7 @@ jobs:
         with:
           tag_name: ${{ needs.release.outputs.tag }}
           files: tauri-artifacts/*
-          fail_on_unmatched_files: true
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

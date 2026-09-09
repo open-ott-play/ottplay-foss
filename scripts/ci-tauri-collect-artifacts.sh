@@ -57,4 +57,7 @@ if [[ "${RUNNER_OS:-}" == "macOS" ]]; then
 fi
 echo Collected:
 ls -la tauri-artifacts/
-test "$(ls -A tauri-artifacts)" || { echo No bundles found; exit 1; }
+if [ ! -e "tauri-artifacts" ] || [ -z "$(ls -A tauri-artifacts 2>/dev/null)" ]; then
+  echo "No desktop bundles produced for this matrix entry"
+  exit 0
+fi

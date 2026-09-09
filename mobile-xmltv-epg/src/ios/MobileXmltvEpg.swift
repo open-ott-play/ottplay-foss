@@ -1,5 +1,5 @@
 import Capacitor
-import Compression
+import zlib
 
 @objc(MobileXmltvEpg)
 public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
@@ -103,32 +103,32 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
     // MARK: - Gzip
 
     private func gunzip(_ data: Data) -> Data? {
-        let stream = UnsafeMutablePointer<compression_stream>.allocate(capacity: 1)
-        defer { stream.deallocate() }
-
-        guard compression_stream_init(stream, COMPRESSION_STREAM_DECODE, COMPRESSION_STREAM_GZIP) != COMPRESSION_STATUS_ERROR else {
-            return nil
-        }
-        defer { compression_stream_destroy(stream) }
-
-        stream.pointee.src_ptr = (data as NSData).bytes.bindMemory(to: UInt8.self, capacity: data.count)
-        stream.pointee.src_size = data.count
-
         let bufferSize = 64 * 1024
         let dstBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
         defer { dstBuffer.deallocate() }
 
+        var stream = UnsafeMutablePointer<z_stream>.allocate(capacity: 1)
+        defer { stream.deallocate() }
+        stream.pointee = z_stream()
+
+        guard inflateInit2(stream, 16 + MAX_WBITS) == Z_OK else { return nil }
+        defer { inflateEnd(stream) }
+
+        stream.pointee.next_in = (data as NSData).bytes.bindMemory(to: UInt8.self, capacity: data.count)
+        stream.pointee.avail_in = data.count
+
         var result = Data()
+        var ret: Int32 = Z_OK
         repeat {
-            stream.pointee.dst_ptr = dstBuffer
-            stream.pointee.dst_size = bufferSize
-            let status = compression_stream_process(stream, 0)
-            if status == COMPRESSION_STATUS_ERROR { return nil }
-            let produced = bufferSize - stream.pointee.dst_size
+            stream.pointee.next_out = dstBuffer
+            stream.pointee.avail_out = bufferSize
+            ret = inflate(stream, Z_NO_FLUSH)
+            if ret != Z_OK && ret != Z_STREAM_END { return nil }
+            let produced = bufferSize - stream.pointee.avail_out
             if produced > 0 {
                 result.append(dstBuffer, count: produced)
             }
-        } while status != COMPRESSION_STATUS_END
+        } while ret != Z_STREAM_END
 
         return result
     }
