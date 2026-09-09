@@ -647,7 +647,7 @@ function getChanelsArray(a) {
             $(launch_id).hide();
             if (typeof clearBootHide === "function") clearBootHide();
         } catch (e) {}
-        doEditM3Ua();
+        doEditListData(m3uArr.active);
         return;
     }
     if (typeof readFile === "function" && t && t[0] === "/") r(readFile(t));
@@ -698,7 +698,7 @@ var doEditM3Ua = function (e) {
             (sNoNumbersKeys || r >= 6
                 ? r + 1 + ":&nbsp;"
                 : '<div class="btn">' + (r + 1) + "</div>&nbsp;") +
-            (e.name || e.www || "")
+            (e.name || e.www || "—")
         );
     };
     detailListAction = function () {
