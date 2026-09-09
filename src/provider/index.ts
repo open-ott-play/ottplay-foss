@@ -1004,10 +1004,13 @@ export function loadChannels(): void {
     if (typeof setPlayer === "function") setPlayer();
 
     $(launch_id).append("<br/>Loading channel list...");
-    // If getChanelsArray doesn't call back (e.g. empty playlist URL), hide spinner after timeout
+    // If getChanelsArray doesn't call back (e.g. empty playlist URL), hide spinners after timeout
     var _loadTimer = setTimeout(function () {
         $("#dialogbox").hide();
         $("#buffering").hide();
+        $("#launch").hide();
+        if (typeof (window as any).clearBootHide === "function")
+            (window as any).clearBootHide();
     }, 3000);
     getChanelsArray(function () {
         clearTimeout(_loadTimer);
