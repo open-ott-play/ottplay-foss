@@ -394,6 +394,53 @@ export function uiInit(): void {
         } else if ("onmousewheel" in document) {
             (listInEl as any).onmousewheel = onWheel;
         }
+        // Capture-phase row hit-test: map click to the .item under the
+        // pointer (closest + Y fallback). Avoids float/paint desync where
+        // visual row N fired #it0 / void. stopImmediatePropagation so the
+        // inline onclick cannot double-fire setSelect→ENTER.
+        if (!(listInEl as any).__ottListClickBound) {
+            (listInEl as any).__ottListClickBound = true;
+            var listInClickRoot: HTMLElement = listInEl;
+            listInClickRoot.addEventListener(
+                "click",
+                function (ev: MouseEvent): void {
+                    if ((window as any).__ottTauriSuppressClick) return;
+                    var t = ev.target;
+                    if (!(t instanceof Element)) return;
+                    if (t.closest(".list-scroll")) return;
+                    var item = t.closest(".item") as HTMLElement | null;
+                    if (!item) {
+                        var y = ev.clientY;
+                        var nodes = listInClickRoot.querySelectorAll(".item");
+                        for (var ii = 0; ii < nodes.length; ii++) {
+                            var el = nodes[ii] as HTMLElement;
+                            var rr = el.getBoundingClientRect();
+                            if (y >= rr.top && y <= rr.bottom) {
+                                item = el;
+                                break;
+                            }
+                        }
+                    }
+                    if (!item) return;
+                    var raw =
+                        item.getAttribute("data-idx") ||
+                        (item.id && item.id.indexOf("it") === 0
+                            ? item.id.slice(2)
+                            : "");
+                    var idx = parseInt(raw as string, 10);
+                    if (isNaN(idx)) return;
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    ev.stopImmediatePropagation();
+                    if (typeof (window as any).setSelect === "function") {
+                        (window as any).setSelect(idx);
+                    } else {
+                        setSelect(idx);
+                    }
+                },
+                true
+            );
+        }
     }
 
     // Progress bar drag-to-seek — press on progress bar and drag to seek, release to seek
@@ -771,12 +818,14 @@ export function showPage(): void {
             Math.floor(dataArr.length / settings.pageSize) +
             (dataArr.length % settings.pageSize ? 1 : 0);
         var currentPage = Math.floor(selIndex / settings.pageSize);
+        // Absolute scrollbar (NOT float:right): float-first layout made
+        // visual rows miss their #itN hit targets in WKWebView/Tauri.
         html +=
-            '<div onclick="event.stopPropagation();changeSelect(' +
+            '<div class="list-scroll" onclick="event.stopPropagation();changeSelect(' +
             settings.pageSize +
-            ');" style="float:right;height:100%;width:' +
+            ');" style="position:absolute;right:0;top:0;bottom:0;width:' +
             scrollWidth +
-            'px; border: 1px solid rgba(240,240,240,0.35); border-radius: 4px; background-color: rgba(255,255,255,0.06);">';
+            'px; border: 1px solid rgba(240,240,240,0.35); border-radius: 4px; background-color: rgba(255,255,255,0.06);z-index:2;">';
         html +=
             '<div onclick="event.stopPropagation();changeSelect(-' +
             settings.pageSize +
@@ -795,6 +844,8 @@ export function showPage(): void {
         var selected = i === selIndex;
         html +=
             '<div id="it' +
+            i +
+            '" data-idx="' +
             i +
             '" onclick="event.stopPropagation();setSelect(' +
             i +
