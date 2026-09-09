@@ -1824,10 +1824,12 @@ function onStbReady(): void {
         if (typeof window.__TAURI__ !== "undefined") {
             setupTauriEpgOverride();
             setupTauriCompanionShim();
-            setupStalkerPortalShim();
+            if (typeof setupStalkerPortalShim === "function")
+                setupStalkerPortalShim();
         } else if (typeof (window as any).Capacitor !== "undefined") {
             setupCapacitorCompanionShim();
-            setupStalkerPortalShim();
+            if (typeof setupStalkerPortalShim === "function")
+                setupStalkerPortalShim();
         }
 
         if (TMDb && TMDb.prepare) TMDb.prepare();
@@ -3020,7 +3022,8 @@ if (typeof window.__TAURI__ !== "undefined") {
         // Interactive / overlay surfaces that must keep pointer clicks.
         // NOTE: [onclick] removed — too broad, eats the Menu header/top chrome.
         const NO_DRAG_SEL =
-            '[id^="list"],.osd,#info,#info1,#numprog,#dialogbox,#volume_div,#mute,' +
+            "#listIn,#listAbout,#listEdit,#listPopUp,#listDetail,#listPodval," +
+            "#list_osd,#list_window,.osd,#info,#info1,#numprog,#dialogbox,#volume_div,#mute," +
             "#permanentTime,#launch,#notifications,#buffering,#pip_buffering,#videopip,#video," +
             "#progress_div,#progress,#progress_r,#progress_span,#descr,#channel,#data," +
             "#ott-tauri-loading-logs," +
