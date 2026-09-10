@@ -3103,6 +3103,33 @@ export function channelsList(_catIdx: number, _channelIdx: number): void {
  * - Updates #listCaption, #listPodval, #listPopUp DOM.
  * - Calls `window.showPage`.
  */
+/**
+ * Index of the currently playing channel inside category `catIdx`, or 0.
+ * Used when opening a category so Category: All highlights the live channel
+ * instead of row 0 (invisible / wrong cursor).
+ */
+function playingChannelIdxInCategory(catIdx: number): number {
+    try {
+        var list = (cats && catsArray && cats[catsArray[catIdx]]) || [];
+        if (!list.length) return 0;
+        if (
+            catIdx === catIndex &&
+            typeof primaryIndex === "number" &&
+            primaryIndex >= 0 &&
+            primaryIndex < list.length
+        ) {
+            return primaryIndex;
+        }
+        var curList = (cats && catsArray && cats[catsArray[catIndex]]) || [];
+        var curId = curList[primaryIndex];
+        if (curId != null) {
+            var i = list.indexOf(curId);
+            if (i >= 0) return i;
+        }
+    } catch (_e) {}
+    return 0;
+}
+
 export function bucketsList(catIdx: number, _channelIdx?: number): void {
     var w = window as any;
     var catsList = catsArray || [];
@@ -3294,7 +3321,7 @@ export function bucketsKeyHandler(keyCode: number): boolean {
                 idx < catsArray.length &&
                 typeof w.channelsList === "function"
             ) {
-                w.channelsList(idx, 0);
+                w.channelsList(idx, playingChannelIdxInCategory(idx));
             }
             return true;
         }
@@ -3312,7 +3339,10 @@ export function bucketsKeyHandler(keyCode: number): boolean {
         case keys.RIGHT:
         case keys.ENTER:
             if (typeof w.channelsList === "function") {
-                w.channelsList(w.selIndex, 0);
+                w.channelsList(
+                    w.selIndex,
+                    playingChannelIdxInCategory(w.selIndex)
+                );
             }
             return true;
 
@@ -3321,7 +3351,7 @@ export function bucketsKeyHandler(keyCode: number): boolean {
             var nextCat =
                 w.selIndex < catsArray.length - 1 ? w.selIndex + 1 : 0;
             if (typeof w.channelsList === "function") {
-                w.channelsList(nextCat, 0);
+                w.channelsList(nextCat, playingChannelIdxInCategory(nextCat));
             }
             return true;
         }
@@ -4116,7 +4146,7 @@ function _ch_id(arrayName: string): string | null {
  * Get a saved per-channel value from a named global array (e.g. `aAspects`, `aAudios`).
  *
  * @param arrayName - The name of the global array variable (e.g. `"aAspects"`).
- * @returns The stored numeric value, or 0 if not found / invalid.
+ * @returns The stored numeric value, or default (1 for aAspects / cover, else 0).
  */
 export function getCHarr(arrayName: string): number {
     if (typeof arrayName !== "string") return 0;
@@ -4124,12 +4154,12 @@ export function getCHarr(arrayName: string): number {
     if (chId == null) return 0;
     var arr = (window as any)[arrayName];
     if (arr && typeof arr[chId] !== "undefined") return arr[chId];
-    return 0;
+    return arrayName === "aAspects" ? 1 : 0;
 }
 
 /**
  * Look up the current channel's saved value in a named array and pass it
- * to the callback. For `aAspects` and `aZooms`, defaults to 0 if missing.
+ * to the callback. For `aZooms`, defaults to 0 if missing; for `aAspects`, defaults to 1 (cover).
  *
  * @param arrayName - Name of the global array (e.g. `"aAspects"`).
  * @param callback  - Receives the numeric value found (or default).
@@ -4147,7 +4177,9 @@ export function execCHarr(
     var val =
         typeof arr !== "undefined" && arr !== null ? arr[chId] : undefined;
     if (typeof val === "undefined") {
-        if (arrayName === "aAspects" || arrayName === "aZooms") val = 0;
+        if (arrayName === "aAspects")
+            val = 1; // cover/fill default
+        else if (arrayName === "aZooms") val = 0;
         else return;
     }
     try {

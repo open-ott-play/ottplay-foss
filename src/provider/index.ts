@@ -1531,11 +1531,17 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     listCatIndex = catIdx;
     listArray = cats[catsArray[listCatIndex]] || [];
     var wk = getWidthK();
-    // Match showPage: prefer live #listIn so picons/progress fit clipped-safe rows.
+    // Match showPage: fitted pageSize + live #listIn row height so picons
+    // align with visibly fitting rows (not settings.pageSize alone).
+    var pageSz =
+        typeof (window as any).listFitPageSize === "function"
+            ? (window as any).listFitPageSize(pageSize)
+            : pageSize;
+    (window as any).listPageSize = pageSz;
     var itemH =
         typeof (window as any).listRowHeight === "function"
-            ? (window as any).listRowHeight(pageSize)
-            : (window.innerHeight - 130 * getHeightK()) / pageSize;
+            ? (window as any).listRowHeight(pageSz)
+            : (window.innerHeight - 130 * getHeightK()) / pageSz;
     var numWidth = 0;
     if (sShowNum)
         try {

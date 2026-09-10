@@ -620,13 +620,23 @@ function handleListKey(keyCode: number, event: KeyboardEvent): boolean {
         case keys.RW:
         case keys.CH_UP:
             if (typeof (window as any).changeSelect === "function")
-                (window as any).changeSelect(-((window as any).pageSize || 25));
+                (window as any).changeSelect(
+                    -(
+                        (window as any).listPageSize ||
+                        (window as any).pageSize ||
+                        25
+                    )
+                );
             return true;
         case keys.RIGHT:
         case keys.FF:
         case keys.CH_DOWN:
             if (typeof (window as any).changeSelect === "function")
-                (window as any).changeSelect((window as any).pageSize || 25);
+                (window as any).changeSelect(
+                    (window as any).listPageSize ||
+                        (window as any).pageSize ||
+                        25
+                );
             return true;
         case keys.PREV:
             if ((window as any).sPNFun === 3) {
@@ -635,7 +645,11 @@ function handleListKey(keyCode: number, event: KeyboardEvent): boolean {
             } else {
                 if (typeof (window as any).changeSelect === "function")
                     (window as any).changeSelect(
-                        -((window as any).pageSize || 25)
+                        -(
+                            (window as any).listPageSize ||
+                            (window as any).pageSize ||
+                            25
+                        )
                     );
             }
             return true;
@@ -652,7 +666,9 @@ function handleListKey(keyCode: number, event: KeyboardEvent): boolean {
             } else {
                 if (typeof (window as any).changeSelect === "function")
                     (window as any).changeSelect(
-                        (window as any).pageSize || 25
+                        (window as any).listPageSize ||
+                            (window as any).pageSize ||
+                            25
                     );
             }
             return true;
