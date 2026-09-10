@@ -326,7 +326,7 @@ Goal: iOS + Android from the same TypeScript source.
 - iOS TestFlight → fix crashes + permission prompts
 - Android internal track → same
 - Touch vs remote: device profiles in `src/keyhandler/` already separate input modes
-- Store listing: icon 1024×1024, screenshots, privacy policy URL
+- Store listing: icon 1024×1024, screenshots, privacy policy URL — `https://github.com/open-ott-play/ottplay-foss/blob/main/docs/privacy-policy.md` (see [`docs/privacy-policy.md`](privacy-policy.md))
 
 ### Phase 4 — STB/TV builds (ongoing, unchanged)
 

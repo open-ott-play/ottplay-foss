@@ -240,11 +240,12 @@ Prepared. Human upload still required.
 
 ### Privacy policy
 
-FOSS apps need a public privacy page. Do NOT invent a live URL. Use placeholder until project publishes one:
+Public stub (store listings / Play & App Store privacy URL):
 
-`https://example.com/TODO-privacy-policy`
+[`docs/privacy-policy.md`](privacy-policy.md) —
+`https://github.com/open-ott-play/ottplay-foss/blob/main/docs/privacy-policy.md`
 
-Replace with actual URL before store submission.
+Honest FOSS summary: on-device playback; optional user-configured playlist/EPG/portal URLs; no baked-in analytics/ads/crash SDKs; streams and EPG go to operator-configured endpoints. Not legal advice — fuller policy may replace the stub later.
 
 ### CI relationship to signing
 
