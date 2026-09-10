@@ -927,9 +927,9 @@ export function showPage(): void {
             '" onclick="event.stopPropagation();setSelect(' +
             i +
             ')" class="item"';
-        // Companion: height + line-height:normal. Pack height from
-        // listRowHeight (live #listIn / pageSize) so 25 fit; max-height keeps
-        // WKWebView from growing past that (font/picon min-content).
+        // Pack height from listRowHeight (live #listIn / pageSize). WKWebView
+        // expands #itN when line-height:normal (~1.2× 90-chrome font) exceeds
+        // the row box — lock height+line-height+min/max to the same px.
         html +=
             ' style="display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;' +
             "box-sizing:border-box;margin:0;padding:0 14px;border:none;border-radius:3px;" +
@@ -937,7 +937,11 @@ export function showPage(): void {
             itemHeight +
             "px;max-height:" +
             itemHeight +
-            "px;min-height:0;line-height:normal;width:" +
+            "px;min-height:" +
+            itemHeight +
+            "px;line-height:" +
+            itemHeight +
+            "px;width:" +
             itemWidth +
             "px;overflow:hidden;white-space:nowrap;flex-shrink:0;";
         if (selected)

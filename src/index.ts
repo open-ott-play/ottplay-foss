@@ -1017,11 +1017,16 @@ function setFontSize(): void {
     var e = window.innerHeight / 720;
     var t = window.innerWidth / 1280;
     // Companion OTT setFontSize uses 90-chrome for glyph size; showPage rows
-    // use 130-chrome / live #listIn. fontShift ("Distance between lines")
-    // shrinks glyphs inside the row line-box.
+    // use 130-chrome / live #listIn via listRowHeight. fontShift shrinks
+    // glyphs inside the row line-box. Clamp to the real row box so WKWebView
+    // cannot expand #itN past pageSize packing (90-chrome alone was taller).
+    var rowPx =
+        typeof (window as any).listRowHeight === "function"
+            ? (window as any).listRowHeight(pageSize)
+            : (window.innerHeight - 130 * e) / pageSize;
     var r = (window.innerHeight - 90 * e) / pageSize - settings.fontShift * e;
     r = Math.max(r, 16 * e);
-    r = Math.min(r, 40 * e);
+    r = Math.min(r, 40 * e, Math.max(10 * e, rowPx));
     $("#list").css("font-size", r + "px");
     $("#testFont").css("font-size", r + "px");
     $("#permanentTime").css("font-size", r + "px");
@@ -1641,7 +1646,7 @@ function selectLang(): void {
                         },
                         function () {
                             console.log("TRACE langJS load FAILED");
-                            infoBox("ERR: lang loading fail!");
+                            infoBox("Error: failed to load language.");
                         }
                     );
                 }
@@ -1698,6 +1703,22 @@ function loadProvCallback(): void {
  * Edge case: Wrapped in try/catch — exceptions are displayed in #launch.
  */
 export function startPlayer(): void {
+    // Cap/Tauri boot leaves hostUrl ""; language packs + icons resolve via
+    // absolute "/stbPlayer/…". Prefer location.origin when present so nested
+    // Cap paths and capacitor://localhost match CSS/bundle host.
+    try {
+        if (!hostUrl) {
+            var locHost =
+                (typeof (window as any).host === "string" &&
+                    (window as any).host) ||
+                (window.location && window.location.origin) ||
+                "";
+            if (locHost && locHost !== "null" && locHost !== "file://") {
+                hostUrl = locHost;
+                (window as any).hostUrl = hostUrl;
+            }
+        }
+    } catch (_hu) {}
     var launchEl = document.getElementById("launch");
     if (launchEl) {
         launchEl.innerHTML += "<br/>VER: " + PLAYER_VERSION;
