@@ -1531,8 +1531,11 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     listCatIndex = catIdx;
     listArray = cats[catsArray[listCatIndex]] || [];
     var wk = getWidthK();
-    // Match showPage row height (130 chrome) so pikon/progress fit the flex .item.
-    var itemH = (window.innerHeight - 130 * getHeightK()) / pageSize;
+    // Match showPage: prefer live #listIn so picons/progress fit clipped-safe rows.
+    var itemH =
+        typeof (window as any).listRowHeight === "function"
+            ? (window as any).listRowHeight(pageSize)
+            : (window.innerHeight - 130 * getHeightK()) / pageSize;
     var numWidth = 0;
     if (sShowNum)
         try {

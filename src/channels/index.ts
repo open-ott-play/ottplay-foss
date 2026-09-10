@@ -1422,7 +1422,10 @@ export function itemEPG(item: EPGEntry, index: number): string {
 
     var ch = (channels[epg_ch_id] || {}) as Channel;
     var prefix = "";
-    var isPast = item.time < Date.now() / 1000;
+    // Use the same clock as isCurrent (live or archive playhead). time_to
+    // marks ended programmes so the current row is not also tagged past —
+    // wrong past styling after EPG page-up was easy to miss when rows clipped.
+    var isPast = item.time_to <= now;
     if (ch.rec && isPast)
         prefix +=
             '<div class="btn green">&nbsp;</div> ' +

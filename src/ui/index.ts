@@ -13,6 +13,7 @@ import {
     getHeightK,
     getThumbnail,
     getWidthK,
+    listRowHeight,
     time2time,
 } from "../utils/helpers";
 
@@ -807,8 +808,10 @@ export function showPage(): void {
     var pageStart =
         Math.floor(selIndex / settings.pageSize) * settings.pageSize;
     var pageEnd = Math.min(pageStart + settings.pageSize, dataArr.length);
-    var itemHeight =
-        (window.innerHeight - 130 * getHeightK()) / settings.pageSize;
+    // Fit pageSize rows inside live #listIn (formula alone drifts after
+    // caption/podval 52px chrome + Tauri window chrome → clipped rows,
+    // cursor on off-screen 21–25 while DOM still has pageSize items).
+    var itemHeight = listRowHeight(settings.pageSize);
     var html = "";
     if (dataArr.length > settings.pageSize) {
         itemWidth = getWidthK() * 720;
@@ -864,9 +867,11 @@ export function showPage(): void {
             ')" class="item"';
         html +=
             ' style="display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;' +
-            "height:" +
+            "box-sizing:border-box;height:" +
             itemHeight +
-            "px;line-height:normal;width:" +
+            "px;max-height:" +
+            itemHeight +
+            "px;min-height:0;line-height:normal;width:" +
             itemWidth +
             "px;overflow:hidden;white-space:nowrap;";
         if (selected)
@@ -884,7 +889,10 @@ export function showPage(): void {
         }
         html += "</div>";
     }
-    if (listInElement) listInElement.innerHTML = html;
+    if (listInElement) {
+        listInElement.scrollTop = 0;
+        listInElement.innerHTML = html;
+    }
     detailListActionWithTimeOut();
 }
 
@@ -917,7 +925,26 @@ export function changeSelect(delta: number): void {
     else if (selIndex >= dataArr.length)
         selIndex = delta === 1 ? 0 : dataArr.length - 1;
     var newItem = document.getElementById("it" + selIndex);
+    // #itN in DOM is not enough: overflow:hidden can leave the node clipped
+    // inside #listIn (cursor on 21–25 while rows 1–20 show). Re-render the
+    // page so the highlight always lands on a fully visible row.
+    var fullyVisible = false;
     if (newItem) {
+        try {
+            var listInBox = listInElement || document.getElementById("listIn");
+            if (listInBox) {
+                var lr = (listInBox as HTMLElement).getBoundingClientRect();
+                var er = newItem.getBoundingClientRect();
+                fullyVisible =
+                    er.top >= lr.top - 1 && er.bottom <= lr.bottom + 1;
+            } else {
+                fullyVisible = true;
+            }
+        } catch (_vis) {
+            fullyVisible = true;
+        }
+    }
+    if (newItem && fullyVisible) {
         var oldItem = document.getElementById("it" + oldIndex);
         if (oldItem) {
             oldItem.style.backgroundColor = "";

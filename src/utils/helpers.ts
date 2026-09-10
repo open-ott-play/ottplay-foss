@@ -118,10 +118,34 @@ export function getHeightK(): number {
     return window.innerHeight / 720;
 }
 
+/**
+ * Row height so `pageSize` items fit inside the live `#listIn` box.
+ * Falls back to the 130px chrome formula when `#listIn` is not laid out yet.
+ * Floors the measured value so WKWebView/Tauri cannot clip the last rows
+ * (selection cursor hanging on off-screen indices while pageSize rows are in DOM).
+ */
+export function listRowHeight(pageSize: number): number {
+    var ps = Math.max(1, pageSize | 0);
+    var fallback = (window.innerHeight - 130 * getHeightK()) / ps;
+    try {
+        var box = document.getElementById("listIn");
+        if (box && box.clientHeight > 40) {
+            var cs = window.getComputedStyle(box);
+            var pad =
+                (parseFloat(cs.paddingTop) || 0) +
+                (parseFloat(cs.paddingBottom) || 0);
+            var avail = box.clientHeight - pad;
+            if (avail > 40) return Math.max(1, Math.floor(avail / ps));
+        }
+    } catch (_e) {}
+    return fallback;
+}
+
 // Expose globally for UI code that uses window.getWidthK / window.getHeightK
 if (typeof window !== "undefined") {
     (window as any).getWidthK = getWidthK;
     (window as any).getHeightK = getHeightK;
+    (window as any).listRowHeight = listRowHeight;
 }
 
 /**
