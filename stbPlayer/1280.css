@@ -846,11 +846,11 @@ body {
 }
 /* Default fill = cover/center (Toggle Aspect Ratio still switches contain|cover). */
 #video {
-    height: 100%;
-    left: 0;
-    object-position: center center;
     top: 0;
+    left: 0;
     width: 100%;
+    height: 100%;
+    object-position: center center;
 }
 #videopip {
     object-position: center center;
