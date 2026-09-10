@@ -25,8 +25,10 @@ npx tauri signer generate -w ~/.tauri/ottplay-foss.key
 ### Publish updates
 
 1. Tag `v*` (or `workflow_dispatch` with a tag) so `.github/workflows/release.yml` builds multiarch bundles (#310).
-2. With `TAURI_SIGNING_PRIVATE_KEY` present, each Tauri matrix job also emits updater payloads (`.sig`, macOS `.app.tar.gz`, etc.) and uploads them to the GitHub Release.
-3. Publish a static `latest.json` on that release (asset name must match the endpoint). Example shape:
+2. The workflow creates the GitHub Release as a **draft**, attaches dist / Tauri / mobile assets, then **undrafts only after** `OttPlay.FOSS_aarch64-apple-darwin.app.zip` and an aarch64 `.dmg` are present. That avoids a public “Latest” release that only has android/ios/dist for the ~10–15 minutes Tauri macOS is still building.
+3. `scripts/ci-tauri-collect-artifacts.sh` zips `*.app` via `ditto`, copies `.dmg`, sanitizes spaces→`.` in asset names, and **fails the macOS job** if either `.app.zip` or `.dmg` is missing (no silent empty upload).
+4. With `TAURI_SIGNING_PRIVATE_KEY` present, each Tauri matrix job also emits updater payloads (`.sig`, macOS `.app.tar.gz`, etc.) and uploads them to the GitHub Release.
+5. Publish a static `latest.json` on that release (asset name must match the endpoint). Example shape:
 
 ```json
 {
