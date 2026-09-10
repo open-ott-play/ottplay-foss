@@ -1549,6 +1549,9 @@ function body_onClick(e: any): void {
     // After a real window drag (mousedown→move→mouseup), ignore the synthetic
     // click so Channel list / menus do not open from the drag release.
     if ((window as any).__ottTauriSuppressClick) return;
+    // Tauri mouseup already showed the info bar for a video-surface bottom
+    // click (WKWebView sometimes omits the following click entirely).
+    if ((window as any).__ottInfoBandFromMouseUp) return;
     if (e.clientY === undefined) return;
     // Channel list / OSD / edit open: podval btnDiv clicks must not also hit
     // the bottom-band showChanelInfo / middle ENTER (looked like dead buttons).
@@ -1593,4 +1596,7 @@ document.body.addEventListener("touchmove", handleTouchMove, {
 document.body.addEventListener("touchend", body_handleTouchEnd, {
     passive: false,
 });
+// Bubble on body (browser / non-video targets). Tauri also attaches a
+// capture-phase video-surface listener in src/index.ts because WKWebView
+// <video> clicks often never reach body.onclick.
 document.body.onclick = body_onClick;

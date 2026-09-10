@@ -3460,7 +3460,7 @@ if (typeof window.__TAURI__ !== "undefined") {
 
         document.addEventListener(
             "mouseup",
-            (_ev: MouseEvent) => {
+            (ev: MouseEvent) => {
                 // Suppress Menu after a real drag, or after a top-strip press
                 // (even if the pointer barely moved). Plain clicks elsewhere
                 // on the empty plane must still open Menu / ENTER / info.
@@ -3469,7 +3469,56 @@ if (typeof window.__TAURI__ !== "undefined") {
                     (pendingChromeDown && pendingChromeDown.strip)
                 ) {
                     armSuppressClick();
+                    clearPendingChrome();
+                    return;
                 }
+                // WKWebView <video> may fire mousedown/mouseup but never deliver
+                // a bubbled click to body.onclick. Bottom-band mouseup → info bar
+                // when overlays are closed and this was not a drag/strip press.
+                try {
+                    if (
+                        ev.button === 0 &&
+                        !listOverlayOpen() &&
+                        !(window as any).__ottTauriSuppressClick
+                    ) {
+                        const raw = ev.target;
+                        if (!(raw instanceof Element)) {
+                            clearPendingChrome();
+                            return;
+                        }
+                        const el = raw;
+                        const onVideoSurface =
+                            el.tagName === "VIDEO" ||
+                            !!el.closest("#video,#vdiv,#launch") ||
+                            el === document.body ||
+                            el === document.documentElement;
+                        if (onVideoSurface && !el.closest(NO_DRAG_SEL)) {
+                            const h =
+                                document.body.getBoundingClientRect().height ||
+                                window.innerHeight ||
+                                0;
+                            if (
+                                h > 0 &&
+                                typeof ev.clientY === "number" &&
+                                ev.clientY > h * 0.8
+                            ) {
+                                (window as any).__ottInfoBandFromMouseUp = true;
+                                try {
+                                    if (
+                                        typeof (window as any)
+                                            .showChanelInfo === "function"
+                                    ) {
+                                        (window as any).showChanelInfo();
+                                    }
+                                } catch (_sci) {}
+                                window.setTimeout(() => {
+                                    (window as any).__ottInfoBandFromMouseUp =
+                                        false;
+                                }, 0);
+                            }
+                        }
+                    }
+                } catch (_muInfo) {}
                 clearPendingChrome();
             },
             true
@@ -3502,6 +3551,55 @@ if (typeof window.__TAURI__ !== "undefined") {
                     } catch (_e) {}
                     suppressTimer = null;
                 }
+            },
+            true
+        );
+
+        // WKWebView <video>/#vdiv often does not bubble click to body.onclick.
+        // Capture on the video surface and run the same band logic as
+        // keyhandler body_onClick; stopPropagation avoids double-fire when
+        // the event does bubble. List-open podval stays safe via overlay guard
+        // + pointer-events:none on video while the list is open.
+        document.addEventListener(
+            "click",
+            (ev: MouseEvent) => {
+                if ((window as any).__ottTauriSuppressClick) return;
+                if ((window as any).__ottInfoBandFromMouseUp) return;
+                if (listOverlayOpen()) return;
+                const target = ev.target;
+                if (!(target instanceof Element)) return;
+                if (
+                    target.tagName !== "VIDEO" &&
+                    !target.closest("#video,#vdiv,#launch")
+                ) {
+                    return;
+                }
+                if (target.closest(NO_DRAG_SEL)) return;
+                if (typeof ev.clientY !== "number") return;
+                const h =
+                    document.body.getBoundingClientRect().height ||
+                    window.innerHeight ||
+                    0;
+                if (!(h > 0)) return;
+                try {
+                    if (ev.clientY < h * 0.2) {
+                        if (typeof (window as any).popupList === "function") {
+                            (window as any).popupList();
+                        }
+                    } else if (ev.clientY > h * 0.8) {
+                        if (
+                            typeof (window as any).showChanelInfo === "function"
+                        ) {
+                            (window as any).showChanelInfo();
+                        }
+                    } else if (
+                        typeof (window as any)._doKey === "function" &&
+                        (window as any).keys
+                    ) {
+                        (window as any)._doKey((window as any).keys.ENTER, ev);
+                    }
+                    ev.stopPropagation();
+                } catch (_capBand) {}
             },
             true
         );
