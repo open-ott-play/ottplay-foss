@@ -486,6 +486,8 @@ jobs:
       - name: Verify macOS assets and undraft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No checkout in this job — tell gh which repo without needing .git
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.release.outputs.tag }}
           TAURI_RESULT: ${{ needs.tauri.result }}
           MOBILE_RESULT: ${{ needs.mobile.result }}
