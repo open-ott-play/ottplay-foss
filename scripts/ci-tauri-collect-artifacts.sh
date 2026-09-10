@@ -1,33 +1,67 @@
 #!/usr/bin/env bash
+# Collect Tauri desktop bundles into tauri-artifacts/ for release upload.
+# On macOS: always produce .app.zip (ditto) + copy .dmg; fail if either missing.
+# Dest names replace spaces with '.' so GitHub asset URLs match README
+# (OttPlay.FOSS_aarch64-apple-darwin.app.zip).
 set -euo pipefail
+
 TARGET="${TAURI_TARGET:-}"
 mkdir -p tauri-artifacts
 shopt -s nullglob
-if [ -n "$TARGET" ]; then
-  BASE="target/$TARGET/release/bundle"
-else
-  BASE="target/release/bundle"
-fi
+
+resolve_base() {
+  local candidates=()
+  if [ -n "$TARGET" ]; then
+    candidates=(
+      "target/$TARGET/release/bundle"
+      "src-tauri/target/$TARGET/release/bundle"
+    )
+  else
+    candidates=(
+      "target/release/bundle"
+      "src-tauri/target/release/bundle"
+    )
+  fi
+  local c
+  for c in "${candidates[@]}"; do
+    if [ -d "$c" ]; then
+      echo "$c"
+      return 0
+    fi
+  done
+  # Default even if missing — caller will fail loudly on macOS
+  echo "${candidates[0]}"
+}
+
+BASE="$(resolve_base)"
+echo "Collect base: $BASE (TAURI_TARGET=${TARGET:-host})"
+
+# Stable release asset name: spaces → dots (matches softprops/GitHub normalize)
+sanitize_name() {
+  local s="$1"
+  s="${s// /.}"
+  echo "$s"
+}
 
 copy_one() {
   local f="$1"
-  local name ext base dest
+  local name ext base dest stem ext_stem base_stem
   name="$(basename "$f")"
   # Preserve multi-dot names like .app.tar.gz / .AppImage.sig
   if [[ "$name" == *.app.tar.gz.sig ]]; then
-    dest="tauri-artifacts/${name%.app.tar.gz.sig}${TARGET:+_${TARGET}}.app.tar.gz.sig"
+    dest="tauri-artifacts/$(sanitize_name "${name%.app.tar.gz.sig}${TARGET:+_${TARGET}}").app.tar.gz.sig"
   elif [[ "$name" == *.app.tar.gz ]]; then
-    dest="tauri-artifacts/${name%.app.tar.gz}${TARGET:+_${TARGET}}.app.tar.gz"
+    dest="tauri-artifacts/$(sanitize_name "${name%.app.tar.gz}${TARGET:+_${TARGET}}").app.tar.gz"
   elif [[ "$name" == *.sig ]]; then
     # e.g. foo.AppImage.sig / foo.msi.sig / foo-setup.exe.sig
     stem="${name%.sig}"
     ext_stem="${stem##*.}"
     base_stem="${stem%.*}"
-    dest="tauri-artifacts/${base_stem}${TARGET:+_${TARGET}}.${ext_stem}.sig"
+    dest="tauri-artifacts/$(sanitize_name "${base_stem}${TARGET:+_${TARGET}}").${ext_stem}.sig"
   else
     ext="${name##*.}"
     base="${name%.*}"
-    dest="tauri-artifacts/${base}${TARGET:+_${TARGET}}.${ext}"
+    dest="tauri-artifacts/$(sanitize_name "${base}${TARGET:+_${TARGET}}").${ext}"
   fi
   cp -v "$f" "$dest"
 }
@@ -51,13 +85,28 @@ done
 if [[ "${RUNNER_OS:-}" == "macOS" ]]; then
   for app in "$BASE"/macos/*.app; do
     app_base="$(basename "$app" .app)"
-    dest="tauri-artifacts/${app_base}${TARGET:+_${TARGET}}.app.zip"
+    dest="tauri-artifacts/$(sanitize_name "${app_base}${TARGET:+_${TARGET}}").app.zip"
     ditto -c -k --sequesterRsrc --keepParent "$app" "$dest"
+    echo "Zipped $app -> $dest"
   done
 fi
+
 echo Collected:
-ls -la tauri-artifacts/
-if [ ! -e "tauri-artifacts" ] || [ -z "$(ls -A tauri-artifacts 2>/dev/null)" ]; then
+ls -la tauri-artifacts/ || true
+
+if [[ "${RUNNER_OS:-}" == "macOS" ]]; then
+  zips=(tauri-artifacts/*.app.zip)
+  dmgs=(tauri-artifacts/*.dmg)
+  if [ ${#zips[@]} -eq 0 ] || [ ${#dmgs[@]} -eq 0 ]; then
+    echo "ERROR: macOS release requires both .app.zip and .dmg under tauri-artifacts/" >&2
+    echo "Looking under BASE=$BASE ..." >&2
+    ls -la "$BASE" 2>/dev/null || true
+    ls -la "$BASE/macos" 2>/dev/null || true
+    ls -la "$BASE/dmg" 2>/dev/null || true
+    find target src-tauri/target -path '*/bundle/macos/*' -o -path '*/bundle/dmg/*' 2>/dev/null | head -40 || true
+    exit 1
+  fi
+elif [ -z "$(ls -A tauri-artifacts 2>/dev/null)" ]; then
   echo "No desktop bundles produced for this matrix entry"
   exit 0
 fi

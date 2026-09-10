@@ -113,13 +113,15 @@ jobs:
             echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Create Release
+      # Draft until tauri+mobile finish — avoids a public release that only has
+      # dist/IPA/APK for ~10–15 min while macOS .app.zip/.dmg are still building.
+      - name: Create Release (draft)
         id: create_release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: Release ${{ steps.tag.outputs.tag }}
-          draft: false
+          draft: true
           prerelease: ${{ steps.detect.outputs.is_prerelease == 'true' }}
           generate_release_notes: true
           files: |
@@ -295,11 +297,14 @@ jobs:
           TAURI_TARGET: ${{ matrix.target }}
 
       - name: Upload desktop assets to release
+        if: hashFiles('tauri-artifacts/*') != ''
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ needs.release.outputs.tag }}
           files: tauri-artifacts/*
-          fail_on_unmatched_files: false
+          # macOS collect already failed if .app.zip/.dmg missing; non-macOS may
+          # exit 0 with an empty dir (skip upload). Matched files must upload.
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -462,3 +467,44 @@ jobs:
             UPLOAD+=("$AAB_OUT")
           fi
           gh release upload "$RELEASE_TAG" "${UPLOAD[@]}" --clobber
+
+  # Publish only after desktop+mobile attach; require macOS aarch64 .app.zip so
+  # "Latest" never points at a release that is missing Tauri macOS assets.
+  publish:
+    name: Publish release
+    needs: [release, tauri, mobile]
+    if: always() && needs.release.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Verify macOS assets and undraft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release.outputs.tag }}
+          TAURI_RESULT: ${{ needs.tauri.result }}
+          MOBILE_RESULT: ${{ needs.mobile.result }}
+        run: |
+          set -euo pipefail
+          echo "tauri=$TAURI_RESULT mobile=$MOBILE_RESULT tag=$TAG"
+          assets="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
+          echo "Assets on draft release:"
+          echo "$assets"
+          echo "$assets" | grep -Fq 'ottplay-foss-dist.tar.gz'
+          # Spaces may already be dots from collect sanitize / GitHub normalize
+          if ! echo "$assets" | grep -Eiq 'aarch64-apple-darwin\.app\.zip'; then
+            echo "ERROR: missing OttPlay.FOSS_aarch64-apple-darwin.app.zip (or space variant)" >&2
+            echo "tauri job result was: $TAURI_RESULT" >&2
+            exit 1
+          fi
+          if ! echo "$assets" | grep -Eiq 'aarch64.*apple-darwin\.dmg|apple-darwin.*aarch64\.dmg|_aarch64_.*\.dmg'; then
+            echo "ERROR: missing aarch64 macOS .dmg" >&2
+            exit 1
+          fi
+          gh release edit "$TAG" --draft=false
+          echo "Published $TAG"
