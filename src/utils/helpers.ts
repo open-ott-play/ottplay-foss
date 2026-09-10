@@ -160,7 +160,9 @@ export function listFitPageSize(wanted: number): number {
             if (fs > 0) preferred = Math.max(preferred, fs * 1.35 + 1);
         }
     } catch (_f) {}
-    var fit = Math.floor(avail / preferred);
+    // 2px slack: WKWebView subpixel + .item border-bottom used to leave the
+    // last row clipped → cursor on off-screen #itN while the page looked right.
+    var fit = Math.floor((avail - 2) / preferred);
     if (fit < 1)
         fit = Math.max(1, Math.floor(avail / Math.max(12, preferred * 0.75)));
     return Math.max(1, Math.min(want, fit));

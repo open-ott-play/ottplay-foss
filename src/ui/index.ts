@@ -910,6 +910,52 @@ export function showPage(): void {
         listInElement.scrollTop = 0;
         listInElement.innerHTML = html;
     }
+    // Pin selection styles after remount (page-boundary ↓/L/R and first open
+    // used to leave #itN without a visible cursor when only page HTML flipped).
+    try {
+        var pin = document.getElementById("it" + selIndex);
+        if (pin) {
+            pin.style.backgroundColor = curColorB || "#668";
+            pin.style.color = curColor || "gold";
+            // First open / page flip: if the pin is still clipped, remeasure once
+            // after layout (Tauri WKWebView often reports stale #listIn height).
+            try {
+                var boxPin = listInElement || document.getElementById("listIn");
+                if (
+                    boxPin &&
+                    !(window as any).__ottListCursorRetry &&
+                    dataArr.length
+                ) {
+                    var lr2 = (boxPin as HTMLElement).getBoundingClientRect();
+                    var er2 = pin.getBoundingClientRect();
+                    if (
+                        !(
+                            er2.top >= lr2.top - 1 &&
+                            er2.bottom <= lr2.bottom + 1
+                        )
+                    ) {
+                        (window as any).__ottListCursorRetry = true;
+                        requestAnimationFrame(function () {
+                            (window as any).__ottListCursorRetry = false;
+                            showPage();
+                        });
+                    }
+                }
+            } catch (_clip) {}
+        } else if (
+            dataArr.length &&
+            selIndex >= 0 &&
+            selIndex < dataArr.length &&
+            !(window as any).__ottListCursorRetry
+        ) {
+            (window as any).__ottListCursorRetry = true;
+            requestAnimationFrame(function () {
+                (window as any).__ottListCursorRetry = false;
+                showPage();
+            });
+        }
+    } catch (_pin) {}
+    (window as any).selIndex = selIndex;
     detailListActionWithTimeOut();
 }
 
@@ -941,12 +987,23 @@ export function changeSelect(delta: number): void {
     if (selIndex < 0) selIndex = delta === -1 ? dataArr.length - 1 : 0;
     else if (selIndex >= dataArr.length)
         selIndex = delta === 1 ? 0 : dataArr.length - 1;
+    // Keep window.selIndex in sync (channelsKeyHandler / provider read it).
+    (window as any).selIndex = selIndex;
+    var pageSz =
+        (window as any).listPageSize ||
+        listFitPageSize(settings.pageSize) ||
+        settings.pageSize ||
+        25;
+    var pageChanged =
+        Math.floor(oldIndex / pageSz) !== Math.floor(selIndex / pageSz);
     var newItem = document.getElementById("it" + selIndex);
     // #itN in DOM is not enough: overflow:hidden can leave the node clipped
     // inside #listIn (cursor on 21–25 while rows 1–20 show). Re-render the
-    // page so the highlight always lands on a fully visible row.
+    // page so the highlight always lands on a fully visible row. Also
+    // re-showPage on every page boundary (↓ onto 20, L/R ±pageSize) so the
+    // highlight class is never left on a stale off-page node.
     var fullyVisible = false;
-    if (newItem) {
+    if (newItem && !pageChanged) {
         try {
             var listInBox = listInElement || document.getElementById("listIn");
             if (listInBox) {
@@ -961,7 +1018,7 @@ export function changeSelect(delta: number): void {
             fullyVisible = true;
         }
     }
-    if (newItem && fullyVisible) {
+    if (newItem && fullyVisible && !pageChanged) {
         var oldItem = document.getElementById("it" + oldIndex);
         if (oldItem) {
             oldItem.style.backgroundColor = "";
@@ -991,6 +1048,7 @@ export function setSelect(index: number): void {
     } else {
         var oldItem = document.getElementById("it" + selIndex);
         selIndex = index;
+        (window as any).selIndex = selIndex;
         var newItem = document.getElementById("it" + selIndex);
         if (oldItem) {
             oldItem.style.backgroundColor = "";
@@ -1640,7 +1698,7 @@ export function btnDiv(
     if (extra) a += '<div class="btn">' + extra + "</div>&nbsp;";
     if (!a) description = '<div class="btn">' + description + "</div>";
     return (
-        '<span onclick="_doKey(' +
+        '<span onclick="event.stopPropagation();_doKey(' +
         keyLabel +
         ');">' +
         a +

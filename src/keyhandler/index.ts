@@ -14,6 +14,7 @@ import {
 import { translate as _ } from "../localization";
 import { settings } from "../settings";
 
+declare var $: any;
 declare var listKeyHandlerFn: (key: number) => boolean;
 declare var dialogBoxKeyHandler: ((key: number) => void) | null;
 
@@ -1549,6 +1550,21 @@ function body_onClick(e: any): void {
     // click so Channel list / menus do not open from the drag release.
     if ((window as any).__ottTauriSuppressClick) return;
     if (e.clientY === undefined) return;
+    // Channel list / OSD / edit open: podval btnDiv clicks must not also hit
+    // the bottom-band showChanelInfo / middle ENTER (looked like dead buttons).
+    try {
+        if (typeof $ !== "undefined") {
+            if (
+                $("#list_window").is(":visible") ||
+                $("#list_osd").is(":visible") ||
+                $("#listEdit").is(":visible")
+            ) {
+                return;
+            }
+        } else if ((window as any).isListVisible) {
+            return;
+        }
+    } catch (_listOpen) {}
     var t = document.body.getBoundingClientRect().height || window.innerHeight;
     if (e.clientY < t * 0.2) (window as any).popupList();
     else if (e.clientY > t * 0.8) (window as any).showChanelInfo();

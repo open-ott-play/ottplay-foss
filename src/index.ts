@@ -3178,6 +3178,24 @@ if (typeof window.__TAURI__ !== "undefined") {
                 // Never leave a stuck click-suppress while the menu is open.
                 (window as any).__ottTauriSuppressClick = false;
             }
+            // Native <video> often sits above HTML regardless of z-index; while
+            // Channel list / OSD is open, disable hit-testing so podval buttons
+            // and rows receive clicks.
+            try {
+                for (const id of ["video", "vdiv", "videopip"]) {
+                    const el = document.getElementById(id);
+                    if (!el) continue;
+                    if (open) {
+                        el.style.setProperty(
+                            "pointer-events",
+                            "none",
+                            "important"
+                        );
+                    } else {
+                        el.style.removeProperty("pointer-events");
+                    }
+                }
+            } catch (_pe) {}
             if (strip) {
                 if (open) {
                     strip.style.display = "none";
@@ -3323,12 +3341,23 @@ if (typeof window.__TAURI__ !== "undefined") {
             })();
         };
 
-        // JS drag from entire empty plane (strip + chrome + #video), overlays closed.
+        // JS drag from empty plane (strip + chrome + #video), overlays closed.
         // Never CSS -webkit-app-region:drag on body — overlays must keep row hits.
-        const isDragHandle = (t: Element, _clientY: number): boolean => {
+        // Bottom 20% is the info-bar click band (body_onClick → showChanelInfo);
+        // do not treat it as a drag handle or mousedown-preventDefault kills click.
+        const isDragHandle = (t: Element, clientY: number): boolean => {
             if (listOverlayOpen()) return false;
             // Never drag from list/menu chrome or form controls.
             if (t.closest(NO_DRAG_SEL)) return false;
+            try {
+                const h =
+                    document.body.getBoundingClientRect().height ||
+                    window.innerHeight ||
+                    0;
+                if (h > 0 && typeof clientY === "number" && clientY > h * 0.8) {
+                    return false;
+                }
+            } catch (_band) {}
             if (t.id === STRIP_ID) return true;
             if (t.closest(DRAG_SEL)) return true;
             // Whole empty surface: allow even when target is #video/#launch.
@@ -3398,8 +3427,10 @@ if (typeof window.__TAURI__ !== "undefined") {
                 // Rest of plane: suppress only after a real drag starts.
                 if (onStrip) armSuppressClick();
                 // Do not startDragging yet — wait for small movement.
+                // Do NOT preventDefault here: WKWebView suppresses the following
+                // click after mousedown.preventDefault, which killed bottom-band
+                // showChanelInfo / middle ENTER. preventDefault only when drag starts.
                 // Do not stopImmediatePropagation — Tauri's drag.js also listens.
-                ev.preventDefault();
             },
             true
         );
@@ -3419,6 +3450,9 @@ if (typeof window.__TAURI__ !== "undefined") {
                 if (dx * dx + dy * dy < DRAG_MOVE_PX * DRAG_MOVE_PX) return;
                 startedNativeDrag = true;
                 armSuppressClick();
+                try {
+                    ev.preventDefault();
+                } catch (_pd) {}
                 startDragging();
             },
             true

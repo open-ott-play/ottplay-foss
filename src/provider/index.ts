@@ -1528,6 +1528,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
         );
     }
     selIndex = channelIdx;
+    (window as any).selIndex = selIndex;
     listCatIndex = catIdx;
     listArray = cats[catsArray[listCatIndex]] || [];
     var wk = getWidthK();
