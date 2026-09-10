@@ -106,10 +106,11 @@ var hlsPipInstance: any = null;
 var isFullscreen = true;
 /**
  * Current aspect ratio index: 0 = "contain" (letterbox), 1 = "cover" (crop).
- * Default is cover so the video fills the window (crop, no letterbox bars)
- * and stays centered on both axes when the window is resized.
+ * Default contain matches OTT companion / classic PC stb — whole frame visible
+ * (bars OK). Toggle Aspect Ratio still switches contain|cover; per-channel
+ * aAspects overrides when set.
  */
-var aspectRatio = 1;
+var aspectRatio = 0;
 /**
  * Digital zoom index for HTML5: 0 = 100%, 1 = 125%, 2 = 150%, 3 = 175%.
  * Persisted per-channel in aZooms. Legacy only toggled body.stb-zoom with no CSS.
@@ -983,6 +984,10 @@ export function stbToFullScreen(): void {
         top: 0,
         width: "auto",
     });
+    try {
+        var box = document.getElementById("vdiv");
+        if (box) void (box as HTMLElement).offsetWidth;
+    } catch (_reflow) {}
     applyAspectRatio();
     applyZoom();
 }
@@ -1059,11 +1064,23 @@ export function setAspect(v: number): void {
  * Side effects: Direct DOM CSS mutation on #video!.
  */
 export function applyAspectRatio(): void {
-    var fit = ["contain", "cover"][aspectRatio] || "cover";
+    var fit = ["contain", "cover"][aspectRatio] || "contain";
     var box = document.getElementById("vdiv");
     var vEl = document.getElementById("video") as HTMLVideoElement | null;
-    var cw = box ? box.clientWidth : 0;
-    var ch = box ? box.clientHeight : 0;
+    // Force layout after stbToFullScreen / resize CSS so client* is not stale
+    // (1.1.29 explicit px geometry otherwise froze the previous crop size).
+    if (box) void (box as HTMLElement).offsetWidth;
+    var cw = 0;
+    var ch = 0;
+    if (isFullscreen) {
+        // Viewport is the plane in full-video; more reliable than client* right
+        // after inset:0 is applied on resize.
+        cw = window.innerWidth || 0;
+        ch = window.innerHeight || 0;
+    } else if (box) {
+        cw = box.clientWidth;
+        ch = box.clientHeight;
+    }
     var vw = vEl && vEl.videoWidth ? vEl.videoWidth : 0;
     var vh = vEl && vEl.videoHeight ? vEl.videoHeight : 0;
     // Explicit geometry: WKWebView often top-aligns letterboxed <video> frames
@@ -1081,8 +1098,8 @@ export function applyAspectRatio(): void {
                 bottom: "",
                 height: h + "px",
                 left: "",
-                "max-height": "",
-                "max-width": "",
+                "max-height": "100%",
+                "max-width": "100%",
                 "object-fit": "fill",
                 "object-position": "center center",
                 position: "relative",
@@ -1107,7 +1124,7 @@ export function applyAspectRatio(): void {
         }
         return;
     }
-    // Fallback before metadata: CSS cover fill / contain max-box + flex center.
+    // Fallback before metadata: CSS contain max-box / cover fill + flex center.
     if (fit === "contain") {
         $("#video").css({
             bottom: "",
@@ -1125,7 +1142,7 @@ export function applyAspectRatio(): void {
     } else {
         $("#video").css({
             bottom: 0,
-            height: "auto",
+            height: "100%",
             left: 0,
             "max-height": "",
             "max-width": "",
@@ -1134,7 +1151,7 @@ export function applyAspectRatio(): void {
             position: "absolute",
             right: 0,
             top: 0,
-            width: "auto",
+            width: "100%",
         });
     }
 }
@@ -1337,17 +1354,28 @@ export function stbInit(): void {
         if (typeof window.setFontSize === "function") window.setFontSize();
         if (typeof window.setListPos === "function") window.setListPos();
         if (typeof window.setColor === "function") window.setColor();
-        // Re-apply video fit/center when the window aspect changes (Tauri/PC).
-        if (isFullscreen) stbToFullScreen();
-        else {
-            applyAspectRatio();
-            applyZoom();
+        // Re-apply video fit/center after layout — sync path alone left explicit
+        // px sizes from 1.1.29 stuck at the pre-resize crop.
+        var refreshVideo = function () {
+            if (isFullscreen) stbToFullScreen();
+            else {
+                applyAspectRatio();
+                applyZoom();
+            }
+        };
+        refreshVideo();
+        try {
+            requestAnimationFrame(function () {
+                requestAnimationFrame(refreshVideo);
+            });
+        } catch (_raf) {
+            refreshVideo();
         }
     });
     try {
         if (!document.getElementById("vdiv")) {
             $("body").prepend(
-                '<div id="vdiv" style="position: absolute; overflow: hidden; background-color: black; display: flex; align-items: center; justify-content: center;"><video id="video" style="object-fit: cover; object-position: center center;"></video></div><video id="videopip" muted style="position: absolute; display: none; background-color: black; object-fit: cover; object-position: center center;"></video>'
+                '<div id="vdiv" style="position: absolute; overflow: hidden; background-color: black; display: flex; align-items: center; justify-content: center;"><video id="video" style="object-fit: contain; object-position: center center; max-width: 100%; max-height: 100%;"></video></div><video id="videopip" muted style="position: absolute; display: none; background-color: black; object-fit: cover; object-position: center center;"></video>'
             );
         }
         video = document.getElementById("video") as HTMLVideoElement;

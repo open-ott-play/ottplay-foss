@@ -352,18 +352,23 @@ body {
     clear: both;
     box-sizing: border-box;
     display: flex;
+    flex-shrink: 0;
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: center;
     padding: 0 14px;
+    /* Vertical margin/padding/border must not override showPage row formula
+       (innerHeight - 130*hK) / pageSize — separators via inset shadow only. */
+    margin: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-    line-height: normal;
+    line-height: normal; /* showPage sets explicit px = row height */
     white-space: nowrap;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
     pointer-events: auto;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border: none;
     border-radius: 3px;
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.1);
 }
 .progress_div {
     /* Flex row child inside .item — never float (WKWebView/Tauri). */
@@ -869,9 +874,9 @@ body {
     overflow: hidden;
     background-color: #000;
 }
-/* Default cover; applyAspectRatio sets explicit geometry once metadata is known. */
+/* Default contain (OTT companion); applyAspectRatio sets geometry once metadata is known. */
 #video {
-    object-fit: cover;
+    object-fit: contain;
     object-position: center center;
 }
 #videopip {
