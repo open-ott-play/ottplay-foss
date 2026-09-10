@@ -1532,17 +1532,52 @@ function body_handleTouchEnd(e: any): void {
 }
 
 /**
+ * Visible viewport height for click-band geometry.
+ * Prefer window.innerHeight / visualViewport — never body getBoundingClientRect
+ * alone (oversized body makes the bottom band unreachable → every click is middle).
+ */
+function ottBandViewportHeight(): number {
+    try {
+        const ih =
+            typeof window.innerHeight === "number" ? window.innerHeight : 0;
+        const vv =
+            window.visualViewport &&
+            typeof window.visualViewport.height === "number"
+                ? window.visualViewport.height
+                : 0;
+        if (ih > 0 && vv > 0) return Math.min(ih, vv);
+        if (ih > 0) return ih;
+        if (vv > 0) return vv;
+        const docEl = document.documentElement;
+        const docH =
+            docEl && typeof docEl.clientHeight === "number"
+                ? docEl.clientHeight
+                : 0;
+        if (docH > 0) return docH;
+    } catch (_vh) {}
+    return 0;
+}
+
+/**
+ * Y where the bottom info band starts (clientY above this → showChanelInfo).
+ * Wider than legacy 20%: ~30% of viewport or at least ~140 CSS px.
+ */
+function ottBottomInfoBandStart(h: number): number {
+    const band = Math.max(h * 0.3, 140);
+    return h - band;
+}
+
+/**
  * Handle `click` events on the document body (assigned to `document.body.onclick`).
  * Interprets the vertical click position:
  * - Top 20% → open popup menu (popupList)
- * - Bottom 20% → show channel info (showChanelInfo)
- * - Middle 60% → dispatch ENTER key
+ * - Bottom ~30% (min ~140px) → show channel info (showChanelInfo)
+ * - Middle → dispatch ENTER key
  *
  * @param e - The MouseEvent object (typed as `any` for compatibility).
  * @returns void — early return if `e.clientY` is undefined.
  * @sideeffect Calls `window.popupList()`, `window.showChanelInfo()`, or `window._doKey(keys.ENTER, e)`.
- * @analysis Uses `document.body.getBoundingClientRect().height` or `window.innerHeight` as the reference height.
- *             The 20%/80% thresholds create three horizontal bands across the screen.
+ * @analysis Uses `ottBandViewportHeight()` (innerHeight / visualViewport), not body rect alone.
  */
 function body_onClick(e: any): void {
     if (!e) e = event as any;
@@ -1568,10 +1603,16 @@ function body_onClick(e: any): void {
             return;
         }
     } catch (_listOpen) {}
-    var t = document.body.getBoundingClientRect().height || window.innerHeight;
+    var t = ottBandViewportHeight();
+    if (!(t > 0)) return;
     if (e.clientY < t * 0.2) (window as any).popupList();
-    else if (e.clientY > t * 0.8) (window as any).showChanelInfo();
-    else (window as any)._doKey((window as any).keys.ENTER, e);
+    else if (e.clientY > ottBottomInfoBandStart(t)) {
+        try {
+            if (typeof e.preventDefault === "function") e.preventDefault();
+            if (typeof e.stopPropagation === "function") e.stopPropagation();
+        } catch (_sp) {}
+        (window as any).showChanelInfo();
+    } else (window as any)._doKey((window as any).keys.ENTER, e);
 }
 
 /**

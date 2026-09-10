@@ -3343,18 +3343,48 @@ if (typeof window.__TAURI__ !== "undefined") {
 
         // JS drag from empty plane (strip + chrome + #video), overlays closed.
         // Never CSS -webkit-app-region:drag on body — overlays must keep row hits.
-        // Bottom 20% is the info-bar click band (body_onClick → showChanelInfo);
-        // do not treat it as a drag handle or mousedown-preventDefault kills click.
+        // Bottom info band (body_onClick → showChanelInfo) is not a drag handle;
+        // mousedown-preventDefault there would kill the click.
+        // Prefer viewport height (innerHeight / visualViewport), not body rect —
+        // oversized body made the bottom band unreachable ("даже по низу" → ENTER).
+        const ottBandViewportHeight = (): number => {
+            try {
+                const ih =
+                    typeof window.innerHeight === "number"
+                        ? window.innerHeight
+                        : 0;
+                const vv =
+                    window.visualViewport &&
+                    typeof window.visualViewport.height === "number"
+                        ? window.visualViewport.height
+                        : 0;
+                if (ih > 0 && vv > 0) return Math.min(ih, vv);
+                if (ih > 0) return ih;
+                if (vv > 0) return vv;
+                const docEl = document.documentElement;
+                const docH =
+                    docEl && typeof docEl.clientHeight === "number"
+                        ? docEl.clientHeight
+                        : 0;
+                if (docH > 0) return docH;
+            } catch (_vh) {}
+            return 0;
+        };
+        const ottBottomInfoBandStart = (h: number): number => {
+            const band = Math.max(h * 0.3, 140);
+            return h - band;
+        };
         const isDragHandle = (t: Element, clientY: number): boolean => {
             if (listOverlayOpen()) return false;
             // Never drag from list/menu chrome or form controls.
             if (t.closest(NO_DRAG_SEL)) return false;
             try {
-                const h =
-                    document.body.getBoundingClientRect().height ||
-                    window.innerHeight ||
-                    0;
-                if (h > 0 && typeof clientY === "number" && clientY > h * 0.8) {
+                const h = ottBandViewportHeight();
+                if (
+                    h > 0 &&
+                    typeof clientY === "number" &&
+                    clientY > ottBottomInfoBandStart(h)
+                ) {
                     return false;
                 }
             } catch (_band) {}
@@ -3493,16 +3523,18 @@ if (typeof window.__TAURI__ !== "undefined") {
                             el === document.body ||
                             el === document.documentElement;
                         if (onVideoSurface && !el.closest(NO_DRAG_SEL)) {
-                            const h =
-                                document.body.getBoundingClientRect().height ||
-                                window.innerHeight ||
-                                0;
+                            const h = ottBandViewportHeight();
                             if (
                                 h > 0 &&
                                 typeof ev.clientY === "number" &&
-                                ev.clientY > h * 0.8
+                                ev.clientY > ottBottomInfoBandStart(h)
                             ) {
                                 (window as any).__ottInfoBandFromMouseUp = true;
+                                try {
+                                    ev.preventDefault();
+                                    ev.stopPropagation();
+                                    ev.stopImmediatePropagation();
+                                } catch (_sp) {}
                                 try {
                                     if (
                                         typeof (window as any)
@@ -3511,10 +3543,11 @@ if (typeof window.__TAURI__ !== "undefined") {
                                         (window as any).showChanelInfo();
                                     }
                                 } catch (_sci) {}
+                                // Race-safe: clear after click window, not only setTimeout 0.
                                 window.setTimeout(() => {
                                     (window as any).__ottInfoBandFromMouseUp =
                                         false;
-                                }, 0);
+                                }, 400);
                             }
                         }
                     }
@@ -3576,29 +3609,31 @@ if (typeof window.__TAURI__ !== "undefined") {
                 }
                 if (target.closest(NO_DRAG_SEL)) return;
                 if (typeof ev.clientY !== "number") return;
-                const h =
-                    document.body.getBoundingClientRect().height ||
-                    window.innerHeight ||
-                    0;
+                const h = ottBandViewportHeight();
                 if (!(h > 0)) return;
                 try {
                     if (ev.clientY < h * 0.2) {
                         if (typeof (window as any).popupList === "function") {
                             (window as any).popupList();
                         }
-                    } else if (ev.clientY > h * 0.8) {
+                        ev.stopPropagation();
+                    } else if (ev.clientY > ottBottomInfoBandStart(h)) {
                         if (
                             typeof (window as any).showChanelInfo === "function"
                         ) {
                             (window as any).showChanelInfo();
                         }
+                        // Stop ENTER / body_onClick from also firing.
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        ev.stopImmediatePropagation();
                     } else if (
                         typeof (window as any)._doKey === "function" &&
                         (window as any).keys
                     ) {
                         (window as any)._doKey((window as any).keys.ENTER, ev);
+                        ev.stopPropagation();
                     }
-                    ev.stopPropagation();
                 } catch (_capBand) {}
             },
             true
