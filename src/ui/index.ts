@@ -931,8 +931,7 @@ export function changeSelect(delta: number): void {
     var fullyVisible = false;
     if (newItem) {
         try {
-            var listInBox =
-                listInElement || document.getElementById("listIn");
+            var listInBox = listInElement || document.getElementById("listIn");
             if (listInBox) {
                 var lr = (listInBox as HTMLElement).getBoundingClientRect();
                 var er = newItem.getBoundingClientRect();
