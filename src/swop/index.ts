@@ -242,8 +242,8 @@ export function swopLoadValue(): void {
         if (pollTimer) clearTimeout(pollTimer);
         clearTimeout(sessionTimer);
         w.editvar = value == null ? "" : String(value);
-        if (typeof showEditKey1 === "function") showEditKey1(null);
-        else if (typeof w.showEditKey === "function") w.showEditKey(null);
+        if (typeof w.showEditKey === "function") w.showEditKey(null);
+        else if (typeof showEditKey1 === "function") showEditKey1(null);
     }
 
     function poll(): void {
@@ -295,8 +295,8 @@ export function swopLoadValue(): void {
     w.editKey = function (key: number): boolean {
         if (key === keys.RETURN || key === keys.EXIT) {
             cleanup();
-            if (typeof showEditKey1 === "function") showEditKey1(null);
-            else if (typeof w.showEditKey === "function") w.showEditKey(null);
+            if (typeof w.showEditKey === "function") w.showEditKey(null);
+            else if (typeof showEditKey1 === "function") showEditKey1(null);
             return true;
         }
         return true;

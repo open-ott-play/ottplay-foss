@@ -281,10 +281,11 @@ export function loadSettings(): PlayerSettings {
         editor: (() => {
             const raw = storage.get("sEditor");
             const parsed = raw !== null ? parseInt(raw, 10) : NaN;
-            const dev =
-                (typeof window !== "undefined" && (window as any).ott_device) ||
-                "";
-            const isPc = /^(pc|pc2|tauri|desktop|nodejs)$/.test(dev);
+            const w = typeof window !== "undefined" ? (window as any) : null;
+            const dev = (w && w.ott_device) || "";
+            const isPc =
+                /^(pc|pc2|tauri|desktop|nodejs)$/.test(dev) ||
+                !!(w && w.__TAURI__);
 
             if (isPc && !storage.get("sEditorPcNativeMigrated")) {
                 if (isNaN(parsed) || parsed === 0) {
