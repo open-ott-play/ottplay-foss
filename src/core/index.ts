@@ -997,8 +997,12 @@ export function stbSetWindow(): void {
     isFullscreen = false;
     var h = window.innerHeight / 720,
         w = window.innerWidth / 1280;
-    // Design canvas hole: 512×288 at top 50 — must clear fullscreen inset so the
-    // plane sits in the list_window cutout (not under yellow #_t chrome).
+    // List chrome: #list margin 10 + caption 52 (yellow border under caption).
+    // Old top:50*h sat under that line ("жёлтая линия отрезает шапку").
+    // Keep 512×288 hole; #_t/#_b are synced in setColor to the same metrics.
+    var listMargin = 10 * h;
+    var capH = 52 * h;
+    var top = listMargin + capH;
     $("#vdiv").css({
         "align-items": "center",
         bottom: "auto",
@@ -1008,7 +1012,7 @@ export function stbSetWindow(): void {
         left: window.sListPos ? 758 * w + "px" : 10 * w + "px",
         position: "absolute",
         right: "auto",
-        top: 50 * h + "px",
+        top: top + "px",
         width: 512 * w + "px",
     });
     applyAspectRatio();

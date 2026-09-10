@@ -445,6 +445,52 @@ export function uiInit(): void {
         }
     }
 
+    // Podval btnDiv: capture-phase so Tauri drag suppress / #_b / video
+    // compositing cannot swallow EPG/Category/Actions/Description/PiP clicks.
+    var podEl = listPodvalElement || document.getElementById("listPodval");
+    if (podEl && !(podEl as any).__ottPodvalClickBound) {
+        (podEl as any).__ottPodvalClickBound = true;
+        var podRoot: HTMLElement = podEl as HTMLElement;
+        var firePodval = function (ev: Event): void {
+            try {
+                (window as any).__ottTauriSuppressClick = false;
+            } catch (_s) {}
+            var t = ev.target;
+            if (!(t instanceof Element)) return;
+            var span = t.closest("span[onclick]") as HTMLElement | null;
+            if (!span || !podRoot.contains(span)) return;
+            var oc = span.getAttribute("onclick") || "";
+            var m = oc.match(/_doKey\((\d+)/);
+            if (!m) return;
+            var keyNum = parseInt(m[1], 10);
+            if (isNaN(keyNum)) return;
+            try {
+                ev.preventDefault();
+                ev.stopPropagation();
+                if (typeof (ev as any).stopImmediatePropagation === "function")
+                    (ev as any).stopImmediatePropagation();
+            } catch (_sp) {}
+            if (typeof (window as any)._doKey === "function") {
+                (window as any)._doKey(keyNum, ev);
+            }
+        };
+        podRoot.addEventListener("click", firePodval, true);
+        // mousedown arm: clear suppress before click; do not _doKey here
+        // (would double-fire with click).
+        podRoot.addEventListener(
+            "mousedown",
+            function (ev: Event): void {
+                try {
+                    (window as any).__ottTauriSuppressClick = false;
+                } catch (_s) {}
+                try {
+                    ev.stopPropagation();
+                } catch (_sp) {}
+            },
+            true
+        );
+    }
+
     // Progress bar drag-to-seek — press on progress bar and drag to seek, release to seek
     var $progressDiv = $("#progress_div");
     var seekInProgress = false;

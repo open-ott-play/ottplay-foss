@@ -150,21 +150,24 @@ export function listFitPageSize(wanted: number): number {
     var want = Math.max(1, wanted | 0);
     var avail = listInContentHeight();
     if (avail <= 40) return want;
-    var preferred = (window.innerHeight - 130 * getHeightK()) / want;
-    preferred = Math.max(preferred, 18 * getHeightK());
+    // Prefer settings.pageSize (OTT packs ~25 at the same window). Only shrink
+    // as safety when a row would fall below a readable floor — the old
+    // fs*1.35 preferred height forced ~19 rows and a large gap above podval.
+    var hk = getHeightK();
+    var minRow = 12 * hk;
     try {
         var listEl = document.getElementById("list");
         if (listEl) {
             var fs = parseFloat(window.getComputedStyle(listEl).fontSize) || 0;
-            // Row must clear font + .item border-bottom.
-            if (fs > 0) preferred = Math.max(preferred, fs * 1.35 + 1);
+            // Flex + line-height:normal: font size itself is enough (not 1.35×).
+            if (fs > 0) minRow = Math.max(minRow, fs + 1);
         }
     } catch (_f) {}
-    // 2px slack: WKWebView subpixel + .item border-bottom used to leave the
-    // last row clipped → cursor on off-screen #itN while the page looked right.
-    var fit = Math.floor((avail - 2) / preferred);
-    if (fit < 1)
-        fit = Math.max(1, Math.floor(avail / Math.max(12, preferred * 0.75)));
+    var atWanted = avail / want;
+    if (atWanted >= minRow) return want;
+    // 2px slack: WKWebView subpixel + .item border-bottom.
+    var fit = Math.floor((avail - 2) / Math.max(minRow, 1));
+    if (fit < 1) fit = 1;
     return Math.max(1, Math.min(want, fit));
 }
 

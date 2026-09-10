@@ -1532,19 +1532,51 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     listCatIndex = catIdx;
     listArray = cats[catsArray[listCatIndex]] || [];
     var wk = getWidthK();
+    var wglob = window as any;
+    // window.s* (settings / saveIfChanged) can diverge from concat-scope lets
+    // after Menu→Channel list settings; prefer window, then let, default on.
+    function listFlag(name: string, localVal: any, fallback: number): number {
+        var v = wglob[name];
+        if (v === undefined || v === null || v === "") v = localVal;
+        var n = typeof v === "number" ? v : parseInt(String(v), 10);
+        return isNaN(n) ? fallback : n;
+    }
+    var showNum = listFlag("sShowNum", sShowNum, 1);
+    var showName = listFlag("sShowName", sShowName, 1);
+    var showPikon = listFlag("sShowPikon", sShowPikon, 1);
+    var showProgress = listFlag("sShowProgress", sShowProgress, 1);
+    var showProgram = listFlag("sShowProgram", sShowProgram, 1);
+    var showArchive = listFlag("sShowArchive", sShowArchive, 0);
+    // Keep lets + window aligned for subsequent renders / settings screens.
+    sShowNum = showNum;
+    sShowName = showName;
+    sShowPikon = showPikon;
+    sShowProgress = showProgress;
+    sShowProgram = showProgram;
+    sShowArchive = showArchive;
+    wglob.sShowNum = showNum;
+    wglob.sShowName = showName;
+    wglob.sShowPikon = showPikon;
+    wglob.sShowProgress = showProgress;
+    wglob.sShowProgram = showProgram;
+    wglob.sShowArchive = showArchive;
     // Match showPage: fitted pageSize + live #listIn row height so picons
     // align with visibly fitting rows (not settings.pageSize alone).
+    var wantPs = (wglob.settings && wglob.settings.pageSize) || pageSize || 25;
     var pageSz =
-        typeof (window as any).listFitPageSize === "function"
-            ? (window as any).listFitPageSize(pageSize)
-            : pageSize;
-    (window as any).listPageSize = pageSz;
+        typeof wglob.listFitPageSize === "function"
+            ? wglob.listFitPageSize(wantPs)
+            : wantPs;
+    wglob.listPageSize = pageSz;
     var itemH =
-        typeof (window as any).listRowHeight === "function"
-            ? (window as any).listRowHeight(pageSz)
+        typeof wglob.listRowHeight === "function"
+            ? wglob.listRowHeight(pageSz)
             : (window.innerHeight - 130 * getHeightK()) / pageSz;
+    if (!(itemH > 0) || isNaN(itemH)) {
+        itemH = Math.max(12 * getHeightK(), 16);
+    }
     var numWidth = 0;
-    if (sShowNum)
+    if (showNum)
         try {
             var testEl = $("#testFont");
             testEl.text("9");
@@ -1554,12 +1586,13 @@ function _channelsList(catIdx: number, channelIdx: number): void {
         } catch (e) {
             console.error(e);
         }
-    var archWidth = sShowArchive ? 3 * wk : 0;
-    var pikonSize = [0, itemH - 2, itemH * 1.5][sShowPikon] || 0;
+    var archWidth = showArchive ? 3 * wk : 0;
+    var pikonRaw = [0, Math.max(0, itemH - 2), itemH * 1.5][showPikon];
+    var pikonSize = pikonRaw > 0 ? pikonRaw : 0;
     var pikonMargin = pikonSize || !archWidth ? 6 * wk : 0;
-    var progWidth = sShowProgress ? 40 * wk : 0;
-    var progBarH = Math.floor(itemH / 3.5);
-    var progMargin = sShowProgress ? Math.floor((itemH - progBarH) / 2) : 0;
+    var progWidth = showProgress ? 40 * wk : 0;
+    var progBarH = Math.max(1, Math.floor(itemH / 3.5));
+    var progMargin = showProgress ? Math.floor((itemH - progBarH) / 2) : 0;
 
     getListItemFn = function (chId: string, idx: number) {
         var ch = channels[chId];
@@ -1648,8 +1681,8 @@ function _channelsList(catIdx: number, channelIdx: number): void {
             '<div style="flex:1 1 auto;min-width:0;color:' +
             bodyColor +
             ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:normal;">&nbsp;' +
-            (sShowName ? ch.channel_name + "&nbsp;" : "") +
-            (sShowProgram
+            (showName ? ch.channel_name + "&nbsp;" : "") +
+            (showProgram
                 ? '<span id="pn' +
                   chId +
                   '" style="color:' +
