@@ -152,15 +152,23 @@ export function listFitPageSize(wanted: number): number {
 }
 
 /**
- * Row height from the classic OTT formula (same chrome as companion 1.1.16).
- * showPage must set both height and line-height to this value; CSS must not
- * add vertical margin/padding/border on `.item`/`#itN`. Font size / fontShift
- * ("Distance between lines", default ~4) then shrinks glyphs inside that
- * line-box via setFontSize — do not shrink-to-fit live `#listIn`.
+ * Row height so settings.pageSize rows pack into live `#listIn` (OTT density).
+ * Classic companion showPage uses (innerHeight-130*hK)/pageSize; WKWebView
+ * caption/podval/border chrome is often a few percent tighter, so the classic
+ * formula alone left ~23 of 25 visible (~8% too tall per row). Prefer
+ * floor(listInContentHeight/pageSize); fall back to classic when not laid out.
+ * setFontSize still uses the companion 90-chrome font formula; do not shrink
+ * pageSize itself.
  */
 export function listRowHeight(pageSize: number): number {
     var ps = Math.max(1, pageSize | 0);
-    return (window.innerHeight - 130 * getHeightK()) / ps;
+    var classic = (window.innerHeight - 130 * getHeightK()) / ps;
+    var avail = listInContentHeight();
+    if (avail > 40) {
+        // 1px slack for WKWebView subpixel so the last row is not clipped.
+        return Math.max(1, Math.floor((avail - 1) / ps));
+    }
+    return classic;
 }
 
 // Expose globally for UI code that uses window.getWidthK / window.getHeightK

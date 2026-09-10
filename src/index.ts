@@ -1016,9 +1016,10 @@ function setFontSize(): void {
     var $i1El = $i1 && typeof $i1.css === "function" ? $i1 : null;
     var e = window.innerHeight / 720;
     var t = window.innerWidth / 1280;
-    // Use same 130-chrome base as listRowHeight/showPage so fontShift
-    // ("Distance between lines") is padding inside the real row line-box.
-    var r = (window.innerHeight - 130 * e) / pageSize - settings.fontShift * e;
+    // Companion OTT setFontSize uses 90-chrome for glyph size; showPage rows
+    // use 130-chrome / live #listIn. fontShift ("Distance between lines")
+    // shrinks glyphs inside the row line-box.
+    var r = (window.innerHeight - 90 * e) / pageSize - settings.fontShift * e;
     r = Math.max(r, 16 * e);
     r = Math.min(r, 40 * e);
     $("#list").css("font-size", r + "px");

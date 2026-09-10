@@ -927,10 +927,9 @@ export function showPage(): void {
             '" onclick="event.stopPropagation();setSelect(' +
             i +
             ')" class="item"';
-        // Classic OTT: height AND line-height = row formula so fontShift
-        // ("Distance between lines") shrinks glyphs inside a fixed line-box.
-        // line-height:normal (~1.2×font) was taller than the 130-chrome row and
-        // let WKWebView expand #itN past the formula → oversized gaps.
+        // Companion: height + line-height:normal. Pack height from
+        // listRowHeight (live #listIn / pageSize) so 25 fit; max-height keeps
+        // WKWebView from growing past that (font/picon min-content).
         html +=
             ' style="display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;' +
             "box-sizing:border-box;margin:0;padding:0 14px;border:none;border-radius:3px;" +
@@ -938,11 +937,7 @@ export function showPage(): void {
             itemHeight +
             "px;max-height:" +
             itemHeight +
-            "px;min-height:" +
-            itemHeight +
-            "px;line-height:" +
-            itemHeight +
-            "px;width:" +
+            "px;min-height:0;line-height:normal;width:" +
             itemWidth +
             "px;overflow:hidden;white-space:nowrap;flex-shrink:0;";
         if (selected)

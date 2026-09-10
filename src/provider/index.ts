@@ -1560,20 +1560,25 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     wglob.sShowProgress = showProgress;
     wglob.sShowProgram = showProgram;
     wglob.sShowArchive = showArchive;
-    // Match showPage / OTT: honor settings.pageSize; row height via classic
-    // formula (setFontSize/fontShift owns spacing — do not fit-shrink).
+    // Honor settings.pageSize. Companion sizes picon/progress from the
+    // 90-chrome font formula (setFontSize); showPage row boxes use 130 /
+    // live #listIn via listRowHeight — do not mix those bases.
     var pageSz = Math.max(
         1,
         ((wglob.settings && wglob.settings.pageSize) || pageSize || 25) | 0
     );
     wglob.listPageSize = pageSz;
-    var itemH =
-        typeof wglob.listRowHeight === "function"
-            ? wglob.listRowHeight(pageSz)
-            : (window.innerHeight - 130 * getHeightK()) / pageSz;
+    var itemH = (window.innerHeight - 90 * getHeightK()) / pageSz;
     if (!(itemH > 0) || isNaN(itemH)) {
         itemH = Math.max(12 * getHeightK(), 16);
     }
+    // Real showPage row box (130 / live #listIn) — cap picon/archive to it.
+    var rowH =
+        typeof wglob.listRowHeight === "function"
+            ? wglob.listRowHeight(pageSz)
+            : (window.innerHeight - 130 * getHeightK()) / pageSz;
+    if (!(rowH > 0) || isNaN(rowH)) rowH = itemH;
+    var boxH = Math.min(itemH, rowH);
     var numWidth = 0;
     if (showNum)
         try {
@@ -1590,8 +1595,8 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     var pikonSize = pikonRaw > 0 ? pikonRaw : 0;
     var pikonMargin = pikonSize || !archWidth ? 6 * wk : 0;
     var progWidth = showProgress ? 40 * wk : 0;
-    var progBarH = Math.max(1, Math.floor(itemH / 3.5));
-    var progMargin = showProgress ? Math.floor((itemH - progBarH) / 2) : 0;
+    var progBarH = Math.max(1, Math.floor(boxH / 3.5));
+    var progMargin = showProgress ? Math.floor((boxH - progBarH) / 2) : 0;
 
     getListItemFn = function (chId: string, idx: number) {
         var ch = channels[chId];
@@ -1637,10 +1642,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
             .replace(/'/g, "%27")
             .replace(/"/g, "%22")
             .replace(/[\r\n\f]/g, "");
-        var iconH = Math.max(
-            1,
-            Math.min(pikonSize || 0, Math.floor(itemH) - 2)
-        );
+        var iconH = Math.max(1, Math.min(pikonSize || 0, Math.floor(boxH) - 2));
         return (
             (numWidth
                 ? '<div style="flex:0 0 ' +
@@ -1661,7 +1663,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   "margin:" +
                   archWidth +
                   "px;height:" +
-                  (itemH - archWidth * 2) +
+                  (boxH - archWidth * 2) +
                   'px"></div>'
                 : "") +
             (pikonSize
