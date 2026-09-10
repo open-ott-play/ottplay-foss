@@ -154,10 +154,11 @@ export function listFitPageSize(wanted: number): number {
 /**
  * Row height so settings.pageSize rows pack into live `#listIn` (OTT density).
  * Classic companion showPage uses (innerHeight-130*hK)/pageSize; WKWebView
- * caption/podval/border chrome is often a few percent tighter, so the classic
- * formula alone left ~23 of 25 visible (~8% too tall per row). Prefer
- * floor(listInContentHeight/pageSize); fall back to classic when not laid out.
- * setFontSize still uses the companion 90-chrome font formula; do not shrink
+ * caption/podval/border chrome is often a few percent tighter, so classic
+ * alone left ~21–23 of 25 visible. Prefer floor(listInContentHeight/pageSize)
+ * (never taller than classic); fall back to classic when not laid out.
+ * showPage must set height+line-height+min/max to this value — line-height:normal
+ * lets 90-chrome glyphs expand #itN past the box in WKWebView. Do not shrink
  * pageSize itself.
  */
 export function listRowHeight(pageSize: number): number {
@@ -165,8 +166,8 @@ export function listRowHeight(pageSize: number): number {
     var classic = (window.innerHeight - 130 * getHeightK()) / ps;
     var avail = listInContentHeight();
     if (avail > 40) {
-        // 1px slack for WKWebView subpixel so the last row is not clipped.
-        return Math.max(1, Math.floor((avail - 1) / ps));
+        // Pack pageSize rows into the live content box; never taller than classic.
+        return Math.max(1, Math.min(classic, Math.floor(avail / ps)));
     }
     return classic;
 }

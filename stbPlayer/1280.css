@@ -359,11 +359,12 @@ body {
     padding: 0 14px;
     /* Vertical margin/padding/border must not override showPage row height
        (live #listIn / pageSize, classic 130 fallback) — separators via inset
-       shadow only. line-height:normal matches companion; max-height is inline. */
+       shadow only. showPage sets line-height to the same px as height so
+       WKWebView cannot expand rows past pageSize packing. */
     margin: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-    line-height: normal;
+    line-height: normal; /* showPage inline px overrides */
     white-space: nowrap;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
     pointer-events: auto;

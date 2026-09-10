@@ -1591,11 +1591,15 @@ function _channelsList(catIdx: number, channelIdx: number): void {
             console.error(e);
         }
     var archWidth = showArchive ? 3 * wk : 0;
-    var pikonRaw = [0, Math.max(0, itemH - 2), itemH * 1.5][showPikon];
+    // Picon/progress geometry must fit the real showPage row box (boxH).
+    // Sizing from taller 90-chrome itemH made flex children outgrow #itN in
+    // WKWebView even with max-height on the row.
+    var pikonRaw = [0, Math.max(0, boxH - 2), boxH * 1.5][showPikon];
     var pikonSize = pikonRaw > 0 ? pikonRaw : 0;
     var pikonMargin = pikonSize || !archWidth ? 6 * wk : 0;
     var progWidth = showProgress ? 40 * wk : 0;
     var progBarH = Math.max(1, Math.floor(boxH / 3.5));
+    // Vertical-only margins — all-side margin inflated the flex cross-size.
     var progMargin = showProgress ? Math.floor((boxH - progBarH) / 2) : 0;
 
     getListItemFn = function (chId: string, idx: number) {
@@ -1699,7 +1703,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   progWidth +
                   "px;margin:" +
                   progMargin +
-                  'px;margin-left:auto;background-color:rgba(68,68,102,0.55);"><div id="pr' +
+                  'px 0;margin-left:auto;background-color:rgba(68,68,102,0.55);"><div id="pr' +
                   chId +
                   '" style="width:' +
                   pct +

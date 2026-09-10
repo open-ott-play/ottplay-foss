@@ -252,6 +252,27 @@ export default defineConfig({
                     }
                 }
 
+                // Cap webDir must also ship stbPlayer language packs (_*.js) +
+                // CSS/images. Previously only stageTauriFrontend got them, so
+                // Cap iOS loaded /stbPlayer/_eng.js → 404 → "lang loading fail".
+                const stbPlayerSrc = join(__dirname, "stbPlayer");
+                if (existsSync(stbPlayerSrc)) {
+                    const dest = join(outDir, "stbPlayer");
+                    mkdirSync(dest, { recursive: true });
+                    for (const file of readdirSync(stbPlayerSrc)) {
+                        if (
+                            file === "1280.css" ||
+                            /^_.*\.js$/i.test(file) ||
+                            /\.(png|gif|ico|jpg|jpeg)$/i.test(file)
+                        ) {
+                            cpSync(join(stbPlayerSrc, file), join(dest, file));
+                        }
+                    }
+                    console.log(
+                        "Copied Cap stbPlayer assets → dist/stbPlayer/"
+                    );
+                }
+
                 // Stage Mode A-like tree for Tauri Mode B (src-tauri/frontend).
                 // Mode A companion still serves dist/stbPlayer.js + repo-root
                 // stb/fonts/prov/js — URL shapes unchanged.
