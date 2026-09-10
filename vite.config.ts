@@ -69,6 +69,8 @@ function stripModule(code: string): string {
 // Vite still writes Mode A artifacts to dist/ (stbPlayer.js + index.html);
 // Tauri serves the *contents* of frontendDist as "/", so we nest
 // dist/stbPlayer.js inside the stage dir instead of pointing at ../dist.
+// Capacitor webDir "dist" gets the same nested path via dist/dist/stbPlayer.js
+// (written in generateBundle) so Cap keeps the identical boot URL contract.
 function stageTauriFrontend(
     srcRoot: string,
     distDir: string,
@@ -233,6 +235,21 @@ export default defineConfig({
                     console.log(
                         "Wrote dist/index.html with version=" + version
                     );
+                }
+
+                // Cap webDir is "dist" (contents served as "/"). Boot still
+                // loads host+"/dist/stbPlayer.js" (Mode A / Tauri contract), so
+                // nest a copy at dist/dist/stbPlayer.js for Capacitor.
+                mkdirSync(join(outDir, "dist"), { recursive: true });
+                cpSync(outPath, join(outDir, "dist", "stbPlayer.js"));
+                console.log("Nested Cap contract: dist/dist/stbPlayer.js");
+
+                // Cap webDir lacks Tauri stage's fonts/prov — copy for CSS @font-face.
+                for (const dir of ["fonts", "prov"] as const) {
+                    const src = join(__dirname, dir);
+                    if (existsSync(src)) {
+                        cpSync(src, join(outDir, dir), { recursive: true });
+                    }
                 }
 
                 // Stage Mode A-like tree for Tauri Mode B (src-tauri/frontend).

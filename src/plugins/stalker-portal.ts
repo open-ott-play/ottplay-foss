@@ -25,8 +25,6 @@
  * Hard rule: never fake a successful portal/swop/Mag response.
  */
 
-import { registerPlugin } from "@capacitor/core";
-
 export interface StalkerPortalPlugin {
     portalRequest(opts: {
         url: string;
@@ -62,12 +60,27 @@ class StalkerPortalWeb implements StalkerPortalPlugin {
     }
 }
 
-const StalkerPortal: any =
-    typeof (window as any).Capacitor !== "undefined"
-        ? registerPlugin<StalkerPortalPlugin>("StalkerPortal", {
-              web: StalkerPortalWeb,
-          })
-        : new StalkerPortalWeb();
+/** Concat/strip builds have no `@capacitor/core` import — never call bare registerPlugin. */
+function resolveCapPlugin(name: string, webFallback: any): any {
+    const Cap =
+        typeof window !== "undefined" ? (window as any).Capacitor : undefined;
+    if (Cap && Cap.Plugins && Cap.Plugins[name]) {
+        return Cap.Plugins[name];
+    }
+    if (Cap && typeof Cap.registerPlugin === "function") {
+        return Cap.registerPlugin(name, { web: webFallback });
+    }
+    if (typeof webFallback === "function") {
+        try {
+            return new webFallback();
+        } catch (_e) {
+            return webFallback;
+        }
+    }
+    return webFallback;
+}
+
+const StalkerPortal: any = resolveCapPlugin("StalkerPortal", StalkerPortalWeb);
 
 function isStalkerPortalUrl(url: string): boolean {
     return (
