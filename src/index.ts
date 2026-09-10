@@ -1352,8 +1352,9 @@ function stbSetOsdOpacity(val: number): void {
 
 /**
  * Select the editor implementation (built-in OSK or native input line).
- * On PC/Tauri/desktop, always forces native showEditKey2 (and persists sEditor=1).
- * On STB, routes from settings.editor / window.sEditor like original stbPlayer.js.
+ * On PC/Tauri/desktop and Capacitor (iOS/Android), always forces native
+ * showEditKey2 (and persists sEditor=1). On STB, routes from settings.editor
+ * / window.sEditor like original stbPlayer.js.
  *
  * Side effects: pullSettingsFromWindow(); may stbSetItem("sEditor"); assigns
  * window.editKey and window.showEditKey.
@@ -1366,12 +1367,15 @@ function setEditor(): void {
     var isPc =
         typeof w.__TAURI__ !== "undefined" ||
         /^(pc|pc2|tauri|desktop|nodejs)$/.test(String(w.ott_device || ""));
+    // Cap Mode B mobile: system keyboard via showEditKey2 (same as desktop).
+    // Do not treat generic ott_device=android STB builds as Cap.
+    var isCap = typeof w.Capacitor !== "undefined";
     // channels exports `var sEditor = 0`, which becomes window.sEditor in the
     // concat bundle. pullSettingsFromWindow can then clobber settings.editor
-    // back to 0 even when localStorage has sEditor=1. Re-read storage on PC
-    // and always prefer the native input line for desktop shells.
-    if (isPc) {
-        // Desktop: native input only (OSK remains available on STB via sEditor=0).
+    // back to 0 even when localStorage has sEditor=1. Re-read storage on PC/Cap
+    // and always prefer the native input line for those shells.
+    if (isPc || isCap) {
+        // Desktop/Cap: native input only (OSK remains for non-Cap STB via sEditor=0).
         var raw =
             typeof w.stbGetItem === "function" ? w.stbGetItem("sEditor") : null;
         settings.editor = 1;

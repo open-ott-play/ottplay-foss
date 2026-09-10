@@ -286,8 +286,10 @@ export function loadSettings(): PlayerSettings {
             const isPc =
                 /^(pc|pc2|tauri|desktop|nodejs)$/.test(dev) ||
                 !!(w && w.__TAURI__);
+            const isCap = !!(w && w.Capacitor);
+            const forceNative = isPc || isCap;
 
-            if (isPc && !storage.get("sEditorPcNativeMigrated")) {
+            if (forceNative && !storage.get("sEditorPcNativeMigrated")) {
                 if (isNaN(parsed) || parsed === 0) {
                     storage.setI("sEditor", 1);
                     storage.set("sEditorPcNativeMigrated", "1");
@@ -298,7 +300,7 @@ export function loadSettings(): PlayerSettings {
             }
 
             if (!isNaN(parsed)) return parsed;
-            return isPc ? 1 : 0;
+            return forceNative ? 1 : 0;
         })(),
         eFun: s.getI("sEfun", 0),
         epgRemindMinutes: s.getI("sEpgRemindMinutes", 5),

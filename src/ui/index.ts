@@ -3215,14 +3215,15 @@ var showEditKey: any = showEditKey1;
  *             Color-key underlines are added to shift/lang/backspace/ok symbols if color keys are enabled.
  */
 export function showEditKey1(_initKeys: any): void {
-    // Desktop / Tauri: always use the native <input> line. The graphical OSK
-    // is for STB remotes; several call sites still invoke showEditKey1 (or a
-    // stale window.showEditKey alias) directly.
+    // Desktop / Tauri / Capacitor: always use the native <input> line. The
+    // graphical OSK is for STB remotes; several call sites still invoke
+    // showEditKey1 (or a stale window.showEditKey alias) directly.
     var w = window as any;
     var isPc =
         typeof w.__TAURI__ !== "undefined" ||
         /^(pc|pc2|tauri|desktop|nodejs)$/.test(String(w.ott_device || ""));
-    if (isPc && typeof w.showEditKey2 === "function") {
+    var isCap = typeof w.Capacitor !== "undefined";
+    if ((isPc || isCap) && typeof w.showEditKey2 === "function") {
         w.showEditKey2(_initKeys);
         return;
     }
