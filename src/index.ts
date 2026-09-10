@@ -1342,17 +1342,35 @@ function stbSetOsdOpacity(val: number): void {
 }
 
 /**
- * Select the editor implementation (built-in OSK or native input line) based on
- * settings.editor (window.sEditor). Routes editKey / showEditKey to showEditKey1
- * or showEditKey2 on window — same choice as original stbPlayer.js setEditor().
+ * Select the editor implementation (built-in OSK or native input line).
+ * On PC/Tauri/desktop, always forces native showEditKey2 (and persists sEditor=1).
+ * On STB, routes from settings.editor / window.sEditor like original stbPlayer.js.
  *
- * Side effects: pullSettingsFromWindow(); assigns window.editKey and window.showEditKey.
+ * Side effects: pullSettingsFromWindow(); may stbSetItem("sEditor"); assigns
+ * window.editKey and window.showEditKey.
  */
 function setEditor(): void {
     // Match setListPos/setColor: settings may have been updated via window.s*
     // (first-run / STB settings) while the channels module binding stays at 0.
     pullSettingsFromWindow();
     var w = window as any;
+    var isPc =
+        typeof w.__TAURI__ !== "undefined" ||
+        /^(pc|pc2|tauri|desktop|nodejs)$/.test(String(w.ott_device || ""));
+    // channels exports `var sEditor = 0`, which becomes window.sEditor in the
+    // concat bundle. pullSettingsFromWindow can then clobber settings.editor
+    // back to 0 even when localStorage has sEditor=1. Re-read storage on PC
+    // and always prefer the native input line for desktop shells.
+    if (isPc) {
+        // Desktop: native input only (OSK remains available on STB via sEditor=0).
+        var raw =
+            typeof w.stbGetItem === "function" ? w.stbGetItem("sEditor") : null;
+        settings.editor = 1;
+        w.sEditor = 1;
+        if (typeof w.stbSetItem === "function" && String(raw) !== "1") {
+            w.stbSetItem("sEditor", "1");
+        }
+    }
     if (settings.editor && typeof w.showEditKey2 === "function") {
         w.editKey = w.editKey2;
         w.showEditKey = w.showEditKey2;
@@ -5366,6 +5384,13 @@ window.editKey2 = editKey2;
 window.showEditKey1 = showEditKey1;
 window.showEditKey2 = showEditKey2;
 window.setEditor = setEditor;
+// Apply immediately so window.showEditKey is not left on the ui-module default
+// (showEditKey1) if onStbReady is delayed or an early edit path runs first.
+try {
+    setEditor();
+} catch (_e) {
+    /* settings / stbGetItem may not be ready yet; onStbReady calls setEditor again */
+}
 window.setColor = setColor;
 window.setListPos = setListPos;
 
