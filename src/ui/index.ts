@@ -13,7 +13,6 @@ import {
     getHeightK,
     getThumbnail,
     getWidthK,
-    listFitPageSize,
     listRowHeight,
     time2time,
 } from "../utils/helpers";
@@ -868,9 +867,9 @@ export function showPage(): void {
             ? (window as any).listArray
             : null) ||
         [];
-    // Reduce pageSize to rows that actually fit in live #listIn (settings
-    // alone still yields ~25 while only ~19 paint → invisible cursor).
-    var pageSz = listFitPageSize(settings.pageSize);
+    // Always honor List settings pageSize (OTT). Cursor stays on-screen via
+    // paging in changeSelect — never by shrinking pageSize.
+    var pageSz = Math.max(1, settings.pageSize | 0 || 25);
     (window as any).listPageSize = pageSz;
     var pageStart = Math.floor(selIndex / pageSz) * pageSz;
     var pageEnd = Math.min(pageStart + pageSz, dataArr.length);
@@ -1035,11 +1034,8 @@ export function changeSelect(delta: number): void {
         selIndex = delta === 1 ? 0 : dataArr.length - 1;
     // Keep window.selIndex in sync (channelsKeyHandler / provider read it).
     (window as any).selIndex = selIndex;
-    var pageSz =
-        (window as any).listPageSize ||
-        listFitPageSize(settings.pageSize) ||
-        settings.pageSize ||
-        25;
+    var pageSz = (window as any).listPageSize || settings.pageSize || 25;
+    pageSz = Math.max(1, pageSz | 0);
     var pageChanged =
         Math.floor(oldIndex / pageSz) !== Math.floor(selIndex / pageSz);
     var newItem = document.getElementById("it" + selIndex);
