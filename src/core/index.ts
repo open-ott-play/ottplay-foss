@@ -384,6 +384,78 @@ export function stbSetTauriNativeFullscreen(want: boolean): Promise<void> {
  *               default browser action (typing 'l' in input fields).
  */
 
+/**
+ * Tauri/macOS: native <video> often keeps focus in full-video mode so
+ * window.onkeydown never sees L/Escape, while the channel list (no video
+ * focus) still does. Capture-phase document listener toggles/exits simple
+ * fullscreen without any global KeyL shortcut.
+ */
+export function installTauriFsKeyCapture(): void {
+    if (typeof window === "undefined") return;
+    if (typeof (window as any).__TAURI__ === "undefined") return;
+    if ((window as any).__ottTauriFsKeyCapture) return;
+    (window as any).__ottTauriFsKeyCapture = true;
+    document.addEventListener(
+        "keydown",
+        function (ev: KeyboardEvent) {
+            try {
+                var t = ev.target as HTMLElement | null;
+                if (
+                    t &&
+                    (t.tagName === "INPUT" ||
+                        t.tagName === "TEXTAREA" ||
+                        t.isContentEditable)
+                ) {
+                    return;
+                }
+            } catch (_t) {}
+            var key = ev.key || "";
+            var code = ev.code || "";
+            var kc =
+                typeof ev.keyCode === "number" && ev.keyCode
+                    ? ev.keyCode
+                    : typeof ev.which === "number" && ev.which
+                      ? ev.which
+                      : 0;
+            var isL =
+                kc === 76 || key === "l" || key === "L" || code === "KeyL";
+            var isEsc = kc === 27 || key === "Escape" || code === "Escape";
+            if (!isL && !isEsc) return;
+
+            if (isL) {
+                var editing = false;
+                try {
+                    if (
+                        typeof (window as any).$ !== "undefined" &&
+                        (window as any).$("#listEdit").is(":visible")
+                    )
+                        editing = true;
+                } catch (_e) {}
+                if (editing) return;
+                // Rust toggle_fullscreen is the source of truth (simple FS
+                // flag + geometry). Always toggle — do not guess from JS.
+                void stbToggleTauriNativeFullscreen();
+                if (ev.preventDefault) ev.preventDefault();
+                if (ev.stopPropagation) ev.stopPropagation();
+                if (typeof (ev as any).stopImmediatePropagation === "function")
+                    (ev as any).stopImmediatePropagation();
+                return;
+            }
+
+            // Escape: force exit simple FS when flagged; otherwise let
+            // keyHandler run (list close / exitPortal).
+            if (isEsc && (window as any).__ottTauriNativeFs) {
+                void stbSetTauriNativeFullscreen(false);
+                if (ev.preventDefault) ev.preventDefault();
+                if (ev.stopPropagation) ev.stopPropagation();
+                if (typeof (ev as any).stopImmediatePropagation === "function")
+                    (ev as any).stopImmediatePropagation();
+            }
+        },
+        true
+    );
+}
+
 export function stbEventToKeyCode(event: any): number {
     if (!event) return 0;
 
@@ -1186,6 +1258,18 @@ export function stbInit(): void {
             );
         }
         video = document.getElementById("video") as HTMLVideoElement;
+        try {
+            // Keep focus off native <video> so L/Escape reach the document
+            // key path in full-video mode (list overlay already did).
+            video!.setAttribute("tabindex", "-1");
+            var _blurVid = function () {
+                try {
+                    video!.blur();
+                } catch (_b) {}
+            };
+            video!.addEventListener("playing", _blurVid);
+            video!.addEventListener("click", _blurVid);
+        } catch (_tab) {}
         video!.addEventListener("waiting", function () {
             $("#buffering").show();
             $("#video_res").html("<br/>connect...");
@@ -1316,6 +1400,9 @@ export function stbInit(): void {
     }
     stbToFullScreen();
     window.onkeydown = window.keyHandler;
+    try {
+        installTauriFsKeyCapture();
+    } catch (_fsKey) {}
 }
 
 /**

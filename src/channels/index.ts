@@ -3103,6 +3103,33 @@ export function channelsList(_catIdx: number, _channelIdx: number): void {
  * - Updates #listCaption, #listPodval, #listPopUp DOM.
  * - Calls `window.showPage`.
  */
+/**
+ * Index of the currently playing channel inside category `catIdx`, or 0.
+ * Used when opening a category so Category: All highlights the live channel
+ * instead of row 0 (invisible / wrong cursor).
+ */
+function playingChannelIdxInCategory(catIdx: number): number {
+    try {
+        var list = (cats && catsArray && cats[catsArray[catIdx]]) || [];
+        if (!list.length) return 0;
+        if (
+            catIdx === catIndex &&
+            typeof primaryIndex === "number" &&
+            primaryIndex >= 0 &&
+            primaryIndex < list.length
+        ) {
+            return primaryIndex;
+        }
+        var curList = (cats && catsArray && cats[catsArray[catIndex]]) || [];
+        var curId = curList[primaryIndex];
+        if (curId != null) {
+            var i = list.indexOf(curId);
+            if (i >= 0) return i;
+        }
+    } catch (_e) {}
+    return 0;
+}
+
 export function bucketsList(catIdx: number, _channelIdx?: number): void {
     var w = window as any;
     var catsList = catsArray || [];
@@ -3294,7 +3321,7 @@ export function bucketsKeyHandler(keyCode: number): boolean {
                 idx < catsArray.length &&
                 typeof w.channelsList === "function"
             ) {
-                w.channelsList(idx, 0);
+                w.channelsList(idx, playingChannelIdxInCategory(idx));
             }
             return true;
         }
@@ -3312,7 +3339,10 @@ export function bucketsKeyHandler(keyCode: number): boolean {
         case keys.RIGHT:
         case keys.ENTER:
             if (typeof w.channelsList === "function") {
-                w.channelsList(w.selIndex, 0);
+                w.channelsList(
+                    w.selIndex,
+                    playingChannelIdxInCategory(w.selIndex)
+                );
             }
             return true;
 
@@ -3321,7 +3351,7 @@ export function bucketsKeyHandler(keyCode: number): boolean {
             var nextCat =
                 w.selIndex < catsArray.length - 1 ? w.selIndex + 1 : 0;
             if (typeof w.channelsList === "function") {
-                w.channelsList(nextCat, 0);
+                w.channelsList(nextCat, playingChannelIdxInCategory(nextCat));
             }
             return true;
         }

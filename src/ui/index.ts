@@ -13,6 +13,7 @@ import {
     getHeightK,
     getThumbnail,
     getWidthK,
+    listFitPageSize,
     listRowHeight,
     time2time,
 } from "../utils/helpers";
@@ -795,6 +796,22 @@ export function showPage(): void {
         console.error(e);
     }
     if (listElement) listElement.style.display = "";
+    // Remeasure once on next frame if #listIn was not laid out yet
+    // (common on first open in Tauri after show()).
+    try {
+        var _boxEarly = document.getElementById("listIn");
+        if (
+            _boxEarly &&
+            _boxEarly.clientHeight <= 40 &&
+            !(window as any).__ottListFitRetry
+        ) {
+            (window as any).__ottListFitRetry = true;
+            requestAnimationFrame(function () {
+                (window as any).__ottListFitRetry = false;
+                showPage();
+            });
+        }
+    } catch (_early) {}
     var dataArr =
         (listDataArray && listDataArray.length ? listDataArray : null) ||
         ((window as any).listDataArray && (window as any).listDataArray.length
@@ -805,33 +822,33 @@ export function showPage(): void {
             ? (window as any).listArray
             : null) ||
         [];
-    var pageStart =
-        Math.floor(selIndex / settings.pageSize) * settings.pageSize;
-    var pageEnd = Math.min(pageStart + settings.pageSize, dataArr.length);
-    // Fit pageSize rows inside live #listIn (formula alone drifts after
-    // caption/podval 52px chrome + Tauri window chrome → clipped rows,
-    // cursor on off-screen 21–25 while DOM still has pageSize items).
-    var itemHeight = listRowHeight(settings.pageSize);
+    // Reduce pageSize to rows that actually fit in live #listIn (settings
+    // alone still yields ~25 while only ~19 paint → invisible cursor).
+    var pageSz = listFitPageSize(settings.pageSize);
+    (window as any).listPageSize = pageSz;
+    var pageStart = Math.floor(selIndex / pageSz) * pageSz;
+    var pageEnd = Math.min(pageStart + pageSz, dataArr.length);
+    var itemHeight = listRowHeight(pageSz);
     var html = "";
-    if (dataArr.length > settings.pageSize) {
+    if (dataArr.length > pageSz) {
         itemWidth = getWidthK() * 720;
         (window as any).itemWith = itemWidth;
         var scrollWidth = 10 * getWidthK();
         var totalPages =
-            Math.floor(dataArr.length / settings.pageSize) +
-            (dataArr.length % settings.pageSize ? 1 : 0);
-        var currentPage = Math.floor(selIndex / settings.pageSize);
+            Math.floor(dataArr.length / pageSz) +
+            (dataArr.length % pageSz ? 1 : 0);
+        var currentPage = Math.floor(selIndex / pageSz);
         // Absolute scrollbar (NOT float:right): float-first layout made
         // visual rows miss their #itN hit targets in WKWebView/Tauri.
         html +=
             '<div class="list-scroll" onclick="event.stopPropagation();changeSelect(' +
-            settings.pageSize +
+            pageSz +
             ');" style="position:absolute;right:0;top:0;bottom:0;width:' +
             scrollWidth +
             'px; border: 1px solid rgba(240,240,240,0.35); border-radius: 4px; background-color: rgba(255,255,255,0.06);z-index:2;">';
         html +=
             '<div onclick="event.stopPropagation();changeSelect(-' +
-            settings.pageSize +
+            pageSz +
             ');" style="width:100%;height:' +
             (currentPage / totalPages) * 100 +
             '%;"></div>';
@@ -850,7 +867,7 @@ export function showPage(): void {
         if (listInBox && (listInBox as HTMLElement).clientWidth > 40) {
             var avail =
                 (listInBox as HTMLElement).clientWidth -
-                (dataArr.length > settings.pageSize ? 12 * getWidthK() : 0);
+                (dataArr.length > pageSz ? 12 * getWidthK() : 0);
             if (avail > 40) itemWidth = Math.min(itemWidth, Math.floor(avail));
             (window as any).itemWith = itemWidth;
         }

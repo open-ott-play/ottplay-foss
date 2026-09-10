@@ -119,25 +119,65 @@ export function getHeightK(): number {
 }
 
 /**
+ * Live `#listIn` content height (padding excluded), or 0 if not laid out.
+ * Forces a layout read so Tauri/WKWebView does not report a stale height
+ * before caption/podval chrome finishes.
+ */
+export function listInContentHeight(): number {
+    try {
+        var box = document.getElementById("listIn");
+        if (!box) return 0;
+        // Force layout after show()/font apply.
+        void (box as HTMLElement).offsetHeight;
+        if (box.clientHeight <= 40) return 0;
+        var cs = window.getComputedStyle(box);
+        var pad =
+            (parseFloat(cs.paddingTop) || 0) +
+            (parseFloat(cs.paddingBottom) || 0);
+        var avail = box.clientHeight - pad;
+        return avail > 40 ? avail : 0;
+    } catch (_e) {
+        return 0;
+    }
+}
+
+/**
+ * How many list rows actually fit on screen at a readable height.
+ * Shrinks the effective pageSize so DOM row count matches visible rows
+ * (settings.pageSize alone overshoots after caption/podval + Tauri chrome).
+ */
+export function listFitPageSize(wanted: number): number {
+    var want = Math.max(1, wanted | 0);
+    var avail = listInContentHeight();
+    if (avail <= 40) return want;
+    var preferred = (window.innerHeight - 130 * getHeightK()) / want;
+    preferred = Math.max(preferred, 18 * getHeightK());
+    try {
+        var listEl = document.getElementById("list");
+        if (listEl) {
+            var fs = parseFloat(window.getComputedStyle(listEl).fontSize) || 0;
+            // Row must clear font + .item border-bottom.
+            if (fs > 0) preferred = Math.max(preferred, fs * 1.35 + 1);
+        }
+    } catch (_f) {}
+    var fit = Math.floor(avail / preferred);
+    if (fit < 1)
+        fit = Math.max(1, Math.floor(avail / Math.max(12, preferred * 0.75)));
+    return Math.max(1, Math.min(want, fit));
+}
+
+/**
  * Row height so `pageSize` items fit inside the live `#listIn` box.
  * Falls back to the 130px chrome formula when `#listIn` is not laid out yet.
  * Floors the measured value so WKWebView/Tauri cannot clip the last rows
  * (selection cursor hanging on off-screen indices while pageSize rows are in DOM).
+ * Pass the *fitted* pageSize from listFitPageSize, not the raw settings value.
  */
 export function listRowHeight(pageSize: number): number {
     var ps = Math.max(1, pageSize | 0);
     var fallback = (window.innerHeight - 130 * getHeightK()) / ps;
-    try {
-        var box = document.getElementById("listIn");
-        if (box && box.clientHeight > 40) {
-            var cs = window.getComputedStyle(box);
-            var pad =
-                (parseFloat(cs.paddingTop) || 0) +
-                (parseFloat(cs.paddingBottom) || 0);
-            var avail = box.clientHeight - pad;
-            if (avail > 40) return Math.max(1, Math.floor(avail / ps));
-        }
-    } catch (_e) {}
+    var avail = listInContentHeight();
+    if (avail > 40) return Math.max(1, Math.floor(avail / ps));
     return fallback;
 }
 
@@ -145,6 +185,8 @@ export function listRowHeight(pageSize: number): number {
 if (typeof window !== "undefined") {
     (window as any).getWidthK = getWidthK;
     (window as any).getHeightK = getHeightK;
+    (window as any).listInContentHeight = listInContentHeight;
+    (window as any).listFitPageSize = listFitPageSize;
     (window as any).listRowHeight = listRowHeight;
 }
 
