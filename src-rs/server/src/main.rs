@@ -74,6 +74,13 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
+    // rustls 0.23: both aws-lc-rs and ring end up linked (reqwest + tokio-rustls feature
+    // unification). Install an explicit process default before ServerConfig::builder(),
+    // otherwise HTTPS listen panics with "no process-level CryptoProvider available".
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("failed to install rustls CryptoProvider (aws-lc-rs)");
+
     let urls = epg_urls();
     if !urls.is_empty() {
         println!("[EPG] Fetching {} source(s)...", urls.len());
