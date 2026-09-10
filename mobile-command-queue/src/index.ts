@@ -28,7 +28,7 @@ export interface CommandQueuePlugin {
 class MobileCommandQueueWeb extends WebPlugin implements CommandQueuePlugin {
     async start(): Promise<QueueListenInfo> {
         console.warn("[MobileCommandQueue] web fallback: no native server");
-        return { running: false, port: 0 };
+        return { port: 0, running: false };
     }
 
     async stop(): Promise<void> {}
@@ -47,7 +47,7 @@ class MobileCommandQueueWeb extends WebPlugin implements CommandQueuePlugin {
     }
 
     async isRunning(): Promise<QueueListenInfo> {
-        return { running: false, port: 0 };
+        return { port: 0, running: false };
     }
 }
 
