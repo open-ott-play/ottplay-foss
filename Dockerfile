@@ -8,7 +8,7 @@ RUN npm ci --ignore-scripts && npm run typecheck && npm run build
 # Build Rust server against musl so the published image does not need
 # GLIBC_2.38+ (Hub :latest built on a newer glibc toolchain failed on
 # Synology DSM Docker / x86_64). Alpine = musl host target by default.
-FROM rust:1.98-alpine@sha256:a10e64dd139b7387337c7fbe8aca31b959b57b2fd4c8ae20a02cf1d6ea424dce AS rust-build
+FROM rust:1.98-alpine@sha256:1716b3aa042d735f4566d14dc54e8037de9d69556e2d5dd58131d93a613d173d AS rust-build
 RUN apk add --no-cache musl-dev build-base
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
