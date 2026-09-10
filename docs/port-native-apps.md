@@ -122,13 +122,14 @@ Implemented in `mobile-xmltv-epg/` (Capacitor) and `src-tauri/src/commands/tauri
 ### Tier 6 — Remote commands
 
 Native app implements its own local command queue (not `local_proxy.py`):
-- `POST /api/webhook/commands` → native HTTP server on `localhost:18081` (desktop) or high port (iOS, Android)
-- `GET /api/webhook/commands` → poll from the app's web layer
-- Aliases: `POST /webhook/notify`, `GET /webhook/poll`; optional `?device_id=` (query only)
+- `POST /api/webhook/commands` → native HTTP server preferring `localhost:18081` (desktop / Cap), falling back through `18082..=18090` when busy so Cap+Tauri can coexist on one Mac
+- `GET /api/webhook/health` → `{"status":"ok","service":"ottplay-command-queue","backend":"tauri|capacitor","port":N}` (no drain)
+- `GET /api/webhook/commands` → poll from the app's web layer (JS still uses invoke/plugin; HTTP is for curl/HA)
+- Aliases: `POST /webhook/notify`, `GET /webhook/poll`, `GET /webhook/health`; optional `?device_id=` (query only). Pin with `OTTPLAY_QUEUE_PORT`.
 
 The native command queue stores commands in memory (expire after 60s, same as `local_proxy.py`).
 
-**Smoke / HA:** `scripts/smoke-command-queue.sh` (#328; default `http://127.0.0.1:18081`) — curl POST/GET (+ optional HA `rest_command` notes). Mode A companion remains `python3 local_proxy.py 8081` for LAN Home Assistant — Cap/Tauri are loopback-only. Mode A HTTP companion smoke is `scripts/smoke-modea-companion.sh` (#329); also M3U stream-proxy headers (#332), `/logo` bench (#333), XMLTV warm-up (#334). See `docs/capacitor-mobile.md` § Smoke test and root `README.md` Push Command System.
+**Smoke / HA:** `scripts/smoke-command-queue.sh` (#328; default `http://127.0.0.1:18081`; `--discover` for Cap+Tauri dual-run) — curl POST/GET (+ optional HA `rest_command` notes). Mode A companion remains `python3 local_proxy.py 8081` for LAN Home Assistant — Cap/Tauri are loopback-only. Mode A HTTP companion smoke is `scripts/smoke-modea-companion.sh` (#329); also M3U stream-proxy headers (#332), `/logo` bench (#333), XMLTV warm-up (#334). See `docs/capacitor-mobile.md` § Smoke test and root `README.md` Push Command System.
 
 ---
 
@@ -294,7 +295,7 @@ Goal: eliminate Python for desktop builds.
    - `GET /version/<rel>`, `/feedback/*`, `/api/*`, `/report_feedb`
 
 6. **Command queue** → `src-tauri/src/commands/queue.rs`
-   - `tiny_http` server on `localhost:18081`
+   - `tiny_http` server preferring `localhost:18081` (fallback `18082..=18090`)
    - `RwLock<HashMap<String, Vec<Command>>>` — expire > 60s
    - Expose as `#[tauri::command]` for direct JS call too
 
@@ -315,7 +316,7 @@ Goal: iOS + Android from the same TypeScript source.
    }
    ```
 4. **Native plugin for command queue:**
-   - iOS: Swift plugin on `localhost:18081`
+   - iOS: Swift plugin preferring `localhost:18081` (fallback `18082..=18090`)
    - Android: Kotlin plugin
 5. **Build:** `npm run build && npx cap copy ios && npx cap copy android && npx cap sync`
 

@@ -1,6 +1,8 @@
 //
 //  MobileCommandQueue.swift - Capacitor plugin for native HTTP command queue
-//  Binds to 127.0.0.1:18081 and implements the same contract as local_proxy.py:
+//  Prefers 127.0.0.1:18081; falls back through 18082..=18090 when busy (Cap+Tauri
+//  coexistence on one Mac). Pin with OTTPLAY_QUEUE_PORT. Same contract as local_proxy.py:
+//  - GET  /api/webhook/health (alias /webhook/health) — status/backend/port (no drain)
 //  - POST /api/webhook/commands (alias /webhook/notify) — enqueue JSON body; attach ts; optional ?device_id=
 //  - GET /api/webhook/commands (alias /webhook/poll) — return pending array then clear; expire entries >60s
 //  - CORS headers; OPTIONS handling
@@ -31,6 +33,10 @@ public class MobileCommandQueue: CAPPlugin, CAPBridgedPlugin {
 
     private var listener: NWListener?
     private var isRunningFlag = false
+    private var boundPort: UInt16 = 0
+    private let defaultPort: UInt16 = 18081
+    private let fallbackEnd: UInt16 = 18090
+    private let backendId = "capacitor"
     private let expireSecs: TimeInterval = 60.0
     private let deviceCap = 50
     private let deviceTrim = 25
@@ -49,13 +55,42 @@ public class MobileCommandQueue: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func start(_ call: CAPPluginCall) {
-        startListener { ok, err in
+        startListener { [weak self] ok, err in
             if let err = err {
                 call.reject(err)
             } else {
-                call.resolve()
+                call.resolve(["running": true, "port": self?.boundPort ?? 0])
             }
         }
+    }
+
+    private func portsToTry() -> [UInt16] {
+        if let env = ProcessInfo.processInfo.environment["OTTPLAY_QUEUE_PORT"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !env.isEmpty,
+           let p = UInt16(env),
+           p > 0 {
+            return [p]
+        }
+        return Array(defaultPort...fallbackEnd)
+    }
+
+    /// Probe whether 127.0.0.1:port is free (TOCTOU-acceptable for Mode B loopback).
+    private func canBindLoopback(port: UInt16) -> Bool {
+        let fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)
+        guard fd >= 0 else { return false }
+        defer { close(fd) }
+        var addr = sockaddr_in()
+        addr.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        addr.sin_family = sa_family_t(AF_INET)
+        addr.sin_port = port.bigEndian
+        addr.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
+        let bindResult = withUnsafePointer(to: &addr) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
+        }
+        return bindResult == 0
     }
 
     private func startListener(completion: @escaping (_ ok: Bool, _ error: String?) -> Void) {
@@ -63,45 +98,66 @@ public class MobileCommandQueue: CAPPlugin, CAPBridgedPlugin {
             guard let self = self else { return }
 
             if self.isRunningFlag {
-                self.notifyListeners("isRunning", data: ["running": true])
+                let port = self.boundPort
+                self.notifyListeners("isRunning", data: ["running": true, "port": port])
                 DispatchQueue.main.async { completion(true, nil) }
                 return
             }
 
-            do {
-                let params = NWParameters.tcp
-                params.requiredLocalEndpoint = NWEndpoint.hostPort(
-                    host: "127.0.0.1",
-                    port: 18081
-                )
+            let ports = self.portsToTry()
+            var lastError = "no ports to try"
+            for port in ports {
+                guard self.canBindLoopback(port: port) else {
+                    self.logger.info("Command queue port \(port) busy, trying next")
+                    lastError = "127.0.0.1:\(port) busy"
+                    continue
+                }
+                guard let nwPort = NWEndpoint.Port(rawValue: port) else {
+                    lastError = "invalid port \(port)"
+                    continue
+                }
+                do {
+                    let params = NWParameters.tcp
+                    params.requiredLocalEndpoint = NWEndpoint.hostPort(
+                        host: "127.0.0.1",
+                        port: nwPort
+                    )
 
-                self.listener = try NWListener(using: params)
+                    self.listener = try NWListener(using: params)
 
-                self.listener?.stateUpdateHandler = { state in
-                    if case .failed(_) = state {
-                        self.logger.error("Listener failed")
-                        self.isRunningFlag = false
+                    self.listener?.stateUpdateHandler = { [weak self] state in
+                        if case .failed(_) = state {
+                            self?.logger.error("Listener failed")
+                            self?.isRunningFlag = false
+                            self?.boundPort = 0
+                        }
                     }
-                }
 
-                self.listener?.newConnectionHandler = { [weak self] connection in
-                    self?.handleConnection(connection)
-                }
+                    self.listener?.newConnectionHandler = { [weak self] connection in
+                        self?.handleConnection(connection)
+                    }
 
-                self.isRunningFlag = true
-                self.listener?.start(queue: self.queue)
+                    self.isRunningFlag = true
+                    self.boundPort = port
+                    self.listener?.start(queue: self.queue)
 
-                self.logger.info("Command queue listener started on 127.0.0.1:18081")
+                    self.logger.info("Command queue listener started on 127.0.0.1:\(port)")
 
-                DispatchQueue.main.async { [weak self] in
-                    self?.notifyListeners("isRunning", data: ["running": true])
-                    completion(true, nil)
+                    DispatchQueue.main.async { [weak self] in
+                        self?.notifyListeners("isRunning", data: ["running": true, "port": port])
+                        completion(true, nil)
+                    }
+                    return
+                } catch {
+                    self.logger.error("Failed to start listener on \(port): \(error)")
+                    lastError = error.localizedDescription
+                    self.listener = nil
                 }
-            } catch {
-                self.logger.error("Failed to start listener: \(error)")
-                DispatchQueue.main.async {
-                    completion(false, "Failed to start HTTP server: \(error.localizedDescription)")
-                }
+            }
+
+            self.logger.error("Failed to bind any command-queue port in \(ports): \(lastError)")
+            DispatchQueue.main.async {
+                completion(false, "Failed to start HTTP server: \(lastError)")
             }
         }
     }
@@ -116,6 +172,7 @@ public class MobileCommandQueue: CAPPlugin, CAPBridgedPlugin {
             self.listener?.cancel()
             self.listener = nil
             self.isRunningFlag = false
+            self.boundPort = 0
             self.deviceCommands.removeAll()
             self.broadcastCommands.removeAll()
 
@@ -128,7 +185,7 @@ public class MobileCommandQueue: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func isRunning(_ call: CAPPluginCall) {
-        call.resolve(["running": isRunningFlag])
+        call.resolve(["running": isRunningFlag, "port": boundPort])
     }
 
     @objc func post(_ call: CAPPluginCall) {
@@ -272,6 +329,16 @@ public class MobileCommandQueue: CAPPlugin, CAPBridgedPlugin {
 
         if method == "OPTIONS" {
             sendCorsResponse(connection)
+            return
+        }
+
+        if method == "GET" && (path == "/api/webhook/health" || path == "/webhook/health") {
+            sendResponse(connection, status: 200, body: [
+                "status": "ok",
+                "service": "ottplay-command-queue",
+                "backend": backendId,
+                "port": boundPort,
+            ])
             return
         }
 

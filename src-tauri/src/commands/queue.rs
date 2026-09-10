@@ -1,10 +1,16 @@
-//! Native Mode B command queue — `localhost:18081` HTTP server.
+//! Native Mode B command queue — loopback HTTP server (default `:18081`).
 //!
 //! Mirrors the contract of `local_proxy.py` so external clients (HA, Node-RED,
 //! curl, SWOP-style injectors) keep working unchanged when the Tauri app is
 //! the active backend.
 //!
-//! Endpoints (under `localhost:18081`):
+//! Prefer `127.0.0.1:18081`. If that port is taken (e.g. Cap iOS Simulator on
+//! the same Mac), fall back through `18082..=18090` so Cap + Tauri can coexist.
+//! Pin with `OTTPLAY_QUEUE_PORT=<n>` (exact port only; no fallback).
+//!
+//! Endpoints (under `localhost:<bound-port>`):
+//!   GET  /api/webhook/health (alias /webhook/health)
+//!       response: `{"status":"ok","service":"ottplay-command-queue","backend":"tauri","port":N}`
 //!   POST /api/webhook/commands (alias /webhook/notify)
 //!       body: arbitrary JSON object; `ts` is attached on enqueue.
 //!       query: `?device_id=<id>` for per-device routing (else broadcast).
@@ -17,6 +23,7 @@
 //! broadcast 100 (trim to 50). Identical to `local_proxy.py`.
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU16, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -31,6 +38,15 @@ const DEVICE_TRIM: usize = 25;
 const BROADCAST_CAP: usize = 100;
 const BROADCAST_TRIM: usize = 50;
 
+/// Preferred Mode B loopback port (single-app curl docs keep working).
+pub const DEFAULT_QUEUE_PORT: u16 = 18081;
+/// Inclusive end of auto-fallback range when DEFAULT is busy.
+pub const QUEUE_PORT_FALLBACK_END: u16 = 18090;
+const BACKEND_ID: &str = "tauri";
+
+/// Bound loopback port (0 until the HTTP thread succeeds).
+static BOUND_PORT: AtomicU16 = AtomicU16::new(0);
+
 /// In-memory queues shared with the HTTP server thread.
 #[derive(Default)]
 pub struct CommandQueues {
@@ -44,6 +60,11 @@ pub type SharedQueues = Arc<RwLock<CommandQueues>>;
 
 pub fn new_shared() -> SharedQueues {
     Arc::new(RwLock::new(CommandQueues::default()))
+}
+
+/// Currently bound command-queue port, or `0` if not listening.
+pub fn bound_port() -> u16 {
+    BOUND_PORT.load(Ordering::Relaxed)
 }
 
 fn now_ts() -> f64 {
@@ -102,32 +123,85 @@ fn extract_device_id(url: &str) -> String {
     String::new()
 }
 
+fn ports_to_try() -> Vec<u16> {
+    if let Ok(raw) = std::env::var("OTTPLAY_QUEUE_PORT") {
+        let trimmed = raw.trim();
+        if !trimmed.is_empty() {
+            match trimmed.parse::<u16>() {
+                Ok(p) if p > 0 => return vec![p],
+                Ok(_) => {
+                    tracing::error!("command queue: OTTPLAY_QUEUE_PORT must be 1..=65535, got {raw}");
+                    return Vec::new();
+                }
+                Err(_) => {
+                    tracing::error!("command queue: invalid OTTPLAY_QUEUE_PORT={raw}");
+                    return Vec::new();
+                }
+            }
+        }
+    }
+    (DEFAULT_QUEUE_PORT..=QUEUE_PORT_FALLBACK_END).collect()
+}
+
+fn try_bind(ports: &[u16]) -> Result<(Server, u16), String> {
+    let mut last_err = String::from("no ports to try");
+    for port in ports {
+        let addr = format!("127.0.0.1:{port}");
+        match Server::http(&addr) {
+            Ok(s) => return Ok((s, *port)),
+            Err(e) => {
+                tracing::warn!("command queue: bind {addr} failed: {e}");
+                last_err = format!("{addr}: {e}");
+            }
+        }
+    }
+    Err(last_err)
+}
+
 /// Start the HTTP server on a background thread. Non-blocking.
 ///
-/// Binds to `127.0.0.1:18081` (loopback only) per `docs/port-native-apps.md` § Tier 6.
+/// Prefers `127.0.0.1:18081` (loopback only) per `docs/port-native-apps.md` § Tier 6;
+/// falls back through `18082..=18090` when the preferred port is busy.
 pub fn spawn_http_server(queues: SharedQueues) {
     thread::spawn(move || {
-        let server = match Server::http("127.0.0.1:18081") {
-            Ok(s) => s,
+        let ports = ports_to_try();
+        let (server, port) = match try_bind(&ports) {
+            Ok(v) => v,
             Err(e) => {
-                tracing::error!("command queue: failed to bind 127.0.0.1:18081: {e}");
+                tracing::error!("command queue: failed to bind any port in {:?}: {e}", ports);
                 return;
             }
         };
-        tracing::info!("command queue listening on http://127.0.0.1:18081");
+        BOUND_PORT.store(port, Ordering::Relaxed);
+        tracing::info!("command queue listening on http://127.0.0.1:{port}");
         for req in server.incoming_requests() {
             let url = req.url().to_string();
-            handle_request(req, &url, queues.clone());
+            handle_request(req, &url, queues.clone(), port);
         }
     });
 }
 
-fn handle_request(mut req: tiny_http::Request, url: &str, queues: SharedQueues) {
+fn handle_request(mut req: tiny_http::Request, url: &str, queues: SharedQueues, port: u16) {
     let path = url.splitn(2, '?').next().unwrap_or(url).trim_end_matches('/');
     let method = req.method().clone();
 
     if method == Method::Options {
         let _ = req.respond(empty_response(200));
+        return;
+    }
+
+    let is_health =
+        path_matches(path, &["/api/webhook/health", "/webhook/health"]) && method == Method::Get;
+    if is_health {
+        let _ = req.respond(json_response(
+            200,
+            json!({
+                "status": "ok",
+                "service": "ottplay-command-queue",
+                "backend": BACKEND_ID,
+                "port": port,
+            }),
+        ));
         return;
     }
 
@@ -215,6 +289,15 @@ fn handle_request(mut req: tiny_http::Request, url: &str, queues: SharedQueues) 
 }
 
 // ─── Tauri IPC surface (for direct JS invoke) ───────────────────────────────
+
+/// `invoke('queue_port')` → `{"port":N,"backend":"tauri"}` (`port` 0 if not bound).
+#[tauri::command]
+pub async fn queue_port() -> Result<JsonValue, String> {
+    Ok(json!({
+        "port": bound_port(),
+        "backend": BACKEND_ID,
+    }))
+}
 
 /// `invoke('queue_poll', {device_id})` → JSON array of pending commands.
 #[tauri::command]

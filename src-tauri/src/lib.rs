@@ -23,8 +23,9 @@ const DEFAULT_WEB_URL: &str = "";
 pub fn run() {
     let epg_urls = commands::tauri_commands::init_xmltv_urls();
     let command_queues = commands::queue::new_shared();
-    // Bind the Mode B command queue HTTP server (localhost:18081) on a
-    // background thread. Mirror of `local_proxy.py` for the native shell.
+    // Bind the Mode B command queue HTTP server (prefer localhost:18081,
+    // fall back through 18082..=18090) on a background thread.
+    // Mirror of `local_proxy.py` for the native shell.
     commands::queue::spawn_http_server(command_queues.clone());
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -73,6 +74,7 @@ pub fn run() {
             commands::media_session::update_media_session,
             commands::queue::queue_poll,
             commands::queue::queue_enqueue,
+            commands::queue::queue_port,
             commands::misc::get_version,
             commands::misc::feedback_get,
             commands::misc::feedback_post,

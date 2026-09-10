@@ -3,6 +3,7 @@
 #
 # Contract (mirrors local_proxy.py, src-tauri/src/commands/queue.rs,
 # MobileCommandQueue on iOS/Android):
+#   GET  /api/webhook/health     (alias GET /webhook/health) — Mode B Cap/Tauri
 #   POST /api/webhook/commands  (alias POST /webhook/notify)
 #   GET  /api/webhook/commands  (alias GET  /webhook/poll)
 #   Optional ?device_id=<id> for per-device routing (else broadcast)
@@ -11,13 +12,18 @@
 #   Response GET:  JSON array of pending commands (drained; expire >60s)
 #
 # Defaults target Mode B / Capacitor loopback (127.0.0.1:18081).
+# Cap + Tauri both prefer :18081 and fall back through :18082..=18090 when busy;
+# use --discover or BASE_URL when both run on one Mac.
 # Mode A companion (local_proxy.py) usually listens on :8081 — override BASE_URL.
 #
 # Usage:
 #   ./scripts/smoke-command-queue.sh
 #   BASE_URL=http://127.0.0.1:8081 ./scripts/smoke-command-queue.sh
+#   BASE_URL=http://127.0.0.1:18082 ./scripts/smoke-command-queue.sh  # Tauri if Cap holds 18081
+#   ./scripts/smoke-command-queue.sh --discover
+#   ./scripts/smoke-command-queue.sh --discover --backend tauri
 #   DEVICE_ID=dev_abc123 ./scripts/smoke-command-queue.sh
-#   ./scripts/smoke-command-queue.sh --aliases   # also hit /webhook/notify + /webhook/poll
+#   ./scripts/smoke-command-queue.sh --aliases
 #   ./scripts/smoke-command-queue.sh --help
 #
 # Exit codes:
@@ -27,11 +33,20 @@
 #   3  usage / missing dependency
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://127.0.0.1:18081}"
+BASE_URL_DEFAULT="http://127.0.0.1:18081"
+BASE_URL_SET=0
+if [[ -n "${BASE_URL+x}" && -n "${BASE_URL}" ]]; then
+  BASE_URL_SET=1
+fi
+BASE_URL="${BASE_URL:-$BASE_URL_DEFAULT}"
 DEVICE_ID="${DEVICE_ID:-}"
 COMMAND_JSON="${COMMAND_JSON:-{\"command\":\"popup_message\",\"message\":\"cmd-queue smoke\",\"popup_duration\":3}}"
 CONNECT_TIMEOUT="${CONNECT_TIMEOUT:-2}"
+DISCOVER_FROM="${DISCOVER_FROM:-18081}"
+DISCOVER_TO="${DISCOVER_TO:-18090}"
 TEST_ALIASES=0
+DO_DISCOVER=0
+BACKEND_FILTER="${BACKEND_FILTER:-}"
 
 usage() {
   cat <<'USAGE'
@@ -40,11 +55,19 @@ smoke-command-queue.sh — POST then GET /api/webhook/commands against a live qu
 Env:
   BASE_URL          Default http://127.0.0.1:18081 (Mode B Tauri / Cap).
                     Mode A local_proxy.py: http://127.0.0.1:8081 (or LAN host:8081).
+                    When Cap+Tauri both run, second app is often :18082 — set BASE_URL
+                    or use --discover.
   DEVICE_ID         Optional ?device_id= for per-device routing (empty = broadcast).
   COMMAND_JSON      JSON body to enqueue (default: popup_message smoke).
   CONNECT_TIMEOUT   curl --connect-timeout seconds (default 2).
+  DISCOVER_FROM/TO  Port range for --discover (default 18081-18090).
+  BACKEND_FILTER    Optional with --discover: tauri | capacitor (same as --backend).
 
 Flags:
+  --discover        Probe GET /api/webhook/health on DISCOVER_FROM..TO; list backends;
+                    if BASE_URL unset and exactly one match (or --backend filters to one),
+                    use it; if multiple, print them and exit 3 unless BASE_URL is set.
+  --backend NAME    With --discover, keep only backend=NAME (tauri|capacitor).
   --aliases         Also smoke POST /webhook/notify and GET /webhook/poll.
   -h, --help        Show this help.
 
@@ -53,13 +76,19 @@ Modes (how to get a listener up before running this script):
                     BASE_URL=http://127.0.0.1:8081 ./scripts/smoke-command-queue.sh
                     Player: Settings → Remote control → Local command URL =
                       http://<host>:8081/api/webhook/commands
-  Tauri Mode B      Launch the desktop app (binds 127.0.0.1:18081). Then:
+  Tauri Mode B      Launch the desktop app (prefers 127.0.0.1:18081, falls back
+                    through 18082..=18090). Then:
                     ./scripts/smoke-command-queue.sh
+                    ./scripts/smoke-command-queue.sh --discover --backend tauri
   Capacitor         Run the iOS Simulator app (Mac localhost shared) or Android
                     emulator/device with: adb forward tcp:18081 tcp:18081
-                    Then: ./scripts/smoke-command-queue.sh
+                    (forward the bound port if Cap fell back). Then:
+                    ./scripts/smoke-command-queue.sh
                     (Cap/Tauri bind loopback only — HA on another host cannot
                     reach :18081 without a tunnel; use Mode A local_proxy for LAN HA.)
+  Cap + Tauri       Both prefer :18081; the second binds :18082+. Honest dual-run:
+                    ./scripts/smoke-command-queue.sh --discover
+                    BASE_URL=http://127.0.0.1:18082 ./scripts/smoke-command-queue.sh
 
 Home Assistant (curl-equivalent rest_command; no secrets):
   rest_command:
@@ -70,13 +99,23 @@ Home Assistant (curl-equivalent rest_command; no secrets):
         Content-Type: application/json
       payload: '{"command":"popup_message","message":"{{ message }}","popup_duration":5}'
   For Mode A / LAN HA, point url at http://<proxy-host>:8081/api/webhook/commands
-  (optional ?device_id= from Player settings → Device ID).
+  (optional ?device_id= from Player settings → Device ID). When Cap+Tauri both
+  listen, point HA at the intended port (see --discover).
 USAGE
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --aliases) TEST_ALIASES=1; shift ;;
+    --discover) DO_DISCOVER=1; shift ;;
+    --backend)
+      if [[ $# -lt 2 ]]; then
+        echo "error: --backend needs a value (tauri|capacitor)" >&2
+        exit 3
+      fi
+      BACKEND_FILTER="$2"
+      shift 2
+      ;;
     -h|--help) usage; exit 0 ;;
     *)
       echo "error: unknown argument: $1" >&2
@@ -93,6 +132,104 @@ fi
 
 # Strip trailing slash from base.
 BASE_URL="${BASE_URL%/}"
+
+curl_probe=(
+  --silent
+  --show-error
+  --connect-timeout "$CONNECT_TIMEOUT"
+  --max-time 5
+  -w "\n%{http_code}"
+)
+
+# Probe Mode B health endpoints on DISCOVER_FROM..TO.
+# Prints lines: port\tbackend\turl  (backend may be unknown if only commands respond).
+discover_queues() {
+  local port raw url health code body http_code backend
+  for port in $(seq "$DISCOVER_FROM" "$DISCOVER_TO"); do
+    url="http://127.0.0.1:${port}"
+    health="${url}/api/webhook/health"
+    set +e
+    raw="$(curl "${curl_probe[@]}" -X GET -H 'Accept: application/json' "$health" 2>/dev/null)"
+    code=$?
+    set -e
+    if [[ $code -ne 0 || -z "$raw" ]]; then
+      continue
+    fi
+    if [[ "$raw" == *$'\n'* ]]; then
+      http_code="${raw##*$'\n'}"
+      body="${raw%$'\n'*}"
+    else
+      body=""
+      http_code="$raw"
+    fi
+    if [[ "$http_code" != "200" ]]; then
+      continue
+    fi
+    if ! printf '%s' "$body" | grep -q 'ottplay-command-queue'; then
+      continue
+    fi
+    backend="$(printf '%s' "$body" | python3 -c 'import sys,json
+try:
+  d=json.load(sys.stdin)
+  print(d.get("backend") or "unknown")
+except Exception:
+  print("unknown")
+' 2>/dev/null || echo unknown)"
+    printf '%s\t%s\t%s\n' "$port" "$backend" "$url"
+  done
+}
+
+if [[ "$DO_DISCOVER" -eq 1 ]]; then
+  echo "Discovering Mode B command queues on 127.0.0.1:${DISCOVER_FROM}-${DISCOVER_TO} ..."
+  # Bash 3.2-compatible (macOS /bin/bash): no mapfile.
+  FOUND_FILE="$(mktemp -t ott-cq-discover.XXXXXX)"
+  discover_queues >"$FOUND_FILE" || true
+  if [[ ! -s "$FOUND_FILE" ]]; then
+    rm -f "$FOUND_FILE"
+    echo "not listening: no ottplay-command-queue health on :${DISCOVER_FROM}-${DISCOVER_TO}" >&2
+    echo "hint: launch Cap and/or Tauri; Mode A uses :8081 (set BASE_URL, no --discover)." >&2
+    exit 1
+  fi
+  FILTERED_FILE="$(mktemp -t ott-cq-filtered.XXXXXX)"
+  : >"$FILTERED_FILE"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -z "$line" ]] && continue
+    port="$(printf '%s' "$line" | cut -f1)"
+    backend="$(printf '%s' "$line" | cut -f2)"
+    url="$(printf '%s' "$line" | cut -f3)"
+    if [[ -n "$BACKEND_FILTER" && "$backend" != "$BACKEND_FILTER" ]]; then
+      continue
+    fi
+    printf '%s\n' "$line" >>"$FILTERED_FILE"
+    echo "  found: ${url}  backend=${backend}  port=${port}"
+  done <"$FOUND_FILE"
+  rm -f "$FOUND_FILE"
+  if [[ ! -s "$FILTERED_FILE" ]]; then
+    rm -f "$FILTERED_FILE"
+    echo "error: no queues matched --backend ${BACKEND_FILTER}" >&2
+    exit 1
+  fi
+  FILTERED_COUNT="$(wc -l <"$FILTERED_FILE" | tr -d ' ')"
+  if [[ "$BASE_URL_SET" -eq 1 ]]; then
+    echo "  using BASE_URL=${BASE_URL} (explicit)"
+  elif [[ "$FILTERED_COUNT" -eq 1 ]]; then
+    BASE_URL="$(cut -f3 "$FILTERED_FILE" | head -n 1)"
+    echo "  using discovered BASE_URL=${BASE_URL}"
+  else
+    echo "error: multiple Mode B queues listening; set BASE_URL or --backend" >&2
+    echo "examples:" >&2
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      [[ -z "$line" ]] && continue
+      url="$(printf '%s' "$line" | cut -f3)"
+      backend="$(printf '%s' "$line" | cut -f2)"
+      echo "  BASE_URL=${url} ./scripts/smoke-command-queue.sh   # ${backend}" >&2
+    done <"$FILTERED_FILE"
+    rm -f "$FILTERED_FILE"
+    exit 3
+  fi
+  rm -f "$FILTERED_FILE"
+  echo
+fi
 
 qs=""
 if [[ -n "$DEVICE_ID" ]]; then
@@ -121,6 +258,7 @@ not_listening() {
     echo "  detail: ${detail}" >&2
   fi
   echo "hint: start Mode A (python3 local_proxy.py 8081), Tauri Mode B app, or Cap app;" >&2
+  echo "      Cap+Tauri dual-run: ./scripts/smoke-command-queue.sh --discover" >&2
   echo "      for Android emulator/device use: adb forward tcp:18081 tcp:18081" >&2
   echo "      override with BASE_URL=... (Mode A often http://127.0.0.1:8081)" >&2
   exit 1
@@ -226,20 +364,46 @@ else
 fi
 echo
 
-# Probe reachability with a cheap GET first (empty drain is fine).
-echo "==> probe GET ${primary_get}"
-if ! raw="$(do_curl -X GET -H 'Accept: application/json' "$primary_get")"; then
-  err="$(cat /tmp/ott-cq-smoke-curl.err 2>/dev/null || true)"
-  not_listening "$primary_get" "$err"
+# Probe reachability with health if present, else cheap GET drain.
+health_url="${BASE_URL}/api/webhook/health"
+echo "==> probe GET ${health_url}"
+if raw="$(do_curl -X GET -H 'Accept: application/json' "$health_url")"; then
+  BODY=""; CODE=""
+  split_body_code "$raw"
+  if [[ "$CODE" == "200" ]] && printf '%s' "$BODY" | grep -q 'ottplay-command-queue'; then
+    echo "    listening (health: ${BODY})"
+  else
+    echo "    health not Mode B (http ${CODE}); falling back to commands probe"
+    echo "==> probe GET ${primary_get}"
+    if ! raw="$(do_curl -X GET -H 'Accept: application/json' "$primary_get")"; then
+      err="$(cat /tmp/ott-cq-smoke-curl.err 2>/dev/null || true)"
+      not_listening "$primary_get" "$err"
+    fi
+    BODY=""; CODE=""
+    split_body_code "$raw"
+    if [[ "$CODE" != "200" ]]; then
+      echo "error: probe GET expected HTTP 200, got ${CODE}" >&2
+      echo "body: ${BODY}" >&2
+      exit 2
+    fi
+    echo "    listening (probe body: ${BODY})"
+  fi
+else
+  echo "    health unreachable; falling back to commands probe"
+  echo "==> probe GET ${primary_get}"
+  if ! raw="$(do_curl -X GET -H 'Accept: application/json' "$primary_get")"; then
+    err="$(cat /tmp/ott-cq-smoke-curl.err 2>/dev/null || true)"
+    not_listening "$primary_get" "$err"
+  fi
+  BODY=""; CODE=""
+  split_body_code "$raw"
+  if [[ "$CODE" != "200" ]]; then
+    echo "error: probe GET expected HTTP 200, got ${CODE}" >&2
+    echo "body: ${BODY}" >&2
+    exit 2
+  fi
+  echo "    listening (probe body: ${BODY})"
 fi
-BODY=""; CODE=""
-split_body_code "$raw"
-if [[ "$CODE" != "200" ]]; then
-  echo "error: probe GET expected HTTP 200, got ${CODE}" >&2
-  echo "body: ${BODY}" >&2
-  exit 2
-fi
-echo "    listening (probe body: ${BODY})"
 echo
 
 post_and_check "$primary_post" "/api/webhook/commands"

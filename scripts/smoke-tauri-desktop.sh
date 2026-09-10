@@ -2,7 +2,7 @@
 # Mode B Tauri desktop-smoke helper (thin).
 # Automates what FOSS can without a headed GUI in CI: toolchain checks,
 # src-tauri/ presence, optional unsigned compile, optional companion curl on :8095,
-# and optional command-queue curl on :18081 when the desktop app is running.
+# and optional command-queue curl on :18081+ when the desktop app is running.
 # Human still marks the UI checklist in docs/mode-b-tauri-smoke.md.
 #
 # Usage:
@@ -48,7 +48,7 @@ smoke-tauri-desktop.sh — Mode B Tauri desktop-smoke helper (checklist companio
 
 Does NOT launch a headed GUI. Automates: toolchain checks, src-tauri/ presence,
 optional unsigned CI build, companion soft/hard curl on :8095, and command-queue
-soft probe on Tauri loopback :18081. Human marks the UI checklist in
+soft probe on Tauri loopback :18081+ (auto-discover if Cap holds 18081). Human marks the UI checklist in
 docs/mode-b-tauri-smoke.md.
 
 Flags:
@@ -56,13 +56,14 @@ Flags:
   --build           Run: ( cd src-tauri && npx tauri build --ci ) — unsigned
   --check-companion                Soft curl companion at BASE_URL / OTTPLAY_WEB_URL (default :8095)
   --require-companion        With --check-companion: exit 1 if not listening (default: soft-skip)
-  --check-queue              Soft check command-queue on 127.0.0.1:18081 (Tauri loopback)
+  --check-queue              Soft check command-queue on Tauri loopback (:18081+, discover)
   --require-queue            With --check-queue: exit 1 if queue not listening
   --require-cargo            Fail if cargo/rustc missing (default: soft-skip)
   -h, --help                 Show this help
 
 Env:
   BASE_URL / OTTPLAY_WEB_URL  Default http://127.0.0.1:8095 (debug companion).
+  QUEUE_BASE_URL              Optional Mode B queue URL (else --discover --backend tauri).
   CONNECT_TIMEOUT             curl connect timeout seconds (default 2).
   COMMAND_JSON / DEVICE_ID    Forwarded to scripts/smoke-command-queue.sh when --check-queue runs.
 
@@ -213,19 +214,31 @@ if [[ "$DO_CHECK_QUEUE" -eq 1 ]]; then
     fi
     echo "soft-skip: smoke-command-queue.sh missing"
   else
-    echo "running: command-queue smoke against 127.0.0.1:18081 (Tauri loopback)"
-    # shellcheck disable=SC2086
-    if ! BASE_URL="http://127.0.0.1:18081" \
-         CONNECT_TIMEOUT="${CONNECT_TIMEOUT:-2}" \
-         DEVICE_ID="${DEVICE_ID:-}" \
-         COMMAND_JSON="${COMMAND_JSON:-{\"command\":\"popup_message\",\"message\":\"tauri-smoke\",\"popup_duration\":3}}" \
-         "$ROOT/scripts/smoke-command-queue.sh"; then
+    echo "running: command-queue smoke against Tauri loopback (:18081+ / --discover)"
+    # BASE_URL here is the web companion (:8095). Queue uses QUEUE_BASE_URL or discover.
+    set +e
+    if [[ -n "${QUEUE_BASE_URL:-}" ]]; then
+      CONNECT_TIMEOUT="${CONNECT_TIMEOUT:-2}" \
+        DEVICE_ID="${DEVICE_ID:-}" \
+        COMMAND_JSON="${COMMAND_JSON:-{\"command\":\"popup_message\",\"message\":\"tauri-smoke\",\"popup_duration\":3}}" \
+        BASE_URL="$QUEUE_BASE_URL" \
+        "$ROOT/scripts/smoke-command-queue.sh"
+      cq_ec=$?
+    else
+      CONNECT_TIMEOUT="${CONNECT_TIMEOUT:-2}" \
+        DEVICE_ID="${DEVICE_ID:-}" \
+        COMMAND_JSON="${COMMAND_JSON:-{\"command\":\"popup_message\",\"message\":\"tauri-smoke\",\"popup_duration\":3}}" \
+        "$ROOT/scripts/smoke-command-queue.sh" --discover --backend tauri
+      cq_ec=$?
+    fi
+    set -e
+    if [[ "$cq_ec" -ne 0 ]]; then
       echo "error: command-queue smoke failed" >&2
       if [[ "$REQUIRE_QUEUE" -eq 1 ]]; then
         exit 1
       fi
     else
-      echo "ok: command-queue smoke passed on :18081"
+      echo "ok: command-queue smoke passed (Tauri loopback)"
     fi
   fi
 fi

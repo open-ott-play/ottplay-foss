@@ -20,6 +20,10 @@ class MobileCommandQueuePlugin : Plugin() {
     private var serverJob: Job? = null
     private var serverSocket: ServerSocket? = null
     private var isRunningFlag = false
+    private var boundPort: Int = 0
+    private val defaultPort = 18081
+    private val fallbackEnd = 18090
+    private val backendId = "capacitor"
 
     private val expireSecs = 60.0
     private val deviceCap = 50
@@ -45,37 +49,75 @@ class MobileCommandQueuePlugin : Plugin() {
         startServer(call)
     }
 
+    private fun portsToTry(): List<Int> {
+        val env = System.getenv("OTTPLAY_QUEUE_PORT")?.trim().orEmpty()
+        if (env.isNotEmpty()) {
+            val p = env.toIntOrNull()
+            if (p != null && p in 1..65535) return listOf(p)
+            Log.e("MobileCommandQueue", "Invalid OTTPLAY_QUEUE_PORT=$env")
+            return emptyList()
+        }
+        return (defaultPort..fallbackEnd).toList()
+    }
+
     private fun startServer(call: PluginCall?) {
         if (isRunningFlag) {
-            call?.resolve()
+            bridge.activity.runOnUiThread {
+                call?.resolve(JSObject().apply {
+                    put("running", true)
+                    put("port", boundPort)
+                })
+            }
             return
         }
 
         serverJob = scope.launch {
-            try {
-                serverSocket = ServerSocket(18081, 50, java.net.InetAddress.getByName("127.0.0.1"))
-                isRunningFlag = true
-                bridge.activity.runOnUiThread {
-                    notifyListeners("isRunning", JSObject().apply { put("running", true) })
-                    call?.resolve()
+            val ports = portsToTry()
+            var lastError = "no ports to try"
+            var bound: ServerSocket? = null
+            var portUsed = 0
+            for (port in ports) {
+                try {
+                    bound = ServerSocket(port, 50, java.net.InetAddress.getByName("127.0.0.1"))
+                    portUsed = port
+                    break
+                } catch (e: IOException) {
+                    Log.w("MobileCommandQueue", "bind 127.0.0.1:$port failed: ${e.message}")
+                    lastError = "127.0.0.1:$port: ${e.message}"
                 }
-                Log.d("MobileCommandQueue", "Command queue listening on http://127.0.0.1:18081")
-
-                while (isActive) {
-                    try {
-                        val client = serverSocket!!.accept()
-                        launch { handleClient(client) }
-                    } catch (e: IOException) {
-                        if (isRunningFlag) {
-                            Log.e("MobileCommandQueue", "Accept error: ${e.message}")
-                        }
-                        break
-                    }
-                }
-            } catch (e: IOException) {
-                Log.e("MobileCommandQueue", "Failed to bind 127.0.0.1:18081: ${e.message}")
+            }
+            if (bound == null) {
+                Log.e("MobileCommandQueue", "Failed to bind any port in $ports: $lastError")
                 withContext(Dispatchers.Main) {
-                    call?.reject("Failed to bind HTTP server: ${e.message}")
+                    call?.reject("Failed to bind HTTP server: $lastError")
+                }
+                return@launch
+            }
+
+            serverSocket = bound
+            boundPort = portUsed
+            isRunningFlag = true
+            bridge.activity.runOnUiThread {
+                notifyListeners("isRunning", JSObject().apply {
+                    put("running", true)
+                    put("port", portUsed)
+                })
+                call?.resolve(JSObject().apply {
+                    put("running", true)
+                    put("port", portUsed)
+                })
+            }
+            Log.d("MobileCommandQueue", "Command queue listening on http://127.0.0.1:$portUsed")
+
+            while (isActive) {
+                try {
+                    val client = serverSocket!!.accept()
+                    launch { handleClient(client) }
+                } catch (e: IOException) {
+                    if (isRunningFlag) {
+                        Log.e("MobileCommandQueue", "Accept error: ${e.message}")
+                    }
+                    break
                 }
             }
         }
@@ -93,11 +135,15 @@ class MobileCommandQueuePlugin : Plugin() {
             serverSocket = null
             serverJob?.cancel()
             serverJob = null
+            boundPort = 0
             deviceCommands.clear()
             broadcastCommands.clear()
 
             bridge.activity.runOnUiThread {
-                notifyListeners("isRunning", JSObject().apply { put("running", false) })
+                notifyListeners("isRunning", JSObject().apply {
+                    put("running", false)
+                    put("port", 0)
+                })
                 call.resolve()
             }
         }
@@ -105,7 +151,10 @@ class MobileCommandQueuePlugin : Plugin() {
 
     @PluginMethod
     fun isRunning(call: PluginCall) {
-        call.resolve(JSObject().apply { put("running", isRunningFlag) })
+        call.resolve(JSObject().apply {
+            put("running", isRunningFlag)
+            put("port", boundPort)
+        })
     }
 
     @PluginMethod
@@ -223,6 +272,18 @@ class MobileCommandQueuePlugin : Plugin() {
                 when {
                     method == "OPTIONS" -> {
                         writeCors(writer, 200)
+                    }
+                    method == "GET" && (path == "/api/webhook/health" || path == "/webhook/health") -> {
+                        writeJson(
+                            writer,
+                            200,
+                            mapOf(
+                                "status" to "ok",
+                                "service" to "ottplay-command-queue",
+                                "backend" to backendId,
+                                "port" to boundPort
+                            )
+                        )
                     }
                     method == "POST" && (path == "/api/webhook/commands" || path == "/webhook/notify") -> {
                         val body = readBody(reader, headers)

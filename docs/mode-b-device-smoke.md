@@ -23,7 +23,7 @@ Related:
 | `android/` + `ios/` dirs after sync | Yes (helper) | Artifact presence only |
 | `npm run build:mobile` / `npm run cap:sync` | Optional (helper flags) | Local; flaky in headless CI if Xcode/SDK missing |
 | Open Xcode / Android Studio | Optional (helper flags) | Human continues in IDE |
-| Command-queue POST/GET on `:18081` | Yes when app listening | Soft-skip if not up unless `--require-queue` |
+| Command-queue POST/GET on `:18081+` | Yes when app listening | Soft-skip if not up unless `--require-queue`; Cap+Tauri: `--discover` |
 | UI: queue drain / EPG / M3U play / Stalker / swop | **Human** | Simulator, emulator, or real device |
 | Paid TestFlight / Play upload | **Out of scope** | Unpaid: sim + sideload APK / free Apple ID only |
 
@@ -71,7 +71,7 @@ Or via helper (best-effort; does not boot simulators by itself):
 
 In Xcode: pick an iPhone Simulator → Run.
 In Android Studio: pick an AVD (or USB device) → Run.
-Wait until the player UI loads and Cap starts `MobileCommandQueue` on `127.0.0.1:18081`.
+Wait until the player UI loads and Cap starts `MobileCommandQueue` (prefers `127.0.0.1:18081`, falls back through `18082..=18090` if busy).
 
 ## Automated companion: command-queue curl
 
