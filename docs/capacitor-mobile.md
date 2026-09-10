@@ -11,7 +11,7 @@ Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315
 
 - **4.1 shell** — PR #295 (`capacitor.config`, iOS/Android projects, dist/ embed)
 - **4.2 XMLTV/EPG** — PR #309 — `MobileXmltvEpg` (Swift XMLParser + Kotlin streaming XML/OkHttp; TS routing in `getEPGchanelCached()`)
-- **4.3 command queue** — PR #305 (Tauri peer #296) — `MobileCommandQueue` on `127.0.0.1:18081` (NWListener / ServerSocket)
+- **4.3 command queue** — PR #305 (Tauri peer #296) — `MobileCommandQueue` prefers `127.0.0.1:18081`, falls back through `18082..=18090` (NWListener / ServerSocket)
 - **M3U stream proxy** — PR #307 — `M3UProxy` + web shim for `/m3u/cp.php`
 - **Release artifacts** — PR #310 — multiarch Tauri + Capacitor IPA/APK
 - **4.4 Native media** — PR #312 + #316 — `MobileNativeMedia` (volume / wake real; iOS PiP via AVPlayer; fullscreen via MainViewController chrome)
@@ -100,8 +100,8 @@ The desktop/local proxy command queue (`POST /api/webhook/commands`, `GET /api/w
 
 **Implementation**:
 
-- **iOS**: Swift plugin (`ios/App/App/Plugins/MobileCommandQueue.swift`) — NWListener-based HTTP server on `127.0.0.1:18081`. Enqueue/poll/expire/CORS/OPTIONS match `local_proxy.py` exactly.
-- **Android**: Kotlin plugin (`android/app/src/main/java/play/ott/foss/MobileCommandQueuePlugin.kt`) — `ServerSocket`-based HTTP server on `127.0.0.1:18081` with identical contract.
+- **iOS**: Swift plugin (`ios/App/App/Plugins/MobileCommandQueue.swift`) — NWListener-based HTTP server preferring `127.0.0.1:18081` (fallback `18082..=18090`). Enqueue/poll/expire/CORS/OPTIONS/health match Tauri Mode B.
+- **Android**: Kotlin plugin (`android/app/src/main/java/play/ott/foss/MobileCommandQueuePlugin.kt`) — `ServerSocket`-based HTTP server with the same bind fallback and contract.
 - **Web layer**: `src/index.ts` detects `window.Capacitor` + `MobileCommandQueue`, starts the native listener, and drains via `MobileCommandQueue.get()` every 10s. It does **not** set `local_poll_url` (that would also arm the Mode A HTTP poller against the same port).
 - **JS package**: `mobile-command-queue/src/index.ts` — real native bridge; WebPlugin remains a no-op fallback for non-Capacitor builds.
 
@@ -119,10 +119,10 @@ See `mobile-command-queue/README.md` for usage.
 
 For the full Mode B **device** checklist (Simulator / emulator / sideload + human UI marks), see [`docs/mode-b-device-smoke.md`](mode-b-device-smoke.md) and `scripts/smoke-capacitor-device.sh`.
 
-Use `scripts/smoke-command-queue.sh` to POST then GET the queue. Default base URL is `http://127.0.0.1:18081` (Tauri Mode B / Capacitor loopback). Exits with a clear **not listening** message if nothing is bound.
+Use `scripts/smoke-command-queue.sh` to POST then GET the queue. Default base URL is `http://127.0.0.1:18081` (Tauri Mode B / Capacitor loopback). Cap+Tauri dual-run: `./scripts/smoke-command-queue.sh --discover` (or set `BASE_URL` to the fallback port). Exits with a clear **not listening** message if nothing is bound.
 
 ```bash
-# Tauri Mode B — app running (binds 127.0.0.1:18081)
+# Tauri Mode B — app running (prefers 127.0.0.1:18081; fallback 18082+)
 ./scripts/smoke-command-queue.sh
 ./scripts/smoke-command-queue.sh --aliases   # also /webhook/notify + /webhook/poll
 

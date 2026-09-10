@@ -1,6 +1,6 @@
 # mobile-command-queue
 
-Capacitor plugin for the native HTTP command queue on `localhost:18081`.
+Capacitor plugin for the native HTTP command queue (prefer `localhost:18081`, fall back through `18082..=18090` when busy).
 
 Implements the same HTTP contract as `local_proxy.py` and Tauri `queue.rs`:
 - `POST /api/webhook/commands` (alias `/webhook/notify`) — enqueue a command
@@ -20,7 +20,7 @@ Implements the same HTTP contract as `local_proxy.py` and Tauri `queue.rs`:
 ```typescript
 import { MobileCommandQueue } from "mobile-command-queue";
 
-// Start local HTTP server on localhost:18081 (auto-started on Capacitor load)
+// Start local HTTP server (prefer :18081; auto-started on Capacitor load)
 await MobileCommandQueue.start();
 
 // Enqueue a command

@@ -19,6 +19,7 @@
 #
 # Env:
 #   BASE_URL           Default http://127.0.0.1:18081 (Cap / Tauri loopback).
+#                      Cap+Tauri dual-run: set BASE_URL or use smoke-command-queue.sh --discover.
 #   CONNECT_TIMEOUT    Passed through to smoke-command-queue.sh when set.
 #   DEVICE_ID          Optional; passed through to smoke-command-queue.sh.
 #

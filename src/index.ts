@@ -5764,7 +5764,7 @@ if (typeof window.__TAURI__ !== "undefined") {
     _queuePollStart();
 }
 
-// Capacitor Mode C: native plugin hosts HTTP server on 127.0.0.1:18081.
+// Capacitor Mode C: native plugin hosts HTTP server (prefer 127.0.0.1:18081, fallback 18082+).
 // Falls back to web no-op if plugin unavailable (Mode A / web build).
 if (
     typeof (window as any).Capacitor !== "undefined" &&
@@ -5773,7 +5773,7 @@ if (
     const _capQueue = (window as any).Capacitor.Plugins.MobileCommandQueue;
     if (_capQueue) {
         // Capacitor Mode C: drain via native plugin `get()` only.
-        // Do NOT set local_poll_url — that would also trigger the HTTP :18081 poller.
+        // Do NOT set local_poll_url — that would also trigger the HTTP loopback poller.
         let _capPollTimer: ReturnType<typeof setInterval> | null = null;
         const _capPollOnce = async (): Promise<void> => {
             try {

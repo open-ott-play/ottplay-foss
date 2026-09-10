@@ -36,6 +36,7 @@
     "allow-exit-app",
     "allow-queue-poll",
     "allow-queue-enqueue",
+    "allow-queue-port",
     "allow-match-channels",
     "allow-match-logos",
     "allow-tmdb-proxy",

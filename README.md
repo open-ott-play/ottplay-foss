@@ -716,7 +716,8 @@ python3 local_proxy.py 8081
 ### Smoke script (all modes)
 
 ```bash
-# Mode B / Capacitor (default 127.0.0.1:18081)
+# Mode B / Capacitor (prefer 127.0.0.1:18081; fallback 18082..=18090)
+# Cap+Tauri dual-run: ./scripts/smoke-command-queue.sh --discover
 ./scripts/smoke-command-queue.sh
 
 # Mode A local_proxy on :8081
