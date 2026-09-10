@@ -160,6 +160,7 @@ body {
     top: 0px;
     right: 0px;
     left: 0px;
+    z-index: 3;
     box-sizing: border-box;
     height: 52px;
     padding: 0 12px;
@@ -193,6 +194,7 @@ body {
     right: 0px;
     bottom: 0px;
     left: 0px;
+    z-index: 3;
     box-sizing: border-box;
     height: 52px;
     padding: 0 12px;
