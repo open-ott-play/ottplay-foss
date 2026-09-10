@@ -843,29 +843,20 @@ body {
 }
 
 /* digital zoom: crop scaled #video (Toggle Zoom Mode) */
-/* Full-plane #vdiv: pin to viewport edges + flex-center (contain letterbox). */
+/* Flex-center letterbox inside whatever box JS sets (full-plane or list preview).
+   Do NOT pin inset:0 here — that left the plane under #_t in list mode so the
+   yellow/chrome edge clipped the picture top ("жёлтая линия отрезает шапку").
+   Fullscreen pin is stbToFullScreen(); preview box is stbSetWindow(). */
 #vdiv {
     position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
     background-color: #000;
 }
-/* Default fill = cover/center (Toggle Aspect Ratio still switches contain|cover).
-   cover uses absolute inset fill; contain uses in-flow max box (see applyAspectRatio). */
+/* Default cover; applyAspectRatio sets explicit geometry once metadata is known. */
 #video {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    width: auto;
-    height: auto;
     object-fit: cover;
     object-position: center center;
 }

@@ -997,6 +997,8 @@ export function stbSetWindow(): void {
     isFullscreen = false;
     var h = window.innerHeight / 720,
         w = window.innerWidth / 1280;
+    // Design canvas hole: 512×288 at top 50 — must clear fullscreen inset so the
+    // plane sits in the list_window cutout (not under yellow #_t chrome).
     $("#vdiv").css({
         "align-items": "center",
         bottom: "auto",
@@ -1341,7 +1343,7 @@ export function stbInit(): void {
     try {
         if (!document.getElementById("vdiv")) {
             $("body").prepend(
-                '<div id="vdiv" style="position: absolute; overflow: hidden; background-color: black; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center;"><video id="video" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: auto; height: auto; object-fit: cover; object-position: center center;"></video></div><video id="videopip" muted style="position: absolute; display: none; background-color: black; object-fit: cover; object-position: center center;"></video>'
+                '<div id="vdiv" style="position: absolute; overflow: hidden; background-color: black; display: flex; align-items: center; justify-content: center;"><video id="video" style="object-fit: cover; object-position: center center;"></video></div><video id="videopip" muted style="position: absolute; display: none; background-color: black; object-fit: cover; object-position: center center;"></video>'
             );
         }
         video = document.getElementById("video") as HTMLVideoElement;
