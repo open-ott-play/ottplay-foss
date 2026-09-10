@@ -153,8 +153,10 @@ export function listFitPageSize(wanted: number): number {
 
 /**
  * Row height from the classic OTT formula (same chrome as companion 1.1.16).
- * Spacing/density follows `settings.pageSize` + `setFontSize`/`fontShift`
- * (default fontShift ~4), not a live `#listIn` shrink-to-fit pass.
+ * showPage must set both height and line-height to this value; CSS must not
+ * add vertical margin/padding/border on `.item`/`#itN`. Font size / fontShift
+ * ("Distance between lines", default ~4) then shrinks glyphs inside that
+ * line-box via setFontSize — do not shrink-to-fit live `#listIn`.
  */
 export function listRowHeight(pageSize: number): number {
     var ps = Math.max(1, pageSize | 0);
