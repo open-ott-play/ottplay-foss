@@ -844,3 +844,14 @@ body {
 #vdiv {
     overflow: hidden;
 }
+/* Default fill = cover/center (Toggle Aspect Ratio still switches contain|cover). */
+#video {
+    height: 100%;
+    left: 0;
+    object-position: center center;
+    top: 0;
+    width: 100%;
+}
+#videopip {
+    object-position: center center;
+}

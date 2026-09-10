@@ -4116,7 +4116,7 @@ function _ch_id(arrayName: string): string | null {
  * Get a saved per-channel value from a named global array (e.g. `aAspects`, `aAudios`).
  *
  * @param arrayName - The name of the global array variable (e.g. `"aAspects"`).
- * @returns The stored numeric value, or 0 if not found / invalid.
+ * @returns The stored numeric value, or default (1 for aAspects / cover, else 0).
  */
 export function getCHarr(arrayName: string): number {
     if (typeof arrayName !== "string") return 0;
@@ -4124,12 +4124,12 @@ export function getCHarr(arrayName: string): number {
     if (chId == null) return 0;
     var arr = (window as any)[arrayName];
     if (arr && typeof arr[chId] !== "undefined") return arr[chId];
-    return 0;
+    return arrayName === "aAspects" ? 1 : 0;
 }
 
 /**
  * Look up the current channel's saved value in a named array and pass it
- * to the callback. For `aAspects` and `aZooms`, defaults to 0 if missing.
+ * to the callback. For `aZooms`, defaults to 0 if missing; for `aAspects`, defaults to 1 (cover).
  *
  * @param arrayName - Name of the global array (e.g. `"aAspects"`).
  * @param callback  - Receives the numeric value found (or default).
@@ -4147,7 +4147,9 @@ export function execCHarr(
     var val =
         typeof arr !== "undefined" && arr !== null ? arr[chId] : undefined;
     if (typeof val === "undefined") {
-        if (arrayName === "aAspects" || arrayName === "aZooms") val = 0;
+        if (arrayName === "aAspects")
+            val = 1; // cover/fill default
+        else if (arrayName === "aZooms") val = 0;
         else return;
     }
     try {

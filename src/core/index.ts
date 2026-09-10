@@ -106,8 +106,10 @@ var hlsPipInstance: any = null;
 var isFullscreen = true;
 /**
  * Current aspect ratio index: 0 = "contain" (letterbox), 1 = "cover" (crop).
+ * Default is cover so the video fills the window (crop, no letterbox bars)
+ * and stays centered on both axes when the window is resized.
  */
-var aspectRatio = 0;
+var aspectRatio = 1;
 /**
  * Digital zoom index for HTML5: 0 = 100%, 1 = 125%, 2 = 150%, 3 = 175%.
  * Persisted per-channel in aZooms. Legacy only toggled body.stb-zoom with no CSS.
@@ -916,6 +918,8 @@ export function stbSetWindow(): void {
         width: 512 * w + "px",
     });
     $("#video").css({ height: "100%", left: 0, top: 0, width: "100%" });
+    applyAspectRatio();
+    applyZoom();
 }
 
 /**
@@ -958,7 +962,16 @@ export function setAspect(v: number): void {
  * Side effects: Direct DOM CSS mutation on #video!.
  */
 export function applyAspectRatio(): void {
-    $("#video").css("object-fit", ["contain", "cover"][aspectRatio]);
+    var fit = ["contain", "cover"][aspectRatio] || "cover";
+    // Fill #vdiv; object-fit keep native AR; object-position centers crop/letterbox.
+    $("#video").css({
+        height: "100%",
+        left: 0,
+        "object-fit": fit,
+        "object-position": "center center",
+        top: 0,
+        width: "100%",
+    });
 }
 
 /**
@@ -1159,11 +1172,17 @@ export function stbInit(): void {
         if (typeof window.setFontSize === "function") window.setFontSize();
         if (typeof window.setListPos === "function") window.setListPos();
         if (typeof window.setColor === "function") window.setColor();
+        // Re-apply video fit/center when the window aspect changes (Tauri/PC).
+        if (isFullscreen) stbToFullScreen();
+        else {
+            applyAspectRatio();
+            applyZoom();
+        }
     });
     try {
         if (!document.getElementById("vdiv")) {
             $("body").prepend(
-                '<div id="vdiv" style="position: absolute; overflow: hidden; background-color: black;"><video id="video" style="position: absolute; object-position: center center;"></video></div><video id="videopip" muted style="position: absolute; display: none; background-color: black; object-position: center center;"></video>'
+                '<div id="vdiv" style="position: absolute; overflow: hidden; background-color: black;"><video id="video" style="position: absolute; height: 100%; width: 100%; left: 0; top: 0; object-fit: cover; object-position: center center;"></video></div><video id="videopip" muted style="position: absolute; display: none; background-color: black; object-fit: cover; object-position: center center;"></video>'
             );
         }
         video = document.getElementById("video") as HTMLVideoElement;
