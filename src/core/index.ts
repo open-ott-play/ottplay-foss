@@ -967,8 +967,22 @@ export function stbGetLen(): number {
  */
 export function stbToFullScreen(): void {
     isFullscreen = true;
-    $("#video").css({ height: "100%", left: 0, top: 0, width: "100%" });
-    $("#vdiv").css({ height: "100%", left: 0, top: 0, width: "100%" });
+    // Pin #vdiv to the visible viewport edges (not height/width 100% of an
+    // oversized body — same failure mode as the 1.1.28 info-band bug). Flex
+    // centers letterboxed frames when aspect is contain (WKWebView object-position
+    // on <video> is unreliable).
+    $("#vdiv").css({
+        "align-items": "center",
+        bottom: 0,
+        display: "flex",
+        height: "auto",
+        "justify-content": "center",
+        left: 0,
+        position: "absolute",
+        right: 0,
+        top: 0,
+        width: "auto",
+    });
     applyAspectRatio();
     applyZoom();
 }
@@ -984,12 +998,17 @@ export function stbSetWindow(): void {
     var h = window.innerHeight / 720,
         w = window.innerWidth / 1280;
     $("#vdiv").css({
+        "align-items": "center",
+        bottom: "auto",
+        display: "flex",
         height: 288 * h + "px",
+        "justify-content": "center",
         left: window.sListPos ? 758 * w + "px" : 10 * w + "px",
+        position: "absolute",
+        right: "auto",
         top: 50 * h + "px",
         width: 512 * w + "px",
     });
-    $("#video").css({ height: "100%", left: 0, top: 0, width: "100%" });
     applyAspectRatio();
     applyZoom();
 }
@@ -1035,15 +1054,83 @@ export function setAspect(v: number): void {
  */
 export function applyAspectRatio(): void {
     var fit = ["contain", "cover"][aspectRatio] || "cover";
-    // Fill #vdiv; object-fit keep native AR; object-position centers crop/letterbox.
-    $("#video").css({
-        height: "100%",
-        left: 0,
-        "object-fit": fit,
-        "object-position": "center center",
-        top: 0,
-        width: "100%",
-    });
+    var box = document.getElementById("vdiv");
+    var vEl = document.getElementById("video") as HTMLVideoElement | null;
+    var cw = box ? box.clientWidth : 0;
+    var ch = box ? box.clientHeight : 0;
+    var vw = vEl && vEl.videoWidth ? vEl.videoWidth : 0;
+    var vh = vEl && vEl.videoHeight ? vEl.videoHeight : 0;
+    // Explicit geometry: WKWebView often top-aligns letterboxed <video> frames
+    // despite object-position:center. Size the element to the fitted frame and
+    // let flex (#vdiv) center it (contain) or absolute-center the cover crop.
+    if (cw > 0 && ch > 0 && vw > 0 && vh > 0) {
+        var scale =
+            fit === "contain"
+                ? Math.min(cw / vw, ch / vh)
+                : Math.max(cw / vw, ch / vh);
+        var w = Math.max(1, Math.round(vw * scale));
+        var h = Math.max(1, Math.round(vh * scale));
+        if (fit === "contain") {
+            $("#video").css({
+                bottom: "",
+                height: h + "px",
+                left: "",
+                "max-height": "",
+                "max-width": "",
+                "object-fit": "fill",
+                "object-position": "center center",
+                position: "relative",
+                right: "",
+                top: "",
+                width: w + "px",
+            });
+        } else {
+            $("#video").css({
+                bottom: "",
+                height: h + "px",
+                left: Math.round((cw - w) / 2) + "px",
+                "max-height": "",
+                "max-width": "",
+                "object-fit": "fill",
+                "object-position": "center center",
+                position: "absolute",
+                right: "",
+                top: Math.round((ch - h) / 2) + "px",
+                width: w + "px",
+            });
+        }
+        return;
+    }
+    // Fallback before metadata: CSS cover fill / contain max-box + flex center.
+    if (fit === "contain") {
+        $("#video").css({
+            bottom: "",
+            height: "auto",
+            left: "",
+            "max-height": "100%",
+            "max-width": "100%",
+            "object-fit": "contain",
+            "object-position": "center center",
+            position: "relative",
+            right: "",
+            top: "",
+            width: "auto",
+        });
+    } else {
+        $("#video").css({
+            bottom: 0,
+            height: "auto",
+            left: 0,
+            "max-height": "",
+            "max-width": "",
+            "object-fit": "cover",
+            "object-position": "center center",
+            position: "absolute",
+            right: 0,
+            top: 0,
+            width: "auto",
+        });
+    }
 }
 
 /**
@@ -1254,10 +1341,17 @@ export function stbInit(): void {
     try {
         if (!document.getElementById("vdiv")) {
             $("body").prepend(
-                '<div id="vdiv" style="position: absolute; overflow: hidden; background-color: black;"><video id="video" style="position: absolute; height: 100%; width: 100%; left: 0; top: 0; object-fit: cover; object-position: center center;"></video></div><video id="videopip" muted style="position: absolute; display: none; background-color: black; object-fit: cover; object-position: center center;"></video>'
+                '<div id="vdiv" style="position: absolute; overflow: hidden; background-color: black; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center;"><video id="video" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: auto; height: auto; object-fit: cover; object-position: center center;"></video></div><video id="videopip" muted style="position: absolute; display: none; background-color: black; object-fit: cover; object-position: center center;"></video>'
             );
         }
         video = document.getElementById("video") as HTMLVideoElement;
+        try {
+            // Intrinsic size arrives async; re-center contain letterbox once known.
+            video!.addEventListener("loadedmetadata", function () {
+                applyAspectRatio();
+                applyZoom();
+            });
+        } catch (_meta) {}
         try {
             // Keep focus off native <video> so L/Escape reach the document
             // key path in full-video mode (list overlay already did).
