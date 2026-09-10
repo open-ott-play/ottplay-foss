@@ -1560,13 +1560,12 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     wglob.sShowProgress = showProgress;
     wglob.sShowProgram = showProgram;
     wglob.sShowArchive = showArchive;
-    // Match showPage: fitted pageSize + live #listIn row height so picons
-    // align with visibly fitting rows (not settings.pageSize alone).
-    var wantPs = (wglob.settings && wglob.settings.pageSize) || pageSize || 25;
-    var pageSz =
-        typeof wglob.listFitPageSize === "function"
-            ? wglob.listFitPageSize(wantPs)
-            : wantPs;
+    // Match showPage / OTT: honor settings.pageSize; row height via classic
+    // formula (setFontSize/fontShift owns spacing — do not fit-shrink).
+    var pageSz = Math.max(
+        1,
+        ((wglob.settings && wglob.settings.pageSize) || pageSize || 25) | 0
+    );
     wglob.listPageSize = pageSz;
     var itemH =
         typeof wglob.listRowHeight === "function"

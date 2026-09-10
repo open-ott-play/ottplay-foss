@@ -1258,6 +1258,27 @@ export function onChanelsLoaded(): void {
             } else {
                 loadFavoritesLists();
             }
+            // Virtual categories are re-added below. saveChannelsCats persists
+            // them, so reloading without stripping yields duplicate "All"
+            // (and language flips All/Все/Усе can stack).
+            var allLabel = window._("All");
+            var favLabel = window._("Favorites");
+            var virtualNames: Record<string, boolean> = {};
+            virtualNames[allLabel] = true;
+            virtualNames[favLabel] = true;
+            virtualNames["All"] = true;
+            virtualNames["Favorites"] = true;
+            virtualNames["Все"] = true;
+            virtualNames["Усе"] = true;
+            catsArray = (catsArray || []).filter(function (name: string) {
+                if (virtualNames[name]) {
+                    try {
+                        delete cats[name];
+                    } catch (_d) {}
+                    return false;
+                }
+                return true;
+            });
             if (!catsArray.length && cList.length) {
                 cList.forEach(function (chId: number) {
                     var ch = window.channels[chId];
@@ -1267,6 +1288,24 @@ export function onChanelsLoaded(): void {
                             cats[ch.category.name] = [];
                         }
                         cats[ch.category.name].push(chId);
+                    }
+                });
+            }
+            // Merge playlist group-titles missing from cached cats (stale
+            // storage / Mode A embed vs companion) so categories like
+            // беларускія / музыка match the live playlist OTT uses.
+            if (cList.length) {
+                cList.forEach(function (chId: number) {
+                    var ch = window.channels[chId];
+                    if (!ch || !ch.category || !ch.category.name) return;
+                    var name = ch.category.name;
+                    if (virtualNames[name]) return;
+                    if (!cats[name]) {
+                        catsArray.push(name);
+                        cats[name] = [];
+                    }
+                    if (cats[name].indexOf(chId) === -1) {
+                        cats[name].push(chId);
                     }
                 });
             }
@@ -1287,11 +1326,11 @@ export function onChanelsLoaded(): void {
                     }
                 });
             }
-            catsArray.unshift(window._("All"));
-            cats[window._("All")] = cList.slice();
+            catsArray.unshift(allLabel);
+            cats[allLabel] = cList.slice();
             if (sFavorites) {
-                catsArray.unshift(window._("Favorites"));
-                cats[window._("Favorites")] = favoritesArray;
+                catsArray.unshift(favLabel);
+                cats[favLabel] = favoritesArray;
                 // First list-name hint is encoded in window so settings UI can
                 // surface it without importing the full lists blob.
                 (window as any).activeFavList = favoritesLists.active;

@@ -142,48 +142,23 @@ export function listInContentHeight(): number {
 }
 
 /**
- * How many list rows actually fit on screen at a readable height.
- * Shrinks the effective pageSize so DOM row count matches visible rows
- * (settings.pageSize alone overshoots after caption/podval + Tauri chrome).
+ * Always honor List settings `pageSize` (OTT default 25).
+ * Do not shrink pageSize to invent a "fit" cap — keep the cursor on-screen
+ * by paging/scrolling like OTT/`setFontSize`, not by reducing row count.
+ * Kept as a named helper for call-site compatibility.
  */
 export function listFitPageSize(wanted: number): number {
-    var want = Math.max(1, wanted | 0);
-    var avail = listInContentHeight();
-    if (avail <= 40) return want;
-    // Prefer settings.pageSize (OTT packs ~25 at the same window). Only shrink
-    // as safety when a row would fall below a readable floor — the old
-    // fs*1.35 preferred height forced ~19 rows and a large gap above podval.
-    var hk = getHeightK();
-    var minRow = 12 * hk;
-    try {
-        var listEl = document.getElementById("list");
-        if (listEl) {
-            var fs = parseFloat(window.getComputedStyle(listEl).fontSize) || 0;
-            // Flex + line-height:normal: font size itself is enough (not 1.35×).
-            if (fs > 0) minRow = Math.max(minRow, fs + 1);
-        }
-    } catch (_f) {}
-    var atWanted = avail / want;
-    if (atWanted >= minRow) return want;
-    // 2px slack: WKWebView subpixel + .item border-bottom.
-    var fit = Math.floor((avail - 2) / Math.max(minRow, 1));
-    if (fit < 1) fit = 1;
-    return Math.max(1, Math.min(want, fit));
+    return Math.max(1, wanted | 0);
 }
 
 /**
- * Row height so `pageSize` items fit inside the live `#listIn` box.
- * Falls back to the 130px chrome formula when `#listIn` is not laid out yet.
- * Floors the measured value so WKWebView/Tauri cannot clip the last rows
- * (selection cursor hanging on off-screen indices while pageSize rows are in DOM).
- * Pass the *fitted* pageSize from listFitPageSize, not the raw settings value.
+ * Row height from the classic OTT formula (same chrome as companion 1.1.16).
+ * Spacing/density follows `settings.pageSize` + `setFontSize`/`fontShift`
+ * (default fontShift ~4), not a live `#listIn` shrink-to-fit pass.
  */
 export function listRowHeight(pageSize: number): number {
     var ps = Math.max(1, pageSize | 0);
-    var fallback = (window.innerHeight - 130 * getHeightK()) / ps;
-    var avail = listInContentHeight();
-    if (avail > 40) return Math.max(1, Math.floor(avail / ps));
-    return fallback;
+    return (window.innerHeight - 130 * getHeightK()) / ps;
 }
 
 // Expose globally for UI code that uses window.getWidthK / window.getHeightK
