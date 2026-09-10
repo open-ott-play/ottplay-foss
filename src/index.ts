@@ -1295,11 +1295,12 @@ function setColor(): void {
     }
     stbSetOsdOpacity(settings.osdOpacity * 10);
 
-    // Window frame elements
+    // Window frame elements — match stbSetWindow hole (margin 10 + caption 52).
     var e = window.innerHeight / 720;
     var t = window.innerWidth / 1280;
-    $("#_t").css("height", 50 * e);
-    $("#_b").css("top", (50 + 288) * e);
+    var frameTop = 10 * e + 52 * e;
+    $("#_t").css("height", frameTop);
+    $("#_b").css("top", frameTop + 288 * e);
     var listFrameLeft = settings.listPosition ? 758 : 10;
     $("#_l").css("width", listFrameLeft * t);
     $("#_r").css("left", (listFrameLeft + 512) * t);
