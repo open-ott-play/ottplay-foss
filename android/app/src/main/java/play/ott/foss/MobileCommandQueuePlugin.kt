@@ -35,10 +35,19 @@ class MobileCommandQueuePlugin : Plugin() {
         val timestamp: Double
     )
 
+    override fun load() {
+        // capacitor.config / docs: auto-start Mode B loopback on plugin load.
+        startServer(null)
+    }
+
     @PluginMethod
     fun start(call: PluginCall) {
+        startServer(call)
+    }
+
+    private fun startServer(call: PluginCall?) {
         if (isRunningFlag) {
-            call.resolve()
+            call?.resolve()
             return
         }
 
@@ -48,7 +57,7 @@ class MobileCommandQueuePlugin : Plugin() {
                 isRunningFlag = true
                 bridge.activity.runOnUiThread {
                     notifyListeners("isRunning", JSObject().apply { put("running", true) })
-                    call.resolve()
+                    call?.resolve()
                 }
                 Log.d("MobileCommandQueue", "Command queue listening on http://127.0.0.1:18081")
 
@@ -66,7 +75,7 @@ class MobileCommandQueuePlugin : Plugin() {
             } catch (e: IOException) {
                 Log.e("MobileCommandQueue", "Failed to bind 127.0.0.1:18081: ${e.message}")
                 withContext(Dispatchers.Main) {
-                    call.reject("Failed to bind HTTP server: ${e.message}")
+                    call?.reject("Failed to bind HTTP server: ${e.message}")
                 }
             }
         }

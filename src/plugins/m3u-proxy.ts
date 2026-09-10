@@ -16,8 +16,6 @@ export interface M3UProxyPlugin {
     }): Promise<{ body: string }>;
 }
 
-import { registerPlugin } from "@capacitor/core";
-
 const UA_PRESETS: Record<string, string> = {
     dune: "Mozilla/5.0 (Dune HD; DuneOS) AppleWebKit/537.36 (KHTML, like Gecko) DuneHD/1.0 Chrome/68.0.3440.106 Safari/537.36",
     mag: "Mozilla/5.0 (STB; Infomir MAG524) Maple 6.0 QtWebKit/3.0",
@@ -45,12 +43,27 @@ class M3UProxyWeb {
     }
 }
 
-const M3UProxy: any =
-    typeof (window as any).Capacitor !== "undefined"
-        ? registerPlugin("M3UProxy", {
-              web: M3UProxyWeb,
-          })
-        : M3UProxyWeb;
+/** Concat/strip builds have no `@capacitor/core` import — never call bare registerPlugin. */
+function resolveCapPlugin(name: string, webFallback: any): any {
+    const Cap =
+        typeof window !== "undefined" ? (window as any).Capacitor : undefined;
+    if (Cap && Cap.Plugins && Cap.Plugins[name]) {
+        return Cap.Plugins[name];
+    }
+    if (Cap && typeof Cap.registerPlugin === "function") {
+        return Cap.registerPlugin(name, { web: webFallback });
+    }
+    if (typeof webFallback === "function") {
+        try {
+            return new webFallback();
+        } catch (_e) {
+            return webFallback;
+        }
+    }
+    return webFallback;
+}
+
+const M3UProxy: any = resolveCapPlugin("M3UProxy", M3UProxyWeb);
 
 function setupCapacitorCompanionShim(): void {
     const $ = (window as any).$;

@@ -43,13 +43,28 @@ public class MobileCommandQueue: CAPPlugin, CAPBridgedPlugin {
     private let queue = DispatchQueue(label: "MobileCommandQueue.queue", qos: .background)
     private let logger = Logger(subsystem: "play.ott.foss", category: "MobileCommandQueue")
 
+    public override func load() {
+        // capacitor.config / docs: auto-start Mode B loopback on plugin load.
+        startListener { _, _ in }
+    }
+
     @objc func start(_ call: CAPPluginCall) {
+        startListener { ok, err in
+            if let err = err {
+                call.reject(err)
+            } else {
+                call.resolve()
+            }
+        }
+    }
+
+    private func startListener(completion: @escaping (_ ok: Bool, _ error: String?) -> Void) {
         queue.async { [weak self] in
             guard let self = self else { return }
 
             if self.isRunningFlag {
                 self.notifyListeners("isRunning", data: ["running": true])
-                call.resolve()
+                DispatchQueue.main.async { completion(true, nil) }
                 return
             }
 
@@ -80,12 +95,12 @@ public class MobileCommandQueue: CAPPlugin, CAPBridgedPlugin {
 
                 DispatchQueue.main.async { [weak self] in
                     self?.notifyListeners("isRunning", data: ["running": true])
-                    call.resolve()
+                    completion(true, nil)
                 }
             } catch {
                 self.logger.error("Failed to start listener: \(error)")
-                DispatchQueue.main.async { [weak self] in
-                    call.reject("Failed to start HTTP server: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    completion(false, "Failed to start HTTP server: \(error.localizedDescription)")
                 }
             }
         }
@@ -194,8 +209,11 @@ public class MobileCommandQueue: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func handleConnection(_ connection: NWConnection) {
-        var accumulated = Data()
+        connection.start(queue: queue)
+        receiveRequest(connection, accumulated: Data())
+    }
 
+    private func receiveRequest(_ connection: NWConnection, accumulated: Data) {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
             guard let self = self else { return }
 
@@ -205,37 +223,44 @@ public class MobileCommandQueue: CAPPlugin, CAPBridgedPlugin {
                 return
             }
 
-            if let data = data {
-                accumulated.append(data)
+            var buffer = accumulated
+            if let data = data, !data.isEmpty {
+                buffer.append(data)
+            }
 
-                if let raw = String(data: accumulated, encoding: .utf8) {
-                    if raw.contains("\r\n\r\n") {
-                        self.processRequest(raw, connection: connection)
-                    }
-                }
+            if let raw = String(data: buffer, encoding: .utf8), raw.contains("\r\n\r\n") {
+                self.processRequest(raw, connection: connection)
+                return
             }
 
             if isComplete {
-                connection.cancel()
-            } else if !(data?.isEmpty ?? true) {
-                // Continue receiving for this request
-                self.handleConnection(connection)
-            } else {
-                connection.cancel()
+                if let raw = String(data: buffer, encoding: .utf8), !raw.isEmpty {
+                    self.processRequest(raw, connection: connection)
+                } else {
+                    connection.cancel()
+                }
+                return
             }
+
+            if data == nil || data?.isEmpty == true {
+                connection.cancel()
+                return
+            }
+
+            self.receiveRequest(connection, accumulated: buffer)
         }
     }
 
     private func processRequest(_ raw: String, connection: NWConnection) {
-        guard let requestLineEnd = raw.firstIndex(of: "\n") else {
-            sendResponse(connection, status: 400, body: ["error": "Invalid request"])
+        let lines = raw.components(separatedBy: CharacterSet.newlines)
+        guard let requestLine = lines.first, !requestLine.isEmpty else {
+            sendResponse(connection, status: 400, body: ["error": "Invalid request", "len": raw.count])
             return
         }
 
-        let requestLine = String(raw[..<requestLineEnd]).trimmingCharacters(in: .whitespacesAndNewlines)
-        let components = requestLine.components(separatedBy: " ")
+        let components = requestLine.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
         guard components.count >= 3 else {
-            sendResponse(connection, status: 400, body: ["error": "Invalid request line"])
+            sendResponse(connection, status: 400, body: ["error": "Invalid request line", "line": requestLine])
             return
         }
 
@@ -364,10 +389,14 @@ public class MobileCommandQueue: CAPPlugin, CAPBridgedPlugin {
             var fullResponse = Data(response.utf8)
             fullResponse.append(jsonData)
 
-            connection.send(content: fullResponse, completion: .idempotent)
+            connection.send(content: fullResponse, completion: .contentProcessed { _ in
+                connection.cancel()
+            })
         } catch {
             logger.error("Failed to serialize response: \(error)")
-            connection.send(content: "HTTP/1.1 500 Internal Server Error\r\n\r\n".data(using: .utf8)!, completion: .idempotent)
+            connection.send(content: "HTTP/1.1 500 Internal Server Error\r\n\r\n".data(using: .utf8)!, completion: .contentProcessed { _ in
+                connection.cancel()
+            })
         }
     }
 
@@ -380,6 +409,8 @@ public class MobileCommandQueue: CAPPlugin, CAPBridgedPlugin {
         response += "Content-Length: 0\r\n"
         response += "\r\n"
 
-        connection.send(content: response.data(using: .utf8)!, completion: .idempotent)
+        connection.send(content: response.data(using: .utf8)!, completion: .contentProcessed { _ in
+            connection.cancel()
+        })
     }
 }

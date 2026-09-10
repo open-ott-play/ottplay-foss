@@ -88,7 +88,7 @@ npm run cap:android
 
 See `capacitor.config.ts`:
 
-- `webDir: "dist"` — built web assets
+- `webDir: "dist"` — built web assets (boot URL `/dist/stbPlayer.js` needs nested `dist/dist/stbPlayer.js`; vite nests this for Cap, matching Tauri `stageTauriFrontend`)
 - `ios.backgroundAudio: true` — background playback (Info.plist `UIBackgroundModes: audio`)
 - `android.backgroundAudio: true` — foreground service for media
 - `android.minSdkVersion: 24` — effective minSdk 24 (matches android/variables.gradle)
