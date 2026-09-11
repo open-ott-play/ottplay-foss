@@ -2,7 +2,7 @@
  * UI management — info bar, dialogs, lists, volume, color, time display.
  */
 
-import { getCurProgData } from "../channels";
+import { arrayGetCurProg, getCurProgData } from "../channels";
 import { video } from "../core";
 import { dispatchKey, keys, list_OnClick } from "../keyhandler";
 import { translate as _ } from "../localization";
@@ -833,6 +833,12 @@ export function showPage(): void {
     } catch (_vis) {}
     $infoBar.hide();
     $("#permanentTime").hide();
+    // Gold showPage clears the EPG queue before re-rendering rows so each
+    // visible channel re-queues getCurProgData → updateChanelList (now/next).
+    try {
+        arrayGetCurProg.length = 0;
+    } catch (_q) {}
+
     if (listInElement) listInElement.innerHTML = "";
     try {
         if (settings.noSmall) {
@@ -1616,6 +1622,19 @@ export function updateChanelInfo(channelId: number): void {
             if (programDescrEl) programDescrEl.textContent = "";
         }
     }
+    // Gold: auto-show info bar on programme change when enabled.
+    try {
+        var w = window as any;
+        if (
+            w.sInfoChange &&
+            $infoBar &&
+            typeof $infoBar.is === "function" &&
+            !$infoBar.is(":visible") &&
+            typeof w.showChanelInfo === "function"
+        ) {
+            w.showChanelInfo(1);
+        }
+    } catch (_info) {}
 }
 
 /**

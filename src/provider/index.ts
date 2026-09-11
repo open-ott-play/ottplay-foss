@@ -190,14 +190,16 @@ declare var channelsKeyHandler: (key: number) => boolean;
  * Called as the EPG callback from getCurProgData.
  */
 function updateChanelList(chId: string): void {
-    $("#pn" + chId).html(channels[chId].name);
-    $("#pr" + chId).css(
-        "width",
-        ((Date.now() / 1e3 - channels[chId].time) /
-            (channels[chId].time_to - channels[chId].time)) *
-            100 +
-            "%"
-    );
+    var ch = channels[chId as any];
+    if (!ch && (window as any).chanels) ch = (window as any).chanels[chId];
+    if (!ch) return;
+    $("#pn" + chId).html(ch.name || "");
+    if (ch.time_to && ch.time_to > ch.time) {
+        $("#pr" + chId).css(
+            "width",
+            ((Date.now() / 1e3 - ch.time) / (ch.time_to - ch.time)) * 100 + "%"
+        );
+    }
     if (listArray[selIndex] == chId) detailProg();
 }
 /**
@@ -218,11 +220,16 @@ function updateChanelList(chId: string): void {
 function detailProg(): void {
     var e = channels[listArray[selIndex]];
     if (e === undefined) return;
+    var accent =
+        (typeof curColor === "string" && curColor) ||
+        (window as any).curColor ||
+        "gold";
     if (e.time_to && e.time_to >= Date.now() / 1e3) {
         var t = Math.round((Date.now() / 1e3 - e.time) / 60);
+        // Title yellow (OTT); time on next line; descr/nextpr gaps via CSS + height.
         var r =
             '<div id="_name"><div style="color:' +
-            curColor +
+            accent +
             ';">' +
             e.name +
             '</div><div style="font-size:smaller;">' +
@@ -251,7 +258,7 @@ function detailProg(): void {
                     r +=
                         time2time(n.time) +
                         ' <span style="color:' +
-                        curColor +
+                        accent +
                         ';">' +
                         n.name +
                         "</span></br>";
@@ -259,11 +266,17 @@ function detailProg(): void {
             r += "</div>";
         }
         listDetail.innerHTML = r;
-        var s = sShowDescr
-            ? $("#listDetail").height() -
-              $("#_name").height() -
-              ($("#_nextpr").height() || 0)
-            : 0;
+        var hk = typeof getHeightK === "function" ? getHeightK() : 1;
+        var nextGap = Math.round(1.5 * 22 * hk);
+        var s = 0;
+        if (sShowDescr) {
+            s =
+                $("#listDetail").height() -
+                $("#_name").height() -
+                ($("#_nextpr").height() || 0) -
+                nextGap;
+            if (!(s > 0)) s = 0;
+        }
         $("#_descr").height(s);
         s = $("#_prd").height() + 10 - s;
         scrollUp("_prd", s, 5000);
@@ -271,14 +284,7 @@ function detailProg(): void {
     if (sPreview == 1 && typeof (window as any).previewChId === "function")
         (window as any).previewChId(listArray[selIndex]);
 }
-/**
- * Populate the channel list popup (#listPopUp) with action buttons.
- * Contents differ depending on whether we're in a sub-category vs. root
- * (sFavorites / listCatIndex), and whether parental control is active.
- *
- * Side effects: Writes innerHTML to #listPopUp; appends parental control
- * button if sPSchannels && parentPIN != '*'.
- */
+
 function setPopupChannels(): void {
     if ((!sFavorites && listCatIndex) || (sFavorites && !listCatIndex)) {
         $("#listPopUp").html(
@@ -1707,15 +1713,23 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   safePic +
                   "');\"></div>"
                 : "") +
-            '<div style="flex:1 1 auto;min-width:0;color:' +
-            bodyColor +
-            ';min-height:0;max-height:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:inherit;">&nbsp;' +
-            (showName ? ch.channel_name + "&nbsp;" : "") +
+            '<div style="flex:1 1 auto;min-width:0;min-height:0;max-height:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:inherit;">&nbsp;' +
+            (showName
+                ? '<span style="color:' +
+                  ((typeof bodyColor === "string" && bodyColor) ||
+                      (window as any).bodyColor ||
+                      "#f0f0f0") +
+                  ';">' +
+                  ch.channel_name +
+                  "</span>&nbsp;"
+                : "") +
             (showProgram
                 ? '<span id="pn' +
                   chId +
                   '" style="color:' +
-                  curColor +
+                  ((typeof curColor === "string" && curColor) ||
+                      (window as any).curColor ||
+                      "gold") +
                   ';">' +
                   progName +
                   "</span></div>"
@@ -1734,7 +1748,9 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   "%;height:" +
                   progBarH +
                   "px;background-color:" +
-                  curColor +
+                  ((typeof curColor === "string" && curColor) ||
+                      (window as any).curColor ||
+                      "gold") +
                   ';font-size:1px;"></div></div>'
                 : "")
         );

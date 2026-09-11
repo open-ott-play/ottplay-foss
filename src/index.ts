@@ -57,6 +57,7 @@ import {
     aAudios,
     addFavoritesList,
     addToFavorites,
+    arrayGetCurProg,
     aSubs,
     aZooms,
     bucketsList,
@@ -1025,10 +1026,13 @@ function setFontSize(): void {
             ? (window as any).listRowHeight(pageSize)
             : Math.floor((window.innerHeight - 130 * e) / pageSize);
     rowPx = Math.max(1, Math.floor(rowPx));
-    var r = (window.innerHeight - 90 * e) / pageSize - settings.fontShift * e;
+    // +1 step vs prior formula: empty space remained under pageSize=25 rows.
+    var r =
+        (window.innerHeight - 90 * e) / pageSize - settings.fontShift * e + e;
     r = Math.max(r, 16 * e);
     // Keep glyphs inside the integer row box (WKWebView expands on overflow).
-    r = Math.min(r, 40 * e, Math.max(10 * e, rowPx * 0.92));
+    // 0.98 uses the spare line-box under the 25th row after the +1 step bump.
+    r = Math.min(r, 40 * e, Math.max(10 * e, rowPx * 0.98));
     $("#list").css("font-size", r + "px");
     $("#testFont").css("font-size", r + "px");
     $("#permanentTime").css("font-size", r + "px");
@@ -1286,6 +1290,10 @@ function setColor(): void {
             ","
         ) +
         ")";
+    // Keep window.* in sync — itemEPG / listDetail / getListItem read w.curColor.
+    window.curColor = curColor;
+    window.curColorB = curColorB;
+    window.bodyColor = bodyColor;
 
     $("#listCaption").css("border-bottom", "2px solid " + curColor);
     $("#listPodval").css("border-top", "1px solid " + curColor);
@@ -2346,7 +2354,13 @@ function setupTauriEpgOverride(): void {
             timeShiftHours: timeShiftHours,
         })
             .then((result) => {
-                callback(chId, result?.epg_data || []);
+                // Same dual-shape as getEPGchanelCached (raw array or {epg_data}).
+                var epgData = Array.isArray(result)
+                    ? result
+                    : result && Array.isArray(result.epg_data)
+                      ? result.epg_data
+                      : [];
+                callback(chId, epgData);
             })
             .catch((error: any) => {
                 console.error("[Tauri] get_epg failed:", error);
@@ -5496,6 +5510,7 @@ window.checkMedia = checkMedia;
 window.setCurrent = setCurrent;
 window.setCurProg = setCurProg;
 window.getCurProgData = getCurProgData;
+window.arrayGetCurProg = arrayGetCurProg;
 window.getEPGchanelCached = getEPGchanelCached;
 window.nextChannel = nextChannel;
 window.prevChannel = prevChannel;

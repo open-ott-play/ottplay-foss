@@ -1474,35 +1474,31 @@ export function stbInit(): void {
         ].forEach(function (e) {
             video!.addEventListener(e, videoEvent);
         });
-        if ((video as any).webkitVideoDecodedByteCount !== undefined) {
-            setInterval(function () {
-                if (
-                    video!.videoWidth &&
-                    (video as any).webkitVideoDecodedByteCount -
-                        prevDecodedBytes >
-                        0
-                ) {
-                    $("#video_res").html(
-                        "<br/>" +
-                            video!.videoWidth +
-                            "x" +
-                            video!.videoHeight +
-                            "<br/>" +
-                            Math.round(
-                                ((((video as any).webkitVideoDecodedByteCount -
-                                    prevDecodedBytes) *
-                                    8) /
-                                    1024 /
-                                    1024) *
-                                    100
-                            ) /
-                                100 +
-                            " Mbps"
-                    );
-                }
-                prevDecodedBytes = (video as any).webkitVideoDecodedByteCount;
-            }, 1000);
-        }
+        // Bitrate in #video_res (info1 bottom-right). Prefer WebKit decoded
+        // bytes (OTT); fall back to hls.js bandwidthEstimate when missing.
+        setInterval(function () {
+            if (!video || !video.videoWidth) return;
+            var res = "<br/>" + video.videoWidth + "x" + video.videoHeight;
+            var mbps = 0;
+            var decoded = (video as any).webkitVideoDecodedByteCount;
+            if (decoded !== undefined && decoded - prevDecodedBytes > 0) {
+                mbps =
+                    Math.round(
+                        (((decoded - prevDecodedBytes) * 8) / 1024 / 1024) * 100
+                    ) / 100;
+                prevDecodedBytes = decoded;
+            } else if (decoded !== undefined) {
+                prevDecodedBytes = decoded;
+            }
+            if (!(mbps > 0) && hlsInstance && hlsInstance.bandwidthEstimate) {
+                mbps =
+                    Math.round((hlsInstance.bandwidthEstimate / 1e6) * 100) /
+                    100;
+            }
+            if (mbps > 0) {
+                $("#video_res").html(res + "<br/>" + mbps + " Mbps");
+            }
+        }, 1000);
         videoPip = document.getElementById("videopip") as HTMLVideoElement;
         videoPip!.addEventListener("loadstart", function () {
             if (videoPip!.style.display != "none") $("#pip_buffering").show();
