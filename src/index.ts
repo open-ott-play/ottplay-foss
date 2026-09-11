@@ -1023,10 +1023,12 @@ function setFontSize(): void {
     var rowPx =
         typeof (window as any).listRowHeight === "function"
             ? (window as any).listRowHeight(pageSize)
-            : (window.innerHeight - 130 * e) / pageSize;
+            : Math.floor((window.innerHeight - 130 * e) / pageSize);
+    rowPx = Math.max(1, Math.floor(rowPx));
     var r = (window.innerHeight - 90 * e) / pageSize - settings.fontShift * e;
     r = Math.max(r, 16 * e);
-    r = Math.min(r, 40 * e, Math.max(10 * e, rowPx));
+    // Keep glyphs inside the integer row box (WKWebView expands on overflow).
+    r = Math.min(r, 40 * e, Math.max(10 * e, rowPx * 0.92));
     $("#list").css("font-size", r + "px");
     $("#testFont").css("font-size", r + "px");
     $("#permanentTime").css("font-size", r + "px");
@@ -5605,10 +5607,22 @@ if (typeof window !== "undefined" && !(window as any).__ottListResizeBound) {
                     (window as any).setFontSize();
                 if (typeof (window as any).setColor === "function")
                     (window as any).setColor();
-                if (
-                    (window as any).isListVisible &&
-                    typeof (window as any).showPage === "function"
-                )
+                // Prefer live overlay visibility — bare window.isListVisible can
+                // lag the module flag after window-state restore, leaving rows
+                // sized for the previous innerHeight (~21 of pageSize 25).
+                var listOpen = !!(window as any).isListVisible;
+                try {
+                    if (typeof (window as any).$ !== "undefined") {
+                        var $w = (window as any).$;
+                        listOpen =
+                            listOpen ||
+                            $w("#list_window").is(":visible") ||
+                            $w("#list_osd").is(":visible") ||
+                            ($w("#list").is(":visible") &&
+                                $w("#listIn").children().length > 0);
+                    }
+                } catch (_vis) {}
+                if (listOpen && typeof (window as any).showPage === "function")
                     (window as any).showPage();
             } catch (_eResize) {}
         }, 120);

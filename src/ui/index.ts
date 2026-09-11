@@ -14,6 +14,7 @@ import {
     getThumbnail,
     getWidthK,
     listRowHeight,
+    packListRowBoxes,
     time2time,
 } from "../utils/helpers";
 
@@ -826,6 +827,9 @@ export function showChanelInfo(timeoutSec: number): void {
  */
 export function showPage(): void {
     isListVisible = true;
+    try {
+        (window as any).isListVisible = true;
+    } catch (_vis) {}
     $infoBar.hide();
     $("#permanentTime").hide();
     if (listInElement) listInElement.innerHTML = "";
@@ -873,7 +877,8 @@ export function showPage(): void {
     (window as any).listPageSize = pageSz;
     var pageStart = Math.floor(selIndex / pageSz) * pageSz;
     var pageEnd = Math.min(pageStart + pageSz, dataArr.length);
-    var itemHeight = listRowHeight(pageSz);
+    var itemHeight = Math.max(1, Math.floor(listRowHeight(pageSz)));
+    (window as any).__ottListRowH = itemHeight;
     var html = "";
     if (dataArr.length > pageSz) {
         itemWidth = getWidthK() * 720;
@@ -927,12 +932,13 @@ export function showPage(): void {
             '" onclick="event.stopPropagation();setSelect(' +
             i +
             ')" class="item"';
-        // Pack height from listRowHeight (live #listIn / pageSize). WKWebView
-        // expands #itN when line-height:normal (~1.2× 90-chrome font) exceeds
-        // the row box — lock height+line-height+min/max to the same px.
+        // Integer px boxes from listRowHeight. Zero vertical padding; horizontal
+        // inset only. WKWebView subpixel/flex min-content previously grew rows
+        // past avail/pageSize (~21 of 25 visible) — lock height+line-height+
+        // min/max and re-pack after paint via packListRowBoxes.
         html +=
             ' style="display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;' +
-            "box-sizing:border-box;margin:0;padding:0 14px;border:none;border-radius:3px;" +
+            "box-sizing:border-box;margin:0;padding:0 10px;border:none;border-radius:3px;" +
             "height:" +
             itemHeight +
             "px;max-height:" +
@@ -943,7 +949,7 @@ export function showPage(): void {
             itemHeight +
             "px;width:" +
             itemWidth +
-            "px;overflow:hidden;white-space:nowrap;flex-shrink:0;";
+            "px;overflow:hidden;white-space:nowrap;flex-shrink:0;contain:layout style;";
         if (selected)
             html +=
                 "color:" +
@@ -963,6 +969,43 @@ export function showPage(): void {
         listInElement.scrollTop = 0;
         listInElement.innerHTML = html;
     }
+    // Force exact integer row boxes after layout (WKWebView may expand flex
+    // rows 1px+ each → pageSize 25 collapses to ~21 visible).
+    try {
+        packListRowBoxes(pageStart, pageEnd, pageSz);
+        requestAnimationFrame(function () {
+            try {
+                var h2 = packListRowBoxes(pageStart, pageEnd, pageSz);
+                if (h2 > 0) (window as any).__ottListRowH = h2;
+                // If the last row on this page is still clipped, one more shrink.
+                var box = document.getElementById("listIn");
+                var last = document.getElementById("it" + (pageEnd - 1));
+                if (box && last && pageEnd > pageStart) {
+                    var lr = box.getBoundingClientRect();
+                    var er = last.getBoundingClientRect();
+                    if (er.bottom > lr.bottom + 0.5) {
+                        var avail2 =
+                            typeof (window as any).listInContentHeight ===
+                            "function"
+                                ? (window as any).listInContentHeight()
+                                : box.clientHeight;
+                        var h3 = Math.max(1, Math.floor(avail2 / pageSz) - 1);
+                        for (var j = pageStart; j < pageEnd; j++) {
+                            var n = document.getElementById(
+                                "it" + j
+                            ) as HTMLElement | null;
+                            if (!n) continue;
+                            n.style.height = h3 + "px";
+                            n.style.maxHeight = h3 + "px";
+                            n.style.minHeight = h3 + "px";
+                            n.style.lineHeight = h3 + "px";
+                        }
+                        (window as any).__ottListRowH = h3;
+                    }
+                }
+            } catch (_pack2) {}
+        });
+    } catch (_pack) {}
     // Pin selection styles after remount (page-boundary ↓/L/R and first open
     // used to leave #itN without a visible cursor when only page HTML flipped).
     try {
@@ -1122,6 +1165,9 @@ export function setSelect(index: number): void {
  */
 export function closeList(): void {
     isListVisible = false;
+    try {
+        (window as any).isListVisible = false;
+    } catch (_vis) {}
     try {
         if (listElement) listElement.style.display = "none";
         $("#list_osd").hide();

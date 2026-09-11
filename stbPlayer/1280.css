@@ -356,12 +356,11 @@ body {
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: center;
-    padding: 0 14px;
-    /* Vertical margin/padding/border must not override showPage row height
-       (live #listIn / pageSize, classic 130 fallback) — separators via inset
-       shadow only. showPage sets line-height to the same px as height so
-       WKWebView cannot expand rows past pageSize packing. */
+    /* Horizontal inset only — vertical padding must stay 0 so pageSize rows
+       pack into live #listIn (WKWebView subpixel growth → ~21 of 25). */
+    padding: 0 10px;
     margin: 0;
+    contain: layout style;
     overflow: hidden;
     text-overflow: ellipsis;
     line-height: normal; /* showPage inline px overrides */
@@ -405,6 +404,8 @@ body {
        width/height from _channelsList; avoid height:auto collapse in WKWebView. */
     float: none;
     flex-shrink: 0;
+    min-width: 0;
+    min-height: 0;
     max-height: 100%;
     margin-right: 8px;
     background-repeat: no-repeat;
