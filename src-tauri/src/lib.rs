@@ -1,4 +1,5 @@
 mod commands;
+mod instance;
 
 use commands::media_session::MediaSessionState;
 use commands::tauri_commands::TauriState;
@@ -29,19 +30,23 @@ pub fn run() {
     commands::queue::spawn_http_server(command_queues.clone());
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(
+        .plugin({
             // Persist main window position/size across launches (Mode B frameless).
             // SIZE|POSITION|VISIBLE only — never FULLSCREEN/MAXIMIZED/DECORATIONS so
             // restore does not fight Key L native fullscreen toggle.
-            tauri_plugin_window_state::Builder::new()
+            // Per-instance filename when OTTPLAY_INSTANCE / OTTPLAY_DATA_DIR is set.
+            let mut ws = tauri_plugin_window_state::Builder::new()
                 .with_state_flags(
                     tauri_plugin_window_state::StateFlags::SIZE
                         | tauri_plugin_window_state::StateFlags::POSITION
                         | tauri_plugin_window_state::StateFlags::VISIBLE,
                 )
-                .with_denylist(&["pip"])
-                .build(),
-        )
+                .with_denylist(&["pip"]);
+            if let Some(name) = instance::window_state_filename() {
+                ws = ws.with_filename(name);
+            }
+            ws.build()
+        })
         .manage(MediaSessionState::default())
         .manage(TauriState {
             xmltv_cache: Arc::new(RwLock::new(None)),
@@ -81,6 +86,38 @@ pub fn run() {
             commands::stalker::stalker_portal_fetch,
         ])
         .setup(|app| {
+            // Optional multi-instance isolation: recreate main webview with a
+            // private data_directory + macOS WKWebsiteDataStore id. Unset env
+            // keeps the stock config window (identical to prior releases).
+            if let Some(data_dir) = instance::resolve_data_dir() {
+                instance::ensure_dirs(&data_dir).map_err(|e| {
+                    Box::<dyn std::error::Error>::from(format!(
+                        "instance data dir {}: {e}",
+                        data_dir.display()
+                    ))
+                })?;
+                if let Some(existing) = app.get_webview_window("main") {
+                    existing.destroy()?;
+                }
+                let builder = tauri::WebviewWindowBuilder::new(
+                    app,
+                    "main",
+                    tauri::WebviewUrl::App("index.html".into()),
+                )
+                .title("OttPlay FOSS")
+                .inner_size(1280.0, 720.0)
+                .center()
+                .resizable(true)
+                .decorations(false);
+                let builder = instance::apply_isolation(builder, &data_dir);
+                builder.build()?;
+                tracing::info!(
+                    path = %data_dir.display(),
+                    slug = instance::isolation_slug().unwrap_or_default(),
+                    "OTTPLAY instance isolation enabled"
+                );
+            }
+
             let raw = std::env::var("OTTPLAY_WEB_URL").unwrap_or_else(|_| DEFAULT_WEB_URL.into());
             if let Some(window) = app.get_webview_window("main") {
                 if raw.trim().is_empty() {

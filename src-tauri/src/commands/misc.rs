@@ -112,11 +112,8 @@ pub async fn feedback_post(
     path: String,
     body: String,
 ) -> Result<FeedbackResult, String> {
-    // Ensure feedback.log exists in app data directory
-    let mut log_path = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("Failed to get app data dir: {e}"))?;
+    // Ensure feedback.log exists in app data directory (per-instance when set).
+    let mut log_path = crate::instance::app_data_dir(&app)?;
     std::fs::create_dir_all(&log_path)
         .map_err(|e| format!("Failed to create app data dir: {e}"))?;
     log_path.push("feedback.log");

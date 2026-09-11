@@ -773,7 +773,7 @@ pub async fn play_pip(app: tauri::AppHandle, url: String) -> Result<PipResult, S
     let script_on_load = pip_player_script(&url);
     let script_immediate = script_on_load.clone();
 
-    let win = tauri::WebviewWindowBuilder::new(&app, PIP_LABEL, web_url)
+    let mut pip_builder = tauri::WebviewWindowBuilder::new(&app, PIP_LABEL, web_url)
         .title("OttPlay PiP")
         .inner_size(w, h)
         .resizable(true)
@@ -784,9 +784,11 @@ pub async fn play_pip(app: tauri::AppHandle, url: String) -> Result<PipResult, S
             if matches!(payload.event(), PageLoadEvent::Finished) {
                 let _ = window.eval(&script_on_load);
             }
-        })
-        .build()
-        .map_err(|e| e.to_string())?;
+        });
+    if let Some(data_dir) = crate::instance::resolve_data_dir() {
+        pip_builder = crate::instance::apply_isolation(pip_builder, &data_dir);
+    }
+    let win = pip_builder.build().map_err(|e| e.to_string())?;
 
     // Best-effort immediate eval (about:blank may already be finished).
     let _ = win.eval(&script_immediate);
