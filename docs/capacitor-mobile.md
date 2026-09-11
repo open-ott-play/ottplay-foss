@@ -3,6 +3,10 @@
 Capacitor wraps the OTT-play FOSS web frontend for native iOS and Android deployment.
 Both platforms share the same TypeScript source and Capacitor configuration.
 
+## Try the player (web)
+
+Hosted full web player for UI/regression testing without a device build: **https://player.ottplay.here.now/**
+
 ## Status
 
 Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315), iOS AVPlayer PiP (#316), Stalker portal (#317), MediaSession (#318+#321), DASH ExoPlayer (#319), Tauri updater/notarize (#320), Stalker `host_ott/swop` (#322), Mag `load.php` path allowlist + cookie/header hooks (#324), Cap tvOS unsupported docs + iOS UIPress remote gaps (#325), Dev PC input-line editor `showEditKey2` (#326), command-queue curl/HA smoke (#328), Mode A companion HTTP smoke (#329), M3U stream-proxy header smoke (#332), Mode A `/logo` concurrent bench smoke (#333), XMLTV cache refresh / warm-up smoke (#334), Mode A E2E play-path smoke (#336), Capacitor device-smoke checklist + helper (see `docs/mode-b-device-smoke.md`), and Tauri desktop-smoke checklist + helper (see `docs/mode-b-tauri-smoke.md`). Tauri frameless window drag from top chrome shipped in #348. PC/Tauri native `<input>` editor (`showEditKey2`) default when `sEditor` unset shipped in #352; #389 forces native `showEditKey2` on PC/Tauri/desktop (bundle `sEditor=0` override). iOS Xcode 26 archive Swift fixes shipped in #349 + #351; unsigned IPA green on v1.1.5. Tauri player polish 1.1.20–1.1.23 shipped (#380–#387, #389): whole-surface drag, EPG camelCase, channel row parity, L/Escape simple FS, settings submenu flex, list cursor/paging + `listFitPageSize`, video cover/center, Category All playing-channel cursor, capture-phase L when video focused. ottplay-server HTTPS via rustls aws-lc-rs `CryptoProvider` shipped in #388. Remaining: human TestFlight/Play upload, Mag JsHttpRequest client/VOD, human UI marks on the device-smoke checklist, DRM. Cap tvOS is **unsupported upstream** (documented; no stub target).

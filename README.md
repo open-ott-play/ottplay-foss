@@ -2,6 +2,14 @@
 
 Self-contained IPTV/OTT player with a local Rust HTTP server. Runs on Smart TVs (LG WebOS, Samsung Tizen, Panasonic, Sony, etc.), set-top boxes (Infomir MAG, Dune HD, Enigma2, Android TV), and desktop browsers.
 
+## Try the player (web)
+
+Hosted full web player for testing (no local build required):
+
+**https://player.ottplay.here.now/**
+
+Same FOSS player UI as a desktop browser build. Point it at your own M3U / provider after first load (Settings → Providers).
+
 ## Features
 
 - **Playback**: HLS, DASH, plain HTTP streams via HLS.js and Shaka Player; soft live reconnect on fatal HLS parse/network
@@ -298,6 +306,8 @@ cargo build --release -p ottplay-server
 # 3. Open in browser
 # http://localhost:8080
 ```
+
+Or skip the local build and open the hosted full player: **https://player.ottplay.here.now/**
 
 On first load: press **F2 (Settings) → Providers → M3U**, enter your playlist URL.
 

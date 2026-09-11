@@ -13,6 +13,7 @@ Related:
 
 - Build / store prep: [`docs/capacitor-mobile.md`](capacitor-mobile.md)
 - Command-queue curl: `./scripts/smoke-command-queue.sh` (#328)
+- Hosted full web player (browser baseline): https://player.ottplay.here.now/
 - Thin helper: `./scripts/smoke-capacitor-device.sh`
 
 ## What is automated vs human
