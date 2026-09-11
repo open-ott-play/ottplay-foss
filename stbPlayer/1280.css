@@ -233,6 +233,17 @@ body {
     color: #e8e8f0;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
+#listDetail #_name {
+    /* Keep time range on its own line below the yellow title (OTT). */
+    margin-bottom: 0.65em;
+}
+#listDetail #_descr {
+    /* Clear absolute #_nextpr (~1.5 lines) so description does not collide. */
+    margin-bottom: 1.5em;
+}
+#listDetail #_nextpr {
+    line-height: 1.35;
+}
 #listPopUp {
     position: absolute;
     bottom: 53px;
@@ -534,7 +545,7 @@ body {
 }
 #data {
     float: right;
-    width: 120px;
+    width: 80px;
     font-size: 22px;
     text-align: right;
     white-space: nowrap;
