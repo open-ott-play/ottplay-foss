@@ -907,3 +907,7 @@ FOSS — free and open source.
 ## Desktop updater / notarization (Mode B)
 
 Optional Tauri auto-updater (GitHub Releases) and macOS notarization hooks are documented in [docs/tauri-updater-notarize.md](docs/tauri-updater-notarize.md). Release CI skips signing/notarize when secrets are absent.
+
+## Local Mac build helpers
+
+See [docs/local-build-scripts.md](docs/local-build-scripts.md).
