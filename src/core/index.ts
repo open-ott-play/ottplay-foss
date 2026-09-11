@@ -523,27 +523,14 @@ export function stbEventToKeyCode(event: any): number {
     }
 
     if (keyCode === 76) {
-        // Do not steal L/l while the on-screen editor / VKB is open.
-        var editing = false;
-        try {
-            if (
-                typeof (window as any).$ !== "undefined" &&
-                (window as any).$("#listEdit").is(":visible")
-            )
-                editing = true;
-        } catch (_) {}
-        if (!editing) {
-            var inTauri = typeof (window as any).__TAURI__ !== "undefined";
-            if (inTauri) {
-                // WKWebView document.fullscreen is a no-op. In-page
-                // stbToFullScreen is layout-only (not a real OS toggle).
-                // Rust toggle_fullscreen uses macOS simple fullscreen so L
-                // stays in the webview (no global KeyL).
-                void stbToggleTauriNativeFullscreen();
-            } else {
-                if (isNormalScreen()) openFullscreen();
-                else closeFullscreen();
-            }
+        // L/l/KeyL — fullscreen toggle on non-Tauri platforms.
+        // On Tauri the capture-phase document listener in
+        // installTauriFsKeyCapture owns L (stopImmediatePropagation
+        // keeps window.onkeydown from running), so do NOT toggle here.
+        var inTauri = typeof (window as any).__TAURI__ !== "undefined";
+        if (!inTauri) {
+            if (isNormalScreen()) openFullscreen();
+            else closeFullscreen();
             if (event.preventDefault) event.preventDefault();
             if (event.stopPropagation) event.stopPropagation();
             return 0; // Indicate key was consumed
