@@ -8,7 +8,17 @@ cd "$ROOT"
 
 APP_NAME="OttPlay FOSS"
 BUNDLE_ID="com.ottplay.foss"
-BUNDLE_DIR="src-tauri/target/release/bundle"
+# Tauri may write bundles under repo-root target/ (Cargo workspace) or src-tauri/target/.
+BUNDLE_DIR=""
+for cand in "target/release/bundle" "src-tauri/target/release/bundle"; do
+  if [[ -d "$cand/macos" ]]; then
+    BUNDLE_DIR="$cand"
+    break
+  fi
+done
+if [[ -z "$BUNDLE_DIR" ]]; then
+  BUNDLE_DIR="target/release/bundle"
+fi
 
 UPDATE_DEPS=false
 CLEAN=false
