@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build OttPlay FOSS Tauri desktop, install to /Applications, and launch.
 # Pattern mirrors inverter-desktop/build-local.sh.
+# Uses `--bundles app` (skips DMG): create-dmg often fails in headless/agent sessions.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -61,9 +62,9 @@ echo ""
 echo "===> Building Tauri application..."
 # Prefer npm script if present; fall back to npx
 if npm run | grep -qE '^  tauri'; then
-  npm run tauri -- build
+  npm run tauri -- build -- --bundles app
 else
-  npx tauri build
+  npx tauri build --bundles app
 fi
 
 echo "===> Killing running instances of '${APP_NAME}'..."
