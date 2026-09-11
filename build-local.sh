@@ -67,15 +67,32 @@ else
   npx tauri build --bundles app
 fi
 
-echo "===> Killing running instances of '${APP_NAME}'..."
-pkill -f "${APP_NAME}" 2>/dev/null && echo "  ✓ Killed" || echo "  (not running)"
-# Also match common binary names
-pkill -f 'ottplay-foss|OttPlay.FOSS' 2>/dev/null || true
+echo "===> Killing running OttPlay Tauri processes..."
+# Do not pkill -f ottplay-foss: that matches this script's path and can suicide the build.
+osascript -e "tell application \"${APP_NAME}\" to quit" 2>/dev/null || true
+if pkill -x ottplay-tauri 2>/dev/null; then
+  echo "  ✓ quit/killed ottplay-tauri"
+  sleep 1
+  pkill -KILL -x ottplay-tauri 2>/dev/null || true
+else
+  echo "  (ottplay-tauri not running)"
+fi
 
 echo ""
-echo "===> Clearing WKWebView NetworkCache..."
-rm -rf "$HOME/Library/Caches/${BUNDLE_ID}/WebKit/NetworkCache" 2>/dev/null || true
-echo "  ✓ $HOME/Library/Caches/${BUNDLE_ID}/WebKit/NetworkCache"
+echo "===> Clearing Tauri/WebKit caches (Application Support settings kept)..."
+# Full Caches + WebKit trees, not only NetworkCache — stale WKWebView data keeps old UI.
+# Instance variants: com.ottplay.foss.2 / .3 / …  Also ottplay-tauri.
+cleared=0
+while IFS= read -r dir; do
+  rm -rf "$dir"
+  echo "  ✓ $dir"
+  cleared=1
+done < <(find "$HOME/Library/Caches" "$HOME/Library/WebKit" -maxdepth 1 \( \
+  -name "${BUNDLE_ID}" -o -name "${BUNDLE_ID}.*" -o -name "ottplay-tauri" \
+\) -type d 2>/dev/null || true)
+if [[ "$cleared" -eq 0 ]]; then
+  echo "  (none present)"
+fi
 
 echo ""
 echo "===> Installing ${APP_NAME} to /Applications..."
