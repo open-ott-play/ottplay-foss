@@ -4646,10 +4646,10 @@ export function _enterPinCode(
                 highlight(curIdx + 1);
                 return;
             case window.keys.UP:
-                highlight(1);
+                highlight(curIdx - 1);
                 return;
             case window.keys.DOWN:
-                highlight(0);
+                highlight(curIdx + 1);
                 return;
             case window.keys.ENTER:
                 if (typeof window._doKey === "function") {
