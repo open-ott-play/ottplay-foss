@@ -205,6 +205,16 @@ if (typeof stbGetItem === "function") {
     providerSetItem = function (e, r) {
         stbSetItem(p_pref + keyNames4(e), r);
     };
+    providerDelItem = function (e) {
+        return stbDelItem(p_pref + keyNames4(e));
+    };
+    providerHasItem = function (e) {
+        return stbGetItem(p_pref + keyNames4(e)) !== null;
+    };
+    providerHasItemValue = function (e) {
+        var v = stbGetItem(p_pref + keyNames4(e));
+        return v !== null && v !== "";
+    };
 } else {
     providerGetItem = function (e) {
         return localStorage.getItem(p_pref + keyNames4(e));
@@ -212,16 +222,28 @@ if (typeof stbGetItem === "function") {
     providerSetItem = function (e, r) {
         localStorage.setItem(p_pref + keyNames4(e), r);
     };
+    providerDelItem = function (e) {
+        var s =
+            typeof window !== "undefined" && window.ottpStorage
+                ? window.ottpStorage
+                : ottpStorage;
+        return s.del(p_pref + keyNames4(e));
+    };
+    providerHasItem = function (e) {
+        var s =
+            typeof window !== "undefined" && window.ottpStorage
+                ? window.ottpStorage
+                : ottpStorage;
+        return s.has(p_pref + keyNames4(e));
+    };
+    providerHasItemValue = function (e) {
+        var s =
+            typeof window !== "undefined" && window.ottpStorage
+                ? window.ottpStorage
+                : ottpStorage;
+        return s.hasValue(p_pref + keyNames4(e));
+    };
 }
-providerDelItem = function (e) {
-    return ottpStorage.del(p_pref + keyNames4(e));
-};
-providerHasItem = function (e) {
-    return ottpStorage.has(p_pref + keyNames4(e));
-};
-providerHasItemValue = function (e) {
-    return ottpStorage.hasValue(p_pref + keyNames4(e));
-};
 
 function loadM3Uparams() {
     m3uArr = providerGetItem("m3uArr");

@@ -422,6 +422,17 @@ export const storage: StorageAdapter = (() => {
         : createCookieAdapter();
 })();
 
+/**
+ * Classic provider scripts (prov/<id>/prov.js) call bare
+ * ottpStorage.del/has/hasValue. Concat const/let bindings stay script-local;
+ * a global var plus window.ottpStorage must exist before loadChannels →
+ * setPlayer (m3u overwrites global providerHasItemValue to use ottpStorage).
+ */
+export var ottpStorage: StorageAdapter = storage;
+if (typeof window !== "undefined") {
+    (window as any).ottpStorage = storage;
+}
+
 // ---------------------------------------------------------------------------
 // MAC address helpers  (laaMac)
 // ---------------------------------------------------------------------------

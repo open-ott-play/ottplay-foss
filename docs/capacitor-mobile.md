@@ -28,6 +28,7 @@ Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315
 - **Tauri frameless window drag** — PR #348 — top chrome/menu header is draggable when `decorations: false`
 - **PC/Tauri native editor default** — PR #352 — unset `sEditor` defaults to `1` (native `<input>` / `showEditKey2`)
 - **PC/Tauri force native editor** — PR #389 — always `showEditKey2` on PC/Tauri/desktop; bundle `sEditor=0` override so concat/`pullSettingsFromWindow` cannot reopen OSK
+- **Cap force native editor + ottpStorage** — 1.1.35 — Capacitor iOS/Android force `showEditKey2`/`sEditor=1` (same as #389); early global `ottpStorage` so M3U `providerHasItemValue` → `setPlayer` does not ReferenceError
 - **iOS Xcode 26 archive fix** — PRs #349 + #351 — Swift compile fixes; removed `prefersHomeIndicatorAutoHidden` override (Xcode 26 non-open across modules); unsigned IPA green on v1.1.5
 - **Tauri player polish 1.1.20–1.1.23** — PRs #380–#387 — whole-surface drag (#380), settings submenu inline flex (#381), L/Escape simple fullscreen (#382), channel list row parity (#383), EPG invoke camelCase (#384), list cursor/paging 1.1.21 (#387), video cover/center + `listFitPageSize` + Category All playing-channel cursor + capture-phase L when video focused 1.1.22 (#386)
 - **ottplay-server rustls CryptoProvider** — PR #388 — install aws-lc-rs `CryptoProvider` so HTTPS companions work
