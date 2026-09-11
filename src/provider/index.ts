@@ -993,8 +993,32 @@ export function loadChannels(): void {
     sShowProgress = providerGetNum("sShowProgress", 1);
     sShowProgram = providerGetNum("sShowProgram", 1);
     sShowDescr = providerGetNum("sShowDescr", 1);
-    sShowArchive = providerGetNum("sShowArchive", 0);
+    // Default 1 matches loadSettings/channels; Channel list settings save via
+    // providerSetItem (prefixed), while loadSettings reads unprefixed keys.
+    sShowArchive = providerGetNum("sShowArchive", 1);
     sPreview = providerGetNum("sPreview", 0);
+    // Channel-list sShow* live in provider-prefixed storage. Boot
+    // applySettingsToWindow used unprefixed loadSettings defaults, so
+    // listFlag(window→let) ignored toggles. Sync window + typed settings.
+    var wShow = window as any;
+    wShow.sShowNum = sShowNum;
+    wShow.sShowName = sShowName;
+    wShow.sShowPikon = sShowPikon;
+    wShow.sShowProgress = sShowProgress;
+    wShow.sShowProgram = sShowProgram;
+    wShow.sShowDescr = sShowDescr;
+    wShow.sShowArchive = sShowArchive;
+    wShow.sPreview = sPreview;
+    if (wShow.settings) {
+        wShow.settings.showNumber = sShowNum;
+        wShow.settings.showName = sShowName;
+        wShow.settings.showPicon = sShowPikon;
+        wShow.settings.showProgress = sShowProgress;
+        wShow.settings.showProgram = sShowProgram;
+        wShow.settings.showDescription = sShowDescr;
+        wShow.settings.showArchive = sShowArchive;
+        wShow.settings.preview = sPreview;
+    }
     sPlayers = providerGetNum("sPlayers", 0);
     console.log("[loadChannels] sPlayers from storage=" + sPlayers);
     setPlayerMode(sPlayers);
@@ -1546,7 +1570,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     var showPikon = listFlag("sShowPikon", sShowPikon, 1);
     var showProgress = listFlag("sShowProgress", sShowProgress, 1);
     var showProgram = listFlag("sShowProgram", sShowProgram, 1);
-    var showArchive = listFlag("sShowArchive", sShowArchive, 0);
+    var showArchive = listFlag("sShowArchive", sShowArchive, 1);
     // Keep lets + window aligned for subsequent renders / settings screens.
     sShowNum = showNum;
     sShowName = showName;
