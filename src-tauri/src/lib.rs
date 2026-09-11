@@ -86,9 +86,10 @@ pub fn run() {
             commands::stalker::stalker_portal_fetch,
         ])
         .setup(|app| {
-            // Optional multi-instance isolation: recreate main webview with a
-            // private data_directory + macOS WKWebsiteDataStore id. Unset env
-            // keeps the stock config window (identical to prior releases).
+            // Always build the main window here (tauri.conf windows=[]) so
+            // OTTPLAY_INSTANCE / OTTPLAY_DATA_DIR can set data_directory +
+            // macOS data_store_identifier at create time. Destroy+recreate
+            // races on the `main` label and panics.
             if let Some(data_dir) = instance::resolve_data_dir() {
                 instance::ensure_dirs(&data_dir).map_err(|e| {
                     Box::<dyn std::error::Error>::from(format!(
@@ -96,21 +97,6 @@ pub fn run() {
                         data_dir.display()
                     ))
                 })?;
-                if let Some(existing) = app.get_webview_window("main") {
-                    existing.destroy()?;
-                }
-                let builder = tauri::WebviewWindowBuilder::new(
-                    app,
-                    "main",
-                    tauri::WebviewUrl::App("index.html".into()),
-                )
-                .title("OttPlay FOSS")
-                .inner_size(1280.0, 720.0)
-                .center()
-                .resizable(true)
-                .decorations(false);
-                let builder = instance::apply_isolation(builder, &data_dir);
-                builder.build()?;
                 tracing::info!(
                     path = %data_dir.display(),
                     slug = instance::isolation_slug().unwrap_or_default(),
@@ -118,11 +104,24 @@ pub fn run() {
                 );
             }
 
+            let mut builder = tauri::WebviewWindowBuilder::new(
+                app,
+                "main",
+                tauri::WebviewUrl::App("index.html".into()),
+            )
+            .title("OttPlay FOSS")
+            .inner_size(1280.0, 720.0)
+            .center()
+            .resizable(true)
+            .decorations(false);
+            if let Some(data_dir) = instance::resolve_data_dir() {
+                builder = instance::apply_isolation(builder, &data_dir);
+            }
+            builder.build()?;
+
             let raw = std::env::var("OTTPLAY_WEB_URL").unwrap_or_else(|_| DEFAULT_WEB_URL.into());
             if let Some(window) = app.get_webview_window("main") {
                 if raw.trim().is_empty() {
-                    // Leave the default frontendDist load (index.html from
-                    // src-tauri/frontend). Do not eval-navigate.
                     tracing::info!("OTTPLAY_WEB_URL empty — using embedded frontendDist");
                 } else {
                     let url = tauri::Url::parse(&raw).map_err(|e| {
