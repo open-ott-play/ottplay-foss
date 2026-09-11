@@ -20,6 +20,7 @@ Related:
 
 - Updater / unsigned local build: [`docs/tauri-updater-notarize.md`](tauri-updater-notarize.md)
 - Cap device sibling: [`docs/mode-b-device-smoke.md`](mode-b-device-smoke.md)
+- Hosted full web player (browser baseline): https://player.ottplay.here.now/
 - Thin helper: `./scripts/smoke-tauri-desktop.sh`
 
 ## What is automated vs human

@@ -12,6 +12,8 @@ Player runs in a browser or WebView on the STB hardware. `python3 server.py` pro
 ### Mode B — Native Apps (iOS, Android, macOS, Windows, Linux)
 Self-contained app. No Python server required. All server.py duties are absorbed into the native layer. The app bundles everything and works offline.
 
+For a quick browser check of the full player UI (no local Mode A server), use the hosted build: **https://player.ottplay.here.now/**.
+
 These modes are **mutually exclusive at runtime** — a native app does not connect to server.py, and a browser/STB player does not connect to a native command queue. Both share the same TypeScript frontend source.
 
 ---
