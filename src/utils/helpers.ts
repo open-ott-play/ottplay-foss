@@ -152,24 +152,90 @@ export function listFitPageSize(wanted: number): number {
 }
 
 /**
- * Row height so settings.pageSize rows pack into live `#listIn` (OTT density).
- * Classic companion showPage uses (innerHeight-130*hK)/pageSize; WKWebView
- * caption/podval/border chrome is often a few percent tighter, so classic
- * alone left ~21–23 of 25 visible. Prefer floor(listInContentHeight/pageSize)
- * (never taller than classic); fall back to classic when not laid out.
- * showPage must set height+line-height+min/max to this value — line-height:normal
- * lets 90-chrome glyphs expand #itN past the box in WKWebView. Do not shrink
- * pageSize itself.
+ * Integer row height so settings.pageSize rows pack into live `#listIn`.
+ * Classic companion uses (innerHeight-130*hK)/pageSize as a float; WKWebView
+ * then rounds each row up (e.g. 23.6→24) so 25 rows overshoot avail (~590) and
+ * only ~21–24 stay visible — worse after window-state restore to non-720 heights.
+ * Always return a floored px; when `#listIn` is laid out prefer
+ * floor(avail/pageSize) capped by floored classic. Do not shrink pageSize.
  */
 export function listRowHeight(pageSize: number): number {
     var ps = Math.max(1, pageSize | 0);
-    var classic = (window.innerHeight - 130 * getHeightK()) / ps;
+    var classic = Math.max(
+        1,
+        Math.floor((window.innerHeight - 130 * getHeightK()) / ps)
+    );
     var avail = listInContentHeight();
     if (avail > 40) {
-        // Pack pageSize rows into the live content box; never taller than classic.
-        return Math.max(1, Math.min(classic, Math.floor(avail / ps)));
+        var packed = Math.max(1, Math.floor(avail / ps));
+        // Keep companion density upper bound; never taller than avail/pageSize.
+        var h = Math.min(classic, packed);
+        // Guarantee pageSize * h fits even if avail shrank a px after floor.
+        while (h > 1 && h * ps > avail) h--;
+        return h;
     }
     return classic;
+}
+
+/**
+ * After paint: if WKWebView expanded #itN past listRowHeight (flex min-content /
+ * subpixel), force exact integer boxes so pageSize rows fit avail. No pageSize change.
+ */
+export function packListRowBoxes(
+    pageStart: number,
+    pageEnd: number,
+    pageSize: number
+): number {
+    var ps = Math.max(1, pageSize | 0);
+    var avail = listInContentHeight();
+    if (!(avail > 40) || pageEnd <= pageStart) return 0;
+    var want = Math.max(1, Math.floor(avail / ps));
+    while (want > 1 && want * ps > avail) want--;
+    var first = document.getElementById("it" + pageStart);
+    if (!first) return 0;
+    var actual =
+        (first as HTMLElement).offsetHeight ||
+        first.getBoundingClientRect().height ||
+        0;
+    var last = document.getElementById("it" + (pageEnd - 1));
+    var clipped = false;
+    try {
+        var box = document.getElementById("listIn");
+        if (box && last) {
+            var lr = box.getBoundingClientRect();
+            var er = last.getBoundingClientRect();
+            clipped = er.bottom > lr.bottom + 0.5;
+        }
+    } catch (_e) {}
+    if (
+        !clipped &&
+        actual > 0 &&
+        actual * ps <= avail + 0.5 &&
+        actual <= want + 0.5
+    ) {
+        return want;
+    }
+    var h = want;
+    if (actual > want) h = want;
+    // Extra slack if still clipping after one layout with fractional leftovers.
+    if (clipped && h * ps > avail - 1) h = Math.max(1, h - 1);
+    for (var i = pageStart; i < pageEnd; i++) {
+        var el = document.getElementById("it" + i) as HTMLElement | null;
+        if (!el) continue;
+        el.style.boxSizing = "border-box";
+        el.style.margin = "0";
+        el.style.paddingTop = "0";
+        el.style.paddingBottom = "0";
+        el.style.borderTopWidth = "0";
+        el.style.borderBottomWidth = "0";
+        el.style.height = h + "px";
+        el.style.maxHeight = h + "px";
+        el.style.minHeight = h + "px";
+        el.style.lineHeight = h + "px";
+        el.style.overflow = "hidden";
+        el.style.flexShrink = "0";
+    }
+    return h;
 }
 
 // Expose globally for UI code that uses window.getWidthK / window.getHeightK
@@ -179,6 +245,7 @@ if (typeof window !== "undefined") {
     (window as any).listInContentHeight = listInContentHeight;
     (window as any).listFitPageSize = listFitPageSize;
     (window as any).listRowHeight = listRowHeight;
+    (window as any).packListRowBoxes = packListRowBoxes;
 }
 
 /**

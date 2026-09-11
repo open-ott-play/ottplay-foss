@@ -1578,7 +1578,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
             ? wglob.listRowHeight(pageSz)
             : (window.innerHeight - 130 * getHeightK()) / pageSz;
     if (!(rowH > 0) || isNaN(rowH)) rowH = itemH;
-    var boxH = Math.min(itemH, rowH);
+    var boxH = Math.max(1, Math.floor(Math.min(itemH, rowH)));
     var numWidth = 0;
     if (showNum)
         try {
@@ -1653,7 +1653,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   numWidth +
                   "px;max-width:" +
                   numWidth +
-                  "px;text-align:right;line-height:normal;white-space:nowrap;overflow:hidden;" +
+                  "px;min-height:0;max-height:100%;text-align:right;line-height:inherit;white-space:nowrap;overflow:hidden;" +
                   parentalStyle +
                   '">' +
                   (idx + 1) +
@@ -1677,7 +1677,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   pikonSize +
                   "px;height:" +
                   iconH +
-                  "px;max-height:100%;margin-left:" +
+                  "px;min-height:0;max-height:100%;margin-left:" +
                   pikonMargin +
                   "px;margin-right:8px;background-image:url('" +
                   safePic +
@@ -1685,7 +1685,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                 : "") +
             '<div style="flex:1 1 auto;min-width:0;color:' +
             bodyColor +
-            ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:normal;">&nbsp;' +
+            ';min-height:0;max-height:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:inherit;">&nbsp;' +
             (showName ? ch.channel_name + "&nbsp;" : "") +
             (showProgram
                 ? '<span id="pn' +
@@ -1701,9 +1701,9 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   progWidth +
                   "px;width:" +
                   progWidth +
-                  "px;margin:" +
+                  "px;min-height:0;max-height:100%;margin:" +
                   progMargin +
-                  'px 0;margin-left:auto;background-color:rgba(68,68,102,0.55);"><div id="pr' +
+                  'px 0;margin-left:auto;align-self:center;background-color:rgba(68,68,102,0.55);"><div id="pr' +
                   chId +
                   '" style="width:' +
                   pct +
