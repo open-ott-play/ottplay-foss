@@ -665,7 +665,21 @@ async function runTests() {
     console.log("\nAll EPG tests passed!\n");
 }
 
-runTests().catch((err) => {
-    console.error("\nTest failed:", err);
-    process.exit(1);
-});
+// Reminder tests schedule future timers; release them after each script run.
+const originalSetTimeout = globalThis.setTimeout;
+const scheduledTimers = new Set<ReturnType<typeof setTimeout>>();
+globalThis.setTimeout = ((...args: Parameters<typeof setTimeout>) => {
+    const timer = originalSetTimeout(...args);
+    scheduledTimers.add(timer);
+    return timer;
+}) as typeof setTimeout;
+
+runTests()
+    .finally(() => {
+        for (const timer of scheduledTimers) clearTimeout(timer);
+        globalThis.setTimeout = originalSetTimeout;
+    })
+    .catch((err) => {
+        console.error("\nTest failed:", err);
+        process.exit(1);
+    });

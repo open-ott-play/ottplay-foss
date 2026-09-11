@@ -383,7 +383,9 @@ mod tests {
     fn time_parse_positive_offset() {
         let utc = parse_xmltv_time("20260101120000 +0000");
         let plus3 = parse_xmltv_time("20260101120000 +0300");
-        assert!(utc < plus3, "UTC ({utc}) should be earlier than +0300 ({plus3})");
+        assert_eq!(utc - plus3, 3 * 3600, "+0300 local noon is 09:00 UTC");
+        let minus530 = parse_xmltv_time("20260101120000 -0530");
+        assert_eq!(minus530 - utc, 5 * 3600 + 30 * 60);
     }
 
     #[test]

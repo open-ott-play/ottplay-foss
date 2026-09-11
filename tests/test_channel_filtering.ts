@@ -49,6 +49,9 @@ async function runTests() {
         historySearchText,
     } = ch;
 
+    // Classic bundles share these bindings; expose the same state to ESM leaf helpers.
+    Object.assign(globalThis, { channels, curList, medHistory });
+
     // Helper to reset state
     function resetState() {
         medHistory.splice(0);
