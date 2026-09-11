@@ -510,3 +510,17 @@ jobs:
           fi
           gh release edit "$TAG" --draft=false
           echo "Published $TAG"
+
+      - name: Notify web vitrine
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.WEB_VITRINE_PAT }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "WEB_VITRINE_PAT unset — skip vitrine dispatch"
+            exit 0
+          fi
+          gh api repos/open-ott-play/ottplay-web-vitrine/dispatches \
+            -f event_type='ottplay-foss-release' \
+            -f client_payload[tag]='${{ needs.release.outputs.tag }}' \
+            -f client_payload[repo]='${{ github.repository }}'
