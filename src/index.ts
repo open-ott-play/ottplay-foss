@@ -1089,7 +1089,7 @@ function setFontSize(): void {
     $("#listIn").css({
         bottom: 52 * e + 1 + "px",
         left: 522 * t + "px",
-        padding: 2 * e + "px 0px",
+        padding: 4 * e + "px 0px",
         top: 52 * e + 1 + "px",
     });
     $("#listAbout").css({

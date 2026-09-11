@@ -1046,9 +1046,15 @@ export function getEPGchanelCached(
             timeShiftHours: timeShiftHours,
         })
             .then(function (result: any) {
-                if (result && Array.isArray(result.epg_data)) {
-                    epg[channelId] = result.epg_data;
-                    callback(channelId, result.epg_data);
+                // Accept both raw EPG array and {epg_data: [...]} wrapper.
+                var epgData = Array.isArray(result)
+                    ? result
+                    : result && Array.isArray(result.epg_data)
+                      ? result.epg_data
+                      : null;
+                if (epgData) {
+                    epg[channelId] = epgData;
+                    callback(channelId, epgData);
                 } else {
                     callback(channelId, null);
                 }
