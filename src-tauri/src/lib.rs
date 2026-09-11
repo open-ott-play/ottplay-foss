@@ -66,8 +66,6 @@ pub fn run() {
             commands::tauri_commands::toggle_fullscreen,
             commands::tauri_commands::prevent_sleep,
             commands::tauri_commands::allow_sleep,
-            commands::tauri_commands::get_volume,
-            commands::tauri_commands::set_volume,
             commands::tauri_commands::play_pip,
             commands::tauri_commands::stop_pip,
             commands::tauri_commands::set_pip_bounds,

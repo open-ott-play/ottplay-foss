@@ -28,8 +28,6 @@
     "allow-toggle-fullscreen",
     "allow-prevent-sleep",
     "allow-allow-sleep",
-    "allow-get-volume",
-    "allow-set-volume",
     "allow-play-pip",
     "allow-stop-pip",
     "allow-set-pip-bounds",

@@ -1,4 +1,0 @@
-[[permission]]
-identifier = "allow-set-volume"
-description = "Enables the set_volume command."
-commands.allow = ["set_volume"]
