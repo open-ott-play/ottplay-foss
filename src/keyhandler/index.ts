@@ -1622,7 +1622,7 @@ function body_onClick(e: any): void {
  * @returns void
  * @sideeffect Calls `window._doKey(keys.RETURN, e)`.
  */
-function list_OnClick(e: any): void {
+export function list_OnClick(e: any): void {
     if (!e) e = event as any;
     if ((window as any).__ottTauriSuppressClick) return;
     (window as any)._doKey((window as any).keys.RETURN, e);

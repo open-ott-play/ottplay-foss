@@ -4,7 +4,7 @@
 
 import { getCurProgData } from "../channels";
 import { video } from "../core";
-import { dispatchKey, keys } from "../keyhandler";
+import { dispatchKey, keys, list_OnClick } from "../keyhandler";
 import { translate as _ } from "../localization";
 import { settings } from "../settings";
 import { swopLoadValue } from "../swop";
@@ -301,6 +301,7 @@ export function uiInit(): void {
     $infoBar = $("#info1");
     $infoBar.hide();
     listElement = document.getElementById("list");
+    if (listElement) listElement.onclick = list_OnClick;
     listInElement = document.getElementById("listIn");
     listCaptionElement = document.getElementById("listCaption");
     listPodvalElement = document.getElementById("listPodval");
