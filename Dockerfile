@@ -22,6 +22,7 @@ FROM rust:1.98-alpine@sha256:1716b3aa042d735f4566d14dc54e8037de9d69556e2d5dd5813
 RUN apk add --no-cache musl-dev build-base
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
+COPY vendor ./vendor
 COPY src-rs ./src-rs
 # Workspace lists src-tauri (desktop shell). Server image only builds
 # ottplay-server - drop that member so cargo does not need /app/src-tauri.
