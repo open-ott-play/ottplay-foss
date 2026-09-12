@@ -31,29 +31,29 @@ function parseSearch(query) {
         _: (text) => text,
         _vpkey: "fixture-key",
         _vpurl: "https://example.invalid/vportal",
-        host: "",
-        mediaName: "",
-        mediaRecords: [],
-        sPageSize: 30,
         $() {
             return {
+                hide() {
+                    return this;
+                },
                 html() {
                     return this;
                 },
                 show() {
                     return this;
                 },
-                hide() {
-                    return this;
-                },
             };
         },
+        host: "",
+        mediaName: "",
+        mediaRecords: [],
+        sPageSize: 30,
     };
     context.$.ajax = (options) => {
         request = JSON.parse(options.data);
         assert.equal(options.type, "post");
         assert.equal(request.cmd, "search");
-        options.success({ type: "category", items: [] });
+        options.success({ items: [], type: "category" });
         options.complete();
     };
     vm.createContext(context);
