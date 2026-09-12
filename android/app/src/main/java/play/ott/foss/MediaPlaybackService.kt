@@ -52,11 +52,8 @@ class MediaPlaybackService : Service() {
         private const val NOTIFICATION_ID = 4405
         private const val SESSION_TAG = "ottplay_foss_media"
 
-        // Cap keyhandler codes for channel skip (src/keyhandler/index.ts).
-        // Play/pause must NOT use _doKey(PLAY/PAUSE): those toggle and can
-        // liveStop() in live TV mode. Match iOS #313: drive <video> directly.
-        private const val KEY_NEXT = 35
-        private const val KEY_PREV = 36
+        // Resolve skip keys from the active device adapter at event time.
+        // Explicit playback methods preserve the shared TS backend lifecycle.
 
         const val EXTRA_SESSION_ONLY = "session_only"
 
@@ -91,32 +88,31 @@ class MediaPlaybackService : Service() {
 
         private fun drivePlay() {
             evalOnWebView(
-                "var v=document.querySelector('video'); if(v){v.play();} true;"
+                "if(window.stbContinue&&window.stbIsPlaying&&!window.stbIsPlaying())window.stbContinue(); true;"
             )
         }
 
         private fun drivePause() {
             evalOnWebView(
-                "var v=document.querySelector('video'); if(v){v.pause();} true;"
+                "if(window.stbPause)window.stbPause(); true;"
             )
         }
 
         private fun driveStop() {
             evalOnWebView(
-                "var v=document.querySelector('video');" +
-                    " if(v){v.pause(); v.removeAttribute('src'); try{v.load();}catch(e){}} true;"
+                "if(window.stbStop)window.stbStop(); true;"
             )
         }
 
         private fun driveNext() {
             evalOnWebView(
-                "(function(){if(window._doKey)window._doKey($KEY_NEXT);})();"
+                "(function(){if(window._doKey&&window.keys)window._doKey(window.keys.NEXT);})();"
             )
         }
 
         private fun drivePrev() {
             evalOnWebView(
-                "(function(){if(window._doKey)window._doKey($KEY_PREV);})();"
+                "(function(){if(window._doKey&&window.keys)window._doKey(window.keys.PREV);})();"
             )
         }
 
@@ -197,7 +193,7 @@ class MediaPlaybackService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
-                driveStop()
+                if (!intent.getBooleanExtra(EXTRA_SESSION_ONLY, false)) driveStop()
                 stopSelfSafe()
                 return START_NOT_STICKY
             }

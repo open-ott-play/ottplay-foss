@@ -1390,7 +1390,30 @@ export function prevProg(): void {
  * @analysis 4-finger touch toggles `touch_locked` flag. When locked, all subsequent touch events are ignored.
  *             The initial move reference (`xMove1`/`yMove1`) is set equal to the start coordinates.
  */
+function isNativeTouchEditor(target: any): boolean {
+    if (!capacitorOnly()) return false;
+    for (var el = target; el; el = el.parentElement) {
+        if (
+            /^(INPUT|TEXTAREA|SELECT|OPTION|LABEL)$/.test(el.tagName || "") ||
+            el.isContentEditable
+        )
+            return true;
+    }
+    return false;
+}
+
 function handleTouchStart(e: any): void {
+    // Let the WebView focus editors, open its keyboard and handle native controls.
+    // Synthesized clicks cannot replace those trusted touch default actions.
+    if (
+        !touch_locked &&
+        e.touches.length !== 4 &&
+        isNativeTouchEditor(e.target)
+    ) {
+        xDown = yDown = null;
+        tCount = undefined;
+        return;
+    }
     e.preventDefault();
     tCount = e.touches.length;
     if (tCount === 4) {
@@ -1482,7 +1505,7 @@ function handleTouchEnd(e: any): void {
  *             so that regular click handlers fire naturally.
  */
 function body_handleTouchEnd(e: any): void {
-    if (!(xDown && yDown)) return;
+    if (xDown === null || yDown === null) return;
     e.preventDefault();
     if (e.touches.length === 0) {
         if (tCount === 3) {
@@ -1536,7 +1559,7 @@ function body_handleTouchEnd(e: any): void {
                     break;
             }
         } else if (tCount === 1) {
-            // Cap: 1-finger tap → ENTER (channel/list nav). Mode A/Tauri: synthetic click.
+            // Preserve the TS click target and coordinates in every shell.
             if (
                 checkTap(
                     xDown!,
@@ -1547,42 +1570,38 @@ function body_handleTouchEnd(e: any): void {
                     touch_min_sensY / 2
                 )
             ) {
-                if (capacitorOnly()) {
-                    (window as any)._doKey((window as any).keys.ENTER);
-                } else {
-                    var touch = e.changedTouches[0];
-                    var clickEvent: MouseEvent;
-                    try {
-                        clickEvent = new MouseEvent("click", {
-                            bubbles: true,
-                            cancelable: true,
-                            clientX: touch.clientX,
-                            clientY: touch.clientY,
-                            view: window,
-                        });
-                    } catch (_legacyMouseEvent) {
-                        // Old WebKit exposes MouseEvents through createEvent only.
-                        clickEvent = document.createEvent("MouseEvents");
-                        clickEvent.initMouseEvent(
-                            "click",
-                            true,
-                            true,
-                            window,
-                            1,
-                            touch.screenX || 0,
-                            touch.screenY || 0,
-                            touch.clientX,
-                            touch.clientY,
-                            false,
-                            false,
-                            false,
-                            false,
-                            0,
-                            null
-                        );
-                    }
-                    e.target.dispatchEvent(clickEvent);
+                var touch = e.changedTouches[0];
+                var clickEvent: MouseEvent;
+                try {
+                    clickEvent = new MouseEvent("click", {
+                        bubbles: true,
+                        cancelable: true,
+                        clientX: touch.clientX,
+                        clientY: touch.clientY,
+                        view: window,
+                    });
+                } catch (_legacyMouseEvent) {
+                    // Old WebKit exposes MouseEvents through createEvent only.
+                    clickEvent = document.createEvent("MouseEvents");
+                    clickEvent.initMouseEvent(
+                        "click",
+                        true,
+                        true,
+                        window,
+                        1,
+                        touch.screenX || 0,
+                        touch.screenY || 0,
+                        touch.clientX,
+                        touch.clientY,
+                        false,
+                        false,
+                        false,
+                        false,
+                        0,
+                        null
+                    );
                 }
+                e.target.dispatchEvent(clickEvent);
             }
         }
         xDown = null;

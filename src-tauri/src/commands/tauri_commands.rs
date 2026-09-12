@@ -592,6 +592,9 @@ fn pip_player_script(url: &str) -> String {
   var video = document.createElement('video');
   video.id = 'ottplay-pip-video';
   video.autoplay = true;
+  video.muted = true;
+  video.defaultMuted = true;
+  video.setAttribute('muted', '');
   video.controls = false;
   video.playsInline = true;
   video.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#000;display:block;';

@@ -3315,7 +3315,7 @@ if (typeof window.__TAURI__ !== "undefined") {
                 }
             } catch (_pe) {}
             if (strip) {
-                if (open) {
+                if (open || (window as any).__ottTauriNativeFs) {
                     strip.style.display = "none";
                     strip.style.setProperty(
                         "-webkit-app-region",
@@ -3493,6 +3493,7 @@ if (typeof window.__TAURI__ !== "undefined") {
             return h - band;
         };
         const isDragHandle = (t: Element, clientY: number): boolean => {
+            if ((window as any).__ottTauriNativeFs) return false;
             if (listOverlayOpen()) return false;
             // Never drag from list/menu chrome or form controls.
             if (t.closest(NO_DRAG_SEL)) return false;

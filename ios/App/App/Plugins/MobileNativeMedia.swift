@@ -477,7 +477,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
                 self.updateNowPlayingRate(1.0)
                 return .success
             }
-            self.evalVideoJS("var v=document.querySelector('video'); if(v){v.play();} true;")
+            self.evalVideoJS("if(window.stbContinue&&window.stbIsPlaying&&!window.stbIsPlaying())window.stbContinue(); true;")
             self.updateNowPlayingRate(1.0)
             return .success
         }
@@ -487,7 +487,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
                 self.updateNowPlayingRate(0.0)
                 return .success
             }
-            self.evalVideoJS("var v=document.querySelector('video'); if(v){v.pause();} true;")
+            self.evalVideoJS("if(window.stbPause)window.stbPause(); true;")
             self.updateNowPlayingRate(0.0)
             return .success
         }
@@ -500,7 +500,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
                 return .success
             }
             self.evalVideoJS(
-                "var v=document.querySelector('video'); if(v){ if(v.paused){v.play();} else {v.pause();} } true;"
+                "if(window.stbIsPlaying&&window.stbPause&&window.stbContinue){if(window.stbIsPlaying())window.stbPause();else window.stbContinue();} true;"
             )
             return .success
         }
@@ -513,18 +513,18 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
                 return .success
             }
             self.evalVideoJS(
-                "var v=document.querySelector('video'); if(v){v.pause(); v.removeAttribute('src'); v.load();} true;"
+                "if(window.stbStop)window.stbStop(); true;"
             )
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
             self.backgroundAudioActive = false
             return .success
         }
         center.nextTrackCommand.addTarget { [weak self] _ in
-            self?.evalVideoJS("(function(){if(window._doKey)window._doKey(35);})();")
+            self?.evalVideoJS("(function(){if(window._doKey&&window.keys)window._doKey(window.keys.NEXT);})();")
             return .success
         }
         center.previousTrackCommand.addTarget { [weak self] _ in
-            self?.evalVideoJS("(function(){if(window._doKey)window._doKey(36);})();")
+            self?.evalVideoJS("(function(){if(window._doKey&&window.keys)window._doKey(window.keys.PREV);})();")
             return .success
         }
         // Live: leave disabled. VOD/archive: scrub via <video>/stbSetPosTime.
