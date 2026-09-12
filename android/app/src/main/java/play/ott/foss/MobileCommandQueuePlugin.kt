@@ -1,6 +1,7 @@
 package play.ott.foss
 
 import android.util.Log
+import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -19,6 +20,7 @@ class MobileCommandQueuePlugin : Plugin() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var serverJob: Job? = null
     private var serverSocket: ServerSocket? = null
+    private val activeClients = ConcurrentHashMap.newKeySet<Socket>()
     private var isRunningFlag = false
     private var boundPort: Int = 0
     private val defaultPort = 18081
@@ -42,6 +44,19 @@ class MobileCommandQueuePlugin : Plugin() {
     override fun load() {
         // capacitor.config / docs: auto-start Mode B loopback on plugin load.
         startServer(null)
+    }
+
+    override fun handleOnDestroy() {
+        // Coroutine cancellation alone cannot interrupt ServerSocket.accept().
+        isRunningFlag = false
+        scope.cancel()
+        try { serverSocket?.close() } catch (_: IOException) { }
+        activeClients.forEach { try { it.close() } catch (_: IOException) { } }
+        activeClients.clear()
+        serverSocket = null
+        serverJob = null
+        boundPort = 0
+        super.handleOnDestroy()
     }
 
     @PluginMethod
@@ -109,15 +124,30 @@ class MobileCommandQueuePlugin : Plugin() {
             }
             Log.d("MobileCommandQueue", "Command queue listening on http://127.0.0.1:$portUsed")
 
-            while (isActive) {
-                try {
-                    val client = serverSocket!!.accept()
-                    launch { handleClient(client) }
-                } catch (e: IOException) {
-                    if (isRunningFlag) {
-                        Log.e("MobileCommandQueue", "Accept error: ${e.message}")
+            try {
+                while (isActive) {
+                    try {
+                        val client = bound.accept()
+                        activeClients.add(client)
+                        launch { handleClient(client) }.invokeOnCompletion {
+                            activeClients.remove(client)
+                            // Also runs when cancellation prevents the handler from starting.
+                            try { client.close() } catch (_: IOException) { }
+                        }
+                    } catch (e: IOException) {
+                        if (isRunningFlag) {
+                            Log.e("MobileCommandQueue", "Accept error: ${e.message}")
+                        }
+                        break
                     }
-                    break
+                }
+            } finally {
+                // Also closes a bind that completed while the Activity was destroyed.
+                try { bound.close() } catch (_: IOException) { }
+                if (serverSocket === bound) {
+                    serverSocket = null
+                    isRunningFlag = false
+                    boundPort = 0
                 }
             }
         }
@@ -133,6 +163,8 @@ class MobileCommandQueuePlugin : Plugin() {
                 // ignore
             }
             serverSocket = null
+            activeClients.forEach { try { it.close() } catch (_: IOException) { } }
+            activeClients.clear()
             serverJob?.cancel()
             serverJob = null
             boundPort = 0
@@ -234,7 +266,7 @@ class MobileCommandQueuePlugin : Plugin() {
             }
 
             val jsArray = JSObject()
-            jsArray.put("commands", result.toTypedArray())
+            jsArray.put("commands", JSArray(result))
             withContext(Dispatchers.Main) {
                 call.resolve(jsArray)
             }
@@ -401,7 +433,7 @@ class MobileCommandQueuePlugin : Plugin() {
         val json = when (body) {
             is String -> body
             is Collection<*> -> org.json.JSONArray(body.toTypedArray()).toString()
-            else -> org.json.JSONObject.wrap(body).toString()
+            else -> org.json.JSONObject.wrap(body)?.toString() ?: "null"
         }
 
         writer.write("HTTP/1.1 $status $statusText\r\n")

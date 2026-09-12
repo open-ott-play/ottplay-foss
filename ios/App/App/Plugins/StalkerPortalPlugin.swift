@@ -10,6 +10,7 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "StalkerPortal"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "portalRequest", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "httpRequest", returnType: CAPPluginReturnPromise),
     ]
 
     private static let DEFAULT_TIMEOUT: TimeInterval = 15
@@ -37,7 +38,21 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("url is not an allowed stalker/swop/load.php/c/portal path")
             return
         }
-        guard let url = URL(string: rawURL) else {
+        performRequest(call, rawURL: rawURL)
+    }
+
+    @objc func httpRequest(_ call: CAPPluginCall) {
+        guard let rawURL = call.getString("url"), !rawURL.isEmpty else {
+            call.reject("missing url")
+            return
+        }
+        performRequest(call, rawURL: rawURL)
+    }
+
+    private func performRequest(_ call: CAPPluginCall, rawURL: String) {
+        guard let url = URL(string: rawURL),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https", url.host != nil else {
             call.reject("invalid url")
             return
         }
@@ -49,7 +64,7 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
 
         var request = URLRequest(url: url)
         request.httpMethod = method
-        request.timeoutInterval = StalkerPortalPlugin.DEFAULT_TIMEOUT
+        request.timeoutInterval = max(0.001, (call.getDouble("timeoutMs") ?? (StalkerPortalPlugin.DEFAULT_TIMEOUT * 1000)) / 1000)
 
         var contentTypeFromHeaders = false
         if let headers = headers {
@@ -72,7 +87,8 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 DispatchQueue.main.async {
-                    call.reject("portalRequest failed: \(error.localizedDescription)")
+                    let code = (error as NSError).code == NSURLErrorTimedOut ? "timeout" : nil
+                    call.reject("portalRequest failed: \(error.localizedDescription)", code)
                 }
                 return
             }
@@ -88,8 +104,10 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
             let contentType = response.mimeType ?? "application/octet-stream"
             let body = String(data: data, encoding: .utf8) ?? ""
             var setCookie: [String] = []
+            var responseHeaders = ""
             if let fields = http?.allHeaderFields {
                 for (k, v) in fields {
+                    responseHeaders += "\(k): \(v)\r\n"
                     if String(describing: k).lowercased() == "set-cookie",
                        let s = v as? String {
                         setCookie.append(s)
@@ -106,6 +124,8 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
             DispatchQueue.main.async {
                 call.resolve([
                     "status": NSNumber(value: status),
+                    "statusText": HTTPURLResponse.localizedString(forStatusCode: status),
+                    "headers": responseHeaders,
                     "body": body,
                     "contentType": contentType,
                     "setCookie": setCookie,

@@ -15,6 +15,8 @@ pub struct Channel {
     pub id: String,
     pub name: String,
     pub icon: String,
+    /// Retained for native matching; the browser matcher keeps using `name`.
+    pub names: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -38,16 +40,36 @@ pub type Programs = HashMap<String, Vec<Programme>>;
 
 /// Fetch + parse one XMLTV source. Supports http(s), .gz, plain .xml.
 pub async fn fetch_single(source: &str) -> anyhow::Result<(Channels, Programs)> {
+    fetch_single_impl(source, false).await
+}
+
+/// Native custom feeds retain aliases and chronological programme order.
+pub async fn fetch_single_native(source: &str) -> anyhow::Result<(Channels, Programs)> {
+    fetch_single_impl(source, true).await
+}
+
+async fn fetch_single_impl(source: &str, native: bool) -> anyhow::Result<(Channels, Programs)> {
     let content: Vec<u8> = if source.starts_with("http://") || source.starts_with("https://") {
-        let client = Client::builder().user_agent("OTT-play-FOSS/1.0").build()?;
+        let builder = Client::builder().user_agent("OTT-play-FOSS/1.0");
+        let builder = if native {
+            builder.timeout(std::time::Duration::from_secs(60))
+        } else {
+            builder
+        };
+        let client = builder.build()?;
         let resp = client.get(source).send().await?;
+        let resp = if native {
+            resp.error_for_status()?
+        } else {
+            resp
+        };
         let bytes = resp.bytes().await?;
         bytes.to_vec()
     } else {
         std::fs::read(source)?
     };
 
-    let is_gz = source.ends_with(".gz") || content.starts_with(&[0x1f, 0x8b]);
+    let is_gz = (!native && source.ends_with(".gz")) || content.starts_with(&[0x1f, 0x8b]);
     let raw: Vec<u8> = if is_gz {
         let mut d = GzDecoder::new(&content[..]);
         let mut out = Vec::new();
@@ -58,11 +80,19 @@ pub async fn fetch_single(source: &str) -> anyhow::Result<(Channels, Programs)> 
     };
 
     let text = String::from_utf8_lossy(&raw);
-    parse_xmltv(&text)
+    parse_xmltv_impl(&text, native)
 }
 
 /// Event-based XMLTV parser. Cheap; no DOM.
 pub fn parse_xmltv(xml: &str) -> anyhow::Result<(Channels, Programs)> {
+    parse_xmltv_impl(xml, false)
+}
+
+pub fn parse_xmltv_native(xml: &str) -> anyhow::Result<(Channels, Programs)> {
+    parse_xmltv_impl(xml, true)
+}
+
+fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Programs)> {
     let mut reader = Reader::from_str(xml);
     // quick-xml 0.41 emits references separately. Preserve whitespace between
     // text/reference/CDATA events and trim once when the complete field closes.
@@ -77,8 +107,59 @@ pub fn parse_xmltv(xml: &str) -> anyhow::Result<(Channels, Programs)> {
     let mut text_buffer = String::new();
 
     let mut buf = Vec::new();
+    let mut depth = 0usize;
+    let mut root_seen = false;
+    let mut root_closed = false;
     loop {
-        match reader.read_event_into(&mut buf) {
+        let event = reader.read_event_into(&mut buf);
+        if native {
+            // quick_xml can return EOF after complete channels inside an unclosed root.
+            // Such a partial download must never replace the native cache.
+            match &event {
+                Ok(Event::Start(element)) => {
+                    if depth == 0 {
+                        anyhow::ensure!(
+                            !root_seen && element.name().as_ref() == b"tv",
+                            "Invalid XMLTV root"
+                        );
+                        root_seen = true;
+                    }
+                    depth += 1;
+                }
+                Ok(Event::Empty(element)) if depth == 0 => {
+                    anyhow::ensure!(
+                        !root_seen && element.name().as_ref() == b"tv",
+                        "Invalid XMLTV root"
+                    );
+                    root_seen = true;
+                    root_closed = true;
+                }
+                Ok(Event::End(element)) => {
+                    anyhow::ensure!(depth > 0, "Unexpected XMLTV closing element");
+                    depth -= 1;
+                    if depth == 0 {
+                        anyhow::ensure!(
+                            element.name().as_ref() == b"tv",
+                            "Invalid XMLTV closing root"
+                        );
+                        root_closed = true;
+                    }
+                }
+                Ok(Event::Text(text)) if depth == 0 => {
+                    anyhow::ensure!(text.decode()?.trim().is_empty(), "Text outside XMLTV root");
+                }
+                Ok(Event::GeneralRef(_)) if depth == 0 => {
+                    anyhow::bail!("Entity outside XMLTV root")
+                }
+                Ok(Event::CData(_)) if depth == 0 => anyhow::bail!("CDATA outside XMLTV root"),
+                Ok(Event::Eof) => anyhow::ensure!(
+                    root_seen && root_closed && depth == 0,
+                    "Incomplete XMLTV document"
+                ),
+                _ => {}
+            }
+        }
+        match event {
             Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
                 let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
                 match name.as_str() {
@@ -88,6 +169,7 @@ pub fn parse_xmltv(xml: &str) -> anyhow::Result<(Channels, Programs)> {
                             id,
                             name: String::new(),
                             icon: String::new(),
+                            names: Vec::new(),
                         });
                     }
                     "programme" => {
@@ -161,6 +243,7 @@ pub fn parse_xmltv(xml: &str) -> anyhow::Result<(Channels, Programs)> {
                             match target {
                                 TextTarget::ChannelName => {
                                     if let Some(c) = current_channel.as_mut() {
+                                        c.names.push(value.clone());
                                         c.name = value;
                                     }
                                 }
@@ -204,6 +287,11 @@ pub fn parse_xmltv(xml: &str) -> anyhow::Result<(Channels, Programs)> {
         buf.clear();
     }
 
+    if native {
+        for programs in programs.values_mut() {
+            programs.sort_by_key(|program| program.start);
+        }
+    }
     Ok((channels, programs))
 }
 
@@ -466,6 +554,7 @@ mod tests {
             Channel {
                 id: "c1".into(),
                 name: "Первый канал".into(),
+                names: vec!["Первый канал".into()],
                 icon: String::new(),
             },
         );

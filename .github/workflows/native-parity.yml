@@ -1,0 +1,81 @@
+name: Native Shells
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - 'ios/**'
+      - 'mobile-*/**'
+      - 'src/**'
+      - 'src-rs/**'
+      - 'src-tauri/**'
+      - 'prov/**'
+      - 'stb/**'
+      - 'css/**'
+      - 'tests/test_android_*'
+      - 'tests/test_native_*'
+      - 'tests/test-native-*'
+      - 'package*.json'
+      - 'Cargo.*'
+      - 'capacitor.config.*'
+      - 'vite.config.*'
+      - '.github/workflows/native-parity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Android native plugins
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+      - run: npm ci --ignore-scripts
+      - run: node tests/test_android_activity.cjs
+      - run: npm run build && npx cap sync android
+      - name: Compile and package registered Kotlin plugins
+        working-directory: android
+        run: ./gradlew :app:assembleDebug --no-daemon
+      - name: Exercise native queue JSON and socket cleanup
+        run: |
+          curl --fail --location --retry 3 https://github.com/JetBrains/kotlin/releases/download/v2.3.0/kotlin-compiler-2.3.0.zip -o "$RUNNER_TEMP/kotlin.zip"
+          unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP/ott-queue-kotlin"
+          curl --fail --location --retry 3 https://repo.maven.apache.org/maven2/com/vaadin/external/google/android-json/0.0.20131108.vaadin1/android-json-0.0.20131108.vaadin1.jar -o "$RUNNER_TEMP/android-json.jar"
+          PATH="$RUNNER_TEMP/ott-queue-kotlin/kotlinc/bin:$PATH" ANDROID_JSON_JAR="$RUNNER_TEMP/android-json.jar" python3 tests/test_android_queue.py
+
+  apple:
+    name: iOS and Tauri native code
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+      - run: npm ci --ignore-scripts
+      - run: npm run build && npx cap sync ios
+      - name: Compile iOS plugins without signing
+        run: >-
+          xcodebuild -project ios/App/App.xcodeproj -scheme App
+          -sdk iphonesimulator -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath "$RUNNER_TEMP/ottplay-ios"
+          CODE_SIGNING_ALLOWED=NO build
+      - name: Test compiled Tauri HTTP bridge
+        run: cargo test --locked -p ottplay-tauri

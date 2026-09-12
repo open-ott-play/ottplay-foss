@@ -37,6 +37,39 @@ function postMatch(a, e, r, t) {
         });
 }
 
+// Additional metadata is native-only; the browser companion keeps its original protocol.
+function nativeMatchMetadata() {
+    if (!(window.Capacitor || window.__TAURI__)) return {};
+    var entries = {};
+    cList.forEach(function (id) {
+        var ch = chanels[id];
+        if (!ch) return;
+        entries[String(id)] = {
+            name: ch.channel_name || "",
+            tvg_id: ch.epg || "",
+            tvg_name: ch.tn || "",
+            xmltv_urls: ch.xmltv_urls || [],
+        };
+    });
+    return { native_channels: entries };
+}
+
+function nativeXmltvSources(value, defaults, aliases) {
+    var result = [];
+    (value || "").split(",").forEach(function (source) {
+        source = source.trim();
+        if (source.charAt(0) === "#") {
+            var index = Number(source.slice(1));
+            source = index > 0 ? defaults[index - 1] : aliases[source.slice(1)];
+        }
+        if (typeof source !== "string") return;
+        if (source.indexOf("//") === 0) source = "https:" + source;
+        if (/^https?:\/\//i.test(source) && result.indexOf(source) === -1)
+            result.push(source);
+    });
+    return result;
+}
+
 function getEpgList(e, r, t) {
     if (!(cList.length && r)) {
         t();
@@ -44,7 +77,7 @@ function getEpgList(e, r, t) {
     }
     $(launch_id).append(_("epgs..."));
     var i = e.epg_server === void 0 ? m3u_defaults.epg_server : e.epg_server;
-    var a = {};
+    var a = nativeMatchMetadata();
     var n = JSON.stringify(a) + "\n\t\n";
     if (e.raw.length !== 0) {
         n += e.raw.join("\n");
@@ -91,7 +124,7 @@ function getLogoList(e, r, t) {
     }
     $(launch_id).append(_("logos..."));
     var i = e.ico_server === undefined ? m3u_defaults.epg_server : e.ico_server;
-    var a = {};
+    var a = nativeMatchMetadata();
     var n = JSON.stringify(a) + "\n\t\n";
     if (e.raw.length !== 0) {
         n += e.raw.join("\n");
@@ -543,6 +576,15 @@ function getChanelsArray(a) {
                 L = O(i, "catchup") || O(i, "catchup-type"),
                 S = O(i, "catchup-source");
             r(b, O(i, "foss-tvg"));
+            if (window.Capacitor || window.__TAURI__) {
+                b.native_xmltv_urls = nativeXmltvSources(
+                    [O(i, "url-tvg"), O(i, "x-tvg-url")]
+                        .filter(Boolean)
+                        .join(","),
+                    [],
+                    b.foss
+                );
+            }
             w(b.raw, O(i, "url-tvg"));
             w(b.raw, O(i, "x-tvg-url"));
             t.shift();
@@ -623,6 +665,25 @@ function getChanelsArray(a) {
                         tn: s,
                         url: h,
                     };
+                    if (window.Capacitor || window.__TAURI__) {
+                        var customSources = [
+                            O(i[0], "tvg-source"),
+                            O(i[0], "url-tvg"),
+                        ]
+                            .filter(Boolean)
+                            .join(",");
+                        chanels[y].xmltv_urls = customSources
+                            ? nativeXmltvSources(
+                                  customSources,
+                                  b.native_xmltv_urls || [],
+                                  b.foss
+                              )
+                            : (b.native_xmltv_urls || []).slice();
+                        chanels[y].epg_external = !!(
+                            b.epg_server &&
+                            b.epg_server !== m3u_defaults.epg_server
+                        );
+                    }
                     if (o !== "") {
                         var A = Number.parseFloat(o);
                         if (!isNaN(A) && A != 0)

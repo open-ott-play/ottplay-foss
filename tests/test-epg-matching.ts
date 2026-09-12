@@ -950,6 +950,7 @@ async function testEpgLifecycle(ch: Awaited<ReturnType<typeof getModule>>) {
         ch.channels[id].epg = "xmltv-channel-id";
         ch.channels[id].epg_url = 123456;
         const nativeArgs: any[] = [];
+        mockWindow.p_pref = "m3u";
         mockWindow.Capacitor = {
             Plugins: {
                 MobileXmltvEpg: {
@@ -1010,6 +1011,7 @@ async function testEpgLifecycle(ch: Awaited<ReturnType<typeof getModule>>) {
         }
     } finally {
         delete mockWindow.Capacitor;
+        delete mockWindow.p_pref;
         mockWindow.epgCash = 10;
         Date.now = realNow;
         ch.invalidateEpgCache();

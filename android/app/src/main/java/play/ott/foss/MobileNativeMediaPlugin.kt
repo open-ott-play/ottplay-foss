@@ -101,7 +101,7 @@ class MobileNativeMediaPlugin : Plugin() {
 
     @PluginMethod
     fun setVolume(call: PluginCall) {
-        val volume = call.getInt("volume", 0)
+        val volume = call.getInt("volume") ?: 0
         val clamped = volume.coerceIn(0, 100)
 
         val am = bridge.context.getSystemService(AUDIO_SERVICE) as? AudioManager
@@ -125,9 +125,15 @@ class MobileNativeMediaPlugin : Plugin() {
     }
 
     @PluginMethod
-    fun playPip(call: PluginCall) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            call.resolve(JSObject().apply { put("ok", false) })
+    fun enterSystemPip(call: PluginCall) {
+        // This minimizes the current Activity; it is not OTT second-channel PiP.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+            !bridge.context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+        ) {
+            call.resolve(JSObject().apply {
+                put("ok", false)
+                put("unsupported", true)
+            })
             return
         }
 
@@ -141,29 +147,23 @@ class MobileNativeMediaPlugin : Plugin() {
             .setAspectRatio(android.util.Rational(16, 9))
             .build()
 
-        try {
-            activity.enterPictureInPictureMode(params)
-            call.resolve(JSObject().apply { put("ok", true) })
-        } catch (e: Exception) {
-            Log.w(TAG, "playPip failed", e)
-            call.resolve(JSObject().apply { put("ok", false) })
-        }
-    }
-
-    @PluginMethod
-    fun stopPip(call: PluginCall) {
-        val activity = bridge.activity
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && activity.isInPictureInPictureMode) {
-            activity.moveTaskToBack(false)
-            call.resolve(JSObject().apply { put("ok", true) })
-        } else {
-            call.resolve(JSObject().apply { put("ok", true) })
+        activity.runOnUiThread {
+            try {
+                val entered = activity.enterPictureInPictureMode(params)
+                call.resolve(JSObject().apply { put("ok", entered) })
+            } catch (e: Exception) {
+                Log.w(TAG, "enterSystemPip failed", e)
+                call.resolve(JSObject().apply {
+                    put("ok", false)
+                    put("error", e.message ?: "system PiP unavailable")
+                })
+            }
         }
     }
 
     @PluginMethod
     fun setFullscreen(call: PluginCall) {
-        val fullscreen = call.getBool("fullscreen", false)
+        val fullscreen = call.getBoolean("fullscreen") ?: false
         isFullscreen = fullscreen
         val activity = bridge.activity
 
@@ -378,6 +378,8 @@ class MobileNativeMediaPlugin : Plugin() {
         val ctx = bridge.context
         val intent = Intent(ctx, MediaPlaybackService::class.java).apply {
             action = MediaPlaybackService.ACTION_STOP
+            // The web player already stopped; avoid dispatching another stop.
+            putExtra(MediaPlaybackService.EXTRA_SESSION_ONLY, true)
         }
         try {
             ctx.startService(intent)

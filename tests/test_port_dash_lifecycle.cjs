@@ -124,6 +124,7 @@ function fixture(legacyProxy = false) {
         });
     }
     let webPlaying = false;
+    let webPosition = 0;
     const w = {
         bgMeta: () => ({
             durationSec: 300,
@@ -148,7 +149,10 @@ function fixture(legacyProxy = false) {
         },
         setTimeout(fn) {
             const id = ++timerId;
-            timers.set(id, fn);
+            timers.set(id, () => {
+                timers.delete(id);
+                fn();
+            });
             return id;
         },
         stbContinue() {
@@ -156,7 +160,7 @@ function fixture(legacyProxy = false) {
             w.forcePlay = webPlaying;
         },
         stbGetLen: () => 999,
-        stbGetPosTime: () => 444,
+        stbGetPosTime: () => webPosition,
         stbIsPlaying: () => webPlaying,
         stbPause() {
             webPlaying = false;
@@ -165,10 +169,12 @@ function fixture(legacyProxy = false) {
         stbPlay(url, pos) {
             calls.push(["webPlay", url, pos]);
             webPlaying = true;
+            webPosition = pos || 0;
             w.forcePlay = true;
         },
         stbSetPosTime(pos) {
             calls.push(["webSeek", pos]);
+            webPosition = pos;
         },
         stbStop() {
             calls.push(["webStop"]);
@@ -178,12 +184,19 @@ function fixture(legacyProxy = false) {
     };
     w.window = w;
     vm.createContext(w);
+    const original = {
+        duration: w.stbGetLen,
+        isPlaying: w.stbIsPlaying,
+        position: w.stbGetPosTime,
+        seek: w.stbSetPosTime,
+    };
     vm.runInContext(code, w);
     return {
         calls,
         dash,
         dashBridge,
         optionalCalls,
+        original,
         plays,
         states,
         stops,
@@ -192,340 +205,130 @@ function fixture(legacyProxy = false) {
         w,
     };
 }
+// Normal Capacitor playback deliberately uses the browser TS engine. Direct
+// native DASH API state/seek coverage remains in test_native_dash_state.py;
+// engine attachment/teardown races remain in test_port_engine_lifecycle.cjs.
 const tests = [];
 const test = (name, fn) => tests.push([name, fn]);
-test("late native support cannot revive stop or replace a newer web channel", async () => {
-    const { w, supports, plays, calls } = fixture();
-    w.stbPlay("old.mpd");
-    w.stbStop();
-    supports[0].resolve({ ok: true });
-    await tick();
-    assert.equal(plays.length, 0);
-    w.stbPlay("older.mpd");
-    w.stbPlay("new.m3u8");
-    supports[1].resolve({ ok: false });
-    await tick();
-    assert.deepEqual(
-        calls.filter((c) => c[0] === "webPlay").map((c) => c[1]),
-        ["new.m3u8"]
-    );
-});
-test("native start is drained and stopped before a replacement web channel starts", async () => {
-    const { w, supports, plays, stops, calls } = fixture();
-    w.stbPlay("old.mpd");
-    supports[0].resolve({ ok: true });
-    await tick();
-    assert.equal(plays.length, 1);
-    w.stbPlay("new.m3u8");
-    assert.equal(calls.filter((c) => c[0] === "webPlay").length, 0);
-    plays[0].resolve({ ok: false });
-    await tick();
-    assert.equal(stops.length, 1);
-    assert.equal(calls.filter((c) => c[0] === "webPlay").length, 0);
-    stops[0].resolve({ ok: true });
-    await tick();
-    assert.deepEqual(
-        calls.filter((c) => c[0] === "webPlay").map((c) => c[1]),
-        ["new.m3u8"]
-    );
-});
-test("pause during native loading survives completion and native getters/seek use cached state", async () => {
-    const { w, supports, plays, states, calls } = fixture();
+test("DASH and HLS stay on the same controllable TS backend", async () => {
+    const { w, calls, supports, plays, states, original } = fixture();
     w.stbPlay("movie.mpd", 30);
-    supports[0].resolve({ ok: true });
+    assert.equal(w.stbIsPlaying, original.isPlaying);
+    assert.equal(w.stbGetPosTime, original.position);
+    assert.equal(w.stbGetLen, original.duration);
+    assert.equal(w.stbSetPosTime, original.seek);
+    assert.equal(w.stbGetPosTime(), 30);
+    assert.equal(w.stbGetLen(), 999);
+    w.stbSetPosTime(70);
+    assert.equal(w.stbGetPosTime(), 70);
+    w.stbPlay("next.m3u8");
     await tick();
-    w.stbPause();
-    plays[0].resolve({ ok: true });
+    assert.deepEqual(
+        calls.filter((call) => call[0] === "webPlay").map((call) => call[1]),
+        ["movie.mpd", "next.m3u8"]
+    );
+    assert.deepEqual(supports, []);
+    assert.deepEqual(plays, []);
+    assert.deepEqual(states, []);
+    assert.ok(!calls.some((call) => /Dash$/.test(call[0])));
+});
+test("stop immediately stops the TS engine and invalidates delayed metadata", async () => {
+    const { w, calls, timers, supports } = fixture();
+    w.stbPlay("movie.mpd", 20);
+    const late = [...timers.values()];
+    w.stbStop();
+    const stoppedCount = calls.length;
+    for (const fn of late) fn();
     await tick();
     assert.equal(w.stbIsPlaying(), false);
     assert.equal(w.forcePlay, false);
-    assert.ok(calls.some((c) => c[0] === "pauseDash"));
-    assert.equal(w.stbGetPosTime(), 30);
-    assert.equal(w.stbGetLen(), 0);
-    assert.equal(states.length, 1);
-    states[0].resolve({
-        duration: 300,
-        ended: false,
-        ok: true,
-        playing: false,
-        position: 30,
-    });
-    await tick();
-    assert.equal(w.stbGetLen(), 300);
-    w.stbContinue();
-    await tick();
-    assert.ok(calls.some((c) => c[0] === "resumeDash"));
-    w.stbSetPosTime(70);
-    await tick();
-    assert.equal(w.stbGetPosTime(), 70);
-    assert.ok(calls.some((c) => c[0] === "seekDash" && c[1].position === 70));
-    assert.equal(calls.filter((c) => c[0] === "webSeek").length, 0);
-});
-test("stale native polls and delayed metadata refresh cannot restart a stopped session", async () => {
-    const { w, supports, plays, states, stops, timers } = fixture();
-    w.stbPlay("movie.mpd", 20);
-    supports[0].resolve({ ok: true });
-    await tick();
-    plays[0].resolve({ ok: true });
-    await tick();
-    const lateTimers = [...timers.values()];
-    w.stbStop();
-    await tick();
-    assert.equal(stops.length, 1);
-    stops[0].resolve({ ok: true });
-    states[0].resolve({
-        duration: 300,
-        ended: false,
-        ok: true,
-        playing: true,
-        position: 88,
-    });
-    for (const cb of lateTimers) cb();
-    await tick();
+    assert.equal(calls.length, stoppedCount);
     assert.equal(timers.size, 0);
-    assert.equal(w.stbIsPlaying(), false);
-    w.stbPlay("web.mp4");
-    const refresh = [...timers.values()];
-    w.stbPause();
-    for (const cb of refresh) cb();
-    await tick();
-    assert.equal(timers.size, 0);
+    assert.deepEqual(supports, []);
+    assert.equal(calls.at(-1)[0], "webStop");
 });
-test("seek and pause during support detection survive native start; polls are bounded", async () => {
-    const { w, calls, supports, plays, states, timers } = fixture();
-    w.stbPlay("movie.mpd", 10);
-    w.stbSetPosTime(55);
-    w.stbPause();
-    supports[0].resolve({ ok: true });
-    await tick();
-    assert.equal(calls.find((c) => c[0] === "playDash")[1].position, 55);
-    plays[0].resolve({ ok: true });
-    await tick();
-    assert.equal(w.stbIsPlaying(), false);
-    for (const fn of timers.values()) {
-        fn();
-        fn();
-        fn();
-    }
-    assert.equal(
-        states.length,
-        1,
-        "at most one native state request may be outstanding"
-    );
-    w.stbSetPosTime(66);
-    await tick();
-    states[0].resolve({
-        duration: 300,
-        ended: false,
-        ok: true,
-        playing: true,
-        position: 55,
-    });
-    await tick();
-    assert.equal(
-        w.stbGetPosTime(),
-        66,
-        "pre-seek polling response cannot undo new position"
-    );
+test("new streams reject metadata from the previous playback session", () => {
+    const { w, calls, timers } = fixture();
+    w.stbPlay("old.mpd");
+    const old = [...timers.values()];
+    w.stbPlay("new.mpd", 10);
+    const count = calls.length;
+    for (const fn of old) fn();
+    assert.equal(calls.length, count);
+    assert.equal(w.stbGetPosTime(), 10);
+    assert.equal(timers.size, 1);
 });
-test("older native binary without state methods does not seek the hidden HTML player", async () => {
-    const { w, dash, calls, supports, plays, timers } = fixture();
-    delete dash.getPlaybackState;
-    delete dash.seekDash;
-    w.stbPlay("movie.mpd", 12);
-    supports[0].resolve({ ok: true });
-    await tick();
-    plays[0].resolve({ ok: true });
-    await tick();
-    w.stbSetPosTime(99);
-    assert.equal(w.stbGetPosTime(), 12);
-    assert.equal(w.stbGetLen(), 0);
-    assert.equal(timers.size, 0);
-    assert.ok(!calls.some((c) => c[0] === "webSeek"));
-});
-test("resuming completed native media seeks to the beginning like HTMLMediaElement.play", async () => {
-    const { w, calls, supports, plays, states } = fixture();
+test("pause and continue use actual TS state for background session updates", () => {
+    const { w, calls, timers } = fixture();
     w.stbPlay("movie.mpd");
-    supports[0].resolve({ ok: true });
-    await tick();
-    plays[0].resolve({ ok: true });
-    await tick();
-    states[0].resolve({
-        duration: 300,
-        ended: true,
-        ok: true,
-        playing: false,
-        position: 300,
-    });
-    await tick();
+    const initial = [...timers.values()];
+    w.stbPause();
+    const count = calls.length;
+    for (const fn of initial) fn();
+    assert.equal(calls.length, count);
     assert.equal(w.stbIsPlaying(), false);
+    assert.equal(w.forcePlay, false);
+    assert.equal(timers.size, 0);
     w.stbContinue();
-    await tick();
-    assert.equal(w.stbGetPosTime(), 0);
     assert.equal(w.stbIsPlaying(), true);
-    assert.deepEqual(
-        calls
-            .filter((c) => c[0] === "seekDash" || c[0] === "resumeDash")
-            .map((c) => c[0]),
-        ["seekDash", "resumeDash"]
-    );
+    assert.equal(calls.at(-1)[0], "resumeBackgroundAudio");
+    assert.equal(timers.size, 1);
+    w.stbContinue();
+    assert.equal(w.stbIsPlaying(), false);
+    assert.equal(calls.at(-1)[0], "pauseBackgroundAudio");
+    assert.equal(timers.size, 0);
 });
-test("zero seek during native support detection survives the web fallback", async () => {
-    const { w, calls, supports } = fixture();
+test("captured periodic callbacks cannot revive stopped or replaced background sessions", () => {
+    for (const transition of ["stop", "pause", "replace"]) {
+        const { w, calls, timers } = fixture();
+        w.stbPlay("movie.mpd");
+        [...timers.values()][0]();
+        const interval = [...timers.values()][0];
+        if (transition === "stop") w.stbStop();
+        else if (transition === "pause") w.stbPause();
+        else w.stbPlay("next.m3u8");
+        const count = calls.length;
+        interval();
+        assert.equal(
+            calls.length,
+            count,
+            transition + " invalidates the old interval"
+        );
+    }
+});
+test("seek to zero remains a shared TS operation", () => {
+    const { w, calls } = fixture();
     w.stbPlay("movie.mpd", 90);
     w.stbSetPosTime(0);
-    supports[0].resolve({ ok: false, unsupported: true });
-    await tick();
-    assert.equal(calls.find((c) => c[0] === "webPlay")[2], 0);
+    assert.equal(w.stbGetPosTime(), 0);
+    assert.deepEqual(
+        calls.filter((call) => call[0] === "webSeek"),
+        [["webSeek", 0]]
+    );
 });
-test("actual Capacitor proxies disable missing APK methods without falsifying seek position", async () => {
-    const { w, dashBridge, optionalCalls, supports, plays, stops, timers } =
+test("older installed native APK methods are never required by ordinary DASH playback", async () => {
+    const { w, dashBridge, optionalCalls, supports, plays, states } =
         fixture(true);
     assert.equal(typeof dashBridge.seekDash, "function");
     assert.equal(typeof dashBridge.getPlaybackState, "function");
     w.stbPlay("old-apk.mpd", 12);
-    await tick();
-    supports[0].resolve({ ok: true });
-    await tick();
-    plays[0].resolve({ ok: true });
-    await tick();
-    assert.equal(timers.size, 0, "UNIMPLEMENTED polling is disabled");
-    w.stbSetPosTime(99);
-    await tick();
-    assert.equal(w.stbGetPosTime(), 12);
-    w.stbSetPosTime(88);
-    await tick();
-    assert.deepEqual(optionalCalls, ["getPlaybackState", "seekDash"]);
-    w.stbPlay("next.mpd", 7);
-    await tick();
-    stops[0].resolve({ ok: true });
-    await tick();
-    supports[1].resolve({ ok: true });
-    await tick();
-    plays[1].resolve({ ok: true });
-    await tick();
-    w.stbSetPosTime(44);
-    await tick();
-    assert.equal(w.stbGetPosTime(), 7);
-    assert.deepEqual(
-        optionalCalls,
-        ["getPlaybackState", "seekDash"],
-        "Missing methods stay disabled for this installed APK"
-    );
-});
-test("overlapping native seeks commit only acknowledgements and retain pause on failure", async () => {
-    const { w, dash, supports, plays, states, timers } = fixture();
-    const seeks = [];
-    dash.seekDash = (options) => {
-        const pending = deferred();
-        seeks.push({ ...pending, position: options.position });
-        return pending.promise;
-    };
-    w.stbPlay("movie.mpd", 12);
-    supports[0].resolve({ ok: true });
-    await tick();
-    plays[0].resolve({ ok: true });
-    await tick();
-    states[0].resolve({
-        duration: 300,
-        ended: false,
-        ok: true,
-        playing: true,
-        position: 12,
-    });
-    await tick();
-    w.stbSetPosTime(70);
-    await tick();
     w.stbSetPosTime(99);
     w.stbPause();
-    for (const callback of timers.values()) callback();
-    assert.equal(
-        w.stbGetPosTime(),
-        12,
-        "Pending seeks are not confirmed playback positions"
-    );
-    assert.equal(states.length, 1, "No poll races an outstanding seek");
-    seeks[0].resolve({ ok: true });
-    await tick();
-    assert.equal(w.stbGetPosTime(), 70);
-    assert.equal(seeks[1].position, 99);
-    seeks[1].reject(new Error("temporary native seek failure"));
-    await tick();
-    assert.equal(
-        w.stbGetPosTime(),
-        70,
-        "Failure preserves the last acknowledged position"
-    );
-    assert.equal(w.stbIsPlaying(), false);
-    w.stbSetPosTime(80);
-    await tick();
-    seeks[2].resolve({ ok: false, unsupported: true });
-    await tick();
-    w.stbSetPosTime(90);
-    await tick();
-    assert.equal(
-        seeks.length,
-        3,
-        "Explicit unsupported replies disable future seek calls"
-    );
-    assert.equal(w.stbGetPosTime(), 70);
-});
-test("late native seek acknowledgement cannot overwrite a new play or stopped session", async () => {
-    const { w, dash, supports, plays, stops } = fixture();
-    const pending = deferred();
-    dash.seekDash = () => pending.promise;
-    w.stbPlay("old.mpd", 12);
-    supports[0].resolve({ ok: true });
-    await tick();
-    plays[0].resolve({ ok: true });
-    await tick();
-    w.stbSetPosTime(99);
-    await tick();
-    w.stbPlay("new.mpd", 7);
-    assert.equal(w.stbGetPosTime(), 7);
-    pending.resolve({ ok: true });
-    await tick();
-    assert.equal(w.stbGetPosTime(), 7);
-    stops[0].resolve({ ok: true });
-    await tick();
-    w.stbStop();
-    supports[1].resolve({ ok: true });
-    await tick();
-    assert.equal(plays.length, 1);
-    assert.equal(w.stbIsPlaying(), false);
-});
-test("failed end restart keeps the ended position instead of claiming a seek to zero", async () => {
-    const { w, dash, supports, plays, states, calls } = fixture();
-    dash.seekDash = () => Promise.reject({ code: "UNIMPLEMENTED" });
-    w.stbPlay("ended.mpd");
-    supports[0].resolve({ ok: true });
-    await tick();
-    plays[0].resolve({ ok: true });
-    await tick();
-    states[0].resolve({
-        duration: 300,
-        ended: true,
-        ok: true,
-        playing: false,
-        position: 300,
-    });
-    await tick();
     w.stbContinue();
     await tick();
-    assert.equal(w.stbGetPosTime(), 300);
-    assert.equal(w.stbIsPlaying(), false);
-    assert.ok(!calls.some((call) => call[0] === "resumeDash"));
+    assert.equal(w.stbGetPosTime(), 99);
+    assert.equal(w.stbIsPlaying(), true);
+    assert.deepEqual(optionalCalls, []);
+    assert.deepEqual(supports, []);
+    assert.deepEqual(plays, []);
+    assert.deepEqual(states, []);
 });
 (async () => {
-    let failures = 0;
     for (const [name, fn] of tests) {
-        try {
-            await fn();
-            console.log("PASS " + name);
-        } catch (e) {
-            failures++;
-            console.error("FAIL " + name + "\n" + e.stack);
-        }
+        await fn();
+        console.log("PASS " + name);
     }
-    if (failures) process.exitCode = 1;
-})();
+})().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});

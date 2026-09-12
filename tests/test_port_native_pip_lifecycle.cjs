@@ -19,7 +19,7 @@ function between(startMarker, endMarker) {
 }
 const snippets = {
     Capacitor: between(
-        "const origPlayPip = window.stbPlayPip;",
+        "const capacitorHost = (window as any).Capacitor;",
         "// Capacitor Mode C: full-window fullscreen."
     ),
     Tauri: between(
@@ -28,7 +28,7 @@ const snippets = {
     ),
 };
 
-function fixture(platform) {
+function fixture(platform, capacitorPlatform = "ios") {
     const nativeCalls = [];
     const requests = [];
     const cssPlays = [];
@@ -60,6 +60,7 @@ function fixture(platform) {
     }
     const c = {
         __TAURI__: {},
+        Capacitor: { getPlatform: () => capacitorPlatform },
         cap: {
             playPip: ({ url }) => nativePlay(url),
             stopPip: nativeStop,
@@ -250,6 +251,17 @@ for (const platform of Object.keys(snippets)) {
         });
     }
 }
+test("Capacitor Android second-channel PiP never invokes Activity PiP", async () => {
+    const f = fixture("Capacitor", "android");
+    f.play("requested-A.m3u8");
+    f.play("requested-B.m3u8");
+    f.stop();
+    await settle();
+    assert.deepEqual(f.nativeCalls, []);
+    assert.deepEqual(f.cssPlays, ["requested-A.m3u8", "requested-B.m3u8"]);
+    assert.equal(f.cssStops, 1);
+    assert.equal(f.displays.at(-1), "stopped");
+});
 (async () => {
     let failures = 0;
     for (const { name, run } of tests) {

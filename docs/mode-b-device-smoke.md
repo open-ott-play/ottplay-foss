@@ -122,7 +122,9 @@ Run on **iOS Simulator and/or Android emulator** (optional: real device). Skip r
 - [ ] Channel list loads
 - [ ] Start playback on one stream (HLS / progressive as available)
 - [ ] Pause / resume; volume or wake-lock behavior sanity-check
-- [ ] Optional Android DASH: ExoPlayer path only when content is DASH; iOS honest reject for unsupported DASH is OK
+- [ ] Android DASH: select Shaka on a device/stream that supports WebView DASH; verify the OTT pause/seek/mute controls and channel-list preview use the same player, with no ExoPlayer overlay. Unsupported codecs remain unsupported.
+- [ ] Android second-channel PiP: open a different channel, verify its muted picture and configured corner/size, then close it while the main channel keeps playing. The Activity must stay in the foreground.
+- [ ] Optional Android system PiP: explicitly invoke `MobileNativeMedia.enterSystemPip()` and restore using OS controls; this must not substitute for the second-channel action.
 
 ### E. Stalker portal (FOSS JSON-RPC)
 

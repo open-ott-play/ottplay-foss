@@ -38,6 +38,19 @@ class StalkerPortalPlugin : Plugin() {
             call.reject("url is not an allowed stalker/swop/load.php/c/portal path")
             return
         }
+        performRequest(call, rawUrl)
+    }
+
+    @PluginMethod
+    fun httpRequest(call: PluginCall) {
+        val rawUrl = call.getString("url") ?: run {
+            call.reject("missing url")
+            return
+        }
+        performRequest(call, rawUrl)
+    }
+
+    private fun performRequest(call: PluginCall, rawUrl: String) {
         val urlStr = rawUrl
         val method = (call.getString("method") ?: "GET").uppercase()
         val bodyString = call.getString("body") ?: ""
@@ -47,10 +60,12 @@ class StalkerPortalPlugin : Plugin() {
         Thread {
             try {
                 val url = URL(urlStr)
+                require(url.protocol == "http" || url.protocol == "https") { "Only HTTP(S) URLs are supported" }
                 val conn = url.openConnection() as HttpURLConnection
                 conn.requestMethod = method
-                conn.connectTimeout = 15000
-                conn.readTimeout = 15000
+                val timeout = (call.getInt("timeoutMs") ?: 15000).coerceAtLeast(1)
+                conn.connectTimeout = timeout
+                conn.readTimeout = timeout
                 conn.instanceFollowRedirects = true
 
                 var contentTypeFromHeaders = false
@@ -84,12 +99,20 @@ class StalkerPortalPlugin : Plugin() {
 
                 val ret = JSObject()
                 ret.put("status", status)
+                ret.put("statusText", conn.responseMessage ?: "")
+                val responseHeaders = StringBuilder()
+                conn.headerFields.forEach { (name, values) ->
+                    if (name != null) values.forEach { responseHeaders.append(name).append(": ").append(it).append("\r\n") }
+                }
+                ret.put("headers", responseHeaders.toString())
                 ret.put("body", body)
                 ret.put("contentType", ct)
                 ret.put("setCookie", setCookieArr)
+                conn.disconnect()
                 call.resolve(ret)
             } catch (e: Exception) {
-                call.reject("portalRequest failed: ${e.message}")
+                val code = if (e is java.net.SocketTimeoutException) "timeout" else null
+                call.reject("portalRequest failed: ${e.message}", code)
             }
         }.start()
     }

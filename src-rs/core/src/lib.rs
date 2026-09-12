@@ -8,6 +8,7 @@ use tokio::time::{interval, Duration};
 
 pub mod db;
 pub mod m3u;
+pub mod native_xmltv;
 pub mod tmdb;
 pub mod xmltv;
 
@@ -164,6 +165,7 @@ mod tests {
                 id: "ch1".into(),
                 name: "Test".into(),
                 icon: String::new(),
+                names: Vec::new(),
             },
         );
         XmltvCache {

@@ -204,13 +204,13 @@ Media constraints:
 
 ### Android
 - **HLS** — via Chrome WebView MSE.
-- **DASH** — Cap `DashExoPlayer` (Media3/ExoPlayer + PlayerView overlay) for `.mpd` when Cap path is used; Chrome WebView MSE/Shaka still available as fallback.
-- **ExoPlayer** — wrapped in `DashExoPlayerPlugin` (Media3) for DASH/HLS native fallback with visible PlayerView.
-- **PiP** — `PictureInPicture` Web API on Android 8+.
+- **DASH** — the shared TS backend handles `.mpd`, using Shaka when selected and supported by the WebView/stream. Normal OTT playback never starts an ExoPlayer overlay.
+- **ExoPlayer** — `DashExoPlayerPlugin` remains a standalone explicit native API; it does not provide the complete OTT player/control/layout contract and is not an automatic fallback.
+- **PiP** — OTT's second channel uses the shared muted video element and its requested URL. Explicit `MobileNativeMedia.enterSystemPip()` is a separate Android 8+ Activity operation with OS restore/close controls.
 - **Background** — `foregroundServiceType="mediaPlayback"`.
 
 ### Desktop (Tauri)
-- **HLS + DASH + DRM** — full MSE support. No constraints.
+- **Playback** — the shared TS HTML/HLS/Shaka backend runs in the OS WebView. Format, codec and DRM support must be checked on each target OS/WebView; the shell does not provide universal MSE or DRM support.
 
 ---
 
@@ -346,7 +346,7 @@ STB/TV builds continue as today:
 
 1. **Dune HS5 compatibility** — Dune HS5 runs the player in a browser/WebView. `server.py` must keep serving the same URLs with the same response formats. Any backend change must be tested against a real Dune HS5 device.
 
-2. **iOS DASH** — Capacitor WKWebView cannot play DASH (no MSE). Cap `DashExoPlayer` returns honest `{ok:false, unsupported:true}`; Android plays via ExoPlayer/Media3 in `DashExoPlayer`.
+2. **DASH coverage** — the app has no iOS AVPlayer DASH path (`DashExoPlayer` reports unsupported). Normal Android playback uses the shared WebView backend; Shaka requires a compatible WebView and stream codecs. The standalone ExoPlayer plugin is not used to bypass those limits automatically.
 
 3. **Stalker portal interception** *(mitigated for FOSS JSON-RPC + host_ott swop; Mag paths allowlisted only)* — `prov/stalker/prov.js` POSTs to `<portal>/stalker_portal/api/`; dealer/cloud entry POSTs to `host_ott/swop/a.php`. Mode B routes those ajax calls through `setupStalkerPortalShim()` → Tauri `stalker_portal_fetch` / Cap `StalkerPortal.portalRequest` (Option A-style), and also allowlists Mag `/load.php` + `/c/portal` with Cookie/Authorization forward + `Set-Cookie` jar. Mode A unchanged (real `host_ott` over normal XHR). Classic Mag JsHttpRequest client / VOD is **not** in FOSS; FOSS builds do not bake a proprietary `host_ott` / CPS / Mag token default.
 

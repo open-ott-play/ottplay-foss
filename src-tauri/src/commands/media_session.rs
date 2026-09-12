@@ -15,11 +15,11 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Manager, State};
 
-const JS_PLAY: &str = "var v=document.querySelector('video'); if(v){v.play();} true;";
-const JS_PAUSE: &str = "var v=document.querySelector('video'); if(v){v.pause();} true;";
-const JS_STOP: &str = "var v=document.querySelector('video'); if(v){v.pause(); v.removeAttribute('src'); try{v.load();}catch(e){}} true;";
-const JS_NEXT: &str = "(function(){if(window._doKey)window._doKey(35);})();";
-const JS_PREV: &str = "(function(){if(window._doKey)window._doKey(36);})();";
+const JS_PLAY: &str = "if(window.stbContinue&&window.stbIsPlaying&&!window.stbIsPlaying())window.stbContinue(); true;";
+const JS_PAUSE: &str = "if(window.stbPause)window.stbPause(); true;";
+const JS_STOP: &str = "if(window.stbStop)window.stbStop(); true;";
+const JS_NEXT: &str = "(function(){if(window._doKey&&window.keys)window._doKey(window.keys.NEXT);})();";
+const JS_PREV: &str = "(function(){if(window._doKey&&window.keys)window._doKey(window.keys.PREV);})();";
 
 pub struct MediaSessionState {
     inner: Mutex<Option<MediaSessionInner>>,
@@ -147,7 +147,7 @@ fn ensure_controls(app: &AppHandle, state: &MediaSessionState) -> Result<(), Str
                 MediaControlEvent::Toggle => {
                     eval_main(
                         &app_cb,
-                        "var v=document.querySelector('video'); if(v){ if(v.paused){v.play();} else {v.pause();} } true;",
+                        "if(window.stbIsPlaying&&window.stbPause&&window.stbContinue){if(window.stbIsPlaying())window.stbPause();else window.stbContinue();} true;",
                     );
                 }
                 MediaControlEvent::Next => eval_main(&app_cb, JS_NEXT),
