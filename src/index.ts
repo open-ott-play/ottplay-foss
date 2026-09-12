@@ -69,6 +69,7 @@ import {
     curList,
     deleteFavoritesList,
     detailEPG,
+    doGetCurProg,
     enterPinAndSetAccess,
     enterPinCode,
     epg,
@@ -5536,6 +5537,7 @@ window.checkMedia = checkMedia;
 window.setCurrent = setCurrent;
 window.setCurProg = setCurProg;
 window.getCurProgData = getCurProgData;
+window.doGetCurProg = doGetCurProg;
 window.arrayGetCurProg = arrayGetCurProg;
 window.getEPGchanelCached = getEPGchanelCached;
 window.nextChannel = nextChannel;
