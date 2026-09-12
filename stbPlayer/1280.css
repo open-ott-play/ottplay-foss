@@ -658,6 +658,7 @@ body {
 }
 #dialogbox {
     position: absolute;
+    z-index: 8;
     display: none;
     min-width: 30%;
     max-width: 80%;
