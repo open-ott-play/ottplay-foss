@@ -1639,11 +1639,37 @@ export function updateChanelInfo(channelId: number): void {
             if (programDescrEl) programDescrEl.textContent = "";
         }
     }
-    // Gold: auto-show info bar on programme change when enabled.
+    // Auto-show on programme change when enabled, but never flash an empty
+    // #info1: require channel name and/or current programme, and defer while
+    // getCurProgData still has an EPG fetch pending (callback re-enters here).
     try {
         var w = window as any;
+        var nowGate = Date.now() / 1000;
+        var channelLabel = (t && t.channel_name) || "";
+        var progLabel =
+            (hasProg && t && t.name) ||
+            (programNameEl &&
+                String(programNameEl.textContent || "")
+                    .replace(/\u00a0/g, " ")
+                    .trim()) ||
+            "";
+        var hasTimes = !!(
+            beginTimeEl && String(beginTimeEl.textContent || "").trim()
+        );
+        // Pending when no programme yet and time_request is not parked in the
+        // future (miss / in-flight park). Callback will populate then re-show.
+        var epgPending =
+            !hasProg &&
+            !!t &&
+            !(typeof t.time_request === "number" && t.time_request > nowGate);
+        var hasMeaningful = !!(
+            progLabel ||
+            hasTimes ||
+            (channelLabel && !epgPending)
+        );
         if (
             w.sInfoChange &&
+            hasMeaningful &&
             $infoBar &&
             typeof $infoBar.is === "function" &&
             !$infoBar.is(":visible") &&
