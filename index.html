@@ -205,15 +205,17 @@
 
         <script>
         "use strict";
-        var host = window.location.origin || "http://localhost:8080";
+        var host = window.location.origin ||
+            (window.location.host ? window.location.protocol + "//" + window.location.host : "http://localhost:8080");
         var __dev = true; // set false for production
-        var _rnd = new Uint8Array(8);
-        crypto.getRandomValues(_rnd);
-        var _rndstr = Array.from(_rnd)
-            .map(function (b) {
-                return (b & 0x0f).toString(36);
-            })
-            .join("");
+        // Boot runs before the bundle's polyfills. These random labels are not secrets.
+        function bootRandomHex(length) {
+            var text = "";
+            for (var i = 0; i < length; i++)
+                text += Math.floor(Math.random() * 16).toString(16);
+            return text;
+        }
+        var _rndstr = bootRandomHex(8);
         var __cv = __dev ? "dev_" + Date.now() + "_" + _rndstr : "__OTTP_VERSION__";
         var __av = __dev ? "dev_" + Date.now() + "_" + _rndstr : "__OTTP_VERSION__";
 
@@ -251,15 +253,7 @@
         // Device UUID — generated once, persisted in localStorage
         var deviceUUID = localStorage.getItem("ott_device_uuid");
         if (!deviceUUID) {
-            var _b = new Uint8Array(8);
-            crypto.getRandomValues(_b);
-            deviceUUID =
-                "dev_" +
-                Array.from(_b)
-                    .map(function (b) {
-                        return (b & 0x0f).toString(16);
-                    })
-                    .join("");
+            deviceUUID = "dev_" + bootRandomHex(8);
             localStorage.setItem("ott_device_uuid", deviceUUID);
         }
         window.deviceUUID = deviceUUID;
@@ -447,46 +441,48 @@
                 bootStatus("Loading media libraries…");
                 var need = 0;
                 function checkDone() {
-                    if (++need >= 2) loadSTB();
+                    if (++need === 2) loadSTB();
+                }
+                function loadLocalHls() {
+                    // Checked with the bundle: HLS 0.14.17 for legacy TV engines.
+                    loadJS(host + "/js/hls.min.js", checkDone, _head, function () {
+                        bootLog("Local HLS unavailable; using device playback");
+                        checkDone();
+                    });
                 }
                 if (typeof Hls === "undefined") {
-                    var hlsUrl =
-                        ott_device === "pc"
-                            ? "https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"
-                            : "https://cdn.jsdelivr.net/npm/hls.js@0.14.17/dist/hls.min.js";
-                    loadJS(
-                        hlsUrl,
-                        function () {
-                            if (typeof Hls === "undefined")
-                                loadJS(
-                                    host + "/js/hls.min.js",
-                                    checkDone,
-                                    _head
-                                );
-                            else checkDone();
-                        },
-                        _head
-                    );
+                    // Unknown old STBs can be detected as pc. Do not send their
+                    // pre-polyfill engines a modern CDN build either.
+                    var modernPC = ott_device === "pc" &&
+                        typeof Promise === "function" &&
+                        typeof Uint8Array === "function" &&
+                        typeof Array.from === "function";
+                    if (modernPC) {
+                        loadJS(
+                            "https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js",
+                            function () {
+                                if (typeof Hls === "undefined") loadLocalHls();
+                                else checkDone();
+                            },
+                            _head,
+                            loadLocalHls
+                        );
+                    } else loadLocalHls();
                 } else checkDone();
                 if (
                     typeof shaka === "undefined" ||
                     typeof shaka.Player === "undefined"
                 ) {
+                    // Local 3.3.19 has the project's ES5 compatibility fixes.
+                    // A CDN copy would bypass those fixes even at the same version.
                     loadJS(
-                        "https://cdn.jsdelivr.net/npm/shaka-player@3.3.19/dist/shaka-player.compiled.js",
+                        host + "/js/shaka-player.compiled.js",
+                        checkDone,
+                        _head,
                         function () {
-                            if (
-                                typeof shaka === "undefined" ||
-                                typeof shaka.Player === "undefined"
-                            )
-                                loadJS(
-                                    host + "/js/shaka-player.compiled.js",
-                                    checkDone,
-                                    _head
-                                );
-                            else checkDone();
-                        },
-                        _head
+                            bootLog("Local Shaka unavailable; using device playback");
+                            checkDone();
+                        }
                     );
                 } else checkDone();
             }
@@ -494,18 +490,15 @@
             function loadJQ() {
                 bootStatus("Loading UI…");
                 loadCSS(host + "/stbPlayer/1280.css?" + __av, _head);
+                // Same 1.11.1 release as the old CDN URL; legacy boot works offline.
                 loadJS(
-                    "https://code.jquery.com/jquery-1.11.1.min.js",
+                    host + "/js/jquery-1.11.1.min.js",
+                    loadLibraries,
+                    _head,
                     function () {
-                        if (typeof jQuery === "undefined") {
-                            loadJS(
-                                host + "/js/jquery-1.11.1.min.js",
-                                loadLibraries,
-                                _head
-                            );
-                        } else loadLibraries();
-                    },
-                    _head
+                        bootStatus("Failed to load UI");
+                        bootLog("Error: js/jquery-1.11.1.min.js");
+                    }
                 );
             }
 
