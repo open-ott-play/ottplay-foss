@@ -42,6 +42,7 @@ const MODULES = [
     "build/app/device.js",
     "build/settings/sleepTimer.js",
     "build/plugins/native-bridge.js",
+    "build/plugins/native-http.js",
     "build/plugins/mobile-native-media.js",
     "build/plugins/dash-exo-player.js",
     "build/plugins/m3u-proxy.js",

@@ -37,6 +37,7 @@ import "./polyfills";
 
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
 import { MobileNativeMedia } from "./plugins/mobile-native-media";
+import { installTauriHttpTransport } from "./plugins/native-http";
 import { setupStalkerPortalShim } from "./plugins/stalker-portal";
 
 // Utils
@@ -2060,7 +2061,7 @@ function isRemoteHttpUrlForProxy(url: string): boolean {
 /**
  * Mode B: providers POST to host+"/m3u/cp.php" (CORS proxy) and
  * match-channels/logos. Embed has no Mode A HTTP server — those URLs 404 or
- * hang on tauri.localhost. Route cp.php through proxy_fetch invoke; route
+ * hang on tauri.localhost. Route cp.php through proxy_http invoke; route
  * match-* through native commands (after #298). Logo SVG paths from
  * match-logos are rewritten to data URIs so CSS backgrounds paint without
  * companion `/logo/...` HTTP. Version (`/version/<rel>`) and feedback
@@ -2070,7 +2071,7 @@ function isRemoteHttpUrlForProxy(url: string): boolean {
  * (e.g. http://127.0.0.1:8090). Mixed content from https://tauri.localhost,
  * or Content-Disposition:attachment bodies that arrive as empty "success",
  * can skip the cp.php fallback and leave catsArray empty (0/0/0). Route
- * those GETs straight through proxy_fetch instead.
+ * those GETs through a native jQuery HTTP transport.
  */
 function setupTauriCompanionShim(): void {
     if (!isTauriEmbedMode()) return;
@@ -2086,6 +2087,8 @@ function setupTauriCompanionShim(): void {
     if ((window as any).__ottTauriAjaxShim) return;
     (window as any).__ottTauriAjaxShim = true;
     const origAjax = $.ajax.bind($);
+    // jQuery retains serialization, converters, callback order and jqXHR state.
+    installTauriHttpTransport($, tauriInvoke);
 
     function jqFromInvoke(invokePromise: Promise<string>, opts: any): any {
         const dfd = $.Deferred();
@@ -2129,46 +2132,21 @@ function setupTauriCompanionShim(): void {
     $.ajax = function (urlOrOpts: any, maybeOpts?: any) {
         let opts: any;
         if (typeof urlOrOpts === "string") {
-            opts = Object.assign({ url: urlOrOpts }, maybeOpts || {});
+            opts = Object.assign({}, maybeOpts || {}, { url: urlOrOpts });
         } else {
             opts = Object.assign({}, urlOrOpts || {});
         }
         const url = String(opts.url || "");
-        const method = String(opts.type || opts.method || "GET").toUpperCase();
 
-        // Remote absolute http(s) GET (playlist / media XML / etc.): do not use
-        // WKWebView XHR. Empty "success" bodies skip Mode B's cp.php fallback.
-        if (method === "GET" && isRemoteHttpUrlForProxy(url)) {
-            console.log("[Tauri] companion shim: proxy_fetch remote GET", url);
-            return jqFromInvoke(
-                tauriInvoke<string>("proxy_fetch", { url: url }),
-                opts
-            );
+        // Remote providers, including an explicit !epg-server, keep their URL.
+        // The registered native transport handles GET and external match POST;
+        // never mistake a remote /m3u/* or /tmdb/* path for our companion API.
+        if (isRemoteHttpUrlForProxy(url)) {
+            return origAjax(opts);
         }
 
         if (url.indexOf("/m3u/cp.php") !== -1) {
-            let target = "";
-            const data = opts.data;
-            if (typeof data === "string") {
-                const m = /(?:^|&)url=([^&]*)/.exec(data);
-                if (m) target = decodeURIComponent(m[1].replace(/\+/g, " "));
-            } else if (data && typeof data === "object") {
-                target = String((data as any).url || "");
-            }
-            if (!target) {
-                const dfd = $.Deferred();
-                dfd.reject("proxy_fetch: missing url");
-                try {
-                    if (typeof opts.error === "function") {
-                        opts.error({ status: 0 }, "error", "missing url");
-                    }
-                } catch (_e) {}
-                return dfd.promise(dfd) as any;
-            }
-            return jqFromInvoke(
-                tauriInvoke<string>("proxy_fetch", { url: target }),
-                opts
-            );
+            return origAjax(opts);
         }
 
         if (
