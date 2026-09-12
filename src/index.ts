@@ -57,6 +57,7 @@ import {
     aAudios,
     addFavoritesList,
     addToFavorites,
+    applyChannelTvgShift,
     arrayGetCurProg,
     aSubs,
     aZooms,
@@ -74,6 +75,7 @@ import {
     enterPinCode,
     epg,
     epg_ch_id,
+    epgArchiveHours,
     epgArray,
     epgKeyHandler,
     epgList,
@@ -82,6 +84,7 @@ import {
     epgPodval,
     epgreturn,
     epgShow_miniproc,
+    epgTimezoneHours,
     favoritesArray,
     fileArchive,
     getActiveFavoritesListName,
@@ -1958,7 +1961,8 @@ function tauriInvoke<T>(
  * Mode A (browser/STB): leaves getEPGchanel unchanged — provider HTTP fetch path.
  * Mode B (Tauri): passes playlist channel name + epg_url hash so Rust can resolve
  *   xmltv_id via match_channel / epg_to_xmltv (same as companion /epg/{hash}).
- * Invoke arg keys must be Tauri 2 camelCase: channelId, timeShiftHours.
+ * Invoke arg keys must be Tauri 2 camelCase: channelId, timeShiftHours,
+ *   archiveHours. timeShiftHours is timezone only; archiveHours is catchup depth.
  */
 
 /**
@@ -2363,6 +2367,9 @@ function setupTauriCompanionShim(): void {
 function setupTauriEpgOverride(): void {
     if (typeof window.__TAURI__ === "undefined") return; // only apply in Tauri Mode B
 
+    // List/podval doGetCurProg must share EPG menu cache (getEPGchanelCached).
+    (window as any).getEPGchanelCurCached = getEPGchanelCached;
+
     const orig = window.getEPGchanel;
     window.getEPGchanel = function (
         chId: string,
@@ -2384,11 +2391,14 @@ function setupTauriEpgOverride(): void {
             ch && (ch as any).epg_url != null
                 ? String((ch as any).epg_url)
                 : "";
-        const timeShiftHours =
-            ch && typeof (ch as any).rec === "number" ? (ch as any).rec : 0;
+        // timeShiftHours = timezone only (0 → Rust time_shift_by_epg map).
+        // Never pass channel.rec here — that is archive/history depth.
+        const timeShiftHours = epgTimezoneHours(ch);
+        const archiveHours = epgArchiveHours(ch);
 
         // Tauri 2 command args are camelCase (channel_id → channelId).
         tauriInvoke<any>("get_epg", {
+            archiveHours: archiveHours,
             ch: channelName,
             channelId: channelIdNum.toString(),
             hash: epgHash,
@@ -2401,6 +2411,7 @@ function setupTauriEpgOverride(): void {
                     : result && Array.isArray(result.epg_data)
                       ? result.epg_data
                       : [];
+                epgData = applyChannelTvgShift(ch, epgData) || [];
                 callback(chId, epgData);
             })
             .catch((error: any) => {

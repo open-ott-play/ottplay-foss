@@ -209,18 +209,22 @@ pub async fn get_epg(
     channel_id: String,
     ch: Option<String>,
     time_shift_hours: i64,
+    // Configured catchup/history hours (channel.rec / M3U rechours). Not timezone.
+    archive_hours: Option<i64>,
 ) -> Result<JsonValue, String> {
     // Ensure before taking map locks — never hold epg_to_xmltv across a 40MB fetch.
     ensure_xmltv_cache(&state).await?;
 
     let epg_map = state.epg_to_xmltv.read().await;
     let shift_map = state.time_shift_by_epg.read().await;
+    // time_shift_hours is timezone only. Archive depth is archive_hours.
     let mut shift = time_shift_hours;
     if shift == 0 {
         if let Some(s) = shift_map.get(&hash) {
             shift = *s;
         }
     }
+    let archive = archive_hours.unwrap_or(0);
 
     let cache_guard = state.xmltv_cache.read().await;
     let cache = cache_guard.as_ref().ok_or("EPG cache empty")?;
@@ -230,6 +234,7 @@ pub async fn get_epg(
         &hash,
         &xmltv_id,
         shift,
+        archive,
     ).await)
 }
 

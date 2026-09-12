@@ -136,6 +136,14 @@ function getEPGchanel(s, e) {
         e(s, o);
         return;
     }
+    // Pass configured archive/history hours so companion lookback honors
+    // M3U rechours / catchup-days (not the hardcoded ±48h-only window).
+    try {
+        var _rec = chanels[s] && chanels[s].rec != null ? Number(chanels[s].rec) : 0;
+        if (_rec > 0) {
+            r += (r.indexOf("?") >= 0 ? "&" : "?") + "hours=" + Math.floor(_rec);
+        }
+    } catch (_h) {}
     $.ajax({
         dataType: "json",
         timeout: 1e4,

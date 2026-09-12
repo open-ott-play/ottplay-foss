@@ -290,19 +290,17 @@ export function doGetCurProg(): void {
     if (arrayGetCurProg.length === 0) return;
     var entry = arrayGetCurProg.shift();
     var chId = entry!.ch_id;
-    // Provider sets window.getEPGchanelCurCached = getEPGchanelCur (callback style).
-    var fetchFn = window.getEPGchanelCurCached || getEPGchanelCached;
-    if (typeof fetchFn === "function") {
-        fetchFn(chId, function (id: any, epgData: EPGEntry[] | null) {
-            // Legacy: setCurProg(e, t, r.callback) — callback receives channel id.
-            setCurProg(id, epgData, entry!.callback);
-            // Defer next queue item so a sync getEPGchanel(null) cannot nest forever
-            // before setCurProg has a chance to set time_request.
-            setTimeout(doGetCurProg, 0);
-        });
-    } else {
-        doGetCurProg();
-    }
+    // Always use getEPGchanelCached (same path as EPG menu). With epgCash=0,
+    // gold wires getEPGchanelCurCached → getEPGchanel; Mode B must share the
+    // Cached path so list/podval see programmes already loaded for the browser.
+    // (The sync helper getEPGchanelCurCached(id) ignores callbacks — never use it.)
+    getEPGchanelCached(chId, function (id: any, epgData: EPGEntry[] | null) {
+        // Legacy: setCurProg(e, t, r.callback) — callback receives channel id.
+        setCurProg(id, epgData, entry!.callback);
+        // Defer next queue item so a sync getEPGchanel(null) cannot nest forever
+        // before setCurProg has a chance to set time_request.
+        setTimeout(doGetCurProg, 0);
+    });
 }
 export let curEpgData: EPGEntry[] | null = null;
 export let epgArray: EPGEntry[] = [],
@@ -974,6 +972,42 @@ export function ifParentalAccessChId(
  *
  * Side effects: None (pure lookup).
  */
+
+/**
+ * Timezone hours for Mode B get_epg. NEVER use channel.rec — that is archive
+ * depth (M3U rechours / catchup-days), not timezone. Pass 0 so Rust applies
+ * time_shift_by_epg from match_channels; tvg-shift (ch.ts, seconds) is applied
+ * client-side after fetch like Mode A m3u getEPGchanel.
+ */
+export function epgTimezoneHours(_ch: any): number {
+    return 0;
+}
+
+/** Configured catchup/history hours from channel.rec (M3U settings / tags). */
+export function epgArchiveHours(ch: any): number {
+    if (!ch || ch.rec == null) return 0;
+    var n = Number(ch.rec);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+
+/** Apply tvg-shift (ch.ts seconds) to EPG entries in-place — Mode A parity. */
+export function applyChannelTvgShift(
+    ch: any,
+    epgData: EPGEntry[] | null
+): EPGEntry[] | null {
+    if (!epgData || !epgData.length) return epgData;
+    if (!ch || typeof ch.ts !== "number" || !ch.ts) return epgData;
+    var t = ch.ts;
+    for (var i = 0; i < epgData.length; i++) {
+        var e = epgData[i];
+        if (e && e.time > 0 && e.time_to > 0) {
+            e.time += t;
+            e.time_to += t;
+        }
+    }
+    return epgData;
+}
+
 export function getEPGchanelCached(
     channelId: number,
     callback: (chId: number, programs: EPGEntry[] | null) => void
@@ -987,12 +1021,14 @@ export function getEPGchanelCached(
     if (typeof (window as any).Capacitor !== "undefined") {
         var ch = channels[channelId];
         var hash = String(channelId);
-        var timeShiftHours = ch && typeof ch.rec === "number" ? ch.rec : 0;
+        var timeShiftHours = epgTimezoneHours(ch);
+        var archiveHours = epgArchiveHours(ch);
         var xmltvUrl =
             ch && (ch as any).epg_url != null
                 ? String((ch as any).epg_url)
                 : "";
         (window as any).Capacitor.Plugins.MobileXmltvEpg.getEpg({
+            archive_hours: archiveHours,
             ch: ch?.channel_name || ch?.name || "",
             channel_id: String(channelId),
             hash: hash,
@@ -1006,6 +1042,7 @@ export function getEPGchanelCached(
                     : result && Array.isArray(result.epg_data)
                       ? result.epg_data
                       : null;
+                epgData = applyChannelTvgShift(ch, epgData);
                 // Never cache [] — empty is truthy in JS and would permanently
                 // skip re-fetch after a cold-XMLTV miss (Mode B warm race).
                 if (epgData && epgData.length > 0) {
@@ -1030,7 +1067,8 @@ export function getEPGchanelCached(
             ch && (ch as any).epg_url != null
                 ? String((ch as any).epg_url)
                 : "";
-        var timeShiftHours = ch && typeof ch.rec === "number" ? ch.rec : 0;
+        var timeShiftHours = epgTimezoneHours(ch);
+        var archiveHours = epgArchiveHours(ch);
         var coreApi = (window as any).__TAURI__.core;
         var invokeFn =
             coreApi && typeof coreApi.invoke === "function"
@@ -1047,7 +1085,10 @@ export function getEPGchanelCached(
             return;
         }
         // Tauri 2 command args are camelCase (channel_id → channelId).
+        // timeShiftHours = timezone only (0 → Rust uses time_shift_by_epg).
+        // archiveHours = configured catchup/history depth (channel.rec).
         invokeFn("get_epg", {
+            archiveHours: archiveHours,
             ch: channelName,
             channelId: String(channelId),
             hash: hash,
@@ -1060,6 +1101,7 @@ export function getEPGchanelCached(
                     : result && Array.isArray(result.epg_data)
                       ? result.epg_data
                       : null;
+                epgData = applyChannelTvgShift(ch, epgData);
                 // Never cache [] — see Capacitor branch (cold XMLTV miss).
                 if (epgData && epgData.length > 0) {
                     epg[channelId] = epgData;
@@ -1127,7 +1169,21 @@ export function getCurProgData(
     if (!ch) return false;
     var now = Date.now() / 1000;
     if (ch.time_to && ch.time_to >= now) return true;
-    if (ch.time_request && ch.time_request > now) return false;
+    if (ch.time_request && ch.time_request > now) {
+        // Miss lock: re-evaluate cached programmes against wall clock so a
+        // prior "no current" (wrong timezone / programme gap) does not keep
+        // list/podval blank for an hour while the EPG menu still has data.
+        var cachedLock = epg[channelId] || epgCashObj[channelId] || null;
+        if (cachedLock && cachedLock.length) {
+            var nofunLock =
+                typeof (window as any).nofun === "function"
+                    ? (window as any).nofun
+                    : function () {};
+            setCurProg(channelId, cachedLock, nofunLock);
+            if (ch.time_to && ch.time_to >= now) return true;
+        }
+        return false;
+    }
     var found = false;
     if (ch.nextpr) {
         var nofun =

@@ -44,11 +44,12 @@ class MobileXmltvEpgPlugin : Plugin() {
         val hash = call.getString("hash") ?: ""
         val channelId = call.getString("channel_id") ?: ""
         val timeShift = call.getInt("time_shift_hours") ?: 0
+        val archiveHours = call.getInt("archive_hours") ?: 0
 
         val fresh = try { readFreshCache() } catch (_: Throwable) { null }
         if (fresh != null) {
             val parsed = parseXmltv(fresh)
-            call.resolve(buildSlice(parsed, channelId, ch, hash, timeShift))
+            call.resolve(buildSlice(parsed, channelId, ch, hash, timeShift, archiveHours))
             return
         }
 
@@ -60,7 +61,7 @@ class MobileXmltvEpgPlugin : Plugin() {
                     val xml = gunzip(stale)
                     if (xml != null) {
                         val parsed = parseXmltv(String(xml))
-                        call.resolve(buildSlice(parsed, channelId, ch, hash, timeShift))
+                        call.resolve(buildSlice(parsed, channelId, ch, hash, timeShift, archiveHours))
                         return
                     }
                 }
@@ -75,7 +76,7 @@ class MobileXmltvEpgPlugin : Plugin() {
                 } catch (_: Throwable) { /* ignore cache write errors */ }
                 val xml = gunzip(data) ?: return onFailure(call, IOException("gunzip failed"))
                 val parsed = parseXmltv(String(xml))
-                call.resolve(buildSlice(parsed, channelId, ch, hash, timeShift))
+                call.resolve(buildSlice(parsed, channelId, ch, hash, timeShift, archiveHours))
             }
         })
     }
@@ -289,12 +290,14 @@ class MobileXmltvEpgPlugin : Plugin() {
         channelId: String,
         ch: String?,
         hash: String,
-        timeShiftHours: Int
+        timeShiftHours: Int,
+        archiveHours: Int
     ): JSObject {
         val xmltvId = resolveXmltvId(parsed.channels, ch, hash)
         val progs = parsed.programs[xmltvId] ?: emptyList()
         val now = (System.currentTimeMillis() / 1000).toInt()
-        val windowStart = now - 48 * 3600
+        val lookbackH = if (archiveHours > 0) archiveHours else 48
+        val windowStart = now - lookbackH * 3600
         val windowEnd = now + 48 * 3600
         val shift = timeShiftHours * 3600
 
