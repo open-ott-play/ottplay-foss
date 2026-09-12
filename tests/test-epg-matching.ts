@@ -846,6 +846,115 @@ async function testEpgLifecycle(ch: Awaited<ReturnType<typeof getModule>>) {
     console.log("  EPG lifecycle, native source contract, timezone: OK");
 }
 
+/** Backend warm-up must retain the EPG view's channel and refresh its rows. */
+async function testWarmEpgView(ch: Awaited<ReturnType<typeof getModule>>) {
+    const id = 701;
+    const category = "Warm view fixture";
+    const catIdx = ch.catsArray.length;
+    const savedDollar = (global as any).$;
+    const savedDocument = (global as any).document;
+    const savedWindow = { ...mockWindow };
+    const savedIdDescriptor = Object.getOwnPropertyDescriptor(
+        mockWindow,
+        "epg_ch_id"
+    );
+    const timerCount = ch.epgTimers.length;
+    const jq = { hide: () => jq, html: () => jq, show: () => jq };
+    const pending: Array<(channelId: number, data: any[]) => void> = [];
+    const now = Math.floor(Date.now() / 1000);
+    const schedule = (name: string) => [
+        { name, descr: "", time: now - 60, time_to: now + 60 },
+        { name: "Future show", descr: "", time: now + 60, time_to: now + 3600 },
+    ];
+    try {
+        ch.invalidateEpgCache();
+        ch.channels[id] = { ch_id: id, channel_name: category, rec: 24 };
+        ch.catsArray.push(category);
+        ch.cats[category] = [id];
+        (global as any).$ = () => jq;
+        (global as any).document = { getElementById: () => null };
+        Object.assign(mockWindow, {
+            cats: ch.cats,
+            catsArray: ch.catsArray,
+            channels: ch.channels,
+            chanels: ch.channels,
+            getEPGchanelCached: ch.getEPGchanelCached,
+            getEPGchanel: (_id: number, done: any) => pending.push(done),
+            isListVisible: false,
+            showPage: () => {
+                mockWindow.isListVisible = true;
+            },
+        });
+        // Classic-bundle globals share storage with window; reproduce that alias.
+        Object.defineProperty(mockWindow, "epg_ch_id", {
+            configurable: true,
+            get: () => ch.epg_ch_id,
+            set: () => {},
+        });
+        ch.epgList(catIdx, 0, false);
+        ch.invalidateEpgCache(true);
+        assert.strictEqual(
+            pending.length,
+            2,
+            "warm-up reissues the menu fetch"
+        );
+        pending[0](id, schedule("Stale"));
+        pending[1](id, schedule("Warm current"));
+        assert.strictEqual(
+            ch.epg_ch_id,
+            id,
+            "a refetched menu keeps its archive channel identity"
+        );
+        assert.strictEqual(mockWindow.listArray[0].name, "Warm current");
+        mockWindow.selIndex = 1;
+        mockWindow.confirmBox = (_message: string, confirm: () => void) =>
+            confirm();
+        ch.setEpgTimer();
+        assert.strictEqual(
+            ch.epgTimers.at(-1)?.ci,
+            id,
+            "timers retain the channel after warm-up"
+        );
+
+        ch.invalidateEpgCache(true);
+        assert.strictEqual(
+            pending.length,
+            3,
+            "an already displayed EPG refetches after cache-ready"
+        );
+        pending[2](id, schedule("Updated current"));
+        assert.strictEqual(mockWindow.listArray[0].name, "Updated current");
+        assert.strictEqual(ch.epg_ch_id, id);
+
+        ch.epgListAlpha(catIdx, 0, false);
+        ch.invalidateEpgCache(true);
+        pending[3](id, schedule("Z current"));
+        assert.strictEqual(
+            ch.epglisted,
+            2,
+            "warm-up preserves alphabetical mode"
+        );
+        assert.strictEqual(mockWindow.listArray[0].name, "Future show");
+    } finally {
+        for (const timer of ch.epgTimers.splice(timerCount)) {
+            clearTimeout(timer.ti);
+            clearTimeout(timer.ri);
+        }
+        delete mockWindow.epg_ch_id;
+        for (const key of Object.keys(mockWindow)) delete mockWindow[key];
+        Object.assign(mockWindow, savedWindow);
+        if (savedIdDescriptor)
+            Object.defineProperty(mockWindow, "epg_ch_id", savedIdDescriptor);
+        (global as any).$ = savedDollar;
+        (global as any).document = savedDocument;
+        delete ch.channels[id];
+        delete ch.cats[category];
+        ch.catsArray.splice(catIdx, 1);
+        ch.invalidateEpgCache();
+    }
+    console.log("  Warm EPG view identity, timers and refresh: OK");
+}
+
 // ---------------------------------------------------------------------------
 // Run all tests
 // ---------------------------------------------------------------------------
@@ -876,6 +985,9 @@ async function runTests() {
 
     clearMocks();
     await testEpgLifecycle(ch);
+
+    clearMocks();
+    await testWarmEpgView(ch);
 
     clearMocks();
     testLoadEpgTimersFilter(ch);

@@ -296,6 +296,12 @@ let epgPending: Record<
 /** Clear full schedules and reject responses from the previous provider/refresh. */
 export function invalidateEpgCache(refetchPending = false): void {
     var waiting = epgPending;
+    var w = window as any;
+    var refreshView =
+        refetchPending &&
+        w.isListVisible &&
+        (w.listKeyHandlerFn === epgKeyHandler ||
+            w.listKeyHandler === epgKeyHandler);
     epgCacheGeneration++;
     epgPending = {};
     epgCacheFetchedAt = {};
@@ -303,7 +309,9 @@ export function invalidateEpgCache(refetchPending = false): void {
     for (var key in epgCashObj) delete epgCashObj[key];
     epgCashArr.length = 0;
     arrayGetCurProg.length = 0;
-    epg_ch_id = null;
+    // Backend warm-up invalidates schedules, not the menu's selected channel.
+    // Its in-flight callback renders rows but does not reassign epg_ch_id.
+    if (!refetchPending) epg_ch_id = null;
     curEpgData = null;
     for (var key in channels) {
         var ch = channels[key];
@@ -321,6 +329,16 @@ export function invalidateEpgCache(refetchPending = false): void {
             request.callbacks.forEach(function (notify) {
                 getEPGchanelCached(Number(key), notify);
             });
+        }
+        // A completed visible menu has no pending consumer to reissue.
+        // Reopen its current view so fresh rows and archive/timer actions agree.
+        if (refreshView) {
+            var channelIndex = w.listChannel & 65535;
+            if (epglisted === 0)
+                recordsList(w.listCatIndex, channelIndex, w.epgreturn);
+            else if (epglisted === 2)
+                epgListAlpha(w.listCatIndex, channelIndex, w.epgreturn);
+            else epgList(w.listCatIndex, channelIndex, w.epgreturn);
         }
     }
 }
@@ -1734,7 +1752,7 @@ export function epgShow_miniproc(
         cats[catsArray[catIdx]] || w.cats[w.catsArray[catIdx]] || curList || [];
     var a = catList[chIdx];
     if (mode === 0 && !(channels[a] && channels[a].rec)) return;
-    if (epg_ch_id && epg_ch_id == a) {
+    if (epg_ch_id && epg_ch_id == a && curEpgData !== null) {
         callback(a);
         return;
     }
