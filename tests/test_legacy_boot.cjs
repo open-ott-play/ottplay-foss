@@ -80,7 +80,7 @@ function boot(options = {}) {
         // location.origin and DOM classList are deliberately missing in the legacy fixture.
         location: {
             host: "legacy-player.test:8080",
-            pathname: "/",
+            pathname: options.pathname || "/",
             protocol: "http:",
         },
         navigator: {
@@ -177,3 +177,23 @@ for (const failure of [null, "cdnFailure", "cdnMissingGlobal"]) {
 console.log(
     "OK: HTML boot without modern APIs, local TV libraries, persistent identity and PC CDN fallback"
 );
+
+// Explicit device routes must preserve both components of nested vendor IDs.
+for (const device of [
+    "lg/webos",
+    "lg/netcast",
+    "samsung/tizen",
+    "samsung/maple",
+    "dune",
+    "mag",
+]) {
+    for (const suffix of ["/", "/index.html", ""]) {
+        const result = boot({ pathname: "/f/" + device + suffix });
+        assert.equal(result.context.ott_device, device);
+        assert(
+            result.requests.some((url) =>
+                url.includes("/stb/" + device + "/stb.js")
+            )
+        );
+    }
+}

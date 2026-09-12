@@ -221,7 +221,7 @@
 
         function detectDevice() {
             var path = window.location.pathname;
-            var m = path.match(/^\/f\/(.+?)(\/|$)/);
+            var m = path.match(/^\/f\/((?:lg|samsung)\/[^\/]+|[^\/]+)(?:\/|$)/);
             if (m) return m[1].replace(/\/+$/, "");
             var ua = navigator.userAgent.toLowerCase();
             if (ua.indexOf("webos") !== -1 || ua.indexOf("lg") !== -1)
