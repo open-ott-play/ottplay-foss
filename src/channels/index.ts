@@ -65,7 +65,6 @@ export interface Channel {
     description?: string | (() => string);
     epg?: string | number;
     epg_url?: string | number;
-    xmltv_url?: string;
     icon?: string;
     logo_30x30?: string;
     name?: string;
@@ -81,6 +80,7 @@ export interface Channel {
     time_to?: number;
     title?: string;
     url?: string;
+    xmltv_url?: string;
 }
 
 export interface EPGEntry {
@@ -112,11 +112,11 @@ export interface MediaHistoryEntry {
     fav?: number;
     logo_30x30?: string;
     name?: string;
-    playlist_url?: MediaTarget;
     playlist_name?: string;
-    submenu?: MediaHistoryEntry[];
+    playlist_url?: MediaTarget;
     search_on?: boolean | number | string;
     stream_url?: string | (() => string);
+    submenu?: MediaHistoryEntry[];
     title?: string;
 }
 
@@ -453,7 +453,8 @@ export function setCurrent(
     if (
         categoryIndex !== catIndex ||
         channelIndex !== primaryIndex ||
-        Boolean(isArchive) !== wasArchive || channelIndex === -1 ||
+        Boolean(isArchive) !== wasArchive ||
+        channelIndex === -1 ||
         playType === -1e11
     ) {
         if (playType === -1e11) {
@@ -1130,9 +1131,9 @@ export function getEPGchanelCached(
         return;
     }
     var request = {
-        generation: epgCacheGeneration,
-        channel: channels[channelId],
         callbacks: [callback],
+        channel: channels[channelId],
+        generation: epgCacheGeneration,
     };
     epgPending[channelId] = request;
     function finish(_id: number, programs: EPGEntry[] | null): void {
@@ -2690,13 +2691,13 @@ export function showMediaList(): void {
     var w = window as any;
     var records: MediaHistoryEntry[] = w.mediaRecords || [];
     if ((w.mediaSelects || []).length === 1 && w.sFavorites !== -1) {
-        records.push({ title: "", playlist_url: "" });
+        records.push({ playlist_url: "", title: "" });
         if (w.sMedCount)
             records.push({
-                title: w._("History of watched movies"),
                 playlist_url: -1,
+                title: w._("History of watched movies"),
             });
-        records.push({ title: w._("Favorites"), playlist_url: -2 });
+        records.push({ playlist_url: -2, title: w._("Favorites") });
     }
     w.mediaRecords = records;
     w.mediaNames.push(w.mediaName || "");

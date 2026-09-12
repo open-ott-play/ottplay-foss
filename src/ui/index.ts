@@ -1765,7 +1765,10 @@ export function initBackgroundIntervals(): void {
     }, 1000);
     setInterval(function () {
         // Channel EPG must not replace the movie title/progress during VOD.
-        if (!(window as any).playType && typeof (window as any).updateChanelInfo === "function") {
+        if (
+            !(window as any).playType &&
+            typeof (window as any).updateChanelInfo === "function"
+        ) {
             (window as any).updateChanelInfo((window as any).listChannel);
         }
     }, 30000);

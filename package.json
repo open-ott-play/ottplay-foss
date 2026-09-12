@@ -4,7 +4,7 @@
   "description": "OTT-play FOSS - IPTV/OTT set-top-box player",
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && npm run check:es5",
     "build:mobile": "vite build && npx cap copy && npx cap sync",
     "cap:android": "npx cap open android",
     "cap:copy": "vite build && npx cap copy",
@@ -12,11 +12,13 @@
     "cap:sync": "npx cap sync",
     "check": "ultracite check",
     "check:bundle": "bash scripts/check-bundle-identifiers.sh",
+    "check:es5": "node scripts/check-es5.cjs",
     "dev": "vite",
     "fix": "ultracite fix",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "test": "npx tsx tests/test_channel_filtering.ts && npx tsx tests/test-epg-matching.ts && npx tsx tests/test_listKeyHandler_alias.ts",
+    "test": "node --import=tsx tests/test_channel_filtering.ts && node --import=tsx tests/test-epg-matching.ts && node --import=tsx tests/test_listKeyHandler_alias.ts && npm run test:port",
+    "test:port": "node tests/test_port_runtime.cjs && node --import=tsx tests/test_port_playback.ts && node tests/test_port_vod.cjs",
     "typecheck": "tsc --noEmit"
   },
   "overrides": {
@@ -35,6 +37,7 @@
     "@tauri-apps/cli": "^2.11.4",
     "@types/jquery": "^4.0.1",
     "@types/node": "^26.5.0",
+    "acorn": "^8.16.0",
     "rollup": "^4.63.1",
     "terser": "^5.51.2",
     "ts-node": "^10.9.2",

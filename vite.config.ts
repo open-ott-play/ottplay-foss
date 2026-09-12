@@ -1,3 +1,4 @@
+import { parse } from "acorn";
 import { execSync } from "child_process";
 import {
     cpSync,
@@ -213,12 +214,15 @@ export default defineConfig({
                 // Step 3: minify with terser (same options as rewrite)
                 console.log("Step 3: minify with terser...");
                 const result = await minify(bundle, {
+                    ecma: 5,
                     compress: { defaults: false },
                     mangle: false,
                     module: false,
                     output: { comments: false },
                 });
                 if (result.error) throw result.error;
+                // Parsing the final output catches syntax that minification cannot downlevel.
+                parse(result.code, { ecmaVersion: 5, sourceType: "script" });
                 writeFileSync(outPath, result.code);
                 console.log(
                     "Minified: dist/stbPlayer.js (" +

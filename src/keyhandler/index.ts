@@ -266,7 +266,6 @@ function toggleMainPlayback(): void {
     }
 }
 
-
 /**
  * Handle a key event in "main" mode — the default mode when no dialog/list/edit/select-box is active.
  * Maps key codes to actions: number input, navigation, playback control, volume, color keys, etc.
