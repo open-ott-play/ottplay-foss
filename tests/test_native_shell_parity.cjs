@@ -263,6 +263,10 @@ for (const platform of Object.keys(nativeSources)) {
 // Explicit OS Play must be idempotent even though the legacy stbContinue API
 // toggles. Execute the actual core methods to avoid hiding this with a spy.
 const coreControls = functions("src/core/index.ts", [
+    "isCoreThenable",
+    "playCoreMedia",
+    "cancelCoreSeek",
+    "destroyCoreShaka",
     "stbContinue",
     "stbPause",
     "stbStop",
@@ -271,6 +275,8 @@ const coreControls = functions("src/core/index.ts", [
 for (const platform of Object.keys(nativeSources)) {
     let destroyed = 0;
     const w = {
+        _corePendingSeek: null,
+        _coreShakaTeardown: null,
         _playSession: 0,
         cancelLiveRestart() {},
         clearPlayTimeInterval() {},

@@ -595,6 +595,178 @@ function testLoadEpgTimersFilter(ch: Awaited<ReturnType<typeof getModule>>) {
     console.log("  loadEpgTimers filter: OK");
 }
 
+/** Restore persisted timers without corrupting state or switching a foreign channel. */
+function testEpgTimerRestoreSafety(ch: Awaited<ReturnType<typeof getModule>>) {
+    const savedWindow = { ...mockWindow };
+    const savedTimeout = globalThis.setTimeout;
+    const savedClear = globalThis.clearTimeout;
+    const pending = new Map<number, () => void>();
+    const canceled: number[] = [];
+    const played: number[][] = [];
+    const confirmations: (() => void)[] = [];
+    const shifts: string[] = [];
+    const category = "Timer regression category";
+    const catIndex = ch.catsArray.length;
+    const id = 881001;
+    const foreignId = 881002;
+    const now = Math.floor(Date.now() / 1000);
+    let handle = 100;
+    let saved: string | null = null;
+    let globalSaved: string | null = null;
+    globalThis.setTimeout = ((callback: () => void) => {
+        pending.set(++handle, callback);
+        return handle;
+    }) as any;
+    globalThis.clearTimeout = ((timer: number) => {
+        canceled.push(timer);
+        pending.delete(timer);
+    }) as any;
+    mockWindow.providerGetItem = () => saved;
+    mockWindow.stbGetItem = () => globalSaved;
+    mockWindow.providerSetItem = () =>
+        assert.fail("Loading must preserve raw storage");
+    mockWindow.confirmBox = (_message: string, done: () => void) =>
+        confirmations.push(done);
+    mockWindow.playChannel = (c: number, i: number) => played.push([c, i]);
+    mockWindow.showShift = (message: string) => shifts.push(message);
+    mockWindow.closeList = () => {};
+    ch.channels[id] = { ch_id: id, channel_name: "Known channel" };
+    ch.catsArray.push(category);
+    ch.cats[category] = [foreignId, id];
+    const timer = {
+        c: catIndex,
+        ci: id,
+        i: 0,
+        n: "Saved show",
+        t: now + 3600,
+        te: now + 5400,
+    };
+    function fireTimer() {
+        const callback = pending.get(ch.epgTimers[0].ti)!;
+        assert.equal(typeof callback, "function");
+        callback();
+    }
+    try {
+        for (const bad of ["{}", "null", '[null, 1, "x", {"t":"Infinity"}]']) {
+            saved = bad;
+            assert.doesNotThrow(() => ch.loadEpgTimers());
+            assert.deepStrictEqual(
+                ch.epgTimers,
+                [],
+                "Bad data never poisons timer array"
+            );
+            saved = JSON.stringify([timer]);
+            assert.doesNotThrow(
+                () => ch.loadEpgTimers(),
+                "Valid reload after malformed value works"
+            );
+            assert.equal(ch.epgTimers.length, 1);
+        }
+        const old = ch.epgTimers[0];
+        const oldHandles = [old.ti, old.ri];
+        saved = JSON.stringify([{ ...timer, ri: 877, ti: 876 }]);
+        ch.loadEpgTimers();
+        assert(
+            oldHandles.every((value) => canceled.includes(value)),
+            "Both prior live handles are cleared"
+        );
+        assert(
+            !canceled.includes(876) && !canceled.includes(877),
+            "Persisted handles must not cancel this page's timers"
+        );
+        fireTimer();
+        // Change ordering while the confirmation is visible, then resolve by ci.
+        ch.cats[category] = [foreignId, foreignId, id];
+        confirmations.pop()!();
+        assert.deepStrictEqual(
+            played,
+            [[catIndex, 2]],
+            "Saved and changed positions resolve to the same channel ID"
+        );
+
+        fireTimer();
+        const staleConfirmation = confirmations.pop()!;
+        ch.channels[id] = {
+            ch_id: id,
+            channel_name: "Different provider same ID",
+        };
+        staleConfirmation();
+        fireTimer();
+        pending.get(ch.epgTimers[0].ri)!();
+        assert.equal(
+            played.length,
+            1,
+            "Old provider confirmation cannot play new provider's matching ID"
+        );
+        assert.equal(
+            confirmations.length,
+            0,
+            "Old provider timer cannot reopen a dialog"
+        );
+        assert.equal(shifts.length, 0, "Old provider reminder is ignored");
+
+        ch.loadEpgTimers();
+        fireTimer();
+        const canceledConfirmation = confirmations.pop()!;
+        saved = "[]";
+        ch.loadEpgTimers();
+        canceledConfirmation();
+        assert.equal(
+            played.length,
+            1,
+            "Reload cancels an already opened confirmation"
+        );
+
+        // Historical unprefixed storage is read only when provider data is absent.
+        globalSaved = JSON.stringify([{ ...timer, ci: foreignId }]);
+        const rawGlobal = globalSaved;
+        saved = null;
+        ch.loadEpgTimers();
+        assert.equal(
+            ch.epgTimers.length,
+            1,
+            "Unknown valid entries remain available for later playlists"
+        );
+        assert.equal(
+            ch.epgTimers[0].ti,
+            undefined,
+            "An unknown global channel cannot schedule playback by saved c/i"
+        );
+        assert.equal(globalSaved, rawGlobal, "Foreign raw storage is retained");
+        globalSaved = JSON.stringify([
+            { ...timer, ci: String(id), t: String(timer.t) },
+        ]);
+        ch.loadEpgTimers();
+        fireTimer();
+        confirmations.pop()!();
+        assert.equal(
+            played.length,
+            2,
+            "Known legacy string IDs and times remain compatible"
+        );
+        saved = "[]";
+        ch.loadEpgTimers();
+        assert.equal(
+            ch.epgTimers.length,
+            0,
+            "An explicit empty provider list takes precedence over STB fallback"
+        );
+    } finally {
+        saved = "[]";
+        ch.loadEpgTimers();
+        globalThis.setTimeout = savedTimeout;
+        globalThis.clearTimeout = savedClear;
+        delete ch.channels[id];
+        delete ch.cats[category];
+        ch.catsArray.splice(catIndex, 1);
+        for (const key of Object.keys(mockWindow)) delete mockWindow[key];
+        Object.assign(mockWindow, savedWindow);
+    }
+    console.log(
+        "  EPG timer restore, provider identity and delayed confirmation: OK"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // setEpgTimer add / remove
 // ---------------------------------------------------------------------------
@@ -993,6 +1165,9 @@ async function runTests() {
 
     clearMocks();
     testLoadEpgTimersFilter(ch);
+
+    clearMocks();
+    testEpgTimerRestoreSafety(ch);
 
     clearMocks();
     testSetEpgTimerAddRemove(ch);

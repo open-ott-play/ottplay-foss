@@ -104,8 +104,175 @@ export interface PreviousChannel {
     t?: number;
 }
 
-/** Provider media targets are URLs, or -1/-2 for local history/favorites. */
-export type MediaTarget = string | number;
+interface PortChannelIdMigration {
+    get: (key: string) => string | null;
+    ids: Record<string, number | null>;
+    record: (previous: number, current: number) => void;
+    set: (key: string, value: string) => void;
+}
+
+/** Observe only hashes computed while this provider's channel list is loading. */
+export function beginPortChannelIdMigration(): PortChannelIdMigration {
+    var w = window as any;
+    var state: PortChannelIdMigration = {
+        get: w.providerGetItem,
+        ids: {},
+        record: function (previous: number, current: number): void {
+            if (!Number.isInteger(previous) || !Number.isInteger(current))
+                return;
+            var key = String(previous);
+            var known = state.ids[key];
+            state.ids[key] =
+                known === undefined || known === current ? current : null;
+        },
+        set: w.providerSetItem,
+    };
+    w.__ottRecordPortHash = state.record;
+    return state;
+}
+
+/** Stop observing a departed provider, leaving its persisted data untouched. */
+export function cancelPortChannelIdMigration(): void {
+    delete (window as any).__ottRecordPortHash;
+}
+
+/** Incremental migration: unknown IDs, existing channel IDs and ambiguous mappings stay intact. */
+export function finishPortChannelIdMigration(
+    state: PortChannelIdMigration
+): void {
+    var w = window as any;
+    if (w.__ottRecordPortHash !== state.record) return;
+    cancelPortChannelIdMigration();
+    if (
+        w.providerGetItem !== state.get ||
+        w.providerSetItem !== state.set ||
+        typeof state.get !== "function" ||
+        typeof state.set !== "function"
+    )
+        return;
+    function owns(object: object, key: string): boolean {
+        return Object.prototype.hasOwnProperty.call(object, key);
+    }
+    function migrateId(id: unknown): unknown {
+        if (typeof id !== "number" && typeof id !== "string") return id;
+        var key = String(id);
+        if (!/^\d+$/.test(key) || owns(channels, key)) return id;
+        var target = state.ids[key];
+        if (typeof target !== "number" || !owns(channels, String(target)))
+            return id;
+        return typeof id === "string" ? String(target) : target;
+    }
+    function migrateArray(value: unknown): void {
+        if (Array.isArray(value))
+            value.forEach(function (id, index) {
+                value[index] = migrateId(id);
+            });
+    }
+    function migrateField(value: unknown, field: string): void {
+        if (value && typeof value === "object" && !Array.isArray(value)) {
+            var record = value as Record<string, unknown>;
+            if (owns(record, field)) record[field] = migrateId(record[field]);
+        }
+    }
+    var keys = [
+        "favoritesArray",
+        "favoritesLists",
+        "cats",
+        "parentalArray",
+        "prevArr",
+        "continueWatch",
+        "epgTimers",
+        "aAspects",
+        "aZooms",
+        "aAudios",
+        "aSubs",
+    ];
+    keys.forEach(function (key) {
+        try {
+            var raw = state.get.call(w, key);
+            if (!raw) return;
+            var value = JSON.parse(raw);
+            var before = JSON.stringify(value);
+            if (key === "favoritesArray" || key === "parentalArray")
+                migrateArray(value);
+            else if (key === "prevArr" || key === "epgTimers") {
+                if (Array.isArray(value))
+                    value.forEach(function (entry) {
+                        migrateField(entry, "ci");
+                    });
+            } else if (key === "continueWatch")
+                migrateField(value, "channelId");
+            else if (key === "cats" || key === "favoritesLists") {
+                var lists = key === "cats" ? value : value && value.lists;
+                if (lists && typeof lists === "object" && !Array.isArray(lists))
+                    Object.keys(lists).forEach(function (name) {
+                        migrateArray(lists[name]);
+                    });
+            } else if (
+                value &&
+                typeof value === "object" &&
+                !Array.isArray(value)
+            ) {
+                Object.keys(value).forEach(function (oldKey) {
+                    var newKey = String(migrateId(oldKey));
+                    // Preserve an already configured canonical channel instead of overwriting it.
+                    if (newKey !== oldKey && !owns(value, newKey)) {
+                        value[newKey] = value[oldKey];
+                        delete value[oldKey];
+                    }
+                });
+            }
+            var migrated = JSON.stringify(value);
+            if (migrated === before) return;
+            state.set.call(w, key, migrated);
+            // These values were read before the provider populated its channel set.
+            if (key === "prevArr") {
+                prevArr = value;
+                w.prevArr = value;
+            } else if (key === "aAspects") {
+                aAspects = value;
+                w.aAspects = value;
+            } else if (key === "aZooms") {
+                aZooms = value;
+                w.aZooms = value;
+            } else if (key === "aAudios") {
+                aAudios = value;
+                w.aAudios = value;
+            } else if (key === "aSubs") {
+                aSubs = value;
+                w.aSubs = value;
+            }
+        } catch (_) {
+            // Keep malformed/unsupported records, and retry failed storage writes next load.
+        }
+    });
+}
+
+/** Edem/VPortal passes request objects instead of playlist URLs. */
+export interface MediaPortalTarget {
+    a?: string;
+    filters?: unknown[];
+    items?: unknown[];
+    mediaName?: string;
+    request?: Record<string, unknown>;
+}
+
+/** Public provider ABI: URL, local history/favorites, or a VPortal request. */
+export type MediaTarget = string | -1 | -2 | MediaPortalTarget;
+
+/** Legacy callbacks remain callable with no arguments; built-ins can reject stale work earlier. */
+interface MediaListCompletion {
+    isCurrent?: () => boolean;
+    (): void;
+}
+
+interface MediaLoadState {
+    name: string;
+    pending: boolean;
+    provider: unknown;
+    records: MediaHistoryEntry[];
+    urls: MediaTarget[] | null;
+}
 
 export interface MediaHistoryEntry {
     adult?: number | string;
@@ -2218,10 +2385,36 @@ export function renderEpgHTML(epgData: EPGEntry[]): string {
  */
 export function startEpgTimer(timer: any): void {
     var w = window as any;
+    if (!timer || typeof timer !== "object") return;
+    clearTimeout(timer.ti);
+    clearTimeout(timer.ri);
+    delete timer.ti;
+    delete timer.ri;
+    var channel = Object.prototype.hasOwnProperty.call(channels, timer.ci)
+        ? channels[timer.ci]
+        : null;
+    if (!channel || !isFinite(+timer.t)) return;
     var delay = timer.t * 1000 - Date.now();
     if (delay < 0) delay = 0;
 
-    if (timer.ri) clearTimeout(timer.ri);
+    // A provider reload replaces channel objects. A timer reload/removal clears
+    // its handle, also invalidating an already open confirmation dialog.
+    var timerId: ReturnType<typeof setTimeout>;
+    function isCurrent(): boolean {
+        return timer.ti === timerId && channels[timer.ci] === channel;
+    }
+    function currentPosition(): [number, number] | null {
+        var category = cats[catsArray[timer.c]];
+        if (category && category[timer.i] == timer.ci)
+            return [timer.c, timer.i];
+        for (var c = 0; c < catsArray.length; c++) {
+            category = cats[catsArray[c]];
+            if (!category) continue;
+            for (var i = 0; i < category.length; i++)
+                if (category[i] == timer.ci) return [c, i];
+        }
+        return null;
+    }
 
     var leadMs = (settings.epgRemindMinutes || 0) * 60 * 1000;
     if (leadMs > 0) {
@@ -2230,6 +2423,7 @@ export function startEpgTimer(timer: any): void {
         if (delayRemind < 0 && timer.t * 1000 - Date.now() > 0) delayRemind = 0;
         timer.ri = setTimeout(
             function () {
+                if (!isCurrent()) return;
                 if (typeof w.showShift === "function") {
                     var minutesLeft = Math.max(
                         0,
@@ -2252,7 +2446,8 @@ export function startEpgTimer(timer: any): void {
         );
     }
 
-    timer.ti = setTimeout(function () {
+    timerId = timer.ti = setTimeout(function () {
+        if (!isCurrent() || !currentPosition()) return;
         var msg =
             w._("Timer: switch to channel?") +
             "<br/><br/>" +
@@ -2273,35 +2468,61 @@ export function startEpgTimer(timer: any): void {
 
         if (typeof w.confirmBox === "function") {
             w.confirmBox(msg, function () {
+                if (!isCurrent()) return;
+                var position = currentPosition();
+                if (!position) return;
                 if (typeof w.closeList === "function") w.closeList();
-                if (typeof (w as any).playChannel === "function")
-                    (w as any).playChannel(timer.c, timer.i);
+                if (typeof w.playChannel === "function")
+                    w.playChannel(position[0], position[1]);
             });
         }
     }, delay);
 }
 
 /**
- * Load previously-saved EPG timers from STB storage (key `epgTimers`),
- * filter out past timers, and restart each active timer via `startEpgTimer`.
- *
- * Side effects: Reads from STB storage; mutates `epgTimers` array;
- * calls `startEpgTimer` for each valid timer.
+ * Restore provider timers (with legacy STB fallback), retaining valid future
+ * entries and scheduling only channels present in the current provider.
+ * Saved data is not rewritten: missing channels may return on a later load.
  */
 export function loadEpgTimers(): void {
     var w = window as any;
+    var previousTimers = Array.isArray(epgTimers) ? epgTimers : [];
+    epgTimers = [];
+    previousTimers.forEach(function (timer) {
+        if (!timer || typeof timer !== "object") return;
+        clearTimeout(timer.ti);
+        clearTimeout(timer.ri);
+        delete timer.ti;
+        delete timer.ri;
+    });
     try {
         var data =
-            typeof w.stbGetItem === "function"
-                ? w.stbGetItem("epgTimers")
+            typeof w.providerGetItem === "function"
+                ? w.providerGetItem("epgTimers")
                 : null;
+        if (data == null && typeof w.stbGetItem === "function")
+            data = w.stbGetItem("epgTimers");
         if (data) {
-            epgTimers = JSON.parse(data);
+            var parsed = JSON.parse(data);
+            if (!Array.isArray(parsed)) return;
             var now = Date.now() / 1000;
-            epgTimers = epgTimers.filter(function (t) {
-                return t.t > now;
+            epgTimers = parsed.filter(function (t) {
+                return (
+                    t &&
+                    typeof t === "object" &&
+                    (typeof t.ci === "number" || typeof t.ci === "string") &&
+                    (typeof t.t === "number" || typeof t.t === "string") &&
+                    isFinite(+t.t) &&
+                    +t.t > now
+                );
             });
-            epgTimers.forEach(startEpgTimer);
+            epgTimers.forEach(function (timer) {
+                // Legacy saves included runtime handles. They belong to the
+                // previous page instance and must never cancel current work.
+                delete timer.ti;
+                delete timer.ri;
+                startEpgTimer(timer);
+            });
         }
     } catch (e) {
         console.error("loadEpgTimers error:", e);
@@ -2348,6 +2569,8 @@ export function setEpgTimer(_channelId?: any, _time?: number): void {
         } else {
             clearTimeout(epgTimers[idx].ti);
             clearTimeout(epgTimers[idx].ri);
+            delete epgTimers[idx].ti;
+            delete epgTimers[idx].ri;
             epgTimers.splice(idx, 1);
         }
         if (typeof w.showPage === "function") w.showPage();
@@ -2602,6 +2825,73 @@ export function catRecordsList(catIdx: number): void {
 // The legacy bundle links this renderer from ui/index.ts.
 declare function showMediaList1(): void;
 
+/** Keep the last accepted view separate from globals mutated by provider callbacks. */
+export function rememberMediaView(pending = false): void {
+    var w = window as any;
+    var state: MediaLoadState = {
+        name: w.mediaName || "",
+        pending: pending,
+        provider: w.getMediaArray,
+        records: w.mediaRecords || [],
+        urls: w.mediaUrls,
+    };
+    w._mediaLoadState = state;
+}
+
+/** Closing/reloading while fetching must not reopen a departed VOD view. */
+export function cancelMediaLoad(): void {
+    var w = window as any;
+    var state: MediaLoadState | undefined = w._mediaLoadState;
+    if (state && state.pending) {
+        w.mediaUrls = null;
+        w.mediaNames = [];
+        w.mediaSelects = [];
+        w.mediaRecords = [];
+        w.mediaRecordsPar = null;
+        w.mediaName = "";
+    }
+    rememberMediaView();
+}
+
+/** Providers write mediaRecords/mediaName before their no-argument completion callback. */
+export function requestMediaList(target: MediaTarget): void {
+    var w = window as any;
+    var provider = w.getMediaArray;
+    if (typeof provider !== "function") return;
+    rememberMediaView(true);
+    var request: MediaLoadState = w._mediaLoadState;
+    var complete: MediaListCompletion = function () {
+        var current: MediaLoadState | undefined = w._mediaLoadState;
+        if (
+            current !== request ||
+            request.urls !== w.mediaUrls ||
+            request.provider !== w.getMediaArray
+        ) {
+            // A late response has already overwritten these legacy globals.
+            // Restore the current accepted/loading view without rendering it again.
+            if (
+                current &&
+                current.urls === w.mediaUrls &&
+                current.provider === w.getMediaArray
+            ) {
+                w.mediaRecords = current.records;
+                w.mediaName = current.name;
+            } else w.mediaRecords = [];
+            return;
+        }
+        request.pending = false;
+        showMediaList();
+    };
+    complete.isCurrent = function () {
+        return (
+            w._mediaLoadState === request &&
+            request.urls === w.mediaUrls &&
+            request.provider === w.getMediaArray
+        );
+    };
+    provider(target, complete);
+}
+
 /** Return to the parent VOD folder, retaining its selected row. */
 function mediaBack(): void {
     var w = window as any;
@@ -2716,7 +3006,8 @@ export function addToMedFavorites(item: MediaHistoryEntry): void {
 export function selectMedia(index?: number): void {
     var w = window as any;
     var selected = index === undefined ? w.selIndex : index;
-    var item: MediaHistoryEntry | undefined = w.listArray[selected];
+    var selectedList: MediaHistoryEntry[] = w.listArray;
+    var item: MediaHistoryEntry | undefined = selectedList[selected];
     if (!item) return;
     if (
         Number(item.adult) === 1 &&
@@ -2725,6 +3016,8 @@ export function selectMedia(index?: number): void {
         !w.parentAccess
     ) {
         w.enterPinAndSetAccess(function () {
+            if (w.listArray !== selectedList || selectedList[selected] !== item)
+                return;
             selectMedia(selected);
         });
         return;
@@ -4243,12 +4536,23 @@ export function showActionsDialog(): void {
 
 export function searchMedia(e: MediaHistoryEntry): void {
     var w = window as any;
+    if (typeof e.playlist_url !== "string") return;
+    var target = e.playlist_url;
+    var sourceList = w.listArray;
+    var sourceUrls = w.mediaUrls;
+    var sourceProvider = w.getMediaArray;
     w.editCaption = w._("String for search");
     var t =
         (typeof w.stbGetItem === "function" ? w.stbGetItem("medSearch") : "") ||
         "";
     w.editvar = t;
     w.setEdit = function (): void {
+        if (
+            w.listArray !== sourceList ||
+            w.mediaUrls !== sourceUrls ||
+            w.getMediaArray !== sourceProvider
+        )
+            return;
         var inputEl = document.getElementById("editvar");
         var inputVal = (inputEl && (inputEl as HTMLInputElement).value) || "";
         var submitted = window.editvar || "";
@@ -4257,13 +4561,10 @@ export function searchMedia(e: MediaHistoryEntry): void {
         if (typeof w.stbSetItem === "function") w.stbSetItem("medSearch", t);
         w.mediaName = e.title;
         w.mediaSelects.unshift(0);
-        if (
-            typeof w.mediaList === "function" &&
-            typeof e.playlist_url === "string"
-        ) {
+        if (typeof w.mediaList === "function") {
             w.mediaList(
-                e.playlist_url +
-                    (e.playlist_url.indexOf("?") === -1 ? "?" : "&") +
+                target +
+                    (target.indexOf("?") === -1 ? "?" : "&") +
                     "search=" +
                     encodeURIComponent(t)
             );

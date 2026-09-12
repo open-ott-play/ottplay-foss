@@ -141,14 +141,15 @@ mod tests {
     #[test]
     fn custom_feed_cdata_aliases_and_programme_order() {
         let xml = r#"<tv><channel id="private"><display-name>First</display-name><display-name><![CDATA[Alias & News]]></display-name></channel>
-        <programme channel="private" start="20260912110000 +0000" stop="20260912120000 +0000"><title><![CDATA[Later & News]]></title></programme>
+        <programme channel="private" start="20260912110000 +0000" stop="20260912120000 +0000"><title>Later &amp; <![CDATA[News]]></title></programme>
         <programme channel="private" start="20260912100000 +0000" stop="20260912110000 +0000"><title>Earlier</title></programme></tv>"#;
         let (channels, programs) = xmltv::parse_xmltv_native(xml).unwrap();
         assert_eq!(channels["private"].names, ["First", "Alias & News"]);
         assert_eq!(programs["private"][0].title, "Earlier");
         assert_eq!(programs["private"][1].title, "Later & News");
         let (_, browser) = xmltv::parse_xmltv(xml).unwrap();
-        assert_eq!(browser["private"].len(), 1, "original browser parser behavior is unchanged");
+        assert_eq!(browser["private"].len(), 2, "browser retains main's CDATA support");
+        assert_eq!(browser["private"][0].title, "Later & News", "browser retains XML input order");
     }
     #[test]
     fn incomplete_native_feed_is_rejected_before_cache_replacement() {

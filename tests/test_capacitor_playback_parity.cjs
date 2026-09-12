@@ -23,6 +23,7 @@ const begin = entry.indexOf("// Capacitor Mode C: native media bridges");
 const end = entry.indexOf("// Tauri Mode B: OS MediaSession", begin);
 assert(begin >= 0 && end > begin);
 const wrapper = compile(entry.slice(begin, end));
+const settle = () => new Promise((resolve) => setImmediate(resolve));
 
 function fixture(platform = "android") {
     const nativeCalls = [];
@@ -93,8 +94,15 @@ function fixture(platform = "android") {
         streams.push(this);
     }
     Shaka.isBrowserSupported = () => true;
-    Shaka.prototype.load = function (url) {
+    Shaka.prototype.load = function (url, position) {
         this.url = url;
+        this.position = position;
+        return Promise.resolve().then(() => {
+            this.video.currentTime = position || 0;
+        });
+    };
+    Shaka.prototype.destroy = function () {
+        this.destroyed = true;
         return Promise.resolve();
     };
     const w = {
@@ -194,7 +202,14 @@ async function run() {
             "DASH uses the same controllable video as browser TS"
         );
         assert.equal(streams[0].url, "https://example.invalid/video.mpd");
+        assert.equal(streams[0].position, 31);
         assert.equal(w.stbIsPlaying, original.isPlaying);
+        assert.equal(
+            w.stbIsPlaying(),
+            false,
+            "Shaka must finish loading before play"
+        );
+        await settle();
         assert.equal(w.stbIsPlaying(), true);
         assert.equal(w.stbGetPosTime(), 31);
         assert.equal(w.stbGetLen(), 600);
@@ -221,6 +236,9 @@ async function run() {
         );
         w.setPlayerMode(1);
         w.stbPlay("https://example.invalid/channel.m3u8");
+        assert.equal(streams[0].destroyed, true);
+        assert.equal(streams.length, 1, "new engine waits for Shaka detach");
+        await settle();
         const hls = streams.at(-1);
         hls.events.manifest();
         assert.equal(
@@ -301,7 +319,7 @@ async function run() {
     {
         const { w, nativeCalls, elements } = fixture("ios");
         w.stbPlayPip("https://example.invalid/second.m3u8");
-        await Promise.resolve();
+        await settle();
         assert.equal(nativeCalls[0][0], "playPip");
         assert.equal(
             nativeCalls[0][1].url,
@@ -309,6 +327,7 @@ async function run() {
         );
         assert.equal(elements.videopip.style.display, "none");
         w.stbStopPip();
+        await settle();
         assert.equal(nativeCalls.at(-1)[0], "stopPip");
     }
     console.log(

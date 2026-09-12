@@ -212,6 +212,10 @@ try {
         }
     }
     const controls = functions("src/core/index.ts", [
+        "isCoreThenable",
+        "playCoreMedia",
+        "cancelCoreSeek",
+        "destroyCoreShaka",
         "stbContinue",
         "stbPause",
         "stbIsPlaying",
@@ -230,6 +234,8 @@ try {
     };
     let destroyed = 0;
     const w = {
+        _corePendingSeek: null,
+        _coreShakaTeardown: null,
         _playSession: 0,
         cancelLiveRestart() {},
         clearPlayTimeInterval() {},

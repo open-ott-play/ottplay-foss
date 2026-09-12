@@ -119,12 +119,12 @@ function polyfillRuntimeApis(): void {
  * - May add `Date.now` if it does not exist
  */
 function polyfillPerformanceNow(): void {
+    if (!Date.now) {
+        Date.now = function (): number {
+            return new Date().getTime();
+        };
+    }
     if (!(window.performance && window.performance.now)) {
-        if (!Date.now) {
-            Date.now = function (this: any): number {
-                return new this().getTime();
-            };
-        }
         var perf =
             (window as any).performance || ((window as any).performance = {});
         var timing = perf.timing || (perf.timing = {});

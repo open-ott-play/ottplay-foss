@@ -120,3 +120,9 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
       - name: Test core and server without desktop system dependencies
         run: cargo test --locked -p ottplay-core -p ottplay-server
+      - name: Verify published GLib source and security backport
+        run: node scripts/check-glib-backport.cjs
+      - name: Install GLib for optimized iterator regression
+        run: sudo apt-get update && sudo apt-get install -y libglib2.0-dev pkg-config
+      - name: Exercise patched GLib iterator through FFI in release mode
+        run: cargo test --locked --release --manifest-path tests/glib-variant-regression/Cargo.toml

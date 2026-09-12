@@ -1066,6 +1066,9 @@ function fXML_to_JSON(e, r) {
 }
 
 function getMediaArrayXML(e, r) {
+    function isCurrent() {
+        return !r.isCurrent || r.isCurrent();
+    }
     mediaUrls[mediaUrls.length - 1] = e;
     if (e === "") {
         r();
@@ -1086,14 +1089,17 @@ function getMediaArrayXML(e, r) {
             box_mac;
     $.ajax({
         complete: function () {
+            if (!isCurrent()) return;
             $("#dialogbox").hide();
             r();
         },
         dataType: "text",
         error: function (e, r, t) {
+            if (!isCurrent()) return;
             alert("Error: " + e.status);
         },
         success: function (e, r, t) {
+            if (!isCurrent()) return;
             var i = e.slice(0, 16);
             if (i.length < 7) {
                 alert("Error: Bad response length!");

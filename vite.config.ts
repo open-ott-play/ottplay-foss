@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import { parse } from "acorn";
 import { execSync } from "child_process";
 import {
@@ -15,59 +16,12 @@ import { fileURLToPath } from "url";
 import { defineConfig } from "vite";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-
-// Same module order as build-concat.cjs
-const MODULES = [
-    "build/polyfills/index.js",
-    "build/utils/lzstring.js",
-    "build/storage/index.js",
-    "build/localization/index.js",
-    "build/settings/cloud.js",
-    "build/settings/index.js",
-    "build/utils/helpers.js",
-    "build/utils/encoding.js",
-    "build/utils/qrcode.js",
-    "build/channels/types.js",
-    "build/channels/favorites-lists.js",
-    "build/channels/search.js",
-    "build/channels/index.js",
-    "build/debug/playback-debug.js",
-    "build/core/index.js",
-    "build/swop/index.js",
-    "build/ui/index.js",
-    "build/keyhandler/index.js",
-    "build/provider/index.js",
-    "build/commands/index.js",
-    "build/app/init.js",
-    "build/app/device.js",
-    "build/settings/sleepTimer.js",
-    "build/plugins/native-bridge.js",
-    "build/plugins/native-http.js",
-    "build/plugins/mobile-native-media.js",
-    "build/plugins/dash-exo-player.js",
-    "build/plugins/m3u-proxy.js",
-    "build/plugins/stalker-portal.js",
-    "build/index.js",
-];
-
-// Strip ES module syntax — same logic as build-concat.cjs
-const EXPORT_BRACE_RE = /^export\s*\{[^}]*\};?\s*$/;
-const EXPORT_RE = /^(\s*)export\s+/;
-
-function stripModule(code: string): string {
-    return code
-        .split("\n")
-        .filter((line) => !line.trim().startsWith("import "))
-        .map((line) => {
-            const t = line.trim();
-            if (t.startsWith("export ")) {
-                if (EXPORT_BRACE_RE.test(t)) return "// " + line;
-                return line.replace(EXPORT_RE, "$1");
-            }
-            return line;
-        })
-        .join("\n");
-}
+// Load the helper from its own CommonJS module so Vite's config bundler does
+// not rewrite its TypeScript dependency into a file-URL require.
+const classicRequire = createRequire(import.meta.url);
+const { assembleClassic, CLASSIC_MODULES } = classicRequire(
+    resolve(__dirname, "scripts/classic-bundle.cjs")
+);
 
 // Stage a Mode A-like web root for Tauri Mode B (frontendDist).
 // Boot resolves host + "/dist/stbPlayer.js", "/stb/...", "/fonts/...", etc.
@@ -152,9 +106,9 @@ function stageTauriFrontend(
     console.log("Staged Tauri frontend at", stageDir);
 }
 
-// Vite wrapper: run tsc → concatenate (same as build-concat.cjs) → minify with terser.
+// Vite wrapper: compile, link the classic global ABI, then minify as ES5.
 // Vite's role is orchestration — Rollup's bundler is not used because the
-// rewrite build needs ES module syntax stripped to expose ~130 window globals.
+// device/provider scripts still use the published classic globals.
 export default defineConfig({
     appType: "custom",
     build: {
@@ -181,16 +135,7 @@ export default defineConfig({
                 const outDir = resolve(__dirname, "dist");
                 mkdirSync(outDir, { recursive: true });
 
-                let bundle = "";
-                for (const mod of MODULES) {
-                    const full = join(__dirname, mod);
-                    if (!existsSync(full)) {
-                        throw new Error(
-                            "Required bundle module missing: " + mod
-                        );
-                    }
-                    bundle += stripModule(readFileSync(full, "utf8")) + "\n";
-                }
+                let bundle = assembleClassic(__dirname, CLASSIC_MODULES);
 
                 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
                 const version = pkg.version || "local";

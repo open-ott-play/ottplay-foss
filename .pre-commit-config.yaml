@@ -11,9 +11,11 @@ repos:
     hooks:
       - id: end-of-file-fixer
         # vendored / generated trees stay untouched
-        exclude: '^(js|stb|stbPlayer|prov|fonts)/'
+        # Preserve these published crate bytes; check-glib-backport verifies them.
+        exclude: '^(js|stb|stbPlayer|prov|fonts)/|^vendor/glib-0\.18\.5/(LICENSE|\.cargo_vcs_info\.json)$'
       - id: trailing-whitespace
-        exclude: '^(js|stb|stbPlayer|prov|fonts)/'
+        # A unified patch uses a single space for an empty context line.
+        exclude: '^(js|stb|stbPlayer|prov|fonts)/|^vendor/glib-0\.18\.5-RUSTSEC-2024-0429\.patch$'
       - id: check-yaml
 
   - repo: https://github.com/jumanjihouse/pre-commit-hooks
@@ -28,6 +30,11 @@ repos:
   # before committing, or "npx biome check --write" to apply fixes.
   - repo: local
     hooks:
+      - id: glib-backport
+        name: verify published GLib source and safety patch
+        entry: node scripts/check-glib-backport.cjs
+        language: system
+        pass_filenames: false
       - id: biome
         name: biome check
         entry: npx --no-install @biomejs/biome check src biome.json package.json tsconfig.json

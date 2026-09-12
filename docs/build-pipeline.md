@@ -1,64 +1,37 @@
-# Build Pipeline — Phase 5.3.5
+# Classic ES5 build pipeline
 
-## Current pipeline
+`npm run build` runs Vite, TypeScript compilation, the classic linker in
+`scripts/classic-bundle.cjs`, and Terser. The result is `dist/stbPlayer.js`.
+Vite then stages the web roots and validates the actual shipped scripts as ES5.
 
-`npm run build` → Vite (`vite.config.ts`) → `tsc` → strip ES module syntax → concat (`MODULES` order) → terser → `dist/stbPlayer.js`.
+`CLASSIC_MODULES` in `scripts/classic-bundle.cjs` is the ordered list of runtime
+modules. Every emitted runtime import must resolve to a listed module or an
+explicit checked ABI bridge. Missing dependencies fail the build. The linker
+uses TypeScript syntax trees and bound symbols to remove module syntax; it
+supports multiline named imports and resolves renamed imports without confusing
+local variables or object property names.
 
-Vite handles orchestration; Rollup bundler is **not** used. The concat + strip + terser steps live inline in `vite.config.ts` (`generateBundle` hook), invoked via the `enforce: "post"` plugin.
+Imported aliases use small ES5 reader functions, so mutable values stay live
+and cannot capture a same-named parameter in the caller. An alias such as
+`video as videoElement` continues to read the current `video` after initialization
+or replacement. Default and namespace imports are rejected with a diagnostic;
+use named imports for this classic output.
 
-## Why concat + strip
+The modules still share a global scope because STB adapters and provider scripts
+use bare public identifiers. Keep Terser `ecma: 5` and `mangle: false`. Put leaf
+modules before consumers that use their values during initialization, and avoid
+duplicate global declarations when extracting new modules. This linker preserves
+the public ABI; it does not make internal modules independent scopes.
 
-HS5 / MAG devices load `dist/stbPlayer.js` as a classic (non-module) `<script>`. Their `prov.js` plugins are also classic scripts using **bare** identifiers (`popupActions.splice`, `listKeyHandler = …`, `chanels`). The `stripModule()` function removes `import`/`export` statements so the concat produces one valid classic-script bundle.
+`src/app/state.ts` remains an ESM-only state mirror. Its three provider popup
+imports (`popupActions`, `popupArray`, `popupDetail`) explicitly resolve to the
+classic arrays owned by `src/index.ts`. The linker checks those declarations and
+rejects any additional implicit bridge. Listing the state mirror itself would
+reinitialize the shared popup arrays and break provider mutations.
 
-**No dual ESM/classic emit.** There is only one build artifact: `dist/stbPlayer.js`. The `vite.config.ts` `stripModule()` step does not produce a separate ESM output — it transforms the TypeScript-compiled JS to classic form before concatenation. Classic `stbPlayer.js` is the sole runtime artifact.
-
-`terser` minifies with `mangle: false` — `function.name` introspection is still used at runtime by some prov.js stubs and the info-panel key path.
-
-## Bundle size
-
-~322 KB minified. ~335 window globals published by `src/index.ts`.
-
-## MODULES load-order checklist
-
-The `MODULES` array in `vite.config.ts` defines concatenation order. All files are built by `tsc` first, then concatenated in array order. New files added to the bundle must be placed **before** any file that consumes them — never after `build/index.js` if index redeclares the same `function` name (that causes a `var` overwrite at best, a SyntaxError at worst for `const`/`let`).
-
-| # | Member | Must load before |
-|---|--------|-----------------|
-| 1 | `build/polyfills/index.js` | everything (polyfills) |
-| 2 | `build/utils/lzstring.js` | anything using `lzstring` |
-| 3 | `build/storage/index.js` | anything using `ottpStorage` |
-| 4 | `build/localization/index.js` | anything using localized strings |
-| 5 | `build/settings/index.js` | anything using `settings.*` |
-| 6 | `build/utils/helpers.js` | most of the app (utility helpers) |
-| 7 | `build/utils/encoding.js` | anything encoding base64 |
-| 7b | `build/utils/qrcode.js` | swop invite QR (makeQrSvg) |
-| 8 | `build/channels/types.js` | channels/index.js |
-| 9 | `build/channels/index.js` | core, ui, keyhandler |
-| 10 | `build/debug/playback-debug.js` | core (debug wiring) |
-| 11 | `build/core/index.js` | ui, keyhandler, commands |
-| 12 | `build/swop/index.js` | ui (♥™ remote text entry) |
-| 13 | `build/ui/index.js` | keyhandler, provider |
-| 14 | `build/keyhandler/index.js` | provider |
-| 15 | `build/provider/index.js` | commands, app/init |
-| 16 | `build/commands/index.js` | app/init, app/device |
-| 17 | `build/app/init.js` | app/device |
-| 18 | `build/app/device.js` | — |
-| 19 | `build/index.js` | last (assembler; imports all) |
-
-Adding a new leaf module: put it before `build/index.js` at the correct depth. Do not add a module to MODULES that redeclares a `const`/`let` already in `build/index.js`.
-
-## Bundle identifier check
-
-After `vite build`, `scripts/check-bundle-identifiers.sh` verifies the classic bundle still contains the six HS5/plugin identifiers required by prov.js and the boot entry:
-
-```
-startPlayer  popupActions  noProvParam  optionsList  listKeyHandler  chanels
-```
-
-These are the bare identifiers that classic prov.js scripts reference. If this check fails on main, fix the build — not the check.
-
-## Build scripts (package.json)
-
-| Script | Entrypoint | Notes |
-|--------|-----------|-------|
-| `build` | `vite.config.ts` | Only build script — `vite build` |
+`npm run check:bundle` validates public identifiers and executes the emitted
+bundle in legacy, modern and Capacitor profiles. `npm run check:es5` checks
+JavaScript grammar and staged copies. `npm test` includes linker regressions for
+live aliases, lexical shadowing, multiline imports, missing dependencies and the
+explicit state bridge. See `docs/es5-compatibility.md` for runtime API constraints
+and `docs/mode-a-test-bundle.md` for the standalone device package.

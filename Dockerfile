@@ -4,6 +4,7 @@ WORKDIR /app
 COPY package.json package-lock.json tsconfig.json vite.config.ts ./
 COPY src ./src
 # Vite validates and stages the actual ES5 assets, including the boot loader.
+COPY scripts/classic-bundle.cjs ./scripts/classic-bundle.cjs
 COPY scripts/html-scripts.cjs ./scripts/html-scripts.cjs
 COPY scripts/check-es5.cjs ./scripts/check-es5.cjs
 COPY index.html favicon.ico ./
@@ -21,6 +22,7 @@ FROM rust:1.98-alpine@sha256:1716b3aa042d735f4566d14dc54e8037de9d69556e2d5dd5813
 RUN apk add --no-cache musl-dev build-base
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
+COPY vendor ./vendor
 COPY src-rs ./src-rs
 # Workspace lists src-tauri (desktop shell). Server image only builds
 # ottplay-server - drop that member so cargo does not need /app/src-tauri.

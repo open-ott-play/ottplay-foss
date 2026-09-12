@@ -43,7 +43,7 @@ pub async fn fetch_single(source: &str) -> anyhow::Result<(Channels, Programs)> 
     fetch_single_impl(source, false).await
 }
 
-/// Native custom feeds retain CDATA, aliases and chronological programme order.
+/// Native custom feeds retain aliases and chronological programme order.
 pub async fn fetch_single_native(source: &str) -> anyhow::Result<(Channels, Programs)> {
     fetch_single_impl(source, true).await
 }
@@ -51,10 +51,18 @@ pub async fn fetch_single_native(source: &str) -> anyhow::Result<(Channels, Prog
 async fn fetch_single_impl(source: &str, native: bool) -> anyhow::Result<(Channels, Programs)> {
     let content: Vec<u8> = if source.starts_with("http://") || source.starts_with("https://") {
         let builder = Client::builder().user_agent("OTT-play-FOSS/1.0");
-        let builder = if native { builder.timeout(std::time::Duration::from_secs(60)) } else { builder };
+        let builder = if native {
+            builder.timeout(std::time::Duration::from_secs(60))
+        } else {
+            builder
+        };
         let client = builder.build()?;
         let resp = client.get(source).send().await?;
-        let resp = if native { resp.error_for_status()? } else { resp };
+        let resp = if native {
+            resp.error_for_status()?
+        } else {
+            resp
+        };
         let bytes = resp.bytes().await?;
         bytes.to_vec()
     } else {
@@ -86,7 +94,9 @@ pub fn parse_xmltv_native(xml: &str) -> anyhow::Result<(Channels, Programs)> {
 
 fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Programs)> {
     let mut reader = Reader::from_str(xml);
-    reader.config_mut().trim_text(true);
+    // quick-xml 0.41 emits references separately. Preserve whitespace between
+    // text/reference/CDATA events and trim once when the complete field closes.
+    reader.config_mut().trim_text(false);
 
     let mut channels: Channels = HashMap::new();
     let mut programs: Programs = HashMap::new();
@@ -94,6 +104,7 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
     let mut current_channel: Option<Channel> = None;
     let mut current_programme: Option<(String, Programme)> = None;
     let mut text_target: Option<TextTarget> = None;
+    let mut text_buffer = String::new();
 
     let mut buf = Vec::new();
     let mut depth = 0usize;
@@ -107,13 +118,19 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
             match &event {
                 Ok(Event::Start(element)) => {
                     if depth == 0 {
-                        anyhow::ensure!(!root_seen && element.name().as_ref() == b"tv", "Invalid XMLTV root");
+                        anyhow::ensure!(
+                            !root_seen && element.name().as_ref() == b"tv",
+                            "Invalid XMLTV root"
+                        );
                         root_seen = true;
                     }
                     depth += 1;
                 }
                 Ok(Event::Empty(element)) if depth == 0 => {
-                    anyhow::ensure!(!root_seen && element.name().as_ref() == b"tv", "Invalid XMLTV root");
+                    anyhow::ensure!(
+                        !root_seen && element.name().as_ref() == b"tv",
+                        "Invalid XMLTV root"
+                    );
                     root_seen = true;
                     root_closed = true;
                 }
@@ -121,15 +138,24 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
                     anyhow::ensure!(depth > 0, "Unexpected XMLTV closing element");
                     depth -= 1;
                     if depth == 0 {
-                        anyhow::ensure!(element.name().as_ref() == b"tv", "Invalid XMLTV closing root");
+                        anyhow::ensure!(
+                            element.name().as_ref() == b"tv",
+                            "Invalid XMLTV closing root"
+                        );
                         root_closed = true;
                     }
                 }
                 Ok(Event::Text(text)) if depth == 0 => {
-                    anyhow::ensure!(text.unescape()?.trim().is_empty(), "Text outside XMLTV root");
+                    anyhow::ensure!(text.decode()?.trim().is_empty(), "Text outside XMLTV root");
+                }
+                Ok(Event::GeneralRef(_)) if depth == 0 => {
+                    anyhow::bail!("Entity outside XMLTV root")
                 }
                 Ok(Event::CData(_)) if depth == 0 => anyhow::bail!("CDATA outside XMLTV root"),
-                Ok(Event::Eof) => anyhow::ensure!(root_seen && root_closed && depth == 0, "Incomplete XMLTV document"),
+                Ok(Event::Eof) => anyhow::ensure!(
+                    root_seen && root_closed && depth == 0,
+                    "Incomplete XMLTV document"
+                ),
                 _ => {}
             }
         }
@@ -162,16 +188,16 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
                         ));
                     }
                     "display-name" if current_channel.is_some() => {
-                        if native { current_channel.as_mut().unwrap().name.clear(); }
                         text_target = Some(TextTarget::ChannelName);
+                        text_buffer.clear();
                     }
                     "title" if current_programme.is_some() => {
-                        if native { current_programme.as_mut().unwrap().1.title.clear(); }
                         text_target = Some(TextTarget::ProgTitle);
+                        text_buffer.clear();
                     }
                     "desc" if current_programme.is_some() => {
-                        if native { current_programme.as_mut().unwrap().1.desc.clear(); }
                         text_target = Some(TextTarget::ProgDesc);
+                        text_buffer.clear();
                     }
                     "icon" => {
                         if let Some(src) = attr(&e, "src") {
@@ -185,31 +211,25 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
                     _ => {}
                 }
             }
-            Ok(Event::CData(data)) if native => {
-                append_native_text(text_target, &mut current_channel, &mut current_programme, &String::from_utf8_lossy(data.as_ref()));
-            }
-            Ok(Event::Text(t)) if native => {
-                append_native_text(text_target, &mut current_channel, &mut current_programme, &t.unescape().unwrap_or_default());
-            }
             Ok(Event::Text(t)) => {
-                if let Some(target) = text_target.take() {
-                    let s = t.unescape().unwrap_or_default().into_owned();
-                    match target {
-                        TextTarget::ChannelName => {
-                            if let Some(c) = current_channel.as_mut() {
-                                c.names.push(s.clone());
-                                c.name = s;
-                            }
-                        }
-                        TextTarget::ProgTitle => {
-                            if let Some((_, p)) = current_programme.as_mut() {
-                                p.title = s;
-                            }
-                        }
-                        TextTarget::ProgDesc => {
-                            if let Some((_, p)) = current_programme.as_mut() {
-                                p.desc = s;
-                            }
+                if text_target.is_some() {
+                    text_buffer.push_str(&t.decode()?);
+                }
+            }
+            Ok(Event::CData(t)) => {
+                if text_target.is_some() {
+                    text_buffer.push_str(&t.decode()?);
+                }
+            }
+            Ok(Event::GeneralRef(reference)) => {
+                if text_target.is_some() {
+                    if let Some(character) = reference.resolve_char_ref()? {
+                        text_buffer.push(character);
+                    } else {
+                        let name = reference.decode()?;
+                        match quick_xml::escape::resolve_predefined_entity(&name) {
+                            Some(value) => text_buffer.push_str(value),
+                            None => anyhow::bail!("Unsupported XML entity: &{name};"),
                         }
                     }
                 }
@@ -217,8 +237,29 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
             Ok(Event::End(e)) => {
                 let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
                 match name.as_str() {
-                    "display-name" if native => {
-                        if let Some(channel) = current_channel.as_mut() { channel.names.push(channel.name.clone()); }
+                    "display-name" | "title" | "desc" => {
+                        if let Some(target) = text_target.take() {
+                            let value = text_buffer.trim().to_owned();
+                            match target {
+                                TextTarget::ChannelName => {
+                                    if let Some(c) = current_channel.as_mut() {
+                                        c.names.push(value.clone());
+                                        c.name = value;
+                                    }
+                                }
+                                TextTarget::ProgTitle => {
+                                    if let Some((_, p)) = current_programme.as_mut() {
+                                        p.title = value;
+                                    }
+                                }
+                                TextTarget::ProgDesc => {
+                                    if let Some((_, p)) = current_programme.as_mut() {
+                                        p.desc = value;
+                                    }
+                                }
+                            }
+                        }
+                        text_buffer.clear();
                     }
                     "channel" => {
                         if let Some(mut c) = current_channel.take() {
@@ -231,10 +272,7 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
                     "programme" => {
                         if let Some((channel_id, p)) = current_programme.take() {
                             if !p.title.is_empty() {
-                                programs
-                                    .entry(channel_id)
-                                    .or_insert_with(Vec::new)
-                                    .push(p);
+                                programs.entry(channel_id).or_insert_with(Vec::new).push(p);
                             }
                         }
                     }
@@ -249,17 +287,12 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
         buf.clear();
     }
 
-    if native { for programs in programs.values_mut() { programs.sort_by_key(|program| program.start); } }
-    Ok((channels, programs))
-}
-
-fn append_native_text(target: Option<TextTarget>, channel: &mut Option<Channel>, programme: &mut Option<(String, Programme)>, text: &str) {
-    match target {
-        Some(TextTarget::ChannelName) => if let Some(channel) = channel { channel.name.push_str(text); },
-        Some(TextTarget::ProgTitle) => if let Some((_, programme)) = programme { programme.title.push_str(text); },
-        Some(TextTarget::ProgDesc) => if let Some((_, programme)) = programme { programme.desc.push_str(text); },
-        None => {},
+    if native {
+        for programs in programs.values_mut() {
+            programs.sort_by_key(|program| program.start);
+        }
     }
+    Ok((channels, programs))
 }
 
 #[derive(Copy, Clone)]
@@ -272,7 +305,10 @@ enum TextTarget {
 fn attr(e: &quick_xml::events::BytesStart<'_>, key: &str) -> Option<String> {
     for a in e.attributes().flatten() {
         if a.key.as_ref() == key.as_bytes() {
-            return a.unescape_value().ok().map(|v| v.into_owned());
+            return a
+                .decoded_and_normalized_value(quick_xml::XmlVersion::Implicit1_0, e.decoder())
+                .ok()
+                .map(|v| v.into_owned());
         }
     }
     None
@@ -281,7 +317,7 @@ fn attr(e: &quick_xml::events::BytesStart<'_>, key: &str) -> Option<String> {
 /// Parse XMLTV timestamp `YYYYMMDDHHMMSS ±HHMM` → Unix seconds.
 pub fn parse_xmltv_time(ts: &str) -> i64 {
     let ts = ts.trim();
-    if ts.len() < 14 {
+    if ts.len() < 14 || !ts.as_bytes()[..14].iter().all(u8::is_ascii_digit) {
         return 0;
     }
     let (date_part, tz_part) = if ts.len() > 14 {
@@ -302,6 +338,9 @@ pub fn parse_xmltv_time(ts: &str) -> i64 {
     if tz_part.len() >= 5 {
         let bytes = tz_part.as_bytes();
         if bytes[0] == b'+' || bytes[0] == b'-' {
+            if !bytes[1..5].iter().all(u8::is_ascii_digit) {
+                return 0;
+            }
             let sign: i64 = if bytes[0] == b'+' { 1 } else { -1 };
             let th: i64 = tz_part[1..3].parse().unwrap_or(0);
             let tm: i64 = tz_part[3..5].parse().unwrap_or(0);
@@ -320,10 +359,8 @@ static RE_TS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"[+-]\s*\d+\s*(ч|h|hours?)?").unwrap());
 static RE_PAREN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\([^)]*\)").unwrap());
 static RE_WS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s+").unwrap());
-static RE_HD_PREF: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(hd|fhd|uhd|4k)\s+").unwrap());
-static RE_HD_SUF: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\s+(hd|fhd|uhd|4k)$").unwrap());
+static RE_HD_PREF: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(hd|fhd|uhd|4k)\s+").unwrap());
+static RE_HD_SUF: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s+(hd|fhd|uhd|4k)$").unwrap());
 static RE_TS_CAP: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"([+-])\s*(\d+)\s*(ч|h|hours?)?").unwrap());
 
@@ -451,6 +488,39 @@ mod tests {
         assert_eq!(progs.len(), 1);
         assert_eq!(progs[0].title, "News");
         assert_eq!(progs[0].desc, "Headlines");
+    }
+
+    #[test]
+    fn xmltv_preserves_fragmented_entities_cdata_and_attribute_values() {
+        let xml = r#"<tv>
+<channel id="c1"><display-name>Channel &amp; &#x41;&#66;</display-name>
+<icon src="https://example.test/icon?a=1&amp;b=2"/></channel>
+<programme start="20260101000000 +0000" stop="20260101010000 +0000" channel="c1">
+<title>  News &amp; Sport &#x1f3c6;  </title>
+<desc>Before <![CDATA[<raw>&]]> after &quot;quotes&quot; &apos;ok&apos;</desc>
+</programme></tv>"#;
+        let (channels, programmes) = parse_xmltv(xml).unwrap();
+        assert_eq!(channels["c1"].name, "Channel & AB");
+        assert_eq!(channels["c1"].icon, "https://example.test/icon?a=1&b=2");
+        assert_eq!(programmes["c1"][0].title, "News & Sport 🏆");
+        assert_eq!(
+            programmes["c1"][0].desc,
+            "Before <raw>& after \"quotes\" 'ok'"
+        );
+    }
+
+    #[test]
+    fn xmltv_rejects_unresolved_entities_without_external_resolution() {
+        assert!(parse_xmltv(
+            "<tv><channel id='c1'><display-name>&external;</display-name></channel></tv>"
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn malformed_multibyte_timestamps_do_not_panic() {
+        assert_eq!(parse_xmltv_time("2026010100000💥"), 0);
+        assert_eq!(parse_xmltv_time("20260101000000 +0💥"), 0);
     }
 
     #[test]

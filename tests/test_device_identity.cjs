@@ -94,6 +94,13 @@ function fixture(options = {}) {
         storage,
     });
     c.window = c;
+    if (options.storageBlocked) {
+        Object.defineProperty(c, "localStorage", {
+            get() {
+                throw new Error("SecurityError");
+            },
+        });
+    }
     vm.runInContext(
         "Array.from = undefined; Math.random = function () { throw new Error('Weak RNG must not generate credentials'); };",
         c
@@ -208,4 +215,18 @@ for (const storage of [
 }
 console.log(
     "PASS: secure 128-bit device IDs, msCrypto, ES5 API guards, preserved/provisioned IDs and swop fail-closed"
+);
+
+for (const rng of [undefined, "crypto", "msCrypto"]) {
+    const c = fixture({ rng, storageBlocked: true });
+    c.deviceUUID = "";
+    c.settings.deviceUuid = "";
+    assert.equal(c.ensureDeviceClientId(), rng ? expected : "");
+    assert.equal(
+        c.ensureDeviceClientId("operator-provisioned-device"),
+        "operator-provisioned-device"
+    );
+}
+console.log(
+    "PASS: secure/provisioned identity remains usable when storage access throws"
 );

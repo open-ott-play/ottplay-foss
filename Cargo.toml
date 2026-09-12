@@ -6,3 +6,8 @@ members = ["src-rs/core", "src-rs/server", "src-tauri"]
 lto = true
 codegen-units = 1
 strip = true
+
+# GTK3's dependency graph requires glib 0.18. Backport the upstream iterator
+# safety fix without advertising a different upstream version (see vendor/README.md).
+[patch.crates-io]
+glib = { path = "vendor/glib-0.18.5" }

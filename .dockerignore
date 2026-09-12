@@ -24,3 +24,6 @@ id_rsa*
 deploy.sh
 local_proxy.py
 .venv/
+
+# glib embeds this upstream documentation in its Rust library at compile time.
+!vendor/glib-0.18.5/README.md

@@ -96,6 +96,7 @@ import {
     itemEPG,
     listEpgArray,
     listFavoritesLists,
+    type MediaHistoryEntry,
     medFavorites,
     medHistory,
     mediaSelects,
@@ -2461,7 +2462,14 @@ function _playChannel(catIdx: number, chIdx: number): void {
  * Edge case: If stream_url is a function, calls it to get the URL.
  * If mediaUrls last element is -1, resets mediaSelects[0] to 0.
  */
-function _playMedia(item: any): void {
+function _playMedia(item: MediaHistoryEntry): void {
+    if (!item) return;
+    var streamUrl =
+        typeof item.stream_url === "function"
+            ? item.stream_url()
+            : item.stream_url;
+    if (typeof streamUrl !== "string" || !streamUrl) return;
+    item.stream_url = streamUrl;
     // A delayed live-channel probe must not relabel the newly selected VOD item.
     clearTimeout((window as any)._tmedia);
     clearTimeout(mediaCheckTimer);
@@ -2469,7 +2477,7 @@ function _playMedia(item: any): void {
         mediaSelects[0] = 0;
     setCurrent(catIndex, -1);
     var resumePos = 0;
-    var historyIdx = medHistory.findIndex(function (e: any) {
+    var historyIdx = medHistory.findIndex(function (e: MediaHistoryEntry) {
         return e.stream_url === item.stream_url;
     });
     if (historyIdx !== -1) {
@@ -2507,14 +2515,17 @@ function _playMedia(item: any): void {
     (window as any).playTime = 0;
     (window as any).playType = -1e11;
     if (sStopPlay) stbStop();
-    if (typeof item.stream_url === "function")
-        item.stream_url = item.stream_url();
-    stbPlay(item.stream_url);
+    stbPlay(streamUrl);
     if (resumePos)
         confirmBox(
             _("Continue watching?") + "<br><br>" + step2text(resumePos),
             function () {
-                stbSetPosTime(resumePos);
+                if (
+                    (window as any).playType === -1e11 &&
+                    medHistory[0] === item &&
+                    item.stream_url === streamUrl
+                )
+                    stbSetPosTime(resumePos);
             }
         );
 }
@@ -2642,40 +2653,61 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
             capacitorHost.getPlatform() === "ios";
         const origPlayPip = window.stbPlayPip;
         const origStopPip = window.stbStopPip;
+        let pipSession = 0;
+        let pipCommands: Promise<void> | null = null;
+        function queuePip(command: () => Promise<unknown>): void {
+            const pending = (pipCommands || Promise.resolve())
+                .then(command)
+                .then(
+                    () => {},
+                    (error: unknown) => {
+                        console.warn("[Capacitor] PiP command failed:", error);
+                    }
+                );
+            pipCommands = pending;
+            pending.then(() => {
+                if (pipCommands === pending) pipCommands = null;
+            });
+        }
         window.stbPlayPip = function (url: string): void {
             if (!nativeSecondChannelPip) {
                 if (typeof origPlayPip === "function") origPlayPip(url);
                 return;
             }
-            cap.playPip({ url })
-                .then((res: { ok?: boolean }) => {
-                    if (res && res.ok) {
-                        try {
-                            const el = document.getElementById("videopip");
-                            if (el) (el as HTMLElement).style.display = "none";
-                        } catch (_e) {}
-                        return;
-                    }
-                    console.warn(
-                        "[Capacitor] playPip not ok, CSS fallback:",
-                        res
-                    );
-                    if (typeof origPlayPip === "function") origPlayPip(url);
-                })
-                .catch((e: any) => {
+            const session = ++pipSession;
+            if (typeof origStopPip === "function") origStopPip();
+            queuePip(() => {
+                if (session !== pipSession) return Promise.resolve();
+                const fallback = (error: unknown): void => {
+                    if (session !== pipSession) return;
                     console.warn(
                         "[Capacitor] playPip failed, CSS fallback:",
-                        e
+                        error
                     );
                     if (typeof origPlayPip === "function") origPlayPip(url);
-                });
+                };
+                return Promise.resolve()
+                    .then(() => cap.playPip({ url }))
+                    .then((res) => {
+                        if (session !== pipSession) return;
+                        if (!res || !res.ok || res.unsupported) {
+                            fallback(res);
+                            return;
+                        }
+                        const el = document.getElementById("videopip");
+                        if (el) (el as HTMLElement).style.display = "none";
+                    }, fallback);
+            });
         };
         window.stbStopPip = function (): void {
-            if (nativeSecondChannelPip)
-                cap.stopPip().catch((e: any) =>
-                    console.warn("[Capacitor] stopPip failed:", e)
-                );
+            if (!nativeSecondChannelPip) {
+                if (typeof origStopPip === "function") origStopPip();
+                return;
+            }
+            ++pipSession;
             if (typeof origStopPip === "function") origStopPip();
+            // The in-flight native play must settle before its overlay can be stopped.
+            queuePip(() => cap.stopPip());
         };
 
         // Capacitor Mode C: full-window fullscreen.
@@ -2811,7 +2843,9 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         };
         const startBgPosTimer = (): void => {
             stopBgPosTimer();
+            const session = _bgSession;
             _bgPosTimer = setInterval(() => {
+                if (session !== _bgSession || !window.stbIsPlaying()) return;
                 try {
                     const meta = bgMeta();
                     if (!meta.seekable) return;
@@ -2977,15 +3011,22 @@ if (typeof window.__TAURI__ !== "undefined") {
         };
 
         let _msPosTimer: ReturnType<typeof setInterval> | null = null;
+        let _msRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+        let _msSession = 0;
+        let _msPaused = true;
+        let _msActive = false;
         const stopMsPosTimer = (): void => {
+            if (_msRefreshTimer !== null) clearTimeout(_msRefreshTimer);
+            _msRefreshTimer = null;
             if (_msPosTimer != null) {
                 clearInterval(_msPosTimer);
                 _msPosTimer = null;
             }
         };
-        const startMsPosTimer = (): void => {
+        const startMsPosTimer = (session: number): void => {
             stopMsPosTimer();
             _msPosTimer = setInterval(() => {
+                if (session !== _msSession || !_msActive || _msPaused) return;
                 try {
                     const meta = bgMeta();
                     if (!meta.seekable) return;
@@ -2999,20 +3040,30 @@ if (typeof window.__TAURI__ !== "undefined") {
         const origStop = window.stbStop;
         const origPause = window.stbPause;
         const origContinue = window.stbContinue;
+        const origIsPlaying = window.stbIsPlaying;
         window.stbPlay = function (url: string, position?: number): void {
+            const session = ++_msSession;
+            stopMsPosTimer();
+            _msActive = true;
+            _msPaused = false;
             if (typeof origPlay === "function") origPlay(url, position);
             const meta = bgMeta();
             tauriInvoke<any>("start_media_session", meta).catch((e: any) =>
                 console.warn("[Tauri] start_media_session failed:", e)
             );
-            setTimeout(() => {
+            _msRefreshTimer = setTimeout(() => {
+                if (session !== _msSession || !_msActive || _msPaused) return;
+                _msRefreshTimer = null;
                 const m = bgMeta();
                 tauriInvoke<any>("update_media_session", m).catch(() => {});
-                if (m.seekable) startMsPosTimer();
+                if (m.seekable) startMsPosTimer(session);
                 else stopMsPosTimer();
             }, 1500);
         };
         window.stbStop = function (): void {
+            _msSession++;
+            _msActive = false;
+            _msPaused = true;
             stopMsPosTimer();
             tauriInvoke<any>("stop_media_session", {}).catch((e: any) =>
                 console.warn("[Tauri] stop_media_session failed:", e)
@@ -3020,6 +3071,7 @@ if (typeof window.__TAURI__ !== "undefined") {
             if (typeof origStop === "function") origStop();
         };
         window.stbPause = function (): void {
+            _msPaused = true;
             if (typeof origPause === "function") origPause();
             stopMsPosTimer();
             tauriInvoke<any>("pause_media_session", {}).catch((e: any) =>
@@ -3028,11 +3080,20 @@ if (typeof window.__TAURI__ !== "undefined") {
         };
         window.stbContinue = function (): void {
             if (typeof origContinue === "function") origContinue();
+            _msPaused =
+                typeof origIsPlaying === "function" ? !origIsPlaying() : false;
+            if (_msPaused) {
+                stopMsPosTimer();
+                tauriInvoke<any>("pause_media_session", {}).catch((e: any) =>
+                    console.warn("[Tauri] pause_media_session failed:", e)
+                );
+                return;
+            }
             const meta = bgMeta();
             tauriInvoke<any>("resume_media_session", meta).catch((e: any) =>
                 console.warn("[Tauri] resume_media_session failed:", e)
             );
-            if (meta.seekable) startMsPosTimer();
+            if (_msActive && meta.seekable) startMsPosTimer(_msSession);
         };
     })();
 }
@@ -5536,24 +5597,53 @@ if (typeof window.__TAURI__ !== "undefined") {
         const origPlay = window.stbPlayPip;
         const origStop = window.stbStopPip;
         const origSetPos = window.setPipPosition;
+        let pipSession = 0;
+        let pipCommands: Promise<void> | null = null;
+        function queuePip(command: () => Promise<unknown>): void {
+            const pending = (pipCommands || Promise.resolve())
+                .then(command)
+                .then(
+                    () => {},
+                    (error: unknown) => {
+                        console.warn("[Tauri] PiP command failed:", error);
+                    }
+                );
+            pipCommands = pending;
+            pending.then(() => {
+                if (pipCommands === pending) pipCommands = null;
+            });
+        }
         window.stbPlayPip = function (url: string): void {
-            tauriInvoke<any>("play_pip", { url })
-                .then(() => {
-                    try {
-                        const el = document.getElementById("videopip");
-                        if (el) (el as HTMLElement).style.display = "none";
-                    } catch (_e) {}
-                })
-                .catch((e: any) => {
-                    console.warn("[Tauri] play_pip failed, CSS fallback:", e);
+            const session = ++pipSession;
+            if (typeof origStop === "function") origStop();
+            queuePip(() => {
+                if (session !== pipSession) return Promise.resolve();
+                const fallback = (error: unknown): void => {
+                    if (session !== pipSession) return;
+                    console.warn(
+                        "[Tauri] play_pip failed, CSS fallback:",
+                        error
+                    );
                     if (typeof origPlay === "function") origPlay(url);
-                });
+                };
+                return tauriInvoke<{ ok?: boolean; unsupported?: boolean }>(
+                    "play_pip",
+                    { url }
+                ).then((res) => {
+                    if (session !== pipSession) return;
+                    if (res && (res.ok === false || res.unsupported)) {
+                        fallback(res);
+                        return;
+                    }
+                    const el = document.getElementById("videopip");
+                    if (el) (el as HTMLElement).style.display = "none";
+                }, fallback);
+            });
         };
         window.stbStopPip = function (): void {
-            tauriInvoke<any>("stop_pip", {}).catch((e: any) =>
-                console.warn("[Tauri] stop_pip failed:", e)
-            );
+            ++pipSession;
             if (typeof origStop === "function") origStop();
+            queuePip(() => tauriInvoke("stop_pip", {}));
         };
         window.setPipPosition = function (): void {
             if (typeof origSetPos === "function") origSetPos();

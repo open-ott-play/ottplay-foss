@@ -176,6 +176,67 @@ class DashExoPlayerPlugin : Plugin() {
     }
 
     @PluginMethod
+    fun getPlaybackState(call: PluginCall) {
+        val act = activity
+        if (act == null) {
+            call.resolve(JSObject().apply {
+                put("ok", false)
+                put("position", 0.0)
+                put("duration", 0.0)
+                put("playing", false)
+                put("ended", false)
+                put("error", "no activity")
+            })
+            return
+        }
+        act.runOnUiThread {
+            val p = player
+            call.resolve(JSObject().apply {
+                put("ok", p != null)
+                put("position", (p?.currentPosition ?: 0L).coerceAtLeast(0L) / 1000.0)
+                // ExoPlayer uses a negative sentinel for unknown/live duration.
+                put("duration", (p?.duration ?: 0L).coerceAtLeast(0L) / 1000.0)
+                put("playing", p?.isPlaying ?: false)
+                put("ended", p?.playbackState == Player.STATE_ENDED)
+            })
+        }
+    }
+
+    @PluginMethod
+    fun seekDash(call: PluginCall) {
+        val position = call.getDouble("position")
+        if (position == null || !position.isFinite()) {
+            call.resolve(JSObject().apply {
+                put("ok", false)
+                put("error", "invalid position")
+            })
+            return
+        }
+        val act = activity
+        if (act == null) {
+            call.resolve(JSObject().apply {
+                put("ok", false)
+                put("error", "no activity")
+            })
+            return
+        }
+        act.runOnUiThread {
+            val p = player
+            if (p == null) {
+                call.resolve(JSObject().apply {
+                    put("ok", false)
+                    put("error", "no active player")
+                })
+                return@runOnUiThread
+            }
+            var millis = (position.coerceAtLeast(0.0) * 1000.0).toLong()
+            if (p.duration > 0) millis = millis.coerceAtMost(p.duration)
+            p.seekTo(millis)
+            call.resolve(JSObject().apply { put("ok", true) })
+        }
+    }
+
+    @PluginMethod
     fun stopDash(call: PluginCall) {
         val act = activity
         if (act == null) {

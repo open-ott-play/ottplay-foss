@@ -72,6 +72,10 @@ function fixture() {
                 if (value !== undefined) el.textContent = String(value);
                 return this;
             },
+            toggle(visible) {
+                el.style.display = visible ? "" : "none";
+                return this;
+            },
         };
     }
     const c = {
@@ -207,6 +211,9 @@ function fixture() {
     const context = vm.createContext(c);
     vm.runInContext(
         sourceFunctions("src/channels/index.ts", [
+            "rememberMediaView",
+            "cancelMediaLoad",
+            "requestMediaList",
             "mediaBack",
             "mediaKeyHandler",
             "addToMedFavorites",
@@ -338,6 +345,199 @@ function fixture() {
         c.getMediaDescr({ description: () => "Lazy description" }),
         "Lazy description"
     );
+}
+
+// The real M3U provider mutates global records before calling done: reject stale completions.
+{
+    const c = fixture();
+    const pending = [];
+    c.host = "";
+    c.$.ajax = (request) => pending.push(request);
+    vm.runInContext(
+        sourceFunctions("prov/m3u/prov.js", ["getMediaArrayXML"]) +
+            sourceFunctions("src/ui/index.ts", ["closeList"]),
+        c
+    );
+    c.listElement = null;
+    c.getMediaArray = (url, done) =>
+        c.getMediaArrayXML(url || "root.json", done);
+    function complete(index, title, rows) {
+        pending[index].success(JSON.stringify({ channels: rows, title }));
+        pending[index].complete();
+    }
+    const folders = [{ playlist_url: "folder.json", title: "Folder" }];
+    c.mediaList(null);
+    complete(0, "Root", folders);
+    c.selectMedia(0);
+    c.mediaKeyHandler(c.keys.RETURN); // Back reloads the root while the child is pending.
+    complete(2, "New root", folders);
+    const renderCount = c.calls.filter((call) => call[0] === "render").length;
+    complete(1, "Stale folder", [{ stream_url: "old.mp4", title: "Old" }]);
+    assert.equal(c.listArray[0].title, "Folder");
+    assert.strictEqual(c.mediaRecords, c.listArray);
+    assert.equal(c.mediaName, "New root");
+    assert.equal(
+        c.calls.filter((call) => call[0] === "render").length,
+        renderCount
+    );
+
+    c.selectMedia(0);
+    c.closeList();
+    complete(3, "Closed folder", [
+        { stream_url: "closed.mp4", title: "Closed" },
+    ]);
+    assert.equal(c.isListVisible, false);
+    assert.equal(
+        c.mediaUrls,
+        null,
+        "Reopening a cancelled load must restart from a valid root"
+    );
+    assert.equal(c.mediaRecords.length, 0);
+    assert.equal(
+        c.calls.filter((call) => call[0] === "render").length,
+        renderCount
+    );
+
+    c.mediaList(null);
+    c.cancelMediaLoad(); // loadProv cancels before replacing the provider globals.
+    c.getMediaArray = (_target, done) => {
+        c.mediaRecords = [{ stream_url: "new.mp4", title: "New provider" }];
+        done();
+    };
+    c.mediaList(null);
+    complete(4, "Old provider", [
+        { stream_url: "wrong.mp4", title: "Wrong provider" },
+    ]);
+    assert.equal(c.listArray[0].title, "New provider");
+    assert.strictEqual(c.mediaRecords, c.listArray);
+}
+
+// A PIN result is valid only for the item/list that requested it.
+{
+    const c = fixture();
+    c.listArray = [{ adult: 1, stream_url: "locked.mp4", title: "Locked" }];
+    c.selectMedia(0);
+    c.listArray = [{ stream_url: "other.mp4", title: "Other" }];
+    c.parentAccess = true;
+    c.unlock();
+    assert(!c.calls.some((call) => call[0] === "play"));
+}
+
+// Third-party providers without isCurrent still get a guarded legacy completion callback.
+{
+    const c = fixture();
+    const pending = [];
+    c.getMediaArray = (_url, done) =>
+        pending.push((title) => {
+            c.mediaName = title;
+            c.mediaRecords = [{ stream_url: title + ".mp4", title }];
+            done();
+        });
+    c.mediaList(null);
+    c.mediaUrls = null;
+    c.mediaList(null);
+    pending[1]("New");
+    pending[0]("Old");
+    assert.equal(c.listArray[0].title, "New");
+    assert.strictEqual(c.mediaRecords, c.listArray);
+    assert.equal(c.mediaName, "New");
+}
+
+// Edem page responses keep their own offsets and cannot modify another page/view.
+{
+    const c = fixture();
+    c.host = "";
+    c._vpurl = "https://example.invalid/vportal";
+    const pending = [];
+    c.$.ajax = (request) => pending.push(request);
+    vm.runInContext(
+        sourceFunctions("prov/edem/prov.js", [
+            "addMedias2",
+            "createMedia",
+            "item2descr",
+        ]),
+        c
+    );
+    c.mediaRecords = Array.from({ length: 6 }, () => ({
+        description: () => "Loading",
+    }));
+    c.listArray = c.mediaRecords;
+    c.rememberMediaView();
+    const params = { limit: 2 };
+    c.selIndex = 0;
+    c.addMedias2(params);
+    c.selIndex = 2;
+    c.addMedias2(params);
+    assert.equal(JSON.parse(pending[0].data).offset, 0);
+    assert.equal(JSON.parse(pending[1].data).offset, 2);
+    pending[0].success({
+        items: [{ title: "First page", type: "stream", url: "first.mp4" }],
+    });
+    pending[0].complete();
+    assert.equal(
+        c.mediaRecords.length,
+        6,
+        "A different pending page must not be truncated"
+    );
+    pending[1].success({
+        items: [{ title: "Second page", type: "stream", url: "second.mp4" }],
+    });
+    pending[1].complete();
+    assert.equal(c.mediaRecords[0].title, "First page");
+    assert.equal(c.mediaRecords[2].title, "Second page");
+    c.selIndex = 4;
+    c.addMedias2(params);
+    c.cancelMediaLoad();
+    const renders = c.calls.filter((call) => call[0] === "render").length;
+    pending[2].success({
+        items: [{ title: "Closed page", type: "stream", url: "closed.mp4" }],
+    });
+    pending[2].complete();
+    assert.equal(c.mediaRecords[4].title, undefined);
+    assert.equal(
+        c.calls.filter((call) => call[0] === "render").length,
+        renders
+    );
+}
+
+// Submitting an old provider's search dialog must not send its URL to a new provider.
+{
+    const c = fixture();
+    c.mediaList(null);
+    c.selectMedia(2);
+    let fetched = false;
+    c.getMediaArray = () => {
+        fetched = true;
+    };
+    c.editvar = "movie";
+    const selections = Array.from(c.mediaSelects);
+    c.setEdit();
+    assert.equal(fetched, false);
+    assert.deepEqual(Array.from(c.mediaSelects), selections);
+}
+
+// Resolve lazy stream URLs before matching/persisting history; stale resume prompts cannot seek a new movie.
+{
+    const c = fixture();
+    c.medHistory = [
+        { current: 125, stream_url: "resume.mp4", title: "Resume" },
+    ];
+    let resolves = 0;
+    c._playMedia({
+        stream_url: () => {
+            resolves++;
+            return "resume.mp4";
+        },
+        title: "Lazy",
+    });
+    assert.equal(resolves, 1);
+    assert.equal(c.medHistory.length, 1);
+    assert.equal(JSON.parse(c.stored.medHistory)[0].stream_url, "resume.mp4");
+    assert.equal(typeof c.confirm, "function");
+    const previousConfirmation = c.confirm;
+    c._playMedia({ stream_url: "other.mp4", title: "Other" });
+    previousConfirmation();
+    assert(!c.calls.some((call) => call[0] === "seek"));
 }
 
 // Edem lazy descriptions fetch pages: one Info action must trigger only one request.
