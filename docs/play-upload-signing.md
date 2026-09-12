@@ -25,6 +25,8 @@ No Play service-account credentials are needed because upload remains manual. Ne
 
 In Actions, select **Android Play upload bundle**, choose `main`, and run the workflow. The signed AAB is in `ottplay-play-upload-<commit SHA>` for seven days, named `ottplay-foss-android-play-upload.aab`. Download the artifact and submit its AAB through the intended Play Console testing/release track. The signature certificate SHA-256 is printed after successful verification so it can be compared with the registered upload certificate.
 
+The signer accepts only `.aab` paths inside the current workspace (including resolved symlink targets). Upload aliases must start with a letter or digit and contain only letters, digits, dots, underscores, or hyphens.
+
 Missing or invalid secrets, an unavailable alias, or a signature failure stop the signing step; no unsigned fallback is uploaded. The decoded key exists only in a private temporary directory during signing and is removed on success or failure. Passwords reach JDK tools through environment references rather than command-line values.
 
 ## Verification

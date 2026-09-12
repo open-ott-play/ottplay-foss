@@ -22,6 +22,7 @@ class UploadSigningTests(unittest.TestCase):
             if not shutil.which(command):
                 raise RuntimeError(f"{command} is required for real signing tests")
         cls.temp = tempfile.TemporaryDirectory(prefix="ott-signing-contract-")
+        cls.addClassCleanup(cls.temp.cleanup)
         cls.directory = Path(cls.temp.name)
         cls.environment = dict(
             os.environ,
@@ -89,14 +90,11 @@ class UploadSigningTests(unittest.TestCase):
             raise AssertionError(cls.result.stderr.decode())
 
     @classmethod
-    def tearDownClass(cls):
-        cls.temp.cleanup()
-
-    @classmethod
     def invoke(cls, source, output, **changes):
         return subprocess.run(
             [sys.executable, str(SIGN), str(source), str(output)],
             env=dict(cls.environment, **changes),
+            cwd=cls.directory,
             check=False,
             capture_output=True,
         )
@@ -144,6 +142,28 @@ class UploadSigningTests(unittest.TestCase):
                 self.assertFalse(output.exists())
                 self.assertEqual(list(self.directory.glob("ott-play-upload-*")), [])
                 self.assertNotIn(self.environment["PLAY_UPLOAD_STORE_PASSWORD"].encode(), result.stdout + result.stderr)
+
+    def test_paths_cannot_escape_workspace(self):
+        """Reject parent paths and symlink escapes without writing outside the workspace."""
+        with tempfile.TemporaryDirectory() as outside:
+            external = Path(outside) / "external.aab"
+            external.write_bytes(self.source.read_bytes())
+            self.assertNotEqual(self.invoke(external, self.directory / "blocked.aab").returncode, 0)
+            destination = Path(outside) / "must-not-exist.aab"
+            self.assertNotEqual(self.invoke(self.source, destination).returncode, 0)
+            self.assertFalse(destination.exists())
+            link = self.directory / "escaped.aab"
+            link.symlink_to(external)
+            self.assertNotEqual(self.invoke(link, self.directory / "blocked.aab").returncode, 0)
+            self.assertFalse((self.directory / "blocked.aab").exists())
+
+    def test_option_like_alias_is_rejected(self):
+        """Reject alias text that could be interpreted as a jarsigner option."""
+        output = self.directory / "option.aab"
+        result = self.invoke(self.source, output, PLAY_UPLOAD_KEY_ALIAS="-J-version")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b"Upload alias", result.stderr)
+        self.assertFalse(output.exists())
 
     def test_existing_output_and_signed_input_are_preserved(self):
         before = self.signed.read_bytes()
