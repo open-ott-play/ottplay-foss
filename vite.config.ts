@@ -184,7 +184,9 @@ export default defineConfig({
                 for (const mod of MODULES) {
                     const full = join(__dirname, mod);
                     if (!existsSync(full)) {
-                        throw new Error("Required bundle module missing: " + mod);
+                        throw new Error(
+                            "Required bundle module missing: " + mod
+                        );
                     }
                     bundle += stripModule(readFileSync(full, "utf8")) + "\n";
                 }
@@ -204,8 +206,8 @@ export default defineConfig({
                 // Step 3: minify with terser (same options as rewrite)
                 console.log("Step 3: minify with terser...");
                 const result = await minify(bundle, {
-                    ecma: 5,
                     compress: { defaults: false },
+                    ecma: 5,
                     mangle: false,
                     module: false,
                     output: { comments: false },

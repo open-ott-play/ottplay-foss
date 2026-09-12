@@ -38,11 +38,11 @@ async function getModule() {
 
 async function runTests() {
     const ch = await getModule();
+    const { setSearchText } = await import("../src/channels/search.ts");
     const {
         getFilteredHistory,
         getFilteredChannelList,
         searchHistoryChannel,
-        searchMedia,
         medHistory,
         curList,
         channels,
@@ -60,9 +60,9 @@ async function runTests() {
         for (const key of Object.keys(channels)) {
             delete channels[key];
         }
-        // Reset search strings via setters (searchChannel() reads window.stbGetItem which is stubbed)
+        // Reset the filter strings directly; searchMedia opens a provider VOD search.
         searchHistoryChannel("");
-        searchMedia("");
+        setSearchText("");
     }
 
     // Test getFilteredHistory
@@ -185,7 +185,7 @@ async function runTests() {
         channels[1] = { ch_id: 1, channel_name: "CNN", name: "CNN" };
         channels[2] = { ch_id: 2, channel_name: "BBC", name: "BBC One" };
         channels[3] = { ch_id: 3, channel_name: "ESPN", name: "ESPN" };
-        searchMedia("bbc");
+        setSearchText("bbc");
         const result = getFilteredChannelList();
         assert.deepStrictEqual(
             result,
@@ -200,7 +200,7 @@ async function runTests() {
         channels[1] = { ch_id: 1, channel_name: "CNN", name: "CNN" };
         channels[2] = { ch_id: 2, channel_name: "BBC", name: "BBC One" };
         channels[3] = { ch_id: 3, channel_name: "ESPN", name: "ESPN" };
-        searchMedia("espn");
+        setSearchText("espn");
         const result = getFilteredChannelList();
         assert.deepStrictEqual(
             result,
@@ -214,7 +214,7 @@ async function runTests() {
         curList.push(1, 2);
         channels[1] = { ch_id: 1, channel_name: "CNN", name: "CNN" };
         channels[2] = { ch_id: 2, channel_name: "BBC", name: "BBC One" };
-        searchMedia("CNN");
+        setSearchText("CNN");
         const result = getFilteredChannelList();
         assert.deepStrictEqual(
             result,
@@ -228,7 +228,7 @@ async function runTests() {
         curList.push(1, 2);
         channels[1] = { ch_id: 1, channel_name: "CNN", name: "CNN" };
         channels[2] = { ch_id: 2, channel_name: "BBC", name: "BBC One" };
-        searchMedia("Fox");
+        setSearchText("Fox");
         const result = getFilteredChannelList();
         assert.deepStrictEqual(
             result,

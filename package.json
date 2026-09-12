@@ -11,7 +11,7 @@
     "cap:ios": "npx cap open ios",
     "cap:sync": "npx cap sync",
     "check": "ultracite check",
-    "check:bundle": "bash scripts/check-bundle-identifiers.sh",
+    "check:bundle": "bash scripts/check-bundle-identifiers.sh && node tests/test_port_bundle_smoke.cjs",
     "check:es5": "node scripts/check-es5.cjs",
     "dev": "vite",
     "fix": "ultracite fix",

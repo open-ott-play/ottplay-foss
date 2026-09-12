@@ -13,7 +13,7 @@ export interface SearchHistoryEntry {
     title?: string;
 }
 
-/** Channel-name filter string (also set by searchMedia in index). */
+/** Channel-name filter string, updated through setSearchText. */
 export let searchText = "";
 
 /** Assign searchText (index cannot assign to an import binding). */

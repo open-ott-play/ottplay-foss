@@ -9197,7 +9197,9 @@
                 }
                 df(a.i);
                 var p = a.m.presentationTimeline.getDuration();
-                Number.POSITIVE_INFINITY > p ? a.g.R.Ja(p) : a.g.R.Ja(Math.pow(2, 32));
+                Number.POSITIVE_INFINITY > p
+                    ? a.g.R.Ja(p)
+                    : a.g.R.Ja(Math.pow(2, 32));
                 g = t(c.keys());
                 for (h = g.next(); !h.done; h = g.next())
                     (k = h.value),

@@ -26,8 +26,8 @@ function sourceFunctions(file, names) {
             .join("\n"),
         {
             compilerOptions: {
-                target: ts.ScriptTarget.ES5,
                 module: ts.ModuleKind.None,
+                target: ts.ScriptTarget.ES5,
             },
         }
     ).outputText;
@@ -39,28 +39,23 @@ function fixture() {
     const stored = {};
     const timers = [];
     const element = (id) =>
-        (elements[id] ||= { innerHTML: "", textContent: "", style: {} });
+        (elements[id] ||= { innerHTML: "", style: {}, textContent: "" });
     function $(selector) {
         const el = typeof selector === "string" ? element(selector) : selector;
         return {
-            html(value) {
-                if (value !== undefined) el.innerHTML = value;
-                return this;
-            },
-            text(value) {
-                if (value !== undefined) el.textContent = String(value);
-                return this;
-            },
             css(name, value) {
                 if (value !== undefined) el.style[name] = value;
                 return this;
+            },
+            height() {
+                return 0;
             },
             hide() {
                 el.style.display = "none";
                 return this;
             },
-            show() {
-                el.style.display = "";
+            html(value) {
+                if (value !== undefined) el.innerHTML = value;
                 return this;
             },
             not() {
@@ -69,139 +64,144 @@ function fixture() {
             remove() {
                 return this;
             },
-            height() {
-                return 0;
+            show() {
+                el.style.display = "";
+                return this;
+            },
+            text(value) {
+                if (value !== undefined) el.textContent = String(value);
+                return this;
             },
         };
     }
     const c = {
-        console,
-        Date,
-        Math,
-        Number,
-        JSON,
-        encodeURIComponent,
-        isFinite,
-        document: { getElementById: (id) => element(`#${id}`) },
-        innerHeight: 720,
-        $,
-        elements,
-        calls,
-        stored,
-        timers,
-        settings: { pageSize: 25, favorites: 0, prevCount: 2 },
-        keys: {
-            ENTER: 13,
-            RETURN: 8,
-            EXIT: 27,
-            LEFT: 37,
-            UP: 38,
-            RIGHT: 39,
-            DOWN: 40,
-            N0: 48,
-            N2: 50,
-            N8: 56,
-            RED: 403,
-            GREEN: 404,
-            YELLOW: 405,
-            PRECH: 191,
-            TOOLS: 84,
-            RW: 33,
-            FF: 34,
-            PREV: 36,
-            NEXT: 35,
-        },
         _: (text) => text,
-        getHeightK: () => 1,
-        getWidthK: () => 1,
-        getThumbnail: () => "",
-        refreshAudioBadge() {},
-        video: null,
-        setTimeout: (fn) => (timers.push(fn), timers.length),
-        clearTimeout() {},
-        setInterval: (fn) => (timers.push(fn), timers.length),
-        mediaUrls: null,
-        mediaNames: [],
-        mediaSelects: [],
-        mediaRecords: [],
-        mediaRecordsPar: null,
-        mediaName: "",
-        medHistory: [],
-        medFavorites: [],
-        listArray: [],
-        listDataArray: [],
-        selIndex: 0,
-        sFavorites: 0,
-        sMedCount: 2,
-        sShowPikon: 0,
-        sNoSmall: 1,
-        sArrowFun: 0,
-        sRewFun: 1,
-        sPNFun: 1,
-        sPSchannels: 1,
-        parentPIN: "1234",
-        parentAccess: false,
-        mediaCheckTimer: null,
-        sStopPlay: 0,
-        sInfoSwitch: 0,
-        playType: 0,
-        playTime: 0,
-        catIndex: 0,
-        primaryIndex: 0,
-        catsArray: ["All"],
-        cats: { All: [1] },
-        curList: [1],
-        prevArr: [],
         _prog100: { name: "Live" },
-        numprogElement: element("#numprog"),
-        curColor: "white",
-        curColorB: "black",
-        showPage() {
-            calls.push(["render", c.mediaName]);
-        },
+        $,
+        btnDiv: (key, icon, text) => text,
+        calls,
+        catIndex: 0,
+        cats: { All: [1] },
+        catsArray: ["All"],
+        clearTimeout() {},
         closeList() {
             calls.push(["close"]);
         },
-        showShift(text) {
-            calls.push(["shift", text]);
-        },
-        popupList() {
-            calls.push(["popup"]);
-        },
-        infoMedia() {
-            calls.push(["info"]);
-        },
-        infoBox(text) {
-            calls.push(["message", text]);
-        },
-        btnDiv: (key, icon, text) => text,
-        showEditKey() {
-            calls.push(["edit"]);
-        },
-        stbGetItem: () => "",
-        stbSetItem: (key, value) => (stored[key] = value),
-        providerSetItem: (key, value) => (stored[key] = value),
-        stbGetPosTime: () => 125.9,
-        stbGetLen: () => 600,
-        stbIsPlaying: () => false,
-        stbStop() {
-            calls.push(["stop"]);
-        },
-        stbPlay(url) {
-            calls.push(["play", url]);
-        },
-        stbSetPosTime(value) {
-            calls.push(["seek", value]);
-        },
-        step2text: String,
         confirmBox(message, yes) {
             calls.push(["confirm", message]);
             c.confirm = yes;
         },
+        console,
+        curColor: "white",
+        curColorB: "black",
+        curList: [1],
+        Date,
+        document: { getElementById: (id) => element(`#${id}`) },
+        elements,
+        encodeURIComponent,
         enterPinAndSetAccess(next) {
             calls.push(["pin"]);
             c.unlock = next;
         },
+        getHeightK: () => 1,
+        getThumbnail: () => "",
+        getWidthK: () => 1,
+        infoBox(text) {
+            calls.push(["message", text]);
+        },
+        infoMedia() {
+            calls.push(["info"]);
+        },
+        innerHeight: 720,
+        isFinite,
+        JSON,
+        keys: {
+            DOWN: 40,
+            ENTER: 13,
+            EXIT: 27,
+            FF: 34,
+            GREEN: 404,
+            LEFT: 37,
+            N0: 48,
+            N2: 50,
+            N8: 56,
+            NEXT: 35,
+            PRECH: 191,
+            PREV: 36,
+            RED: 403,
+            RETURN: 8,
+            RIGHT: 39,
+            RW: 33,
+            TOOLS: 84,
+            UP: 38,
+            YELLOW: 405,
+        },
+        listArray: [],
+        listDataArray: [],
+        Math,
+        medFavorites: [],
+        medHistory: [],
+        mediaCheckTimer: null,
+        mediaName: "",
+        mediaNames: [],
+        mediaRecords: [],
+        mediaRecordsPar: null,
+        mediaSelects: [],
+        mediaUrls: null,
+        Number,
+        numprogElement: element("#numprog"),
+        parentAccess: false,
+        parentPIN: "1234",
+        playTime: 0,
+        playType: 0,
+        popupList() {
+            calls.push(["popup"]);
+        },
+        prevArr: [],
+        primaryIndex: 0,
+        providerSetItem: (key, value) => (stored[key] = value),
+        refreshAudioBadge() {},
+        sArrowFun: 0,
+        selIndex: 0,
+        setInterval: (fn) => (timers.push(fn), timers.length),
+        setTimeout: (fn) => (timers.push(fn), timers.length),
+        settings: { favorites: 0, pageSize: 25, prevCount: 2 },
+        sFavorites: 0,
+        showEditKey() {
+            calls.push(["edit"]);
+        },
+        showPage() {
+            calls.push(["render", c.mediaName]);
+        },
+        showShift(text) {
+            calls.push(["shift", text]);
+        },
+        sInfoSwitch: 0,
+        sMedCount: 2,
+        sNoSmall: 1,
+        sPNFun: 1,
+        sPSchannels: 1,
+        sRewFun: 1,
+        sShowPikon: 0,
+        sStopPlay: 0,
+        stbGetItem: () => "",
+        stbGetLen: () => 600,
+        stbGetPosTime: () => 125.9,
+        stbIsPlaying: () => false,
+        stbPlay(url) {
+            calls.push(["play", url]);
+        },
+        stbSetItem: (key, value) => (stored[key] = value),
+        stbSetPosTime(value) {
+            calls.push(["seek", value]);
+        },
+        stbStop() {
+            calls.push(["stop"]);
+        },
+        step2text: String,
+        stored,
+        timers,
+        video: null,
     };
     c.window = c;
     const context = vm.createContext(c);
@@ -230,20 +230,20 @@ function fixture() {
     c.playMedia = c._playMedia;
     const catalogs = {
         "": [
-            { title: "Movie", stream_url: "movie.mp4" },
-            { title: "Folder", playlist_url: "catalog.xml" },
+            { stream_url: "movie.mp4", title: "Movie" },
+            { playlist_url: "catalog.xml", title: "Folder" },
             {
-                title: "Search",
                 playlist_url: "search.xml?sort=name",
                 search_on: true,
+                title: "Search",
             },
             {
-                title: "Submenu",
                 playlist_url: "submenu",
-                submenu: [{ title: "Submovie", stream_url: "sub.mp4" }],
+                submenu: [{ stream_url: "sub.mp4", title: "Submovie" }],
+                title: "Submenu",
             },
         ],
-        "catalog.xml": [{ title: "Nested movie", stream_url: "nested.mp4" }],
+        "catalog.xml": [{ stream_url: "nested.mp4", title: "Nested movie" }],
     };
     c.getMediaArray = function (url, done) {
         assert.equal(
@@ -283,9 +283,9 @@ function fixture() {
         "Returning to parent restores its selected row"
     );
     c.medHistory.push({
-        title: "Watched",
-        stream_url: "watched.mp4",
         current: 125,
+        stream_url: "watched.mp4",
+        title: "Watched",
     });
     let fetched = c.calls.filter((call) => call[0] === "fetch").length;
     c.selectMedia(c.listArray.findIndex((item) => item.playlist_url === -1));
@@ -325,7 +325,7 @@ function fixture() {
                 call[1] === "search.xml?sort=name&search=a%20%26%20b"
         )
     );
-    c.listArray = [{ title: "Locked", adult: "1", stream_url: "locked.mp4" }];
+    c.listArray = [{ adult: "1", stream_url: "locked.mp4", title: "Locked" }];
     c.selectMedia(0);
     assert.equal(c.calls.at(-1)[0], "pin");
     assert(!c.calls.some((call) => call[0] === "play"));
@@ -344,16 +344,16 @@ function fixture() {
 {
     const c = fixture();
     c.mediaUrls = [""];
-    c._playMedia({ title: "First", stream_url: "first.mp4" });
+    c._playMedia({ stream_url: "first.mp4", title: "First" });
     c.setCurrent(0, -1);
     assert.equal(JSON.parse(c.stored.medHistory)[0].current, 125);
-    c._playMedia({ title: "Second", stream_url: "second.mp4" });
-    c._playMedia({ title: "First", stream_url: "first.mp4" });
+    c._playMedia({ stream_url: "second.mp4", title: "Second" });
+    c._playMedia({ stream_url: "first.mp4", title: "First" });
     assert.equal(typeof c.confirm, "function");
     c.confirm();
     assert.deepEqual(c.calls.at(-1), ["seek", 120]);
     c.sMedCount = 0;
-    c._playMedia({ title: "No history", stream_url: "third.mp4" });
+    c._playMedia({ stream_url: "third.mp4", title: "No history" });
     assert.equal(c.medHistory.length, 0);
     assert.equal(c.stored.medHistory, "[]");
     c.updateMediaInfo();
