@@ -400,7 +400,9 @@ function testSetCurProgNoCurrentProgram(
 // getCurProgData cache-hit path
 // ---------------------------------------------------------------------------
 
-async function testGetCurProgDataCacheHit(ch: Awaited<ReturnType<typeof getModule>>) {
+async function testGetCurProgDataCacheHit(
+    ch: Awaited<ReturnType<typeof getModule>>
+) {
     const { getCurProgData, epg, channels } = ch;
 
     const now = Math.floor(Date.now() / 1000);
@@ -482,7 +484,11 @@ async function testGetCurProgDataCacheHit(ch: Awaited<ReturnType<typeof getModul
                 }, 1000);
             }),
         ]);
-        assert.strictEqual(completedId, channelId, "callback receives the channel ID");
+        assert.strictEqual(
+            completedId,
+            channelId,
+            "callback receives the channel ID"
+        );
         assert.strictEqual(mockWindow.chanels[channelId].name, "Now Showing");
     } finally {
         clearTimeout(timeout);
