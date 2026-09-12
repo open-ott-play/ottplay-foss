@@ -104,6 +104,7 @@ Run on **macOS / Windows / Linux** desktop window. Skip rows that need credentia
 ### B. Playback
 
 - [ ] Add an M3U provider (playlist URL you control or a public test list)
+- [ ] HTTP localhost playlist (e.g. `http://127.0.0.1:8090`) loads channels in Tauri Mode B (shim → `proxy_fetch`; not empty 0/0/0)
 - [ ] Channel list loads
 - [ ] Start playback on one stream (HLS / progressive as available)
 - [ ] Pause / resume; volume or wake-lock behavior sanity-check
