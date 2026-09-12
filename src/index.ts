@@ -35,7 +35,6 @@
 // Polyfills (must run first)
 import "./polyfills";
 
-import { DashExoPlayer } from "./plugins/dash-exo-player";
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
 import { MobileNativeMedia } from "./plugins/mobile-native-media";
 import { setupStalkerPortalShim } from "./plugins/stalker-portal";
@@ -2708,10 +2707,20 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
             );
         };
 
-        // Capacitor Mode C: native always-on-top PiP window.
+        // OTT PiP means a second channel. Android uses the shared muted video
+        // element; Activity PiP is a separate, explicitly requested OS action.
+        // Keep iOS's URL-aware AVPlayer implementation and its web fallback.
+        const capacitorHost = (window as any).Capacitor;
+        const nativeSecondChannelPip =
+            typeof capacitorHost.getPlatform === "function" &&
+            capacitorHost.getPlatform() === "ios";
         const origPlayPip = window.stbPlayPip;
         const origStopPip = window.stbStopPip;
         window.stbPlayPip = function (url: string): void {
+            if (!nativeSecondChannelPip) {
+                if (typeof origPlayPip === "function") origPlayPip(url);
+                return;
+            }
             cap.playPip({ url })
                 .then((res: { ok?: boolean }) => {
                     if (res && res.ok) {
@@ -2736,9 +2745,10 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                 });
         };
         window.stbStopPip = function (): void {
-            cap.stopPip().catch((e: any) =>
-                console.warn("[Capacitor] stopPip failed:", e)
-            );
+            if (nativeSecondChannelPip)
+                cap.stopPip().catch((e: any) =>
+                    console.warn("[Capacitor] stopPip failed:", e)
+                );
             if (typeof origStopPip === "function") origStopPip();
         };
 
@@ -2860,7 +2870,14 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         };
 
         let _bgPosTimer: ReturnType<typeof setInterval> | null = null;
+        let _bgMetaTimer: ReturnType<typeof setTimeout> | null = null;
+        let _bgSession = 0;
         const stopBgPosTimer = (): void => {
+            _bgSession++;
+            if (_bgMetaTimer != null) {
+                clearTimeout(_bgMetaTimer);
+                _bgMetaTimer = null;
+            }
             if (_bgPosTimer != null) {
                 clearInterval(_bgPosTimer);
                 _bgPosTimer = null;
@@ -2880,106 +2897,54 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         const origStop = window.stbStop;
         const origPause = window.stbPause;
         const origContinue = window.stbContinue;
-        // Native DASH via DashExoPlayer (Android Media3). iOS returns unsupported.
-        const dash = DashExoPlayer;
-        let _nativeDash = false;
-
-        function isDashUrl(url: string): boolean {
-            return /\.mpd(\?|$)/i.test(url);
-        }
-
-        function playViaWeb(url: string, position?: number): void {
+        // All ordinary playback uses the same backend as the TS browser build.
+        // A native ExoPlayer overlay cannot implement OTT's DOM layout, state,
+        // seek, mute, track selection and second-channel contracts by itself.
+        window.stbPlay = function (url: string, position?: number): void {
+            stopBgPosTimer();
+            const session = _bgSession;
             if (typeof origPlay === "function") origPlay(url, position);
             const meta = bgMeta();
             cap.startBackgroundAudio(meta).catch((e: any) =>
                 console.warn("[Capacitor] startBackgroundAudio failed:", e)
             );
             // Duration often arrives after manifest; refresh shortly + tick if seekable.
-            setTimeout(() => {
+            _bgMetaTimer = setTimeout(() => {
+                if (session !== _bgSession) return;
+                _bgMetaTimer = null;
                 const m = bgMeta();
                 cap.updateBackgroundAudio(m).catch(() => {});
                 if (m.seekable) startBgPosTimer();
                 else stopBgPosTimer();
             }, 1500);
-        }
-
-        window.stbPlay = function (url: string, position?: number): void {
-            if (!isDashUrl(url) || !dash || !dash.isDashSupported) {
-                playViaWeb(url, position);
-                return;
-            }
-            dash.isDashSupported()
-                .then(function (r: any) {
-                    if (!(r && r.ok && !r.unsupported)) {
-                        _nativeDash = false;
-                        playViaWeb(url, position);
-                        return;
-                    }
-                    _nativeDash = true;
-                    if (typeof origStop === "function") origStop();
-                    return dash
-                        .playDash({
-                            position: position,
-                            url: url,
-                        })
-                        .then(function (pr: any) {
-                            if (!(pr && pr.ok)) {
-                                console.warn(
-                                    "[Capacitor] playDash not ok, web fallback:",
-                                    pr
-                                );
-                                _nativeDash = false;
-                                playViaWeb(url, position);
-                            }
-                        });
-                })
-                .catch(function (e: any) {
-                    console.warn("[Capacitor] DASH path failed:", e);
-                    _nativeDash = false;
-                    playViaWeb(url, position);
-                });
         };
         window.stbStop = function (): void {
             stopBgPosTimer();
-            if (_nativeDash) {
-                dash.stopDash().catch((e: any) =>
-                    console.warn("[Capacitor] stopDash failed:", e)
-                );
-                _nativeDash = false;
-            } else {
-                cap.stopBackgroundAudio().catch((e: any) =>
-                    console.warn("[Capacitor] stopBackgroundAudio failed:", e)
-                );
-            }
+            cap.stopBackgroundAudio().catch((e: any) =>
+                console.warn("[Capacitor] stopBackgroundAudio failed:", e)
+            );
             if (typeof origStop === "function") origStop();
         };
         window.stbPause = function (): void {
-            if (_nativeDash) {
-                dash.pauseDash().catch((e: any) =>
-                    console.warn("[Capacitor] pauseDash failed:", e)
-                );
-            } else if (typeof origPause === "function") {
-                origPause();
-            }
-            if (!_nativeDash) {
-                stopBgPosTimer();
-                cap.pauseBackgroundAudio().catch((e: any) =>
-                    console.warn("[Capacitor] pauseBackgroundAudio failed:", e)
-                );
-            }
+            if (typeof origPause === "function") origPause();
+            stopBgPosTimer();
+            cap.pauseBackgroundAudio().catch((e: any) =>
+                console.warn("[Capacitor] pauseBackgroundAudio failed:", e)
+            );
         };
         window.stbContinue = function (): void {
-            if (_nativeDash) {
-                dash.resumeDash().catch((e: any) =>
-                    console.warn("[Capacitor] resumeDash failed:", e)
-                );
-            } else {
-                if (typeof origContinue === "function") origContinue();
+            if (typeof origContinue === "function") origContinue();
+            if (window.stbIsPlaying()) {
                 const meta = bgMeta();
                 cap.resumeBackgroundAudio(meta).catch((e: any) =>
                     console.warn("[Capacitor] resumeBackgroundAudio failed:", e)
                 );
                 if (meta.seekable) startBgPosTimer();
+            } else {
+                stopBgPosTimer();
+                cap.pauseBackgroundAudio().catch((e: any) =>
+                    console.warn("[Capacitor] pauseBackgroundAudio failed:", e)
+                );
             }
         };
     })();

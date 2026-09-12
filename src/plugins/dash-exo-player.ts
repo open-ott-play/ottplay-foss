@@ -1,9 +1,11 @@
 /**
- * DashExoPlayer — Capacitor native DASH/HLS player bridge.
+ * DashExoPlayer — explicit native DASH/HLS bridge, outside normal OTT playback.
  *
  * Android: Media3/ExoPlayer with PlayerView overlay.
  * iOS: honest {ok:false, unsupported:true} (WKWebView has no MSE; no AVPlayer DASH).
  * WebPlugin fallback for non-Cap builds only.
+ * The main player never selects this plugin automatically: the native overlay
+ * does not implement the complete TS player state, controls and layout contract.
  */
 
 import { resolveNativePlugin } from "./native-bridge";

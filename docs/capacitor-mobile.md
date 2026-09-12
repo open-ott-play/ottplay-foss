@@ -24,7 +24,7 @@ Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315
 - **Store readiness** — PR #315 — TestFlight/Play checklist, signing hooks, icons, version bump script (human upload still required)
 - **Stalker portal shim** — PR #317 — Cap/Tauri native HTTP for `<portal>/stalker_portal/api/` (handshake + channel list)
 - **Stalker `host_ott/swop`** — PR #322 — dealer/cloud `swop/a.php` form-urlencoded POSTs via same Cap/Tauri shim (no proprietary `host_ott` default)
-- **4.7 DASH native playback** — PR #319 — Android ExoPlayer/Media3 `DashExoPlayer` plugin + iOS honest reject
+- **4.7 DASH playback** — normal playback uses the shared TS/WebView player; the ExoPlayer plugin from #319 remains an explicit standalone API, without automatic OTT takeover
 - **Tauri updater / notarize** — PR #320 — desktop updater plugin + optional notarize/signing CI hooks (see `docs/tauri-updater-notarize.md`)
 - **Mag `load.php` path allowlist** — PR #324 — Mode B allowlist for `/load.php` + `/c/portal` with Cookie/Authorization forward + `Set-Cookie` jar (honest Mag gap; **no** JsHttpRequest client)
 - **Cap tvOS unsupported + iOS UIPress** — PR #325 — Cap tvOS documented N/A; iOS UIPress play/menu/select + `stbEventToKeyCode` media/back string maps
@@ -284,7 +284,8 @@ Implemented. Capacitor plugin `MobileNativeMedia` provides OS-level media + powe
 
 **Behavior by API**:
 - **Volume**: `getVolume` returns `{ok, volume(0-100)}`; `setVolume({ volume })` clamps 0-100. iOS uses `AVAudioSession.outputVolume` for get; set drives `MPVolumeView` slider (public path, no private APIs). Android uses `AudioManager.STREAM_MUSIC`. Both return `{ok:false, unsupported:true}` on failure.
-- **PiP**: `playPip` / `stopPip`. Android requires API 26+; uses `PictureInPictureParams` with 16:9 aspect ratio (`supportsPictureInPicture` on the activity); wraps `enterPictureInPictureMode` in try/catch and fails loudly on older platforms. iOS uses real `AVPlayer` + `AVPlayerLayer` + `AVPictureInPictureController` pipeline: `playPip({ url })` requires non-empty URL, creates native player/item, attaches layer to bridge view, observes `status` via KVO, starts PiP when `isPictureInPicturePossible` or times out after 5s. Returns `{ok:false, error:"pip not possible"}` instead of fake success. `stopPip` tears down player/layer/controller.
+- **OTT second-channel PiP**: Android uses the same muted `#videopip` and requested channel URL as the TS browser build, with the same size/position settings. Opening or closing that channel leaves the main Activity and main stream in place. iOS retains its URL-aware `playPip({ url })` / `stopPip` AVPlayer pipeline and web fallback: it observes readiness and PiP availability, then resolves on start or fails after 5 seconds.
+- **Android system PiP**: the separate explicit `MobileNativeMedia.enterSystemPip()` operation minimizes the current Activity without loading a second URL. It requires Android API 26+ and device support, runs on the UI thread, and returns the actual entry result. Exit/restore uses Android's system PiP controls. The OTT second-channel buttons never call this operation; the former Android `playPip` / `stopPip` Activity shortcuts have been removed.
 - **Fullscreen**: `setFullscreen({ fullscreen })`. Android uses `FLAG_FULLSCREEN` + immersive sticky system UI flags on the WebView. iOS drives `MainViewController` status bar visibility via plugin flag — honest `prefersStatusBarHidden` override (subclass, not an invalid extension override); home-indicator auto-hide removed (#351, Xcode 26 non-open across modules); no fake `ok:true`. Cap JS only hides `#videopip` when `playPip` returns `{ok:true}` — otherwise CSS PiP fallback.
 - **Standby / wake**: `allowSleep` releases idle timer / clears `keepScreenOn`; `preventSleep` disables idle timer / sets `keepScreenOn`. Web fallbacks return `{ok:false, unsupported:true}` (not fake ok). Cap standby shim uses a real `_standby` flag (same pattern as Tauri), not a `backgroundColor` heuristic. Mirrors Tauri `prevent_sleep` / `allow_sleep` intent.
 
@@ -350,16 +351,17 @@ Shipped. Hardware keyboard, D-Pad/gamepad, and mobile touch gestures now feed th
 
 Mode A browser/STB and Tauri desktop are unchanged by this decision (shared `stbEventToKeyCode` media-key string maps are additive only).
 
-### 4.7 DASH native playback
+### 4.7 DASH playback and backend parity
 
-Implemented. Capacitor plugin `DashExoPlayer` provides native DASH (and HLS) playback on Android via Media3/ExoPlayer with a `PlayerView` overlay on the Cap Activity; iOS returns honest `{ok:false, unsupported:true}` because WKWebView lacks MSE and this app does not ship an AVPlayer DASH path.
+Normal Capacitor playback now uses the same selected HTML5, HLS.js or Shaka backend as the TS browser build, including `.mpd` URLs. Choose Shaka for DASH where the device WebView and stream codecs support it. The player uses one shared video surface for state, pause/resume, seek, volume/mute, track selection and OTT menu/preview layout. Switching formats does not start an independent ExoPlayer overlay. Stop, pause and a replacement play request cancel pending background-metadata updates.
 
-- **Android plugin**: `android/app/src/main/java/play/ott/foss/DashExoPlayerPlugin.kt` (Media3 exoplayer + dash + hls + ui)
-- **iOS plugin**: `ios/App/App/Plugins/DashExoPlayer.swift` — unsupported reject only (registered in `MainViewController`)
-- **JS**: `src/plugins/dash-exo-player.ts` + Capacitor `stbPlay` wrapper in `src/index.ts`: `.mpd` URLs call `isDashSupported` → `playDash`; `_nativeDash` routes stop/pause/continue to native methods
-- **Mode A / Tauri**: unchanged (desktop MSE / Shaka still used)
+- **Shared playback**: `src/core/index.ts`; the Capacitor wrapper in `src/index.ts` adds background media-session updates without changing the playback backend.
+- **Standalone native API**: `DashExoPlayerPlugin.kt` and `src/plugins/dash-exo-player.ts` remain available to explicit callers. Their native overlay does not implement the full OTT state/control/layout contract and is not selected by channel, archive or VOD playback.
+- **iOS native DASH API**: `ios/App/App/Plugins/DashExoPlayer.swift` continues to return unsupported; this app does not ship an AVPlayer DASH path.
 
-**Failure contract**: never fake success. Android resolves `{ok:true}` only after ExoPlayer prepare/play starts; iOS rejects DASH up-front so UI can show a clear error instead of SRC_NOT_SUPPORTED from Shaka.
+**Coverage**: this change restores the browser player's behavior; it does not add codec, DRM or DASH support to a WebView that lacks it. A working ExoPlayer codec path is not evidence of equivalent WebView support. Unsupported streams follow the shared player's existing error handling.
+
+**Regression check**: `node tests/test_capacitor_playback_parity.cjs` executes the real core functions and Capacitor wrapper with controlled media backends. It covers shared state/seek/mute/track controls, DOM preview bounds, format switching, stop/pause callback cancellation, Android second-channel URL routing, and preservation of iOS native PiP routing. Native rendering and codec playback still require the device smoke checks.
 
 **Out of scope**: Widevine/DRM, FairPlay, encrypted DASH.
 

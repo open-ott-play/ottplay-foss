@@ -27,6 +27,12 @@ export interface MobileNativeMediaPlugin {
     allowSleep(): Promise<{ ok: boolean; unsupported?: boolean }>;
     /** Finish the native Activity / leave the Cap app. */
     exitApp(): Promise<{ ok: boolean; unsupported?: boolean; error?: string }>;
+    /** Android only: minimize the current Activity into OS PiP, without changing its stream. */
+    enterSystemPip(): Promise<{
+        ok: boolean;
+        unsupported?: boolean;
+        error?: string;
+    }>;
     /** OS output volume 0–100. Fails loudly when platform cannot report. */
     getVolume(): Promise<{
         ok: boolean;
@@ -39,7 +45,7 @@ export interface MobileNativeMediaPlugin {
         unsupported?: boolean;
         error?: string;
     }>;
-    /** Enter picture-in-picture. Fails loudly when unavailable. */
+    /** iOS native second-channel PiP. Android OTT PiP uses the shared video element. */
     playPip(opts: { url: string }): Promise<{
         ok: boolean;
         unsupported?: boolean;
@@ -75,7 +81,7 @@ export interface MobileNativeMediaPlugin {
         unsupported?: boolean;
         error?: string;
     }>;
-    /** Exit picture-in-picture. */
+    /** Stop iOS native second-channel PiP. System Android PiP uses OS controls. */
     stopPip(): Promise<{ ok: boolean; unsupported?: boolean }>;
     /**
      * Refresh Now Playing / MediaSession metadata + timeline without restarting
@@ -87,6 +93,12 @@ export interface MobileNativeMediaPlugin {
 }
 
 class MobileNativeMediaWeb implements MobileNativeMediaPlugin {
+    async enterSystemPip(): Promise<{
+        ok: boolean;
+        unsupported?: boolean;
+    }> {
+        return { ok: false, unsupported: true };
+    }
     async getVolume(): Promise<{
         ok: boolean;
         unsupported?: boolean;
