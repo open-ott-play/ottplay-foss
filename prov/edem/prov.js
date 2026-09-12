@@ -573,7 +573,13 @@ var _getMediaArray = function (murl, callback) {
         _vpurl = vpurl.split("]")[1];
         _vpkey = vpurl.split("portal::[key:")[1].split("]")[0];
     } else if (typeof murl === "string" && murl.indexOf("search") == 0) {
-        var ss = murl.split("=")[1];
+        var ss = murl.slice(murl.indexOf("=") + 1);
+        // searchMedia encodes URL query values; VPortal expects plain text in JSON.
+        try {
+            ss = decodeURIComponent(ss);
+        } catch (e) {
+            // Retain legacy queries containing a literal or malformed percent escape.
+        }
         murl = {
             mediaName: "[" + ss + "]",
             request: { cmd: "search", query: ss },

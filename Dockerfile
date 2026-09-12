@@ -3,6 +3,15 @@ FROM node:26-alpine@sha256:ef24c5053d50fdc3e4e56eb4e7ddb7861874ab0fdc797046ba897
 WORKDIR /app
 COPY package.json package-lock.json tsconfig.json vite.config.ts ./
 COPY src ./src
+# Vite validates and stages the actual ES5 assets, including the boot loader.
+COPY scripts/html-scripts.cjs ./scripts/html-scripts.cjs
+COPY scripts/check-es5.cjs ./scripts/check-es5.cjs
+COPY index.html favicon.ico ./
+COPY fonts ./fonts
+COPY js ./js
+COPY stb ./stb
+COPY stbPlayer ./stbPlayer
+COPY prov ./prov
 RUN npm ci --ignore-scripts && npm run typecheck && npm run build
 
 # Build Rust server against musl so the published image does not need

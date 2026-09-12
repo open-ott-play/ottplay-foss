@@ -12,7 +12,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import java.io.File
-import java.io.FileInputStream
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
@@ -32,6 +31,8 @@ class MobileXmltvEpgPlugin : Plugin() {
         File(context.filesDir, "epg2.meta")
     }
 
+    private val cacheLock = Any()
+
     companion object {
         private const val TTL_SECONDS = 2 * 3600
         private const val DEFAULT_URL = "https://cdn.epg.one/epg2.xml.gz"
@@ -44,38 +45,33 @@ class MobileXmltvEpgPlugin : Plugin() {
         val hash = call.getString("hash") ?: ""
         val channelId = call.getString("channel_id") ?: ""
         val timeShift = call.getInt("time_shift_hours") ?: 0
+        val archiveHours = call.getInt("archive_hours") ?: 0
 
-        val fresh = try { readFreshCache() } catch (_: Throwable) { null }
+        val fresh = try { readCache(urlStr) } catch (_: Throwable) { null }
         if (fresh != null) {
             val parsed = parseXmltv(fresh)
-            call.resolve(buildSlice(parsed, channelId, ch, hash, timeShift))
+            call.resolve(buildSlice(parsed, channelId, ch, hash, timeShift, archiveHours))
             return
         }
 
         val request = Request.Builder().url(urlStr).build()
         client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                val stale = try { FileInputStream(cacheFile).use { it.readBytes() } } catch (_: Throwable) { null }
+            override fun onFailure(httpCall: Call, e: IOException) {
+                val stale = try { readCache(urlStr, allowStale = true) } catch (_: Throwable) { null }
                 if (stale != null) {
-                    val xml = gunzip(stale)
-                    if (xml != null) {
-                        val parsed = parseXmltv(String(xml))
-                        call.resolve(buildSlice(parsed, channelId, ch, hash, timeShift))
-                        return
-                    }
+                    val parsed = parseXmltv(stale)
+                    call.resolve(buildSlice(parsed, channelId, ch, hash, timeShift, archiveHours))
+                    return
                 }
                 call.reject(e.localizedMessage ?: "fetch failed")
             }
 
-            override fun onResponse(call: Call, response: Response) {
-                val data = response.body?.bytes() ?: return onFailure(call, IOException("empty body"))
-                try {
-                    cacheFile.writeBytes(data)
-                    metaFile.writeText((System.currentTimeMillis() / 1000).toString())
-                } catch (_: Throwable) { /* ignore cache write errors */ }
-                val xml = gunzip(data) ?: return onFailure(call, IOException("gunzip failed"))
+            override fun onResponse(httpCall: Call, response: Response) {
+                val data = response.body?.bytes() ?: return onFailure(httpCall, IOException("empty body"))
+                val xml = gunzip(data) ?: return onFailure(httpCall, IOException("gunzip failed"))
+                try { writeCache(data, urlStr) } catch (_: Throwable) { /* ignore cache write errors */ }
                 val parsed = parseXmltv(String(xml))
-                call.resolve(buildSlice(parsed, channelId, ch, hash, timeShift))
+                call.resolve(buildSlice(parsed, channelId, ch, hash, timeShift, archiveHours))
             }
         })
     }
@@ -85,13 +81,11 @@ class MobileXmltvEpgPlugin : Plugin() {
         val urlStr = call.getString("xmltv_url")?.trim()?.takeIf { it.isNotEmpty() } ?: DEFAULT_URL
         val request = Request.Builder().url(urlStr).build()
         client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) { call.reject(e.localizedMessage ?: "fetch failed") }
-            override fun onResponse(call: Call, response: Response) {
+            override fun onFailure(httpCall: Call, e: IOException) { call.reject(e.localizedMessage ?: "fetch failed") }
+            override fun onResponse(httpCall: Call, response: Response) {
                 val data = response.body?.bytes() ?: return call.reject("empty body")
-                try {
-                    cacheFile.writeBytes(data)
-                    metaFile.writeText((System.currentTimeMillis() / 1000).toString())
-                } catch (_: Throwable) { }
+                if (gunzip(data) == null) return call.reject("gunzip failed")
+                try { writeCache(data, urlStr) } catch (_: Throwable) { /* ignore cache write errors */ }
                 call.resolve()
             }
         })
@@ -100,12 +94,23 @@ class MobileXmltvEpgPlugin : Plugin() {
     // MARK: - Cache
 
     @Throws(IOException::class)
-    private fun readFreshCache(): String? {
-        if (!metaFile.exists() || !cacheFile.exists()) return null
-        val fetched = metaFile.readText().trim().toLongOrNull() ?: return null
+    private fun readCache(sourceUrl: String, allowStale: Boolean = false): String? = synchronized(cacheLock) {
+        if (!metaFile.exists() || !cacheFile.exists()) return@synchronized null
+        val fields = metaFile.readText().split('\n', limit = 2)
+        // Timestamp-only metadata predates source tracking and cannot be trusted.
+        if (fields.size != 2 || fields[1] != sourceUrl) return@synchronized null
+        val fetched = fields[0].toLongOrNull() ?: return@synchronized null
         val age = max(0L, System.currentTimeMillis() / 1000 - fetched)
-        if (age > TTL_SECONDS) return null
-        return gunzip(cacheFile.readBytes())?.let { String(it) }
+        if (!allowStale && age > TTL_SECONDS) return@synchronized null
+        gunzip(cacheFile.readBytes())?.let { String(it, Charsets.UTF_8) }
+    }
+
+    @Throws(IOException::class)
+    private fun writeCache(data: ByteArray, sourceUrl: String) = synchronized(cacheLock) {
+        // Invalidate metadata first so an interrupted write cannot label another source's data.
+        if (metaFile.exists() && !metaFile.delete()) throw IOException("cannot invalidate cache metadata")
+        cacheFile.writeBytes(data)
+        metaFile.writeText("${System.currentTimeMillis() / 1000}\n$sourceUrl")
     }
 
     // MARK: - Gzip
@@ -289,12 +294,14 @@ class MobileXmltvEpgPlugin : Plugin() {
         channelId: String,
         ch: String?,
         hash: String,
-        timeShiftHours: Int
+        timeShiftHours: Int,
+        archiveHours: Int
     ): JSObject {
         val xmltvId = resolveXmltvId(parsed.channels, ch, hash)
         val progs = parsed.programs[xmltvId] ?: emptyList()
         val now = (System.currentTimeMillis() / 1000).toInt()
-        val windowStart = now - 48 * 3600
+        val lookbackH = if (archiveHours > 0) archiveHours else 48
+        val windowStart = now - lookbackH * 3600
         val windowEnd = now + 48 * 3600
         val shift = timeShiftHours * 3600
 

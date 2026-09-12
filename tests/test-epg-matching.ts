@@ -75,6 +75,7 @@ function clearMocks() {
     mockWindow.playType = 0;
     mockWindow.playTime = 0;
     mockWindow.getEPGchanel = null;
+    mockWindow.epgCash = 10;
     mockWindow.setCurProg = null;
     mockWindow.stbGetItem = null;
     mockWindow.stbSetItem = null;
@@ -174,13 +175,27 @@ function testEpglCacheLookups(ch: Awaited<ReturnType<typeof getModule>>) {
         "getEpgFromCash returns null for missing entry"
     );
 
-    // Populate caches
+    // Populate the full cache through a provider response, never via now/next.
+    const now = Date.now() / 1000;
     const sample: any[] = [
-        { descr: "News", name: "Evening News", time: 1000, time_to: 1100 },
-        { descr: "Comedy", name: "Late Show", time: 1100, time_to: 1200 },
+        {
+            descr: "News",
+            name: "Evening News",
+            time: now - 100,
+            time_to: now + 100,
+        },
+        {
+            descr: "Comedy",
+            name: "Late Show",
+            time: now + 100,
+            time_to: now + 200,
+        },
     ];
-    epg[42] = sample;
-    epgCashObj[42] = sample;
+    mockWindow.getEPGchanel = (id: number, done: any) => done(id, sample);
+    getEPGchanelCached(42, () => {});
+    mockWindow.getEPGchanel = () => {
+        throw new Error("unexpected refetch");
+    };
 
     received = [];
     getEPGchanelCached(42, (_id: number, programs: any[]) => {
@@ -270,7 +285,7 @@ function testRenderEpgHTML(ch: Awaited<ReturnType<typeof getModule>>) {
 }
 
 // ---------------------------------------------------------------------------
-// setCurProg cache side-effects
+// setCurProg updates now/next without taking ownership of full schedules
 // ---------------------------------------------------------------------------
 
 function testSetCurProg(ch: Awaited<ReturnType<typeof getModule>>) {
@@ -302,13 +317,13 @@ function testSetCurProg(ch: Awaited<ReturnType<typeof getModule>>) {
 
     assert.deepStrictEqual(
         epg[channelId],
-        sample,
-        "setCurProg writes to primary epg cache"
+        undefined,
+        "setCurProg does not write a now/next slice to the full epg cache"
     );
     assert.deepStrictEqual(
         epgCashObj[channelId],
-        sample,
-        "setCurProg writes to secondary epgCashObj cache"
+        undefined,
+        "setCurProg does not write a now/next slice to the secondary cache"
     );
 
     // Verify channel object was populated with current program (reads from window.channels, setCurProg's write target)
@@ -446,7 +461,7 @@ async function testGetCurProgDataCacheHit(
 
     // Case 3: cache hit with current program (async path)
     mockWindow.chanels[channelId] = { time_request: 0, time_to: 0 };
-    epg[channelId] = [
+    const schedule = [
         { descr: "", name: "Prev", time: now - 3600, time_to: now - 1800 },
         {
             descr: "Live",
@@ -455,6 +470,8 @@ async function testGetCurProgDataCacheHit(
             time_to: now + 600,
         },
     ];
+    mockWindow.getEPGchanel = (id: number, done: any) => done(id, schedule);
+    ch.getEPGchanelCached(channelId, () => {});
     callbackCalled = false;
     let finishCallback: (id: number) => void = () => {};
     const callbackResult = new Promise<number>((resolve) => {
@@ -654,6 +671,290 @@ function testSetEpgTimerAddRemove(ch: Awaited<ReturnType<typeof getModule>>) {
     console.log("  setEpgTimer add/remove: OK");
 }
 
+/** A real schedule survives rollover, refresh, reload races, and native misses. */
+async function testEpgLifecycle(ch: Awaited<ReturnType<typeof getModule>>) {
+    const realNow = Date.now;
+    let now = realNow();
+    Date.now = () => now;
+    const id = 700;
+    const request = () =>
+        new Promise<any>((resolve) =>
+            ch.getEPGchanelCached(id, (_id, data) => resolve(data))
+        );
+    const schedule = (title: string) => [
+        { name: "history", time: now / 1000 - 200, time_to: now / 1000 - 100 },
+        { name: title, time: now / 1000 - 100, time_to: now / 1000 + 100 },
+        { name: "next", time: now / 1000 + 100, time_to: now / 1000 + 200 },
+        { name: "later", time: now / 1000 + 200, time_to: now / 1000 + 100000 },
+    ];
+    try {
+        ch.invalidateEpgCache();
+        mockWindow.chanels = ch.channels;
+        mockWindow.channels = ch.channels;
+        ch.channels[id] = { ch_id: id, channel_name: "Fixture" };
+        let calls = 0;
+        mockWindow.getEPGchanel = (channelId: number, done: any) => {
+            calls++;
+            done(channelId, schedule("current"));
+        };
+        const full = await request();
+        ch.setCurProg(id, full);
+        now += 150000;
+        await new Promise<void>((resolve) =>
+            ch.getCurProgData(id, () => resolve())
+        );
+        assert.deepStrictEqual(
+            await request(),
+            full,
+            "rollover preserves archive and later programs"
+        );
+        assert.strictEqual(calls, 1, "a valid complete schedule stays cached");
+
+        now += 12 * 60 * 60 * 1000;
+        await request();
+        assert.strictEqual(
+            calls,
+            2,
+            "full schedules refresh after the legacy 12-hour TTL"
+        );
+        mockWindow.epgCash = 0;
+        await request();
+        await request();
+        assert.strictEqual(
+            calls,
+            4,
+            "epgCash=0 bypasses completed-response caching"
+        );
+        mockWindow.epgCash = 10;
+
+        ch.invalidateEpgCache();
+        const pending: Array<(id: number, data: any) => void> = [];
+        mockWindow.getEPGchanel = (_id: number, done: any) =>
+            pending.push(done);
+        let staleCallback = false;
+        ch.getEPGchanelCached(id, () => {
+            staleCallback = true;
+        });
+        ch.invalidateEpgCache();
+        ch.channels[id] = { ch_id: id, channel_name: "Replacement provider" };
+        const first = request();
+        const second = request();
+        assert.strictEqual(
+            pending.length,
+            2,
+            "concurrent fresh requests share one fetch"
+        );
+        pending[0](id, schedule("stale provider"));
+        assert.strictEqual(
+            staleCallback,
+            false,
+            "late pre-reload responses cannot act on the new provider"
+        );
+        assert.strictEqual(
+            ch.epg[id],
+            undefined,
+            "late responses cannot repopulate the full cache"
+        );
+        pending[1](id, schedule("replacement"));
+        assert.deepStrictEqual(await first, await second);
+
+        ch.invalidateEpgCache();
+        const warmMenu = request();
+        ch.invalidateEpgCache(true);
+        assert.strictEqual(
+            pending.length,
+            4,
+            "backend warm-up reissues an in-flight menu request"
+        );
+        pending[2](id, schedule("pre-warm"));
+        pending[3](id, schedule("post-warm"));
+        assert.strictEqual(
+            (await warmMenu)[1].name,
+            "post-warm",
+            "the waiting menu receives fresh backend data"
+        );
+
+        ch.invalidateEpgCache();
+        ch.channels[id].epg = "xmltv-channel-id";
+        ch.channels[id].epg_url = 123456;
+        const nativeArgs: any[] = [];
+        mockWindow.Capacitor = {
+            Plugins: {
+                MobileXmltvEpg: {
+                    getEpg: async (args: any) => {
+                        nativeArgs.push(args);
+                        return nativeArgs.length === 1
+                            ? { epg_data: [] }
+                            : { epg_data: schedule("native warm") };
+                    },
+                },
+            },
+        };
+        assert.strictEqual(
+            await request(),
+            null,
+            "empty native cold response is a miss"
+        );
+        assert.ok(
+            await request(),
+            "the native warm response can be fetched after an empty miss"
+        );
+        assert.strictEqual(
+            nativeArgs[0].xmltv_url,
+            "",
+            "companion hash is never used as an XMLTV URL"
+        );
+        assert.strictEqual(
+            nativeArgs[0].hash,
+            "xmltv-channel-id",
+            "native matching receives tvg-id"
+        );
+        ch.invalidateEpgCache();
+        ch.channels[id].xmltv_url = "https://example.test/guide.xml.gz";
+        await request();
+        assert.strictEqual(
+            nativeArgs[2].xmltv_url,
+            "https://example.test/guide.xml.gz"
+        );
+
+        const { applyTimezoneSetting } = await import(
+            "../src/settings/index.ts"
+        );
+        const originalSetter = (Date as any).setTimezoneOffset;
+        const offsets: number[] = [];
+        (Date as any).setTimezoneOffset = (value: number) =>
+            offsets.push(value);
+        try {
+            applyTimezoneSetting(4);
+            applyTimezoneSetting(14);
+            applyTimezoneSetting(0);
+            assert.deepStrictEqual(offsets, [
+                -180,
+                60,
+                new Date().getTimezoneOffset(),
+            ]);
+        } finally {
+            (Date as any).setTimezoneOffset = originalSetter;
+        }
+    } finally {
+        delete mockWindow.Capacitor;
+        mockWindow.epgCash = 10;
+        Date.now = realNow;
+        ch.invalidateEpgCache();
+        delete ch.channels[id];
+    }
+    console.log("  EPG lifecycle, native source contract, timezone: OK");
+}
+
+/** Backend warm-up must retain the EPG view's channel and refresh its rows. */
+async function testWarmEpgView(ch: Awaited<ReturnType<typeof getModule>>) {
+    const id = 701;
+    const category = "Warm view fixture";
+    const catIdx = ch.catsArray.length;
+    const savedDollar = (global as any).$;
+    const savedDocument = (global as any).document;
+    const savedWindow = { ...mockWindow };
+    const savedIdDescriptor = Object.getOwnPropertyDescriptor(
+        mockWindow,
+        "epg_ch_id"
+    );
+    const timerCount = ch.epgTimers.length;
+    const jq = { hide: () => jq, html: () => jq, show: () => jq };
+    const pending: Array<(channelId: number, data: any[]) => void> = [];
+    const now = Math.floor(Date.now() / 1000);
+    const schedule = (name: string) => [
+        { descr: "", name, time: now - 60, time_to: now + 60 },
+        { descr: "", name: "Future show", time: now + 60, time_to: now + 3600 },
+    ];
+    try {
+        ch.invalidateEpgCache();
+        ch.channels[id] = { ch_id: id, channel_name: category, rec: 24 };
+        ch.catsArray.push(category);
+        ch.cats[category] = [id];
+        (global as any).$ = () => jq;
+        (global as any).document = { getElementById: () => null };
+        Object.assign(mockWindow, {
+            cats: ch.cats,
+            catsArray: ch.catsArray,
+            chanels: ch.channels,
+            channels: ch.channels,
+            getEPGchanel: (_id: number, done: any) => pending.push(done),
+            getEPGchanelCached: ch.getEPGchanelCached,
+            isListVisible: false,
+            showPage: () => {
+                mockWindow.isListVisible = true;
+            },
+        });
+        // Classic-bundle globals share storage with window; reproduce that alias.
+        Object.defineProperty(mockWindow, "epg_ch_id", {
+            configurable: true,
+            get: () => ch.epg_ch_id,
+            set: () => {},
+        });
+        ch.epgList(catIdx, 0, false);
+        ch.invalidateEpgCache(true);
+        assert.strictEqual(
+            pending.length,
+            2,
+            "warm-up reissues the menu fetch"
+        );
+        pending[0](id, schedule("Stale"));
+        pending[1](id, schedule("Warm current"));
+        assert.strictEqual(
+            ch.epg_ch_id,
+            id,
+            "a refetched menu keeps its archive channel identity"
+        );
+        assert.strictEqual(mockWindow.listArray[0].name, "Warm current");
+        mockWindow.selIndex = 1;
+        mockWindow.confirmBox = (_message: string, confirm: () => void) =>
+            confirm();
+        ch.setEpgTimer();
+        assert.strictEqual(
+            ch.epgTimers.at(-1)?.ci,
+            id,
+            "timers retain the channel after warm-up"
+        );
+
+        ch.invalidateEpgCache(true);
+        assert.strictEqual(
+            pending.length,
+            3,
+            "an already displayed EPG refetches after cache-ready"
+        );
+        pending[2](id, schedule("Updated current"));
+        assert.strictEqual(mockWindow.listArray[0].name, "Updated current");
+        assert.strictEqual(ch.epg_ch_id, id);
+
+        ch.epgListAlpha(catIdx, 0, false);
+        ch.invalidateEpgCache(true);
+        pending[3](id, schedule("Z current"));
+        assert.strictEqual(
+            ch.epglisted,
+            2,
+            "warm-up preserves alphabetical mode"
+        );
+        assert.strictEqual(mockWindow.listArray[0].name, "Future show");
+    } finally {
+        for (const timer of ch.epgTimers.splice(timerCount)) {
+            clearTimeout(timer.ti);
+            clearTimeout(timer.ri);
+        }
+        delete mockWindow.epg_ch_id;
+        for (const key of Object.keys(mockWindow)) delete mockWindow[key];
+        Object.assign(mockWindow, savedWindow);
+        if (savedIdDescriptor)
+            Object.defineProperty(mockWindow, "epg_ch_id", savedIdDescriptor);
+        (global as any).$ = savedDollar;
+        (global as any).document = savedDocument;
+        delete ch.channels[id];
+        delete ch.cats[category];
+        ch.catsArray.splice(catIdx, 1);
+        ch.invalidateEpgCache();
+    }
+    console.log("  Warm EPG view identity, timers and refresh: OK");
+}
+
 // ---------------------------------------------------------------------------
 // Run all tests
 // ---------------------------------------------------------------------------
@@ -681,6 +982,12 @@ async function runTests() {
 
     clearMocks();
     await testGetCurProgDataCacheHit(ch);
+
+    clearMocks();
+    await testEpgLifecycle(ch);
+
+    clearMocks();
+    await testWarmEpgView(ch);
 
     clearMocks();
     testLoadEpgTimersFilter(ch);

@@ -49,9 +49,10 @@ var keys = {
 };
 var strEXIT = "EXIT";
 var strRETURN = "BACK";
+// Capture the existing initializer before assigning the device wrapper.
 var _baseStbInit = typeof stbInit === "function" ? stbInit : function () {};
-function stbInit() {
-    _baseStbInit();
+stbInit = function () {
+    var baseInitResult = _baseStbInit.apply(this, arguments);
     try {
         if (typeof gSTB !== "undefined") {
             console.log("[stb] MAG STB detected");
@@ -67,7 +68,8 @@ function stbInit() {
             }
         }
     } catch (e) {}
-}
+    return baseInitResult;
+};
 var _stb_orig_mac = stb.getMacAddress;
 stb.getMacAddress = function () {
     try {

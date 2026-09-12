@@ -33,9 +33,7 @@
  */
 
 // Polyfills (must run first)
-import { applyPolyfills } from "./polyfills";
-
-applyPolyfills();
+import "./polyfills";
 
 import { DashExoPlayer } from "./plugins/dash-exo-player";
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
@@ -94,6 +92,7 @@ import {
     getMediaDescr,
     handleNumberInput,
     ifParentalAccessChId,
+    invalidateEpgCache,
     itemEPG,
     listEpgArray,
     listFavoritesLists,
@@ -141,6 +140,7 @@ import {
 } from "./localization";
 // Settings
 import {
+    applyTimezoneSetting,
     defaultSettings,
     exportSettings,
     importSettings,
@@ -944,45 +944,25 @@ declare function getScriptDOM(
     errorCb?: () => void
 ): void;
 
-// Provider-scoped storage aliases
-
-/** @returns Provider-stored string value for `key`, or null. */
-function _providerGetItem(key: string): string | null {
-    return providerGetItem(key);
-}
-
-/** @returns True if `key` exists in provider storage. */
-function _providerHasItem(key: string): boolean {
-    return providerHasItem(key);
-}
-
-/** @returns True if `key` exists and has a non-empty value. */
-function _providerHasItemValue(key: string): boolean {
-    return providerHasItemValue(key);
-}
-
-/** Write `val` to provider storage under `key`. */
-function _providerSetItem(key: string, val: string): void {
-    providerSetItem(key, val);
-}
-
-/** Delete `key` from provider storage. */
-function _providerDelItem(key: string): void {
-    providerDelItem(key);
-}
+// Capture the original storage functions before provider scripts replace globals.
+// loadProv restores these references. Forwarding wrappers would recurse once
+// their names and the provider globals share the concatenated script scope.
+var _providerGetItem = providerGetItem;
+var _providerHasItem = providerHasItem;
+var _providerHasItemValue = providerHasItemValue;
+var _providerSetItem = providerSetItem;
+var _providerDelItem = providerDelItem;
 
 // Settings helpers
 
 /**
  * Apply the configured timezone offset from settings.
- * Currently a stub — reads settings.timezone but performs no actual offset.
- * Reserved for future use (e.g. shifting EPG times).
+ * Uses the timezone polyfill for clocks and EPG display, preserving epochs.
  */
 function setTimezone(): void {
-    var tz = settings.timezone;
-    if (tz) {
-        // Apply timezone offset
-    }
+    var index = applyTimezoneSetting(settings.timezone);
+    settings.timezone = index;
+    (window as any).sTimezone = index;
 }
 
 // UI-related DOM element references
@@ -1462,15 +1442,11 @@ function showChanelsList(): void {
 // Media info update
 
 /**
- * Update the #video_res element with the current video resolution
- * (videoWidth × videoHeight) from the <video> element, if available.
- *
- * Side effects: DOM write to #video_res.
+ * Refresh finite-media progress and the video-resolution display.
+ * Uses the shared UI renderer, which reads time from the active STB adapter.
  */
 function updateMediaInfoDisplay(): void {
-    var resEl = document.getElementById("video_res");
-    if (resEl && video && video.videoWidth)
-        resEl.innerHTML = "<br/>" + video.videoWidth + "x" + video.videoHeight;
+    updateMediaInfo();
 }
 
 // Check media (detect archive)
@@ -2425,7 +2401,7 @@ function setupTauriEpgOverride(): void {
 
 /**
  * Listen for Rust `epg-cache-ready` (startup warm / refresh). Clears
- * time_request miss locks and empty JS EPG cache entries so channel list,
+ * old full schedules and time_request miss locks so channel list,
  * podval now/next, and EPG menu progressively refill once XMLTV is warm —
  * matching Mode A companion where the cache is already hot at first paint.
  */
@@ -2442,24 +2418,7 @@ function setupTauriEpgCacheReady(): void {
         .listen("epg-cache-ready", function (_ev: any) {
             try {
                 console.log("[Tauri] epg-cache-ready — refilling EPG");
-                const cmap =
-                    (window as any).chanels || (window as any).channels || null;
-                if (cmap) {
-                    for (const key of Object.keys(cmap)) {
-                        const ch = cmap[key];
-                        if (!ch) continue;
-                        if (ch.time_request) ch.time_request = 0;
-                    }
-                }
-                const cache = (window as any).epgCache || epg;
-                if (cache && typeof cache === "object") {
-                    for (const key of Object.keys(cache)) {
-                        const arr = cache[key];
-                        if (!arr || (Array.isArray(arr) && arr.length === 0)) {
-                            delete cache[key];
-                        }
-                    }
-                }
+                invalidateEpgCache(true);
                 // Visible channel list: re-queue getCurProgData via showPage.
                 if (
                     (window as any).isListVisible &&
@@ -2578,6 +2537,9 @@ function _playChannel(catIdx: number, chIdx: number): void {
  * If mediaUrls last element is -1, resets mediaSelects[0] to 0.
  */
 function _playMedia(item: any): void {
+    // A delayed live-channel probe must not relabel the newly selected VOD item.
+    clearTimeout((window as any)._tmedia);
+    clearTimeout(mediaCheckTimer);
     if (mediaUrls && mediaUrls[mediaUrls.length - 1] === -1)
         mediaSelects[0] = 0;
     setCurrent(catIndex, -1);
@@ -2592,8 +2554,11 @@ function _playMedia(item: any): void {
         medHistory.splice(historyIdx, 1);
     }
     medHistory.unshift(item);
-    var maxMedCount = [0, 10, 20, 30, 40, 50][sMedCount] || 10;
-    medHistory.splice(maxMedCount);
+    var maxMedCount = [0, 10, 20, 30, 40, 50][sMedCount];
+    medHistory.splice(maxMedCount === undefined ? 20 : maxMedCount);
+    // Persist the newly selected item too, so history survives an interrupted session.
+    if ((window as any).sFavorites !== -1)
+        providerSetItem("medHistory", JSON.stringify(medHistory));
     $("#picon").css(
         "background-image",
         'url("' + (item.logo_30x30 || "") + '")'
@@ -2648,7 +2613,7 @@ window.showSelectBox = showSelectBox;
 window.infoBox = infoBox;
 window.confirmBox = confirmBox;
 window.updateChanelInfo = updateChanelInfo;
-window.updateMediaInfo = updateMediaInfoDisplay;
+window.updateMediaInfo = updateMediaInfo;
 window.refreshAudioBadge = refreshAudioBadge;
 window.stbPlay = stbPlay;
 window.stbStop = stbStop;

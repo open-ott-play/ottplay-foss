@@ -52,12 +52,14 @@ var strENTER = "ENTER";
 var strTools = "TOOLS";
 var strRETURN = "RETURN";
 var strSETUP = "MENU";
+// Capture the existing initializer before assigning the device wrapper.
 var _baseStbInit = typeof stbInit === "function" ? stbInit : function () {};
-function stbInit() {
-    _baseStbInit();
+stbInit = function () {
+    var baseInitResult = _baseStbInit.apply(this, arguments);
     try {
         if (typeof tizen !== "undefined") {
             console.log("[stb] Samsung Tizen platform detected");
         }
     } catch (e) {}
-}
+    return baseInitResult;
+};

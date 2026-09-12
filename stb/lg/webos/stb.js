@@ -50,6 +50,7 @@ var keys = {
 var strEXIT = "EXIT";
 var strTools = "TOOLS";
 var strRETURN = "BACK";
+// Capture the existing initializer before assigning the device wrapper.
 var _baseStbInit = typeof stbInit === "function" ? stbInit : function () {};
 // Hide LG splash/logo on launch — 2–5 s native delay otherwise
 function _hideSplash() {
@@ -114,15 +115,15 @@ function _showPipMenu() {
         }
     } catch (e) {}
 }
-function stbInit() {
-    _baseStbInit();
+stbInit = function () {
+    var baseInitResult = _baseStbInit.apply(this, arguments);
     try {
         if (typeof webOS !== "undefined") {
             console.log("[stb] LG WebOS platform detected");
         } else if (typeof window.PalmSystem !== "undefined") {
             console.log("[stb] LG WebOS (PalmSystem) platform detected");
         } else {
-            return;
+            return baseInitResult;
         }
         _hideSplash();
         _hideCursor();
@@ -130,4 +131,5 @@ function stbInit() {
         _focusApp();
         _showPipMenu();
     } catch (e) {}
-}
+    return baseInitResult;
+};

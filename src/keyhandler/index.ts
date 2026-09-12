@@ -112,7 +112,12 @@ export function keyHandler(event: KeyboardEvent): void {
             target.tagName === "TEXTAREA" ||
             target.isContentEditable)
     ) {
-        const isEnterOrEsc = event.key === "Enter" || event.key === "Escape";
+        const inputKeyCode = event.keyCode || event.which;
+        const isEnterOrEsc =
+            event.key === "Enter" ||
+            event.key === "Escape" ||
+            inputKeyCode === 13 ||
+            inputKeyCode === 27;
         let listEditVisible = false;
         try {
             listEditVisible =
@@ -239,6 +244,33 @@ export function keyHandler(event: KeyboardEvent): void {
  * Main mode — dispatch by keyCode
  * --------------------------------------------------------------------------- */
 
+/** Toggle live, archive, or VOD using the mode-specific resume path. */
+function toggleMainPlayback(): void {
+    var w = window as any;
+    if (!w.playType) {
+        if (typeof w.liveStop === "function") w.liveStop();
+        return;
+    }
+    if (typeof w.stbIsPlaying !== "function") return;
+    if (w.stbIsPlaying()) {
+        w.forcePlay = false;
+        if (typeof w.showShift === "function") w.showShift(_("Pause"));
+        if (typeof w.showChanelInfo === "function") w.showChanelInfo(2);
+        if (typeof w.stbPause === "function") w.stbPause();
+    } else {
+        w.forcePlay = true;
+        if (typeof w.showShift === "function") w.showShift(_("Play"));
+        if (w.$i1 && typeof w.$i1.hide === "function") w.$i1.hide();
+        if (w.playType < 0 || w.fileArchive) {
+            if (typeof w.stbContinue === "function") w.stbContinue();
+        } else if (typeof w.playArchive === "function") {
+            w.playArchive(
+                w.playType + (w.playTime || 0) - (w.s10resum ? 10 : 0)
+            );
+        }
+    }
+}
+
 /**
  * Handle a key event in "main" mode — the default mode when no dialog/list/edit/select-box is active.
  * Maps key codes to actions: number input, navigation, playback control, volume, color keys, etc.
@@ -258,9 +290,16 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
     event.stopPropagation();
 
     /* 0-9: channel number input and archive navigation */
-    if (keyCode >= 48 && keyCode <= 57) {
-        // Digit keys for archive navigation when playType > 0
-        if ((window as any).playType > 0) {
+    var digit = -1;
+    for (var n = 0; n <= 9; n++) {
+        if (keyCode === keys["N" + n]) {
+            digit = n;
+            break;
+        }
+    }
+    if (digit !== -1) {
+        // Both archive timestamps and negative VOD sentinels use transport keys.
+        if ((window as any).playType) {
             switch (keyCode) {
                 case keys.N1:
                     if (typeof (window as any).shiftArchive === "function")
@@ -312,11 +351,11 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
                     }
                     return;
                 case keys.N0:
-                    // fall through to number input below
-                    break;
+                    toggleMainPlayback();
+                    return;
             }
         } else {
-            // playType <= 0: live TV mode, N0 stops live if nProg empty (legacy stbPlayer.js:L7230-7234)
+            // Live TV: N0 pauses live if no channel number is being entered.
             if (keyCode === keys.N0 && (window as any).nProg === "") {
                 if (typeof (window as any).liveStop === "function")
                     (window as any).liveStop();
@@ -325,7 +364,7 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
         }
         // Standard number input for channel selection
         if (typeof (window as any).numberProg === "function") {
-            (window as any).numberProg(keyCode - 48);
+            (window as any).numberProg(digit);
         }
         return;
     }
@@ -344,6 +383,18 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
             keyFun(settings.arFun);
             break;
         case keys.ENTER:
+            if (
+                (window as any).playType &&
+                (window as any).forcePlay === false
+            ) {
+                toggleMainPlayback();
+                break;
+            }
+            if ((window as any).playType === -1e11) {
+                if (typeof (window as any).mediaList === "function")
+                    (window as any).mediaList(null);
+                break;
+            }
             if ((window as any).playType > 0 && !settings.okFun) {
                 if (typeof (window as any).epgList === "function")
                     (window as any).epgList(
@@ -398,22 +449,7 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
             break;
         case keys.PLAY:
         case keys.PAUSE:
-            // Live TV mode (playType == 0): pause/play stops live stream (legacy stbPlayer.js:L7243-7245)
-            if (!(window as any).playType) {
-                if (typeof (window as any).liveStop === "function")
-                    (window as any).liveStop();
-                break;
-            }
-            if (
-                typeof (window as any).stbContinue === "function" &&
-                typeof (window as any).stbIsPlaying === "function"
-            ) {
-                if ((window as any).stbIsPlaying()) {
-                    (window as any).stbPause();
-                } else {
-                    (window as any).stbContinue();
-                }
-            }
+            toggleMainPlayback();
             break;
         case keys.STOP:
             // Show "Live" or "Restart stream" before switching (legacy stbPlayer.js:L7253-7254)
@@ -1372,7 +1408,7 @@ function handleTouchStart(e: any): void {
 
 /**
  * Handle the `touchmove` event on the document body.
- * For single-finger moves, detects the dominant swipe direction and dispatches the corresponding
+ * For single-finger moves, detects a swipe beyond the configured distance and dispatches the corresponding
  * arrow key (LEFT, RIGHT, UP, DOWN) via `window._doKey`.
  *
  * @param e - The TouchEvent object (typed as `any` for compatibility).
@@ -1380,23 +1416,23 @@ function handleTouchStart(e: any): void {
  * @sideeffect Calls `e.preventDefault()`. Dispatches key events via `window._doKey`.
  *             Updates module-level `xUp`, `yUp`, `xMove1`, `yMove1`.
  * @analysis Only processes single-finger (tCount === 1) moves. Multi-finger moves are ignored here
- *             (handled on touchend). The direction is determined by comparing the greater of X/Y delta.
+ *             (handled on touchend). Small movements accumulate until a swipe threshold is crossed.
  *             A non-zero dir causes the move reference point to be reset to prevent repeated dispatches.
  */
 function handleTouchMove(e: any): void {
-    if (!(xDown && yDown)) return;
+    if (touch_locked || xDown === null || yDown === null) return;
     e.preventDefault();
     xUp = Math.round(e.touches[0].screenX);
     yUp = Math.round(e.touches[0].screenY);
     if (tCount === 1) {
-        var dir =
-            Math.abs(xUp! - xMove1!) > Math.abs(yUp! - yMove1!)
-                ? xUp! > xMove1!
-                    ? 4
-                    : 1
-                : yUp! > yMove1!
-                  ? 2
-                  : 8;
+        var dir = getDirection(
+            xMove1!,
+            yMove1!,
+            xUp!,
+            yUp!,
+            touch_min_sensX,
+            touch_min_sensY
+        );
         if (dir === 1) (window as any)._doKey((window as any).keys.LEFT);
         else if (dir === 4) (window as any)._doKey((window as any).keys.RIGHT);
         else if (dir === 2) (window as any)._doKey((window as any).keys.DOWN);
@@ -1514,13 +1550,37 @@ function body_handleTouchEnd(e: any): void {
                 if (capacitorOnly()) {
                     (window as any)._doKey((window as any).keys.ENTER);
                 } else {
-                    var clickEvent = new MouseEvent("click", {
-                        bubbles: true,
-                        cancelable: true,
-                        clientX: e.changedTouches[0].clientX,
-                        clientY: e.changedTouches[0].clientY,
-                        view: window,
-                    });
+                    var touch = e.changedTouches[0];
+                    var clickEvent: MouseEvent;
+                    try {
+                        clickEvent = new MouseEvent("click", {
+                            bubbles: true,
+                            cancelable: true,
+                            clientX: touch.clientX,
+                            clientY: touch.clientY,
+                            view: window,
+                        });
+                    } catch (_legacyMouseEvent) {
+                        // Old WebKit exposes MouseEvents through createEvent only.
+                        clickEvent = document.createEvent("MouseEvents");
+                        clickEvent.initMouseEvent(
+                            "click",
+                            true,
+                            true,
+                            window,
+                            1,
+                            touch.screenX || 0,
+                            touch.screenY || 0,
+                            touch.clientX,
+                            touch.clientY,
+                            false,
+                            false,
+                            false,
+                            false,
+                            0,
+                            null
+                        );
+                    }
                     e.target.dispatchEvent(clickEvent);
                 }
             }

@@ -49,12 +49,14 @@ var keys = {
 };
 var strEXIT = "EXIT";
 var strRETURN = "BACK";
+// Capture the existing initializer before assigning the device wrapper.
 var _baseStbInit = typeof stbInit === "function" ? stbInit : function () {};
-function stbInit() {
-    _baseStbInit();
+stbInit = function () {
+    var baseInitResult = _baseStbInit.apply(this, arguments);
     try {
         if (typeof STB !== "undefined") {
             console.log("[stb] Spark STB platform detected");
         }
     } catch (e) {}
-}
+    return baseInitResult;
+};

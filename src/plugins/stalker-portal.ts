@@ -1,3 +1,5 @@
+import { resolveNativePlugin } from "./native-bridge";
+
 /**
  * Stalker portal + host_ott swop shim — Mode B native HTTP transport.
  *
@@ -60,27 +62,10 @@ class StalkerPortalWeb implements StalkerPortalPlugin {
     }
 }
 
-/** Concat/strip builds have no `@capacitor/core` import — never call bare registerPlugin. */
-function resolveCapPlugin(name: string, webFallback: any): any {
-    const Cap =
-        typeof window !== "undefined" ? (window as any).Capacitor : undefined;
-    if (Cap && Cap.Plugins && Cap.Plugins[name]) {
-        return Cap.Plugins[name];
-    }
-    if (Cap && typeof Cap.registerPlugin === "function") {
-        return Cap.registerPlugin(name, { web: webFallback });
-    }
-    if (typeof webFallback === "function") {
-        try {
-            return new webFallback();
-        } catch (_e) {
-            return webFallback;
-        }
-    }
-    return webFallback;
-}
-
-const StalkerPortal: any = resolveCapPlugin("StalkerPortal", StalkerPortalWeb);
+const StalkerPortal = resolveNativePlugin<StalkerPortalPlugin>(
+    "StalkerPortal",
+    () => new StalkerPortalWeb()
+);
 
 function isStalkerPortalUrl(url: string): boolean {
     return (
