@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import { parse } from "acorn";
 import { execSync } from "child_process";
 import {
@@ -13,9 +14,14 @@ import { dirname, join, resolve } from "path";
 import { minify } from "terser";
 import { fileURLToPath } from "url";
 import { defineConfig } from "vite";
-import { assembleClassic, CLASSIC_MODULES } from "./scripts/classic-bundle.cjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+// Load the helper from its own CommonJS module so Vite's config bundler does
+// not rewrite its TypeScript dependency into a file-URL require.
+const classicRequire = createRequire(import.meta.url);
+const { assembleClassic, CLASSIC_MODULES } = classicRequire(
+    resolve(__dirname, "scripts/classic-bundle.cjs")
+);
 
 // Stage a Mode A-like web root for Tauri Mode B (frontendDist).
 // Boot resolves host + "/dist/stbPlayer.js", "/stb/...", "/fonts/...", etc.
