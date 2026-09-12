@@ -8,7 +8,18 @@
 
 import { resolveNativePlugin } from "./native-bridge";
 
+export interface DashPlaybackState {
+    duration: number;
+    ended: boolean;
+    error?: string;
+    ok: boolean;
+    playing: boolean;
+    position: number;
+    unsupported?: boolean;
+}
+
 export interface DashExoPlayerPlugin {
+    getPlaybackState(): Promise<DashPlaybackState>;
     isDashSupported(): Promise<{ ok: boolean; unsupported?: boolean }>;
     pauseDash(): Promise<{
         ok: boolean;
@@ -24,10 +35,30 @@ export interface DashExoPlayerPlugin {
         unsupported?: boolean;
         error?: string;
     }>;
+    seekDash(opts: {
+        position: number;
+    }): Promise<{ ok: boolean; unsupported?: boolean; error?: string }>;
     stopDash(): Promise<{ ok: boolean; unsupported?: boolean; error?: string }>;
 }
 
 class DashExoPlayerWeb implements DashExoPlayerPlugin {
+    async getPlaybackState(): Promise<DashPlaybackState> {
+        return {
+            duration: 0,
+            ended: false,
+            ok: false,
+            playing: false,
+            position: 0,
+            unsupported: true,
+        };
+    }
+
+    async seekDash(_opts: {
+        position: number;
+    }): Promise<{ ok: boolean; unsupported?: boolean }> {
+        return { ok: false, unsupported: true };
+    }
+
     async isDashSupported(): Promise<{ ok: boolean; unsupported?: boolean }> {
         console.warn(
             "[DashExoPlayer] web fallback: isDashSupported unsupported"
