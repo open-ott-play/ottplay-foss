@@ -47,7 +47,8 @@ interface ValResponse {
 
 /**
  * Ensure a stable Device UUID suitable for the Worker allowlist charset.
- * Prefers an explicit id, then window/localStorage/settings; generates `dev_<hex>` if needed.
+ * Prefers an explicit id, then window/localStorage/settings; generates a secure id if possible.
+ * Returns empty when no id is provisioned and the engine has no secure random API.
  */
 export function ensureDeviceClientId(preferred?: string): string {
     var w = window as any;
@@ -63,11 +64,23 @@ export function ensureDeviceClientId(preferred?: string): string {
     }
     if (!id && settings.deviceUuid) id = String(settings.deviceUuid).trim();
     if (!CLIENT_ID_RE.test(id)) {
-        var bytes = new Uint8Array(8);
-        if (typeof crypto !== "undefined" && crypto.getRandomValues) {
-            crypto.getRandomValues(bytes);
-        } else {
-            for (var i = 0; i < 8; i++) bytes[i] = (Math.random() * 256) | 0;
+        var random = w.crypto;
+        if (!random || typeof random.getRandomValues !== "function") {
+            random = w.msCrypto;
+        }
+        if (
+            !random ||
+            typeof random.getRandomValues !== "function" ||
+            typeof w.Uint8Array !== "function"
+        ) {
+            return "";
+        }
+        var bytes: Uint8Array;
+        try {
+            bytes = new w.Uint8Array(16);
+            random.getRandomValues(bytes);
+        } catch (_error) {
+            return "";
         }
         var hex = "";
         for (var j = 0; j < bytes.length; j++) {
@@ -197,6 +210,14 @@ export function swopLoadValue(): void {
     }
 
     var clientId = ensureDeviceClientId();
+    if (!clientId) {
+        alert(
+            _(
+                "Remote text entry requires a Device ID. Ask the server operator to provision one."
+            )
+        );
+        return;
+    }
     var cancelled = false;
     var code = "";
     var pollTimer: any = null;

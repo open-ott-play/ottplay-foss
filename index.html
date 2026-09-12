@@ -208,7 +208,7 @@
         var host = window.location.origin ||
             (window.location.host ? window.location.protocol + "//" + window.location.host : "http://localhost:8080");
         var __dev = true; // set false for production
-        // Boot runs before the bundle's polyfills. These random labels are not secrets.
+        // Boot runs before the bundle's polyfills. Cache-busting labels are not secrets.
         function bootRandomHex(length) {
             var text = "";
             for (var i = 0; i < length; i++)
@@ -250,11 +250,28 @@
         }
         var ott_device = detectDevice();
 
-        // Device UUID — generated once, persisted in localStorage
-        var deviceUUID = localStorage.getItem("ott_device_uuid");
+        // This ID is also an allowlisted swop credential, so never use weak randomness.
+        function bootSecureDeviceId() {
+            var random = window.crypto;
+            if (!random || typeof random.getRandomValues !== "function") random = window.msCrypto;
+            if (!random || typeof random.getRandomValues !== "function" ||
+                typeof window.Uint8Array !== "function") return "";
+            try {
+                var bytes = new window.Uint8Array(16);
+                random.getRandomValues(bytes);
+                var hex = "";
+                for (var i = 0; i < bytes.length; i++)
+                    hex += ("0" + bytes[i].toString(16)).slice(-2);
+                return "dev_" + hex;
+            } catch (_error) {
+                return "";
+            }
+        }
+        // Preserve provisioned/stored IDs. Old engines can boot without remote text entry.
+        var deviceUUID = localStorage.getItem("ott_device_uuid") || localStorage.getItem("deviceId") || "";
         if (!deviceUUID) {
-            deviceUUID = "dev_" + bootRandomHex(8);
-            localStorage.setItem("ott_device_uuid", deviceUUID);
+            deviceUUID = bootSecureDeviceId();
+            if (deviceUUID) localStorage.setItem("ott_device_uuid", deviceUUID);
         }
         window.deviceUUID = deviceUUID;
 
