@@ -235,13 +235,7 @@ Prepared. Human upload still required.
 
 ### Google Play (internal track)
 
-- **App ID**: `play.ott.foss`
-- **AAB preferred**: Build release AAB via `./gradlew bundleRelease`.
-- **Upload key vs Play App Signing**:
-  - Recommended: Let Google manage signing. Generate upload key locally, upload to Play Console.
-  - Not recommended for new apps: Opt out of Play App Signing.
-- **Service account**: For CI upload, create service account in Play Console, download JSON, store as GitHub secret.
-- **Internal track**: Upload AAB → Internal testing → add tester emails → publish.
+The app ID is `play.ott.foss`. The separate **Android Play upload bundle** workflow builds and verifies an AAB with a dedicated upload key, then stores it as a GitHub Actions artifact for manual Play Console submission. See [Play upload signing](play-upload-signing.md) for the four required secrets, certificate checks, version-code requirements, and the distinction between upload signing and Play App Signing. It does not register or publish the app and does not need a Play service account.
 
 ### Privacy policy
 
@@ -254,9 +248,10 @@ Honest FOSS summary: on-device playback; optional user-configured playlist/EPG/p
 
 ### CI relationship to signing
 
-- **#310 path (default)**: CI builds unsigned IPA/APK. Suitable for AdHoc/TestFlight manual upload or internal testing.
-- **Signed builds**: When `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` env vars are present (local dev or GitHub secrets), `android/app/build.gradle` configures `signingConfigs.release`. CI can produce signed AAB for Play upload.
-- **iOS signing**: Always requires Xcode / codesign locally or in CI with p12 + provisioning profile. No automated signing in current CI.
+- The existing GitHub release workflow builds unsigned Android and iOS artifacts. An unsigned APK requires signing before installation; an unsigned IPA requires a separate provisioning/signing process before device installation or TestFlight submission.
+- The separate manual Play workflow produces an upload-signed AAB only when all four dedicated `PLAY_UPLOAD_*` secrets are configured. It does not change direct APK signing.
+- For local Gradle builds, `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, and `KEY_PASSWORD` configure release signing. These environment variables are not automatically populated from GitHub secrets by the existing release workflow.
+- iOS signing still requires an appropriate certificate and provisioning profile; the Android Play workflow does not change it.
 
 ### Screenshot sizes
 
