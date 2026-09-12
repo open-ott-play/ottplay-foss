@@ -451,6 +451,27 @@ async function main() {
         `,
             w
         );
+        // This function comes from channels' renamed core import in the real output.
+        // A stripped import used to leave videoElement unresolved here.
+        const originalVideo = w.video;
+        const originalSetPosition = w.stbSetPosTime;
+        const originalLength = w.stbGetLen;
+        const originalPlayType = w.playType;
+        const positions = [];
+        w.video = { currentTime: 0 };
+        w.stbSetPosTime = (position) => positions.push(position);
+        w.stbGetLen = () => 120;
+        w.playType = 1700000000;
+        w.seekArchive(42);
+        assert.deepEqual(
+            positions,
+            [42],
+            "Actual bundle resolves renamed mutable imports"
+        );
+        w.video = originalVideo;
+        w.stbSetPosTime = originalSetPosition;
+        w.stbGetLen = originalLength;
+        w.playType = originalPlayType;
         if (profile === "legacy") {
             assert.equal(
                 w.Promise,
