@@ -52,6 +52,10 @@ The mobile interface stays in landscape and supports rotation between both lands
 
 Settings → Buttons preserves the selected seek intervals, and Settings → Interface applies the selected streaming engine when saved. The sleep timer choices are off, 30 minutes, 1 hour, 2 hours and 3 hours of inactivity. Saved button mappings, hidden menu items and parental preferences also survive settings export and subsequent saves.
 
+Settings → Remote control keeps its URL editing controls visible on small screens. Scroll long values with the arrow keys or a swipe. Clearing the local command URL disables local command polling; clearing the swop URL disables remote text entry.
+
+Tauri and mobile exports open a selectable JSON backup with a Copy JSON control; browser exports download a JSON file. Import settings uses the app's text editor and requires confirmation before replacing saved preferences. URL editing and Tauri update confirmation also use the app's own dialogs.
+
 ```bash
 npm install
 npm run build:mobile          # vite build + cap copy + cap sync
