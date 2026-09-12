@@ -4306,8 +4306,19 @@ window.saveIfChanged = function (
     // Keep typed settings in sync (Interface / Channel list / … menus).
     pullSettingsFromWindow();
     if (useStb && typeof w.stbSetItem === "function") w.stbSetItem(key, w[key]);
-    else if (typeof w.providerSetItem === "function")
+    else if (typeof w.providerSetItem === "function") {
         w.providerSetItem(key, w[key]);
+        // Channel list sShow*/sPreview are provider-prefixed; also mirror to
+        // unprefixed stb so a later loadSettings does not resurrect defaults.
+        if (
+            /^(sShowNum|sShowPikon|sShowName|sShowProgram|sShowProgress|sShowArchive|sShowDescr|sPreview)$/.test(
+                key
+            ) &&
+            typeof w.stbSetItem === "function"
+        ) {
+            w.stbSetItem(key, w[key]);
+        }
+    }
 };
 
 // ─── Settings UI functions (ported from original stbPlayer.js) ──────────────
@@ -4806,6 +4817,8 @@ window.settingsChannels = function (): void {
             w.sNextCountL = w.listArray[i - 1].val;
             w.sNextCount = w.sNextCountL ? w.sNextCountL - 1 : 0;
             w.providerSetItem("sNextCount", (w.sNextCountL - 1).toString());
+            if (typeof w.stbSetItem === "function")
+                w.stbSetItem("sNextCount", (w.sNextCountL - 1).toString());
         }
         w.saveIfChanged(i++, "sFavorites", true);
         if (typeof w.showShift === "function")
@@ -6215,17 +6228,12 @@ function applySettingsToWindow(s: PlayerSettings): void {
     window.sOsdOpacity = s.osdOpacity;
     window.sListPos = s.listPosition;
     window.sEditor = s.editor;
-    window.sShowNum = s.showNumber;
-    window.sShowPikon = s.showPicon;
-    window.sShowName = s.showName;
-    window.sShowProgress = s.showProgress;
-    window.sShowArchive = s.showArchive;
+    // Channel list display flags are provider-scoped (OTT: loadChannels via
+    // providerGetNum). Do not clobber window.sShow* / sPreview / sNextCount*
+    // here with unprefixed loadSettings defaults — that made listFlag ignore
+    // toggles saved through providerSetItem. loadChannels mirrors them after
+    // the playlist loads; Lists settings still owns sShowScroll below.
     window.sShowScroll = s.showScroll;
-    window.sShowDescr = s.showDescription;
-    window.sShowProgram = s.showProgram;
-    window.sPreview = s.preview;
-    window.sNextCount = s.nextCount;
-    window.sNextCountL = s.nextCountList;
     window.sFavorites = s.favorites;
     window.sPermanentTime = s.permanentTime;
     window.s10resum = s.res10Resume;
