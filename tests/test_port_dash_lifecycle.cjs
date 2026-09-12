@@ -316,6 +316,14 @@ test("resuming completed native media seeks to the beginning like HTMLMediaEleme
         ["seekDash", "resumeDash"]
     );
 });
+test("zero seek during native support detection survives the web fallback", async () => {
+    const { w, calls, supports } = fixture();
+    w.stbPlay("movie.mpd", 90);
+    w.stbSetPosTime(0);
+    supports[0].resolve({ ok: false, unsupported: true });
+    await tick();
+    assert.equal(calls.find((c) => c[0] === "webPlay")[2], 0);
+});
 (async () => {
     let failures = 0;
     for (const [name, fn] of tests) {

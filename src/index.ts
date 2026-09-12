@@ -3031,7 +3031,7 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
             if (session !== _dashSession) return;
             _dashMode = "web";
             if (typeof origPlay === "function")
-                origPlay(url, _dashState.position || position);
+                origPlay(url, _dashState.position);
             // Core stbPlay resets its play intent; preserve a pause made while
             // native support detection or native teardown was in flight.
             if (_dashPaused && typeof origPause === "function") origPause();
