@@ -1136,7 +1136,10 @@ export function getCurProgData(
     }
     if (ch.time_to && ch.time_to >= now) found = true;
     arrayGetCurProg.push({ callback: callback, ch_id: channelId });
-    if (arrayGetCurProg.length < 2) doGetCurProg();
+    // Defer queue drain past showPage's innerHTML. Sync cache hits used to
+    // call updateChanelList before #pn* nodes existed, so only the playing
+    // channel (time_to already set → baked into row HTML) showed EPG.
+    if (arrayGetCurProg.length < 2) setTimeout(doGetCurProg, 0);
     return found;
 }
 

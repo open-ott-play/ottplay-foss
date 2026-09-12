@@ -192,8 +192,10 @@ declare var channelsKeyHandler: (key: number) => boolean;
 function updateChanelList(chId: string): void {
     var ch = channels[chId as any];
     if (!ch && (window as any).chanels) ch = (window as any).chanels[chId];
+    if (!ch && (window as any).channels) ch = (window as any).channels[chId];
     if (!ch) return;
-    $("#pn" + chId).html(ch.name || "");
+    var pn = document.getElementById("pn" + chId);
+    if (pn) pn.innerHTML = ch.name || "";
     if (ch.time_to && ch.time_to > ch.time) {
         $("#pr" + chId).css(
             "width",
@@ -202,6 +204,7 @@ function updateChanelList(chId: string): void {
     }
     if (listArray[selIndex] == chId) detailProg();
 }
+(window as any).updateChanelList = updateChanelList;
 /**
  * Render the detail/program info panel for the currently selected channel.
  * Shows current program name, time range, elapsed/total duration, description
@@ -226,7 +229,7 @@ function detailProg(): void {
         "gold";
     if (e.time_to && e.time_to >= Date.now() / 1e3) {
         var t = Math.round((Date.now() / 1e3 - e.time) / 60);
-        // Title yellow (OTT); time on next line; descr/nextpr gaps via CSS + height.
+        // Title yellow (OTT); time on next line; descr clipped; next on yellow line.
         var r =
             '<div id="_name"><div style="color:' +
             accent +
@@ -242,17 +245,18 @@ function detailProg(): void {
             " " +
             _("min") +
             ")</div></div>" +
-            '<div id="_descr" style="font-size:smaller;overflow:hidden;"><div id="_prd">' +
+            '<div id="_descr" style="font-size:smaller;overflow:hidden;position:relative;"><div id="_prd">' +
             getThumbnail(e.icon) +
             e.descr +
             "</div></div>";
         if (e.nextpr && sNextCountL) {
+            // Gold: absolute to listDetail bottom (yellow podval border).
             r +=
                 '<div id="_nextpr" style="' +
                 (sShowDescr
-                    ? "position:absolute;left:0;bottom:0;padding:4px;"
+                    ? "position:absolute;left:0;right:0;bottom:0;z-index:3;box-sizing:border-box;padding:4px 14px;background-color:rgba(8,8,14,0.96);"
                     : "") +
-                'width:98%;white-space:nowrap;font-size:smaller;">';
+                'width:100%;white-space:nowrap;font-size:smaller;">';
             e.nextpr.forEach(function (n: any, i: number) {
                 if (i < sNextCountL)
                     r +=
@@ -266,19 +270,26 @@ function detailProg(): void {
             r += "</div>";
         }
         listDetail.innerHTML = r;
-        var hk = typeof getHeightK === "function" ? getHeightK() : 1;
-        var nextGap = Math.round(1.5 * 22 * hk);
-        var s = 0;
-        if (sShowDescr) {
-            s =
-                $("#listDetail").height() -
-                $("#_name").height() -
-                ($("#_nextpr").height() || 0) -
-                nextGap;
-            if (!(s > 0)) s = 0;
+        // Gold formula (no extra nextGap). Prefer outerHeight so padding counts.
+        var nextH = 0;
+        try {
+            var $np = $("#_nextpr");
+            nextH = ($np.outerHeight && $np.outerHeight()) || $np.height() || 0;
+        } catch (_nh) {
+            nextH = $("#_nextpr").height() || 0;
         }
-        $("#_descr").height(s);
-        s = $("#_prd").height() + 10 - s;
+        var s = sShowDescr
+            ? ($("#listDetail").height() || 0) -
+              ($("#_name").height() || 0) -
+              nextH
+            : 0;
+        if (!(s > 0)) s = 0;
+        $("#_descr").css({
+            height: s + "px",
+            overflow: "hidden",
+            position: "relative",
+        });
+        s = ($("#_prd").height() || 0) + 10 - s;
         scrollUp("_prd", s, 5000);
     }
     if (sPreview == 1 && typeof (window as any).previewChId === "function")
@@ -1646,7 +1657,12 @@ function _channelsList(catIdx: number, channelIdx: number): void {
         // itemWith made WKWebView/Tauri clip progress and wrap number/name.
         // Browser :8443 tolerated it; Tauri did not. Escape picUrl so tvg-logo /
         // data URIs cannot break the style attribute and drop the rest of the row.
-        var progName = getCurProgData(chId, updateChanelList) ? ch.name : "";
+        // Queue EPG fill for every visible row (OTT). Re-read ch after call:
+        // deferred doGetCurProg may not have run yet; time_to hit returns true.
+        getCurProgData(chId, updateChanelList);
+        var nowSec = Date.now() / 1e3;
+        var progName =
+            ch.time_to && ch.time_to >= nowSec && ch.name ? ch.name : "";
         if (ch.outdated === true)
             progName =
                 '<i style="color:#3c3c0a">' +
@@ -1713,16 +1729,12 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                   safePic +
                   "');\"></div>"
                 : "") +
-            '<div style="flex:1 1 auto;min-width:0;min-height:0;max-height:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:inherit;">&nbsp;' +
-            (showName
-                ? '<span style="color:' +
-                  ((typeof bodyColor === "string" && bodyColor) ||
-                      (window as any).bodyColor ||
-                      "#f0f0f0") +
-                  ';">' +
-                  ch.channel_name +
-                  "</span>&nbsp;"
-                : "") +
+            '<div style="flex:1 1 auto;min-width:0;min-height:0;max-height:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:inherit;color:' +
+            ((typeof bodyColor === "string" && bodyColor) ||
+                (window as any).bodyColor ||
+                "#f0f0f0") +
+            ';">&nbsp;' +
+            (showName ? ch.channel_name + "&nbsp;" : "") +
             (showProgram
                 ? '<span id="pn' +
                   chId +

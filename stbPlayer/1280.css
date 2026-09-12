@@ -234,14 +234,22 @@ body {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 #listDetail #_name {
-    /* Keep time range on its own line below the yellow title (OTT). */
-    margin-bottom: 0.65em;
+    /* Title + time above descr; stay above scrolling #_prd. */
+    position: relative;
+    z-index: 2;
+    margin-bottom: 0.5em;
 }
 #listDetail #_descr {
-    /* Clear absolute #_nextpr (~1.5 lines) so description does not collide. */
-    margin-bottom: 1.5em;
+    /* Scroll only inside this band — never over title/time/next (OTT). */
+    position: relative;
+    z-index: 1;
+    margin-bottom: 0;
+    overflow: hidden;
 }
 #listDetail #_nextpr {
+    /* Anchored to bottom (yellow listPodval border) via inline absolute. */
+    z-index: 3;
+    box-sizing: border-box;
     line-height: 1.35;
 }
 #listPopUp {
