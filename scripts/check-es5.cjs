@@ -38,7 +38,7 @@ for (const html of [
     "src-tauri/frontend/index.html",
 ]) {
     const text = fs.readFileSync(path.join(root, html), "utf8");
-    const scripts = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
+    const scripts = /<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi;
     let match;
     let number = 0;
     while ((match = scripts.exec(text))) {

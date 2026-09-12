@@ -17,6 +17,12 @@ Boot code runs before those shims and must only use available APIs or guarded
 fallbacks. Native media calls and input events must support older implementations
 where `video.play()` returns nothing and `event.key` / `new MouseEvent` are absent.
 
+Device IDs used by remote text input are generated with WebCrypto or `msCrypto`.
+Engines without those APIs still boot the player and retain existing IDs. New
+installations on those engines need a provisioned client ID in `/local/swop.json`
+to use remote text input; they never generate an access credential with
+`Math.random`.
+
 The vendored Shaka Player 3.3.19 retains its license and runtime polyfills. Its
 six exponentiation expressions use `Math.pow` and its four object spreads use
 its own polyfilled `Object.assign`, so the shared file parses as ES5. Replacing
