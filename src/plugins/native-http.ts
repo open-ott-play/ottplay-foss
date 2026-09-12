@@ -33,7 +33,7 @@ function nativeHttpJsonpConverter(callback: string): (text: string) => string {
     return function (text: string): string {
         if (!/^[A-Za-z_$][\w$]*$/.test(callback))
             throw new Error("Unsupported JSONP callback name");
-        var escaped = callback.replace(/\$/g, "\\$");
+        var escaped = callback.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         var match = new RegExp(
             "^\\s*(?:/\\*\\*/\\s*)?" +
                 escaped +

@@ -270,7 +270,9 @@ async function run(platform) {
                 "text/javascript"
             );
         };
+        let scriptEvaluations = 0;
         $.globalEval = () => {
+            scriptEvaluations++;
             throw Error("Native JSONP must never evaluate remote JavaScript");
         };
         w.shserver = 1;
@@ -319,6 +321,74 @@ async function run(platform) {
         assert.equal(result.ok, false);
         assert.equal(result.status, "parsererror");
         assert.equal(w.compromised, undefined);
+
+        testStage =
+            "literal dollar JSONP callback and rejected callback syntax";
+        const dollarCallback = "$ott$jsonp_1";
+        let dollarReplies = 0;
+        const originalDollarCallback = (value) => {
+            dollarReplies++;
+            assert.equal(value.marker, "literal-dollar");
+        };
+        w[dollarCallback] = originalDollarCallback;
+        reply = (args) => {
+            const callback = new URL(args.url).searchParams.get("callback");
+            assert.equal(callback, dollarCallback);
+            return response(
+                `${callback}({"marker":"literal-dollar"});`,
+                200,
+                "text/javascript"
+            );
+        };
+        result = await finished(
+            $.ajax({
+                dataType: "jsonp",
+                jsonpCallback: dollarCallback,
+                url: "https://provider.example/epg",
+            })
+        );
+        assert.equal(result.ok, true);
+        assert.equal(result.data.marker, "literal-dollar");
+        assert.equal(dollarReplies, 1);
+        assert.equal(w[dollarCallback], originalDollarCallback);
+        delete w[dollarCallback];
+
+        let invalidReplies = 0;
+        for (const callback of [
+            "bad\\callback",
+            "bad.callback",
+            "bad[callback]",
+            "bad(callback)",
+            "bad|callback",
+        ]) {
+            const originalCallback = () => invalidReplies++;
+            w[callback] = originalCallback;
+            reply = () =>
+                response(
+                    `${callback}({"marker":"invalid"}); window.invalidJsonpExecuted = true;`,
+                    200,
+                    "text/javascript"
+                );
+            result = await finished(
+                $.ajax({
+                    dataType: "jsonp",
+                    jsonpCallback: callback,
+                    url: "https://provider.example/epg",
+                })
+            );
+            assert.equal(result.ok, false, callback);
+            assert.equal(result.status, "parsererror", callback);
+            assert.match(
+                result.error.message,
+                /Unsupported JSONP callback name/,
+                callback
+            );
+            assert.equal(w[callback], originalCallback);
+            assert.equal(w.invalidJsonpExecuted, undefined);
+            delete w[callback];
+        }
+        assert.equal(invalidReplies, 0);
+        assert.equal(scriptEvaluations, 0);
 
         reply = () => response("#EXTM3U", 200, "text/plain");
         testStage = "companion proxy and external EPG matching";
