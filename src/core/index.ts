@@ -736,12 +736,14 @@ export function stbPlay(url: string, position?: number): void {
                                 "[HLS] MEDIA_ERROR twice, fallback native HTML5"
                             );
                             video!.src = url;
-                            var fallbackPlay = video!.play();
-                            if (
-                                fallbackPlay &&
-                                typeof fallbackPlay.catch === "function"
-                            )
-                                fallbackPlay.catch(function () {});
+                            if ((window as any).forcePlay !== false) {
+                                var fallbackPlay = video!.play();
+                                if (
+                                    fallbackPlay &&
+                                    typeof fallbackPlay.catch === "function"
+                                )
+                                    fallbackPlay.catch(function () {});
+                            }
                         } else {
                             console.log(
                                 "[HLS] MEDIA_ERROR twice, no native HLS" +
@@ -769,7 +771,12 @@ export function stbPlay(url: string, position?: number): void {
                     if (parseFail || _networkRetries >= 2) {
                         // Live: one-shot destroy + same-URL reload after parse
                         // fail (e.g. proxy HTML 403). Archive: destroy only (#220).
-                        if (parseFail && !_isArchive && !_liveRestartUsed) {
+                        if (
+                            parseFail &&
+                            !_isArchive &&
+                            !_liveRestartUsed &&
+                            (window as any).forcePlay !== false
+                        ) {
                             // ponytail: one-shot — skip duplicate fatal handlers while restart is in flight
                             if (_liveRestartPending) {
                                 console.log(
@@ -801,7 +808,12 @@ export function stbPlay(url: string, position?: number): void {
                             // ponytail: 300–500ms backoff before re-stbPlay (not a retry loop — still one-shot)
                             var _delay = 300 + Math.floor(Math.random() * 200);
                             _liveRestartTimer = setTimeout(function () {
-                                if (session !== _playSession) return;
+                                if (
+                                    session !== _playSession ||
+                                    !_liveRestartPending ||
+                                    (window as any).forcePlay === false
+                                )
+                                    return;
                                 _liveRestartTimer = null;
                                 _inLiveRestart = true;
                                 try {
@@ -834,12 +846,14 @@ export function stbPlay(url: string, position?: number): void {
             if (session !== _playSession || hlsInstance !== playbackHls) return;
             _liveRestartUsed = false;
             _liveRestartPending = false;
-            var manifestPlay = video!.play();
-            // Older HTMLMediaElement implementations return void, not Promise.
-            if (manifestPlay && typeof manifestPlay.catch === "function") {
-                manifestPlay.catch(function (e) {
-                    console.log("[HLS] play() rejected:", e);
-                });
+            if ((window as any).forcePlay !== false) {
+                var manifestPlay = video!.play();
+                // Older HTMLMediaElement implementations return void, not Promise.
+                if (manifestPlay && typeof manifestPlay.catch === "function") {
+                    manifestPlay.catch(function (e) {
+                        console.log("[HLS] play() rejected:", e);
+                    });
+                }
             }
             if (_startPos > 0) {
                 video!.currentTime = _startPos;
@@ -910,6 +924,7 @@ export function stbStop(): void {
  */
 export function stbPause(): void {
     (window as any).forcePlay = false;
+    cancelLiveRestart();
     video!.pause();
 }
 /**
