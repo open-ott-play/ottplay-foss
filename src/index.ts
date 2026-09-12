@@ -3363,15 +3363,22 @@ if (typeof window.__TAURI__ !== "undefined") {
         };
 
         let _msPosTimer: ReturnType<typeof setInterval> | null = null;
+        let _msRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+        let _msSession = 0;
+        let _msPaused = true;
+        let _msActive = false;
         const stopMsPosTimer = (): void => {
+            if (_msRefreshTimer !== null) clearTimeout(_msRefreshTimer);
+            _msRefreshTimer = null;
             if (_msPosTimer != null) {
                 clearInterval(_msPosTimer);
                 _msPosTimer = null;
             }
         };
-        const startMsPosTimer = (): void => {
+        const startMsPosTimer = (session: number): void => {
             stopMsPosTimer();
             _msPosTimer = setInterval(() => {
+                if (session !== _msSession || !_msActive || _msPaused) return;
                 try {
                     const meta = bgMeta();
                     if (!meta.seekable) return;
@@ -3385,20 +3392,30 @@ if (typeof window.__TAURI__ !== "undefined") {
         const origStop = window.stbStop;
         const origPause = window.stbPause;
         const origContinue = window.stbContinue;
+        const origIsPlaying = window.stbIsPlaying;
         window.stbPlay = function (url: string, position?: number): void {
+            const session = ++_msSession;
+            stopMsPosTimer();
+            _msActive = true;
+            _msPaused = false;
             if (typeof origPlay === "function") origPlay(url, position);
             const meta = bgMeta();
             tauriInvoke<any>("start_media_session", meta).catch((e: any) =>
                 console.warn("[Tauri] start_media_session failed:", e)
             );
-            setTimeout(() => {
+            _msRefreshTimer = setTimeout(() => {
+                if (session !== _msSession || !_msActive || _msPaused) return;
+                _msRefreshTimer = null;
                 const m = bgMeta();
                 tauriInvoke<any>("update_media_session", m).catch(() => {});
-                if (m.seekable) startMsPosTimer();
+                if (m.seekable) startMsPosTimer(session);
                 else stopMsPosTimer();
             }, 1500);
         };
         window.stbStop = function (): void {
+            _msSession++;
+            _msActive = false;
+            _msPaused = true;
             stopMsPosTimer();
             tauriInvoke<any>("stop_media_session", {}).catch((e: any) =>
                 console.warn("[Tauri] stop_media_session failed:", e)
@@ -3406,6 +3423,7 @@ if (typeof window.__TAURI__ !== "undefined") {
             if (typeof origStop === "function") origStop();
         };
         window.stbPause = function (): void {
+            _msPaused = true;
             if (typeof origPause === "function") origPause();
             stopMsPosTimer();
             tauriInvoke<any>("pause_media_session", {}).catch((e: any) =>
@@ -3414,11 +3432,20 @@ if (typeof window.__TAURI__ !== "undefined") {
         };
         window.stbContinue = function (): void {
             if (typeof origContinue === "function") origContinue();
+            _msPaused =
+                typeof origIsPlaying === "function" ? !origIsPlaying() : false;
+            if (_msPaused) {
+                stopMsPosTimer();
+                tauriInvoke<any>("pause_media_session", {}).catch((e: any) =>
+                    console.warn("[Tauri] pause_media_session failed:", e)
+                );
+                return;
+            }
             const meta = bgMeta();
             tauriInvoke<any>("resume_media_session", meta).catch((e: any) =>
                 console.warn("[Tauri] resume_media_session failed:", e)
             );
-            if (meta.seekable) startMsPosTimer();
+            if (_msActive && meta.seekable) startMsPosTimer(_msSession);
         };
     })();
 }
