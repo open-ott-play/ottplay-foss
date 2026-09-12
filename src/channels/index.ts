@@ -100,6 +100,150 @@ export interface PreviousChannel {
     t?: number;
 }
 
+interface PortChannelIdMigration {
+    get: (key: string) => string | null;
+    ids: Record<string, number | null>;
+    record: (previous: number, current: number) => void;
+    set: (key: string, value: string) => void;
+}
+
+/** Observe only hashes computed while this provider's channel list is loading. */
+export function beginPortChannelIdMigration(): PortChannelIdMigration {
+    var w = window as any;
+    var state: PortChannelIdMigration = {
+        get: w.providerGetItem,
+        ids: {},
+        record: function (previous: number, current: number): void {
+            if (!Number.isInteger(previous) || !Number.isInteger(current))
+                return;
+            var key = String(previous);
+            var known = state.ids[key];
+            state.ids[key] =
+                known === undefined || known === current ? current : null;
+        },
+        set: w.providerSetItem,
+    };
+    w.__ottRecordPortHash = state.record;
+    return state;
+}
+
+/** Stop observing a departed provider, leaving its persisted data untouched. */
+export function cancelPortChannelIdMigration(): void {
+    delete (window as any).__ottRecordPortHash;
+}
+
+/** Incremental migration: unknown IDs, existing channel IDs and ambiguous mappings stay intact. */
+export function finishPortChannelIdMigration(
+    state: PortChannelIdMigration
+): void {
+    var w = window as any;
+    if (w.__ottRecordPortHash !== state.record) return;
+    cancelPortChannelIdMigration();
+    if (
+        w.providerGetItem !== state.get ||
+        w.providerSetItem !== state.set ||
+        typeof state.get !== "function" ||
+        typeof state.set !== "function"
+    )
+        return;
+    function owns(object: object, key: string): boolean {
+        return Object.prototype.hasOwnProperty.call(object, key);
+    }
+    function migrateId(id: unknown): unknown {
+        if (typeof id !== "number" && typeof id !== "string") return id;
+        var key = String(id);
+        if (!/^\d+$/.test(key) || owns(channels, key)) return id;
+        var target = state.ids[key];
+        if (typeof target !== "number" || !owns(channels, String(target)))
+            return id;
+        return typeof id === "string" ? String(target) : target;
+    }
+    function migrateArray(value: unknown): void {
+        if (Array.isArray(value))
+            value.forEach(function (id, index) {
+                value[index] = migrateId(id);
+            });
+    }
+    function migrateField(value: unknown, field: string): void {
+        if (value && typeof value === "object" && !Array.isArray(value)) {
+            var record = value as Record<string, unknown>;
+            if (owns(record, field)) record[field] = migrateId(record[field]);
+        }
+    }
+    var keys = [
+        "favoritesArray",
+        "favoritesLists",
+        "cats",
+        "parentalArray",
+        "prevArr",
+        "continueWatch",
+        "epgTimers",
+        "aAspects",
+        "aZooms",
+        "aAudios",
+        "aSubs",
+    ];
+    keys.forEach(function (key) {
+        try {
+            var raw = state.get.call(w, key);
+            if (!raw) return;
+            var value = JSON.parse(raw);
+            var before = JSON.stringify(value);
+            if (key === "favoritesArray" || key === "parentalArray")
+                migrateArray(value);
+            else if (key === "prevArr" || key === "epgTimers") {
+                if (Array.isArray(value))
+                    value.forEach(function (entry) {
+                        migrateField(entry, "ci");
+                    });
+            } else if (key === "continueWatch")
+                migrateField(value, "channelId");
+            else if (key === "cats" || key === "favoritesLists") {
+                var lists = key === "cats" ? value : value && value.lists;
+                if (lists && typeof lists === "object" && !Array.isArray(lists))
+                    Object.keys(lists).forEach(function (name) {
+                        migrateArray(lists[name]);
+                    });
+            } else if (
+                value &&
+                typeof value === "object" &&
+                !Array.isArray(value)
+            ) {
+                Object.keys(value).forEach(function (oldKey) {
+                    var newKey = String(migrateId(oldKey));
+                    // Preserve an already configured canonical channel instead of overwriting it.
+                    if (newKey !== oldKey && !owns(value, newKey)) {
+                        value[newKey] = value[oldKey];
+                        delete value[oldKey];
+                    }
+                });
+            }
+            var migrated = JSON.stringify(value);
+            if (migrated === before) return;
+            state.set.call(w, key, migrated);
+            // These values were read before the provider populated its channel set.
+            if (key === "prevArr") {
+                prevArr = value;
+                w.prevArr = value;
+            } else if (key === "aAspects") {
+                aAspects = value;
+                w.aAspects = value;
+            } else if (key === "aZooms") {
+                aZooms = value;
+                w.aZooms = value;
+            } else if (key === "aAudios") {
+                aAudios = value;
+                w.aAudios = value;
+            } else if (key === "aSubs") {
+                aSubs = value;
+                w.aSubs = value;
+            }
+        } catch (_) {
+            // Keep malformed/unsupported records, and retry failed storage writes next load.
+        }
+    });
+}
+
 /** Edem/VPortal passes request objects instead of playlist URLs. */
 export interface MediaPortalTarget {
     a?: string;
@@ -2274,11 +2418,18 @@ export function startEpgTimer(timer: any): void {
  */
 export function loadEpgTimers(): void {
     var w = window as any;
+    epgTimers.forEach(function (timer) {
+        clearTimeout(timer.ti);
+        clearTimeout(timer.ri);
+    });
+    epgTimers = [];
     try {
         var data =
-            typeof w.stbGetItem === "function"
-                ? w.stbGetItem("epgTimers")
+            typeof w.providerGetItem === "function"
+                ? w.providerGetItem("epgTimers")
                 : null;
+        if (data == null && typeof w.stbGetItem === "function")
+            data = w.stbGetItem("epgTimers");
         if (data) {
             epgTimers = JSON.parse(data);
             var now = Date.now() / 1000;

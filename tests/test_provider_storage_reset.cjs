@@ -70,6 +70,7 @@ const context = {
     },
     arrayProvaiders: [],
     cancelMediaLoad() {},
+    cancelPortChannelIdMigration() {},
     console,
     firstRun() {
         firstRuns++;
