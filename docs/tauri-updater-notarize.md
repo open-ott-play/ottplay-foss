@@ -22,41 +22,41 @@ npx tauri signer generate -w ~/.tauri/ottplay-foss.key
 3. If you set a password on the key, also set `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
 4. Never commit the private key, `.key` files, or dotenv copies of them.
 
-### Publish updates
+### Release candidates and updater readiness
 
-1. Tag `v*` (or `workflow_dispatch` with a tag) so `.github/workflows/release.yml` builds multiarch bundles (#310).
-2. The workflow creates the GitHub Release as a **draft**, attaches dist / Tauri / mobile assets, then **undrafts only after** `OttPlay.FOSS_aarch64-apple-darwin.app.zip` and an aarch64 `.dmg` are present. That avoids a public “Latest” release that only has android/ios/dist for the ~10–15 minutes Tauri macOS is still building.
-3. `scripts/ci-tauri-collect-artifacts.sh` zips `*.app` via `ditto`, copies `.dmg`, sanitizes spaces→`.` in asset names, and **fails the macOS job** if either `.app.zip` or `.dmg` is missing (no silent empty upload).
-4. With `TAURI_SIGNING_PRIVATE_KEY` present, each Tauri matrix job also emits updater payloads (`.sig`, macOS `.app.tar.gz`, etc.) and uploads them to the GitHub Release.
-5. Publish a static `latest.json` on that release (asset name must match the endpoint). Example shape:
+Use [the release workflow](release-workflow.md), not direct tag pushes:
 
-```json
-{
-  "version": "0.1.1",
-  "notes": "Bug fixes",
-  "pub_date": "2026-09-08T00:00:00Z",
-  "platforms": {
-    "darwin-aarch64": {
-      "signature": "<contents of .app.tar.gz.sig>",
-      "url": "https://github.com/open-ott-play/ottplay-foss/releases/download/v0.1.1/OttPlay.FOSS_aarch64-apple-darwin.app.tar.gz"
-    },
-    "darwin-x86_64": {
-      "signature": "<...>",
-      "url": "https://github.com/open-ott-play/ottplay-foss/releases/download/v0.1.1/OttPlay.FOSS_x86_64-apple-darwin.app.tar.gz"
-    },
-    "linux-x86_64": {
-      "signature": "<contents of .AppImage.sig>",
-      "url": "https://github.com/open-ott-play/ottplay-foss/releases/download/v0.1.1/ottplay-foss_amd64.AppImage"
-    },
-    "windows-x86_64": {
-      "signature": "<contents of setup.exe.sig>",
-      "url": "https://github.com/open-ott-play/ottplay-foss/releases/download/v0.1.1/OttPlay.FOSS_x64-setup.exe"
-    }
-  }
-}
+```bash
+python3 scripts/release.py check
+python3 scripts/release.py rc --version 1.2.3
+python3 scripts/release.py stable --rc v1.2.3-rc.1
 ```
 
-Exact filenames follow `scripts/ci-tauri-collect-artifacts.sh` (arch suffix when `TAURI_TARGET` is set). Adjust URLs to match the assets on the release.
+Replace the example versions with the committed base version and the actual checked
+RC tag. A base version already published as stable cannot receive new beta/RC
+releases; bump all committed native version files through a PR first. Stable requires the protected `release` environment approval and copies the
+RC bytes without rebuilding. The mandatory desktop/mobile build matrix produces
+installers; the complete native matrix must still pass on hosted runners and be
+smoke-tested on the intended devices.
+
+Automatic updates are **not configured for production**. The committed updater
+public key is a placeholder, and the release adapter does not generate `latest.json`.
+Setting a signing secret produces signed updater payloads; it does not by itself
+make the configured update endpoint usable. Manual installer downloads remain the
+supported delivery path until a reviewed updater integration is implemented.
+
+A future updater integration must commit the real public key and generate and
+validate `latest.json` as part of the candidate artifact set, with URLs targeting
+the eventual stable version. The manifest and signature files must be checked
+before the candidate is published and copied unchanged during promotion. Never
+attach, replace or edit assets on a checked RC or stable release: that changes the
+inventory covered by its immutable evidence. Create a corrected candidate instead.
+
+`scripts/ci-tauri-collect-artifacts.sh` packages `.app.zip` and `.dmg` on both Mac
+architectures, preserves platform-specific installer/signature names, and fails
+if required Mac packages are absent. Updater payloads are included only when the
+signing key is configured. Optional Apple notarization remains separate from updater
+signing, as described below.
 
 Mode B JS checks for updates only when `window.__TAURI__` is defined (Mode A / browser companion unchanged).
 
@@ -104,6 +104,6 @@ npx tauri build --ci --config '{"bundle":{"createUpdaterArtifacts":true}}'
 
 ## Related
 
-- Release workflow: `.github/workflows/release.yml` (multiarch + optional hooks)
+- Release workflows: `.github/workflows/release-build.yml` (native builds) and `.github/workflows/release-pipeline.yml` (validation and promotion)
 - Artifact collect: `scripts/ci-tauri-collect-artifacts.sh`
 - Upstream reference: inverter-desktop Tauri updater plugin wiring

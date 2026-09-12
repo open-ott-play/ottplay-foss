@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_call: {}
   push:
     branches: [main]
   pull_request:
@@ -82,6 +83,9 @@ jobs:
 
       - name: Classic bundle smoke (ES5)
         run: npm run check:bundle
+
+      - name: Check emitted ES5 grammar
+        run: npm run check:es5
 
       - name: Package base OTT for device testing
         run: npm run package:modea

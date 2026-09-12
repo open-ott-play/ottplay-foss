@@ -1,0 +1,41 @@
+{
+  "version_file": "package.json",
+  "validation_workflows": [
+    "ci.yml",
+    "native-parity.yml",
+    "codeql.yml"
+  ],
+  "artifact_pattern": "release-assets*",
+  "local_checks": [
+    "npm ci --ignore-scripts",
+    "npm run typecheck",
+    "npm run lint",
+    "npm test",
+    "npm run build",
+    "npm run check:bundle",
+    "npm run check:es5",
+    "npm run package:modea",
+    "cargo test --locked -p ottplay-core -p ottplay-server",
+    "cargo test --locked --release --manifest-path tests/glib-variant-regression/Cargo.toml"
+  ],
+  "notes": [
+    "Retains all existing desktop and mobile build targets; signing/notarization remains optional exactly as before.",
+    "Classic emitted bundle smoke and ES5 checks are required, in addition to TypeScript checks.",
+    "Physical TV/STB firmware, decoders, live IPTV streams and DRM are separate acceptance checks.",
+    "OCI container archives are promoted without rebuild; deployment remains explicit.",
+    "Production automatic updating is not configured: updater public key is a placeholder and latest.json is not generated. Manual installers are supported; unsigned Android packages must be signed before installation and unsigned iOS packages need operator signing/sideloading."
+  ],
+  "version_companions": [
+    "src-tauri/Cargo.toml",
+    "src-tauri/tauri.conf.json",
+    "android/app/build.gradle",
+    "ios/App/App.xcodeproj/project.pbxproj"
+  ],
+  "container_assets": {
+    "ottplay-foss-container.oci.tar": "docker.io/alvit/ottplay-foss"
+  },
+  "repository": "open-ott-play/ottplay-foss",
+  "mode": "release",
+  "default_branch": "main",
+  "visibility": "public"
+}

@@ -49,3 +49,4 @@ google-services.json
 
 # Operator-local overrides (swop base URL, device id) — never commit
 /local/
+/release-output/
