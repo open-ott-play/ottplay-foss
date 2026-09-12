@@ -207,6 +207,7 @@
         "use strict";
         var host = window.location.origin ||
             (window.location.host ? window.location.protocol + "//" + window.location.host : "http://localhost:8080");
+        if (!Date.now) Date.now = function () { return new Date().getTime(); };
         var __dev = true; // set false for production
         // Boot runs before the bundle's polyfills. Cache-busting labels are not secrets.
         function bootRandomHex(length) {
@@ -268,10 +269,15 @@
             }
         }
         // Preserve provisioned/stored IDs. Old engines can boot without remote text entry.
-        var deviceUUID = localStorage.getItem("ott_device_uuid") || localStorage.getItem("deviceId") || "";
+        var deviceUUID = "";
+        try {
+            deviceUUID = localStorage.getItem("ott_device_uuid") || localStorage.getItem("deviceId") || "";
+        } catch (_readError) {}
         if (!deviceUUID) {
             deviceUUID = bootSecureDeviceId();
-            if (deviceUUID) localStorage.setItem("ott_device_uuid", deviceUUID);
+            try {
+                if (deviceUUID) localStorage.setItem("ott_device_uuid", deviceUUID);
+            } catch (_writeError) {}
         }
         window.deviceUUID = deviceUUID;
 
@@ -486,7 +492,13 @@
                         );
                     } else loadLocalHls();
                 } else checkDone();
-                if (
+                // Older WebKit exposes blob URLs under webkitURL. Shaka reads
+                // createObjectURL while loading, before it can report support.
+                if (!window.URL && window.webkitURL) window.URL = window.webkitURL;
+                if (!window.URL || typeof window.URL.createObjectURL !== "function") {
+                    bootLog("Blob URLs unavailable; using device playback");
+                    checkDone();
+                } else if (
                     typeof shaka === "undefined" ||
                     typeof shaka.Player === "undefined"
                 ) {

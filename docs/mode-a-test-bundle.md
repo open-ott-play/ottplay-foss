@@ -11,6 +11,9 @@ an index fallback for `/f/<device>/` while keeping `/dist`, `/stb`, `/js`,
 `/stbPlayer`, `/fonts` and `/prov` at the root. Proxy, EPG and other companion APIs
 still require a backend; the static archive does not include that server.
 
+The Rust companion serves the player index for `/f`, `/f/`, and nested device
+paths, so these URLs work without creating per-device directories.
+
 Open the server's address from the TV/STB, selecting its device adapter:
 
 - `/f/dune/`, `/f/mag/`, `/f/hisense/`

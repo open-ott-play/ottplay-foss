@@ -172,7 +172,8 @@
       "!node_modules/**",
       "!ios/**",
       "!android/**",
-      "!src-tauri/**"
+      "!src-tauri/**",
+      "!vendor/glib-0.18.5/.cargo_vcs_info.json"
     ]
   },
   "formatter": {

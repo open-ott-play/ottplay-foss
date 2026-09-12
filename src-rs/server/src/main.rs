@@ -147,7 +147,7 @@ async fn main() {
         .route("/debug/status", get(debug_status))
         .route("/debug/summary", get(debug_summary))
         .route("/debug/archive-status", get(debug_archive_status))
-        .nest_service("/f", ServeDir::new("."))
+        .merge(device_entry_routes())
         .nest_service("/dist", ServeDir::new("dist"))
         .nest_service("/stbPlayer", ServeDir::new("stbPlayer"))
         .nest_service("/stb", ServeDir::new("stb"))
@@ -243,6 +243,14 @@ fn build_tls_config(cert_path: &str, key_path: &str) -> Arc<ServerConfig> {
     config.alpn_protocols = vec![b"http/1.1".to_vec()];
 
     Arc::new(config)
+}
+
+fn device_entry_routes() -> Router {
+    // Device paths select an adapter in index.html; they are not filesystem paths.
+    Router::new()
+        .route("/f", get(root))
+        .route("/f/", get(root))
+        .route("/f/*device", get(root))
 }
 
 async fn root() -> impl IntoResponse {
@@ -1077,4 +1085,125 @@ async fn debug_archive_status() -> impl IntoResponse {
         })
         .to_string(),
     )
+}
+
+#[cfg(test)]
+mod device_entry_tests {
+    use super::*;
+    use axum::body::{to_bytes, Body};
+    use axum::http::Request;
+    use std::path::PathBuf;
+
+    // root() reads the web root from the process working directory. This server
+    // test binary has one filesystem test; always restore its directory on panic.
+    struct WebRootFixture {
+        previous: PathBuf,
+        directory: PathBuf,
+    }
+
+    impl Drop for WebRootFixture {
+        fn drop(&mut self) {
+            std::env::set_current_dir(&self.previous).unwrap();
+            std::fs::remove_dir_all(&self.directory).unwrap();
+        }
+    }
+
+    async fn request(app: &mut Router, path: &str) -> (StatusCode, String, Bytes) {
+        let response = app
+            .call(Request::builder().uri(path).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let status = response.status();
+        let content_type = response
+            .headers()
+            .get("content-type")
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("")
+            .to_string();
+        let body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
+        (status, content_type, body)
+    }
+
+    #[tokio::test]
+    async fn mode_a_device_entries_serve_html_without_exposing_web_root() {
+        let previous = std::env::current_dir().unwrap();
+        let stamp = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let directory = std::env::temp_dir().join(format!(
+            "ottplay-device-routes-{}-{stamp}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(directory.join("dist")).unwrap();
+        std::fs::create_dir_all(directory.join("stb/lg/webos")).unwrap();
+        std::fs::create_dir_all(directory.join("src-rs/server/src")).unwrap();
+        std::fs::create_dir_all(directory.join(".git")).unwrap();
+        let built_html = "<!doctype html><html><body>built player</body></html>";
+        let source_html = "<!doctype html><html><body>source player</body></html>";
+        let private_source = "[workspace]\nmembers = [\"private-source\"]\n";
+        let adapter = "var adapter = 'lg/webos';";
+        std::fs::write(directory.join("dist/index.html"), built_html).unwrap();
+        std::fs::write(directory.join("index.html"), source_html).unwrap();
+        std::fs::write(directory.join("Cargo.toml"), private_source).unwrap();
+        std::fs::write(
+            directory.join("src-rs/server/src/main.rs"),
+            "private source",
+        )
+        .unwrap();
+        std::fs::write(directory.join(".env"), "PRIVATE=value").unwrap();
+        std::fs::write(directory.join(".git/config"), "private git config").unwrap();
+        std::fs::write(directory.join("stb/lg/webos/stb.js"), adapter).unwrap();
+        std::env::set_current_dir(&directory).unwrap();
+        let _fixture = WebRootFixture {
+            previous,
+            directory,
+        };
+
+        // Reproduce both failures in the former production route.
+        let mut old = Router::new().nest_service("/f", ServeDir::new("."));
+        for path in ["/f/dune/", "/f/lg/webos/"] {
+            assert_eq!(request(&mut old, path).await.0, StatusCode::NOT_FOUND);
+        }
+        let exposed = request(&mut old, "/f/Cargo.toml").await;
+        assert_eq!(exposed.0, StatusCode::OK);
+        assert_eq!(exposed.2.as_ref(), private_source.as_bytes());
+
+        let mut app = Router::new()
+            .merge(device_entry_routes())
+            .nest_service("/stb", ServeDir::new("stb"));
+        for path in [
+            "/f",
+            "/f/",
+            "/f/dune/",
+            "/f/mag/",
+            "/f/hisense/",
+            "/f/lg/webos/",
+            "/f/lg/netcast/",
+            "/f/samsung/tizen/",
+            "/f/samsung/maple/",
+            "/f/Cargo.toml",
+            "/f/src-rs/server/src/main.rs",
+            "/f/.env",
+            "/f/.git/config",
+            "/f/stb/lg/webos/stb.js",
+        ] {
+            let response = request(&mut app, path).await;
+            assert_eq!(response.0, StatusCode::OK, "{path}");
+            assert!(response.1.starts_with("text/html"), "{path}");
+            assert_eq!(response.2.as_ref(), built_html.as_bytes(), "{path}");
+        }
+        let asset = request(&mut app, "/stb/lg/webos/stb.js").await;
+        assert_eq!(asset.0, StatusCode::OK);
+        assert_eq!(asset.2.as_ref(), adapter.as_bytes());
+        assert_eq!(
+            request(&mut app, "/Cargo.toml").await.0,
+            StatusCode::NOT_FOUND
+        );
+
+        std::fs::remove_file("dist/index.html").unwrap();
+        let fallback = request(&mut app, "/f/lg/webos/").await;
+        assert_eq!(fallback.0, StatusCode::OK);
+        assert_eq!(fallback.2.as_ref(), source_html.as_bytes());
+    }
 }

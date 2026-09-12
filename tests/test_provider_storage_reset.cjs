@@ -69,10 +69,13 @@ const context = {
         };
     },
     arrayProvaiders: [],
+    cancelMediaLoad() {},
+    cancelPortChannelIdMigration() {},
     console,
     firstRun() {
         firstRuns++;
     },
+    invalidateEpgCache() {},
     launch_id: "#launch",
     localStorage: {
         getItem: (key) => (saved.has(key) ? saved.get(key) : null),

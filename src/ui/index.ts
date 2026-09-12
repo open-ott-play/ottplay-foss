@@ -4,9 +4,12 @@
 
 import {
     arrayGetCurProg,
+    cancelMediaLoad,
     getCurProgData,
     type MediaHistoryEntry,
     type MediaTarget,
+    rememberMediaView,
+    requestMediaList,
 } from "../channels";
 import { video } from "../core";
 import { dispatchKey, keys, list_OnClick } from "../keyhandler";
@@ -414,9 +417,11 @@ export function uiInit(): void {
                 function (ev: MouseEvent): void {
                     if ((window as any).__ottTauriSuppressClick) return;
                     var t = ev.target;
-                    if (!(t instanceof Element)) return;
-                    if (t.closest(".list-scroll")) return;
-                    var item = t.closest(".item") as HTMLElement | null;
+                    if (!t || (t as Node).nodeType !== 1) return;
+                    if ($(t).closest(".list-scroll").length) return;
+                    var item = $(t).closest(".item")[0] as
+                        | HTMLElement
+                        | undefined;
                     if (!item) {
                         var y = ev.clientY;
                         var nodes = listInClickRoot.querySelectorAll(".item");
@@ -462,8 +467,10 @@ export function uiInit(): void {
                 (window as any).__ottTauriSuppressClick = false;
             } catch (_s) {}
             var t = ev.target;
-            if (!(t instanceof Element)) return;
-            var span = t.closest("span[onclick]") as HTMLElement | null;
+            if (!t || (t as Node).nodeType !== 1) return;
+            var span = $(t).closest("span[onclick]")[0] as
+                | HTMLElement
+                | undefined;
             if (!span || !podRoot.contains(span)) return;
             var oc = span.getAttribute("onclick") || "";
             var m = oc.match(/_doKey\((\d+)/);
@@ -1206,6 +1213,7 @@ export function setSelect(index: number): void {
  * @analysis Errors during DOM manipulation are silently caught and logged.
  */
 export function closeList(): void {
+    cancelMediaLoad();
     isListVisible = false;
     try {
         (window as any).isListVisible = false;
@@ -3702,9 +3710,7 @@ export function showEditKey2(_initKeys?: number[]): void {
         (window as any).listCaptionElement.innerHTML = caption;
     var html = caption + ":<br/><br/>";
     html +=
-        '<br/><input type="text" id="editvar" value="' +
-        val.replace(/"/g, "&quot;") +
-        '" style="color:' +
+        '<br/><input type="text" id="editvar" style="color:' +
         ((window as any).curColor || "#fff") +
         ';" autofocus><br/><br/>';
     html +=
@@ -3726,16 +3732,23 @@ export function showEditKey2(_initKeys?: number[]): void {
     $("#listEdit").show().html(html);
     var editEl = document.getElementById("editvar") as HTMLInputElement | null;
     if (editEl) {
+        // Assign the value as text: HTML entities in URLs/passwords must round-trip.
+        editEl.value = String(val);
         var prev = (editEl as any).__ottEditKey2Handler;
         if (typeof prev === "function") {
             editEl.removeEventListener("keydown", prev);
         }
         var onKeyDown = function (ev: KeyboardEvent): void {
-            if (ev.key === "Enter") {
+            if (ev.isComposing || ev.keyCode === 229) {
+                // Keep IME default handling, but do not let the window key router save.
+                ev.stopPropagation();
+                return;
+            }
+            if (ev.key === "Enter" || ev.keyCode === 13) {
                 ev.preventDefault();
                 ev.stopPropagation();
                 editKey2(keys.ENTER || 13);
-            } else if (ev.key === "Escape") {
+            } else if (ev.key === "Escape" || ev.keyCode === 27) {
                 ev.preventDefault();
                 ev.stopPropagation();
                 editKey2(keys.EXIT || 27);
@@ -3767,6 +3780,7 @@ declare function mediaKeyHandler(keyCode: number): boolean;
  */
 function showMediaList1(): void {
     var w = window as any;
+    rememberMediaView();
     var data: MediaHistoryEntry[] = w.mediaRecords || [];
     w.selIndex = Math.max(
         0,
@@ -3926,7 +3940,7 @@ export function mediaList(target: MediaTarget | null): void {
         showMediaList();
     } else if (typeof w.getMediaArray === "function") {
         // Providers populate mediaRecords and call the completion callback with no arguments.
-        w.getMediaArray(target, showMediaList);
+        requestMediaList(target);
     }
 }
 

@@ -482,11 +482,13 @@ function getMediaArrayXML(murl, callback) {
             box_mac;
     $.ajax({
         complete: function () {
+            if (callback.isCurrent && !callback.isCurrent()) return;
             $("#dialogbox").hide();
             callback();
         },
         dataType: "text",
         success: function (data) {
+            if (callback.isCurrent && !callback.isCurrent()) return;
             try {
                 var i = data.indexOf("<?xml");
                 if (i !== -1) {

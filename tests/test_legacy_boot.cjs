@@ -52,6 +52,22 @@ function boot(options = {}) {
                 tag.onerror(new Error("TLS/network unavailable"));
                 return;
             }
+            if (
+                options.realLibraries &&
+                /\/(hls.min.js|shaka-player.compiled.js)$/.test(tag.src)
+            ) {
+                const name = tag.src.slice(tag.src.lastIndexOf("/") + 1);
+                vm.runInContext(
+                    fs.readFileSync(
+                        path.join(__dirname, "../js", name),
+                        "utf8"
+                    ),
+                    context,
+                    { filename: name }
+                );
+                if (typeof tag.onload === "function") tag.onload();
+                return;
+            }
             if (tag.src.indexOf("jquery-1.11.1.min.js") !== -1)
                 context.jQuery = {};
             else if (tag.src.indexOf("hls.min.js") !== -1) {
@@ -78,9 +94,13 @@ function boot(options = {}) {
         document,
         localStorage: {
             getItem(key) {
+                if (options.storageError === "read")
+                    throw new Error("SecurityError");
                 return storage[key] || null;
             },
             setItem(key, value) {
+                if (options.storageError === "write")
+                    throw new Error("QuotaExceededError");
                 storage[key] = value;
             },
         },
@@ -100,8 +120,20 @@ function boot(options = {}) {
         setTimeout() {
             return 1;
         },
+        URL: { createObjectURL() {} },
     });
     context.window = context;
+    context.self = context;
+    if (options.storageError === "access") {
+        Object.defineProperty(context, "localStorage", {
+            get() {
+                throw new Error("SecurityError");
+            },
+        });
+    }
+    if (options.noObjectURL) context.URL = undefined;
+    if (options.webkitURL) context.webkitURL = { createObjectURL() {} };
+    if (options.noDateNow) vm.runInContext("Date.now = undefined;", context);
     if (options.modern) {
         context.crypto = {
             getRandomValues(bytes) {
@@ -138,7 +170,11 @@ function boot(options = {}) {
         "http://legacy-player.test:8080",
         "Origin fallback retains the remote host"
     );
-    if (context.deviceUUID)
+    if (
+        context.deviceUUID &&
+        options.storageError !== "write" &&
+        options.storageError !== "access"
+    )
         assert.equal(storage.ott_device_uuid, context.deviceUUID);
     else assert.equal(storage.ott_device_uuid, undefined);
     return { context, requests, storage };
@@ -221,3 +257,30 @@ for (const device of [
         );
     }
 }
+
+// Storage policy and quota errors must not abort basic boot or replace secure RNG.
+for (const storageError of ["access", "read", "write"]) {
+    const result = boot({ modern: true, noDateNow: true, storageError });
+    assert.match(result.context.deviceUUID, /^dev_[0-9a-f]{32}$/);
+}
+// Execute the actual vendor payloads, not a fake successful script download.
+for (const options of [
+    { realLibraries: true },
+    { noObjectURL: true, realLibraries: true },
+    { noObjectURL: true, realLibraries: true, webkitURL: true },
+]) {
+    const result = boot(options);
+    assert.equal(typeof result.context.Hls, "function");
+    if (options.noObjectURL && !options.webkitURL) {
+        assert(
+            !result.requests.some((url) =>
+                url.endsWith("/js/shaka-player.compiled.js")
+            )
+        );
+    } else {
+        assert.equal(typeof result.context.shaka.Player, "function");
+    }
+}
+console.log(
+    "OK: denied/quota storage, pre-bundle Date.now and actual old-API vendor payloads"
+);

@@ -94,6 +94,87 @@ var _liveRestartPending = false;
 var _liveRestartTimer: ReturnType<typeof setTimeout> | null = null;
 /** Identifies the current user-requested playback session. */
 var _playSession = 0;
+/** The previous Shaka must release this video before another engine attaches. */
+var _coreShakaTeardown: PromiseLike<unknown> | null = null;
+var _corePendingSeek: (() => void) | null = null;
+
+function isCoreThenable(value: unknown): value is PromiseLike<unknown> {
+    return (
+        !!value && typeof (value as PromiseLike<unknown>).then === "function"
+    );
+}
+
+/** Older WebKit play() returns void; modern autoplay failures must be consumed. */
+function playCoreMedia(media: HTMLVideoElement): void {
+    try {
+        var result = media.play();
+        if (isCoreThenable(result)) {
+            result.then(undefined, function (error) {
+                console.log("[video] play() rejected:", error);
+            });
+        }
+    } catch (error) {
+        console.log("[video] play() failed:", error);
+    }
+}
+
+function cancelCoreSeek(): void {
+    if (_corePendingSeek) _corePendingSeek();
+    _corePendingSeek = null;
+}
+
+/** Some STB engines reject currentTime until loadedmetadata has arrived. */
+function seekCoreMedia(position: number, session: number): void {
+    cancelCoreSeek();
+    if (!video || !isFinite(position) || position < 0) return;
+    var media = video;
+    function apply(): boolean {
+        if (session !== _playSession || video !== media) return true;
+        try {
+            media.currentTime = position;
+            return true;
+        } catch (_notReady) {
+            return false;
+        }
+    }
+    var applied = apply();
+    if (
+        (!applied || media.readyState === 0) &&
+        typeof media.addEventListener === "function"
+    ) {
+        var clear = function (): void {
+            media.removeEventListener("loadedmetadata", onMetadata);
+            if (_corePendingSeek === clear) _corePendingSeek = null;
+        };
+        var onMetadata = function (): void {
+            apply();
+            clear();
+        };
+        _corePendingSeek = clear;
+        media.addEventListener("loadedmetadata", onMetadata);
+    }
+}
+
+function destroyCoreShaka(): void {
+    var player = window.player;
+    window.player = null;
+    if (!player || typeof player.destroy !== "function") return;
+    try {
+        var pending = player.destroy();
+        if (isCoreThenable(pending)) {
+            _coreShakaTeardown = pending;
+            var clear = function (): void {
+                if (_coreShakaTeardown === pending) _coreShakaTeardown = null;
+            };
+            pending.then(clear, function (error) {
+                clear();
+                console.error("[Shaka] destroy failed:", error);
+            });
+        }
+    } catch (error) {
+        console.error("[Shaka] destroy failed:", error);
+    }
+}
 
 function cancelLiveRestart(): void {
     if (_liveRestartTimer !== null) {
@@ -112,6 +193,7 @@ export function clearPlayTimeInterval(): void {
 }
 /** Active hls.js instance for the PiP video!. */
 var hlsPipInstance: any = null;
+var _corePipSession = 0;
 /** Whether the player is currently in fullscreen mode. */
 var isFullscreen = true;
 /**
@@ -562,8 +644,7 @@ export function stbEventToKeyCode(event: any): number {
  * @param position - Optional start offset in seconds. Used as `#t=` fragment for
  *                   HLS (browser handles it on attach), and as a direct
  *                   currentTime assignment for native HTML5 (shaka does not
- *                   need it — player.load() accepts a startTime option, but we
- *                   keep currentTime for parity with the native path).
+ *                   need it; Shaka receives it as its load startTime).
  *
  * Side effects:
  * - Destroys any previous hls.js or shaka instance.
@@ -583,9 +664,8 @@ export function stbPlay(url: string, position?: number): void {
         hlsInstance.destroy();
         hlsInstance = null;
     }
-    if (window.player) {
-        window.player = null;
-    }
+    cancelCoreSeek();
+    destroyCoreShaka();
     clearPlayTimeInterval();
     if (
         window.__ottDebug &&
@@ -594,6 +674,21 @@ export function stbPlay(url: string, position?: number): void {
     ) {
         window.__ottDebug.beginSession(url);
     }
+    // Shaka detach is asynchronous and may otherwise clear the next engine's src.
+    var start = function (): void {
+        if (session === _playSession) startCorePlayback(url, position, session);
+    };
+    if (_coreShakaTeardown) _coreShakaTeardown.then(start, start);
+    else start();
+    window.playType = window.playType ?? 0;
+    window.playTime = window.playTime ?? 0;
+}
+
+function startCorePlayback(
+    url: string,
+    position: number | undefined,
+    session: number
+): void {
     // Decode-fail: try hls.js first, drop failing level, recover once; native only if Safari
     var _forceNative = false;
     var _pm =
@@ -672,9 +767,11 @@ export function stbPlay(url: string, position?: number): void {
                 if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
                     var lvls = hlsInstance.levels || [];
                     var failed =
-                        (data.frag && data.frag.level) ||
-                        data.level ||
-                        hlsInstance.currentLevel;
+                        data.frag && typeof data.frag.level === "number"
+                            ? data.frag.level
+                            : typeof data.level === "number"
+                              ? data.level
+                              : hlsInstance.currentLevel;
                     if (lvls.length > 1 && failed > 0) {
                         var cap = failed - 1;
                         console.log(
@@ -729,6 +826,9 @@ export function stbPlay(url: string, position?: number): void {
                         var appendFail =
                             det.indexOf("bufferAppend") !== -1 ||
                             det.indexOf("bufferAppendError") !== -1;
+                        // destroy() clears currentTime. Preserve the requested/resumed
+                        // VOD position before moving from MSE to native HLS.
+                        var nativePosition = video!.currentTime || _startPos;
                         hlsInstance.destroy();
                         hlsInstance = null;
                         if (canNative) {
@@ -736,14 +836,10 @@ export function stbPlay(url: string, position?: number): void {
                                 "[HLS] MEDIA_ERROR twice, fallback native HTML5"
                             );
                             video!.src = url;
-                            if ((window as any).forcePlay !== false) {
-                                var fallbackPlay = video!.play();
-                                if (
-                                    fallbackPlay &&
-                                    typeof fallbackPlay.catch === "function"
-                                )
-                                    fallbackPlay.catch(function () {});
-                            }
+                            if (nativePosition > 0)
+                                seekCoreMedia(nativePosition, session);
+                            if ((window as any).forcePlay !== false)
+                                playCoreMedia(video!);
                         } else {
                             console.log(
                                 "[HLS] MEDIA_ERROR twice, no native HLS" +
@@ -847,16 +943,10 @@ export function stbPlay(url: string, position?: number): void {
             _liveRestartUsed = false;
             _liveRestartPending = false;
             if ((window as any).forcePlay !== false) {
-                var manifestPlay = video!.play();
-                // Older HTMLMediaElement implementations return void, not Promise.
-                if (manifestPlay && typeof manifestPlay.catch === "function") {
-                    manifestPlay.catch(function (e) {
-                        console.log("[HLS] play() rejected:", e);
-                    });
-                }
+                playCoreMedia(video!);
             }
             if (_startPos > 0) {
-                video!.currentTime = _startPos;
+                seekCoreMedia(_startPos, session);
                 _startPos = 0;
             }
         });
@@ -881,26 +971,36 @@ export function stbPlay(url: string, position?: number): void {
         shaka.Player &&
         shaka.Player.isBrowserSupported()
     ) {
-        window.player = new shaka.Player(video);
+        var playbackShaka = new shaka.Player(video);
+        window.player = playbackShaka;
+        var loaded = function (): void {
+            if (
+                session === _playSession &&
+                window.player === playbackShaka &&
+                (window as any).forcePlay !== false
+            ) {
+                playCoreMedia(video!);
+            }
+        };
+        var failed = function (error: unknown): void {
+            if (session === _playSession && window.player === playbackShaka)
+                console.error("[Shaka] load failed:", error);
+        };
         try {
-            window.player.load(url);
-            video!.play();
-        } catch (e) {
-            console.error(e);
+            var loading = playbackShaka.load(
+                url,
+                position && position > 0 ? position : undefined
+            );
+            if (isCoreThenable(loading)) loading.then(loaded, failed);
+            else loaded();
+        } catch (error) {
+            failed(error);
         }
     } else {
         video!.src = url;
+        if (position && position > 0) seekCoreMedia(position, session);
+        if ((window as any).forcePlay !== false) playCoreMedia(video!);
     }
-    // Only call play() for non-HLS modes — HLS.js triggers play after manifest parsed
-    if (!useHls) {
-        video!.play();
-        if (position && position > 0) {
-            video!.currentTime = position;
-        }
-    }
-    // Sync playType/playTime to window for external UI consumers
-    window.playType = window.playType ?? 0;
-    window.playTime = window.playTime ?? 0;
 }
 
 /**
@@ -910,8 +1010,11 @@ export function stbPlay(url: string, position?: number): void {
 export function stbStop(): void {
     _playSession++;
     cancelLiveRestart();
+    cancelCoreSeek();
+    (window as any).forcePlay = false;
     video!.pause();
     video!.removeAttribute("src");
+    destroyCoreShaka();
     if (hlsInstance) {
         hlsInstance.destroy();
         hlsInstance = null;
@@ -934,7 +1037,7 @@ export function stbPause(): void {
 export function stbContinue(): void {
     if (video!.paused) {
         (window as any).forcePlay = true;
-        video!.play();
+        playCoreMedia(video!);
     } else stbPause();
 }
 /**
@@ -979,7 +1082,13 @@ export function stbGetPosTime(): number {
  * Side effects: Sets video!.currentTime.
  */
 export function stbSetPosTime(v: number): void {
-    video!.currentTime = v;
+    seekCoreMedia(v, _playSession);
+    if (
+        (window as any).playType < 0 &&
+        typeof (window as any).updateMediaInfo === "function"
+    ) {
+        (window as any).updateMediaInfo();
+    }
 }
 /**
  * Get the total duration of the loaded media.
@@ -1226,8 +1335,8 @@ function isUsableNativeSubtitleTrack(t: any): boolean {
  * @returns Number of usable subtitle/text tracks.
  */
 export function stbSubtitleExists(): number {
-    if (hlsInstance) return hlsInstance.subtitleTracks.length;
-    var tt = video!.textTracks;
+    if (hlsInstance) return (hlsInstance.subtitleTracks || []).length;
+    var tt = (video && video.textTracks) || [];
     var n = 0;
     for (var i = 0; i < tt.length; i++) {
         if (isUsableNativeSubtitleTrack(tt[i])) n++;
@@ -1244,30 +1353,39 @@ export function stbSubtitleExists(): number {
  * Side effects: Shows #videopip; attaches hls.js or native src; calls videoPip!.play().
  */
 export function stbPlayPip(url: string): void {
+    var session = ++_corePipSession;
+    if (hlsPipInstance) {
+        hlsPipInstance.destroy();
+        hlsPipInstance = null;
+    }
     if (playerMode === 1 && typeof Hls !== "undefined" && Hls.isSupported()) {
-        if (hlsPipInstance) hlsPipInstance.destroy();
-        hlsPipInstance = new Hls();
-        hlsPipInstance.loadSource(url);
-        hlsPipInstance.attachMedia(videoPip);
-        hlsPipInstance.on(Hls.Events.MANIFEST_PARSED, function () {});
+        var pipHls = new Hls();
+        hlsPipInstance = pipHls;
+        pipHls.on(Hls.Events.MANIFEST_PARSED, function () {
+            if (session === _corePipSession && hlsPipInstance === pipHls)
+                playCoreMedia(videoPip!);
+        });
+        pipHls.loadSource(url);
+        pipHls.attachMedia(videoPip);
     } else {
         videoPip!.src = url;
+        playCoreMedia(videoPip!);
     }
-    videoPip!.play();
     $("#videopip").show();
     setPipPosition();
 }
 
-/**
- * Stop PiP playback, destroy the hls.js Pip instance, and hide the PiP element.
- *
- * Side effects: Hides #videopip; pauses and clears the PiP video!.
- */
+/** Stop PiP, cancel its callbacks, and release the decoder and buffering OSD. */
 export function stbStopPip(): void {
+    _corePipSession++;
     videoPip!.pause();
-    videoPip!.src = "";
-    if (hlsPipInstance) hlsPipInstance.destroy();
+    if (hlsPipInstance) {
+        hlsPipInstance.destroy();
+        hlsPipInstance = null;
+    }
+    videoPip!.removeAttribute("src");
     $("#videopip").hide();
+    $("#pip_buffering").hide();
 }
 /**
  * Reposition and resize the PiP overlay based on the current pipSize and pipPosition
@@ -1597,11 +1715,11 @@ function videoEvent(event: Event): void {
  * Side effects: Mutates hlsInstance.audioTrack or video!.audioTracks[i].enabled.
  */
 function setAudioTrack(index: number): void {
-    if (hlsInstance && hlsInstance.audioTrack !== index) {
-        hlsInstance.audioTrack = index;
+    if (hlsInstance) {
+        if (hlsInstance.audioTrack !== index) hlsInstance.audioTrack = index;
         return;
     }
-    var tracks = (video as any).audioTracks;
+    var tracks = (video && (video as any).audioTracks) || [];
     for (var i = 0; i < tracks.length; i++) tracks[i].enabled = i === index;
 }
 
@@ -1613,9 +1731,14 @@ function setAudioTrack(index: number): void {
  */
 export function stbToggleAudioTrack(): void {
     var cur = 0,
-        tracks = hlsInstance
-            ? hlsInstance.audioTracks
-            : (video as any).audioTracks;
+        tracks =
+            (hlsInstance
+                ? hlsInstance.audioTracks
+                : video && (video as any).audioTracks) || [];
+    if (!tracks.length) {
+        showSelectBox(0, [_("Not found")], function () {}, 1500);
+        return;
+    }
     var labels: string[] = [];
     if (hlsInstance) cur = hlsInstance.audioTrack;
     for (var i = 0; i < tracks.length; i++) {
@@ -1659,7 +1782,7 @@ function setSubtitleTrack(index: number): void {
         hlsInstance.subtitleTrack = index - 1;
         return;
     }
-    var tracks = (video as any).textTracks;
+    var tracks = (video && video.textTracks) || [];
     for (var i = 0; i < tracks.length; i++)
         (tracks[i] as any).mode = i === index - 1 ? "showing" : "disabled";
 }
@@ -1695,7 +1818,7 @@ export function stbToggleSubtitle(): void {
             );
         }
     } else {
-        var nTracks = (video as any).textTracks;
+        var nTracks = (video && video.textTracks) || [];
         var usable: { eng: number; t: any }[] = [];
         for (var ni = 0; ni < nTracks.length; ni++) {
             if (isUsableNativeSubtitleTrack(nTracks[ni]))

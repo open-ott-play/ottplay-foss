@@ -12,7 +12,13 @@
  * - First-run setup wizard
  */
 
-import { invalidateEpgCache } from "../channels";
+import {
+    beginPortChannelIdMigration,
+    cancelMediaLoad,
+    cancelPortChannelIdMigration,
+    finishPortChannelIdMigration,
+    invalidateEpgCache,
+} from "../channels";
 import {
     setPlayerMode,
     toggleAspectRatio,
@@ -761,6 +767,9 @@ declare var confirmBox: (
  * If noProvParam=1, splices provider settings out of popup arrays.
  */
 export function loadProv(): void {
+    cancelPortChannelIdMigration();
+    cancelMediaLoad();
+    invalidateEpgCache();
     /**
      * Handle provider script load failure.
      * Clears the pending provider, alerts the error (unless 'no' provider),
@@ -981,6 +990,7 @@ export function loadProv(): void {
  * Edge case: Stops any active playback before loading.
  */
 export function loadChannels(): void {
+    var idMigration = beginPortChannelIdMigration();
     if (!$("#launch").is(":visible")) {
         if (stbIsPlaying()) stbStop();
         if (launch_id !== "#dialogbox")
@@ -1080,6 +1090,7 @@ export function loadChannels(): void {
     }, 3000);
     getChanelsArray(function () {
         clearTimeout(_loadTimer);
+        finishPortChannelIdMigration(idMigration);
         onChanelsLoaded();
     });
 }
