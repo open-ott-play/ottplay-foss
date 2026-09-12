@@ -210,7 +210,7 @@ Media constraints:
 - **Background** — `foregroundServiceType="mediaPlayback"`.
 
 ### Desktop (Tauri)
-- **HLS + DASH + DRM** — full MSE support. No constraints.
+- **Playback** — the shared TS HTML/HLS/Shaka backend runs in the OS WebView. Format, codec and DRM support must be checked on each target OS/WebView; the shell does not provide universal MSE or DRM support.
 
 ---
 

@@ -25,14 +25,14 @@ export interface BackgroundAudioMeta {
 export interface MobileNativeMediaPlugin {
     /** Release sleep prevention → device may idle/sleep. */
     allowSleep(): Promise<{ ok: boolean; unsupported?: boolean }>;
-    /** Finish the native Activity / leave the Cap app. */
-    exitApp(): Promise<{ ok: boolean; unsupported?: boolean; error?: string }>;
     /** Android only: minimize the current Activity into OS PiP, without changing its stream. */
     enterSystemPip(): Promise<{
         ok: boolean;
         unsupported?: boolean;
         error?: string;
     }>;
+    /** Finish the native Activity / leave the Cap app. */
+    exitApp(): Promise<{ ok: boolean; unsupported?: boolean; error?: string }>;
     /** OS output volume 0–100. Fails loudly when platform cannot report. */
     getVolume(): Promise<{
         ok: boolean;

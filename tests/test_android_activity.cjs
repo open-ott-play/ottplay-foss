@@ -178,20 +178,20 @@ try {
         "every shipped local plugin must reach bridge construction"
     );
     const mapping = {
-        DPAD_UP: "UP",
+        BACK: "EXIT",
+        BUTTON_A: "ENTER",
+        BUTTON_B: "EXIT",
+        BUTTON_SELECT: "ENTER",
+        DPAD_CENTER: "ENTER",
         DPAD_DOWN: "DOWN",
         DPAD_LEFT: "LEFT",
         DPAD_RIGHT: "RIGHT",
-        DPAD_CENTER: "ENTER",
+        DPAD_UP: "UP",
         ENTER: "ENTER",
-        BACK: "EXIT",
-        BUTTON_A: "ENTER",
-        BUTTON_SELECT: "ENTER",
-        BUTTON_B: "EXIT",
-        VOLUME_UP: "VOL_UP",
-        VOLUME_DOWN: "VOL_DOWN",
         MEDIA_NEXT: "NEXT",
         MEDIA_PREVIOUS: "PREV",
+        VOLUME_DOWN: "VOL_DOWN",
+        VOLUME_UP: "VOL_UP",
     };
     for (const adapter of ["pc", "android"]) {
         const source = read(`src/stb/${adapter}/stb.ts`);
@@ -199,7 +199,7 @@ try {
             "(" + /var \w*Keys = (\{[\s\S]*?\});/.exec(source)[1] + ")"
         );
         const received = [];
-        const w = { keys: keyMap, _doKey: (key) => received.push(key) };
+        const w = { _doKey: (key) => received.push(key), keys: keyMap };
         w.window = w;
         vm.createContext(w);
         for (const [nativeKey, appKey] of Object.entries(mapping)) {
@@ -218,28 +218,28 @@ try {
         "stbStop",
     ]);
     const video = {
+        pause() {
+            this.paused = true;
+        },
         paused: true,
         play() {
             this.paused = false;
             return Promise.resolve();
         },
-        pause() {
-            this.paused = true;
-        },
         removeAttribute() {},
     };
     let destroyed = 0;
     const w = {
-        video,
         _playSession: 0,
         cancelLiveRestart() {},
         clearPlayTimeInterval() {},
+        console,
         hlsInstance: {
             destroy() {
                 destroyed++;
             },
         },
-        console,
+        video,
     };
     w.window = w;
     vm.createContext(w);
@@ -264,5 +264,5 @@ try {
         "PASS Android activity: plugin registration before bridge, boot fallback, media repeat suppression, actual PC/Android keymaps, idempotent Play/Pause and toggle lifecycle"
     );
 } finally {
-    fs.rmSync(temp, { recursive: true, force: true });
+    fs.rmSync(temp, { force: true, recursive: true });
 }

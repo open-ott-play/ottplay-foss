@@ -32,37 +32,37 @@ function fixture(platform = "android") {
     const elements = {};
     function element(id) {
         return (elements[id] ||= {
-            style: {},
-            clientWidth: 512,
             clientHeight: 288,
+            clientWidth: 512,
+            style: {},
         });
     }
     function media(id) {
         return Object.assign(element(id), {
+            audioTracks: [{ enabled: true }, { enabled: false }],
+            canPlayType: () => "probably",
             currentTime: 0,
             duration: 600,
-            paused: true,
             muted: id === "videopip",
-            volume: 1,
-            videoWidth: 1280,
-            videoHeight: 720,
-            playCalls: 0,
-            audioTracks: [{ enabled: true }, { enabled: false }],
-            textTracks: [
-                { kind: "subtitles", label: "English", mode: "disabled" },
-            ],
-            canPlayType: () => "probably",
+            pause() {
+                this.paused = true;
+            },
+            paused: true,
             play() {
                 this.paused = false;
                 this.playCalls++;
                 return Promise.resolve();
             },
-            pause() {
-                this.paused = true;
-            },
+            playCalls: 0,
             removeAttribute(name) {
                 delete this[name];
             },
+            textTracks: [
+                { kind: "subtitles", label: "English", mode: "disabled" },
+            ],
+            videoHeight: 720,
+            videoWidth: 1280,
+            volume: 1,
         });
     }
     function Hls() {
@@ -70,9 +70,9 @@ function fixture(platform = "android") {
         streams.push(this);
     }
     Hls.Events = {
-        MANIFEST_PARSED: "manifest",
-        ERROR: "error",
         AUDIO_TRACKS_UPDATED: "audio",
+        ERROR: "error",
+        MANIFEST_PARSED: "manifest",
     };
     Hls.ErrorTypes = { MEDIA_ERROR: "media", NETWORK_ERROR: "network" };
     Hls.isSupported = () => true;
@@ -98,11 +98,34 @@ function fixture(platform = "android") {
         return Promise.resolve();
     };
     const w = {
-        console: { log() {}, warn() {}, error() {} },
-        innerWidth: 1280,
-        innerHeight: 720,
-        playType: -1,
+        $: (selector) => {
+            const el = element(selector.slice(1));
+            return {
+                css(styles) {
+                    Object.assign(el.style, styles);
+                    return this;
+                },
+                hide() {
+                    el.style.display = "none";
+                    return this;
+                },
+                html() {
+                    return this;
+                },
+                show() {
+                    el.style.display = "block";
+                    return this;
+                },
+            };
+        },
         Capacitor: { getPlatform: () => platform },
+        clearInterval(id) {
+            timers.delete(id);
+        },
+        clearTimeout(id) {
+            timers.delete(id);
+        },
+        console: { error() {}, log() {}, warn() {} },
         DashExoPlayer: new Proxy(
             {},
             {
@@ -113,6 +136,14 @@ function fixture(platform = "android") {
                 },
             }
         ),
+        document: {
+            body: { classList: { add() {}, remove() {} }, style: {} },
+            getElementById: (id) => elements[id] || null,
+        },
+        execCHarr() {},
+        Hls,
+        innerHeight: 720,
+        innerWidth: 1280,
         MobileNativeMedia: new Proxy(
             {},
             {
@@ -124,47 +155,16 @@ function fixture(platform = "android") {
                     },
             }
         ),
-        document: {
-            getElementById: (id) => elements[id] || null,
-            body: { style: {}, classList: { add() {}, remove() {} } },
-        },
-        $: (selector) => {
-            const el = element(selector.slice(1));
-            return {
-                css(styles) {
-                    Object.assign(el.style, styles);
-                    return this;
-                },
-                show() {
-                    el.style.display = "block";
-                    return this;
-                },
-                hide() {
-                    el.style.display = "none";
-                    return this;
-                },
-                html() {
-                    return this;
-                },
-            };
-        },
-        Hls,
-        shaka: { Player: Shaka },
-        execCHarr() {},
-        setTimeout(fn) {
-            timers.set(++timerId, fn);
-            return timerId;
-        },
-        clearTimeout(id) {
-            timers.delete(id);
-        },
+        playType: -1,
         setInterval(fn) {
             timers.set(++timerId, fn);
             return timerId;
         },
-        clearInterval(id) {
-            timers.delete(id);
+        setTimeout(fn) {
+            timers.set(++timerId, fn);
+            return timerId;
         },
+        shaka: { Player: Shaka },
     };
     w.window = w;
     vm.createContext(w);
@@ -173,13 +173,13 @@ function fixture(platform = "android") {
     w.videoPip = media("videopip");
     element("vdiv");
     const original = {
-        isPlaying: w.stbIsPlaying,
-        seek: w.stbSetPosTime,
-        mute: w.stbToggleMute,
         audio: w.setAudioTrack,
+        isPlaying: w.stbIsPlaying,
+        mute: w.stbToggleMute,
+        seek: w.stbSetPosTime,
     };
     vm.runInContext(wrapper, w);
-    return { w, streams, timers, nativeCalls, elements, original };
+    return { elements, nativeCalls, original, streams, timers, w };
 }
 
 async function run() {

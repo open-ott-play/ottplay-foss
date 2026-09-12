@@ -45,8 +45,10 @@ function nativeMatchMetadata() {
         var ch = chanels[id];
         if (!ch) return;
         entries[String(id)] = {
-            tvg_id: ch.epg || "", tvg_name: ch.tn || "",
-            name: ch.channel_name || "", xmltv_urls: ch.xmltv_urls || []
+            name: ch.channel_name || "",
+            tvg_id: ch.epg || "",
+            tvg_name: ch.tn || "",
+            xmltv_urls: ch.xmltv_urls || [],
         };
     });
     return { native_channels: entries };
@@ -62,7 +64,8 @@ function nativeXmltvSources(value, defaults, aliases) {
         }
         if (typeof source !== "string") return;
         if (source.indexOf("//") === 0) source = "https:" + source;
-        if (/^https?:\/\//i.test(source) && result.indexOf(source) === -1) result.push(source);
+        if (/^https?:\/\//i.test(source) && result.indexOf(source) === -1)
+            result.push(source);
     });
     return result;
 }
@@ -575,7 +578,11 @@ function getChanelsArray(a) {
             r(b, O(i, "foss-tvg"));
             if (window.Capacitor || window.__TAURI__) {
                 b.native_xmltv_urls = nativeXmltvSources(
-                    [O(i, "url-tvg"), O(i, "x-tvg-url")].filter(Boolean).join(","), [], b.foss
+                    [O(i, "url-tvg"), O(i, "x-tvg-url")]
+                        .filter(Boolean)
+                        .join(","),
+                    [],
+                    b.foss
                 );
             }
             w(b.raw, O(i, "url-tvg"));
@@ -659,11 +666,23 @@ function getChanelsArray(a) {
                         url: h,
                     };
                     if (window.Capacitor || window.__TAURI__) {
-                        var customSources = [O(i[0], "tvg-source"), O(i[0], "url-tvg")].filter(Boolean).join(",");
+                        var customSources = [
+                            O(i[0], "tvg-source"),
+                            O(i[0], "url-tvg"),
+                        ]
+                            .filter(Boolean)
+                            .join(",");
                         chanels[y].xmltv_urls = customSources
-                            ? nativeXmltvSources(customSources, b.native_xmltv_urls || [], b.foss)
+                            ? nativeXmltvSources(
+                                  customSources,
+                                  b.native_xmltv_urls || [],
+                                  b.foss
+                              )
                             : (b.native_xmltv_urls || []).slice();
-                        chanels[y].epg_external = !!(b.epg_server && b.epg_server !== m3u_defaults.epg_server);
+                        chanels[y].epg_external = !!(
+                            b.epg_server &&
+                            b.epg_server !== m3u_defaults.epg_server
+                        );
                     }
                     if (o !== "") {
                         var A = Number.parseFloat(o);
