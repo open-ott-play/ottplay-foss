@@ -6,7 +6,7 @@
  * WebPlugin fallback for non-Cap builds only.
  */
 
-import { registerPlugin, WebPlugin } from "@capacitor/core";
+import { resolveNativePlugin } from "./native-bridge";
 
 export interface DashExoPlayerPlugin {
     isDashSupported(): Promise<{ ok: boolean; unsupported?: boolean }>;
@@ -27,7 +27,7 @@ export interface DashExoPlayerPlugin {
     stopDash(): Promise<{ ok: boolean; unsupported?: boolean; error?: string }>;
 }
 
-class DashExoPlayerWeb extends WebPlugin implements DashExoPlayerPlugin {
+class DashExoPlayerWeb implements DashExoPlayerPlugin {
     async isDashSupported(): Promise<{ ok: boolean; unsupported?: boolean }> {
         console.warn(
             "[DashExoPlayer] web fallback: isDashSupported unsupported"
@@ -71,9 +71,7 @@ class DashExoPlayerWeb extends WebPlugin implements DashExoPlayerPlugin {
     }
 }
 
-export const DashExoPlayer = registerPlugin<DashExoPlayerPlugin>(
+export const DashExoPlayer = resolveNativePlugin<DashExoPlayerPlugin>(
     "DashExoPlayer",
-    {
-        web: () => new DashExoPlayerWeb(),
-    }
+    () => new DashExoPlayerWeb()
 );

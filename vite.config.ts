@@ -40,6 +40,9 @@ const MODULES = [
     "build/app/init.js",
     "build/app/device.js",
     "build/settings/sleepTimer.js",
+    "build/plugins/native-bridge.js",
+    "build/plugins/mobile-native-media.js",
+    "build/plugins/dash-exo-player.js",
     "build/plugins/m3u-proxy.js",
     "build/plugins/stalker-portal.js",
     "build/index.js",
@@ -190,8 +193,7 @@ export default defineConfig({
                 for (const mod of MODULES) {
                     const full = join(__dirname, mod);
                     if (!existsSync(full)) {
-                        console.warn("WARN:", mod, "not found");
-                        continue;
+                        throw new Error("Required bundle module missing: " + mod);
                     }
                     bundle += stripModule(readFileSync(full, "utf8")) + "\n";
                 }

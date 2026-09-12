@@ -6,7 +6,7 @@
  * Inlined under src/ so tsc rootDir is satisfied.
  */
 
-import { registerPlugin, WebPlugin } from "@capacitor/core";
+import { resolveNativePlugin } from "./native-bridge";
 
 /** Metadata pushed into OS Now Playing / MediaSession (Mode B Cap only). */
 export interface BackgroundAudioMeta {
@@ -86,10 +86,7 @@ export interface MobileNativeMediaPlugin {
     ): Promise<{ ok: boolean; unsupported?: boolean; error?: string }>;
 }
 
-class MobileNativeMediaWeb
-    extends WebPlugin
-    implements MobileNativeMediaPlugin
-{
+class MobileNativeMediaWeb implements MobileNativeMediaPlugin {
     async getVolume(): Promise<{
         ok: boolean;
         unsupported?: boolean;
@@ -204,9 +201,7 @@ class MobileNativeMediaWeb
     }
 }
 
-export const MobileNativeMedia = registerPlugin<MobileNativeMediaPlugin>(
+export const MobileNativeMedia = resolveNativePlugin<MobileNativeMediaPlugin>(
     "MobileNativeMedia",
-    {
-        web: () => new MobileNativeMediaWeb(),
-    }
+    () => new MobileNativeMediaWeb()
 );

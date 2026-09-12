@@ -33,9 +33,7 @@
  */
 
 // Polyfills (must run first)
-import { applyPolyfills } from "./polyfills";
-
-applyPolyfills();
+import "./polyfills";
 
 import { DashExoPlayer } from "./plugins/dash-exo-player";
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";

@@ -17,14 +17,93 @@
  * `Array`, `window.TextEncoder`, `Date.prototype`, and `Date` to add missing
  * methods when they do not already exist.
  */
+var polyfillsApplied = false;
+
 export function applyPolyfills(): void {
+    if (polyfillsApplied) return;
+    polyfillsApplied = true;
     polyfillPerformanceNow();
+    polyfillRuntimeApis();
     polyfillStringTrim();
     polyfillMathImul();
     polyfillArrayFindIndex();
     polyfillArrayIsArray();
     polyfillTextEncoder();
     polyfillDateTimezone();
+}
+
+/** APIs introduced by the TS port but not lowered by the ES5 compiler target. */
+function polyfillRuntimeApis(): void {
+    if (!Number.parseInt) Number.parseInt = parseInt;
+    if (!Number.parseFloat) Number.parseFloat = parseFloat;
+    if (!Number.isFinite) {
+        Number.isFinite = function (value: unknown): boolean {
+            return typeof value === "number" && isFinite(value);
+        };
+    }
+    if (!Number.isNaN) {
+        Number.isNaN = function (value: unknown): boolean {
+            return typeof value === "number" && value !== value;
+        };
+    }
+    if (!Number.isInteger) {
+        Number.isInteger = function (value: unknown): boolean {
+            return (
+                typeof value === "number" && isFinite(value) && value % 1 === 0
+            );
+        };
+    }
+    if (!Object.assign) {
+        Object.assign = function (
+            target: unknown,
+            ...sources: unknown[]
+        ): object {
+            if (target == null)
+                throw new TypeError("Object.assign target is null");
+            var output = Object(target) as Record<string | symbol, unknown>;
+            sources.forEach(function (source) {
+                if (source == null) return;
+                var input = Object(source) as Record<string | symbol, unknown>;
+                Object.keys(input).forEach(function (key) {
+                    output[key] = input[key];
+                });
+                if (typeof Object.getOwnPropertySymbols === "function") {
+                    Object.getOwnPropertySymbols(input).forEach(function (key) {
+                        if (
+                            Object.prototype.propertyIsEnumerable.call(
+                                input,
+                                key
+                            )
+                        ) {
+                            output[key] = input[key];
+                        }
+                    });
+                }
+            });
+            return output;
+        } as typeof Object.assign;
+    }
+    if (!String.prototype.includes) {
+        Object.defineProperty(String.prototype, "includes", {
+            configurable: true,
+            value: function (search: string, position?: number): boolean {
+                if (
+                    Object.prototype.toString.call(search) === "[object RegExp]"
+                ) {
+                    throw new TypeError(
+                        "String.includes does not accept a RegExp"
+                    );
+                }
+                return (
+                    String(this).indexOf(
+                        String(search),
+                        Math.max(position || 0, 0)
+                    ) !== -1
+                );
+            },
+            writable: true,
+        });
+    }
 }
 
 /**
@@ -232,6 +311,7 @@ function polyfillTextEncoder(): void {
  * - Overrides all `Date.prototype.get*` / `set*` date/time accessors
  */
 function polyfillDateTimezone(): void {
+    (Date as any).nativeGetTimezoneOffset = Date.prototype.getTimezoneOffset;
     var baseDate = new Date();
     (Date.prototype as any).timezoneOffset = baseDate.getTimezoneOffset();
     (Date as any).setTimezoneOffset = function (offset: number): number {
@@ -280,3 +360,6 @@ function polyfillDateTimezone(): void {
         };
     });
 }
+
+// This file is first in the classic bundle. Run before any other module body.
+applyPolyfills();

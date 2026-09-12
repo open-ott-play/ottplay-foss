@@ -1,3 +1,5 @@
+import { resolveNativePlugin } from "./native-bridge";
+
 export interface M3UProxyPlugin {
     /**
      * Fetch a remote URL with injected User-Agent and Referer headers.
@@ -43,27 +45,10 @@ class M3UProxyWeb {
     }
 }
 
-/** Concat/strip builds have no `@capacitor/core` import — never call bare registerPlugin. */
-function resolveCapPlugin(name: string, webFallback: any): any {
-    const Cap =
-        typeof window !== "undefined" ? (window as any).Capacitor : undefined;
-    if (Cap && Cap.Plugins && Cap.Plugins[name]) {
-        return Cap.Plugins[name];
-    }
-    if (Cap && typeof Cap.registerPlugin === "function") {
-        return Cap.registerPlugin(name, { web: webFallback });
-    }
-    if (typeof webFallback === "function") {
-        try {
-            return new webFallback();
-        } catch (_e) {
-            return webFallback;
-        }
-    }
-    return webFallback;
-}
-
-const M3UProxy: any = resolveCapPlugin("M3UProxy", M3UProxyWeb);
+const M3UProxy = resolveNativePlugin<M3UProxyPlugin>(
+    "M3UProxy",
+    () => new M3UProxyWeb()
+);
 
 function setupCapacitorCompanionShim(): void {
     const $ = (window as any).$;
