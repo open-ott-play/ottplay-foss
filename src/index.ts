@@ -944,32 +944,14 @@ declare function getScriptDOM(
     errorCb?: () => void
 ): void;
 
-// Provider-scoped storage aliases
-
-/** @returns Provider-stored string value for `key`, or null. */
-function _providerGetItem(key: string): string | null {
-    return providerGetItem(key);
-}
-
-/** @returns True if `key` exists in provider storage. */
-function _providerHasItem(key: string): boolean {
-    return providerHasItem(key);
-}
-
-/** @returns True if `key` exists and has a non-empty value. */
-function _providerHasItemValue(key: string): boolean {
-    return providerHasItemValue(key);
-}
-
-/** Write `val` to provider storage under `key`. */
-function _providerSetItem(key: string, val: string): void {
-    providerSetItem(key, val);
-}
-
-/** Delete `key` from provider storage. */
-function _providerDelItem(key: string): void {
-    providerDelItem(key);
-}
+// Capture the original storage functions before provider scripts replace globals.
+// loadProv restores these references. Forwarding wrappers would recurse once
+// their names and the provider globals share the concatenated script scope.
+var _providerGetItem = providerGetItem;
+var _providerHasItem = providerHasItem;
+var _providerHasItemValue = providerHasItemValue;
+var _providerSetItem = providerSetItem;
+var _providerDelItem = providerDelItem;
 
 // Settings helpers
 
