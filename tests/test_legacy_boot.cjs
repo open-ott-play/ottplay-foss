@@ -2,12 +2,19 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const { inlineScripts } = require("../scripts/html-scripts.cjs");
+
+assert.deepEqual(
+    inlineScripts(
+        '<!-- <script>ignored()</script> --><SCRIPT>var a = 1;</script\t\n bar=">">' +
+            '<script data-note=">">var b = 2;</script >'
+    ),
+    ["var a = 1;", "var b = 2;"],
+    "The ES5 gate must follow HTML parsing rules for comments, attributes and script end tags"
+);
 
 const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
-const scripts = Array.from(
-    html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi),
-    (match) => match[1]
-);
+const scripts = inlineScripts(html);
 assert(scripts.length > 0, "The real HTML boot script must be exercised");
 
 function boot(options = {}) {

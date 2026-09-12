@@ -5,14 +5,13 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const acorn = require("acorn");
+const { inlineScripts } = require("../scripts/html-scripts.cjs");
 
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
-const scriptStart = html.indexOf("<script>") + "<script>".length;
-const closingScript = /<\/script\s*>/i.exec(html.slice(scriptStart));
-const scriptEnd = closingScript ? scriptStart + closingScript.index : -1;
-assert(scriptStart >= "<script>".length && scriptEnd > scriptStart);
-const boot = html.slice(scriptStart, scriptEnd);
+const scripts = inlineScripts(html);
+assert(scripts.length > 0);
+const boot = scripts[0];
 acorn.parse(boot, { ecmaVersion: 5 });
 const identityStart = boot.indexOf("function bootSecureDeviceId()");
 const identityEnd = boot.indexOf("window.deviceUUID = deviceUUID;");

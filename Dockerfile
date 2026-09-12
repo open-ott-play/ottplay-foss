@@ -4,6 +4,7 @@ WORKDIR /app
 COPY package.json package-lock.json tsconfig.json vite.config.ts ./
 COPY src ./src
 # Vite validates and stages the actual ES5 assets, including the boot loader.
+COPY scripts/html-scripts.cjs ./scripts/html-scripts.cjs
 COPY scripts/check-es5.cjs ./scripts/check-es5.cjs
 COPY index.html favicon.ico ./
 COPY fonts ./fonts

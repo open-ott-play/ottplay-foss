@@ -3,6 +3,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { parse } = require("acorn");
+const { inlineScripts } = require("./html-scripts.cjs");
 const root = path.resolve(__dirname, "..");
 let checked = 0;
 const failures = [];
@@ -38,12 +39,9 @@ for (const html of [
     "src-tauri/frontend/index.html",
 ]) {
     const text = fs.readFileSync(path.join(root, html), "utf8");
-    const scripts = /<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi;
-    let match;
     let number = 0;
-    while ((match = scripts.exec(text))) {
-        if (match[1].trim())
-            check(match[1], html + " inline script " + ++number);
+    for (const script of inlineScripts(text)) {
+        if (script.trim()) check(script, html + " inline script " + ++number);
     }
 }
 // A successful syntax check must not hide missing or stale packaged fallbacks.
