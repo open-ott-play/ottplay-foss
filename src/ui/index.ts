@@ -1311,7 +1311,7 @@ function escapeHtml(text: string): string {
  *
  * @param message - HTML string for the dialog body.
  * @param onYes - Callback invoked when ENTER is pressed.
- * @param onNo - Optional callback invoked when RETURN/EXIT is pressed.
+ * @param onNo - Optional callback invoked for any non-ENTER key, including No/RETURN.
  * @returns void
  * @sideeffect Shows `#dialogbox`. Registers a one-shot `dialogBoxKeyHandler` that hides the box and calls the callback.
  */
@@ -1323,13 +1323,14 @@ export function confirmBox(
     var w = window as any;
     var wasPlaying =
         typeof w.stbIsPlaying === "function" ? !!w.stbIsPlaying() : false;
-    // Legacy stbPlayer.js:7504-7511 — only Yes; any other key dismisses.
+    // Preserve legacy cancellation on any non-ENTER key; expose No for touch users.
     $("#dialogbox")
         .html(
             "<center>" +
                 escapeHtml(_(message)) +
                 "<br/><br/>" +
                 btnDiv(keys.ENTER, strENTER, "Yes") +
+                btnDiv(keys.RETURN, strRETURN, "No") +
                 "</center>"
         )
         .show();

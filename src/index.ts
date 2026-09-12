@@ -5138,7 +5138,7 @@ window.settingsMenu = function (): void {
 
 /**
  * Export settings UI handler — serialises settings + channel arrays
- * to JSON envelope v1 and triggers browser download.
+ * to JSON envelope v1. Native shells show a copyable backup; browsers download it.
  *
  * Side effects: Creates a Blob download; no storage mutation.
  */
@@ -5146,6 +5146,94 @@ window.exportSettingsUI = function (): void {
     var w = window as any;
     if (typeof w.exportSettings !== "function") return;
     var jsonStr = w.exportSettings();
+    if (
+        typeof w.__TAURI__ !== "undefined" ||
+        typeof w.Capacitor !== "undefined"
+    ) {
+        // These native shells do not provide a Blob download destination.
+        // Keep the JSON available even when clipboard permission is denied.
+        w.saveCPD();
+        var previousHandler = w.aboutKeyHandler;
+        var caption = document.getElementById("listCaption");
+        var detail = document.getElementById("listDetail");
+        var footer = document.getElementById("listPodval");
+        if (caption) caption.textContent = w._("Export settings");
+        if (detail)
+            detail.textContent =
+                "Copy the JSON to keep a backup. Use Import settings to restore it.";
+        if (footer)
+            footer.innerHTML =
+                w.btnDiv(w.keys.RETURN, w.strRETURN, "Close") +
+                w.btnDiv(w.keys.ENTER, w.strENTER, "Copy JSON");
+        $("#listAbout")
+            .show()
+            .html(
+                '<textarea id="settingsExportText" readonly aria-label="Settings JSON" style="box-sizing:border-box;width:100%;height:100%;resize:none;white-space:pre;overflow:auto;background:#17171c;color:inherit;font:inherit;user-select:text;-webkit-user-select:text;"></textarea>'
+            );
+        var output = document.getElementById(
+            "settingsExportText"
+        ) as HTMLTextAreaElement;
+        output.value = jsonStr;
+        var backupOpen = true;
+        var selectBackup = function (): void {
+            output.focus();
+            output.select();
+        };
+        var copyBackup = function (): void {
+            function manualCopy(): void {
+                if (!backupOpen) return;
+                selectBackup();
+                if (typeof w.showShift === "function")
+                    w.showShift(
+                        "Copy the selected JSON with your device's copy command"
+                    );
+            }
+            try {
+                if (
+                    navigator.clipboard &&
+                    typeof navigator.clipboard.writeText === "function"
+                ) {
+                    navigator.clipboard.writeText(jsonStr).then(function () {
+                        if (!backupOpen) return;
+                        if (typeof w.showShift === "function")
+                            w.showShift("Settings copied");
+                    }, manualCopy);
+                    return;
+                }
+            } catch (_error) {}
+            manualCopy();
+        };
+        var closeBackup = function (): void {
+            backupOpen = false;
+            $("#listAbout").hide().text("");
+            w.aboutKeyHandler = previousHandler;
+            w.restoreCPD();
+        };
+        w.aboutKeyHandler = function (key: number): boolean {
+            if (key === w.keys.RETURN || key === w.keys.EXIT) {
+                closeBackup();
+                return true;
+            }
+            if (key === w.keys.ENTER) {
+                copyBackup();
+                return true;
+            }
+            return false;
+        };
+        output.addEventListener("keydown", function (event: KeyboardEvent) {
+            if (event.key === "Escape" || event.keyCode === 27) {
+                event.preventDefault();
+                event.stopPropagation();
+                closeBackup();
+            } else if (event.key === "Enter" || event.keyCode === 13) {
+                event.preventDefault();
+                event.stopPropagation();
+                copyBackup();
+            }
+        });
+        selectBackup();
+        return;
+    }
     var blob = new Blob([jsonStr], { type: "application/json" });
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -5155,26 +5243,50 @@ window.exportSettingsUI = function (): void {
     document.body.removeChild(a);
     URL.revokeObjectURL(a.href);
     if (typeof w.showShift === "function") {
-        w.showShift("Settings exported");
+        w.showShift("Settings download requested");
     }
 };
 
-/**
- * Import settings UI handler — reads JSON from a prompt textarea,
- * confirms overwrite, then applies.
- *
- * Side effects: Calls confirmBox → loadSettings + providerSetItem;
- * shows success via showShift.
- */
+/** Open the shared text editor and finish teardown before applying a saved value. */
+function editSettingsText(
+    caption: string,
+    value: string,
+    onSave: (value: string) => void,
+    onClose?: () => void
+): void {
+    var w = window as any;
+    if (typeof w.showEditKey2 !== "function") {
+        var result = prompt(caption + ":", value);
+        if (onClose) onClose();
+        if (result !== null) onSave(result);
+        return;
+    }
+    var restore = w.restoreCPD;
+    var previousSetEdit = w.setEdit;
+    var savedValue: string | undefined;
+    w.editCaption = caption;
+    w.editvar = value;
+    w.setEdit = function (): void {
+        savedValue = String(w.editvar);
+    };
+    w.restoreCPD = function (): void {
+        w.restoreCPD = restore;
+        w.setEdit = previousSetEdit;
+        restore();
+        if (onClose) onClose();
+        // Import opens a confirmation dialog: do not let editor teardown close it.
+        if (savedValue !== undefined) onSave(savedValue);
+    };
+    w.showEditKey2();
+}
+
+/** Read pasted settings JSON, then use the existing validated import/confirmation flow. */
 window.importSettingsUI = function (): void {
     var w = window as any;
     if (typeof w.importSettings !== "function") return;
-    var val = prompt("Paste settings JSON:", "");
-    if (val && val.trim()) {
-        w.importSettings(val.trim(), function (ok: boolean) {
-            /* importSettings handles confirmBox and showShift internally */
-        });
-    }
+    editSettingsText("Paste settings JSON", "", function (value) {
+        if (value.trim()) w.importSettings(value.trim());
+    });
 };
 
 /**
@@ -6343,94 +6455,125 @@ function pullSettingsFromWindow(): void {
  */
 window.settingsCommands = function (): void {
     var w = window as any;
-    w.saveCPD();
+    var parent = ["listCaption", "listDetail", "listPodval"].map(function (id) {
+        var element = document.getElementById(id);
+        return element ? element.innerHTML : "";
+    });
     if (typeof w.ensureDeviceClientId === "function") w.ensureDeviceClientId();
-    var uid =
-        w.deviceUUID ||
-        w.localStorage.getItem("ott_device_uuid") ||
-        w.localStorage.getItem("deviceId") ||
-        "not generated";
-    var lurl = w.sLocalCmdUrl || "";
-    var swopUrl = w.sSwopBaseUrl || "";
-    var html =
-        "<br/>" +
-        "<b>Device ID (UUID):</b><br/>" +
-        '<span style="font-family:monospace;font-size:120%;color:' +
-        w.curColor +
-        '">' +
-        uid +
-        "</span><br/>" +
-        "<br/>" +
-        "This unique ID identifies your device. Use it to target commands<br/>" +
-        "to this specific player from Home Assistant or other automation.<br/>" +
-        "For remote text entry (♥™), the Worker operator must allowlist this ID.<br/>" +
-        "<br/>" +
-        "<b>Local command URL:</b><br/>" +
-        (lurl
-            ? '<span style="font-family:monospace;">' + lurl + "</span>"
-            : "not set") +
-        "<br/>" +
-        "<br/>" +
-        "<b>Remote text entry (swop) base URL:</b><br/>" +
-        (swopUrl
-            ? '<span style="font-family:monospace;word-break:break-all;">' +
-              swopUrl +
-              "</span>"
-            : "not configured (♥™ no-op)") +
-        "<br/>" +
-        "<br/>" +
-        "<b>Push commands (via webhook):</b><br/>" +
-        "popup_message, channel_by_number, channel_by_name,<br/>" +
-        "random_channel, change_provider, change_playlist<br/>" +
-        "<br/>" +
-        "ENTER = local URL, 2 = swop base URL, RETURN = back.";
-    $("#listAbout").show().html(html);
+    var uid = w.deviceUUID || "";
+    if (!uid) {
+        try {
+            uid =
+                w.localStorage.getItem("ott_device_uuid") ||
+                w.localStorage.getItem("deviceId");
+        } catch (_error) {}
+    }
+    uid = uid || "not generated";
+
+    function text(value: any): string {
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    // Refresh content after an edit without overwriting the saved parent screen.
+    function render(): void {
+        var caption = document.getElementById("listCaption");
+        var detail = document.getElementById("listDetail");
+        var footer = document.getElementById("listPodval");
+        if (caption) caption.textContent = w._("Remote control");
+        if (detail) detail.textContent = "";
+        if (footer)
+            footer.innerHTML =
+                w.btnDiv(w.keys.RETURN, w.strRETURN, "Close") +
+                w.btnDiv(w.keys.ENTER, w.strENTER, "Local URL") +
+                w.btnDiv(w.keys.N2 || 50, "2", "Swop URL") +
+                '<span style="white-space:nowrap;">↑↓ Scroll</span>';
+        var lurl = w.sLocalCmdUrl || "";
+        var swopUrl = w.sSwopBaseUrl || "";
+        var html =
+            '<div id="remoteSettingsContent" style="height:100%;min-height:0;min-width:0;box-sizing:border-box;overflow-y:auto;overflow-x:hidden;overflow-wrap:anywhere;word-break:break-word;-webkit-overflow-scrolling:touch;">' +
+            '<b>Device ID (UUID):</b><br/><span style="font-family:monospace;">' +
+            text(uid) +
+            "</span><br/><br/>" +
+            "This ID identifies your player for commands from Home Assistant or other automation. " +
+            "For remote text entry (♥™), the Worker operator must allowlist this ID.<br/><br/>" +
+            "<b>Local command URL:</b><br/>" +
+            text(lurl || "not set (local command polling disabled)") +
+            "<br/><br/>" +
+            "<b>Remote text entry (swop) base URL:</b><br/>" +
+            text(swopUrl || "not configured (♥™ no-op)") +
+            "<br/><br/>" +
+            "<b>Push commands (via webhook):</b><br/>" +
+            "popup_message, channel_by_number, channel_by_name, random_channel, change_provider, change_playlist<br/><br/>" +
+            "UP/DOWN or swipe to scroll. Use the controls below to edit or close.</div>";
+        $("#listAbout").show().html(html);
+    }
+
+    function editUrl(swop: boolean): void {
+        var title = swop
+            ? "Swop base URL (empty disables remote text entry)"
+            : "Local command URL (empty disables local command polling)";
+        var value = (swop ? w.sSwopBaseUrl : w.sLocalCmdUrl) || "";
+        function save(value: string): void {
+            value = value.trim();
+            if (swop) w.sSwopBaseUrl = value.replace(/\/+$/, "");
+            else w.sLocalCmdUrl = value;
+            if (typeof w.stbSetItem === "function")
+                w.stbSetItem(
+                    swop ? "sSwopBaseUrl" : "sLocalCmdUrl",
+                    swop ? w.sSwopBaseUrl : value
+                );
+            pullSettingsFromWindow();
+            if (swop) saveSettings(settings);
+        }
+        // listAbout has priority in the key router, so hide it while editing.
+        // The editor owns the single-level CPD buffer; our parent is kept locally.
+        $("#listAbout").hide();
+        editSettingsText(
+            title,
+            value,
+            function (edited) {
+                save(edited);
+                render();
+            },
+            render
+        );
+    }
+
     w.aboutKeyHandler = function (e: number): boolean {
-        if (e === w.keys.RETURN) {
-            w.restoreCPD();
+        if (e === w.keys.RETURN || e === w.keys.EXIT) {
             $("#listAbout").hide().text("");
+            ["listCaption", "listDetail", "listPodval"].forEach(
+                function (id, index) {
+                    var element = document.getElementById(id);
+                    if (element) element.innerHTML = parent[index];
+                }
+            );
             w.optionsList(w.settingsCommands);
             return true;
         }
-        if (e === w.keys.ENTER) {
-            var newUrl = prompt(
-                "Local command URL (leave empty to use central server):",
-                lurl
-            );
-            if (newUrl !== null) {
-                w.sLocalCmdUrl = newUrl.trim();
-                if (typeof w.stbSetItem === "function")
-                    w.stbSetItem("sLocalCmdUrl", w.sLocalCmdUrl);
-                pullSettingsFromWindow();
-                w.settingsCommands();
+        if (e === w.keys.UP || e === w.keys.DOWN) {
+            var content = document.getElementById("remoteSettingsContent");
+            if (content) {
+                var amount = Math.max(40, Math.floor(content.clientHeight / 2));
+                content.scrollTop = Math.max(
+                    0,
+                    content.scrollTop + (e === w.keys.UP ? -amount : amount)
+                );
             }
             return true;
         }
-        if (e === w.keys.N2 || e === 50) {
-            var newSwop = prompt(
-                "Swop base URL (empty disables remote text entry):",
-                swopUrl
-            );
-            if (newSwop !== null) {
-                w.sSwopBaseUrl = newSwop.trim().replace(/\/+$/, "");
-                if (typeof w.stbSetItem === "function")
-                    w.stbSetItem("sSwopBaseUrl", w.sSwopBaseUrl);
-                try {
-                    if (w.settings) {
-                        w.settings.swopBaseUrl = w.sSwopBaseUrl;
-                    }
-                } catch (_e) {}
-                // Keep typed settings in sync when module binding is available
-                try {
-                    pullSettingsFromWindow();
-                    saveSettings(settings);
-                } catch (_e2) {}
-                w.settingsCommands();
-            }
+        if (e === w.keys.ENTER || e === w.keys.N2 || e === 50) {
+            editUrl(e !== w.keys.ENTER);
             return true;
         }
         return false;
     };
+    render();
 };
 
 // Rebuild optionsArr now that all window.* settings functions are defined
@@ -6479,12 +6622,14 @@ if (typeof window.__TAURI__ !== "undefined") {
             if (!update) return;
             const ver = update.version;
             // Soft prompt — do not force install on startup.
-            if (
-                typeof window.confirm === "function" &&
-                window.confirm(
-                    `OttPlay FOSS ${ver} is available. Download and install now?`
-                )
-            ) {
+            const confirmed = await new Promise<boolean>((resolve) => {
+                confirmBox(
+                    `OttPlay FOSS ${ver} is available. Download and install now?`,
+                    () => resolve(true),
+                    () => resolve(false)
+                );
+            });
+            if (confirmed) {
                 const ChannelCtor = (window as any).__TAURI__?.core?.Channel;
                 if (typeof ChannelCtor !== "function") {
                     throw new Error("Tauri Channel unavailable for updater");
@@ -6499,17 +6644,13 @@ if (typeof window.__TAURI__ !== "undefined") {
                     const processApi = (window as any).__TAURI__?.process;
                     if (processApi?.relaunch) {
                         await processApi.relaunch();
-                    } else if (typeof window.alert === "function") {
-                        window.alert(
+                    } else {
+                        infoBox(
                             "Update installed. Please restart OttPlay FOSS."
                         );
                     }
                 } catch {
-                    if (typeof window.alert === "function") {
-                        window.alert(
-                            "Update installed. Please restart OttPlay FOSS."
-                        );
-                    }
+                    infoBox("Update installed. Please restart OttPlay FOSS.");
                 }
             }
         } catch (err) {
