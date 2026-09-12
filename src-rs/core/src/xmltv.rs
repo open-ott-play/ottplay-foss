@@ -96,8 +96,44 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
     let mut text_target: Option<TextTarget> = None;
 
     let mut buf = Vec::new();
+    let mut depth = 0usize;
+    let mut root_seen = false;
+    let mut root_closed = false;
     loop {
-        match reader.read_event_into(&mut buf) {
+        let event = reader.read_event_into(&mut buf);
+        if native {
+            // quick_xml can return EOF after complete channels inside an unclosed root.
+            // Such a partial download must never replace the native cache.
+            match &event {
+                Ok(Event::Start(element)) => {
+                    if depth == 0 {
+                        anyhow::ensure!(!root_seen && element.name().as_ref() == b"tv", "Invalid XMLTV root");
+                        root_seen = true;
+                    }
+                    depth += 1;
+                }
+                Ok(Event::Empty(element)) if depth == 0 => {
+                    anyhow::ensure!(!root_seen && element.name().as_ref() == b"tv", "Invalid XMLTV root");
+                    root_seen = true;
+                    root_closed = true;
+                }
+                Ok(Event::End(element)) => {
+                    anyhow::ensure!(depth > 0, "Unexpected XMLTV closing element");
+                    depth -= 1;
+                    if depth == 0 {
+                        anyhow::ensure!(element.name().as_ref() == b"tv", "Invalid XMLTV closing root");
+                        root_closed = true;
+                    }
+                }
+                Ok(Event::Text(text)) if depth == 0 => {
+                    anyhow::ensure!(text.unescape()?.trim().is_empty(), "Text outside XMLTV root");
+                }
+                Ok(Event::CData(_)) if depth == 0 => anyhow::bail!("CDATA outside XMLTV root"),
+                Ok(Event::Eof) => anyhow::ensure!(root_seen && root_closed && depth == 0, "Incomplete XMLTV document"),
+                _ => {}
+            }
+        }
+        match event {
             Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
                 let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
                 match name.as_str() {

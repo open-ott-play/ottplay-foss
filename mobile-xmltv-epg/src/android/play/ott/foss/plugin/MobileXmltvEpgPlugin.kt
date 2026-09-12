@@ -70,13 +70,16 @@ class MobileXmltvEpgPlugin : Plugin() {
         }
         if (!force) {
             val fresh = try { readCache(source) } catch (_: Throwable) { null }
-            if (fresh != null) { finish(runCatching { parseXmltv(fresh) }); return }
+            val parsed = fresh?.let { runCatching { parseXmltv(it) }.getOrNull() }
+            // A readable disk entry can still be truncated or contain a non-XMLTV document.
+            if (parsed != null && parsed.channels.isNotEmpty()) { finish(Result.success(parsed)); return }
         }
         fun failed(error: Throwable) {
             val memory = synchronized(sourceLock) { parsedCache[source]?.second }
             if (memory != null) { finish(Result.success(memory)); return }
             val stale = try { readCache(source, allowStale = true) } catch (_: Throwable) { null }
-            finish(if (stale != null) runCatching { parseXmltv(stale) } else Result.failure(error))
+            val parsed = stale?.let { runCatching { parseXmltv(it) }.getOrNull() }
+            finish(if (parsed != null && parsed.channels.isNotEmpty()) Result.success(parsed) else Result.failure(error))
         }
         try {
             client.newCall(Request.Builder().url(source).build()).enqueue(object : Callback {

@@ -119,6 +119,27 @@ SWIFT_TESTS = r'''
         getEpg(legacy)
         assert(legacy.rejected && !legacy.resolved)
 
+        // A fresh same-source disk entry with invalid XML must refetch immediately.
+        for damaged in [xml.replacingOccurrences(of: "</tv>", with: ""), "<html>upstream error</html>"] {
+            parsedCache.removeAll()
+            try writeCache(Data(damaged.utf8), for: a)
+            URLSession.shared.data = data
+            let before = URLSession.shared.requests
+            let recovered = CAPPluginCall(a.absoluteString)
+            getChannels(recovered)
+            assert(recovered.resolved && !recovered.rejected)
+            assert(URLSession.shared.requests == before + 1)
+            assert((recovered.result["channels"] as! [[String: Any]])[0]["id"] as! String == "a")
+            assert(try readCache(for: a) == xml)
+        }
+        parsedCache.removeAll()
+        try writeCache(Data("<tv>".utf8), for: a)
+        URLSession.shared.data = nil
+        let unrecoverable = CAPPluginCall(a.absoluteString)
+        getChannels(unrecoverable)
+        assert(unrecoverable.rejected && !unrecoverable.resolved && parsedCache[a.absoluteString] == nil)
+        print("PASS Swift corrupted disk XML: refetch healthy network; offline rejects without poisoning memory")
+
         // Native source selection, XML metadata, regional shifts and shared index/EPG cache.
         let now = Int(Date().timeIntervalSince1970)
         let format = DateFormatter(); format.dateFormat = "yyyyMMddHHmmss Z"; format.timeZone = TimeZone(secondsFromGMT: 0)
@@ -266,6 +287,26 @@ KOTLIN_TESTS = r'''
             val legacy = PluginCall(b)
             getEpg(legacy)
             check(legacy.rejected && !legacy.resolved)
+
+            for (damaged in listOf(xml.replace("</tv>", ""), "<html>upstream error</html>")) {
+                parsedCache.clear()
+                writeCache(damaged.toByteArray(), a)
+                okhttp3.Fixture.data = data
+                val before = okhttp3.Fixture.requests
+                val recovered = PluginCall(a)
+                getChannels(recovered)
+                check(recovered.resolved && !recovered.rejected)
+                check(okhttp3.Fixture.requests == before + 1)
+                check(((recovered.result.values["channels"] as JSArray).values[0] as JSObject).values["id"] == "a")
+                check(readCache(a) == xml)
+            }
+            parsedCache.clear()
+            writeCache("<tv>".toByteArray(), a)
+            okhttp3.Fixture.data = null
+            val unrecoverable = PluginCall(a)
+            getChannels(unrecoverable)
+            check(unrecoverable.rejected && !unrecoverable.resolved && parsedCache[a] == null)
+            println("PASS Kotlin corrupted disk XML: refetch healthy network; offline rejects without poisoning memory")
 
             val now = (System.currentTimeMillis() / 1000).toInt()
             val format = java.text.SimpleDateFormat("yyyyMMddHHmmss Z").apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }

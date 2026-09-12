@@ -61,7 +61,9 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
             callbacks.forEach { $0(result) }
         }
         if !force, let xml = try? readCache(for: url) {
-            finish(.success(parseXmltv(xml))); return
+            let parsed = parseXmltv(xml)
+            // Old or interrupted disk entries may decode successfully but contain invalid XML.
+            if !parsed.channels.isEmpty { finish(.success(parsed)); return }
         }
         fetchAndCache(url) { result in
             switch result {
@@ -71,8 +73,10 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                 let memory = self.parsedCache[source]?.data
                 self.sourceLock.unlock()
                 if let memory = memory { finish(.success(memory)) }
-                else if let xml = try? self.readCache(for: url, allowStale: true) { finish(.success(self.parseXmltv(xml))) }
-                else { finish(.failure(error)) }
+                else if let xml = try? self.readCache(for: url, allowStale: true) {
+                    let parsed = self.parseXmltv(xml)
+                    finish(parsed.channels.isEmpty ? .failure(error) : .success(parsed))
+                } else { finish(.failure(error)) }
             }
         }
     }

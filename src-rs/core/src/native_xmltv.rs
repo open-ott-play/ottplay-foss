@@ -151,6 +151,18 @@ mod tests {
         assert_eq!(browser["private"].len(), 1, "original browser parser behavior is unchanged");
     }
     #[test]
+    fn incomplete_native_feed_is_rejected_before_cache_replacement() {
+        let complete = r#"<tv><channel id="a"><display-name>Feed A</display-name></channel></tv>"#;
+        let truncated = complete.trim_end_matches("</tv>");
+        assert!(xmltv::parse_xmltv_native(truncated).is_err());
+        assert!(xmltv::parse_xmltv(truncated).unwrap().0.contains_key("a"), "browser parser behavior remains unchanged");
+        assert!(xmltv::parse_xmltv_native("<html>upstream error</html>").is_err());
+        assert!(xmltv::parse_xmltv_native("<tv></tv><tv></tv>").is_err());
+        assert!(xmltv::parse_xmltv_native("").is_err());
+        assert!(xmltv::parse_xmltv_native(complete).unwrap().0.contains_key("a"));
+        assert!(xmltv::parse_xmltv_native("<?xml version=\"1.0\"?><tv/>").unwrap().0.is_empty());
+    }
+    #[test]
     fn native_metadata_retains_sources_and_raw_ids() {
         let body = "{\"native_channels\":{\"42\":{\"tvg_id\":\"private-id\",\"xmltv_urls\":[\"https://fixture/feed.xml?key=x\"]}}}\n\t\nlegacy-raw\n\t\n42-1-2-3~Private";
         assert_eq!(match_ids(body), ["42"]);
