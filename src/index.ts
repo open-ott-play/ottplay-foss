@@ -2318,62 +2318,10 @@ function setupTauriCompanionShim(): void {
 }
 
 function setupTauriEpgOverride(): void {
-    if (typeof window.__TAURI__ === "undefined") return; // only apply in Tauri Mode B
-
-    // List/podval doGetCurProg must share EPG menu cache (getEPGchanelCached).
+    if (typeof window.__TAURI__ === "undefined") return;
+    // Keep provider getEPGchanel intact. The shared cache chooses native XMLTV
+    // only for the built-in M3U companion, and delegates all provider APIs.
     (window as any).getEPGchanelCurCached = getEPGchanelCached;
-
-    const orig = window.getEPGchanel;
-    window.getEPGchanel = function (
-        chId: string,
-        callback: (id: string, data: any[]) => void
-    ): void {
-        const channelIdNum = parseInt(chId, 10);
-        if (isNaN(channelIdNum)) {
-            callback(chId, []);
-            return;
-        }
-
-        // Get the channel name from the channels map so the Rust backend can
-        // resolve it to the matching XMLTV channel ID via match_channel.
-        // channels is imported into scope from ./channels.
-        const ch = channels[channelIdNum];
-        const channelName = ch?.channel_name || ch?.name || "";
-        // Prefer epg_url hash from match_channels when present.
-        const epgHash =
-            ch && (ch as any).epg_url != null
-                ? String((ch as any).epg_url)
-                : "";
-        // timeShiftHours = timezone only (0 → Rust time_shift_by_epg map).
-        // Never pass channel.rec here — that is archive/history depth.
-        const timeShiftHours = epgTimezoneHours(ch);
-        const archiveHours = epgArchiveHours(ch);
-
-        // Tauri 2 command args are camelCase (channel_id → channelId).
-        tauriInvoke<any>("get_epg", {
-            archiveHours: archiveHours,
-            ch: channelName,
-            channelId: channelIdNum.toString(),
-            hash: epgHash,
-            timeShiftHours: timeShiftHours,
-        })
-            .then((result) => {
-                // Same dual-shape as getEPGchanelCached (raw array or {epg_data}).
-                var epgData = Array.isArray(result)
-                    ? result
-                    : result && Array.isArray(result.epg_data)
-                      ? result.epg_data
-                      : [];
-                epgData = applyChannelTvgShift(ch, epgData) || [];
-                callback(chId, epgData);
-            })
-            .catch((error: any) => {
-                console.error("[Tauri] get_epg failed:", error);
-                // null (not []) so setCurProg rate-limits via time_request without
-                // poisoning window.epgCache with a truthy empty array.
-                callback(chId, null as any);
-            });
-    };
 }
 
 /**

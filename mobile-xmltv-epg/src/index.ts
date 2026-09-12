@@ -1,30 +1,22 @@
 import { registerPlugin, WebPlugin } from "@capacitor/core";
 
+export interface XmltvSources { xmltv_url?: string; xmltv_urls?: string[]; }
 export interface MobileXmltvEpgPlugin {
-    getEpg(options: {
-        ch?: string;
-        channel_id: string;
-        hash: string;
-        time_shift_hours?: number;
-        xmltv_url?: string;
+    getEpg(options: XmltvSources & {
+        ch?: string; channel_id: string; hash: string; tvg_name?: string;
+        time_shift_hours?: number; archive_hours?: number;
     }): Promise<{ epg_data: any[] }>;
-    prefetch(): Promise<void>;
+    getChannels(options: XmltvSources): Promise<{ channels: Array<{ id: string; name: string; names: string[]; icon: string }> }>;
+    prefetch(options?: XmltvSources): Promise<void>;
 }
 
 class MobileXmltvEpgWeb extends WebPlugin implements MobileXmltvEpgPlugin {
-    async getEpg(): Promise<{ epg_data: any[] }> {
-        console.warn("[MobileXmltvEpg] native not available in web");
-        return { epg_data: [] };
-    }
-
-    async prefetch(): Promise<void> {
-        console.warn("[MobileXmltvEpg] prefetch skipped (web)");
-    }
+    async getEpg(): Promise<{ epg_data: any[] }> { return { epg_data: [] }; }
+    async getChannels(): Promise<{ channels: [] }> { return { channels: [] }; }
+    async prefetch(): Promise<void> {}
 }
 
-const MobileXmltvEpg = registerPlugin<MobileXmltvEpgPlugin>(
-    "MobileXmltvEpg",
-    MobileXmltvEpgWeb
-);
-
+const MobileXmltvEpg = registerPlugin<MobileXmltvEpgPlugin>("MobileXmltvEpg", {
+    web: () => new MobileXmltvEpgWeb(),
+});
 export { MobileXmltvEpg };

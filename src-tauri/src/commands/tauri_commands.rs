@@ -211,7 +211,20 @@ pub async fn get_epg(
     time_shift_hours: i64,
     // Configured catchup/history hours (channel.rec / M3U rechours). Not timezone.
     archive_hours: Option<i64>,
+    tvg_id: Option<String>,
+    tvg_name: Option<String>,
+    xmltv_urls: Option<Vec<String>>,
 ) -> Result<JsonValue, String> {
+    let tvg_id = tvg_id.as_deref().unwrap_or("");
+    let tvg_name = tvg_name.as_deref().unwrap_or("");
+    let sources = xmltv_urls.unwrap_or_default();
+    if !sources.is_empty() {
+        let cache = ottplay_core::native_xmltv::load_sources(&sources).await.map_err(|error| error.to_string())?;
+        let id = ottplay_core::native_xmltv::resolve_id(&cache, tvg_id, tvg_name, ch.as_deref().unwrap_or(""));
+        let shift = if time_shift_hours != 0 { time_shift_hours }
+            else { ottplay_core::xmltv::extract_time_shift(ch.as_deref().unwrap_or(tvg_name)) };
+        return Ok(ottplay_core::get_epg_slice(&cache, &hash, id.as_deref().unwrap_or(""), shift, archive_hours.unwrap_or(0)).await);
+    }
     // Ensure before taking map locks — never hold epg_to_xmltv across a 40MB fetch.
     ensure_xmltv_cache(&state).await?;
 
@@ -220,15 +233,16 @@ pub async fn get_epg(
     // time_shift_hours is timezone only. Archive depth is archive_hours.
     let mut shift = time_shift_hours;
     if shift == 0 {
-        if let Some(s) = shift_map.get(&hash) {
-            shift = *s;
-        }
+        shift = shift_map.get(&hash).copied().unwrap_or_else(||
+            ottplay_core::xmltv::extract_time_shift(ch.as_deref().unwrap_or(tvg_name)));
+
     }
     let archive = archive_hours.unwrap_or(0);
 
     let cache_guard = state.xmltv_cache.read().await;
     let cache = cache_guard.as_ref().ok_or("EPG cache empty")?;
-    let xmltv_id = resolve_xmltv_id(cache, &hash, &channel_id, ch.as_deref(), &epg_map);
+    let xmltv_id = ottplay_core::native_xmltv::resolve_id(cache, tvg_id, tvg_name, ch.as_deref().unwrap_or(""))
+        .unwrap_or_else(|| resolve_xmltv_id(cache, &hash, &channel_id, ch.as_deref(), &epg_map));
     Ok(ottplay_core::get_epg_slice(
         cache,
         &hash,

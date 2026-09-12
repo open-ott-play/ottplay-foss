@@ -15,6 +15,8 @@ pub struct Channel {
     pub id: String,
     pub name: String,
     pub icon: String,
+    /// Retained for native matching; the browser matcher keeps using `name`.
+    pub names: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -38,18 +40,28 @@ pub type Programs = HashMap<String, Vec<Programme>>;
 
 /// Fetch + parse one XMLTV source. Supports http(s), .gz, plain .xml.
 pub async fn fetch_single(source: &str) -> anyhow::Result<(Channels, Programs)> {
+    fetch_single_impl(source, false).await
+}
+
+/// Native custom feeds retain CDATA, aliases and chronological programme order.
+pub async fn fetch_single_native(source: &str) -> anyhow::Result<(Channels, Programs)> {
+    fetch_single_impl(source, true).await
+}
+
+async fn fetch_single_impl(source: &str, native: bool) -> anyhow::Result<(Channels, Programs)> {
     let content: Vec<u8> = if source.starts_with("http://") || source.starts_with("https://") {
-        let client = Client::builder()
-            .user_agent("OTT-play-FOSS/1.0")
-            .build()?;
+        let builder = Client::builder().user_agent("OTT-play-FOSS/1.0");
+        let builder = if native { builder.timeout(std::time::Duration::from_secs(60)) } else { builder };
+        let client = builder.build()?;
         let resp = client.get(source).send().await?;
+        let resp = if native { resp.error_for_status()? } else { resp };
         let bytes = resp.bytes().await?;
         bytes.to_vec()
     } else {
         std::fs::read(source)?
     };
 
-    let is_gz = source.ends_with(".gz") || content.starts_with(&[0x1f, 0x8b]);
+    let is_gz = (!native && source.ends_with(".gz")) || content.starts_with(&[0x1f, 0x8b]);
     let raw: Vec<u8> = if is_gz {
         let mut d = GzDecoder::new(&content[..]);
         let mut out = Vec::new();
@@ -60,11 +72,19 @@ pub async fn fetch_single(source: &str) -> anyhow::Result<(Channels, Programs)> 
     };
 
     let text = String::from_utf8_lossy(&raw);
-    parse_xmltv(&text)
+    parse_xmltv_impl(&text, native)
 }
 
 /// Event-based XMLTV parser. Cheap; no DOM.
 pub fn parse_xmltv(xml: &str) -> anyhow::Result<(Channels, Programs)> {
+    parse_xmltv_impl(xml, false)
+}
+
+pub fn parse_xmltv_native(xml: &str) -> anyhow::Result<(Channels, Programs)> {
+    parse_xmltv_impl(xml, true)
+}
+
+fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Programs)> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
 
@@ -87,6 +107,7 @@ pub fn parse_xmltv(xml: &str) -> anyhow::Result<(Channels, Programs)> {
                             id,
                             name: String::new(),
                             icon: String::new(),
+                            names: Vec::new(),
                         });
                     }
                     "programme" => {
@@ -105,12 +126,15 @@ pub fn parse_xmltv(xml: &str) -> anyhow::Result<(Channels, Programs)> {
                         ));
                     }
                     "display-name" if current_channel.is_some() => {
+                        if native { current_channel.as_mut().unwrap().name.clear(); }
                         text_target = Some(TextTarget::ChannelName);
                     }
                     "title" if current_programme.is_some() => {
+                        if native { current_programme.as_mut().unwrap().1.title.clear(); }
                         text_target = Some(TextTarget::ProgTitle);
                     }
                     "desc" if current_programme.is_some() => {
+                        if native { current_programme.as_mut().unwrap().1.desc.clear(); }
                         text_target = Some(TextTarget::ProgDesc);
                     }
                     "icon" => {
@@ -125,12 +149,19 @@ pub fn parse_xmltv(xml: &str) -> anyhow::Result<(Channels, Programs)> {
                     _ => {}
                 }
             }
+            Ok(Event::CData(data)) if native => {
+                append_native_text(text_target, &mut current_channel, &mut current_programme, &String::from_utf8_lossy(data.as_ref()));
+            }
+            Ok(Event::Text(t)) if native => {
+                append_native_text(text_target, &mut current_channel, &mut current_programme, &t.unescape().unwrap_or_default());
+            }
             Ok(Event::Text(t)) => {
                 if let Some(target) = text_target.take() {
                     let s = t.unescape().unwrap_or_default().into_owned();
                     match target {
                         TextTarget::ChannelName => {
                             if let Some(c) = current_channel.as_mut() {
+                                c.names.push(s.clone());
                                 c.name = s;
                             }
                         }
@@ -150,6 +181,9 @@ pub fn parse_xmltv(xml: &str) -> anyhow::Result<(Channels, Programs)> {
             Ok(Event::End(e)) => {
                 let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
                 match name.as_str() {
+                    "display-name" if native => {
+                        if let Some(channel) = current_channel.as_mut() { channel.names.push(channel.name.clone()); }
+                    }
                     "channel" => {
                         if let Some(mut c) = current_channel.take() {
                             if c.name.is_empty() {
@@ -179,7 +213,17 @@ pub fn parse_xmltv(xml: &str) -> anyhow::Result<(Channels, Programs)> {
         buf.clear();
     }
 
+    if native { for programs in programs.values_mut() { programs.sort_by_key(|program| program.start); } }
     Ok((channels, programs))
+}
+
+fn append_native_text(target: Option<TextTarget>, channel: &mut Option<Channel>, programme: &mut Option<(String, Programme)>, text: &str) {
+    match target {
+        Some(TextTarget::ChannelName) => if let Some(channel) = channel { channel.name.push_str(text); },
+        Some(TextTarget::ProgTitle) => if let Some((_, programme)) = programme { programme.title.push_str(text); },
+        Some(TextTarget::ProgDesc) => if let Some((_, programme)) = programme { programme.desc.push_str(text); },
+        None => {},
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -404,6 +448,7 @@ mod tests {
             Channel {
                 id: "c1".into(),
                 name: "Первый канал".into(),
+                names: vec!["Первый канал".into()],
                 icon: String::new(),
             },
         );

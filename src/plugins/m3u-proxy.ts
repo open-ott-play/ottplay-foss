@@ -1,4 +1,6 @@
 import { resolveNativePlugin } from "./native-bridge";
+import { installCapacitorHttpTransport } from "./native-http";
+import { StalkerPortal } from "./stalker-portal";
 
 export interface M3UProxyPlugin {
     /**
@@ -50,6 +52,100 @@ const M3UProxy = resolveNativePlugin<M3UProxyPlugin>(
     () => new M3UProxyWeb()
 );
 
+interface NativeXmltvChannel {
+    id: string;
+    name: string;
+    names?: string[];
+    icon?: string;
+}
+
+function normalizeNativeEpgName(name: string): string {
+    return String(name || "").toLowerCase()
+        .replace(/[+-]\s*\d+\s*(ч|h|hours?)?/g, "")
+        .replace(/\([^)]*\)/g, "")
+        .replace(/\s+/g, " ").trim()
+        .replace(/^(hd|fhd|uhd|4k)\s+|\s+(hd|fhd|uhd|4k)$/g, "").trim();
+}
+
+function nativeEpgMatchScore(a: string, b: string): number {
+    if (!a || !b) return 0;
+    if (a.indexOf(b) >= 0 || b.indexOf(a) >= 0) return Math.min(a.length, b.length) / Math.max(a.length, b.length);
+    var aa = a.split(" ").filter(function (word, index, words) { return words.indexOf(word) === index; });
+    var bb = b.split(" ").filter(function (word, index, words) { return words.indexOf(word) === index; });
+    var common = aa.filter(function (word) { return bb.indexOf(word) >= 0; }).length;
+    return common >= Math.max(2, Math.floor(Math.min(aa.length, bb.length) / 2)) ? common / Math.max(aa.length, bb.length) : 0;
+}
+
+/** Raw tvg-id wins over similar display names, on the same selected source. */
+export function matchNativeXmltvChannel(
+    entries: NativeXmltvChannel[], id: string, tvgName: string, name: string
+): NativeXmltvChannel | undefined {
+    var exactId = entries.filter(function (entry) { return entry.id === id; })[0];
+    if (id && exactId) return exactId;
+    var names = [tvgName, name].filter(Boolean);
+    for (var n = 0; n < names.length; n++) {
+        var target = normalizeNativeEpgName(names[n]);
+        if (!target) continue;
+        var exact = entries.filter(function (entry) {
+            return (entry.names || [entry.name]).some(function (candidate) {
+                return normalizeNativeEpgName(candidate) === target;
+            });
+        })[0];
+        if (exact) return exact;
+    }
+    // Deterministic closest substring, after all exact names have been tried.
+    var best: NativeXmltvChannel | undefined;
+    var score = 0;
+    names.forEach(function (name) {
+        var target = normalizeNativeEpgName(name);
+        if (!target) return;
+        entries.forEach(function (entry) {
+            (entry.names || [entry.name]).forEach(function (candidate) {
+                candidate = normalizeNativeEpgName(candidate);
+                var next = nativeEpgMatchScore(target, candidate);
+                if (next >= 0.4 && next > score) { best = entry; score = next; }
+            });
+        });
+    });
+    return best;
+}
+
+function nativeLogoFallback(name: string): string {
+    var letter = (name.trim().charAt(0) || "?").replace(/[<>&"']/g, "?");
+    return "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="90"><rect width="120" height="90" rx="8" fill="#334155"/><text x="60" y="60" text-anchor="middle" font-family="sans-serif" font-size="48" fill="white">' + letter + '</text></svg>');
+}
+
+/** Adapt the existing FOSS text protocol to the native XMLTV index. */
+export async function matchCapacitorM3u(body: string, logos: boolean): Promise<string> {
+    var parts = body.split("\n\t\n");
+    var header = JSON.parse(parts[0] || "{}");
+    var metadata = header.native_channels || {};
+    var groups: Record<string, Promise<{ channels: NativeXmltvChannel[] }>> = {};
+    var plugin = (window as any).Capacitor.Plugins.MobileXmltvEpg;
+    var lines = (parts[2] || "").split("\n").filter(Boolean);
+    var rows = await Promise.all(lines.map(async function (line) {
+        var id = line.split("-")[0];
+        var info = metadata[id] || {};
+        var name = info.name || decodeURIComponent(line.slice(line.lastIndexOf("~") + 1));
+        var sources = Array.isArray(info.xmltv_urls) ? info.xmltv_urls : [];
+        var key = JSON.stringify(sources);
+        if (!groups[key]) groups[key] = plugin.getChannels({ xmltv_urls: sources });
+        var index = await groups[key];
+        var found = matchNativeXmltvChannel(index.channels, String(info.tvg_id || ""), info.tvg_name || "", name);
+        if (logos) return id + "~" + (found && found.icon || nativeLogoFallback(name));
+        return found ? id + "~local~" + id : "";
+    }));
+    return "{}\n\t\n" + rows.filter(Boolean).join("\n") + (logos ? "" : "\n\t\nlocal~/");
+}
+
+function isLocalCapacitorCompanionUrl(url: string): boolean {
+    try {
+        var target = new URL(url, window.location.href);
+        var current = new URL(window.location.href);
+        return target.protocol === current.protocol && target.host === current.host;
+    } catch (_e) { return false; }
+}
+
 function setupCapacitorCompanionShim(): void {
     const $ = (window as any).$;
     if (
@@ -62,6 +158,7 @@ function setupCapacitorCompanionShim(): void {
     }
     if ((window as any).__ottCapacitorAjaxShim) return;
     (window as any).__ottCapacitorAjaxShim = true;
+    installCapacitorHttpTransport($, StalkerPortal);
     const origAjax = $.ajax.bind($);
 
     function jqFromPromise(promise: Promise<string>, opts: any): any {
@@ -111,7 +208,10 @@ function setupCapacitorCompanionShim(): void {
         }
         const url = String(opts.url || "");
 
-        if (url.indexOf("/m3u/cp.php") !== -1) {
+        if (isLocalCapacitorCompanionUrl(url) && /\/m3u\/match-(channels|logos)(?:[?#]|$)/.test(url)) {
+            return jqFromPromise(matchCapacitorM3u(typeof opts.data === "string" ? opts.data : "", url.indexOf("match-logos") >= 0), opts);
+        }
+        if (isLocalCapacitorCompanionUrl(url) && url.indexOf("/m3u/cp.php") !== -1) {
             let target = "";
             const data = opts.data;
             if (typeof data === "string") {

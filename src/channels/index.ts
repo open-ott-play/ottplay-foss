@@ -81,6 +81,10 @@ export interface Channel {
     title?: string;
     url?: string;
     xmltv_url?: string;
+    xmltv_urls?: string[];
+    epg_external?: boolean;
+    epg_src?: string;
+    tn?: string;
 }
 
 export interface EPGEntry {
@@ -1134,6 +1138,22 @@ export function applyChannelTvgShift(
     return epgData;
 }
 
+/** Only the built-in M3U companion uses native XMLTV. Other providers own EPG. */
+export function usesNativeXmltv(ch: Channel | undefined): boolean {
+    var w = window as any;
+    return !!(w.Capacitor || w.__TAURI__) && w.p_pref === "m3u" &&
+        !!ch && !ch.epg_external && (!ch.epg_src || ch.epg_src === "local");
+}
+
+/** Preserve playlist source order and schemes, never interpret a companion hash as a URL. */
+export function channelXmltvUrls(ch: Channel | undefined): string[] {
+    var sources = ch && ch.xmltv_urls && ch.xmltv_urls.length
+        ? ch.xmltv_urls : ch && ch.xmltv_url ? [ch.xmltv_url] : [];
+    return sources.filter(function (source, index) {
+        return typeof source === "string" && /^https?:\/\//i.test(source) && sources.indexOf(source) === index;
+    });
+}
+
 export function getEPGchanelCached(
     channelId: number,
     callback: (chId: number, programs: EPGEntry[] | null) => void
@@ -1171,25 +1191,22 @@ export function getEPGchanelCached(
     }
     try {
         // Mode B (Capacitor mobile): use native XMLTV EPG plugin.
-        if (typeof (window as any).Capacitor !== "undefined") {
+        if (typeof (window as any).Capacitor !== "undefined" && usesNativeXmltv(channels[channelId])) {
             var ch = channels[channelId];
             // Native XMLTV resolves raw tvg-id/name; epg_url is a companion hash.
             var hash = ch && ch.epg != null ? String(ch.epg) : "";
             var timeShiftHours = epgTimezoneHours(ch);
             var archiveHours = epgArchiveHours(ch);
-            // Only an explicit source URL may override the native default feed.
-            var source = ch && (ch as any).xmltv_url;
-            var xmltvUrl =
-                typeof source === "string" && /^https?:\/\//i.test(source)
-                    ? source
-                    : "";
+            var xmltvUrls = channelXmltvUrls(ch);
             (window as any).Capacitor.Plugins.MobileXmltvEpg.getEpg({
                 archive_hours: archiveHours,
                 ch: ch?.channel_name || ch?.name || "",
                 channel_id: String(channelId),
                 hash: hash,
                 time_shift_hours: timeShiftHours,
-                xmltv_url: xmltvUrl,
+                xmltv_urls: xmltvUrls,
+                xmltv_url: xmltvUrls[0] || "",
+                tvg_name: ch && ch.tn || "",
             })
                 .then(function (result: any) {
                     // Accept both raw EPG array and {epg_data: [...]} (same as Tauri).
@@ -1215,7 +1232,7 @@ export function getEPGchanelCached(
         // Mode B (Tauri desktop): in-process Rust EPG via invoke() (not HTTP).
         // Pass playlist channel name + epg_url hash so resolve_xmltv_id can match
         // (numeric channelId alone almost never equals an XMLTV id).
-        if (typeof (window as any).__TAURI__ !== "undefined") {
+        if (typeof (window as any).__TAURI__ !== "undefined" && usesNativeXmltv(channels[channelId])) {
             var ch = channels[channelId];
             var channelName = (ch && (ch.channel_name || ch.name)) || "";
             var hash =
@@ -1248,6 +1265,9 @@ export function getEPGchanelCached(
                 channelId: String(channelId),
                 hash: hash,
                 timeShiftHours: timeShiftHours,
+                tvgId: ch && ch.epg != null ? String(ch.epg) : "",
+                tvgName: ch && ch.tn || "",
+                xmltvUrls: channelXmltvUrls(ch),
             })
                 .then(function (result: any) {
                     // Accept both raw EPG array and {epg_data: [...]} wrapper.

@@ -7,6 +7,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "MobileXmltvEpg"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "getEpg", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getChannels", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "prefetch", returnType: CAPPluginReturnPromise),
     ]
     private lazy var cacheURL: URL = {
@@ -21,50 +22,123 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
     private let ttl: TimeInterval = 2 * 3600
     private let defaultURL = "https://cdn.epg.one/epg2.xml.gz"
 
-    @objc func getEpg(_ call: CAPPluginCall) {
-        let urlStr = (call.getString("xmltv_url") ?? defaultURL).trimmingCharacters(in: .whitespacesAndNewlines)
-        let finalURL = urlStr.isEmpty ? defaultURL : urlStr
-        let ch = call.getString("ch")
-        let hash = call.getString("hash") ?? ""
-        let channelId = call.getString("channel_id") ?? ""
-        let timeShift = call.getInt("time_shift_hours") ?? 0
-        let archiveHours = call.getInt("archive_hours") ?? 0
+    private typealias Parsed = (channels: [String: String], programs: [String: [(start: Int, stop: Int, title: String, desc: String)]], icons: [String: String], names: [String: [String]])
+    private let sourceLock = NSLock()
+    private var parsedCache: [String: (fetched: TimeInterval, data: Parsed)] = [:]
+    private var pendingSources: [String: [(Result<Parsed, Error>) -> Void]] = [:]
 
-        guard let url = URL(string: finalURL) else {
-            call.reject("invalid url")
+    private func sourceUrls(_ call: CAPPluginCall) -> [String] {
+        let supplied = call.getArray("xmltv_urls", String.self) ?? []
+        let single = call.getString("xmltv_url") ?? ""
+        let values = supplied.isEmpty ? (single.isEmpty ? [defaultURL] : [single]) : supplied
+        var urls: [String] = []
+        for value in values {
+            let value = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !value.isEmpty && !urls.contains(value) { urls.append(value) }
+        }
+        return urls.isEmpty ? [defaultURL] : urls
+    }
+
+    private func loadSource(_ source: String, force: Bool = false, completion: @escaping (Result<Parsed, Error>) -> Void) {
+        guard let url = URL(string: source), ["http", "https"].contains(url.scheme?.lowercased() ?? "") else {
+            completion(.failure(NSError(domain: "MobileXmltvEpg", code: -3, userInfo: [NSLocalizedDescriptionKey: "invalid XMLTV URL"])))
             return
         }
-
-        if let xml = try? readCache(for: url) {
-            let parsed = parseXmltv(xml)
-            call.resolve(buildSlice(parsed, channelId: channelId, ch: ch, hash: hash, timeShiftHours: timeShift, archiveHours: archiveHours))
-            return
+        sourceLock.lock()
+        if !force, let cached = parsedCache[source], Date().timeIntervalSince1970 - cached.fetched < ttl {
+            sourceLock.unlock(); completion(.success(cached.data)); return
         }
-
-        fetchAndCache(url) { [weak self] result in
+        if pendingSources[source] != nil {
+            pendingSources[source]!.append(completion); sourceLock.unlock(); return
+        }
+        pendingSources[source] = [completion]
+        sourceLock.unlock()
+        func finish(_ result: Result<Parsed, Error>) {
+            sourceLock.lock()
+            if case .success(let parsed) = result { parsedCache[source] = (Date().timeIntervalSince1970, parsed) }
+            let callbacks = pendingSources.removeValue(forKey: source) ?? []
+            sourceLock.unlock()
+            callbacks.forEach { $0(result) }
+        }
+        if !force, let xml = try? readCache(for: url) {
+            finish(.success(parseXmltv(xml))); return
+        }
+        fetchAndCache(url) { result in
             switch result {
-            case .success(let xmlStr):
-                let parsed = self?.parseXmltv(xmlStr) ?? ([:], [:])
-                call.resolve(self?.buildSlice(parsed, channelId: channelId, ch: ch, hash: hash, timeShiftHours: timeShift, archiveHours: archiveHours) ?? ["epg_data": []])
-            case .failure(let err):
-                if let xml = try? self?.readCache(for: url, allowStale: true) {
-                    let parsed = self?.parseXmltv(xml) ?? ([:], [:])
-                    call.resolve(self?.buildSlice(parsed, channelId: channelId, ch: ch, hash: hash, timeShiftHours: timeShift, archiveHours: archiveHours) ?? ["epg_data": []])
-                } else {
-                    call.reject(err.localizedDescription)
+            case .success(let xml): finish(.success(self.parseXmltv(xml)))
+            case .failure(let error):
+                self.sourceLock.lock()
+                let memory = self.parsedCache[source]?.data
+                self.sourceLock.unlock()
+                if let memory = memory { finish(.success(memory)) }
+                else if let xml = try? self.readCache(for: url, allowStale: true) { finish(.success(self.parseXmltv(xml))) }
+                else { finish(.failure(error)) }
+            }
+        }
+    }
+
+    // Source order is significant: the first feed defining an ID owns its programs.
+    private func loadSources(_ sources: [String], force: Bool = false, completion: @escaping (Result<Parsed, Error>) -> Void) {
+        var merged: Parsed = ([:], [:], [:], [:])
+        var firstError: Error?
+        func next(_ index: Int) {
+            if index == sources.count {
+                if merged.channels.isEmpty, let error = firstError { completion(.failure(error)) }
+                else { completion(.success(merged)) }
+                return
+            }
+            loadSource(sources[index], force: force) { result in
+                switch result {
+                case .success(let parsed):
+                    for (id, name) in parsed.channels where merged.channels[id] == nil {
+                        merged.channels[id] = name
+                        merged.programs[id] = parsed.programs[id]
+                        merged.icons[id] = parsed.icons[id]
+                        merged.names[id] = parsed.names[id]
+                    }
+                case .failure(let error): if firstError == nil { firstError = error }
                 }
+                next(index + 1)
+            }
+        }
+        next(0)
+    }
+
+    @objc func getEpg(_ call: CAPPluginCall) {
+        loadSources(sourceUrls(call)) { result in
+            switch result {
+            case .success(let parsed):
+                call.resolve(self.buildSlice(parsed, channelId: call.getString("channel_id") ?? "",
+                    ch: call.getString("ch"), hash: call.getString("hash") ?? "",
+                    timeShiftHours: call.getInt("time_shift_hours") ?? 0,
+                    archiveHours: call.getInt("archive_hours") ?? 0,
+                    tvgName: call.getString("tvg_name")))
+            case .failure(let error): call.reject(error.localizedDescription)
+            }
+        }
+    }
+
+    @objc func getChannels(_ call: CAPPluginCall) {
+        loadSources(sourceUrls(call)) { result in
+            switch result {
+            case .success(let parsed):
+                let rows: [[String: Any]] = parsed.channels.keys.sorted().map { id in
+                    ["id": id, "name": parsed.channels[id] ?? id,
+                     "names": parsed.names[id] ?? [parsed.channels[id] ?? id], "icon": parsed.icons[id] ?? ""]
+                }
+                call.resolve(["channels": rows])
+            case .failure(let error): call.reject(error.localizedDescription)
             }
         }
     }
 
     @objc func prefetch(_ call: CAPPluginCall) {
-        let urlStr = (call.getString("xmltv_url") ?? defaultURL).trimmingCharacters(in: .whitespacesAndNewlines)
-        let finalURL = urlStr.isEmpty ? defaultURL : urlStr
-        guard let url = URL(string: finalURL) else {
-            call.reject("invalid url")
-            return
+        loadSources(sourceUrls(call), force: true) { result in
+            switch result {
+            case .success: call.resolve()
+            case .failure(let error): call.reject(error.localizedDescription)
+            }
         }
-        fetchAndCache(url) { _ in call.resolve() }
     }
 
     // MARK: - Cache
@@ -96,7 +170,10 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func fetchAndCache(_ url: URL, completion: @escaping (Result<String, Error>) -> Void) {
-        URLSession.shared.dataTask(with: url) { data, _, err in
+        URLSession.shared.dataTask(with: url) { data, response, err in
+            if let response = response as? HTTPURLResponse, !(200...299).contains(response.statusCode) {
+                completion(.failure(NSError(domain: "MobileXmltvEpg", code: response.statusCode))); return
+            }
             if let err = err { completion(.failure(err)); return }
             guard let data = data, !data.isEmpty else {
                 completion(.failure(NSError(domain: "MobileXmltvEpg", code: -1, userInfo: [NSLocalizedDescriptionKey: "empty response"])))
@@ -107,6 +184,9 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                       let xmlStr = String(data: xml, encoding: .utf8) else {
                     completion(.failure(NSError(domain: "MobileXmltvEpg", code: -2, userInfo: [NSLocalizedDescriptionKey: "gunzip failed"])))
                     return
+                }
+                guard !self.parseXmltv(xmlStr).channels.isEmpty else {
+                    completion(.failure(NSError(domain: "MobileXmltvEpg", code: -4, userInfo: [NSLocalizedDescriptionKey: "invalid or empty XMLTV"]))); return
                 }
                 try self.writeCache(data, for: url)
                 completion(.success(xmlStr))
@@ -119,6 +199,11 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
     // MARK: - Gzip
 
     private func gunzip(_ data: Data) -> Data? {
+        // HTTP may already decompress the response; custom XMLTV is often plain XML.
+        if !data.starts(with: [0x1f, 0x8b]) {
+            guard let text = String(data: data, encoding: .utf8), text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("<") else { return nil }
+            return data
+        }
         let bufferSize = 64 * 1024
         let dstBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
         defer { dstBuffer.deallocate() }
@@ -156,15 +241,18 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: - XMLTV Parse
 
-    private func parseXmltv(_ xml: String) -> (channels: [String: String], programs: [String: [(start: Int, stop: Int, title: String, desc: String)]]) {
-        guard let data = xml.data(using: .utf8) else { return ([:], [:]) }
+    private func parseXmltv(_ xml: String) -> Parsed {
+        guard let data = xml.data(using: .utf8) else { return ([:], [:], [:], [:]) }
         let parser = XmltvParser()
         parser.parse(data)
-        return (parser.channels, parser.programs)
+        return (parser.channels, parser.programs, parser.icons, parser.names)
     }
 
     private class XmltvParser: NSObject, XMLParserDelegate {
         var channels: [String: String] = [:]
+        var icons: [String: String] = [:]
+        var names: [String: [String]] = [:]
+        private var channelName = ""
         var programs: [String: [(start: Int, stop: Int, title: String, desc: String)]] = [:]
 
         private var currentChannelId: String?
@@ -180,7 +268,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         func parse(_ data: Data) {
             let parser = XMLParser(data: data)
             parser.delegate = self
-            parser.parse()
+            if !parser.parse() { channels.removeAll(); programs.removeAll() }
         }
 
         func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String]) {
@@ -194,7 +282,10 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                 currentProgTitle = ""
                 currentProgDesc = ""
             case "display-name" where currentChannelId != nil:
+                channelName = ""
                 textTarget = .channelName
+            case "icon" where currentChannelId != nil:
+                icons[currentChannelId!] = attributeDict["src"] ?? ""
             case "title" where currentProgChannel != nil:
                 textTarget = .progTitle
             case "desc" where currentProgChannel != nil:
@@ -208,9 +299,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
             guard let target = textTarget else { return }
             switch target {
             case .channelName:
-                if let id = currentChannelId {
-                    channels[id] = (channels[id] ?? "") + string
-                }
+                channelName += string
             case .progTitle:
                 currentProgTitle += string
             case .progDesc:
@@ -221,6 +310,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
             switch elementName {
             case "channel":
+                if let id = currentChannelId, channels[id] == nil { channels[id] = id }
                 currentChannelId = nil
                 textTarget = nil
             case "programme":
@@ -229,8 +319,13 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                 }
                 currentProgChannel = nil
                 textTarget = nil
-            case "title", "desc", "display-name":
+            case "display-name":
+                if let id = currentChannelId {
+                    let name = channelName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !name.isEmpty { names[id, default: []].append(name); if channels[id] == nil { channels[id] = name } }
+                }
                 textTarget = nil
+            case "title", "desc": textTarget = nil
             default:
                 break
             }
@@ -262,28 +357,42 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: - Channel Resolution + EPG Slice
 
-    private func resolveXmltvId(channels: [String: String], ch: String?, hash: String) -> String {
-        if let name = ch, !name.isEmpty {
-            let normalized = normalize(name)
-            // Exact match after normalization
-            for (id, channelName) in channels {
-                if normalize(channelName) == normalized {
-                    return id
-                }
-            }
-            // Substring fallback
-            let lower = name.lowercased()
-            for (id, channelName) in channels {
-                if channelName.lowercased().contains(lower) {
-                    return id
+    private func matchScore(_ a: String, _ b: String) -> Double {
+        if a.isEmpty || b.isEmpty { return 0 }
+        if a.contains(b) || b.contains(a) { return Double(min(a.count, b.count)) / Double(max(a.count, b.count)) }
+        let aa = Set(a.split(whereSeparator: { $0.isWhitespace }))
+        let bb = Set(b.split(whereSeparator: { $0.isWhitespace }))
+        let common = aa.intersection(bb).count
+        return common >= max(2, min(aa.count, bb.count) / 2) ? Double(common) / Double(max(aa.count, bb.count)) : 0
+    }
+
+    private func resolveXmltvId(channels: [String: String], ch: String?, hash: String, tvgName: String? = nil, names: [String: [String]] = [:]) -> String {
+        if !hash.isEmpty && channels[hash] != nil { return hash }
+        let candidates = [tvgName ?? "", ch ?? ""].filter { !$0.isEmpty }.map { normalize($0) }
+        let ids = channels.keys.sorted()
+        for candidate in candidates where !candidate.isEmpty {
+            for id in ids where (names[id] ?? [channels[id]!]).contains(where: { normalize($0) == candidate }) { return id }
+        }
+        var best = ""
+        var score = 0.0
+        for candidate in candidates where !candidate.isEmpty {
+            for id in ids {
+                for name in names[id] ?? [channels[id]!] {
+                    let name = normalize(name)
+                    let next = matchScore(candidate, name)
+                    if next >= 0.4 && next > score { best = id; score = next }
                 }
             }
         }
-        if !hash.isEmpty {
-            if channels[hash] != nil { return hash }
-            return hash
-        }
-        return hash
+        return best.isEmpty ? hash : best
+    }
+
+    private func regionalShift(_ name: String) -> Int {
+        let expression = try! NSRegularExpression(pattern: #"([+-])\s*(\d+)\s*(?:ч|h|hours?)?"#, options: .caseInsensitive)
+        let value = name as NSString
+        guard let match = expression.firstMatch(in: name, range: NSRange(location: 0, length: value.length)),
+              let hours = Int(value.substring(with: match.range(at: 2))) else { return 0 }
+        return (value.substring(with: match.range(at: 1)) == "-" ? -1 : 1) * (hours > 24 ? hours % 24 : hours)
     }
 
     private func normalize(_ name: String) -> String {
@@ -297,16 +406,16 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         return s.trimmingCharacters(in: .whitespaces)
     }
 
-    private func buildSlice(_ parsed: (channels: [String: String], programs: [String: [(start: Int, stop: Int, title: String, desc: String)]]), channelId: String, ch: String?, hash: String, timeShiftHours: Int, archiveHours: Int) -> [String: Any] {
-        let xmltvId = resolveXmltvId(channels: parsed.channels, ch: ch, hash: hash)
+    private func buildSlice(_ parsed: Parsed, channelId: String, ch: String?, hash: String, timeShiftHours: Int, archiveHours: Int, tvgName: String? = nil) -> [String: Any] {
+        let xmltvId = resolveXmltvId(channels: parsed.channels, ch: ch, hash: hash, tvgName: tvgName, names: parsed.names)
         let progs = parsed.programs[xmltvId] ?? []
         let now = Int(Date().timeIntervalSince1970)
         let lookbackH = archiveHours > 0 ? archiveHours : 48
         let windowStart = now - lookbackH * 3600
         let windowEnd = now + 48 * 3600
-        let shift = timeShiftHours * 3600
+        let shift = (timeShiftHours != 0 ? timeShiftHours : regionalShift(ch ?? tvgName ?? "")) * 3600
 
-        let epgData: [[String: Any]] = progs.compactMap { prog in
+        let epgData: [[String: Any]] = progs.sorted { $0.start < $1.start }.compactMap { prog in
             let start = prog.0 + shift
             let stop = prog.1 + shift
             guard stop > windowStart && start < windowEnd else { return nil }
