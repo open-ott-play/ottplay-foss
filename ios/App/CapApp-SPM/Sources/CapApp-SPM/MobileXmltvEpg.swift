@@ -17,6 +17,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         return docs.appendingPathComponent("epg2.meta")
     }()
+    private let cacheLock = NSLock()
     private let ttl: TimeInterval = 2 * 3600
     private let defaultURL = "https://cdn.epg.one/epg2.xml.gz"
 
@@ -27,15 +28,16 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         let hash = call.getString("hash") ?? ""
         let channelId = call.getString("channel_id") ?? ""
         let timeShift = call.getInt("time_shift_hours") ?? 0
+        let archiveHours = call.getInt("archive_hours") ?? 0
 
         guard let url = URL(string: finalURL) else {
             call.reject("invalid url")
             return
         }
 
-        if let xml = try? readFreshCache() {
+        if let xml = try? readCache(for: url) {
             let parsed = parseXmltv(xml)
-            call.resolve(buildSlice(parsed, channelId: channelId, ch: ch, hash: hash, timeShiftHours: timeShift))
+            call.resolve(buildSlice(parsed, channelId: channelId, ch: ch, hash: hash, timeShiftHours: timeShift, archiveHours: archiveHours))
             return
         }
 
@@ -43,13 +45,11 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
             switch result {
             case .success(let xmlStr):
                 let parsed = self?.parseXmltv(xmlStr) ?? ([:], [:])
-                call.resolve(self?.buildSlice(parsed, channelId: channelId, ch: ch, hash: hash, timeShiftHours: timeShift) ?? ["epg_data": []])
+                call.resolve(self?.buildSlice(parsed, channelId: channelId, ch: ch, hash: hash, timeShiftHours: timeShift, archiveHours: archiveHours) ?? ["epg_data": []])
             case .failure(let err):
-                if let stale = try? Data(contentsOf: self!.cacheURL),
-                   let xmlData = self?.gunzip(stale),
-                   let xml = String(data: xmlData, encoding: .utf8) {
+                if let xml = try? self?.readCache(for: url, allowStale: true) {
                     let parsed = self?.parseXmltv(xml) ?? ([:], [:])
-                    call.resolve(self?.buildSlice(parsed, channelId: channelId, ch: ch, hash: hash, timeShiftHours: timeShift) ?? ["epg_data": []])
+                    call.resolve(self?.buildSlice(parsed, channelId: channelId, ch: ch, hash: hash, timeShiftHours: timeShift, archiveHours: archiveHours) ?? ["epg_data": []])
                 } else {
                     call.reject(err.localizedDescription)
                 }
@@ -69,13 +69,30 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: - Cache
 
-    private func readFreshCache() throws -> String? {
-        let meta = try? String(contentsOf: metaURL)
-        guard let fetched = Double(meta?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""),
-              Date().timeIntervalSince1970 - fetched < ttl else { return nil }
+    private func readCache(for url: URL, allowStale: Bool = false) throws -> String? {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        let meta = try String(contentsOf: metaURL, encoding: .utf8)
+        let fields = meta.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
+        // Timestamp-only metadata predates source tracking and cannot be trusted.
+        guard fields.count == 2, fields[1] == url.absoluteString,
+              let fetched = Double(fields[0]),
+              allowStale || Date().timeIntervalSince1970 - fetched < ttl else { return nil }
         let gz = try Data(contentsOf: cacheURL)
         guard let xml = gunzip(gz) else { return nil }
         return String(data: xml, encoding: .utf8)
+    }
+
+    private func writeCache(_ data: Data, for url: URL) throws {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        // Invalidate metadata first so an interrupted write cannot label another source's data.
+        if FileManager.default.fileExists(atPath: metaURL.path) {
+            try FileManager.default.removeItem(at: metaURL)
+        }
+        try data.write(to: cacheURL, options: .atomic)
+        let meta = "\(Date().timeIntervalSince1970)\n\(url.absoluteString)"
+        try meta.write(to: metaURL, atomically: true, encoding: .utf8)
     }
 
     private func fetchAndCache(_ url: URL, completion: @escaping (Result<String, Error>) -> Void) {
@@ -86,13 +103,12 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                 return
             }
             do {
-                try data.write(to: self.cacheURL)
-                try String(Date().timeIntervalSince1970.description).write(toFile: self.metaURL.path, atomically: true, encoding: .utf8)
                 guard let xml = self.gunzip(data),
                       let xmlStr = String(data: xml, encoding: .utf8) else {
                     completion(.failure(NSError(domain: "MobileXmltvEpg", code: -2, userInfo: [NSLocalizedDescriptionKey: "gunzip failed"])))
                     return
                 }
+                try self.writeCache(data, for: url)
                 completion(.success(xmlStr))
             } catch {
                 completion(.failure(error))
@@ -281,11 +297,12 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         return s.trimmingCharacters(in: .whitespaces)
     }
 
-    private func buildSlice(_ parsed: (channels: [String: String], programs: [String: [(start: Int, stop: Int, title: String, desc: String)]]), channelId: String, ch: String?, hash: String, timeShiftHours: Int) -> [String: Any] {
+    private func buildSlice(_ parsed: (channels: [String: String], programs: [String: [(start: Int, stop: Int, title: String, desc: String)]]), channelId: String, ch: String?, hash: String, timeShiftHours: Int, archiveHours: Int) -> [String: Any] {
         let xmltvId = resolveXmltvId(channels: parsed.channels, ch: ch, hash: hash)
         let progs = parsed.programs[xmltvId] ?? []
         let now = Int(Date().timeIntervalSince1970)
-        let windowStart = now - 48 * 3600
+        let lookbackH = archiveHours > 0 ? archiveHours : 48
+        let windowStart = now - lookbackH * 3600
         let windowEnd = now + 48 * 3600
         let shift = timeShiftHours * 3600
 
