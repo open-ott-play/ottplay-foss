@@ -4,9 +4,12 @@
 
 import {
     arrayGetCurProg,
+    cancelMediaLoad,
     getCurProgData,
     type MediaHistoryEntry,
     type MediaTarget,
+    rememberMediaView,
+    requestMediaList,
 } from "../channels";
 import { video } from "../core";
 import { dispatchKey, keys, list_OnClick } from "../keyhandler";
@@ -1206,6 +1209,7 @@ export function setSelect(index: number): void {
  * @analysis Errors during DOM manipulation are silently caught and logged.
  */
 export function closeList(): void {
+    cancelMediaLoad();
     isListVisible = false;
     try {
         (window as any).isListVisible = false;
@@ -3767,6 +3771,7 @@ declare function mediaKeyHandler(keyCode: number): boolean;
  */
 function showMediaList1(): void {
     var w = window as any;
+    rememberMediaView();
     var data: MediaHistoryEntry[] = w.mediaRecords || [];
     w.selIndex = Math.max(
         0,
@@ -3926,7 +3931,7 @@ export function mediaList(target: MediaTarget | null): void {
         showMediaList();
     } else if (typeof w.getMediaArray === "function") {
         // Providers populate mediaRecords and call the completion callback with no arguments.
-        w.getMediaArray(target, showMediaList);
+        requestMediaList(target);
     }
 }
 

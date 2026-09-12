@@ -100,8 +100,31 @@ export interface PreviousChannel {
     t?: number;
 }
 
-/** Provider media targets are URLs, or -1/-2 for local history/favorites. */
-export type MediaTarget = string | number;
+/** Edem/VPortal passes request objects instead of playlist URLs. */
+export interface MediaPortalTarget {
+    a?: string;
+    filters?: unknown[];
+    items?: unknown[];
+    mediaName?: string;
+    request?: Record<string, unknown>;
+}
+
+/** Public provider ABI: URL, local history/favorites, or a VPortal request. */
+export type MediaTarget = string | -1 | -2 | MediaPortalTarget;
+
+/** Legacy callbacks remain callable with no arguments; built-ins can reject stale work earlier. */
+interface MediaListCompletion {
+    isCurrent?: () => boolean;
+    (): void;
+}
+
+interface MediaLoadState {
+    name: string;
+    pending: boolean;
+    provider: unknown;
+    records: MediaHistoryEntry[];
+    urls: MediaTarget[] | null;
+}
 
 export interface MediaHistoryEntry {
     adult?: number | string;
@@ -2563,6 +2586,73 @@ export function catRecordsList(catIdx: number): void {
 // The legacy bundle links this renderer from ui/index.ts.
 declare function showMediaList1(): void;
 
+/** Keep the last accepted view separate from globals mutated by provider callbacks. */
+export function rememberMediaView(pending = false): void {
+    var w = window as any;
+    var state: MediaLoadState = {
+        name: w.mediaName || "",
+        pending: pending,
+        provider: w.getMediaArray,
+        records: w.mediaRecords || [],
+        urls: w.mediaUrls,
+    };
+    w._mediaLoadState = state;
+}
+
+/** Closing/reloading while fetching must not reopen a departed VOD view. */
+export function cancelMediaLoad(): void {
+    var w = window as any;
+    var state: MediaLoadState | undefined = w._mediaLoadState;
+    if (state && state.pending) {
+        w.mediaUrls = null;
+        w.mediaNames = [];
+        w.mediaSelects = [];
+        w.mediaRecords = [];
+        w.mediaRecordsPar = null;
+        w.mediaName = "";
+    }
+    rememberMediaView();
+}
+
+/** Providers write mediaRecords/mediaName before their no-argument completion callback. */
+export function requestMediaList(target: MediaTarget): void {
+    var w = window as any;
+    var provider = w.getMediaArray;
+    if (typeof provider !== "function") return;
+    rememberMediaView(true);
+    var request: MediaLoadState = w._mediaLoadState;
+    var complete: MediaListCompletion = function () {
+        var current: MediaLoadState | undefined = w._mediaLoadState;
+        if (
+            current !== request ||
+            request.urls !== w.mediaUrls ||
+            request.provider !== w.getMediaArray
+        ) {
+            // A late response has already overwritten these legacy globals.
+            // Restore the current accepted/loading view without rendering it again.
+            if (
+                current &&
+                current.urls === w.mediaUrls &&
+                current.provider === w.getMediaArray
+            ) {
+                w.mediaRecords = current.records;
+                w.mediaName = current.name;
+            } else w.mediaRecords = [];
+            return;
+        }
+        request.pending = false;
+        showMediaList();
+    };
+    complete.isCurrent = function () {
+        return (
+            w._mediaLoadState === request &&
+            request.urls === w.mediaUrls &&
+            request.provider === w.getMediaArray
+        );
+    };
+    provider(target, complete);
+}
+
 /** Return to the parent VOD folder, retaining its selected row. */
 function mediaBack(): void {
     var w = window as any;
@@ -2677,7 +2767,8 @@ export function addToMedFavorites(item: MediaHistoryEntry): void {
 export function selectMedia(index?: number): void {
     var w = window as any;
     var selected = index === undefined ? w.selIndex : index;
-    var item: MediaHistoryEntry | undefined = w.listArray[selected];
+    var selectedList: MediaHistoryEntry[] = w.listArray;
+    var item: MediaHistoryEntry | undefined = selectedList[selected];
     if (!item) return;
     if (
         Number(item.adult) === 1 &&
@@ -2686,6 +2777,8 @@ export function selectMedia(index?: number): void {
         !w.parentAccess
     ) {
         w.enterPinAndSetAccess(function () {
+            if (w.listArray !== selectedList || selectedList[selected] !== item)
+                return;
             selectMedia(selected);
         });
         return;
@@ -4204,12 +4297,23 @@ export function showActionsDialog(): void {
 
 export function searchMedia(e: MediaHistoryEntry): void {
     var w = window as any;
+    if (typeof e.playlist_url !== "string") return;
+    var target = e.playlist_url;
+    var sourceList = w.listArray;
+    var sourceUrls = w.mediaUrls;
+    var sourceProvider = w.getMediaArray;
     w.editCaption = w._("String for search");
     var t =
         (typeof w.stbGetItem === "function" ? w.stbGetItem("medSearch") : "") ||
         "";
     w.editvar = t;
     w.setEdit = function (): void {
+        if (
+            w.listArray !== sourceList ||
+            w.mediaUrls !== sourceUrls ||
+            w.getMediaArray !== sourceProvider
+        )
+            return;
         var inputEl = document.getElementById("editvar");
         var inputVal = (inputEl && (inputEl as HTMLInputElement).value) || "";
         var submitted = window.editvar || "";
@@ -4218,13 +4322,10 @@ export function searchMedia(e: MediaHistoryEntry): void {
         if (typeof w.stbSetItem === "function") w.stbSetItem("medSearch", t);
         w.mediaName = e.title;
         w.mediaSelects.unshift(0);
-        if (
-            typeof w.mediaList === "function" &&
-            typeof e.playlist_url === "string"
-        ) {
+        if (typeof w.mediaList === "function") {
             w.mediaList(
-                e.playlist_url +
-                    (e.playlist_url.indexOf("?") === -1 ? "?" : "&") +
+                target +
+                    (target.indexOf("?") === -1 ? "?" : "&") +
                     "search=" +
                     encodeURIComponent(t)
             );

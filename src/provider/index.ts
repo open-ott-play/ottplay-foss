@@ -12,7 +12,7 @@
  * - First-run setup wizard
  */
 
-import { invalidateEpgCache } from "../channels";
+import { cancelMediaLoad, invalidateEpgCache } from "../channels";
 import {
     setPlayerMode,
     toggleAspectRatio,
@@ -761,6 +761,8 @@ declare var confirmBox: (
  * If noProvParam=1, splices provider settings out of popup arrays.
  */
 export function loadProv(): void {
+    cancelMediaLoad();
+    invalidateEpgCache();
     /**
      * Handle provider script load failure.
      * Clears the pending provider, alerts the error (unless 'no' provider),

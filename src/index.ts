@@ -96,6 +96,7 @@ import {
     itemEPG,
     listEpgArray,
     listFavoritesLists,
+    type MediaHistoryEntry,
     medFavorites,
     medHistory,
     mediaSelects,
@@ -2536,7 +2537,14 @@ function _playChannel(catIdx: number, chIdx: number): void {
  * Edge case: If stream_url is a function, calls it to get the URL.
  * If mediaUrls last element is -1, resets mediaSelects[0] to 0.
  */
-function _playMedia(item: any): void {
+function _playMedia(item: MediaHistoryEntry): void {
+    if (!item) return;
+    var streamUrl =
+        typeof item.stream_url === "function"
+            ? item.stream_url()
+            : item.stream_url;
+    if (typeof streamUrl !== "string" || !streamUrl) return;
+    item.stream_url = streamUrl;
     // A delayed live-channel probe must not relabel the newly selected VOD item.
     clearTimeout((window as any)._tmedia);
     clearTimeout(mediaCheckTimer);
@@ -2544,7 +2552,7 @@ function _playMedia(item: any): void {
         mediaSelects[0] = 0;
     setCurrent(catIndex, -1);
     var resumePos = 0;
-    var historyIdx = medHistory.findIndex(function (e: any) {
+    var historyIdx = medHistory.findIndex(function (e: MediaHistoryEntry) {
         return e.stream_url === item.stream_url;
     });
     if (historyIdx !== -1) {
@@ -2582,14 +2590,17 @@ function _playMedia(item: any): void {
     (window as any).playTime = 0;
     (window as any).playType = -1e11;
     if (sStopPlay) stbStop();
-    if (typeof item.stream_url === "function")
-        item.stream_url = item.stream_url();
-    stbPlay(item.stream_url);
+    stbPlay(streamUrl);
     if (resumePos)
         confirmBox(
             _("Continue watching?") + "<br><br>" + step2text(resumePos),
             function () {
-                stbSetPosTime(resumePos);
+                if (
+                    (window as any).playType === -1e11 &&
+                    medHistory[0] === item &&
+                    item.stream_url === streamUrl
+                )
+                    stbSetPosTime(resumePos);
             }
         );
 }

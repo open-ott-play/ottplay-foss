@@ -459,7 +459,20 @@ function createMedia(val, parent) {
 }
 
 function addMedias2(params) {
-    params.offset = Math.floor(selIndex / params.limit) * params.limit;
+    var records = mediaRecords;
+    var provider = getMediaArray;
+    var view = window._mediaLoadState;
+    function isCurrent() {
+        return (
+            records === mediaRecords &&
+            provider === getMediaArray &&
+            view === window._mediaLoadState
+        );
+    }
+    var offset = Math.floor(selIndex / params.limit) * params.limit;
+    var requestParams = {};
+    for (var key in params) requestParams[key] = params[key];
+    requestParams.offset = offset;
     $("#dialogbox")
         .html(
             '<img src="' +
@@ -470,7 +483,10 @@ function addMedias2(params) {
         .show();
     $.ajax({
         complete: function () {
+            if (!isCurrent()) return;
             while (
+                selIndex >= offset &&
+                selIndex < offset + requestParams.limit &&
                 mediaRecords[selIndex] &&
                 typeof mediaRecords[selIndex].description === "function"
             ) {
@@ -480,15 +496,16 @@ function addMedias2(params) {
             showPage();
             $("#dialogbox").hide();
         },
-        data: JSON.stringify(params),
+        data: JSON.stringify(requestParams),
         success: function (data) {
+            if (!isCurrent()) return;
             try {
                 if (data !== null)
                     if (data.type == "error") alert(data.description);
                     else
                         data.items.forEach(function (val, i) {
                             if (val.type != "next")
-                                mediaRecords[params.offset + i] = createMedia(
+                                mediaRecords[offset + i] = createMedia(
                                     val,
                                     data
                                 );
@@ -632,14 +649,17 @@ var _getMediaArray = function (murl, callback) {
         .show();
     $.ajax({
         complete: function () {
+            if (callback.isCurrent && !callback.isCurrent()) return;
             $("#dialogbox").hide();
             callback();
         },
         data: JSON.stringify(params),
         error: function (jqXHR) {
+            if (callback.isCurrent && !callback.isCurrent()) return;
             alert("medias : jqXHR:" + JSON.stringify(jqXHR));
         },
         success: function (data) {
+            if (callback.isCurrent && !callback.isCurrent()) return;
             try {
                 mediaRecords = [];
                 if (data !== null)
