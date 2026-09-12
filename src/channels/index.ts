@@ -100,16 +100,22 @@ export interface PreviousChannel {
     t?: number;
 }
 
+/** Provider media targets are URLs, or -1/-2 for local history/favorites. */
+export type MediaTarget = string | number;
+
 export interface MediaHistoryEntry {
-    adult?: number;
+    adult?: number | string;
     ch_id?: number;
     current?: number;
+    descr?: string;
     description?: string | (() => string);
     fav?: number;
     logo_30x30?: string;
     name?: string;
-    playlist_url?: string;
-    search_on?: boolean;
+    playlist_url?: MediaTarget;
+    playlist_name?: string;
+    submenu?: MediaHistoryEntry[];
+    search_on?: boolean | number | string;
     stream_url?: string | (() => string);
     title?: string;
 }
@@ -404,12 +410,12 @@ export function doGetCurProg(): void {
 export let curEpgData: EPGEntry[] | null = null;
 export let epgArray: EPGEntry[] = [],
     curProg = -1;
-export let mediaListArr: any[] = [],
-    mediaUrls: any = null;
+export let mediaListArr: MediaHistoryEntry[] = [];
+export let mediaUrls: MediaTarget[] | null = null;
 export let mediaNames: string[] = [],
     mediaSelects: number[] = [];
-export let mediaRecords: any[] = [],
-    mediaRecordsPar: any[] = [];
+export let mediaRecords: MediaHistoryEntry[] = [];
+export let mediaRecordsPar: MediaHistoryEntry[] | null = null;
 export let mediaName = "";
 /* searchText + historySearchText: src/channels/search.ts (Phase D filter leaf). */
 export let searchInput = "",
@@ -426,7 +432,7 @@ var _shiftSec = 0;
 /**
  * Switch the current category and channel selection.
  * Updates the "previous channel" history (`prevArr`) unless the switch is
- * from a media-item playback (playType === -99999999999).
+ * from a media-item playback (playType === -1e11).
  *
  * @param categoryIndex - Index into `catsArray` for the new category.
  * @param channelIndex  - Index into the category's channel list (`curList`).
@@ -436,7 +442,7 @@ var _shiftSec = 0;
  * - Mutates `prevArr` (push old position, trim to configured max count).
  * - Updates `catIndex`, `curList`, `primaryIndex`.
  * - Syncs values to `window` globals for legacy code compatibility.
- * - When playType is -99999999999 (media mode), saves current media position to history.
+ * - When playType is -1e11 (media mode), saves current media position to provider history.
  */
 export function setCurrent(
     categoryIndex: number,
@@ -447,15 +453,17 @@ export function setCurrent(
     if (
         categoryIndex !== catIndex ||
         channelIndex !== primaryIndex ||
-        (isArchive !== wasArchive &&
-            channelIndex !== -1 &&
-            playType !== -99999999999)
+        Boolean(isArchive) !== wasArchive || channelIndex === -1 ||
+        playType === -1e11
     ) {
-        if (playType === -99999999999) {
-            if (medHistory.length && medHistory[0].current !== undefined) {
-                medHistory[0].current = Math.floor(
-                    window.video?.currentTime || 0
+        if (playType === -1e11) {
+            if (medHistory.length) {
+                medHistory[0].current = Math.max(
+                    0,
+                    Math.floor((window as any).stbGetPosTime()) || 0
                 );
+                if (sFavorites !== -1)
+                    providerSetItem("medHistory", JSON.stringify(medHistory));
             }
         } else {
             try {
@@ -2533,175 +2541,173 @@ export function catRecordsList(catIdx: number): void {
     }, providerChId);
 }
 
-/**
- * Key handler for the media/VOD list view.
- * Keys: ENTER (play), RED/INFO (info), GREEN (toggle favorites),
- * YELLOW (TMDb search), RETURN (close).
- *
- * @param keyCode - The pressed key code.
- * @returns `true` if handled, `false` to bubble up.
- *
- * Side effects: Delegates to `selectMedia`, `infoProgramm`,
- * `addToMedFavorites`, `TMDb.search`, or `closeList`.
- */
+// The legacy bundle links this renderer from ui/index.ts.
+declare function showMediaList1(): void;
+
+/** Return to the parent VOD folder, retaining its selected row. */
+function mediaBack(): void {
+    var w = window as any;
+    var urls: MediaTarget[] = w.mediaUrls || [];
+    if (w.mediaRecordsPar !== null) {
+        w.mediaRecords = w.mediaRecordsPar;
+        w.mediaRecordsPar = null;
+        showMediaList1();
+        return;
+    }
+    if (urls.length <= 1) {
+        if (typeof w.popupList === "function") w.popupList(w.popMedia);
+        return;
+    }
+    w.mediaSelects.shift();
+    urls.pop();
+    w.mediaNames.pop();
+    w.mediaName = w.mediaNames.pop() || "";
+    w.mediaList(urls.pop());
+}
+
+/** Route remote buttons within VOD, including parent-folder navigation. */
 export function mediaKeyHandler(keyCode: number): boolean {
     var w = window as any;
     var keys = w.keys;
-    var item = w.listArray[w.selIndex];
-    if (!item) return false;
-
+    var item: MediaHistoryEntry | undefined = w.listArray[w.selIndex];
+    function forward(): void {
+        if (item && item.playlist_url) selectMedia(w.selIndex);
+        else if (typeof w.infoMedia === "function") w.infoMedia();
+    }
+    if (w.sArrowFun === 2) {
+        switch (keyCode) {
+            case keys.LEFT:
+                mediaBack();
+                return true;
+            case keys.RIGHT:
+                forward();
+                return true;
+            case keys.RETURN:
+                w.closeList();
+                return true;
+        }
+    }
     switch (keyCode) {
+        case keys.RETURN:
+            mediaBack();
+            return true;
+        case keys.N0:
+        case keys.RED:
+        case keys.PRECH:
+        case keys.EXIT:
+            w.closeList();
+            return true;
         case keys.ENTER:
             selectMedia(w.selIndex);
             return true;
-        case keys.RED:
+        case keys.N2:
         case keys.INFO:
-            if (typeof w.infoProgramm === "function")
-                w.infoProgramm(getMediaDescr(item));
+            if (typeof w.infoMedia === "function") w.infoMedia();
             return true;
+        case keys.RW:
+            if (w.sRewFun !== 1) return false;
+            mediaBack();
+            return true;
+        case keys.PREV:
+            if (w.sPNFun !== 1) return false;
+            mediaBack();
+            return true;
+        case keys.FF:
+            if (w.sRewFun !== 1) return false;
+            forward();
+            return true;
+        case keys.NEXT:
+            if (w.sPNFun !== 1) return false;
+            forward();
+            return true;
+        case keys.N8:
+        case keys.TOOLS:
         case keys.GREEN:
-            addToMedFavorites(item);
+            if (w.sFavorites !== -1 && (w.mediaUrls || []).length > 1 && item)
+                addToMedFavorites(item);
             return true;
         case keys.YELLOW:
-            if (w.TMDb && typeof w.TMDb.search === "function")
-                w.TMDb.search(item.name || item.title);
-            return true;
-        case keys.RETURN:
-            if (typeof w.closeList === "function") w.closeList();
+            if (item && w.TMDb && typeof w.TMDb.search === "function")
+                w.TMDb.search(item.title || item.name || "");
             return true;
     }
     return false;
 }
 
-/**
- * Toggle a media/VOD item in or out of the media favorites list (`medFavorites`).
- * Uses `stream_url` as the unique identifier.
- *
- * @param item - Media item object (expected to have `stream_url`).
- *
- * Side effects:
- * - Mutates `medFavorites` array.
- * - Shows an on-screen notification via `window.showShift`.
- * - Persists the updated array via `stbSetItem`.
- */
-export function addToMedFavorites(item: any): void {
+/** Add the selected movie/folder, or delete it while viewing favorites. */
+export function addToMedFavorites(item: MediaHistoryEntry): void {
     var w = window as any;
-    var idx = medFavorites.findIndex(function (e: any) {
-        return e.stream_url === item.stream_url;
-    });
-    if (idx === -1) {
-        medFavorites.unshift(item);
-        if (typeof w.showShift === "function")
-            w.showShift(w._("Added to favorites"));
+    if (w.sFavorites === -1) return;
+    var urls: MediaTarget[] = w.mediaUrls || [];
+    if (urls[urls.length - 1] === -2) {
+        medFavorites.splice(w.selIndex, 1);
+        w.selIndex = Math.max(0, Math.min(w.selIndex, medFavorites.length - 1));
+        w.mediaSelects[0] = w.selIndex;
+        showMediaList1();
     } else {
-        medFavorites.splice(idx, 1);
+        medFavorites.push(item);
         if (typeof w.showShift === "function")
-            w.showShift(w._("Removed from favorites"));
+            w.showShift(
+                (item.title || item.name || "") + w._(" added to favorites")
+            );
     }
-    if (typeof w.stbSetItem === "function")
-        w.stbSetItem("medFavorites", JSON.stringify(medFavorites));
+    providerSetItem("medFavorites", JSON.stringify(medFavorites));
 }
 
-/**
- * Handle selection of a media/VOD item from the list.
- * - If it has a `playlist_url`, loads the playlist via `getScriptDOM`.
- * - If it has a `stream_url`, closes the list and plays directly.
- *
- * @param index - Index into `window.listArray`.
- *
- * Side effects: May show #listPopUp spinner; calls `getScriptDOM`, `closeList`,
- * or `playMedia`.
- */
-export function selectMedia(index: number): void {
+/** Select a media entry using the provider's VOD hierarchy and PIN contract. */
+export function selectMedia(index?: number): void {
     var w = window as any;
-    var item = w.listArray[index];
+    var selected = index === undefined ? w.selIndex : index;
+    var item: MediaHistoryEntry | undefined = w.listArray[selected];
     if (!item) return;
-
-    if (item.playlist_url) {
-        if (typeof w.getScriptDOM === "function") {
-            $("#listPopUp")
-                .html(
-                    '<div class="ott-spinner" style="width:40px;height:40px;"></div>'
-                )
-                .show();
-            w.getScriptDOM(item.playlist_url, function () {
-                $("#listPopUp").hide();
-            });
-        }
-    } else if (item.stream_url) {
-        if (typeof w.closeList === "function") w.closeList();
-        if (typeof (w as any).playMedia === "function")
-            (w as any).playMedia(item);
-    }
-}
-
-/**
- * Open the media library (VOD) list. Fetches media array from the provider
- * and renders it as a selectable list with favorites and TMDb support.
- *
- * Side effects:
- * - Calls `window.getMediaArray`.
- * - Sets up list renderers (`getListItemFn`, `detailListActionFn`, `listKeyHandlerFn`).
- * - Updates #listCaption / #listPodval DOM.
- * - Calls `window.showPage`.
- */
-export function showMediaList(): void {
-    var w = window as any;
-    if (typeof w.closeList === "function") w.closeList();
-
-    if (typeof w.getMediaArray !== "function") {
-        if (typeof w.infoBox === "function")
-            w.infoBox(w._("VOD not supported by provider"));
+    if (
+        Number(item.adult) === 1 &&
+        w.sPSchannels &&
+        w.parentPIN !== "*" &&
+        !w.parentAccess
+    ) {
+        w.enterPinAndSetAccess(function () {
+            selectMedia(selected);
+        });
         return;
     }
-
-    w.getMediaArray(function (data: any[]) {
-        if (!data || data.length === 0) {
-            if (typeof w.infoBox === "function")
-                w.infoBox(w._("Media library is empty"));
-            return;
+    if (w.mediaRecordsPar === null) w.mediaSelects[0] = selected;
+    if (item.playlist_url) {
+        if (item.search_on) searchMedia(item);
+        else {
+            w.mediaName = item.title || item.name || "";
+            w.mediaSelects.unshift(0);
+            w.mediaList(item.playlist_url);
         }
-
-        w.listArray = data;
-        w.listDataArray = data;
-        mediaListArr = data;
-        var itemFn = function (item: any, _idx: number) {
-            return "&nbsp;&nbsp;" + (item.name || item.title || "");
-        };
-        w.getListItem = itemFn;
-        w.getListItemFn = itemFn;
-        w.detailListAction = function () {
-            var detailEl = document.getElementById("listDetail");
-            if (detailEl)
-                detailEl.innerHTML = getMediaDescr(w.listArray[w.selIndex]);
-        };
-        w.detailListActionFn = w.detailListAction;
-        w.listKeyHandler = mediaKeyHandler;
-        w.listKeyHandlerFn = mediaKeyHandler;
-
-        var captionEl = document.getElementById("listCaption");
-        if (captionEl) captionEl.innerHTML = w._("Media Library");
-
-        var podvalEl = document.getElementById("listPodval");
-        if (podvalEl) {
-            podvalEl.innerHTML =
-                w.btnDiv(w.keys.RETURN, w.strRETURN, "Close") +
-                w.btnDiv(w.keys.GREEN, "", "Favorites") +
-                w.btnDiv(w.keys.YELLOW, "", "TMDb");
-        }
-
-        if (typeof w.showPage === "function") w.showPage();
-    });
+    } else if (item.stream_url) {
+        w.closeList();
+        w.playMedia(item);
+    } else if (typeof w.infoMedia === "function") w.infoMedia();
 }
-/**
- * Extract a human-readable description from a media item.
- * Checks `description` first, then falls back to `descr`.
- *
- * @param item - Media item object.
- * @returns The description string, or empty string.
- */
-export function getMediaDescr(item: any): string {
-    return item?.description || item?.descr || "";
+
+/** Provider completion callback: render populated mediaRecords without refetching. */
+export function showMediaList(): void {
+    var w = window as any;
+    var records: MediaHistoryEntry[] = w.mediaRecords || [];
+    if ((w.mediaSelects || []).length === 1 && w.sFavorites !== -1) {
+        records.push({ title: "", playlist_url: "" });
+        if (w.sMedCount)
+            records.push({
+                title: w._("History of watched movies"),
+                playlist_url: -1,
+            });
+        records.push({ title: w._("Favorites"), playlist_url: -2 });
+    }
+    w.mediaRecords = records;
+    w.mediaNames.push(w.mediaName || "");
+    showMediaList1();
+}
+
+/** Descriptions may be lazy functions in legacy provider records. */
+export function getMediaDescr(item?: MediaHistoryEntry): string {
+    var text = (item && (item.description || item.descr)) || "";
+    if (typeof text === "function") text = text();
+    return String(text || "").replace(/<\s*(\/?)script\b/gi, "<$1sсr!!!");
 }
 
 /**
@@ -4177,9 +4183,8 @@ export function showActionsDialog(): void {
  */
 /* searchHistoryChannel / getFilteredHistory / getFilteredChannelList: ./search.ts */
 
-export function searchMedia(e: any): void {
+export function searchMedia(e: MediaHistoryEntry): void {
     var w = window as any;
-    setSearchText(typeof e === "string" ? e : "");
     w.editCaption = w._("String for search");
     var t =
         (typeof w.stbGetItem === "function" ? w.stbGetItem("medSearch") : "") ||
@@ -4194,12 +4199,15 @@ export function searchMedia(e: any): void {
         if (typeof w.stbSetItem === "function") w.stbSetItem("medSearch", t);
         w.mediaName = e.title;
         w.mediaSelects.unshift(0);
-        if (typeof w.mediaList === "function") {
+        if (
+            typeof w.mediaList === "function" &&
+            typeof e.playlist_url === "string"
+        ) {
             w.mediaList(
                 e.playlist_url +
-                    (e.playlist_url.indexOf("?") == -1 ? "?" : "&") +
+                    (e.playlist_url.indexOf("?") === -1 ? "?" : "&") +
                     "search=" +
-                    t
+                    encodeURIComponent(t)
             );
         }
     };

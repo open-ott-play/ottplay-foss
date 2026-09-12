@@ -1460,15 +1460,11 @@ function showChanelsList(): void {
 // Media info update
 
 /**
- * Update the #video_res element with the current video resolution
- * (videoWidth × videoHeight) from the <video> element, if available.
- *
- * Side effects: DOM write to #video_res.
+ * Refresh finite-media progress and the video-resolution display.
+ * Uses the shared UI renderer, which reads time from the active STB adapter.
  */
 function updateMediaInfoDisplay(): void {
-    var resEl = document.getElementById("video_res");
-    if (resEl && video && video.videoWidth)
-        resEl.innerHTML = "<br/>" + video.videoWidth + "x" + video.videoHeight;
+    updateMediaInfo();
 }
 
 // Check media (detect archive)
@@ -2559,6 +2555,9 @@ function _playChannel(catIdx: number, chIdx: number): void {
  * If mediaUrls last element is -1, resets mediaSelects[0] to 0.
  */
 function _playMedia(item: any): void {
+    // A delayed live-channel probe must not relabel the newly selected VOD item.
+    clearTimeout((window as any)._tmedia);
+    clearTimeout(mediaCheckTimer);
     if (mediaUrls && mediaUrls[mediaUrls.length - 1] === -1)
         mediaSelects[0] = 0;
     setCurrent(catIndex, -1);
@@ -2573,8 +2572,11 @@ function _playMedia(item: any): void {
         medHistory.splice(historyIdx, 1);
     }
     medHistory.unshift(item);
-    var maxMedCount = [0, 10, 20, 30, 40, 50][sMedCount] || 10;
-    medHistory.splice(maxMedCount);
+    var maxMedCount = [0, 10, 20, 30, 40, 50][sMedCount];
+    medHistory.splice(maxMedCount === undefined ? 20 : maxMedCount);
+    // Persist the newly selected item too, so history survives an interrupted session.
+    if ((window as any).sFavorites !== -1)
+        providerSetItem("medHistory", JSON.stringify(medHistory));
     $("#picon").css(
         "background-image",
         'url("' + (item.logo_30x30 || "") + '")'
@@ -2629,7 +2631,7 @@ window.showSelectBox = showSelectBox;
 window.infoBox = infoBox;
 window.confirmBox = confirmBox;
 window.updateChanelInfo = updateChanelInfo;
-window.updateMediaInfo = updateMediaInfoDisplay;
+window.updateMediaInfo = updateMediaInfo;
 window.refreshAudioBadge = refreshAudioBadge;
 window.stbPlay = stbPlay;
 window.stbStop = stbStop;

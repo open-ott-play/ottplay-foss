@@ -2,7 +2,12 @@
  * UI management — info bar, dialogs, lists, volume, color, time display.
  */
 
-import { arrayGetCurProg, getCurProgData } from "../channels";
+import {
+    arrayGetCurProg,
+    getCurProgData,
+    type MediaHistoryEntry,
+    type MediaTarget,
+} from "../channels";
 import { video } from "../core";
 import { dispatchKey, keys, list_OnClick } from "../keyhandler";
 import { translate as _ } from "../localization";
@@ -1405,17 +1410,6 @@ export function showSelectBox(
     if (numprogElement) numprogElement.style.display = "";
     (window as any).selectBoxKeyHandler = function (e: number): boolean {
         clearTimeout((window as any).numTimeout);
-        // Click on a row: onclick="_doKey(-100 + index)"
-        if (e <= -100) {
-            var clickIdx = e + 100;
-            if (clickIdx >= 0 && clickIdx < n.length) {
-                s = clickIdx;
-                i(s);
-                if (numprogElement) numprogElement.style.display = "none";
-                (window as any).selectBoxKeyHandler = null;
-            }
-            return true;
-        }
         switch (e) {
             case keys.ENTER:
                 if (!a) i(s);
@@ -1431,8 +1425,24 @@ export function showSelectBox(
             case keys.DOWN:
                 r(s + 1);
                 return true;
+            case keys.LEFT:
+                r(0);
+                return true;
+            case keys.RIGHT:
+                r(n.length - 1);
+                return true;
+            default: {
+                // Rows dispatch -100 + index; -99 is the second row.
+                var clickIdx = e + 100;
+                if (clickIdx < 0 || clickIdx >= n.length) return false;
+                if (clickIdx === s) {
+                    if (!a) i(s);
+                    if (numprogElement) numprogElement.style.display = "none";
+                    (window as any).selectBoxKeyHandler = null;
+                } else r(clickIdx);
+                return true;
+            }
         }
-        return false;
     };
 }
 
@@ -1746,22 +1756,45 @@ export function initBackgroundIntervals(): void {
             w_t.stbIsPlaying()
         ) {
             w_t.updateArchiveInfo(w_t.playType + (w_t.playTime || 0));
+        } else if (
+            w_t.playType < 0 &&
+            typeof w_t.updateMediaInfo === "function"
+        ) {
+            w_t.updateMediaInfo();
         }
     }, 1000);
     setInterval(function () {
-        if (typeof (window as any).updateChanelInfo === "function") {
+        // Channel EPG must not replace the movie title/progress during VOD.
+        if (!(window as any).playType && typeof (window as any).updateChanelInfo === "function") {
             (window as any).updateChanelInfo((window as any).listChannel);
         }
     }, 30000);
 }
 
 /**
- * Update the video resolution display in the `#video_res` element from the video element's dimensions.
- *
- * @returns void
- * @sideeffect Sets `#video_res.innerHTML` to `<br/>WxH` if video dimensions are available.
+ * Refresh VOD progress through the active STB adapter, plus video resolution/audio badges.
+ * Progress is refreshed even while paused so a seek is reflected immediately.
  */
 export function updateMediaInfo(): void {
+    var w = window as any;
+    if (
+        w.playType < 0 &&
+        typeof w.stbGetPosTime === "function" &&
+        typeof w.stbGetLen === "function"
+    ) {
+        var position = Math.max(0, Number(w.stbGetPosTime()) || 0);
+        var duration = Number(w.stbGetLen());
+        if (duration > 0 && isFinite(duration)) {
+            $("#progress").css(
+                "width",
+                Math.min(100, (position / duration) * 100) + "%"
+            );
+            $("#begin_time").text(Math.round(position / 60));
+            $("#end_time").text(
+                "+" + Math.round(Math.max(0, duration - position) / 60)
+            );
+        }
+    }
     var resEl = document.getElementById("video_res");
     if (resEl && video && video.videoWidth)
         resEl.innerHTML = "<br/>" + video.videoWidth + "x" + video.videoHeight;
@@ -2105,7 +2138,7 @@ export function infoProgramm(title: string): void {
 export function infoMedia(): void {
     var la = (window as any).listArray || [];
     var si = (window as any).selIndex || 0;
-    if (!(la[si] && la[si].description)) return;
+    if (!getMediaDescr(la[si])) return;
     $("#listPopUp").hide();
     saveCPD();
     var t = la[si].title || "";
@@ -2141,7 +2174,7 @@ export function infoMedia(): void {
         return true;
     };
     $("#listAbout")
-        .html('<div id="_prd">' + (la[si].description || "") + "</div>")
+        .html('<div id="_prd">' + getMediaDescr(la[si]) + "</div>")
         .show();
 }
 
@@ -3730,120 +3763,167 @@ declare function mediaKeyHandler(keyCode: number): boolean;
  */
 function showMediaList1(): void {
     var w = window as any;
-    var data: any[] = w.mediaRecords || [];
+    var data: MediaHistoryEntry[] = w.mediaRecords || [];
+    w.selIndex = Math.max(
+        0,
+        Math.min((w.mediaSelects || [])[0] || 0, data.length - 1)
+    );
     w.listArray = data;
-    w.getListItemFn = function (item: any, _idx: number) {
-        return "&nbsp;&nbsp;" + (item.name || item.title || "");
+    w.listDataArray = data;
+    var rowHeight =
+        (window.innerHeight - 90 * getHeightK()) /
+            (w.pageSize || settings.pageSize) -
+        2;
+    w.getListItemFn = function (item: MediaHistoryEntry, _idx: number) {
+        return (
+            (w.sShowPikon
+                ? '<div class="img" style="background-image:url(\'' +
+                  (item.logo_30x30 || "") +
+                  "');width:" +
+                  rowHeight +
+                  "px;margin-left:" +
+                  6 * getWidthK() +
+                  'px;"></div>&nbsp;'
+                : "&nbsp;&nbsp;") + (item.title || item.name || "")
+        );
     };
     w.detailListActionFn = function () {
         var detailEl = document.getElementById("listDetail");
-        if (detailEl)
-            detailEl.innerHTML = getMediaDescr(w.listArray[w.selIndex]);
+        var item = data[w.selIndex];
+        if (!detailEl) return;
+        if (!item) {
+            detailEl.innerHTML = "";
+            return;
+        }
+        var descr = getMediaDescr(item);
+        var thumbnail =
+            item.logo_30x30 && descr.indexOf("<img") === -1
+                ? getThumbnail(item.logo_30x30)
+                : "";
+        detailEl.innerHTML =
+            '<div id="_prd" style="font-size:smaller;">' +
+            thumbnail +
+            descr +
+            "</div>";
+        if (!w.sNoSmall) $("img", $(detailEl)).not("#detal").remove();
+        if (typeof w.scrollUp === "function")
+            w.scrollUp(
+                "_prd",
+                $("#_prd").height() + 10 - $(detailEl).height(),
+                5000
+            );
     };
     w.listKeyHandlerFn = mediaKeyHandler;
-
     var captionEl = document.getElementById("listCaption");
-    if (captionEl) captionEl.innerHTML = w.mediaName || w._("Media Library");
-
+    if (captionEl)
+        captionEl.textContent =
+            (w.mediaNames || []).join(" / ") ||
+            w.mediaName ||
+            w._("Media Library");
+    var detailEl = document.getElementById("listDetail");
+    if (detailEl) detailEl.innerHTML = "";
     var podvalEl = document.getElementById("listPodval");
+    var urls: MediaTarget[] = w.mediaUrls || [];
     if (podvalEl) {
         podvalEl.innerHTML =
-            w.btnDiv(w.keys.RETURN, w.strRETURN, "Close") +
-            w.btnDiv(w.keys.GREEN, "", "Favorites") +
-            w.btnDiv(w.keys.YELLOW, "", "TMDb");
+            w.btnDiv(
+                w.keys.RED,
+                "",
+                "Close",
+                w.sArrowFun === 2 ? w.strRETURN : w.strPRECH,
+                "0"
+            ) +
+            (w.sArrowFun === 2
+                ? w.btnDiv(w.keys.LEFT, w.strLEFT, "Back")
+                : w.btnDiv(
+                      w.keys.RETURN,
+                      w.strRETURN,
+                      "Back",
+                      w.sRewFun === 1
+                          ? w.strRW
+                          : w.sPNFun === 1
+                            ? w.strPREV
+                            : ""
+                  )) +
+            w.btnDiv(w.keys.N2, w.strInfo, "Description", "2") +
+            (data.length && w.sFavorites !== -1 && urls.length > 1
+                ? w.btnDiv(
+                      w.keys.GREEN,
+                      "",
+                      urls[urls.length - 1] === -2
+                          ? "Delete"
+                          : "Add to favorites",
+                      w.strTools,
+                      "8"
+                  )
+                : "");
     }
-
+    $("#listPopUp").html("").hide();
     if (typeof w.showPage === "function") w.showPage();
 }
 
-/**
- * Navigate the media library hierarchy. Handles submenu entries, info/alert commands,
- * history/favorites lists, and fetching media arrays.
- *
- * @param e - The navigation target: null to refresh, a URL string to navigate into a folder,
- *            -1 for history, -2 for favorites, "submenu" for sub-level navigation.
- * @returns void
- * @sideeffect Modifies `window.mediaUrls`, `window.mediaNames`, `window.mediaSelects`,
- *             `window.mediaRecords`, `window.mediaRecordsPar`. Calls `showMediaList` or `showMediaList1`.
- * @analysis Tracks navigation state in parallel arrays (urls/names/selects) to support breadcrumb-style
- *             backwards navigation. "cmd:info" and "alert" commands show an infoBox instead of navigating.
- */
-export function mediaList(e: any): void {
-    var mediaUrls = (window as any).mediaUrls;
-    var mediaNames = (window as any).mediaNames;
-    var mediaSelects = (window as any).mediaSelects;
-    var mediaRecords = (window as any).mediaRecords;
-    var mediaRecordsPar = (window as any).mediaRecordsPar;
-    var selIndex = (window as any).selIndex;
-    var medHistory = (window as any).medHistory;
-    var medFavorites = (window as any).medFavorites;
-    if (mediaUrls && mediaUrls.length && e == mediaUrls[0]) {
-        (window as any).mediaName = "Медиатека";
-        (window as any).mediaUrls = [];
-        (window as any).mediaNames = [];
-        (window as any).mediaSelects = [mediaSelects.pop()];
+/** Navigate legacy provider VOD URLs, fXML submenus and local history/favorites. */
+export function mediaList(target: MediaTarget | null): void {
+    var w = window as any;
+    if (w.mediaUrls && w.mediaUrls.length && target === w.mediaUrls[0]) {
+        w.mediaName = w._("Media Library");
+        w.mediaUrls = [];
+        w.mediaNames = [];
+        w.mediaSelects = [w.mediaSelects.pop() || 0];
     }
-    if (e === null) {
-        if (mediaUrls === null) {
-            (window as any).mediaName = "Медиатека";
-            e = "";
-            (window as any).mediaUrls = [];
-            (window as any).mediaNames = [];
-            (window as any).mediaSelects = [0];
+    if (target === null) {
+        if (w.mediaUrls === null || w.mediaUrls === undefined) {
+            w.mediaName = w._("Media Library");
+            target = "";
+            w.mediaUrls = [];
+            w.mediaNames = [];
+            w.mediaSelects = [0];
+            w.mediaRecordsPar = null;
         } else {
             showMediaList1();
             return;
         }
     }
-    if (typeof e === "string") {
-        if (e === "submenu") {
-            mediaSelects.shift();
-            var t = mediaRecords[selIndex].submenu;
-            if (t === undefined || t.length === 0) {
+    if (typeof target === "string") {
+        if (target === "submenu") {
+            w.mediaSelects.shift();
+            var item: MediaHistoryEntry | undefined =
+                w.mediaRecords[w.selIndex];
+            var submenu = item && item.submenu;
+            if (!submenu || !submenu.length) {
                 infoBox("Error: Bad fXML Submenu!");
                 return;
             }
-            var r =
-                mediaRecords[selIndex].title ||
-                mediaRecords[selIndex].playlist_name ||
-                undefined;
-            mediaRecordsPar = mediaRecords;
-            (window as any).mediaRecords = t;
-            if (r) {
-                t = mediaNames;
-                (window as any).mediaNames = [r];
-            }
-            var s = mediaSelects[0];
-            mediaSelects[0] = 0;
+            w.mediaRecordsPar = w.mediaRecords;
+            w.mediaRecords = submenu;
+            var names = w.mediaNames;
+            var title = item!.title || item!.playlist_name;
+            if (title) w.mediaNames = [title];
+            var parentSelection = w.mediaSelects[0];
+            w.mediaSelects[0] = 0;
             showMediaList1();
-            mediaSelects[0] = s;
-            if (r) (window as any).mediaNames = t;
+            w.mediaSelects[0] = parentSelection;
+            w.mediaNames = names;
             return;
         }
-        if (e.indexOf("cmd:info") === 0 || e.indexOf("alert") === 0) {
-            mediaSelects.shift();
-            var n = /(?:cmd:info|alert)\(([^)]+)\)/;
-            var match = n.exec(e);
-            var i = match === null ? e : match[1];
-            infoBox(i);
+        if (target.indexOf("cmd:info") === 0 || target.indexOf("alert") === 0) {
+            w.mediaSelects.shift();
+            var match = /(?:cmd:info|alert)\(([^)]+)\)/.exec(target);
+            infoBox(match ? match[1] : target);
             return;
         }
     }
-    mediaUrls.push(e);
-    (window as any).mediaRecords = [];
-    if (mediaRecordsPar !== null) (window as any).mediaRecordsPar = null;
-    if (e == -1) {
-        (window as any).mediaRecords = medHistory;
+    if (!w.mediaUrls) w.mediaUrls = [];
+    w.mediaUrls.push(target);
+    w.mediaRecords = [];
+    w.mediaRecordsPar = null;
+    if (target === -1 || target === -2) {
+        w.mediaRecords = target === -1 ? w.medHistory : w.medFavorites;
         showMediaList();
-        return;
+    } else if (typeof w.getMediaArray === "function") {
+        // Providers populate mediaRecords and call the completion callback with no arguments.
+        w.getMediaArray(target, showMediaList);
     }
-    if (e == -2) {
-        (window as any).mediaRecords = medFavorites;
-        showMediaList();
-        return;
-    }
-    if (typeof (window as any).getMediaArray === "function")
-        (window as any).getMediaArray(e, showMediaList);
 }
 
 /* ---------------------------------------------------------------------------
