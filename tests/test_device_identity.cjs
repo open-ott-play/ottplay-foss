@@ -36,8 +36,8 @@ const swop = ts.transpileModule(
         .join("\n"),
     {
         compilerOptions: {
-            target: ts.ScriptTarget.ES5,
             module: ts.ModuleKind.None,
+            target: ts.ScriptTarget.ES5,
         },
     }
 ).outputText;
@@ -49,16 +49,16 @@ function fixture(options = {}) {
     const alerts = [];
     const rngCalls = [];
     const ui = {
-        html() {
-            return this;
-        },
-        show() {
+        find() {
             return this;
         },
         hide() {
             return this;
         },
-        find() {
+        html() {
+            return this;
+        },
+        show() {
             return this;
         },
         text() {
@@ -68,31 +68,31 @@ function fixture(options = {}) {
     const $ = () => ui;
     $.ajax = (request) => requests.push(request);
     const c = vm.createContext({
+        _: (message) => message,
         $,
-        requests,
+        alert: (message) => alerts.push(message),
         alerts,
-        storage,
-        rngCalls,
-        settings: { deviceUuid: "", swopBaseUrl: "https://swop.test" },
+        clearTimeout() {},
+        console,
+        document: {
+            getElementById() {
+                return null;
+            },
+        },
         localStorage: {
             getItem: (key) => storage[key] || null,
             setItem: (key, value) => {
                 storage[key] = value;
             },
         },
-        alert: (message) => alerts.push(message),
-        _: (message) => message,
+        requests,
+        rngCalls,
         saveSettings() {},
         setTimeout() {
             return 1;
         },
-        clearTimeout() {},
-        document: {
-            getElementById() {
-                return null;
-            },
-        },
-        console,
+        settings: { deviceUuid: "", swopBaseUrl: "https://swop.test" },
+        storage,
     });
     c.window = c;
     vm.runInContext(
@@ -145,7 +145,7 @@ assert.equal(fixture({ crypto: {}, rng: "msCrypto" }).deviceUUID, expected);
 for (const options of [
     {},
     { noTypedArrays: true },
-    { rng: "crypto", noTypedArrays: true },
+    { noTypedArrays: true, rng: "crypto" },
     { rng: "crypto", rngThrows: true },
 ]) {
     const c = fixture(options);
@@ -190,13 +190,13 @@ for (const storage of [
     { ott_device_uuid: "dev_existing_id" },
     { deviceId: "dev_previous_id" },
 ]) {
-    const c = fixture({ storage, noTypedArrays: true });
+    const c = fixture({ noTypedArrays: true, storage });
     assert.equal(
         c.ensureDeviceClientId(),
         storage.ott_device_uuid || storage.deviceId
     );
     assert.deepEqual(c.rngCalls, []);
-    const modern = fixture({ storage, rng: "crypto" });
+    const modern = fixture({ rng: "crypto", storage });
     assert.equal(
         modern.ensureDeviceClientId(),
         storage.ott_device_uuid || storage.deviceId

@@ -19,7 +19,7 @@
     "lint:fix": "biome check --write .",
     "package:modea": "node scripts/package-modea.cjs",
     "test": "node --import=tsx tests/test_channel_filtering.ts && node --import=tsx tests/test-epg-matching.ts && node --import=tsx tests/test_listKeyHandler_alias.ts && npm run test:port",
-    "test:port": "node tests/test_port_runtime.cjs && node --import=tsx tests/test_port_playback.ts && node tests/test_port_vod.cjs && node tests/test_port_stb_adapters.cjs && node tests/test_legacy_boot.cjs && node tests/test_port_edem_search.cjs && node tests/test_port_pause_intent.cjs && node tests/test_provider_storage_reset.cjs",
+    "test:port": "node tests/test_port_runtime.cjs && node --import=tsx tests/test_port_playback.ts && node tests/test_port_vod.cjs && node tests/test_port_stb_adapters.cjs && node tests/test_legacy_boot.cjs && node tests/test_device_identity.cjs && node tests/test_port_edem_search.cjs && node tests/test_port_pause_intent.cjs && node tests/test_provider_storage_reset.cjs",
     "typecheck": "tsc --noEmit"
   },
   "overrides": {
