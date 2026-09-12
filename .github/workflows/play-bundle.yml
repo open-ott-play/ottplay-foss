@@ -1,0 +1,87 @@
+name: Android Play upload bundle
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/play-bundle.yml'
+      - 'scripts/android/**'
+      - 'tests/test_play_upload_signing.py'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/play-bundle.yml'
+      - 'scripts/android/**'
+      - 'tests/test_play_upload_signing.py'
+
+permissions:
+  contents: read
+
+jobs:
+  signing-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify signing with disposable test keys
+        run: python3 -m unittest discover -s tests -p test_play_upload_signing.py -v
+
+  play-bundle:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: signing-contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+      - name: Build web assets and sync native project
+        run: |
+          npm ci --ignore-scripts
+          npm run build:mobile
+      - name: Build unsigned release bundle
+        working-directory: android
+        run: env -u KEYSTORE_FILE -u KEYSTORE_PASSWORD -u KEY_ALIAS -u KEY_PASSWORD ./gradlew --no-daemon bundleRelease
+      - name: Sign and verify Play upload bundle
+        env:
+          PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.PLAY_UPLOAD_KEYSTORE_BASE64 }}
+          PLAY_UPLOAD_STORE_PASSWORD: ${{ secrets.PLAY_UPLOAD_STORE_PASSWORD }}
+          PLAY_UPLOAD_KEY_ALIAS: ${{ secrets.PLAY_UPLOAD_KEY_ALIAS }}
+          PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEY_PASSWORD }}
+        run: |
+          python3 scripts/android/sign-play-bundle.py \
+            android/app/build/outputs/bundle/release/app-release.aab \
+            ottplay-foss-android-play-upload.aab
+      - name: Upload verified bundle for manual Play Console submission
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ottplay-play-upload-${{ github.sha }}
+          path: ottplay-foss-android-play-upload.aab
+          if-no-files-found: error
+          retention-days: 7
+      - name: Remove temporary upload keys
+        if: always()
+        run: |
+          python3 - <<'PYTHON'
+          import os
+          from pathlib import Path
+          import shutil
+          for directory in Path(os.environ["RUNNER_TEMP"]).glob("ott-play-upload-*"):
+              if directory.is_dir() and not directory.is_symlink():
+                  shutil.rmtree(directory)
+          PYTHON
