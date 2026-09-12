@@ -920,3 +920,7 @@ Optional Tauri auto-updater (GitHub Releases) and macOS notarization hooks are d
 ## Local Mac build helpers
 
 See [docs/local-build-scripts.md](docs/local-build-scripts.md).
+
+## Privacy
+
+Read the [privacy policy](docs/privacy-policy.md) for information about local settings, configured services and your choices. Privacy and support contact: [alvit.work@gmail.com](mailto:alvit.work@gmail.com).

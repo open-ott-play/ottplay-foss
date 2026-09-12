@@ -1,71 +1,49 @@
 # Privacy Policy — OTT-play FOSS
 
-**Last updated:** 2026-09-10
+Last updated: 2026-09-12
 
-This is a short privacy stub for store listings and users of **OTT-play FOSS** (`play.ott.foss`), an open-source IPTV/OTT player. It is not legal advice. A fuller policy may replace this page later; until then, this describes how the app is intended to work.
+Published by **alvit**. For privacy or support questions, contact [alvit.work@gmail.com](mailto:alvit.work@gmail.com).
 
-## Who we are
+## About this app
 
-OTT-play FOSS is a free and open-source project ([open-ott-play/ottplay-foss](https://github.com/open-ott-play/ottplay-foss)). The maintainers of this repository publish the app builds described here. We do not operate an IPTV service or host video content.
+OTT-play FOSS is an open-source player for playlists, media streams and programme guides that you configure. The project does not operate an IPTV service or host the video content you choose to play.
 
-## What the app does
+Project source and support: [OTT-play FOSS](https://github.com/open-ott-play/ottplay-foss), [support issues](https://github.com/open-ott-play/ottplay-foss/issues).
 
-- Plays media **on your device** from playlists and streams **you** configure (for example M3U / Xtream / Stalker-style endpoints you enter).
-- Optionally loads an Electronic Program Guide (EPG / XMLTV) from **URLs you configure**.
-- Keeps settings, favorites, and similar preferences in **on-device** storage (for example local storage / app preferences).
+Public Android builds do not use developer-operated servers by default. Connections described below use the services you configure.
 
-The app does **not** include Mag middleware DRM, proprietary Mag client/VOD stacks, or any requirement to use a particular commercial operator. Classic Mag JsHttpRequest client / VOD paths are out of scope for FOSS builds.
+## Information used by the app
 
-## Data we collect
+**Playlists, providers and programme guides.** The app uses playlist, provider, stream, logo and programme-guide addresses to load channel information and play media. Where your provider requires authentication, requests can include usernames, passwords, cookies, tokens or other account information supplied for that provider. A provider may also receive the channel or programme requested and ordinary network metadata such as your IP address and User-Agent.
 
-**We do not operate a baked-in analytics, advertising, crash-reporting, or tracking SDK** in the FOSS client as shipped from this repository.
+**Local settings.** The app stores preferences, favorites, configured endpoints and related settings on your device. Settings may contain access information embedded in provider or playlist addresses. Exported settings can include such information. Review exported JSON before copying it, sharing it or posting it for support. Importing settings changes local configuration only after your confirmation.
 
-In particular, store / Capacitor builds are documented as collecting **no personal data** for nutrition-label purposes: no tracking, no analytics product, and no device-info exfiltration to the project maintainers.
+**Optional remote control and text entry.** You can configure a local command URL or a Swop remote text-entry service. These features contact the configured service when enabled or used. The app creates or uses a persistent app device identifier for remote-service identification; this identifier can be sent as `X-Swop-Client-Id` to the selected Swop service. Swop sessions exchange session information and text that you enter, which may itself contain private information or credentials. The configured service operator can receive this information. Leave these features disabled if you do not want to use them.
 
-Optional debug / feedback helpers may send diagnostic messages only to a **companion host you run or configure** (for example a local `ottplay-server`), not to a third-party analytics vendor baked into the app.
+**Diagnostics and support.** Technical messages may describe playback or connection failures. Optional companion-host debug and feedback functions depend on the host and features you configure. If you share diagnostics, screenshots or settings for support, remove credentials, private URLs and other sensitive information first. GitHub issues are public.
 
-## Where streams and EPG go
+## Destinations and purposes
 
-When you play a channel or refresh a guide:
+Configured providers and services receive requests so they can supply playlists, authentication, programme information, media, remote commands or remote text entry. Their handling of requests, logs and account information depends on their own policies and your arrangement with them. An endpoint may be operated by a third party or by you; choosing the endpoint does not mean no information leaves your device.
 
-- Playlist, stream, logo, portal, and EPG requests go to the **endpoints you (or your operator) configured**.
-- Those operators / hosts receive whatever is normal for that request (for example IP address, User-Agent, cookies or tokens you supplied for that portal).
-- The OTT-play FOSS project maintainers do **not** sit in the middle of your playback unless you deliberately point a URL at infrastructure they run.
+Provider requests and optional remote features transmit the information described above. Your content providers and configured service operators may have their own logging or analytics practices.
 
-If you use an optional remote-control / webhook / “swop” style feature, traffic goes only to the services **you** enable and configure.
+## Network security
 
-## Children
+Security depends on the configured endpoint and supported protocol. Prefer HTTPS and trusted services. The app can work with endpoints that do not provide encryption, so it does not promise that every stream, playlist or authentication request is encrypted. Do not enter credentials or private text into an untrusted service.
 
-The app is a general-purpose media player. It is not directed at children under 13 (or the equivalent age in your region). Do not use it to collect personal information from children.
+Opening a project or support link contacts the selected website through your browser; that website's privacy practices apply.
 
-## Permissions (mobile)
+## Permissions
 
-Depending on platform, the app may request permissions needed for playback (for example network access, background audio, and on Android notifications for media controls). It does not require camera, contacts, microphone, or photo-library access for core playback.
+The Android app uses network access for playback and configured services. Foreground media playback, wake-lock and notification capabilities support playback and media controls. These permissions do not grant the project access to your contacts, microphone or phone camera.
 
-## Third parties
+## Local retention
 
-- **Content / IPTV operators** you configure — see above.
-- **Apple App Store / Google Play** — subject to their own privacy policies when you download or update the app through those stores.
-- **GitHub** (source, issues, releases) — subject to GitHub’s privacy policy if you interact with the project there.
+Saved settings remain on your device until you change or remove them or clear the app's local data. Temporary display state and diagnostic buffers can be replaced as the app runs. Native diagnostic files, exported files and operating-system backups may remain separately; manage those through the app or operating system and remove any copies you shared when no longer needed. This policy does not set retention periods for services operated by others.
 
-There are **no in-app ads** and **no sold user profiles** in the FOSS client as shipped.
+## Your choices and deletion
 
-## Your choices
+You can change or remove configured providers, guides and optional remote-service settings. You can remove local app information through your operating system's app-data controls. An exported settings file or copied JSON remains wherever you saved or shared it until you remove it there. Platform backups, if enabled, follow your platform settings.
 
-- Do not enter playlists, credentials, or EPG URLs you do not trust.
-- Clear app data / reinstall to remove on-device settings and favorites.
-- Prefer HTTPS endpoints where your operator supports them.
-- Review this repository’s source if you need to verify network behavior.
-
-## Changes
-
-We may update this stub as the project evolves (for example when a fuller policy is published). The “Last updated” date at the top will change when we do. Continued use of store builds after an update means you should re-read this page.
-
-## Contact
-
-- Project issues: [https://github.com/open-ott-play/ottplay-foss/issues](https://github.com/open-ott-play/ottplay-foss/issues)
-- Source: [https://github.com/open-ott-play/ottplay-foss](https://github.com/open-ott-play/ottplay-foss)
-
-For store listing fields, use this document’s stable URL:
-
-`https://github.com/open-ott-play/ottplay-foss/blob/main/docs/privacy-policy.md`
+Removing local data or uninstalling the app does not delete information already received by a provider, remote service or support website. Ask the applicable operator about its retention and deletion practices. Provider accounts remain with those providers; account-deletion requests should be directed to them.
