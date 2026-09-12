@@ -1006,7 +1006,9 @@ export function getEPGchanelCached(
                     : result && Array.isArray(result.epg_data)
                       ? result.epg_data
                       : null;
-                if (epgData) {
+                // Never cache [] — empty is truthy in JS and would permanently
+                // skip re-fetch after a cold-XMLTV miss (Mode B warm race).
+                if (epgData && epgData.length > 0) {
                     epg[channelId] = epgData;
                     callback(channelId, epgData);
                 } else {
@@ -1058,7 +1060,8 @@ export function getEPGchanelCached(
                     : result && Array.isArray(result.epg_data)
                       ? result.epg_data
                       : null;
-                if (epgData) {
+                // Never cache [] — see Capacitor branch (cold XMLTV miss).
+                if (epgData && epgData.length > 0) {
                     epg[channelId] = epgData;
                     callback(channelId, epgData);
                 } else {

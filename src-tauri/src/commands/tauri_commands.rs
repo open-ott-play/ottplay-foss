@@ -25,7 +25,7 @@ pub struct SleepResult {
 
 /// Shared shell state.
 pub struct TauriState {
-    /// Cached XMLTV (refreshed lazily; background refresh not wired in this scaffold).
+    /// Cached XMLTV (startup warm + single-flight ensure; empty never stored).
     pub xmltv_cache: Arc<RwLock<Option<ottplay_core::xmltv::XmltvCache>>>,
     /// EPG URLs: configured via EPG_URLS env var or default for desktop Mode B.
     /// Falls back to http://epg.it999.ru/epg2.xml.gz when unset, so get_epg
@@ -35,6 +35,9 @@ pub struct TauriState {
     pub epg_to_xmltv: Arc<RwLock<HashMap<String, String>>>,
     /// epg_hash → time_shift_hours map populated by match_channels.
     pub time_shift_by_epg: Arc<RwLock<HashMap<String, i64>>>,
+    /// Single-flight gate so cold XMLTV fetch (≈40MB gz / hundreds of MB XML)
+    /// is not duplicated by concurrent get_epg / match_channels / startup warm.
+    pub xmltv_fetch_lock: Arc<tokio::sync::Mutex<()>>,
     /// In-memory command queue for Mode B native webhook / polling API.
     pub command_queues: SharedQueues,
 }
@@ -86,6 +89,113 @@ pub fn init_xmltv_urls() -> Vec<String> {
     }
 }
 
+/// True when the in-memory XMLTV cache has at least one channel.
+async fn xmltv_is_warm(state: &TauriState) -> bool {
+    let guard = state.xmltv_cache.read().await;
+    matches!(guard.as_ref(), Some(c) if !c.channels.is_empty())
+}
+
+/// Ensure XMLTV is loaded (Mode B). Single-flight; never caches a 0-channel result
+/// (companion sometimes gets a transient empty parse — storing it left EPG blank
+/// until restart). Used by get_epg / match_channels / match_logos / startup warm.
+pub async fn ensure_xmltv_cache(state: &TauriState) -> Result<(usize, usize), String> {
+    if xmltv_is_warm(state).await {
+        let guard = state.xmltv_cache.read().await;
+        let c = guard.as_ref().unwrap();
+        let n_pr: usize = c.programs.values().map(|v| v.len()).sum();
+        return Ok((c.channels.len(), n_pr));
+    }
+
+    let _gate = state.xmltv_fetch_lock.lock().await;
+
+    // Winner may have filled the cache while we waited for the lock.
+    if xmltv_is_warm(state).await {
+        let guard = state.xmltv_cache.read().await;
+        let c = guard.as_ref().unwrap();
+        let n_pr: usize = c.programs.values().map(|v| v.len()).sum();
+        return Ok((c.channels.len(), n_pr));
+    }
+
+    // Drop any prior empty Some(...) so we do not serve a permanent blank.
+    {
+        let mut w = state.xmltv_cache.write().await;
+        if let Some(c) = w.as_ref() {
+            if c.channels.is_empty() {
+                *w = None;
+            }
+        }
+    }
+
+    let urls: Vec<String> = state.epg_urls.read().await.iter().cloned().collect();
+    if urls.is_empty() {
+        return Err("EPG cache empty and no XMLTV URLs configured".to_string());
+    }
+
+    tracing::info!("[EPG] Mode B fetching {} source(s)...", urls.len());
+    let fresh = ottplay_core::fetch_xmltv(&urls)
+        .await
+        .map_err(|e| e.to_string())?;
+    let n_ch = fresh.channels.len();
+    let n_pr: usize = fresh.programs.values().map(|v| v.len()).sum();
+    if n_ch == 0 {
+        tracing::warn!("[EPG] Fetch returned 0 channels — not caching (will retry)");
+        return Err("EPG fetch returned 0 channels".to_string());
+    }
+    tracing::info!("[EPG] Loaded {n_ch} channels, {n_pr} programmes");
+    *state.xmltv_cache.write().await = Some(fresh);
+    Ok((n_ch, n_pr))
+}
+
+/// Background warm + 2h refresh (Mode A companion parity). Emits `epg-cache-ready`
+/// so JS can clear time_request misses and progressively refill list/podval/EPG menu.
+pub fn spawn_xmltv_warm(app: tauri::AppHandle, state: &TauriState) {
+    use tauri::Emitter;
+
+    // Clone Arc handles so the warm task outlives setup().
+    let warm_state = TauriState {
+        xmltv_cache: state.xmltv_cache.clone(),
+        epg_urls: state.epg_urls.clone(),
+        epg_to_xmltv: state.epg_to_xmltv.clone(),
+        time_shift_by_epg: state.time_shift_by_epg.clone(),
+        xmltv_fetch_lock: state.xmltv_fetch_lock.clone(),
+        command_queues: state.command_queues.clone(),
+    };
+
+    tauri::async_runtime::spawn(async move {
+        match ensure_xmltv_cache(&warm_state).await {
+            Ok((n_ch, n_pr)) => {
+                let _ = app.emit(
+                    "epg-cache-ready",
+                    serde_json::json!({ "channels": n_ch, "programmes": n_pr }),
+                );
+            }
+            Err(e) => tracing::warn!("[EPG] Startup warm failed: {e}"),
+        }
+
+        // Periodic refresh like src-rs/server (every 2h).
+        let mut ticker = tokio::time::interval(std::time::Duration::from_secs(2 * 3600));
+        ticker.tick().await; // skip immediate tick (just warmed)
+        loop {
+            ticker.tick().await;
+            // Force re-fetch: clear cache under the single-flight lock.
+            {
+                let _gate = warm_state.xmltv_fetch_lock.lock().await;
+                *warm_state.xmltv_cache.write().await = None;
+            }
+            match ensure_xmltv_cache(&warm_state).await {
+                Ok((n_ch, n_pr)) => {
+                    tracing::info!("[EPG] Background refresh ok ({n_ch} ch, {n_pr} pr)");
+                    let _ = app.emit(
+                        "epg-cache-ready",
+                        serde_json::json!({ "channels": n_ch, "programmes": n_pr }),
+                    );
+                }
+                Err(e) => tracing::warn!("[EPG] Background refresh failed: {e}"),
+            }
+        }
+    });
+}
+
 /// `invoke('get_epg', {hash, channelId, ch, timeShiftHours})` → JSON EPG slice (Tauri 2 camelCase).
 ///
 /// Mirrors `src-rs/server/src/main.rs::epg_handler`:
@@ -100,6 +210,9 @@ pub async fn get_epg(
     ch: Option<String>,
     time_shift_hours: i64,
 ) -> Result<JsonValue, String> {
+    // Ensure before taking map locks — never hold epg_to_xmltv across a 40MB fetch.
+    ensure_xmltv_cache(&state).await?;
+
     let epg_map = state.epg_to_xmltv.read().await;
     let shift_map = state.time_shift_by_epg.read().await;
     let mut shift = time_shift_hours;
@@ -110,37 +223,7 @@ pub async fn get_epg(
     }
 
     let cache_guard = state.xmltv_cache.read().await;
-    let cache = cache_guard.as_ref();
-
-    if cache.is_none() {
-        // Cold cache: attempt a one-shot fetch if URLs configured.
-        let urls: Vec<String> = state
-            .epg_urls
-            .read()
-            .await
-            .iter()
-            .cloned()
-            .collect();
-        if urls.is_empty() {
-            return Err("EPG cache empty and no XMLTV URLs configured".to_string());
-        }
-        drop(cache_guard);
-        let fresh = ottplay_core::fetch_xmltv(&urls)
-            .await
-            .map_err(|e| e.to_string())?;
-        let mut w = state.xmltv_cache.write().await;
-        *w = Some(fresh);
-        let cache = w.as_ref().ok_or("EPG cache still empty")?;
-        let xmltv_id = resolve_xmltv_id(cache, &hash, &channel_id, ch.as_deref(), &epg_map);
-        return Ok(ottplay_core::get_epg_slice(
-            cache,
-            &hash,
-            &xmltv_id,
-            shift,
-        ).await);
-    }
-
-    let cache = cache.ok_or("EPG cache empty")?;
+    let cache = cache_guard.as_ref().ok_or("EPG cache empty")?;
     let xmltv_id = resolve_xmltv_id(cache, &hash, &channel_id, ch.as_deref(), &epg_map);
     Ok(ottplay_core::get_epg_slice(
         cache,

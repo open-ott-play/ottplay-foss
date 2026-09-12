@@ -1882,6 +1882,7 @@ function onStbReady(): void {
         // attempt to reset window.getEPGchanel (as they do in loadProv → getScriptDOM callback).
         if (typeof window.__TAURI__ !== "undefined") {
             setupTauriEpgOverride();
+            setupTauriEpgCacheReady();
             setupTauriCompanionShim();
             if (typeof setupStalkerPortalShim === "function")
                 setupStalkerPortalShim();
@@ -2404,9 +2405,76 @@ function setupTauriEpgOverride(): void {
             })
             .catch((error: any) => {
                 console.error("[Tauri] get_epg failed:", error);
-                callback(chId, []);
+                // null (not []) so setCurProg rate-limits via time_request without
+                // poisoning window.epgCache with a truthy empty array.
+                callback(chId, null as any);
             });
     };
+}
+
+/**
+ * Listen for Rust `epg-cache-ready` (startup warm / refresh). Clears
+ * time_request miss locks and empty JS EPG cache entries so channel list,
+ * podval now/next, and EPG menu progressively refill once XMLTV is warm —
+ * matching Mode A companion where the cache is already hot at first paint.
+ */
+function setupTauriEpgCacheReady(): void {
+    if (typeof window.__TAURI__ === "undefined") return;
+    if ((window as any).__ottEpgCacheReady) return;
+    (window as any).__ottEpgCacheReady = true;
+    const eventApi = (window as any).__TAURI__?.event;
+    if (!eventApi || typeof eventApi.listen !== "function") {
+        console.warn("[Tauri] epg-cache-ready: event.listen unavailable");
+        return;
+    }
+    eventApi
+        .listen("epg-cache-ready", function (_ev: any) {
+            try {
+                console.log("[Tauri] epg-cache-ready — refilling EPG");
+                const cmap =
+                    (window as any).chanels || (window as any).channels || null;
+                if (cmap) {
+                    for (const key of Object.keys(cmap)) {
+                        const ch = cmap[key];
+                        if (!ch) continue;
+                        if (ch.time_request) ch.time_request = 0;
+                    }
+                }
+                const cache = (window as any).epgCache || epg;
+                if (cache && typeof cache === "object") {
+                    for (const key of Object.keys(cache)) {
+                        const arr = cache[key];
+                        if (!arr || (Array.isArray(arr) && arr.length === 0)) {
+                            delete cache[key];
+                        }
+                    }
+                }
+                // Visible channel list: re-queue getCurProgData via showPage.
+                if (
+                    (window as any).isListVisible &&
+                    typeof (window as any).showPage === "function"
+                ) {
+                    (window as any).showPage();
+                }
+                // Podval / info1 for the playing channel.
+                const curId =
+                    typeof (window as any).curList !== "undefined" &&
+                    typeof (window as any).primaryIndex === "number"
+                        ? (window as any).curList[(window as any).primaryIndex]
+                        : null;
+                if (
+                    curId != null &&
+                    typeof (window as any).updateChanelInfo === "function"
+                ) {
+                    (window as any).updateChanelInfo(curId);
+                }
+            } catch (e) {
+                console.warn("[Tauri] epg-cache-ready handler failed:", e);
+            }
+        })
+        .catch(function (e: any) {
+            console.warn("[Tauri] epg-cache-ready listen failed:", e);
+        });
 }
 
 /* ---------------------------------------------------------------------------
@@ -3121,6 +3189,8 @@ if (typeof window.__TAURI__ !== "undefined") {
 // Do not use $("#list").is(":visible") — #list has no CSS display:none, so after
 // showPage clears inline style it stays :visible and falsely hides the strip.
 if (typeof window.__TAURI__ !== "undefined") {
+    setupTauriEpgOverride();
+    setupTauriEpgCacheReady();
     setupTauriCompanionShim();
     (function () {
         const CLASS = "ott-tauri-frameless";

@@ -53,6 +53,7 @@ pub fn run() {
             epg_urls: Arc::new(RwLock::new(epg_urls.clone())),
             epg_to_xmltv: Arc::new(RwLock::new(HashMap::new())),
             time_shift_by_epg: Arc::new(RwLock::new(HashMap::new())),
+            xmltv_fetch_lock: Arc::new(tokio::sync::Mutex::new(())),
             command_queues: command_queues.clone(),
         })
         .invoke_handler(tauri::generate_handler![
@@ -131,6 +132,13 @@ pub fn run() {
                     window.navigate(url)?;
                 }
             }
+
+            // Mode A companion warms XMLTV before serving; Mode B must too or the
+            // first get_epg/match_channels pays a multi-second 40MB gz parse and
+            // can permanently cache a transient 0-channel miss.
+            let handle = app.handle().clone();
+            commands::tauri_commands::spawn_xmltv_warm(handle, &*app.state::<TauriState>());
+
             Ok(())
         })
         .run(tauri::generate_context!())

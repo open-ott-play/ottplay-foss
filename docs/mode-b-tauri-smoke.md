@@ -120,6 +120,7 @@ Run on **macOS / Windows / Linux** desktop window. Skip rows that need credentia
 
 - [ ] Configure a public or operator XMLTV/EPG source you are allowed to use (no secrets in repo)
 - [ ] Channel guide / now-next populates for at least one channel
+- [ ] Cold start: after playlist names appear, list rows / podval now-next / EPG menu fill once XMLTV warm finishes (startup preload + `epg-cache-ready`; not permanently empty)
 - [ ] Airplane mode or kill network briefly → stale cache still serves if previously warm (honest offline path)
 
 ### E. Stalker portal (FOSS JSON-RPC)
