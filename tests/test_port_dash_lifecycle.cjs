@@ -23,7 +23,7 @@ function deferred() {
     });
     return { promise, reject, resolve };
 }
-function fixture() {
+function fixture(legacyProxy = false) {
     const calls = [],
         supports = [],
         plays = [],
@@ -80,6 +80,49 @@ function fixture() {
             return d.promise;
         },
     };
+    const optionalCalls = [];
+    let dashBridge = dash;
+    if (legacyProxy) {
+        // Use the installed Capacitor SDK itself: old APK headers lack the new methods,
+        // but property reads still produce function proxies that reject UNIMPLEMENTED.
+        const sdk = {
+            androidBridge: {},
+            Capacitor: {
+                nativePromise: (_plugin, method, options) =>
+                    dash[method](options),
+                PluginHeaders: [
+                    {
+                        methods: [
+                            "isDashSupported",
+                            "playDash",
+                            "stopDash",
+                            "pauseDash",
+                            "resumeDash",
+                        ].map((name) => ({ name, rtype: "promise" })),
+                        name: "DashExoPlayer",
+                    },
+                ],
+            },
+            console: { error() {}, warn() {} },
+            exports: {},
+        };
+        vm.runInNewContext(
+            fs.readFileSync(require.resolve("@capacitor/core"), "utf8"),
+            sdk
+        );
+        const proxy = sdk.exports.Capacitor.registerPlugin("DashExoPlayer");
+        dashBridge = new Proxy(proxy, {
+            get(target, name) {
+                const method = target[name];
+                if (name !== "seekDash" && name !== "getPlaybackState")
+                    return method;
+                return (...args) => {
+                    optionalCalls.push(name);
+                    return method(...args);
+                };
+            },
+        });
+    }
     let webPlaying = false;
     const w = {
         bgMeta: () => ({
@@ -96,7 +139,7 @@ function fixture() {
             timers.delete(id);
         },
         console: { warn() {} },
-        DashExoPlayer: dash,
+        DashExoPlayer: dashBridge,
         forcePlay: true,
         setInterval(fn) {
             const id = ++timerId;
@@ -136,7 +179,18 @@ function fixture() {
     w.window = w;
     vm.createContext(w);
     vm.runInContext(code, w);
-    return { calls, dash, plays, states, stops, supports, timers, w };
+    return {
+        calls,
+        dash,
+        dashBridge,
+        optionalCalls,
+        plays,
+        states,
+        stops,
+        supports,
+        timers,
+        w,
+    };
 }
 const tests = [];
 const test = (name, fn) => tests.push([name, fn]);
@@ -323,6 +377,144 @@ test("zero seek during native support detection survives the web fallback", asyn
     supports[0].resolve({ ok: false, unsupported: true });
     await tick();
     assert.equal(calls.find((c) => c[0] === "webPlay")[2], 0);
+});
+test("actual Capacitor proxies disable missing APK methods without falsifying seek position", async () => {
+    const { w, dashBridge, optionalCalls, supports, plays, stops, timers } =
+        fixture(true);
+    assert.equal(typeof dashBridge.seekDash, "function");
+    assert.equal(typeof dashBridge.getPlaybackState, "function");
+    w.stbPlay("old-apk.mpd", 12);
+    await tick();
+    supports[0].resolve({ ok: true });
+    await tick();
+    plays[0].resolve({ ok: true });
+    await tick();
+    assert.equal(timers.size, 0, "UNIMPLEMENTED polling is disabled");
+    w.stbSetPosTime(99);
+    await tick();
+    assert.equal(w.stbGetPosTime(), 12);
+    w.stbSetPosTime(88);
+    await tick();
+    assert.deepEqual(optionalCalls, ["getPlaybackState", "seekDash"]);
+    w.stbPlay("next.mpd", 7);
+    await tick();
+    stops[0].resolve({ ok: true });
+    await tick();
+    supports[1].resolve({ ok: true });
+    await tick();
+    plays[1].resolve({ ok: true });
+    await tick();
+    w.stbSetPosTime(44);
+    await tick();
+    assert.equal(w.stbGetPosTime(), 7);
+    assert.deepEqual(
+        optionalCalls,
+        ["getPlaybackState", "seekDash"],
+        "Missing methods stay disabled for this installed APK"
+    );
+});
+test("overlapping native seeks commit only acknowledgements and retain pause on failure", async () => {
+    const { w, dash, supports, plays, states, timers } = fixture();
+    const seeks = [];
+    dash.seekDash = (options) => {
+        const pending = deferred();
+        seeks.push({ ...pending, position: options.position });
+        return pending.promise;
+    };
+    w.stbPlay("movie.mpd", 12);
+    supports[0].resolve({ ok: true });
+    await tick();
+    plays[0].resolve({ ok: true });
+    await tick();
+    states[0].resolve({
+        duration: 300,
+        ended: false,
+        ok: true,
+        playing: true,
+        position: 12,
+    });
+    await tick();
+    w.stbSetPosTime(70);
+    await tick();
+    w.stbSetPosTime(99);
+    w.stbPause();
+    for (const callback of timers.values()) callback();
+    assert.equal(
+        w.stbGetPosTime(),
+        12,
+        "Pending seeks are not confirmed playback positions"
+    );
+    assert.equal(states.length, 1, "No poll races an outstanding seek");
+    seeks[0].resolve({ ok: true });
+    await tick();
+    assert.equal(w.stbGetPosTime(), 70);
+    assert.equal(seeks[1].position, 99);
+    seeks[1].reject(new Error("temporary native seek failure"));
+    await tick();
+    assert.equal(
+        w.stbGetPosTime(),
+        70,
+        "Failure preserves the last acknowledged position"
+    );
+    assert.equal(w.stbIsPlaying(), false);
+    w.stbSetPosTime(80);
+    await tick();
+    seeks[2].resolve({ ok: false, unsupported: true });
+    await tick();
+    w.stbSetPosTime(90);
+    await tick();
+    assert.equal(
+        seeks.length,
+        3,
+        "Explicit unsupported replies disable future seek calls"
+    );
+    assert.equal(w.stbGetPosTime(), 70);
+});
+test("late native seek acknowledgement cannot overwrite a new play or stopped session", async () => {
+    const { w, dash, supports, plays, stops } = fixture();
+    const pending = deferred();
+    dash.seekDash = () => pending.promise;
+    w.stbPlay("old.mpd", 12);
+    supports[0].resolve({ ok: true });
+    await tick();
+    plays[0].resolve({ ok: true });
+    await tick();
+    w.stbSetPosTime(99);
+    await tick();
+    w.stbPlay("new.mpd", 7);
+    assert.equal(w.stbGetPosTime(), 7);
+    pending.resolve({ ok: true });
+    await tick();
+    assert.equal(w.stbGetPosTime(), 7);
+    stops[0].resolve({ ok: true });
+    await tick();
+    w.stbStop();
+    supports[1].resolve({ ok: true });
+    await tick();
+    assert.equal(plays.length, 1);
+    assert.equal(w.stbIsPlaying(), false);
+});
+test("failed end restart keeps the ended position instead of claiming a seek to zero", async () => {
+    const { w, dash, supports, plays, states, calls } = fixture();
+    dash.seekDash = () => Promise.reject({ code: "UNIMPLEMENTED" });
+    w.stbPlay("ended.mpd");
+    supports[0].resolve({ ok: true });
+    await tick();
+    plays[0].resolve({ ok: true });
+    await tick();
+    states[0].resolve({
+        duration: 300,
+        ended: true,
+        ok: true,
+        playing: false,
+        position: 300,
+    });
+    await tick();
+    w.stbContinue();
+    await tick();
+    assert.equal(w.stbGetPosTime(), 300);
+    assert.equal(w.stbIsPlaying(), false);
+    assert.ok(!calls.some((call) => call[0] === "resumeDash"));
 });
 (async () => {
     let failures = 0;

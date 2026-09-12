@@ -2722,35 +2722,53 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         // Capacitor Mode C: native always-on-top PiP window.
         const origPlayPip = window.stbPlayPip;
         const origStopPip = window.stbStopPip;
-        window.stbPlayPip = function (url: string): void {
-            cap.playPip({ url })
-                .then((res: { ok?: boolean }) => {
-                    if (res && res.ok) {
-                        try {
-                            const el = document.getElementById("videopip");
-                            if (el) (el as HTMLElement).style.display = "none";
-                        } catch (_e) {}
-                        return;
+        let pipSession = 0;
+        let pipCommands: Promise<void> | null = null;
+        function queuePip(command: () => Promise<unknown>): void {
+            const pending = (pipCommands || Promise.resolve())
+                .then(command)
+                .then(
+                    () => {},
+                    (error: unknown) => {
+                        console.warn("[Capacitor] PiP command failed:", error);
                     }
-                    console.warn(
-                        "[Capacitor] playPip not ok, CSS fallback:",
-                        res
-                    );
-                    if (typeof origPlayPip === "function") origPlayPip(url);
-                })
-                .catch((e: any) => {
+                );
+            pipCommands = pending;
+            pending.then(() => {
+                if (pipCommands === pending) pipCommands = null;
+            });
+        }
+        window.stbPlayPip = function (url: string): void {
+            const session = ++pipSession;
+            if (typeof origStopPip === "function") origStopPip();
+            queuePip(() => {
+                if (session !== pipSession) return Promise.resolve();
+                const fallback = (error: unknown): void => {
+                    if (session !== pipSession) return;
                     console.warn(
                         "[Capacitor] playPip failed, CSS fallback:",
-                        e
+                        error
                     );
                     if (typeof origPlayPip === "function") origPlayPip(url);
-                });
+                };
+                return Promise.resolve()
+                    .then(() => cap.playPip({ url }))
+                    .then((res) => {
+                        if (session !== pipSession) return;
+                        if (!res || !res.ok || res.unsupported) {
+                            fallback(res);
+                            return;
+                        }
+                        const el = document.getElementById("videopip");
+                        if (el) (el as HTMLElement).style.display = "none";
+                    }, fallback);
+            });
         };
         window.stbStopPip = function (): void {
-            cap.stopPip().catch((e: any) =>
-                console.warn("[Capacitor] stopPip failed:", e)
-            );
+            ++pipSession;
             if (typeof origStopPip === "function") origStopPip();
+            // The in-flight native play must settle before its overlay can be stopped.
+            queuePip(() => cap.stopPip());
         };
 
         // Capacitor Mode C: full-window fullscreen.
@@ -2877,6 +2895,8 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         let _dashMode: "stopped" | "checking" | "web" | "native" = "stopped";
         let _dashPaused = false;
         let _dashStateVersion = 0;
+        let _dashSeekVersion = 0;
+        let _dashSeeking = false;
         let _nativeDash = false;
         let _dashCommands: Promise<void> | null = null;
         let _dashPollInFlight: Promise<DashPlaybackSnapshot> | null = null;
@@ -2886,6 +2906,7 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
             duration: number;
             playing: boolean;
             ended: boolean;
+            unsupported?: boolean;
         };
         let _dashState: DashPlaybackSnapshot = {
             duration: 0,
@@ -2899,8 +2920,16 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
             getPlaybackState?: () => Promise<DashPlaybackSnapshot>;
             seekDash?: (options: {
                 position: number;
-            }) => Promise<{ ok: boolean }>;
+            }) => Promise<{ ok: boolean; unsupported?: boolean }>;
         };
+        let _dashCanPoll = typeof dash.getPlaybackState === "function";
+        let _dashCanSeek = typeof dash.seekDash === "function";
+        // Capacitor proxies expose functions even when the installed APK lacks a method.
+        function isUnsupportedDashMethod(result: unknown): boolean {
+            if (!result || typeof result !== "object") return false;
+            const value = result as { code?: string; unsupported?: boolean };
+            return value.code === "UNIMPLEMENTED" || value.unsupported === true;
+        }
         const origPlay = window.stbPlay;
         const origStop = window.stbStop;
         const origPause = window.stbPause;
@@ -2974,14 +3003,22 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
             if (
                 !isCurrentDash(session) ||
                 _dashPollInFlight ||
-                typeof dash.getPlaybackState !== "function"
+                _dashSeeking ||
+                !_dashCanPoll
             )
                 return;
             const version = _dashStateVersion;
-            const request = dash.getPlaybackState();
+            const request = Promise.resolve().then(() =>
+                dash.getPlaybackState!()
+            );
             _dashPollInFlight = request;
             request
                 .then((state) => {
+                    if (isUnsupportedDashMethod(state)) {
+                        _dashCanPoll = false;
+                        stopDashPoll();
+                        return;
+                    }
                     if (
                         !isCurrentDash(session) ||
                         version !== _dashStateVersion
@@ -3007,8 +3044,11 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                                 : _dashState.position,
                     };
                 })
-                .catch(() => {
-                    if (isCurrentDash(session)) stopDashPoll();
+                .catch((error: unknown) => {
+                    if (isUnsupportedDashMethod(error)) {
+                        _dashCanPoll = false;
+                        stopDashPoll();
+                    } else if (isCurrentDash(session)) stopDashPoll();
                 })
                 .then(() => {
                     if (_dashPollInFlight === request) _dashPollInFlight = null;
@@ -3016,9 +3056,37 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         }
         function startDashPoll(session: number): void {
             stopDashPoll();
-            if (typeof dash.getPlaybackState !== "function") return;
+            if (!_dashCanPoll) return;
             pollDashState(session);
             _dashPollTimer = setInterval(() => pollDashState(session), 1000);
+        }
+        function seekNativeDash(
+            position: number,
+            session: number
+        ): Promise<boolean> {
+            if (!isCurrentDash(session) || !_dashCanSeek)
+                return Promise.resolve(false);
+            return Promise.resolve()
+                .then(() => dash.seekDash!({ position }))
+                .then((result) => {
+                    if (isUnsupportedDashMethod(result)) _dashCanSeek = false;
+                    if (
+                        !isCurrentDash(session) ||
+                        !result ||
+                        !result.ok ||
+                        result.unsupported
+                    )
+                        return false;
+                    _dashStateVersion++;
+                    _dashState.position = position;
+                    _dashState.ended = false;
+                    return true;
+                })
+                .catch((error: unknown) => {
+                    if (isUnsupportedDashMethod(error)) _dashCanSeek = false;
+                    console.warn("[Capacitor] DASH seek failed:", error);
+                    return false;
+                });
         }
         function isDashUrl(url: string): boolean {
             return /\.mpd(?:[?#]|$)/i.test(url);
@@ -3076,6 +3144,8 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         window.stbPlay = function (url: string, position?: number): void {
             const session = ++_dashSession;
             _dashStateVersion++;
+            _dashSeekVersion++;
+            _dashSeeking = false;
             stopBgPosTimer();
             const stopped = stopNativeDash();
             _dashPaused = false;
@@ -3157,6 +3227,8 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         window.stbStop = function (): void {
             _dashSession++;
             _dashStateVersion++;
+            _dashSeekVersion++;
+            _dashSeeking = false;
             _dashMode = "stopped";
             _dashPaused = true;
             (window as any).forcePlay = false;
@@ -3190,7 +3262,7 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         };
         window.stbContinue = function (): void {
             if (usesDashState()) {
-                if (!_dashPaused && _dashState.playing) {
+                if (!_dashPaused && _dashState.playing && !_dashState.ended) {
                     window.stbPause();
                     return;
                 }
@@ -3198,16 +3270,19 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                 _dashPaused = false;
                 _dashStateVersion++;
                 _dashState.playing = true;
-                _dashState.ended = false;
-                if (restart) _dashState.position = 0;
+                if (!restart) _dashState.ended = false;
                 (window as any).forcePlay = true;
                 const session = _dashSession;
                 if (_nativeDash)
                     queueDash(() => {
                         if (!isCurrentDash(session)) return Promise.resolve();
-                        if (restart && typeof dash.seekDash === "function") {
-                            return dash.seekDash({ position: 0 }).then(() => {
-                                if (isCurrentDash(session))
+                        if (restart) {
+                            return seekNativeDash(0, session).then((ok) => {
+                                if (
+                                    ok &&
+                                    isCurrentDash(session) &&
+                                    !_dashPaused
+                                )
                                     return dash.resumeDash();
                             });
                         }
@@ -3253,21 +3328,24 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                 if (typeof origSeek === "function") origSeek(position);
                 return;
             }
-            if (
-                !Number.isFinite(position) ||
-                position < 0 ||
-                typeof dash.seekDash !== "function"
-            )
+            if (!Number.isFinite(position) || position < 0) return;
+            // While choosing a backend, this is the requested playDash/web start offset.
+            if (_dashMode === "checking") {
+                _dashStateVersion++;
+                _dashState.position = position;
+                _dashState.ended = false;
                 return;
+            }
+            if (!_dashCanSeek) return;
             _dashStateVersion++;
-            _dashState.position = position;
-            _dashState.ended = false;
+            const seekVersion = ++_dashSeekVersion;
+            _dashSeeking = true;
             const session = _dashSession;
-            queueDash(() => {
-                if (!isCurrentDash(session)) return Promise.resolve();
-                return dash.seekDash!({ position }).then(() => {
-                    if (isCurrentDash(session)) pollDashState(session);
-                });
+            queueDash(() => seekNativeDash(position, session)).then(() => {
+                if (!isCurrentDash(session) || seekVersion !== _dashSeekVersion)
+                    return;
+                _dashSeeking = false;
+                pollDashState(session);
             });
         };
     })();
@@ -5959,24 +6037,53 @@ if (typeof window.__TAURI__ !== "undefined") {
         const origPlay = window.stbPlayPip;
         const origStop = window.stbStopPip;
         const origSetPos = window.setPipPosition;
+        let pipSession = 0;
+        let pipCommands: Promise<void> | null = null;
+        function queuePip(command: () => Promise<unknown>): void {
+            const pending = (pipCommands || Promise.resolve())
+                .then(command)
+                .then(
+                    () => {},
+                    (error: unknown) => {
+                        console.warn("[Tauri] PiP command failed:", error);
+                    }
+                );
+            pipCommands = pending;
+            pending.then(() => {
+                if (pipCommands === pending) pipCommands = null;
+            });
+        }
         window.stbPlayPip = function (url: string): void {
-            tauriInvoke<any>("play_pip", { url })
-                .then(() => {
-                    try {
-                        const el = document.getElementById("videopip");
-                        if (el) (el as HTMLElement).style.display = "none";
-                    } catch (_e) {}
-                })
-                .catch((e: any) => {
-                    console.warn("[Tauri] play_pip failed, CSS fallback:", e);
+            const session = ++pipSession;
+            if (typeof origStop === "function") origStop();
+            queuePip(() => {
+                if (session !== pipSession) return Promise.resolve();
+                const fallback = (error: unknown): void => {
+                    if (session !== pipSession) return;
+                    console.warn(
+                        "[Tauri] play_pip failed, CSS fallback:",
+                        error
+                    );
                     if (typeof origPlay === "function") origPlay(url);
-                });
+                };
+                return tauriInvoke<{ ok?: boolean; unsupported?: boolean }>(
+                    "play_pip",
+                    { url }
+                ).then((res) => {
+                    if (session !== pipSession) return;
+                    if (res && (res.ok === false || res.unsupported)) {
+                        fallback(res);
+                        return;
+                    }
+                    const el = document.getElementById("videopip");
+                    if (el) (el as HTMLElement).style.display = "none";
+                }, fallback);
+            });
         };
         window.stbStopPip = function (): void {
-            tauriInvoke<any>("stop_pip", {}).catch((e: any) =>
-                console.warn("[Tauri] stop_pip failed:", e)
-            );
+            ++pipSession;
             if (typeof origStop === "function") origStop();
+            queuePip(() => tauriInvoke("stop_pip", {}));
         };
         window.setPipPosition = function (): void {
             if (typeof origSetPos === "function") origSetPos();
