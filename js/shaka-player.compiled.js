@@ -1149,12 +1149,12 @@
             this.i = this.h = 0;
         }
         Pa.prototype.sample = function (a, b) {
-            var c = this.g ** a;
+            var c = Math.pow(this.g, a);
             c = b * (1 - c) + c * this.h;
             isNaN(c) || ((this.h = c), (this.i += a));
         };
         function Qa(a) {
-            return a.h / (1 - a.g ** a.i);
+            return a.h / (1 - Math.pow(a.g, a.i));
         }
         function Ra() {
             this.h = new Pa(2);
@@ -3175,7 +3175,7 @@
             k = t(f.keys());
             for (var l = k.next(); !l.done; l = k.next()) {
                 var m = l.value;
-                l = { ...c };
+                l = Object.assign({}, c);
                 var n = f.get(m);
                 m = {
                     distinctiveIdentifier: "optional",
@@ -5518,7 +5518,7 @@
                     var g = f.errorCode;
                     if (g && g.systemCode) {
                         var h = g.systemCode;
-                        h < 0 && (h += 2 ** 32);
+                        h < 0 && (h += Math.pow(2, 32));
                         h = "0x" + h.toString(16);
                     }
                     a.m(new N(2, 6, 6006, f.message, f, h));
@@ -6073,7 +6073,7 @@
             }
             if (b > 2097151) throw new N(2, 3, 3001);
             this.g += 8;
-            return b * 2 ** 32 + a;
+            return b * Math.pow(2, 32) + a;
         };
         r.Za = function (a) {
             if (this.g + a > this.O.byteLength) throw Hg();
@@ -9197,7 +9197,7 @@
                 }
                 df(a.i);
                 var p = a.m.presentationTimeline.getDuration();
-                Number.POSITIVE_INFINITY > p ? a.g.R.Ja(p) : a.g.R.Ja(2 ** 32);
+                Number.POSITIVE_INFINITY > p ? a.g.R.Ja(p) : a.g.R.Ja(Math.pow(2, 32));
                 g = t(c.keys());
                 for (h = g.next(); !h.done; h = g.next())
                     (k = h.value),
@@ -13621,7 +13621,7 @@
             var b = a.g.error.code;
             if (b == 1) return null;
             var c = a.g.error.msExtendedCode;
-            c && (c < 0 && (c += 2 ** 32), (c = c.toString(16)));
+            c && (c < 0 && (c += Math.pow(2, 32)), (c = c.toString(16)));
             return new N(2, 3, 3016, b, c, a.g.error.message);
         }
         function Ql(a, b) {
@@ -17638,7 +17638,7 @@
                 }
         }
         function Fp(a) {
-            var b = { ...a };
+            var b = Object.assign({}, a);
             b.originalId = null;
             b.createSegmentIndex = function () {
                 return Promise.resolve();
@@ -17665,7 +17665,7 @@
             return b;
         }
         function Jp(a) {
-            a = { ...a };
+            a = Object.assign({}, a);
             a.keyIds = new Set();
             a.segments = [];
             a.variantIds = [];
@@ -26344,7 +26344,7 @@
                                 (h.audioCapabilities &&
                                     h.audioCapabilities.length &&
                                     !l.length) ||
-                                ((m = { ...h }),
+                                ((m = Object.assign({}, h)),
                                 (m.videoCapabilities = k),
                                 (m.audioCapabilities = l),
                                 e.push(m));

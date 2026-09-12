@@ -114,8 +114,10 @@ export function keyHandler(event: KeyboardEvent): void {
     ) {
         const inputKeyCode = event.keyCode || event.which;
         const isEnterOrEsc =
-            event.key === "Enter" || event.key === "Escape" ||
-            inputKeyCode === 13 || inputKeyCode === 27;
+            event.key === "Enter" ||
+            event.key === "Escape" ||
+            inputKeyCode === 13 ||
+            inputKeyCode === 27;
         let listEditVisible = false;
         try {
             listEditVisible =
@@ -1562,10 +1564,21 @@ function body_handleTouchEnd(e: any): void {
                         // Old WebKit exposes MouseEvents through createEvent only.
                         clickEvent = document.createEvent("MouseEvents");
                         clickEvent.initMouseEvent(
-                            "click", true, true, window, 1,
-                            touch.screenX || 0, touch.screenY || 0,
-                            touch.clientX, touch.clientY,
-                            false, false, false, false, 0, null
+                            "click",
+                            true,
+                            true,
+                            window,
+                            1,
+                            touch.screenX || 0,
+                            touch.screenY || 0,
+                            touch.clientX,
+                            touch.clientY,
+                            false,
+                            false,
+                            false,
+                            false,
+                            0,
+                            null
                         );
                     }
                     e.target.dispatchEvent(clickEvent);

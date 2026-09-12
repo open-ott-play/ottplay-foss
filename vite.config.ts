@@ -96,20 +96,10 @@ function stageTauriFrontend(
         cpSync(bundleSrc, join(stageDir, "dist", "stbPlayer.js"));
     }
 
-    // stb/<vendor>/stb.js
+    // Preserve nested vendor paths (lg/webos, samsung/tizen, etc.).
     const stbDir = join(srcRoot, "stb");
     if (existsSync(stbDir)) {
-        const vendors = readdirSync(stbDir, { withFileTypes: true })
-            .filter((dent) => dent.isDirectory())
-            .map((dent) => dent.name);
-        for (const vendor of vendors) {
-            const srcFile = join(stbDir, vendor, "stb.js");
-            if (existsSync(srcFile)) {
-                const destDir = join(stageDir, "stb", vendor);
-                mkdirSync(destDir, { recursive: true });
-                cpSync(srcFile, join(destDir, "stb.js"));
-            }
-        }
+        cpSync(stbDir, join(stageDir, "stb"), { recursive: true });
     }
 
     // stbPlayer: CSS, images, language packs (_*.js)
@@ -250,8 +240,8 @@ export default defineConfig({
                 cpSync(outPath, join(outDir, "dist", "stbPlayer.js"));
                 console.log("Nested Cap contract: dist/dist/stbPlayer.js");
 
-                // Cap webDir lacks Tauri stage's fonts/prov — copy for CSS @font-face.
-                for (const dir of ["fonts", "prov"] as const) {
+                // Ship the same local device and library fallbacks in Capacitor as on the web.
+                for (const dir of ["fonts", "prov", "stb", "js"] as const) {
                     const src = join(__dirname, dir);
                     if (existsSync(src)) {
                         cpSync(src, join(outDir, dir), { recursive: true });
@@ -287,6 +277,11 @@ export default defineConfig({
                     outDir,
                     resolve(__dirname, "src-tauri/frontend")
                 );
+                // All build entry points (including mobile/cap:copy) enforce ES5.
+                execSync("node scripts/check-es5.cjs", {
+                    cwd: __dirname,
+                    stdio: "inherit",
+                });
             },
             name: "vite-concat-pipeline",
         },

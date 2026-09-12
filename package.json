@@ -4,7 +4,7 @@
   "description": "OTT-play FOSS - IPTV/OTT set-top-box player",
   "type": "module",
   "scripts": {
-    "build": "vite build && npm run check:es5",
+    "build": "vite build",
     "build:mobile": "vite build && npx cap copy && npx cap sync",
     "cap:android": "npx cap open android",
     "cap:copy": "vite build && npx cap copy",
@@ -18,7 +18,7 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "test": "node --import=tsx tests/test_channel_filtering.ts && node --import=tsx tests/test-epg-matching.ts && node --import=tsx tests/test_listKeyHandler_alias.ts && npm run test:port",
-    "test:port": "node tests/test_port_runtime.cjs && node --import=tsx tests/test_port_playback.ts && node tests/test_port_vod.cjs",
+    "test:port": "node tests/test_port_runtime.cjs && node --import=tsx tests/test_port_playback.ts && node tests/test_port_vod.cjs && node tests/test_port_stb_adapters.cjs",
     "typecheck": "tsc --noEmit"
   },
   "overrides": {

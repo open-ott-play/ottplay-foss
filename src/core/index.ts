@@ -737,7 +737,10 @@ export function stbPlay(url: string, position?: number): void {
                             );
                             video!.src = url;
                             var fallbackPlay = video!.play();
-                            if (fallbackPlay && typeof fallbackPlay.catch === "function")
+                            if (
+                                fallbackPlay &&
+                                typeof fallbackPlay.catch === "function"
+                            )
                                 fallbackPlay.catch(function () {});
                         } else {
                             console.log(
