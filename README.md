@@ -8,13 +8,13 @@ Self-contained IPTV/OTT player with a local Rust HTTP server. Runs on Smart TVs 
 See the [release strategy](RELEASING.md) for validation, nightly, beta, RC and stable promotion rules, and the [operator runbook](docs/release-workflow.md) for local commands.
 <!-- ci-release-process:end -->
 
-## Try the player (web)
+## Run in a browser
 
-Hosted full web player for testing (no local build required):
+Open the [live demo](https://player.ottplay.here.now/), or build and serve the
+web player using the instructions below.
 
-**https://player.ottplay.here.now/**
-
-Same FOSS player UI as a desktop browser build. Point it at your own M3U / provider after first load (Settings → Providers).
+After the first load, configure your own M3U playlist or provider under
+Settings → Providers.
 
 ## Features
 
@@ -322,7 +322,7 @@ cargo build --release -p ottplay-server
 # http://localhost:8080
 ```
 
-Or skip the local build and open the hosted full player: **https://player.ottplay.here.now/**
+Use your own deployment of the same revision for browser smoke testing.
 
 On first load: press **F2 (Settings) → Providers → M3U**, enter your playlist URL.
 
