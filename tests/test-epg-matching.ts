@@ -400,7 +400,7 @@ function testSetCurProgNoCurrentProgram(
 // getCurProgData cache-hit path
 // ---------------------------------------------------------------------------
 
-function testGetCurProgDataCacheHit(ch: Awaited<ReturnType<typeof getModule>>) {
+async function testGetCurProgDataCacheHit(ch: Awaited<ReturnType<typeof getModule>>) {
     const { getCurProgData, epg, channels } = ch;
 
     const now = Math.floor(Date.now() / 1000);
@@ -454,8 +454,13 @@ function testGetCurProgDataCacheHit(ch: Awaited<ReturnType<typeof getModule>>) {
         },
     ];
     callbackCalled = false;
-    const result3 = getCurProgData(channelId, () => {
+    let finishCallback: (id: number) => void = () => {};
+    const callbackResult = new Promise<number>((resolve) => {
+        finishCallback = resolve;
+    });
+    const result3 = getCurProgData(channelId, (id) => {
         callbackCalled = true;
+        finishCallback(id);
     });
     assert.strictEqual(
         result3,
@@ -464,9 +469,24 @@ function testGetCurProgDataCacheHit(ch: Awaited<ReturnType<typeof getModule>>) {
     );
     assert.strictEqual(
         callbackCalled,
-        true,
-        "callback called on async cache hit"
+        false,
+        "cache-hit callback is deferred until the request queue runs"
     );
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+        const completedId = await Promise.race([
+            callbackResult,
+            new Promise<never>((_, reject) => {
+                timeout = setTimeout(() => {
+                    reject(new Error("cache-hit callback did not run"));
+                }, 1000);
+            }),
+        ]);
+        assert.strictEqual(completedId, channelId, "callback receives the channel ID");
+        assert.strictEqual(mockWindow.chanels[channelId].name, "Now Showing");
+    } finally {
+        clearTimeout(timeout);
+    }
 
     // Cleanup - use undefined assignment instead of delete
     epg[channelId] = undefined;
@@ -654,7 +674,7 @@ async function runTests() {
     testSetCurProgNoCurrentProgram(ch);
 
     clearMocks();
-    testGetCurProgDataCacheHit(ch);
+    await testGetCurProgDataCacheHit(ch);
 
     clearMocks();
     testLoadEpgTimersFilter(ch);
