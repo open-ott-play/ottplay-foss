@@ -2346,10 +2346,36 @@ export function renderEpgHTML(epgData: EPGEntry[]): string {
  */
 export function startEpgTimer(timer: any): void {
     var w = window as any;
+    if (!timer || typeof timer !== "object") return;
+    clearTimeout(timer.ti);
+    clearTimeout(timer.ri);
+    delete timer.ti;
+    delete timer.ri;
+    var channel = Object.prototype.hasOwnProperty.call(channels, timer.ci)
+        ? channels[timer.ci]
+        : null;
+    if (!channel || !isFinite(+timer.t)) return;
     var delay = timer.t * 1000 - Date.now();
     if (delay < 0) delay = 0;
 
-    if (timer.ri) clearTimeout(timer.ri);
+    // A provider reload replaces channel objects. A timer reload/removal clears
+    // its handle, also invalidating an already open confirmation dialog.
+    var timerId: ReturnType<typeof setTimeout>;
+    function isCurrent(): boolean {
+        return timer.ti === timerId && channels[timer.ci] === channel;
+    }
+    function currentPosition(): [number, number] | null {
+        var category = cats[catsArray[timer.c]];
+        if (category && category[timer.i] == timer.ci)
+            return [timer.c, timer.i];
+        for (var c = 0; c < catsArray.length; c++) {
+            category = cats[catsArray[c]];
+            if (!category) continue;
+            for (var i = 0; i < category.length; i++)
+                if (category[i] == timer.ci) return [c, i];
+        }
+        return null;
+    }
 
     var leadMs = (settings.epgRemindMinutes || 0) * 60 * 1000;
     if (leadMs > 0) {
@@ -2358,6 +2384,7 @@ export function startEpgTimer(timer: any): void {
         if (delayRemind < 0 && timer.t * 1000 - Date.now() > 0) delayRemind = 0;
         timer.ri = setTimeout(
             function () {
+                if (!isCurrent()) return;
                 if (typeof w.showShift === "function") {
                     var minutesLeft = Math.max(
                         0,
@@ -2380,7 +2407,8 @@ export function startEpgTimer(timer: any): void {
         );
     }
 
-    timer.ti = setTimeout(function () {
+    timerId = timer.ti = setTimeout(function () {
+        if (!isCurrent() || !currentPosition()) return;
         var msg =
             w._("Timer: switch to channel?") +
             "<br/><br/>" +
@@ -2401,28 +2429,33 @@ export function startEpgTimer(timer: any): void {
 
         if (typeof w.confirmBox === "function") {
             w.confirmBox(msg, function () {
+                if (!isCurrent()) return;
+                var position = currentPosition();
+                if (!position) return;
                 if (typeof w.closeList === "function") w.closeList();
-                if (typeof (w as any).playChannel === "function")
-                    (w as any).playChannel(timer.c, timer.i);
+                if (typeof w.playChannel === "function")
+                    w.playChannel(position[0], position[1]);
             });
         }
     }, delay);
 }
 
 /**
- * Load previously-saved EPG timers from STB storage (key `epgTimers`),
- * filter out past timers, and restart each active timer via `startEpgTimer`.
- *
- * Side effects: Reads from STB storage; mutates `epgTimers` array;
- * calls `startEpgTimer` for each valid timer.
+ * Restore provider timers (with legacy STB fallback), retaining valid future
+ * entries and scheduling only channels present in the current provider.
+ * Saved data is not rewritten: missing channels may return on a later load.
  */
 export function loadEpgTimers(): void {
     var w = window as any;
-    epgTimers.forEach(function (timer) {
+    var previousTimers = Array.isArray(epgTimers) ? epgTimers : [];
+    epgTimers = [];
+    previousTimers.forEach(function (timer) {
+        if (!timer || typeof timer !== "object") return;
         clearTimeout(timer.ti);
         clearTimeout(timer.ri);
+        delete timer.ti;
+        delete timer.ri;
     });
-    epgTimers = [];
     try {
         var data =
             typeof w.providerGetItem === "function"
@@ -2431,12 +2464,26 @@ export function loadEpgTimers(): void {
         if (data == null && typeof w.stbGetItem === "function")
             data = w.stbGetItem("epgTimers");
         if (data) {
-            epgTimers = JSON.parse(data);
+            var parsed = JSON.parse(data);
+            if (!Array.isArray(parsed)) return;
             var now = Date.now() / 1000;
-            epgTimers = epgTimers.filter(function (t) {
-                return t.t > now;
+            epgTimers = parsed.filter(function (t) {
+                return (
+                    t &&
+                    typeof t === "object" &&
+                    (typeof t.ci === "number" || typeof t.ci === "string") &&
+                    (typeof t.t === "number" || typeof t.t === "string") &&
+                    isFinite(+t.t) &&
+                    +t.t > now
+                );
             });
-            epgTimers.forEach(startEpgTimer);
+            epgTimers.forEach(function (timer) {
+                // Legacy saves included runtime handles. They belong to the
+                // previous page instance and must never cancel current work.
+                delete timer.ti;
+                delete timer.ri;
+                startEpgTimer(timer);
+            });
         }
     } catch (e) {
         console.error("loadEpgTimers error:", e);
@@ -2483,6 +2530,8 @@ export function setEpgTimer(_channelId?: any, _time?: number): void {
         } else {
             clearTimeout(epgTimers[idx].ti);
             clearTimeout(epgTimers[idx].ri);
+            delete epgTimers[idx].ti;
+            delete epgTimers[idx].ri;
             epgTimers.splice(idx, 1);
         }
         if (typeof w.showPage === "function") w.showPage();
