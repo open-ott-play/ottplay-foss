@@ -9,8 +9,12 @@ export interface NativeHttpResponse {
 function nativeHttpRemoteUrl(url: string): boolean {
     if (!/^https?:\/\//i.test(url)) return false;
     try {
-        var hostname = new URL(url).hostname.toLowerCase();
-        return !/^(tauri|ipc|asset)\.localhost$/.test(hostname);
+        var parsed = new URL(url);
+        var hostname = parsed.hostname.toLowerCase();
+        return (
+            parsed.origin !== window.location.origin &&
+            !/^(tauri|ipc|asset)\.localhost$/.test(hostname)
+        );
     } catch (_error) {
         return false;
     }
@@ -46,13 +50,13 @@ function nativeHttpJsonpConverter(callback: string): (text: string) => string {
 }
 
 /**
- * Installed only for the embedded Tauri frontend. jQuery has already applied
+ * Installed only for embedded native frontends. jQuery has already applied
  * $.param, JSONP callback/cache parameters, beforeSend and headers by send().
  * It also owns converters, statusCode, context, callbacks and jqXHR.abort().
  */
-export function installTauriHttpTransport(
+function installNativeHttpTransport(
     $: any,
-    invoke: (command: string, args: any) => Promise<NativeHttpResponse>
+    request: (args: any) => Promise<NativeHttpResponse>
 ): void {
     $.ajaxTransport("+* +script", function (opts: any) {
         if (opts.async === false) return;
@@ -84,7 +88,7 @@ export function installTauriHttpTransport(
         }
         var aborted = false;
         return {
-            // Tauri invoke cannot cancel an IPC future. jQuery settles abort/timeout
+            // Native IPC cannot cancel an in-flight request. jQuery settles abort/timeout
             // immediately; discard late native responses (native timeout is bounded).
             abort: function (): void {
                 aborted = true;
@@ -114,7 +118,7 @@ export function installTauriHttpTransport(
                         var ua = nativeHttpFormField(form, "ua");
                         if (ua) requestHeaders["User-Agent"] = ua;
                     }
-                    invoke("proxy_http", {
+                    request({
                         body: requestBody,
                         headers: requestHeaders,
                         method: requestMethod,
@@ -138,7 +142,10 @@ export function installTauriHttpTransport(
                                     : String(error || "Native HTTP failed");
                             complete(
                                 0,
-                                error && error.timeout ? "timeout" : "error",
+                                error &&
+                                    (error.timeout || error.code === "timeout")
+                                    ? "timeout"
+                                    : "error",
                                 { text: message }
                             );
                         }
@@ -148,5 +155,31 @@ export function installTauriHttpTransport(
                 }
             },
         };
+    });
+}
+
+export function installTauriHttpTransport(
+    $: any,
+    invoke: (command: string, args: any) => Promise<NativeHttpResponse>
+): void {
+    installNativeHttpTransport($, function (args) {
+        return invoke("proxy_http", args);
+    });
+}
+
+export function installCapacitorHttpTransport(
+    $: any,
+    http: { httpRequest(args: any): Promise<NativeHttpResponse> }
+): void {
+    var capacitor = (window as any).Capacitor;
+    if (
+        capacitor &&
+        typeof capacitor.isNativePlatform === "function" &&
+        !capacitor.isNativePlatform()
+    )
+        return;
+    installNativeHttpTransport($, function (args) {
+        args.url = String(args.url).replace(/^@/, "");
+        return http.httpRequest(args);
     });
 }

@@ -1,3 +1,5 @@
+let testStage = "loading dependencies";
+let testDeadline;
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -47,19 +49,33 @@ function response(body, status = 200, contentType = "application/json") {
         statusText: status === 200 ? "OK" : "Forbidden",
     };
 }
-function runtime(invoke, native = true) {
+function runtime(invoke, native = true, platform = "tauri") {
     const dom = new JSDOM(
         "<!doctype html><html><head></head><body></body></html>",
-        { runScripts: "outside-only", url: "http://tauri.localhost/" }
+        {
+            runScripts: "outside-only",
+            url:
+                platform === "tauri"
+                    ? "http://tauri.localhost/"
+                    : "capacitor://localhost/",
+        }
     );
     const w = dom.window;
     w.eval(read("js/jquery-1.11.1.min.js"));
-    if (native) w.__TAURI__ = {};
+    if (native && platform === "tauri") w.__TAURI__ = {};
+    if (platform === "capacitor")
+        w.Capacitor = { isNativePlatform: () => native };
     w.tauriInvoke = invoke;
     w.eval(compile(read("src/plugins/native-http.ts")));
     w.eval(shim);
     const originalAjax = w.$.ajax;
-    w.setupTauriCompanionShim();
+    if (native && platform === "capacitor") {
+        w.installCapacitorHttpTransport(w.$, {
+            httpRequest: (args) => invoke("proxy_http", args),
+        });
+    } else {
+        w.setupTauriCompanionShim();
+    }
     return { $: w.$, close: () => w.close(), originalAjax, w };
 }
 function finished(xhr) {
@@ -86,14 +102,27 @@ function finished(xhr) {
 }
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function run() {
+async function run(platform) {
+    testStage = `${platform} jQuery setup`;
     const calls = [];
     let reply = () => response('{"epg_data":[{"name":"Programme"}]}');
-    const r = runtime(async (command, args) => {
-        calls.push({ args, command });
-        return reply(args);
-    });
+    const r = runtime(
+        async (command, args) => {
+            calls.push({ args, command });
+            return reply(args);
+        },
+        true,
+        platform
+    );
     const { $, w } = r;
+    // Bound asynchronous callbacks after synchronous jsdom/dependency loading.
+    // Slow filesystem/module startup must not consume the AJAX test deadline.
+    testDeadline = setTimeout(() => {
+        console.error(
+            `Native HTTP regression timed out after 30s (${platform}): ${testStage}`
+        );
+        process.exit(1);
+    }, 30000);
     try {
         const context = { request: "provider" };
         const order = [];
@@ -162,6 +191,7 @@ async function run() {
         assert.equal(request.args.body, undefined);
 
         // Real OTTCLUB provider: complete must see the object parsed in success.
+        testStage = "OTTCLUB provider callbacks";
         w.ottwww = "ottclub.example";
         w.eval(functions("prov/ottclub/prov.js", ["getEPGchanel"]));
         const epg = await new Promise((resolve) =>
@@ -171,6 +201,7 @@ async function run() {
         assert.equal(epg.data[0].name, "Programme");
 
         reply = () => response('{"error":"denied"}', 403);
+        testStage = "HTTP status and conversion";
         result = await finished(
             $.ajax({ dataType: "json", url: "https://provider.example/api" })
         );
@@ -189,6 +220,18 @@ async function run() {
         assert.equal(result.status, "parsererror");
         assert.equal(result.xhr.status, 200);
         assert.equal(result.xhr.responseText, "{invalid-json");
+
+        reply = () =>
+            Promise.reject({
+                code: "timeout",
+                message: "Native socket timed out",
+            });
+        result = await finished(
+            $.ajax({ dataType: "json", url: "https://provider.example/api" })
+        );
+        assert.equal(result.ok, false);
+        assert.equal(result.status, "timeout");
+        assert.equal(result.xhr.status, 0);
 
         // Some playlist requests omit dataType. Never infer executable script
         // from the upstream MIME type, including jQuery 1.x HTTP-error conversion.
@@ -213,6 +256,7 @@ async function run() {
         }
 
         // Actual Shura JSONP provider chains week + archive from complete().
+        testStage = "Shura chained JSONP callbacks";
         const seenJsonp = [];
         reply = (args) => {
             const url = new URL(args.url);
@@ -277,6 +321,7 @@ async function run() {
         assert.equal(w.compromised, undefined);
 
         reply = () => response("#EXTM3U", 200, "text/plain");
+        testStage = "companion proxy and external EPG matching";
         result = await finished(
             $.ajax({
                 data: { url: "@http://provider.example/list?a=1&b=2" },
@@ -287,7 +332,7 @@ async function run() {
         assert.equal(result.data, "#EXTM3U");
         assert.equal(
             calls.at(-1).args.url,
-            "@http://provider.example/list?a=1&b=2"
+            `${platform === "tauri" ? "@" : ""}http://provider.example/list?a=1&b=2`
         );
         assert.equal(calls.at(-1).args.method, "GET");
         assert.equal(calls.at(-1).args.body, undefined);
@@ -310,6 +355,7 @@ async function run() {
         assert.equal(calls.at(-1).args.method, "POST");
 
         let settle;
+        testStage = "abort and timeout callbacks";
         let successes = 0;
         let completions = 0;
         reply = () =>
@@ -359,6 +405,7 @@ async function run() {
         assert.equal(result.status, "canceled");
         assert.equal(calls.length, count);
     } finally {
+        clearTimeout(testDeadline);
         r.close();
     }
 
@@ -366,12 +413,25 @@ async function run() {
         throw Error("Browser must not invoke native transport");
     }, false);
     assert.equal(browser.$.ajax, browser.originalAjax);
+    let webTransportInstalled = false;
+    browser.w.Capacitor = { isNativePlatform: () => false };
+    browser.$.ajaxTransport = () => {
+        webTransportInstalled = true;
+    };
+    browser.w.installCapacitorHttpTransport(browser.$, {});
+    assert.equal(webTransportInstalled, false);
     browser.close();
     console.log(
-        "OK: native HTTP with real jQuery 1.11.1, provider JSON/JSONP, status, callbacks, abort/timeout and browser isolation"
+        `OK: ${platform} HTTP with real jQuery 1.11.1, provider JSON/JSONP, status, callbacks, abort/timeout and browser isolation`
     );
 }
-run().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+run("tauri")
+    .then(() => run("capacitor"))
+    .then(
+        () => clearTimeout(testDeadline),
+        (error) => {
+            clearTimeout(testDeadline);
+            console.error(error);
+            process.exitCode = 1;
+        }
+    );
