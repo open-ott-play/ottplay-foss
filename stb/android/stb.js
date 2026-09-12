@@ -51,12 +51,14 @@ var strEXIT = "BACK";
 var strENTER = "OK";
 var strRETURN = "BACK";
 var strSETUP = "MENU";
+// Capture the existing initializer before assigning the device wrapper.
 var _baseStbInit = typeof stbInit === "function" ? stbInit : function () {};
-function stbInit() {
-    _baseStbInit();
+stbInit = function () {
+    var baseInitResult = _baseStbInit.apply(this, arguments);
     try {
         if (typeof Android !== "undefined") {
             console.log("[stb] Android platform detected");
         }
     } catch (e) {}
-}
+    return baseInitResult;
+};

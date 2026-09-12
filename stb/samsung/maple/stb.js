@@ -49,12 +49,14 @@ var keys = {
 };
 var strEXIT = "EXIT";
 var strRETURN = "RETURN";
+// Capture the existing initializer before assigning the device wrapper.
 var _baseStbInit = typeof stbInit === "function" ? stbInit : function () {};
-function stbInit() {
-    _baseStbInit();
+stbInit = function () {
+    var baseInitResult = _baseStbInit.apply(this, arguments);
     try {
         if (typeof Common !== "undefined" && Common.API) {
             console.log("[stb] Samsung Maple (Orsay) platform detected");
         }
     } catch (e) {}
-}
+    return baseInitResult;
+};
