@@ -2860,127 +2860,404 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         };
 
         let _bgPosTimer: ReturnType<typeof setInterval> | null = null;
-        const stopBgPosTimer = (): void => {
-            if (_bgPosTimer != null) {
-                clearInterval(_bgPosTimer);
-                _bgPosTimer = null;
-            }
+        let _bgRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+        let _dashPollTimer: ReturnType<typeof setInterval> | null = null;
+        let _dashSession = 0;
+        let _dashMode: "stopped" | "checking" | "web" | "native" = "stopped";
+        let _dashPaused = false;
+        let _dashStateVersion = 0;
+        let _nativeDash = false;
+        let _dashCommands: Promise<void> | null = null;
+        let _dashPollInFlight: Promise<DashPlaybackSnapshot> | null = null;
+        type DashPlaybackSnapshot = {
+            ok: boolean;
+            position: number;
+            duration: number;
+            playing: boolean;
+            ended: boolean;
         };
-        const startBgPosTimer = (): void => {
-            stopBgPosTimer();
-            _bgPosTimer = setInterval(() => {
-                try {
-                    const meta = bgMeta();
-                    if (!meta.seekable) return;
-                    cap.updateBackgroundAudio(meta).catch(() => {});
-                } catch (_e) {}
-            }, 2000);
+        let _dashState: DashPlaybackSnapshot = {
+            duration: 0,
+            ended: false,
+            ok: true,
+            playing: false,
+            position: 0,
+        };
+        // Optional methods allow an older installed native binary to keep playing.
+        const dash = DashExoPlayer as typeof DashExoPlayer & {
+            getPlaybackState?: () => Promise<DashPlaybackSnapshot>;
+            seekDash?: (options: {
+                position: number;
+            }) => Promise<{ ok: boolean }>;
         };
         const origPlay = window.stbPlay;
         const origStop = window.stbStop;
         const origPause = window.stbPause;
         const origContinue = window.stbContinue;
-        // Native DASH via DashExoPlayer (Android Media3). iOS returns unsupported.
-        const dash = DashExoPlayer;
-        let _nativeDash = false;
+        const origIsPlaying = window.stbIsPlaying;
+        const origGetPosition = window.stbGetPosTime;
+        const origGetDuration = window.stbGetLen;
+        const origSeek = window.stbSetPosTime;
 
-        function isDashUrl(url: string): boolean {
-            return /\.mpd(\?|$)/i.test(url);
+        function cancelBgRefresh(): void {
+            if (_bgRefreshTimer !== null) clearTimeout(_bgRefreshTimer);
+            _bgRefreshTimer = null;
         }
-
-        function playViaWeb(url: string, position?: number): void {
-            if (typeof origPlay === "function") origPlay(url, position);
+        const stopBgPosTimer = (): void => {
+            cancelBgRefresh();
+            if (_bgPosTimer !== null) clearInterval(_bgPosTimer);
+            _bgPosTimer = null;
+        };
+        const startBgPosTimer = (session: number): void => {
+            stopBgPosTimer();
+            _bgPosTimer = setInterval(() => {
+                if (
+                    session !== _dashSession ||
+                    _dashMode !== "web" ||
+                    _dashPaused
+                )
+                    return;
+                try {
+                    const meta = bgMeta();
+                    if (meta.seekable)
+                        cap.updateBackgroundAudio(meta).catch(() => {});
+                } catch (_e) {}
+            }, 2000);
+        };
+        function stopDashPoll(): void {
+            if (_dashPollTimer !== null) clearInterval(_dashPollTimer);
+            _dashPollTimer = null;
+            _dashPollInFlight = null;
+        }
+        function usesDashState(): boolean {
+            return _dashMode === "native" || _dashMode === "checking";
+        }
+        function isCurrentDash(session: number): boolean {
+            return session === _dashSession && _dashMode === "native";
+        }
+        // Serialize native commands: an in-flight play must settle before stop,
+        // and stop must finish before another backend can own the video surface.
+        function queueDash(command: () => Promise<unknown>): Promise<void> {
+            const pending = (_dashCommands || Promise.resolve())
+                .then(command)
+                .then(
+                    () => {},
+                    (error: unknown) =>
+                        console.warn("[Capacitor] DASH command failed:", error)
+                );
+            _dashCommands = pending;
+            pending.then(() => {
+                if (_dashCommands === pending) _dashCommands = null;
+            });
+            return pending;
+        }
+        function stopNativeDash(): Promise<void> | null {
+            stopDashPoll();
+            if (_nativeDash) {
+                _nativeDash = false;
+                return queueDash(() => dash.stopDash());
+            }
+            return _dashCommands;
+        }
+        function pollDashState(session: number): void {
+            if (
+                !isCurrentDash(session) ||
+                _dashPollInFlight ||
+                typeof dash.getPlaybackState !== "function"
+            )
+                return;
+            const version = _dashStateVersion;
+            const request = dash.getPlaybackState();
+            _dashPollInFlight = request;
+            request
+                .then((state) => {
+                    if (
+                        !isCurrentDash(session) ||
+                        version !== _dashStateVersion
+                    )
+                        return;
+                    if (!state || !state.ok) {
+                        stopDashPoll();
+                        return;
+                    }
+                    _dashState = {
+                        duration:
+                            Number.isFinite(state.duration) &&
+                            state.duration > 0
+                                ? state.duration
+                                : 0,
+                        ended: !!state.ended,
+                        ok: true,
+                        playing: !!state.playing && !_dashPaused,
+                        position:
+                            Number.isFinite(state.position) &&
+                            state.position >= 0
+                                ? state.position
+                                : _dashState.position,
+                    };
+                })
+                .catch(() => {
+                    if (isCurrentDash(session)) stopDashPoll();
+                })
+                .then(() => {
+                    if (_dashPollInFlight === request) _dashPollInFlight = null;
+                });
+        }
+        function startDashPoll(session: number): void {
+            stopDashPoll();
+            if (typeof dash.getPlaybackState !== "function") return;
+            pollDashState(session);
+            _dashPollTimer = setInterval(() => pollDashState(session), 1000);
+        }
+        function isDashUrl(url: string): boolean {
+            return /\.mpd(?:[?#]|$)/i.test(url);
+        }
+        function playViaWeb(
+            url: string,
+            position: number | undefined,
+            session: number
+        ): void {
+            if (session !== _dashSession) return;
+            _dashMode = "web";
+            if (typeof origPlay === "function")
+                origPlay(url, _dashState.position || position);
+            // Core stbPlay resets its play intent; preserve a pause made while
+            // native support detection or native teardown was in flight.
+            if (_dashPaused && typeof origPause === "function") origPause();
             const meta = bgMeta();
-            cap.startBackgroundAudio(meta).catch((e: any) =>
-                console.warn("[Capacitor] startBackgroundAudio failed:", e)
-            );
-            // Duration often arrives after manifest; refresh shortly + tick if seekable.
-            setTimeout(() => {
+            cap.startBackgroundAudio(meta)
+                .then(() => {
+                    if (session === _dashSession && _dashPaused)
+                        cap.pauseBackgroundAudio().catch(() => {});
+                })
+                .catch((e: any) =>
+                    console.warn("[Capacitor] startBackgroundAudio failed:", e)
+                );
+            if (_dashPaused) return;
+            _bgRefreshTimer = setTimeout(() => {
+                if (
+                    session !== _dashSession ||
+                    _dashMode !== "web" ||
+                    _dashPaused
+                )
+                    return;
+                _bgRefreshTimer = null;
                 const m = bgMeta();
                 cap.updateBackgroundAudio(m).catch(() => {});
-                if (m.seekable) startBgPosTimer();
+                if (m.seekable) startBgPosTimer(session);
                 else stopBgPosTimer();
             }, 1500);
         }
-
+        function dashFallback(
+            url: string,
+            position: number | undefined,
+            session: number,
+            error: unknown
+        ): void {
+            if (session !== _dashSession) return;
+            console.warn("[Capacitor] DASH path failed, web fallback:", error);
+            _dashMode = "web";
+            const stopped = stopNativeDash();
+            const play = (): void => playViaWeb(url, position, session);
+            if (stopped) stopped.then(play);
+            else play();
+        }
         window.stbPlay = function (url: string, position?: number): void {
-            if (!isDashUrl(url) || !dash || !dash.isDashSupported) {
-                playViaWeb(url, position);
-                return;
-            }
-            dash.isDashSupported()
-                .then(function (r: any) {
-                    if (!(r && r.ok && !r.unsupported)) {
-                        _nativeDash = false;
-                        playViaWeb(url, position);
-                        return;
-                    }
-                    _nativeDash = true;
-                    if (typeof origStop === "function") origStop();
-                    return dash
-                        .playDash({
-                            position: position,
-                            url: url,
-                        })
-                        .then(function (pr: any) {
-                            if (!(pr && pr.ok)) {
-                                console.warn(
-                                    "[Capacitor] playDash not ok, web fallback:",
-                                    pr
+            const session = ++_dashSession;
+            _dashStateVersion++;
+            stopBgPosTimer();
+            const stopped = stopNativeDash();
+            _dashPaused = false;
+            _dashState = {
+                duration: 0,
+                ended: false,
+                ok: true,
+                playing: true,
+                position: position && position > 0 ? position : 0,
+            };
+            const nativeCandidate =
+                isDashUrl(url) &&
+                !!dash &&
+                typeof dash.isDashSupported === "function";
+            _dashMode = nativeCandidate ? "checking" : "web";
+            if (typeof origStop === "function") origStop();
+            (window as any).forcePlay = true;
+            const start = (): void => {
+                if (session !== _dashSession) return;
+                if (!nativeCandidate) {
+                    playViaWeb(url, position, session);
+                    return;
+                }
+                dash.isDashSupported()
+                    .then((supported) => {
+                        if (session !== _dashSession) return;
+                        if (
+                            !(
+                                supported &&
+                                supported.ok &&
+                                !supported.unsupported
+                            )
+                        ) {
+                            playViaWeb(url, position, session);
+                            return;
+                        }
+                        _dashMode = "native";
+                        cap.stopBackgroundAudio().catch(() => {});
+                        queueDash(() => {
+                            if (!isCurrentDash(session))
+                                return Promise.resolve();
+                            _nativeDash = true;
+                            return dash
+                                .playDash({
+                                    position: _dashState.position,
+                                    url,
+                                })
+                                .then((result) => {
+                                    if (!isCurrentDash(session)) return;
+                                    if (!result || !result.ok) {
+                                        dashFallback(
+                                            url,
+                                            position,
+                                            session,
+                                            result
+                                        );
+                                        return;
+                                    }
+                                    const ready = (): void => {
+                                        if (isCurrentDash(session))
+                                            startDashPoll(session);
+                                    };
+                                    if (_dashPaused)
+                                        return dash.pauseDash().then(ready);
+                                    ready();
+                                })
+                                .catch((error) =>
+                                    dashFallback(url, position, session, error)
                                 );
-                                _nativeDash = false;
-                                playViaWeb(url, position);
-                            }
                         });
-                })
-                .catch(function (e: any) {
-                    console.warn("[Capacitor] DASH path failed:", e);
-                    _nativeDash = false;
-                    playViaWeb(url, position);
-                });
+                    })
+                    .catch((error) =>
+                        dashFallback(url, position, session, error)
+                    );
+            };
+            if (stopped) stopped.then(start);
+            else start();
         };
         window.stbStop = function (): void {
+            _dashSession++;
+            _dashStateVersion++;
+            _dashMode = "stopped";
+            _dashPaused = true;
+            (window as any).forcePlay = false;
             stopBgPosTimer();
-            if (_nativeDash) {
-                dash.stopDash().catch((e: any) =>
-                    console.warn("[Capacitor] stopDash failed:", e)
-                );
-                _nativeDash = false;
-            } else {
-                cap.stopBackgroundAudio().catch((e: any) =>
-                    console.warn("[Capacitor] stopBackgroundAudio failed:", e)
-                );
-            }
+            stopNativeDash();
+            cap.stopBackgroundAudio().catch((e: any) =>
+                console.warn("[Capacitor] stopBackgroundAudio failed:", e)
+            );
             if (typeof origStop === "function") origStop();
         };
         window.stbPause = function (): void {
-            if (_nativeDash) {
-                dash.pauseDash().catch((e: any) =>
-                    console.warn("[Capacitor] pauseDash failed:", e)
-                );
-            } else if (typeof origPause === "function") {
-                origPause();
-            }
-            if (!_nativeDash) {
-                stopBgPosTimer();
+            _dashPaused = true;
+            _dashStateVersion++;
+            (window as any).forcePlay = false;
+            stopBgPosTimer();
+            if (usesDashState()) {
+                _dashState.playing = false;
+                const session = _dashSession;
+                if (_nativeDash)
+                    queueDash(() =>
+                        isCurrentDash(session)
+                            ? dash.pauseDash()
+                            : Promise.resolve()
+                    );
+            } else {
+                if (typeof origPause === "function") origPause();
                 cap.pauseBackgroundAudio().catch((e: any) =>
                     console.warn("[Capacitor] pauseBackgroundAudio failed:", e)
                 );
             }
         };
         window.stbContinue = function (): void {
-            if (_nativeDash) {
-                dash.resumeDash().catch((e: any) =>
-                    console.warn("[Capacitor] resumeDash failed:", e)
-                );
+            if (usesDashState()) {
+                if (!_dashPaused && _dashState.playing) {
+                    window.stbPause();
+                    return;
+                }
+                const restart = _dashState.ended;
+                _dashPaused = false;
+                _dashStateVersion++;
+                _dashState.playing = true;
+                _dashState.ended = false;
+                if (restart) _dashState.position = 0;
+                (window as any).forcePlay = true;
+                const session = _dashSession;
+                if (_nativeDash)
+                    queueDash(() => {
+                        if (!isCurrentDash(session)) return Promise.resolve();
+                        if (restart && typeof dash.seekDash === "function") {
+                            return dash.seekDash({ position: 0 }).then(() => {
+                                if (isCurrentDash(session))
+                                    return dash.resumeDash();
+                            });
+                        }
+                        return dash.resumeDash();
+                    });
+                return;
+            }
+            if (typeof origContinue === "function") origContinue();
+            _dashPaused =
+                typeof origIsPlaying === "function" ? !origIsPlaying() : false;
+            const meta = bgMeta();
+            if (_dashPaused) {
+                stopBgPosTimer();
+                cap.pauseBackgroundAudio().catch(() => {});
             } else {
-                if (typeof origContinue === "function") origContinue();
-                const meta = bgMeta();
                 cap.resumeBackgroundAudio(meta).catch((e: any) =>
                     console.warn("[Capacitor] resumeBackgroundAudio failed:", e)
                 );
-                if (meta.seekable) startBgPosTimer();
+                if (meta.seekable) startBgPosTimer(_dashSession);
             }
+        };
+        window.stbIsPlaying = function (): boolean {
+            return usesDashState()
+                ? !_dashPaused && _dashState.playing && !_dashState.ended
+                : typeof origIsPlaying === "function" && origIsPlaying();
+        };
+        window.stbGetPosTime = function (): number {
+            return usesDashState()
+                ? _dashState.position
+                : typeof origGetPosition === "function"
+                  ? origGetPosition()
+                  : 0;
+        };
+        window.stbGetLen = function (): number {
+            return usesDashState()
+                ? _dashState.duration
+                : typeof origGetDuration === "function"
+                  ? origGetDuration()
+                  : 0;
+        };
+        window.stbSetPosTime = function (position: number): void {
+            if (!usesDashState()) {
+                if (typeof origSeek === "function") origSeek(position);
+                return;
+            }
+            if (
+                !Number.isFinite(position) ||
+                position < 0 ||
+                typeof dash.seekDash !== "function"
+            )
+                return;
+            _dashStateVersion++;
+            _dashState.position = position;
+            _dashState.ended = false;
+            const session = _dashSession;
+            queueDash(() => {
+                if (!isCurrentDash(session)) return Promise.resolve();
+                return dash.seekDash!({ position }).then(() => {
+                    if (isCurrentDash(session)) pollDashState(session);
+                });
+            });
         };
     })();
 }
