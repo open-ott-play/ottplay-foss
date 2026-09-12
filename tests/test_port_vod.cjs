@@ -357,8 +357,8 @@ function fixture() {
     );
     c.listArray = [
         {
-            title: "Loading movie",
             description: () => c.addMedias2({ limit: 300 }),
+            title: "Loading movie",
         },
     ];
     c.infoMedia();
