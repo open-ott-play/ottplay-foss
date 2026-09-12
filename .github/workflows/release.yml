@@ -468,8 +468,7 @@ jobs:
           fi
           gh release upload "$RELEASE_TAG" "${UPLOAD[@]}" --clobber
 
-  # Publish only after desktop+mobile attach; require macOS aarch64 .app.zip so
-  # "Latest" never points at a release that is missing Tauri macOS assets.
+  # Keep incomplete desktop/mobile releases private until every build succeeds.
   publish:
     name: Publish release
     needs: [release, tauri, mobile]
@@ -483,7 +482,7 @@ jobs:
         with:
           egress-policy: audit
 
-      - name: Verify macOS assets and undraft
+      - name: Verify platform builds and required assets before publishing
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # No checkout in this job — tell gh which repo without needing .git
@@ -494,10 +493,16 @@ jobs:
         run: |
           set -euo pipefail
           echo "tauri=$TAURI_RESULT mobile=$MOBILE_RESULT tag=$TAG"
+          if [ "$TAURI_RESULT" != success ] || [ "$MOBILE_RESULT" != success ]; then
+            echo "ERROR: all desktop and mobile builds must succeed before publication" >&2
+            exit 1
+          fi
           assets="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
           echo "Assets on draft release:"
           echo "$assets"
           echo "$assets" | grep -Fq 'ottplay-foss-dist.tar.gz'
+          echo "$assets" | grep -Fxq 'ottplay-foss-android-unsigned.apk'
+          echo "$assets" | grep -Fxq 'ottplay-foss-ios-unsigned.ipa'
           # Spaces may already be dots from collect sanitize / GitHub normalize
           if ! echo "$assets" | grep -Eiq 'aarch64-apple-darwin\.app\.zip'; then
             echo "ERROR: missing OttPlay.FOSS_aarch64-apple-darwin.app.zip (or space variant)" >&2

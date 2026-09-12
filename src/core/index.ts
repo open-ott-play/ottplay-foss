@@ -1900,6 +1900,11 @@ export function stbToggleZoom(): void {
 /** Internal standby state flag. */
 var _standby = false;
 
+/** Report shared standby state without toggling playback or native wake locks. */
+export function stbIsStandby(): boolean {
+    return _standby;
+}
+
 /**
  * Toggle standby mode (black screen + stopped playback).
  *
@@ -1925,6 +1930,7 @@ export function stbToggleStandby(): void {
         document.body.style.backgroundColor = "";
         if (typeof window.startPlayer === "function") window.startPlayer();
     }
+    if (typeof window.setSleepTimeout === "function") window.setSleepTimeout();
 }
 
 /** Convenience wrapper for stbToggleStandby. */

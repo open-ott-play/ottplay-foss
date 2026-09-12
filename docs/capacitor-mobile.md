@@ -371,3 +371,28 @@ Normal Capacitor playback now uses the same selected HTML5, HLS.js or Shaka back
 Mode A browser/STB remains unchanged by Capacitor media paths (gated on `window.Capacitor`).
 
 Tauri Mode B OS media controls (separate from Cap): `start_media_session` / `pause_media_session` / `resume_media_session` / `update_media_session` / `stop_media_session` via **souvlaki** (MPRIS / macOS Now Playing / Windows SMTC). Wired from `stbPlay` / `stbStop` / `stbPause` / `stbContinue` under `__TAURI__` only; transport events eval `<video>` / `_doKey` on the main webview. `artworkUrl` maps to souvlaki `cover_url` when the backend supports it. Seek (`SetPosition` / `Seek` / `SeekBy`) runs only when JS marks `seekable` (finite duration / non-live); live is an honest no-op.
+
+
+## Mobile orientation
+
+The Capacitor Android and iOS apps use landscape in either direction for menus,
+settings and playback. Android's native DASH overlay shares `MainActivity`, so it
+inherits the same orientation. iOS constrains both the bridge and presented native
+video controllers. System picture-in-picture windows remain controlled by the OS.
+
+Android uses `sensorLandscape`, including the documented activity-level compatibility
+opt-out for the current target SDK 36 on Android 16 tablets. Android removes that
+opt-out for apps targeting SDK 37 on displays at least 600dp wide; user or device
+windowing overrides can also take precedence. See the [Android orientation rules](https://developer.android.com/about/versions/16/behavior-changes-16#adaptive-layouts).
+
+On iPad, landscape-only support requests `UIRequiresFullScreen` compatibility mode.
+Split View is unavailable on older iPads in this mode. Stage Manager and iPadOS 26
+Windowed Apps may show a scaled landscape scene alongside other apps rather than
+true full screen. Apple has deprecated this compatibility mode, so unrestricted
+future window sizes cannot be prevented by an orientation mask alone. See
+[Apple's compatibility-mode behavior](https://developer.apple.com/documentation/bundleresources/information-property-list/uirequiresfullscreen).
+
+Validate on iPhone, iPad and Android phone/tablet: cold launch while held portrait,
+rotate through both landscape directions, open settings and native playback, then
+return from picture-in-picture and the background. The app scene should remain
+landscape wherever the platform honors the orientation request.

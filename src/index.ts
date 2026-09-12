@@ -146,6 +146,7 @@ import {
     exportSettings,
     importSettings,
     loadSettings,
+    normalizeSeekDuration,
     type PlayerSettings,
     saveSettings,
     settings,
@@ -197,6 +198,7 @@ import {
     stbInfo,
     stbInit,
     stbIsPlaying,
+    stbIsStandby,
     stbPause,
     stbPlay,
     stbPlayPip,
@@ -2578,10 +2580,9 @@ window.stbToggleAspectRatio = stbToggleAspectRatio;
 if (typeof window.__TAURI__ !== "undefined") {
     (function () {
         const orig = window.stbToggleStandby;
-        let _standby = false;
         window.stbToggleStandby = function (): void {
-            _standby = !_standby;
-            if (_standby) {
+            if (typeof orig === "function") orig();
+            if (stbIsStandby()) {
                 // Entering standby: allow machine to sleep.
                 tauriInvoke<any>("allow_sleep", {})
                     .then((r) => {
@@ -2600,8 +2601,6 @@ if (typeof window.__TAURI__ !== "undefined") {
                         console.warn("[Tauri] prevent_sleep failed:", e)
                     );
             }
-            // Preserve original standby DOM behavior
-            if (typeof orig === "function") orig();
         };
     })();
 }
@@ -2618,10 +2617,9 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         // Capacitor Mode C: override stbToggleStandby for native idle timer control.
         // Enter standby → allowSleep (device may sleep). Exit standby → preventSleep (keep awake).
         const origStandby = window.stbToggleStandby;
-        let _standby = false;
         window.stbToggleStandby = function (): void {
-            _standby = !_standby;
-            if (_standby) {
+            if (typeof origStandby === "function") origStandby();
+            if (stbIsStandby()) {
                 cap.allowSleep().catch((e: any) =>
                     console.warn("[Capacitor] allowSleep failed:", e)
                 );
@@ -2630,7 +2628,6 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                     console.warn("[Capacitor] preventSleep failed:", e)
                 );
             }
-            if (typeof origStandby === "function") origStandby();
         };
 
         // Capacitor Mode C: sync OS mixer with video.volume (video remains source of truth).
@@ -4219,7 +4216,10 @@ window.saveIfChanged = function (
 ): void {
     var w = window as any;
     if (useStb === undefined) useStb = false;
-    if (w[key] === w.listArray[pos].val) return;
+    if (w[key] === w.listArray[pos].val) {
+        pullSettingsFromWindow();
+        return;
+    }
     w[key] = w.listArray[pos].val;
     // Keep typed settings in sync (Interface / Channel list / … menus).
     pullSettingsFromWindow();
@@ -4315,7 +4315,9 @@ window.settingsInterface = function (): void {
         if (typeof w.setColor === "function") w.setColor();
         if (typeof w.setEditor === "function") w.setEditor();
         if (typeof w.setPipPosBuf === "function") w.setPipPosBuf();
+        if (typeof w.setPlayerMode === "function") w.setPlayerMode(w.sPlayers);
         if (typeof w.setPlayer === "function") w.setPlayer();
+        if (typeof w.setSleepTimeout === "function") w.setSleepTimeout();
         if (typeof w.setAutorun === "function") w.setAutorun();
         if (typeof w.stbSetBuffer === "function") w.stbSetBuffer();
         if (typeof w.showShift === "function")
@@ -4878,11 +4880,20 @@ window.settingsButtons = function (): void {
         w.saveIfChanged(i++, "sEfun", true);
         w.saveIfChanged(i++, "sOkfun", true);
         if (!w.sNoNumbersKeys) {
-            w.listArray[i].val = d.indexOf(w.listArray[i].val);
+            w.listArray[i].val = normalizeSeekDuration(
+                d[w.listArray[i].val],
+                15
+            );
             w.saveIfChanged(i++, "s13dur", true);
-            w.listArray[i].val = d.indexOf(w.listArray[i].val);
+            w.listArray[i].val = normalizeSeekDuration(
+                d[w.listArray[i].val],
+                180
+            );
             w.saveIfChanged(i++, "s46dur", true);
-            w.listArray[i].val = d.indexOf(w.listArray[i].val);
+            w.listArray[i].val = normalizeSeekDuration(
+                d[w.listArray[i].val],
+                600
+            );
             w.saveIfChanged(i++, "s79dur", true);
         }
         w.saveIfChanged(i++, "sNoColorKeys", true);
@@ -5020,17 +5031,17 @@ window.settingsButtons = function (): void {
         },
         {
             name: w._(n, a + 1 + o, a + 3 + o),
-            val: d.indexOf(w.s13dur),
+            val: d.indexOf(normalizeSeekDuration(w.s13dur, 15)),
             values: p,
         },
         {
             name: w._(n, a + 4 + o, a + 6 + o),
-            val: d.indexOf(w.s46dur),
+            val: d.indexOf(normalizeSeekDuration(w.s46dur, 180)),
             values: p,
         },
         {
             name: w._(n, a + 7 + o, a + 9 + o),
-            val: d.indexOf(w.s79dur),
+            val: d.indexOf(normalizeSeekDuration(w.s79dur, 600)),
             values: p,
         },
         {
@@ -5089,6 +5100,7 @@ window.settingsMenu = function (): void {
         }
         if (typeof w.stbSetItem === "function")
             w.stbSetItem("sHideMenus", w.sHideMenus.join(","));
+        pullSettingsFromWindow();
         if (typeof w.showShift === "function")
             w.showShift(w._("Settings saved") || "Settings saved");
         w.optionsList(w.settingsMenu);
@@ -5256,7 +5268,7 @@ window.settingsManage = function (): void {
             name: "Debug HUD",
         },
     ];
-    if (typeof w.stbClearAllItems !== "function") w.listArray.splice(2, 2);
+    if (typeof w.stbClearAllItems !== "function") w.listArray.splice(6, 1);
     if (typeof w.stbGetAllItems !== "function") w.listArray.splice(0, 1);
     if (typeof w.loadOpt === "function")
         w.listArray.splice(0, 0, {
@@ -5763,6 +5775,8 @@ window.pipIndex = pipIndex;
 window.pipCatIndex = pipCatIndex;
 window.previewChan = previewChan;
 window.playerModeNames = playerModeNames;
+window.setPlayerMode = setPlayerMode;
+window.stbIsStandby = stbIsStandby;
 window.bufferSizes = bufferSizes;
 window.colorDialog = colorDialog;
 window.selColorDialog = selColorDialog;
@@ -6181,6 +6195,7 @@ function applySettingsToWindow(s: PlayerSettings): void {
     // toggles saved through providerSetItem. loadChannels mirrors them after
     // the playlist loads; Lists settings still owns sShowScroll below.
     window.sShowScroll = s.showScroll;
+    window.sHideMenus = s.hideMenus.slice();
     window.sFavorites = s.favorites;
     window.sPermanentTime = s.permanentTime;
     window.s10resum = s.res10Resume;
@@ -6214,6 +6229,44 @@ function pullSettingsFromWindow(): void {
         var n = typeof v === "number" ? v : parseInt(v, 10);
         return isNaN(n) ? fallback : n;
     }
+    if (w.sArrowFun !== undefined) s.arrowFun = num(w.sArrowFun, s.arrowFun);
+    if (w.sRewFun !== undefined) s.rewFun = num(w.sRewFun, s.rewFun);
+    if (w.sPNFun !== undefined) s.pnFun = num(w.sPNFun, s.pnFun);
+    if (w.sRfun !== undefined) s.rFun = num(w.sRfun, s.rFun);
+    if (w.sGfun !== undefined) s.gFun = num(w.sGfun, s.gFun);
+    if (w.sYfun !== undefined) s.yFun = num(w.sYfun, s.yFun);
+    if (w.sBfun !== undefined) s.bFun = num(w.sBfun, s.bFun);
+    if (w.sALfun !== undefined) s.alFun = num(w.sALfun, s.alFun);
+    if (w.sARfun !== undefined) s.arFun = num(w.sARfun, s.arFun);
+    if (w.sAUfun !== undefined) s.auFun = num(w.sAUfun, s.auFun);
+    if (w.sADfun !== undefined) s.adFun = num(w.sADfun, s.adFun);
+    if (w.sRWfun !== undefined) s.rwFun = num(w.sRWfun, s.rwFun);
+    if (w.sFFfun !== undefined) s.ffFun = num(w.sFFfun, s.ffFun);
+    if (w.sPREVfun !== undefined) s.prevFun = num(w.sPREVfun, s.prevFun);
+    if (w.sNEXTfun !== undefined) s.nextFun = num(w.sNEXTfun, s.nextFun);
+    if (w.sEfun !== undefined) s.eFun = num(w.sEfun, s.eFun);
+    if (w.sOkfun !== undefined) s.okFun = num(w.sOkfun, s.okFun);
+    if (w.s13dur !== undefined)
+        s.seek13Duration = num(w.s13dur, s.seek13Duration);
+    if (w.s46dur !== undefined)
+        s.seek46Duration = num(w.s46dur, s.seek46Duration);
+    if (w.s79dur !== undefined)
+        s.seek79Duration = num(w.s79dur, s.seek79Duration);
+    if (w.sNoColorKeys !== undefined)
+        s.noColorKeys = num(w.sNoColorKeys, s.noColorKeys);
+    if (w.sNoNumbersKeys !== undefined)
+        s.noNumbersKeys = num(w.sNoNumbersKeys, s.noNumbersKeys);
+    if (w.sPSchannels !== undefined)
+        s.psChannels = num(w.sPSchannels, s.psChannels);
+    if (w.sPSoptions !== undefined)
+        s.psOptions = num(w.sPSoptions, s.psOptions);
+    if (w.sPSprovs !== undefined) s.psProvs = num(w.sPSprovs, s.psProvs);
+    if (w.sHDMIsupport !== undefined)
+        s.hdmiSupport = num(w.sHDMIsupport, s.hdmiSupport);
+    if (typeof w.parentPIN === "string") s.parentPin = w.parentPIN;
+    if (typeof w.sLocalCmdUrl === "string") s.localCmdUrl = w.sLocalCmdUrl;
+    if (typeof w.sSwopBaseUrl === "string") s.swopBaseUrl = w.sSwopBaseUrl;
+    if (Array.isArray(w.sHideMenus)) s.hideMenus = w.sHideMenus.slice();
     if (w.sNoSmall !== undefined) s.noSmall = num(w.sNoSmall, s.noSmall);
     if (w.sStopPlay !== undefined) s.stopPlay = num(w.sStopPlay, s.stopPlay);
     if (w.sPipSize !== undefined) s.pipSize = num(w.sPipSize, s.pipSize);
@@ -6348,6 +6401,7 @@ window.settingsCommands = function (): void {
                 w.sLocalCmdUrl = newUrl.trim();
                 if (typeof w.stbSetItem === "function")
                     w.stbSetItem("sLocalCmdUrl", w.sLocalCmdUrl);
+                pullSettingsFromWindow();
                 w.settingsCommands();
             }
             return true;
@@ -6368,7 +6422,7 @@ window.settingsCommands = function (): void {
                 } catch (_e) {}
                 // Keep typed settings in sync when module binding is available
                 try {
-                    settings.swopBaseUrl = w.sSwopBaseUrl;
+                    pullSettingsFromWindow();
                     saveSettings(settings);
                 } catch (_e2) {}
                 w.settingsCommands();

@@ -59,7 +59,7 @@ export function applyTimezoneSetting(index: number): number {
  * @property noColorKeys       - Disable colour-key shortcuts (0/1).
  * @property noNumbersKeys     - Disable numeric key shortcuts (0/1).
  * @property timezone          - UTC offset override (applied via polyfill).
- * @property sleepTimeout      - Inactivity sleep timer (minutes).
+ * @property sleepTimeout      - Inactivity sleep timer menu index (off, 30m, 1h, 2h, 3h).
  * @property epgRemindMinutes  - Minutes before an EPG timer to show a reminder OSD (0 = off).
  * @property volumeStep        - Volume increment per key press (%).
  * @property infoTimeout       - Info OSD auto-hide timeout (seconds).
@@ -267,6 +267,14 @@ export function defaultSettings(): PlayerSettings {
 
 export let settings: PlayerSettings = defaultSettings();
 
+/** Restore valid duration values after older menu saves persisted selector indices. */
+export function normalizeSeekDuration(value: number, fallback: number): number {
+    const durations = [
+        5, 10, 15, 20, 30, 60, 120, 180, 240, 300, 600, 900, 1200, 1800, 3600,
+    ];
+    return durations.indexOf(value) >= 0 ? value : fallback;
+}
+
 /**
  * Load all settings from persistent storage into the module-level
  * `settings` object.
@@ -368,9 +376,9 @@ export function loadSettings(): PlayerSettings {
         rewFun: s.getI("sRewFun", 0),
         rFun: s.getI("sRfun", 10),
         rwFun: s.getI("sRWfun", 18),
-        seek13Duration: s.getI("s13dur", 15),
-        seek46Duration: s.getI("s46dur", 180),
-        seek79Duration: s.getI("s79dur", 600),
+        seek13Duration: normalizeSeekDuration(s.getI("s13dur", 15), 15),
+        seek46Duration: normalizeSeekDuration(s.getI("s46dur", 180), 180),
+        seek79Duration: normalizeSeekDuration(s.getI("s79dur", 600), 600),
         showArchive: s.getI("sShowArchive", 1),
         showDescription: s.getI("sShowDescr", 1),
         showName: s.getI("sShowName", 1),
@@ -503,6 +511,9 @@ export interface ExportEnvelopeV1 {
  * (same keys used by channels/index.ts saveChannelsCats).
  */
 export function exportSettings(): string {
+    if (typeof window.pullSettingsFromWindow === "function") {
+        window.pullSettingsFromWindow();
+    }
     const env: ExportEnvelopeV1 = {
         favoritesArray: window.providerGetJson?.("favoritesArray", []) || [],
         parentalArray: window.providerGetJson?.("parentalArray", []) || [],

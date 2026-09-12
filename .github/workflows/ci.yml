@@ -108,6 +108,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm test
       - run: python3 tests/test_native_epg_cache.py --check-mirrors-only
+      - run: python3 tests/test_mobile_orientation.py
 
   rust-tests:
     name: Rust Core and Server Tests

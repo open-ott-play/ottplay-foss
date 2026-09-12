@@ -16,8 +16,15 @@
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
             android:exported="true"
+            android:screenOrientation="sensorLandscape"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true">
+
+            <!-- Keep the TV-style landscape UI on Android 16 tablets (target SDK 36).
+                 Android 17 removes this compatibility opt-out for target SDK 37. -->
+            <property
+                android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
+                android:value="true" />
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

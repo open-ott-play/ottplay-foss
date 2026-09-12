@@ -3,6 +3,14 @@ import Capacitor
 import CapApp_SPM
 
 class MainViewController: CAPBridgeViewController {
+    override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
+        .landscape
+    }
+
+    override var shouldAutorotate: Bool {
+        true // Allow both landscape directions without enabling portrait.
+    }
+
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(MobileCommandQueue())
         bridge?.registerPluginInstance(M3UProxyPlugin())
