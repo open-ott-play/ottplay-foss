@@ -16,6 +16,7 @@ Same FOSS player UI as a desktop browser build. Point it at your own M3U / provi
 - **EPG**: XMLTV guide with fuzzy channel matching, time-shift/catch-up, denser guide rows, programme-title search (N5 in EPG), reminders before timers
 - **Favorites**: Multi-list favorites (switch/add/rename/delete from Actions → Favorite lists); parental PIN
 - **Settings**: Export/import settings + favorites as JSON; continue-watching archive resume bookmark
+- **Shared interface**: OTT Server, Tauri and Capacitor use the same channel-list theme and visibility settings. Interface settings control highlight and selection colors; Channel list settings control channel names, picons, current programmes, progress and archive markers.
 - **Providers**: M3U playlists, Xtream Codes API, Stalker middleware
 - **Push commands**: Remote control via webhook — change channel, provider, playlist, show popups
 - **Remote text entry (swop)**: Phone keyboard via Cloudflare Worker when TV/phone are on different networks (allowlisted Device UUID; ♥™ on VKB)
@@ -46,6 +47,10 @@ When debug is enabled:
 ## Mobile Apps (iOS / Android)
 
 Capacitor wraps the same TypeScript frontend for native iOS and Android.
+
+The mobile interface stays in landscape and supports rotation between both landscape directions. Tablet multitasking and newer operating-system windowing policies can override the requested orientation; see the platform notes below. Use Settings → Lists to adjust the number of visible rows and spacing for smaller screens.
+
+Settings → Buttons preserves the selected seek intervals, and Settings → Interface applies the selected streaming engine when saved. The sleep timer choices are off, 30 minutes, 1 hour, 2 hours and 3 hours of inactivity. Saved button mappings, hidden menu items and parental preferences also survive settings export and subsequent saves.
 
 ```bash
 npm install
