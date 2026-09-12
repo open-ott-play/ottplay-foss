@@ -863,8 +863,8 @@ async function testWarmEpgView(ch: Awaited<ReturnType<typeof getModule>>) {
     const pending: Array<(channelId: number, data: any[]) => void> = [];
     const now = Math.floor(Date.now() / 1000);
     const schedule = (name: string) => [
-        { name, descr: "", time: now - 60, time_to: now + 60 },
-        { name: "Future show", descr: "", time: now + 60, time_to: now + 3600 },
+        { descr: "", name, time: now - 60, time_to: now + 60 },
+        { descr: "", name: "Future show", time: now + 60, time_to: now + 3600 },
     ];
     try {
         ch.invalidateEpgCache();
@@ -876,10 +876,10 @@ async function testWarmEpgView(ch: Awaited<ReturnType<typeof getModule>>) {
         Object.assign(mockWindow, {
             cats: ch.cats,
             catsArray: ch.catsArray,
-            channels: ch.channels,
             chanels: ch.channels,
-            getEPGchanelCached: ch.getEPGchanelCached,
+            channels: ch.channels,
             getEPGchanel: (_id: number, done: any) => pending.push(done),
+            getEPGchanelCached: ch.getEPGchanelCached,
             isListVisible: false,
             showPage: () => {
                 mockWindow.isListVisible = true;
