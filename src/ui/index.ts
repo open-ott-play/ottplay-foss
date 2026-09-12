@@ -887,7 +887,20 @@ export function showPage(): void {
     var itemHeight = Math.max(1, Math.floor(listRowHeight(pageSz)));
     (window as any).__ottListRowH = itemHeight;
     var html = "";
-    if (dataArr.length > pageSz) {
+    // OTT showPage: scrollbar only when sShowScroll (Lists settings) is on.
+    var showScroll = 1;
+    try {
+        var wScroll = window as any;
+        var sv = wScroll.sShowScroll;
+        if (sv === undefined || sv === null || sv === "")
+            sv =
+                settings && settings.showScroll !== undefined
+                    ? settings.showScroll
+                    : 1;
+        var sn = typeof sv === "number" ? sv : parseInt(String(sv), 10);
+        if (!isNaN(sn)) showScroll = sn;
+    } catch (_sc) {}
+    if (showScroll && dataArr.length > pageSz) {
         itemWidth = getWidthK() * 720;
         (window as any).itemWith = itemWidth;
         var scrollWidth = 10 * getWidthK();
@@ -924,7 +937,7 @@ export function showPage(): void {
         if (listInBox && (listInBox as HTMLElement).clientWidth > 40) {
             var avail =
                 (listInBox as HTMLElement).clientWidth -
-                (dataArr.length > pageSz ? 12 * getWidthK() : 0);
+                (showScroll && dataArr.length > pageSz ? 12 * getWidthK() : 0);
             if (avail > 40) itemWidth = Math.min(itemWidth, Math.floor(avail));
             (window as any).itemWith = itemWidth;
         }

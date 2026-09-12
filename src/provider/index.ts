@@ -223,10 +223,22 @@ function updateChanelList(chId: string): void {
 function detailProg(): void {
     var e = channels[listArray[selIndex]];
     if (e === undefined) return;
+    var wdet = window as any;
+    // Prefer window flags (Channel list settings → saveIfChanged) over stale lets.
+    function detFlag(name: string, localVal: any, fallback: number): number {
+        var v = wdet[name];
+        if (v === undefined || v === null || v === "") v = localVal;
+        var n = typeof v === "number" ? v : parseInt(String(v), 10);
+        return isNaN(n) ? fallback : n;
+    }
+    var showDescr = detFlag("sShowDescr", sShowDescr, 1);
+    var nextCountL = detFlag("sNextCountL", sNextCountL, 1);
+    var previewMode = detFlag("sPreview", sPreview, 0);
+    sShowDescr = showDescr;
+    sNextCountL = nextCountL;
+    sPreview = previewMode;
     var accent =
-        (typeof curColor === "string" && curColor) ||
-        (window as any).curColor ||
-        "gold";
+        (typeof curColor === "string" && curColor) || wdet.curColor || "gold";
     if (e.time_to && e.time_to >= Date.now() / 1e3) {
         var t = Math.round((Date.now() / 1e3 - e.time) / 60);
         // Title yellow (OTT); time on next line; descr clipped; next on yellow line.
@@ -249,16 +261,16 @@ function detailProg(): void {
             getThumbnail(e.icon) +
             e.descr +
             "</div></div>";
-        if (e.nextpr && sNextCountL) {
+        if (e.nextpr && nextCountL) {
             // Gold: absolute to listDetail bottom (yellow podval border).
             r +=
                 '<div id="_nextpr" style="' +
-                (sShowDescr
+                (showDescr
                     ? "position:absolute;left:0;right:0;bottom:0;z-index:3;box-sizing:border-box;padding:4px 14px;background-color:rgba(8,8,14,0.96);"
                     : "") +
                 'width:100%;white-space:nowrap;font-size:smaller;">';
             e.nextpr.forEach(function (n: any, i: number) {
-                if (i < sNextCountL)
+                if (i < nextCountL)
                     r +=
                         time2time(n.time) +
                         ' <span style="color:' +
@@ -278,7 +290,7 @@ function detailProg(): void {
         } catch (_nh) {
             nextH = $("#_nextpr").height() || 0;
         }
-        var s = sShowDescr
+        var s = showDescr
             ? ($("#listDetail").height() || 0) -
               ($("#_name").height() || 0) -
               nextH
@@ -292,8 +304,8 @@ function detailProg(): void {
         s = ($("#_prd").height() || 0) + 10 - s;
         scrollUp("_prd", s, 5000);
     }
-    if (sPreview == 1 && typeof (window as any).previewChId === "function")
-        (window as any).previewChId(listArray[selIndex]);
+    if (previewMode == 1 && typeof wdet.previewChId === "function")
+        wdet.previewChId(listArray[selIndex]);
 }
 
 function setPopupChannels(): void {
@@ -1036,6 +1048,20 @@ export function loadChannels(): void {
         wShow.settings.showArchive = sShowArchive;
         wShow.settings.preview = sPreview;
     }
+    // Mirror into unprefixed stb keys so boot loadSettings does not resurrect
+    // defaults over provider-scoped Channel list settings.
+    try {
+        if (typeof wShow.stbSetItem === "function") {
+            wShow.stbSetItem("sShowNum", String(sShowNum));
+            wShow.stbSetItem("sShowName", String(sShowName));
+            wShow.stbSetItem("sShowPikon", String(sShowPikon));
+            wShow.stbSetItem("sShowProgress", String(sShowProgress));
+            wShow.stbSetItem("sShowProgram", String(sShowProgram));
+            wShow.stbSetItem("sShowDescr", String(sShowDescr));
+            wShow.stbSetItem("sShowArchive", String(sShowArchive));
+            wShow.stbSetItem("sPreview", String(sPreview));
+        }
+    } catch (_mir) {}
     sPlayers = providerGetNum("sPlayers", 0);
     console.log("[loadChannels] sPlayers from storage=" + sPlayers);
     setPlayerMode(sPlayers);
@@ -1588,6 +1614,9 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     var showProgress = listFlag("sShowProgress", sShowProgress, 1);
     var showProgram = listFlag("sShowProgram", sShowProgram, 1);
     var showArchive = listFlag("sShowArchive", sShowArchive, 1);
+    var showDescr = listFlag("sShowDescr", sShowDescr, 1);
+    var showPreview = listFlag("sPreview", sPreview, 0);
+    var nextCountL = listFlag("sNextCountL", sNextCountL, 1);
     // Keep lets + window aligned for subsequent renders / settings screens.
     sShowNum = showNum;
     sShowName = showName;
@@ -1595,12 +1624,29 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     sShowProgress = showProgress;
     sShowProgram = showProgram;
     sShowArchive = showArchive;
+    sShowDescr = showDescr;
+    sPreview = showPreview;
+    sNextCountL = nextCountL;
     wglob.sShowNum = showNum;
     wglob.sShowName = showName;
     wglob.sShowPikon = showPikon;
     wglob.sShowProgress = showProgress;
     wglob.sShowProgram = showProgram;
     wglob.sShowArchive = showArchive;
+    wglob.sShowDescr = showDescr;
+    wglob.sPreview = showPreview;
+    wglob.sNextCountL = nextCountL;
+    if (wglob.settings) {
+        wglob.settings.showNumber = showNum;
+        wglob.settings.showName = showName;
+        wglob.settings.showPicon = showPikon;
+        wglob.settings.showProgress = showProgress;
+        wglob.settings.showProgram = showProgram;
+        wglob.settings.showArchive = showArchive;
+        wglob.settings.showDescription = showDescr;
+        wglob.settings.preview = showPreview;
+        wglob.settings.nextCountList = nextCountL;
+    }
     // Honor settings.pageSize. Companion sizes picon/progress from the
     // 90-chrome font formula (setFontSize); showPage row boxes use 130 /
     // live #listIn via listRowHeight — do not mix those bases.
@@ -1815,7 +1861,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     $("#listPopUp").hide();
     (window as any).listDataArray = listArray;
     previewChan =
-        sPreview && catIdx === catIndex && channelIdx === primaryIndex
+        showPreview && catIdx === catIndex && channelIdx === primaryIndex
             ? { c: catIdx, ch_id: listArray[selIndex], i: channelIdx }
             : null;
     showPage();
