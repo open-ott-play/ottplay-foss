@@ -237,7 +237,7 @@ body {
     /* Title + time above descr; stay above scrolling #_prd. */
     position: relative;
     z-index: 2;
-    margin-bottom: 0.5em;
+    margin-bottom: 0.65em;
 }
 #listDetail #_descr {
     /* Scroll only inside this band — never over title/time/next (OTT). */
