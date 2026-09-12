@@ -2055,6 +2055,28 @@ function rewriteLogoUrls(text: string): string {
 }
 
 /**
+ * Absolute http(s) URL whose host is not a Tauri embed custom origin.
+ * Real localhost / 127.0.0.1 must return true — that is the broken direct
+ * XHR path for local hls-proxy playlists in Mode B.
+ */
+function isRemoteHttpUrlForProxy(url: string): boolean {
+    if (!/^https?:\/\//i.test(url)) return false;
+    try {
+        const host = new URL(url).hostname.toLowerCase();
+        if (
+            host === "tauri.localhost" ||
+            host === "ipc.localhost" ||
+            host === "asset.localhost"
+        ) {
+            return false;
+        }
+        return true;
+    } catch (_e) {
+        return true;
+    }
+}
+
+/**
  * Mode B: providers POST to host+"/m3u/cp.php" (CORS proxy) and
  * match-channels/logos. Embed has no Mode A HTTP server — those URLs 404 or
  * hang on tauri.localhost. Route cp.php through proxy_fetch invoke; route
@@ -2062,6 +2084,12 @@ function rewriteLogoUrls(text: string): string {
  * match-logos are rewritten to data URIs so CSS backgrounds paint without
  * companion `/logo/...` HTTP. Version (`/version/<rel>`) and feedback
  * (`/feedback/*`, `/api/*`, `/report_feedb`) route through misc commands.
+ *
+ * Also: skip broken direct WKWebView XHR for remote http(s) playlist URLs
+ * (e.g. http://127.0.0.1:8090). Mixed content from https://tauri.localhost,
+ * or Content-Disposition:attachment bodies that arrive as empty "success",
+ * can skip the cp.php fallback and leave catsArray empty (0/0/0). Route
+ * those GETs straight through proxy_fetch instead.
  */
 function setupTauriCompanionShim(): void {
     if (!isTauriEmbedMode()) return;
@@ -2125,6 +2153,17 @@ function setupTauriCompanionShim(): void {
             opts = Object.assign({}, urlOrOpts || {});
         }
         const url = String(opts.url || "");
+        const method = String(opts.type || opts.method || "GET").toUpperCase();
+
+        // Remote absolute http(s) GET (playlist / media XML / etc.): do not use
+        // WKWebView XHR. Empty "success" bodies skip Mode B's cp.php fallback.
+        if (method === "GET" && isRemoteHttpUrlForProxy(url)) {
+            console.log("[Tauri] companion shim: proxy_fetch remote GET", url);
+            return jqFromInvoke(
+                tauriInvoke<string>("proxy_fetch", { url: url }),
+                opts
+            );
+        }
 
         if (url.indexOf("/m3u/cp.php") !== -1) {
             let target = "";
