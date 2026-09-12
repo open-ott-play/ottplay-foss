@@ -383,7 +383,12 @@ class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
         if path.startswith('/epg/'):
             params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
             ch_name = (params.get('ch') or [None])[0]
-            self._serve_epg(path, ch_name)
+            hours_raw = (params.get('hours') or [None])[0]
+            try:
+                archive_hours = int(hours_raw) if hours_raw is not None else 0
+            except (TypeError, ValueError):
+                archive_hours = 0
+            self._serve_epg(path, ch_name, archive_hours)
             return
         if path.startswith('/logo/'):
             self._serve_logo(path, parsed.query)
@@ -535,7 +540,7 @@ class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(html.encode('utf-8'))
 
-    def _serve_epg(self, path, ch_name=None):
+    def _serve_epg(self, path, ch_name=None, archive_hours=0):
         epg_hash = os.path.splitext(os.path.basename(path))[0]
 
         # Serve from XMLTV if available
@@ -544,7 +549,9 @@ class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
             progs = xmltv_programs.get(xmltv_id, [])
             time_shift = time_shift_by_epg.get(epg_hash, 0)
             now = int(time.time())
-            cutoff_start = now - 48 * 3600
+            # archive_hours = configured catchup/history (M3U rechours); timezone is time_shift.
+            lookback_h = archive_hours if archive_hours and archive_hours > 0 else 48
+            cutoff_start = now - lookback_h * 3600
             cutoff_end = now + 48 * 3600
 
             epg_data = []

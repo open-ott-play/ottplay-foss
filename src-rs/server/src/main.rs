@@ -324,7 +324,9 @@ async fn epg_handler(
         .map(|ts| ts as i64)
         .or_else(|| shifts.get(&hash).copied())
         .unwrap_or(0);
-    let result = ottplay_core::get_epg_slice(&cache, &hash, &channel_id, time_shift).await;
+    let archive_hours: i64 = params.hours.map(|h| h as i64).unwrap_or(0);
+    let result =
+        ottplay_core::get_epg_slice(&cache, &hash, &channel_id, time_shift, archive_hours).await;
     Json(result)
 }
 
@@ -333,6 +335,8 @@ struct EpgParams {
     #[serde(rename = "ch")]
     ch: Option<String>,
     ts: Option<i32>,
+    /// Configured catchup/history hours (M3U rechours). Not timezone.
+    hours: Option<i32>,
 }
 
 async fn match_channels_handler(body: Bytes) -> impl IntoResponse {

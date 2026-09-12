@@ -18,31 +18,8 @@ pub async fn match_channels(
     body: String,
     _url: String,
 ) -> Result<String, String> {
-    // Ensure cache is loaded
-    {
-        let guard = state.xmltv_cache.read().await;
-        if guard.is_none() {
-            drop(guard);
-            // One-shot fetch if cache empty
-            let urls: Vec<String> = state
-                .epg_urls
-                .read()
-                .await
-                .iter()
-                .cloned()
-                .collect();
-            if urls.is_empty() {
-                return Err("EPG cache empty and no XMLTV URLs configured".to_string());
-            }
-            let fresh = ottplay_core::fetch_xmltv(&urls)
-                .await
-                .map_err(|e| e.to_string())?;
-            let mut w = state.xmltv_cache.write().await;
-            *w = Some(fresh);
-        }
-    }
+    super::tauri_commands::ensure_xmltv_cache(&state).await?;
 
-    // Cache must be present now
     let cache = state.xmltv_cache.read().await;
     let cache = cache.as_ref().ok_or("EPG cache empty after ensure")?;
 
@@ -70,30 +47,8 @@ pub async fn match_logos(
     body: String,
     _url: String,
 ) -> Result<String, String> {
-    // Ensure cache is loaded
-    {
-        let guard = state.xmltv_cache.read().await;
-        if guard.is_none() {
-            drop(guard);
-            let urls: Vec<String> = state
-                .epg_urls
-                .read()
-                .await
-                .iter()
-                .cloned()
-                .collect();
-            if urls.is_empty() {
-                return Err("EPG cache empty and no XMLTV URLs configured".to_string());
-            }
-            let fresh = ottplay_core::fetch_xmltv(&urls)
-                .await
-                .map_err(|e| e.to_string())?;
-            let mut w = state.xmltv_cache.write().await;
-            *w = Some(fresh);
-        }
-    }
+    super::tauri_commands::ensure_xmltv_cache(&state).await?;
 
-    // Cache must be present now
     let cache = state.xmltv_cache.read().await;
     let cache = cache.as_ref().ok_or("EPG cache empty after ensure")?;
 

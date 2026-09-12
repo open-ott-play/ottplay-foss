@@ -56,16 +56,23 @@ pub async fn fetch_xmltv(urls: &[String]) -> anyhow::Result<xmltv::XmltvCache> {
     Ok(cache)
 }
 
-/// Return EPG slice for `epg_hash` + `channel_id` within ±48h window.
-/// Returns JSON matching the shape TS client expects.
+/// Return EPG slice for `channel_id`.
+///
+/// - `time_shift_hours` is timezone offset only (from channel-name ±Nh / map),
+///   never archive/catchup depth.
+/// - `archive_hours` is configured catchup/history depth (M3U `rechours` /
+///   `catchup-days` → channel.rec). Lookback uses that value when > 0;
+///   otherwise the historical ±48h default. Future cushion stays 48h.
 pub async fn get_epg_slice(
     cache: &xmltv::XmltvCache,
     _hash: &str,
     channel_id: &str,
     time_shift_hours: i64,
+    archive_hours: i64,
 ) -> JsonValue {
     let now = chrono::Utc::now().timestamp();
-    let window_start = now - 48 * 3600;
+    let lookback_h = if archive_hours > 0 { archive_hours } else { 48 };
+    let window_start = now - lookback_h * 3600;
     let window_end = now + 48 * 3600;
     let shift_secs = time_shift_hours * 3600;
 
@@ -112,5 +119,80 @@ pub async fn background_refresh(xmltv_urls: Vec<String>, cache: Arc<RwLock<xmltv
             }
             Err(e) => tracing::warn!("XMLTV refresh failed: {e}"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::xmltv::{Channel, Programme, XmltvCache};
+    use std::collections::HashMap;
+
+    fn sample_cache(now: i64) -> XmltvCache {
+        let mut programs = HashMap::new();
+        // One programme 72h ago, one current, one tomorrow
+        programs.insert(
+            "ch1".to_string(),
+            vec![
+                Programme {
+                    start: now - 72 * 3600,
+                    stop: now - 71 * 3600,
+                    title: "old".into(),
+                    desc: String::new(),
+                    icon: String::new(),
+                },
+                Programme {
+                    start: now - 1800,
+                    stop: now + 1800,
+                    title: "now".into(),
+                    desc: String::new(),
+                    icon: String::new(),
+                },
+                Programme {
+                    start: now + 3600,
+                    stop: now + 7200,
+                    title: "soon".into(),
+                    desc: String::new(),
+                    icon: String::new(),
+                },
+            ],
+        );
+        let mut channels = HashMap::new();
+        channels.insert(
+            "ch1".to_string(),
+            Channel {
+                id: "ch1".into(),
+                name: "Test".into(),
+                icon: String::new(),
+            },
+        );
+        XmltvCache {
+            channels,
+            programs,
+            fetched_at: now as u64,
+        }
+    }
+
+    #[tokio::test]
+    async fn archive_hours_extends_lookback() {
+        let now = chrono::Utc::now().timestamp();
+        let cache = sample_cache(now);
+        let def = get_epg_slice(&cache, "", "ch1", 0, 0).await;
+        let def_arr = def["epg_data"].as_array().unwrap();
+        // Default 48h lookback excludes the 72h-old programme
+        assert!(
+            def_arr.iter().all(|p| p["name"] != "old"),
+            "default window should omit 72h-old: {:?}",
+            def_arr
+        );
+
+        let deep = get_epg_slice(&cache, "", "ch1", 0, 144).await;
+        let deep_arr = deep["epg_data"].as_array().unwrap();
+        assert!(
+            deep_arr.iter().any(|p| p["name"] == "old"),
+            "144h archive lookback should include 72h-old: {:?}",
+            deep_arr
+        );
+        assert!(deep_arr.iter().any(|p| p["name"] == "now"));
     }
 }

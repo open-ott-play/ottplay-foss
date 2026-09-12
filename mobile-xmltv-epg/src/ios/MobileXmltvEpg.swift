@@ -27,6 +27,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         let hash = call.getString("hash") ?? ""
         let channelId = call.getString("channel_id") ?? ""
         let timeShift = call.getInt("time_shift_hours") ?? 0
+        let archiveHours = call.getInt("archive_hours") ?? 0
 
         guard let url = URL(string: finalURL) else {
             call.reject("invalid url")
@@ -35,7 +36,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
 
         if let xml = try? readFreshCache() {
             let parsed = parseXmltv(xml)
-            call.resolve(buildSlice(parsed, channelId: channelId, ch: ch, hash: hash, timeShiftHours: timeShift))
+            call.resolve(buildSlice(parsed, channelId: channelId, ch: ch, hash: hash, timeShiftHours: timeShift, archiveHours: archiveHours))
             return
         }
 
@@ -43,13 +44,13 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
             switch result {
             case .success(let xmlStr):
                 let parsed = self?.parseXmltv(xmlStr) ?? ([:], [:])
-                call.resolve(self?.buildSlice(parsed, channelId: channelId, ch: ch, hash: hash, timeShiftHours: timeShift) ?? ["epg_data": []])
+                call.resolve(self?.buildSlice(parsed, channelId: channelId, ch: ch, hash: hash, timeShiftHours: timeShift, archiveHours: archiveHours) ?? ["epg_data": []])
             case .failure(let err):
                 if let stale = try? Data(contentsOf: self!.cacheURL),
                    let xmlData = self?.gunzip(stale),
                    let xml = String(data: xmlData, encoding: .utf8) {
                     let parsed = self?.parseXmltv(xml) ?? ([:], [:])
-                    call.resolve(self?.buildSlice(parsed, channelId: channelId, ch: ch, hash: hash, timeShiftHours: timeShift) ?? ["epg_data": []])
+                    call.resolve(self?.buildSlice(parsed, channelId: channelId, ch: ch, hash: hash, timeShiftHours: timeShift, archiveHours: archiveHours) ?? ["epg_data": []])
                 } else {
                     call.reject(err.localizedDescription)
                 }
@@ -281,11 +282,12 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         return s.trimmingCharacters(in: .whitespaces)
     }
 
-    private func buildSlice(_ parsed: (channels: [String: String], programs: [String: [(start: Int, stop: Int, title: String, desc: String)]]), channelId: String, ch: String?, hash: String, timeShiftHours: Int) -> [String: Any] {
+    private func buildSlice(_ parsed: (channels: [String: String], programs: [String: [(start: Int, stop: Int, title: String, desc: String)]]), channelId: String, ch: String?, hash: String, timeShiftHours: Int, archiveHours: Int) -> [String: Any] {
         let xmltvId = resolveXmltvId(channels: parsed.channels, ch: ch, hash: hash)
         let progs = parsed.programs[xmltvId] ?? []
         let now = Int(Date().timeIntervalSince1970)
-        let windowStart = now - 48 * 3600
+        let lookbackH = archiveHours > 0 ? archiveHours : 48
+        let windowStart = now - lookbackH * 3600
         let windowEnd = now + 48 * 3600
         let shift = timeShiftHours * 3600
 
