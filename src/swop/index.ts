@@ -55,12 +55,18 @@ export function ensureDeviceClientId(preferred?: string): string {
     var id = "";
     if (preferred && String(preferred).trim()) id = String(preferred).trim();
     if (!id && w.deviceUUID) id = String(w.deviceUUID).trim();
-    if (!id && typeof localStorage !== "undefined") {
-        id = (
-            localStorage.getItem("ott_device_uuid") ||
-            localStorage.getItem("deviceId") ||
-            ""
-        ).trim();
+    if (!id) {
+        try {
+            if (typeof localStorage !== "undefined") {
+                id = (
+                    localStorage.getItem("ott_device_uuid") ||
+                    localStorage.getItem("deviceId") ||
+                    ""
+                ).trim();
+            }
+        } catch (_readError) {
+            // Privacy modes may throw even when accessing the storage property.
+        }
     }
     if (!id && settings.deviceUuid) id = String(settings.deviceUuid).trim();
     if (!CLIENT_ID_RE.test(id)) {

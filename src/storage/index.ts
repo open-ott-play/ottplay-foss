@@ -2,7 +2,7 @@
  * Storage abstraction layer.
  *
  * Ported from stbPlayer.js (ottpStorage IIFE, laaMac, provider helpers).
- * Uses localStorage when available, falls back to cookies.
+ * Uses localStorage when available, falls back to cookies or session memory.
  * Provides provider-prefixed storage for multi-provider setups.
  *
  * Variable renaming from original JS:
@@ -58,143 +58,116 @@ export interface StorageAdapter {
  * @returns A `StorageAdapter` object with all required methods.
  *
  * @remarks
- * If `localStorage.setItem` throws (e.g. quota exceeded), the `set` method
- * logs the error and calls `alert()`.
- *
- * @sideEffects
- * The `set` method may produce an `alert()` on write failure.
+ * Storage access can fail after detection (privacy settings, quota). Failed
+ * operations switch to cookies/memory for this session and preserve readable keys.
  */
 function createLocalStorageAdapter(): StorageAdapter {
-    /**
-     * Retrieve a value from localStorage by key.
-     *
-     * @param key - The storage key.
-     * @returns The stored string, or `null` if the key does not exist.
-     */
-    const get = function (key: string): string | null {
-        return localStorage.getItem(key);
-    };
+    let nativeStorage: Storage | null = null;
+    try {
+        nativeStorage = window.localStorage;
+        if (nativeStorage) nativeStorage.getItem("");
+    } catch (_error) {
+        nativeStorage = null;
+    }
+    const fallback = createCookieAdapter();
 
-    /**
-     * Store a value in localStorage.
-     *
-     * @param key   - The storage key.
-     * @param value - The string to store.
-     *
-     * @sideEffects
-     * On `QuotaExceededError` or other exceptions, logs to console and calls
-     * `alert()`.
-     */
-    const set = function (key: string, value: string): void {
+    // Keep readable settings when a privacy restriction or quota makes the
+    // native adapter unusable. Cookie writes also have an in-memory fallback.
+    const failover = function (): void {
+        const previous = nativeStorage;
+        nativeStorage = null;
+        if (!previous) return;
         try {
-            localStorage.setItem(key, value);
-        } catch (e) {
-            console.error(e);
-            alert("Error save data!!!");
-        }
+            for (let i = 0; i < previous.length; i++) {
+                const key = previous.key(i);
+                if (key != null) {
+                    const value = previous.getItem(key);
+                    if (value != null) fallback.set(key, value);
+                }
+            }
+        } catch (_error) {}
     };
-
-    /**
-     * Remove a key from localStorage.
-     *
-     * @param key - The storage key to remove.
-     */
-    const del = function (key: string): void {
-        localStorage.removeItem(key);
-    };
-
-    /**
-     * Check whether a key exists in localStorage.
-     *
-     * @param key - The storage key.
-     * @returns `true` if the key is present (value may be empty string).
-     */
-    const has = function (key: string): boolean {
-        return localStorage.getItem(key) !== null;
-    };
-
-    /**
-     * Check whether a key exists and holds a non-empty value.
-     *
-     * @param key - The storage key.
-     * @returns `true` if the key is present and its value is not `''`.
-     */
-    const hasValue = function (key: string): boolean {
-        const value = localStorage.getItem(key);
-        return value !== null && value !== "";
-    };
-
-    /**
-     * Remove all keys from localStorage.
-     *
-     * @sideEffects
-     * Calls `localStorage.clear()`.
-     */
-    const clear = function (): void {
-        localStorage.clear();
-    };
-
-    /**
-     * Extract all key-value pairs from localStorage.
-     *
-     * @returns A plain object mapping every key to its string value.
-     */
-    const dump = function (): Record<string, string> {
-        const items: Record<string, string> = {};
-        let k: string | null;
-        for (let i = 0; i < localStorage.length; i++) {
-            k = localStorage.key(i);
-            if (k != null) {
-                items[k] = localStorage[k];
+    const get = function (key: string): string | null {
+        if (nativeStorage) {
+            try {
+                return nativeStorage.getItem(key);
+            } catch (_error) {
+                failover();
             }
         }
-        return items;
+        return fallback.get(key);
     };
-
-    /**
-     * Reset / reinitialise the adapter.
-     *
-     * @remarks
-     * No-op for localStorage — the native API is always available.
-     */
-    const init = function (): void {
-        // no-op for localStorage; methods are already assigned
+    const set = function (key: string, value: string): void {
+        if (nativeStorage) {
+            try {
+                nativeStorage.setItem(key, value);
+                return;
+            } catch (_error) {
+                failover();
+            }
+        }
+        fallback.set(key, value);
     };
-
-    /**
-     * Read a value and parse it as an integer.
-     *
-     * @param key          - The storage key.
-     * @param defaultValue - Fallback value when the key is missing or not a
-     *                       valid integer (default 0).
-     * @returns The parsed integer or `defaultValue`.
-     */
-    const getI = function (key: string, defaultValue = 0): number {
-        const parsed = Number.parseInt(get(key) || "", 10);
-        return isNaN(parsed) ? defaultValue : parsed;
+    const del = function (key: string): void {
+        if (nativeStorage) {
+            try {
+                nativeStorage.removeItem(key);
+                return;
+            } catch (_error) {
+                failover();
+            }
+        }
+        fallback.del(key);
     };
-
-    /**
-     * Write a number as a decimal string.
-     *
-     * @param key   - The storage key.
-     * @param value - The number to store.
-     */
-    const setI = function (key: string, value: number): void {
-        set(key, value.toString(10));
+    const clear = function (): void {
+        if (nativeStorage) {
+            try {
+                nativeStorage.clear();
+                return;
+            } catch (_error) {
+                failover();
+            }
+        }
+        fallback.clear();
     };
-
+    const dump = function (): Record<string, string> {
+        if (nativeStorage) {
+            try {
+                const result: Record<string, string> = {};
+                for (let i = 0; i < nativeStorage.length; i++) {
+                    const key = nativeStorage.key(i);
+                    if (key != null) {
+                        const value = nativeStorage.getItem(key);
+                        if (value != null) result[key] = value;
+                    }
+                }
+                return result;
+            } catch (_error) {
+                failover();
+            }
+        }
+        return fallback.dump();
+    };
     return {
         clear,
         del,
         dump,
         get,
-        getI,
-        has,
-        hasValue,
-        reset: init,
+        getI(key: string, defaultValue = 0): number {
+            const value = parseInt(get(key) || "", 10);
+            return isNaN(value) ? defaultValue : value;
+        },
+        has(key: string): boolean {
+            return get(key) !== null;
+        },
+        hasValue(key: string): boolean {
+            return (get(key) || "") !== "";
+        },
+        reset(): void {},
         set,
-        setI,
+        setI(key: string, value: number): void {
+            set(key, String(value));
+        },
     };
 }
 
@@ -211,185 +184,86 @@ function createLocalStorageAdapter(): StorageAdapter {
  * The cookie path is always `/`.
  */
 function createCookieAdapter(): StorageAdapter {
-    /**
-     * Read a cookie value by name.
-     *
-     * @param key - The cookie name.
-     * @returns The decoded cookie value, or `''` if the cookie does not exist.
-     *
-     * @remarks
-     * Uses regex to extract the value from `document.cookie`. The key is
-     * decoded and special regex characters are escaped.
-     */
-    const get = function (key: string): string {
-        const pattern =
-            "(?:^|;\\s*)" +
-            decodeURIComponent(key).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
-            "\\s*\\=";
-        if (!new RegExp(pattern).test(document.cookie)) {
-            return "";
-        }
-        return decodeURIComponent(
-            document.cookie.replace(
-                new RegExp(
-                    "(?:^|.*;\\s*)" +
-                        decodeURIComponent(key).replace(
-                            /[.*+?^${}()|[\]\\]/g,
-                            "\\$&"
-                        ) +
-                        "\\s*\\=\\s*((?:[^;](?!;))*[^;]?).*"
-                ),
-                "$1"
-            )
-        );
+    const values: Record<string, string | null> = Object.create(null);
+    let cleared = false;
+    const readCookies = function (): Record<string, string> {
+        const result: Record<string, string> = Object.create(null);
+        if (cleared) return result;
+        try {
+            const entries = (document.cookie || "").split(";");
+            for (let i = 0; i < entries.length; i++) {
+                const entry = entries[i].trim();
+                const equals = entry.indexOf("=");
+                if (equals <= 0) continue;
+                try {
+                    result[decodeURIComponent(entry.slice(0, equals))] =
+                        decodeURIComponent(entry.slice(equals + 1));
+                } catch (_malformedCookie) {}
+            }
+        } catch (_cookieAccess) {}
+        return result;
     };
-
-    /**
-     * Write a cookie with a far-future expiration (2038).
-     *
-     * @param key   - The cookie name.
-     * @param value - The value to store (URI-encoded).
-     *
-     * @remarks
-     * No-ops if `key` is empty. The cookie path is `/`.
-     *
-     * @sideEffects
-     * Sets `document.cookie`.
-     */
+    const get = function (key: string): string | null {
+        if (Object.prototype.hasOwnProperty.call(values, key)) {
+            return values[key];
+        }
+        const cookies = readCookies();
+        return Object.prototype.hasOwnProperty.call(cookies, key)
+            ? cookies[key]
+            : null;
+    };
     const set = function (key: string, value: string): void {
-        if (key) {
+        if (!key) return;
+        values[key] = String(value);
+        try {
             document.cookie =
                 encodeURIComponent(key) +
                 "=" +
                 encodeURIComponent(value) +
                 "; expires=Tue, 19 Jan 2038 03:14:07 GMT; path=/";
-        }
+        } catch (_cookieAccess) {}
     };
-
-    /**
-     * Delete a cookie by setting its expiration to the past.
-     *
-     * @param key - The cookie name to remove.
-     *
-     * @sideEffects
-     * Sets `document.cookie` with an expiry in 1970.
-     */
     const del = function (key: string): void {
-        if (key) {
+        values[key] = null;
+        try {
             document.cookie =
                 encodeURIComponent(key) +
                 "=; expires=Thu, 01 Jan 1970 00:00:01 GMT; path=/";
-        }
+        } catch (_cookieAccess) {}
     };
-
-    /**
-     * Check whether a cookie exists.
-     *
-     * @param key - The cookie name.
-     * @returns `true` if the cookie is present.
-     *
-     * @remarks
-     * Returns `false` for empty/undefined keys.
-     */
-    const has = function (key: string): boolean {
-        if (key) {
-            const pattern =
-                "(?:^|;\\s*)" +
-                decodeURIComponent(key).replace(/[-.+*]/g, "\\$&") +
-                "\\s*\\=";
-            return new RegExp(pattern).test(document.cookie);
-        }
-        return false;
-    };
-
-    /**
-     * Check whether a cookie exists with a non-empty value.
-     *
-     * @param key - The cookie name.
-     * @returns `true` if the cookie exists and its value is not `''`.
-     */
-    const hasValue = function (key: string): boolean {
-        return get(key) !== "";
-    };
-
-    /**
-     * Delete all cookies.
-     *
-     * @sideEffects
-     * Iterates `document.cookie` and expires each cookie by setting its
-     * expiration to unix epoch.
-     */
-    const clear = function (): void {
-        const cookies = document.cookie.split(";");
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i];
-            const eqPos = cookie.indexOf("=");
-            const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
-            document.cookie =
-                name + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
-        }
-    };
-
-    /**
-     * Extract all cookies as a key-value map.
-     *
-     * @returns An object mapping every cookie name to its decoded value.
-     */
     const dump = function (): Record<string, string> {
-        const items: Record<string, string> = {};
-        const cookies = document.cookie.split(";");
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i];
-            const eqPos = cookie.indexOf("=");
-            const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
-            items[name] = get(name);
+        const result = readCookies();
+        for (const key in values) {
+            const value = values[key];
+            if (value === null) delete result[key];
+            else result[key] = value;
         }
-        return items;
+        return result;
     };
-
-    /**
-     * Reset / reinitialise the adapter.
-     *
-     * @remarks
-     * No-op for cookies — the methods are always ready.
-     */
-    const init = function (): void {
-        // no-op for cookie adapter; methods are already assigned
-    };
-
-    /**
-     * Read a cookie and parse it as an integer.
-     *
-     * @param key          - The cookie name.
-     * @param defaultValue - Fallback value (default 0).
-     * @returns The parsed integer, or `defaultValue` if parsing fails.
-     */
-    const getI = function (key: string, defaultValue = 0): number {
-        const parsed = Number.parseInt(get(key), 10);
-        return isNaN(parsed) ? defaultValue : parsed;
-    };
-
-    /**
-     * Write a number as a cookie (decimal string).
-     *
-     * @param key   - The cookie name.
-     * @param value - The number to store.
-     */
-    const setI = function (key: string, value: number): void {
-        set(key, value.toString(10));
-    };
-
     return {
-        clear,
+        clear(): void {
+            const all = dump();
+            for (const key in all) del(key);
+            cleared = true;
+        },
         del,
         dump,
         get,
-        getI,
-        has,
-        hasValue,
-        reset: init,
+        getI(key: string, defaultValue = 0): number {
+            const value = parseInt(get(key) || "", 10);
+            return isNaN(value) ? defaultValue : value;
+        },
+        has(key: string): boolean {
+            return get(key) !== null;
+        },
+        hasValue(key: string): boolean {
+            return (get(key) || "") !== "";
+        },
+        reset(): void {},
         set,
-        setI,
+        setI(key: string, value: number): void {
+            set(key, String(value));
+        },
     };
 }
 
