@@ -736,7 +736,9 @@ export function stbPlay(url: string, position?: number): void {
                                 "[HLS] MEDIA_ERROR twice, fallback native HTML5"
                             );
                             video!.src = url;
-                            video!.play().catch(function () {});
+                            var fallbackPlay = video!.play();
+                            if (fallbackPlay && typeof fallbackPlay.catch === "function")
+                                fallbackPlay.catch(function () {});
                         } else {
                             console.log(
                                 "[HLS] MEDIA_ERROR twice, no native HLS" +
@@ -829,9 +831,13 @@ export function stbPlay(url: string, position?: number): void {
             if (session !== _playSession || hlsInstance !== playbackHls) return;
             _liveRestartUsed = false;
             _liveRestartPending = false;
-            video!.play().catch(function (e) {
-                console.log("[HLS] play() rejected:", e);
-            });
+            var manifestPlay = video!.play();
+            // Older HTMLMediaElement implementations return void, not Promise.
+            if (manifestPlay && typeof manifestPlay.catch === "function") {
+                manifestPlay.catch(function (e) {
+                    console.log("[HLS] play() rejected:", e);
+                });
+            }
             if (_startPos > 0) {
                 video!.currentTime = _startPos;
                 _startPos = 0;

@@ -60,6 +60,7 @@ function fixture() {
     vm.runInContext(source("ui/index.ts", ["initBackgroundIntervals", "_t2"]), w);
     vm.runInContext(source("keyhandler/index.ts", [
         "toggleMainPlayback", "handleMainKey", "handleTouchMove", "getDirection",
+        "keyHandler", "body_handleTouchEnd", "checkTap", "capacitorOnly",
     ]), w);
     w.video = {
         paused: true, src: "", currentTime: 0, playCalls: 0,
@@ -117,6 +118,7 @@ function installHls(w: any) {
         constructor() { players.push(this); }
         loadSource(url: string) { this.url = url; }
         attachMedia() {}
+        recoverMediaError() {}
         on(event: string, callback: (...args: any[]) => void) { this.events[event] = callback; }
         destroy() { this.destroyed = true; }
     }
@@ -218,4 +220,51 @@ for (const action of ["switch", "stop"]) {
     move(202, 151);
     assert.deepEqual(f.calls.at(-1), ["_doKey", f.w.keys.DOWN]);
 }
-console.log("OK: playback clocks, native/HLS lifecycle, transport keys, and touch thresholds");
+// ES5-capable media engines may have no Promise global and return void from play().
+for (const route of ["manifest", "native recovery"]) {
+    const f = fixture();
+    const players = installHls(f.w);
+    f.w.Promise = undefined;
+    f.w.video.play = function () { this.paused = false; this.playCalls++; };
+    f.w.stbPlay("legacy-engine.m3u8", 35);
+    if (route === "manifest") {
+        players[0].events.manifest();
+        assert.equal(f.w.video.currentTime, 35, "void play() must not interrupt the seek");
+    } else {
+        const fatal = { fatal: true, type: "media", details: "bufferAppendError" };
+        players[0].events.error(null, fatal);
+        players[0].events.error(null, fatal);
+        assert.equal(f.w.video.src, "legacy-engine.m3u8");
+    }
+    assert.equal(f.w.video.playCalls, 1);
+}
+
+{
+    const f = fixture();
+    f.w.$ = (selector: string) => ({ is: () => selector === "#listEdit" });
+    f.w.handleEditKey = (code: number) => f.calls.push(["edit", code]);
+    for (const key of [{ keyCode: 13 }, { which: 27 }]) {
+        f.w.keyHandler({ ...key, target: { tagName: "INPUT" }, preventDefault() {}, stopPropagation() {} });
+    }
+    assert.deepEqual(f.calls, [["edit", 13], ["edit", 27]], "legacy keyCode/which must confirm and cancel editors");
+}
+
+{
+    const f = fixture();
+    f.w.MouseEvent = undefined;
+    f.w.document.createEvent = (kind: string) => {
+        assert.equal(kind, "MouseEvents");
+        return { initMouseEvent(...args: any[]) {
+            Object.assign(this, { type: args[0], bubbles: args[1], clientX: args[7], clientY: args[8] });
+        } };
+    };
+    let dispatched: any;
+    f.w.body_handleTouchEnd({ touches: [], changedTouches: [{ clientX: 25, clientY: 45 }],
+        target: { dispatchEvent(event: any) { dispatched = event; } }, preventDefault() {} });
+    assert.equal(dispatched.type, "click");
+    assert.equal(dispatched.bubbles, true);
+    assert.equal(dispatched.clientX, 25);
+    assert.equal(dispatched.clientY, 45);
+}
+
+console.log("OK: playback clocks, native/HLS lifecycle, transport keys, touch thresholds, and legacy media/input events");
