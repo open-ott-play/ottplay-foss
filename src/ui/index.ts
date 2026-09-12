@@ -2141,7 +2141,8 @@ export function infoProgramm(title: string): void {
 export function infoMedia(): void {
     var la = (window as any).listArray || [];
     var si = (window as any).selIndex || 0;
-    if (!getMediaDescr(la[si])) return;
+    var description = getMediaDescr(la[si]);
+    if (!description) return;
     $("#listPopUp").hide();
     saveCPD();
     var t = la[si].title || "";
@@ -2177,7 +2178,7 @@ export function infoMedia(): void {
         return true;
     };
     $("#listAbout")
-        .html('<div id="_prd">' + getMediaDescr(la[si]) + "</div>")
+        .html('<div id="_prd">' + description + "</div>")
         .show();
 }
 

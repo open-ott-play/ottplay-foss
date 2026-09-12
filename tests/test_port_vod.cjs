@@ -340,6 +340,39 @@ function fixture() {
     );
 }
 
+// Edem lazy descriptions fetch pages: one Info action must trigger only one request.
+{
+    const c = fixture();
+    c.saveCPD = () => {};
+    c.listCaptionElement = null;
+    c.listPodvalElement = null;
+    c.host = "";
+    c._vpurl = "https://example.invalid/vportal";
+    let requests = 0;
+    c.$.ajax = () => requests++;
+    vm.runInContext(
+        sourceFunctions("prov/edem/prov.js", ["addMedias2"]) +
+            sourceFunctions("src/ui/index.ts", ["infoMedia"]),
+        c
+    );
+    c.listArray = [
+        {
+            title: "Loading movie",
+            description: () => c.addMedias2({ limit: 300 }),
+        },
+    ];
+    c.infoMedia();
+    assert.equal(
+        requests,
+        1,
+        "Info must evaluate the provider description once"
+    );
+    assert.equal(
+        c.elements["#listAbout"].innerHTML,
+        '<div id="_prd">Download! Wait ...</div>'
+    );
+}
+
 // Adapter position persists on leaving VOD, enables resume, and history=0 remains disabled.
 {
     const c = fixture();
