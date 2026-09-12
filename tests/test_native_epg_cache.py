@@ -4,6 +4,7 @@
 The actual plugin sources are compiled with small Capacitor/network stubs. Only
 platform imports/annotations are adapted; cache and callback code is unchanged.
 Requires swift, kotlinc and java on PATH. Run: python3 tests/test_native_epg_cache.py
+Use --check-mirrors-only for the shipping-source guard without native compilers.
 """
 
 import base64
@@ -11,6 +12,7 @@ import gzip
 import pathlib
 import shutil
 import subprocess
+import sys
 import tempfile
 
 
@@ -21,6 +23,17 @@ GZIP = base64.b64encode(gzip.compress(XML.encode())).decode()
 
 def run(*args, cwd):
     subprocess.run(args, cwd=cwd, check=True)
+
+
+def check_shipping_sources():
+    mirrors = (
+        ("mobile-xmltv-epg/src/ios/MobileXmltvEpg.swift", "ios/App/CapApp-SPM/Sources/CapApp-SPM/MobileXmltvEpg.swift"),
+        ("mobile-xmltv-epg/src/android/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt", "android/app/src/main/java/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt"),
+    )
+    for source, shipping in mirrors:
+        if (ROOT / source).read_bytes() != (ROOT / shipping).read_bytes():
+            raise AssertionError(f"Shipping native source differs from template: {shipping}")
+    print("PASS native shipping source mirrors match templates", flush=True)
 
 
 SWIFT_STUBS = r'''
@@ -204,6 +217,9 @@ KOTLIN_TESTS = r'''
 
 
 def main():
+    check_shipping_sources()
+    if sys.argv[1:] == ["--check-mirrors-only"]:
+        return
     for compiler in ("swift", "kotlinc", "java"):
         if not shutil.which(compiler):
             raise SystemExit(f"Required native test tool is missing: {compiler}")
