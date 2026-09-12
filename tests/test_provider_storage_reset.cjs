@@ -57,37 +57,37 @@ const code = process.argv.includes("--bundle")
 const saved = new Map();
 let firstRuns = 0;
 const context = {
-    console,
-    location: { search: "" },
-    localStorage: {
-        getItem: (key) => (saved.has(key) ? saved.get(key) : null),
-        setItem: (key, value) => saved.set(key, String(value)),
-        removeItem: (key) => saved.delete(key),
-    },
-    arrayProvaiders: [],
-    launch_id: "#launch",
-    popupActions: [],
-    popupArray: [],
-    popupDetail: [],
-    savedPopup: {
-        ver: "fixture",
-        popupActions: [() => {}],
-        popupArray: ["Menu"],
-        popupDetail: [""],
-    },
-    firstRun() {
-        firstRuns++;
-    },
     $() {
         return {
-            is: () => true,
             append() {
                 return this;
             },
             hide() {
                 return this;
             },
+            is: () => true,
         };
+    },
+    arrayProvaiders: [],
+    console,
+    firstRun() {
+        firstRuns++;
+    },
+    launch_id: "#launch",
+    localStorage: {
+        getItem: (key) => (saved.has(key) ? saved.get(key) : null),
+        removeItem: (key) => saved.delete(key),
+        setItem: (key, value) => saved.set(key, String(value)),
+    },
+    location: { search: "" },
+    popupActions: [],
+    popupArray: [],
+    popupDetail: [],
+    savedPopup: {
+        popupActions: [() => {}],
+        popupArray: ["Menu"],
+        popupDetail: [""],
+        ver: "fixture",
     },
 };
 context.window = context;
@@ -95,8 +95,8 @@ vm.createContext(context);
 vm.runInContext(
     ts.transpileModule(code, {
         compilerOptions: {
-            target: ts.ScriptTarget.ES5,
             module: ts.ModuleKind.None,
+            target: ts.ScriptTarget.ES5,
         },
     }).outputText,
     context
