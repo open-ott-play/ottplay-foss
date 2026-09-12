@@ -8,7 +8,8 @@ Every Vite build (web, Capacitor and Tauri) parses the final bundle and shipped
 JavaScript with Acorn's ES5 grammar. `npm run check:es5` repeats that check and
 verifies that device, library and provider scripts are present and current in
 both packaged web roots. A syntax failure or missing asset fails the build.
-`npm run check:bundle` checks the required public identifiers.
+`npm run check:bundle` checks the required public identifiers and executes the
+actual bundle in legacy, modern and Capacitor runtime profiles.
 
 The compiler lowers syntax, not browser APIs. The first bundle module installs
 runtime shims, including `Object.assign`, numeric helpers and string search.

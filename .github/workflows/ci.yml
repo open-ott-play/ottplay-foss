@@ -80,7 +80,7 @@ jobs:
       - name: Build bundle
         run: npm run build
 
-      - name: Bundle identifier snapshot (HS5)
+      - name: Classic bundle smoke (ES5)
         run: npm run check:bundle
 
 
