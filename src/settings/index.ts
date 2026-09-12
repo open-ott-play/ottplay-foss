@@ -7,6 +7,22 @@
  */
 import { storage } from "../storage/index";
 
+// The polyfill preserves this getter so "system" also restores native DST rules.
+const systemTimezoneOffset =
+    (Date as any).nativeGetTimezoneOffset || Date.prototype.getTimezoneOffset;
+
+/** Apply the legacy timezone menu index; zero restores the system timezone. */
+export function applyTimezoneSetting(index: number): number {
+    if (!Number.isInteger(index) || index < 0 || index > 25) index = 0;
+    var hours = index <= 13 ? index - 1 : 13 - index;
+    var offset =
+        index === 0 ? systemTimezoneOffset.call(new Date()) : -60 * hours;
+    if (typeof (Date as any).setTimezoneOffset === "function") {
+        (Date as any).setTimezoneOffset(offset);
+    }
+    return index;
+}
+
 /**
  * All player configuration parameters.
  *

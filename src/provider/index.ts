@@ -12,6 +12,7 @@
  * - First-run setup wizard
  */
 
+import { invalidateEpgCache } from "../channels";
 import {
     setPlayerMode,
     toggleAspectRatio,
@@ -998,9 +999,7 @@ export function loadChannels(): void {
     for (var _ck in channels) {
         delete channels[_ck];
     }
-    epg = {};
-    epgCashObj = {};
-    epgCashArr = [];
+    invalidateEpgCache();
     curList = [];
     catsArray = [];
     cats = {};

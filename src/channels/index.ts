@@ -63,6 +63,9 @@ export interface Channel {
     cmd?: string;
     descr?: string;
     description?: string | (() => string);
+    epg?: string | number;
+    epg_url?: string | number;
+    xmltv_url?: string;
     icon?: string;
     logo_30x30?: string;
     name?: string;
@@ -271,6 +274,102 @@ export let _prog100: any = null,
 export let epgCash = 0;
 export let epgCashObj: Record<number, EPGEntry[]> = {};
 export let epgCashArr: number[] = [];
+const EPG_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+let epgCacheFetchedAt: Record<number, number> = {};
+let epgCacheGeneration = 0;
+type EpgCallback = (chId: number, programs: EPGEntry[] | null) => void;
+let epgPending: Record<
+    number,
+    {
+        generation: number;
+        channel: Channel | undefined;
+        callbacks: EpgCallback[];
+    }
+> = {};
+
+/** Clear full schedules and reject responses from the previous provider/refresh. */
+export function invalidateEpgCache(refetchPending = false): void {
+    var waiting = epgPending;
+    epgCacheGeneration++;
+    epgPending = {};
+    epgCacheFetchedAt = {};
+    for (var key in epg) delete epg[key];
+    for (var key in epgCashObj) delete epgCashObj[key];
+    epgCashArr.length = 0;
+    arrayGetCurProg.length = 0;
+    epg_ch_id = null;
+    curEpgData = null;
+    for (var key in channels) {
+        var ch = channels[key];
+        if (!ch) continue;
+        ch.time_request = 0;
+        ch.time_to = 0;
+        ch.nextpr = null;
+    }
+    // Backend warm-up can race an EPG menu request. Keep its consumer alive
+    // by issuing a fresh request; provider reloads deliberately drop consumers.
+    if (refetchPending) {
+        for (var key in waiting) {
+            var request = waiting[key];
+            if (request.channel !== channels[key]) continue;
+            request.callbacks.forEach(function (notify) {
+                getEPGchanelCached(Number(key), notify);
+            });
+        }
+    }
+}
+
+function epgCacheLimit(): number {
+    var configured =
+        typeof window !== "undefined" &&
+        typeof (window as any).epgCash !== "undefined"
+            ? Number((window as any).epgCash)
+            : epgCash;
+    return Number.isFinite(configured) && configured > 0
+        ? Math.floor(configured)
+        : 0;
+}
+
+function readEpgCache(channelId: number): EPGEntry[] | null {
+    if (!epgCacheLimit()) return null;
+    var data = epg[channelId];
+    var fetchedAt = epgCacheFetchedAt[channelId];
+    if (!data || !data.length || fetchedAt === undefined) return null;
+    if (
+        Date.now() - fetchedAt >= EPG_CACHE_TTL_MS ||
+        !data.some(function (entry) {
+            return entry.time_to >= Date.now() / 1000;
+        })
+    ) {
+        delete epg[channelId];
+        delete epgCashObj[channelId];
+        delete epgCacheFetchedAt[channelId];
+        var staleIndex = epgCashArr.indexOf(channelId);
+        if (staleIndex !== -1) epgCashArr.splice(staleIndex, 1);
+        return null;
+    }
+    var index = epgCashArr.indexOf(channelId);
+    if (index !== -1) epgCashArr.splice(index, 1);
+    epgCashArr.unshift(channelId);
+    return data;
+}
+
+/** Only complete provider/native responses belong in the full-schedule cache. */
+function cacheFetchedEpg(channelId: number, data: EPGEntry[] | null): void {
+    var limit = epgCacheLimit();
+    if (!limit || !data || !data.length) return;
+    epg[channelId] = data;
+    epgCashObj[channelId] = data;
+    epgCacheFetchedAt[channelId] = Date.now();
+    var index = epgCashArr.indexOf(channelId);
+    if (index !== -1) epgCashArr.splice(index, 1);
+    epgCashArr.unshift(channelId);
+    epgCashArr.splice(limit).forEach(function (id) {
+        delete epg[id];
+        delete epgCashObj[id];
+        delete epgCacheFetchedAt[id];
+    });
+}
 export let arrayGetCurProg: Array<{
     ch_id: number;
     callback: (chId: number) => void;
@@ -1012,115 +1111,146 @@ export function getEPGchanelCached(
     channelId: number,
     callback: (chId: number, programs: EPGEntry[] | null) => void
 ): void {
-    var cached = epg[channelId];
+    var cached = readEpgCache(channelId);
     if (cached) {
         callback(channelId, cached);
         return;
     }
-    // Mode B (Capacitor mobile): use native XMLTV EPG plugin.
-    if (typeof (window as any).Capacitor !== "undefined") {
-        var ch = channels[channelId];
-        var hash = String(channelId);
-        var timeShiftHours = epgTimezoneHours(ch);
-        var archiveHours = epgArchiveHours(ch);
-        var xmltvUrl =
-            ch && (ch as any).epg_url != null
-                ? String((ch as any).epg_url)
-                : "";
-        (window as any).Capacitor.Plugins.MobileXmltvEpg.getEpg({
-            archive_hours: archiveHours,
-            ch: ch?.channel_name || ch?.name || "",
-            channel_id: String(channelId),
-            hash: hash,
-            time_shift_hours: timeShiftHours,
-            xmltv_url: xmltvUrl,
-        })
-            .then(function (result: any) {
-                // Accept both raw EPG array and {epg_data: [...]} (same as Tauri).
-                var epgData = Array.isArray(result)
-                    ? result
-                    : result && Array.isArray(result.epg_data)
-                      ? result.epg_data
-                      : null;
-                epgData = applyChannelTvgShift(ch, epgData);
-                // Never cache [] — empty is truthy in JS and would permanently
-                // skip re-fetch after a cold-XMLTV miss (Mode B warm race).
-                if (epgData && epgData.length > 0) {
-                    epg[channelId] = epgData;
-                    callback(channelId, epgData);
-                } else {
-                    callback(channelId, null);
-                }
-            })
-            .catch(function (_err: any) {
-                callback(channelId, null);
-            });
+    var existing = epgPending[channelId];
+    if (existing && existing.channel === channels[channelId]) {
+        existing.callbacks.push(callback);
         return;
     }
-    // Mode B (Tauri desktop): in-process Rust EPG via invoke() (not HTTP).
-    // Pass playlist channel name + epg_url hash so resolve_xmltv_id can match
-    // (numeric channelId alone almost never equals an XMLTV id).
-    if (typeof (window as any).__TAURI__ !== "undefined") {
-        var ch = channels[channelId];
-        var channelName = (ch && (ch.channel_name || ch.name)) || "";
-        var hash =
-            ch && (ch as any).epg_url != null
-                ? String((ch as any).epg_url)
-                : "";
-        var timeShiftHours = epgTimezoneHours(ch);
-        var archiveHours = epgArchiveHours(ch);
-        var coreApi = (window as any).__TAURI__.core;
-        var invokeFn =
-            coreApi && typeof coreApi.invoke === "function"
-                ? function (cmd: string, args: any) {
-                      return coreApi.invoke(cmd, args);
-                  }
-                : typeof (window as any).__TAURI__.invoke === "function"
-                  ? function (cmd: string, args: any) {
-                        return (window as any).__TAURI__.invoke(cmd, args);
+    var request = {
+        generation: epgCacheGeneration,
+        channel: channels[channelId],
+        callbacks: [callback],
+    };
+    epgPending[channelId] = request;
+    function finish(_id: number, programs: EPGEntry[] | null): void {
+        // A late response must not populate the new provider or trigger its UI.
+        if (
+            epgPending[channelId] !== request ||
+            request.generation !== epgCacheGeneration ||
+            request.channel !== channels[channelId]
+        )
+            return;
+        delete epgPending[channelId];
+        var data = Array.isArray(programs) && programs.length ? programs : null;
+        cacheFetchedEpg(channelId, data);
+        request.callbacks.forEach(function (notify) {
+            notify(channelId, data);
+        });
+    }
+    try {
+        // Mode B (Capacitor mobile): use native XMLTV EPG plugin.
+        if (typeof (window as any).Capacitor !== "undefined") {
+            var ch = channels[channelId];
+            // Native XMLTV resolves raw tvg-id/name; epg_url is a companion hash.
+            var hash = ch && ch.epg != null ? String(ch.epg) : "";
+            var timeShiftHours = epgTimezoneHours(ch);
+            var archiveHours = epgArchiveHours(ch);
+            // Only an explicit source URL may override the native default feed.
+            var source = ch && (ch as any).xmltv_url;
+            var xmltvUrl =
+                typeof source === "string" && /^https?:\/\//i.test(source)
+                    ? source
+                    : "";
+            (window as any).Capacitor.Plugins.MobileXmltvEpg.getEpg({
+                archive_hours: archiveHours,
+                ch: ch?.channel_name || ch?.name || "",
+                channel_id: String(channelId),
+                hash: hash,
+                time_shift_hours: timeShiftHours,
+                xmltv_url: xmltvUrl,
+            })
+                .then(function (result: any) {
+                    // Accept both raw EPG array and {epg_data: [...]} (same as Tauri).
+                    var epgData = Array.isArray(result)
+                        ? result
+                        : result && Array.isArray(result.epg_data)
+                          ? result.epg_data
+                          : null;
+                    epgData = applyChannelTvgShift(ch, epgData);
+                    // Never cache [] — empty is truthy in JS and would permanently
+                    // skip re-fetch after a cold-XMLTV miss (Mode B warm race).
+                    if (epgData && epgData.length > 0) {
+                        finish(channelId, epgData);
+                    } else {
+                        finish(channelId, null);
                     }
-                  : null;
-        if (!invokeFn) {
-            callback(channelId, null);
+                })
+                .catch(function (_err: any) {
+                    finish(channelId, null);
+                });
             return;
         }
-        // Tauri 2 command args are camelCase (channel_id → channelId).
-        // timeShiftHours = timezone only (0 → Rust uses time_shift_by_epg).
-        // archiveHours = configured catchup/history depth (channel.rec).
-        invokeFn("get_epg", {
-            archiveHours: archiveHours,
-            ch: channelName,
-            channelId: String(channelId),
-            hash: hash,
-            timeShiftHours: timeShiftHours,
-        })
-            .then(function (result: any) {
-                // Accept both raw EPG array and {epg_data: [...]} wrapper.
-                var epgData = Array.isArray(result)
-                    ? result
-                    : result && Array.isArray(result.epg_data)
-                      ? result.epg_data
+        // Mode B (Tauri desktop): in-process Rust EPG via invoke() (not HTTP).
+        // Pass playlist channel name + epg_url hash so resolve_xmltv_id can match
+        // (numeric channelId alone almost never equals an XMLTV id).
+        if (typeof (window as any).__TAURI__ !== "undefined") {
+            var ch = channels[channelId];
+            var channelName = (ch && (ch.channel_name || ch.name)) || "";
+            var hash =
+                ch && (ch as any).epg_url != null
+                    ? String((ch as any).epg_url)
+                    : "";
+            var timeShiftHours = epgTimezoneHours(ch);
+            var archiveHours = epgArchiveHours(ch);
+            var coreApi = (window as any).__TAURI__.core;
+            var invokeFn =
+                coreApi && typeof coreApi.invoke === "function"
+                    ? function (cmd: string, args: any) {
+                          return coreApi.invoke(cmd, args);
+                      }
+                    : typeof (window as any).__TAURI__.invoke === "function"
+                      ? function (cmd: string, args: any) {
+                            return (window as any).__TAURI__.invoke(cmd, args);
+                        }
                       : null;
-                epgData = applyChannelTvgShift(ch, epgData);
-                // Never cache [] — see Capacitor branch (cold XMLTV miss).
-                if (epgData && epgData.length > 0) {
-                    epg[channelId] = epgData;
-                    callback(channelId, epgData);
-                } else {
-                    callback(channelId, null);
-                }
+            if (!invokeFn) {
+                finish(channelId, null);
+                return;
+            }
+            // Tauri 2 command args are camelCase (channel_id → channelId).
+            // timeShiftHours = timezone only (0 → Rust uses time_shift_by_epg).
+            // archiveHours = configured catchup/history depth (channel.rec).
+            invokeFn("get_epg", {
+                archiveHours: archiveHours,
+                ch: channelName,
+                channelId: String(channelId),
+                hash: hash,
+                timeShiftHours: timeShiftHours,
             })
-            .catch(function (_err: any) {
-                callback(channelId, null);
-            });
-        return;
-    }
-    // Fall through to provider fetch (Mode A / browser / STB)
-    var w = window as any;
-    if (typeof w.getEPGchanel === "function") {
-        w.getEPGchanel(channelId, callback);
-    } else {
-        callback(channelId, null);
+                .then(function (result: any) {
+                    // Accept both raw EPG array and {epg_data: [...]} wrapper.
+                    var epgData = Array.isArray(result)
+                        ? result
+                        : result && Array.isArray(result.epg_data)
+                          ? result.epg_data
+                          : null;
+                    epgData = applyChannelTvgShift(ch, epgData);
+                    // Never cache [] — see Capacitor branch (cold XMLTV miss).
+                    if (epgData && epgData.length > 0) {
+                        finish(channelId, epgData);
+                    } else {
+                        finish(channelId, null);
+                    }
+                })
+                .catch(function (_err: any) {
+                    finish(channelId, null);
+                });
+            return;
+        }
+        // Fall through to provider fetch (Mode A / browser / STB)
+        var w = window as any;
+        if (typeof w.getEPGchanel === "function") {
+            w.getEPGchanel(channelId, finish);
+        } else {
+            finish(channelId, null);
+        }
+    } catch (_err) {
+        finish(channelId, null);
     }
 }
 
@@ -1132,7 +1262,7 @@ export function getEPGchanelCached(
  * @returns The EPGEntry[] or null if not cached.
  */
 export function getEPGchanelCurCached(channelId: number): EPGEntry[] | null {
-    return epg[channelId] || null;
+    return readEpgCache(channelId);
 }
 
 /**
@@ -1143,7 +1273,7 @@ export function getEPGchanelCurCached(channelId: number): EPGEntry[] | null {
  * @returns The EPGEntry[] or null.
  */
 export function getEpgFromCash(channelId: number): EPGEntry[] | null {
-    return epgCashObj[channelId] || null;
+    return readEpgCache(channelId);
 }
 
 /**
@@ -1173,7 +1303,7 @@ export function getCurProgData(
         // Miss lock: re-evaluate cached programmes against wall clock so a
         // prior "no current" (wrong timezone / programme gap) does not keep
         // list/podval blank for an hour while the EPG menu still has data.
-        var cachedLock = epg[channelId] || epgCashObj[channelId] || null;
+        var cachedLock = readEpgCache(channelId);
         if (cachedLock && cachedLock.length) {
             var nofunLock =
                 typeof (window as any).nofun === "function"
@@ -1203,14 +1333,14 @@ export function getCurProgData(
 }
 
 /**
- * Store EPG data for a channel in both the primary (`epg`) and secondary
- * (`epgCashObj`) caches, then optionally invoke a callback.
+ * Update a channel's now/next display from a full schedule or a nextpr slice.
+ * Full-schedule caching belongs to getEPGchanelCached, never this UI helper.
  *
  * @param channelId - Channel ID to associate the data with.
- * @param epgData   - EPG entry array to cache, or null (no-op for storage).
+ * @param epgData   - Programs used to update the current channel display.
  * @param callback  - Optional function called after storing.
  *
- * Side effects: Writes to `epg[channelId]` and `epgCashObj[channelId]`.
+ * Side effects: Updates channel now/next fields and invokes the callback.
  */
 export function setCurProg(
     channelId: number,
@@ -1229,8 +1359,6 @@ export function setCurProg(
         sorted = epgData!.slice().sort(function (a: EPGEntry, b: EPGEntry) {
             return a.time - b.time;
         });
-        epg[safeChannelId] = sorted;
-        epgCashObj[safeChannelId] = sorted;
     }
     var now = Date.now() / 1000;
     var idx = sorted.findIndex(function (entry: EPGEntry) {

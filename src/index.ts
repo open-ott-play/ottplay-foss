@@ -89,6 +89,7 @@ import {
     getChannelUrl,
     getCurProgData,
     getEPGchanelCached,
+    invalidateEpgCache,
     getMediaDescr,
     handleNumberInput,
     ifParentalAccessChId,
@@ -139,6 +140,7 @@ import {
 } from "./localization";
 // Settings
 import {
+    applyTimezoneSetting,
     defaultSettings,
     exportSettings,
     importSettings,
@@ -973,14 +975,12 @@ function _providerDelItem(key: string): void {
 
 /**
  * Apply the configured timezone offset from settings.
- * Currently a stub — reads settings.timezone but performs no actual offset.
- * Reserved for future use (e.g. shifting EPG times).
+ * Uses the timezone polyfill for clocks and EPG display, preserving epochs.
  */
 function setTimezone(): void {
-    var tz = settings.timezone;
-    if (tz) {
-        // Apply timezone offset
-    }
+    var index = applyTimezoneSetting(settings.timezone);
+    settings.timezone = index;
+    (window as any).sTimezone = index;
 }
 
 // UI-related DOM element references
@@ -2423,7 +2423,7 @@ function setupTauriEpgOverride(): void {
 
 /**
  * Listen for Rust `epg-cache-ready` (startup warm / refresh). Clears
- * time_request miss locks and empty JS EPG cache entries so channel list,
+ * old full schedules and time_request miss locks so channel list,
  * podval now/next, and EPG menu progressively refill once XMLTV is warm —
  * matching Mode A companion where the cache is already hot at first paint.
  */
@@ -2440,24 +2440,7 @@ function setupTauriEpgCacheReady(): void {
         .listen("epg-cache-ready", function (_ev: any) {
             try {
                 console.log("[Tauri] epg-cache-ready — refilling EPG");
-                const cmap =
-                    (window as any).chanels || (window as any).channels || null;
-                if (cmap) {
-                    for (const key of Object.keys(cmap)) {
-                        const ch = cmap[key];
-                        if (!ch) continue;
-                        if (ch.time_request) ch.time_request = 0;
-                    }
-                }
-                const cache = (window as any).epgCache || epg;
-                if (cache && typeof cache === "object") {
-                    for (const key of Object.keys(cache)) {
-                        const arr = cache[key];
-                        if (!arr || (Array.isArray(arr) && arr.length === 0)) {
-                            delete cache[key];
-                        }
-                    }
-                }
+                invalidateEpgCache(true);
                 // Visible channel list: re-queue getCurProgData via showPage.
                 if (
                     (window as any).isListVisible &&
