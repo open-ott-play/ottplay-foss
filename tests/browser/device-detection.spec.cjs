@@ -24,7 +24,7 @@ const remoteOverrides = {
     android: { DOWN: 20, ENTER: 66, RETURN: 4 },
     "lg/webos": { RETURN: 461 },
     "samsung/maple": { DOWN: 5, ENTER: 12, RETURN: 88 },
-    "samsung/tizen": { ENTER: 10008, RETURN: 10009 },
+    "samsung/tizen": { ENTER: 13, RETURN: 10009 },
 };
 const routeFixtures = adapterNames.sort().map((name) => ({
     expectedDevice: name,

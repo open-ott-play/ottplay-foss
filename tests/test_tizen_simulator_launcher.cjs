@@ -4,6 +4,8 @@ const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { spawnSync } = require("node:child_process");
+const vm = require("node:vm");
+const { JSDOM } = require("jsdom");
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay Samsung launch "));
 const root = path.join(tmp, "project with spaces");
@@ -51,9 +53,27 @@ function run(mode, args = [], success = true) {
     return result.stdout + result.stderr;
 }
 
+function prepare(playerUrl, success = true) {
+    const env = { ...process.env };
+    delete env.OTTP_PLAYER_URL;
+    if (playerUrl !== undefined) env.OTTP_PLAYER_URL = playerUrl;
+    const result = spawnSync(
+        process.execPath,
+        [path.join(root, "scripts/prepare-tizen-simulator.cjs")],
+        { encoding: "utf8", env, timeout: 15000 }
+    );
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, success ? 0 : 1, result.stdout + result.stderr);
+    return result.stdout + result.stderr;
+}
+
 try {
     fs.mkdirSync(path.join(root, "scripts"), { recursive: true });
-    for (const name of ["setup-tizen-simulator.sh", "run-tizen-simulator.sh"])
+    for (const name of [
+        "setup-tizen-simulator.sh",
+        "run-tizen-simulator.sh",
+        "prepare-tizen-simulator.cjs",
+    ])
         fs.copyFileSync(
             path.join(__dirname, "../scripts", name),
             path.join(root, "scripts", name)
@@ -62,15 +82,48 @@ try {
         executable(path.join(tools, name));
     const appBundle = path.join(sdk, "tools/sec-tv-simulator/nwjs.app");
     executable(path.join(appBundle, "Contents/MacOS/nwjs"));
-    const app = path.join(tmp, "local app [test] #1.html");
+    const appDirectory = path.join(tmp, "local Tizen app");
+    fs.mkdirSync(appDirectory);
+    const app = path.join(appDirectory, "local app [test] #1.html");
     fs.writeFileSync(app, "<!doctype html><title>Local test</title>");
+    const manifest = path.join(appDirectory, "config.xml");
+    const manifestContent = `<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets"
+        id="https://example.org/ottplay-test" version="1.0.0">
+    <tizen:application id="OttPlayTst.Test" package="OttPlayTst" required_version="2.3"/>
+    <content src="local app [test] #1.html"/>
+    <name>Launcher test</name>
+</widget>`;
+
+    for (const args of [
+        ["--app", app],
+        ["--app", app, "--dry-run"],
+    ]) {
+        assert.match(
+            run("run", args, false),
+            /manifest not found:.*config\.xml/
+        );
+        assert.equal(calls().length, 0);
+    }
+    fs.mkdirSync(manifest);
+    assert.match(
+        run("run", ["--app", app], false),
+        /manifest not found:.*config\.xml/
+    );
+    assert.equal(calls().length, 0);
+    fs.rmdirSync(manifest);
+    fs.writeFileSync(manifest, manifestContent);
 
     assert.match(run("run", ["--dry-run"]), /nwjs/);
     assert.equal(calls().length, 0);
+    assert.match(run("run", ["--app", app, "--dry-run"]), /--file=file:/);
+    assert.equal(calls().length, 0);
+    assert.equal(fs.readFileSync(manifest, "utf8"), manifestContent);
     run("run", ["--app", app]);
     assert.deepEqual(calls(), [
         { args: ["--file=" + pathToFileURL(app).href], name: "nwjs" },
     ]);
+    assert.equal(fs.readFileSync(manifest, "utf8"), manifestContent);
     for (const directory of [sdk, path.dirname(appBundle), appBundle]) {
         run("run", ["--sdk", directory]);
         assert.deepEqual(calls(), [{ args: [], name: "nwjs" }]);
@@ -111,6 +164,86 @@ try {
     assert.match(
         run("run", ["--sdk", path.join(tmp, "missing SDK")], false),
         /Simulator not found/
+    );
+    assert.equal(calls().length, 0);
+
+    assert.match(prepare(), /Player target: http:\/\/127\.0\.0\.1:8095\//);
+    const generated = path.join(root, "build/device-tizen-simulator");
+    const generatedEntry = path.join(generated, "index.html");
+    const generatedManifest = path.join(generated, "config.xml");
+    const xml = new JSDOM(fs.readFileSync(generatedManifest, "utf8"), {
+        contentType: "text/xml",
+    });
+    try {
+        const document = xml.window.document;
+        assert.equal(document.documentElement.localName, "widget");
+        assert.equal(
+            document.querySelector("content").getAttribute("src"),
+            "index.html"
+        );
+        const tizen = "http://tizen.org/ns/widgets";
+        const application = document.getElementsByTagNameNS(
+            tizen,
+            "application"
+        )[0];
+        assert(
+            application
+                .getAttribute("id")
+                .startsWith(application.getAttribute("package") + ".")
+        );
+        assert.equal(
+            document
+                .getElementsByTagNameNS(tizen, "profile")[0]
+                .getAttribute("name"),
+            "tv-samsung"
+        );
+        assert(
+            Array.from(
+                document.getElementsByTagNameNS(tizen, "privilege")
+            ).some(
+                (item) =>
+                    item.getAttribute("name") ===
+                    "http://tizen.org/privilege/tv.inputdevice"
+            )
+        );
+    } finally {
+        xml.window.close();
+    }
+    function redirectTarget() {
+        const html = fs.readFileSync(generatedEntry, "utf8");
+        assert.equal((html.match(/<\/script>/g) || []).length, 1);
+        let target;
+        vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1], {
+            location: {
+                replace: (url) => {
+                    target = url;
+                },
+            },
+        });
+        return target;
+    }
+    assert.equal(redirectTarget(), "http://127.0.0.1:8095/");
+    const hostileUrl =
+        "http://localhost:8095/?q=</script><script>alert(1)</script>";
+    prepare(hostileUrl);
+    assert.equal(redirectTarget(), new URL(hostileUrl).href);
+    const preparedHtml = fs.readFileSync(generatedEntry, "utf8");
+    const preparedXml = fs.readFileSync(generatedManifest, "utf8");
+    for (const invalid of [
+        "invalid",
+        "file:///etc/passwd",
+        "http://user:secret@localhost:8095/",
+    ]) {
+        assert.match(
+            prepare(invalid, false),
+            /HTTP\(S\) URL without credentials/
+        );
+        assert.equal(fs.readFileSync(generatedEntry, "utf8"), preparedHtml);
+        assert.equal(fs.readFileSync(generatedManifest, "utf8"), preparedXml);
+    }
+    assert.match(
+        run("run", ["--app", generatedEntry, "--dry-run"]),
+        /--file=file:/
     );
     assert.equal(calls().length, 0);
 

@@ -132,6 +132,9 @@ export function keyHandler(event: KeyboardEvent): void {
     }
     var keyCode = stbEventToKeyCode(event);
     if (!keyCode) return;
+    // Smart remotes have a combined transport key. Route it through the same
+    // PLAY action as separate Play/Pause keys, including page-specific lists.
+    if (keyCode === keys.PLAYPAUSE && keys.PLAY) keyCode = keys.PLAY;
     if (typeof (window as any).setSleepTimeout === "function")
         (window as any).setSleepTimeout();
 

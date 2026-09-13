@@ -250,16 +250,46 @@ select other locations. The vendor SDK and its archive are not committed.
 
 Run accepts `--sdk` or `TIZEN_SIMULATOR_SDK` for an existing Tizen Studio root,
 `sec-tv-simulator` directory, or `nwjs.app`. With no `--app`, it opens the
-simulator home screen. `--app` accepts a local HTML entry point, using the same
+simulator home screen. `--app` accepts a local Tizen app HTML entry point with a
+valid `config.xml` manifest in the same directory, using the same
 `--file=file:///...` convention as
 [Samsung's launcher](https://github.com/Samsung/webIDE-common-tizentv/blob/dev/lib/projectHelper.js).
-A hosted URL or a `.wgt` archive is not a local HTML entry point. Both scripts
+The launcher rejects a missing manifest before starting the SDK, including with
+`--dry-run`; the SDK validates its contents. Use a separate application directory:
+the SDK copies the entire directory containing the HTML entry point. A hosted URL,
+bare HTML file, or `.wgt` archive is not a local Tizen app entry point. Both scripts
 support `--dry-run` and `--help`.
+
+To receive supplemental remote keys, the containing Tizen application's manifest
+must include `<tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>`.
+The Tizen adapter registers these keys individually; an unsupported key does not
+prevent startup or registration of the remaining keys. Arrows, Enter and Back do
+not require registration. See [Samsung's remote control guide](https://developer.samsung.com/smarttv/develop/guides/user-interaction/remote-control.html).
 
 Samsung's [Simulator limitations](https://developer.samsung.com/smarttv/develop/getting-started/using-sdk/tv-simulator.html)
 exclude hosted applications, DRM and real HLS playback (HLS uses a dummy video).
 Consequently this is useful for local UI/API checks; the webOS redirect launcher
 on 8095 cannot be reused as a Samsung media compatibility test.
+
+For an **experimental server UI check**, generate a small local Tizen application
+with the required manifest and a redirect to the existing stack:
+
+```sh
+node scripts/prepare-tizen-simulator.cjs
+./scripts/run-tizen-simulator.sh --app build/device-tizen-simulator/index.html
+```
+
+The default player URL is `http://127.0.0.1:8095/`; `OTTP_PLAYER_URL` overrides it.
+Use `http://127.0.0.1:8090/` as the playlist URL in the player. These commands do not
+build, deploy or start a server. If an existing simulator instance does not open
+the application, quit it normally and rerun the launch command. The SDK copies the
+launcher directory; regenerate and relaunch after changing its URL.
+
+This redirect loaded the player, local M3U channels and programme listings in
+Simulator 10.0.6 on macOS 26 through Rosetta. Hosted applications remain outside
+Samsung's supported simulator scenarios: API injection timing and real TV media
+decoding cannot be inferred from that UI result. The simulator's Tizen user agent
+also does not identify its actual Chromium version.
 
 ## Rosetta, firmware emulators and legacy devices
 

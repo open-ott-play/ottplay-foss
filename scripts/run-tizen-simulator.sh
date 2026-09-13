@@ -10,14 +10,16 @@ Usage: scripts/run-tizen-simulator.sh [options]
   --sdk DIRECTORY   Tizen Studio root, sec-tv-simulator directory, or nwjs.app
                     (TIZEN_SIMULATOR_SDK; otherwise the user-local package or
                     ~/tizen-studio)
-  --app FILE        Local HTML entry point to open; omit for the simulator home
+  --app FILE        Local Tizen app HTML entry point with adjacent config.xml;
+                    omit for the simulator home
   --dry-run         Print the command without launching the simulator
   -h, --help        Show this help
 
 Requires Samsung TV Web Simulator for macOS. Intel builds use macOS Rosetta.
 The script does not install an SDK, accept licenses, build or serve the player.
 Hosted web applications, DRM and real HLS playback are not supported by this
-simulator. Use a local application bundle for UI/API checks.
+simulator. Use a separate local Tizen app directory with config.xml for UI/API
+checks; the SDK copies the entire directory containing the HTML entry point.
 EOF
 }
 
@@ -73,6 +75,8 @@ if [[ -n "$app" ]]; then
         *.html|*.htm|*.HTML|*.HTM) ;;
         *) die "--app must name a local HTML entry point, not a URL or .wgt package" ;;
     esac
+    app_directory="$(dirname -- "$app")"
+    [[ -f "$app_directory/config.xml" ]] || die "Local Tizen app manifest not found: $app_directory/config.xml. --app requires an HTML entry point with an adjacent config.xml."
     command -v node >/dev/null || die "Node.js is required with --app"
     app_url="$(node -e 'process.stdout.write(require("node:url").pathToFileURL(require("node:path").resolve(process.argv[1])).href)' "$app")"
     # Same --file argument used by Samsung/webIDE-common-tizentv's
