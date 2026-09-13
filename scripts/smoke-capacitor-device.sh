@@ -28,6 +28,7 @@
 #   1  hard failure (missing required tool/dir, build/sync failed, queue required but down)
 #   2  queue smoke ran but contract assertion failed
 #   3  usage / unknown flag / missing baseline deps
+set +x # Never trace optional control credentials.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -47,7 +48,7 @@ REQUIRE_ANDROID_TOOLS=0
 DO_ADB_FORWARD=0
 DO_OPEN_IOS=0
 DO_OPEN_ANDROID=0
-# Default: always verify node/npm when no action flags given → check-native + soft queue probe
+# Default: always verify node/npm when no action flags given → check-native only; HTTP control is off by default
 EXPLICIT_ACTION=0
 
 usage() {
@@ -62,7 +63,7 @@ Flags:
   --check-native         Verify android/ and ios/ project dirs exist
   --build-sync           Run: npm run build:mobile
   --sync-only            Run: npm run cap:sync  (no vite rebuild)
-  --queue                Run scripts/smoke-command-queue.sh if BASE_URL listening
+  --queue                Check explicitly enabled HTTP control with QUEUE_HTTP_TOKEN
   --require-queue        With --queue: exit 1 if not listening (default: soft-skip)
   --aliases              Pass --aliases through to smoke-command-queue.sh
   --check-ios-tools      Warn if xcrun missing (soft)
@@ -76,9 +77,10 @@ Flags:
 
 Env:
   BASE_URL  Default http://127.0.0.1:18081
+  QUEUE_HTTP_TOKEN / OTTPLAY_QUEUE_HTTP_TOKEN  Token for explicit HTTP opt-in, never logged.
   DEVICE_ID / CONNECT_TIMEOUT / COMMAND_JSON — forwarded to smoke-command-queue.sh
 
-Default (no action flags): --check-native + soft --queue probe.
+Default (no action flags): --check-native only; HTTP control remains disabled.
 
 Exit: 0 ok, 1 hard fail, 2 queue assertion fail, 3 usage/deps.
 USAGE
@@ -110,7 +112,6 @@ done
 
 if [[ "$EXPLICIT_ACTION" -eq 0 ]]; then
   DO_CHECK_NATIVE=1
-  DO_QUEUE=1
 fi
 
 need_cmd() {
@@ -217,6 +218,15 @@ queue_listening() {
   (echo >/dev/tcp/"$host"/"$port") >/dev/null 2>&1
 }
 
+if [[ "$DO_QUEUE" -eq 1 && -z "${QUEUE_HTTP_TOKEN:-${OTTPLAY_QUEUE_HTTP_TOKEN:-}}" ]]; then
+  echo "soft-skip: native HTTP control is off by default; no token supplied"
+  if [[ "$REQUIRE_QUEUE" -eq 1 ]]; then
+    echo "error: --require-queue requires an explicitly enabled listener and token" >&2
+    exit 3
+  fi
+  DO_QUEUE=0
+fi
+
 if [[ "$DO_QUEUE" -eq 1 ]]; then
   need_cmd curl
   QUEUE_SH="$ROOT/scripts/smoke-command-queue.sh"
@@ -228,7 +238,7 @@ if [[ "$DO_QUEUE" -eq 1 ]]; then
   probe_url="${BASE_URL}/api/webhook/commands"
   if ! queue_listening "$probe_url"; then
     echo "soft-skip: command queue not listening at ${BASE_URL}"
-    echo "  hint: launch Cap iOS Simulator / Android emulator app first;"
+    echo "  hint: normal playback does not need HTTP; this check covers explicit opt-in only;"
     echo "        Android host curl needs: adb forward tcp:18081 tcp:18081"
     echo "        then re-run with --queue (or --queue --require-queue)"
     if [[ "$REQUIRE_QUEUE" -eq 1 ]]; then

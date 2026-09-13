@@ -542,53 +542,8 @@
                 loadLibraries();
             }
 
-            // Local command poller (10s interval)
-            // Only polls the user-configured local command URL (Variant 2).
-            // Central server polling is disabled for security — no unauthenticated
-            // endpoint should accept commands from any client.
-            var _cmdSeen = {};
-            setInterval(function pollCommands() {
-                var localUrl = window.sLocalCmdUrl || "";
-                if (!localUrl) return; // No URL configured — nothing to poll
-                var xhr = new XMLHttpRequest();
-                xhr.open("GET", localUrl + "?t=" + Date.now(), true);
-                xhr.onload = function () {
-                    if (xhr.status !== 200) return;
-                    var list;
-                    try {
-                        list = JSON.parse(xhr.responseText);
-                    } catch (e) {
-                        return;
-                    }
-                    if (!(list && list.length)) return;
-                    list.forEach(function (cmd) {
-                        var key = cmd.ts || cmd.command + JSON.stringify(cmd);
-                        if (_cmdSeen[key]) return;
-                        _cmdSeen[key] = true;
-                        if (
-                            cmd.command &&
-                            typeof window.handleCommand === "function"
-                        ) {
-                            window.handleCommand(cmd);
-                        } else if (
-                            cmd.message &&
-                            typeof window.showPopup === "function"
-                        ) {
-                            window.showPopup(
-                                cmd.message,
-                                cmd.popup_duration || 5
-                            );
-                        }
-                    });
-                    var keys = Object.keys(_cmdSeen);
-                    if (keys.length > 200) {
-                        var cutoff = keys.length - 100;
-                        for (var i = 0; i < cutoff; i++)
-                            delete _cmdSeen[keys[i]];
-                    }
-                };
-                xhr.send();
-            }, 10000);
+            // Local HTTP command polling is owned by the consent/authentication
+            // controller in stbPlayer.js. A configured URL alone never starts it.
         })();
         </script>
     </body>

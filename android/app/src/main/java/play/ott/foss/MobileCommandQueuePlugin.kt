@@ -1,6 +1,5 @@
 package play.ott.foss
 
-import android.util.Log
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -9,453 +8,269 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import kotlinx.coroutines.*
 import java.io.*
+import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.URLDecoder
+import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.collections.ArrayList
+
+/** Internal queue is always available; an HTTP control surface requires explicit opt-in. */
 @CapacitorPlugin(name = "MobileCommandQueue")
 class MobileCommandQueuePlugin : Plugin() {
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val lifecycleLock = Any()
+    private val queueLock = Any()
     private var serverJob: Job? = null
     private var serverSocket: ServerSocket? = null
     private val activeClients = ConcurrentHashMap.newKeySet<Socket>()
-    private var isRunningFlag = false
-    private var boundPort: Int = 0
-    private val defaultPort = 18081
-    private val fallbackEnd = 18090
-    private val backendId = "capacitor"
-
-    private val expireSecs = 60.0
-    private val deviceCap = 50
-    private val deviceTrim = 25
-    private val broadcastCap = 100
-    private val broadcastTrim = 50
-
-    private val deviceCommands = ConcurrentHashMap<String, MutableList<CommandEntry>>()
+    @Volatile private var isRunningFlag = true
+    @Volatile private var boundPort = 0
+    @Volatile private var destroyed = false
+    private var token: String? = null
+    private val maxBodyBytes = 65536
+    private val deviceCommands = HashMap<String, MutableList<CommandEntry>>()
     private val broadcastCommands = ArrayList<CommandEntry>()
+    data class CommandEntry(val data: Map<String, Any>, val timestamp: Double, val bytes: Int)
 
-    data class CommandEntry(
-        val data: Map<String, Any>,
-        val timestamp: Double
-    )
+    override fun load() { /* No listener on load, including in Play. */ }
 
-    override fun load() {
-        // capacitor.config / docs: auto-start Mode B loopback on plugin load.
-        startServer(null)
-    }
-
-    override fun handleOnDestroy() {
-        // Coroutine cancellation alone cannot interrupt ServerSocket.accept().
-        isRunningFlag = false
-        scope.cancel()
-        try { serverSocket?.close() } catch (_: IOException) { }
-        activeClients.forEach { try { it.close() } catch (_: IOException) { } }
-        activeClients.clear()
-        serverSocket = null
-        serverJob = null
-        boundPort = 0
-        super.handleOnDestroy()
+    private fun status() = JSObject().apply {
+        put("running", isRunningFlag)
+        put("port", boundPort)
+        put("httpEnabled", boundPort != 0)
     }
 
     @PluginMethod
     fun start(call: PluginCall) {
-        startServer(call)
-    }
-
-    private fun portsToTry(): List<Int> {
-        val env = System.getenv("OTTPLAY_QUEUE_PORT")?.trim().orEmpty()
-        if (env.isNotEmpty()) {
-            val p = env.toIntOrNull()
-            if (p != null && p in 1..65535) return listOf(p)
-            Log.e("MobileCommandQueue", "Invalid OTTPLAY_QUEUE_PORT=$env")
-            return emptyList()
-        }
-        return (defaultPort..fallbackEnd).toList()
-    }
-
-    private fun startServer(call: PluginCall?) {
-        if (isRunningFlag) {
-            bridge.activity.runOnUiThread {
-                call?.resolve(JSObject().apply {
-                    put("running", true)
-                    put("port", boundPort)
-                })
+        synchronized(lifecycleLock) {
+            if (destroyed) { call.reject("Queue owner was destroyed"); return }
+            if (call.getBoolean("httpEnabled", false) != true) {
+                isRunningFlag = true
+                call.resolve(status())
+                return
             }
-            return
-        }
-
-        serverJob = scope.launch {
-            val ports = portsToTry()
-            var lastError = "no ports to try"
+            val requestedToken = call.getString("token").orEmpty()
+            if (!requestedToken.matches(Regex("[A-Za-z0-9_-]{32,256}"))) {
+                call.reject("HTTP control requires a random token of 32-256 URL-safe characters")
+                return
+            }
+            if (serverSocket != null) {
+                if (token != requestedToken) call.reject("Stop HTTP control before changing its token")
+                else call.resolve(status())
+                return
+            }
+            val configured = System.getenv("OTTPLAY_QUEUE_PORT")?.trim().orEmpty()
+            val ports = if (configured.isEmpty()) (18081..18090).toList() else {
+                val port = configured.toIntOrNull()
+                if (port == null || port !in 1..65535) { call.reject("Invalid command queue port"); return }
+                listOf(port)
+            }
             var bound: ServerSocket? = null
-            var portUsed = 0
             for (port in ports) {
-                try {
-                    bound = ServerSocket(port, 50, java.net.InetAddress.getByName("127.0.0.1"))
-                    portUsed = port
-                    break
-                } catch (e: IOException) {
-                    Log.w("MobileCommandQueue", "bind 127.0.0.1:$port failed: ${e.message}")
-                    lastError = "127.0.0.1:$port: ${e.message}"
-                }
+                try { bound = ServerSocket(port, 8, InetAddress.getByName("127.0.0.1")); break }
+                catch (_: IOException) { }
             }
-            if (bound == null) {
-                Log.e("MobileCommandQueue", "Failed to bind any port in $ports: $lastError")
-                withContext(Dispatchers.Main) {
-                    call?.reject("Failed to bind HTTP server: $lastError")
-                }
-                return@launch
-            }
-
-            serverSocket = bound
-            boundPort = portUsed
+            val listener = bound ?: run { call.reject("No loopback command queue port available"); return }
+            token = requestedToken
+            serverSocket = listener
+            boundPort = listener.localPort
             isRunningFlag = true
-            bridge.activity.runOnUiThread {
-                notifyListeners("isRunning", JSObject().apply {
-                    put("running", true)
-                    put("port", portUsed)
-                })
-                call?.resolve(JSObject().apply {
-                    put("running", true)
-                    put("port", portUsed)
-                })
-            }
-            Log.d("MobileCommandQueue", "Command queue listening on http://127.0.0.1:$portUsed")
-
-            try {
-                while (isActive) {
-                    try {
-                        val client = bound.accept()
+            serverJob = scope.launch {
+                try {
+                    while (isActive) {
+                        val client = listener.accept()
+                        if (activeClients.size >= 8) { client.close(); continue }
                         activeClients.add(client)
-                        launch { handleClient(client) }.invokeOnCompletion {
+                        launch { handleClient(client, requestedToken, listener) }.invokeOnCompletion {
                             activeClients.remove(client)
-                            // Also runs when cancellation prevents the handler from starting.
                             try { client.close() } catch (_: IOException) { }
                         }
-                    } catch (e: IOException) {
-                        if (isRunningFlag) {
-                            Log.e("MobileCommandQueue", "Accept error: ${e.message}")
-                        }
-                        break
+                    }
+                } catch (_: IOException) { /* stop/destroy closes accept */ }
+                finally {
+                    try { listener.close() } catch (_: IOException) { }
+                    synchronized(lifecycleLock) {
+                        if (serverSocket === listener) { serverSocket = null; boundPort = 0; token = null }
                     }
                 }
-            } finally {
-                // Also closes a bind that completed while the Activity was destroyed.
-                try { bound.close() } catch (_: IOException) { }
-                if (serverSocket === bound) {
-                    serverSocket = null
-                    isRunningFlag = false
-                    boundPort = 0
-                }
             }
+            call.resolve(status())
         }
     }
 
-    @PluginMethod
-    fun stop(call: PluginCall) {
-        scope.launch {
-            isRunningFlag = false
-            try {
-                serverSocket?.close()
-            } catch (e: IOException) {
-                // ignore
-            }
-            serverSocket = null
-            activeClients.forEach { try { it.close() } catch (_: IOException) { } }
-            activeClients.clear()
-            serverJob?.cancel()
-            serverJob = null
-            boundPort = 0
-            deviceCommands.clear()
-            broadcastCommands.clear()
-
-            bridge.activity.runOnUiThread {
-                notifyListeners("isRunning", JSObject().apply {
-                    put("running", false)
-                    put("port", 0)
-                })
-                call.resolve()
-            }
-        }
+    private fun closeQueue() = synchronized(lifecycleLock) {
+        isRunningFlag = false
+        try { serverSocket?.close() } catch (_: IOException) { }
+        serverSocket = null
+        serverJob?.cancel()
+        serverJob = null
+        activeClients.forEach { try { it.close() } catch (_: IOException) { } }
+        activeClients.clear()
+        token = null
+        boundPort = 0
+        synchronized(queueLock) { deviceCommands.clear(); broadcastCommands.clear() }
     }
 
-    @PluginMethod
-    fun isRunning(call: PluginCall) {
-        call.resolve(JSObject().apply {
-            put("running", isRunningFlag)
-            put("port", boundPort)
-        })
+    override fun handleOnDestroy() {
+        destroyed = true
+        closeQueue()
+        scope.cancel()
+        super.handleOnDestroy()
     }
 
-    @PluginMethod
-    fun post(call: PluginCall) {
-        val deviceId = call.getString("deviceId") ?: ""
-        val raw = call.data ?: run {
-            call.reject("No data provided")
-            return
-        }
-
-        scope.launch {
-            val timestamp = System.currentTimeMillis() / 1000.0
-            val commandMap = mutableMapOf<String, Any>()
-
-            // Convert JSONObject to Map
-            val keys = raw.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                val value = raw.get(key)
-                if (value != null) {
-                    commandMap[key] = value
-                }
-            }
-            commandMap["ts"] = timestamp
-
-            val entry = CommandEntry(commandMap, timestamp)
-            var queued: Int
-
-            if (deviceId.isEmpty()) {
-                broadcastCommands.add(entry)
-                if (broadcastCommands.size > broadcastCap) {
-                    val drop = broadcastCommands.size - broadcastTrim
-                    broadcastCommands.subList(0, drop).clear()
-                }
-                queued = broadcastCommands.size
-            } else {
-                val list = deviceCommands.computeIfAbsent(deviceId) { ArrayList() }
-                list.add(entry)
-                if (list.size > deviceCap) {
-                    val drop = list.size - deviceTrim
-                    list.subList(0, drop).clear()
-                }
-                queued = list.size
-            }
-
-            withContext(Dispatchers.Main) {
-                call.resolve(JSObject().apply { put("queued", queued) })
-            }
-        }
+    @PluginMethod fun stop(call: PluginCall) {
+        closeQueue()
+        notifyListeners("isRunning", status())
+        call.resolve()
     }
+    @PluginMethod fun isRunning(call: PluginCall) { call.resolve(status()) }
 
-    @PluginMethod
-    fun get(call: PluginCall) {
-        val deviceId = call.getString("deviceId") ?: ""
-
-        scope.launch {
-            val cutoff = System.currentTimeMillis() / 1000.0 - expireSecs
-            val result = ArrayList<JSObject>()
-
-            if (deviceId.isEmpty()) {
-                val recent = broadcastCommands.filter { it.timestamp > cutoff }
-                recent.forEach { entry ->
-                    val obj = JSObject()
-                    entry.data.forEach { (k, v) -> obj.put(k, v) }
-                    result.add(obj)
-                }
-                broadcastCommands.clear()
-            } else {
-                val list = deviceCommands[deviceId] ?: emptyList()
-                val recent = list.filter { it.timestamp > cutoff }
-                recent.forEach { entry ->
-                    val obj = JSObject()
-                    entry.data.forEach { (k, v) -> obj.put(k, v) }
-                    result.add(obj)
-                }
-                deviceCommands[deviceId] = ArrayList()
-            }
-
-            val jsArray = JSObject()
-            jsArray.put("commands", JSArray(result))
-            withContext(Dispatchers.Main) {
-                call.resolve(jsArray)
-            }
-        }
-    }
-
-    private suspend fun handleClient(client: Socket) = withContext(Dispatchers.IO) {
-        try {
-            client.use { socket ->
-                val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
-                val writer = BufferedWriter(OutputStreamWriter(socket.getOutputStream()))
-
-                // Read request line
-                val requestLine = reader.readLine() ?: return@withContext
-                val parts = requestLine.split(" ")
-                if (parts.size < 3) return@withContext
-
-                val method = parts[0]
-                val url = parts[1]
-
-                // Read headers
-                val headers = mutableMapOf<String, String>()
-                var line: String?
-                while (reader.readLine().also { line = it } != null) {
-                    if (line!!.isEmpty()) break
-                    val colonIdx = line!!.indexOf(":")
-                    if (colonIdx > 0) {
-                        headers[line!!.substring(0, colonIdx).trim()] = line!!.substring(colonIdx + 1).trim()
-                    }
-                }
-
-                val deviceId = extractDeviceId(url)
-                val path = url.split("?").firstOrNull() ?: url
-
-                when {
-                    method == "OPTIONS" -> {
-                        writeCors(writer, 200)
-                    }
-                    method == "GET" && (path == "/api/webhook/health" || path == "/webhook/health") -> {
-                        writeJson(
-                            writer,
-                            200,
-                            mapOf(
-                                "status" to "ok",
-                                "service" to "ottplay-command-queue",
-                                "backend" to backendId,
-                                "port" to boundPort
-                            )
-                        )
-                    }
-                    method == "POST" && (path == "/api/webhook/commands" || path == "/webhook/notify") -> {
-                        val body = readBody(reader, headers)
-                        handlePost(body, deviceId, writer)
-                    }
-                    method == "GET" && (path == "/api/webhook/commands" || path == "/webhook/poll") -> {
-                        handleGet(deviceId, writer)
-                    }
-                    else -> {
-                        writeJson(writer, 404, mapOf("error" to "Not Found", "path" to path))
-                    }
-                }
-            }
-        } catch (e: IOException) {
-            Log.e("MobileCommandQueue", "Client error: ${e.message}")
-        }
-    }
-
-    private fun handlePost(body: String, deviceId: String, writer: BufferedWriter) {
+    private fun enqueue(raw: org.json.JSONObject, deviceId: String): Int = synchronized(queueLock) {
+        require(deviceId.length <= 128) { "Device ID is too long" }
+        val bodyBytes = raw.toString().toByteArray(Charsets.UTF_8).size
+        require(bodyBytes <= maxBodyBytes) { "Command is too large" }
         val timestamp = System.currentTimeMillis() / 1000.0
-        val commandMap = mutableMapOf<String, Any>()
+        val data = mutableMapOf<String, Any>()
+        val keys = raw.keys()
+        while (keys.hasNext()) { val key = keys.next(); data[key] = raw.get(key) }
+        data["ts"] = timestamp
+        // Expire inactive device IDs as well as entries to bound queue storage.
+        deviceCommands.entries.removeAll { (_, list) -> list.removeAll { it.timestamp <= timestamp - 60 }; list.isEmpty() }
+        broadcastCommands.removeAll { it.timestamp <= timestamp - 60 }
+        val storedBytes = broadcastCommands.sumOf { it.bytes } + deviceCommands.values.sumOf { entries -> entries.sumOf { it.bytes } }
+        require(storedBytes + bodyBytes + 64 <= 1024 * 1024) { "Command queue is full" }
+        val list = if (deviceId.isEmpty()) broadcastCommands else {
+            require(deviceCommands.containsKey(deviceId) || deviceCommands.size < 128) { "Too many device queues" }
+            deviceCommands.getOrPut(deviceId) { ArrayList() }
+        }
+        list.add(CommandEntry(data, timestamp, bodyBytes + 64))
+        val cap = if (deviceId.isEmpty()) 100 else 50
+        if (list.size > cap) list.subList(0, list.size - cap / 2).clear()
+        list.size
+    }
 
+    private fun drain(deviceId: String): List<Map<String, Any>> = synchronized(queueLock) {
+        require(deviceId.length <= 128) { "Device ID is too long" }
+        val list = if (deviceId.isEmpty()) ArrayList(broadcastCommands).also { broadcastCommands.clear() }
+            else deviceCommands.remove(deviceId).orEmpty()
+        val cutoff = System.currentTimeMillis() / 1000.0 - 60
+        list.filter { it.timestamp > cutoff }.map { it.data }
+    }
+
+    @PluginMethod fun post(call: PluginCall) {
+        if (destroyed) { call.reject("Queue owner was destroyed"); return }
         try {
-            val raw = org.json.JSONObject(body)
-            val keys = raw.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                val value = raw.get(key)
-                if (value != null) {
-                    commandMap[key] = value
+            val raw = call.data.optJSONObject("data") ?: call.data
+            call.resolve(JSObject().put("queued", enqueue(raw, call.getString("deviceId").orEmpty())))
+        } catch (_: Exception) { call.reject("Invalid or oversized command") }
+    }
+
+    @PluginMethod fun get(call: PluginCall) {
+        try {
+            val values = drain(call.getString("deviceId").orEmpty()).map { item ->
+                JSObject().apply { item.forEach { (key, value) -> put(key, value) } }
+            }
+            call.resolve(JSObject().put("commands", JSArray(values)))
+        } catch (_: Exception) { call.reject("Invalid device ID") }
+    }
+
+    private class RequestError(val status: Int) : IOException()
+
+    private inline fun <T> withHttpAccess(expectedToken: String, expectedListener: ServerSocket, action: () -> T): T =
+        synchronized(lifecycleLock) {
+            // Authentication done before reading a body is insufficient: stop()
+            // can revoke this listener while the request is being parsed. Keep
+            // the same lifecycle -> queue lock order as closeQueue(), and also
+            // reject old connections if a listener restarts with the same code.
+            if (destroyed || serverSocket !== expectedListener || token != expectedToken) throw RequestError(401)
+            action()
+        }
+
+    private fun handleClient(client: Socket, expectedToken: String, expectedListener: ServerSocket) {
+        client.use { socket ->
+            val input = BufferedInputStream(socket.getInputStream())
+            val deadline = System.nanoTime() + 5_000_000_000L
+            fun readByte(): Int {
+                val remaining = (deadline - System.nanoTime()) / 1_000_000
+                if (remaining <= 0) throw RequestError(408)
+                socket.soTimeout = remaining.coerceAtMost(5000).toInt().coerceAtLeast(1)
+                return input.read()
+            }
+            fun line(max: Int): String {
+                val bytes = ByteArrayOutputStream()
+                while (true) {
+                    val byte = readByte()
+                    if (byte < 0) throw RequestError(400)
+                    if (byte == 10) break
+                    if (bytes.size() >= max) throw RequestError(431)
+                    bytes.write(byte)
                 }
+                return bytes.toString("US-ASCII").removeSuffix("\r")
             }
-        } catch (e: Exception) {
-            writeJson(writer, 400, mapOf("error" to "Invalid JSON"))
-            return
-        }
-
-        commandMap["ts"] = timestamp
-        val entry = CommandEntry(commandMap, timestamp)
-        var queued: Int
-
-        if (deviceId.isEmpty()) {
-            broadcastCommands.add(entry)
-            if (broadcastCommands.size > broadcastCap) {
-                val drop = broadcastCommands.size - broadcastTrim
-                broadcastCommands.subList(0, drop).clear()
-            }
-            queued = broadcastCommands.size
-        } else {
-            val list = deviceCommands.computeIfAbsent(deviceId) { ArrayList() }
-            list.add(entry)
-            if (list.size > deviceCap) {
-                val drop = list.size - deviceTrim
-                list.subList(0, drop).clear()
-            }
-            queued = list.size
-        }
-
-        writeJson(writer, 200, mapOf("status" to "ok", "queued" to queued))
-    }
-
-    private fun handleGet(deviceId: String, writer: BufferedWriter) {
-        val cutoff = System.currentTimeMillis() / 1000.0 - expireSecs
-        val result = mutableListOf<Map<String, Any>>()
-
-        if (deviceId.isEmpty()) {
-            val recent = broadcastCommands.filter { it.timestamp > cutoff }
-            recent.forEach { result.add(it.data) }
-            broadcastCommands.clear()
-        } else {
-            val list = deviceCommands[deviceId] ?: emptyList()
-            val recent = list.filter { it.timestamp > cutoff }
-            recent.forEach { result.add(it.data) }
-            deviceCommands[deviceId] = ArrayList()
-        }
-
-        // Convert to JSON array manually to avoid org.json dependency issues
-        writeJson(writer, 200, result)
-    }
-
-    private fun readBody(reader: BufferedReader, headers: Map<String, String>): String {
-        val contentLength = headers["Content-Length"]?.toIntOrNull() ?: 0
-        if (contentLength == 0) return ""
-
-        val buffer = CharArray(contentLength)
-        var read = 0
-        while (read < contentLength) {
-            val r = reader.read(buffer, read, contentLength - read)
-            if (r == -1) break
-            read += r
-        }
-        return String(buffer, 0, read)
-    }
-
-    private fun extractDeviceId(url: String): String {
-        val queryStart = url.indexOf("?")
-        if (queryStart < 0) return ""
-        val query = url.substring(queryStart + 1)
-        for (pair in query.split("&")) {
-            val parts = pair.split("=", limit = 2)
-            if (parts.size == 2 && parts[0] == "device_id") {
-                return URLDecoder.decode(parts[1], "UTF-8").trim()
+            try {
+                val request = line(2048).split(" ")
+                if (request.size != 3 || request[2] !in listOf("HTTP/1.0", "HTTP/1.1")) throw RequestError(400)
+                val headers = HashMap<String, String>()
+                var headerBytes = 0
+                while (true) {
+                    val value = line(8192)
+                    headerBytes += value.length + 2
+                    if (headerBytes > 8192 || headers.size > 32) throw RequestError(431)
+                    if (value.isEmpty()) break
+                    val colon = value.indexOf(':')
+                    if (colon <= 0) throw RequestError(400)
+                    val name = value.substring(0, colon).lowercase(java.util.Locale.ROOT)
+                    if (headers.put(name, value.substring(colon + 1).trim()) != null) throw RequestError(400)
+                }
+                val authorization = headers["authorization"].orEmpty().toByteArray(Charsets.UTF_8)
+                if (!MessageDigest.isEqual(authorization, "Bearer $expectedToken".toByteArray(Charsets.UTF_8))) {
+                    throw RequestError(401)
+                }
+                if (headers.containsKey("transfer-encoding")) throw RequestError(400)
+                val length = headers["content-length"]?.toIntOrNull() ?: if (headers.containsKey("content-length")) -1 else 0
+                if (length < 0) throw RequestError(400)
+                if (length > maxBodyBytes) throw RequestError(413)
+                val path = request[1].substringBefore('?')
+                val deviceId = request[1].substringAfter('?', "").split('&').firstOrNull { it.startsWith("device_id=") }
+                    ?.substringAfter('=')?.let { URLDecoder.decode(it, "UTF-8") }.orEmpty()
+                if (deviceId.length > 128) throw RequestError(400)
+                val commandsPath = path == "/api/webhook/commands"
+                when {
+                    request[0] == "GET" && path in listOf("/api/webhook/health", "/webhook/health") -> {
+                        val health = withHttpAccess(expectedToken, expectedListener) {
+                            mapOf("status" to "ok", "backend" to "capacitor", "port" to boundPort)
+                        }
+                        writeJson(socket, 200, health)
+                    }
+                    request[0] == "GET" && (commandsPath || path == "/webhook/poll") -> {
+                        val commands = withHttpAccess(expectedToken, expectedListener) { drain(deviceId) }
+                        writeJson(socket, 200, commands)
+                    }
+                    request[0] == "POST" && (commandsPath || path == "/webhook/notify") -> {
+                        val body = ByteArray(length)
+                        for (index in body.indices) { val byte = readByte(); if (byte < 0) throw RequestError(400); body[index] = byte.toByte() }
+                        val raw = org.json.JSONObject(String(body, Charsets.UTF_8))
+                        val queued = withHttpAccess(expectedToken, expectedListener) { enqueue(raw, deviceId) }
+                        writeJson(socket, 200, mapOf("queued" to queued, "status" to "ok"))
+                    }
+                    else -> throw RequestError(404)
+                }
+            } catch (error: Exception) {
+                val status = when (error) { is RequestError -> error.status; is java.net.SocketTimeoutException -> 408; else -> 400 }
+                try { writeJson(socket, status, mapOf("error" to "Request rejected")) } catch (_: IOException) { }
             }
         }
-        return ""
     }
 
-    private fun writeJson(writer: BufferedWriter, status: Int, body: Any) {
-        val statusText = when (status) {
-            200 -> "OK"
-            400 -> "Bad Request"
-            404 -> "Not Found"
-            else -> "Error"
-        }
-        val json = when (body) {
-            is String -> body
-            is Collection<*> -> org.json.JSONArray(body.toTypedArray()).toString()
-            else -> org.json.JSONObject.wrap(body)?.toString() ?: "null"
-        }
-
-        writer.write("HTTP/1.1 $status $statusText\r\n")
-        writer.write("Access-Control-Allow-Origin: *\r\n")
-        writer.write("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n")
-        writer.write("Access-Control-Allow-Headers: *\r\n")
-        writer.write("Access-Control-Max-Age: 86400\r\n")
-        writer.write("Content-Type: application/json; charset=utf-8\r\n")
-        writer.write("Content-Length: ${json.toByteArray().size}\r\n")
-        writer.write("\r\n")
-        writer.write(json)
-        writer.flush()
-    }
-
-    private fun writeCors(writer: BufferedWriter, status: Int) {
-        writer.write("HTTP/1.1 $status OK\r\n")
-        writer.write("Access-Control-Allow-Origin: *\r\n")
-        writer.write("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n")
-        writer.write("Access-Control-Allow-Headers: *\r\n")
-        writer.write("Access-Control-Max-Age: 86400\r\n")
-        writer.write("Content-Length: 0\r\n")
-        writer.write("\r\n")
-        writer.flush()
+    private fun writeJson(socket: Socket, status: Int, body: Any) {
+        val json = if (body is Collection<*>) org.json.JSONArray(body.toTypedArray()).toString()
+            else org.json.JSONObject.wrap(body)?.toString() ?: "null"
+        val bytes = json.toByteArray(Charsets.UTF_8)
+        // No browser CORS grant: a native control client must explicitly possess the token.
+        val header = "HTTP/1.1 $status ${if (status == 200) "OK" else "Error"}\r\n" +
+            "Content-Type: application/json; charset=utf-8\r\nConnection: close\r\n" +
+            "Cache-Control: no-store\r\nContent-Length: ${bytes.size}\r\n\r\n"
+        socket.getOutputStream().apply { write(header.toByteArray(Charsets.US_ASCII)); write(bytes); flush() }
     }
 }

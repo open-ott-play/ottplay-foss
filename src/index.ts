@@ -35,6 +35,7 @@
 // Polyfills (must run first)
 import "./polyfills";
 
+import { createLocalHttpRemote } from "./plugins/local-http-remote";
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
 import { MobileNativeMedia } from "./plugins/mobile-native-media";
 import { installTauriHttpTransport } from "./plugins/native-http";
@@ -1790,6 +1791,7 @@ function onStbReady(): void {
         loadSettings();
         // Sync PlayerSettings → window.* for settings submenu compatibility
         applySettingsToWindow(settings);
+        (window as any).__ottLocalHttpRemote.init();
         // Device UUID for remote control / swop allowlist; optional /local/swop.json
         if (typeof (window as any).ensureDeviceClientId === "function")
             (window as any).ensureDeviceClientId();
@@ -6138,6 +6140,42 @@ window.version = "<br/>Version: " + PLAYER_VERSION;
 window.handleCommand = handleCommand;
 window.showPopup = showPopup;
 
+// HTTP control is activated only by this device's explicit saved consent.
+(window as any).__ottLocalHttpRemote = createLocalHttpRemote(
+    window,
+    async function (enabled: boolean, code: string): Promise<any> {
+        if (typeof window.__TAURI__ !== "undefined") {
+            return tauriInvoke("queue_http_configure", {
+                enabled: enabled,
+                token: code,
+            });
+        }
+        var capacitor = (window as any).Capacitor;
+        if (capacitor) {
+            var plugin =
+                capacitor.Plugins && capacitor.Plugins.MobileCommandQueue;
+            if (!plugin)
+                throw new Error("HTTP remote control could not be started");
+            if (!enabled) {
+                await plugin.stop();
+                return { httpEnabled: false, port: 0, running: false };
+            }
+            return plugin.start({ httpEnabled: true, token: code });
+        }
+        // Mode A polls the separately configured, authenticated local proxy.
+        return { httpEnabled: enabled, port: 0, running: enabled };
+    },
+    function (enabled: boolean, code: string): void {
+        var w = window as any;
+        w.sLocalHttpEnabled = settings.localHttpEnabled = enabled ? 1 : 0;
+        w.sLocalHttpDeviceCode = settings.localHttpDeviceCode = code;
+        // Write disabled first, so interrupted writes cannot grant consent.
+        stbSetItem("sLocalHttpEnabled", "0");
+        stbSetItem("sLocalHttpDeviceCode", code);
+        if (enabled) stbSetItem("sLocalHttpEnabled", "1");
+    }
+);
+
 // Tauri Mode B: poll the native command queue (queue_poll invoke) instead of
 // the local_proxy.py GET endpoint. Mirrors the STB poll cadence (~10s) so
 // push commands (popup_message, channel switches, …) arrive promptly.
@@ -6145,8 +6183,19 @@ window.showPopup = showPopup;
 if (typeof window.__TAURI__ !== "undefined") {
     let _queuePollTimer: ReturnType<typeof setInterval> | null = null;
     const _queuePollOnce = (): void => {
-        tauriInvoke<any[]>("queue_poll", { device_id: "" })
-            .then((cmds: any[]) => {
+        var status = (window as any).__ottLocalHttpRemote.status();
+        if (!status.ready) return;
+        var revision = status.generation;
+        var device = String((window as any).deviceUUID || "");
+        Promise.all(
+            (device ? ["", device] : [""]).map(function (id) {
+                return tauriInvoke<any[]>("queue_poll", { deviceId: id });
+            })
+        )
+            .then((batches: any[][]) => {
+                var current = (window as any).__ottLocalHttpRemote.status();
+                if (!current.ready || current.generation !== revision) return;
+                var cmds: any[] = [].concat.apply([], batches as any);
                 if (Array.isArray(cmds)) {
                     cmds.forEach((cmd: any) => {
                         if (cmd && typeof handleCommand === "function") {
@@ -6184,7 +6233,7 @@ if (typeof window.__TAURI__ !== "undefined") {
     _queuePollStart();
 }
 
-// Capacitor Mode C: native plugin hosts HTTP server (prefer 127.0.0.1:18081, fallback 18082+).
+// Capacitor Mode C: internal bridge polling does not enable HTTP control.
 // Falls back to web no-op if plugin unavailable (Mode A / web build).
 if (
     typeof (window as any).Capacitor !== "undefined" &&
@@ -6197,8 +6246,22 @@ if (
         let _capPollTimer: ReturnType<typeof setInterval> | null = null;
         const _capPollOnce = async (): Promise<void> => {
             try {
-                const res = await _capQueue.get({ deviceId: "" });
-                const cmds = res?.commands ?? [];
+                var status = (window as any).__ottLocalHttpRemote.status();
+                if (!status.ready) return;
+                var revision = status.generation;
+                var device = String((window as any).deviceUUID || "");
+                const batches = await Promise.all(
+                    (device ? ["", device] : [""]).map(function (id) {
+                        return _capQueue.get({ deviceId: id });
+                    })
+                );
+                var current = (window as any).__ottLocalHttpRemote.status();
+                if (!current.ready || current.generation !== revision) return;
+                const cmds: any[] = [];
+                batches.forEach(function (res: any) {
+                    if (res && Array.isArray(res.commands))
+                        Array.prototype.push.apply(cmds, res.commands);
+                });
                 if (Array.isArray(cmds)) {
                     cmds.forEach((cmd: any) => {
                         if (cmd && typeof handleCommand === "function") {
@@ -6326,6 +6389,8 @@ function applySettingsToWindow(s: PlayerSettings): void {
     window.sSHLcolor = s.highlightColor;
     window.sSHLcolorB = s.highlightColorB;
     window.sLocalCmdUrl = s.localCmdUrl;
+    window.sLocalHttpEnabled = s.localHttpEnabled;
+    window.sLocalHttpDeviceCode = s.localHttpDeviceCode;
     window.sSwopBaseUrl = s.swopBaseUrl;
 }
 
@@ -6337,6 +6402,10 @@ function applySettingsToWindow(s: PlayerSettings): void {
 function pullSettingsFromWindow(): void {
     var w = window as any;
     var s = settings;
+    if (w.sLocalHttpEnabled !== undefined)
+        s.localHttpEnabled = Number(w.sLocalHttpEnabled) === 1 ? 1 : 0;
+    if (typeof w.sLocalHttpDeviceCode === "string")
+        s.localHttpDeviceCode = w.sLocalHttpDeviceCode;
     function num(v: any, fallback: number): number {
         var n = typeof v === "number" ? v : parseInt(v, 10);
         return isNaN(n) ? fallback : n;
@@ -6455,6 +6524,9 @@ function pullSettingsFromWindow(): void {
  */
 window.settingsCommands = function (): void {
     var w = window as any;
+    var changingHttpRemote = false;
+    var httpRemoteError = false;
+    var closed = false;
     var parent = ["listCaption", "listDetail", "listPodval"].map(function (id) {
         var element = document.getElementById(id);
         return element ? element.innerHTML : "";
@@ -6481,6 +6553,12 @@ window.settingsCommands = function (): void {
 
     // Refresh content after an edit without overwriting the saved parent screen.
     function render(): void {
+        if (closed) return;
+        var remote = w.__ottLocalHttpRemote;
+        var remoteStatus =
+            remote && typeof remote.status === "function"
+                ? remote.status()
+                : { code: "", enabled: false, port: 0 };
         var caption = document.getElementById("listCaption");
         var detail = document.getElementById("listDetail");
         var footer = document.getElementById("listPodval");
@@ -6491,11 +6569,70 @@ window.settingsCommands = function (): void {
                 w.btnDiv(w.keys.RETURN, w.strRETURN, "Close") +
                 w.btnDiv(w.keys.ENTER, w.strENTER, "Local URL") +
                 w.btnDiv(w.keys.N2 || 50, "2", "Swop URL") +
+                w.btnDiv(
+                    w.keys.N1 || 49,
+                    "1",
+                    remoteStatus.enabled
+                        ? "Disable HTTP remote"
+                        : "Enable HTTP remote"
+                ) +
                 '<span style="white-space:nowrap;">↑↓ Scroll</span>';
         var lurl = w.sLocalCmdUrl || "";
         var swopUrl = w.sSwopBaseUrl || "";
         var html =
             '<div id="remoteSettingsContent" style="height:100%;min-height:0;min-width:0;box-sizing:border-box;overflow-y:auto;overflow-x:hidden;overflow-wrap:anywhere;word-break:break-word;-webkit-overflow-scrolling:touch;">' +
+            "<b>" +
+            text(w._("Local HTTP remote control")) +
+            ":</b> " +
+            text(w._(remoteStatus.enabled ? "on" : "off")) +
+            "<br/>" +
+            text(
+                w._(
+                    "Disabled by default. Enabling creates a new device access code."
+                )
+            ) +
+            "<br/><br/>";
+        if (remoteStatus.enabled && remoteStatus.code) {
+            html +=
+                "<b>" +
+                text(w._("Device access code")) +
+                ":</b><br/>" +
+                '<input id="localHttpDeviceCode" type="text" readonly aria-label="' +
+                text(w._("Device access code")) +
+                '" value="' +
+                text(remoteStatus.code) +
+                '" style="width:100%;box-sizing:border-box;font-family:monospace;-webkit-user-select:text;user-select:text;"/><br/>' +
+                text(
+                    w._(
+                        "Send this code from your proxy in the Authorization: Bearer header."
+                    )
+                ) +
+                "<br/>" +
+                text(w._("HTTP port")) +
+                ": " +
+                text(remoteStatus.port || "—") +
+                "<br/><br/>";
+        }
+        if (
+            changingHttpRemote ||
+            httpRemoteError ||
+            remoteStatus.error ||
+            !remote
+        ) {
+            html +=
+                '<div role="status">' +
+                text(
+                    w._(
+                        changingHttpRemote
+                            ? "Applying HTTP remote settings..."
+                            : !remote
+                              ? "HTTP remote control is unavailable on this device."
+                              : "Could not update HTTP remote control."
+                    )
+                ) +
+                "</div><br/>";
+        }
+        html +=
             '<b>Device ID (UUID):</b><br/><span style="font-family:monospace;">' +
             text(uid) +
             "</span><br/><br/>" +
@@ -6511,6 +6648,53 @@ window.settingsCommands = function (): void {
             "popup_message, channel_by_number, channel_by_name, random_channel, change_provider, change_playlist<br/><br/>" +
             "UP/DOWN or swipe to scroll. Use the controls below to edit or close.</div>";
         $("#listAbout").show().html(html);
+        var codeInput = document.getElementById(
+            "localHttpDeviceCode"
+        ) as HTMLInputElement | null;
+        if (codeInput) {
+            codeInput.onclick = function (event): void {
+                event.stopPropagation();
+                codeInput!.select();
+            };
+            codeInput.onkeydown = function (event): void {
+                // Let the browser copy the selected code without routing Ctrl+C
+                // or arrow keys to the player's remote-control key handler.
+                if (
+                    event.ctrlKey ||
+                    event.metaKey ||
+                    /^(ArrowLeft|ArrowRight|Home|End)$/.test(event.key)
+                )
+                    event.stopPropagation();
+            };
+        }
+    }
+
+    function toggleHttpRemote(): void {
+        if (changingHttpRemote) return;
+        var remote = w.__ottLocalHttpRemote;
+        if (!remote || typeof remote.setEnabled !== "function") {
+            httpRemoteError = true;
+            render();
+            return;
+        }
+        changingHttpRemote = true;
+        httpRemoteError = false;
+        render();
+        Promise.resolve()
+            .then(function () {
+                return remote.setEnabled(!remote.status().enabled);
+            })
+            .then(
+                function () {
+                    changingHttpRemote = false;
+                    render();
+                },
+                function () {
+                    changingHttpRemote = false;
+                    httpRemoteError = true;
+                    render();
+                }
+            );
     }
 
     function editUrl(swop: boolean): void {
@@ -6546,6 +6730,7 @@ window.settingsCommands = function (): void {
 
     w.aboutKeyHandler = function (e: number): boolean {
         if (e === w.keys.RETURN || e === w.keys.EXIT) {
+            closed = true;
             $("#listAbout").hide().text("");
             ["listCaption", "listDetail", "listPodval"].forEach(
                 function (id, index) {
@@ -6569,6 +6754,10 @@ window.settingsCommands = function (): void {
         }
         if (e === w.keys.ENTER || e === w.keys.N2 || e === 50) {
             editUrl(e !== w.keys.ENTER);
+            return true;
+        }
+        if (e === w.keys.N1 || e === 49) {
+            toggleHttpRemote();
             return true;
         }
         return false;

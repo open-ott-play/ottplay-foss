@@ -6,19 +6,21 @@
 #   GET  /api/webhook/health     (alias GET /webhook/health) — Mode B Cap/Tauri
 #   POST /api/webhook/commands  (alias POST /webhook/notify)
 #   GET  /api/webhook/commands  (alias GET  /webhook/poll)
-#   Optional ?device_id=<id> for per-device routing (else broadcast)
+#   Authorization: Bearer <device-code> for every request
+#   Optional ?device_id=<id> selects a native queue partition (ignored by Mode A)
 #   Body: JSON object with a "command" field (Content-Type: application/json)
 #   Response POST: {"status":"ok","queued":N}
 #   Response GET:  JSON array of pending commands (drained; expire >60s)
 #
-# Defaults target Mode B / Capacitor loopback (127.0.0.1:18081).
+# HTTP remote is off by default. Optional authenticated checks target loopback.
+# No explicit target/token means a successful skip, without a network request.
 # Cap + Tauri both prefer :18081 and fall back through :18082..=18090 when busy;
 # use --discover or BASE_URL when both run on one Mac.
 # Mode A companion (local_proxy.py) usually listens on :8081 — override BASE_URL.
 #
 # Usage:
 #   ./scripts/smoke-command-queue.sh
-#   BASE_URL=http://127.0.0.1:8081 ./scripts/smoke-command-queue.sh
+#   OTTPLAY_QUEUE_HTTP_TOKEN=<device-code> BASE_URL=http://127.0.0.1:8081 ./scripts/smoke-command-queue.sh
 #   BASE_URL=http://127.0.0.1:18082 ./scripts/smoke-command-queue.sh  # Tauri if Cap holds 18081
 #   ./scripts/smoke-command-queue.sh --discover
 #   ./scripts/smoke-command-queue.sh --discover --backend tauri
@@ -31,7 +33,13 @@
 #   1  queue not listening / connection failed
 #   2  unexpected HTTP/JSON response
 #   3  usage / missing dependency
+set +x # Never echo the optional token, including when invoked with bash -x.
 set -euo pipefail
+
+QUEUE_HTTP_TOKEN="${QUEUE_HTTP_TOKEN:-${OTTPLAY_QUEUE_HTTP_TOKEN:-}}"
+AUTH_CONFIG=""
+cleanup_auth() { [[ -z "$AUTH_CONFIG" ]] || rm -f "$AUTH_CONFIG"; }
+trap cleanup_auth EXIT
 
 BASE_URL_DEFAULT="http://127.0.0.1:18081"
 BASE_URL_SET=0
@@ -57,7 +65,10 @@ Env:
                     Mode A local_proxy.py: http://127.0.0.1:8081 (or LAN host:8081).
                     When Cap+Tauri both run, second app is often :18082 — set BASE_URL
                     or use --discover.
-  DEVICE_ID         Optional ?device_id= for per-device routing (empty = broadcast).
+  QUEUE_HTTP_TOKEN  Required device code for explicitly enabled HTTP control in all modes.
+                    Also accepts OTTPLAY_QUEUE_HTTP_TOKEN. Never printed.
+                    Only loopback BASE_URL is accepted when a token is supplied.
+  DEVICE_ID         Optional native queue partition; Mode A ignores this compatibility field.
   COMMAND_JSON      JSON body to enqueue (default: popup_message smoke).
   CONNECT_TIMEOUT   curl --connect-timeout seconds (default 2).
   DISCOVER_FROM/TO  Port range for --discover (default 18081-18090).
@@ -71,36 +82,17 @@ Flags:
   --aliases         Also smoke POST /webhook/notify and GET /webhook/poll.
   -h, --help        Show this help.
 
-Modes (how to get a listener up before running this script):
-  Mode A companion  python3 local_proxy.py 8081
-                    BASE_URL=http://127.0.0.1:8081 ./scripts/smoke-command-queue.sh
-                    Player: Settings → Remote control → Local command URL =
-                      http://<host>:8081/api/webhook/commands
-  Tauri Mode B      Launch the desktop app (prefers 127.0.0.1:18081, falls back
-                    through 18082..=18090). Then:
-                    ./scripts/smoke-command-queue.sh
-                    ./scripts/smoke-command-queue.sh --discover --backend tauri
-  Capacitor         Run the iOS Simulator app (Mac localhost shared) or Android
-                    emulator/device with: adb forward tcp:18081 tcp:18081
-                    (forward the bound port if Cap fell back). Then:
-                    ./scripts/smoke-command-queue.sh
-                    (Cap/Tauri bind loopback only — HA on another host cannot
-                    reach :18081 without a tunnel; use Mode A local_proxy for LAN HA.)
-  Cap + Tauri       Both prefer :18081; the second binds :18082+. Honest dual-run:
-                    ./scripts/smoke-command-queue.sh --discover
-                    BASE_URL=http://127.0.0.1:18082 ./scripts/smoke-command-queue.sh
+Native HTTP is off by default; normal playback uses internal IPC and needs no listener.
+This script never enables HTTP control. Without a token and without an explicit BASE_URL it skips.
+An explicit BASE_URL without a token is a usage error; all queues require authentication.
+For a deliberately enabled native listener, provide its token through the environment
+and its selected loopback URL through BASE_URL, or use authenticated --discover.
+Tauri opt-in: enable Local HTTP remote control in player settings; use its device code.
+Capacitor opt-in: enable Local HTTP remote control in player settings; use its device code.
+The smoke enqueues and drains commands; use a dedicated test player/proxy.
+Mode A local_proxy.py requires OTTPLAY_QUEUE_HTTP_ENABLED=1 and its player's device
+code in OTTPLAY_QUEUE_HTTP_TOKEN. Run this smoke on the proxy host using loopback.
 
-Home Assistant (curl-equivalent rest_command; no secrets):
-  rest_command:
-    ott_tv_command:
-      url: "http://127.0.0.1:18081/api/webhook/commands"
-      method: POST
-      headers:
-        Content-Type: application/json
-      payload: '{"command":"popup_message","message":"{{ message }}","popup_duration":5}'
-  For Mode A / LAN HA, point url at http://<proxy-host>:8081/api/webhook/commands
-  (optional ?device_id= from Player settings → Device ID). When Cap+Tauri both
-  listen, point HA at the intended port (see --discover).
 USAGE
 }
 
@@ -130,6 +122,50 @@ if ! command -v curl >/dev/null 2>&1; then
   exit 3
 fi
 
+# A normal native installation has no HTTP listener. Do not require one for smoke.
+if [[ -z "$QUEUE_HTTP_TOKEN" ]]; then
+  if [[ "$BASE_URL_SET" -eq 0 ]]; then
+    echo "soft-skip: HTTP control is off by default; no explicit authenticated target"
+    exit 0
+  fi
+  echo "error: an explicit command queue target requires its device code in QUEUE_HTTP_TOKEN" >&2
+  exit 3
+fi
+
+curl_auth=()
+if [[ -n "$QUEUE_HTTP_TOKEN" ]]; then
+  if [[ ${#QUEUE_HTTP_TOKEN} -lt 32 || ${#QUEUE_HTTP_TOKEN} -gt 256 || "$QUEUE_HTTP_TOKEN" =~ [^A-Za-z0-9_-] ]]; then
+    echo "error: HTTP device code must be 32-256 URL-safe ASCII characters" >&2
+    exit 3
+  fi
+  if ! python3 - "$BASE_URL" <<'URLCHECK'
+import sys, urllib.parse
+try:
+    u = urllib.parse.urlsplit(sys.argv[1])
+    assert u.scheme in ('http', 'https') and u.hostname in ('127.0.0.1', 'localhost', '::1')
+    assert not (u.username or u.password or u.query or u.fragment) and u.path in ('', '/')
+    assert u.port is None or 0 < u.port < 65536
+except (AssertionError, ValueError):
+    sys.exit(1)
+URLCHECK
+  then
+    echo "error: authenticated queue smoke requires a loopback origin URL" >&2
+    exit 3
+  fi
+  AUTH_CONFIG="$(umask 077; mktemp -t ott-cq-auth.XXXXXX)"
+  printf 'header = "Authorization: Bearer %s"\n' "$QUEUE_HTTP_TOKEN" >"$AUTH_CONFIG"
+  curl_auth=(--config "$AUTH_CONFIG" --noproxy '*')
+fi
+
+health_matches() {
+  python3 -c 'import json,sys
+try:
+    data=json.load(sys.stdin)
+    sys.exit(0 if data.get("backend") in ("tauri", "capacitor") else 1)
+except (ValueError, AttributeError):
+    sys.exit(1)'
+}
+
 # Strip trailing slash from base.
 BASE_URL="${BASE_URL%/}"
 
@@ -149,7 +185,7 @@ discover_queues() {
     url="http://127.0.0.1:${port}"
     health="${url}/api/webhook/health"
     set +e
-    raw="$(curl "${curl_probe[@]}" -X GET -H 'Accept: application/json' "$health" 2>/dev/null)"
+    raw="$(curl "${curl_auth[@]+"${curl_auth[@]}"}" "${curl_probe[@]}" -X GET -H 'Accept: application/json' "$health" 2>/dev/null)"
     code=$?
     set -e
     if [[ $code -ne 0 || -z "$raw" ]]; then
@@ -165,7 +201,7 @@ discover_queues() {
     if [[ "$http_code" != "200" ]]; then
       continue
     fi
-    if ! printf '%s' "$body" | grep -q 'ottplay-command-queue'; then
+    if ! printf '%s' "$body" | health_matches; then
       continue
     fi
     backend="$(printf '%s' "$body" | python3 -c 'import sys,json
@@ -187,7 +223,7 @@ if [[ "$DO_DISCOVER" -eq 1 ]]; then
   if [[ ! -s "$FOUND_FILE" ]]; then
     rm -f "$FOUND_FILE"
     echo "not listening: no ottplay-command-queue health on :${DISCOVER_FROM}-${DISCOVER_TO}" >&2
-    echo "hint: launch Cap and/or Tauri; Mode A uses :8081 (set BASE_URL, no --discover)." >&2
+    echo "hint: native HTTP is normally disabled; this check only covers explicit opt-in. Mode A uses explicit BASE_URL." >&2
     exit 1
   fi
   FILTERED_FILE="$(mktemp -t ott-cq-filtered.XXXXXX)"
@@ -257,7 +293,7 @@ not_listening() {
   if [[ -n "$detail" ]]; then
     echo "  detail: ${detail}" >&2
   fi
-  echo "hint: start Mode A (python3 local_proxy.py 8081), Tauri Mode B app, or Cap app;" >&2
+  echo "hint: native HTTP is normally disabled; verify only an explicitly enabled listener;" >&2
   echo "      Cap+Tauri dual-run: ./scripts/smoke-command-queue.sh --discover" >&2
   echo "      for Android emulator/device use: adb forward tcp:18081 tcp:18081" >&2
   echo "      override with BASE_URL=... (Mode A often http://127.0.0.1:8081)" >&2
@@ -268,7 +304,7 @@ not_listening() {
 do_curl() {
   local out ec
   set +e
-  out="$(curl "${curl_common[@]}" "$@" 2>/tmp/ott-cq-smoke-curl.err)"
+  out="$(curl "${curl_auth[@]+"${curl_auth[@]}"}" "${curl_common[@]}" "$@" 2>/tmp/ott-cq-smoke-curl.err)"
   ec=$?
   set -e
   if [[ $ec -ne 0 ]]; then
@@ -360,7 +396,7 @@ echo "  BASE_URL=${BASE_URL}"
 if [[ -n "$DEVICE_ID" ]]; then
   echo "  DEVICE_ID=${DEVICE_ID}"
 else
-  echo "  DEVICE_ID=(broadcast)"
+  echo "  DEVICE_ID=(default authenticated queue)"
 fi
 echo
 
@@ -370,7 +406,7 @@ echo "==> probe GET ${health_url}"
 if raw="$(do_curl -X GET -H 'Accept: application/json' "$health_url")"; then
   BODY=""; CODE=""
   split_body_code "$raw"
-  if [[ "$CODE" == "200" ]] && printf '%s' "$BODY" | grep -q 'ottplay-command-queue'; then
+  if [[ "$CODE" == "200" ]] && printf '%s' "$BODY" | health_matches; then
     echo "    listening (health: ${BODY})"
   else
     echo "    health not Mode B (http ${CODE}); falling back to commands probe"

@@ -8,8 +8,8 @@
 Repeatable **macOS / Windows / Linux** smoke for Mode B Tauri desktop.
 FOSS closes what can be automated without a headed GUI in CI: toolchain checks,
 `src-tauri/` presence, optional unsigned compile, optional companion curl on `:8095`,
-and optional command-queue curl on `:18081+` when the desktop app is running
-(Cap+Tauri coexistence: prefer `:18081`, fall back through `:18082..=18090`).
+and optional authenticated command-queue curl for an explicitly enabled loopback listener.
+Normal playback uses internal IPC; HTTP control is off by default.
 **A human still marks the UI checklist** on a desktop window (debug or built app).
 
 This is **Mode B desktop** (Tauri). Do **not** confuse with Mode A companion smokes
@@ -20,7 +20,7 @@ Related:
 
 - Updater / unsigned local build: [`docs/tauri-updater-notarize.md`](tauri-updater-notarize.md)
 - Cap device sibling: [`docs/mode-b-device-smoke.md`](mode-b-device-smoke.md)
-- Hosted full web player (browser baseline): https://player.ottplay.here.now/
+- Browser baseline: a local or self-hosted web player built from the same revision.
 - Thin helper: `./scripts/smoke-tauri-desktop.sh`
 
 ## What is automated vs human
@@ -31,7 +31,7 @@ Related:
 | `src-tauri/` present | Yes (helper) | Scaffold presence only |
 | `npm run build` / `npx tauri build --ci` | Optional (`--build`) | Unsigned CI build inside `src-tauri/` |
 | Companion curl on `:8095` | Optional (helper flags) | Soft-skip if not up unless `--require-companion` |
-| Command-queue POST/GET on `:18081+` | Yes when app listening | Soft-skip if not up unless `--require-queue`; discover via `--discover --backend tauri` |
+| Optional command-queue HTTP POST/GET | Only after explicit opt-in | Token required; never a normal playback prerequisite |
 | UI: window launch / paint / play / PiP | **Human** | Debug or built desktop app |
 | Paid notarize / code signing | **Out of scope** | Unpaid: unsigned / local debug OK |
 
@@ -77,19 +77,21 @@ When a Mode A companion is listening on `:8095`:
 
 Soft-skip is intentional when the companion is not running — CI without a local companion should not hard-fail.
 
-## Automated command-queue curl
+## Optional authenticated command-queue check
 
-With the Tauri desktop app running (prefers `127.0.0.1:18081`, falls back through `18082..=18090` if Cap already holds the port):
+Normal Tauri launch uses internal command IPC with no HTTP listener. Test that default first; do not enable HTTP simply to make a smoke pass.
+
+Enable **Local HTTP remote** in player settings to generate a device code. Settings call `queue_http_configure` with `{enabled: true, token: deviceCode}`; startup environment variables cannot enable the listener. Use the device code as the Bearer token in your local proxy. Disabling the option closes the listener and its connections, clears pending commands, and revokes the active code. The listener binds loopback only, prefers port 18081, and falls back through 18090; `OTTPLAY_QUEUE_PORT` pins a port. `queue_port` reports the live `httpEnabled`, `running`, and `port` status.
 
 ```bash
+# No token means an intentional soft-skip, without an HTTP request.
 ./scripts/smoke-tauri-desktop.sh --check-queue
-# Cap Simulator already on :18081 → helper discovers Tauri on :18082+
+# Only for a deliberately enabled listener, with QUEUE_HTTP_TOKEN already set securely:
 ./scripts/smoke-command-queue.sh --discover --backend tauri
-# or pin: QUEUE_BASE_URL=http://127.0.0.1:18082 ./scripts/smoke-tauri-desktop.sh --check-queue
-./scripts/smoke-tauri-desktop.sh --check-queue --require-queue   # fail if not listening
+./scripts/smoke-tauri-desktop.sh --check-queue --require-queue
 ```
 
-Expect a popup (or queued command drain) in the app when POST succeeds.
+The helper also accepts `OTTPLAY_QUEUE_HTTP_TOKEN`; `QUEUE_BASE_URL` chooses a specific loopback origin instead of discovery. It does not start the listener. The optional contract test enqueues and drains commands, so set a dedicated `DEVICE_ID` to avoid draining the player’s broadcast queue. Never commit or print the token.
 
 ## Manual UI checklist (human marks)
 

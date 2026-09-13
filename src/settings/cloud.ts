@@ -61,7 +61,11 @@ export function cloudSendSettings(): void {
     var items =
         typeof w.stbGetAllItems === "function" ? w.stbGetAllItems() : {};
     for (var prop in items) {
-        if (Object.prototype.hasOwnProperty.call(items, prop))
+        if (
+            Object.prototype.hasOwnProperty.call(items, prop) &&
+            prop !== "sLocalHttpEnabled" &&
+            prop !== "sLocalHttpDeviceCode"
+        )
             xml += '\n<entry key="' + prop + '">' + items[prop] + "</entry>";
     }
     xml += "\n</properties>";
@@ -202,7 +206,11 @@ export function cloudLoadSettings(): void {
                                 var parts = entry
                                     .split("</entry>")[0]
                                     .split('">');
-                                if (typeof w.stbSetItem === "function")
+                                if (
+                                    parts[0] !== "sLocalHttpEnabled" &&
+                                    parts[0] !== "sLocalHttpDeviceCode" &&
+                                    typeof w.stbSetItem === "function"
+                                )
                                     w.stbSetItem(parts[0], parts[1]);
                             });
                             if (typeof w.restart === "function") w.restart();

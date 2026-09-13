@@ -113,6 +113,10 @@ jobs:
       - run: npm test
       - run: python3 tests/test_native_epg_cache.py --check-mirrors-only
       - run: python3 tests/test_mobile_orientation.py
+      - name: Test authenticated local command proxy
+        run: python3 tests/test_local_proxy.py
+      - name: Verify authenticated command smoke contract
+        run: python3 tests/test_command_queue_smoke.py
 
   rust-tests:
     name: Rust Core and Server Tests
