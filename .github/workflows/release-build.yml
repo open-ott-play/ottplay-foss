@@ -322,14 +322,7 @@ jobs:
       uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
     - name: Android – install SDK components
       if: matrix.type == 'android'
-      run: |
-        # sdkmanager closes stdin once installation finishes. Ignore only
-        # yes's expected SIGPIPE; sdkmanager failures still fail this step.
-        (yes || test "$?" -eq 141) | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" \
-          "platforms;android-36" \
-          "build-tools;34.0.0" \
-          "platform-tools" 2>&1 | tail -5
-        echo "✓ Android SDK components installed"
+      run: bash scripts/ci-android-install-sdk.sh
     - name: Android – build web + sync
       if: matrix.type == 'android'
       run: npm run build:mobile
