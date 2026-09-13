@@ -51,6 +51,33 @@ function readIni(file) {
             })
     );
 }
+function setIniValues(text, values) {
+    const newline = text.includes("\r\n") ? "\r\n" : "\n";
+    for (const [key, value] of Object.entries(values)) {
+        const line = new RegExp(
+            "^[ \\t]*" +
+                key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
+                "[ \\t]*=[^\\r\\n]*",
+            "gm"
+        );
+        const setting = `${key}=${value}`;
+        text = line.test(text)
+            ? text.replace(line, setting)
+            : text + (text.endsWith("\n") ? "" : newline) + setting + newline;
+    }
+    return text;
+}
+function processIsRunning(pid) {
+    try {
+        process.kill(pid, 0);
+        return true;
+    } catch (error) {
+        return error.code !== "ESRCH";
+    }
+}
+function inputEnabled(value) {
+    return /^(yes|true|1)$/i.test(String(value || "").trim());
+}
 function help(mode) {
     console.log(`Usage: scripts/${mode === "setup" ? "setup" : "run"}-android-tv-emulator.sh [options]
 
@@ -70,16 +97,22 @@ Run options:
   --port NUMBER     Console port for a new instance (default: 5570)
   --timeout SECONDS Boot timeout (default: 180)
   --headless        Start without a window
+  --url URL         Open the hosted player (default: http://127.0.0.1:8095/;
+                    OTTP_PLAYER_URL)
+  --home            Boot/connect without launching the player
   --apk FILE        Install an APK on this TV AVD; requires --component
   --component NAME  Launch an installed activity, e.g. package/.MainActivity
   --stop            Stop only this named TV AVD
 
 Requires separately installed Android command-line tools and Java.
 Setup leaves license prompts interactive and never overwrites an existing AVD.
-Run boots the TV home screen, or the explicit APK/activity. It reverses ports
+Run opens the hosted player in a locally built test WebView app by default.
+This requires installed Android platform 36, build-tools 36 and Java 17+.
+--home skips the app; --apk/--component select another app. These modes cannot
+be combined with --url. It reverses ports
 8095 (existing player/companion) and 8090 (playlist proxy) through ADB so guest
 127.0.0.1 reaches the host stack. No browser or player app is assumed installed.
-No server is started and no APK is built or downloaded by this script.`);
+No server is started and no SDK or APK is downloaded by the run command.`);
 }
 
 async function main() {
@@ -96,6 +129,7 @@ async function main() {
         "timeout",
         "apk",
         "component",
+        "url",
     ];
     for (let i = 0; i < argv.length; i++) {
         const key = argv[i].replace(/^--/, "");
@@ -108,15 +142,28 @@ async function main() {
                 fail(`${argv[i]} requires a value`);
             options[key] = argv[++i];
         } else if (
-            ["--dry-run", "--google-tv", "--headless", "--stop"].includes(
-                argv[i]
-            )
+            [
+                "--dry-run",
+                "--google-tv",
+                "--headless",
+                "--stop",
+                "--home",
+            ].includes(argv[i])
         )
             options[key] = true;
         else fail(`Unknown option: ${argv[i]}`);
     }
     for (const key of mode === "setup"
-        ? ["port", "timeout", "apk", "component", "headless", "stop"]
+        ? [
+              "port",
+              "timeout",
+              "apk",
+              "component",
+              "headless",
+              "stop",
+              "url",
+              "home",
+          ]
         : ["image", "device", "data-size"]) {
         if (options[key] !== undefined)
             fail(`--${key} is not a ${mode} option`);
@@ -206,6 +253,10 @@ async function main() {
             : [image];
         if (!fs.existsSync(emulator)) packages.push("emulator");
         if (!fs.existsSync(adb)) packages.push("platform-tools");
+        if (!fs.existsSync(path.join(sdk, "platforms/android-36/android.jar")))
+            packages.push("platforms;android-36");
+        if (!fs.existsSync(path.join(sdk, "build-tools/36.0.0/apksigner")))
+            packages.push("build-tools;36.0.0");
         const installArgs = [`--sdk_root=${sdk}`, "--install", ...packages];
         const createArgs = [
             "create",
@@ -248,16 +299,13 @@ async function main() {
                 readIni(avdIni).path || path.join(avdHome, `${avd}.avd`),
                 "config.ini"
             );
-            const configText = fs.readFileSync(configFile, "utf8");
-            const dataSetting = `disk.dataPartition.size=${dataSize}M`;
             fs.writeFileSync(
                 configFile,
-                /^[ \t]*disk\.dataPartition\.size[ \t]*=/m.test(configText)
-                    ? configText.replace(
-                          /^[ \t]*disk\.dataPartition\.size[ \t]*=.*$/m,
-                          dataSetting
-                      )
-                    : configText.replace(/\n?$/, "\n") + dataSetting + "\n"
+                setIniValues(fs.readFileSync(configFile, "utf8"), {
+                    "disk.dataPartition.size": `${dataSize}M`,
+                    "hw.dPad": "yes",
+                    "hw.keyboard": "yes",
+                })
             );
             console.log(
                 `Ready: ${avd}. Run ./scripts/run-android-tv-emulator.sh --avd ${avd}`
@@ -278,8 +326,17 @@ async function main() {
         !/^[A-Za-z][\w.]*\/[A-Za-z.][\w.$]*$/.test(options.component)
     )
         fail("Invalid Android activity component");
-    if (options.stop && (options.apk || options.component))
-        fail("--stop cannot install or launch an APK");
+    if (
+        options.stop &&
+        (options.apk || options.component || options.url || options.home)
+    )
+        fail(
+            "--stop cannot be combined with --url, --home, --apk or --component"
+        );
+    if (options.home && (options.url || options.apk || options.component))
+        fail("--home cannot be combined with --url, --apk or --component");
+    if (options.url && (options.apk || options.component))
+        fail("--url cannot be combined with --apk or --component");
     if (
         options.apk &&
         (!/\.apk$/i.test(options.apk) ||
@@ -287,6 +344,63 @@ async function main() {
             !fs.statSync(options.apk).isFile())
     )
         fail(`Expected a local APK file: ${options.apk}`);
+    const openPlayer = !options.stop && !options.home && !options.component;
+    let playerUrl;
+    if (openPlayer) {
+        try {
+            playerUrl = new URL(
+                options.url ||
+                    process.env.OTTP_PLAYER_URL ||
+                    "http://127.0.0.1:8095/"
+            );
+            if (
+                !["http:", "https:"].includes(playerUrl.protocol) ||
+                playerUrl.username ||
+                playerUrl.password
+            )
+                fail("Invalid player URL");
+        } catch (_) {
+            fail("Player URL must be an HTTP(S) URL without credentials");
+        }
+    }
+    const reversePorts = new Set([8095, 8090]);
+    if (
+        playerUrl &&
+        ["127.0.0.1", "localhost", "[::1]"].includes(playerUrl.hostname)
+    )
+        reversePorts.add(
+            Number(
+                playerUrl.port || (playerUrl.protocol === "https:" ? 443 : 80)
+            )
+        );
+    let launchApk = options.apk ? path.resolve(options.apk) : undefined;
+    let launchComponent = options.component;
+    function preparePlayer() {
+        console.log(
+            "Preparing Android TV WebView test app with the installed SDK"
+        );
+        const prepared =
+            require("./prepare-android-tv-player.cjs").prepareAndroidTvPlayer({
+                dryRun: Boolean(dry),
+                sdk,
+            });
+        launchApk = prepared.apk;
+        launchComponent = prepared.component;
+    }
+    function activityArgs() {
+        const args = [
+            "-s",
+            serial,
+            "shell",
+            "am",
+            "start",
+            "-W",
+            "-n",
+            quote(launchComponent),
+        ];
+        if (playerUrl) args.push("-d", quote(playerUrl.href));
+        return args;
+    }
     const bootArgs = [
         "-avd",
         avd,
@@ -302,8 +416,9 @@ async function main() {
     if (dry) {
         if (options.stop) print(adb, ["-s", serial, "emu", "kill"]);
         else {
+            if (openPlayer) preparePlayer();
             print(emulator, bootArgs);
-            for (const reverse of [8095, 8090])
+            for (const reverse of reversePorts)
                 print(adb, [
                     "-s",
                     serial,
@@ -311,25 +426,9 @@ async function main() {
                     `tcp:${reverse}`,
                     `tcp:${reverse}`,
                 ]);
-            if (options.apk)
-                print(adb, [
-                    "-s",
-                    serial,
-                    "install",
-                    "-r",
-                    path.resolve(options.apk),
-                ]);
-            if (options.component)
-                print(adb, [
-                    "-s",
-                    serial,
-                    "shell",
-                    "am",
-                    "start",
-                    "-W",
-                    "-n",
-                    quote(options.component),
-                ]);
+            if (launchApk)
+                print(adb, ["-s", serial, "install", "-r", launchApk]);
+            if (launchComponent) print(adb, activityArgs());
         }
         return;
     }
@@ -337,14 +436,34 @@ async function main() {
         fail(
             `AVD ${avd} is not installed; run setup-android-tv-emulator.sh first`
         );
-    const avdConfig = readIni(
-        path.join(
-            readIni(avdIni).path || path.join(avdHome, `${avd}.avd`),
-            "config.ini"
-        )
-    );
+    const avdDirectory =
+        readIni(avdIni).path || path.join(avdHome, `${avd}.avd`);
+    const avdConfigFile = path.join(avdDirectory, "config.ini");
+    const avdConfig = readIni(avdConfigFile);
     if (!["android-tv", "google-tv"].includes(avdConfig["tag.id"]))
         fail(`AVD ${avd} is not an Android TV / Google TV profile`);
+    if (openPlayer) {
+        for (const url of [playerUrl.origin + "/health", playerUrl.href]) {
+            try {
+                invoke("curl", [
+                    "--globoff",
+                    "--fail",
+                    "--silent",
+                    "--show-error",
+                    "--connect-timeout",
+                    "3",
+                    "--max-time",
+                    "10",
+                    url,
+                ]);
+            } catch (_) {
+                fail(
+                    `Player companion/page is unavailable at ${url}. Start the existing local stack first; 8090 is the playlist proxy, not the player.`
+                );
+            }
+        }
+        preparePlayer();
+    }
     const devices = invoke(adb, ["devices"], { env })
         .split(/\r?\n/)
         .map((line) => line.split(/\s+/))
@@ -368,16 +487,96 @@ async function main() {
         } else console.log(`${avd} is not running`);
         return;
     }
-    let child;
-    if (!matching.length) {
+    let needsBoot = !matching.length;
+    if (matching.length) await waitForBoot();
+    else {
         if (devices.some(([id]) => id === serial))
             fail(`${serial} is occupied by another AVD; select another --port`);
         invoke(emulator, ["-accel-check"], { env });
+    }
+    const inputSettings = { "hw.dPad": "yes", "hw.keyboard": "yes" };
+    const configuredInput = readIni(avdConfigFile);
+    const needsInputRepair = Object.keys(inputSettings).some(
+        (key) => !inputEnabled(configuredInput[key])
+    );
+    const hardwareFile = path.join(avdDirectory, "hardware-qemu.ini");
+    const hardware = fs.existsSync(hardwareFile) ? readIni(hardwareFile) : {};
+    const staleHardware = Object.keys(inputSettings).some(
+        (key) => hardware[key] !== undefined && !inputEnabled(hardware[key])
+    );
+    if (needsInputRepair || staleHardware) {
+        if (matching.length) {
+            // Check that a replacement can boot before stopping the current TV.
+            invoke(emulator, ["-accel-check"], { env });
+            const identity = invoke(adb, ["-s", serial, "emu", "avd", "name"], {
+                env,
+            });
+            if (identity.split(/\r?\n/)[0] !== avd)
+                fail("Emulator identity changed before keyboard repair");
+            let oldPid;
+            try {
+                // The SDK stores an ASCII PID with an optional trailing NUL.
+                const lock = fs.readFileSync(
+                    path.join(avdDirectory, "hardware-qemu.ini.lock"),
+                    "utf8"
+                );
+                if (/^[0-9]+\0?$/.test(lock)) {
+                    const parsed = Number.parseInt(lock, 10);
+                    if (Number.isSafeInteger(parsed) && parsed > 1)
+                        oldPid = parsed;
+                }
+            } catch (_) {
+                // ADB disappearance remains the fallback when no PID is recorded.
+            }
+            console.log(
+                `Restarting ${avd} (${serial}) to enable keyboard and D-pad`
+            );
+            invoke(adb, ["-s", serial, "emu", "kill"], { env });
+            const stopDeadline = Date.now() + timeout * 1000;
+            let stopped = false;
+            while (Date.now() < stopDeadline) {
+                const attached = invoke(adb, ["devices"], { env })
+                    .split(/\r?\n/)
+                    .some((line) => line.split(/\s+/)[0] === serial);
+                if (!attached && (!oldPid || !processIsRunning(oldPid))) {
+                    stopped = true;
+                    break;
+                }
+                await new Promise((resolve) => setTimeout(resolve, 500));
+            }
+            if (!stopped)
+                fail(
+                    `Stop timed out for ${serial}; no replacement was started`
+                );
+            // Reuse this TV's console port, not a possibly occupied default port.
+            bootArgs[bootArgs.indexOf("-port") + 1] = serial.slice(
+                "emulator-".length
+            );
+            needsBoot = true;
+        }
+        // Re-read after shutdown so any unrelated last-minute AVD settings survive.
+        const latestInput = readIni(avdConfigFile);
+        if (
+            Object.keys(inputSettings).some(
+                (key) => !inputEnabled(latestInput[key])
+            )
+        ) {
+            fs.writeFileSync(
+                avdConfigFile,
+                setIniValues(
+                    fs.readFileSync(avdConfigFile, "utf8"),
+                    inputSettings
+                )
+            );
+        }
+        bootArgs.push("-no-snapshot-load");
+    }
+    if (needsBoot) {
         const logDir = path.resolve(__dirname, "../build/emulator-logs");
         fs.mkdirSync(logDir, { recursive: true });
         const logFile = path.join(logDir, `${avd}.log`);
         const fd = fs.openSync(logFile, "a");
-        child = spawn(emulator, bootArgs, {
+        const child = spawn(emulator, bootArgs, {
             detached: true,
             env,
             stdio: ["ignore", fd, fd],
@@ -388,88 +587,81 @@ async function main() {
         });
         child.unref();
         console.log(`Starting ${avd} (${serial}); log: ${logFile}`);
+        await waitForBoot(child);
     } else console.log(`Reusing ${avd} (${serial})`);
-    const deadline = Date.now() + timeout * 1000;
-    let booted = false;
-    while (Date.now() < deadline) {
-        const result = spawnSync(
-            adb,
-            ["-s", serial, "shell", "getprop", "sys.boot_completed"],
-            { encoding: "utf8", env, timeout: 5000 }
-        );
-        if (result.status === 0 && result.stdout.trim() === "1") {
-            // ADB may reconnect after Android reports boot completion. Require
-            // the expected identity in this poll before touching ports or apps.
-            const identity = spawnSync(
+    async function waitForBoot(child) {
+        const deadline = Date.now() + timeout * 1000;
+        let booted = false;
+        while (Date.now() < deadline) {
+            const result = spawnSync(
                 adb,
-                ["-s", serial, "emu", "avd", "name"],
+                ["-s", serial, "shell", "getprop", "sys.boot_completed"],
                 { encoding: "utf8", env, timeout: 5000 }
             );
-            if (identity.status === 0) {
-                if (identity.stdout.trim().split(/\r?\n/)[0] !== avd)
-                    fail("Emulator identity changed during boot");
-                booted = true;
-                break;
-            }
-            const transportError = (
-                identity.stderr ||
-                identity.stdout ||
-                ""
-            ).trim();
-            if (
-                identity.error?.code !== "ETIMEDOUT" &&
-                !/device.*not found|device offline|no devices\/emulators found|transport.*(?:not found|closed)/i.test(
-                    transportError
-                )
-            )
-                fail(
-                    identity.error?.message ||
-                        `ADB identity query failed: ${transportError}`
+            if (result.status === 0 && result.stdout.trim() === "1") {
+                // ADB may reconnect after Android reports boot completion. Require
+                // the expected identity in this poll before touching ports or apps.
+                const identity = spawnSync(
+                    adb,
+                    ["-s", serial, "emu", "avd", "name"],
+                    { encoding: "utf8", env, timeout: 5000 }
                 );
+                if (identity.status === 0) {
+                    if (identity.stdout.trim().split(/\r?\n/)[0] !== avd)
+                        fail("Emulator identity changed during boot");
+                    booted = true;
+                    break;
+                }
+                const transportError = (
+                    identity.stderr ||
+                    identity.stdout ||
+                    ""
+                ).trim();
+                if (
+                    identity.error?.code !== "ETIMEDOUT" &&
+                    !/device.*not found|device offline|no devices\/emulators found|transport.*(?:not found|closed)/i.test(
+                        transportError
+                    )
+                )
+                    fail(
+                        identity.error?.message ||
+                            `ADB identity query failed: ${transportError}`
+                    );
+            }
+            if (child && (child.exitCode !== null || child.signalCode !== null))
+                fail("Emulator exited during boot; inspect its log");
+            await new Promise((resolve) => setTimeout(resolve, 2000));
         }
-        if (child && (child.exitCode !== null || child.signalCode !== null))
-            fail("Emulator exited during boot; inspect its log");
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        if (!booted)
+            fail(
+                `Boot timed out for ${serial}; inspect build/emulator-logs before retrying. No other emulator was stopped`
+            );
     }
-    if (!booted)
-        fail(
-            `Boot timed out for ${serial}; inspect build/emulator-logs before retrying. No other emulator was stopped`
-        );
-    for (const reverse of [8095, 8090])
+    for (const reverse of reversePorts)
         invoke(
             adb,
             ["-s", serial, "reverse", `tcp:${reverse}`, `tcp:${reverse}`],
             { env }
         );
-    if (options.apk)
+    if (launchApk)
         console.log(
-            invoke(
-                adb,
-                ["-s", serial, "install", "-r", path.resolve(options.apk)],
-                { env, timeout: 120000 }
-            )
+            invoke(adb, ["-s", serial, "install", "-r", launchApk], {
+                env,
+                timeout: 120000,
+            })
         );
-    if (options.component) {
-        const output = invoke(
-            adb,
-            [
-                "-s",
-                serial,
-                "shell",
-                "am",
-                "start",
-                "-W",
-                "-n",
-                quote(options.component),
-            ],
-            { env, includeStderr: true, timeout: 60000 }
-        );
+    if (launchComponent) {
+        const output = invoke(adb, activityArgs(), {
+            env,
+            includeStderr: true,
+            timeout: 60000,
+        });
         if (/Error:|Exception|Status:\s*(?!ok\b)\w+/i.test(output))
             fail(output);
         console.log(output);
     }
     console.log(
-        `Ready: ${avd} (${serial}). Host player: http://127.0.0.1:8095/; playlist proxy: http://127.0.0.1:8090/`
+        `Ready: ${avd} (${serial}). Host player: ${playerUrl ? playerUrl.href : "http://127.0.0.1:8095/"}; playlist proxy: http://127.0.0.1:8090/`
     );
 }
 main().catch((error) => {

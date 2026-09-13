@@ -189,14 +189,37 @@ AVD storage. Install only the variants you need.
 Setup leaves SDK license prompts interactive. It never accepts terms for you
 and never overwrites an AVD. A matching existing AVD is retained; a conflicting
 image requires a different `--avd` name. Existing SDK packages are reused.
+Setup also installs Android platform 36 and build-tools 36.0.0 when missing; the
+default launcher uses these with Java 17+ to build its small WebView test app.
 Use `--image`, `--device`, `--avd` and `--sdk` to select another TV configuration.
 `--data-size 2048` is the default writable partition size in MB; it is applied
 only when creating a new AVD and never resizes an existing profile.
 For example, `--image 'system-images;android-35;android-tv;x86_64'` is an Intel
 host example, not a way to virtualize x86 through Rosetta on Apple Silicon.
 
-Run opens the TV home screen. It does not assume that a browser or player app
-is installed. To test an APK, pass its explicit activity component:
+Run without arguments opens the existing hosted player at `http://127.0.0.1:8095/`.
+It checks the companion and player page, builds a small test APK with the installed
+SDK, boots or reuses the named TV AVD, installs the APK and opens the URL. A browser
+is not required: the test app uses the system
+[Android WebView](https://developer.android.com/develop/ui/views/layout/webapps/webview).
+`--url` or `OTTP_PLAYER_URL` selects another companion URL. `--home` boots/connects
+without launching an app. `--url`, `--home` and an explicit APK/activity are separate
+launch modes. The script works from any working directory.
+
+The test host sources live under `scripts/fixtures/android-tv-webview/`; its APK
+and build cache stay under ignored `build/device-android-tv-player/`. Its anonymous
+signing key is shared between checkouts, under `ottplay-simulator/debug.keystore`
+in the Android user directory (`ANDROID_USER_HOME`, otherwise `~/.android`). The
+builder preserves an existing key from the old build location when migrating it,
+so clearing build outputs or switching checkouts does not change the app signature.
+The run command builds offline and reuses the APK when sources and tools have not
+changed. It does not download APKs or SDK packages.
+The test app enables JavaScript and DOM storage, forwards TV navigation keys, and
+does not expose a native JavaScript bridge or bypass TLS certificate errors.
+Digits and arrows in focused text fields keep native WebView editing behavior;
+Enter and Back retain the player's accept/cancel actions.
+
+To test another APK, pass its explicit activity component:
 
 ```sh
 ./scripts/run-android-tv-emulator.sh \
@@ -207,27 +230,51 @@ is installed. To test an APK, pass its explicit activity component:
 The current native Android product is maintained in
 [ottplay-android](https://github.com/open-ott-play/ottplay-android); installing
 that APK tests its native player, not this repository's JavaScript player.
-Testing the hosted web player requires a separately installed Android browser
-or WebView host. The script does not download APKs, build either product or
-change Android application code.
+The default WebView test host exercises this repository's hosted JavaScript player;
+it does not implement or validate the native product's media bridge or decoder.
+The archived Android fixtures in this repository remain unchanged.
 
 The launcher checks the exact AVD identity before installing an APK or changing
-ports. It reuses an already running matching TV, leaves phone emulators alone,
+ports. It reuses an already running matching TV with working input settings,
+leaves phone emulators alone,
 and refuses to take an occupied console port. A new instance uses port 5570;
 `--port 5572` can select another free even port. `--stop` only stops the named TV.
 Use `--headless` for a windowless instance and `--timeout 300` for a slower boot.
 Logs are under `build/emulator-logs/`.
 
+New TV AVDs enable `hw.keyboard` and `hw.dPad`. Run also repairs these two settings
+in an existing TV AVD, preserving its other settings and user data. If a running
+instance needs this repair, the launcher restarts that exact AVD with a cold boot.
+This matters even for the drawn D-pad: the emulator's
+[Virtio input implementation](https://android.googlesource.com/platform/external/qemu/+/refs/heads/emu-master-dev/android-qemu2-glue/main.cpp#827)
+creates the guest keyboard only when `hw.keyboard` is enabled. A TV profile with
+`hw.dPad=yes` and `hw.keyboard=no` can therefore show remote buttons that send no
+key events into Android. Dry runs and `--stop` do not repair configuration.
+
 After boot, ADB reverses ports 8095 and 8090 for this emulator only, so the same
 `http://127.0.0.1:8095/` player and `http://127.0.0.1:8090/` playlist addresses
-reach the host stack. The script does not start that stack. The normal Android
+reach the host stack. A custom player URL using loopback also reverses its port.
+The script does not start that stack. The normal Android
 [host alias `10.0.2.2`](https://developer.android.com/studio/run/emulator-networking)
 is also available when explicitly configuring guest URLs without ADB reverse.
 
 Both scripts support `--dry-run` and `--help`. Integration tests use fake SDK
 commands in temporary directories and cover installation failure, AVD reuse,
 paths with spaces, occupied ports, boot timeouts and the exact target of APK,
-port-forwarding and stop operations. These tests do not boot an Android OS in CI.
+port-forwarding and stop operations. Default-launch tests cover player preflight,
+APK preparation, custom URLs, shell quoting and failure before SDK/app mutation.
+The builder tests cover offline packaging, cache invalidation, key reuse across
+checkouts and preservation of the previous APK/key after build failure.
+A JVM test compiles the actual host and checks its URL, lifecycle, text editing
+and key behavior against the real player handlers and key maps. It runs in the
+existing Android CI job with Java installed; `npm test` keeps the launcher and
+builder tests without requiring a JDK.
+Locally, the default launcher was verified on Android TV API 36 ARM64: the hosted
+player reached its first-run language screen. Enabling the missing virtual
+keyboard restored both the drawn D-pad and host keyboard; native key logs and
+selection changes were verified, and the user confirmed both input methods work.
+Native-product playback and DRM were not tested. These tests do not boot an
+Android OS in CI.
 
 ## Samsung TV Web Simulator on macOS
 
