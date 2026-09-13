@@ -60,6 +60,10 @@ class MobileCommandQueuePlugin : Plugin() {
                 else call.resolve(status())
                 return
             }
+            if (serverJob?.isCompleted == false) {
+                call.reject("HTTP control is still stopping")
+                return
+            }
             val configured = System.getenv("OTTPLAY_QUEUE_PORT")?.trim().orEmpty()
             val ports = if (configured.isEmpty()) (18081..18090).toList() else {
                 val port = configured.toIntOrNull()
@@ -104,12 +108,14 @@ class MobileCommandQueuePlugin : Plugin() {
         try { serverSocket?.close() } catch (_: IOException) { }
         serverSocket = null
         serverJob?.cancel()
-        serverJob = null
         activeClients.forEach { try { it.close() } catch (_: IOException) { } }
         activeClients.clear()
         token = null
         boundPort = 0
         synchronized(queueLock) { deviceCommands.clear(); broadcastCommands.clear() }
+        // Keep the job until completion so repeated stops share its cleanup
+        // boundary and start cannot bind while old native I/O is still closing.
+        serverJob
     }
 
     override fun handleOnDestroy() {
@@ -120,9 +126,17 @@ class MobileCommandQueuePlugin : Plugin() {
     }
 
     @PluginMethod fun stop(call: PluginCall) {
-        closeQueue()
-        notifyListeners("isRunning", status())
-        call.resolve()
+        val stoppedJob = closeQueue()
+        val complete = {
+            notifyListeners("isRunning", status())
+            call.resolve()
+        }
+        // Socket.close() can defer releasing its native descriptor until a
+        // blocked accept/read returns. A completed listener job also guarantees
+        // its client workers have finished. Register outside lifecycleLock so
+        // listener cleanup can acquire it, including during owner destruction.
+        if (stoppedJob == null) complete()
+        else stoppedJob.invokeOnCompletion { complete() }
     }
     @PluginMethod fun isRunning(call: PluginCall) { call.resolve(status()) }
 

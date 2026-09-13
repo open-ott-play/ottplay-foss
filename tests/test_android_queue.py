@@ -98,6 +98,55 @@ private fun startHttp(plugin: MobileCommandQueuePlugin) {
     val call = PluginCall(JSObject().put("httpEnabled", true).put("token", TOKEN))
     plugin.start(call); check(call.await().getBoolean("httpEnabled"))
 }
+private fun assertPortBusy(port: Int) {
+    try {
+        ServerSocket(port, 8, InetAddress.getByName("127.0.0.1")).use {
+            error("A live HTTP listener must prevent binding its port")
+        }
+    } catch (_: BindException) { }
+}
+
+private suspend fun stopWaitsForCleanup(plugin: MobileCommandQueuePlugin, port: Int) {
+    val field = plugin.javaClass.getDeclaredField("serverJob").apply { isAccessible = true }
+    val listenerJob = field.get(plugin) as Job
+    val started = CompletableDeferred<Unit>()
+    val cleanupStarted = CompletableDeferred<Unit>()
+    val releaseCleanup = CompletableDeferred<Unit>()
+    // Hold a listener child in cleanup to reproduce delayed native I/O teardown
+    // without relying on the OS scheduler or adding a sleep/rebind retry.
+    CoroutineScope(listenerJob + Dispatchers.IO).launch {
+        try {
+            started.complete(Unit)
+            awaitCancellation()
+        } finally {
+            withContext(NonCancellable) {
+                cleanupStarted.complete(Unit)
+                releaseCleanup.await()
+            }
+        }
+    }
+    withTimeout(5000) { started.await() }
+    val stopped = PluginCall()
+    val stoppedAgain = PluginCall()
+    try {
+        plugin.stop(stopped)
+        withTimeout(5000) { cleanupStarted.await() }
+        plugin.stop(stoppedAgain)
+        check(stopped.done.count == 1L) { "stop resolved before listener cleanup finished" }
+        check(stoppedAgain.done.count == 1L) { "Repeated stop skipped pending cleanup" }
+        val prematureStart = PluginCall(JSObject().put("httpEnabled", true).put("token", TOKEN))
+        plugin.start(prematureStart)
+        check(prematureStart.error == "HTTP control is still stopping")
+    } finally {
+        releaseCleanup.complete(Unit)
+    }
+    stopped.await(); stoppedAgain.await()
+    check(listenerJob.isCompleted) { "stop must settle only after all listener workers finish" }
+    ServerSocket(port, 8, InetAddress.getByName("127.0.0.1")).close()
+    startHttp(plugin)
+    assertPortBusy(port)
+}
+
 private fun request(port: Int, request: String, fragments: Boolean = false): String {
     return Socket("127.0.0.1", port).use { socket ->
         socket.soTimeout = 6500
@@ -192,6 +241,8 @@ fun main() = runBlocking {
     plugin.start(invalidStart); check(invalidStart.error != null)
     ServerSocket(port, 8, InetAddress.getByName("127.0.0.1")).close()
     startHttp(plugin)
+    assertPortBusy(port)
+    stopWaitsForCleanup(plugin, port)
     val body = """{"type":"popup_message","text":"Привет ✓"}"""
     val path = "/api/webhook/commands"
     fun header(extra: String = "") = "POST $path HTTP/1.1\r\nAuthorization: Bearer $TOKEN\r\n$extra"
@@ -256,7 +307,7 @@ fun main() = runBlocking {
         withTimeout(5000) { transientJob.join() }
         ServerSocket(port, 8, InetAddress.getByName("127.0.0.1")).close()
     }
-    println("PASS Android queue: default has no socket; internal API; explicit authenticated HTTP; Unicode fragmented body; auth/size/framing failures; deadline; six revoked GET/POST continuations; stop/racing destroy closes clients and bind")
+    println("PASS Android queue: default has no socket; internal API; explicit authenticated HTTP; Unicode fragmented body; auth/size/framing failures; deadline; six revoked GET/POST continuations; stop awaits worker cleanup and permits immediate rebind; racing destroy closes clients and bind")
 }
 '''
 
