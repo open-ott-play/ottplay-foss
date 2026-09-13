@@ -54,6 +54,11 @@ Runtime acceptance should also exercise H.264/AAC native HLS, HEVC/AAC MPEG-TS,
 audio-only HLS and progressive MP4 in the target WebView; unit tests do not prove
 decoder support on another operating system.
 
+The video footer measures HLS bitrate from bytes and media duration of the last
+eight main-stream segments or LL-HLS parts, including any muxed audio and container
+overhead. It does not display download bandwidth or trust manifest BANDWIDTH.
+Until media samples are available, the footer shows resolution without Mbps.
+
 ## What is automated vs human
 
 | Step | Automated? | Notes |
