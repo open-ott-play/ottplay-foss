@@ -20,6 +20,7 @@ declare function saveCHarr(key: string, val: number): void;
 declare function execCHarr(key: string, callback: (val: number) => void): void;
 
 import { providerHasItemValue } from "../storage/index";
+import { watchAutoNativePlayback } from "./auto-playback";
 
 /** Reference to the primary <video> DOM element. */
 export var video: HTMLVideoElement | null = null;
@@ -27,20 +28,45 @@ export var video: HTMLVideoElement | null = null;
 export var videoPip: HTMLVideoElement | null = null;
 /**
  * Active playback engine mode:
- * 0 = native HTML5, 1 = hls.js, 2 = shaka-player.
+ * 0 = native HTML5, 1 = hls.js, 2 = shaka-player, 3 = Tauri Auto.
  */
 export var playerMode = 0;
 
 /**
  * Set the playback engine mode.
- * @param v - 0 (HTML5), 1 (hls.js), or 2 (shaka).
+ * @param v - 0 (HTML5), 1 (hls.js), 2 (shaka), or 3 (Tauri Auto).
  */
 export function setPlayerMode(v: number): void {
-    playerMode = v;
-    console.log("[setPlayerMode] playerMode=" + v);
+    var nextMode = normalizePlayerMode(v);
+    if (nextMode !== playerMode) cancelCoreAutoPlayback(true);
+    playerMode = nextMode;
+    console.log("[setPlayerMode] playerMode=" + playerMode);
 }
 /** Human-readable labels for each playerMode value. */
-export var playerModeNames = ["html5", "hls.js", "shaka"];
+export var playerModeNames =
+    getDefaultPlayerMode() === 3
+        ? ["html5", "hls.js", "shaka", "auto"]
+        : ["html5", "hls.js", "shaka"];
+
+/** Preserve explicit provider preferences; Auto is the default only in Tauri. */
+export function getDefaultPlayerMode(): number {
+    return typeof window !== "undefined" &&
+        ((window as any).__TAURI__ || (window as any).__TAURI_INTERNALS__)
+        ? 3
+        : 0;
+}
+
+/** Imported Auto preferences use an available engine outside Tauri. */
+export function normalizePlayerMode(mode: number): number {
+    if (mode !== 3 || getDefaultPlayerMode() === 3) return mode;
+    return video &&
+        typeof video.canPlayType === "function" &&
+        !video.canPlayType("application/vnd.apple.mpegurl") &&
+        typeof Hls !== "undefined" &&
+        Hls.isSupported()
+        ? 1
+        : 0;
+}
 /** Available preload buffer sizes (indexes into a numeric range). */
 export var bufferSizes = [
     "0",
@@ -97,8 +123,31 @@ var _playSession = 0;
 /** The previous Shaka must release this video before another engine attaches. */
 var _coreShakaTeardown: PromiseLike<unknown> | null = null;
 var _corePendingSeek: (() => void) | null = null;
+var _coreAutoCancel: ((restoreNative?: boolean) => void) | null = null;
+var _coreAutoHlsUsed = false;
+var _corePlaybackMode = 0;
 /** Demo autoplay is temporarily muted; never persist it as the user's choice. */
 var _coreDemoMute: { media: HTMLVideoElement; muted: boolean } | null = null;
+
+function cancelCoreAutoPlayback(modeChange?: boolean): void {
+    if (_coreAutoCancel) _coreAutoCancel(modeChange);
+    _coreAutoCancel = null;
+    if (modeChange) {
+        if (_corePipAutoCancel) _corePipAutoCancel(true);
+        _corePipAutoCancel = null;
+    }
+}
+
+function coreAutoMode(url: string, media: HTMLVideoElement | null): number {
+    if (/\.mpd(?:[?#]|$)/i.test(url)) return 2;
+    if (
+        /\.m3u8(?:[?#]|$)/i.test(url) &&
+        media &&
+        !media.canPlayType("application/vnd.apple.mpegurl")
+    )
+        return 1;
+    return 0;
+}
 
 function setCoreDemoMute(enabled: boolean): void {
     if (_coreDemoMute && (!enabled || _coreDemoMute.media !== video)) {
@@ -215,6 +264,7 @@ export function clearPlayTimeInterval(): void {
 /** Active hls.js instance for the PiP video!. */
 var hlsPipInstance: any = null;
 var _corePipSession = 0;
+var _corePipAutoCancel: ((restoreNative?: boolean) => void) | null = null;
 /** Whether the player is currently in fullscreen mode. */
 var isFullscreen = true;
 /**
@@ -680,7 +730,9 @@ export function stbPlay(url: string, position?: number): void {
         _playSession++;
         cancelLiveRestart();
         _liveRestartUsed = false;
+        _coreAutoHlsUsed = false;
     }
+    cancelCoreAutoPlayback();
     (window as any).forcePlay = true;
     var session = _playSession;
     if (hlsInstance) {
@@ -712,6 +764,12 @@ function startCorePlayback(
     position: number | undefined,
     session: number
 ): void {
+    var auto = playerMode === 3 && getDefaultPlayerMode() === 3;
+    var mode = auto
+        ? _coreAutoHlsUsed
+            ? 1
+            : coreAutoMode(url, video)
+        : playerMode;
     // Decode-fail: try hls.js first, drop failing level, recover once; native only if Safari
     // Demo includes an MP4 as well as HLS. HLS auto-selection must not send
     // the MP4 into the manifest loader, or alter the saved engine preference.
@@ -719,12 +777,12 @@ function startCorePlayback(
         (window as any).ottplayDemoActive === true &&
         /\/demo\/pattern\.mp4(?:[?#]|$)/i.test(url);
     var _pm =
-        playerMode === 1 &&
+        mode === 1 &&
         !_forceNative &&
         typeof Hls !== "undefined" &&
         Hls.isSupported()
             ? "hls.js"
-            : playerMode === 2 && !_forceNative
+            : mode === 2 && !_forceNative
               ? "shaka"
               : "html5";
     console.log(
@@ -737,10 +795,11 @@ function startCorePlayback(
             ")"
     );
     var useHls =
-        playerMode === 1 &&
+        mode === 1 &&
         !_forceNative &&
         typeof Hls !== "undefined" &&
         Hls.isSupported();
+    _corePlaybackMode = useHls ? 1 : mode === 2 && !_forceNative ? 2 : 0;
     if (useHls) {
         // #167 retry caps are archive-only: live FHD fragments are large and a
         // single timeout was aborting the stream (then video error 3 DECODE).
@@ -858,7 +917,9 @@ function startCorePlayback(
                         var nativePosition = video!.currentTime || _startPos;
                         hlsInstance.destroy();
                         hlsInstance = null;
-                        if (canNative) {
+                        // Auto already tried native. Never loop back to the
+                        // decoder that silently dropped this stream's video.
+                        if (canNative && !auto) {
                             console.log(
                                 "[HLS] MEDIA_ERROR twice, fallback native HTML5"
                             );
@@ -993,7 +1054,7 @@ function startCorePlayback(
             if (hlsInstance) hlsInstance.subtitleTrack = i - 1;
         });
     } else if (
-        playerMode === 2 &&
+        mode === 2 &&
         !_forceNative &&
         typeof shaka !== "undefined" &&
         shaka.Player &&
@@ -1045,6 +1106,52 @@ function startCorePlayback(
     } else {
         video!.src = url;
         if (position && position > 0) seekCoreMedia(position, session);
+        if (
+            auto &&
+            !_coreAutoHlsUsed &&
+            /\.m3u8(?:[?#]|$)/i.test(url) &&
+            typeof Hls !== "undefined" &&
+            Hls.isSupported()
+        ) {
+            var media = video!;
+            var resumePosition = function (): number | undefined {
+                // Native live and MSE timelines need not share an origin.
+                // Only archive/VOD has an intentional resume position.
+                return position || (window as any).playType
+                    ? media.currentTime || position
+                    : undefined;
+            };
+            _coreAutoCancel = watchAutoNativePlayback(media, url, Hls, {
+                active: function () {
+                    return (
+                        session === _playSession &&
+                        video === media &&
+                        playerMode === 3
+                    );
+                },
+                fallback: function () {
+                    _coreAutoCancel = null;
+                    _coreAutoHlsUsed = true;
+                    var nextPosition = resumePosition();
+                    cancelCoreSeek();
+                    media.pause();
+                    media.removeAttribute("src");
+                    console.log("[Auto] native HLS incompatible, using hls.js");
+                    startCorePlayback(url, nextPosition, session);
+                },
+                restore: function () {
+                    _coreAutoCancel = null;
+                    var nextPosition = resumePosition();
+                    cancelCoreSeek();
+                    // The probe may have replaced a proxy's URL-bound session.
+                    // Renew it even for radio, while keeping the native engine.
+                    media.src = url;
+                    if (nextPosition) seekCoreMedia(nextPosition, session);
+                    if ((window as any).forcePlay !== false)
+                        playCoreMedia(media);
+                },
+            });
+        }
         if ((window as any).forcePlay !== false) playCoreMedia(video!);
     }
 }
@@ -1058,6 +1165,7 @@ export function stbStop(): void {
     _playSession++;
     cancelLiveRestart();
     cancelCoreSeek();
+    cancelCoreAutoPlayback();
     (window as any).forcePlay = false;
     video!.pause();
     video!.removeAttribute("src");
@@ -1413,16 +1521,16 @@ export function stbPlayPip(url: string): void {
         (window as any).ottplayDemoActive === true &&
         /\/demo\/pattern\.mp4(?:[?#]|$)/i.test(url);
     var session = ++_corePipSession;
+    if (_corePipAutoCancel) _corePipAutoCancel();
+    _corePipAutoCancel = null;
     if (hlsPipInstance) {
         hlsPipInstance.destroy();
         hlsPipInstance = null;
     }
-    if (
-        !demoMp4 &&
-        playerMode === 1 &&
-        typeof Hls !== "undefined" &&
-        Hls.isSupported()
-    ) {
+    var auto = playerMode === 3 && getDefaultPlayerMode() === 3;
+    var canHls = typeof Hls !== "undefined" && Hls.isSupported();
+    var mode = auto ? coreAutoMode(url, videoPip) : playerMode;
+    var startHls = function (): void {
         var pipHls = new Hls();
         hlsPipInstance = pipHls;
         pipHls.on(Hls.Events.MANIFEST_PARSED, function () {
@@ -1431,8 +1539,34 @@ export function stbPlayPip(url: string): void {
         });
         pipHls.loadSource(url);
         pipHls.attachMedia(videoPip);
+    };
+    if (!demoMp4 && mode === 1 && canHls) {
+        startHls();
     } else {
         videoPip!.src = url;
+        if (auto && /\.m3u8(?:[?#]|$)/i.test(url) && canHls) {
+            var media = videoPip!;
+            _corePipAutoCancel = watchAutoNativePlayback(media, url, Hls, {
+                active: function () {
+                    return (
+                        session === _corePipSession &&
+                        videoPip === media &&
+                        playerMode === 3
+                    );
+                },
+                fallback: function () {
+                    _corePipAutoCancel = null;
+                    media.pause();
+                    media.removeAttribute("src");
+                    startHls();
+                },
+                restore: function () {
+                    _corePipAutoCancel = null;
+                    media.src = url;
+                    playCoreMedia(media);
+                },
+            });
+        }
         playCoreMedia(videoPip!);
     }
     $("#videopip").show();
@@ -1443,6 +1577,8 @@ export function stbPlayPip(url: string): void {
 export function stbStopPip(): void {
     videoPip!.loop = false;
     _corePipSession++;
+    if (_corePipAutoCancel) _corePipAutoCancel();
+    _corePipAutoCancel = null;
     videoPip!.pause();
     if (hlsPipInstance) {
         hlsPipInstance.destroy();
@@ -1539,6 +1675,10 @@ export function stbCSS(): void {
  * Side effects: May set `playerMode` to 1.
  */
 export function setPlayer(): void {
+    if (!providerHasItemValue("sPlayers") && getDefaultPlayerMode() === 3) {
+        playerMode = 3;
+        return;
+    }
     if (
         video &&
         !providerHasItemValue("sPlayers") &&
@@ -1657,9 +1797,9 @@ export function stbInit(): void {
         });
         video!.addEventListener("error", function () {
             var _p =
-                playerMode === 1
+                _corePlaybackMode === 1
                     ? "hls.js"
-                    : playerMode === 2
+                    : _corePlaybackMode === 2
                       ? "shaka"
                       : "html5";
             var err = video?.error;

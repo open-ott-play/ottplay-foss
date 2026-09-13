@@ -32,6 +32,7 @@ function fixture(script, options = {}) {
     const requests = [];
     const plays = [];
     const hlsInstances = [];
+    const autoWatches = [];
     const shakaInstances = [];
     const timers = new Map();
     const paused = new WeakMap();
@@ -138,6 +139,23 @@ function fixture(script, options = {}) {
         }
     }
     if (!options.noHls) w.Hls = Hls;
+    w.watchAutoNativePlayback = (media, url, HlsRef, callbacks) => {
+        assert.equal(HlsRef, Hls);
+        const watch = {
+            callbacks,
+            cancelled: false,
+            finish(action) {
+                this.cancelled = true;
+                callbacks[action]();
+            },
+            media,
+            url,
+        };
+        autoWatches.push(watch);
+        return () => {
+            watch.cancelled = true;
+        };
+    };
     if (options.shaka) {
         class Player {
             static isBrowserSupported() {
@@ -197,6 +215,7 @@ function fixture(script, options = {}) {
     const run = () => w.eval(script);
     run();
     return {
+        autoWatches,
         calls,
         close() {
             dom.window.close();
@@ -242,6 +261,12 @@ function fixture(script, options = {}) {
 async function run() {
     const script = read("src-tauri/pip/pip-player.js");
     const html = read("src-tauri/pip/pip.html");
+    assert.ok(
+        html.indexOf('src="./auto-playback.js"') <
+            html.indexOf('src="./pip-player.js"') &&
+            html.includes('src="./auto-playback.js"'),
+        "PiP must load the shared Auto watchdog before its player"
+    );
     const cases = [];
     const test = (name, options, check) => cases.push({ check, name, options });
     const request = (session, url, extra = {}) => ({
@@ -532,6 +557,203 @@ async function run() {
         assert.equal(video(f).src, hls(1).url);
         video(f).dispatchEvent(new f.w.Event("playing"));
         assert.equal(events(f, "playing").length, 1);
+        assert.equal(f.autoWatches.length, 0);
+    });
+    test("Auto preserves native HLS and cancels its watchdog on stop", {
+        nativeHls: true,
+    }, async (f) => {
+        ready(f, { ...hls(1), engine: 3 });
+        await settle();
+        assert.equal(f.plays.length, 1);
+        assert.equal(f.hlsInstances.length, 0);
+        const watch = f.autoWatches[0];
+        assert.equal(watch.media, video(f));
+        assert.equal(watch.url, hls(1).url);
+        assert.equal(watch.callbacks.active(), true);
+        video(f).dispatchEvent(new f.w.Event("playing"));
+        assert.equal(events(f, "playing").length, 1);
+        assert.equal(f.plays.length, 1);
+        f.w.__ottplayPip.stop();
+        assert.equal(watch.cancelled, true);
+        assert.equal(watch.callbacks.active(), false);
+        watch.finish("fallback");
+        assert.equal(f.hlsInstances.length, 0);
+    });
+    test("Auto native starts while its bundled watchdog decoder loads", {
+        nativeHls: true,
+        noHls: true,
+    }, async (f) => {
+        ready(f, { ...hls(1), engine: 3 });
+        await settle();
+        assert.equal(f.plays.length, 1);
+        assert.equal(f.autoWatches.length, 0);
+        f.w.__ottplayPip.play({ ...hls(2), engine: 3 });
+        await loadHls(f);
+        assert.equal(f.plays.length, 2);
+        assert.equal(f.autoWatches.length, 1);
+        assert.equal(f.autoWatches[0].url, hls(2).url);
+        assert.equal(f.hlsInstances.length, 0);
+    });
+    test("stopping Auto while its decoder loads cannot install a stale watchdog", {
+        nativeHls: true,
+        noHls: true,
+    }, async (f) => {
+        ready(f, { ...hls(1), engine: 3 });
+        await settle();
+        f.w.__ottplayPip.stop();
+        await loadHls(f);
+        assert.equal(f.autoWatches.length, 0);
+        assert.equal(f.hlsInstances.length, 0);
+        assert.equal(f.plays.length, 1);
+    });
+    test("Auto retains working native playback if its bundled decoder is unavailable", {
+        nativeHls: true,
+        noHls: true,
+    }, async (f) => {
+        ready(f, { ...hls(1), engine: 3 });
+        await settle();
+        f.w.document
+            .querySelector('script[src*="hls.min.js"]')
+            .dispatchEvent(new f.w.Event("error"));
+        await settle();
+        assert.equal(f.autoWatches.length, 0);
+        assert.equal(f.plays.length, 1);
+        assert.equal(video(f).src, hls(1).url);
+        assert.equal(events(f, "error").length, 0);
+        video(f).dispatchEvent(new f.w.Event("error"));
+        assert.equal(events(f, "error").length, 1);
+    });
+    test("Auto native decoder failure switches once without failing early", {
+        nativeHls: true,
+    }, async (f) => {
+        ready(f, { ...hls(1), engine: 3 });
+        await settle();
+        const nativePlay = f.plays[0];
+        Object.defineProperty(video(f), "error", {
+            configurable: true,
+            value: { code: 4 },
+        });
+        nativePlay.reject(
+            Object.assign(new Error("codec"), {
+                name: "NotSupportedError",
+            })
+        );
+        video(f).dispatchEvent(new f.w.Event("error"));
+        await settle();
+        assert.equal(events(f, "error").length, 0);
+        const watch = f.autoWatches[0];
+        watch.finish("fallback");
+        assert.equal(f.hlsInstances.length, 1);
+        assert.equal(video(f).getAttribute("src"), null);
+        const engine = f.hlsInstances[0];
+        manifest(f, engine);
+        assert.equal(f.plays.length, 2);
+        watch.finish("fallback");
+        assert.equal(f.hlsInstances.length, 1);
+        engine.emit(f.Hls.Events.ERROR, { fatal: true });
+        assert.equal(events(f, "error").length, 1);
+        assert.equal(
+            f.plays.length,
+            2,
+            "Fatal HLS does not loop back to native"
+        );
+    });
+    test("Auto probe restoration reloads the same native radio once", {
+        nativeHls: true,
+    }, async (f) => {
+        ready(f, { ...hls(1), engine: 3 });
+        await settle();
+        const watch = f.autoWatches[0];
+        watch.finish("restore");
+        f.plays[0].reject(new Error("retired native play"));
+        await settle();
+        assert.equal(events(f, "error").length, 0);
+        assert.equal(f.plays.length, 2);
+        assert.equal(f.plays[1].src, hls(1).url);
+        assert.equal(f.hlsInstances.length, 0);
+        assert.equal(f.autoWatches.length, 1);
+        assert.equal(watch.callbacks.active(), false);
+        watch.finish("fallback");
+        assert.equal(f.hlsInstances.length, 0);
+        Object.defineProperty(video(f), "error", { value: { code: 3 } });
+        video(f).dispatchEvent(new f.w.Event("error"));
+        assert.equal(events(f, "error").length, 1);
+    });
+    test("replacing Auto cancels the probe and ignores its queued result", {
+        nativeHls: true,
+    }, async (f) => {
+        ready(f, { ...hls(1), engine: 3 });
+        await settle();
+        const watch = f.autoWatches[0];
+        f.w.__ottplayPip.play(direct(2));
+        watch.finish("fallback");
+        watch.finish("restore");
+        assert.equal(watch.cancelled, true);
+        assert.equal(f.hlsInstances.length, 0);
+        assert.equal(f.plays.length, 2);
+        assert.equal(video(f).src, direct(2).url);
+    });
+    test("Auto network errors fail without codec fallback", {
+        nativeHls: true,
+    }, async (f) => {
+        ready(f, { ...hls(1), engine: 3 });
+        await settle();
+        Object.defineProperty(video(f), "error", { value: { code: 2 } });
+        video(f).dispatchEvent(new f.w.Event("error"));
+        assert.equal(events(f, "error").length, 1);
+        assert.equal(f.autoWatches[0].cancelled, true);
+        assert.equal(f.hlsInstances.length, 0);
+    });
+    test("Auto uses HLS immediately when native HLS is unsupported", {}, async (f) => {
+        ready(f, { ...hls(1), engine: 3 });
+        await settle();
+        assert.equal(f.autoWatches.length, 0);
+        assert.equal(f.plays.length, 0);
+        manifest(f, f.hlsInstances[0]);
+        assert.equal(f.plays.length, 1);
+    });
+    test("Auto keeps native HLS when MSE HLS is unsupported", {
+        hlsSupported: false,
+        nativeHls: true,
+    }, async (f) => {
+        ready(f, { ...hls(1), engine: 3 });
+        await settle();
+        assert.equal(f.autoWatches.length, 0);
+        assert.equal(f.hlsInstances.length, 0);
+        assert.equal(f.plays.length, 1);
+        Object.defineProperty(video(f), "error", { value: { code: 4 } });
+        video(f).dispatchEvent(new f.w.Event("error"));
+        assert.equal(events(f, "error").length, 1);
+    });
+    test("Auto routes DASH to Shaka and MP4 to direct media", {
+        nativeHls: true,
+        shaka: true,
+    }, async (f) => {
+        ready(f, request(1, "https://fixture.invalid/auto.mpd", { engine: 3 }));
+        await settle();
+        f.shakaInstances[0].attached.resolve();
+        await settle();
+        assert.equal(
+            f.shakaInstances[0].url,
+            "https://fixture.invalid/auto.mpd"
+        );
+        assert.equal(f.plays.length, 1);
+        f.w.__ottplayPip.play({ ...direct(2), engine: 3 });
+        assert.equal(f.plays.length, 2);
+        assert.equal(video(f).src, direct(2).url);
+        assert.equal(f.autoWatches.length, 0);
+        assert.equal(f.hlsInstances.length, 0);
+    });
+    test("explicit HLS keeps its engine even with native HLS support", {
+        nativeHls: true,
+    }, async (f) => {
+        ready(f, { ...hls(1), engine: 1 });
+        await settle();
+        assert.equal(f.autoWatches.length, 0);
+        assert.equal(f.hlsInstances.length, 1);
+        assert.equal(f.plays.length, 0);
+        manifest(f, f.hlsInstances[0]);
+        assert.equal(f.plays.length, 1);
     });
     for (const event of ["pagehide"]) {
         test(`${event} tears down owned decoder and retires queued callbacks`, {}, async (f) => {

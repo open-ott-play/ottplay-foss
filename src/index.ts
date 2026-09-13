@@ -4159,6 +4159,7 @@ window.stbOptions = function (): void {
         if (w.sPlayers !== w.listArray[++i].val) {
             w.sPlayers = w.listArray[i].val;
             w.providerSetItem("sPlayers", w.listArray[i].val.toString());
+            pullSettingsFromWindow();
             if (typeof w.setPlayerMode === "function")
                 w.setPlayerMode(w.sPlayers);
         }

@@ -42,6 +42,7 @@ const c = {
     getChanelsArray: (done) => {
         loaded = done;
     },
+    getDefaultPlayerMode: () => 0,
     invalidateEpgCache() {},
     launch_id: "#launch",
     localStorage: {
@@ -52,6 +53,7 @@ const c = {
             writes.push(key);
         },
     },
+    normalizePlayerMode: (mode) => mode,
     onChanelsLoaded() {
         c.loadFavoritesLists();
         c.loadEpgTimers();

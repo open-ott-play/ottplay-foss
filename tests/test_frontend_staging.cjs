@@ -18,6 +18,7 @@ const names = new Set([
     "privateAssetDirectories",
     "copyRuntimeAssets",
     "stagePlayerAssets",
+    "autoPlaybackScript",
     "stageTauriFrontend",
 ]);
 const selected = config.statements.filter((node) => {
@@ -101,6 +102,10 @@ try {
         "stage/stb/logs/previous-build.json",
     ])
         write(name);
+    write(
+        "src/build/core/auto-playback.js",
+        "export function watchAutoNativePlayback() { return 'same shared helper'; }\n"
+    );
     context.stageTauriFrontend(
         path.join(fixture, "src"),
         path.join(fixture, "dist"),
@@ -137,6 +142,11 @@ try {
             "PiP runtime asset must be embedded: " + name
         );
     }
+    assert.equal(
+        fs.readFileSync(path.join(fixture, "stage/auto-playback.js"), "utf8"),
+        "function watchAutoNativePlayback() { return 'same shared helper'; }\n",
+        "PiP loads the compiled shared watchdog as a classic script"
+    );
     assert.equal(
         exists("stage/demo"),
         false,

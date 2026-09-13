@@ -39,6 +39,10 @@
 
     function release(state) {
         if (!state) return;
+        if (state.autoCancel) state.autoCancel();
+        state.autoCancel = null;
+        state.autoNative = false;
+        state.playbackEpoch++;
         state.video.onplaying = null;
         state.video.onerror = null;
         if (state.hls) {
@@ -83,15 +87,28 @@
 
     function playVideo(state) {
         if (!active(state)) return;
+        var epoch = state.playbackEpoch;
+        function rejected(error) {
+            if (!active(state) || state.playbackEpoch !== epoch) return;
+            // Unsupported native HLS can reject play before its media error
+            // event. The Auto watchdog owns that one fallback decision.
+            var code = state.video.error && state.video.error.code;
+            if (
+                state.autoNative &&
+                (code === 3 ||
+                    code === 4 ||
+                    (error && error.name === "NotSupportedError"))
+            )
+                return;
+            fail(state);
+        }
         try {
             var playing = state.video.play();
             if (playing && playing.catch) {
-                playing.catch(function () {
-                    if (active(state)) fail(state);
-                });
+                playing.catch(rejected);
             }
-        } catch (_) {
-            fail(state);
+        } catch (error) {
+            rejected(error);
         }
     }
 
@@ -117,11 +134,14 @@
         playVideo(state);
     }
 
-    function hls(state) {
+    function hls(state, nativeFallback) {
         function start() {
             if (!active(state)) return;
             if (!window.Hls || !window.Hls.isSupported()) {
-                if (state.video.canPlayType("application/vnd.apple.mpegurl"))
+                if (
+                    nativeFallback !== false &&
+                    state.video.canPlayType("application/vnd.apple.mpegurl")
+                )
                     direct(state);
                 else fail(state);
                 return;
@@ -145,10 +165,72 @@
         else
             library("hls", "./js/hls.min.js").then(start, function () {
                 if (!active(state)) return;
-                if (state.video.canPlayType("application/vnd.apple.mpegurl"))
+                if (
+                    nativeFallback !== false &&
+                    state.video.canPlayType("application/vnd.apple.mpegurl")
+                )
                     direct(state);
                 else fail(state);
             });
+    }
+
+    function autoHls(state) {
+        if (!state.video.canPlayType("application/vnd.apple.mpegurl")) {
+            hls(state, false);
+            return;
+        }
+        state.autoNative = true;
+        // Existing native-compatible channels start without waiting for JS.
+        direct(state);
+        function nativeOnly() {
+            if (!active(state) || !state.autoNative) return;
+            state.autoNative = false;
+            if (state.video.error) fail(state);
+        }
+        function watch() {
+            if (!active(state) || !state.autoNative) return;
+            if (
+                !window.Hls ||
+                !window.Hls.isSupported() ||
+                typeof watchAutoNativePlayback !== "function"
+            ) {
+                nativeOnly();
+                return;
+            }
+            function stillNative() {
+                return active(state) && state.autoNative;
+            }
+            function switchEngine(fallback) {
+                if (!stillNative()) return;
+                state.autoCancel = null; // The shared helper self-cleans first.
+                state.autoNative = false;
+                state.playbackEpoch++;
+                try {
+                    state.video.pause();
+                    state.video.removeAttribute("src");
+                    state.video.load();
+                } catch (_) {}
+                status("Loading…");
+                if (fallback) hls(state, false);
+                else direct(state);
+            }
+            state.autoCancel = watchAutoNativePlayback(
+                state.video,
+                state.url,
+                window.Hls,
+                {
+                    active: stillNative,
+                    fallback: function () {
+                        switchEngine(true);
+                    },
+                    restore: function () {
+                        switchEngine(false);
+                    },
+                }
+            );
+        }
+        if (window.Hls) watch();
+        else library("hls", "./js/hls.min.js").then(watch, nativeOnly);
     }
 
     function dash(state) {
@@ -231,21 +313,31 @@
             shaka: null,
             failed: false,
             started: false,
+            autoNative: false,
+            autoCancel: null,
+            playbackEpoch: 0,
         };
         current = state;
         status("Loading…");
         video.onplaying = function () {
-            if (!active(state) || state.started) return;
-            state.started = true;
+            if (!active(state)) return;
             status("");
+            if (state.started) return;
+            state.started = true;
             report(state, "playing");
         };
         video.onerror = function () {
+            var code = video.error && video.error.code;
+            if (state.autoNative && (code === 3 || code === 4)) return;
             if (active(state)) fail(state);
         };
         // Explicit native mode is retained. Otherwise DASH/HLS use main's engines.
         if (request.engine === 0) direct(state);
-        else if (request.engine === 2 || /\.mpd(?:[?#]|$)/i.test(state.url))
+        else if (request.engine === 3) {
+            if (/\.mpd(?:[?#]|$)/i.test(state.url)) dash(state);
+            else if (/\.m3u8(?:[?#]|$)/i.test(state.url)) autoHls(state);
+            else direct(state);
+        } else if (request.engine === 2 || /\.mpd(?:[?#]|$)/i.test(state.url))
             dash(state);
         else if (request.engine === 1 || /\.m3u8(?:[?#]|$)/i.test(state.url))
             hls(state);

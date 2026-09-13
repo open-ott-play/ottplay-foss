@@ -105,6 +105,14 @@ function stagePlayerAssets(
     }
 }
 
+function autoPlaybackScript(srcRoot: string): string {
+    // PiP and the classic main bundle execute the same compiled watchdog.
+    return readFileSync(
+        join(srcRoot, "build/core/auto-playback.js"),
+        "utf8"
+    ).replace(/^export /gm, "");
+}
+
 // Stage a Mode A-like web root for Tauri Mode B (frontendDist).
 // Boot resolves host + "/dist/stbPlayer.js", "/stb/...", "/fonts/...", etc.
 // Vite still writes Mode A artifacts to dist/ (stbPlayer.js + index.html);
@@ -133,6 +141,10 @@ function stageTauriFrontend(
             join(stageDir, file)
         );
     }
+    writeFileSync(
+        join(stageDir, "auto-playback.js"),
+        autoPlaybackScript(srcRoot)
+    );
 
     // Nested dist/stbPlayer.js so /dist/stbPlayer.js resolves
     const bundleSrc = join(distDir, "stbPlayer.js");
@@ -213,7 +225,8 @@ export default defineConfig(({ mode }) => ({
                     const pathname = req.url?.split("?")[0];
                     if (
                         pathname !== "/pip.html" &&
-                        pathname !== "/pip-player.js"
+                        pathname !== "/pip-player.js" &&
+                        pathname !== "/auto-playback.js"
                     ) {
                         next();
                         return;
@@ -226,13 +239,15 @@ export default defineConfig(({ mode }) => ({
                     );
                     res.setHeader("Cache-Control", "no-store");
                     res.end(
-                        readFileSync(
-                            resolve(
-                                __dirname,
-                                "src-tauri/pip",
-                                pathname.slice(1)
-                            )
-                        )
+                        pathname === "/auto-playback.js"
+                            ? autoPlaybackScript(__dirname)
+                            : readFileSync(
+                                  resolve(
+                                      __dirname,
+                                      "src-tauri/pip",
+                                      pathname.slice(1)
+                                  )
+                              )
                     );
                 });
             },

@@ -216,6 +216,7 @@ try {
         "setCoreDemoMute",
         "playCoreMedia",
         "cancelCoreSeek",
+        "cancelCoreAutoPlayback",
         "destroyCoreShaka",
         "stbContinue",
         "stbPause",
@@ -235,6 +236,7 @@ try {
     };
     let destroyed = 0;
     const w = {
+        _coreAutoCancel: null,
         _coreDemoMute: null,
         _corePendingSeek: null,
         _coreShakaTeardown: null,

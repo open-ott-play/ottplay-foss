@@ -23,6 +23,37 @@ Related:
 - Browser baseline: a local or self-hosted web player built from the same revision.
 - Thin helper: `./scripts/smoke-tauri-desktop.sh`
 
+## Auto playback in Tauri
+
+The streaming player menu includes `auto` (value 3) in Tauri. Existing explicit
+`html5`, `hls.js` and `shaka` preferences keep values 0, 1 and 2. Auto is the default
+only for a Tauri provider without a saved player preference; existing HTML5 users
+select Auto once and save. Server/browser and Capacitor defaults are unchanged.
+
+Auto starts `.m3u8` URLs with native HLS where supported, using hls.js immediately
+on platforms without native HLS. `.mpd` URLs use Shaka; progressive MP4 and other
+URLs retain the native path. Query strings and fragments do not affect matching.
+Working native video incurs no extra manifest/segment probe.
+
+A native decode/unsupported-source error switches that playback to hls.js once.
+WebKit can instead report successful audio-only playback for HEVC inside MPEG-TS,
+even with nonzero video dimensions. Auto checks actual audio/video tracks rather
+than treating those dimensions as evidence of video playback.
+After that state persists for 1.5 seconds, Auto uses a detached hls.js instance to
+inspect one fragment, with an 8-second deadline. It switches only when parsed
+tracks prove video is present. Radio and inconclusive probes keep HTML5 and renew
+the source once, because some proxies invalidate their previous session when a
+second client reads the master playlist. A radio stream may briefly reconnect.
+Archive/VOD position and the user's pause intent survive the handoff. Stop,
+channel changes and a new mode invalidate pending decisions. The same watcher
+is used by main playback and the dedicated PiP document.
+
+Use `node tests/test_tauri_auto_playback.cjs` and
+`node tests/test_tauri_pip_window.cjs` for deterministic lifecycle regressions.
+Runtime acceptance should also exercise H.264/AAC native HLS, HEVC/AAC MPEG-TS,
+audio-only HLS and progressive MP4 in the target WebView; unit tests do not prove
+decoder support on another operating system.
+
 ## What is automated vs human
 
 | Step | Automated? | Notes |

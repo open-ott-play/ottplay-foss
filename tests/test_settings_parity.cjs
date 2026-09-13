@@ -38,6 +38,7 @@ function compile(source) {
         .replace(/^export /gm, "");
 }
 const menus = [
+    "stbOptions",
     "settingsInterface",
     "settingsLists",
     "settingsChannels",
@@ -62,11 +63,21 @@ function fixture(profile = "server", limited = false, distribution = "full") {
     const calls = [];
     const w = {
         _: (text) => text,
+        $() {
+            return {
+                append() {
+                    return this;
+                },
+                is: () => true,
+            };
+        },
         backColorDialog() {},
+        beginPortChannelIdMigration() {},
         btnDiv() {
             return "";
         },
         bufferSizes: ["auto", "1", "2"],
+        channels: {},
         clearTimeout(id) {
             timers.delete(id);
         },
@@ -79,12 +90,15 @@ function fixture(profile = "server", limited = false, distribution = "full") {
                 return elements.get(id);
             },
         },
+        finishPortChannelIdMigration() {},
+        getChanelsArray: (done) => done(),
         getMediaArray() {},
         Hls: {
             isSupported() {
                 return true;
             },
         },
+        invalidateEpgCache() {},
         keys: {
             ENTER: 13,
             GREEN: 71,
@@ -98,7 +112,9 @@ function fixture(profile = "server", limited = false, distribution = "full") {
             RIGHT: 39,
             RW: 82,
         },
+        launch_id: "#launch",
         nofun() {},
+        onChanelsLoaded() {},
         optIndexOf() {
             return 0;
         },
@@ -114,6 +130,7 @@ function fixture(profile = "server", limited = false, distribution = "full") {
             function noProvParam() {},
         ],
         popupArray: ["Channels", "EPG", "Provider"],
+        providerGetItem: (key) => storage.get("provider:" + key),
         providerGetJson: () => [],
         providerHasItemValue(key) {
             return stored.has("provider:" + key);
@@ -165,6 +182,7 @@ function fixture(profile = "server", limited = false, distribution = "full") {
     };
     w.noProvParam = w.popupActions[2];
     if (profile === "tauri") w.__TAURI__ = {};
+    if (profile === "tauri-internals") w.__TAURI_INTERNALS__ = {};
     if (profile.startsWith("capacitor"))
         w.Capacitor = {
             getPlatform: () => (profile.endsWith("ios") ? "ios" : "android"),
@@ -235,7 +253,26 @@ function fixture(profile = "server", limited = false, distribution = "full") {
     );
     vm.runInContext(
         compile(
-            selectedSource("src/core/index.ts", ["setPlayerMode", "setPlayer"])
+            selectedSource(
+                "src/core/index.ts",
+                [
+                    "cancelCoreAutoPlayback",
+                    "getDefaultPlayerMode",
+                    "normalizePlayerMode",
+                    "setPlayerMode",
+                    "setPlayer",
+                ],
+                [],
+                ["_coreAutoCancel", "_corePipAutoCancel", "playerModeNames"]
+            )
+        ),
+        w
+    );
+    vm.runInContext(
+        compile(
+            selectedSource("src/storage/index.ts", ["providerGetNum"]) +
+                "\n" +
+                selectedSource("src/provider/index.ts", ["loadChannels"])
         ),
         w
     );
@@ -248,7 +285,10 @@ function fixture(profile = "server", limited = false, distribution = "full") {
         ),
         w
     );
-    vm.runInContext("applySettingsToWindow(settings);", w);
+    vm.runInContext(
+        "window.settings = settings; applySettingsToWindow(settings);",
+        w
+    );
     // Channel flags are normally initialized from provider storage by loadChannels.
     Object.assign(w, {
         sNextCountL: 1,
@@ -271,6 +311,138 @@ function fixture(profile = "server", limited = false, distribution = "full") {
 }
 function save(w) {
     w.listKeyHandlerFn(w.keys.GREEN);
+}
+
+// Defaults apply per provider. Manual choices retain their original numeric
+// values, and both settings entry points can persist Auto without a restart.
+for (const profile of [
+    "server",
+    "tauri",
+    "tauri-internals",
+    "capacitor-android",
+    "capacitor-ios",
+]) {
+    const { w, stored, typed } = fixture(profile);
+    const isTauri = profile.startsWith("tauri");
+    const choices = ["html5", "hls.js", "shaka"];
+    if (isTauri) choices.push("auto");
+    w.loadChannels();
+    assert.equal(w.sPlayers, isTauri ? 3 : 0, profile + ": provider default");
+    assert.equal(
+        w.playerMode,
+        isTauri ? 3 : 1,
+        "Auto remains selected while legacy platforms keep their HLS fallback"
+    );
+    assert.equal(typed().players, w.sPlayers, "typed preference stays in sync");
+    assert.equal(
+        stored.has("provider:sPlayers"),
+        false,
+        "default is not persisted"
+    );
+    for (const menu of ["stbOptions", "settingsInterface"]) {
+        w[menu]();
+        let row = w.listArray.find(
+            (item) => item.name === "Type of player for streaming"
+        );
+        assert.deepEqual(
+            Array.from(row.values),
+            choices,
+            profile + ": choices"
+        );
+        assert.equal(
+            row.val,
+            w.sPlayers,
+            "menu shows loaded provider preference"
+        );
+        row.val = 2;
+        save(w);
+        assert.equal(typed().players, 2, menu + ": typed choice follows save");
+        if (isTauri) {
+            w[menu]();
+            row = w.listArray.find(
+                (item) => item.name === "Type of player for streaming"
+            );
+            row.val = 3;
+            save(w);
+            assert.equal(
+                w.playerMode,
+                3,
+                menu + ": Auto is selected immediately"
+            );
+            assert.equal(stored.get("provider:sPlayers"), "3");
+            assert.equal(typed().players, 3);
+            w.loadChannels();
+            assert.equal(w.sPlayers, 3, "Auto survives provider reload");
+        }
+    }
+    for (const explicit of [0, 1, 2]) {
+        stored.set("provider:sPlayers", String(explicit));
+        w.loadChannels();
+        assert.equal(w.sPlayers, explicit, profile + ": stored preference");
+        assert.equal(w.playerMode, explicit, "stored engine remains explicit");
+        assert.equal(typed().players, explicit);
+    }
+    if (!isTauri) {
+        stored.set("provider:sPlayers", "3");
+        w.loadChannels();
+        assert.equal(
+            w.sPlayers,
+            1,
+            "imported Auto uses HLS when native HLS is unavailable"
+        );
+        assert.equal(w.playerMode, 1);
+        assert.equal(typed().players, 1);
+        assert.equal(
+            stored.get("provider:sPlayers"),
+            "3",
+            "import remains intact"
+        );
+    }
+    stored.delete("provider:sPlayers");
+    w.loadChannels();
+    assert.equal(
+        w.sPlayers,
+        isTauri ? 3 : 0,
+        "next provider gets its own default"
+    );
+}
+
+// A Tauri export can be imported into browsers with or without native HLS.
+// These media fixtures deliberately omit track APIs, as Firefox does.
+for (const nativeHls of [false, true]) {
+    for (const supportedHls of [false, true]) {
+        const { w, stored, typed } = fixture("server");
+        w.video.canPlayType = () => (nativeHls ? "probably" : "");
+        w.Hls.isSupported = () => supportedHls;
+        stored.set("provider:sPlayers", "3");
+        w.loadChannels();
+        const expected = !nativeHls && supportedHls ? 1 : 0;
+        assert.equal(
+            w.sPlayers,
+            expected,
+            "Imported Auto uses a supported mode"
+        );
+        assert.equal(w.playerMode, expected, "Effective engine matches menu");
+        assert.equal(typed().players, expected, "Typed engine matches menu");
+        assert.equal(stored.get("provider:sPlayers"), "3");
+        w.setPlayerMode(3);
+        assert.equal(
+            w.playerMode,
+            expected,
+            "Direct mode selection is consistent"
+        );
+        for (const explicit of [0, 1, 2]) {
+            stored.set("provider:sPlayers", String(explicit));
+            w.loadChannels();
+            assert.equal(
+                w.playerMode,
+                explicit,
+                "Explicit modes stay unchanged"
+            );
+            assert.equal(w.sPlayers, explicit);
+            assert.equal(typed().players, explicit);
+        }
+    }
 }
 
 // Full and Play use the same production renderer and real distribution helper.
