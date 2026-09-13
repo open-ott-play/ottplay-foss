@@ -1,22 +1,52 @@
-//
-//  MobileCommandQueue.swift - Capacitor plugin for native HTTP command queue
-//  Prefers 127.0.0.1:18081; falls back through 18082..=18090 when busy (Cap+Tauri
-//  coexistence on one Mac). Pin with OTTPLAY_QUEUE_PORT. Same contract as local_proxy.py:
-//  - GET  /api/webhook/health (alias /webhook/health) — status/backend/port (no drain)
-//  - POST /api/webhook/commands (alias /webhook/notify) — enqueue JSON body; attach ts; optional ?device_id=
-//  - GET /api/webhook/commands (alias /webhook/poll) — return pending array then clear; expire entries >60s
-//  - CORS headers; OPTIONS handling
-//  - Caps: per-device 50 (trim to 25), broadcast 100 (trim to 50)
-//
 import Capacitor
 import Foundation
 import Network
-import os
 
-/// Command queue entry with timestamp
+// Byte-based parser: TCP fragments need not align with headers, UTF-8, or JSON.
+struct QueueHTTPRequest {
+    let method: String
+    let target: String
+    let body: Data
+    enum ParseResult { case incomplete, rejected(Int), request(QueueHTTPRequest) }
+    static func parse(_ bytes: Data, token: String) -> ParseResult {
+        guard bytes.count <= 73728 else { return .rejected(413) }
+        guard let separator = bytes.range(of: Data("\r\n\r\n".utf8)) else {
+            return bytes.count > 8192 ? .rejected(431) : .incomplete
+        }
+        guard separator.upperBound <= 8192,
+              let header = String(data: bytes[..<separator.lowerBound], encoding: .ascii) else { return .rejected(431) }
+        let lines = header.components(separatedBy: "\r\n")
+        let first = (lines.first ?? "").split(separator: " ", omittingEmptySubsequences: false)
+        guard first.count == 3, first[2] == "HTTP/1.1" || first[2] == "HTTP/1.0",
+              (lines.first?.utf8.count ?? 0) <= 2048, lines.count <= 33 else { return .rejected(400) }
+        var headers: [String: String] = [:]
+        for line in lines.dropFirst() {
+            guard let colon = line.firstIndex(of: ":"), colon != line.startIndex else { return .rejected(400) }
+            let key = line[..<colon].lowercased()
+            guard headers[key] == nil else { return .rejected(400) }
+            headers[key] = String(line[line.index(after: colon)...]).trimmingCharacters(in: .whitespaces)
+        }
+        let supplied = Array((headers["authorization"] ?? "").utf8)
+        let expected = Array("Bearer \(token)".utf8)
+        guard supplied.count == expected.count else { return .rejected(401) }
+        var difference: UInt8 = 0
+        for index in expected.indices { difference |= supplied[index] ^ expected[index] }
+        guard difference == 0 else { return .rejected(401) }
+        guard headers["transfer-encoding"] == nil else { return .rejected(400) }
+        let rawLength = headers["content-length"] ?? "0"
+        guard !rawLength.isEmpty, rawLength.allSatisfy({ $0.isASCII && $0.isNumber }),
+              let length = Int(rawLength), length >= 0 else { return .rejected(400) }
+        guard length <= 65536 else { return .rejected(413) }
+        let end = separator.upperBound + length
+        guard bytes.count >= end else { return .incomplete }
+        return .request(QueueHTTPRequest(method: String(first[0]), target: String(first[1]), body: bytes[separator.upperBound..<end]))
+    }
+}
+
 struct CommandEntry {
     let data: [String: Any]
     let timestamp: TimeInterval
+    let bytes: Int
 }
 
 @objc(MobileCommandQueue)
@@ -30,454 +60,200 @@ public class MobileCommandQueue: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "get", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "isRunning", returnType: CAPPluginReturnPromise),
     ]
-
+    private let queue = DispatchQueue(label: "MobileCommandQueue.queue", qos: .background)
     private var listener: NWListener?
-    private var isRunningFlag = false
+    private var isRunningFlag = true
     private var boundPort: UInt16 = 0
-    private let defaultPort: UInt16 = 18081
-    private let fallbackEnd: UInt16 = 18090
-    private let backendId = "capacitor"
-    private let expireSecs: TimeInterval = 60.0
-    private let deviceCap = 50
-    private let deviceTrim = 25
-    private let broadcastCap = 100
-    private let broadcastTrim = 50
-
+    private var token: String?
+    private var pendingStart: CAPPluginCall?
+    private var clients: [ObjectIdentifier: NWConnection] = [:]
+    private var deadlines: [ObjectIdentifier: DispatchWorkItem] = [:]
     private var deviceCommands: [String: [CommandEntry]] = [:]
     private var broadcastCommands: [CommandEntry] = []
 
-    private let queue = DispatchQueue(label: "MobileCommandQueue.queue", qos: .background)
-    private let logger = Logger(subsystem: "play.ott.foss", category: "MobileCommandQueue")
+    public override func load() { /* Internal queue only; no listening socket. */ }
 
-    public override func load() {
-        // capacitor.config / docs: auto-start Mode B loopback on plugin load.
-        startListener { _, _ in }
+    private func status() -> [String: Any] {
+        ["running": isRunningFlag, "port": boundPort, "httpEnabled": boundPort != 0]
     }
 
     @objc func start(_ call: CAPPluginCall) {
-        startListener { [weak self] ok, err in
-            if let err = err {
-                call.reject(err)
-            } else {
-                call.resolve(["running": true, "port": self?.boundPort ?? 0])
-            }
-        }
-    }
-
-    private func portsToTry() -> [UInt16] {
-        if let env = ProcessInfo.processInfo.environment["OTTPLAY_QUEUE_PORT"]?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-           !env.isEmpty,
-           let p = UInt16(env),
-           p > 0 {
-            return [p]
-        }
-        return Array(defaultPort...fallbackEnd)
-    }
-
-    /// Probe whether 127.0.0.1:port is free (TOCTOU-acceptable for Mode B loopback).
-    private func canBindLoopback(port: UInt16) -> Bool {
-        let fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)
-        guard fd >= 0 else { return false }
-        defer { close(fd) }
-        var addr = sockaddr_in()
-        addr.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
-        addr.sin_family = sa_family_t(AF_INET)
-        addr.sin_port = port.bigEndian
-        addr.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
-        let bindResult = withUnsafePointer(to: &addr) {
-            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
-            }
-        }
-        return bindResult == 0
-    }
-
-    private func startListener(completion: @escaping (_ ok: Bool, _ error: String?) -> Void) {
         queue.async { [weak self] in
-            guard let self = self else { return }
-
-            if self.isRunningFlag {
-                let port = self.boundPort
-                self.notifyListeners("isRunning", data: ["running": true, "port": port])
-                DispatchQueue.main.async { completion(true, nil) }
+            guard let self else { call.reject("Queue owner released"); return }
+            guard call.getBool("httpEnabled") == true else {
+                self.isRunningFlag = true
+                call.resolve(self.status())
                 return
             }
-
-            let ports = self.portsToTry()
-            var lastError = "no ports to try"
-            for port in ports {
-                guard self.canBindLoopback(port: port) else {
-                    self.logger.info("Command queue port \(port) busy, trying next")
-                    lastError = "127.0.0.1:\(port) busy"
-                    continue
-                }
-                guard let nwPort = NWEndpoint.Port(rawValue: port) else {
-                    lastError = "invalid port \(port)"
-                    continue
-                }
-                do {
-                    let params = NWParameters.tcp
-                    params.requiredLocalEndpoint = NWEndpoint.hostPort(
-                        host: "127.0.0.1",
-                        port: nwPort
-                    )
-
-                    self.listener = try NWListener(using: params)
-
-                    self.listener?.stateUpdateHandler = { [weak self] state in
-                        if case .failed(_) = state {
-                            self?.logger.error("Listener failed")
-                            self?.isRunningFlag = false
-                            self?.boundPort = 0
-                        }
-                    }
-
-                    self.listener?.newConnectionHandler = { [weak self] connection in
-                        self?.handleConnection(connection)
-                    }
-
-                    self.isRunningFlag = true
-                    self.boundPort = port
-                    self.listener?.start(queue: self.queue)
-
-                    self.logger.info("Command queue listener started on 127.0.0.1:\(port)")
-
-                    DispatchQueue.main.async { [weak self] in
-                        self?.notifyListeners("isRunning", data: ["running": true, "port": port])
-                        completion(true, nil)
-                    }
-                    return
-                } catch {
-                    self.logger.error("Failed to start listener on \(port): \(error)")
-                    lastError = error.localizedDescription
-                    self.listener = nil
-                }
+            let token = call.getString("token") ?? ""
+            guard token.range(of: "^[A-Za-z0-9_-]{32,256}$", options: .regularExpression) != nil else {
+                call.reject("HTTP control requires a random token of 32-256 URL-safe characters"); return
             }
-
-            self.logger.error("Failed to bind any command-queue port in \(ports): \(lastError)")
-            DispatchQueue.main.async {
-                completion(false, "Failed to start HTTP server: \(lastError)")
+            if self.listener != nil {
+                if self.token != token { call.reject("Stop HTTP control before changing its token") }
+                else if self.pendingStart != nil { call.reject("HTTP control is starting") }
+                else { call.resolve(self.status()) }
+                return
             }
+            let env = ProcessInfo.processInfo.environment["OTTPLAY_QUEUE_PORT"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            var ports = Array(UInt16(18081)...UInt16(18090))
+            if !env.isEmpty {
+                guard let port = UInt16(env), port > 0 else { call.reject("Invalid command queue port"); return }
+                ports = [port]
+            }
+            self.pendingStart = call
+            self.token = token
+            self.startListener(ports: ports)
         }
     }
 
+    private func startListener(ports: [UInt16]) {
+        guard let port = ports.first, let endpointPort = NWEndpoint.Port(rawValue: port) else {
+            pendingStart?.reject("No loopback command queue port available")
+            pendingStart = nil; token = nil; return
+        }
+        do {
+            let parameters = NWParameters.tcp
+            parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: endpointPort)
+            let current = try NWListener(using: parameters)
+            listener = current
+            current.stateUpdateHandler = { [weak self, weak current] state in
+                guard let self, let current, self.listener === current else { return }
+                switch state {
+                case .ready:
+                    self.boundPort = port; self.isRunningFlag = true
+                    self.pendingStart?.resolve(self.status()); self.pendingStart = nil
+                case .failed:
+                    current.cancel(); self.listener = nil; self.boundPort = 0
+                    if self.pendingStart != nil { self.startListener(ports: Array(ports.dropFirst())) }
+                    else { self.closeClients(); self.token = nil }
+                default: break
+                }
+            }
+            current.newConnectionHandler = { [weak self] connection in self?.accept(connection) ?? connection.cancel() }
+            current.start(queue: queue)
+        } catch { listener = nil; startListener(ports: Array(ports.dropFirst())) }
+    }
+
+    private func closeClients() {
+        deadlines.values.forEach { $0.cancel() }; deadlines.removeAll()
+        clients.values.forEach { $0.cancel() }; clients.removeAll()
+    }
+    private func close(_ connection: NWConnection) {
+        let id = ObjectIdentifier(connection)
+        deadlines.removeValue(forKey: id)?.cancel()
+        clients.removeValue(forKey: id)
+        connection.cancel()
+    }
     @objc func stop(_ call: CAPPluginCall) {
         queue.async { [weak self] in
-            guard let self = self, self.isRunningFlag else {
-                DispatchQueue.main.async { call.resolve() }
-                return
-            }
-
-            self.listener?.cancel()
-            self.listener = nil
-            self.isRunningFlag = false
-            self.boundPort = 0
-            self.deviceCommands.removeAll()
-            self.broadcastCommands.removeAll()
-
-            self.logger.info("Command queue stopped")
-            DispatchQueue.main.async { [weak self] in
-                self?.notifyListeners("isRunning", data: ["running": false])
-                call.resolve()
-            }
+            guard let self else { call.resolve(); return }
+            self.listener?.cancel(); self.listener = nil
+            self.closeClients()
+            self.pendingStart?.reject("HTTP control stopped"); self.pendingStart = nil
+            self.token = nil; self.boundPort = 0; self.isRunningFlag = false
+            self.deviceCommands.removeAll(); self.broadcastCommands.removeAll()
+            call.resolve()
         }
     }
-
     @objc func isRunning(_ call: CAPPluginCall) {
-        call.resolve(["running": isRunningFlag, "port": boundPort])
+        queue.async { [weak self] in call.resolve(self?.status() ?? ["running": false, "port": 0, "httpEnabled": false]) }
     }
 
+    private func enqueue(_ raw: [String: Any], deviceId: String) -> Int? {
+        guard deviceId.count <= 128, let bytes = try? JSONSerialization.data(withJSONObject: raw), bytes.count <= 65536 else { return nil }
+        let timestamp = Date().timeIntervalSince1970
+        for id in Array(deviceCommands.keys) {
+            deviceCommands[id] = deviceCommands[id]?.filter { $0.timestamp > timestamp - 60 }
+            if deviceCommands[id]?.isEmpty == true { deviceCommands.removeValue(forKey: id) }
+        }
+        broadcastCommands.removeAll { $0.timestamp <= timestamp - 60 }
+        let storedBytes = broadcastCommands.reduce(0) { $0 + $1.bytes } + deviceCommands.values.reduce(0) { total, entries in
+            total + entries.reduce(0) { $0 + $1.bytes }
+        }
+        guard storedBytes + bytes.count + 64 <= 1024 * 1024 else { return nil }
+        var value = raw; value["ts"] = timestamp
+        let entry = CommandEntry(data: value, timestamp: timestamp, bytes: bytes.count + 64)
+        if deviceId.isEmpty {
+            broadcastCommands.append(entry)
+            if broadcastCommands.count > 100 { broadcastCommands.removeFirst(broadcastCommands.count - 50) }
+            return broadcastCommands.count
+        }
+        guard deviceCommands[deviceId] != nil || deviceCommands.count < 128 else { return nil }
+        var entries = deviceCommands[deviceId] ?? []
+        entries.append(entry)
+        if entries.count > 50 { entries.removeFirst(entries.count - 25) }
+        deviceCommands[deviceId] = entries
+        return entries.count
+    }
+    private func drain(_ deviceId: String) -> [[String: Any]] {
+        let entries: [CommandEntry]
+        if deviceId.isEmpty { entries = broadcastCommands; broadcastCommands.removeAll() }
+        else { entries = deviceCommands.removeValue(forKey: deviceId) ?? [] }
+        let cutoff = Date().timeIntervalSince1970 - 60
+        return entries.filter { $0.timestamp > cutoff }.map { $0.data }
+    }
     @objc func post(_ call: CAPPluginCall) {
-        guard var commandDict = call.getObject("data") as? [String: Any] else {
-            call.reject("No data provided")
-            return
-        }
-
-        let deviceId: String = call.options?["deviceId"] as? String ?? ""
-
+        guard let data = call.getObject("data") else { call.reject("No data provided"); return }
+        let deviceId = call.getString("deviceId") ?? ""
         queue.async { [weak self] in
-            guard let self = self else {
-                DispatchQueue.main.async { call.reject("Plugin released") }
-                return
-            }
-
-            let timestamp = Date().timeIntervalSince1970
-            commandDict["ts"] = timestamp
-
-            let entry = CommandEntry(data: commandDict, timestamp: timestamp)
-
-            var queued: Int
-            if deviceId.isEmpty {
-                self.broadcastCommands.append(entry)
-                if self.broadcastCommands.count > self.broadcastCap {
-                    let drop = self.broadcastCommands.count - self.broadcastTrim
-                    self.broadcastCommands.removeFirst(drop)
-                }
-                queued = self.broadcastCommands.count
-            } else {
-                if self.deviceCommands[deviceId] == nil {
-                    self.deviceCommands[deviceId] = []
-                }
-                self.deviceCommands[deviceId]?.append(entry)
-                if self.deviceCommands[deviceId]?.count ?? 0 > self.deviceCap {
-                    let drop = (self.deviceCommands[deviceId]?.count ?? 0) - self.deviceTrim
-                    self.deviceCommands[deviceId]?.removeFirst(drop)
-                }
-                queued = self.deviceCommands[deviceId]?.count ?? 0
-            }
-
-            DispatchQueue.main.async {
-                call.resolve(["queued": queued])
-            }
+            guard let count = self?.enqueue(data, deviceId: deviceId) else { call.reject("Invalid or oversized command"); return }
+            call.resolve(["queued": count])
         }
     }
-
     @objc func get(_ call: CAPPluginCall) {
-        let deviceId: String = call.options?["deviceId"] as? String ?? ""
-
-        queue.async { [weak self] in
-            guard let self = self else {
-                DispatchQueue.main.async { call.reject("Plugin released") }
-                return
-            }
-
-            let cutoff = Date().timeIntervalSince1970 - self.expireSecs
-
-            var result: [[String: Any]] = []
-
-            if deviceId.isEmpty {
-                let recent = self.broadcastCommands.filter { $0.timestamp > cutoff }
-                let dicts = recent.compactMap { $0.data as? [String: Any] }
-                result = dicts
-                self.broadcastCommands.removeAll()
-            } else {
-                let entries = self.deviceCommands[deviceId] ?? []
-                let recent = entries.filter { $0.timestamp > cutoff }
-                let dicts = recent.compactMap { $0.data as? [String: Any] }
-                result = dicts
-                self.deviceCommands[deviceId] = []
-            }
-
-            DispatchQueue.main.async {
-                call.resolve(["commands": result])
-            }
-        }
+        let deviceId = call.getString("deviceId") ?? ""
+        guard deviceId.count <= 128 else { call.reject("Invalid device ID"); return }
+        queue.async { [weak self] in call.resolve(["commands": self?.drain(deviceId) ?? []]) }
     }
 
-    private func handleConnection(_ connection: NWConnection) {
+    private func accept(_ connection: NWConnection) {
+        guard clients.count < 8, let token else { connection.cancel(); return }
+        let id = ObjectIdentifier(connection)
+        clients[id] = connection
+        let deadline = DispatchWorkItem { [weak self, weak connection] in
+            if let connection { self?.close(connection) }
+        }
+        deadlines[id] = deadline
+        queue.asyncAfter(deadline: .now() + 5, execute: deadline)
         connection.start(queue: queue)
-        receiveRequest(connection, accumulated: Data())
+        receive(connection, accumulated: Data(), token: token)
     }
-
-    private func receiveRequest(_ connection: NWConnection, accumulated: Data) {
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
-            guard let self = self else { return }
-
-            if let error = error {
-                self.logger.error("Receive error: \(error)")
-                connection.cancel()
-                return
+    private func receive(_ connection: NWConnection, accumulated: Data, token: String) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 8192) { [weak self] data, _, complete, error in
+            guard let self, self.clients[ObjectIdentifier(connection)] != nil else { connection.cancel(); return }
+            guard error == nil, let data, !data.isEmpty else { self.close(connection); return }
+            var bytes = accumulated; bytes.append(data)
+            switch QueueHTTPRequest.parse(bytes, token: token) {
+            case .incomplete:
+                if complete { self.respond(connection, status: 400, body: ["error": "Incomplete request"]) }
+                else { self.receive(connection, accumulated: bytes, token: token) }
+            case .rejected(let status): self.respond(connection, status: status, body: ["error": "Request rejected"])
+            case .request(let request): self.process(request, connection: connection)
             }
-
-            var buffer = accumulated
-            if let data = data, !data.isEmpty {
-                buffer.append(data)
-            }
-
-            if let raw = String(data: buffer, encoding: .utf8), raw.contains("\r\n\r\n") {
-                self.processRequest(raw, connection: connection)
-                return
-            }
-
-            if isComplete {
-                if let raw = String(data: buffer, encoding: .utf8), !raw.isEmpty {
-                    self.processRequest(raw, connection: connection)
-                } else {
-                    connection.cancel()
-                }
-                return
-            }
-
-            if data == nil || data?.isEmpty == true {
-                connection.cancel()
-                return
-            }
-
-            self.receiveRequest(connection, accumulated: buffer)
         }
     }
-
-    private func processRequest(_ raw: String, connection: NWConnection) {
-        let lines = raw.components(separatedBy: CharacterSet.newlines)
-        guard let requestLine = lines.first, !requestLine.isEmpty else {
-            sendResponse(connection, status: 400, body: ["error": "Invalid request", "len": raw.count])
-            return
-        }
-
-        let components = requestLine.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
-        guard components.count >= 3 else {
-            sendResponse(connection, status: 400, body: ["error": "Invalid request line", "line": requestLine])
-            return
-        }
-
-        let method = components[0]
-        let rawPath = components[1]
-        let path = rawPath.split(separator: "?").first.map(String.init) ?? rawPath
-
-        let deviceId = extractDeviceId(from: rawPath)
-
-        if method == "OPTIONS" {
-            sendCorsResponse(connection)
-            return
-        }
-
-        if method == "GET" && (path == "/api/webhook/health" || path == "/webhook/health") {
-            sendResponse(connection, status: 200, body: [
-                "status": "ok",
-                "service": "ottplay-command-queue",
-                "backend": backendId,
-                "port": boundPort,
-            ])
-            return
-        }
-
-        if method == "POST" && (path == "/api/webhook/commands" || path == "/webhook/notify") {
-            handlePostBody(raw, connection: connection, deviceId: deviceId)
-        } else if method == "GET" && (path == "/api/webhook/commands" || path == "/webhook/poll") {
-            handleGetFromRequest(deviceId: deviceId, connection: connection)
-        } else {
-            sendResponse(connection, status: 404, body: ["error": "Not Found", "path": path])
-        }
+    private func process(_ request: QueueHTTPRequest, connection: NWConnection) {
+        let path = request.target.split(separator: "?", maxSplits: 1).first.map(String.init) ?? ""
+        let query = request.target.split(separator: "?", maxSplits: 1).dropFirst().first.map(String.init) ?? ""
+        let deviceId = query.split(separator: "&").first { $0.hasPrefix("device_id=") }
+            .map { String($0.dropFirst(10)).replacingOccurrences(of: "+", with: " ").removingPercentEncoding ?? "" } ?? ""
+        guard deviceId.count <= 128 else { respond(connection, status: 400, body: ["error": "Invalid device ID"]); return }
+        if request.method == "GET", ["/api/webhook/health", "/webhook/health"].contains(path) {
+            respond(connection, status: 200, body: ["status": "ok", "backend": "capacitor", "port": boundPort])
+        } else if request.method == "GET", ["/api/webhook/commands", "/webhook/poll"].contains(path) {
+            respond(connection, status: 200, body: drain(deviceId))
+        } else if request.method == "POST", ["/api/webhook/commands", "/webhook/notify"].contains(path) {
+            guard let raw = try? JSONSerialization.jsonObject(with: request.body) as? [String: Any],
+                  let count = enqueue(raw, deviceId: deviceId) else { respond(connection, status: 400, body: ["error": "Invalid command"]); return }
+            respond(connection, status: 200, body: ["queued": count, "status": "ok"])
+        } else { respond(connection, status: 404, body: ["error": "Not found"]) }
     }
-
-    private func handlePostBody(_ raw: String, connection: NWConnection, deviceId: String) {
-        guard let headersEnd = raw.range(of: "\r\n\r\n") else {
-            sendResponse(connection, status: 400, body: ["error": "Missing headers"])
-            return
-        }
-
-        let body = String(raw[headersEnd.upperBound...])
-
-        queue.async { [weak self] in
-            guard let self = self else { return }
-
-            let timestamp = Date().timeIntervalSince1970
-            var commandDict: [String: Any] = [:]
-
-            if let data = body.data(using: .utf8),
-               let parsed = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
-                commandDict = parsed
-            }
-
-            commandDict["ts"] = timestamp
-
-            let entry = CommandEntry(data: commandDict, timestamp: timestamp)
-
-            var queued: Int
-            if deviceId.isEmpty {
-                self.broadcastCommands.append(entry)
-                if self.broadcastCommands.count > self.broadcastCap {
-                    let drop = self.broadcastCommands.count - self.broadcastTrim
-                    self.broadcastCommands.removeFirst(drop)
-                }
-                queued = self.broadcastCommands.count
-            } else {
-                if self.deviceCommands[deviceId] == nil {
-                    self.deviceCommands[deviceId] = []
-                }
-                self.deviceCommands[deviceId]?.append(entry)
-                if self.deviceCommands[deviceId]?.count ?? 0 > self.deviceCap {
-                    let drop = (self.deviceCommands[deviceId]?.count ?? 0) - self.deviceTrim
-                    self.deviceCommands[deviceId]?.removeFirst(drop)
-                }
-                queued = self.deviceCommands[deviceId]?.count ?? 0
-            }
-
-            sendResponse(connection, status: 200, body: ["status": "ok", "queued": queued])
-        }
+    private func respond(_ connection: NWConnection, status: Int, body: Any) {
+        guard let json = try? JSONSerialization.data(withJSONObject: body) else { close(connection); return }
+        var response = Data("HTTP/1.1 \(status) \(status == 200 ? "OK" : "Error")\r\nContent-Type: application/json; charset=utf-8\r\nConnection: close\r\nCache-Control: no-store\r\nContent-Length: \(json.count)\r\n\r\n".utf8)
+        response.append(json)
+        connection.send(content: response, completion: .contentProcessed { [weak self] _ in self?.close(connection) })
     }
-
-    private func handleGetFromRequest(deviceId: String, connection: NWConnection) {
-        queue.async { [weak self] in
-            guard let self = self else { return }
-
-            let cutoff = Date().timeIntervalSince1970 - self.expireSecs
-
-            var result: [[String: Any]] = []
-
-            if deviceId.isEmpty {
-                let recent = self.broadcastCommands.filter { $0.timestamp > cutoff }
-                let dicts = recent.compactMap { $0.data as? [String: Any] }
-                result = dicts
-                self.broadcastCommands.removeAll()
-            } else {
-                let entries = self.deviceCommands[deviceId] ?? []
-                let recent = entries.filter { $0.timestamp > cutoff }
-                let dicts = recent.compactMap { $0.data as? [String: Any] }
-                result = dicts
-                self.deviceCommands[deviceId] = []
-            }
-
-            sendResponse(connection, status: 200, body: result)
-        }
-    }
-
-    private func extractDeviceId(from path: String) -> String {
-        guard let queryStart = path.firstIndex(of: "?") else { return "" }
-        let query = String(path[path.index(after: queryStart)...])
-        for pair in query.split(separator: "&") {
-            let parts = pair.split(separator: "=", maxSplits: 1)
-            if parts.count == 2, String(parts[0]) == "device_id" {
-                return String(parts[1]).trimmingCharacters(in: .whitespaces)
-            }
-        }
-        return ""
-    }
-
-    private func sendResponse(_ connection: NWConnection, status: Int, body: Any) {
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: body)
-            var headers = [
-                "Access-Control-Allow-Origin: *",
-                "Access-Control-Allow-Methods: GET, POST, OPTIONS",
-                "Access-Control-Allow-Headers: *",
-                "Access-Control-Max-Age: 86400",
-                "Content-Type: application/json; charset=utf-8"
-            ]
-
-            var response = "HTTP/1.1 \(status) \(status == 200 ? "OK" : status == 400 ? "Bad Request" : "Not Found")\r\n"
-            for h in headers {
-                response += "\(h)\r\n"
-            }
-            response += "Content-Length: \(jsonData.count)\r\n"
-            response += "\r\n"
-
-            var fullResponse = Data(response.utf8)
-            fullResponse.append(jsonData)
-
-            connection.send(content: fullResponse, completion: .contentProcessed { _ in
-                connection.cancel()
-            })
-        } catch {
-            logger.error("Failed to serialize response: \(error)")
-            connection.send(content: "HTTP/1.1 500 Internal Server Error\r\n\r\n".data(using: .utf8)!, completion: .contentProcessed { _ in
-                connection.cancel()
-            })
-        }
-    }
-
-    private func sendCorsResponse(_ connection: NWConnection) {
-        var response = "HTTP/1.1 200 OK\r\n"
-        response += "Access-Control-Allow-Origin: *\r\n"
-        response += "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
-        response += "Access-Control-Allow-Headers: *\r\n"
-        response += "Access-Control-Max-Age: 86400\r\n"
-        response += "Content-Length: 0\r\n"
-        response += "\r\n"
-
-        connection.send(content: response.data(using: .utf8)!, completion: .contentProcessed { _ in
-            connection.cancel()
-        })
-    }
+    deinit { listener?.cancel(); deadlines.values.forEach { $0.cancel() }; clients.values.forEach { $0.cancel() } }
 }

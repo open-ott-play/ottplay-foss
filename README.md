@@ -58,7 +58,7 @@ The mobile interface stays in landscape and supports rotation between both lands
 
 Settings → Buttons preserves the selected seek intervals, and Settings → Interface applies the selected streaming engine when saved. The sleep timer choices are off, 30 minutes, 1 hour, 2 hours and 3 hours of inactivity. Saved button mappings, hidden menu items and parental preferences also survive settings export and subsequent saves.
 
-Settings → Remote control keeps its URL editing controls visible on small screens. Scroll long values with the arrow keys or a swipe. Clearing the local command URL disables local command polling; clearing the swop URL disables remote text entry.
+Settings → Remote control keeps its URL editing controls visible on small screens. Scroll long values with the arrow keys or a swipe. Local HTTP remote control is off by default and generates a secret device code when enabled. Clearing the local command URL disables proxy polling; clearing the swop URL disables remote text entry.
 
 Tauri and mobile exports open a selectable JSON backup with a Copy JSON control; browser exports download a JSON file. Import settings uses the app's text editor and requires confirmation before replacing saved preferences. URL editing and Tauri update confirmation also use the app's own dialogs.
 
@@ -545,13 +545,13 @@ Player supports 24 device types. Detection: by URL `/f/{device_id}/` first, then
 
 ## Push Command System
 
-The player polls a webhook endpoint every 10 seconds for commands. Commands are JSON objects with a `"command"` field.
+Local HTTP remote control is **off by default** in the browser/OTT server player, Tauri, and Capacitor. Enable it in **Player settings → Remote control** to generate a secret device code. Commands are JSON objects with a `"command"` field; HTTP requests require `Authorization: Bearer <device-code>`.
 
 ### Architecture
 
 #### Local Command URL (Recommended)
 
-Set a local URL in **Player settings → Remote control → Local command URL**. The player polls this URL every 10 seconds. Use with Home Assistant webhooks, Node-RED, or the included `local_proxy.py`.
+Enable **Local HTTP remote control** in **Player settings → Remote control**, copy the generated **Device code**, and configure the proxy below with that code. Set **Local command URL** to the proxy command endpoint. While enabled, the player polls this URL every 10 seconds with the device code in the Authorization header. Merely setting a URL does not enable command control.
 
 ```
 Player → GET http://192.168.1.50:8081/api/webhook/commands  (every 10s)
@@ -560,7 +560,9 @@ HA/curl → POST http://192.168.1.50:8081/api/webhook/commands  (on demand)
 
 #### Device UUID
 
-The player generates a unique device UUID on first run (stored in localStorage). **Player settings → Remote control** shows your Device ID (e.g., `dev_a1b2c3d4e5`). Use this ID for per-device routing with `local_proxy.py` or your own backend.
+The existing Device UUID (e.g., `dev_a1b2c3d4e5`) is public routing metadata, not an authorization credential. The separate **Device code** is generated securely when local HTTP control is enabled and stays on this device; it is not copied through cloud settings. Disabling local HTTP control stops polling/listeners. Re-enabling generates a new code: update the proxy and integrations to revoke the old credential.
+
+Tauri and Capacitor start their loopback HTTP listener only after this settings opt-in. Forwarding proxies must send the displayed device code as a Bearer token to that listener. Mode A uses the separately configured `local_proxy.py` queue described below.
 
 #### Remote text entry (swop)
 
@@ -584,16 +586,17 @@ are on **different networks**, via a Cloudflare Worker session handoff.
   Not enabled by default; never bake `ADMIN_TOKEN` into the image.
 - **Status:** Worker allowlist + foss client ♥™ wiring landed
 
-> **Security note**: The central server's `/webhook/poll` and `/webhook/notify` endpoints have been disabled because unauthenticated broadcast polling is a security risk — any client can send/receive commands for any device_id. For local use, `local_proxy.py` provides the same functionality within your trusted home network.
+> The central OTT server keeps `/api/webhook/commands`, `/webhook/poll`, `/webhook/notify`, and command health aliases disabled for every HTTP method. Use an explicitly configured authenticated `local_proxy.py` for Mode A; the central server has no broadcast command queue.
 
 ### Available Commands
 
-All examples below use `http://192.168.1.50:8081/api/webhook/commands` as the local proxy URL. Replace with your actual proxy address.
+All examples below use `http://192.168.1.50:8081/api/webhook/commands` as the local proxy URL. Replace with your actual proxy address, and set `OTTPLAY_QUEUE_HTTP_TOKEN` to the **Device code** displayed after enabling HTTP control in player settings. The proxy must be configured with the same code.
 
 #### `popup_message` — Show notification popup
 
 ```bash
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
+  -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"command":"popup_message","message":"Hello TV!","popup_duration":10}'
 ```
@@ -607,6 +610,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 ```bash
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
+  -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"command":"channel_by_number","channel_number":42}'
 ```
@@ -619,6 +623,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 ```bash
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
+  -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"command":"channel_by_name","channel_name":"discovery"}'
 ```
@@ -634,11 +639,13 @@ Case-insensitive substring search. First match wins.
 ```bash
 # Random from all channels
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
+  -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"command":"random_channel"}'
 
 # Random from range (1-2000)
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
+  -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"command":"random_channel","random_range":[1,2000]}'
 ```
@@ -651,6 +658,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 ```bash
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
+  -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"command":"change_provider","provider":0}'
 ```
@@ -663,6 +671,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 ```bash
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
+  -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"command":"change_playlist","playlist":"http://example.com/playlist.m3u"}'
 ```
@@ -675,6 +684,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 ```bash
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
+  -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"command":"change_provider_settings","provider_settings":"{\"url\":\"http://example.com\",\"login\":\"user\",\"password\":\"pass\"}"}'
 ```
@@ -688,16 +698,19 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 ```bash
 # Set absolute volume (0-100)
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
+  -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"command":"set_volume","volume":75}'
 
 # Increase by 10
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
+  -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"command":"set_volume","volume_step":10}'
 
 # Decrease by 5
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
+  -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"command":"set_volume","volume_step":-5}'
 ```
@@ -713,6 +726,7 @@ Silently ignored on clients without volume control support.
 
 ```bash
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
+  -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"command":"exit_player"}'
 ```
@@ -721,13 +735,25 @@ Tries standby mode first (if supported), otherwise exits the player. No fields n
 
 ## Local Proxy Server
 
-`local_proxy.py` is a standalone local command server. Run it on any machine in your home network (e.g., the Home Assistant server).
+`local_proxy.py` is a standalone authenticated command queue for one player. Its default invocation exits without opening a port. Each proxy instance uses the player-generated device code; use separate instances/ports for multiple players. A `device_id` query parameter is accepted as compatibility metadata and never authenticates or selects another device.
 
 ### Start the proxy
 
+1. Enable **Local HTTP remote control** in the player and copy its **Device code**.
+2. On the proxy host, configure the code and the exact origin serving the player (scheme, host and port, no path):
+
 ```bash
+read -r -s -p 'Device code: ' OTTPLAY_QUEUE_HTTP_TOKEN
+export OTTPLAY_QUEUE_HTTP_TOKEN
+OTTPLAY_QUEUE_HTTP_ENABLED=1 \
+OTTPLAY_QUEUE_HTTP_HOST=0.0.0.0 \
+OTTPLAY_QUEUE_HTTP_ORIGINS=http://192.168.1.50:8080 \
 python3 local_proxy.py 8081
 ```
+
+3. Set the player's **Local command URL** to `http://192.168.1.50:8081/api/webhook/commands`.
+
+The default bind address is `127.0.0.1`; the example explicitly enables LAN access. `OTTPLAY_QUEUE_HTTP_ORIGINS` is a comma-separated allowlist of exact browser origins. Use an HTTPS reverse proxy when serving the player over HTTPS, so browser mixed-content rules permit polling. Keep the device code secret and out of URLs. When the player generates a new code, restart the proxy with the new value; disabling the player alone does not stop a separately managed proxy process.
 
 ### Endpoints
 
@@ -735,12 +761,15 @@ python3 local_proxy.py 8081
 |---|---|---|
 | `POST` | `/api/webhook/commands` | Queue a command |
 | `GET` | `/api/webhook/commands` | Retrieve queued commands (player poll) |
-| `POST` | `/api/webhook/commands?device_id=dev_xxx` | Queue for specific device |
-| `GET` | `/api/webhook/commands?device_id=dev_xxx` | Retrieve for specific device |
+| `POST` | `/webhook/notify` | Authenticated compatibility alias |
+| `GET` | `/webhook/poll` | Authenticated compatibility alias |
+
+Both sending and draining require the matching Bearer device code. There is no unauthenticated broadcast endpoint. Commands expire after 60 seconds; each proxy retains at most 50 commands.
 
 ### Smoke script (all modes)
 
 ```bash
+# Export OTTPLAY_QUEUE_HTTP_TOKEN with the enabled test player's device code first.
 # Mode B / Capacitor (prefer 127.0.0.1:18081; fallback 18082..=18090)
 # Cap+Tauri dual-run: ./scripts/smoke-command-queue.sh --discover
 ./scripts/smoke-command-queue.sh
@@ -753,32 +782,36 @@ Android emulator/device: `adb forward tcp:18081 tcp:18081` first. Cap/Tauri are 
 
 ### CORS
 
-The proxy sends full CORS headers (`Access-Control-Allow-Origin: *`), so the player can poll it from any domain.
+The proxy permits browser requests only from `OTTPLAY_QUEUE_HTTP_ORIGINS`. Preflight `OPTIONS` requests from an allowed origin need no token; every actual GET/POST requires the Bearer device code. Wildcard and `null` origins are not accepted. Home Assistant and other non-browser callers can omit Origin but still need authentication.
 
 ### Example: Home Assistant webhook → local proxy → player
 
 ```bash
-# 1. Start proxy
-python3 local_proxy.py 8081 &
+# 1. Enable player HTTP control, then start the proxy with its code and origin as above.
 
 # 2. In player settings, set Local command URL to:
 #    http://192.168.1.50:8081/api/webhook/commands
 
 # 3. Send commands from HA or curl:
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
+  -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"command":"popup_message","message":"Motion detected!","popup_duration":5}'
 
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
+  -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"command":"channel_by_name","channel_name":"BBC"}'
 
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
+  -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"command":"random_channel","random_range":[1,2000]}'
 ```
 
 ### Home Assistant automation examples
+
+Set `ottplay_device_authorization` in Home Assistant `secrets.yaml` to `Bearer <device-code>` using the code shown by the enabled player.
 
 ```yaml
 rest_command:
@@ -787,6 +820,7 @@ rest_command:
     method: POST
     headers:
       Content-Type: application/json
+      Authorization: !secret ottplay_device_authorization
     payload: >-
       {{ {'command': command} | combine(payload | default({})) | tojson }}
 
@@ -844,16 +878,7 @@ automation:
 
 ### Webhook Endpoints (Rust `ottplay-server`)
 
-> The original `server.py` implementation is preserved under `archive/server.py`
-> for reference and as a STB fallback. The Rust binary serves the same
-> webhook paths; for production use the binary.
-
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/webhook/notify?device_id=<uuid>` | Send command to device |
-| `GET` | `/webhook/poll?device_id=<uuid>` | Poll commands for device |
-| `POST` | `/webhook/notify` | Legacy broadcast (all devices) |
-| `GET` | `/webhook/poll` | Legacy broadcast poll |
+The Rust server and archived Python fallback reject command endpoints with HTTP 403. `/api/webhook/commands`, `/webhook/notify`, `/webhook/poll`, and command health aliases do not enqueue, broadcast, or drain commands. The generic feedback API cannot override these reserved routes. Mode A command delivery uses the separately enabled and authenticated local proxy described above.
 
 ### Other Endpoints
 

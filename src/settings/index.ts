@@ -132,6 +132,8 @@ export interface PlayerSettings {
     infoTimeout: number;
     listPosition: number;
     localCmdUrl: string;
+    localHttpDeviceCode: string;
+    localHttpEnabled: number;
     medCount: number;
     nextCount: number;
     nextCountList: number;
@@ -218,6 +220,8 @@ export function defaultSettings(): PlayerSettings {
         infoTimeout: 5,
         listPosition: 0,
         localCmdUrl: "",
+        localHttpDeviceCode: "",
+        localHttpEnabled: 0,
         medCount: 2,
         nextCount: 0,
         nextCountList: 1,
@@ -350,6 +354,8 @@ export function loadSettings(): PlayerSettings {
         infoTimeout: s.getI("sInfoTimeout", 5),
         listPosition: s.getI("sListPos", 0),
         localCmdUrl: s.get("sLocalCmdUrl") || "",
+        localHttpDeviceCode: s.get("sLocalHttpDeviceCode") || "",
+        localHttpEnabled: s.get("sLocalHttpEnabled") === "1" ? 1 : 0,
         medCount: s.getI("sMedCount", 2),
         nextCount: s.getI("sNextCount", 0),
         nextCountList: s.getI("sNextCountL", 1),
@@ -486,6 +492,8 @@ export function saveSettings(s: PlayerSettings): void {
     store.set("sSHLcolor", s.highlightColor);
     store.set("sSHLcolorB", s.highlightColorB);
     store.set("sLocalCmdUrl", s.localCmdUrl);
+    store.setI("sLocalHttpEnabled", s.localHttpEnabled === 1 ? 1 : 0);
+    store.set("sLocalHttpDeviceCode", s.localHttpDeviceCode);
     store.set("sSwopBaseUrl", s.swopBaseUrl);
     store.set("sDeviceUuid", s.deviceUuid);
 }
@@ -496,7 +504,7 @@ export function saveSettings(s: PlayerSettings): void {
 export interface ExportEnvelopeV1 {
     favoritesArray: number[];
     parentalArray: number[];
-    settings: PlayerSettings;
+    settings: Omit<PlayerSettings, "localHttpEnabled" | "localHttpDeviceCode">;
     timestamp: number;
     version: 1;
 }
@@ -514,10 +522,14 @@ export function exportSettings(): string {
     if (typeof window.pullSettingsFromWindow === "function") {
         window.pullSettingsFromWindow();
     }
+    // Consent and credentials belong to this installation, never a backup.
+    const exportedSettings = { ...settings };
+    delete (exportedSettings as Partial<PlayerSettings>).localHttpEnabled;
+    delete (exportedSettings as Partial<PlayerSettings>).localHttpDeviceCode;
     const env: ExportEnvelopeV1 = {
         favoritesArray: window.providerGetJson?.("favoritesArray", []) || [],
         parentalArray: window.providerGetJson?.("parentalArray", []) || [],
-        settings: settings,
+        settings: exportedSettings,
         timestamp: Date.now(),
         version: 1,
     };
@@ -581,7 +593,13 @@ export function importSettings(
 }
 
 function applyImport(env: ExportEnvelopeV1): void {
-    saveSettings(env.settings);
+    // Ignore even explicitly injected credentials/consent in imported JSON.
+    // Importing ordinary preferences preserves this installation's own consent.
+    saveSettings({
+        ...env.settings,
+        localHttpDeviceCode: settings.localHttpDeviceCode || "",
+        localHttpEnabled: settings.localHttpEnabled === 1 ? 1 : 0,
+    });
     if (typeof window.providerSetItem === "function") {
         window.providerSetItem(
             "parentalArray",

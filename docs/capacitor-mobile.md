@@ -101,61 +101,41 @@ See `capacitor.config.ts`:
 
 ## Native command queue
 
-The desktop/local proxy command queue (`POST /api/webhook/commands`, `GET /api/webhook/commands`) is now wired to a native HTTP server on mobile via the `MobileCommandQueue` Capacitor plugin.
+The `MobileCommandQueue` plugin provides an internal queue through native
+`post()` and `get()` calls. Ordinary `load()`/`start()` does not open an HTTP
+socket. The player drains this internal queue without enabling HTTP command
+polling against the device.
 
-**Implementation**:
+Enable **Settings → Remote control → Local HTTP remote control** to generate
+a unique device code. The setting is off by default. The player calls
+`start({ httpEnabled: true, token })` with that code; configure the controlling
+proxy with the same Bearer token. Disabling closes HTTP and revokes the code.
+Re-enabling generates a new code; backups never export credentials or consent. The optional HTTP listener binds only
+to loopback; each request requires `Authorization: Bearer <token>`. Wildcard CORS
+is not enabled. Stopping the plugin closes its listener and clears the queue.
+Do not place real tokens in source, logs, screenshots or command examples.
 
-- **iOS**: Swift plugin (`ios/App/App/Plugins/MobileCommandQueue.swift`) — NWListener-based HTTP server preferring `127.0.0.1:18081` (fallback `18082..=18090`). Enqueue/poll/expire/CORS/OPTIONS/health match Tauri Mode B.
-- **Android**: Kotlin plugin (`android/app/src/main/java/play/ott/foss/MobileCommandQueuePlugin.kt`) — `ServerSocket`-based HTTP server with the same bind fallback and contract.
-- **Web layer**: `src/index.ts` detects `window.Capacitor` + `MobileCommandQueue`, starts the native listener, and drains via `MobileCommandQueue.get()` every 10s. It does **not** set `local_poll_url` (that would also arm the Mode A HTTP poller against the same port).
-- **JS package**: `mobile-command-queue/src/index.ts` — real native bridge; WebPlugin remains a no-op fallback for non-Capacitor builds.
+The Swift implementation is in `ios/App/App/Plugins/MobileCommandQueue.swift`;
+the Kotlin implementation is in
+`android/app/src/main/java/play/ott/foss/MobileCommandQueuePlugin.kt`.
+See [the plugin contract](../mobile-command-queue/README.md) for methods, request
+limits and authenticated integration examples. The internal queue does not
+require a token or an open socket because it is accessed through the app bridge.
 
-**Contract** (same as `local_proxy.py` / Tauri `queue.rs`):
+### Device smoke and remote integrations
 
-- POST `/api/webhook/commands` (alias `/webhook/notify`) — enqueue JSON body, attach `ts`, optional `?device_id=`, respond `{"status":"ok","queued":N}`
-- GET `/api/webhook/commands` (alias `/webhook/poll`) — return pending array then clear; expire entries older than 60s
-- Caps: per-device 50 (trim to 25), broadcast 100 (trim to 50)
-- CORS headers, OPTIONS handling
-- Device routing is **query-only** (`?device_id=`). No device-id header; Cap/Tauri pollers currently use broadcast (`device_id` empty).
+A fresh mobile app should expose no command HTTP listener. Test internal queue
+operations first, then explicit HTTP enablement, missing/wrong token rejection,
+authorized requests and Stop. A curl smoke that assumes an automatically
+listening unauthenticated port does not validate this mobile contract.
 
-See `mobile-command-queue/README.md` for usage.
-
-### Smoke test (curl) + Home Assistant
-
-For the full Mode B **device** checklist (Simulator / emulator / sideload + human UI marks), see [`docs/mode-b-device-smoke.md`](mode-b-device-smoke.md) and `scripts/smoke-capacitor-device.sh`.
-
-Use `scripts/smoke-command-queue.sh` to POST then GET the queue. Default base URL is `http://127.0.0.1:18081` (Tauri Mode B / Capacitor loopback). Cap+Tauri dual-run: `./scripts/smoke-command-queue.sh --discover` (or set `BASE_URL` to the fallback port). Exits with a clear **not listening** message if nothing is bound.
-
-```bash
-# Tauri Mode B — app running (prefers 127.0.0.1:18081; fallback 18082+)
-./scripts/smoke-command-queue.sh
-./scripts/smoke-command-queue.sh --aliases   # also /webhook/notify + /webhook/poll
-
-# Mode A companion — local_proxy.py (default port 8081, all interfaces)
-python3 local_proxy.py 8081
-BASE_URL=http://127.0.0.1:8081 ./scripts/smoke-command-queue.sh
-
-# Capacitor iOS Simulator — Mac shares localhost with the sim
-./scripts/smoke-command-queue.sh
-
-# Capacitor Android emulator / USB device — forward host→device loopback
-adb forward tcp:18081 tcp:18081
-./scripts/smoke-command-queue.sh
-```
-
-Optional per-device: `DEVICE_ID=dev_… ./scripts/smoke-command-queue.sh` (matches Player settings → Device ID / `?device_id=`).
-
-**LAN Home Assistant**: Cap and Tauri bind **loopback only**, so HA on another host cannot reach `:18081` without a tunnel. For HA on the LAN, run Mode A `local_proxy.py` on a reachable host (often `:8081`) and point the player Local command URL there. Minimal curl-equivalent `rest_command` (no secrets):
-
-```yaml
-rest_command:
-  ott_tv_command:
-    url: "http://192.168.1.50:8081/api/webhook/commands"
-    method: POST
-    headers:
-      Content-Type: application/json
-    payload: '{"command":"popup_message","message":"{{ message }}","popup_duration":5}'
-```
+The [device checklist](mode-b-device-smoke.md) distinguishes simulator/emulator
+results from physical-device validation. For Android, an explicitly enabled
+loopback listener can be inspected through a scoped `adb forward`; forwarding
+does not remove its authentication requirement. A mobile loopback listener is
+not directly reachable from another LAN host. Use a deliberately configured
+companion service for remote automation, with that service's own authentication
+and transport policy. Android Play remote services must use HTTPS.
 
 Full Mode A command catalog + longer HA examples live in the root `README.md` (Push Command System / Local Proxy Server).
 

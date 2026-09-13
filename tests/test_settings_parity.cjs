@@ -362,6 +362,13 @@ for (const profile of [
     assert.equal(parental.stored.get("sPSoptions"), "1");
     assert.equal(parental.typed().psProvs, 1);
     const { w, stored, typed, timers } = fixture(profile);
+    assert.equal(
+        typed().localHttpEnabled,
+        0,
+        `${profile}: HTTP remote is opt-in`
+    );
+    assert.equal(typed().localHttpDeviceCode, "");
+    assert.equal(w.sLocalHttpEnabled, 0);
     w.settingsButtons();
     save(w);
     assert.deepEqual(
@@ -414,12 +421,24 @@ for (const profile of [
     Object.assign(w, {
         parentPIN: "9876",
         sLocalCmdUrl: "https://example.invalid/local",
+        sLocalHttpDeviceCode: "a".repeat(64),
+        sLocalHttpEnabled: 1,
         sNoColorKeys: 1,
         sPSoptions: 1,
         sRfun: 4,
     });
     const exported = JSON.parse(w.exportSettings());
     assert.equal(exported.settings.rFun, 4);
+    assert.equal(
+        Object.hasOwn(exported.settings, "localHttpEnabled"),
+        false,
+        "exports cannot grant HTTP access on another device"
+    );
+    assert.equal(
+        Object.hasOwn(exported.settings, "localHttpDeviceCode"),
+        false,
+        "exports cannot disclose the local credential"
+    );
     assert.equal(exported.settings.noColorKeys, 1);
     assert.equal(exported.settings.psOptions, 1);
     assert.equal(exported.settings.parentPin, "9876");
@@ -430,6 +449,46 @@ for (const profile of [
     vm.runInContext("saveSettings(settings); loadSettings();", w);
     assert.equal(typed().rFun, 4);
     assert.equal(typed().parentPin, "9876");
+    assert.equal(
+        typed().localHttpEnabled,
+        1,
+        "explicit local consent survives restart"
+    );
+    assert.equal(typed().localHttpDeviceCode, "a".repeat(64));
+    w.importSettings(
+        JSON.stringify({
+            ...exported,
+            settings: {
+                ...exported.settings,
+                localHttpDeviceCode: "injected",
+                localHttpEnabled: 1,
+            },
+        })
+    );
+    assert.equal(
+        typed().localHttpDeviceCode,
+        "a".repeat(64),
+        "import cannot replace this device's credential"
+    );
+    stored.set("sLocalHttpEnabled", "0");
+    stored.set("sLocalHttpDeviceCode", "");
+    vm.runInContext("applySettingsToWindow(loadSettings());", w);
+    w.importSettings(
+        JSON.stringify({
+            ...exported,
+            settings: {
+                ...exported.settings,
+                localHttpDeviceCode: "injected",
+                localHttpEnabled: 1,
+            },
+        })
+    );
+    assert.equal(
+        typed().localHttpEnabled,
+        0,
+        "import cannot enable HTTP access"
+    );
+    assert.equal(typed().localHttpDeviceCode, "");
 }
 for (const bad of [-1, 1, 2, 7, 999, Number.NaN]) {
     const { w, stored } = fixture();

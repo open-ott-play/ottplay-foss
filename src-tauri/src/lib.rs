@@ -24,10 +24,7 @@ const DEFAULT_WEB_URL: &str = "";
 pub fn run() {
     let epg_urls = commands::tauri_commands::init_xmltv_urls();
     let command_queues = commands::queue::new_shared();
-    // Bind the Mode B command queue HTTP server (prefer localhost:18081,
-    // fall back through 18082..=18090) on a background thread.
-    // Mirror of `local_proxy.py` for the native shell.
-    commands::queue::spawn_http_server(command_queues.clone());
+    // No listener starts at launch; settings explicitly configure optional HTTP.
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin({
@@ -47,6 +44,7 @@ pub fn run() {
             }
             ws.build()
         })
+        .manage(commands::queue::QueueHttpRuntime::default())
         .manage(MediaSessionState::default())
         .manage(TauriState {
             xmltv_cache: Arc::new(RwLock::new(None)),
@@ -80,6 +78,7 @@ pub fn run() {
             commands::queue::queue_poll,
             commands::queue::queue_enqueue,
             commands::queue::queue_port,
+            commands::queue::queue_http_configure,
             commands::misc::get_version,
             commands::misc::feedback_get,
             commands::misc::feedback_post,

@@ -358,7 +358,9 @@ class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path.rstrip('/')
 
-        if path == '/m3u/match-channels':
+        if path in ('/api/webhook/commands', '/api/webhook/health', '/webhook/poll', '/webhook/notify', '/webhook/health'):
+            self.send_error(403, "HTTP remote disabled. Configure the authenticated local_proxy.py separately.")
+        elif path == '/m3u/match-channels':
             self._handle_match_channels()
         elif path == '/m3u/match-logos':
             self._handle_match_logos()
@@ -368,8 +370,6 @@ class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
             self._serve_feedback_post()
         elif path.startswith('/feedback/') or path.startswith('/api/'):
             self._serve_feedback_post()
-        elif path == '/webhook/notify':
-            self.send_error(403, "Webhook disabled for security. Use local_proxy.py.")
         else:
             self.send_error(404, "Not Found")
 
@@ -377,8 +377,8 @@ class OTTPlayHandler(http.server.SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path.rstrip('/') or '/'
 
-        if path == '/webhook/poll':
-            self.send_error(403, "Webhook disabled for security. Use local_proxy.py.")
+        if path in ('/api/webhook/commands', '/api/webhook/health', '/webhook/poll', '/webhook/notify', '/webhook/health'):
+            self.send_error(403, "HTTP remote disabled. Configure the authenticated local_proxy.py separately.")
             return
         if path.startswith('/epg/'):
             params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)

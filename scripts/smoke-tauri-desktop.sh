@@ -25,6 +25,7 @@
 #   1  hard failure (missing required tool/dir, build failed, queue/companion required but down)
 #   2  queue/companion smoke ran but contract assertion failed
 #   3  usage / unknown flag / missing baseline deps
+set +x # Never trace optional control credentials.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -48,7 +49,8 @@ smoke-tauri-desktop.sh — Mode B Tauri desktop-smoke helper (checklist companio
 
 Does NOT launch a headed GUI. Automates: toolchain checks, src-tauri/ presence,
 optional unsigned CI build, companion soft/hard curl on :8095, and command-queue
-soft probe on Tauri loopback :18081+ (auto-discover if Cap holds 18081). Human marks the UI checklist in
+optional authenticated probe on explicitly enabled Tauri loopback HTTP :18081+.
+HTTP control is off by default; internal IPC does not require a listener. Human marks the UI checklist in
 docs/mode-b-tauri-smoke.md.
 
 Flags:
@@ -56,14 +58,15 @@ Flags:
   --build           Run: ( cd src-tauri && npx tauri build --ci ) — unsigned
   --check-companion                Soft curl companion at BASE_URL / OTTPLAY_WEB_URL (default :8095)
   --require-companion        With --check-companion: exit 1 if not listening (default: soft-skip)
-  --check-queue              Soft check command-queue on Tauri loopback (:18081+, discover)
+  --check-queue              Check explicitly enabled HTTP control with QUEUE_HTTP_TOKEN
   --require-queue            With --check-queue: exit 1 if queue not listening
   --require-cargo            Fail if cargo/rustc missing (default: soft-skip)
   -h, --help                 Show this help
 
 Env:
   BASE_URL / OTTPLAY_WEB_URL  Default http://127.0.0.1:8095 (debug companion).
-  QUEUE_BASE_URL              Optional Mode B queue URL (else --discover --backend tauri).
+  QUEUE_BASE_URL              Optional loopback queue URL (else authenticated --discover).
+  QUEUE_HTTP_TOKEN / OTTPLAY_QUEUE_HTTP_TOKEN  Token for explicit HTTP opt-in, never logged.
   CONNECT_TIMEOUT             curl connect timeout seconds (default 2).
   COMMAND_JSON / DEVICE_ID    Forwarded to scripts/smoke-command-queue.sh when --check-queue runs.
 
@@ -205,6 +208,15 @@ if [[ "$DO_CHECK_COMPANION" -eq 1 ]]; then
   fi
 fi
 
+if [[ "$DO_CHECK_QUEUE" -eq 1 && -z "${QUEUE_HTTP_TOKEN:-${OTTPLAY_QUEUE_HTTP_TOKEN:-}}" ]]; then
+  echo "soft-skip: native HTTP control is off by default; no token supplied"
+  if [[ "$REQUIRE_QUEUE" -eq 1 ]]; then
+    echo "error: --require-queue requires an explicitly enabled listener and token" >&2
+    exit 3
+  fi
+  DO_CHECK_QUEUE=0
+fi
+
 if [[ "$DO_CHECK_QUEUE" -eq 1 ]]; then
   need_cmd curl
   if [[ ! -x "$ROOT/scripts/smoke-command-queue.sh" ]]; then
@@ -233,9 +245,13 @@ if [[ "$DO_CHECK_QUEUE" -eq 1 ]]; then
     fi
     set -e
     if [[ "$cq_ec" -ne 0 ]]; then
-      echo "error: command-queue smoke failed" >&2
-      if [[ "$REQUIRE_QUEUE" -eq 1 ]]; then
-        exit 1
+      # Only an absent optional listener is a soft-skip. Authentication,
+      # configuration and response-contract failures must remain failures.
+      if [[ "$cq_ec" -eq 1 && "$REQUIRE_QUEUE" -eq 0 ]]; then
+        echo "soft-skip: optional command-queue listener unavailable"
+      else
+        echo "error: command-queue smoke failed" >&2
+        exit "$cq_ec"
       fi
     else
       echo "ok: command-queue smoke passed (Tauri loopback)"

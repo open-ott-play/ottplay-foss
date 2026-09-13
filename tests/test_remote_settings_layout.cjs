@@ -118,7 +118,7 @@ assert.equal(content.scrollTop, 0);
 let controls = w.listPodvalElement.querySelectorAll("span[onclick]");
 assert.equal(
     controls.length,
-    3,
+    4,
     "controls stay outside the scrollable overlay"
 );
 function editor() {
@@ -333,7 +333,154 @@ w._doKey(w.keys.UP);
 assert.equal(accepted, 1);
 assert.equal(cancelled, 2, "Existing non-ENTER cancellation remains available");
 assert.equal(dialog.style.display, "none");
-dom.window.close();
-console.log(
-    "OK: Remote settings own caption/footer, escaped wrapping content, arrow scroll, real controls and one-shot parent restoration"
-);
+async function testHttpRemoteSettings() {
+    const tick = () => new Promise((resolve) => setImmediate(resolve));
+    const requests = [];
+    let state = { code: "", enabled: false, port: 0 };
+    let complete;
+    let fail;
+    w.__ottLocalHttpRemote = {
+        setEnabled(enabled) {
+            requests.push(enabled);
+            return new Promise((resolve, reject) => {
+                complete = () => {
+                    state = {
+                        code: enabled ? String(requests.length).repeat(64) : "",
+                        enabled,
+                        port: enabled ? 19999 : 0,
+                    };
+                    resolve();
+                };
+                fail = reject;
+            });
+        },
+        status: () => state,
+    };
+    w._doKey = (key) => w.aboutKeyHandler(key);
+    w.settingsCommands();
+    assert.equal(
+        requests.length,
+        0,
+        "opening settings cannot enable the listener"
+    );
+    assert.equal(w.document.getElementById("localHttpDeviceCode"), null);
+    assert.match(
+        w.document.getElementById("remoteSettingsContent").textContent,
+        /HTTP remote control: off/
+    );
+    const httpToggle = w.listPodvalElement.querySelectorAll("span[onclick]")[3];
+    assert.match(httpToggle.textContent, /Enable HTTP remote/);
+    httpToggle.click();
+    w.aboutKeyHandler(49);
+    await tick();
+    assert.deepEqual(
+        requests,
+        [true],
+        "repeated keys cannot race pending enable"
+    );
+    assert.equal(
+        w.document.getElementById("localHttpDeviceCode"),
+        null,
+        "credentials require backend acknowledgement"
+    );
+    assert.match(
+        w.document.getElementById("remoteSettingsContent").textContent,
+        /Applying HTTP remote settings/
+    );
+    complete();
+    await tick();
+    const code = w.document.getElementById("localHttpDeviceCode");
+    assert.equal(code.value, "1".repeat(64));
+    assert.equal(code.readOnly, true);
+    code.click();
+    assert.equal(code.selectionStart, 0);
+    assert.equal(
+        code.selectionEnd,
+        64,
+        "a touch/click selects the complete code for copying"
+    );
+    assert.match(
+        w.document.getElementById("remoteSettingsContent").textContent,
+        /HTTP port: 19999/
+    );
+    assert.match(
+        w.document.getElementById("remoteSettingsContent").textContent,
+        /Authorization: Bearer/
+    );
+    assert.match(w.listPodvalElement.textContent, /Disable HTTP remote/);
+    w.aboutKeyHandler(49);
+    await tick();
+    assert.deepEqual(requests, [true, false]);
+    complete();
+    await tick();
+    assert.equal(
+        w.document.getElementById("localHttpDeviceCode"),
+        null,
+        "disabled access must hide the old credential"
+    );
+    w.aboutKeyHandler(49);
+    await tick();
+    fail(new Error("native listener unavailable"));
+    await tick();
+    assert.match(
+        w.document.getElementById("remoteSettingsContent").textContent,
+        /Could not update HTTP remote control/
+    );
+    assert.equal(w.document.getElementById("localHttpDeviceCode"), null);
+    w.aboutKeyHandler(49);
+    await tick();
+    w.aboutKeyHandler(w.keys.RETURN);
+    complete();
+    await tick();
+    assert.equal(
+        w.document.getElementById("listAbout").style.display,
+        "none",
+        "async completion cannot reopen a closed settings screen"
+    );
+    assert.equal(w.document.getElementById("remoteSettingsContent"), null);
+
+    const keys = [
+        "Remote control",
+        "Local HTTP remote control",
+        "Enable HTTP remote",
+        "Disable HTTP remote",
+        "Device access code",
+        "HTTP port",
+        "Disabled by default. Enabling creates a new device access code.",
+        "Send this code from your proxy in the Authorization: Bearer header.",
+        "HTTP remote control is unavailable on this device.",
+        "Could not update HTTP remote control.",
+        "Applying HTTP remote settings...",
+        "on",
+    ];
+    const dictionaries = fs
+        .readdirSync(path.join(root, "stbPlayer"))
+        .filter((name) => /^_[a-z]{3}\.js$/.test(name));
+    assert.equal(dictionaries.length, 20);
+    for (const name of dictionaries) {
+        w.eval(fs.readFileSync(path.join(root, "stbPlayer", name), "utf8"));
+        for (const key of keys) assert.ok(w.keyStrings[key], `${name}: ${key}`);
+    }
+    w._ = (key) => w.keyStrings[key] || key;
+    w.eval(fs.readFileSync(path.join(root, "stbPlayer/_rus.js"), "utf8"));
+    w.settingsCommands();
+    assert.equal(w.listCaptionElement.textContent, "Удалённое управление");
+    assert.match(
+        w.document.getElementById("remoteSettingsContent").textContent,
+        /Код доступа к устройству/
+    );
+    assert.match(w.listPodvalElement.textContent, /Выключить HTTP-пульт/);
+    w.aboutKeyHandler(w.keys.RETURN);
+}
+testHttpRemoteSettings()
+    .then(() => {
+        dom.window.close();
+        console.log(
+            "OK: Remote settings layout, authenticated HTTP controls, selectable credentials, async lifecycle and 20 translations"
+        );
+    })
+    .catch((error) => {
+        dom.window.close();
+        console.error(error);
+        process.exitCode = 1;
+    });

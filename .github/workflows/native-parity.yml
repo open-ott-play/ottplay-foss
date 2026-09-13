@@ -76,6 +76,8 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
       - run: npm ci --ignore-scripts
       - run: npm run build && npx cap sync ios
+      - name: Test iOS HTTP remote control
+        run: python3 tests/test_ios_command_queue.py
       - name: Compile iOS plugins without signing
         run: >-
           xcodebuild -project ios/App/App.xcodeproj -scheme App

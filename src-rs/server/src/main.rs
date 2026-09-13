@@ -137,9 +137,8 @@ async fn main() {
         .route("/api", any(feedback_handler_no_path))
         .route("/api/*path", any(feedback_handler))
         .route("/report_feedb", post(feedback_handler_no_path))
-        // Phase 2.6: Webhook stubs (return 403)
-        .route("/webhook/poll", get(webhook_stub))
-        .route("/webhook/notify", get(webhook_stub))
+        // Command queues are explicitly configured authenticated local sidecars.
+        .merge(disabled_command_routes())
         // Playback debug ingest/tail (local realtime debug)
         .route("/debug/config", get(debug_config))
         .route("/debug/ingest", post(debug_ingest))
@@ -653,13 +652,64 @@ async fn feedback_handler_no_path(
     feedback_handler(Path("".to_string()), body).await
 }
 
-/// Webhook stubs - return 403 (real queue still served by local_proxy.py)
+/// Reserve command paths before the generic /api feedback sink. No HTTP method
+/// or alias may look like successful command acceptance on the central server.
+fn disabled_command_routes() -> Router {
+    let mut routes = Router::new();
+    for path in [
+        "/api/webhook/commands",
+        "/api/webhook/health",
+        "/webhook/poll",
+        "/webhook/notify",
+        "/webhook/health",
+    ] {
+        routes = routes.route(path, any(webhook_stub));
+        routes = routes.route(&format!("{path}/"), any(webhook_stub));
+    }
+    routes
+}
+
+/// The central server never provisions or accepts device command credentials.
 async fn webhook_stub() -> impl axum::response::IntoResponse {
     (
         StatusCode::FORBIDDEN,
         [(axum::http::header::CONTENT_TYPE, "text/plain; charset=utf-8")],
-        "Webhook disabled for security. Use local_proxy.py.",
+        "HTTP remote disabled on the central server. Configure the authenticated local_proxy.py separately.",
     )
+}
+
+#[cfg(test)]
+mod disabled_command_tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::Request;
+
+    #[tokio::test]
+    async fn central_webhook_aliases_never_accept_commands_or_drain_a_queue() {
+        let mut app = Router::new()
+            .route("/api/*path", any(feedback_handler))
+            .merge(disabled_command_routes());
+        for path in [
+            "/api/webhook/commands",
+            "/api/webhook/health",
+            "/webhook/poll",
+            "/webhook/notify",
+            "/webhook/health",
+        ] {
+            for suffix in ["", "/", "?device_id=known-id"] {
+                for method in ["GET", "POST", "PUT", "DELETE", "OPTIONS"] {
+                    let request = Request::builder()
+                        .method(method)
+                        .uri(format!("{path}{suffix}"))
+                        .header("Authorization", "Bearer aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+                        .body(Body::from(r#"{"command":"exit_player"}"#))
+                        .unwrap();
+                    let response = app.call(request).await.unwrap();
+                    assert_eq!(response.status(), StatusCode::FORBIDDEN, "{method} {path}{suffix}");
+                }
+            }
+        }
+    }
 }
 
 const DEBUG_LOG: &str = "debug-playback.log";

@@ -2,7 +2,7 @@
 
 Repeatable **iOS Simulator / Android emulator** (and optional real-device) smoke for Mode B Capacitor.
 FOSS closes what can be automated without a specific physical device in CI: build/sync/open helpers,
-native project presence checks, and command-queue curl against Cap loopback while the app runs.
+native project presence checks, and optional authenticated command-queue checks for an explicitly enabled loopback listener.
 **A human still marks the UI checklist** on a simulator, emulator, or sideloaded device.
 
 This is **Mode B** (Capacitor / Tauri loopback). Do **not** confuse with Mode A companion smokes
@@ -13,7 +13,7 @@ Related:
 
 - Build / store prep: [`docs/capacitor-mobile.md`](capacitor-mobile.md)
 - Command-queue curl: `./scripts/smoke-command-queue.sh` (#328)
-- Hosted full web player (browser baseline): https://player.ottplay.here.now/
+- Browser baseline: a local or self-hosted web player built from the same revision.
 - Thin helper: `./scripts/smoke-capacitor-device.sh`
 
 ## What is automated vs human
@@ -24,7 +24,7 @@ Related:
 | `android/` + `ios/` dirs after sync | Yes (helper) | Artifact presence only |
 | `npm run build:mobile` / `npm run cap:sync` | Optional (helper flags) | Local; flaky in headless CI if Xcode/SDK missing |
 | Open Xcode / Android Studio | Optional (helper flags) | Human continues in IDE |
-| Command-queue POST/GET on `:18081+` | Yes when app listening | Soft-skip if not up unless `--require-queue`; Cap+Tauri: `--discover` |
+| Optional command-queue HTTP POST/GET | Only after explicit opt-in | HTTP is off by default; separate token-authenticated check, never required for normal playback |
 | UI: queue drain / EPG / M3U play / Stalker / swop | **Human** | Simulator, emulator, or real device |
 | Paid TestFlight / Play upload | **Out of scope** | Unpaid: sim + sideload APK / free Apple ID only |
 
@@ -48,9 +48,9 @@ Paid Apple Developer / Play Console accounts are **not** required for this smoke
 ### Optional real device
 
 - Same UI checklist as simulator/emulator
-- Android USB: `adb forward tcp:18081 tcp:18081` so host curl reaches Cap loopback
+- Optional authenticated HTTP test only: forward the explicitly enabled listener’s selected port on Android USB
 - iOS Simulator shares Mac localhost — no forward needed
-- Physical iOS device: Cap binds device loopback; host curl from Mac cannot reach it without a tunnel — prefer Simulator for the automated queue curl, or mark queue UI-only on device
+- Physical iOS device: internal queue checks use the native bridge. Do not expose its optional loopback listener to other hosts
 
 ## Build + sync + open
 
@@ -72,27 +72,22 @@ Or via helper (best-effort; does not boot simulators by itself):
 
 In Xcode: pick an iPhone Simulator → Run.
 In Android Studio: pick an AVD (or USB device) → Run.
-Wait until the player UI loads and Cap starts `MobileCommandQueue` (prefers `127.0.0.1:18081`, falls back through `18082..=18090` if busy).
+Wait until the player UI loads. `MobileCommandQueue.start()` starts the internal queue without a listening socket.
 
-## Automated companion: command-queue curl
+## Optional authenticated command-queue check
 
-With the Cap app running (Simulator, or emulator/device after `adb forward`):
+HTTP control is disabled by default. A normal launch and smoke run must work with no listener, no token, and no port forwarding. Native `post({data,deviceId})` / `get({deviceId})` calls exercise the internal queue.
+
+After enabling **Settings → Remote control → Local HTTP remote control**, supply the displayed device code through `QUEUE_HTTP_TOKEN` and the selected loopback `BASE_URL`. Never commit or print the token. The script does not enable the listener.
 
 ```bash
-# iOS Simulator (Mac localhost shared)
-./scripts/smoke-command-queue.sh
-./scripts/smoke-command-queue.sh --aliases
-
-# Android emulator / USB device
-adb forward tcp:18081 tcp:18081
-./scripts/smoke-command-queue.sh
-
-# Helper wraps the soft-skip behavior
-./scripts/smoke-capacitor-device.sh --queue
-./scripts/smoke-capacitor-device.sh --queue --require-queue   # fail if not listening
+# No HTTP requirement: normal project smoke.
+./scripts/smoke-capacitor-device.sh
+# Optional check: QUEUE_HTTP_TOKEN and BASE_URL are already set securely.
+./scripts/smoke-capacitor-device.sh --queue --require-queue
 ```
 
-Expect a popup (or queued command drain) in the app when POST succeeds. Soft-skip is intentional when the app is not running — CI without a booted sim should not hard-fail.
+The optional contract test enqueues and drains commands, so use a dedicated `DEVICE_ID`; the player polls the broadcast queue and its own UUID queue. Without a token, `--queue` soft-skips and `--require-queue` reports missing opt-in configuration. See [the native queue contract](../mobile-command-queue/README.md).
 
 ## Manual UI checklist (human marks)
 
@@ -104,11 +99,11 @@ Run on **iOS Simulator and/or Android emulator** (optional: real device). Skip r
 - [ ] Settings open (F2 / equivalent / on-screen)
 - [ ] Device ID visible under Player / Remote settings (optional note)
 
-### B. Command queue (Mode B loopback)
+### B. Internal command queue
 
-- [ ] With app running, `./scripts/smoke-command-queue.sh` returns exit `0`
-- [ ] Enqueued `popup_message` appears (or is drained) in the player
-- [ ] Android: `adb forward tcp:18081 tcp:18081` used when curling from host
+- [ ] Normal launch works without an HTTP listener or token.
+- [ ] Native bridge `post({data,deviceId})` / `get({deviceId})` enqueue and drain a dedicated test queue.
+- [ ] If explicitly testing HTTP opt-in: every request requires Bearer authentication and the selected endpoint is loopback only; record this separate test.
 
 ### C. EPG / XMLTV (Cap `MobileXmltvEpg`)
 
@@ -167,7 +162,7 @@ Record Mode A results separately. Cap device smoke **passes** without Mode A.
 - Marking the UI checklist above on sim/emulator/device
 - Any portal / playlist / `host_ott` credentials (operator-owned; never commit)
 - Paid TestFlight / Play Console upload (store readiness docs only)
-- Physical iOS device queue curl from a Mac host without a tunnel
+- Host HTTP access to a physical iOS device’s optional loopback queue
 - Headless CI that boots Xcode Simulator / Android emulator (intentionally not required here — flaky and account/SDK heavy)
 
 When the human checklist is done for your targets, the Mode B **device smoke** gap is closed for FOSS; DRM and Mag JsHttpRequest remain separate Remaining items in `capacitor-mobile.md`.

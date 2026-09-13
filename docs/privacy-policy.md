@@ -38,6 +38,8 @@ Opening a project or support link contacts the selected website through your bro
 
 The Android app uses network access for playback and configured services. Foreground media playback, wake-lock and notification capabilities support playback and media controls. These permissions do not grant the project access to your contacts, microphone or phone camera.
 
+Local HTTP remote control is disabled by default. Enabling it in player settings creates a random device code required for command requests. The code persists on this device across normal restarts. Disabling HTTP control revokes access; enabling it again creates a new code. Settings exports do not include the code or consent, and imports cannot grant HTTP access.
+
 ## Local retention
 
 Saved settings remain on your device until you change or remove them or clear the app's local data. Temporary display state and diagnostic buffers can be replaced as the app runs. Native diagnostic files, exported files and operating-system backups may remain separately; manage those through the app or operating system and remove any copies you shared when no longer needed. This policy does not set retention periods for services operated by others.

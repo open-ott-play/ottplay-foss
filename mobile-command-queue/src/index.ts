@@ -1,59 +1,70 @@
 /**
  * Mobile command queue — Capacitor plugin + web fallback.
  *
- * Native: starts a real HTTP server preferring 127.0.0.1:18081 (iOS/Android),
- * falling back through 18082..=18090 when busy. Pin with OTTPLAY_QUEUE_PORT.
+ * Native: internal queue by default. HTTP control requires explicit opt-in and
+ * a random bearer token; binds loopback :18081..18090 or OTTPLAY_QUEUE_PORT.
  * Web:    no-op fallback; web layer polls a configurable URL instead.
  */
 import { registerPlugin, WebPlugin } from "@capacitor/core";
 
 export interface QueueListenInfo {
+    httpEnabled: boolean;
     port: number;
     running: boolean;
 }
 
+export interface QueueStartOptions {
+    httpEnabled?: boolean;
+    /** Required for HTTP control: random 32–256 URL-safe ASCII characters. */
+    token?: string;
+}
+
 export interface CommandQueuePlugin {
-    /** Drain pending commands. `deviceId` for routing. */
-    get(deviceId?: string): Promise<{ commands: unknown[] }>;
-    /** Return whether the native server is running and which port it bound. */
+    /** Drain the native in-memory queue for a device (empty = broadcast). */
+    get(options?: { deviceId?: string }): Promise<{ commands: unknown[] }>;
     isRunning(): Promise<QueueListenInfo>;
-    /** Enqueue a command. `command` is any JSON-serializable value; `deviceId` for routing. */
-    post(command: unknown, deviceId?: string): Promise<{ queued: number }>;
-    /** Start the native HTTP server (prefer :18081, fallback :18082+). */
-    start(): Promise<QueueListenInfo>;
-    /** Stop the native HTTP server. */
+    /** Capacitor passes one options object to both native implementations. */
+    post(options: {
+        data: Record<string, unknown>;
+        deviceId?: string;
+    }): Promise<{ queued: number }>;
+    /** Default starts internal queue only; HTTP requires httpEnabled + token. */
+    start(options?: QueueStartOptions): Promise<QueueListenInfo>;
+    /** Close HTTP connections and clear pending commands. */
     stop(): Promise<void>;
 }
 
 class MobileCommandQueueWeb extends WebPlugin implements CommandQueuePlugin {
-    async start(): Promise<QueueListenInfo> {
+    async start(_options?: QueueStartOptions): Promise<QueueListenInfo> {
         console.warn("[MobileCommandQueue] web fallback: no native server");
-        return { port: 0, running: false };
+        return { httpEnabled: false, port: 0, running: false };
     }
 
     async stop(): Promise<void> {}
 
-    async post(
-        command: unknown,
-        _deviceId?: string
-    ): Promise<{ queued: number }> {
-        console.warn("[MobileCommandQueue] web fallback: post no-op", command);
+    async post(_options: {
+        data: Record<string, unknown>;
+        deviceId?: string;
+    }): Promise<{ queued: number }> {
+        console.warn("[MobileCommandQueue] web fallback: post no-op");
         return { queued: 0 };
     }
 
-    async get(_deviceId?: string): Promise<{ commands: unknown[] }> {
+    async get(_options?: {
+        deviceId?: string;
+    }): Promise<{ commands: unknown[] }> {
         console.warn("[MobileCommandQueue] web fallback: get no-op");
         return { commands: [] };
     }
 
     async isRunning(): Promise<QueueListenInfo> {
-        return { port: 0, running: false };
+        return { httpEnabled: false, port: 0, running: false };
     }
 }
 
 const MobileCommandQueue = registerPlugin<CommandQueuePlugin>(
     "MobileCommandQueue",
-    MobileCommandQueueWeb
+    { web: async () => new MobileCommandQueueWeb() }
 );
 
 export { MobileCommandQueue };

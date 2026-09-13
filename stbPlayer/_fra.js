@@ -8,6 +8,8 @@ var keyStrings = {
     "Add channel to category": "Ajouter la chaîne à la catégorie",
     "Add channel to favorites": "Ajouter la chaîne aux favoris",
     All: "Toutes",
+    "Applying HTTP remote settings...":
+        "Application des paramètres de la télécommande HTTP...",
     "Archive hours": "Heures d'archivage",
     alhabet: "aàâæbcçdeéèêëfghiîïjklmnoôœpqrstuùûüvwxyÿz",
     "Buffer Size, s": "Taille du tampon, s",
@@ -22,12 +24,19 @@ var keyStrings = {
     "Channel list. Category: ": "Liste des chaînes. Catégorie : ",
     "Channel parental control": "Contrôle parental de la chaîne",
     Close: "Fermer",
+    "Could not update HTTP remote control.":
+        "Impossible de modifier les paramètres de la télécommande HTTP.",
     "Delete channel": "Supprimer la chaîne",
     Description: "Description",
+    "Device access code": "Code d’accès à l’appareil",
+    "Disable HTTP remote": "Désactiver la télécommande HTTP",
+    "Disabled by default. Enabling creates a new device access code.":
+        "Désactivée par défaut. L’activation crée un nouveau code d’accès à l’appareil.",
     Edit: "Modifier",
     "Edit category name": "Modifier le nom de la catégorie",
     "Edit playlist data": "Modifier les données de la playlist",
     Editor: "Éditeur",
+    "Enable HTTP remote": "Activer la télécommande HTTP",
     "Enter Media Library URL": "Saisir l'URL de la médiathèque",
     "Enter parental code": "Entrez le code parental",
     "Enter playlist archive hours":
@@ -39,9 +48,13 @@ var keyStrings = {
     "Failed to load channel list!":
         "Échec du chargement de la liste des chaînes !",
     Favorites: "Favoris",
+    "HTTP port": "Port HTTP",
+    "HTTP remote control is unavailable on this device.":
+        "La télécommande HTTP n’est pas disponible sur cet appareil.",
     Info: "Infos",
     Load: "Charger",
     "Load playlist": "Charger la playlist",
+    "Local HTTP remote control": "Télécommande HTTP locale",
     lang: "Français",
     "Media Library URL": "URL de la médiathèque",
     Menu: "Menu",
@@ -55,18 +68,22 @@ var keyStrings = {
     no: "non",
     "Open in PiP": "Ouvrir en PiP",
     off: "désactivé",
+    on: "activée",
     Playlist: "Playlist",
     "Playlist file": "Fichier de la playlist",
     "Playlist is not loading directly...Loading via server...":
         "La playlist ne se charge pas directement...Chargement via le serveur...",
     "Playlist Name": "Nom de la playlist",
     "Playlist URL": "URL de la playlist",
+    "Remote control": "Télécommande",
     "Save Settings": "Enregistrer les paramètres",
     Search: "Rechercher",
     "Select category to add channel":
         "Sélectionnez une catégorie pour ajouter la chaîne",
     "Select playlist": "Sélectionner la playlist",
     "Select playlist file": "Sélectionner le fichier de la playlist",
+    "Send this code from your proxy in the Authorization: Bearer header.":
+        "Envoyez ce code depuis votre proxy dans l’en-tête Authorization: Bearer.",
     Settings: "Paramètres",
     "Settings STB": "Paramètres du boîtier",
     "Settings saved": "Paramètres enregistrés",
