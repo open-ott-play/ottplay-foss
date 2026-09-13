@@ -292,8 +292,120 @@ export var listPos = 0;
 export var editorMode = 1;
 /** Desired buffer size preference (string parsed from settings). */
 export var bufSize: any = 0;
-/** Previous sampling of webkitVideoDecodedByteCount for bitrate calculation. */
-var prevDecodedBytes = 0;
+/** Encoded bytes per second of media, independent of download/playback speed. */
+var prevDecodedBytes = -1;
+var prevDecodedMediaTime = -1;
+var _coreNativeMbps = 0;
+var _coreHlsBitrate: ReturnType<typeof createCoreHlsBitrateMeter> | null = null;
+
+function resetCoreNativeBitrate(): void {
+    prevDecodedBytes = -1;
+    prevDecodedMediaTime = -1;
+    _coreNativeMbps = 0;
+}
+
+function createCoreHlsBitrateMeter(): {
+    add: (data: any) => void;
+    mbps: () => number;
+} {
+    var samples: {
+        fragment: string;
+        part: number;
+        bytes: number;
+        seconds: number;
+    }[] = [];
+    return {
+        add: function (data: any): void {
+            var frag = data && data.frag;
+            var part = data && data.part;
+            if (
+                !frag ||
+                frag.type !== "main" ||
+                typeof frag.sn !== "number" ||
+                frag.bitrateTest
+            )
+                return;
+            var stats = (part ? part.stats : frag.stats) || data.stats;
+            if (stats && stats.aborted) return;
+            var bytes = stats && stats.loaded;
+            if (!(bytes > 0) && data.payload) bytes = data.payload.byteLength;
+            var seconds = part ? part.duration : frag.duration;
+            if (
+                typeof bytes !== "number" ||
+                !(bytes > 0) ||
+                !isFinite(bytes) ||
+                typeof seconds !== "number" ||
+                !(seconds > 0) ||
+                !isFinite(seconds)
+            )
+                return;
+            var fragment = [frag.level, frag.cc, frag.sn].join(":");
+            var partIndex = part ? part.index : -1;
+            for (var i = samples.length - 1; i >= 0; i--) {
+                var sample = samples[i];
+                if (sample.fragment !== fragment) continue;
+                // A complete segment supersedes its LL-HLS parts. Retries
+                // replace an existing observation rather than counting twice.
+                if (part && sample.part === -1) return;
+                if (!part || sample.part === partIndex) samples.splice(i, 1);
+            }
+            samples.push({
+                bytes: bytes,
+                fragment: fragment,
+                part: partIndex,
+                seconds: seconds,
+            });
+            if (samples.length > 8) samples.shift();
+        },
+        mbps: function (): number {
+            var bytes = 0;
+            var seconds = 0;
+            for (var i = 0; i < samples.length; i++) {
+                bytes += samples[i].bytes;
+                seconds += samples[i].seconds;
+            }
+            return seconds > 0 ? (bytes * 8) / seconds / 1e6 : 0;
+        },
+    };
+}
+
+function updateCoreVideoInfo(): void {
+    if (!video || !video.videoWidth || video.error) return;
+    var res = "<br/>" + video.videoWidth + "x" + video.videoHeight;
+    var mbps = 0;
+    if (hlsInstance) {
+        // bandwidthEstimate is network throughput, which can reach hundreds
+        // of Mbps on localhost. Manifest BANDWIDTH may also be a placeholder.
+        // Measure the main media segments (including muxed audio/container).
+        if (_coreHlsBitrate) mbps = _coreHlsBitrate.mbps();
+    } else {
+        var decoded = (video as any).webkitVideoDecodedByteCount;
+        var position = video.currentTime;
+        if (typeof decoded === "number" && isFinite(decoded)) {
+            if (
+                video.seeking ||
+                decoded < prevDecodedBytes ||
+                position < prevDecodedMediaTime
+            )
+                _coreNativeMbps = 0;
+            else if (prevDecodedBytes >= 0 && position > prevDecodedMediaTime)
+                _coreNativeMbps =
+                    ((decoded - prevDecodedBytes) * 8) /
+                    (position - prevDecodedMediaTime) /
+                    1e6;
+            prevDecodedBytes = decoded;
+            prevDecodedMediaTime = position;
+            mbps = _coreNativeMbps;
+        }
+    }
+    // An unknown bitrate is omitted, never replaced by a network estimate.
+    $("#video_res").html(
+        res +
+            (mbps > 0 && isFinite(mbps)
+                ? "<br/>" + Math.round(mbps * 100) / 100 + " Mbps"
+                : "")
+    );
+}
 /** PiP dimension presets in pixels: [small, medium, large]. */
 var pipPresets = [
     { x: 256, y: 144 },
@@ -764,6 +876,8 @@ function startCorePlayback(
     position: number | undefined,
     session: number
 ): void {
+    _coreHlsBitrate = null;
+    resetCoreNativeBitrate();
     var auto = playerMode === 3 && getDefaultPlayerMode() === 3;
     var mode = auto
         ? _coreAutoHlsUsed
@@ -833,6 +947,16 @@ function startCorePlayback(
         }
         hlsInstance = new Hls(hlsConfig);
         var playbackHls = hlsInstance;
+        var bitrateMeter = createCoreHlsBitrateMeter();
+        _coreHlsBitrate = bitrateMeter;
+        hlsInstance.on(
+            Hls.Events.FRAG_LOADED,
+            function (_event: any, data: any) {
+                if (session !== _playSession || hlsInstance !== playbackHls)
+                    return;
+                bitrateMeter.add(data);
+            }
+        );
         if (
             window.__ottDebug &&
             window.__ottDebug.enabled &&
@@ -1166,6 +1290,8 @@ export function stbStop(): void {
     cancelLiveRestart();
     cancelCoreSeek();
     cancelCoreAutoPlayback();
+    _coreHlsBitrate = null;
+    resetCoreNativeBitrate();
     (window as any).forcePlay = false;
     video!.pause();
     video!.removeAttribute("src");
@@ -1829,6 +1955,9 @@ export function stbInit(): void {
                     "<br/>" + video!.videoWidth + "x" + video!.videoHeight
                 );
         });
+        // Seeks may finish between footer ticks; discard any sample spanning one.
+        video!.addEventListener("seeking", resetCoreNativeBitrate);
+        video!.addEventListener("seeked", resetCoreNativeBitrate);
         [
             "waiting",
             "loadstart",
@@ -1852,31 +1981,7 @@ export function stbInit(): void {
         ].forEach(function (e) {
             video!.addEventListener(e, videoEvent);
         });
-        // Bitrate in #video_res (info1 bottom-right). Prefer WebKit decoded
-        // bytes (OTT); fall back to hls.js bandwidthEstimate when missing.
-        setInterval(function () {
-            if (!video || !video.videoWidth) return;
-            var res = "<br/>" + video.videoWidth + "x" + video.videoHeight;
-            var mbps = 0;
-            var decoded = (video as any).webkitVideoDecodedByteCount;
-            if (decoded !== undefined && decoded - prevDecodedBytes > 0) {
-                mbps =
-                    Math.round(
-                        (((decoded - prevDecodedBytes) * 8) / 1024 / 1024) * 100
-                    ) / 100;
-                prevDecodedBytes = decoded;
-            } else if (decoded !== undefined) {
-                prevDecodedBytes = decoded;
-            }
-            if (!(mbps > 0) && hlsInstance && hlsInstance.bandwidthEstimate) {
-                mbps =
-                    Math.round((hlsInstance.bandwidthEstimate / 1e6) * 100) /
-                    100;
-            }
-            if (mbps > 0) {
-                $("#video_res").html(res + "<br/>" + mbps + " Mbps");
-            }
-        }, 1000);
+        setInterval(updateCoreVideoInfo, 1000);
         videoPip = document.getElementById("videopip") as HTMLVideoElement;
         videoPip!.addEventListener("loadstart", function () {
             if (videoPip!.style.display != "none") $("#pip_buffering").show();

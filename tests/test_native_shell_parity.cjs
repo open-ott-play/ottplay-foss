@@ -269,6 +269,7 @@ const coreControls = functions("src/core/index.ts", [
     "cancelCoreSeek",
     "cancelCoreAutoPlayback",
     "destroyCoreShaka",
+    "resetCoreNativeBitrate",
     "stbContinue",
     "stbPause",
     "stbStop",
