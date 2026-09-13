@@ -112,7 +112,8 @@ function boot(options = {}) {
         },
         navigator: {
             userAgent:
-                options.device === "pc" ? "OldUnknownBrowser" : "Hisense TV",
+                options.userAgent ??
+                (options.device === "pc" ? "OldUnknownBrowser" : "Hisense TV"),
         },
         setInterval() {
             return 1;
@@ -238,6 +239,43 @@ console.log(
     "OK: HTML boot without modern APIs, local TV libraries, persistent identity and PC CDN fallback"
 );
 
+// LG's Web0S token uses a zero and does not require an LG vendor marker.
+const lgWeb0SUserAgent =
+    "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 " +
+    "(KHTML, like Gecko) Chrome/120.0.6099.270 Safari/537.36 WebAppManager";
+for (const userAgent of [
+    lgWeb0SUserAgent,
+    "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.41 " +
+        "(KHTML, like Gecko) Large Screen WebAppManager",
+    "Mozilla/5.0 (webOS; Linux/SmartTV) AppleWebKit/537.36",
+    "Mozilla/5.0 (LG SmartTV) AppleWebKit/537.36",
+]) {
+    for (const modern of [false, true]) {
+        const result = boot({ modern, userAgent });
+        assert.equal(
+            result.context.ott_device,
+            "lg/webos",
+            "LG browser must select webOS without an explicit device route"
+        );
+        assert(
+            result.requests.some((url) =>
+                url.includes("/stb/lg/webos/stb.js?")
+            ),
+            "LG boot must request the webOS remote and playback adapter"
+        );
+        assert(
+            result.requests.some((url) => url.endsWith("/js/hls.min.js")),
+            "LG boot must retain the local TV library path even with modern APIs"
+        );
+        assert(
+            !result.requests.some(
+                (url) => new URL(url).hostname === "cdn.jsdelivr.net"
+            ),
+            "LG must not enter the modern PC CDN branch"
+        );
+    }
+}
+
 // Explicit device routes must preserve both components of nested vendor IDs.
 for (const device of [
     "lg/webos",
@@ -246,17 +284,31 @@ for (const device of [
     "samsung/maple",
     "dune",
     "mag",
+    "pc",
 ]) {
-    for (const suffix of ["/", "/index.html", ""]) {
-        const result = boot({ pathname: "/f/" + device + suffix });
-        assert.equal(result.context.ott_device, device);
-        assert(
-            result.requests.some((url) =>
-                url.includes("/stb/" + device + "/stb.js")
-            )
-        );
+    for (const suffix of ["/", "/index.html", "/nested/index.html", ""]) {
+        for (const userAgent of ["OldUnknownBrowser", lgWeb0SUserAgent]) {
+            const result = boot({
+                pathname: "/f/" + device + suffix,
+                userAgent,
+            });
+            assert.equal(
+                result.context.ott_device,
+                device,
+                "Explicit device route must override browser detection"
+            );
+            assert(
+                result.requests.some((url) =>
+                    url.includes("/stb/" + device + "/stb.js?")
+                ),
+                "The requested adapter must retain the complete route platform"
+            );
+        }
     }
 }
+console.log(
+    "OK: LG Web0S/webOS detection and explicit nested device route precedence"
+);
 
 // Storage policy and quota errors must not abort basic boot or replace secure RNG.
 for (const storageError of ["access", "read", "write"]) {

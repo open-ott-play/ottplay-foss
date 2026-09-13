@@ -342,6 +342,48 @@ function fixture(profile) {
 }
 
 async function main() {
+    // The bundle reassigns ott_device after HTML boot has already detected it.
+    // Exercise that assignment with the webOS TV 25 UA published by LG:
+    // https://webostv.developer.lge.com/develop/specifications/web-api-and-web-engine
+    const webosUA =
+        "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.270 Safari/537.36 WebAppManager";
+    for (const [pathname, userAgent, expected] of [
+        ["/", webosUA, "lg/webos"],
+        ["/", "webOS TV", "lg/webos"],
+        ["/f/lg/webos", "Unknown browser", "lg/webos"],
+        ["/f/lg/webos/", "Unknown browser", "lg/webos"],
+        ["/f/lg/netcast/", webosUA, "lg/netcast"],
+        ["/f/samsung/tizen/", webosUA, "samsung/tizen"],
+        ["/f/samsung/maple/", "Unknown browser", "samsung/maple"],
+        ["/f/dune/", webosUA, "dune"],
+        ["/", "Unknown browser", "pc"],
+    ]) {
+        const w = fixture("modern");
+        w.location.pathname = pathname;
+        w.location.href = w.location.origin + pathname;
+        w.navigator.userAgent = userAgent;
+        w.ott_device = expected;
+        vm.runInContext(bundle, w, { filename: bundlePath, timeout: 5000 });
+        assert.equal(
+            w.ott_device,
+            expected,
+            pathname + ": bundle must preserve the boot device selection"
+        );
+        // This is the device URL requested by HTML after the bundle's onload.
+        const adapterPath = "stb/" + w.ott_device + "/stb.js";
+        const adapter = fs.readFileSync(
+            path.join(__dirname, "..", adapterPath),
+            "utf8"
+        );
+        vm.runInContext(adapter, w, { filename: adapterPath });
+        if (expected === "lg/webos") {
+            assert.equal(w.keys.RETURN, 461, "Load the LG Back key mapping");
+        }
+    }
+    console.log(
+        "OK: actual classic bundle retains LG UA and nested device routes"
+    );
+
     for (const profile of [
         "legacy",
         "modern",
