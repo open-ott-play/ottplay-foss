@@ -298,6 +298,12 @@ var prevDecodedMediaTime = -1;
 var _coreNativeMbps = 0;
 var _coreHlsBitrate: ReturnType<typeof createCoreHlsBitrateMeter> | null = null;
 
+function resetCoreNativeBitrate(): void {
+    prevDecodedBytes = -1;
+    prevDecodedMediaTime = -1;
+    _coreNativeMbps = 0;
+}
+
 function createCoreHlsBitrateMeter(): {
     add: (data: any) => void;
     mbps: () => number;
@@ -871,9 +877,7 @@ function startCorePlayback(
     session: number
 ): void {
     _coreHlsBitrate = null;
-    prevDecodedBytes = -1;
-    prevDecodedMediaTime = -1;
-    _coreNativeMbps = 0;
+    resetCoreNativeBitrate();
     var auto = playerMode === 3 && getDefaultPlayerMode() === 3;
     var mode = auto
         ? _coreAutoHlsUsed
@@ -1287,9 +1291,7 @@ export function stbStop(): void {
     cancelCoreSeek();
     cancelCoreAutoPlayback();
     _coreHlsBitrate = null;
-    prevDecodedBytes = -1;
-    prevDecodedMediaTime = -1;
-    _coreNativeMbps = 0;
+    resetCoreNativeBitrate();
     (window as any).forcePlay = false;
     video!.pause();
     video!.removeAttribute("src");
@@ -1953,6 +1955,9 @@ export function stbInit(): void {
                     "<br/>" + video!.videoWidth + "x" + video!.videoHeight
                 );
         });
+        // Seeks may finish between footer ticks; discard any sample spanning one.
+        video!.addEventListener("seeking", resetCoreNativeBitrate);
+        video!.addEventListener("seeked", resetCoreNativeBitrate);
         [
             "waiting",
             "loadstart",

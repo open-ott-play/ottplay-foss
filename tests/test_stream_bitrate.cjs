@@ -29,6 +29,10 @@ function media() {
         audioTracks: [],
         canPlayType: () => "probably",
         currentTime: 0,
+        emit(event) {
+            for (const callback of listeners[event] || [])
+                callback({ target: this, type: event });
+        },
         pause() {
             this.paused = true;
         },
@@ -55,6 +59,7 @@ function media() {
             this.readyState = 0;
             this.videoWidth = this.videoHeight = 0;
         },
+        style: {},
         videoHeight: 0,
         videoWidth: 0,
     };
@@ -113,10 +118,18 @@ function fixture() {
             },
             show() {},
         }),
+        addEventListener() {},
         clearInterval() {},
         clearTimeout() {},
         console: { error() {}, log() {}, warn() {} },
-        document: { body: { style: {} } },
+        document: {
+            body: { classList: { remove() {} }, style: {} },
+            getElementById(id) {
+                if (id === "video") return w.video;
+                if (id === "videopip") return w.videoPip;
+                return id === "vdiv" ? {} : null;
+            },
+        },
         execCHarr() {},
         Hls,
         innerHeight: 720,
@@ -272,6 +285,7 @@ test("a complete segment supersedes its parts and ignores subsequent duplicate p
 
 test("actual HLS footer hides guessed rates then renders measured media Mbps", () => {
     const f = fixture();
+    f.w.stbInit();
     f.w.setPlayerMode(1);
     f.w.stbPlay("http://127.0.0.1:8090/channel/test/index.m3u8");
     f.ready();
@@ -281,6 +295,8 @@ test("actual HLS footer hides guessed rates then renders measured media Mbps", (
     assert.match(f.info(), /(?:<br\/?>(?:\s*)|\s)8(?:\.0+)? Mbps/);
     f.players[0].bandwidthEstimate = 710e6;
     f.w.video.webkitVideoDecodedByteCount = 999e6;
+    f.w.video.emit("seeking");
+    f.w.video.emit("seeked");
     assert.match(f.info(), /8(?:\.0+)? Mbps/);
     assert.doesNotMatch(f.info(), /(?:700|710|90) Mbps/);
 });
@@ -354,6 +370,34 @@ test("starting another native channel clears cumulative decoded-byte samples", (
     f.w.video.currentTime = 2;
     f.w.video.webkitVideoDecodedByteCount = 100e6;
     assert.match(f.info(), /8(?:\.0+)? Mbps/);
+});
+
+test("native seek events reset the baseline even between footer ticks", () => {
+    for (const tickDuringSeek of [false, true]) {
+        const f = fixture();
+        f.w.stbInit();
+        f.w.setPlayerMode(0);
+        f.w.stbPlay("native.mp4");
+        f.ready();
+        f.w.video.currentTime = 1;
+        f.w.video.webkitVideoDecodedByteCount = 1e6;
+        f.info();
+        f.w.video.currentTime = 2;
+        f.w.video.webkitVideoDecodedByteCount = 2e6;
+        assert.match(f.info(), /8(?:\.0+)? Mbps/);
+        f.w.stbSetPosTime(30);
+        f.w.video.seeking = true;
+        f.w.video.emit("seeking");
+        if (tickDuringSeek) f.info();
+        f.w.video.seeking = false;
+        f.w.video.emit("seeked");
+        f.w.video.currentTime = 31;
+        f.w.video.webkitVideoDecodedByteCount = 3e6;
+        assert.doesNotMatch(f.info(), /Mbps/);
+        f.w.video.currentTime = 32;
+        f.w.video.webkitVideoDecodedByteCount = 4e6;
+        assert.match(f.info(), /8(?:\.0+)? Mbps/);
+    }
 });
 
 let failures = 0;
