@@ -329,6 +329,8 @@ fn is_effectively_fullscreen(window: &tauri::Window) -> Result<bool, String> {
 /// Spaces and simple FS, then restores the pre-enter outer frame so L/Escape
 /// cannot leave the window stuck at monitor size. Other platforms keep
 /// `set_fullscreen`.
+/// Called from async IPC commands: macOS focus restoration waits for the main
+/// dispatch queue, so this must not run on the main thread.
 pub fn apply_fullscreen(
     _app: &tauri::AppHandle,
     window: &tauri::Window,
@@ -384,6 +386,22 @@ pub fn apply_fullscreen(
                     sync_window_queue(window);
                 }
             }
+        }
+        // Tao's fullscreen style changes make its container NSView the first
+        // responder, taking keyboard input away from WKWebView. Focus the
+        // webview, not just the window (WebviewWindow::set_focus only focuses
+        // the native window). Exit restores the style on the GCD main queue;
+        // the Tao getter barrier above does not drain that queue. Run the final
+        // focus there too, after the style update, and wait before acknowledging
+        // the command so another fullscreen key can be delivered immediately.
+        use tauri::Manager;
+        if let Some(webview_window) = _app.get_webview_window(window.label()) {
+            dispatch2::DispatchQueue::main().exec_sync(move || {
+                let webview: &tauri::Webview = webview_window.as_ref();
+                if let Err(error) = webview.set_focus() {
+                    tracing::warn!(%error, "could not restore fullscreen webview focus");
+                }
+            });
         }
         return Ok(());
     }

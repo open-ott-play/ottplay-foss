@@ -138,6 +138,16 @@ Run on **macOS / Windows / Linux** desktop window. Skip rows that need credentia
 - [ ] App launches without native crash; web UI paints
 - [ ] Settings open (F2 / equivalent)
 - [ ] Window title / size / position behave normally
+- [ ] With menus closed, press `L` to enter fullscreen, then `L` again to restore the original window size without clicking or opening Menu
+- [ ] Repeat `L` → `Escape` several times; Escape exits fullscreen without opening the app-exit dialog, and the next key still reaches the player
+- [ ] Repeat after clicking the video and after opening/closing Menu; keyboard behavior must not depend on the overlay
+
+On macOS, this checks native WebView focus as well as fullscreen geometry.
+Tao changes the window style when entering/exiting simple fullscreen and can
+make its container NSView the first responder. The fullscreen command must
+restore focus to the WebView on the macOS main dispatch queue after the deferred
+style update; otherwise exit can steal focus again. A DOM keyboard test or
+focusing only the native window does not verify this behavior.
 
 ### B. Playback
 
