@@ -11,6 +11,7 @@ pub mod m3u;
 pub mod native_xmltv;
 mod proxy;
 pub mod tmdb;
+pub mod vportal;
 pub mod xmltv;
 
 // ---------------------------------------------------------------------------

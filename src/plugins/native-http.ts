@@ -67,15 +67,26 @@ function installNativeHttpTransport(
         var isCompanionProxy = !remote && /\/m3u\/cp\.php$/.test(path);
         var isExternalMatch =
             remote && /\/m3u\/match-(?:channels|logos)$/.test(path);
+        var types: string[] = opts.dataTypes || [];
+        // VPortal explicitly opts its JSON POST protocol into the native bridge.
+        // Keep unrelated provider POSTs on their existing transport.
+        var isVPortalRequest =
+            opts.vportalRequest === true &&
+            remote &&
+            method === "POST" &&
+            /^application\/json(?:\s*;|$)/i.test(
+                String(opts.contentType || "")
+            ) &&
+            types.indexOf("json") !== -1;
         if (
             !(
                 isCompanionProxy ||
-                (remote && (method === "GET" || isExternalMatch))
+                (remote && (method === "GET" || isExternalMatch)) ||
+                isVPortalRequest
             )
         )
             return;
 
-        var types: string[] = opts.dataTypes || [];
         // A playlist can have an incorrect JavaScript MIME type. jQuery 1.x
         // otherwise evaluates it (even for HTTP errors) during MIME inference.
         opts.contents.script = false;

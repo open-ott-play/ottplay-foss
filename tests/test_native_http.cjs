@@ -102,6 +102,29 @@ function finished(xhr) {
 }
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// Ordinary XHR is an in-memory fixture, so an unhandled VPortal POST cannot
+// silently touch the network while the bridge-selection regression runs.
+function fallbackXhr() {
+    return {
+        abort() {},
+        getAllResponseHeaders() {
+            return "Content-Type: application/json\r\n";
+        },
+        open() {},
+        readyState: 0,
+        responseText: "{}",
+        send() {
+            setTimeout(() => {
+                this.readyState = 4;
+                if (this.onreadystatechange) this.onreadystatechange();
+            }, 0);
+        },
+        setRequestHeader() {},
+        status: 200,
+        statusText: "OK",
+    };
+}
+
 async function run(platform) {
     testStage = `${platform} jQuery setup`;
     const calls = [];
@@ -424,6 +447,105 @@ async function run(platform) {
         assert.equal(calls.at(-1).args.body, "{}\n\t\nchannels");
         assert.equal(calls.at(-1).args.method, "POST");
 
+        testStage = "VPortal opt-in through the installed native transport";
+        let ordinaryXhrs = 0;
+        const originalXhr = $.ajaxSettings.xhr;
+        $.ajaxSettings.xhr = () => {
+            ordinaryXhrs++;
+            return fallbackXhr();
+        };
+        const nonPortalPosts = [
+            {},
+            { vportalRequest: "true" },
+            { contentType: "text/plain", vportalRequest: true },
+            { contentType: "application/jsonx", vportalRequest: true },
+            { dataType: "text", vportalRequest: true },
+            { type: "PUT", vportalRequest: true },
+            { url: "/ordinary-local-post", vportalRequest: true },
+        ];
+        const beforeOrdinaryPosts = calls.length;
+        for (const overrides of nonPortalPosts) {
+            const fallback = await finished(
+                $.ajax({
+                    contentType: "application/json",
+                    data: "{}",
+                    dataType: "json",
+                    type: "POST",
+                    url: "https://portal.example/api/v1/",
+                    ...overrides,
+                })
+            );
+            assert.equal(fallback.ok, true);
+        }
+        assert.equal(
+            calls.length,
+            beforeOrdinaryPosts,
+            "Unmarked/non-JSON POSTs keep their existing XHR transport"
+        );
+        assert.equal(ordinaryXhrs, nonPortalPosts.length);
+
+        w.eval(
+            compile(
+                functions("src/utils/helpers.ts", [
+                    "metadataText",
+                    "metadataImageUrl",
+                ])
+            )
+        );
+        w.eval(compile(read("src/plugins/vportal.ts")));
+        w._ = (text) => text;
+        w.sPageSize = 30;
+        w._mediaLoadState = {};
+        w.keys = { EXIT: 2, RETURN: 1, STOP: 3 };
+        w.alert = (message) => {
+            throw Error(`Unexpected VPortal error: ${message}`);
+        };
+        reply = (args) => {
+            assert.equal(args.url, "http://portal.example/api/v1/");
+            assert.equal(args.method, "POST");
+            assert.match(args.headers["Content-Type"], /^application\/json;/);
+            assert.deepEqual(JSON.parse(args.body), {
+                app: "ott-play",
+                key: "fixture-portal-key",
+                limit: 300,
+            });
+            return response(
+                JSON.stringify({
+                    items: [
+                        {
+                            title: "Native fixture film",
+                            type: "stream",
+                            url: "https://cdn.example/film.mp4",
+                        },
+                    ],
+                    type: "videoportal",
+                })
+            );
+        };
+        const client = w.createVPortalClient(
+            "portal::[key:fixture-portal-key]http://portal.example/api/v1/",
+            {
+                sourceId: `native-fixture-${platform}`,
+            }
+        );
+        const beforePortal = calls.length;
+        await new Promise((resolve) => client.load("", resolve));
+        assert.equal(calls.length, beforePortal + 1);
+        assert.equal(calls.at(-1).command, "proxy_http");
+        assert.equal(
+            ordinaryXhrs,
+            nonPortalPosts.length,
+            "VPortal must not use WebView XHR"
+        );
+        assert.equal(w.mediaRecords.length, 1);
+        assert.equal(w.mediaRecords[0].title, "Native fixture film");
+        assert.equal(
+            w.mediaRecords[0].stream_url,
+            "https://cdn.example/film.mp4"
+        );
+        client.dispose();
+        $.ajaxSettings.xhr = originalXhr;
+
         let settle;
         testStage = "abort and timeout callbacks";
         let successes = 0;
@@ -492,7 +614,7 @@ async function run(platform) {
     assert.equal(webTransportInstalled, false);
     browser.close();
     console.log(
-        `OK: ${platform} HTTP with real jQuery 1.11.1, provider JSON/JSONP, status, callbacks, abort/timeout and browser isolation`
+        `OK: ${platform} HTTP with real jQuery 1.11.1, provider JSON/JSONP, VPortal JSON POST opt-in, status, callbacks, abort/timeout and browser isolation`
     );
 }
 run("tauri")

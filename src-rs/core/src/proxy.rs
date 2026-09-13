@@ -163,12 +163,8 @@ impl Policy {
     }
 }
 
-async fn request_pinned(
-    url: Url,
-    ua: &str,
-    addresses: &[SocketAddr],
-) -> Result<reqwest::Response, String> {
-    let client = Client::builder()
+fn pinned_client(url: &Url, addresses: &[SocketAddr]) -> Result<Client, String> {
+    Client::builder()
         .no_proxy()
         .redirect(redirect::Policy::none())
         .timeout(TIMEOUT)
@@ -176,13 +172,47 @@ async fn request_pinned(
         // The connector cannot perform a second, potentially rebound DNS lookup.
         .resolve_to_addrs(url.host_str().ok_or("Invalid proxy host")?, addresses)
         .build()
-        .map_err(|_| "Cannot create proxy client")?;
-    client
+        .map_err(|_| "Cannot create proxy client".into())
+}
+
+async fn request_pinned(
+    url: Url,
+    ua: &str,
+    addresses: &[SocketAddr],
+) -> Result<reqwest::Response, String> {
+    pinned_client(&url, addresses)?
         .get(url)
         .header("User-Agent", ua)
         .send()
         .await
         .map_err(|_| "Proxy upstream request failed".into())
+}
+
+async fn read_bounded(
+    mut response: reqwest::Response,
+    max_bytes: usize,
+) -> Result<(HeaderMap, Vec<u8>), String> {
+    if response
+        .content_length()
+        .is_some_and(|size| size > max_bytes as u64)
+    {
+        return Err("Proxy response exceeds byte limit".into());
+    }
+    let headers = response.headers().clone();
+    let mut body = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(|error| {
+        if error.is_timeout() {
+            "Proxy request timed out"
+        } else {
+            "Proxy response read failed"
+        }
+    })? {
+        if chunk.len() > max_bytes - body.len() {
+            return Err("Proxy response exceeds byte limit".into());
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok((headers, body))
 }
 
 async fn fetch_checked<F, Fut>(
@@ -197,7 +227,7 @@ where
 {
     for hop in 0..=MAX_REDIRECTS {
         let addresses = check(url.clone()).await?;
-        let mut response = request_pinned(url.clone(), ua, &addresses).await?;
+        let response = request_pinned(url.clone(), ua, &addresses).await?;
         let status = response.status();
         if matches!(status.as_u16(), 301 | 302 | 303 | 307 | 308) {
             if hop == MAX_REDIRECTS {
@@ -214,25 +244,7 @@ where
         if !status.is_success() {
             return Err(format!("Upstream {status}"));
         }
-        if response
-            .content_length()
-            .is_some_and(|size| size > max_bytes as u64)
-        {
-            return Err("Proxy response exceeds byte limit".into());
-        }
-        let headers = response.headers().clone();
-        let mut body = Vec::new();
-        while let Some(chunk) = response
-            .chunk()
-            .await
-            .map_err(|_| "Proxy response read failed")?
-        {
-            if chunk.len() > max_bytes - body.len() {
-                return Err("Proxy response exceeds byte limit".into());
-            }
-            body.extend_from_slice(&chunk);
-        }
-        return Ok((headers, body));
+        return read_bounded(response, max_bytes).await;
     }
     Err("Too many proxy redirects".into())
 }
@@ -269,10 +281,89 @@ pub(crate) async fn fetch(raw: &str, ua: &str) -> Result<(HeaderMap, Vec<u8>), S
     .await
 }
 
+async fn post_json_checked<F, Fut>(
+    mut url: Url,
+    body: &[u8],
+    mut check: F,
+    max_bytes: usize,
+) -> Result<(reqwest::StatusCode, Vec<u8>), String>
+where
+    F: FnMut(Url) -> Fut,
+    Fut: Future<Output = Result<Vec<SocketAddr>, String>>,
+{
+    for hop in 0..=MAX_REDIRECTS {
+        let addresses = check(url.clone()).await?;
+        let response = pinned_client(&url, &addresses)?
+            .post(url.clone())
+            .header(reqwest::header::USER_AGENT, "OTT-play-FOSS/1.0")
+            .header(reqwest::header::CONTENT_TYPE, "application/json")
+            .header(reqwest::header::ACCEPT, "application/json")
+            .body(body.to_vec())
+            .send()
+            .await
+            .map_err(|error| {
+                if error.is_timeout() {
+                    "Proxy request timed out"
+                } else {
+                    "Proxy upstream request failed"
+                }
+            })?;
+        let status = response.status();
+        if matches!(status.as_u16(), 301 | 302 | 303 | 307 | 308) {
+            if hop == MAX_REDIRECTS {
+                return Err("Too many proxy redirects".into());
+            }
+            let location = response
+                .headers()
+                .get(reqwest::header::LOCATION)
+                .and_then(|value| value.to_str().ok())
+                .ok_or("Invalid proxy redirect")?;
+            let next = redirect_url(&url, location)?;
+            // The JSON body contains the access key. Never forward it to another
+            // origin. Same-origin redirects retain the VPortal POST protocol and
+            // still repeat DNS/address validation before connecting.
+            if next.origin() != url.origin()
+                || next.username() != url.username()
+                || next.password() != url.password()
+            {
+                return Err("VPortal redirect must remain on the same origin".into());
+            }
+            url = next;
+            continue;
+        }
+        let (_, body) = read_bounded(response, max_bytes).await?;
+        // Preserve non-success JSON responses so callers can report portal errors.
+        return Ok((status, body));
+    }
+    Err("Too many proxy redirects".into())
+}
+
+pub(crate) async fn post_json(
+    raw: &str,
+    body: &[u8],
+) -> Result<(reqwest::StatusCode, Vec<u8>), String> {
+    limited(&REQUESTS, async {
+        let url = http_url(raw)?;
+        let policy =
+            Policy::parse(&std::env::var("OTTPLAY_PROXY_LAN_ORIGINS").unwrap_or_default())?;
+        post_json_checked(
+            url,
+            body,
+            |url| {
+                let policy = policy.clone();
+                async move { policy.resolve(&url).await }
+            },
+            MAX_BYTES,
+        )
+        .await
+    })
+    .await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
 
     #[test]
     fn public_destinations_exclude_special_ipv4_ipv6_and_numeric_aliases() {
@@ -373,12 +464,118 @@ mod tests {
         let address = listener.local_addr().unwrap();
         let task = tokio::spawn(async move {
             let (mut socket, _) = listener.accept().await.unwrap();
-            let mut request = vec![0; 4096];
-            let length = socket.read(&mut request).await.unwrap();
+            let request = read_request(&mut socket).await;
             socket.write_all(response).await.unwrap();
-            String::from_utf8_lossy(&request[..length]).to_string()
+            request
         });
         (address, task)
+    }
+
+    async fn read_request(socket: &mut tokio::net::TcpStream) -> String {
+        let mut reader = tokio::io::BufReader::new(socket);
+        let mut request = String::new();
+        let mut length = 0;
+        loop {
+            let mut line = String::new();
+            assert!(reader.read_line(&mut line).await.unwrap() > 0);
+            if let Some(value) = line.to_ascii_lowercase().strip_prefix("content-length:") {
+                length = value.trim().parse().unwrap();
+            }
+            request.push_str(&line);
+            if line == "\r\n" {
+                break;
+            }
+        }
+        let mut body = vec![0; length];
+        reader.read_exact(&mut body).await.unwrap();
+        request.push_str(std::str::from_utf8(&body).unwrap());
+        request
+    }
+
+    #[tokio::test]
+    async fn json_post_pins_destination_and_preserves_body_and_upstream_errors() {
+        let (address, request) = fixture(b"HTTP/1.1 403 Forbidden\r\nContent-Type: application/json\r\nContent-Length: 16\r\nConnection: close\r\n\r\n{\"type\":\"error\"}").await;
+        let url = http_url(&format!(
+            "http://post-fixture.invalid:{}/api/v1/",
+            address.port()
+        ))
+        .unwrap();
+        let body =
+            r#"{"app":"ott-play","key":"fixture-secret","query":"Тест","limit":100}"#.as_bytes();
+        let (status, response) =
+            post_json_checked(url, body, |_| async { Ok(vec![address]) }, MAX_BYTES)
+                .await
+                .unwrap();
+        assert_eq!(status, reqwest::StatusCode::FORBIDDEN);
+        assert_eq!(response, br#"{"type":"error"}"#);
+        let request = request.await.unwrap();
+        let (headers, received_body) = request.split_once("\r\n\r\n").unwrap();
+        assert!(headers.starts_with("POST /api/v1/ HTTP/1.1\r\n"));
+        assert!(headers
+            .to_ascii_lowercase()
+            .contains("content-type: application/json"));
+        assert!(headers
+            .to_ascii_lowercase()
+            .contains(&format!("host: post-fixture.invalid:{}", address.port())));
+        assert!(!headers.contains("fixture-secret"));
+        assert_eq!(received_body.as_bytes(), body);
+    }
+
+    #[tokio::test]
+    async fn json_post_does_not_forward_keys_across_origins() {
+        for response in [
+            b"HTTP/1.1 307 Temporary Redirect\r\nLocation: http://other.example/api\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".as_slice(),
+            b"HTTP/1.1 302 Found\r\nLocation: http://169.254.169.254/api\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".as_slice(),
+        ] {
+            let (address, request) = fixture(response).await;
+            let url = http_url(&format!("http://post-fixture.invalid:{}/api", address.port())).unwrap();
+            let error = post_json_checked(url, br#"{"key":"fixture-secret"}"#, |_| async { Ok(vec![address]) }, MAX_BYTES).await.unwrap_err();
+            assert_eq!(error, "VPortal redirect must remain on the same origin");
+            assert!(!error.contains("fixture-secret"));
+            request.await.unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn json_post_retains_protocol_and_rechecks_same_origin_redirects() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let task = tokio::spawn(async move {
+            let mut requests = Vec::new();
+            for response in [
+                "HTTP/1.1 301 Moved Permanently\r\nLocation: /api/v1/\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}",
+            ] {
+                let (mut socket, _) = listener.accept().await.unwrap();
+                requests.push(read_request(&mut socket).await);
+                socket.write_all(response.as_bytes()).await.unwrap();
+            }
+            requests
+        });
+        let url = http_url(&format!(
+            "http://post-fixture.invalid:{}/api/v1",
+            address.port()
+        ))
+        .unwrap();
+        let mut checked = Vec::new();
+        let (_, body) = post_json_checked(
+            url,
+            br#"{"key":"fixture-secret"}"#,
+            |url| {
+                checked.push(url.path().to_string());
+                async move { Ok(vec![address]) }
+            },
+            MAX_BYTES,
+        )
+        .await
+        .unwrap();
+        assert_eq!(body, b"{}");
+        assert_eq!(checked, ["/api/v1", "/api/v1/"]);
+        let requests = task.await.unwrap();
+        for request in requests {
+            assert!(request.starts_with("POST /api/v1"));
+            assert!(request.ends_with(r#"{"key":"fixture-secret"}"#));
+        }
     }
 
     #[tokio::test]

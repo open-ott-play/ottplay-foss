@@ -547,6 +547,46 @@ function fixture() {
     assert(!c.calls.some((call) => call[0] === "seek"));
 }
 
+// A VPortal quality/signed-URL refresh keeps resume history and actually switches streams.
+{
+    const c = fixture();
+    const old = {
+        current: 125,
+        request: { cmd: "play", id: 42 },
+        stream_url: "https://video.invalid/old.mp4",
+        title: "Film",
+        vportalSource: "source-a",
+    };
+    c.medHistory = [old];
+    c.playType = -1e11;
+    c._playMedia({
+        ...old,
+        stream_url: "https://video.invalid/quality-hd.mp4",
+    });
+    assert(
+        c.calls.some(
+            (call) => call[0] === "play" && call[1].endsWith("quality-hd.mp4")
+        )
+    );
+    assert.equal(c.medHistory.length, 1);
+    assert.equal(old.stream_url, "https://video.invalid/old.mp4");
+    c.confirm();
+    assert.deepEqual(c.calls.at(-1), ["seek", 120]);
+    const plays = c.calls.filter((call) => call[0] === "play").length;
+    c._playMedia({ ...c.medHistory[0] });
+    assert.equal(c.calls.filter((call) => call[0] === "play").length, plays);
+    c._playMedia({
+        ...old,
+        stream_url: "https://video.invalid/another.mp4",
+        vportalSource: "source-b",
+    });
+    assert.equal(
+        c.medHistory.length,
+        2,
+        "Different portal sources must not share a resume identity"
+    );
+}
+
 // Edem lazy descriptions fetch pages: one Info action must trigger only one request.
 {
     const c = fixture();
