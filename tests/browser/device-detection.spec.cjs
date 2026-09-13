@@ -1,0 +1,177 @@
+// Browser emulation of UA/native API signals, not firmware or decoder emulation.
+// Exercise the shipped HTML loader, built classic bundle and real STB adapter.
+const fs = require("node:fs");
+const path = require("node:path");
+const { test, expect } = require("@playwright/test");
+const fixtures = require("../fixtures/device-detection.json");
+
+const adapterRoot = path.resolve(__dirname, "../../stb");
+const adapterNames = [];
+function collectAdapters(directory, prefix = "") {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        const name = prefix + entry.name;
+        const child = path.join(directory, entry.name);
+        if (fs.existsSync(path.join(child, "stb.js"))) adapterNames.push(name);
+        else collectAdapters(child, name + "/");
+    }
+}
+collectAdapters(adapterRoot);
+
+// Deliberately independent expected remote codes: reading the adapter's own
+// values as expectations would miss loading another valid but wrong adapter.
+const remoteOverrides = {
+    android: { DOWN: 20, ENTER: 66, RETURN: 4 },
+    "lg/webos": { RETURN: 461 },
+    "samsung/maple": { DOWN: 5, ENTER: 12, RETURN: 88 },
+    "samsung/tizen": { ENTER: 10008, RETURN: 10009 },
+};
+const routeFixtures = adapterNames.sort().map((name) => ({
+    expectedDevice: name,
+    name: "explicit adapter route " + name,
+    pathname: "/f/" + name + "/",
+    userAgent:
+        "Mozilla/5.0 (SmartTV; Linux; Web0S) AppleWebKit/537.36 Chrome/120.0 Safari/537.36",
+}));
+
+async function remoteKey(page, keyCode, key) {
+    // Chromium's input dispatch emits a browser keyboard event with the TV's
+    // numeric code, through window.onkeydown and the real list key handler.
+    const cdp = await page.context().newCDPSession(page);
+    try {
+        const event = {
+            key,
+            nativeVirtualKeyCode: keyCode,
+            windowsVirtualKeyCode: keyCode,
+        };
+        await cdp.send("Input.dispatchKeyEvent", {
+            ...event,
+            type: "rawKeyDown",
+        });
+        await cdp.send("Input.dispatchKeyEvent", { ...event, type: "keyUp" });
+    } finally {
+        await cdp.detach();
+    }
+}
+
+for (const fixture of fixtures.concat(routeFixtures)) {
+    test.describe(fixture.name, () => {
+        test.use({ userAgent: fixture.userAgent });
+        test("boots the selected adapter and handles remote navigation", async ({
+            page,
+            context,
+            baseURL,
+        }, testInfo) => {
+            const localOrigin = new URL(baseURL).origin;
+            const loadedScripts = [];
+            const blockedRequests = [];
+            const pageErrors = [];
+            page.on("pageerror", (error) => pageErrors.push(error.message));
+            page.on("response", (response) => {
+                if (
+                    response.request().resourceType() === "script" &&
+                    response.ok()
+                ) {
+                    loadedScripts.push(new URL(response.url()).pathname);
+                }
+            });
+            await context.route("**/*", async (route) => {
+                if (new URL(route.request().url()).origin === localOrigin) {
+                    await route.continue();
+                } else {
+                    // In particular, the optional PC HLS CDN must fall back to
+                    // the packaged library. Never contact live APIs/providers.
+                    blockedRequests.push(route.request().url());
+                    await route.abort("blockedbyclient");
+                }
+            });
+            await context.routeWebSocket("**/*", (socket) => {
+                blockedRequests.push(socket.url());
+                socket.close();
+            });
+            await context.addInitScript((capability) => {
+                localStorage.setItem("ottplaylang", "_eng");
+                if (capability === "mag") {
+                    window.gSTB = {
+                        GetDeviceMacAddress: function () {
+                            return "02:00:00:00:00:01";
+                        },
+                        GetDeviceModel: function () {
+                            return "MAG250";
+                        },
+                    };
+                } else if (capability === "empty-gstb") {
+                    window.gSTB = {};
+                } else if (capability === "throwing-gstb") {
+                    Object.defineProperty(window, "gSTB", {
+                        get: function () {
+                            throw new Error("Native bridge unavailable");
+                        },
+                    });
+                }
+            }, fixture.capability);
+
+            await page.goto(fixture.pathname, { waitUntil: "load" });
+            await expect(page.locator("#listCaption")).toHaveText(
+                "First-run setup"
+            );
+            await expect(page.locator("#list")).toBeVisible();
+            await expect(page.locator("#boot-log")).toContainText(
+                "device: " + fixture.expectedDevice
+            );
+            const remote = {
+                DOWN: 40,
+                ENTER: 13,
+                RETURN: 8,
+                ...remoteOverrides[fixture.expectedDevice],
+            };
+            expect(
+                await page.evaluate(() => ({
+                    back: window.keys.RETURN,
+                    device: window.ott_device,
+                    down: window.keys.DOWN,
+                    enter: window.keys.ENTER,
+                    handlerInstalled: window.onkeydown === window.keyHandler,
+                }))
+            ).toEqual({
+                back: remote.RETURN,
+                device: fixture.expectedDevice,
+                down: remote.DOWN,
+                enter: remote.ENTER,
+                handlerInstalled: true,
+            });
+            expect(loadedScripts).toContain("/dist/stbPlayer.js");
+            expect(
+                loadedScripts.filter((url) => /^\/stb\/.+\/stb\.js$/.test(url))
+            ).toEqual(["/stb/" + fixture.expectedDevice + "/stb.js"]);
+
+            // Browser keyboard input must move the first-run selection. Maple
+            // and Android emit their platform keycodes for the same arrow.
+            const firstDetail = await page.locator("#listDetail").innerText();
+            if (remote.DOWN === 40) await page.keyboard.press("ArrowDown");
+            else await remoteKey(page, remote.DOWN, "ArrowDown");
+            await expect(page.locator("#listDetail")).not.toHaveText(
+                firstDetail
+            );
+            // The platform-specific Back code must reach firstRun's handler,
+            // which opens language selection. Then its Enter returns to setup.
+            await remoteKey(page, remote.RETURN, "BrowserBack");
+            await expect(page.locator("#listCaption")).toHaveText(
+                "Choose language"
+            );
+            await remoteKey(page, remote.ENTER, "Enter");
+            await expect(page.locator("#listCaption")).toHaveText(
+                "First-run setup"
+            );
+            expect(pageErrors).toEqual([]);
+            await testInfo.attach("device-runtime", {
+                body: JSON.stringify(
+                    { blockedRequests, fixture, loadedScripts, pageErrors },
+                    null,
+                    2
+                ),
+                contentType: "application/json",
+            });
+        });
+    });
+}
