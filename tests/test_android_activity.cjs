@@ -218,6 +218,7 @@ try {
         "cancelCoreSeek",
         "cancelCoreAutoPlayback",
         "destroyCoreShaka",
+        "resetCoreNativeBitrate",
         "stbContinue",
         "stbPause",
         "stbIsPlaying",
