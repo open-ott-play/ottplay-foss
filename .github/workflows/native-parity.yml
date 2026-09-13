@@ -22,6 +22,8 @@ on:
       - 'capacitor.config.*'
       - 'vite.config.*'
       - '.github/workflows/native-parity.yml'
+      - 'scripts/ci-android-install-sdk.sh'
+      - '.github/release-tests/test_android_sdk_install.py'
   workflow_dispatch:
 
 permissions:
@@ -43,6 +45,8 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+      - name: Install the release Android SDK components
+        run: bash scripts/ci-android-install-sdk.sh
       - run: npm ci --ignore-scripts
       - run: node tests/test_android_activity.cjs
       - run: npm run build && npx cap sync android
