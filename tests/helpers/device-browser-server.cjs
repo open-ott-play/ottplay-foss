@@ -45,6 +45,27 @@ http.createServer((request, response) => {
         response.writeHead(400).end();
         return;
     }
+    // Log only route classes, never playlist bodies, channel IDs or query data.
+    if (diagnostics) {
+        const epgRoute = /^\/m3u\/(?:match-channels|match-logos|cp\.php)$/.test(
+            pathname
+        )
+            ? pathname
+            : pathname.startsWith("/epg/")
+              ? "/epg/:channel"
+              : "";
+        if (epgRoute)
+            response.on("finish", () => {
+                console.log(
+                    "Device EPG request: " +
+                        request.method +
+                        " " +
+                        epgRoute +
+                        " -> " +
+                        response.statusCode
+                );
+            });
+    }
     if (request.method !== "GET" && request.method !== "HEAD") {
         response.writeHead(405).end();
         return;

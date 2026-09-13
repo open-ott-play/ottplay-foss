@@ -63,7 +63,8 @@ by CI or redistributed in this repository.
 The test launcher follows LG's
 [hosted web app](https://webostv.developer.lge.com/develop/getting-started/web-app-types)
 model. It redirects to the built player's server root so automatic detection is
-exercised without forcing `/f/lg/webos/`. Prepare it and leave the server running:
+exercised without forcing `/f/lg/webos/`. For detection and button checks,
+prepare it and leave the static test server running:
 
 ```sh
 npm run build
@@ -71,12 +72,33 @@ node scripts/prepare-webos-simulator.cjs
 node tests/helpers/device-browser-server.cjs
 ```
 
+The static test server has no companion APIs: `/m3u/match-channels` returns 405
+and `/epg/*` returns 404. Direct streams can play while the programme guide is
+empty. Using the same playlist URL in Chrome and Simulator does not guarantee
+the same EPG backend; compare the **player's origin** and its EPG server setting.
+
+For playback and EPG checks, serve the current [Mode A package](mode-a-test-bundle.md)
+with `ottplay-server`, configure its XMLTV sources using `EPG_URLS`, and point the
+launcher at that server instead. For example, if the companion runs on 8095:
+
+```sh
+OTTP_DEVICE_TEST_PORT=8095 node scripts/prepare-webos-simulator.cjs
+```
+
+Do not also start the static test server on that port. Use **Close App** and
+launch the prepared app again to load the new target. Storage is origin-specific,
+so a different port may require configuring the test playlist again. Check an
+actual channel's programme data; a successful `/health` response alone does not
+mean that XMLTV loading and matching have finished.
+
 For a visible snapshot of the actual runtime profile and button configuration,
 start the server with `OTTP_DEVICE_TEST_DIAGNOSTICS=1` instead. The test server
 adds a read-only badge and logs `Device runtime: {...}` with the actual UA,
 adapter, Left/Right/Back codes and Left/Right action indices. It reads no
 provider credentials and does not alter the build, settings or detection.
 Diagnostics are disabled by default, including in the Chromium CI matrix.
+The diagnostic server also logs EPG route classes and HTTP status codes, without
+playlist bodies, channel identifiers or query strings.
 
 In Simulator, use **File > Launch App** and select
 `build/device-webos-simulator`. Alternatively, install the official

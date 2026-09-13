@@ -40,8 +40,9 @@ fs.writeFileSync(
         '/");</script></body></html>\n'
 );
 console.log("Simulator app directory: " + destination);
+console.log("Player target: http://127.0.0.1:" + port + "/");
 console.log(
-    "Start node tests/helpers/device-browser-server.cjs in another terminal."
+    "Use ottplay-server for EPG, or the static device-browser-server.cjs for detection/button checks only."
 );
 console.log(
     "Then use the LG Simulator File > Launch App menu to select this directory."
