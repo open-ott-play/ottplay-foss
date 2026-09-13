@@ -6,6 +6,7 @@ const { pathToFileURL } = require("node:url");
 const { spawnSync } = require("node:child_process");
 const vm = require("node:vm");
 const { JSDOM } = require("jsdom");
+const { inlineScripts } = require("../scripts/html-scripts.cjs");
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay Samsung launch "));
 const root = path.join(tmp, "project [test] with spaces");
@@ -345,9 +346,10 @@ try {
     }
     function redirectTarget() {
         const html = fs.readFileSync(generatedEntry, "utf8");
-        assert.equal((html.match(/<\/script>/g) || []).length, 1);
+        const scripts = inlineScripts(html);
+        assert.equal(scripts.length, 1);
         let target;
-        vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1], {
+        vm.runInNewContext(scripts[0], {
             location: {
                 replace: (url) => {
                     target = url;
