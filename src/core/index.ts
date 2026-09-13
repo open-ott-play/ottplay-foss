@@ -28,7 +28,7 @@ export var video: HTMLVideoElement | null = null;
 export var videoPip: HTMLVideoElement | null = null;
 /**
  * Active playback engine mode:
- * 0 = native HTML5, 1 = hls.js, 2 = shaka-player, 3 = webOS/Tauri Auto.
+ * 0 = native HTML5, 1 = hls.js, 2 = shaka-player, 3 = per-stream Auto.
  */
 export var playerMode = 0;
 
@@ -49,12 +49,37 @@ export var playerModeNames =
         ? ["html5", "hls.js", "shaka", "auto"]
         : ["html5", "hls.js", "shaka"];
 
-/** Auto handles stream formats on webOS and is the default in Tauri. */
+/** Identify only the standalone Android TV test host, never a native app shell. */
+export function isOttplayTestWebView(): boolean {
+    if (typeof window === "undefined") return false;
+    var w = window as any;
+    try {
+        if (
+            w.ott_device !== "android" ||
+            typeof w.Capacitor !== "undefined" ||
+            typeof w.__ottNativeRuntime !== "undefined" ||
+            typeof w.Android !== "undefined" ||
+            typeof w.__TAURI__ !== "undefined" ||
+            typeof w.__TAURI_INTERNALS__ !== "undefined"
+        )
+            return false;
+        var ua = w.navigator && w.navigator.userAgent;
+        return (
+            typeof ua === "string" &&
+            /(?:^|\s)OttplayTestWebView\/1\.0(?=\s|$)/.test(ua)
+        );
+    } catch (_bridgeError) {
+        return false;
+    }
+}
+
+/** Auto handles stream formats on webOS, Tauri and the marked Android test host. */
 export function getDefaultPlayerMode(): number {
     return typeof window !== "undefined" &&
         ((window as any).ott_device === "lg/webos" ||
             (window as any).__TAURI__ ||
-            (window as any).__TAURI_INTERNALS__)
+            (window as any).__TAURI_INTERNALS__ ||
+            isOttplayTestWebView())
         ? 3
         : 0;
 }
@@ -149,6 +174,11 @@ function cancelCoreAutoPlayback(modeChange?: boolean): void {
 
 function coreAutoMode(url: string, media: HTMLVideoElement | null): number {
     if (/\.mpd(?:[?#]|$)/i.test(url)) return 2;
+    // This test WebView can advertise native HLS yet reject served manifests.
+    // Prefer MSE only in this host; native apps and working TV engines keep
+    // their existing native-first behavior and saved manual choices.
+    if (/\.m3u8(?:[?#]|$)/i.test(url) && isOttplayTestWebView())
+        return typeof Hls !== "undefined" && Hls.isSupported() ? 1 : 0;
     if (
         /\.m3u8(?:[?#]|$)/i.test(url) &&
         media &&
@@ -1805,7 +1835,8 @@ export function stbCSS(): void {
 
 /**
  * webOS always selects the engine per stream. Elsewhere, preserve explicit
- * provider preferences; choose Auto in Tauri or hls.js when native HLS is absent.
+ * provider preferences; choose Auto in Tauri/the Android test host, or hls.js
+ * when native HLS is absent.
  *
  * Side effects: May update `playerMode`; never changes the stored preference.
  */

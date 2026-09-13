@@ -174,6 +174,7 @@ function fixture(options = {}) {
         innerHeight: 720,
         innerWidth: 1280,
         Map: undefined,
+        navigator: { userAgent: options.userAgent || "" },
         ott_device: options.device || "pc",
         // The classic bundle still executes without Promise/Map/Set globals.
         Promise: undefined,
@@ -192,7 +193,9 @@ function fixture(options = {}) {
             return nextTimer;
         },
         shaka: { Player: Shaka },
+        ...options.globals,
     };
+    if (options.hlsMissing) delete w.Hls;
     w.window = w;
     vm.createContext(w);
     vm.runInContext(source, w);
@@ -303,6 +306,191 @@ test("webOS uses Auto for every requested mode while Tauri and NetCast preserve 
         assert.equal(tauri.w.playerMode, requested);
         assert.equal(tauri.preferences.sPlayers, String(requested));
     }
+});
+
+const testHost = {
+    device: "android",
+    tauri: false,
+    userAgent:
+        "Mozilla/5.0 (Linux; Android 16) Chrome/143.0.0.0 OttplayTestWebView/1.0",
+};
+
+test("Android test host marker is exact, bounded and independent of native product bridges", () => {
+    for (const userAgent of [
+        "OttplayTestWebView/1.0",
+        testHost.userAgent,
+        "Mozilla/5.0 OttplayTestWebView/1.0 Chrome/143",
+        "Mozilla/5.0\tOttplayTestWebView/1.0\tChrome/143",
+    ]) {
+        const f = fixture({ ...testHost, userAgent });
+        assert.equal(f.w.isOttplayTestWebView(), true);
+        assert.equal(f.w.getDefaultPlayerMode(), 3);
+        assert.deepEqual(Array.from(f.w.playerModeNames), [
+            "html5",
+            "hls.js",
+            "shaka",
+            "auto",
+        ]);
+    }
+    for (const userAgent of [
+        "Mozilla/5.0 (Linux; Android 16) Chrome/143.0.0.0",
+        "NotOttplayTestWebView/1.0",
+        "OttplayTestWebView/1.00",
+        "OttplayTestWebView/1.0.1",
+        "OttplayTestWebView/1.0suffix",
+        "OttplayTestWebView/1.0;Other",
+        "ottplaytestwebview/1.0",
+        "OttplayTestWebView/2.0",
+    ]) {
+        const f = fixture({ ...testHost, userAgent });
+        assert.equal(f.w.isOttplayTestWebView(), false, userAgent);
+        assert.equal(f.w.getDefaultPlayerMode(), 0);
+        assert.equal(f.w.playerModeNames.length, 3);
+        f.w.setPlayer();
+        f.w.stbPlay("old-android.m3u8");
+        assert.equal(f.w.video.src, "old-android.m3u8");
+        assert.equal(f.players.length, 0);
+    }
+    for (const device of ["pc", "lg/webos", "lg/netcast", "samsung/tizen"]) {
+        const f = fixture({ ...testHost, device });
+        assert.equal(f.w.isOttplayTestWebView(), false, device);
+    }
+    for (const bridge of [
+        "Capacitor",
+        "__ottNativeRuntime",
+        "Android",
+        "__TAURI__",
+        "__TAURI_INTERNALS__",
+    ]) {
+        const f = fixture({ ...testHost, globals: { [bridge]: {} } });
+        assert.equal(f.w.isOttplayTestWebView(), false, bridge);
+        assert.equal(
+            f.w.getDefaultPlayerMode(),
+            bridge.startsWith("__TAURI") ? 3 : 0
+        );
+        f.w.setPlayer();
+        f.w.stbPlay("native-product.m3u8");
+        ready(f.w.video, true);
+        f.advance(10000);
+        assert.equal(f.w.video.src, "native-product.m3u8", bridge);
+        assert.equal(
+            f.players.length,
+            0,
+            "native product behavior remains unchanged"
+        );
+    }
+    const guarded = fixture(testHost);
+    // Node's contextified global suppresses throwing getters; use a normal
+    // window object here to exercise an unavailable native bridge faithfully.
+    guarded.w.window = Object.create(guarded.w);
+    Object.defineProperty(guarded.w.window, "Android", {
+        get() {
+            throw new Error("native bridge unavailable");
+        },
+    });
+    assert.equal(guarded.w.isOttplayTestWebView(), false);
+    assert.equal(guarded.w.getDefaultPlayerMode(), 0);
+});
+
+test("marked Android defaults to Auto without replacing saved manual engine choices", () => {
+    const fresh = fixture(testHost);
+    fresh.w.setPlayerMode(fresh.w.getDefaultPlayerMode());
+    fresh.w.setPlayer();
+    assert.equal(fresh.w.playerMode, 3);
+    assert.deepEqual(fresh.preferences, {});
+    for (const savedPlayerMode of [0, 1, 2]) {
+        const f = fixture({ ...testHost, savedPlayerMode });
+        f.w.setPlayer();
+        f.w.stbPlay("manual-android.m3u8");
+        assert.equal(f.w.playerMode, savedPlayerMode);
+        assert.equal(f.players.length, savedPlayerMode === 1 ? 1 : 0);
+        assert.equal(f.shakaPlayers.length, savedPlayerMode === 2 ? 1 : 0);
+        assert.equal(f.preferences.sPlayers, String(savedPlayerMode));
+        if (savedPlayerMode === 0) {
+            f.w.video.error = { code: 4 };
+            f.w.video.emit("error");
+            f.advance(10000);
+            assert.equal(
+                f.players.length,
+                0,
+                "explicit HTML5 remains an explicit choice"
+            );
+        }
+    }
+});
+
+test("marked Android Auto uses HLS despite native claims, Shaka for DASH and native MP4", () => {
+    const f = fixture(testHost);
+    assert.equal(
+        f.w.video.canPlayType("application/vnd.apple.mpegurl"),
+        "probably"
+    );
+    f.w.stbPlay("android-live.M3U8?quality=auto#live");
+    assert.equal(f.players.length, 1);
+    assert.equal(f.players[0].media, f.w.video);
+    assert.equal(f.players[0].url, "android-live.M3U8?quality=auto#live");
+    assert.equal(
+        f.players[0].config.startFragPrefetch,
+        undefined,
+        "actual playback starts without a native probe"
+    );
+    assert.deepEqual(f.w.video.sourceHistory, ["blob:hls-0"]);
+    f.players[0].emit("manifest");
+    assert.equal(f.w.video.playCalls, 1);
+    f.w.stbPlay("android-archive.MPD?start=33", 33);
+    assert.equal(f.players[0].destroyCalls, 1);
+    assert.equal(f.shakaPlayers.length, 1);
+    assert.equal(f.shakaPlayers[0].media, f.w.video);
+    assert.equal(f.shakaPlayers[0].url, "android-archive.MPD?start=33");
+    assert.equal(f.shakaPlayers[0].position, 33);
+    f.w.stbPlay("android-vod.mp4?quality=high");
+    assert.equal(f.shakaPlayers[0].destroyCalls, 1);
+    assert.equal(f.w.video.src, "android-vod.mp4?quality=high");
+    assert.equal(f.players.length, 1);
+    assert.equal(f.w.playerMode, 3);
+    assert.deepEqual(f.preferences, {});
+});
+
+test("marked Android Auto falls back to native when HLS is missing or unsupported", () => {
+    for (const unavailable of [{ hlsMissing: true }, { hlsSupported: false }]) {
+        for (const nativeHls of [true, false]) {
+            const f = fixture({ ...testHost, ...unavailable, nativeHls });
+            f.w.stbPlay("missing-hls.m3u8");
+            f.w.stbPlayPip("missing-pip.m3u8");
+            assert.equal(f.players.length, 0);
+            assert.equal(f.w.video.src, "missing-hls.m3u8");
+            assert.equal(f.w.videoPip.src, "missing-pip.m3u8");
+            assert.equal(f.w.video.playCalls, 1);
+            assert.equal(f.w.videoPip.playCalls, 1);
+        }
+    }
+});
+
+test("marked Android CSS PiP shares HLS-first Auto selection and keeps main playback isolated", () => {
+    const f = fixture(testHost);
+    f.w.stbPlay("main.m3u8");
+    f.w.stbPlayPip("pip.m3u8?channel=2");
+    assert.equal(f.players.length, 2);
+    assert.equal(f.players[0].media, f.w.video);
+    assert.equal(f.players[1].media, f.w.videoPip);
+    assert.deepEqual(f.w.videoPip.sourceHistory, ["blob:hls-1"]);
+    f.players[0].emit("manifest");
+    f.players[1].emit("manifest");
+    assert.equal(f.w.video.playCalls, 1);
+    assert.equal(f.w.videoPip.playCalls, 1);
+    f.w.stbPlayPip("pip-vod.mp4");
+    assert.equal(f.players[1].destroyCalls, 1);
+    assert.equal(f.w.videoPip.src, "pip-vod.mp4");
+    assert.equal(f.w.video.src, "blob:hls-0");
+    f.w.stbStopPip();
+    f.players[1].emit("manifest");
+    assert.equal(
+        f.w.videoPip.playCalls,
+        2,
+        "stale PiP manifest cannot restart playback"
+    );
+    assert.equal(f.players[0].destroyCalls, 0);
+    assert.equal(f.w.video.src, "blob:hls-0");
 });
 
 test("webOS keeps working HLS native despite an old HTML5, HLS or Shaka preference", () => {

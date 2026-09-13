@@ -488,15 +488,29 @@
                     });
                 }
                 if (typeof Hls === "undefined") {
+                    // The local Android test APK identifies its modern WebView
+                    // without changing legacy Android/native-wrapper defaults.
+                    var testWebView = ott_device === "android" &&
+                        typeof window.__ottNativeRuntime === "undefined" &&
+                        typeof window.Capacitor === "undefined" &&
+                        typeof window.Android === "undefined" &&
+                        typeof window.__TAURI__ === "undefined" &&
+                        typeof window.__TAURI_INTERNALS__ === "undefined" &&
+                        /(?:^|\s)OttplayTestWebView\/1\.0(?=\s|$)/.test(navigator.userAgent || "");
                     // Unknown old STBs can be detected as pc. Do not send their
                     // pre-polyfill engines a modern CDN build either.
                     var modernPC = !window.__ottNativeRuntime && ott_device === "pc" &&
                         typeof Promise === "function" &&
                         typeof Uint8Array === "function" &&
                         typeof Array.from === "function";
-                    if (modernPC) {
+                    var modernTestWebView = testWebView &&
+                        typeof Promise === "function" &&
+                        typeof Uint8Array === "function" &&
+                        typeof Array.from === "function";
+                    if (modernPC || modernTestWebView) {
                         loadJS(
-                            "https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js",
+                            "https://cdn.jsdelivr.net/npm/hls.js@" +
+                                (modernTestWebView ? "1.7.3" : "1.6.16") + "/dist/hls.min.js",
                             function () {
                                 if (typeof Hls === "undefined") loadLocalHls();
                                 else checkDone();

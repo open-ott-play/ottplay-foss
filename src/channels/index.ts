@@ -5184,7 +5184,13 @@ export function _enterPinCode(
             case window.keys.N7:
             case window.keys.N8:
             case window.keys.N9: {
-                pin += (e - 48).toString();
+                // Native remotes use their own codes (Android digits are 7–16).
+                for (var digit = 0; digit < 10; digit++) {
+                    if (e === window.keys["N" + digit]) {
+                        pin += digit.toString();
+                        break;
+                    }
+                }
                 var pinEl = document.getElementById("pin");
                 if (pinEl)
                     pinEl.innerHTML = "# # # # ".substr(0, pin.length * 2);
@@ -5214,7 +5220,7 @@ export function _enterPinCode(
                 return;
             case window.keys.ENTER:
                 if (typeof window._doKey === "function") {
-                    window._doKey(window.keys.N0 + curIdx);
+                    window._doKey(window.keys["N" + curIdx]);
                 }
                 return;
         }

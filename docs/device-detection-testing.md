@@ -219,6 +219,22 @@ does not expose a native JavaScript bridge or bypass TLS certificate errors.
 Digits and arrows in focused text fields keep native WebView editing behavior;
 Enter and Back retain the player's accept/cancel actions.
 
+The APK appends `OttplayTestWebView/1.0` to the standard WebView user agent.
+Only this marked Android host gets an `auto` engine setting by default: `.m3u8`
+uses hls.js when MSE is supported, `.mpd` uses Shaka, and progressive video uses
+HTML5. Existing explicit engine preferences remain selected; choose `auto` once
+in settings to replace a saved manual choice. The loader uses hls.js 1.7.3 for
+this host, with the bundled legacy version as its CDN failure fallback. Native
+Android bridges and unmarked Android hosts keep their existing engine policy.
+The APK and the hosted frontend must both be updated for this behavior.
+These engines still use the WebView's media decoder; changing the JavaScript
+engine does not establish smooth playback or codec support in an emulator.
+
+Parental PIN input resolves digits through the active device key map, including
+screen-button clicks and remote Enter. Regression tests verify one digit per
+press and submission after four presses across Android, LG, Samsung, PC, Dune
+and MAG maps, in both source functions and the emitted classic bundle.
+
 To test another APK, pass its explicit activity component:
 
 ```sh

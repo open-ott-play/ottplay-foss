@@ -18,6 +18,7 @@ import java.util.HashMap;
 
 // Local simulator UI host only. It provides no Capacitor or native media bridge.
 public class MainActivity extends Activity {
+    private static final String USER_AGENT_MARKER = "OttplayTestWebView/1.0";
     private WebView webView;
     private final HashMap<Integer, KeyPress> keyPresses = new HashMap<>();
 
@@ -52,6 +53,10 @@ public class MainActivity extends Activity {
                 | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
         webView = new WebView(this);
         WebSettings settings = webView.getSettings();
+        String userAgent = settings.getUserAgentString();
+        if (!userAgent.contains(USER_AGENT_MARKER)) {
+            settings.setUserAgentString(userAgent + " " + USER_AGENT_MARKER);
+        }
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(false);

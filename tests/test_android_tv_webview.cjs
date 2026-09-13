@@ -184,6 +184,11 @@ try {
     write(
         "android/webkit/WebSettings.java",
         `package android.webkit; public class WebSettings {
+            public static String initialUserAgent="Mozilla/5.0 (Linux; Android 16; TV; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/139.0.0.0 Safari/537.36";
+            private String userAgent=initialUserAgent;
+            public int userAgentChanges;
+            public String getUserAgentString(){return userAgent;}
+            public void setUserAgentString(String value){userAgent=value;userAgentChanges++;}
             public final java.util.Map<String,Boolean> values=new java.util.HashMap<>();
             ${[
                 "JavaScriptEnabled",
@@ -266,6 +271,7 @@ try {
         `package play.ott.simulator.web;
         import android.content.Intent;
         import android.view.KeyEvent;
+        import android.webkit.WebSettings;
         import android.webkit.WebView;
         import android.widget.Toast;
         public class HostTest {
@@ -284,6 +290,8 @@ try {
                 check(event.getAction()==action && event.getKeyCode()==code && event.getRepeatCount()==repeat,"native event order/content: "+index);
             }
             public static void main(String[] args){
+                String standardUserAgent=WebSettings.initialUserAgent;
+                String marker="OttplayTestWebView/1.0";
                 MainActivity app=new MainActivity();
                 check(!app.dispatchKeyEvent(new KeyEvent(0,KeyEvent.KEYCODE_DPAD_UP,0)),"pre-WebView fallback");
                 check(app.fallback==1,"fallback count before create");
@@ -295,6 +303,18 @@ try {
                 check(view.client!=null && view.chromeClient!=null,"clients attached");
                 check(app.getWindow().getDecorView().visibilityFlags==(4|2|4096),"immersive fullscreen");
                 check(view.urls.size()==1 && view.urls.get(0).equals("http://127.0.0.1:8095/"),"default local player");
+                String markedUserAgent=view.getSettings().getUserAgentString();
+                check(markedUserAgent.equals(standardUserAgent+" "+marker),"standard Android/Chromium UA preserved with only test-host suffix");
+                check(markedUserAgent.indexOf(marker)==markedUserAgent.lastIndexOf(marker),"test-host marker appears once");
+                check(view.getSettings().userAgentChanges==1,"standard UA changed once");
+                WebSettings.initialUserAgent=markedUserAgent;
+                MainActivity recreated=new MainActivity();
+                recreated.onCreate(new android.os.Bundle());
+                WebView recreatedView=(WebView)recreated.content;
+                check(recreatedView.getSettings().getUserAgentString().equals(markedUserAgent),"existing marker is not duplicated");
+                check(recreatedView.getSettings().userAgentChanges==0,"already marked UA is left unchanged");
+                recreated.onDestroy();
+                WebSettings.initialUserAgent=standardUserAgent;
                 setting(view,"JavaScriptEnabled",true);
                 setting(view,"DomStorageEnabled",true);
                 setting(view,"AllowFileAccess",false);
