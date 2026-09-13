@@ -1,10 +1,6 @@
 {
   "version_file": "package.json",
-  "validation_workflows": [
-    "ci.yml",
-    "native-parity.yml",
-    "codeql.yml"
-  ],
+  "validation_workflows": ["ci.yml", "native-parity.yml", "codeql.yml"],
   "artifact_pattern": "release-assets*",
   "local_checks": [
     "npm ci --ignore-scripts",
@@ -131,11 +127,7 @@
       {
         "path": "ottplay-foss-container.oci.tar",
         "format": "oci",
-        "field": [
-          "config",
-          "Labels",
-          "org.opencontainers.image.version"
-        ],
+        "field": ["config", "Labels", "org.opencontainers.image.version"],
         "value": "package"
       }
     ],
@@ -143,10 +135,7 @@
   },
   "asset_restrictions": [
     {
-      "suffixes": [
-        ".apk",
-        ".aab"
-      ],
+      "suffixes": [".apk", ".aab"],
       "reason": "Android APK/AAB publication moved to open-ott-play/ottplay-android"
     }
   ]
