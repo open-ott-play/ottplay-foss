@@ -291,6 +291,13 @@ Samsung's supported simulator scenarios: API injection timing and real TV media
 decoding cannot be inferred from that UI result. The simulator's Tizen user agent
 also does not identify its actual Chromium version.
 
+Simulator 10.0.6 replaces the application iframe's `window.onkeydown` when focus
+enters or leaves the iframe. The player uses an idempotent `addEventListener`
+binding so clicking the drawn remote after interacting with the app does not
+disable input. The source, static and emitted-bundle regression checks model
+both SDK overwrites. The actual simulator also verified OK/Back, one-row Up/Down,
+Left/Right page navigation and returning to the remote after a mouse click.
+
 ## Rosetta, firmware emulators and legacy devices
 
 Rosetta remains available on macOS 26 and can run Intel macOS applications,

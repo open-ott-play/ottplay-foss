@@ -1840,6 +1840,25 @@ export function stbExit(): void {
     window.close();
 }
 
+/** Keep remote input working when an embedding host replaces window.onkeydown. */
+export function stbBindKeyHandler(): void {
+    var w = window as any;
+    if (typeof w.__ottKeydownListener !== "function") {
+        w.__ottKeydownListener = function (event: KeyboardEvent): void {
+            if (typeof w.keyHandler === "function") w.keyHandler(event);
+        };
+    }
+    // Initialization historically replaced the property handler. Clear it so
+    // an earlier property binding cannot deliver the same key a second time.
+    w.onkeydown = null;
+    if (typeof w.addEventListener === "function") {
+        // Reusing this callback makes repeated initialization idempotent.
+        w.addEventListener("keydown", w.__ottKeydownListener, false);
+    } else {
+        w.onkeydown = w.__ottKeydownListener;
+    }
+}
+
 /**
  * Initialise the STB player: inject video DOM elements, attach event handlers,
  * go fullscreen, and set the global key handler.
@@ -1853,7 +1872,7 @@ export function stbExit(): void {
  * - Shows/hides #buffering and #video_res on playback events.
  * - Starts a 1-second interval to calculate and display decoded bitrate.
  * - Calls stbToFullScreen().
- * - Assigns `window.onkeydown = window.keyHandler`.
+ * - Installs the remote key listener through stbBindKeyHandler().
  */
 export function stbInit(): void {
     $("body").css({ "background-color": "#111" });
@@ -2009,7 +2028,7 @@ export function stbInit(): void {
         console.error(e);
     }
     stbToFullScreen();
-    window.onkeydown = window.keyHandler;
+    stbBindKeyHandler();
     try {
         installTauriFsKeyCapture();
     } catch (_fsKey) {}

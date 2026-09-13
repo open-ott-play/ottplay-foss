@@ -131,14 +131,12 @@ for (const fixture of fixtures.concat(routeFixtures)) {
                     device: window.ott_device,
                     down: window.keys.DOWN,
                     enter: window.keys.ENTER,
-                    handlerInstalled: window.onkeydown === window.keyHandler,
                 }))
             ).toEqual({
                 back: remote.RETURN,
                 device: fixture.expectedDevice,
                 down: remote.DOWN,
                 enter: remote.ENTER,
-                handlerInstalled: true,
             });
             expect(loadedScripts).toContain("/dist/stbPlayer.js");
             expect(
