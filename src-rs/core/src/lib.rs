@@ -9,6 +9,7 @@ use tokio::time::{interval, Duration};
 pub mod db;
 pub mod m3u;
 pub mod native_xmltv;
+mod proxy;
 pub mod tmdb;
 pub mod xmltv;
 
@@ -28,10 +29,7 @@ pub async fn fetch_xmltv(urls: &[String]) -> anyhow::Result<xmltv::XmltvCache> {
                     all_channels.entry(id.clone()).or_insert(c);
                 }
                 for (id, progs) in pr {
-                    all_programs
-                        .entry(id.clone())
-                        .or_insert_with(Vec::new)
-                        .extend(progs);
+                    all_programs.entry(id.clone()).or_default().extend(progs);
                 }
             }
             Err(e) => tracing::warn!("XMLTV fetch failed for {url}: {e}"),

@@ -257,6 +257,7 @@ import {
     infoList,
     infoProgramm,
     initBackgroundIntervals,
+    playPipChannel,
     popBuckets,
     popEpg,
     popMedia,
@@ -2556,6 +2557,7 @@ window.showChanelsList = showChanelsList;
 // window.refreshchanelsList = refreshchanelsList; // not yet ported
 window.showPage = showPage;
 window.closeList = closeList;
+window.playPipChannel = playPipChannel;
 window.changeSelect = changeSelect;
 window.setSelect = setSelect;
 window.showShift = showShift;
@@ -5528,7 +5530,7 @@ window.addChannel2bucket = function (): void {
     var chId = w.listArray[idx];
     if (w.sFavorites) {
         if (!w.listCatIndex) return;
-        w.cats[w._("Favorites") || "Favorites"].push(chId);
+        addToFavorites(chId);
         if (typeof w.saveChannelsCats === "function") w.saveChannelsCats();
         if (typeof w.showShift === "function")
             w.showShift(

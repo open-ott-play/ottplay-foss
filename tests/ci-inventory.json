@@ -1,0 +1,15 @@
+{
+  "excluded": {},
+  "requiredVariants": {
+    "tests/test_native_epg_cache.py": [
+      ["--platform", "android"],
+      ["--platform", "ios"]
+    ],
+    "tests/test_native_media_lifecycle.py": [
+      ["--platform", "android"],
+      ["--platform", "ios"]
+    ],
+    "tests/test_favorites_access.cjs": [[], ["--bundle"]],
+    "tests/test_debug_redaction.cjs": [[], ["--bundle"]]
+  }
+}

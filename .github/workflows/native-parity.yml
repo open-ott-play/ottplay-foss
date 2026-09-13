@@ -92,8 +92,14 @@ jobs:
           curl --fail --location --retry 3 https://github.com/JetBrains/kotlin/releases/download/v2.3.0/kotlin-compiler-2.3.0.zip -o "$RUNNER_TEMP/kotlin.zip"
           unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP/ott-queue-kotlin"
           curl --fail --location --retry 3 https://repo.maven.apache.org/maven2/com/vaadin/external/google/android-json/0.0.20131108.vaadin1/android-json-0.0.20131108.vaadin1.jar -o "$RUNNER_TEMP/android-json.jar"
-          PATH="$RUNNER_TEMP/ott-queue-kotlin/kotlinc/bin:$PATH" ANDROID_JSON_JAR="$RUNNER_TEMP/android-json.jar" python3 tests/test_android_queue.py
-          PATH="$RUNNER_TEMP/ott-queue-kotlin/kotlinc/bin:$PATH" ANDROID_JSON_JAR="$RUNNER_TEMP/android-json.jar" python3 tests/test_android_epg_editions.py
+          export PATH="$RUNNER_TEMP/ott-queue-kotlin/kotlinc/bin:$PATH"
+          export ANDROID_JSON_JAR="$RUNNER_TEMP/android-json.jar"
+          python3 tests/test_android_queue.py
+          python3 tests/test_android_epg_editions.py
+          python3 tests/test_android_network_policy.py
+          npm run test:native-dash
+          python3 tests/test_native_media_lifecycle.py --platform android
+          python3 tests/test_native_epg_cache.py --platform android
 
   apple:
     name: iOS and Tauri native code
@@ -116,6 +122,9 @@ jobs:
       - name: Test demo playback lifecycle and XMLTV warmup
         run: |
           python3 tests/test_ios_demo_media.py
+          python3 tests/test_native_media_lifecycle.py --platform ios
+          python3 tests/test_native_epg_cache.py --platform ios
+          python3 tests/test_ios_proxy.py
           python3 tests/test_xmltv_warmup_smoke.py
       - name: Test iOS command queue consent and authentication
         run: python3 tests/test_ios_command_queue.py

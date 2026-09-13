@@ -272,7 +272,7 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
                     "programme" => {
                         if let Some((channel_id, p)) = current_programme.take() {
                             if !p.title.is_empty() {
-                                programs.entry(channel_id).or_insert_with(Vec::new).push(p);
+                                programs.entry(channel_id).or_default().push(p);
                             }
                         }
                     }
@@ -456,7 +456,7 @@ pub fn strip_time_shift(name: &str) -> String {
 
 /// Extract time-shift hours from channel name. Returns signed hours (e.g. +4, -3).
 pub fn extract_time_shift(name: &str) -> i64 {
-    for cap in RE_TS_CAP.captures_iter(name) {
+    if let Some(cap) = RE_TS_CAP.captures_iter(name).next() {
         let sign: i64 = if &cap[1] == "+" { 1 } else { -1 };
         let hours: i64 = cap[2].parse().unwrap_or(0);
         let hours = if hours > 24 { hours % 24 } else { hours };

@@ -1,7 +1,6 @@
 //! M3U channel matching + logo lookup + stream proxy.
 use std::collections::HashMap;
 
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
 use super::xmltv::{self, Channels};
@@ -51,8 +50,7 @@ pub fn match_channels(
             let base_name = xmltv::strip_time_shift(&ch.name);
             match xmltv::match_in_index(&base_name, &index) {
                 Some((xmltv_id, score)) => {
-                    let epg_hash =
-                        compute_epg_hash(&format!("{xmltv_id}|{time_shift}"));
+                    let epg_hash = compute_epg_hash(&format!("{xmltv_id}|{time_shift}"));
                     epg_to_xmltv.insert(epg_hash.clone(), xmltv_id.clone());
                     if time_shift != 0 {
                         time_shift_by_epg.insert(epg_hash.clone(), time_shift);
@@ -89,49 +87,35 @@ pub struct LogoResult {
 }
 
 /// POST /m3u/match-logos
-pub fn match_logos(
-    channels: Vec<LogoChannel>,
-    xmltv_ch: &Channels,
-) -> Vec<LogoResult> {
+pub fn match_logos(channels: Vec<LogoChannel>, xmltv_ch: &Channels) -> Vec<LogoResult> {
     let index = xmltv::build_match_index(xmltv_ch);
     channels
         .into_iter()
         .map(|ch| {
             let logo_url = if xmltv_ch.is_empty() {
-                format!(
-                    "/logo/{}.svg?ch={}",
-                    ch.id,
-                    urlencoding::encode(&ch.name)
-                )
+                format!("/logo/{}.svg?ch={}", ch.id, urlencoding::encode(&ch.name))
             } else {
                 let base_name = xmltv::strip_time_shift(&ch.name);
                 match xmltv::match_in_index(&base_name, &index) {
-                    Some((xmltv_id, _score)) => {
-                        xmltv_ch
-                            .get(&xmltv_id)
-                            .and_then(|c| {
-                                if c.icon.is_empty() {
-                                    None
-                                } else {
-                                    Some(c.icon.clone())
-                                }
-                            })
-                            .unwrap_or_else(|| {
-                                format!(
-                                    "/logo/{}.svg?ch={}",
-                                    ch.id,
-                                    urlencoding::encode(&ch.name)
-                                )
-                            })
-                    }
-                    None => format!(
-                        "/logo/{}.svg?ch={}",
-                        ch.id,
-                        urlencoding::encode(&ch.name)
-                    ),
+                    Some((xmltv_id, _score)) => xmltv_ch
+                        .get(&xmltv_id)
+                        .and_then(|c| {
+                            if c.icon.is_empty() {
+                                None
+                            } else {
+                                Some(c.icon.clone())
+                            }
+                        })
+                        .unwrap_or_else(|| {
+                            format!("/logo/{}.svg?ch={}", ch.id, urlencoding::encode(&ch.name))
+                        }),
+                    None => format!("/logo/{}.svg?ch={}", ch.id, urlencoding::encode(&ch.name)),
                 }
             };
-            LogoResult { id: ch.id, logo_url }
+            LogoResult {
+                id: ch.id,
+                logo_url,
+            }
         })
         .collect()
 }
@@ -174,31 +158,7 @@ pub async fn proxy_stream(
             .unwrap_or_else(|| params.ua.clone())
     };
 
-    let client = Client::builder()
-        .timeout(std::time::Duration::from_secs(15))
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    let resp = client
-        .get(&url)
-        .header("User-Agent", &ua)
-        .send()
-        .await
-        .map_err(|e| format!("{e}"))?;
-
-    let status = resp.status();
-    let headers: reqwest::header::HeaderMap = resp.headers().clone();
-    let body = resp
-        .bytes()
-        .await
-        .map_err(|e| format!("{e}"))?
-        .to_vec();
-
-    if !status.is_success() {
-        return Err(format!("Upstream {status}"));
-    }
-
-    Ok((headers, body))
+    super::proxy::fetch(&url, &ua).await
 }
 
 /// Deterministic hash for EPG URL — mirrors server.py compute_epg_hash.
@@ -209,7 +169,6 @@ pub fn compute_epg_hash(identifier: &str) -> String {
     identifier.hash(&mut h);
     format!("{:016x}", h.finish() & 0xFFFFFFFFFFFF)
 }
-
 
 /// Parse one legacy match id-line: `id-h-h-namehash[~srcs]~urlencodedName`.
 fn parse_match_line(line: &str) -> Option<(String, String, String)> {
@@ -275,10 +234,7 @@ pub fn match_channels_text(
         ch_mappings.push(format!("{ch_id}~local~{epg_url}"));
     }
 
-    format!(
-        "{{}}\n\t\n{}\n\t\nlocal~/",
-        ch_mappings.join("\n")
-    )
+    format!("{{}}\n\t\n{}\n\t\nlocal~/", ch_mappings.join("\n"))
 }
 
 /// Legacy FOSS text body for POST /m3u/match-logos.
@@ -295,11 +251,7 @@ pub fn match_logos_text(body: &str, xmltv_ch: &Channels) -> String {
         };
 
         let logo_url = if xmltv_ch.is_empty() || ch_name.is_empty() {
-            format!(
-                "/logo/{}.svg?ch={}",
-                ch_id,
-                urlencoding::encode(&ch_name)
-            )
+            format!("/logo/{}.svg?ch={}", ch_id, urlencoding::encode(&ch_name))
         } else {
             let base_name = xmltv::strip_time_shift(&ch_name);
             match xmltv::match_in_index(&base_name, &index) {
@@ -313,17 +265,9 @@ pub fn match_logos_text(body: &str, xmltv_ch: &Channels) -> String {
                         }
                     })
                     .unwrap_or_else(|| {
-                        format!(
-                            "/logo/{}.svg?ch={}",
-                            ch_id,
-                            urlencoding::encode(&ch_name)
-                        )
+                        format!("/logo/{}.svg?ch={}", ch_id, urlencoding::encode(&ch_name))
                     }),
-                None => format!(
-                    "/logo/{}.svg?ch={}",
-                    ch_id,
-                    urlencoding::encode(&ch_name)
-                ),
+                None => format!("/logo/{}.svg?ch={}", ch_id, urlencoding::encode(&ch_name)),
             }
         };
         log_mappings.push(format!("{ch_id}~{logo_url}"));
