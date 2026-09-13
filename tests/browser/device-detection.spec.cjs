@@ -175,3 +175,93 @@ for (const fixture of fixtures.concat(routeFixtures)) {
         });
     });
 }
+
+async function enterViewingMode(page) {
+    await expect(page.locator("#listCaption")).toHaveText("First-run setup");
+    // No channel or stream is needed to exercise viewing-mode keyboard actions.
+    // Use the player's real list/volume APIs; keep its handlers unchanged.
+    await page.evaluate(() => {
+        window.closeList();
+        window.stbSetVolume(50);
+    });
+    await expect(page.locator("#list")).toBeHidden();
+}
+
+async function bootForArrowBehavior(page, context, baseURL, device) {
+    const origin = new URL(baseURL).origin;
+    await context.route("**/*", async (route) => {
+        if (new URL(route.request().url()).origin === origin)
+            await route.continue();
+        else await route.abort("blockedbyclient");
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(() => {
+        localStorage.setItem("ottplaylang", "_eng");
+    });
+    await page.goto("/f/" + device + "/", { waitUntil: "load" });
+    await enterViewingMode(page);
+}
+
+test.describe("viewing-mode arrow behavior", () => {
+    for (const device of ["lg/webos", "lg/netcast"]) {
+        test(
+            device + " fresh Left opens the main Menu",
+            async ({ page, context, baseURL }) => {
+                const errors = [];
+                page.on("pageerror", (error) => errors.push(error.message));
+                await bootForArrowBehavior(page, context, baseURL, device);
+                await page.keyboard.press("ArrowLeft");
+                await expect(page.locator("#list")).toBeVisible();
+                await expect(page.locator("#listCaption")).toHaveText("Menu");
+                expect(await page.evaluate(() => window.stbGetVolume())).toBe(
+                    50
+                );
+                expect(errors).toEqual([]);
+            }
+        );
+
+        test(
+            device + " saved Left volume choice survives reload",
+            async ({ page, context, baseURL }) => {
+                const errors = [];
+                page.on("pageerror", (error) => errors.push(error.message));
+                await bootForArrowBehavior(page, context, baseURL, device);
+                // Model an existing explicit setting once. The init script does
+                // not seed it again, so reloading must preserve the stored choice.
+                await page.evaluate(() => localStorage.setItem("sALfun", "14"));
+                await page.reload({ waitUntil: "load" });
+                await enterViewingMode(page);
+                await page.keyboard.press("ArrowLeft");
+                await expect
+                    .poll(() => page.evaluate(() => window.stbGetVolume()))
+                    .toBe(45);
+                await expect(page.locator("#list")).toBeHidden();
+                expect(
+                    await page.evaluate(() => localStorage.getItem("sALfun"))
+                ).toBe("14");
+                expect(errors).toEqual([]);
+            }
+        );
+    }
+
+    test("PC default Left and Right retain volume control", async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        const errors = [];
+        page.on("pageerror", (error) => errors.push(error.message));
+        await bootForArrowBehavior(page, context, baseURL, "pc");
+        await page.keyboard.press("ArrowLeft");
+        await expect
+            .poll(() => page.evaluate(() => window.stbGetVolume()))
+            .toBe(45);
+        await expect(page.locator("#list")).toBeHidden();
+        await page.keyboard.press("ArrowRight");
+        await expect
+            .poll(() => page.evaluate(() => window.stbGetVolume()))
+            .toBe(50);
+        await expect(page.locator("#list")).toBeHidden();
+        expect(errors).toEqual([]);
+    });
+});

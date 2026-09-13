@@ -97,9 +97,11 @@ record `navigator.userAgent`, `ott_device`, `keys.RETURN`, console errors and th
 loaded adapter request. Expect `lg/webos`, Back code 461 and
 `/stb/lg/webos/stb.js`. On a fresh profile, select a language and use the SDK's
 RCU Down, Back and OK buttons to check the first-run screen and language chooser.
-During playback, the default Left/Right actions are 14 (volume down) and 13
-(volume up), regardless of adapter. Change them in **Settings > Button settings**
-if desired; volume control by arrows does not indicate a PC profile.
+During playback, LG profiles default Left to action 1 (Menu). A saved Left
+assignment takes precedence, including action 14 (volume down); a correct LG
+profile alone does not prove its shortcut configuration. Other profiles retain
+the existing Left default of 14, and Right remains 13 (volume up). Assignments
+can be changed in **Settings > Button settings**.
 The manual simulator has ordinary application networking; use a test profile
 and explicit test streams when checking playback.
 

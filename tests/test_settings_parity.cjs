@@ -48,12 +48,19 @@ const menus = [
     "settingsManage",
     "parentControlSetup",
 ];
-function fixture(profile = "server", limited = false, distribution = "full") {
+function fixture(
+    profile = "server",
+    limited = false,
+    distribution = "full",
+    device
+) {
     const stored = new Map();
     const storage = {
         get: (key) => stored.get(key) ?? null,
-        getI: (key, fallback) =>
-            stored.has(key) ? Number.parseInt(stored.get(key), 10) : fallback,
+        getI(key, fallback) {
+            const value = Number.parseInt(stored.get(key), 10);
+            return Number.isNaN(value) ? fallback : value;
+        },
         set: (key, value) => stored.set(key, String(value)),
         setI: (key, value) => stored.set(key, String(value)),
     };
@@ -181,6 +188,7 @@ function fixture(profile = "server", limited = false, distribution = "full") {
         },
     };
     w.noProvParam = w.popupActions[2];
+    if (device !== undefined) w.ott_device = device;
     if (profile === "tauri") w.__TAURI__ = {};
     if (profile === "tauri-internals") w.__TAURI_INTERNALS__ = {};
     if (profile.startsWith("capacitor"))
@@ -312,6 +320,140 @@ function fixture(profile = "server", limited = false, distribution = "full") {
 function save(w) {
     w.listKeyHandlerFn(w.keys.GREEN);
 }
+
+// LG Left opens Menu by default even when the shared HTML5 core exposes volume
+// APIs. This is a platform default only: existing explicit mappings stay intact.
+const leftDefaultFailures = [];
+for (const device of [
+    "lg/webos",
+    "lg/netcast",
+    "pc",
+    "pc2",
+    "nodejs",
+    "android",
+    "mag",
+    "samsung/tizen",
+    "samsung/maple",
+    undefined,
+]) {
+    for (const limited of [false, true]) {
+        const { w, stored, typed } = fixture("server", limited, "full", device);
+        const expected = device?.startsWith("lg/") ? 1 : 14;
+        try {
+            assert.equal(typed().alFun, expected, "Initial default");
+            assert.equal(
+                w.defaultSettings().alFun,
+                expected,
+                "Factory reset default"
+            );
+            assert.equal(
+                w.defaultSettings().arFun,
+                13,
+                "Right stays unchanged"
+            );
+            vm.runInContext("applySettingsToWindow(loadSettings());", w);
+            assert.equal(typed().alFun, expected, "Absent stored Left mapping");
+            assert.equal(w.sALfun, expected, "Legacy global matches settings");
+            assert.equal(
+                stored.has("sALfun"),
+                false,
+                "Reading defaults does not persist them"
+            );
+
+            for (const invalid of ["", "NaN", "invalid"]) {
+                stored.set("sALfun", invalid);
+                vm.runInContext("applySettingsToWindow(loadSettings());", w);
+                assert.equal(
+                    typed().alFun,
+                    expected,
+                    "Invalid stored mapping: " + invalid
+                );
+                assert.equal(
+                    stored.get("sALfun"),
+                    invalid,
+                    "Loading does not rewrite stored preferences"
+                );
+            }
+            for (const explicit of [0, 1, 4, 14, 19]) {
+                stored.set("sALfun", String(explicit));
+                vm.runInContext("applySettingsToWindow(loadSettings());", w);
+                assert.equal(
+                    typed().alFun,
+                    explicit,
+                    "Keep explicit action " + explicit
+                );
+                assert.equal(w.sALfun, explicit);
+                assert.equal(
+                    w.defaultSettings().alFun,
+                    expected,
+                    "Factory defaults ignore current preferences"
+                );
+                vm.runInContext("saveSettings(settings); loadSettings();", w);
+                assert.equal(
+                    typed().alFun,
+                    explicit,
+                    "Explicit action survives a save/reload"
+                );
+                assert.equal(stored.get("sALfun"), String(explicit));
+            }
+            stored.clear();
+            vm.runInContext("applySettingsToWindow(loadSettings());", w);
+            assert.equal(
+                typed().alFun,
+                expected,
+                "Cleared settings restore platform default"
+            );
+        } catch (error) {
+            leftDefaultFailures.push(
+                String(device) +
+                    " / volume API " +
+                    !limited +
+                    ": " +
+                    error.message
+            );
+        }
+    }
+}
+for (const device of ["lg/webos", "lg/netcast"]) {
+    const { w, typed } = fixture();
+    assert.equal(
+        typed().alFun,
+        14,
+        "Settings can initialize before device is known"
+    );
+    w.ott_device = device;
+    try {
+        vm.runInContext("applySettingsToWindow(loadSettings());", w);
+        assert.equal(
+            typed().alFun,
+            1,
+            "Device detection before settings load updates the fallback"
+        );
+        assert.equal(
+            w.defaultSettings().alFun,
+            1,
+            "Factory defaults read current device"
+        );
+    } catch (error) {
+        leftDefaultFailures.push(
+            device + " / late device detection: " + error.message
+        );
+    }
+}
+assert.equal(leftDefaultFailures.length, 0, leftDefaultFailures.join("\n"));
+const noWindowSettings = vm.createContext({});
+vm.runInContext(
+    compile(fs.readFileSync(path.join(root, "src/settings/index.ts"), "utf8")),
+    noWindowSettings
+);
+assert.equal(
+    noWindowSettings.defaultSettings().alFun,
+    14,
+    "Settings remain usable without a browser window"
+);
+console.log(
+    "OK: LG Left defaults to Menu, other platforms retain volume and explicit mappings survive save/reset"
+);
 
 // Defaults apply per provider. Manual choices retain their original numeric
 // values, and both settings entry points can persist Auto without a restart.

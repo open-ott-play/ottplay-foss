@@ -180,18 +180,25 @@ export interface PlayerSettings {
     yFun: number;
 }
 
+/** The LG playback shortcut opens Menu even when shared software volume exists. */
+function defaultLeftArrowAction(): number {
+    const device =
+        typeof window !== "undefined" ? (window as any).ott_device : "";
+    return device === "lg/webos" || device === "lg/netcast" ? 1 : 14;
+}
+
 /**
- * Return the factory-default `PlayerSettings` object.
+ * Return the factory-default `PlayerSettings` object for the selected device.
  *
  * @returns A `PlayerSettings` instance with all default values.
  *
  * @remarks
- * These defaults mirror the original stbPlayer.js hard-coded values.
+ * Device shortcuts are selected before stored user overrides are loaded.
  */
 export function defaultSettings(): PlayerSettings {
     return {
         adFun: 16,
-        alFun: 14,
+        alFun: defaultLeftArrowAction(),
         arFun: 13,
         arrowFun: 0,
         auFun: 15,
@@ -298,7 +305,7 @@ export function loadSettings(): PlayerSettings {
     const s = storage;
     settings = {
         adFun: s.getI("sADfun", 16),
-        alFun: s.getI("sALfun", 14),
+        alFun: s.getI("sALfun", defaultLeftArrowAction()),
         arFun: s.getI("sARfun", 13),
         arrowFun: s.getI("sArrowFun", 0),
         auFun: s.getI("sAUfun", 15),
