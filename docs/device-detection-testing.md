@@ -149,6 +149,14 @@ assignment takes precedence, including action 14 (volume down); a correct LG
 profile alone does not prove its shortcut configuration. Other profiles retain
 the existing Left default of 14, and Right remains 13 (volume up). Assignments
 can be changed in **Settings > Button settings**.
+On webOS, both **STB settings** and **Interface settings** hide the playback
+engine selector. Playback chooses native HLS when supported, Shaka for DASH
+manifests, and hls.js when native HLS is unavailable or fails the Auto probe.
+Previously saved manual engine choices remain stored for use on other platforms,
+but webOS runs Auto. NetCast and other platforms keep their existing choices.
+This does not guarantee every codec or DRM scheme: see LG's
+[streaming specification](https://webostv.developer.lge.com/develop/specifications/streaming-protocol-drm)
+and [MSE/Shaka playback sample](https://github.com/webOS-TV-app-samples/MediaPlayback).
 The manual simulator has ordinary application networking; use a test profile
 and explicit test streams when checking playback.
 

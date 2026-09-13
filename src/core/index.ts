@@ -28,13 +28,14 @@ export var video: HTMLVideoElement | null = null;
 export var videoPip: HTMLVideoElement | null = null;
 /**
  * Active playback engine mode:
- * 0 = native HTML5, 1 = hls.js, 2 = shaka-player, 3 = Tauri Auto.
+ * 0 = native HTML5, 1 = hls.js, 2 = shaka-player, 3 = webOS/Tauri Auto.
  */
 export var playerMode = 0;
 
 /**
  * Set the playback engine mode.
- * @param v - 0 (HTML5), 1 (hls.js), 2 (shaka), or 3 (Tauri Auto).
+ * @param v - 0 (HTML5), 1 (hls.js), 2 (shaka), or 3 (Auto).
+ * webOS always uses Auto without rewriting the stored provider preference.
  */
 export function setPlayerMode(v: number): void {
     var nextMode = normalizePlayerMode(v);
@@ -48,16 +49,24 @@ export var playerModeNames =
         ? ["html5", "hls.js", "shaka", "auto"]
         : ["html5", "hls.js", "shaka"];
 
-/** Preserve explicit provider preferences; Auto is the default only in Tauri. */
+/** Auto handles stream formats on webOS and is the default in Tauri. */
 export function getDefaultPlayerMode(): number {
     return typeof window !== "undefined" &&
-        ((window as any).__TAURI__ || (window as any).__TAURI_INTERNALS__)
+        ((window as any).ott_device === "lg/webos" ||
+            (window as any).__TAURI__ ||
+            (window as any).__TAURI_INTERNALS__)
         ? 3
         : 0;
 }
 
-/** Imported Auto preferences use an available engine outside Tauri. */
+/** webOS selects its engine automatically; other platforms retain manual modes. */
 export function normalizePlayerMode(mode: number): number {
+    if (
+        typeof window !== "undefined" &&
+        (window as any).ott_device === "lg/webos"
+    )
+        return 3;
+    // Imported Auto uses an available manual mode outside Auto platforms.
     if (mode !== 3 || getDefaultPlayerMode() === 3) return mode;
     return video &&
         typeof video.canPlayType === "function" &&
@@ -1795,12 +1804,19 @@ export function stbCSS(): void {
 }
 
 /**
- * Auto-detect the player mode: if the provider has not set a player preference and
- * the browser cannot play HLS natively (Apple's `canPlayType`), fall back to hls.js (mode 1).
+ * webOS always selects the engine per stream. Elsewhere, preserve explicit
+ * provider preferences; choose Auto in Tauri or hls.js when native HLS is absent.
  *
- * Side effects: May set `playerMode` to 1.
+ * Side effects: May update `playerMode`; never changes the stored preference.
  */
 export function setPlayer(): void {
+    if (
+        typeof window !== "undefined" &&
+        (window as any).ott_device === "lg/webos"
+    ) {
+        setPlayerMode(3);
+        return;
+    }
     if (!providerHasItemValue("sPlayers") && getDefaultPlayerMode() === 3) {
         playerMode = 3;
         return;

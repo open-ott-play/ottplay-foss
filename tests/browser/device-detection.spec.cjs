@@ -265,3 +265,37 @@ test.describe("viewing-mode arrow behavior", () => {
         expect(errors).toEqual([]);
     });
 });
+
+for (const device of ["lg/webos", "lg/netcast", "pc"]) {
+    test(
+        device + " settings expose only the appropriate engine controls",
+        async ({ page, context, baseURL }) => {
+            const errors = [];
+            page.on("pageerror", (error) => errors.push(error.message));
+            await bootForArrowBehavior(page, context, baseURL, device);
+            for (const menu of ["stbOptions", "settingsInterface"]) {
+                await page.evaluate((name) => window[name](), menu);
+                await expect(page.locator("#list")).toBeVisible();
+                await expect(
+                    page
+                        .locator("#list")
+                        .getByRole("button", { name: /^Streaming player type/ })
+                ).toHaveCount(device === "lg/webos" ? 0 : 1);
+                await expect(
+                    page
+                        .locator("#list")
+                        .getByText("Buffer Size, s", { exact: false })
+                ).toBeVisible();
+            }
+            if (device === "lg/webos") {
+                expect(
+                    await page.evaluate(() => {
+                        window.setPlayerMode(2);
+                        return window.playerMode;
+                    })
+                ).toBe(3);
+            }
+            expect(errors).toEqual([]);
+        }
+    );
+}

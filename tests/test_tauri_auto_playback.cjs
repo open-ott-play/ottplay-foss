@@ -88,7 +88,11 @@ function fixture(options = {}) {
     let now = 0,
         nextTimer = 0;
     const timers = new Map(),
-        players = [];
+        players = [],
+        shakaPlayers = [];
+    const preferences = {};
+    if (options.savedPlayerMode !== undefined)
+        preferences.sPlayers = String(options.savedPlayerMode);
     function Hls(config) {
         this.config = config || {};
         this.events = {};
@@ -140,6 +144,21 @@ function fixture(options = {}) {
     };
     Hls.prototype.startLoad = function () {};
     Hls.prototype.removeLevel = function () {};
+    function Shaka(target) {
+        this.media = target;
+        this.destroyCalls = 0;
+        shakaPlayers.push(this);
+    }
+    Shaka.isBrowserSupported = () => options.shakaSupported !== false;
+    Shaka.prototype.load = function (url, position) {
+        this.url = url;
+        this.position = position;
+        this.media.src = "blob:shaka-" + shakaPlayers.indexOf(this);
+    };
+    Shaka.prototype.destroy = function () {
+        this.destroyCalls++;
+        this.media.src = "";
+    };
     const w = {
         _: (text) => text,
         __TAURI__: options.tauri === false ? undefined : {},
@@ -155,9 +174,14 @@ function fixture(options = {}) {
         innerHeight: 720,
         innerWidth: 1280,
         Map: undefined,
+        ott_device: options.device || "pc",
         // The classic bundle still executes without Promise/Map/Set globals.
         Promise: undefined,
-        providerHasItemValue: () => false,
+        providerHasItemValue: (key) =>
+            Object.prototype.hasOwnProperty.call(preferences, key),
+        providerSetItem(key, value) {
+            preferences[key] = String(value);
+        },
         Set: undefined,
         saveCHarr() {},
         setInterval() {
@@ -167,13 +191,14 @@ function fixture(options = {}) {
             timers.set(++nextTimer, { callback, due: now + delay });
             return nextTimer;
         },
+        shaka: { Player: Shaka },
     };
     w.window = w;
     vm.createContext(w);
     vm.runInContext(source, w);
     w.video = media(options.nativeHls !== false);
     w.videoPip = media(options.nativeHls !== false);
-    w.setPlayerMode(3);
+    w.setPlayerMode(options.savedPlayerMode ?? 3);
     function advance(milliseconds) {
         const end = now + milliseconds;
         for (let count = 0; count < 100; count++) {
@@ -190,7 +215,7 @@ function fixture(options = {}) {
         }
         throw new Error("Unexpected unbounded timer loop");
     }
-    return { advance, players, timers, w };
+    return { advance, players, preferences, shakaPlayers, timers, w };
 }
 
 function ready(target, video = false) {
@@ -247,6 +272,191 @@ test("Tauri Auto preserves working native H264 and explicit HTML5/hls.js choices
     f.w.stbPlay("explicit-hls.m3u8");
     assert.equal(f.players.length, 1);
     assert.equal(f.players[0].media, f.w.video);
+});
+
+test("webOS uses Auto for every requested mode while Tauri and NetCast preserve manual modes", () => {
+    for (const requested of [0, 1, 2, 3]) {
+        const webos = fixture({
+            device: "lg/webos",
+            savedPlayerMode: requested,
+            tauri: false,
+        });
+        assert.equal(webos.w.getDefaultPlayerMode(), 3);
+        assert.equal(webos.w.normalizePlayerMode(requested), 3);
+        assert.equal(webos.w.playerMode, 3);
+        assert.equal(webos.preferences.sPlayers, String(requested));
+        for (const device of ["pc", "lg/netcast"]) {
+            const legacy = fixture({
+                device,
+                savedPlayerMode: requested,
+                tauri: false,
+            });
+            assert.equal(legacy.w.getDefaultPlayerMode(), 0);
+            assert.equal(
+                legacy.w.normalizePlayerMode(requested),
+                requested === 3 ? 0 : requested
+            );
+            assert.equal(legacy.preferences.sPlayers, String(requested));
+        }
+        const tauri = fixture({ savedPlayerMode: requested });
+        assert.equal(tauri.w.getDefaultPlayerMode(), 3);
+        assert.equal(tauri.w.playerMode, requested);
+        assert.equal(tauri.preferences.sPlayers, String(requested));
+    }
+});
+
+test("webOS keeps working HLS native despite an old HTML5, HLS or Shaka preference", () => {
+    for (const savedPlayerMode of [0, 1, 2]) {
+        const f = fixture({
+            device: "lg/webos",
+            savedPlayerMode,
+            tauri: false,
+        });
+        f.w.setPlayer();
+        f.w.stbPlay("working-lg.m3u8?token=1");
+        ready(f.w.video, true);
+        f.advance(10000);
+        assert.equal(f.w.video.src, "working-lg.m3u8?token=1");
+        assert.equal(f.w.video.playCalls, 1);
+        assert.equal(f.players.length, 0);
+        assert.equal(f.shakaPlayers.length, 0);
+        assert.equal(f.w.playerMode, 3);
+        assert.equal(f.preferences.sPlayers, String(savedPlayerMode));
+    }
+});
+
+test("webOS without native HLS uses HLS and routes DASH through Shaka", () => {
+    for (const savedPlayerMode of [0, 1, 2]) {
+        const f = fixture({
+            device: "lg/webos",
+            nativeHls: false,
+            savedPlayerMode,
+            tauri: false,
+        });
+        f.w.stbPlay("lg-live.m3u8?quality=auto");
+        assert.equal(f.players.length, 1);
+        assert.equal(f.players[0].url, "lg-live.m3u8?quality=auto");
+        assert.equal(f.players[0].media, f.w.video);
+        f.players[0].emit("manifest");
+        assert.equal(f.w.video.playCalls, 1);
+        f.w.stbPlay("lg-archive.mpd?start=33", 33);
+        assert.equal(f.players[0].destroyCalls, 1);
+        assert.equal(f.shakaPlayers.length, 1);
+        assert.equal(f.shakaPlayers[0].url, "lg-archive.mpd?start=33");
+        assert.equal(f.shakaPlayers[0].position, 33);
+        assert.equal(f.shakaPlayers[0].media, f.w.video);
+        assert.equal(f.w.video.playCalls, 2);
+        assert.equal(f.preferences.sPlayers, String(savedPlayerMode));
+    }
+});
+
+test("webOS native decode failure switches to HLS once without changing the saved choice", () => {
+    const f = fixture({
+        device: "lg/webos",
+        savedPlayerMode: 0,
+        tauri: false,
+    });
+    f.w.stbPlay("lg-error.m3u8");
+    f.w.video.error = { code: 3 };
+    f.w.video.emit("error");
+    f.w.video.emit("error");
+    f.advance(0);
+    assert.equal(f.players.length, 1);
+    assert.equal(f.players[0].url, "lg-error.m3u8");
+    assert.equal(f.players[0].media, f.w.video);
+    f.players[0].emit("manifest");
+    ready(f.w.video, true);
+    f.advance(10000);
+    assert.equal(f.players.length, 1);
+    assert.equal(f.w.playerMode, 3);
+    assert.equal(f.preferences.sPlayers, "0");
+});
+
+test("webOS routes DASH through Shaka even with native HLS and retains unsupported-library fallback", () => {
+    for (const shakaSupported of [true, false]) {
+        const f = fixture({
+            device: "lg/webos",
+            savedPlayerMode: 0,
+            shakaSupported,
+            tauri: false,
+        });
+        f.w.stbPlay("lg-dash.mpd");
+        assert.equal(f.shakaPlayers.length, shakaSupported ? 1 : 0);
+        assert.equal(f.players.length, 0);
+        assert.equal(f.w.video.playCalls, 1);
+        if (!shakaSupported) assert.equal(f.w.video.src, "lg-dash.mpd");
+    }
+    const f = fixture({
+        device: "lg/webos",
+        hlsSupported: false,
+        nativeHls: false,
+        savedPlayerMode: 1,
+        tauri: false,
+    });
+    f.w.stbPlay("lg-no-mse.m3u8");
+    assert.equal(f.players.length, 0);
+    assert.equal(f.w.video.src, "lg-no-mse.m3u8");
+    assert.equal(f.w.video.playCalls, 1);
+});
+
+test("setPlayer applies late webOS detection and preserves an active native session", () => {
+    const f = fixture({ savedPlayerMode: 2, tauri: false });
+    assert.equal(f.w.playerMode, 2);
+    f.w.ott_device = "lg/webos";
+    f.w.setPlayer();
+    assert.equal(f.w.playerMode, 3);
+    f.w.stbPlay("late-lg.m3u8");
+    ready(f.w.video, true);
+    f.w.setPlayer();
+    f.advance(10000);
+    assert.equal(f.w.video.playCalls, 1);
+    assert.deepEqual(f.w.video.sourceHistory, ["late-lg.m3u8"]);
+    assert.equal(f.players.length, 0);
+    assert.equal(f.shakaPlayers.length, 0);
+    assert.equal(f.preferences.sPlayers, "2");
+});
+
+test("Tauri Shaka and NetCast native/HLS preferences still select their requested engines", () => {
+    const tauri = fixture({ savedPlayerMode: 2 });
+    tauri.w.setPlayer();
+    tauri.w.stbPlay("tauri-manual.m3u8");
+    assert.equal(tauri.shakaPlayers.length, 1);
+    assert.equal(tauri.shakaPlayers[0].url, "tauri-manual.m3u8");
+    for (const savedPlayerMode of [0, 1]) {
+        const netcast = fixture({
+            device: "lg/netcast",
+            savedPlayerMode,
+            tauri: false,
+        });
+        netcast.w.setPlayer();
+        netcast.w.stbPlay("netcast-manual.m3u8");
+        netcast.w.video.error = { code: 3 };
+        netcast.w.video.emit("error");
+        netcast.advance(10000);
+        assert.equal(netcast.w.playerMode, savedPlayerMode);
+        assert.equal(netcast.players.length, savedPlayerMode);
+        assert.equal(netcast.preferences.sPlayers, String(savedPlayerMode));
+    }
+});
+
+test("webOS CSS PiP native fallback leaves the working main stream alone", () => {
+    const f = fixture({
+        device: "lg/webos",
+        savedPlayerMode: 1,
+        tauri: false,
+    });
+    f.w.stbPlay("lg-main.m3u8");
+    ready(f.w.video, true);
+    f.w.stbPlayPip("lg-pip.m3u8");
+    f.w.videoPip.error = { code: 4 };
+    f.w.videoPip.emit("error");
+    f.advance(0);
+    assert.equal(f.players.length, 1);
+    assert.equal(f.players[0].url, "lg-pip.m3u8");
+    assert.equal(f.players[0].media, f.w.videoPip);
+    assert.equal(f.w.video.src, "lg-main.m3u8");
+    assert.equal(f.w.video.playCalls, 1);
+    assert.equal(f.preferences.sPlayers, "1");
 });
 
 test("HEVC audio-only probes once, retains URL and VOD position, and never caps 1080 to window size", () => {

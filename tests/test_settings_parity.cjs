@@ -455,6 +455,71 @@ console.log(
     "OK: LG Left defaults to Menu, other platforms retain volume and explicit mappings survive save/reset"
 );
 
+// webOS hides engine details in both menus and ignores an old manual preference
+// at runtime, while preserving it in storage for another platform.
+for (const device of ["lg/webos", "lg/netcast", "pc"]) {
+    for (const limited of [false, true]) {
+        for (const preference of [null, 0, 1, 2, 3]) {
+            const { w, stored, typed } = fixture(
+                "server",
+                limited,
+                "full",
+                device
+            );
+            if (preference !== null)
+                stored.set("provider:sPlayers", String(preference));
+            w.loadChannels();
+            if (device === "lg/webos") {
+                assert.equal(w.playerMode, 3, "webOS runtime always uses Auto");
+                assert.equal(w.sPlayers, 3);
+                assert.equal(typed().players, 3);
+            }
+            for (const menu of ["stbOptions", "settingsInterface"]) {
+                w[menu]();
+                assert.equal(
+                    w.listArray.some(
+                        (row) => row.name === "Type of player for streaming"
+                    ),
+                    device !== "lg/webos",
+                    device + " " + menu + ": player choice visibility"
+                );
+                assert.equal(w.listArray, w.listDataArray);
+                const buffer = w.listArray.find(
+                    (row) => row.name === "Buffer Size, s"
+                );
+                const nextBuffer = (w.sBufSize + 1) % buffer.values.length;
+                buffer.val = nextBuffer;
+                const editor = w.listArray.find((row) => row.name === "Editor");
+                if (editor) editor.val = 1;
+                save(w);
+                assert.equal(
+                    w.sBufSize,
+                    nextBuffer,
+                    "Buffer row remains aligned after removing the engine row"
+                );
+                assert.equal(stored.get("sBufSize"), String(nextBuffer));
+                if (editor)
+                    assert.equal(
+                        w.sEditor,
+                        1,
+                        "Previous row still saves correctly"
+                    );
+                if (device === "lg/webos") {
+                    assert.equal(w.playerMode, 3);
+                    assert.equal(
+                        stored.get("provider:sPlayers"),
+                        preference === null ? undefined : String(preference),
+                        "Hidden choice must not overwrite a saved preference"
+                    );
+                }
+            }
+        }
+    }
+}
+console.log(
+    "OK: webOS engine selector hidden in both menus; Auto and neighbouring saves preserved; PC/NetCast choices retained"
+);
+
 // Defaults apply per provider. Manual choices retain their original numeric
 // values, and both settings entry points can persist Auto without a restart.
 for (const profile of [
