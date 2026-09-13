@@ -27,7 +27,7 @@ export let favoritesLists: FavoritesListsBlob = {
 };
 
 /** Active-list alias for existing cats["Favorites"] / single-list readers. */
-export let favoritesArray: number[] = [];
+export let favoritesArray: number[] = favoritesLists.lists.Favorites;
 
 /** Optional view refresh (bound from channels/index — avoids circular import). */
 var favoritesViewRefresh: (() => void) | null = null;
@@ -40,14 +40,21 @@ export function bindFavoritesViewRefresh(fn: () => void): void {
 function applyFavoritesCatAlias(): void {
     if (typeof window === "undefined") return;
     var w = window as any;
-    if (w.cats && typeof w._ === "function")
+    w.favoritesArray = favoritesArray;
+    if (
+        w.cats &&
+        typeof w._ === "function" &&
+        (w.sFavorites || w.cats[w._("Favorites")])
+    )
         w.cats[w._("Favorites")] = favoritesArray;
 }
 
 export function syncFavoritesArrayFromActive(): void {
     // Keep `favoritesArray` as an alias of the active list so existing readers
     // (cats["Favorites"], single-favorites flows) keep working unchanged.
-    favoritesArray = activeFavoritesList().slice();
+    favoritesArray = activeFavoritesList();
+    applyFavoritesCatAlias();
+    if (favoritesViewRefresh) favoritesViewRefresh();
 }
 
 export function activeFavoritesList(): number[] {
@@ -65,8 +72,6 @@ export function setActiveFavoritesList(name: string): boolean {
     if (!favoritesLists.lists[name]) return false;
     favoritesLists.active = name;
     syncFavoritesArrayFromActive();
-    applyFavoritesCatAlias();
-    if (favoritesViewRefresh) favoritesViewRefresh();
     return true;
 }
 
@@ -108,6 +113,7 @@ export function renameFavoritesList(oldName: string, newName: string): boolean {
     var oi = favoritesLists.order.indexOf(oldName);
     if (oi !== -1) favoritesLists.order[oi] = newName;
     if (favoritesLists.active === oldName) favoritesLists.active = newName;
+    syncFavoritesArrayFromActive();
     return true;
 }
 
@@ -120,7 +126,6 @@ export function deleteFavoritesList(name: string): boolean {
     if (favoritesLists.active === name)
         favoritesLists.active = favoritesLists.order[0] || "Favorites";
     syncFavoritesArrayFromActive();
-    applyFavoritesCatAlias();
     return true;
 }
 
@@ -160,5 +165,5 @@ export function loadFavoritesLists(): void {
         order: ["Favorites"],
         v: 1,
     };
-    favoritesArray = prior.slice();
+    syncFavoritesArrayFromActive();
 }

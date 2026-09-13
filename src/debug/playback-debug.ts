@@ -141,15 +141,59 @@ function ottDebugTagEvent(ev: OttDebugEvent): OttDebugEvent {
     return ev;
 }
 
+function ottDebugRedactText(text: string): string {
+    // Paths may contain Xtream credentials, so retain only the authority.
+    return text
+        .replace(/\b(?:https?|rtsp|rtmp):\/\/[^\s"'<>\\]+/gi, function (url) {
+            var match = /^(https?):\/\/([^/?#]+)/i.exec(url);
+            if (!match) return "[redacted URL]";
+            return (
+                match[1] + "://" + match[2].replace(/^.*@/, "") + "/[redacted]"
+            );
+        })
+        .replace(
+            /\b(?:username|user|password|passwd|pwd|token|access_token|refresh_token|secret|authorization|api[_-]?key)(?:=|%3d|:)\s*[^\s&"'<>]+/gi,
+            "[redacted]"
+        )
+        .replace(/\b(?:Bearer|Basic)\s+[a-z0-9_~+./=-]+/gi, "[redacted]");
+}
+
+function ottDebugRedact(value: unknown, depth = 0): unknown {
+    if (depth > 8) return "[truncated]";
+    if (typeof value === "string") return ottDebugRedactText(value);
+    if (Array.isArray(value)) {
+        return value.map(function (item) {
+            return ottDebugRedact(item, depth + 1);
+        });
+    }
+    if (value && typeof value === "object") {
+        var result: Record<string, unknown> = {};
+        Object.keys(value).forEach(function (key) {
+            if (key === "__proto__" || key === "constructor") return;
+            result[key] =
+                /^(user|pwd|cookie|setcookie|key|auth|credentials?|signature|sig)$|password|passwd|secret|token|authorization|username|apikey/i.test(
+                    key.replace(/[-_]/g, "")
+                )
+                    ? "[redacted]"
+                    : ottDebugRedact(
+                          (value as Record<string, unknown>)[key],
+                          depth + 1
+                      );
+        });
+        return result;
+    }
+    return value;
+}
+
 function ottDebugPush(cat: OttDebugCat, msg: string, data?: any): void {
     if (!_ottDbgEnabled) return;
     var ev: OttDebugEvent = ottDebugTagEvent({
         cat: cat,
-        msg: msg,
+        msg: ottDebugRedactText(msg),
         session: _ottDbgSession || "-",
         t: Date.now(),
     });
-    if (data !== undefined) ev.data = data;
+    if (data !== undefined) ev.data = ottDebugRedact(data);
     _ottDbgRing.push(ev);
     if (_ottDbgRing.length > OTT_DEBUG_RING_MAX) {
         _ottDbgRing.splice(0, _ottDbgRing.length - OTT_DEBUG_RING_MAX);
@@ -397,21 +441,90 @@ function ottDebugBuildIngestBody(batch: OttDebugEvent[]): string {
     });
 }
 
+function ottDebugAuthToken(): string {
+    try {
+        var token = window.sessionStorage.getItem("ottplay_debug_token") || "";
+        return /^[!-~]{32,}$/.test(token) ? token : "";
+    } catch (_e) {
+        return "";
+    }
+}
+
+function ottDebugRetryBatch(batch: OttDebugEvent[]): void {
+    _ottDbgPending = batch.concat(_ottDbgPending).slice(-OTT_DEBUG_RING_MAX);
+}
+
+function ottDebugBodyBytes(body: string): number {
+    var bytes = 0;
+    for (var i = 0; i < body.length; i++) {
+        var code = body.charCodeAt(i);
+        if (code < 128) bytes++;
+        else if (code < 2048) bytes += 2;
+        else if (
+            code >= 0xd800 &&
+            code <= 0xdbff &&
+            body.charCodeAt(i + 1) >= 0xdc00 &&
+            body.charCodeAt(i + 1) <= 0xdfff
+        ) {
+            bytes += 4;
+            i++;
+        } else bytes += 3;
+    }
+    return bytes;
+}
+
+function ottDebugTakeBatch(): OttDebugEvent[] {
+    while (_ottDbgPending.length) {
+        var count = Math.min(500, _ottDbgPending.length);
+        while (count > 0) {
+            var batch = _ottDbgPending.slice(0, count);
+            // Stay below both the server body limit and fetch keepalive's 64 KiB budget.
+            if (
+                ottDebugBodyBytes(ottDebugBuildIngestBody(batch)) <=
+                60 * 1024
+            ) {
+                _ottDbgPending.splice(0, count);
+                return batch;
+            }
+            count = Math.floor(count / 2);
+        }
+        // A single oversize event remains inspectable in the local ring.
+        _ottDbgPending.shift();
+    }
+    return [];
+}
+
+function ottDebugRetryStatus(status: number): boolean {
+    return status === 0 || status === 429 || status >= 500;
+}
+
 function ottDebugFlushIngest(): void {
     if (!_ottDbgEnabled || !_ottDbgPending.length) return;
-    var batch = _ottDbgPending.slice();
-    _ottDbgPending = [];
+    var token = ottDebugAuthToken();
+    if (!token) {
+        _ottDbgPending = [];
+        return;
+    }
+    var batch = ottDebugTakeBatch();
+    if (!batch.length) return;
     var body = ottDebugBuildIngestBody(batch);
     try {
         if (typeof fetch === "function") {
             fetch("/debug/ingest", {
                 body: body,
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    Authorization: "Bearer " + token,
+                    "Content-Type": "application/json",
+                },
                 method: "POST",
-            }).catch(function () {
-                // Network fail — re-queue so urgent/beacon flush can retry.
-                _ottDbgPending = batch.concat(_ottDbgPending);
-            });
+            })
+                .then(function (response) {
+                    if (ottDebugRetryStatus(response.status))
+                        ottDebugRetryBatch(batch);
+                })
+                .catch(function () {
+                    ottDebugRetryBatch(batch);
+                });
             return;
         }
     } catch (_e) {}
@@ -419,31 +532,48 @@ function ottDebugFlushIngest(): void {
         var xhr = new XMLHttpRequest();
         xhr.open("POST", "/debug/ingest", true);
         xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.setRequestHeader("Authorization", "Bearer " + token);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && ottDebugRetryStatus(xhr.status))
+                ottDebugRetryBatch(batch);
+        };
         xhr.send(body);
     } catch (_e2) {
-        _ottDbgPending = batch.concat(_ottDbgPending);
+        ottDebugRetryBatch(batch);
     }
 }
 
-/** Unload/hide flush: Beacon when available, else sync XHR (HS5-safe feature-detect). */
+/** Unload/hide flush with authentication; Beacon cannot carry the required header. */
 function ottDebugFlushIngestUrgent(): void {
     if (!_ottDbgEnabled || !_ottDbgPending.length) return;
-    var batch = _ottDbgPending.slice();
-    _ottDbgPending = [];
+    var token = ottDebugAuthToken();
+    if (!token) {
+        _ottDbgPending = [];
+        return;
+    }
+    var batch = ottDebugTakeBatch();
+    if (!batch.length) return;
     var body = ottDebugBuildIngestBody(batch);
     var sent = false;
     try {
-        if (
-            typeof navigator !== "undefined" &&
-            typeof (navigator as any).sendBeacon === "function"
-        ) {
-            if (typeof Blob !== "undefined") {
-                var blob = new Blob([body], { type: "application/json" });
-                sent = !!(navigator as any).sendBeacon("/debug/ingest", blob);
-            } else {
-                // String body → text/plain; server parses JSON from bytes anyway.
-                sent = !!(navigator as any).sendBeacon("/debug/ingest", body);
-            }
+        if (typeof fetch === "function") {
+            fetch("/debug/ingest", {
+                body: body,
+                headers: {
+                    Authorization: "Bearer " + token,
+                    "Content-Type": "application/json",
+                },
+                keepalive: true,
+                method: "POST",
+            })
+                .then(function (response) {
+                    if (ottDebugRetryStatus(response.status))
+                        ottDebugRetryBatch(batch);
+                })
+                .catch(function () {
+                    ottDebugRetryBatch(batch);
+                });
+            sent = true;
         }
     } catch (_e) {}
     if (!sent) {
@@ -451,12 +581,14 @@ function ottDebugFlushIngestUrgent(): void {
             var xhr = new XMLHttpRequest();
             xhr.open("POST", "/debug/ingest", false);
             xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.setRequestHeader("Authorization", "Bearer " + token);
             xhr.send(body);
+            if (ottDebugRetryStatus(xhr.status)) ottDebugRetryBatch(batch);
             sent = true;
         } catch (_e2) {}
     }
     if (!sent) {
-        _ottDbgPending = batch.concat(_ottDbgPending);
+        ottDebugRetryBatch(batch);
     }
 }
 
@@ -549,7 +681,9 @@ function ottDebugBeginSession(_url?: string): void {
     ottDebugPush(
         "sys",
         "stbPlay",
-        _url ? { url: String(_url).substring(0, 120) } : undefined
+        _url
+            ? { url: ottDebugRedactText(String(_url)).substring(0, 120) }
+            : undefined
     );
 }
 
@@ -567,13 +701,13 @@ function ottDebugWrapXhrSetup(
             if (xhr.status >= 400) {
                 ottDebugPush("net", "xhr status", {
                     status: xhr.status,
-                    url: String(url).substring(0, 160),
+                    url: ottDebugRedactText(String(url)).substring(0, 160),
                 });
             }
         });
         xhr.addEventListener("error", function () {
             ottDebugPush("net", "xhr error", {
-                url: String(url).substring(0, 160),
+                url: ottDebugRedactText(String(url)).substring(0, 160),
             });
         });
     };
@@ -685,7 +819,7 @@ function ottDebugOnVisibilityFlush(): void {
     if (!_ottDbgEnabled) return;
     try {
         // Final stats into pending without async auto-flush (ottDebugPush would
-        // fire fetch for msg===stats); Beacon/sync XHR must carry the last batch.
+        // fire fetch for msg===stats); the urgent flush must carry the last batch.
         ottDebugRefreshSamples();
         var ev: OttDebugEvent = ottDebugTagEvent({
             cat: "sys",
@@ -865,7 +999,11 @@ function ottDebugEnable(): void {
 function ottDebugTryServerConfig(): void {
     try {
         if (typeof fetch !== "function") return;
-        fetch("/debug/config")
+        var token = ottDebugAuthToken();
+        if (!token) return;
+        fetch("/debug/config", {
+            headers: { Authorization: "Bearer " + token },
+        })
             .then(function (r) {
                 if (!r || !r.ok) return null;
                 return r.json();

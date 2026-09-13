@@ -914,10 +914,9 @@ export function getChannelUrl(channelOrId: Channel | number): string {
  * Side effects: Mutates `favoritesArray` in-memory (does NOT persist — call saveChannelsCats).
  */
 export function addToFavorites(channelId: number): void {
-    if (favoritesArray.indexOf(channelId) === -1)
-        favoritesArray.push(channelId);
     var lst = activeFavoritesList();
     if (lst.indexOf(channelId) === -1) lst.push(channelId);
+    syncFavoritesArrayFromActive();
 }
 
 /**
@@ -926,11 +925,10 @@ export function addToFavorites(channelId: number): void {
  * Side effects: Mutates `favoritesArray` in-memory (does NOT persist).
  */
 export function removeFromFavorites(channelId: number): void {
-    var idx = favoritesArray.indexOf(channelId);
-    if (idx !== -1) favoritesArray.splice(idx, 1);
     var lst = activeFavoritesList();
-    var i2 = lst.indexOf(channelId);
-    if (i2 !== -1) lst.splice(i2, 1);
+    var idx = lst.indexOf(channelId);
+    if (idx !== -1) lst.splice(idx, 1);
+    syncFavoritesArrayFromActive();
 }
 
 /* ---- Multi-favorites lists CRUD: ./favorites-lists.ts ---- */
@@ -1690,14 +1688,13 @@ export function onChanelsLoaded(): void {
                 }
                 window._pendingProvId = "";
             }
+            loadFavoritesLists();
             if (!sFavorites) {
                 catsArray = window.providerGetJson("catsArray", []);
                 cats =
                     Array.isArray(catsArray) && catsArray.length > 0
                         ? window.providerGetJson("cats", {})
                         : {};
-            } else {
-                loadFavoritesLists();
             }
             // Virtual categories are re-added below. saveChannelsCats persists
             // them, so reloading without stripping yields duplicate "All"
@@ -4916,26 +4913,12 @@ export function channelsKeyHandler(keyCode: number): boolean {
         case keys.N5:
         case keys.STOP:
         case keys.PIP:
-            // Legacy channelsKeyHandler: closeList then stbPlayPip
-            if (typeof window.stbPlayPip === "function") {
-                var pipChId = window.listArray
-                    ? window.listArray[window.selIndex]
-                    : undefined;
-                if (
-                    window.listCatIndex == window.pipCatIndex &&
-                    window.pipIndex == window.selIndex
-                ) {
-                    if (typeof window.closeList === "function")
-                        window.closeList();
-                    return true;
-                }
-                if (typeof window.closeList === "function") window.closeList();
-                window.pipIndex = window.selIndex;
-                window.pipCatIndex = window.listCatIndex;
-                if (pipChId && typeof window.getChannelUrl === "function") {
-                    window.stbPlayPip(window.getChannelUrl(pipChId));
-                }
-            }
+            if (typeof window.playPipChannel === "function")
+                window.playPipChannel(
+                    window.listCatIndex,
+                    window.selIndex,
+                    true
+                );
             return true;
 
         case keys.RED:

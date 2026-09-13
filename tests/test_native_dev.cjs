@@ -244,11 +244,19 @@ async function main() {
             assert.equal(request(route + ".map").fallthrough, false, route);
         }
         const repositoryRoot = path.resolve(__dirname, "..");
+        const installedEnv = path.join(
+            path.dirname(require.resolve("vite/package.json")),
+            "dist/client/env.mjs"
+        );
+        const relativeEnv = path.relative(repositoryRoot, installedEnv);
+        const envRoute =
+            relativeEnv.startsWith(".." + path.sep) ||
+            path.isAbsolute(relativeEnv)
+                ? "/@fs/" + installedEnv.split(path.sep).join("/")
+                : "/" + relativeEnv.split(path.sep).join("/");
         assert(
-            viteEnvironmentRoutes(repositoryRoot).has(
-                "/node_modules/vite/dist/client/env.mjs"
-            ),
-            "Vite's project-local emitted env import must reach its transform middleware"
+            viteEnvironmentRoutes(repositoryRoot).has(envRoute),
+            "Vite's installed env import must reach its transform middleware, including worktrees with shared dependencies"
         );
         assert.equal(
             request("/node_modules/vite/dist/client/client.mjs").fallthrough,

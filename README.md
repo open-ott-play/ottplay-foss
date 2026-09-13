@@ -43,6 +43,10 @@ The synthetic test pattern can be regenerated with `scripts/generate-demo-media.
 
 ## Debug HUD
 
+The local HUD and server log persistence have separate opt-ins. See
+[diagnostic access, redaction and retention](docs/diagnostic-security.md) before
+collecting logs from other devices.
+
 Enable debug mode via one of:
 - URL: `?debug=1` or `?debug=true`
 - Local storage: `localStorage.setItem("ottplay_debug", "1")`

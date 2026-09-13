@@ -1,9 +1,11 @@
+mod debug_api;
+
 use axum::{
     body::Bytes,
     extract::{Path, Query},
     http::{HeaderMap, HeaderValue, StatusCode},
     response::{Html, IntoResponse},
-    routing::{get, post, any},
+    routing::{any, get, post},
     Json, Router,
 };
 use chrono::Utc;
@@ -19,8 +21,8 @@ use std::fs::File;
 use std::io::BufReader;
 use std::sync::Arc;
 use std::time::SystemTime;
-use tokio::sync::RwLock;
 use tokio::net::TcpListener;
+use tokio::sync::RwLock;
 use tokio_rustls::TlsAcceptor;
 use tower::Service;
 use tower_http::cors::{Any, CorsLayer};
@@ -46,7 +48,11 @@ fn epg_urls() -> Vec<String> {
         .split(';')
         .filter_map(|s| {
             let s = s.trim();
-            if s.is_empty() { None } else { Some(s.to_string()) }
+            if s.is_empty() {
+                None
+            } else {
+                Some(s.to_string())
+            }
         })
         .collect();
     if urls.is_empty() {
@@ -112,13 +118,7 @@ async fn main() {
         .route("/report_feedb", post(feedback_handler_no_path))
         // Command queues are explicitly configured authenticated local sidecars.
         .merge(disabled_command_routes())
-        // Playback debug ingest/tail (local realtime debug)
-        .route("/debug/config", get(debug_config))
-        .route("/debug/ingest", post(debug_ingest))
-        .route("/debug/tail", get(debug_tail))
-        .route("/debug/status", get(debug_status))
-        .route("/debug/summary", get(debug_summary))
-        .route("/debug/archive-status", get(debug_archive_status))
+        .merge(debug_api::routes())
         .merge(device_entry_routes())
         .nest_service("/dist", ServeDir::new("dist"))
         .nest_service("/stbPlayer", ServeDir::new("stbPlayer"))
@@ -166,10 +166,13 @@ async fn main() {
                                 };
                                 let io = hyper_util::rt::TokioIo::new(tls);
                                 if let Err(e) = hyper::server::conn::http1::Builder::new()
-                                    .serve_connection(io, hyper::service::service_fn(move |req| {
-                                        let app = app.clone();
-                                        app.clone().call(req)
-                                    }))
+                                    .serve_connection(
+                                        io,
+                                        hyper::service::service_fn(move |req| {
+                                            let app = app.clone();
+                                            app.clone().call(req)
+                                        }),
+                                    )
                                     .await
                                 {
                                     tracing::warn!("TLS serve connection error: {e}");
@@ -234,7 +237,6 @@ where
         }
     })
 }
-
 
 fn build_tls_config(cert_path: &str, key_path: &str) -> Arc<ServerConfig> {
     // Load certificate
@@ -341,9 +343,7 @@ mod epg_startup_tests {
         );
         task.abort();
     }
-
 }
-
 
 async fn root() -> impl IntoResponse {
     // Prefer dist/index.html: vite substitutes __OTTP_VERSION__ there.
@@ -360,7 +360,10 @@ async fn favicon_handler() -> impl IntoResponse {
     match std::fs::read("favicon.ico") {
         Ok(bytes) => (
             StatusCode::OK,
-            [("content-type", "image/x-icon"), ("cache-control", "max-age=86400")],
+            [
+                ("content-type", "image/x-icon"),
+                ("cache-control", "max-age=86400"),
+            ],
             bytes,
         )
             .into_response(),
@@ -413,10 +416,7 @@ async fn epg_handler(
     let channel_id = params
         .ch
         .as_ref()
-        .and_then(|ch| {
-            ottplay_core::match_channel(ch, &cache.channels)
-                .map(|(id, _score)| id)
-        })
+        .and_then(|ch| ottplay_core::match_channel(ch, &cache.channels).map(|(id, _score)| id))
         .or_else(|| map.get(&hash).cloned())
         .unwrap_or_else(|| hash.clone());
     let time_shift: i64 = params
@@ -489,8 +489,7 @@ async fn match_channels_handler(body: Bytes) -> impl IntoResponse {
         };
     }
 
-    let parsed: Result<Vec<ottplay_core::m3u::M3uChannel>, _> =
-        serde_json::from_slice(&body);
+    let parsed: Result<Vec<ottplay_core::m3u::M3uChannel>, _> = serde_json::from_slice(&body);
     match parsed {
         Ok(channels) => {
             let result = tokio::task::spawn_blocking(move || {
@@ -576,7 +575,6 @@ async fn match_logos_handler(body: Bytes) -> impl IntoResponse {
     }
 }
 
-
 fn form_decode_value(raw: &str) -> String {
     let plus_as_space = raw.replace('+', "%20");
     urlencoding::decode(&plus_as_space)
@@ -615,15 +613,19 @@ fn parse_cp_proxy_params(body: &[u8]) -> Option<ottplay_core::m3u::ProxyParams> 
     }
 }
 
-async fn cp_proxy_handler(
-    body: Bytes,
-) -> Result<(StatusCode, HeaderMap, Vec<u8>), StatusCode> {
+async fn cp_proxy_handler(body: Bytes) -> Result<(StatusCode, HeaderMap, Vec<u8>), StatusCode> {
     let params = parse_cp_proxy_params(&body).ok_or(StatusCode::BAD_REQUEST)?;
     match ottplay_core::m3u::proxy_stream(params).await {
         Ok((mut headers, body)) => {
             headers.insert("access-control-allow-origin", HeaderValue::from_static("*"));
-            headers.insert("access-control-allow-methods", HeaderValue::from_static("GET, POST, OPTIONS"));
-            headers.insert("access-control-allow-headers", HeaderValue::from_static("*"));
+            headers.insert(
+                "access-control-allow-methods",
+                HeaderValue::from_static("GET, POST, OPTIONS"),
+            );
+            headers.insert(
+                "access-control-allow-headers",
+                HeaderValue::from_static("*"),
+            );
             Ok((StatusCode::OK, headers, body))
         }
         Err(e) => {
@@ -652,14 +654,21 @@ async fn logo_handler(
 
 fn generate_logo_svg(logo_id: &str, ch_name: &str) -> String {
     const COLORS: &[&str] = &[
-        "#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6",
-        "#1abc9c", "#e67e22", "#34495e", "#16a085", "#c0392b",
-        "#2980b9", "#27ae60", "#d35400", "#8e44ad", "#f1c40f",
+        "#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c", "#e67e22", "#34495e",
+        "#16a085", "#c0392b", "#2980b9", "#27ae60", "#d35400", "#8e44ad", "#f1c40f",
     ];
-    let hash: u32 = logo_id.bytes().fold(5381u32, |acc, b| acc.wrapping_mul(33).wrapping_add(b as u32));
+    let hash: u32 = logo_id.bytes().fold(5381u32, |acc, b| {
+        acc.wrapping_mul(33).wrapping_add(b as u32)
+    });
     let color = COLORS[(hash as usize) % COLORS.len()];
     let letter: String = if !ch_name.trim().is_empty() {
-        ch_name.trim().chars().next().unwrap().to_uppercase().to_string()
+        ch_name
+            .trim()
+            .chars()
+            .next()
+            .unwrap()
+            .to_uppercase()
+            .to_string()
     } else {
         let n = (hash as usize) % 26;
         ((b'A' + n as u8) as char).to_string()
@@ -670,9 +679,7 @@ fn generate_logo_svg(logo_id: &str, ch_name: &str) -> String {
 }
 
 /// /version/*path — return JSON with file metadata + md5 hex prefix (Python parity).
-async fn version_handler(
-    Path(rel): Path<String>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
+async fn version_handler(Path(rel): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
     use md5::{Digest, Md5};
     use std::fs;
     let stripped = rel.strip_prefix('/').unwrap_or(&rel);
@@ -706,8 +713,7 @@ async fn version_handler(
     }
 }
 
-const PLACEHOLDER_HTML: &str =
-    "<!doctype html><html><body><h1>ottplay-server</h1></body></html>";
+const PLACEHOLDER_HTML: &str = "<!doctype html><html><body><h1>ottplay-server</h1></body></html>";
 
 /// Append feedback line to feedback.log (format: `ts\npath\nbody\n---\n`)
 fn append_feedback_log(path: &str, body: &str) {
@@ -798,438 +804,15 @@ mod disabled_command_tests {
                         .body(Body::from(r#"{"command":"exit_player"}"#))
                         .unwrap();
                     let response = app.call(request).await.unwrap();
-                    assert_eq!(response.status(), StatusCode::FORBIDDEN, "{method} {path}{suffix}");
+                    assert_eq!(
+                        response.status(),
+                        StatusCode::FORBIDDEN,
+                        "{method} {path}{suffix}"
+                    );
                 }
             }
         }
     }
-}
-
-const DEBUG_LOG: &str = "debug-playback.log";
-const DEBUG_LOG_MAX: u64 = 20 * 1024 * 1024;
-const DEBUG_SUMMARY_SCAN_MAX: u64 = 2 * 1024 * 1024;
-
-fn debug_log_path() -> std::path::PathBuf {
-    std::path::PathBuf::from(DEBUG_LOG)
-}
-
-/// Permanent archive under the source repo, outside the installed local stack.
-/// Prefer OTTPLAY_DEBUG_ARCHIVE, then an existing .local-artifacts/debug-archive
-/// in the working directory, then $HOME/victron/ottplay-foss/.local-artifacts/debug-archive.
-/// The local service installer sets the source archive explicitly so rsync cannot remove it.
-fn debug_archive_dir() -> std::path::PathBuf {
-    if let Ok(p) = std::env::var("OTTPLAY_DEBUG_ARCHIVE") {
-        let t = p.trim();
-        if !t.is_empty() {
-            return std::path::PathBuf::from(t);
-        }
-    }
-    let rel = std::path::PathBuf::from(".local-artifacts/debug-archive");
-    if rel.is_dir() {
-        return rel;
-    }
-    if let Ok(home) = std::env::var("HOME") {
-        return std::path::PathBuf::from(home)
-            .join("victron/ottplay-foss/.local-artifacts/debug-archive");
-    }
-    rel
-}
-
-fn ensure_debug_archive_dir() -> Option<std::path::PathBuf> {
-    let dir = debug_archive_dir();
-    match std::fs::create_dir_all(&dir) {
-        Ok(()) => Some(dir),
-        Err(_) => None,
-    }
-}
-
-fn debug_archive_today_path() -> Option<std::path::PathBuf> {
-    let dir = ensure_debug_archive_dir()?;
-    let day = Utc::now().format("%Y%m%d");
-    Some(dir.join(format!("debug-playback-{day}.jsonl")))
-}
-
-fn append_debug_archive_line(line: &str) {
-    if let Some(path) = debug_archive_today_path() {
-        use std::io::Write;
-        let _ = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(path)
-            .and_then(|mut f| writeln!(f, "{line}"));
-    }
-}
-
-/// Enabled when OTTPLAY_DEBUG=1 or cwd file `debug.enabled` exists (empty OK).
-fn debug_is_enabled() -> bool {
-    if std::env::var("OTTPLAY_DEBUG").ok().as_deref() == Some("1") {
-        return true;
-    }
-    std::path::Path::new("debug.enabled").exists()
-}
-
-fn rotate_debug_log_if_needed() {
-    let path = debug_log_path();
-    if let Ok(meta) = std::fs::metadata(&path) {
-        if meta.len() > DEBUG_LOG_MAX {
-            // Snapshot into permanent archive before rotating live log → .1
-            if let Some(dir) = ensure_debug_archive_dir() {
-                let stamp = Utc::now().format("%Y%m%d-%H%M%S");
-                let dest = dir.join(format!("debug-playback-rotated-{stamp}.log"));
-                let _ = std::fs::copy(&path, &dest);
-            }
-            let bak = path.with_extension("log.1");
-            let _ = std::fs::rename(&path, &bak);
-        }
-    }
-}
-
-#[derive(Deserialize)]
-struct DebugIngestBody {
-    session: Option<String>,
-    events: Option<Vec<serde_json::Value>>,
-    port: Option<serde_json::Value>,
-    origin: Option<String>,
-    #[serde(rename = "playerId")]
-    player_id: Option<String>,
-    ua: Option<String>,
-}
-
-/// GET /debug/config — {enabled:bool} for client auto-enable (all HTTPS ports).
-async fn debug_config() -> impl IntoResponse {
-    (
-        StatusCode::OK,
-        [(axum::http::header::CONTENT_TYPE, "application/json")],
-        serde_json::json!({ "enabled": debug_is_enabled() }).to_string(),
-    )
-}
-
-/// POST /debug/ingest — append JSONL events to debug-playback.log (rotate ~20MB).
-async fn debug_ingest(body: Option<Bytes>) -> impl IntoResponse {
-    let raw = body
-        .map(|b| String::from_utf8_lossy(&b).into_owned())
-        .unwrap_or_default();
-    let parsed: Result<DebugIngestBody, _> = serde_json::from_str(&raw);
-    let (session, events, batch_port, batch_origin, batch_player, batch_ua) = match parsed {
-        Ok(b) => (
-            b.session.unwrap_or_else(|| "-".to_string()),
-            b.events.unwrap_or_default(),
-            b.port,
-            b.origin,
-            b.player_id,
-            b.ua,
-        ),
-        Err(_) => {
-            // Accept opaque JSON blob as a single line
-            rotate_debug_log_if_needed();
-            use std::io::Write;
-            let ts = Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ");
-            let opaque_line = format!("{ts}\t-\t{raw}");
-            let _ = std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(debug_log_path())
-                .and_then(|mut f| writeln!(f, "{opaque_line}"));
-            append_debug_archive_line(&opaque_line);
-            return (
-                StatusCode::OK,
-                [(axum::http::header::CONTENT_TYPE, "application/json")],
-                r#"{"ok":true}"#.to_string(),
-            );
-        }
-    };
-    rotate_debug_log_if_needed();
-    use std::io::Write;
-    let path = debug_log_path();
-    let recv_ts = Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
-    let _ = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&path)
-        .and_then(|mut f| {
-            for ev in events {
-                let mut line = serde_json::json!({
-                    "session": session,
-                    "event": ev,
-                    "recvAt": recv_ts,
-                });
-                // Merge batch-level tags (client also stamps each event).
-                if let Some(ref p) = batch_port {
-                    line["port"] = p.clone();
-                }
-                if let Some(ref o) = batch_origin {
-                    line["origin"] = serde_json::json!(o);
-                }
-                if let Some(ref pid) = batch_player {
-                    line["playerId"] = serde_json::json!(pid);
-                }
-                if let Some(ref ua) = batch_ua {
-                    line["ua"] = serde_json::json!(ua);
-                }
-                // Prefer per-event tags when present on the event object.
-                let ev_port = line.get("event").and_then(|e| e.get("port")).cloned();
-                let ev_origin = line.get("event").and_then(|e| e.get("origin")).cloned();
-                let ev_player = line.get("event").and_then(|e| e.get("playerId")).cloned();
-                let ev_ua = line.get("event").and_then(|e| e.get("ua")).cloned();
-                if let Some(p) = ev_port {
-                    line["port"] = p;
-                }
-                if let Some(o) = ev_origin {
-                    line["origin"] = o;
-                }
-                if let Some(pid) = ev_player {
-                    line["playerId"] = pid;
-                }
-                if let Some(ua) = ev_ua {
-                    line["ua"] = ua;
-                }
-                let line_str = line.to_string();
-                writeln!(f, "{line_str}")?;
-                append_debug_archive_line(&line_str);
-            }
-            Ok(())
-        });
-    (
-        StatusCode::OK,
-        [(axum::http::header::CONTENT_TYPE, "application/json")],
-        r#"{"ok":true}"#.to_string(),
-    )
-}
-
-#[derive(Deserialize)]
-struct DebugTailQuery {
-    n: Option<usize>,
-}
-
-/// GET /debug/tail?n=100 — last n lines of debug-playback.log as text/plain.
-async fn debug_tail(Query(q): Query<DebugTailQuery>) -> impl IntoResponse {
-    let n = q.n.unwrap_or(100).min(5000);
-    let path = debug_log_path();
-    let content = std::fs::read_to_string(&path).unwrap_or_default();
-    let lines: Vec<&str> = content.lines().collect();
-    let start = if lines.len() > n { lines.len() - n } else { 0 };
-    let out = lines[start..].join("\n");
-    (
-        StatusCode::OK,
-        [(axum::http::header::CONTENT_TYPE, "text/plain; charset=utf-8")],
-        out,
-    )
-}
-
-/// GET /debug/status — {ok, size, mtime, lines_approx}.
-async fn debug_status() -> impl IntoResponse {
-    let path = debug_log_path();
-    match std::fs::metadata(&path) {
-        Ok(meta) => {
-            let size = meta.len();
-            let mtime = meta
-                .modified()
-                .ok()
-                .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-                .map(|d| d.as_secs())
-                .unwrap_or(0);
-            let lines_approx = std::fs::read_to_string(&path)
-                .map(|s| s.lines().count())
-                .unwrap_or(0);
-            (
-                StatusCode::OK,
-                [(axum::http::header::CONTENT_TYPE, "application/json")],
-                serde_json::json!({
-                    "ok": true,
-                    "size": size,
-                    "mtime": mtime,
-                    "lines_approx": lines_approx,
-                })
-                .to_string(),
-            )
-        }
-        Err(_) => (
-            StatusCode::OK,
-            [(axum::http::header::CONTENT_TYPE, "application/json")],
-            serde_json::json!({
-                "ok": true,
-                "size": 0,
-                "mtime": 0,
-                "lines_approx": 0,
-            })
-            .to_string(),
-        ),
-    }
-}
-
-/// GET /debug/summary — scan last ~2MB of debug-playback.log → per-port counts.
-async fn debug_summary() -> impl IntoResponse {
-    let path = debug_log_path();
-    let file_bytes = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
-    let content = match std::fs::read(&path) {
-        Ok(bytes) => {
-            let start = if bytes.len() as u64 > DEBUG_SUMMARY_SCAN_MAX {
-                bytes.len() - DEBUG_SUMMARY_SCAN_MAX as usize
-            } else {
-                0
-            };
-            // Align to next newline if we truncated mid-line.
-            let slice = if start > 0 {
-                match bytes[start..].iter().position(|&b| b == b'\n') {
-                    Some(i) => &bytes[start + i + 1..],
-                    None => &bytes[start..],
-                }
-            } else {
-                &bytes[..]
-            };
-            String::from_utf8_lossy(slice).into_owned()
-        }
-        Err(_) => String::new(),
-    };
-
-    #[derive(Default)]
-    struct PortStats {
-        events: u64,
-        stalls: u64,
-        errors: u64,
-        sessions: std::collections::HashSet<String>,
-    }
-
-    let mut by_port: HashMap<String, PortStats> = HashMap::new();
-    let mut total_lines: u64 = 0;
-
-    for line in content.lines() {
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
-        total_lines += 1;
-        let v: serde_json::Value = match serde_json::from_str(line) {
-            Ok(v) => v,
-            Err(_) => {
-                // Opaque / legacy tab lines — bucket under "unknown"
-                let e = by_port.entry("unknown".to_string()).or_default();
-                e.events += 1;
-                if line.to_ascii_lowercase().contains("stall") {
-                    e.stalls += 1;
-                }
-                if line.to_ascii_lowercase().contains("error") {
-                    e.errors += 1;
-                }
-                continue;
-            }
-        };
-
-        let port = v
-            .get("port")
-            .and_then(|p| match p {
-                serde_json::Value::String(s) => Some(s.clone()),
-                serde_json::Value::Number(n) => Some(n.to_string()),
-                _ => None,
-            })
-            .or_else(|| {
-                v.get("event")
-                    .and_then(|e| e.get("port"))
-                    .and_then(|p| match p {
-                        serde_json::Value::String(s) => Some(s.clone()),
-                        serde_json::Value::Number(n) => Some(n.to_string()),
-                        _ => None,
-                    })
-            })
-            .unwrap_or_else(|| "unknown".to_string());
-
-        let session = v
-            .get("session")
-            .and_then(|s| s.as_str())
-            .or_else(|| v.get("event").and_then(|e| e.get("session")).and_then(|s| s.as_str()))
-            .unwrap_or("-")
-            .to_string();
-
-        let cat = v
-            .get("event")
-            .and_then(|e| e.get("cat"))
-            .and_then(|c| c.as_str())
-            .unwrap_or("");
-        let msg = v
-            .get("event")
-            .and_then(|e| e.get("msg"))
-            .and_then(|m| m.as_str())
-            .unwrap_or("");
-        let e = by_port.entry(port).or_default();
-        e.events += 1;
-        e.sessions.insert(session);
-        let msg_lc = msg.to_ascii_lowercase();
-        if cat == "stall" || msg_lc.contains("stall") {
-            e.stalls += 1;
-        }
-        // Explicit error events (video error / hls ERROR*) — not every line mentioning the word.
-        if msg == "error"
-            || msg_lc.starts_with("error")
-            || msg.contains("ERROR")
-            || (cat == "video" && msg_lc == "error")
-        {
-            e.errors += 1;
-        }
-    }
-
-    let mut by_port_json = serde_json::Map::new();
-    for (port, stats) in by_port {
-        by_port_json.insert(
-            port,
-            serde_json::json!({
-                "events": stats.events,
-                "stalls": stats.stalls,
-                "errors": stats.errors,
-                "sessions": stats.sessions.len() as u64,
-            }),
-        );
-    }
-
-    (
-        StatusCode::OK,
-        [(axum::http::header::CONTENT_TYPE, "application/json")],
-        serde_json::json!({
-            "byPort": by_port_json,
-            "totalLines": total_lines,
-            "fileBytes": file_bytes,
-        })
-        .to_string(),
-    )
-}
-
-/// GET /debug/archive-status — list permanent archive dir files + sizes.
-async fn debug_archive_status() -> impl IntoResponse {
-    let dir = debug_archive_dir();
-    let _ = ensure_debug_archive_dir();
-    let mut files: Vec<serde_json::Value> = Vec::new();
-    if let Ok(rd) = std::fs::read_dir(&dir) {
-        for ent in rd.flatten() {
-            let name = ent.file_name().to_string_lossy().into_owned();
-            let meta = ent.metadata().ok();
-            let size = meta.as_ref().map(|m| m.len()).unwrap_or(0);
-            let mtime = meta
-                .as_ref()
-                .and_then(|m| m.modified().ok())
-                .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-                .map(|d| d.as_secs())
-                .unwrap_or(0);
-            files.push(serde_json::json!({
-                "name": name,
-                "size": size,
-                "mtime": mtime,
-            }));
-        }
-    }
-    files.sort_by(|a, b| {
-        let an = a.get("name").and_then(|v| v.as_str()).unwrap_or("");
-        let bn = b.get("name").and_then(|v| v.as_str()).unwrap_or("");
-        an.cmp(bn)
-    });
-    (
-        StatusCode::OK,
-        [(axum::http::header::CONTENT_TYPE, "application/json")],
-        serde_json::json!({
-            "ok": true,
-            "dir": dir.to_string_lossy(),
-            "files": files,
-        })
-        .to_string(),
-    )
 }
 
 #[cfg(test)]

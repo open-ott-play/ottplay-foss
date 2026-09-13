@@ -34,9 +34,8 @@ function sha256(file) {
 }
 
 function revision() {
-    if (process.env.GITHUB_SHA && process.env.GITHUB_SHA.trim()) {
-        return process.env.GITHUB_SHA.trim();
-    }
+    // Workflow events can refer to a different ref than the actual checkout.
+    // Describe the packaged source; an event SHA is not a source fallback.
     try {
         return (
             execFileSync("git", ["rev-parse", "HEAD"], {

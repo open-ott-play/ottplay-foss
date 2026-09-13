@@ -7,14 +7,13 @@ Requires swift, kotlinc and java on PATH. Run: python3 tests/test_native_epg_cac
 Use --check-mirrors-only for the shipping-source guard without native compilers.
 """
 
+import argparse
 import base64
 import gzip
 import pathlib
 import shutil
 import subprocess
-import sys
 import tempfile
-
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 XML = '<tv><channel id="a"><display-name>Feed A</display-name></channel></tv>'
@@ -28,7 +27,10 @@ def run(*args, cwd):
 def check_shipping_sources():
     mirrors = (
         ("mobile-xmltv-epg/src/ios/MobileXmltvEpg.swift", "ios/App/CapApp-SPM/Sources/CapApp-SPM/MobileXmltvEpg.swift"),
-        ("mobile-xmltv-epg/src/android/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt", "android/app/src/main/java/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt"),
+        (
+            "mobile-xmltv-epg/src/android/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt",
+            "android/app/src/main/java/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt",
+        ),
     )
     for source, shipping in mirrors:
         if (ROOT / source).read_bytes() != (ROOT / shipping).read_bytes():
@@ -36,7 +38,7 @@ def check_shipping_sources():
     print("PASS native shipping source mirrors match templates", flush=True)
 
 
-SWIFT_STUBS = r'''
+SWIFT_STUBS = r"""
 import Foundation
 public class CAPPlugin: NSObject {}
 public protocol CAPBridgedPlugin {}
@@ -70,9 +72,9 @@ class URLSession {
         return Task { let body = self.sources[url.absoluteString] ?? self.data; completionHandler(body, nil, body == nil ? NSError(domain: "offline", code: 1) : nil) }
     }
 }
-'''
+"""
 
-SWIFT_TESTS = r'''
+SWIFT_TESTS = r"""
     func runCacheTests() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -188,9 +190,9 @@ SWIFT_TESTS = r'''
 
         print("PASS Swift: source identity, TTL, same-source offline fallback, corrupt response, prefetch, legacy metadata reset")
     }
-'''
+"""
 
-KOTLIN_CAPACITOR = r'''
+KOTLIN_CAPACITOR = r"""
 package com.getcapacitor
 import java.io.File
 class Context(var cacheDir: File, var filesDir: File)
@@ -209,9 +211,9 @@ class PluginCall(val source: String) {
 annotation class PluginMethod
 class JSObject { val values = mutableMapOf<String, Any>(); fun put(key: String, value: Any) { values[key] = value } }
 class JSArray { val values = mutableListOf<Any>(); fun put(value: Any) { values.add(value) }; fun length() = values.size; fun optString(index: Int) = values[index] as? String ?: "" }
-'''
+"""
 
-KOTLIN_HTTP = r'''
+KOTLIN_HTTP = r"""
 package okhttp3
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -242,7 +244,7 @@ class OkHttpClient {
         }
     }
 }
-'''
+"""
 
 KOTLIN_TESTS = r'''
     fun runCacheTests() {
@@ -359,35 +361,62 @@ KOTLIN_TESTS = r'''
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check-mirrors-only", action="store_true")
+    parser.add_argument("--platform", choices=["android", "ios", "all"], default="all")
+    options = parser.parse_args()
     check_shipping_sources()
-    if sys.argv[1:] == ["--check-mirrors-only"]:
+    if options.check_mirrors_only:
         return
-    for compiler in ("swift", "kotlinc", "java"):
+    required = (["kotlinc", "java"] if options.platform in ["android", "all"] else []) + (
+        ["swift"] if options.platform in ["ios", "all"] else []
+    )
+    for compiler in required:
         if not shutil.which(compiler):
             raise SystemExit(f"Required native test tool is missing: {compiler}")
     with tempfile.TemporaryDirectory(prefix="native-epg-cache-") as directory:
         tmp = pathlib.Path(directory)
-        swift = (ROOT / "mobile-xmltv-epg/src/ios/MobileXmltvEpg.swift").read_text()
-        swift = swift.replace("import Capacitor", SWIFT_STUBS)
-        swift = swift.replace("@objc(MobileXmltvEpg)", "").replace("@objc ", "")
-        # Swift's assert autoclosure cannot throw; evaluate the real read first.
-        tests = SWIFT_TESTS.replace("GZIP_FIXTURE", GZIP)
-        tests = tests.replace("assert(try readCache", "assert(try! readCache")
-        swift = swift.replace("    // MARK: - Cache", tests + "\n    // MARK: - Cache")
-        swift += "\ntry MobileXmltvEpg().runCacheTests()\n"
-        (tmp / "CacheTest.swift").write_text(swift)
-        run("swift", "-module-cache-path", str(tmp / "swift-module-cache"), "CacheTest.swift", cwd=tmp)
+        if options.platform in ["ios", "all"]:
+            swift = (ROOT / "mobile-xmltv-epg/src/ios/MobileXmltvEpg.swift").read_text()
+            swift = swift.replace("import Capacitor", SWIFT_STUBS)
+            swift = swift.replace("@objc(MobileXmltvEpg)", "").replace("@objc ", "")
+            # Swift's assert autoclosure cannot throw; evaluate the real read first.
+            tests = SWIFT_TESTS.replace("GZIP_FIXTURE", GZIP)
+            tests = tests.replace("assert(try readCache", "assert(try! readCache")
+            swift = swift.replace("    // MARK: - Cache", tests + "\n    // MARK: - Cache")
+            swift += "\ntry MobileXmltvEpg().runCacheTests()\n"
+            (tmp / "CacheTest.swift").write_text(swift)
+            run("swift", "-module-cache-path", str(tmp / "swift-module-cache"), "CacheTest.swift", cwd=tmp)
 
-        kotlin = (ROOT / "mobile-xmltv-epg/src/android/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt").read_text()
-        kotlin = kotlin.replace("    // MARK: - Cache", KOTLIN_TESTS.replace("GZIP_FIXTURE", GZIP) + "\n    // MARK: - Cache")
-        kotlin += "\nfun main() { MobileXmltvEpgPlugin().runCacheTests() }\n"
-        (tmp / "CacheTest.kt").write_text(kotlin)
-        (tmp / "Capacitor.kt").write_text(KOTLIN_CAPACITOR)
-        (tmp / "Http.kt").write_text(KOTLIN_HTTP)
-        (tmp / "BuildConfig.kt").write_text("package play.ott.foss\nobject BuildConfig { const val BUNDLED_EPG_DEFAULTS = true }\n")
-        (tmp / "Annotation.kt").write_text("package com.getcapacitor.annotation\nannotation class CapacitorPlugin(val name: String)\n")
-        run("kotlinc", "CacheTest.kt", "Capacitor.kt", "Http.kt", "Annotation.kt", "BuildConfig.kt", "-nowarn", "-include-runtime", "-d", "cache-test.jar", cwd=tmp)
-        run("java", "-jar", "cache-test.jar", cwd=tmp)
+        if options.platform in ["android", "all"]:
+            kotlin = (ROOT / "mobile-xmltv-epg/src/android/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt").read_text()
+            kotlin = kotlin.replace(
+                "    // MARK: - Cache", KOTLIN_TESTS.replace("GZIP_FIXTURE", GZIP) + "\n    // MARK: - Cache"
+            )
+            kotlin += "\nfun main() { MobileXmltvEpgPlugin().runCacheTests() }\n"
+            (tmp / "CacheTest.kt").write_text(kotlin)
+            (tmp / "Capacitor.kt").write_text(KOTLIN_CAPACITOR)
+            (tmp / "Http.kt").write_text(KOTLIN_HTTP)
+            (tmp / "BuildConfig.kt").write_text(
+                "package play.ott.foss\nobject BuildConfig { const val BUNDLED_EPG_DEFAULTS = true }\n"
+            )
+            (tmp / "Annotation.kt").write_text(
+                "package com.getcapacitor.annotation\nannotation class CapacitorPlugin(val name: String)\n"
+            )
+            run(
+                "kotlinc",
+                "CacheTest.kt",
+                "Capacitor.kt",
+                "Http.kt",
+                "Annotation.kt",
+                "BuildConfig.kt",
+                "-nowarn",
+                "-include-runtime",
+                "-d",
+                "cache-test.jar",
+                cwd=tmp,
+            )
+            run("java", "-jar", "cache-test.jar", cwd=tmp)
 
 
 if __name__ == "__main__":

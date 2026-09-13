@@ -12,6 +12,7 @@ import {
     arrayGetCurProg,
     cancelMediaLoad,
     getCurProgData,
+    ifParentalAccessChId,
     type MediaHistoryEntry,
     type MediaTarget,
     rememberMediaView,
@@ -1218,7 +1219,7 @@ export function setSelect(index: number): void {
  *             Shows `permanentTime` if `settings.permanentTime !== 0`. Calls `window.stbToFullScreen()`.
  * @analysis Errors during DOM manipulation are silently caught and logged.
  */
-export function closeList(): void {
+export function closeList(restorePip = true): void {
     cancelMediaLoad();
     isListVisible = false;
     try {
@@ -1232,13 +1233,14 @@ export function closeList(): void {
         $("#permanentTime").toggle(settings.permanentTime !== 0);
         if (typeof (window as any).stbToFullScreen === "function")
             (window as any).stbToFullScreen();
-        if (!(window as any).sNoSmall && (window as any).pipIndex != null)
-            (window as any).stbPlayPip(
-                (window as any).getChannelUrl(
-                    (window as any).cats[
-                        (window as any).catsArray[(window as any).pipCatIndex]
-                    ][(window as any).pipIndex]
-                )
+        if (
+            restorePip &&
+            !(window as any).sNoSmall &&
+            (window as any).pipIndex != null
+        )
+            playPipChannel(
+                (window as any).pipCatIndex,
+                (window as any).pipIndex
             );
         if ((window as any).sPreview && (window as any).previewChan) {
             if (
@@ -2768,11 +2770,10 @@ export function popStop(): void {
  * Shortcut: close the list and toggle PiP.
  *
  * @returns void
- * @sideeffect Calls `closeList()` then the local `togglePip()` function.
+ * @sideeffect Checks access, then closes the list and toggles PiP.
  */
 export function popTogglePip(): void {
-    closeList();
-    if (typeof togglePip === "function") togglePip();
+    togglePip(true);
 }
 
 /**
@@ -2838,40 +2839,95 @@ function _showVolume(v: number): void {
     }, 2000);
 }
 
-/**
- * Toggle Picture-in-Picture mode. If no PiP is active, starts PiP with the current channel.
- * If PiP is active and the channel changed, swaps the main and PiP channels.
- * If PiP is active on the same channel, does nothing.
- *
- * @returns void
- * @sideeffect Sets `window.pipIndex` and `window.pipCatIndex`. Calls `window.stbPlayPip()` with the channel URL.
- * @analysis When PiP is active and the user switches to a different channel, the current main channel becomes PiP
- *             and the old PiP channel becomes main.
- */
-export function togglePip(): void {
-    if ((window as any).pipIndex == null) {
-        (window as any).pipIndex = (window as any).primaryIndex;
-        (window as any).pipCatIndex = (window as any).catIndex;
-        if (typeof (window as any).stbPlayPip === "function")
-            (window as any).stbPlayPip(
-                (window as any).getChannelUrl(
-                    (window as any).curList[(window as any).pipIndex]
-                )
-            );
-    } else {
+/** Check the selected channel before any PiP state or playback changes. */
+function withPipChannelAccess(
+    category: number,
+    index: number,
+    onAllowed: (channelId: number) => void
+): void {
+    var w = window as any;
+    var categoryName = w.catsArray[category];
+    var list = w.cats[categoryName];
+    var channelId = list && list[index];
+    var channel = channelId != null && w.channels[channelId];
+    if (!channel || typeof w.stbPlayPip !== "function") return;
+    function resume(): void {
+        // A PIN dialog can outlive a provider reload or category edit. Never
+        // use the old index to start a replacement channel after authorizing.
         if (
-            (window as any).pipCatIndex === (window as any).catIndex &&
-            (window as any).pipIndex === (window as any).primaryIndex
+            w.catsArray[category] !== categoryName ||
+            !w.cats[categoryName] ||
+            w.cats[categoryName][index] !== channelId ||
+            w.channels[channelId] !== channel
         )
             return;
-        var e = (window as any).pipIndex;
-        (window as any).pipIndex = (window as any).primaryIndex;
-        (window as any).pipCatIndex = (window as any).catIndex;
-        if (typeof (window as any).stbPlayPip === "function")
-            (window as any).stbPlayPip(
-                (window as any).getChannelUrl((window as any).curList[e])
-            );
+        if (ifParentalAccessChId(channelId, resume)) return;
+        onAllowed(channelId);
     }
+    resume();
+}
+
+/** Start or restore PiP only after checking access to its channel ID. */
+export function playPipChannel(
+    category: number,
+    index: number,
+    closeOverlay = false
+): void {
+    var w = window as any;
+    withPipChannelAccess(category, index, function (channelId) {
+        if (closeOverlay) closeList(false);
+        w.pipCatIndex = category;
+        w.pipIndex = index;
+        w.stbPlayPip(w.getChannelUrl(channelId));
+    });
+}
+
+/** Start PiP, or exchange the main and PiP channels after authorizing both. */
+export function togglePip(closeOverlay = false): void {
+    var w = window as any;
+    var mainCategory = w.catIndex;
+    var mainIndex = w.primaryIndex;
+    if (w.pipIndex == null) {
+        playPipChannel(mainCategory, mainIndex, closeOverlay);
+        return;
+    }
+    var oldPipCategory = w.pipCatIndex;
+    var oldPipIndex = w.pipIndex;
+    if (oldPipCategory === mainCategory && oldPipIndex === mainIndex) {
+        if (closeOverlay) closeList(false);
+        return;
+    }
+    withPipChannelAccess(
+        oldPipCategory,
+        oldPipIndex,
+        function (oldPipChannelId) {
+            var oldPipChannel = w.channels[oldPipChannelId];
+            var oldPipCategoryName = w.catsArray[oldPipCategory];
+            withPipChannelAccess(
+                mainCategory,
+                mainIndex,
+                function (mainChannelId) {
+                    if (
+                        w.pipCatIndex !== oldPipCategory ||
+                        w.pipIndex !== oldPipIndex ||
+                        w.catIndex !== mainCategory ||
+                        w.primaryIndex !== mainIndex ||
+                        w.catsArray[oldPipCategory] !== oldPipCategoryName ||
+                        !w.cats[oldPipCategoryName] ||
+                        w.cats[oldPipCategoryName][oldPipIndex] !==
+                            oldPipChannelId ||
+                        w.channels[oldPipChannelId] !== oldPipChannel
+                    )
+                        return;
+                    if (closeOverlay) closeList(false);
+                    w.pipCatIndex = mainCategory;
+                    w.pipIndex = mainIndex;
+                    w.playChannel(oldPipCategory, oldPipIndex);
+                    w.stbPlayPip(w.getChannelUrl(mainChannelId));
+                }
+            );
+        }
+    );
 }
 
 /* ---------------------------------------------------------------------------

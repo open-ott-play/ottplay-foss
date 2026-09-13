@@ -5,27 +5,31 @@ Small dispatch/decoder doubles let stopped and stale callbacks run deliberately.
 This is deterministic source-derived behavior verification, not an Android/iOS
 OS, background entitlement, notification renderer or decoder runtime test.
 """
-from pathlib import Path
+
+import argparse
 import os
 import re
 import shutil
 import subprocess
 import tempfile
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ANDROID = (ROOT / 'android/app/src/main/java/play/ott/foss/MediaPlaybackService.kt').read_text()
-IOS = (ROOT / 'ios/App/App/Plugins/MobileNativeMedia.swift').read_text()
+ANDROID = (ROOT / "android/app/src/main/java/play/ott/foss/MediaPlaybackService.kt").read_text()
+IOS = (ROOT / "ios/App/App/Plugins/MobileNativeMedia.swift").read_text()
+
 
 def method(source, signature):
     begin = source.index(signature)
-    end = source.index('{', begin) + 1
+    end = source.index("{", begin) + 1
     depth = 1
     while depth:
-        depth += (source[end] == '{') - (source[end] == '}')
+        depth += (source[end] == "{") - (source[end] == "}")
         end += 1
     return source[begin:end]
 
-KOTLIN = r'''
+
+KOTLIN = r"""
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicLong
 class Intent(val action: String?, val extras: Map<String, Any> = emptyMap()) {
@@ -130,15 +134,30 @@ class MediaPlaybackService {
         check(foregrounds == before && !canControl())
         println("PASS Android service: nonsticky/no-backend/null-intent; pause/resume; old command epochs; stop and late/current artwork; owner replacement/destroy")
     }
-'''
-functions = ['fun allowPlayback(', 'fun retirePlayback(', 'fun bindWebView(', 'fun clearWebView(',
-             'private fun retireSession(', 'override fun onStartCommand(', 'private fun applyMetaFromIntent(',
-             'private fun loadArtworkAsync(', 'private fun updateNotification(', 'private fun stopSelfSafe(']
-constants = '\n'.join(re.findall(r'^\s*(?:(?:private )?const val (?:ACTION_\w+|EXTRA_\w+|NOTIFICATION_ID) = .*)$', ANDROID, re.M))
-KOTLIN += constants.replace('const val', 'val') + '\n' + '\n'.join(method(ANDROID, name).replace('override fun', 'fun') for name in functions)
-KOTLIN += '\n}\nfun main() { MediaPlaybackService().run() }\n'
+"""
+functions = [
+    "fun allowPlayback(",
+    "fun retirePlayback(",
+    "fun bindWebView(",
+    "fun clearWebView(",
+    "private fun retireSession(",
+    "override fun onStartCommand(",
+    "private fun applyMetaFromIntent(",
+    "private fun loadArtworkAsync(",
+    "private fun updateNotification(",
+    "private fun stopSelfSafe(",
+]
+constants = "\n".join(
+    re.findall(r"^\s*(?:(?:private )?const val (?:ACTION_\w+|EXTRA_\w+|NOTIFICATION_ID) = .*)$", ANDROID, re.MULTILINE)
+)
+KOTLIN += (
+    constants.replace("const val", "val")
+    + "\n"
+    + "\n".join(method(ANDROID, name).replace("override fun", "fun") for name in functions)
+)
+KOTLIN += "\n}\nfun main() { MediaPlaybackService().run() }\n"
 
-SWIFT = r'''
+SWIFT = r"""
 import Foundation
 let MPMediaItemPropertyArtwork = "artwork"
 let MPNowPlayingInfoPropertyPlaybackRate = "rate"
@@ -162,10 +181,12 @@ class Harness {
     var lastRate = -1.0
     func setSeekCommandEnabled(_ value: Bool) { seekEnabled = value }
     func applyBackgroundAudio(call: CAPPluginCall, rate: Double, requireSession: Bool) { metadataRequests += 1; lastRate = rate }
-'''
-SWIFT += '\n'.join(method(IOS, name).replace('@objc ', '') for name in [
-    '@objc func stopBackgroundAudio(', '@objc func updateBackgroundAudio(', 'private func applyArtwork('])
-SWIFT += r'''
+"""
+SWIFT += "\n".join(
+    method(IOS, name).replace("@objc ", "")
+    for name in ["@objc func stopBackgroundAudio(", "@objc func updateBackgroundAudio(", "private func applyArtwork("]
+)
+SWIFT += r"""
     func run() {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = [MPNowPlayingInfoPropertyPlaybackRate: 0.0]
         updateBackgroundAudio(CAPPluginCall())
@@ -186,16 +207,38 @@ SWIFT += r'''
     }
 }
 Harness().run()
-'''
-with tempfile.TemporaryDirectory(prefix='ott-native-media-') as directory:
+"""
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--platform", choices=["android", "ios", "all"], default="all")
+platform = parser.parse_args().platform
+required = (["kotlinc", "java"] if platform in ["android", "all"] else []) + (
+    ["swiftc"] if platform in ["ios", "all"] else []
+)
+for compiler in required:
+    if not shutil.which(compiler):
+        raise SystemExit(f"Required native lifecycle test tool is missing: {compiler}")
+with tempfile.TemporaryDirectory(prefix="ott-native-media-") as directory:
     temp = Path(directory)
-    (temp / 'Main.kt').write_text(KOTLIN)
-    (temp / 'main.swift').write_text(SWIFT)
-    java = str(Path(os.environ['JAVA_HOME']) / 'bin/java') if os.environ.get('JAVA_HOME') else 'java'
-    subprocess.run([shutil.which('kotlinc') or 'kotlinc', str(temp/'Main.kt'), '-include-runtime', '-d', str(temp/'media.jar')], check=True)
-    subprocess.run([java, '-jar', str(temp/'media.jar')], check=True)
-    if shutil.which('swiftc'):
-        subprocess.run(['swiftc', '-module-cache-path', str(temp/'module-cache'), '-swift-version', '5', str(temp/'main.swift'), '-o', str(temp/'media')], check=True)
-        subprocess.run([str(temp/'media')], check=True)
-    else:
-        print('Swift lifecycle test requires macOS swiftc; Kotlin verified, Swift not run')
+    if platform in ["android", "all"]:
+        (temp / "Main.kt").write_text(KOTLIN)
+        java = str(Path(os.environ["JAVA_HOME"]) / "bin/java") if os.environ.get("JAVA_HOME") else "java"
+        subprocess.run(
+            ["kotlinc", str(temp / "Main.kt"), "-include-runtime", "-d", str(temp / "media.jar")], check=True
+        )
+        subprocess.run([java, "-jar", str(temp / "media.jar")], check=True)
+    if platform in ["ios", "all"]:
+        (temp / "main.swift").write_text(SWIFT)
+        subprocess.run(
+            [
+                "swiftc",
+                "-module-cache-path",
+                str(temp / "module-cache"),
+                "-swift-version",
+                "5",
+                str(temp / "main.swift"),
+                "-o",
+                str(temp / "media"),
+            ],
+            check=True,
+        )
+        subprocess.run([str(temp / "media")], check=True)
