@@ -1,6 +1,5 @@
 package play.ott.foss
 
-import android.Manifest
 import android.app.PictureInPictureParams
 import android.content.Context.AUDIO_SERVICE
 import android.content.Intent
@@ -11,7 +10,6 @@ import android.util.Log
 import android.view.View
 import android.view.WindowManager
 import android.webkit.WebView
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -24,11 +22,10 @@ class MobileNativeMediaPlugin : Plugin() {
 
     companion object {
         private const val TAG = "MobileNativeMedia"
-        private const val REQ_POST_NOTIFICATIONS = 44051
     }
 
     private var isFullscreen = false
-    private var backgroundAudioActive = false
+    @Volatile private var backgroundAudioActive = false
 
     override fun load() {
         super.load()
@@ -41,7 +38,10 @@ class MobileNativeMediaPlugin : Plugin() {
     }
 
     override fun handleOnDestroy() {
-        MediaPlaybackService.clearWebView(bridge.webView)
+        if (MediaPlaybackService.clearWebView(bridge.webView)) {
+            backgroundAudioActive = false
+            bridge.context.stopService(Intent(bridge.context, MediaPlaybackService::class.java))
+        }
         super.handleOnDestroy()
     }
 
@@ -50,30 +50,6 @@ class MobileNativeMediaPlugin : Plugin() {
             MediaPlaybackService.bindWebView(bridge.webView)
         } catch (e: Exception) {
             Log.w(TAG, "bindWebView failed", e)
-        }
-    }
-
-    /**
-     * Android 13+ requires runtime POST_NOTIFICATIONS for the FGS media notification.
-     * Best-effort: request if missing, then still start the service (notification may
-     * be suppressed until the user grants).
-     */
-    private fun ensurePostNotificationsPermission() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-        val act = activity ?: return
-        if (ContextCompat.checkSelfPermission(act, Manifest.permission.POST_NOTIFICATIONS)
-            == PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
-        try {
-            ActivityCompat.requestPermissions(
-                act,
-                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                REQ_POST_NOTIFICATIONS
-            )
-        } catch (e: Exception) {
-            Log.w(TAG, "POST_NOTIFICATIONS request failed", e)
         }
     }
 
@@ -212,8 +188,9 @@ class MobileNativeMediaPlugin : Plugin() {
         val artist = call.getString("artist") ?: "Now playing"
         val ctx = bridge.context
         bindMediaWebView()
-        ensurePostNotificationsPermission()
+        MediaPlaybackService.allowPlayback(bridge.webView)
         val intent = Intent(ctx, MediaPlaybackService::class.java).apply {
+            putExtra(MediaPlaybackService.EXTRA_GENERATION, MediaPlaybackService.currentGeneration())
             action = MediaPlaybackService.ACTION_START
             putExtra(MediaPlaybackService.EXTRA_TITLE, title)
             putExtra(MediaPlaybackService.EXTRA_ARTIST, artist)
@@ -244,15 +221,16 @@ class MobileNativeMediaPlugin : Plugin() {
         }
     }
 
-    /** Pause MediaSession state; keep FGS alive while paused briefly. */
+    /** Keep the paused session available for an explicit user Resume or Stop. */
     @PluginMethod
     fun pauseBackgroundAudio(call: PluginCall) {
-        if (!backgroundAudioActive) {
+        if (!backgroundAudioActive || !MediaPlaybackService.isPlaybackAllowed()) {
             call.resolve(JSObject().apply { put("ok", true) })
             return
         }
         val ctx = bridge.context
         val intent = Intent(ctx, MediaPlaybackService::class.java).apply {
+            putExtra(MediaPlaybackService.EXTRA_GENERATION, MediaPlaybackService.currentGeneration())
             action = MediaPlaybackService.ACTION_PAUSE
             // JS already paused <video>; only sync MediaSession / notification.
             putExtra(MediaPlaybackService.EXTRA_SESSION_ONLY, true)
@@ -276,8 +254,9 @@ class MobileNativeMediaPlugin : Plugin() {
         val artist = call.getString("artist") ?: "Now playing"
         val ctx = bridge.context
         bindMediaWebView()
-        ensurePostNotificationsPermission()
+        MediaPlaybackService.allowPlayback(bridge.webView)
         val intent = Intent(ctx, MediaPlaybackService::class.java).apply {
+            putExtra(MediaPlaybackService.EXTRA_GENERATION, MediaPlaybackService.currentGeneration())
             action = MediaPlaybackService.ACTION_RESUME
             putExtra(MediaPlaybackService.EXTRA_TITLE, title)
             putExtra(MediaPlaybackService.EXTRA_ARTIST, artist)
@@ -319,6 +298,9 @@ class MobileNativeMediaPlugin : Plugin() {
             call.reject("no activity")
             return
         }
+        MediaPlaybackService.retirePlayback()
+        backgroundAudioActive = false
+        bridge.context.stopService(Intent(bridge.context, MediaPlaybackService::class.java))
         act.runOnUiThread {
             try {
                 act.finishAndRemoveTask()
@@ -338,12 +320,13 @@ class MobileNativeMediaPlugin : Plugin() {
         val artist = call.getString("artist") ?: "Now playing"
         val ctx = bridge.context
         bindMediaWebView()
-        if (!backgroundAudioActive) {
-            // Not started yet — treat as start so first metadata still lands.
-            startBackgroundAudio(call)
+        if (!backgroundAudioActive || !MediaPlaybackService.isPlaybackAllowed()) {
+            // Metadata is not a playback request; ignore callbacks after Stop.
+            call.resolve(JSObject().apply { put("ok", true) })
             return
         }
         val intent = Intent(ctx, MediaPlaybackService::class.java).apply {
+            putExtra(MediaPlaybackService.EXTRA_GENERATION, MediaPlaybackService.currentGeneration())
             action = MediaPlaybackService.ACTION_UPDATE
             putExtra(MediaPlaybackService.EXTRA_TITLE, title)
             putExtra(MediaPlaybackService.EXTRA_ARTIST, artist)
@@ -376,13 +359,9 @@ class MobileNativeMediaPlugin : Plugin() {
     @PluginMethod
     fun stopBackgroundAudio(call: PluginCall) {
         val ctx = bridge.context
-        val intent = Intent(ctx, MediaPlaybackService::class.java).apply {
-            action = MediaPlaybackService.ACTION_STOP
-            // The web player already stopped; avoid dispatching another stop.
-            putExtra(MediaPlaybackService.EXTRA_SESSION_ONLY, true)
-        }
+        MediaPlaybackService.retirePlayback()
+        backgroundAudioActive = false
         try {
-            ctx.startService(intent)
             ctx.stopService(Intent(ctx, MediaPlaybackService::class.java))
             backgroundAudioActive = false
             call.resolve(JSObject().apply { put("ok", true) })

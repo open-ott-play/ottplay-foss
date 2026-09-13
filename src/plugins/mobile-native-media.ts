@@ -46,7 +46,7 @@ export interface MobileNativeMediaPlugin {
         error?: string;
     }>;
     /** iOS native second-channel PiP. Android OTT PiP uses the shared video element. */
-    playPip(opts: { url: string }): Promise<{
+    playPip(opts: { url: string; loop?: boolean }): Promise<{
         ok: boolean;
         unsupported?: boolean;
         error?: string;
@@ -117,7 +117,7 @@ class MobileNativeMediaWeb implements MobileNativeMediaPlugin {
         return { ok: false, unsupported: true, volume: 0 };
     }
 
-    async playPip(_opts: { url: string }): Promise<{
+    async playPip(_opts: { url: string; loop?: boolean }): Promise<{
         ok: boolean;
         unsupported?: boolean;
         error?: string;

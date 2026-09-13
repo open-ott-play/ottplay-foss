@@ -7,10 +7,11 @@ const os = require("node:os");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
-const dist = path.join(root, "dist");
+// Keep deployable archives outside Capacitor's dist/ web root.
+const packages = path.join(root, "build", "packages");
 const archiveName = "ottplay-foss-modea.tar.gz";
-const archivePath = path.join(dist, archiveName);
-const checksumPath = path.join(dist, "ottplay-foss-modea.sha256");
+const archivePath = path.join(packages, archiveName);
+const checksumPath = path.join(packages, "ottplay-foss-modea.sha256");
 
 function requirePath(relativePath, directory) {
     const source = path.join(root, relativePath);
@@ -55,7 +56,7 @@ try {
     const bundle = requirePath("dist/stbPlayer.js", false);
     const assets = ["favicon.ico", "fonts", "js", "stb", "stbPlayer", "prov"];
     const sources = assets.map((name) =>
-        requirePath(name, name !== "favicon.ico")
+        requirePath("dist/" + name, name !== "favicon.ico")
     );
     const pkg = JSON.parse(
         fs.readFileSync(path.join(root, "package.json"), "utf8")
@@ -87,6 +88,7 @@ try {
         env: { ...process.env, COPYFILE_DISABLE: "1" },
         stdio: "inherit",
     });
+    fs.mkdirSync(packages, { recursive: true });
     fs.copyFileSync(stagedArchive, archivePath);
     fs.writeFileSync(
         checksumPath,

@@ -263,6 +263,7 @@ for (const platform of Object.keys(nativeSources)) {
 // Explicit OS Play must be idempotent even though the legacy stbContinue API
 // toggles. Execute the actual core methods to avoid hiding this with a spy.
 const coreControls = functions("src/core/index.ts", [
+    "setCoreDemoMute",
     "isCoreThenable",
     "playCoreMedia",
     "cancelCoreSeek",
@@ -275,6 +276,7 @@ const coreControls = functions("src/core/index.ts", [
 for (const platform of Object.keys(nativeSources)) {
     let destroyed = 0;
     const w = {
+        _coreDemoMute: null,
         _corePendingSeek: null,
         _coreShakaTeardown: null,
         _playSession: 0,
@@ -311,36 +313,15 @@ for (const platform of Object.keys(nativeSources)) {
     assert.equal(w._playSession, 1);
 }
 
-// Execute the real PiP video bootstrap and verify mute is set BEFORE play(),
-// preserving the browser's silent second-channel behavior.
-const pipSource = read("src-tauri/src/commands/tauri_commands.rs");
-const pipBody = pipSource.slice(pipSource.indexOf("fn pip_player_script"));
-const raw = pipBody.match(/r#"([\s\S]*?)"#/)[1];
-const js = raw
-    .replace("{url_json}", JSON.stringify("https://fixture.invalid/second.mp4"))
-    .replace(/\{\{/g, "{")
-    .replace(/\}\}/g, "}");
-let played = 0;
-const video = {
-    play() {
-        assert.equal(this.muted, true);
-        assert.equal(this.defaultMuted, true);
-        played++;
-    },
-    setAttribute(name) {
-        assert.equal(name, "muted");
-    },
-    style: {},
-};
-const element = { appendChild() {}, style: {} };
-vm.runInNewContext(js, {
-    document: {
-        body: element,
-        createElement: () => video,
-        documentElement: element,
-    },
-});
-assert.equal(played, 1);
-console.log(
-    "OK: native touch targets/editor defaults, device media actions, TS lifecycle and silent Tauri PiP"
-);
+// Run the shipped dedicated PiP document, including the pre-play mute assertion,
+// asynchronous native/media lifecycle, decoder callbacks and frameless dragging.
+require("./test_tauri_pip_window.cjs")()
+    .then(() =>
+        console.log(
+            "OK: native touch targets/editor defaults, device media actions, TS lifecycle and silent Tauri PiP"
+        )
+    )
+    .catch((error) => {
+        console.error(error);
+        process.exitCode = 1;
+    });

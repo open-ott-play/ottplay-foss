@@ -178,7 +178,7 @@ try {
         "every shipped local plugin must reach bridge construction"
     );
     const mapping = {
-        BACK: "EXIT",
+        BACK: "RETURN",
         BUTTON_A: "ENTER",
         BUTTON_B: "EXIT",
         BUTTON_SELECT: "ENTER",
@@ -213,6 +213,7 @@ try {
     }
     const controls = functions("src/core/index.ts", [
         "isCoreThenable",
+        "setCoreDemoMute",
         "playCoreMedia",
         "cancelCoreSeek",
         "destroyCoreShaka",
@@ -234,6 +235,7 @@ try {
     };
     let destroyed = 0;
     const w = {
+        _coreDemoMute: null,
         _corePendingSeek: null,
         _coreShakaTeardown: null,
         _playSession: 0,

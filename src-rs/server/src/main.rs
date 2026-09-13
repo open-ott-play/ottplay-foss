@@ -81,35 +81,8 @@ async fn main() {
         .install_default()
         .expect("failed to install rustls CryptoProvider (aws-lc-rs)");
 
-    let urls = epg_urls();
-    if !urls.is_empty() {
-        println!("[EPG] Fetching {} source(s)...", urls.len());
-        match ottplay_core::fetch_xmltv(&urls).await {
-            Ok(cache) => {
-                let n_ch = cache.channels.len();
-                let n_pr: usize = cache.programs.values().map(|v| v.len()).sum();
-                println!("[EPG] Loaded {n_ch} channels, {n_pr} programmes");
-                *EPG_CACHE.write().await = cache;
-            }
-            Err(e) => eprintln!("[EPG] Fetch error: {e}"),
-        }
-        let cache = EPG_CACHE.clone();
-        let refresh_urls = urls.clone();
-        tokio::spawn(async move {
-            let mut ticker = tokio::time::interval(std::time::Duration::from_secs(2 * 3600));
-            loop {
-                ticker.tick().await;
-                tracing::info!("[EPG] Background refresh");
-                match ottplay_core::fetch_xmltv(&refresh_urls).await {
-                    Ok(fresh) => {
-                        *cache.write().await = fresh;
-                        tracing::info!("[EPG] Cache refreshed");
-                    }
-                    Err(e) => tracing::warn!("[EPG] Refresh failed: {e}"),
-                }
-            }
-        });
-    }
+    // HTTP startup must not wait for external EPG.
+    spawn_epg_refresh(epg_urls());
 
     let cli = Cli::parse();
     Lazy::force(&TMDB_KEY);
@@ -218,6 +191,51 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
+fn spawn_epg_refresh(urls: Vec<String>) {
+    if urls.is_empty() {
+        return;
+    }
+    let cache = EPG_CACHE.clone();
+    let _refresh = spawn_epg_refresh_loop(
+        move || {
+            let urls = urls.clone();
+            let cache = cache.clone();
+            async move {
+                println!("[EPG] Fetching {} source(s)...", urls.len());
+                match ottplay_core::fetch_xmltv(&urls).await {
+                    Ok(fresh) => {
+                        let channels = fresh.channels.len();
+                        let programmes: usize = fresh.programs.values().map(Vec::len).sum();
+                        *cache.write().await = fresh;
+                        println!("[EPG] Loaded {channels} channels, {programmes} programmes");
+                    }
+                    Err(error) => eprintln!("[EPG] Fetch error: {error}"),
+                }
+            }
+        },
+        std::time::Duration::from_secs(2 * 3600),
+    );
+}
+
+fn spawn_epg_refresh_loop<F, Work>(
+    mut refresh: F,
+    interval: std::time::Duration,
+) -> tokio::task::JoinHandle<()>
+where
+    F: FnMut() -> Work + Send + 'static,
+    Work: std::future::Future<Output = ()> + Send + 'static,
+{
+    tokio::spawn(async move {
+        loop {
+            refresh().await;
+            // Unlike interval().tick(), the first sleep is not immediate:
+            // initial fetch and periodic refresh never overlap or run twice.
+            tokio::time::sleep(interval).await;
+        }
+    })
+}
+
+
 fn build_tls_config(cert_path: &str, key_path: &str) -> Arc<ServerConfig> {
     // Load certificate
     let mut cert_file = BufReader::new(File::open(cert_path).expect("cannot open cert"));
@@ -251,6 +269,81 @@ fn device_entry_routes() -> Router {
         .route("/f/", get(root))
         .route("/f/*device", get(root))
 }
+
+#[cfg(test)]
+mod epg_startup_tests {
+    use super::*;
+    use axum::body::{to_bytes, Body};
+    use axum::http::Request;
+
+    #[tokio::test]
+    async fn http_startup_does_not_wait_for_initial_epg_or_duplicate_its_refresh() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use tokio::sync::Notify;
+        let started = Arc::new(Notify::new());
+        let finish_fetch = Arc::new(Notify::new());
+        let finished = Arc::new(Notify::new());
+        let requests = Arc::new(AtomicUsize::new(0));
+        let task = spawn_epg_refresh_loop(
+            {
+                let started = started.clone();
+                let finish_fetch = finish_fetch.clone();
+                let finished = finished.clone();
+                let requests = requests.clone();
+                move || {
+                    let started = started.clone();
+                    let finish_fetch = finish_fetch.clone();
+                    let finished = finished.clone();
+                    let requests = requests.clone();
+                    async move {
+                        requests.fetch_add(1, Ordering::SeqCst);
+                        started.notify_one();
+                        // Represents an offline EPG request with no response yet.
+                        finish_fetch.notified().await;
+                        finished.notify_one();
+                    }
+                }
+            },
+            std::time::Duration::from_secs(2 * 3600),
+        );
+        let deadline = std::time::Duration::from_secs(5);
+        tokio::time::timeout(deadline, started.notified())
+            .await
+            .unwrap();
+        let mut app = Router::new().route("/health", get(health));
+        let response = tokio::time::timeout(
+            deadline,
+            app.call(
+                Request::builder()
+                    .uri("/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            to_bytes(response.into_body(), 1024).await.unwrap().as_ref(),
+            b"OK"
+        );
+        assert_eq!(requests.load(Ordering::SeqCst), 1);
+        finish_fetch.notify_one();
+        tokio::time::timeout(deadline, finished.notified())
+            .await
+            .unwrap();
+        tokio::task::yield_now().await;
+        assert_eq!(
+            requests.load(Ordering::SeqCst),
+            1,
+            "Completing the initial fetch must not trigger an immediate periodic fetch"
+        );
+        task.abort();
+    }
+
+}
+
 
 async fn root() -> impl IntoResponse {
     // Prefer dist/index.html: vite substitutes __OTTP_VERSION__ there.
@@ -720,9 +813,10 @@ fn debug_log_path() -> std::path::PathBuf {
     std::path::PathBuf::from(DEBUG_LOG)
 }
 
-/// Permanent archive outside the local stack tree (survives rsync --delete / reinstall).
-/// Prefer OTTPLAY_DEBUG_ARCHIVE, else ../ottplay-debug-archive if present, else
-/// $HOME/victron/ottplay-debug-archive.
+/// Permanent archive under the source repo, outside the installed local stack.
+/// Prefer OTTPLAY_DEBUG_ARCHIVE, then an existing .local-artifacts/debug-archive
+/// in the working directory, then $HOME/victron/ottplay-foss/.local-artifacts/debug-archive.
+/// The local service installer sets the source archive explicitly so rsync cannot remove it.
 fn debug_archive_dir() -> std::path::PathBuf {
     if let Ok(p) = std::env::var("OTTPLAY_DEBUG_ARCHIVE") {
         let t = p.trim();
@@ -730,12 +824,13 @@ fn debug_archive_dir() -> std::path::PathBuf {
             return std::path::PathBuf::from(t);
         }
     }
-    let rel = std::path::PathBuf::from("../ottplay-debug-archive");
+    let rel = std::path::PathBuf::from(".local-artifacts/debug-archive");
     if rel.is_dir() {
         return rel;
     }
     if let Ok(home) = std::env::var("HOME") {
-        return std::path::PathBuf::from(home).join("victron/ottplay-debug-archive");
+        return std::path::PathBuf::from(home)
+            .join("victron/ottplay-foss/.local-artifacts/debug-archive");
     }
     rel
 }

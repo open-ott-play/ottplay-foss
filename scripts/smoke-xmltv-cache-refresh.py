@@ -6,16 +6,17 @@ implemented in src-rs — do not invent cache APIs.
 
 What the companion actually does (src-rs):
   - Serves EPG from an in-memory XmltvCache (EPG_CACHE RwLock).
-  - On process start, fetches EPG_URLS (default epg.it999.ru) *before* binding
-    the HTTP listener, then refreshes every 2h in the background.
+  - Fetches EPG_URLS (default epg.it999.ru) in the background without delaying
+    HTTP startup, then waits 2h after each fetch before refreshing again.
   - Optional SQLite persist when DATABASE_URL is set (write-only persist in
     ottplay_core::db; no public HTTP cache-status endpoint).
   - GET /health → "OK"; GET /epg/:hash → always JSON {"epg_data":[...]} (200).
   - archive/server.py also keeps a 2h on-disk .cache/epg_*.json (Python only).
 
 Default path does NOT kill or restart processes. Optional --restart-cmd /
-RESTART_CMD runs an operator-supplied restart, then waits for /health (warm-up
-gate: listener comes up after the initial XMLTV fetch attempt).
+RESTART_CMD runs an operator-supplied restart, then waits for /health. Health
+only confirms HTTP readiness; --strict-epg additionally polls the requested
+EPG hash for non-empty epg_data within the same restart warm-up timeout.
 
 Sibling scripts: smoke-modea-companion.sh, smoke-m3u-stream-proxy-headers.sh,
 smoke-logo-concurrent-bench.sh, smoke-command-queue.sh.
@@ -169,25 +170,67 @@ def wait_for_health(
         try:
             req = urllib.request.Request(url, method="GET")
             with urllib.request.urlopen(
-                req, timeout=max(connect_timeout, read_timeout)
+                req, timeout=min(max(connect_timeout, read_timeout),
+                                 max(0.001, deadline - time.monotonic()))
             ) as resp:
                 body = resp.read().decode("utf-8", errors="replace").strip()
                 status = int(getattr(resp, "status", None) or resp.getcode())
                 if status == 200 and body == "OK":
-                    print("  ok: companion listening again after warm-up gate")
+                    print("  ok: companion listening again; EPG may still be loading")
                     return
                 last_detail = f"HTTP {status} body={body!r}"
         except Exception as exc:  # noqa: BLE001 — keep polling until timeout
             last_detail = f"{type(exc).__name__}: {exc}"
-        time.sleep(poll)
+        time.sleep(min(poll, max(0, deadline - time.monotonic())))
     eprint(
         "FAIL: companion did not return /health OK within warm-up timeout "
         f"({timeout:.0f}s); last={last_detail}"
     )
     eprint(
-        "note: ottplay-server fetches XMLTV before binding — a long EPG "
-        "download can delay /health; raise --warmup-timeout if needed"
+        "note: /health confirms HTTP readiness, not XMLTV cache readiness"
     )
+    raise SystemExit(2)
+
+
+def wait_for_epg(
+    base: str,
+    hash_value: str,
+    *,
+    connect_timeout: float,
+    read_timeout: float,
+    timeout: float,
+    poll: float,
+) -> None:
+    """Wait for the requested channel, not merely a responsive /epg route."""
+    path = epg_path(hash_value)
+    url = join_url(base, path)
+    print(f"==> wait for non-empty {path} (remaining timeout={max(0, timeout):.1f}s)")
+    deadline = time.monotonic() + timeout
+    last_detail = "warm-up budget exhausted"
+    while time.monotonic() < deadline:
+        try:
+            req = urllib.request.Request(url, method="GET", headers={"Accept": "application/json"})
+            with urllib.request.urlopen(
+                req, timeout=min(max(connect_timeout, read_timeout),
+                                 max(0.001, deadline - time.monotonic()))
+            ) as resp:
+                status = int(getattr(resp, "status", None) or resp.getcode())
+                data = json.loads(resp.read().decode("utf-8"))
+                epg = data.get("epg_data") if isinstance(data, dict) else None
+                if status != 200 or not isinstance(epg, list):
+                    eprint(f"FAIL: {path} expected HTTP 200 with epg_data list")
+                    raise SystemExit(2)
+                if epg:
+                    print(f"  ok: {path} → 200, epg_data len={len(epg)}")
+                    return
+                last_detail = "epg_data empty (cache loading, unmatched hash, or no programmes in range)"
+        except (ValueError, UnicodeError) as exc:
+            eprint(f"FAIL: {path} invalid JSON: {type(exc).__name__}")
+            raise SystemExit(2) from exc
+        except (OSError, urllib.error.URLError) as exc:
+            last_detail = type(exc).__name__
+        time.sleep(min(poll, max(0, deadline - time.monotonic())))
+    eprint(f"FAIL: {path} did not become non-empty within restart warm-up timeout; last={last_detail}")
     raise SystemExit(2)
 
 
@@ -281,13 +324,13 @@ Automated default does not kill anything — only curls /health and /epg.
         "--warmup-timeout",
         type=float,
         default=float(os.environ.get("WARMUP_TIMEOUT", DEFAULT_WARMUP_TIMEOUT)),
-        help=f"Seconds to wait for /health after restart (default {DEFAULT_WARMUP_TIMEOUT:.0f})",
+        help=f"Total seconds to wait for /health and strict EPG after restart (default {DEFAULT_WARMUP_TIMEOUT:.0f})",
     )
     p.add_argument(
         "--warmup-poll",
         type=float,
         default=float(os.environ.get("WARMUP_POLL", DEFAULT_WARMUP_POLL)),
-        help=f"Poll interval while waiting for /health (default {DEFAULT_WARMUP_POLL})",
+        help=f"Poll interval while waiting for /health and strict EPG (default {DEFAULT_WARMUP_POLL})",
     )
     p.add_argument(
         "--connect-timeout",
@@ -360,6 +403,7 @@ def main(argv: list[str] | None = None) -> int:
     restart_cmd = (args.restart_cmd or "").strip()
     if restart_cmd:
         run_restart(restart_cmd)
+        warmup_deadline = time.monotonic() + args.warmup_timeout
         wait_for_health(
             base,
             connect_timeout=args.connect_timeout,
@@ -367,6 +411,15 @@ def main(argv: list[str] | None = None) -> int:
             timeout=args.warmup_timeout,
             poll=args.warmup_poll,
         )
+        if epg_hash and args.strict_epg:
+            wait_for_epg(
+                base,
+                epg_hash,
+                connect_timeout=args.connect_timeout,
+                read_timeout=args.read_timeout,
+                timeout=warmup_deadline - time.monotonic(),
+                poll=args.warmup_poll,
+            )
         check_epg(
             base,
             PROBE_HASH,
@@ -375,7 +428,7 @@ def main(argv: list[str] | None = None) -> int:
             label="after restart (probe)",
             require_nonempty=False,
         )
-        if epg_hash:
+        if epg_hash and not args.strict_epg:
             check_epg(
                 base,
                 epg_hash,

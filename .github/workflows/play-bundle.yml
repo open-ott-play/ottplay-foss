@@ -7,6 +7,21 @@ on:
       - '.github/workflows/play-bundle.yml'
       - 'scripts/android/**'
       - 'tests/test_play_upload_signing.py'
+      - 'android/**'
+      - 'src/**'
+      - 'prov/**'
+      - 'scripts/*android*.cjs'
+      - 'tests/android_provider_policy.cjs'
+      - 'tests/test_play_system_icons.cjs'
+      - 'scripts/play-system-icons.cjs'
+      - 'scripts/native-*.cjs'
+      - 'tests/test_native_runtime.cjs'
+      - 'tests/test_frontend_safety.cjs'
+      - 'package*.json'
+      - 'stbPlayer/**'
+      - 'fonts/**'
+      - 'vite.config.ts'
+      - 'docs/privacy-policy.md'
   push:
     branches: [main]
     paths:
@@ -50,13 +65,20 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
-      - name: Build web assets and sync native project
+      - name: Sync native plugins without shared frontend assets
         run: |
           npm ci --ignore-scripts
-          npm run build:mobile
-      - name: Build unsigned release bundle
+          node tests/android_provider_policy.cjs
+          node scripts/build-android.cjs sync
+      - name: Build unsigned Play distribution
         working-directory: android
-        run: env -u KEYSTORE_FILE -u KEYSTORE_PASSWORD -u KEY_ALIAS -u KEY_PASSWORD ./gradlew --no-daemon bundleRelease
+        run: env -u KEYSTORE_FILE -u KEYSTORE_PASSWORD -u KEY_ALIAS -u KEY_PASSWORD ./gradlew --no-daemon :app:bundlePlayRelease
+      - name: Audit packaged Play content before signing
+        run: |
+          node scripts/verify-android-distribution.cjs android/app/build/outputs/bundle/playRelease/app-play-release.aab play
+          node tests/test_play_system_icons.cjs --bundle android/app/build/generated/ottplay/play/assets/public/dist/stbPlayer.js
+          npm run test:native:runtime
+          OTTPLAY_TEST_JQUERY=android/app/build/generated/ottplay/play/assets/public/js/jquery.min.js node tests/test_frontend_safety.cjs --bundle android/app/build/generated/ottplay/play/assets/public/dist/stbPlayer.js
       - name: Sign and verify Play upload bundle
         env:
           PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.PLAY_UPLOAD_KEYSTORE_BASE64 }}
@@ -65,8 +87,9 @@ jobs:
           PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEY_PASSWORD }}
         run: |
           python3 scripts/android/sign-play-bundle.py \
-            android/app/build/outputs/bundle/release/app-release.aab \
+            android/app/build/outputs/bundle/playRelease/app-play-release.aab \
             ottplay-foss-android-play-upload.aab
+          node scripts/verify-android-distribution.cjs ottplay-foss-android-play-upload.aab play
       - name: Upload verified bundle for manual Play Console submission
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:

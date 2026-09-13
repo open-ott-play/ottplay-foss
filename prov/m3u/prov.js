@@ -735,6 +735,10 @@ function getChanelsArray(a) {
             });
     }
     var t = m3uArr.M3Us[m3uArr.active].www;
+    if (typeof checkProviderUrl === "function" && !checkProviderUrl(t)) {
+        a();
+        return;
+    }
     if (!t) {
         try {
             $(launch_id).hide();
@@ -1076,9 +1080,7 @@ function getMediaArrayXML(e, r) {
     }
     $("#dialogbox")
         .html(
-            '<img src="' +
-                host +
-                '/stbPlayer/buffering.gif" height="40"> ' +
+            '<span class="ott-spinner ott-spinner--inline" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></span> ' +
                 _("Download! Wait ...")
         )
         .show();

@@ -1,3 +1,4 @@
+import { metadataCssUrl, metadataHtml, metadataText } from "../utils/helpers";
 /**
  * Provider management — load, parse, and manage IPTV service providers.
  * Ported from stbPlayer.js: loadProv, loadChannels, selectProvaider,
@@ -20,6 +21,7 @@ import {
     invalidateEpgCache,
 } from "../channels";
 import {
+    restoreDemoMute,
     setPlayerMode,
     toggleAspectRatio,
     toggleAudioTrack,
@@ -43,11 +45,49 @@ import {
 
 // ─── Provider list ────────────────────────────────────────────────────────────
 
+// The build replaces this literal and removes FULL_ONLY regions for Play.
+// This policy never comes from imported settings, URLs, or provider storage.
+var providerDistribution: string = "full"; // OTTPLAY_DISTRIBUTION
+
+export function isPlayDistribution(): boolean {
+    return providerDistribution === "play";
+}
+
+/** Explain unsupported remote cleartext input before attempting a Play request. */
+export function checkProviderUrl(url: string): boolean {
+    if (!isPlayDistribution() || !/^@?http:\/\//i.test(String(url || "")))
+        return true;
+    if (
+        /^@?http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?(?:[\/?#]|$)/i.test(
+            url
+        )
+    )
+        return true;
+    alert(
+        _(
+            "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL."
+        )
+    );
+    return false;
+}
+
+export function isProviderAllowed(id: string): boolean {
+    return (
+        !isPlayDistribution() ||
+        id === "m3u" ||
+        id === "stalker" ||
+        id === "xtream" ||
+        id === "demo"
+    );
+}
+
 export var arrayProvaiders = [
     "m3u",
     "stalker",
     "xtream",
     "",
+    "demo",
+    // OTTPLAY_FULL_ONLY_BEGIN
     "ottclub",
     "edem",
     "shura",
@@ -93,6 +133,7 @@ export var arrayProvaiders = [
     "fxml",
     "rd",
     "tabox",
+    // OTTPLAY_FULL_ONLY_END
 ];
 
 export var provArray: string[] | null = null;
@@ -202,7 +243,7 @@ function updateChanelList(chId: string): void {
     if (!ch && (window as any).channels) ch = (window as any).channels[chId];
     if (!ch) return;
     var pn = document.getElementById("pn" + chId);
-    if (pn) pn.innerHTML = ch.name || "";
+    if (pn) pn.textContent = ch.name || "";
     if (ch.time_to && ch.time_to > ch.time) {
         $("#pr" + chId).css(
             "width",
@@ -253,7 +294,7 @@ function detailProg(): void {
             '<div id="_name"><div style="color:' +
             accent +
             ';">' +
-            e.name +
+            metadataText(e.name) +
             '</div><div style="font-size:smaller;">' +
             time2time(e.time) +
             " - " +
@@ -266,7 +307,7 @@ function detailProg(): void {
             ")</div></div>" +
             '<div id="_descr" style="font-size:smaller;overflow:hidden;position:relative;"><div id="_prd">' +
             getThumbnail(e.icon) +
-            e.descr +
+            metadataHtml(e.descr) +
             "</div></div>";
         if (e.nextpr && nextCountL) {
             // Gold: absolute to listDetail bottom (yellow podval border).
@@ -283,7 +324,7 @@ function detailProg(): void {
                         ' <span style="color:' +
                         accent +
                         ';">' +
-                        n.name +
+                        metadataText(n.name) +
                         "</span></br>";
             });
             r += "</div>";
@@ -514,6 +555,19 @@ export function optionsList(fn?: () => void): void {
             (window as any).enterPinAndSetAccess(optionsList as any);
         }
         return;
+    }
+    if (isPlayDistribution()) {
+        for (
+            var optionIndex = optionsArr.length - 1;
+            optionIndex >= 0;
+            optionIndex--
+        ) {
+            if (
+                optionsArr[optionIndex].action === edit_dealer ||
+                optionsArr[optionIndex].action === edit_dealer_remote
+            )
+                optionsArr.splice(optionIndex, 1);
+        }
     }
     listDataArray = [];
     optionsArr.forEach(function (opt: any) {
@@ -766,7 +820,42 @@ declare var confirmBox: (
  * Edge case: If noSelProv=1, removes selectProvaider action from optionsArr.
  * If noProvParam=1, splices provider settings out of popup arrays.
  */
-export function loadProv(): void {
+export function loadProv(providerId?: string): void {
+    if (!isProviderAllowed((window as any)._pendingProvId || ""))
+        (window as any)._pendingProvId = "";
+    // An explicit choice made from Demo wins for this load only. The stored
+    // URL/noSelProv restrictions still apply to ordinary provider reloads.
+    var demoProviderSelection =
+        (window as any).ottplayDemoActive === true && providerId
+            ? providerId
+            : "";
+    // A provider switch retires demo playback before any asynchronous load.
+    if ((window as any).ottplayDemoActive === true) {
+        var demoMenuIndex = popupActions.indexOf(selectProvaider);
+        if (demoMenuIndex !== -1) {
+            popupActions.splice(demoMenuIndex, 1);
+            popupArray.splice(demoMenuIndex, 1);
+            popupDetail.splice(demoMenuIndex, 1);
+        }
+        // Native PiP lives outside these DOM video elements. Use the public
+        // shell hook so its decoder/looper and pending startup are retired too.
+        (window as any).pipIndex = null;
+        if (typeof window.stbStopPip === "function") {
+            try {
+                window.stbStopPip();
+            } catch (error) {
+                console.warn("[loadProv] demo PiP stop failed:", error);
+            }
+        }
+    }
+    (window as any).ottplayDemoActive = false;
+    restoreDemoMute();
+    for (var demoVideoIndex = 0; demoVideoIndex < 2; demoVideoIndex++) {
+        var demoVideo = document.getElementById(
+            demoVideoIndex ? "videopip" : "video"
+        ) as HTMLVideoElement | null;
+        if (demoVideo) demoVideo.loop = false;
+    }
     cancelPortChannelIdMigration();
     cancelMediaLoad();
     invalidateEpgCache();
@@ -792,7 +881,7 @@ export function loadProv(): void {
         if (stbIsPlaying()) stbStop();
         $("#dialogbox")
             .html(
-                '<div class="ott-spinner" style="width:40px;height:40px;"></div>'
+                '<div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div>'
             )
             .show();
         launch_id = "#dialogbox";
@@ -841,6 +930,15 @@ export function loadProv(): void {
     }
 
     var matchResult = window.location.search.match(/\?([^&]+)/);
+    // Keep an explicitly selected demo after restarting a URL-pinned player.
+    // The existing ?clear reset must still be able to clear that selection.
+    if (
+        demoProviderSelection ||
+        providerId === "demo" ||
+        (stbGetItem("ottplayprov") === "demo" &&
+            (!matchResult || matchResult[1].replace(/!/g, "") !== "clear"))
+    )
+        matchResult = null;
     s = "";
     if (matchResult !== null) {
         s = matchResult[1].replace(/!/g, "");
@@ -851,17 +949,20 @@ export function loadProv(): void {
         }
         if (s.indexOf("*") > -1 && !stbGetItem("ottplayprov")) {
             s = s.replace(/\*/g, "");
-            if (arrayProvaiders.indexOf(s) > -1) {
+            if (isProviderAllowed(s) && arrayProvaiders.indexOf(s) > -1) {
                 stbSetItem("ottplayprov", s);
                 stbSetItem("noSelProv", "1");
                 s = "";
             }
         }
-        if (arrayProvaiders.indexOf(s) === -1) s = "";
+        if (!isProviderAllowed(s) || arrayProvaiders.indexOf(s) === -1) s = "";
     }
     if (s) delOption(selectProvaider);
-    else s = stbGetItem("ottplayprov") || s;
-    if (arrayProvaiders.indexOf(s) === -1) s = "";
+    else
+        s =
+            demoProviderSelection ||
+            (providerId === "demo" ? "demo" : stbGetItem("ottplayprov") || s);
+    if (!isProviderAllowed(s) || arrayProvaiders.indexOf(s) === -1) s = "";
     if (!s) {
         s = "no";
         onError();
@@ -915,12 +1016,39 @@ export function loadProv(): void {
                         popupDetail.splice(idx, count);
                         popupActions.splice(idx, count);
                     }
+                    if (s === "demo") {
+                        // Demo has no provider settings of its own. Keep an
+                        // explicit exit in the main menu, after normal provider
+                        // settings have been filtered, without changing locks.
+                        var demoExit = popupActions.indexOf(optionsList);
+                        if (demoExit < 0) demoExit = popupActions.length;
+                        if (popupActions.indexOf(selectProvaider) === -1) {
+                            popupActions.splice(demoExit, 0, selectProvaider);
+                            popupArray.splice(
+                                demoExit,
+                                0,
+                                _("Change provider")
+                            );
+                            popupDetail.splice(
+                                demoExit,
+                                0,
+                                _("Choose provider")
+                            );
+                        }
+                        if (optIndexOf(selectProvaider) === -1)
+                            optionsArr.push({
+                                action: selectProvaider,
+                                name: "Change provider",
+                            });
+                    }
                     if (
+                        !isPlayDistribution() &&
+                        s !== "demo" &&
                         Number.parseInt(stbGetItem("noSelProv") || "0") +
                             Number.parseInt(
                                 stbGetItem("noProvParam") || "0"
                             ) !==
-                        2
+                            2
                     ) {
                         const img = $("<img>");
                         img.attr(
@@ -960,9 +1088,9 @@ export function loadProv(): void {
                 (window as any)._pendingProvId = "";
                 $(launch_id).append(
                     "<br/><br/><b>Exception:</b> name " +
-                        (e as any).name +
+                        metadataText((e as any).name) +
                         ", message " +
-                        (e as any).message +
+                        metadataText((e as any).message) +
                         ", typeof " +
                         typeof e
                 );
@@ -996,7 +1124,7 @@ export function loadChannels(): void {
         if (launch_id !== "#dialogbox")
             $("#dialogbox")
                 .html(
-                    '<center><div class="ott-spinner" style="width:40px;height:40px;"></div></center>'
+                    '<center><div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div></center>'
                 )
                 .show();
         launch_id = "#dialogbox";
@@ -1121,6 +1249,11 @@ export function selectProvaider(): void {
         enterPinAndSetAccess(selectProvaider);
         return;
     }
+    if (isPlayDistribution()) {
+        // Imported/recent Full selections cannot expand this registry.
+        arrayProvaiders = ["m3u", "stalker", "xtream", "", "demo"];
+        provArray = null;
+    }
     if (!provArray || provArray.some((p) => typeof p !== "string"))
         provArray = [
             (sNoColorKeys ? "" : '<div class="btn red">&nbsp;</div>&nbsp;') +
@@ -1130,6 +1263,8 @@ export function selectProvaider(): void {
             (sNoColorKeys ? "" : '<div class="btn yellow">&nbsp;</div>&nbsp;') +
                 "Xtream-codes",
             "",
+            _("Demo — moving test pattern"),
+            // OTTPLAY_FULL_ONLY_BEGIN
             "OTTCLUB",
             "Эдем / iLookTV",
             "Шура ТВ",
@@ -1165,8 +1300,10 @@ export function selectProvaider(): void {
             "TVClub",
             "Vidok.TV",
             "Гомельсат (cbilling)",
+            // OTTPLAY_FULL_ONLY_END
         ];
 
+    // OTTPLAY_FULL_ONLY_BEGIN
     var cbkey = stbGetItem("cbkey");
     if (!cbkey) {
         for (var i = 0; i < provArray.length; i++) {
@@ -1176,6 +1313,8 @@ export function selectProvaider(): void {
             }
         }
     }
+
+    // OTTPLAY_FULL_ONLY_END
 
     /**
      * Display the "about" description HTML for the currently selected provider.
@@ -1210,7 +1349,7 @@ export function selectProvaider(): void {
      * Side effects: Writes 'ottplayprov' and 'ottplayprovs' to stb storage.
      */
     function selectProv(id: string): void {
-        if (!id) return;
+        if (!id || !isProviderAllowed(id)) return;
         if (savedProvId === id) {
             optionsList(selectProvaider);
             return;
@@ -1223,7 +1362,11 @@ export function selectProvaider(): void {
             recent.push(id);
             stbSetItem("ottplayprovs", JSON.stringify(recent));
         }
-        loadProv();
+        loadProv(
+            id === "demo" || (window as any).ottplayDemoActive === true
+                ? id
+                : undefined
+        );
     }
 
     var recentCount = 3;
@@ -1235,8 +1378,18 @@ export function selectProvaider(): void {
         console.error(e);
         recentProviders = [];
     }
+    if (isPlayDistribution()) {
+        if (!Array.isArray(recentProviders)) recentProviders = [];
+        recentProviders = recentProviders.filter(function (prov) {
+            return isProviderAllowed(prov);
+        });
+    }
     recentProviders.forEach(function (prov) {
+        // Generic protocol shortcuts keep their fixed positions.
+        if (isPlayDistribution() && prov !== "demo") return;
+        // OTTPLAY_FULL_ONLY_BEGIN
         if (!cbkey && prov === "cbilling") return;
+        // OTTPLAY_FULL_ONLY_END
         var idx = arrayProvaiders.indexOf(prov);
         if (idx === -1) return;
         arrayProvaiders.splice(idx, 1);
@@ -1260,7 +1413,10 @@ export function selectProvaider(): void {
         );
     };
     detailListAction = function () {
-        if (arrayProvaiders[selIndex]) {
+        if (
+            arrayProvaiders[selIndex] &&
+            isProviderAllowed(arrayProvaiders[selIndex])
+        ) {
             var aboutUrl =
                 host + "/prov/" + arrayProvaiders[selIndex] + "/about";
             var lang = stbGetItem("ottplaylang") || "";
@@ -1347,6 +1503,11 @@ export function selectProvaider(): void {
  * showEditKey globals; loads a script dynamically.
  */
 export function edit_dealer(): void {
+    if (isPlayDistribution()) {
+        selectProvaider();
+        return;
+    }
+    // OTTPLAY_FULL_ONLY_BEGIN
     /**
      * Show an error alert for invalid dealer codes and re-open the editor.
      *
@@ -1380,6 +1541,7 @@ export function edit_dealer(): void {
             );
     };
     showEditKey([0, 1, 2]);
+    // OTTPLAY_FULL_ONLY_END
 }
 
 // ─── Edit dealer remote (enter provider code via web) ─────────────────────────
@@ -1400,6 +1562,11 @@ export function edit_dealer(): void {
  * 10-minute timeout auto-cleanup.
  */
 export function edit_dealer_remote(): void {
+    if (isPlayDistribution()) {
+        selectProvaider();
+        return;
+    }
+    // OTTPLAY_FULL_ONLY_BEGIN
     /**
      * Show an error alert and trigger cleanup.
      *
@@ -1536,6 +1703,7 @@ export function edit_dealer_remote(): void {
         type: "POST",
         url: host_ott_proto + host_ott + "/swop/a.php",
     });
+    // OTTPLAY_FULL_ONLY_END
 }
 
 // ─── Dune add settings (provider hook) ────────────────────────────────────────
@@ -1706,7 +1874,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                 "&nbsp;&nbsp;" +
                 _("Channel is not available!!!") +
                 " id=" +
-                chId
+                metadataText(chId)
             );
         // .item is already display:flex (1280.css + showPage). Emit direct flex
         // children — a nested width:100% flex wrapper + max-width:textW from
@@ -1718,7 +1886,9 @@ function _channelsList(catIdx: number, channelIdx: number): void {
         getCurProgData(chId, updateChanelList);
         var nowSec = Date.now() / 1e3;
         var progName =
-            ch.time_to && ch.time_to >= nowSec && ch.name ? ch.name : "";
+            ch.time_to && ch.time_to >= nowSec && ch.name
+                ? metadataText(ch.name)
+                : "";
         if (ch.outdated === true)
             progName =
                 '<i style="color:#3c3c0a">' +
@@ -1743,7 +1913,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                 if ((ch as any).logo) picUrl = String((ch as any).logo);
             } catch (_pic2) {}
         }
-        var safePic = String(picUrl)
+        var safePic = metadataText(metadataCssUrl(picUrl))
             .replace(/\\/g, "\\\\")
             .replace(/'/g, "%27")
             .replace(/"/g, "%22")
@@ -1790,7 +1960,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                 (window as any).bodyColor ||
                 "#f0f0f0") +
             ';">&nbsp;' +
-            (showName ? ch.channel_name + "&nbsp;" : "") +
+            (showName ? metadataText(ch.channel_name) + "&nbsp;" : "") +
             (showProgram
                 ? '<span id="pn' +
                   chId +
@@ -1834,7 +2004,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
             catName = catName + " - " + favListName;
         }
     }
-    listCaptionElement.innerHTML = _("Channel list. Category: ") + catName;
+    listCaptionElement.textContent = _("Channel list. Category: ") + catName;
     listPodval!.innerHTML =
         btnDiv(
             keys.RED,
@@ -1892,6 +2062,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
  */
 export function firstRun(): void {
     listArray = [
+        // OTTPLAY_FULL_ONLY_BEGIN
         { action: edit_dealer, name: _("Enter Provider Code") },
         {
             action: edit_dealer_remote,
@@ -1899,12 +2070,32 @@ export function firstRun(): void {
         },
         { action: loadSettings, name: _("Load settings") },
         { action: nofun, name: "" },
+        // OTTPLAY_FULL_ONLY_END
         { action: selectProvaider, name: _("Manual setup") },
     ];
+    // OTTPLAY_FULL_ONLY_BEGIN
     if (typeof loadOpt === "function")
         listArray.splice(3, 0, {
             action: loadOpt,
             name: _("Load settings from storage"),
+        });
+    // OTTPLAY_FULL_ONLY_END
+    listArray.unshift({
+        action: function () {
+            // Change only the selection: existing provider credentials,
+            // playlists and provider-scoped settings remain untouched.
+            stbSetItem("ottplayprov", "demo");
+            loadProv("demo");
+        },
+        name: _("Try demo"),
+    });
+    if (isPlayDistribution())
+        listArray.push({
+            action: function () {
+                var showPrivacy = (window as any).privacyPolicy;
+                if (typeof showPrivacy === "function") showPrivacy(firstRun);
+            },
+            name: _("Privacy policy"),
         });
     selIndex = 0;
     getListItemFn = function (item: any, _idx: number) {

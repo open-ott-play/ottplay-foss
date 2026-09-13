@@ -12,7 +12,7 @@ Player runs in a browser or WebView on the STB hardware. `python3 server.py` pro
 ### Mode B — Native Apps (iOS, Android, macOS, Windows, Linux)
 Self-contained app. No Python server required. All server.py duties are absorbed into the native layer. The app bundles everything and works offline.
 
-For a quick browser check of the full player UI (no local Mode A server), use the hosted build: **https://player.ottplay.here.now/**.
+For a quick browser check of the full player UI, use a local or self-hosted web build from the same revision.
 
 These modes are **mutually exclusive at runtime** — a native app does not connect to server.py, and a browser/STB player does not connect to a native command queue. Both share the same TypeScript frontend source.
 
@@ -62,7 +62,7 @@ See root README § Mode A companion smoke. Does not cover `local_proxy.py` comma
 
 ### XMLTV cache refresh / warm-up smoke
 
-`scripts/smoke-xmltv-cache-refresh.sh` — Mode A companion XMLTV/EPG cache warm-up: `GET /health`, probe `GET /epg/:hash` (always 200 + `epg_data`), optional `EPG_HASH`, optional `--restart-cmd` then wait for `/health` (fetch-before-bind gate). Default `BASE_URL=http://127.0.0.1:8095`. Does not kill by default. See root README § XMLTV cache refresh / warm-up smoke.
+`scripts/smoke-xmltv-cache-refresh.sh` — Mode A companion XMLTV/EPG cache warm-up: `GET /health`, probe `GET /epg/:hash` (always 200 + `epg_data`), optional `EPG_HASH`, optional `--restart-cmd` then wait for `/health`. HTTP startup does not wait for the background XMLTV fetch; `--strict-epg` with `EPG_HASH` also polls that channel for non-empty EPG within the same `--warmup-timeout` budget. Default `BASE_URL=http://127.0.0.1:8095`. Does not kill by default. See root README § XMLTV cache refresh / warm-up smoke.
 
 ### Mode A E2E play-path smoke
 

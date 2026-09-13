@@ -21,6 +21,13 @@
  */
 export function cloudSendSettings(): void {
     var w: any = window as any;
+    if (
+        (w.Capacitor || w.__TAURI__) &&
+        typeof w.exportSettingsUI === "function"
+    ) {
+        w.exportSettingsUI();
+        return;
+    }
     /**
      * Cancel the cloud send operation and hide the about overlay.
      * Called on success, error, user cancel, or 10-minute timeout.

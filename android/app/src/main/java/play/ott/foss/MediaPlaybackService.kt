@@ -13,6 +13,11 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.atomic.AtomicLong
+import android.os.Handler
+import android.os.Looper
+import java.io.ByteArrayOutputStream
 import java.net.URL
 import java.net.HttpURLConnection
 import android.util.Base64
@@ -60,16 +65,40 @@ class MediaPlaybackService : Service() {
         @Volatile
         private var webViewRef: WeakReference<WebView>? = null
 
+        @Volatile private var playbackAllowed = false
+        private val playbackGeneration = AtomicLong()
+        const val EXTRA_GENERATION = "playback_generation"
+        @Volatile private var serviceRef: WeakReference<MediaPlaybackService>? = null
+
+        fun allowPlayback(webView: WebView?): Long {
+            bindWebView(webView)
+            playbackAllowed = webView != null
+            return playbackGeneration.incrementAndGet()
+        }
+
+        fun currentGeneration(): Long = playbackGeneration.get()
+
+        fun isPlaybackAllowed(): Boolean = playbackAllowed && webViewRef?.get() != null
+
+        fun retirePlayback() {
+            playbackAllowed = false
+            playbackGeneration.incrementAndGet()
+            serviceRef?.get()?.retireSession()
+        }
+
         /** Called from [MobileNativeMediaPlugin] when the Cap bridge is ready. */
         fun bindWebView(webView: WebView?) {
             webViewRef = if (webView != null) WeakReference(webView) else null
         }
 
-        fun clearWebView(webView: WebView?) {
+        fun clearWebView(webView: WebView?): Boolean {
             val cur = webViewRef?.get()
             if (webView == null || cur == null || cur === webView) {
+                retirePlayback()
                 webViewRef = null
+                return true
             }
+            return false
         }
 
         private fun evalOnWebView(js: String) {
@@ -78,6 +107,7 @@ class MediaPlaybackService : Service() {
                 return
             }
             wv.post {
+                if (webViewRef?.get() !== wv) return@post
                 try {
                     wv.evaluateJavascript(js, null)
                 } catch (e: Exception) {
@@ -137,11 +167,28 @@ class MediaPlaybackService : Service() {
     private var artworkUrl: String? = null
     private var artworkBitmap: Bitmap? = null
     private val artworkExecutor = Executors.newSingleThreadExecutor()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    @Volatile private var stopped = false
+    private val artworkGeneration = AtomicLong()
+    @Volatile private var artworkTask: Future<*>? = null
+    @Volatile private var artworkConnection: HttpURLConnection? = null
+
+    private fun canControl(): Boolean = !stopped && isPlaybackAllowed()
+
+    // Invalidated synchronously before stopService; queued metadata/artwork cannot revive it.
+    private fun retireSession() {
+        stopped = true
+        artworkGeneration.incrementAndGet()
+        artworkTask?.cancel(true)
+        artworkConnection?.disconnect()
+        mainHandler.removeCallbacksAndMessages(null)
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
+        serviceRef = WeakReference(this)
         ensureChannel()
         mediaSession = MediaSession(this, SESSION_TAG).apply {
             setFlags(
@@ -150,13 +197,15 @@ class MediaPlaybackService : Service() {
             )
             setCallback(object : MediaSession.Callback() {
                 override fun onPlay() {
+                    if (!canControl()) return
                     playing = true
                     drivePlay()
                     updatePlaybackState()
-                    updateNotification()
+                    promoteForeground()
                 }
 
                 override fun onPause() {
+                    if (!canControl()) return
                     playing = false
                     drivePause()
                     updatePlaybackState()
@@ -169,14 +218,17 @@ class MediaPlaybackService : Service() {
                 }
 
                 override fun onSkipToNext() {
+                    if (!canControl()) return
                     driveNext()
                 }
 
                 override fun onSkipToPrevious() {
+                    if (!canControl()) return
                     drivePrev()
                 }
 
                 override fun onSeekTo(pos: Long) {
+                    if (!canControl()) return
                     // Live IPTV: ignore without claiming a successful seek.
                     if (!seekable || durationMs <= 0L) return
                     val clamped = pos.coerceIn(0L, durationMs)
@@ -191,6 +243,20 @@ class MediaPlaybackService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // There is no decoder in this service. A process restart must not advertise
+        // playback without the owning WebView, nor resurrect a stopped session.
+        if (intent != null && intent.hasExtra(EXTRA_GENERATION) &&
+            intent.getLongExtra(EXTRA_GENERATION, -1) != currentGeneration()) {
+            if (!canControl()) stopSelfSafe()
+            return START_NOT_STICKY
+        }
+        if (intent != null && intent.action in listOf(ACTION_START, ACTION_RESUME) && isPlaybackAllowed()) {
+            stopped = false
+        }
+        if (intent == null || !canControl()) {
+            stopSelfSafe()
+            return START_NOT_STICKY
+        }
         when (intent?.action) {
             ACTION_STOP -> {
                 if (!intent.getBooleanExtra(EXTRA_SESSION_ONLY, false)) driveStop()
@@ -205,7 +271,7 @@ class MediaPlaybackService : Service() {
                 }
                 updatePlaybackState()
                 updateNotification()
-                return START_STICKY
+                return START_NOT_STICKY
             }
             ACTION_PLAY -> {
                 playing = true
@@ -213,7 +279,7 @@ class MediaPlaybackService : Service() {
                 drivePlay()
                 updatePlaybackState()
                 promoteForeground()
-                return START_STICKY
+                return START_NOT_STICKY
             }
             ACTION_RESUME -> {
                 playing = true
@@ -221,28 +287,28 @@ class MediaPlaybackService : Service() {
                 // Plugin resume: JS already continued playback; refresh session only.
                 updatePlaybackState()
                 promoteForeground()
-                return START_STICKY
+                return START_NOT_STICKY
             }
             ACTION_NEXT -> {
                 driveNext()
-                return START_STICKY
+                return START_NOT_STICKY
             }
             ACTION_PREV -> {
                 drivePrev()
-                return START_STICKY
+                return START_NOT_STICKY
             }
             ACTION_UPDATE -> {
                 applyMetaFromIntent(intent)
                 updatePlaybackState()
                 updateNotification()
-                return START_STICKY
+                return START_NOT_STICKY
             }
-            ACTION_START, null -> {
+            ACTION_START -> {
                 playing = true
                 applyMetaFromIntent(intent)
                 updatePlaybackState()
                 promoteForeground()
-                return START_STICKY
+                return START_NOT_STICKY
             }
             else -> return START_NOT_STICKY
         }
@@ -264,13 +330,8 @@ class MediaPlaybackService : Service() {
         val nextArt = intent.getStringExtra(EXTRA_ARTWORK_URL)
         if (nextArt != null && nextArt != artworkUrl) {
             artworkUrl = nextArt
+            artworkBitmap = null
             loadArtworkAsync(nextArt)
-        } else if (nextArt.isNullOrEmpty()) {
-            // Keep prior artwork unless explicitly cleared by empty string.
-            if (nextArt != null && nextArt.isEmpty()) {
-                artworkUrl = null
-                artworkBitmap = null
-            }
         }
         if (!seekable) {
             durationMs = -1L
@@ -278,11 +339,16 @@ class MediaPlaybackService : Service() {
     }
 
     private fun loadArtworkAsync(url: String) {
-        artworkExecutor.execute {
-            val bmp = decodeArtwork(url) ?: return@execute
-            artworkBitmap = bmp
-            // Refresh on main/service thread
-            android.os.Handler(mainLooper).post {
+        val generation = artworkGeneration.incrementAndGet()
+        artworkTask?.cancel(true)
+        artworkConnection?.disconnect()
+        if (url.isEmpty() || !canControl()) return
+        artworkTask = artworkExecutor.submit {
+            val bitmap = decodeArtwork(url) ?: return@submit
+            if (!canControl() || generation != artworkGeneration.get()) return@submit
+            mainHandler.post {
+                if (!canControl() || generation != artworkGeneration.get()) return@post
+                artworkBitmap = bitmap
                 updatePlaybackState()
                 updateNotification()
             }
@@ -291,37 +357,70 @@ class MediaPlaybackService : Service() {
 
     private fun decodeArtwork(url: String): Bitmap? {
         return try {
+            if (!canControl() || Thread.currentThread().isInterrupted) return null
+            val maxBytes = 2 * 1024 * 1024
+            val bytes: ByteArray
             if (url.startsWith("data:", ignoreCase = true)) {
                 val comma = url.indexOf(',')
-                if (comma < 0) return null
-                val b64 = url.substring(comma + 1)
-                val bytes = Base64.decode(b64, Base64.DEFAULT)
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                if (comma < 0 || url.length > maxBytes * 4 / 3 + 1024) return null
+                bytes = Base64.decode(url.substring(comma + 1), Base64.DEFAULT)
             } else {
-                val conn = URL(url).openConnection() as HttpURLConnection
-                conn.connectTimeout = 5000
-                conn.readTimeout = 5000
-                conn.instanceFollowRedirects = true
-                conn.inputStream.use { stream ->
-                    BitmapFactory.decodeStream(stream)
+                val address = URL(url)
+                if (address.protocol !in listOf("http", "https")) return null
+                val connection = address.openConnection() as HttpURLConnection
+                artworkConnection = connection
+                try {
+                    connection.connectTimeout = 5000
+                    connection.readTimeout = 5000
+                    if (connection.contentLength > maxBytes) return null
+                    bytes = connection.inputStream.use { stream ->
+                        val output = ByteArrayOutputStream()
+                        val buffer = ByteArray(8192)
+                        while (true) {
+                            if (Thread.currentThread().isInterrupted) return null
+                            val count = stream.read(buffer)
+                            if (count < 0) break
+                            if (output.size() + count > maxBytes) return null
+                            output.write(buffer, 0, count)
+                        }
+                        output.toByteArray()
+                    }
+                } finally {
+                    connection.disconnect()
+                    if (artworkConnection === connection) artworkConnection = null
                 }
             }
-        } catch (e: Exception) {
-            Log.w(TAG, "artwork load failed: $url", e)
+            if (bytes.size > maxBytes) return null
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+            if (options.outWidth <= 0 || options.outHeight <= 0) return null
+            options.inJustDecodeBounds = false
+            options.inSampleSize = 1
+            while (options.outWidth / options.inSampleSize > 512 || options.outHeight / options.inSampleSize > 512) {
+                options.inSampleSize *= 2
+            }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+        } catch (_: Exception) {
+            // Provider logo URLs and exception messages may include credentials.
+            Log.w(TAG, "Artwork unavailable")
             null
         }
     }
 
     override fun onDestroy() {
+        retireSession()
+        if (serviceRef?.get() === this) serviceRef = null
         mediaSession?.isActive = false
         mediaSession?.release()
         mediaSession = null
         artworkExecutor.shutdownNow()
         stopForegroundCompat()
+        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(NOTIFICATION_ID)
         super.onDestroy()
     }
 
     private fun promoteForeground() {
+        if (!canControl()) return
         val notification = buildNotification()
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -336,16 +435,18 @@ class MediaPlaybackService : Service() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "startForeground failed", e)
-            stopSelf()
+            stopSelfSafe()
         }
     }
 
     private fun updateNotification() {
+        if (!canControl()) return
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(NOTIFICATION_ID, buildNotification())
     }
 
     private fun updatePlaybackState() {
+        if (!canControl()) return
         val state = if (playing) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED
         var actions =
             PlaybackState.ACTION_PLAY or
@@ -479,7 +580,11 @@ class MediaPlaybackService : Service() {
     }
 
     private fun stopSelfSafe() {
+        retirePlayback()
+        retireSession()
+        mediaSession?.isActive = false
         stopForegroundCompat()
+        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(NOTIFICATION_ID)
         stopSelf()
     }
 

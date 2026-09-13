@@ -198,8 +198,8 @@
         <div id="volume_div"><div id="volume"></div></div>
         <div id="mute"></div>
         <div id="dialogbox" class="osd"></div>
-        <div id="buffering"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div>
-        <div id="pip_buffering"></div>
+        <div id="buffering" class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div>
+        <div id="pip_buffering" class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div>
         <div id="notifications"></div>
         <span id="testFont"></span>
 
@@ -476,7 +476,7 @@
                 if (typeof Hls === "undefined") {
                     // Unknown old STBs can be detected as pc. Do not send their
                     // pre-polyfill engines a modern CDN build either.
-                    var modernPC = ott_device === "pc" &&
+                    var modernPC = !window.__ottNativeRuntime && ott_device === "pc" &&
                         typeof Promise === "function" &&
                         typeof Uint8Array === "function" &&
                         typeof Array.from === "function";
@@ -521,12 +521,12 @@
                 loadCSS(host + "/stbPlayer/1280.css?" + __av, _head);
                 // Same 1.11.1 release as the old CDN URL; legacy boot works offline.
                 loadJS(
-                    host + "/js/jquery-1.11.1.min.js",
+                    host + (window.__ottNativeRuntime ? "/js/jquery.min.js" : "/js/jquery-1.11.1.min.js"),
                     loadLibraries,
                     _head,
                     function () {
                         bootStatus("Failed to load UI");
-                        bootLog("Error: js/jquery-1.11.1.min.js");
+                        bootLog("Error: bundled UI library");
                     }
                 );
             }

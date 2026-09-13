@@ -14,13 +14,13 @@ const config: CapacitorConfig = {
     },
     plugins: {
         MobileCommandQueue: {
-            // command queue auto-starts via plugin.load on native side
+            // Internal queue only by default; HTTP requires explicit opt-in and a token.
         },
     },
     server: {
         hostname: "localhost",
     },
-    webDir: "dist",
+    webDir: "dist-mobile",
 };
 
 export default config;

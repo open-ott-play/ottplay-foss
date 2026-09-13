@@ -6,6 +6,8 @@ The archive is the web/STB player root, without a Capacitor or Tauri application
 Its `build-info.json` records the source revision, version and bundle checksum.
 
 Build the same package locally with `npm run build && npm run package:modea`.
+The archive and checksum are written to `build/packages/`, outside the `dist/`
+web root used by Capacitor, so mobile applications do not embed the archive.
 Extract it into a Mode A companion's web root or a static host. The latter needs
 an index fallback for `/f/<device>/` while keeping `/dist`, `/stb`, `/js`,
 `/stbPlayer`, `/fonts` and `/prov` at the root. Proxy, EPG and other companion APIs

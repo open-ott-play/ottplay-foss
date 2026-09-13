@@ -10,7 +10,8 @@
 #                (default "8443 8444 8445 8446" — one process, several HTTPS
 #                ports; each port is a separate browser origin, so Chrome
 #                keeps isolated player settings per port), OTTPLAY_LABEL,
-#                OTTPLAY_RUST_SRC (default ~/victron/ottplay-foss).
+#                OTTPLAY_RUST_SRC (default ~/victron/ottplay-foss),
+#                OTTPLAY_DEBUG_ARCHIVE (default source repo/.local-artifacts/debug-archive).
 # Binds loopback only (--host 127.0.0.1); docker deployments stay wildcard.
 #
 # Optional remote text entry (swop) — do NOT commit private Worker hostnames:
@@ -23,6 +24,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC="${OTTPLAY_SRC:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+SRC="$(cd "$SRC" && pwd)"
+DEBUG_ARCHIVE="${OTTPLAY_DEBUG_ARCHIVE:-$SRC/.local-artifacts/debug-archive}"
+case "$DEBUG_ARCHIVE" in
+    /*) ;;
+    *) DEBUG_ARCHIVE="$PWD/$DEBUG_ARCHIVE" ;;
+esac
 RUST_SRC="${OTTPLAY_RUST_SRC:-$HOME/victron/ottplay-foss}"
 DEST="${OTTPLAY_DEST:-$HOME/ottplay-foss-local}"
 PORT="${OTTPLAY_PORT:-8095}"
@@ -41,10 +48,12 @@ done
 
 echo "[1/6] sync $SRC -> $DEST"
 mkdir -p "$DEST"
-# Preserve live debug flag/log across --delete. Permanent archive lives outside
-# DEST (~/victron/ottplay-debug-archive/) so it needs no rsync exclude.
+# Preserve live debug flag/log across --delete. Keep source-local artifacts out
+# of DEST; the service receives the source archive path explicitly below.
 rsync -a --delete \
-    --exclude .git --exclude node_modules --exclude logs \
+    --exclude .git --exclude node_modules --exclude logs --exclude .local-artifacts \
+    --exclude target --exclude build --exclude .herenow --exclude .cache \
+    --exclude android --exclude ios --exclude .env --exclude '.env.*' \
     --exclude '*.local.py' --exclude 'certs' --exclude 'local' \
     --exclude 'debug.enabled' --exclude 'debug-playback.log' --exclude 'debug-playback.log.1' \
     "$SRC/" "$DEST/"
@@ -76,9 +85,9 @@ elif [ -f "$DEST/local/swop.json" ]; then
     echo "kept existing $DEST/local/swop.json (SWOP_BASE_URL unset)"
 fi
 
-echo "[2/6] npm install + build"
+echo "[2/6] npm ci + build"
 cd "$DEST"
-npm install --no-audit --no-fund 1>&2
+npm ci --no-audit --no-fund 1>&2
 npm run build 1>&2
 
 # Self-signed cert for https://localhost (Chrome warning-free once trusted).
@@ -137,7 +146,7 @@ fi
 
 echo "[4/6] build + install Rust binary"
 mkdir -p "$DEST"
-(cd "$RUST_SRC" && cargo build --release 1>&2)
+(cd "$RUST_SRC" && cargo build --locked --release -p ottplay-server 1>&2)
 cp "$RUST_SRC/target/release/ottplay-server" "$BIN"
 chmod +x "$BIN"
 
@@ -151,6 +160,11 @@ for plist in "$HOME/Library/LaunchAgents/${LABEL_BASE}-"*.plist \
     launch_name="$(/usr/libexec/PlistBuddy -c "Print :Label" "$plist" 2>/dev/null || true)"
     [ -n "$launch_name" ] && launchctl unload "$plist" 2>/dev/null || true
 done
+
+xml_escape() {
+    printf '%s' "$1" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g'
+}
+DEBUG_ARCHIVE_XML="$(xml_escape "$DEBUG_ARCHIVE")"
 
 LABEL="${LABEL_BASE}"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
@@ -186,6 +200,8 @@ cat >> "$PLIST" <<EOF
     <dict>
         <key>EPG_URLS</key>
         <string>http://epg.it999.ru/epg2.xml.gz</string>
+        <key>OTTPLAY_DEBUG_ARCHIVE</key>
+        <string>$DEBUG_ARCHIVE_XML</string>
     </dict>
     <key>WorkingDirectory</key>
     <string>$DEST</string>

@@ -15,7 +15,24 @@ on:
       - 'stb/**'
       - 'css/**'
       - 'tests/test_android_*'
+      - 'tests/android_provider_policy.cjs'
+      - 'tests/test_play_system_icons.cjs'
+      - 'scripts/play-system-icons.cjs'
+      - 'scripts/native-*.cjs'
+      - 'tests/test_frontend_safety.cjs'
+      - 'stbPlayer/**'
+      - 'fonts/**'
+      - 'scripts/*android*.cjs'
+      - 'scripts/android/**'
+      - 'docs/privacy-policy.md'
       - 'tests/test_native_*'
+      - 'tests/test_ios_*'
+      - 'tests/test_xmltv_*'
+      - 'scripts/smoke-xmltv-*'
+      - 'scripts/smoke-command-queue.sh'
+      - 'scripts/smoke-capacitor-device.sh'
+      - 'scripts/smoke-tauri-desktop.sh'
+      - 'tests/test_command_queue_smoke.py'
       - 'tests/test-native-*'
       - 'package*.json'
       - 'Cargo.*'
@@ -48,17 +65,35 @@ jobs:
       - name: Install the release Android SDK components
         run: bash scripts/ci-android-install-sdk.sh
       - run: npm ci --ignore-scripts
+      - name: Verify optional authenticated HTTP smoke contract
+        run: python3 tests/test_command_queue_smoke.py
       - run: node tests/test_android_activity.cjs
-      - run: npm run build && npx cap sync android
-      - name: Compile and package registered Kotlin plugins
+      - name: Sync native plugins without shared frontend assets
+        run: node scripts/build-android.cjs sync
+      - name: Compile and package Full and Play native plugins
         working-directory: android
-        run: ./gradlew :app:assembleDebug --no-daemon
+        run: ./gradlew :app:assembleFullDebug :app:bundlePlayRelease --no-daemon
+      - name: Verify packaged distribution identity and provider isolation
+        run: |
+          node scripts/verify-android-distribution.cjs android/app/build/outputs/apk/full/debug/app-full-debug.apk full
+          node scripts/verify-android-distribution.cjs android/app/build/outputs/bundle/playRelease/app-play-release.aab play
+          node tests/android_provider_policy.cjs
+          node tests/test_play_system_icons.cjs --bundle android/app/build/generated/ottplay/play/assets/public/dist/stbPlayer.js
+          node tests/test_native_runtime.cjs
+          node tests/test_native_runtime_gate.cjs
+          node tests/test_native_dev.cjs
+          OTTPLAY_TEST_JQUERY=android/app/build/generated/ottplay/play/assets/public/js/jquery.min.js node tests/test_frontend_safety.cjs --bundle android/app/build/generated/ottplay/play/assets/public/dist/stbPlayer.js
+          node tests/test_android_privacy_viewer.cjs
+          BUNDLETOOL_JAR="$PWD/android/build/tools/bundletool-all-1.18.3.jar" python3 tests/test_android_bundle_manifest.py
+          python3 tests/test_android_flavor_assets.py
+          python3 tests/test_android_emoji_policy.py
       - name: Exercise native queue JSON and socket cleanup
         run: |
           curl --fail --location --retry 3 https://github.com/JetBrains/kotlin/releases/download/v2.3.0/kotlin-compiler-2.3.0.zip -o "$RUNNER_TEMP/kotlin.zip"
           unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP/ott-queue-kotlin"
           curl --fail --location --retry 3 https://repo.maven.apache.org/maven2/com/vaadin/external/google/android-json/0.0.20131108.vaadin1/android-json-0.0.20131108.vaadin1.jar -o "$RUNNER_TEMP/android-json.jar"
           PATH="$RUNNER_TEMP/ott-queue-kotlin/kotlinc/bin:$PATH" ANDROID_JSON_JAR="$RUNNER_TEMP/android-json.jar" python3 tests/test_android_queue.py
+          PATH="$RUNNER_TEMP/ott-queue-kotlin/kotlinc/bin:$PATH" ANDROID_JSON_JAR="$RUNNER_TEMP/android-json.jar" python3 tests/test_android_epg_editions.py
 
   apple:
     name: iOS and Tauri native code
@@ -75,8 +110,14 @@ jobs:
           toolchain: stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
       - run: npm ci --ignore-scripts
-      - run: npm run build && npx cap sync ios
-      - name: Test iOS HTTP remote control
+      - name: Verify optional authenticated HTTP smoke contract
+        run: python3 tests/test_command_queue_smoke.py
+      - run: npm run build:ios
+      - name: Test demo playback lifecycle and XMLTV warmup
+        run: |
+          python3 tests/test_ios_demo_media.py
+          python3 tests/test_xmltv_warmup_smoke.py
+      - name: Test iOS command queue consent and authentication
         run: python3 tests/test_ios_command_queue.py
       - name: Compile iOS plugins without signing
         run: >-
@@ -84,5 +125,10 @@ jobs:
           -sdk iphonesimulator -destination 'generic/platform=iOS Simulator'
           -derivedDataPath "$RUNNER_TEMP/ottplay-ios"
           CODE_SIGNING_ALLOWED=NO build
+      - name: Verify iOS application contains the audited runtime
+        run: >-
+          node scripts/native-runtime.cjs audit
+          "$RUNNER_TEMP/ottplay-ios/Build/Products/Debug-iphonesimulator/App.app/public"
+          --platform capacitor --source ios/App/App/public
       - name: Test compiled Tauri HTTP bridge
         run: cargo test --locked -p ottplay-tauri

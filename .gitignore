@@ -1,6 +1,7 @@
 # Build outputs
 build/
 dist/
+dist-mobile/
 target/
 
 # Tauri frontend dist
@@ -50,3 +51,8 @@ google-services.json
 # Operator-local overrides (swop base URL, device id) — never commit
 /local/
 /release-output/
+
+# Local reference repositories, audit evidence, recovery backups and debug logs
+/.local-artifacts/
+/.herenow/
+/.local-ops/

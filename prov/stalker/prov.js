@@ -164,6 +164,13 @@ function getChanelsArray(callback) {
         editStalkerSettings();
         return;
     }
+    if (
+        typeof checkProviderUrl === "function" &&
+        !checkProviderUrl(stalker.portal)
+    ) {
+        editStalkerSettings();
+        return;
+    }
     $(launch_id).append(_("Connecting to Stalker portal..."));
     stalkerApiCall("handshake", {}, function (r) {
         if (!(r && r.result)) {

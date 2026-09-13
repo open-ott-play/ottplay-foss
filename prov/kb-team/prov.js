@@ -603,9 +603,7 @@ function getMediaArrayXML(murl, callback) {
     }
     $("#dialogbox")
         .html(
-            '<img src="' +
-                host +
-                '/stbPlayer/buffering.gif" height="40"> ' +
+            '<span class="ott-spinner ott-spinner--inline" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></span> ' +
                 _("Download! Wait ...")
         )
         .show();

@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { parse } = require("acorn");
 const { inlineScripts } = require("./html-scripts.cjs");
+const { auditNativeRuntime } = require("./native-runtime.cjs");
 const root = path.resolve(__dirname, "..");
 let checked = 0;
 const failures = [];
@@ -28,16 +29,12 @@ if (!fs.existsSync(bundle)) {
     console.error("Missing dist/stbPlayer.js; run the build first.");
     process.exit(1);
 }
-// Check the files actually delivered by web, Capacitor and Tauri builds.
-for (const directory of ["dist", "src-tauri/frontend"])
-    tree(path.join(root, directory));
+// The server and its clients retain ES5. Native engines use independently
+// pinned current libraries and must not be compared with legacy vendor bytes.
+for (const directory of ["dist"]) tree(path.join(root, directory));
 for (const directory of ["stb", "prov", "js", "stbPlayer"])
     tree(path.join(root, directory));
-for (const html of [
-    "index.html",
-    "dist/index.html",
-    "src-tauri/frontend/index.html",
-]) {
+for (const html of ["index.html", "dist/index.html"]) {
     const text = fs.readFileSync(path.join(root, html), "utf8");
     let number = 0;
     for (const script of inlineScripts(text)) {
@@ -51,7 +48,7 @@ function checkCopies(directory) {
         const source = path.join(root, relative);
         if (fs.statSync(source).isDirectory()) checkCopies(relative);
         else if (name.endsWith(".js")) {
-            for (const stage of ["dist", "src-tauri/frontend"]) {
+            for (const stage of ["dist"]) {
                 const target = path.join(root, stage, relative);
                 if (
                     !fs.existsSync(target) ||
@@ -69,6 +66,11 @@ function checkCopies(directory) {
     }
 }
 for (const directory of ["stb", "js", "prov"]) checkCopies(directory);
+const serverOnly = process.argv.includes("--server-only");
+if (!serverOnly) {
+    for (const directory of ["dist-mobile", "src-tauri/frontend"])
+        auditNativeRuntime(path.join(root, directory));
+}
 if (failures.length) {
     console.error(failures.join("\n"));
     process.exit(1);
@@ -76,5 +78,6 @@ if (failures.length) {
 console.log(
     "OK: ES5 grammar for " +
         checked +
-        " shared player, device, provider, library and boot scripts"
+        " legacy player/device/provider/library/boot scripts" +
+        (serverOnly ? " (server only)" : "; native runtime manifests verified")
 );

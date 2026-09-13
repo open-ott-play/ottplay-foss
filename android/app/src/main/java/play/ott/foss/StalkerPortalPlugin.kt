@@ -61,6 +61,10 @@ class StalkerPortalPlugin : Plugin() {
             try {
                 val url = URL(urlStr)
                 require(url.protocol == "http" || url.protocol == "https") { "Only HTTP(S) URLs are supported" }
+                if (BuildConfig.FLAVOR == "play" && url.protocol == "http") {
+                    call.reject("OTT-play FOSS Play requires HTTPS sources. Use an HTTPS provider URL or the Full edition for HTTP sources.", "https_required")
+                    return@Thread
+                }
                 val conn = url.openConnection() as HttpURLConnection
                 conn.requestMethod = method
                 val timeout = (call.getInt("timeoutMs") ?: 15000).coerceAtLeast(1)
@@ -112,7 +116,14 @@ class StalkerPortalPlugin : Plugin() {
                 call.resolve(ret)
             } catch (e: Exception) {
                 val code = if (e is java.net.SocketTimeoutException) "timeout" else null
-                call.reject("portalRequest failed: ${e.message}", code)
+                val message = when (e) {
+                    is java.net.SocketTimeoutException -> "Provider request timed out"
+                    is javax.net.ssl.SSLException -> "Provider TLS connection failed; check its HTTPS certificate"
+                    is java.net.UnknownHostException -> "Provider hostname could not be resolved"
+                    else -> "Provider request failed"
+                }
+                // Exceptions can contain full provider URLs with credentials.
+                call.reject(message, code)
             }
         }.start()
     }

@@ -476,6 +476,98 @@ export function getScriptDOM(
 
 /**
  * Dynamic CSS rule manager.
+/** Escape external metadata for text or quoted HTML attributes. */
+export function metadataText(value: any): string {
+    return String(value == null ? "" : value).replace(/[&<>"']/g, function (c) {
+        return {
+            "'": "&#39;",
+            '"': "&quot;",
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+        }[c]!;
+    });
+}
+
+/** Image URLs only: metadata must never introduce executable URL schemes. */
+export function metadataImageUrl(value: any): string {
+    var url = String(value || "").trim();
+    if (/[\u0000-\u001f\u007f]/.test(url)) return "";
+    if (
+        /^[a-z][a-z0-9+.-]*:/i.test(url) &&
+        !/^https?:/i.test(url) &&
+        !/^data:image\/(?:png|gif|jpe?g|webp|avif|svg\+xml);/i.test(url)
+    )
+        return "";
+    return url;
+}
+
+export function metadataCssUrl(value: any): string {
+    return metadataImageUrl(value).replace(/["'\\()\r\n\f]/g, function (c) {
+        return "%" + c.charCodeAt(0).toString(16).toUpperCase();
+    });
+}
+
+/** Keep basic description formatting, rebuilding it without executable attributes. */
+export function metadataHtml(value: any): string {
+    var text = String(value == null ? "" : value);
+    if (!document.implementation || !document.implementation.createHTMLDocument)
+        return metadataText(text);
+    var inert = document.implementation.createHTMLDocument("");
+    var input = inert.createElement("div");
+    input.innerHTML = text;
+    var output = inert.createElement("div");
+    function copy(from: Node, into: Node): void {
+        for (var child = from.firstChild; child; child = child.nextSibling) {
+            if (child.nodeType === 3)
+                into.appendChild(inert.createTextNode(child.nodeValue || ""));
+            else if (child.nodeType === 1) {
+                var source = child as HTMLElement;
+                var tag = source.tagName.toLowerCase();
+                if (
+                    /^(script|style|iframe|object|embed|svg|math|template|link|meta|base)$/.test(
+                        tag
+                    )
+                )
+                    continue;
+                if (
+                    !/^(b|strong|i|em|u|br|p|div|span|ul|ol|li|table|tbody|tr|td|th|img)$/.test(
+                        tag
+                    )
+                ) {
+                    copy(source, into);
+                    continue;
+                }
+                var target = inert.createElement(tag);
+                // Preserve the fixed legacy icon class, never metadata-defined classes.
+                if (
+                    tag === "span" &&
+                    source.getAttribute("class") === "fontello"
+                )
+                    target.setAttribute("class", "fontello");
+                if (tag === "img") {
+                    var url = metadataImageUrl(source.getAttribute("src"));
+                    if (!url) continue;
+                    target.setAttribute("src", url);
+                    target.setAttribute(
+                        "alt",
+                        source.getAttribute("alt") || ""
+                    );
+                }
+                copy(source, target);
+                into.appendChild(target);
+            }
+        }
+    }
+    copy(input, output);
+    return output.innerHTML;
+}
+
+/** Capacitor has no TMDb companion route; desktop Tauri and server builds do. */
+export function hasTmdbService(): boolean {
+    return typeof (window as any).Capacitor === "undefined";
+}
+
 /**
  * Generate an HTML `<div>` string for a channel thumbnail / preview image.
  *
@@ -497,7 +589,7 @@ export function getThumbnail(url: string): string {
         var m = Math.floor(w / 15);
         return (
             '<div class="img" style="background-image: url(\'' +
-            url +
+            metadataText(metadataCssUrl(url)) +
             "');width:" +
             w +
             "px;height:" +

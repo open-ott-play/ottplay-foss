@@ -13,8 +13,17 @@ See the [release strategy](RELEASING.md) for validation, nightly, beta, RC and s
 Open the [live demo](https://player.ottplay.here.now/), or build and serve the
 web player using the instructions below.
 
-After the first load, configure your own M3U playlist or provider under
-Settings → Providers.
+On first launch, choose **Try demo** to play the moving test pattern,
+or configure your own M3U playlist or provider. The demo is also available later
+from **Change provider → Demo**.
+
+Demo mode needs an internet connection but no provider account. Its silent MP4
+and HLS test channels are hosted on here.now and shared by the web player, Tauri,
+Capacitor and OTT Server. Video files are not included in application bundles.
+Existing provider settings are preserved when switching.
+
+The synthetic test pattern can be regenerated with `scripts/generate-demo-media.sh`
+(requires FFmpeg); generated media stays in the ignored `.local-artifacts` directory.
 
 ## Features
 
@@ -54,6 +63,25 @@ When debug is enabled:
 
 Capacitor wraps the same TypeScript frontend for native iOS and Android.
 
+Android has two separate installations: **Full** (`play.ott.foss`) retains the
+provider catalog for sideloading; **Play** (`play.ott.foss.play`) includes only
+user-configured M3U, Stalker, Xtream and our synthetic Demo. Both can be installed
+side by side. Play excludes branded provider files and activation code at build
+time. See [Android distributions](docs/android-distributions.md) for packaging,
+signing and the remaining store-submission requirements.
+
+Tauri and both Capacitor products use system fonts and npm-locked jQuery 4.0.0,
+hls.js 1.7.3 and Shaka Player 5.2.10. Native packages include their licenses and a
+`native-runtime.json` version/hash manifest; web and legacy builds retain their
+existing vendor libraries and fonts. Play requires HTTPS sources, while Full
+can use user-configured HTTP sources. The current Play submission targets phones
+and tablets, without a claim of Android TV qualification.
+
+[Play submission preparation](docs/play-submission.md) includes reviewer steps,
+privacy/Data safety and foreground-service drafts. The
+[inherited-code permission record](docs/legacy-provenance.md) identifies the
+specific provenance evidence still needed before a publication decision.
+
 The mobile interface stays in landscape and supports rotation between both landscape directions. Tablet multitasking and newer operating-system windowing policies can override the requested orientation; see the platform notes below. Use Settings → Lists to adjust the number of visible rows and spacing for smaller screens.
 
 Settings → Buttons preserves the selected seek intervals, and Settings → Interface applies the selected streaming engine when saved. The sleep timer choices are off, 30 minutes, 1 hour, 2 hours and 3 hours of inactivity. Saved button mappings, hidden menu items and parental preferences also survive settings export and subsequent saves.
@@ -67,6 +95,8 @@ npm install
 npm run build:mobile          # vite build + cap copy + cap sync
 npm run cap:ios               # open in Xcode
 npm run cap:android           # open in Android Studio
+npm run android:full          # installable Full debug APK for local testing
+npm run android:play          # clean Play release AAB; separate upload signing
 ```
 
 See [docs/capacitor-mobile.md](docs/capacitor-mobile.md) for prerequisites, configuration, and gaps.
@@ -87,7 +117,11 @@ Tauri desktop smoke (Mode B launch/play/PiP checklist + helper; unpaid/unsigned 
 
 Supported installers are attached to qualified GitHub releases: [https://github.com/open-ott-play/ottplay-foss/releases/latest](https://github.com/open-ott-play/ottplay-foss/releases/latest)
 
-> **Note:** Desktop, iOS, and Android packages are **unsigned** unless a release was built with the project's signing secrets. On macOS this means Gatekeeper quarantine; on iOS the IPA must be sideloaded; on Android you must allow unknown sources. The player itself works without signing.
+> **Note:** Release packages may be unsigned. Android requires a signed APK even
+> for sideloading; allowing unknown apps does not make an unsigned APK installable.
+> `npm run android:full` produces a debug-signed APK for testing. Production Full
+> APKs need a stable release certificate, and Play AABs need the separate upload
+> signing process. iOS also requires signing for device installation.
 
 ---
 
@@ -217,7 +251,9 @@ If a TestFlight beta is available:
 
 #### Option 1: Direct Install (APK)
 
-1. Download the `.apk` from [Releases](https://github.com/open-ott-play/ottplay-foss/releases/latest)
+1. Build a Full debug APK with `npm run android:full`, or obtain a Full APK signed
+   with your release certificate. The release file named `android-unsigned.apk`
+   must be signed before installation.
 2. Transfer to your Android device
 3. Open the APK file
 4. If prompted about unknown sources: Settings → Security → Allow unknown sources
@@ -396,9 +432,9 @@ Exit: `0` pass, `1` not listening / connection failed, `2` high error rate, `3` 
 Verifies Mode A companion XMLTV/EPG cache behavior honestly against `src-rs` (no invented APIs):
 
 - In-memory `EPG_CACHE` served via `GET /epg/:hash` → always `{"epg_data":[...]}` (HTTP 200).
-- Process start fetches `EPG_URLS` **before** binding the listener; background refresh every **2h**.
+- Process start fetches `EPG_URLS` in the background without delaying HTTP startup; each completed fetch is followed by a **2h** wait before the next refresh.
 - Optional SQLite persist when `DATABASE_URL` is set (no public cache-status endpoint).
-- `GET /health` → `OK` is the automated warm-up gate after an optional restart.
+- `GET /health` → `OK` confirms HTTP readiness after an optional restart. With `--strict-epg` and `--epg-hash`, the smoke also waits for non-empty EPG for that channel within the same `--warmup-timeout` budget.
 
 Default path only curls — **does not kill processes**. Pass `--restart-cmd` / `RESTART_CMD` for automated kill+restart, or follow the manual `launchctl` steps in `--help`.
 
@@ -915,10 +951,9 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 │   ├── core.js            # Shared STB implementation
 │   └── {device}/stb.js    # Per-device key mappings (24 types)
 ├── stbPlayer/
-│   ├── 1280.css           # Player styles
+│   ├── 1280.css           # Player styles and animated loading indicator
 │   ├── _*.js              # Localization files (21 languages)
-│   ├── icon.png           # Player icon
-│   └── buffering.gif      # Loading indicator
+│   └── icon.png           # Player icon
 ├── prov/                  # IPTV provider scripts
 ├── js/                    # CDN libraries (HLS.js, Shaka, jQuery)
 └── fonts/                 # Local fonts

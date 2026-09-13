@@ -215,7 +215,7 @@ KOTLIN_HTTP = r'''
 package okhttp3
 import java.io.IOException
 import java.util.concurrent.TimeUnit
-object Fixture { var data: ByteArray? = null; var requests = 0; val sources = mutableMapOf<String, ByteArray>() }
+object Fixture { var data: ByteArray? = null; var requests = 0; val sources = mutableMapOf<String, ByteArray>(); val requestUrls = mutableListOf<String>() }
 interface Call { fun enqueue(callback: Callback) }
 interface Callback {
     fun onFailure(call: Call, e: IOException)
@@ -235,6 +235,7 @@ class OkHttpClient {
     fun newCall(request: Request): Call = object: Call {
         override fun enqueue(callback: Callback) {
             Fixture.requests++
+            Fixture.requestUrls.add(request.url)
             val data = Fixture.sources[request.url] ?: Fixture.data
             if (data == null) callback.onFailure(this, IOException("offline"))
             else callback.onResponse(this, Response(Body(data)))
@@ -383,8 +384,9 @@ def main():
         (tmp / "CacheTest.kt").write_text(kotlin)
         (tmp / "Capacitor.kt").write_text(KOTLIN_CAPACITOR)
         (tmp / "Http.kt").write_text(KOTLIN_HTTP)
+        (tmp / "BuildConfig.kt").write_text("package play.ott.foss\nobject BuildConfig { const val BUNDLED_EPG_DEFAULTS = true }\n")
         (tmp / "Annotation.kt").write_text("package com.getcapacitor.annotation\nannotation class CapacitorPlugin(val name: String)\n")
-        run("kotlinc", "CacheTest.kt", "Capacitor.kt", "Http.kt", "Annotation.kt", "-nowarn", "-include-runtime", "-d", "cache-test.jar", cwd=tmp)
+        run("kotlinc", "CacheTest.kt", "Capacitor.kt", "Http.kt", "Annotation.kt", "BuildConfig.kt", "-nowarn", "-include-runtime", "-d", "cache-test.jar", cwd=tmp)
         run("java", "-jar", "cache-test.jar", cwd=tmp)
 
 

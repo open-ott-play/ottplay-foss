@@ -12,31 +12,41 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { JSDOM } = require("jsdom");
+const {
+    transformPlaySystemIcons,
+} = require("../scripts/play-system-icons.cjs");
+const { auditNativeRuntime } = require("../scripts/native-runtime.cjs");
 const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
 const bundles = {
-    capacitor: "dist/dist/stbPlayer.js",
+    capacitor: "dist-mobile/dist/stbPlayer.js",
     server: "dist/stbPlayer.js",
     tauri: "src-tauri/frontend/dist/stbPlayer.js",
 };
 const styles = {
-    capacitor: "dist/stbPlayer/1280.css",
+    capacitor: "dist-mobile/stbPlayer/1280.css",
     server: "stbPlayer/1280.css",
     tauri: "src-tauri/frontend/stbPlayer/1280.css",
 };
 for (const profile of ["tauri", "capacitor"]) {
     assert.equal(
         read(bundles[profile]),
-        read(bundles.server),
-        profile + ": staged player matches server"
+        transformPlaySystemIcons(read(bundles.server)),
+        profile + ": native application differs only in system icon encoding"
     );
-    assert.equal(
-        read(styles[profile]),
-        read(styles.server),
-        profile + ": staged stylesheet matches server"
+    auditNativeRuntime(
+        path.join(
+            root,
+            profile === "tauri" ? "src-tauri/frontend" : "dist-mobile"
+        )
     );
 }
+assert.equal(
+    read(styles.tauri),
+    read(styles.capacitor),
+    "native shells share OS-font stylesheet"
+);
 
 // Exercise the shipped classic script with real DOM/CSS and bundled jQuery.
 // Network, media, and asynchronous boot are deliberately not started.
@@ -91,7 +101,13 @@ for (const profile of ["server", "tauri", "capacitor"]) {
                 },
             },
         };
-    w.eval(read("js/jquery-1.11.1.min.js"));
+    if (profile === "server") w.eval(read("js/jquery-1.11.1.min.js"));
+    else {
+        const stage =
+            profile === "tauri" ? "src-tauri/frontend" : "dist-mobile";
+        w.eval(read(stage + "/js/native-environment.js"));
+        w.eval(read(stage + "/js/jquery.min.js"));
+    }
     vm.runInContext(read(bundles[profile]), dom.getInternalVMContext(), {
         timeout: 10000,
     });

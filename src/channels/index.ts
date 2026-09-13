@@ -1,3 +1,9 @@
+import {
+    hasTmdbService,
+    metadataCssUrl,
+    metadataHtml,
+    metadataText,
+} from "../utils/helpers";
 /**
  * Channel management — data structures, navigation, favorites, parental control.
  */
@@ -1011,7 +1017,7 @@ export function popFavLists(): void {
         w.listArray = rows;
         w.listDataArray = rows;
         w.getListItemFn = function (item: string): string {
-            return "&nbsp;&nbsp;" + item;
+            return "&nbsp;&nbsp;" + metadataText(item);
         };
         w.detailListActionFn = function () {};
         w.listKeyHandlerFn = function (key: number): boolean {
@@ -1072,7 +1078,7 @@ export function popFavLists(): void {
         };
         var cap = document.getElementById("listCaption");
         if (cap)
-            cap.innerHTML =
+            cap.textContent =
                 (w._ ? w._("Favorite lists") : "Favorite lists") +
                 ": " +
                 listName;
@@ -1102,7 +1108,7 @@ export function popFavLists(): void {
         w.listArray = rows;
         w.listDataArray = rows;
         w.getListItemFn = function (item: string): string {
-            return "&nbsp;&nbsp;" + item;
+            return "&nbsp;&nbsp;" + metadataText(item);
         };
         w.detailListActionFn = function () {};
         w.listKeyHandlerFn = function (key: number): boolean {
@@ -1154,7 +1160,7 @@ export function popFavLists(): void {
         w.listArray = rows;
         w.listDataArray = rows;
         w.getListItemFn = function (item: string): string {
-            return "&nbsp;&nbsp;" + item;
+            return "&nbsp;&nbsp;" + metadataText(item);
         };
         w.detailListActionFn = function () {};
         w.listKeyHandlerFn = function (key: number): boolean {
@@ -1874,7 +1880,7 @@ export function formatEpgTime(timestamp: number): string {
  */
 export function itemEPG(item: EPGEntry, index: number): string {
     var w = window as any;
-    var name = item.name;
+    var name = metadataText(item.name);
     var now =
         w.playType > 0 &&
         w.primaryIndex !== undefined &&
@@ -1972,7 +1978,7 @@ export function epgShow_miniproc(
     if (mode) {
         $("#listPopUp")
             .html(
-                '<div class="ott-spinner" style="width:40px;height:40px;"></div>'
+                '<div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div>'
             )
             .show();
     }
@@ -2070,8 +2076,9 @@ export function epgList(catIdx: number, chIdx: number, force: boolean): void {
 
         var captionEl = document.getElementById("listCaption");
         if (captionEl)
-            captionEl.innerHTML =
-                w._("EPG and archive. Channel: ") + (ch.channel_name || "");
+            captionEl.innerHTML = metadataText(
+                w._("EPG and archive. Channel: ") + (ch.channel_name || "")
+            );
 
         if (typeof epgPodval === "function") epgPodval();
         $("#listPopUp").hide();
@@ -2318,7 +2325,7 @@ export function detailEPG(channelId: number): void {
         '<div id="_name"><div style="color:' +
         (w.curColor || "") +
         ';">' +
-        item.name +
+        metadataText(item.name) +
         '</div><div style="font-size:smaller;">' +
         (typeof w.time2str === "function"
             ? w.time2str(item.time)
@@ -2336,7 +2343,7 @@ export function detailEPG(channelId: number): void {
         (typeof w.getThumbnail === "function"
             ? w.getThumbnail(item.icon)
             : "") +
-        (item.descr || "") +
+        metadataHtml(item.descr) +
         "</div></div>";
 
     var t = ($("#listDetail").height() || 0) - ($("#_name").height() || 0);
@@ -2662,8 +2669,9 @@ export function epgListAlpha(
         w.listKeyHandlerFn = epgKeyHandler;
         var captionEl = document.getElementById("listCaption");
         if (captionEl)
-            captionEl.innerHTML =
-                w._("EPG and archive. Channel: ") + (ch.channel_name || "");
+            captionEl.innerHTML = metadataText(
+                w._("EPG and archive. Channel: ") + (ch.channel_name || "")
+            );
         if (typeof epgPodval === "function") epgPodval();
         $("#listPopUp").hide();
         if (typeof w.showPage === "function") w.showPage();
@@ -2721,7 +2729,7 @@ export function recordsList(
         w.listDataArray = r;
         listEpgArray = e;
         var itemRec = function (item: any, _idx: number) {
-            return "&nbsp;&nbsp;" + (item && item.name ? item.name : "");
+            return "&nbsp;&nbsp;" + metadataText(item && item.name);
         };
         w.getListItem = itemRec;
         w.getListItemFn = itemRec;
@@ -2733,8 +2741,9 @@ export function recordsList(
         w.listKeyHandlerFn = epgKeyHandler;
         var captionEl = document.getElementById("listCaption");
         if (captionEl)
-            captionEl.innerHTML =
-                w._("Archive. Channel: ") + (ch.channel_name || "");
+            captionEl.innerHTML = metadataText(
+                w._("Archive. Channel: ") + (ch.channel_name || "")
+            );
         if (typeof epgPodval === "function") epgPodval();
         $("#listPopUp").hide();
         if (typeof w.showPage === "function") w.showPage();
@@ -2799,7 +2808,7 @@ export function catRecordsList(catIdx: number): void {
         w.listDataArray = data;
         mediaRecords = data;
         var itemFn = function (item: any, _idx: number) {
-            return "&nbsp;&nbsp;" + (item.name || item.title || "");
+            return "&nbsp;&nbsp;" + metadataText(item.name || item.title);
         };
         w.getListItem = itemFn;
         w.getListItemFn = itemFn;
@@ -2810,8 +2819,9 @@ export function catRecordsList(catIdx: number): void {
 
         var captionEl = document.getElementById("listCaption");
         if (captionEl)
-            captionEl.innerHTML =
-                w._("Records for channel: ") + (ch.channel_name || "");
+            captionEl.innerHTML = metadataText(
+                w._("Records for channel: ") + (ch.channel_name || "")
+            );
 
         var podvalEl = document.getElementById("listPodval");
         if (podvalEl) {
@@ -2975,7 +2985,12 @@ export function mediaKeyHandler(keyCode: number): boolean {
                 addToMedFavorites(item);
             return true;
         case keys.YELLOW:
-            if (item && w.TMDb && typeof w.TMDb.search === "function")
+            if (
+                item &&
+                hasTmdbService() &&
+                w.TMDb &&
+                typeof w.TMDb.search === "function"
+            )
                 w.TMDb.search(item.title || item.name || "");
             return true;
     }
@@ -3058,7 +3073,7 @@ export function showMediaList(): void {
 export function getMediaDescr(item?: MediaHistoryEntry): string {
     var text = (item && (item.description || item.descr)) || "";
     if (typeof text === "function") text = text();
-    return String(text || "").replace(/<\s*(\/?)script\b/gi, "<$1sсr!!!");
+    return metadataHtml(text);
 }
 
 /**
@@ -3161,12 +3176,12 @@ export function updateArchiveInfo(position: number): void {
     // Update channel header info
     var chEl = document.getElementById("channel_name");
     if (chEl && channels[channelId]) {
-        chEl.innerHTML = channels[channelId].channel_name || "";
+        chEl.textContent = channels[channelId].channel_name || "";
     }
     var piconEl = document.getElementById("picon");
     if (piconEl && typeof w.getChannelPicon === "function") {
         piconEl.style.backgroundImage =
-            'url("' + w.getChannelPicon(channelId) + '")';
+            'url("' + metadataCssUrl(w.getChannelPicon(channelId)) + '")';
     }
     var chNumEl = document.getElementById("channel_number");
     if (chNumEl) chNumEl.innerHTML = "" + (primaryIndex + 1);
@@ -3199,9 +3214,9 @@ export function updateArchiveInfo(position: number): void {
 
     // Program name
     var progNameEl = document.getElementById("programm_name");
-    if (progNameEl) progNameEl.innerHTML = prog ? prog.name : "";
+    if (progNameEl) progNameEl.textContent = prog ? prog.name : "";
     var progName2El = document.getElementById("programm_name2");
-    if (progName2El) progName2El.innerHTML = prog ? prog.name : "";
+    if (progName2El) progName2El.textContent = prog ? prog.name : "";
 
     // Progress bar
     var progressEl = document.getElementById("progress");
@@ -3283,7 +3298,7 @@ export function updateArchiveInfo(position: number): void {
         if (typeof getThumbnail === "function") {
             thumb = getThumbnail(prog.icon || "");
         }
-        descrEl.innerHTML = thumb + (prog.descr || "");
+        descrEl.innerHTML = thumb + metadataHtml(prog.descr);
     } else if (descrEl) {
         descrEl.innerHTML = "";
     }
@@ -3304,7 +3319,7 @@ export function updateArchiveInfo(position: number): void {
         epgArray[nextProgIdx]
     ) {
         var nextProg = epgArray[nextProgIdx];
-        if (nprogramNameEl) nprogramNameEl.innerHTML = nextProg.name;
+        if (nprogramNameEl) nprogramNameEl.textContent = nextProg.name;
         if (nbeginTimeEl) nbeginTimeEl.textContent = time2time(nextProg.time);
         if (nendTimeEl)
             nendTimeEl.textContent =
@@ -3744,7 +3759,7 @@ export function bucketsList(catIdx: number, _channelIdx?: number): void {
             (settings.noNumbersKeys || idx > 8
                 ? ""
                 : '<div class="btn">' + (idx + 1) + "</div>&nbsp;") +
-            (item || "")
+            metadataText(item)
         );
     };
 
@@ -4074,8 +4089,8 @@ export function searchEpgByTitle(): void {
                 " - " +
                 formatEpgTime(item.time_to) +
                 " " +
-                (item.ch_name ? "[" + item.ch_name + "] " : "") +
-                (item.name || "")
+                (item.ch_name ? "[" + metadataText(item.ch_name) + "] " : "") +
+                metadataText(item.name)
             );
         }
 
@@ -4609,7 +4624,7 @@ export function searchRec(): void {
                 );
             });
             w.getListItemFn = function (e: any, _t: number): string {
-                return "&nbsp;&nbsp;" + e.name;
+                return "&nbsp;&nbsp;" + metadataText(e.name);
             };
             w.detailListActionFn = detailREC;
             w.listKeyHandlerFn = function (key: number): boolean {
@@ -4674,7 +4689,7 @@ export function searchRec(): void {
             };
             var captionEl = document.getElementById("listCaption");
             if (captionEl)
-                captionEl.innerHTML =
+                captionEl.textContent =
                     w._("Archive. Category: ") +
                     w.catsArray[w.listCatIndex] +
                     ". " +

@@ -1,3 +1,9 @@
+import {
+    hasTmdbService,
+    metadataCssUrl,
+    metadataHtml,
+    metadataText,
+} from "../utils/helpers";
 /**
  * UI management — info bar, dialogs, lists, volume, color, time display.
  */
@@ -963,7 +969,7 @@ export function showPage(): void {
             i +
             '" onclick="event.stopPropagation();setSelect(' +
             i +
-            ')" class="item"';
+            ')" role="button" tabindex="0" onkeydown="if(event.keyCode===13||event.keyCode===32){event.preventDefault();event.stopPropagation();this.click();}" class="item"';
         // Integer px boxes from listRowHeight. Zero vertical padding; horizontal
         // inset only. WKWebView subpixel/flex min-content previously grew rows
         // past avail/pageSize (~21 of 25 visible) — lock height+line-height+
@@ -993,7 +999,7 @@ export function showPage(): void {
         try {
             html += getListItemFn ? getListItemFn(dataArr[i], i) : "";
         } catch (e) {
-            html += "ERROR:" + (e as any).message;
+            html += "ERROR:" + metadataText((e as any).message);
         }
         html += "</div>";
     }
@@ -1270,7 +1276,7 @@ export function closeList(): void {
 export function showShift(message: string): void {
     var info = document.getElementById("info");
     if (info) {
-        info.innerHTML = message;
+        info.innerHTML = metadataHtml(message);
         info.style.display = "";
     }
     setTimeout(function () {
@@ -1288,7 +1294,11 @@ export function showShift(message: string): void {
  */
 export function infoBox(message: string): void {
     $("#dialogbox")
-        .html(message + "<br/><br/>" + btnDiv(keys.ENTER, strENTER, "Ok"))
+        .html(
+            metadataHtml(message) +
+                "<br/><br/>" +
+                btnDiv(keys.ENTER, strENTER, "Ok")
+        )
         .show();
     (window as any).dialogBoxKeyHandler = function (_e: number): void {
         $("#dialogbox").hide();
@@ -1392,7 +1402,7 @@ export function showSelectBox(
                 '" onclick="_doKey(' +
                 (-100 + t) +
                 ');">&nbsp;&nbsp;' +
-                val +
+                metadataHtml(val) +
                 "&nbsp;&nbsp;</div>";
         });
         if (numprogElement) numprogElement.innerHTML = html;
@@ -1523,15 +1533,17 @@ export function updateChanelInfo(channelId: number): void {
         ? (window as any).chanels[channelId]
         : undefined;
     if (t) {
-        if (channelNameEl) channelNameEl.innerHTML = t.channel_name || "";
+        if (channelNameEl) channelNameEl.textContent = t.channel_name || "";
         if (piconEl)
             piconEl.style.backgroundImage =
                 typeof (window as any).getChannelPicon === "function"
                     ? 'url("' +
-                      (window as any).getChannelPicon(channelId) +
+                      metadataCssUrl(
+                          (window as any).getChannelPicon(channelId)
+                      ) +
                       '")'
                     : t.logo
-                      ? 'url("' + t.logo + '")'
+                      ? 'url("' + metadataCssUrl(t.logo) + '")'
                       : "";
     } else {
         if (channelNameEl)
@@ -1557,8 +1569,8 @@ export function updateChanelInfo(channelId: number): void {
     var hasProg = getCurProgData(channelId, updateChanelInfo);
     if (hasProg && t && t.time_to) {
         // Has current EPG program
-        if (programNameEl) programNameEl.innerHTML = t.name;
-        if (programName2El) programName2El.innerHTML = t.name;
+        if (programNameEl) programNameEl.textContent = t.name;
+        if (programName2El) programName2El.textContent = t.name;
         (window as any)._prog100 = t;
         var nowSec = Date.now() / 1000;
         var pct = ((nowSec - t.time) / (t.time_to - t.time)) * 100;
@@ -1586,11 +1598,11 @@ export function updateChanelInfo(channelId: number): void {
             programDescrEl.innerHTML =
                 (typeof getThumbnail === "function"
                     ? getThumbnail(t.icon || t.logo)
-                    : "") + (t.descr || "");
+                    : "") + metadataHtml(t.descr);
         }
         // Next program
         if (t.nextpr && t.nextpr.length) {
-            if (nprogramNameEl) nprogramNameEl.innerHTML = t.nextpr[0].name;
+            if (nprogramNameEl) nprogramNameEl.textContent = t.nextpr[0].name;
             if (nbeginTimeEl)
                 nbeginTimeEl.textContent = time2time(t.nextpr[0].time);
             var nextDur = Math.round(
@@ -1881,7 +1893,7 @@ export function btnDiv(
     extra?: string
 ): string {
     if (!(description && keyLabel)) return "";
-    description = _(description);
+    description = metadataHtml(_(description));
     var cls = "btn";
     switch (keyLabel) {
         case keys.RED:
@@ -1915,7 +1927,9 @@ export function btnDiv(
     if (extra) a += '<div class="btn">' + extra + "</div>&nbsp;";
     if (!a) description = '<div class="btn">' + description + "</div>";
     return (
-        '<span onclick="event.stopPropagation();_doKey(' +
+        '<span role="button" tabindex="0" aria-label="' +
+        metadataText(description.replace(/<[^>]*>/g, " ")) +
+        '" onkeydown="if(event.keyCode===13||event.keyCode===32){event.preventDefault();event.stopPropagation();this.click();}" onclick="event.stopPropagation();_doKey(' +
         keyLabel +
         ');">' +
         a +
@@ -2071,7 +2085,7 @@ export function infoProgramm(title: string): void {
     }
     $("#listPopUp").hide();
     saveCPD();
-    if (listCaptionElement) listCaptionElement.innerHTML = title;
+    if (listCaptionElement) listCaptionElement.textContent = title;
     if (listPodvalElement) {
         var extra = "";
         if ((window as any).sArrowFun === 2) extra = strRIGHT;
@@ -2079,7 +2093,9 @@ export function infoProgramm(title: string): void {
         else if ((window as any).sPNFun === 1) extra = strNEXT;
         listPodvalElement.innerHTML =
             btnDiv(keys.RETURN, strRETURN, "Close") +
-            (title ? btnDiv(keys.N2, strInfo, "TMDb", "2", extra) : "");
+            (title && hasTmdbService()
+                ? btnDiv(keys.N2, strInfo, "TMDb", "2", extra)
+                : "");
     }
     // Legacy stbPlayer.js:2251-2282 — TMDb keys search; any other key closes.
     aboutKeyHandler = function (e: number): boolean {
@@ -2091,6 +2107,7 @@ export function infoProgramm(title: string): void {
                 case keys.N2:
                 case keys.INFO:
                     if (
+                        hasTmdbService() &&
                         (window as any).TMDb &&
                         typeof (window as any).TMDb.search === "function"
                     )
@@ -2099,6 +2116,7 @@ export function infoProgramm(title: string): void {
                 case keys.FF:
                     if ((window as any).sRewFun !== 1) break;
                     if (
+                        hasTmdbService() &&
                         (window as any).TMDb &&
                         typeof (window as any).TMDb.search === "function"
                     )
@@ -2107,6 +2125,7 @@ export function infoProgramm(title: string): void {
                 case keys.NEXT:
                     if ((window as any).sPNFun !== 1) break;
                     if (
+                        hasTmdbService() &&
                         (window as any).TMDb &&
                         typeof (window as any).TMDb.search === "function"
                     )
@@ -2155,7 +2174,7 @@ export function infoMedia(): void {
     $("#listPopUp").hide();
     saveCPD();
     var t = la[si].title || "";
-    if (listCaptionElement) listCaptionElement.innerHTML = t;
+    if (listCaptionElement) listCaptionElement.textContent = t;
     if (listPodvalElement) {
         var extra = "";
         if ((window as any).sArrowFun === 2) extra = strRIGHT;
@@ -2163,7 +2182,9 @@ export function infoMedia(): void {
         else if ((window as any).sPNFun === 1) extra = strNEXT;
         listPodvalElement.innerHTML =
             btnDiv(keys.RETURN, strRETURN, "Close") +
-            (t ? btnDiv(keys.N2, strInfo, "TMDb", "2", extra) : "");
+            (t && hasTmdbService()
+                ? btnDiv(keys.N2, strInfo, "TMDb", "2", extra)
+                : "");
     }
     aboutKeyHandler = function (e: number): boolean {
         if (t) {
@@ -2174,6 +2195,7 @@ export function infoMedia(): void {
                 case keys.N2:
                 case keys.INFO:
                     if (
+                        hasTmdbService() &&
                         (window as any).TMDb &&
                         typeof (window as any).TMDb.search === "function"
                     )
@@ -3382,7 +3404,7 @@ var showEditKey: any = showEditKey1;
  * @analysis Checks `window.stbGetItem('ottplaylang') === '_eng'` to determine initial language.
  *             Color-key underlines are added to shift/lang/backspace/ok symbols if color keys are enabled.
  */
-export function showEditKey1(_initKeys: any): void {
+export function showEditKey1(_initKeys: any, secret?: boolean): void {
     // Desktop / Tauri / Capacitor: always use the native <input> line. The
     // graphical OSK is for STB remotes; several call sites still invoke
     // showEditKey1 (or a stale window.showEditKey alias) directly.
@@ -3392,7 +3414,7 @@ export function showEditKey1(_initKeys: any): void {
         /^(pc|pc2|tauri|desktop|nodejs)$/.test(String(w.ott_device || ""));
     var isCap = typeof w.Capacitor !== "undefined";
     if ((isPc || isCap) && typeof w.showEditKey2 === "function") {
-        w.showEditKey2(_initKeys);
+        w.showEditKey2(_initKeys, secret);
         return;
     }
     saveCPD();
@@ -3699,7 +3721,7 @@ export function editKey2(code: number): void {
  * @sideeffect Calls `window.saveCPD()` if available. Renders `#listEdit` with an `<input>` field
  *             and save/discard buttons. Focuses the input field.
  */
-export function showEditKey2(_initKeys?: number[]): void {
+export function showEditKey2(_initKeys?: number[], secret?: boolean): void {
     if (typeof (window as any).saveCPD === "function")
         (window as any).saveCPD();
     var caption = (window as any).editCaption || "";
@@ -3708,10 +3730,14 @@ export function showEditKey2(_initKeys?: number[]): void {
     var strExit = (window as any).strEXIT || "Esc";
     var strEnter = (window as any).strENTER || "ENTER";
     if ((window as any).listCaptionElement)
-        (window as any).listCaptionElement.innerHTML = caption;
-    var html = caption + ":<br/><br/>";
+        (window as any).listCaptionElement.textContent = caption;
+    var html = metadataText(caption) + ":<br/><br/>";
     html +=
-        '<br/><input type="text" id="editvar" style="color:' +
+        '<br/><input type="' +
+        (secret ? "password" : "text") +
+        '" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="' +
+        metadataText(caption) +
+        '" id="editvar" style="color:' +
         ((window as any).curColor || "#fff") +
         ';" autofocus><br/><br/>';
     html +=
@@ -3797,13 +3823,13 @@ function showMediaList1(): void {
         return (
             (w.sShowPikon
                 ? '<div class="img" style="background-image:url(\'' +
-                  (item.logo_30x30 || "") +
+                  metadataText(metadataCssUrl(item.logo_30x30)) +
                   "');width:" +
                   rowHeight +
                   "px;margin-left:" +
                   6 * getWidthK() +
                   'px;"></div>&nbsp;'
-                : "&nbsp;&nbsp;") + (item.title || item.name || "")
+                : "&nbsp;&nbsp;") + metadataText(item.title || item.name || "")
         );
     };
     w.detailListActionFn = function () {
@@ -3994,7 +4020,7 @@ export function selectValue(t: any): void {
     _curVal = r.indexOf(t.values[t.val]);
     if (_curVal < 0) _curVal = 0;
     saveCPD();
-    if (listCaptionElement) listCaptionElement.innerHTML = t.name;
+    if (listCaptionElement) listCaptionElement.textContent = t.name;
     if (listPodvalElement)
         listPodvalElement.innerHTML =
             btnDiv(keys.RETURN, strRETURN, "Close") +

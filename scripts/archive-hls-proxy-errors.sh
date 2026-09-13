@@ -6,8 +6,15 @@
 # Env: HLS_PROXY_LOG, HLS_PROXY_ERROR_ARCHIVE
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# The installer also copies this script to the selected archive's bin directory.
+if [ "$(basename "$SCRIPT_DIR")" = "bin" ]; then
+  DEFAULT_ARCHIVE="$(cd "$SCRIPT_DIR/.." && pwd)"
+else
+  DEFAULT_ARCHIVE="$(cd "$SCRIPT_DIR/.." && pwd)/.local-artifacts/debug-archive"
+fi
 LOG="${HLS_PROXY_LOG:-$HOME/Library/Logs/hls-proxy.log}"
-ARCHIVE="${HLS_PROXY_ERROR_ARCHIVE:-$HOME/victron/ottplay-debug-archive}"
+ARCHIVE="${HLS_PROXY_ERROR_ARCHIVE:-$DEFAULT_ARCHIVE}"
 
 # Prefer absolute rg so launchd (minimal PATH) still works.
 if [ -x /opt/homebrew/bin/rg ]; then

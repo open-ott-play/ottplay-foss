@@ -56,6 +56,15 @@ Object.assign(w, {
     ui_state: {},
 });
 w.eval(
+    extract("src/utils/helpers.ts", [
+        "metadataText",
+        "metadataImageUrl",
+        "metadataCssUrl",
+        "metadataHtml",
+        "hasTmdbService",
+    ])
+);
+w.eval(
     extract("src/ui/index.ts", [
         "saveCPD",
         "restoreCPD",

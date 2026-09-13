@@ -9,6 +9,9 @@ mkdir -p release-output
 npm run build
 npm run check:bundle
 npm run check:es5
-tar -czf release-output/ottplay-foss-dist.tar.gz index.html favicon.ico dist fonts js stb stbPlayer prov
 npm run package:modea
-cp dist/ottplay-foss-modea.tar.gz dist/ottplay-foss-modea.sha256 release-output/
+cp build/packages/ottplay-foss-modea.tar.gz build/packages/ottplay-foss-modea.sha256 release-output/
+# The legacy filename contains exactly the same audited server web root.
+cp release-output/ottplay-foss-modea.tar.gz release-output/ottplay-foss-dist.tar.gz
+sed 's/  ottplay-foss-modea\.tar\.gz$/  ottplay-foss-dist.tar.gz/' \
+  release-output/ottplay-foss-modea.sha256 > release-output/checksums.txt

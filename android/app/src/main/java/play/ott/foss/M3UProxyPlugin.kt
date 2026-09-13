@@ -45,7 +45,12 @@ class M3UProxyPlugin : Plugin() {
 
         Thread {
             try {
-                val conn = URL(urlStr).openConnection() as HttpURLConnection
+                val address = URL(urlStr)
+                if (BuildConfig.FLAVOR == "play" && address.protocol == "http") {
+                    call.reject("OTT-play FOSS Play requires HTTPS sources. Use an HTTPS playlist URL or the Full edition for HTTP sources.", "https_required")
+                    return@Thread
+                }
+                val conn = address.openConnection() as HttpURLConnection
                 conn.requestMethod = "GET"
                 conn.setRequestProperty("User-Agent", ua)
                 if (effectiveReferer.isNotEmpty()) {
@@ -59,7 +64,7 @@ class M3UProxyPlugin : Plugin() {
                 val body = stream.bufferedReader().use(BufferedReader::readText)
 
                 if (status !in 200..299) {
-                    call.reject("Upstream $status: $body")
+                    call.reject("Playlist provider returned HTTP $status")
                     return@Thread
                 }
 
@@ -67,7 +72,12 @@ class M3UProxyPlugin : Plugin() {
                 ret.put("body", body)
                 call.resolve(ret)
             } catch (e: Exception) {
-                call.reject("proxy_fetch failed: ${e.message}")
+                val message = when (e) {
+                    is java.net.SocketTimeoutException -> "Playlist request timed out"
+                    is javax.net.ssl.SSLException -> "Playlist TLS connection failed; check its HTTPS certificate"
+                    else -> "Playlist request failed"
+                }
+                call.reject(message)
             }
         }.start()
     }

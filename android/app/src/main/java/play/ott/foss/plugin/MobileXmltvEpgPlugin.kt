@@ -6,6 +6,7 @@ import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
+import play.ott.foss.BuildConfig
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.OkHttpClient
@@ -45,8 +46,13 @@ class MobileXmltvEpgPlugin : Plugin() {
     private fun sourceUrls(call: PluginCall): List<String> {
         val supplied = call.getArray("xmltv_urls")
         val urls = (0 until (supplied?.length() ?: 0)).map { supplied!!.optString(it) }.filter { it.isNotBlank() }
-        return (if (urls.isNotEmpty()) urls else listOf(call.getString("xmltv_url")?.takeIf { it.isNotBlank() } ?: DEFAULT_URL))
-            .map { it.trim() }.distinct()
+        if (urls.isNotEmpty()) return urls.map { it.trim() }.distinct()
+        val explicit = call.getString("xmltv_url")?.trim()?.takeIf { it.isNotEmpty() }
+        if (explicit != null) return listOf(explicit)
+        // Play fetches only sources supplied by the user or their playlist.
+        // An empty source list produces empty EPG/channels without consulting
+        // the Full edition's defaults, including any previously cached feed.
+        return if (BuildConfig.BUNDLED_EPG_DEFAULTS) listOf(DEFAULT_URL) else emptyList()
     }
 
     private fun loadSource(source: String, force: Boolean = false, completion: (Result<Parsed>) -> Unit) {

@@ -137,6 +137,13 @@ function getChanelsArray(callback) {
         editXtreamSettings();
         return;
     }
+    if (
+        typeof checkProviderUrl === "function" &&
+        !checkProviderUrl(xtream.server)
+    ) {
+        editXtreamSettings();
+        return;
+    }
     $(launch_id).append(_("Loading channels from Xtream API..."));
     var apiUrl =
         xtream.server +
@@ -251,7 +258,7 @@ function editXtreamSettings() {
         ];
         listDataArray = listArray;
         i = [
-            _("Enter Xtream server URL (e.g. http://your-server:8080)"),
+            _("Enter Xtream server URL (e.g. https://your-server:8080)"),
             _("Enter username"),
             _("Enter password"),
             "",
@@ -297,7 +304,7 @@ function editXtreamSettings() {
                             buildList();
                             showPage();
                         };
-                        showEditKey(keys.ENTER);
+                        showEditKey(keys.ENTER, true);
                         return true;
                     case 4:
                         xtream.server = srv;

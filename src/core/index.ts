@@ -97,6 +97,25 @@ var _playSession = 0;
 /** The previous Shaka must release this video before another engine attaches. */
 var _coreShakaTeardown: PromiseLike<unknown> | null = null;
 var _corePendingSeek: (() => void) | null = null;
+/** Demo autoplay is temporarily muted; never persist it as the user's choice. */
+var _coreDemoMute: { media: HTMLVideoElement; muted: boolean } | null = null;
+
+function setCoreDemoMute(enabled: boolean): void {
+    if (_coreDemoMute && (!enabled || _coreDemoMute.media !== video)) {
+        _coreDemoMute.media.muted = _coreDemoMute.muted;
+        _coreDemoMute = null;
+    }
+    if (enabled && video) {
+        if (!_coreDemoMute)
+            _coreDemoMute = { media: video, muted: video.muted };
+        video.muted = true;
+    }
+}
+
+/** Restore the user's mute choice when leaving demo, including paused media. */
+export function restoreDemoMute(): void {
+    setCoreDemoMute(false);
+}
 
 function isCoreThenable(value: unknown): value is PromiseLike<unknown> {
     return (
@@ -106,6 +125,8 @@ function isCoreThenable(value: unknown): value is PromiseLike<unknown> {
 
 /** Older WebKit play() returns void; modern autoplay failures must be consumed. */
 function playCoreMedia(media: HTMLVideoElement): void {
+    if (media === video)
+        setCoreDemoMute((window as any).ottplayDemoActive === true);
     try {
         var result = media.play();
         if (isCoreThenable(result)) {
@@ -653,6 +674,8 @@ export function stbEventToKeyCode(event: any): number {
  * - Automatically restores previous audio/subtitle track settings via execCHarr.
  */
 export function stbPlay(url: string, position?: number): void {
+    setCoreDemoMute((window as any).ottplayDemoActive === true);
+    if (video) video.loop = (window as any).ottplayDemoActive === true;
     if (!_inLiveRestart) {
         _playSession++;
         cancelLiveRestart();
@@ -690,14 +713,18 @@ function startCorePlayback(
     session: number
 ): void {
     // Decode-fail: try hls.js first, drop failing level, recover once; native only if Safari
-    var _forceNative = false;
+    // Demo includes an MP4 as well as HLS. HLS auto-selection must not send
+    // the MP4 into the manifest loader, or alter the saved engine preference.
+    var _forceNative =
+        (window as any).ottplayDemoActive === true &&
+        /\/demo\/pattern\.mp4(?:[?#]|$)/i.test(url);
     var _pm =
         playerMode === 1 &&
         !_forceNative &&
         typeof Hls !== "undefined" &&
         Hls.isSupported()
             ? "hls.js"
-            : playerMode === 2
+            : playerMode === 2 && !_forceNative
               ? "shaka"
               : "html5";
     console.log(
@@ -967,11 +994,15 @@ function startCorePlayback(
         });
     } else if (
         playerMode === 2 &&
+        !_forceNative &&
         typeof shaka !== "undefined" &&
         shaka.Player &&
         shaka.Player.isBrowserSupported()
     ) {
-        var playbackShaka = new shaka.Player(video);
+        var modernShaka = !!(window as any).__ottNativeRuntime;
+        var playbackShaka = modernShaka
+            ? new shaka.Player()
+            : new shaka.Player(video);
         window.player = playbackShaka;
         var loaded = function (): void {
             if (
@@ -986,13 +1017,28 @@ function startCorePlayback(
             if (session === _playSession && window.player === playbackShaka)
                 console.error("[Shaka] load failed:", error);
         };
+        var loadShaka = function (): void {
+            // attach() in current Shaka is asynchronous. A stop/channel switch
+            // during attachment must not load an obsolete stream afterwards.
+            if (session !== _playSession || window.player !== playbackShaka)
+                return;
+            try {
+                var loading = playbackShaka.load(
+                    url,
+                    position && position > 0 ? position : undefined
+                );
+                if (isCoreThenable(loading)) loading.then(loaded, failed);
+                else loaded();
+            } catch (error) {
+                failed(error);
+            }
+        };
         try {
-            var loading = playbackShaka.load(
-                url,
-                position && position > 0 ? position : undefined
-            );
-            if (isCoreThenable(loading)) loading.then(loaded, failed);
-            else loaded();
+            if (modernShaka) {
+                var attached = playbackShaka.attach(video);
+                if (isCoreThenable(attached)) attached.then(loadShaka, failed);
+                else loadShaka();
+            } else loadShaka();
         } catch (error) {
             failed(error);
         }
@@ -1008,12 +1054,14 @@ function startCorePlayback(
  * Side effects: Mutates video element; may free decoder resources.
  */
 export function stbStop(): void {
+    if (video) video.loop = false;
     _playSession++;
     cancelLiveRestart();
     cancelCoreSeek();
     (window as any).forcePlay = false;
     video!.pause();
     video!.removeAttribute("src");
+    setCoreDemoMute(false);
     destroyCoreShaka();
     if (hlsInstance) {
         hlsInstance.destroy();
@@ -1052,6 +1100,11 @@ export function stbIsPlaying(): boolean {
  * Side effects: Flips video!.muted.
  */
 export function stbToggleMute(): void {
+    if (_coreDemoMute && (window as any).ottplayDemoActive === true) {
+        video!.muted = true;
+        return;
+    }
+    setCoreDemoMute(false);
     video!.muted = !video!.muted;
 }
 /**
@@ -1164,9 +1217,9 @@ export function stbSetWindow(): void {
 }
 
 /**
- * Append diagnostic info (user-agent and public IP) to the #listAbout element.
+ * Append local diagnostic info to the #listAbout element.
  *
- * Side effects: DOM mutation on #listAbout; performs an HTTP GET to api.ipify.org.
+ * Full also looks up the public IP; Play removes that request at build time.
  */
 export function stbInfo(): void {
     $("#listAbout").append("<br/>userAgent: " + navigator.userAgent);
@@ -1180,9 +1233,11 @@ export function stbInfo(): void {
             ? localStorage.getItem("local_poll_url")
             : null;
     if (localUrl) $("#listAbout").append("<br/>Local Poll URL: " + localUrl);
+    // OTTPLAY_FULL_ONLY_BEGIN
     $.get("http://api.ipify.org", function (d: any) {
         $("#listAbout").append("<br/>Ip address: " + d);
     });
+    // OTTPLAY_FULL_ONLY_END
 }
 
 /**
@@ -1353,12 +1408,21 @@ export function stbSubtitleExists(): number {
  * Side effects: Shows #videopip; attaches hls.js or native src; calls videoPip!.play().
  */
 export function stbPlayPip(url: string): void {
+    videoPip!.loop = (window as any).ottplayDemoActive === true;
+    var demoMp4 =
+        (window as any).ottplayDemoActive === true &&
+        /\/demo\/pattern\.mp4(?:[?#]|$)/i.test(url);
     var session = ++_corePipSession;
     if (hlsPipInstance) {
         hlsPipInstance.destroy();
         hlsPipInstance = null;
     }
-    if (playerMode === 1 && typeof Hls !== "undefined" && Hls.isSupported()) {
+    if (
+        !demoMp4 &&
+        playerMode === 1 &&
+        typeof Hls !== "undefined" &&
+        Hls.isSupported()
+    ) {
         var pipHls = new Hls();
         hlsPipInstance = pipHls;
         pipHls.on(Hls.Events.MANIFEST_PARSED, function () {
@@ -1377,6 +1441,7 @@ export function stbPlayPip(url: string): void {
 
 /** Stop PiP, cancel its callbacks, and release the decoder and buffering OSD. */
 export function stbStopPip(): void {
+    videoPip!.loop = false;
     _corePipSession++;
     videoPip!.pause();
     if (hlsPipInstance) {
@@ -1393,7 +1458,7 @@ export function stbStopPip(): void {
  *
  * Positions: 0 = top-right, 1 = bottom-right, 2 = bottom-left, 3 = top-left.
  *
- * Side effects: Mutates #videopip CSS dimensions and position.
+ * Side effects: Positions #videopip and its compact, centered buffering indicator.
  */
 export function setPipPosition(): void {
     // Legacy setPipPosBuf reads sPipSize / sPipPos globals — keep in sync.
@@ -1418,7 +1483,18 @@ export function setPipPosition(): void {
         width: pipPresets[pipSize].x * m + "px",
     };
     $("#videopip").css(css);
-    $("#pip_buffering").css(css);
+    // The indicator's percentage-sized blobs must use a compact square, not
+    // the full video rectangle. Keep both opposite edges cleared on every move.
+    var bufferX = (20 + (pipPresets[pipSize].x - 30) / 2) * m + "px";
+    var bufferY = (20 + (pipPresets[pipSize].y - 30) / 2) * m + "px";
+    $("#pip_buffering").css({
+        bottom: pipPosition == 1 || pipPosition == 2 ? bufferY : "auto",
+        height: 30 * m + "px",
+        left: pipPosition > 1 ? bufferX : "auto",
+        right: pipPosition < 2 ? bufferX : "auto",
+        top: pipPosition == 0 || pipPosition == 3 ? bufferY : "auto",
+        width: 30 * m + "px",
+    });
 }
 
 /**
@@ -1478,6 +1554,7 @@ export function setPlayer(): void {
  * Close the current browser window/tab (standard STB exit behaviour).
  */
 export function stbExit(): void {
+    setCoreDemoMute(false);
     window.close();
 }
 

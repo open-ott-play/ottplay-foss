@@ -210,19 +210,26 @@ function fixture() {
     c.window = c;
     const context = vm.createContext(c);
     vm.runInContext(
-        sourceFunctions("src/channels/index.ts", [
-            "rememberMediaView",
-            "cancelMediaLoad",
-            "requestMediaList",
-            "mediaBack",
-            "mediaKeyHandler",
-            "addToMedFavorites",
-            "selectMedia",
-            "showMediaList",
-            "getMediaDescr",
-            "searchMedia",
-            "setCurrent",
+        sourceFunctions("src/utils/helpers.ts", [
+            "metadataText",
+            "metadataImageUrl",
+            "metadataCssUrl",
+            "metadataHtml",
+            "hasTmdbService",
         ]) +
+            sourceFunctions("src/channels/index.ts", [
+                "rememberMediaView",
+                "cancelMediaLoad",
+                "requestMediaList",
+                "mediaBack",
+                "mediaKeyHandler",
+                "addToMedFavorites",
+                "selectMedia",
+                "showMediaList",
+                "getMediaDescr",
+                "searchMedia",
+                "setCurrent",
+            ]) +
             sourceFunctions("src/ui/index.ts", [
                 "showMediaList1",
                 "mediaList",

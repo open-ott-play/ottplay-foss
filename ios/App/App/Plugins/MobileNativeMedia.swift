@@ -27,7 +27,9 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
 
     private var pipController: AVPictureInPictureController?
     private var pipPlayer: AVPlayer?
+    private var pipLooper: AVPlayerLooper?
     private var pipLayer: AVPlayerLayer?
+    private var pipCurrentItemObservation: NSKeyValueObservation?
     private var pipItemObservation: NSKeyValueObservation?
     private var pipPossibleObservation: NSKeyValueObservation?
     private var pendingPipCall: CAPPluginCall?
@@ -38,6 +40,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     private var mediaSeekable = false
     private var artworkURLString: String?
     private var artworkLoadID = 0
+    private var artworkTask: URLSessionDataTask?
 
     /// Shared flag read by MainViewController (avoids Cap bridge plugin-lookup API drift).
     private(set) static var sharedFullscreenActive = false
@@ -119,6 +122,53 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
+    private func makePipPlayer(url: URL, loop: Bool) -> AVPlayer {
+        if loop {
+            let player = AVQueuePlayer()
+            pipLooper = AVPlayerLooper(player: player, templateItem: AVPlayerItem(url: url))
+            return player
+        }
+        return AVPlayer(url: url)
+    }
+
+    private func releasePipPlayer() {
+        pipLooper?.disableLooping()
+        pipLooper = nil
+        pipPlayer?.pause()
+        if let queue = pipPlayer as? AVQueuePlayer {
+            queue.removeAllItems()
+        } else {
+            pipPlayer?.replaceCurrentItem(with: nil)
+        }
+        pipPlayer = nil
+    }
+
+    private func observePipPlayerItem(_ player: AVPlayer) {
+        // AVPlayerLooper can populate its queue after loading the template duration.
+        pipCurrentItemObservation = player.observe(\.currentItem, options: [.initial, .new]) {
+            [weak self, weak player] _, _ in
+            DispatchQueue.main.async { [weak self, weak player] in
+                guard let self = self, let player = player, self.pipPlayer === player else { return }
+                self.pipItemObservation = player.currentItem?.observe(\.status, options: [.initial, .new]) {
+                    [weak self, weak player] item, _ in
+                    DispatchQueue.main.async { [weak self, weak player] in
+                        guard let self = self, let player = player,
+                              self.pipPlayer === player, player.currentItem === item else { return }
+                        if item.status == .failed {
+                            self.resolvePipOnce([
+                                "ok": false,
+                                "error": item.error?.localizedDescription ?? "player item failed",
+                            ])
+                            self.teardownPip(keepCall: true)
+                        } else if item.status == .readyToPlay {
+                            self.tryStartPip()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     @objc func playPip(_ call: CAPPluginCall) {
         guard let urlString = call.getString("url"), !urlString.isEmpty else {
             call.resolve([
@@ -143,6 +193,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
             ])
             return
         }
+        let loop = call.getBool("loop", false)
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -161,9 +212,6 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
 
             _ = self.configurePlaybackSession()
 
-            let player = AVPlayer(url: url)
-            let layer = AVPlayerLayer(player: player)
-
             let container: UIView? =
                 (bridge.webView as? UIView) ??
                 bridge.viewController?.view
@@ -175,6 +223,10 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
                 ])
                 return
             }
+
+            let player = self.makePipPlayer(url: url, loop: loop)
+            self.pipPlayer = player
+            let layer = AVPlayerLayer(player: player)
 
             // Small 16:9 layer in hierarchy (required for AVPictureInPictureController).
             let size = CGSize(width: 160, height: 90)
@@ -194,6 +246,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
                     "ok": false,
                     "error": "pip controller unavailable",
                 ])
+                self.teardownPip(keepCall: true)
                 return
             }
             pipController.delegate = self
@@ -204,7 +257,6 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
                 pipController.canStartPictureInPictureAutomaticallyFromInline = true
             }
 
-            self.pipPlayer = player
             self.pipLayer = layer
             self.pipController = pipController
 
@@ -215,32 +267,14 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
             player.play()
 
             // Observe item readiness + pip-possible; hop to main before Cap/UIKit work.
-            self.pipItemObservation = player.currentItem?.observe(
-                \.status,
-                options: [.initial, .new]
-            ) { [weak self] item, _ in
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-                    if item.status == .failed {
-                        self.resolvePipOnce([
-                            "ok": false,
-                            "error": item.error?.localizedDescription ?? "player item failed",
-                        ])
-                        self.teardownPip(keepCall: true)
-                        return
-                    }
-                    if item.status == .readyToPlay {
-                        self.tryStartPip()
-                    }
-                }
-            }
+            self.observePipPlayerItem(player)
 
             self.pipPossibleObservation = pipController.observe(
                 \.isPictureInPicturePossible,
                 options: [.initial, .new]
             ) { [weak self] controller, _ in
                 DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
+                    guard let self = self, self.pipController === controller else { return }
                     if controller.isPictureInPicturePossible {
                         self.tryStartPip()
                     }
@@ -248,8 +282,9 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
             }
 
             // Honest timeout — never leave the Cap call hanging, never fake ok:true.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
-                guard let self = self, !self.pipResolved else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self, weak player] in
+                guard let self = self, let player = player,
+                      self.pipPlayer === player, !self.pipResolved else { return }
                 self.resolvePipOnce([
                     "ok": false,
                     "error": "pip not possible",
@@ -320,7 +355,9 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
 
     @objc func updateBackgroundAudio(_ call: CAPPluginCall) {
         // Refresh metadata/timeline without requiring a new audio session.
-        applyBackgroundAudio(call: call, rate: 1.0, requireSession: false)
+        guard backgroundAudioActive else { call.resolve(["ok": true]); return }
+        let rate = MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPNowPlayingInfoPropertyPlaybackRate] as? Double ?? 0.0
+        applyBackgroundAudio(call: call, rate: rate, requireSession: false)
     }
 
     @objc func stopBackgroundAudio(_ call: CAPPluginCall) {
@@ -328,6 +365,9 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         backgroundAudioActive = false
         mediaSeekable = false
         artworkURLString = nil
+        artworkLoadID += 1
+        artworkTask?.cancel()
+        artworkTask = nil
         setSeekCommandEnabled(false)
         // Keep session category as playback for the next channel; do not deactivate
         // aggressively (other Cap audio paths may still need the session).
@@ -350,17 +390,15 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
                 ])
                 return
             }
-        } else if !backgroundAudioActive && !configurePlaybackSession() {
-            call.resolve([
-                "ok": false,
-                "error": "AVAudioSession setCategory/setActive failed",
-            ])
+        } else if !backgroundAudioActive {
+            call.resolve(["ok": true])
             return
         }
 
         configureRemoteCommandsIfNeeded()
         mediaSeekable = seekable
         setSeekCommandEnabled(seekable)
+        backgroundAudioActive = true
         updateNowPlaying(
             title: title,
             artist: artist,
@@ -419,33 +457,45 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func maybeLoadArtwork(_ artworkUrl: String?) {
-        guard let artworkUrl, !artworkUrl.isEmpty else { return }
+        guard let artworkUrl else { return }
+        if artworkUrl.isEmpty {
+            artworkLoadID += 1
+            artworkTask?.cancel(); artworkTask = nil
+            artworkURLString = nil
+            var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+            info.removeValue(forKey: MPMediaItemPropertyArtwork)
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+            return
+        }
         if artworkURLString == artworkUrl {
             return
         }
         artworkURLString = artworkUrl
         artworkLoadID += 1
+        artworkTask?.cancel(); artworkTask = nil
         let loadID = artworkLoadID
 
         if artworkUrl.hasPrefix("data:"), let comma = artworkUrl.firstIndex(of: ",") {
+            guard artworkUrl.utf8.count <= 2 * 1024 * 1024 * 4 / 3 + 1024 else { return }
             let b64 = String(artworkUrl[artworkUrl.index(after: comma)...])
-            if let data = Data(base64Encoded: b64), let image = UIImage(data: data) {
+            if let data = Data(base64Encoded: b64), data.count <= 2 * 1024 * 1024, let image = UIImage(data: data) {
                 applyArtwork(image, loadID: loadID)
             }
             return
         }
         guard let url = URL(string: artworkUrl) else { return }
-        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
-            guard let self = self, self.artworkLoadID == loadID else { return }
-            guard let data, let image = UIImage(data: data) else { return }
-            DispatchQueue.main.async {
-                self.applyArtwork(image, loadID: loadID)
+        guard ["http", "https"].contains(url.scheme?.lowercased() ?? "") else { return }
+        artworkTask = URLSession.shared.dataTask(with: URLRequest(url: url, timeoutInterval: 10)) { [weak self] data, _, _ in
+            guard let data, data.count <= 2 * 1024 * 1024, let image = UIImage(data: data) else { return }
+            DispatchQueue.main.async { [weak self] in
+                self?.applyArtwork(image, loadID: loadID)
             }
-        }.resume()
+        }
+        artworkTask?.resume()
     }
 
     private func applyArtwork(_ image: UIImage, loadID: Int) {
-        guard artworkLoadID == loadID else { return }
+        guard backgroundAudioActive, artworkLoadID == loadID else { return }
         let art = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
         var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
         info[MPMediaItemPropertyArtwork] = art
@@ -606,6 +656,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         pipResolved = true
         pendingPipCall?.resolve(result)
         pendingPipCall = nil
+        pipCurrentItemObservation = nil
         pipItemObservation = nil
         pipPossibleObservation = nil
     }
@@ -613,16 +664,18 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     /// Tear down native PiP resources. When `keepCall` is true, leave pending resolve alone
     /// (caller already resolved or will resolve).
     private func teardownPip(keepCall: Bool) {
+        if !keepCall, pendingPipCall != nil {
+            resolvePipOnce(["ok": false, "error": "PiP playback cancelled"])
+        }
+        pipCurrentItemObservation = nil
         pipItemObservation = nil
         pipPossibleObservation = nil
         if pipController?.isPictureInPictureActive == true {
             pipController?.stopPictureInPicture()
         }
-        pipPlayer?.pause()
-        pipPlayer?.replaceCurrentItem(with: nil)
+        releasePipPlayer()
         pipLayer?.removeFromSuperlayer()
         pipController = nil
-        pipPlayer = nil
         pipLayer = nil
         if !keepCall {
             pendingPipCall = nil
@@ -631,6 +684,8 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     }
 
     deinit {
+        artworkTask?.cancel()
+        if backgroundAudioActive { MPNowPlayingInfoCenter.default().nowPlayingInfo = nil }
         teardownPip(keepCall: false)
     }
 }
@@ -639,6 +694,7 @@ extension MobileNativeMedia: AVPictureInPictureControllerDelegate {
     public func pictureInPictureControllerDidStartPictureInPicture(
         _ pictureInPictureController: AVPictureInPictureController
     ) {
+        guard self.pipController === pictureInPictureController else { return }
         resolvePipOnce(["ok": true])
     }
 
@@ -646,6 +702,7 @@ extension MobileNativeMedia: AVPictureInPictureControllerDelegate {
         _ pictureInPictureController: AVPictureInPictureController,
         failedToStartPictureInPictureWithError error: Error
     ) {
+        guard self.pipController === pictureInPictureController else { return }
         resolvePipOnce([
             "ok": false,
             "error": error.localizedDescription,
@@ -656,6 +713,7 @@ extension MobileNativeMedia: AVPictureInPictureControllerDelegate {
     public func pictureInPictureControllerDidStopPictureInPicture(
         _ pictureInPictureController: AVPictureInPictureController
     ) {
+        guard self.pipController === pictureInPictureController else { return }
         teardownPip(keepCall: false)
     }
 }

@@ -216,7 +216,13 @@ const c = vm.createContext({
 });
 c.window = c;
 vm.runInContext(
-    compile("src/ui/index.ts", ["uiInit", "showEditKey2", "editKey2"]),
+    compile("src/utils/helpers.ts", [
+        "metadataText",
+        "metadataImageUrl",
+        "metadataCssUrl",
+        "metadataHtml",
+        "hasTmdbService",
+    ]) + compile("src/ui/index.ts", ["uiInit", "showEditKey2", "editKey2"]),
     c
 );
 c.uiInit();

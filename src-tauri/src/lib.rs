@@ -2,7 +2,7 @@ mod commands;
 mod instance;
 
 use commands::media_session::MediaSessionState;
-use commands::tauri_commands::TauriState;
+use commands::tauri_commands::{PipState, TauriState};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tauri::Manager;
@@ -46,6 +46,7 @@ pub fn run() {
         })
         .manage(commands::queue::QueueHttpRuntime::default())
         .manage(MediaSessionState::default())
+        .manage(PipState::default())
         .manage(TauriState {
             xmltv_cache: Arc::new(RwLock::new(None)),
             epg_urls: Arc::new(RwLock::new(epg_urls.clone())),
@@ -67,6 +68,7 @@ pub fn run() {
             commands::tauri_commands::prevent_sleep,
             commands::tauri_commands::allow_sleep,
             commands::tauri_commands::play_pip,
+            commands::tauri_commands::pip_player_event,
             commands::tauri_commands::stop_pip,
             commands::tauri_commands::set_pip_bounds,
             commands::tauri_commands::exit_app,

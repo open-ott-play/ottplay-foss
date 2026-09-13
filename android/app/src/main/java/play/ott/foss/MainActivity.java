@@ -50,7 +50,7 @@ public class MainActivity extends BridgeActivity {
                     script = dispatchKey("ENTER");
                     break;
                 case KeyEvent.KEYCODE_BACK:
-                    script = dispatchKey("EXIT");
+                    script = dispatchKey("RETURN");
                     break;
                 case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
                     script = "if(window.stbIsPlaying&&window.stbIsPlaying()){if(window.stbPause)window.stbPause();}else if(window.stbContinue)window.stbContinue();";

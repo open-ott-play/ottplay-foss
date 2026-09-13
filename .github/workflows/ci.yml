@@ -95,8 +95,8 @@ jobs:
         with:
           name: ottplay-foss-modea-${{ github.sha }}
           path: |
-            dist/ottplay-foss-modea.tar.gz
-            dist/ottplay-foss-modea.sha256
+            build/packages/ottplay-foss-modea.tar.gz
+            build/packages/ottplay-foss-modea.sha256
           retention-days: 14
 
 

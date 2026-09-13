@@ -1,14 +1,19 @@
 node_modules/
 build/
 dist/
+dist-mobile/
 .cache/
 logs/
+**/logs/
+**/*.log
 __pycache__/
 .venv/
 .ruff_cache/
 feedback.log
 test.m3u
 .git/
+.local-artifacts/
+.herenow/
 .github/
 .DS_Store
 *.md
@@ -27,3 +32,4 @@ local_proxy.py
 
 # glib embeds this upstream documentation in its Rust library at compile time.
 !vendor/glib-0.18.5/README.md
+.local-ops/

@@ -1,3 +1,4 @@
+import { hasTmdbService, metadataCssUrl, metadataText } from "./utils/helpers";
 /**
  * OTT-play FOSS — main entry point.
  * Wires all modules together and exposes globals for backward compat.
@@ -309,6 +310,7 @@ import { dispatchKey, keyHandler, keys } from "./keyhandler";
 import {
     edit_dealer,
     edit_dealer_remote,
+    isPlayDistribution,
     loadChannels,
     loadProv,
     noProvParam,
@@ -533,7 +535,7 @@ function addBtn2menu(arr: any[], action: any, label: string): void {
 }
 
 // Font family list (index: 0=system, 1=Roboto, 2=RobotoCondensed, 3=Caveat, 4=Liberation, 5=Gabriela, 6=PTSansNarrow)
-var fontFamilyList = [
+var fontFamilyList = (window as any).__ottNativeFontFamilies || [
     "",
     "Roboto, ",
     "RobotoCondensed, ",
@@ -566,6 +568,7 @@ var TMDb: any = {
     data: null as any,
     fun: "css",
     get: function (media_type: string, id: any) {
+        if (!hasTmdbService()) return;
         const $ = (window as any).$;
         const _ =
             (window as any)._ ||
@@ -582,7 +585,9 @@ var TMDb: any = {
         function item2descr(item: any): string {
             function it(val: any, title?: string): string {
                 return val
-                    ? (title ? "<b>" + _(title) + ": </b>" : "") + val + "<br>"
+                    ? (title ? "<b>" + _(title) + ": </b>" : "") +
+                          metadataText(val) +
+                          "<br>"
                     : "";
             }
             const genre: string[] = [];
@@ -622,7 +627,7 @@ var TMDb: any = {
                 '<div id="_prdD" style="margin: -' +
                 10 * hk +
                 "px; background-position: right -200px top; background-size: cover; background-repeat: no-repeat; background-image: url(" +
-                backdrop +
+                metadataText(metadataCssUrl(backdrop)) +
                 ');"><div style="padding:' +
                 20 * hk +
                 'px; background: rgba(13, 37, 63, 0.8);"><table>' +
@@ -632,7 +637,7 @@ var TMDb: any = {
                       '" width="' +
                       200 * hk +
                       '" src="' +
-                      poster +
+                      metadataText(poster) +
                       '" style="float: left; margin-right: ' +
                       10 * hk +
                       "px; margin-bottom: " +
@@ -640,7 +645,7 @@ var TMDb: any = {
                       'px; border-width: 0px;" onerror="this.width=0;this.height=0;">'
                     : "") +
                 '<div style="text-align:center;font-size:larger;">' +
-                (item.title || item.name) +
+                metadataText(item.title || item.name) +
                 "</div><br>" +
                 it((item.release_date || "").split("-")[0], "Year") +
                 it(
@@ -655,7 +660,7 @@ var TMDb: any = {
                 it(director.join(", "), "Director") +
                 it(script.join(", "), "Script") +
                 it(item.vote_average, "Rating") +
-                (item.overview ? "<hr>" + item.overview : "") +
+                (item.overview ? "<hr>" + metadataText(item.overview) : "") +
                 "</table></div></div>"
             );
         }
@@ -721,6 +726,7 @@ var TMDb: any = {
     query: "",
     results: [] as any[],
     search: function (nam: string, itr?: number) {
+        if (!hasTmdbService()) return;
         const $ = (window as any).$;
         const _ =
             (window as any)._ ||
@@ -789,7 +795,9 @@ var TMDb: any = {
             return;
         }
         $("#dialogbox")
-            .html("<br>" + _("Search") + ":<br>" + name + "<br><br>")
+            .html(
+                "<br>" + _("Search") + ":<br>" + metadataText(name) + "<br><br>"
+            )
             .show();
         $.ajax({
             cache: false,
@@ -859,7 +867,7 @@ var TMDb: any = {
                 "px; width:" +
                 150 * TMDb.hk +
                 "px; background-position: center; background-size: contain; background-repeat: no-repeat; background-image: url(" +
-                poster +
+                metadataText(metadataCssUrl(poster)) +
                 ');" onclick="TMDb.setSelect(' +
                 ind +
                 ');"></div>';
@@ -1038,7 +1046,9 @@ function setFontSize(): void {
         .toggleClass("osd", settings.permanentTime !== 2)
         .css("background-color", "");
 
-    var s = "Helvetica, Arial, sans-serif";
+    var s = (window as any).__ottNativeFontFamilies
+        ? ""
+        : "Helvetica, Arial, sans-serif";
     $("body").css("font-family", fontFamilyList[settings.fontSize] + s);
 
     $("#info").css("padding", 20 * e + "px");
@@ -1120,14 +1130,12 @@ function setFontSize(): void {
         padding: "0px " + 100 * t + "px",
     });
     $("#buffering").css({
-        "border-width": Math.max(2, Math.round(3 * e)) + "px",
         height: 30 * e + "px",
         left: 10 * e + "px",
         top: 10 * e + "px",
         width: 30 * e + "px",
     });
     $("#pip_buffering").css({
-        "border-width": Math.max(2, Math.round(3 * e)) + "px",
         height: 30 * e + "px",
         right: 10 * e + "px",
         top: 10 * e + "px",
@@ -1732,7 +1740,8 @@ export function startPlayer(): void {
     try {
         console.log("startPlayer");
 
-        if (launchEl) {
+        // OTTPLAY_FULL_ONLY_BEGIN
+        if (launchEl && !isPlayDistribution()) {
             launchEl.innerHTML +=
                 '<img src="' +
                 hostUrl +
@@ -1740,6 +1749,7 @@ export function startPlayer(): void {
                 PLAYER_VERSION +
                 '" style="position: absolute; left: 100px; bottom:100px;" height="30%" alt=""/>';
         }
+        // OTTPLAY_FULL_ONLY_END
 
         storage.reset();
 
@@ -2498,10 +2508,10 @@ function _playMedia(item: MediaHistoryEntry): void {
         providerSetItem("medHistory", JSON.stringify(medHistory));
     $("#picon").css(
         "background-image",
-        'url("' + (item.logo_30x30 || "") + '")'
+        'url("' + metadataCssUrl(item.logo_30x30) + '")'
     );
     $("#channel_number").text(" ");
-    $("#channel_name").html(item.title);
+    $("#channel_name").text(item.title);
     $("#nprogramm_name").html("&nbsp; ");
     $("#nbegin_time").text("");
     $("#nend_time").text("");
@@ -2686,7 +2696,12 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                     if (typeof origPlayPip === "function") origPlayPip(url);
                 };
                 return Promise.resolve()
-                    .then(() => cap.playPip({ url }))
+                    .then(() =>
+                        cap.playPip({
+                            loop: (window as any).ottplayDemoActive === true,
+                            url,
+                        })
+                    )
                     .then((res) => {
                         if (session !== pipSession) return;
                         if (!res || !res.ok || res.unsupported) {
@@ -4360,7 +4375,7 @@ window.settingsInterface = function (): void {
         {
             name: w._("Font type") || "Font type",
             val: w.sFont,
-            values: [
+            values: w.__ottNativeFontOptions || [
                 '<span style="font-family:Helvetica, Arial, sans-serif;">' +
                     (w._("system") || "system") +
                     "</span>",
@@ -5384,7 +5399,17 @@ window.settingsManage = function (): void {
     ];
     if (typeof w.stbClearAllItems !== "function") w.listArray.splice(6, 1);
     if (typeof w.stbGetAllItems !== "function") w.listArray.splice(0, 1);
-    if (typeof w.loadOpt === "function")
+    if (isPlayDistribution()) {
+        w.listArray = w.listArray.filter(function (item: any): boolean {
+            return (
+                item.action !== w.edit_dealer &&
+                item.action !== w.edit_dealer_remote &&
+                item.action !== w.cloudLoadSettings &&
+                item.action !== w.importSettingsUI
+            );
+        });
+    }
+    if (!isPlayDistribution() && typeof w.loadOpt === "function")
         w.listArray.splice(0, 0, {
             action: w.loadOpt,
             name:
@@ -5612,41 +5637,44 @@ if (typeof window.__TAURI__ !== "undefined") {
     };
 }
 
-// Capacitor Mode C: real app exit (window.close() does not finish Activity).
-// Prefer @capacitor/app App.exitApp(); fall back to MobileNativeMedia.exitApp
-// (bridge finish) if App plugin is unavailable. Cap-only; Mode A + Tauri unchanged.
+// Stop both the decoder and native media session before finishing the Activity.
 if (typeof (window as any).Capacitor !== "undefined") {
     window.stbExit = function (): void {
+        if (typeof window.stbStop === "function") window.stbStop();
         const Cap = (window as any).Capacitor;
         const plugins = Cap && Cap.Plugins ? Cap.Plugins : null;
-        try {
-            const App = plugins && plugins.App;
-            if (App && typeof App.exitApp === "function") {
-                App.exitApp();
-                return;
-            }
-        } catch (e: any) {
-            console.warn("[Capacitor] App.exitApp failed:", e);
-        }
-        try {
+        void (async function () {
             const media = plugins && plugins.MobileNativeMedia;
-            if (media && typeof media.exitApp === "function") {
-                media
-                    .exitApp()
-                    .catch((e: any) =>
-                        console.warn(
-                            "[Capacitor] MobileNativeMedia.exitApp failed:",
-                            e
-                        )
-                    );
-                return;
+            try {
+                if (media && typeof media.stopBackgroundAudio === "function")
+                    await media.stopBackgroundAudio();
+            } catch (e) {
+                console.warn("[Capacitor] media stop failed:", e);
             }
-        } catch (e: any) {
-            console.warn("[Capacitor] MobileNativeMedia.exitApp failed:", e);
-        }
-        try {
-            window.close();
-        } catch (_e) {}
+            try {
+                const App = plugins && plugins.App;
+                if (App && typeof App.exitApp === "function") {
+                    await App.exitApp();
+                    return;
+                }
+            } catch (e) {
+                console.warn("[Capacitor] App.exitApp failed:", e);
+            }
+            try {
+                if (media && typeof media.exitApp === "function") {
+                    await media.exitApp();
+                    return;
+                }
+            } catch (e) {
+                console.warn(
+                    "[Capacitor] MobileNativeMedia.exitApp failed:",
+                    e
+                );
+            }
+            try {
+                window.close();
+            } catch (_e) {}
+        })();
     };
 }
 window.setPlayer = setPlayer;
@@ -5723,61 +5751,72 @@ if (typeof window.__TAURI__ !== "undefined") {
         const origPlay = window.stbPlayPip;
         const origStop = window.stbStopPip;
         const origSetPos = window.setPipPosition;
-        let pipSession = 0;
-        let pipCommands: Promise<void> | null = null;
-        function queuePip(command: () => Promise<unknown>): void {
-            const pending = (pipCommands || Promise.resolve())
-                .then(command)
-                .then(
-                    () => {},
-                    (error: unknown) => {
-                        console.warn("[Tauri] PiP command failed:", error);
-                    }
-                );
-            pipCommands = pending;
-            pending.then(() => {
-                if (pipCommands === pending) pipCommands = null;
-            });
+        // Native play waits for video to start. Stop/new play must reach Rust
+        // during buffering, where request IDs reject stale IPC and callbacks.
+        let pipSession = Date.now() * 1000;
+        function invokePip<T>(
+            command: string,
+            args: Record<string, unknown>
+        ): Promise<T> {
+            try {
+                return Promise.resolve(tauriInvoke<T>(command, args));
+            } catch (error) {
+                return Promise.reject(error);
+            }
         }
         window.stbPlayPip = function (url: string): void {
             const session = ++pipSession;
             if (typeof origStop === "function") origStop();
-            queuePip(() => {
-                if (session !== pipSession) return Promise.resolve();
-                const fallback = (error: unknown): void => {
-                    if (session !== pipSession) return;
-                    console.warn(
-                        "[Tauri] play_pip failed, CSS fallback:",
-                        error
-                    );
-                    if (typeof origPlay === "function") origPlay(url);
-                };
-                return tauriInvoke<{ ok?: boolean; unsupported?: boolean }>(
-                    "play_pip",
-                    { url }
-                ).then((res) => {
-                    if (session !== pipSession) return;
-                    if (res && (res.ok === false || res.unsupported)) {
-                        fallback(res);
-                        return;
-                    }
-                    const el = document.getElementById("videopip");
-                    if (el) (el as HTMLElement).style.display = "none";
-                }, fallback);
-            });
+            let absoluteUrl = url;
+            try {
+                absoluteUrl = new URL(url, window.location.href).href;
+            } catch (_error) {
+                // Keep the shared player's handling for nonstandard provider URLs.
+            }
+            const fallback = (error: unknown): void => {
+                if (session !== pipSession) return;
+                console.warn("[Tauri] play_pip failed, CSS fallback:", error);
+                if (typeof origPlay === "function") origPlay(url);
+            };
+            invokePip<{ ok?: boolean; unsupported?: boolean }>("play_pip", {
+                engine:
+                    (window as any).ottplayDemoActive === true &&
+                    /\.mp4(?:[?#]|$)/i.test(absoluteUrl)
+                        ? 0
+                        : typeof playerMode === "number"
+                          ? playerMode
+                          : 0,
+                loop: (window as any).ottplayDemoActive === true,
+                requestId: session,
+                url: absoluteUrl,
+            }).then((res) => {
+                if (session !== pipSession) return;
+                if (res && (res.ok === false || res.unsupported)) {
+                    fallback(res);
+                    return;
+                }
+                const el = document.getElementById("videopip");
+                if (el) (el as HTMLElement).style.display = "none";
+                // The window exists and is playing now; earlier bounds requests
+                // may have arrived while its webview was still being created.
+                window.setPipPosition();
+            }, fallback);
         };
         window.stbStopPip = function (): void {
-            ++pipSession;
+            const session = ++pipSession;
             if (typeof origStop === "function") origStop();
-            queuePip(() => tauriInvoke("stop_pip", {}));
+            invokePip("stop_pip", { requestId: session }).catch(
+                (error: unknown) =>
+                    console.warn("[Tauri] stop_pip failed:", error)
+            );
         };
         window.setPipPosition = function (): void {
             if (typeof origSetPos === "function") origSetPos();
             const w = window as any;
             const position = Number(w.sPipPos) || 0;
             const size = Number(w.sPipSize) || 0;
-            tauriInvoke<any>("set_pip_bounds", { position, size }).catch(
-                (e: any) => console.warn("[Tauri] set_pip_bounds failed:", e)
+            invokePip("set_pip_bounds", { position, size }).catch((e: any) =>
+                console.warn("[Tauri] set_pip_bounds failed:", e)
             );
         };
         window.getPipPosition = window.setPipPosition;
@@ -5957,6 +5996,68 @@ function pluginInfo(): void {
     };
 }
 
+/** Read the policy bundled with this Android installation, without a network service. */
+function privacyPolicy(onClose?: () => void): void {
+    var w = window as any;
+    var previousHandler = w.aboutKeyHandler;
+    var closed = false;
+    var panel = $("#listAbout");
+    if (typeof w.saveCPD === "function") w.saveCPD();
+    panel.empty().show();
+    var close = function (): void {
+        if (closed) return;
+        closed = true;
+        panel.hide().empty();
+        w.aboutKeyHandler = previousHandler;
+        if (typeof w.restoreCPD === "function") w.restoreCPD();
+        if (typeof onClose === "function") onClose();
+    };
+    $("<button type='button'>")
+        .text(_("Back"))
+        .on("click", function (event: any) {
+            event.stopPropagation();
+            close();
+        })
+        .appendTo(panel);
+    var content = $("<pre>")
+        .css({
+            fontFamily: "inherit",
+            fontSize: "0.75em",
+            height: "85%",
+            overflow: "auto",
+            touchAction: "pan-y",
+            whiteSpace: "pre-wrap",
+        })
+        .text(_("Loading..."))
+        .appendTo(panel);
+    w.aboutKeyHandler = function (key: number): boolean {
+        if (
+            key === w.keys.RETURN ||
+            key === w.keys.EXIT ||
+            key === w.keys.ENTER
+        )
+            close();
+        else if (key === w.keys.DOWN)
+            content.scrollTop(content.scrollTop() + 100);
+        else if (key === w.keys.UP)
+            content.scrollTop(content.scrollTop() - 100);
+        return true;
+    };
+    $.get(
+        (w.host || "") + "/privacy-policy.txt",
+        function (text: string) {
+            if (!closed) content.text(text);
+        },
+        "text"
+    ).fail(function () {
+        if (!closed)
+            content.text(
+                "Privacy policy unavailable. Contact: alvit.work@gmail.com"
+            );
+    });
+}
+window.privacyPolicy = privacyPolicy;
+
 /**
  * Display the "Remote control buttons description" screen.
  * Lists all remote button functions for live and archive modes, with
@@ -6050,7 +6151,10 @@ function buttonsInfo(): void {
     var a = $("#_prd").height() + 10 - $("#listAbout").height();
     (window as any).scrollUp("_prd", a, 10000);
     (window as any).aboutKeyHandler = function (e: number): boolean {
-        if (e === (window as any).keys.RETURN) {
+        if (
+            e === (window as any).keys.RETURN ||
+            e === (window as any).keys.EXIT
+        ) {
             (window as any).restoreCPD();
             $("#listAbout").hide().text("");
             clearTimeout((window as any).detailTimer);
@@ -6080,6 +6184,14 @@ var infoArr: any[] = [
         name: "Debug HUD",
     },
 ];
+if (isPlayDistribution()) {
+    infoArr.push({
+        action: function () {
+            privacyPolicy();
+        },
+        name: "Privacy policy",
+    });
+}
 
 window.infoArr = infoArr;
 window.pluginInfo = pluginInfo;
@@ -6781,7 +6893,9 @@ optionsArr.push({
     desc: "Change provider - you can change the provider, and it will be remembered at the next start of player!",
     name: "Change provider",
 });
+// OTTPLAY_FULL_ONLY_BEGIN
 optionsArr.push({ action: edit_dealer, name: "Enter Provider Code" });
+// OTTPLAY_FULL_ONLY_END
 optionsArr.push({ action: _o.settingsManage, name: "Manage settings" });
 optionsArr.push({
     action: _o.settingsCommands,

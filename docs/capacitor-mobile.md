@@ -1,11 +1,12 @@
 # Capacitor Mobile — iOS & Android
 
 Capacitor wraps the OTT-play FOSS web frontend for native iOS and Android deployment.
-Both platforms share the same TypeScript source and Capacitor configuration.
+Both platforms share the same TypeScript source. Android has separate Full and Play
+distributions with isolated frontend assets; see [Android distributions](android-distributions.md).
 
 ## Try the player (web)
 
-Hosted full web player for UI/regression testing without a device build: **https://player.ottplay.here.now/**
+For UI/regression testing without a device build, serve the web player locally or use your own deployment of the same revision.
 
 ## Status
 
@@ -48,15 +49,24 @@ Capacitor 4.1–4.6 + follow-ons shipped on `main` through store readiness (#315
 ## Build
 
 ```bash
-# Install dependencies
-npm install
+# Install the locked dependencies
+npm ci
 
-# Build web + sync to native
-npm run build:mobile
+# iOS: build web + sync to native
+npm run build:ios
 
-# Sync after manual web edits (no rebuild)
-npm run cap:sync
+# Android Full: debug APK for local sideload
+npm run android:full
+
+# Android Play: release AAB for signing and store review
+npm run android:play
 ```
+
+Android Studio builds must select `fullDebug`, `fullRelease`, `playDebug` or
+`playRelease`. Before opening Android Studio after dependency changes, run
+`node scripts/build-android.cjs sync`. This updates native plugin projects without
+copying a shared frontend. Gradle prepares the complete assets directory for the
+selected distribution; a general `cap sync android` is not the packaging step.
 
 ## Open in IDE
 
@@ -80,20 +90,28 @@ npm run cap:android
 ### Android
 
 - Android Studio (or Gradle CLI)
-- Node.js >= 18
+- Node.js 22
 - Android SDK (via Android Studio SDK Manager)
+- JDK 21 (required by the Capacitor 8 Android build)
 - Set `$ANDROID_HOME` if not auto-detected
 
 ## App ID & Name
 
-- **App ID**: `play.ott.foss`
-- **App Name**: `OTT-play FOSS`
+- **iOS**: `play.ott.foss`, `OTT-play FOSS`.
+- **Android Full**: `play.ott.foss`, `OTT-play FOSS Full`; preserves the existing
+  Android application ID. An upgrade also requires the same signing certificate.
+- **Android Play**: `play.ott.foss.play`, `OTT-play FOSS`; installs alongside Full
+  with separate application storage.
 
 ## Configuration
 
 See `capacitor.config.ts`:
 
-- `webDir: "dist"` — built web assets (boot URL `/dist/stbPlayer.js` needs nested `dist/dist/stbPlayer.js`; vite nests this for Cap, matching Tauri `stageTauriFrontend`)
+- `webDir: "dist-mobile"` — native iOS/Capacitor staging with current npm media
+  libraries and system fonts. `dist` remains the legacy web/server output.
+  Android Gradle instead generates separate
+  `build/generated/ottplay/{full,play}/assets` roots, including a flavor-specific
+  Capacitor config, plugin metadata and the complete `public` frontend.
 - `ios.backgroundAudio: true` — background playback (Info.plist `UIBackgroundModes: audio`)
 - `android.backgroundAudio: true` — foreground service for media
 - `android.minSdkVersion: 24` — effective minSdk 24 (matches android/variables.gradle)
@@ -204,34 +222,63 @@ Prepared. Human upload still required.
 - **Capabilities**: Background audio already declared in `Info.plist`. No other capabilities required.
 - **Certificates / Profiles**: Distribution certificate + App Store provisioning profile via Xcode or App Store Connect.
 - **Info.plist usage strings**: Background audio (`UIBackgroundModes: audio`) — already present. Web content media playback (`NSAppTransportSecurity` with `NSAllowsArbitraryLoadsInWebContent`) — required for HTTP IPTV streams loaded in WKWebView. No camera/photo/mic/contacts strings added because the app does not use those features.
-- **Privacy nutrition labels**: No personal data collected. App plays publicly available IPTV streams. No tracking, no analytics, no device info exfiltration.
+- **Privacy nutrition labels**: Complete them from the actual provider, optional remote-service and hosted Demo data flows described in the [privacy policy](privacy-policy.md). The absence of an analytics SDK does not establish that no data is collected. Confirm the publisher and hosting practices before submission.
 - **Screenshots**:
   - iPhone 6.7": 1284 × 2778 px
   - iPhone 6.5": 1242 × 2688 px
   - iPhone 5.5": 1242 × 2208 px
   - iPad 12.9": 2048 × 2732 px
 - **TestFlight steps**: Build archive in Xcode → Organizer → Distribute → App Store Connect → TestFlight. Add internal testers by Apple ID. External testing requires App Review.
-- **App Store review notes**: Mention IPTV streams require active subscriptions from content providers. App does not host or modify content.
+- **App Store review notes**: Explain that configured provider sources may require credentials or a subscription. The optional hosted synthetic Demo needs no account; provider content remains with the configured service.
 
 ### Google Play (internal track)
 
-The app ID is `play.ott.foss`. The separate **Android Play upload bundle** workflow builds and verifies an AAB with a dedicated upload key, then stores it as a GitHub Actions artifact for manual Play Console submission. See [Play upload signing](play-upload-signing.md) for the four required secrets, certificate checks, version-code requirements, and the distinction between upload signing and Play App Signing. It does not register or publish the app and does not need a Play service account.
+- **App ID**: `play.ott.foss.play` (the Play distribution).
+- **AAB**: Run `npm run android:play`, or sync native projects then run
+  `./gradlew :app:bundlePlayRelease` from `android/` to build an unsigned Play AAB.
+- **Included sources**: Demo and user-configured M3U, Xtream and Stalker entries.
+  The branded Full catalog, its artwork and provider pages are absent from the
+  Play package. This distinction does not itself establish Google Play approval
+  or grant rights to third-party content.
+- **Upload signing**: The separate manual **Android Play upload bundle** workflow
+  builds and verifies an AAB with a dedicated upload key, then stores it as a
+  GitHub Actions artifact for manual Play Console submission. See
+  [Play upload signing](play-upload-signing.md) for the four required secrets,
+  certificate checks, version-code requirements and the distinction between
+  upload signing and Play App Signing. It does not register or publish the app
+  and does not need a Play service account.
+- **Internal track**: Submit the verified upload-signed AAB through the intended
+  Play Console testing track after completing the publisher's declarations.
 
 ### Privacy policy
 
-Public stub (store listings / Play & App Store privacy URL):
+Stable policy URL for store listing fields (published from the `main` branch):
 
 [`docs/privacy-policy.md`](privacy-policy.md) —
 `https://github.com/open-ott-play/ottplay-foss/blob/main/docs/privacy-policy.md`
 
-Honest FOSS summary: on-device playback; optional user-configured playlist/EPG/portal URLs; no baked-in analytics/ads/crash SDKs; streams and EPG go to operator-configured endpoints. Not legal advice — fuller policy may replace the stub later.
+The policy describes configured provider and remote-service requests, local storage, optional hosted Demo and distribution-specific protections. Publishing the reviewed file to `main` updates this GitHub URL; no separate website deployment is required. Confirm that the public text matches the submitted app’s packaged policy.
 
 ### CI relationship to signing
 
-- The existing GitHub release workflow builds unsigned Android and iOS artifacts. An unsigned APK requires signing before installation; an unsigned IPA requires a separate provisioning/signing process before device installation or TestFlight submission.
-- The separate manual Play workflow produces an upload-signed AAB only when all four dedicated `PLAY_UPLOAD_*` secrets are configured. It does not change direct APK signing.
-- For local Gradle builds, `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, and `KEY_PASSWORD` configure release signing. These environment variables are not automatically populated from GitHub secrets by the existing release workflow.
-- iOS signing still requires an appropriate certificate and provisioning profile; the Android Play workflow does not change it.
+- **Release workflow**: CI requires an unsigned Full APK and an unsigned Play AAB,
+  verifies each package's assets, and keeps the release draft if either fails.
+  Unsigned artifacts are build outputs; they require appropriate signing before
+  installation or store upload. An unsigned iOS archive likewise requires Apple
+  distribution signing and provisioning before device installation or TestFlight.
+- **Full release signing**: `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` and
+  `KEY_PASSWORD` configure only the Full release signing certificate. Full
+  production sideloads need a stable Full signing key to preserve upgrades.
+  These variables are not automatically populated from GitHub secrets by the
+  existing release workflow.
+- **Play upload signing**: Gradle leaves Play release AABs unsigned. The separate
+  manual Play workflow uses the dedicated upload key only when all four
+  `PLAY_UPLOAD_*` secrets are configured. Google Play App Signing signs installed
+  Play packages. Keep these key roles separate; see
+  [Play upload signing](play-upload-signing.md) and
+  [Android distributions](android-distributions.md).
+- **iOS signing**: Requires an appropriate certificate and provisioning profile;
+  the Android Play workflow does not change it.
 
 ### Screenshot sizes
 
@@ -246,7 +293,7 @@ Honest FOSS summary: on-device playback; optional user-configured playlist/EPG/p
 
 ### Versioning
 
-Single source of truth: `package.json` version. `scripts/bump-mobile-version.sh` syncs to Android `build.gradle` and iOS `project.pbxproj`. Current aligned version: `1.0.0`.
+Single source of truth: `package.json` version. `scripts/bump-mobile-version.sh` syncs to Android `build.gradle` and iOS `project.pbxproj`. Read the version name and code from the final artifact before upload.
 
 ### 4.4 Native media
 

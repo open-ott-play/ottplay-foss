@@ -42,17 +42,15 @@ jobs:
       run: npm run typecheck --ignore-scripts
     - name: Build bundle
       run: npm run build --ignore-scripts
-    - name: Package deployable bundle
-      run: |
-        tar -czf ottplay-foss-dist.tar.gz \
-          index.html favicon.ico dist fonts js stb stbPlayer prov
-        sha256sum ottplay-foss-dist.tar.gz > checksums.txt
-    - name: Package validated Mode A web root
+    - name: Package validated server web root
       run: |
         npm run check:bundle
         npm run check:es5
         npm run package:modea
-        cp dist/ottplay-foss-modea.tar.gz dist/ottplay-foss-modea.sha256 .
+        cp build/packages/ottplay-foss-modea.tar.gz build/packages/ottplay-foss-modea.sha256 .
+        # Keep the established download name, using only the audited staged web root.
+        cp ottplay-foss-modea.tar.gz ottplay-foss-dist.tar.gz
+        sha256sum ottplay-foss-dist.tar.gz > checksums.txt
     - name: Store release assets
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
@@ -253,7 +251,7 @@ jobs:
       run: npm ci --ignore-scripts
     - name: iOS – build web + sync
       if: matrix.type == 'ios'
-      run: npm run build:mobile
+      run: npm run build:ios
       env:
         CI: true
     - name: iOS – discover scheme
@@ -288,18 +286,20 @@ jobs:
           -destination "$DEST" \
           ONLY_ACTIVE_ARCH=NO \
           ARCHS=arm64
-    - name: iOS – package IPA
+    - name: iOS – audit final application and package IPA
       if: matrix.type == 'ios'
       run: |
         XCA="${{ github.workspace }}/ottplay-foss-ios.xcarchive"
         APP_DIR="$XCA/Products/Applications"
-        if [ ! -d "$APP_DIR" ]; then
-          echo "No .app found in archive at $APP_DIR"
-          ls -R "$XCA"
+        APPS=("$APP_DIR/"*.app)
+        if [ "${#APPS[@]}" -ne 1 ] || [ ! -d "${APPS[0]}" ]; then
+          echo "Expected exactly one .app in archive at $APP_DIR"
           exit 1
         fi
+        node scripts/native-runtime.cjs audit "${APPS[0]}/public" \
+          --platform capacitor --source ios/App/App/public
         mkdir -p Payload
-        cp -R "$APP_DIR/"*.app Payload/
+        cp -R "${APPS[0]}" Payload/
         zip -qr "${{ github.workspace }}/ottplay-foss-ios-unsigned.ipa" Payload
         rm -rf Payload
         echo "Created ottplay-foss-ios-unsigned.ipa"
@@ -323,33 +323,40 @@ jobs:
     - name: Android – install SDK components
       if: matrix.type == 'android'
       run: bash scripts/ci-android-install-sdk.sh
-    - name: Android – build web + sync
+    - name: Android – sync native plugins without shared frontend assets
       if: matrix.type == 'android'
-      run: npm run build:mobile
+      run: node scripts/build-android.cjs sync
       env:
         CI: true
-    - name: Android – assemble release
+    - name: Android – build unsigned Full APK and Play AAB
+      if: matrix.type == 'android'
+      working-directory: android
+      run: |
+        env -u KEYSTORE_FILE -u KEYSTORE_PASSWORD -u KEY_ALIAS -u KEY_PASSWORD \
+          ./gradlew --no-daemon :app:assembleFullRelease :app:bundlePlayRelease
+    - name: Android – audit both packaged distributions
       if: matrix.type == 'android'
       run: |
-        cd android
-        ./gradlew assembleRelease
-        # Both advertised Android package formats are required
-        ./gradlew bundleRelease
+        node scripts/verify-android-distribution.cjs android/app/build/outputs/apk/full/release/app-full-release-unsigned.apk full
+        node scripts/verify-android-distribution.cjs android/app/build/outputs/bundle/playRelease/app-play-release.aab play
     - name: Collect Android packages
       if: matrix.type == 'android'
       run: |-
         mkdir -p release-output/android
-        APK=$(find android/app/build/outputs/apk -name '*release*.apk' -print -quit)
-        AAB=$(find android/app/build/outputs/bundle -name '*release*.aab' -print -quit)
-        test -n "$APK" && test -s "$APK"
-        test -n "$AAB" && test -s "$AAB"
+        APK="android/app/build/outputs/apk/full/release/app-full-release-unsigned.apk"
+        AAB="android/app/build/outputs/bundle/playRelease/app-play-release.aab"
+        test -s "$APK"
+        test -s "$AAB"
+        # Full keeps its established APK name. Play is a separate, audited product.
         cp "$APK" release-output/android/ottplay-foss-android-unsigned.apk
-        cp "$AAB" release-output/android/ottplay-foss-android-unsigned.aab
+        cp "$AAB" release-output/android/ottplay-foss-android-play-unsigned.aab
     - name: Store release assets
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
         name: release-assets-mobile-android
-        path: release-output/android/*
+        path: |-
+          release-output/android/ottplay-foss-android-unsigned.apk
+          release-output/android/ottplay-foss-android-play-unsigned.aab
         if-no-files-found: error
         retention-days: 14
       if: matrix.type == 'android'

@@ -2,7 +2,7 @@
 
 The **Android Play upload bundle** workflow builds an AAB from the selected `main` commit, signs it with the project's Play upload key, and saves it as a GitHub Actions artifact. It does not register an app, contact Play Console, publish a release, or install anything. Run it manually after the signing secrets have been configured.
 
-The application identity remains `play.ott.foss`. Check `android/app/build.gradle` for the version name and version code before each upload; Play requires a version code that has not already been used for that app. The current target SDK is defined in `android/variables.gradle`.
+The Play application identity is `play.ott.foss.play`; the separate Full sideload product keeps `play.ott.foss`. Check `android/app/build.gradle` for the version name and version code before each upload; Play requires a version code that has not already been used for that app. The current target SDK is defined in `android/variables.gradle`.
 
 ## Upload key and app signing key
 
@@ -10,7 +10,7 @@ With [Play App Signing](https://developer.android.com/studio/publish/app-signing
 
 Keep the upload key stable and backed up outside CI. Do not generate a replacement for an existing registered key without following Play's upload-key reset process. This workflow neither generates nor rotates production keys. The ephemeral keys used by its tests are disposable fixtures and must never be used for distribution.
 
-Direct APK distribution has a separate signing/upgrade contract. This workflow does not alter the release workflow, the generic local Gradle `KEYSTORE_*` settings, the APK signer, or the package ID. An APK signed with the upload key may not update a Play-installed copy signed with a different app signing key.
+Direct APK distribution has a separate signing/upgrade contract. The general release pipeline produces unsigned Full APK and Play AAB artifacts. Gradle `KEYSTORE_*` settings apply only to Full; Play release bundles remain unsigned until this dedicated upload signer processes them. Full and Play have separate package identities and signing contracts. An APK signed with the upload key may not update a Play-installed copy signed with a different app signing key.
 
 ## Required GitHub Actions secrets
 
@@ -39,4 +39,4 @@ Run the real cryptographic contract tests with Java 17 or newer and Python 3:
 python3 -m unittest discover -s tests -p test_play_upload_signing.py -v
 ```
 
-These tests sign minimal ZIP fixtures with disposable keys. They verify the signing contract, not Android compilation, Play policy compliance, device installation, or store acceptance. The manually dispatched workflow builds the actual application bundle before signing.
+These tests sign minimal ZIP fixtures with disposable keys. They verify the signing contract, not Android compilation, Play policy compliance, device installation, or store acceptance. The manually dispatched workflow builds `:app:bundlePlayRelease`, audits the actual Play package identity, provider inventory, resources and manifest before signing, then repeats the artifact audit after signing. These gates do not establish content rights or store approval. See [Android distribution details](android-distributions.md) and [remaining submission steps](play-submission.md).

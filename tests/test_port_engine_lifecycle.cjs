@@ -75,6 +75,7 @@ function media() {
     };
 }
 function fixture() {
+    const styles = {};
     const players = [],
         shakas = [],
         errors = [],
@@ -116,12 +117,17 @@ function fixture() {
     Hls.prototype.startLoad = function () {};
     function Shaka(m) {
         this.media = m;
+        this.attached = deferred();
         this.loaded = deferred();
         this.destroyed = deferred();
         this.destroyCalls = 0;
         shakas.push(this);
     }
     Shaka.isBrowserSupported = () => true;
+    Shaka.prototype.attach = function (media) {
+        this.media = media;
+        return this.attached.promise;
+    };
     Shaka.prototype.load = function (url, position) {
         this.url = url;
         this.position = position;
@@ -134,7 +140,9 @@ function fixture() {
     const w = {
         _: (s) => s,
         $: (selector) => ({
-            css() {},
+            css(values) {
+                Object.assign((styles[selector] ||= {}), values);
+            },
             hide() {
                 hidden.push(selector);
             },
@@ -173,7 +181,7 @@ function fixture() {
     vm.runInContext(core, w);
     w.video = media();
     w.videoPip = media();
-    return { boxes, errors, hidden, players, shakas, w };
+    return { boxes, errors, hidden, players, shakas, styles, w };
 }
 const cases = [];
 function test(name, fn) {
@@ -214,6 +222,108 @@ test("PiP starts after manifest and ignores callbacks after switch/stop", () => 
     assert.equal(w.videoPip.src, "");
     assert.ok(hidden.includes("#pip_buffering"));
 });
+test("PiP loader stays compact and centered through size, corner and canvas changes", () => {
+    const { w, styles } = fixture();
+    const presets = [
+        [256, 144],
+        [384, 216],
+        [512, 288],
+    ];
+    function rectangle(style) {
+        const width = parseFloat(style.width);
+        const height = parseFloat(style.height);
+        assert.notEqual(style.left === "auto", style.right === "auto");
+        assert.notEqual(style.top === "auto", style.bottom === "auto");
+        return {
+            height,
+            width,
+            x:
+                style.left === "auto"
+                    ? w.innerWidth - parseFloat(style.right) - width
+                    : parseFloat(style.left),
+            y:
+                style.top === "auto"
+                    ? w.innerHeight - parseFloat(style.bottom) - height
+                    : parseFloat(style.top),
+        };
+    }
+    function near(actual, expected, message) {
+        assert.ok(Math.abs(actual - expected) < 0.000001, message);
+    }
+    w.playerMode = 0;
+    w.stbPlayPip("preview.mp4");
+    assert.equal(styles["#pip_buffering"].width, "30px");
+    for (const [width, height] of [
+        [1280, 720],
+        [1920, 1080],
+        [640, 360],
+        [1024, 768],
+        [720, 1280],
+    ]) {
+        w.innerWidth = width;
+        w.innerHeight = height;
+        const scale = Math.min(width / 1280, height / 720);
+        for (let size = 0; size < presets.length; size++) {
+            // Retain the prior CSS between opposite-corner transitions.
+            for (const corner of [0, 2, 1, 3, 0]) {
+                w.sPipSize = String(size);
+                w.sPipPos = String(corner);
+                w.setPipPosition();
+                const videoStyle = styles["#videopip"];
+                const loaderStyle = styles["#pip_buffering"];
+                const videoRect = rectangle(videoStyle);
+                const loaderRect = rectangle(loaderStyle);
+                near(videoRect.width, presets[size][0] * scale, "PiP width");
+                near(videoRect.height, presets[size][1] * scale, "PiP height");
+                near(loaderRect.width, 30 * scale, "compact loader width");
+                near(loaderRect.height, 30 * scale, "compact loader height");
+                near(
+                    loaderRect.x + loaderRect.width / 2,
+                    videoRect.x + videoRect.width / 2,
+                    "loader centered horizontally"
+                );
+                near(
+                    loaderRect.y + loaderRect.height / 2,
+                    videoRect.y + videoRect.height / 2,
+                    "loader centered vertically"
+                );
+                for (const side of ["left", "right", "top", "bottom"])
+                    assert.equal(
+                        loaderStyle[side] === "auto",
+                        videoStyle[side] === "auto",
+                        "clear the opposite " + side + " edge"
+                    );
+            }
+        }
+    }
+});
+test("native Shaka awaits attach and ignores a stopped attachment", async () => {
+    const { w, shakas } = fixture();
+    w.__ottNativeRuntime = true;
+    w.playerMode = 2;
+    w.stbPlay("native.mpd", 12);
+    assert.equal(shakas[0].media, w.video);
+    assert.equal(shakas[0].url, undefined, "load waits for attach");
+    shakas[0].attached.resolve();
+    await tick();
+    assert.equal(shakas[0].url, "native.mpd");
+    assert.equal(shakas[0].position, 12);
+    w.stbStop();
+    shakas[0].loaded.resolve();
+    shakas[0].destroyed.resolve();
+    await tick();
+    w.stbPlay("stopped.mpd");
+    w.stbStop();
+    shakas[1].attached.resolve();
+    await tick();
+    assert.equal(
+        shakas[1].url,
+        undefined,
+        "late attach cannot revive stopped stream"
+    );
+    assert.equal(w.video.playCalls, 0);
+});
+
 test("Shaka owns load position, respects late pause and releases before the next engine", async () => {
     const { w, shakas } = fixture();
     w.playerMode = 2;

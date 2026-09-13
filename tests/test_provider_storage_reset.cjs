@@ -7,6 +7,11 @@ const ts = require("typescript");
 const root = path.join(__dirname, "..");
 const methods = ["GetItem", "HasItem", "HasItemValue", "SetItem", "DelItem"];
 const aliasNames = methods.map((method) => "_provider" + method);
+const policyNames = [
+    "providerDistribution",
+    "isPlayDistribution",
+    "isProviderAllowed",
+];
 
 function declarations(file, names) {
     const source = fs.readFileSync(path.join(root, file), "utf8");
@@ -45,12 +50,14 @@ const code = process.argv.includes("--bundle")
           ...storage.names,
           "__spreadArray",
           "loadProv",
+          ...policyNames,
           ...aliasNames,
       ]).code
     : [
           lz.code,
           storage.code,
-          declarations("src/provider/index.ts", ["loadProv"]).code,
+          declarations("src/provider/index.ts", ["loadProv", ...policyNames])
+              .code,
           declarations("src/index.ts", aliasNames).code,
       ].join("\n");
 
@@ -72,6 +79,7 @@ const context = {
     cancelMediaLoad() {},
     cancelPortChannelIdMigration() {},
     console,
+    document: { getElementById: () => null },
     firstRun() {
         firstRuns++;
     },
@@ -86,6 +94,7 @@ const context = {
     popupActions: [],
     popupArray: [],
     popupDetail: [],
+    restoreDemoMute() {},
     savedPopup: {
         popupActions: [() => {}],
         popupArray: ["Menu"],

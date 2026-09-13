@@ -588,93 +588,201 @@ fn pip_logical_xy(position: i32, w: f64, h: f64, canvas_w: f64, canvas_h: f64) -
     }
 }
 
-
-/// Bootstrap / reload a full-bleed video inside the PiP webview.
-/// HLS (.m3u8) loads hls.js@1.6.16 from jsDelivr; other URLs use video.src.
-fn pip_player_script(url: &str) -> String {
-    let url_json = serde_json::to_string(url).unwrap_or_else(|_| "\"\"".to_string());
-    format!(
-        r#" (function(){{
-  var url = {url_json};
-  try {{
-    document.documentElement.style.cssText = 'margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;';
-    if (document.body) {{
-      document.body.style.cssText = 'margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;';
-      document.body.innerHTML = '';
-    }}
-  }} catch (e) {{}}
-  var video = document.createElement('video');
-  video.id = 'ottplay-pip-video';
-  video.autoplay = true;
-  video.muted = true;
-  video.defaultMuted = true;
-  video.setAttribute('muted', '');
-  video.controls = false;
-  video.playsInline = true;
-  video.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#000;display:block;';
-  (document.body || document.documentElement).appendChild(video);
-  function playDirect() {{
-    video.src = url;
-    var p = video.play();
-    if (p && p.catch) p.catch(function(){{}});
-  }}
-  var isHls = /\.m3u8(\?|$)/i.test(url);
-  if (isHls) {{
-    function startHls() {{
-      if (window.Hls && Hls.isSupported()) {{
-        if (window.__ottplayPipHls) {{
-          try {{ window.__ottplayPipHls.destroy(); }} catch (e) {{}}
-        }}
-        var hls = new Hls();
-        window.__ottplayPipHls = hls;
-        hls.loadSource(url);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, function () {{
-          var p = video.play();
-          if (p && p.catch) p.catch(function(){{}});
-        }});
-      }} else if (video.canPlayType('application/vnd.apple.mpegurl')) {{
-        playDirect();
-      }} else {{
-        playDirect();
-      }}
-    }}
-    if (window.Hls) {{
-      startHls();
-    }} else {{
-      var s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js';
-      s.onload = startHls;
-      s.onerror = playDirect;
-      (document.head || document.documentElement).appendChild(s);
-    }}
-  }} else {{
-    playDirect();
-  }}
-}})();
-"#
-    )
+/// Per-app PiP lifecycle. Only window setup/teardown holds `commands`; buffering
+/// never blocks a newer play or stop command.
+#[derive(Default)]
+pub struct PipState {
+    commands: tokio::sync::Mutex<()>,
+    inner: std::sync::Mutex<PipInner>,
 }
 
-
-fn pip_stop_script() -> &'static str {
-    r#"(function(){
-  var v = document.getElementById('ottplay-pip-video');
-  if (v) {
-    try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) {}
-  }
-  if (window.__ottplayPipHls) {
-    try { window.__ottplayPipHls.destroy(); } catch (e) {}
-    window.__ottplayPipHls = null;
-  }
-})();"#
+#[derive(Default)]
+struct PipInner {
+    next_session: u64,
+    next_instance: u64,
+    last_request_id: u64,
+    instance: Option<u64>,
+    ready: bool,
+    current: Option<PipRequest>,
+    pending: Option<tokio::sync::oneshot::Sender<Result<(), String>>>,
 }
 
-fn apply_pip_bounds(
-    win: &tauri::WebviewWindow,
-    position: i32,
-    size: i32,
-) -> Result<(), String> {
+#[derive(Clone, Serialize)]
+pub struct PipRequest {
+    instance: u64,
+    session: u64,
+    url: String,
+    engine: Option<i32>,
+    r#loop: bool,
+}
+
+impl PipInner {
+    fn cancel(&mut self, reason: &str) {
+        if let Some(pending) = self.pending.take() {
+            let _ = pending.send(Err(reason.to_string()));
+        }
+        self.current = None;
+    }
+
+    fn accept(&mut self, request_id: Option<u64>) -> bool {
+        if let Some(id) = request_id {
+            if id <= self.last_request_id {
+                return false;
+            }
+            self.last_request_id = id;
+        }
+        true
+    }
+
+    fn acknowledge(
+        &mut self,
+        instance: u64,
+        session: u64,
+        event: &str,
+    ) -> Result<Option<PipRequest>, String> {
+        if self.instance != Some(instance) {
+            return Ok(None);
+        }
+        if event == "ready" {
+            self.ready = true;
+            return Ok(self.current.clone());
+        }
+        if self.current.as_ref().map(|request| request.session) != Some(session) {
+            return Ok(None);
+        }
+        match event {
+            "playing" => {
+                if let Some(pending) = self.pending.take() {
+                    let _ = pending.send(Ok(()));
+                }
+            }
+            "error" => {
+                if let Some(pending) = self.pending.take() {
+                    let _ = pending.send(Err("PiP stream could not be played".to_string()));
+                }
+            }
+            _ => return Err("Unknown PiP acknowledgement".to_string()),
+        }
+        Ok(None)
+    }
+}
+
+fn pip_player_script(request: &PipRequest) -> Result<String, String> {
+    let request_json = serde_json::to_string(request).map_err(|e| e.to_string())?;
+    Ok(format!(
+        "window.__ottplayPip && window.__ottplayPip.play({request_json});"
+    ))
+}
+
+fn pip_stop_script(session: u64) -> String {
+    format!("window.__ottplayPip && window.__ottplayPip.stop({session});")
+}
+
+/// The dedicated App-origin document is the only caller allowed to acknowledge
+/// readiness/playback. Old documents cannot acknowledge a replacement window.
+#[tauri::command]
+pub async fn pip_player_event(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    instance: u64,
+    session: u64,
+    event: String,
+) -> Result<Option<PipRequest>, String> {
+    use tauri::Manager;
+
+    if window.label() != PIP_LABEL {
+        return Err("PiP acknowledgement requires the PiP window".to_string());
+    }
+    let state = app.state::<PipState>();
+    let mut inner = state.inner.lock().map_err(|_| "PiP state unavailable")?;
+    inner.acknowledge(instance, session, &event)
+}
+
+#[cfg(test)]
+mod pip_lifecycle_tests {
+    use super::*;
+
+    fn request(session: u64) -> PipRequest {
+        PipRequest {
+            instance: 1,
+            session,
+            url: "https://fixture.invalid/channel.m3u8".into(),
+            engine: Some(1),
+            r#loop: false,
+        }
+    }
+
+    #[test]
+    fn stale_ipc_does_not_replace_a_newer_play_or_stop() {
+        let mut inner = PipInner::default();
+        assert!(inner.accept(Some(100)));
+        assert!(!inner.accept(Some(100)));
+        assert!(!inner.accept(Some(99)));
+        assert!(inner.accept(Some(101)));
+        assert!(inner.accept(None)); // Existing callers without request IDs remain compatible.
+        assert!(!inner.accept(Some(100)));
+    }
+
+    #[test]
+    fn ready_returns_latest_request_and_rejects_a_destroyed_document() {
+        let mut inner = PipInner {
+            instance: Some(1),
+            current: Some(request(2)),
+            ..Default::default()
+        };
+        assert!(inner.acknowledge(99, 0, "ready").unwrap().is_none());
+        assert!(!inner.ready);
+        assert_eq!(
+            inner.acknowledge(1, 0, "ready").unwrap().unwrap().session,
+            2
+        );
+        assert!(inner.ready);
+        inner.cancel("stopped");
+        assert!(inner.acknowledge(1, 0, "ready").unwrap().is_none());
+    }
+
+    #[test]
+    fn cancel_wakes_pending_play_and_old_decoder_events_cannot_ack_new_play() {
+        let (sender, mut old_reply) = tokio::sync::oneshot::channel();
+        let mut inner = PipInner {
+            instance: Some(1),
+            current: Some(request(1)),
+            pending: Some(sender),
+            ..Default::default()
+        };
+        inner.cancel("superseded");
+        assert_eq!(old_reply.try_recv().unwrap(), Err("superseded".into()));
+        let (sender, mut new_reply) = tokio::sync::oneshot::channel();
+        inner.current = Some(request(2));
+        inner.pending = Some(sender);
+        inner.acknowledge(1, 1, "playing").unwrap();
+        inner.acknowledge(1, 1, "error").unwrap();
+        assert!(matches!(
+            new_reply.try_recv(),
+            Err(tokio::sync::oneshot::error::TryRecvError::Empty)
+        ));
+        inner.acknowledge(1, 2, "playing").unwrap();
+        assert_eq!(new_reply.try_recv().unwrap(), Ok(()));
+    }
+
+    #[test]
+    fn decoder_failure_rejects_instead_of_acknowledging_a_blank_player() {
+        let (sender, mut reply) = tokio::sync::oneshot::channel();
+        let mut inner = PipInner {
+            instance: Some(1),
+            current: Some(request(1)),
+            pending: Some(sender),
+            ..Default::default()
+        };
+        inner.acknowledge(1, 1, "error").unwrap();
+        assert_eq!(
+            reply.try_recv().unwrap(),
+            Err("PiP stream could not be played".into())
+        );
+    }
+}
+
+fn apply_pip_bounds(win: &tauri::WebviewWindow, position: i32, size: i32) -> Result<(), String> {
     let (w, h) = pip_size(size);
 
     // Prefer primary monitor logical size; fall back to 1280x720 MVP canvas.
@@ -701,66 +809,169 @@ fn apply_pip_bounds(
     Ok(())
 }
 
-
-/// invoke play_pip {url} -> native always-on-top PiP webview that plays the stream.
+/// Open the local player document and acknowledge actual video playback, rather
+/// than merely successful native-window creation. New calls cancel old waiters.
 #[tauri::command]
-pub async fn play_pip(app: tauri::AppHandle, url: String) -> Result<PipResult, String> {
+pub async fn play_pip(
+    app: tauri::AppHandle,
+    url: String,
+    engine: Option<i32>,
+    request_id: Option<u64>,
+    r#loop: Option<bool>,
+) -> Result<PipResult, String> {
     use tauri::Manager;
-    use tauri::webview::PageLoadEvent;
 
-    if let Some(win) = app.get_webview_window(PIP_LABEL) {
-        let _ = win.show();
-        let _ = win.unminimize();
-        let _ = win.set_focus();
-        win.eval(&pip_player_script(&url))
-            .map_err(|e| e.to_string())?;
-        return Ok(PipResult { ok: true });
+    let validation = url::Url::parse(&url)
+        .map_err(|_| "PiP requires an absolute stream URL")
+        .and_then(|parsed| {
+            if matches!(parsed.scheme(), "http" | "https") {
+                Ok(())
+            } else {
+                Err("Unsupported PiP stream URL scheme")
+            }
+        });
+    if let Err(error) = validation {
+        // A rejected replacement must release the previous native decoder too.
+        stop_pip(app, request_id).await?;
+        return Err(error.to_string());
     }
+    let state = app.state::<PipState>();
+    let setup_guard = state.commands.lock().await;
+    let existing_window = app.get_webview_window(PIP_LABEL);
+    let is_new_window = existing_window.is_none();
+    let (request, receiver, ready) = {
+        let mut inner = state.inner.lock().map_err(|_| "PiP state unavailable")?;
+        if !inner.accept(request_id) {
+            return Ok(PipResult { ok: false });
+        }
+        inner.cancel("PiP request superseded");
+        inner.next_session += 1;
+        if existing_window.is_none() || inner.instance.is_none() {
+            inner.next_instance += 1;
+            inner.instance = Some(inner.next_instance);
+            inner.ready = false;
+        }
+        let request = PipRequest {
+            instance: inner.instance.expect("PiP instance initialized"),
+            session: inner.next_session,
+            url,
+            engine,
+            r#loop: r#loop.unwrap_or(false),
+        };
+        let (sender, receiver) = tokio::sync::oneshot::channel();
+        inner.pending = Some(sender);
+        inner.current = Some(request.clone());
+        (request, receiver, inner.ready)
+    };
 
-    // about:blank + eval avoids booting the full companion UI inside PiP.
-    let web_url = tauri::WebviewUrl::External(
-        "about:blank"
-            .parse()
-            .map_err(|e| format!("invalid pip url: {e}"))?,
-    );
-
-    let (w, h) = pip_size(2);
-    let script_on_load = pip_player_script(&url);
-    let script_immediate = script_on_load.clone();
-
-    let mut pip_builder = tauri::WebviewWindowBuilder::new(&app, PIP_LABEL, web_url)
+    let window_result = if let Some(win) = existing_window {
+        Ok(win)
+    } else {
+        let (w, h) = pip_size(2);
+        let mut builder = tauri::WebviewWindowBuilder::new(
+            &app,
+            PIP_LABEL,
+            tauri::WebviewUrl::App(format!("pip.html#{}", request.instance).into()),
+        )
         .title("OttPlay PiP")
         .inner_size(w, h)
+        .decorations(false)
         .resizable(true)
         .visible(true)
         .always_on_top(true)
-        .skip_taskbar(true)
-        .on_page_load(move |window, payload| {
-            if matches!(payload.event(), PageLoadEvent::Finished) {
-                let _ = window.eval(&script_on_load);
-            }
-        });
-    if let Some(data_dir) = crate::instance::resolve_data_dir() {
-        pip_builder = crate::instance::apply_isolation(pip_builder, &data_dir);
+        .skip_taskbar(true);
+        if let Some(data_dir) = crate::instance::resolve_data_dir() {
+            builder = crate::instance::apply_isolation(builder, &data_dir);
+        }
+        builder.build()
+    };
+
+    let setup_result = window_result.map_err(|e| e.to_string()).and_then(|win| {
+        if is_new_window {
+            let event_app = app.clone();
+            let instance = request.instance;
+            win.on_window_event(move |event| {
+                if matches!(event, tauri::WindowEvent::Destroyed) {
+                    let state = event_app.state::<PipState>();
+                    if let Ok(mut inner) = state.inner.lock() {
+                        if inner.instance == Some(instance) {
+                            inner.cancel("PiP window closed");
+                            inner.instance = None;
+                            inner.ready = false;
+                        }
+                    };
+                }
+            });
+        }
+        win.show().map_err(|e| e.to_string())?;
+        win.unminimize().map_err(|e| e.to_string())?;
+        // New windows receive their current request through the ready handshake.
+        // Reused documents are initialized exactly once; no Finished/immediate eval race.
+        if ready {
+            win.eval(&pip_player_script(&request)?)
+                .map_err(|e| e.to_string())?;
+        } else {
+            apply_pip_bounds(&win, 0, 2)?;
+        }
+        Ok(())
+    });
+    if let Err(error) = setup_result {
+        let mut inner = state.inner.lock().map_err(|_| "PiP state unavailable")?;
+        inner.cancel("PiP window could not start");
+        if let Some(win) = app.get_webview_window(PIP_LABEL) {
+            let _ = win.eval(&pip_stop_script(request.session));
+            let _ = win.hide();
+        } else {
+            inner.instance = None;
+            inner.ready = false;
+        }
+        return Err(error);
     }
-    let win = pip_builder.build().map_err(|e| e.to_string())?;
+    drop(setup_guard);
 
-    // Best-effort immediate eval (about:blank may already be finished).
-    let _ = win.eval(&script_immediate);
-    let _ = apply_pip_bounds(&win, 0, 2);
-
+    let result = match tokio::time::timeout(std::time::Duration::from_secs(20), receiver).await {
+        Ok(Ok(result)) => result,
+        Ok(Err(_)) => Err("PiP request cancelled".to_string()),
+        Err(_) => Err("PiP playback did not start in time".to_string()),
+    };
+    if let Err(error) = result {
+        let _guard = state.commands.lock().await;
+        let mut inner = state.inner.lock().map_err(|_| "PiP state unavailable")?;
+        if inner.current.as_ref().map(|active| active.session) == Some(request.session) {
+            inner.cancel("PiP playback stopped");
+            if let Some(win) = app.get_webview_window(PIP_LABEL) {
+                let _ = win.eval(&pip_stop_script(request.session));
+                let _ = win.hide();
+            }
+        }
+        return Err(error);
+    }
     Ok(PipResult { ok: true })
 }
 
-/// invoke stop_pip -> pause/clear video and close the PiP window.
+/// Release all media and hide the reusable document. Keeping the initialized
+/// window avoids asynchronous close/reopen races on the fixed native label.
 #[tauri::command]
-pub async fn stop_pip(app: tauri::AppHandle) -> Result<PipResult, String> {
+pub async fn stop_pip(app: tauri::AppHandle, request_id: Option<u64>) -> Result<PipResult, String> {
     use tauri::Manager;
 
+    let state = app.state::<PipState>();
+    let _guard = state.commands.lock().await;
+    let session = {
+        let mut inner = state.inner.lock().map_err(|_| "PiP state unavailable")?;
+        if !inner.accept(request_id) {
+            return Ok(PipResult { ok: false });
+        }
+        inner.cancel("PiP playback stopped");
+        inner.next_session += 1;
+        inner.next_session
+    };
     if let Some(win) = app.get_webview_window(PIP_LABEL) {
-        let _ = win.eval(pip_stop_script());
-        let _ = win.hide();
-        let _ = win.close();
+        let stopped = win.eval(&pip_stop_script(session));
+        let hidden = win.hide();
+        // A failed eval must not leave a stopped player's empty window visible.
+        stopped.map_err(|e| e.to_string())?;
+        hidden.map_err(|e| e.to_string())?;
     }
     Ok(PipResult { ok: true })
 }

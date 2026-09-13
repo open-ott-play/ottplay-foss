@@ -5,7 +5,7 @@ const vm = require("node:vm");
 const ts = require("typescript");
 const root = path.resolve(__dirname, "..");
 
-function selectedSource(file, functions, assignments = []) {
+function selectedSource(file, functions, assignments = [], variables = []) {
     const source = fs.readFileSync(path.join(root, file), "utf8");
     const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
     return ast.statements
@@ -13,6 +13,10 @@ function selectedSource(file, functions, assignments = []) {
             (node) =>
                 (ts.isFunctionDeclaration(node) &&
                     functions.includes(node.name?.text)) ||
+                (ts.isVariableStatement(node) &&
+                    node.declarationList.declarations.some((item) =>
+                        variables.includes(item.name.getText(ast))
+                    )) ||
                 (ts.isExpressionStatement(node) &&
                     ts.isBinaryExpression(node.expression) &&
                     assignments.includes(
@@ -43,7 +47,7 @@ const menus = [
     "settingsManage",
     "parentControlSetup",
 ];
-function fixture(profile = "server", limited = false) {
+function fixture(profile = "server", limited = false, distribution = "full") {
     const stored = new Map();
     const storage = {
         get: (key) => stored.get(key) ?? null,
@@ -180,6 +184,28 @@ function fixture(profile = "server", limited = false) {
     }
     w.window = w;
     vm.createContext(w);
+    const policy = compile(
+        selectedSource(
+            "src/provider/index.ts",
+            ["isPlayDistribution"],
+            [],
+            ["providerDistribution"]
+        )
+    );
+    const distributionMarker = 'var providerDistribution = "full";';
+    assert.equal(
+        policy.split(distributionMarker).length,
+        2,
+        "actual provider profile declaration"
+    );
+    assert(["full", "play"].includes(distribution));
+    vm.runInContext(
+        policy.replace(
+            distributionMarker,
+            'var providerDistribution = "' + distribution + '";'
+        ),
+        w
+    );
     vm.runInContext(
         compile(
             selectedSource("src/channels/index.ts", ["parentControlSetup"])
@@ -246,6 +272,111 @@ function fixture(profile = "server", limited = false) {
 function save(w) {
     w.listKeyHandlerFn(w.keys.GREEN);
 }
+
+// Full and Play use the same production renderer and real distribution helper.
+// Every action is present, matching the actual window aliases, so undefined
+// fixture functions cannot accidentally make the Play filter hide extra rows.
+for (const distribution of ["full", "play"]) {
+    const { w, stored, calls } = fixture(
+        "capacitor-android",
+        false,
+        distribution
+    );
+    for (const action of [
+        "cloudSendSettings",
+        "cloudLoadSettings",
+        "exportSettingsUI",
+        "importSettingsUI",
+        "edit_dealer",
+        "edit_dealer_remote",
+        "loadOpt",
+        "saveOpt",
+    ])
+        w[action] = () => calls.push(action);
+    let confirmClear;
+    w.confirmBox = (_message, yes) => {
+        confirmClear = yes;
+    };
+    w.stbClearAllItems = () => {
+        calls.push("clear");
+        stored.clear();
+    };
+    w.restart = () => calls.push("restart");
+    stored.set("saved-provider-setting", "preserved");
+    w.settingsManage();
+    const fullRows = [
+        "Save settings to storage",
+        "Load settings from storage",
+        "Save settings",
+        "Load settings",
+        "",
+        "Export settings",
+        "Import settings",
+        "",
+        "Clear settings",
+        "",
+        "Enter Provider Code",
+        "Enter Provider Code on PC or Phone",
+        "Debug HUD",
+    ];
+    const playRows = [
+        "Save settings to storage",
+        "Save settings",
+        "",
+        "Export settings",
+        "",
+        "Clear settings",
+        "",
+        "Debug HUD",
+    ];
+    assert.deepEqual(
+        Array.from(w.listArray, (item) => item.name),
+        distribution === "play" ? playRows : fullRows,
+        distribution + " exact management menu"
+    );
+    assert.equal(
+        w.listDataArray,
+        w.listArray,
+        distribution + " renders its final filtered rows"
+    );
+    if (distribution === "play") {
+        for (const action of [
+            w.edit_dealer,
+            w.edit_dealer_remote,
+            w.cloudLoadSettings,
+            w.importSettingsUI,
+            w.loadOpt,
+        ])
+            assert(
+                !w.listArray.some((item) => item.action === action),
+                "Play cannot invoke activation/import through any management row"
+            );
+    }
+    function choose(label) {
+        w.selIndex = w.listArray.findIndex((item) => item.name === label);
+        assert(w.selIndex >= 0, label + " remains available");
+        assert.equal(w.listKeyHandlerFn(w.keys.ENTER), true);
+    }
+    choose("Export settings");
+    choose("Save settings to storage");
+    assert.deepEqual(calls, ["exportSettingsUI", "saveOpt"]);
+    assert.equal(stored.get("saved-provider-setting"), "preserved");
+    choose("Clear settings");
+    assert.equal(
+        typeof confirmClear,
+        "function",
+        "clear still requires confirmation"
+    );
+    assert.equal(stored.size, 1, "opening confirmation cannot clear settings");
+    confirmClear();
+    assert.deepEqual(calls.slice(-2), ["clear", "restart"]);
+    assert.equal(stored.size, 0);
+    w.listKeyHandlerFn(w.keys.RETURN);
+    assert.equal(calls[calls.length - 1], "options");
+}
+console.log(
+    "OK: Android Full management unchanged; Play hides activation and every load/import route while export, save and confirmed clear remain"
+);
 
 for (const profile of [
     "server",
