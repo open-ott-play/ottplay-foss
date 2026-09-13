@@ -159,13 +159,13 @@ started. The declaration is subject to review.
   [the provenance record](legacy-provenance.md); preserve applicable attribution.
 - [ ] Build and verify the signed Play AAB, including package identity, release
   debug flag, permissions, backup rules, runtime hashes and required licenses.
-- [ ] Publish this reviewed [privacy policy](privacy-policy.md) to `main` and
-  confirm the [public GitHub page](https://github.com/open-ott-play/ottplay-foss/blob/main/docs/privacy-policy.md)
-  is accessible without authentication and matches the packaged policy. The push
-  or merge of this change into `main` publishes that URL directly; no separate
-  website deployment is needed. This item remains pending until `main` contains
-  the reviewed text. A local edit or a push only to a feature branch does not
-  update the policy at that URL.
+- [x] Publish the reviewed [privacy policy](privacy-policy.md) to `main`.
+  The [public GitHub page](https://github.com/open-ott-play/ottplay-foss/blob/main/docs/privacy-policy.md)
+  is published by the `main` update itself; no separate website deployment is
+  needed. Anonymous GitHub content retrieval confirmed the reviewed text after
+  commit `50434fda30631b0650c0ee0b121bed066bae1cc5` was published.
+- [ ] Compare the packaged policy in the final signed Play AAB with that public
+  text. Earlier test packages do not establish this check for a later revision.
 - [ ] Confirm publisher identity, privacy contact, here.now data handling and the
   final Data safety answers. Keep evidence for those answers.
 - [ ] Confirm the Console app record, upload certificate and Play App Signing
