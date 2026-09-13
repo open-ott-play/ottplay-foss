@@ -20,7 +20,12 @@ try {
         "OTTP_PLAYER_URL must be an HTTP(S) URL without credentials"
     );
 }
-if (process.argv.length !== 2) throw new Error("Unknown preparation option");
+const args = process.argv.slice(2);
+if (args.length === 1 && args[0] === "--print-url") {
+    console.log(playerUrl.href);
+    process.exit(0);
+}
+if (args.length) throw new Error("Unknown preparation option");
 fs.mkdirSync(destination, { recursive: true });
 fs.writeFileSync(
     path.join(destination, "config.xml"),
@@ -43,9 +48,7 @@ fs.writeFileSync(
 );
 console.log("Simulator app directory: " + destination);
 console.log("Player target: " + playerUrl.href);
-console.log(
-    "Run scripts/run-tizen-simulator.sh --app build/device-tizen-simulator/index.html"
-);
+console.log("Run scripts/run-tizen-simulator.sh to open the local player");
 console.log(
     "Hosted UI experiment only: Samsung API timing and media playback are not guaranteed."
 );

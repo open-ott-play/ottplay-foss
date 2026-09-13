@@ -3,6 +3,9 @@
 # This is a UI/API simulator; it does not run the Tizen TV firmware.
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 usage() {
     cat <<'EOF'
 Usage: scripts/run-tizen-simulator.sh [options]
@@ -10,13 +13,19 @@ Usage: scripts/run-tizen-simulator.sh [options]
   --sdk DIRECTORY   Tizen Studio root, sec-tv-simulator directory, or nwjs.app
                     (TIZEN_SIMULATOR_SDK; otherwise the user-local package or
                     ~/tizen-studio)
-  --app FILE        Local Tizen app HTML entry point with adjacent config.xml;
-                    omit for the simulator home
-  --dry-run         Print the command without launching the simulator
+  --url URL         Running player (default: http://127.0.0.1:8095/;
+                    OTTP_PLAYER_URL)
+  --app FILE        Open another local Tizen app with adjacent config.xml
+  --home            Open the simulator home instead of the player
+  --dry-run         Prepare the player app and print the command without
+                    checking the server or launching the simulator
   -h, --help        Show this help
 
 Requires Samsung TV Web Simulator for macOS. Intel builds use macOS Rosetta.
 The script does not install an SDK, accept licenses, build or serve the player.
+By default it prepares a manifest/redirect app for the existing local stack.
+--url, --app and --home are mutually exclusive. If the simulator is already
+running, quit it normally before launching a different app.
 Hosted web applications, DRM and real HLS playback are not supported by this
 simulator. Use a separate local Tizen app directory with config.xml for UI/API
 checks; the SDK copies the entire directory containing the HTML entry point.
@@ -28,11 +37,20 @@ need_value() { [[ $# -ge 2 && -n "$2" && "$2" != --* ]] || die "$1 requires a va
 
 sdk="${TIZEN_SIMULATOR_SDK:-}"
 app=""
+launch_mode=""
 dry_run=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --sdk) need_value "$@"; sdk="$2"; shift 2 ;;
-        --app) need_value "$@"; app="$2"; shift 2 ;;
+        --url)
+            need_value "$@"; [[ -z "$launch_mode" ]] || die "--url, --app and --home are mutually exclusive"
+            launch_mode=player; export OTTP_PLAYER_URL="$2"; shift 2 ;;
+        --app)
+            need_value "$@"; [[ -z "$launch_mode" ]] || die "--url, --app and --home are mutually exclusive"
+            launch_mode=app; app="$2"; shift 2 ;;
+        --home)
+            [[ -z "$launch_mode" ]] || die "--url, --app and --home are mutually exclusive"
+            launch_mode=home; shift ;;
         --dry-run) dry_run=1; shift ;;
         -h|--help) usage; exit 0 ;;
         *) die "Unknown option: $1 (see --help)" ;;
@@ -66,6 +84,21 @@ elif [[ -f "$sdk/simulator-app-path.txt" ]]; then
 fi
 if [[ ! -x "$simulator" && "$dry_run" == 0 ]]; then
     die "Samsung TV Web Simulator not found at $simulator. Install the TV Extensions simulator package or set --sdk."
+fi
+
+if [[ -z "$launch_mode" || "$launch_mode" == player ]]; then
+    command -v node >/dev/null || die "Node.js is required"
+    player_url="$(node "$SCRIPT_DIR/prepare-tizen-simulator.cjs" --print-url)"
+    if [[ "$dry_run" == 0 ]]; then
+        command -v curl >/dev/null || die "curl is required"
+        origin="$(OTTP_PLAYER_URL="$player_url" node -e 'process.stdout.write(new URL(process.env.OTTP_PLAYER_URL).origin)')"
+        curl --globoff --fail --silent --show-error --connect-timeout 3 --max-time 10 "$origin/health" >/dev/null ||
+            die "Player companion is unavailable at $origin. Start the existing local stack first; 8090 is the playlist proxy, not the player."
+        curl --globoff --fail --silent --show-error --connect-timeout 3 --max-time 10 "$player_url" >/dev/null ||
+            die "The companion is running, but the player page is unavailable."
+    fi
+    OTTP_PLAYER_URL="$player_url" node "$SCRIPT_DIR/prepare-tizen-simulator.cjs"
+    app="$PROJECT_ROOT/build/device-tizen-simulator/index.html"
 fi
 
 command_args=("$simulator")

@@ -249,9 +249,10 @@ An existing destination is never overwritten. `--destination` and `--cache`
 select other locations. The vendor SDK and its archive are not committed.
 
 Run accepts `--sdk` or `TIZEN_SIMULATOR_SDK` for an existing Tizen Studio root,
-`sec-tv-simulator` directory, or `nwjs.app`. With no `--app`, it opens the
-simulator home screen. `--app` accepts a local Tizen app HTML entry point with a
-valid `config.xml` manifest in the same directory, using the same
+`sec-tv-simulator` directory, or `nwjs.app`. Without arguments it opens the local
+player; `--home` opens the simulator home screen. `--app` accepts a local Tizen
+app HTML entry point with a valid `config.xml` manifest in the same directory,
+using the same
 `--file=file:///...` convention as
 [Samsung's launcher](https://github.com/Samsung/webIDE-common-tizentv/blob/dev/lib/projectHelper.js).
 The launcher rejects a missing manifest before starting the SDK, including with
@@ -271,19 +272,25 @@ exclude hosted applications, DRM and real HLS playback (HLS uses a dummy video).
 Consequently this is useful for local UI/API checks; the webOS redirect launcher
 on 8095 cannot be reused as a Samsung media compatibility test.
 
-For an **experimental server UI check**, generate a small local Tizen application
-with the required manifest and a redirect to the existing stack:
+For an **experimental server UI check**, run the launcher without arguments. It
+checks the existing companion and player page, generates a small local Tizen app
+with the required manifest and redirect, and opens it in the simulator:
 
 ```sh
-node scripts/prepare-tizen-simulator.cjs
-./scripts/run-tizen-simulator.sh --app build/device-tizen-simulator/index.html
+./scripts/run-tizen-simulator.sh
 ```
 
-The default player URL is `http://127.0.0.1:8095/`; `OTTP_PLAYER_URL` overrides it.
+The default player URL is `http://127.0.0.1:8095/`; `--url` or `OTTP_PLAYER_URL`
+overrides it. The launcher resolves its files relative to the script, so it also
+works when invoked by an absolute path from another directory. `--dry-run` prepares
+the app and prints the command without checking the server or opening the SDK.
+Use `--home` for the simulator home, or `--app FILE` for another local app; these
+options are mutually exclusive with `--url` and ignore `OTTP_PLAYER_URL`.
 Use `http://127.0.0.1:8090/` as the playlist URL in the player. These commands do not
 build, deploy or start a server. If an existing simulator instance does not open
 the application, quit it normally and rerun the launch command. The SDK copies the
-launcher directory; regenerate and relaunch after changing its URL.
+launcher directory; the launcher regenerates the redirect on each player launch.
+For manual preparation only, use `node scripts/prepare-tizen-simulator.cjs`.
 
 This redirect loaded the player, local M3U channels and programme listings in
 Simulator 10.0.6 on macOS 26 through Rosetta. Hosted applications remain outside

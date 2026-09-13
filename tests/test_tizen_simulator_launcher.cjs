@@ -8,8 +8,12 @@ const vm = require("node:vm");
 const { JSDOM } = require("jsdom");
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay Samsung launch "));
-const root = path.join(tmp, "project with spaces");
-const sdk = path.join(tmp, "SDK with spaces");
+const root = path.join(tmp, "project [test] with spaces");
+const sdk = path.join(tmp, "SDK [test] with spaces");
+const foreignCwd = path.join(tmp, "unrelated working directory");
+const generated = path.join(root, "build/device-tizen-simulator");
+const generatedEntry = path.join(generated, "index.html");
+const generatedManifest = path.join(generated, "config.xml");
 const log = path.join(tmp, "calls.jsonl");
 const tools = path.join(tmp, "fake tools");
 const fake = `#!${process.execPath}
@@ -18,6 +22,14 @@ const path = require('node:path');
 const name = path.basename(process.argv[1]);
 fs.appendFileSync(process.env.CALL_LOG, JSON.stringify({ name, args: process.argv.slice(2) })+'\\n');
 if (name === 'uname') console.log('Darwin');
+else if (name === 'curl') {
+    const args = process.argv.slice(2);
+    const urls = args.filter((arg) => /^https?:/.test(arg));
+    if (urls.length !== 1) process.exit(97);
+    // Real curl treats query brackets as glob syntax unless globbing is disabled.
+    if (urls[0].includes('[') && !args.includes('--globoff') && !args.includes('-g')) process.exit(3);
+    if (urls[0] === process.env.CURL_FAIL_URL) process.exit(22);
+}
 else if (name !== 'nwjs') process.exit(98);
 `;
 function executable(file) {
@@ -32,18 +44,23 @@ function calls() {
         .filter(Boolean)
         .map(JSON.parse);
 }
-function run(mode, args = [], success = true) {
+function run(mode, args = [], success = true, extraEnv = {}) {
     fs.writeFileSync(log, "");
+    const env = { ...process.env };
+    delete env.OTTP_PLAYER_URL;
+    delete env.CURL_FAIL_URL;
     const result = spawnSync(
         "bash",
         [path.join(root, "scripts", `${mode}-tizen-simulator.sh`), ...args],
         {
+            cwd: foreignCwd,
             encoding: "utf8",
             env: {
-                ...process.env,
+                ...env,
                 CALL_LOG: log,
                 PATH: tools + path.delimiter + process.env.PATH,
                 TIZEN_SIMULATOR_SDK: sdk,
+                ...extraEnv,
             },
             timeout: 15000,
         }
@@ -53,14 +70,14 @@ function run(mode, args = [], success = true) {
     return result.stdout + result.stderr;
 }
 
-function prepare(playerUrl, success = true) {
+function prepare(playerUrl, success = true, args = []) {
     const env = { ...process.env };
     delete env.OTTP_PLAYER_URL;
     if (playerUrl !== undefined) env.OTTP_PLAYER_URL = playerUrl;
     const result = spawnSync(
         process.execPath,
-        [path.join(root, "scripts/prepare-tizen-simulator.cjs")],
-        { encoding: "utf8", env, timeout: 15000 }
+        [path.join(root, "scripts/prepare-tizen-simulator.cjs"), ...args],
+        { cwd: foreignCwd, encoding: "utf8", env, timeout: 15000 }
     );
     assert.equal(result.error, undefined);
     assert.equal(result.status, success ? 0 : 1, result.stdout + result.stderr);
@@ -68,6 +85,7 @@ function prepare(playerUrl, success = true) {
 }
 
 try {
+    fs.mkdirSync(foreignCwd);
     fs.mkdirSync(path.join(root, "scripts"), { recursive: true });
     for (const name of [
         "setup-tizen-simulator.sh",
@@ -114,18 +132,41 @@ try {
     fs.rmdirSync(manifest);
     fs.writeFileSync(manifest, manifestContent);
 
-    assert.match(run("run", ["--dry-run"]), /nwjs/);
+    assert.equal(
+        prepare(undefined, true, ["--print-url"]).trim(),
+        "http://127.0.0.1:8095/"
+    );
+    assert.equal(
+        fs.existsSync(generated),
+        false,
+        "Printing the URL does not prepare an app"
+    );
+    run("run", ["--home"], true, { OTTP_PLAYER_URL: "invalid and ignored" });
+    assert.deepEqual(calls(), [{ args: [], name: "nwjs" }]);
+    assert.equal(
+        fs.existsSync(generated),
+        false,
+        "Home does not prepare an app"
+    );
+    assert.match(run("run", ["--home", "--dry-run"]), /nwjs/);
     assert.equal(calls().length, 0);
     assert.match(run("run", ["--app", app, "--dry-run"]), /--file=file:/);
     assert.equal(calls().length, 0);
     assert.equal(fs.readFileSync(manifest, "utf8"), manifestContent);
-    run("run", ["--app", app]);
+    run("run", ["--app", app], true, {
+        OTTP_PLAYER_URL: "invalid and ignored",
+    });
     assert.deepEqual(calls(), [
         { args: ["--file=" + pathToFileURL(app).href], name: "nwjs" },
     ]);
+    assert.equal(
+        fs.existsSync(generated),
+        false,
+        "Explicit app does not prepare a wrapper"
+    );
     assert.equal(fs.readFileSync(manifest, "utf8"), manifestContent);
     for (const directory of [sdk, path.dirname(appBundle), appBundle]) {
-        run("run", ["--sdk", directory]);
+        run("run", ["--sdk", directory, "--home"]);
         assert.deepEqual(calls(), [{ args: [], name: "nwjs" }]);
     }
     const nestedSdk = path.join(tmp, "nested vendor package");
@@ -148,7 +189,7 @@ try {
     ]) {
         fs.writeFileSync(marker, invalid + "\n");
         assert.match(
-            run("run", ["--sdk", nestedSdk, "--dry-run"], false),
+            run("run", ["--sdk", nestedSdk, "--home", "--dry-run"], false),
             /Invalid local simulator path marker/
         );
         assert.equal(calls().length, 0);
@@ -162,15 +203,108 @@ try {
     assert.match(run("run", ["--app"], false), /requires a value/);
     assert.match(run("run", ["--app", "--dry-run"], false), /requires a value/);
     assert.match(
-        run("run", ["--sdk", path.join(tmp, "missing SDK")], false),
+        run("run", ["--sdk", path.join(tmp, "missing SDK"), "--home"], false),
         /Simulator not found/
     );
     assert.equal(calls().length, 0);
 
+    for (const args of [
+        ["--home", "--app", app],
+        ["--app", app, "--home"],
+        ["--home", "--url", "http://localhost:8095/"],
+        ["--url", "http://localhost:8095/", "--home"],
+        ["--app", app, "--url", "http://localhost:8095/"],
+        ["--url", "http://localhost:8095/", "--app", app],
+    ]) {
+        run("run", args, false);
+        assert.equal(
+            calls().length,
+            0,
+            "Conflicting launch modes do not invoke external tools"
+        );
+        assert.equal(fs.existsSync(generated), false);
+    }
+    assert.match(run("run", ["--url"], false), /requires a value/);
+    assert.match(run("run", ["--url", "--dry-run"], false), /requires a value/);
+    for (const invalid of [
+        "invalid",
+        "file:///etc/passwd",
+        "http://user:secret@localhost/",
+    ]) {
+        for (const [args, env] of [
+            [["--url", invalid], {}],
+            [["--dry-run"], { OTTP_PLAYER_URL: invalid }],
+        ]) {
+            assert.match(
+                run("run", args, false, env),
+                /HTTP\(S\).*without credentials/
+            );
+            assert.equal(calls().length, 0);
+            assert.equal(
+                fs.existsSync(generated),
+                false,
+                "Invalid target cannot prepare an app"
+            );
+        }
+        assert.match(
+            prepare(invalid, false, ["--print-url"]),
+            /HTTP\(S\).*without credentials/
+        );
+        assert.equal(fs.existsSync(generated), false);
+    }
+
+    assert.match(run("run", ["--dry-run"]), /--file=file:/);
+    assert.equal(
+        calls().length,
+        0,
+        "Dry run prepares files without curl or the SDK"
+    );
+    assert.equal(fs.existsSync(path.join(foreignCwd, "build")), false);
+    assert.equal(redirectTarget(), "http://127.0.0.1:8095/");
+    run("run");
+    function assertServerLaunch(target) {
+        const actual = calls();
+        assert.deepEqual(
+            actual.map((call) => call.name),
+            ["curl", "curl", "nwjs"]
+        );
+        assert.deepEqual(
+            actual
+                .slice(0, 2)
+                .map((call) => call.args.find((arg) => /^https?:/.test(arg))),
+            [new URL(target).origin + "/health", new URL(target).href]
+        );
+        assert.deepEqual(actual[2].args, [
+            "--file=" + pathToFileURL(generatedEntry).href,
+        ]);
+        assert.equal(redirectTarget(), new URL(target).href);
+    }
+    assertServerLaunch("http://127.0.0.1:8095/");
+    const customUrl =
+        "http://localhost:8095/f/samsung/tizen/?config[provider]=m3u&label=space [test]";
+    run("run", [], true, { OTTP_PLAYER_URL: customUrl });
+    assertServerLaunch(customUrl);
+    run("run", ["--url", customUrl], true, {
+        OTTP_PLAYER_URL: "invalid but overridden",
+    });
+    assertServerLaunch(customUrl);
+    run("run", ["--url", customUrl, "--dry-run"]);
+    assert.equal(calls().length, 0);
+    assert.equal(redirectTarget(), new URL(customUrl).href);
+    for (const failedUrl of [
+        "http://localhost:8095/health",
+        new URL(customUrl).href,
+    ]) {
+        run("run", ["--url", customUrl], false, { CURL_FAIL_URL: failedUrl });
+        const requests = calls();
+        assert(
+            requests.every((call) => call.name === "curl"),
+            "Failed preflight must not launch the SDK"
+        );
+        assert.equal(requests.length, failedUrl.endsWith("/health") ? 1 : 2);
+    }
+
     assert.match(prepare(), /Player target: http:\/\/127\.0\.0\.1:8095\//);
-    const generated = path.join(root, "build/device-tizen-simulator");
-    const generatedEntry = path.join(generated, "index.html");
-    const generatedManifest = path.join(generated, "config.xml");
     const xml = new JSDOM(fs.readFileSync(generatedManifest, "utf8"), {
         contentType: "text/xml",
     });
