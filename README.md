@@ -2,6 +2,12 @@
 
 Self-contained IPTV/OTT player with a local Rust HTTP server. Runs on Smart TVs (LG WebOS, Samsung Tizen, Panasonic, Sony, etc.), set-top boxes (Infomir MAG, Dune HD, Enigma2, Android TV), and desktop browsers.
 
+<!-- ci-release-process:start -->
+## Release process
+
+See the [release strategy](RELEASING.md) for validation, nightly, beta, RC and stable promotion rules, and the [operator runbook](docs/release-workflow.md) for local commands.
+<!-- ci-release-process:end -->
+
 ## Run in a browser
 
 Open the [live demo](https://player.ottplay.here.now/), or build and serve the
@@ -79,7 +85,7 @@ Tauri desktop smoke (Mode B launch/play/PiP checklist + helper; unpaid/unsigned 
 | **iOS** | `.ipa` via AltStore / TestFlight / Xcode | Sideload only — not on App Store yet |
 | **Android** | `.apk` direct install or ADB | arm64-v8a, armeabi-v7a, x86_64 |
 
-All installers are attached to every tagged release: [https://github.com/open-ott-play/ottplay-foss/releases/latest](https://github.com/open-ott-play/ottplay-foss/releases/latest)
+Supported installers are attached to qualified GitHub releases: [https://github.com/open-ott-play/ottplay-foss/releases/latest](https://github.com/open-ott-play/ottplay-foss/releases/latest)
 
 > **Note:** Desktop, iOS, and Android packages are **unsigned** unless a release was built with the project's signing secrets. On macOS this means Gatekeeper quarantine; on iOS the IPA must be sideloaded; on Android you must allow unknown sources. The player itself works without signing.
 
@@ -476,7 +482,7 @@ Details: [docs/mode-b-tauri-smoke.md](docs/mode-b-tauri-smoke.md). Unpaid/unsign
 
 ## Docker
 
-Multi-arch images (amd64/arm64) are published to Docker Hub on every push to `main`, on `v*` tags, and via `workflow_dispatch`.
+Multi-arch images (amd64/arm64) are built as candidate OCI archives. Registry publication promotes the approved stable archive to Docker Hub without rebuilding; see the [operator runbook](docs/release-workflow.md).
 
 The server binary is built on **musl** (Alpine) and shipped on Alpine — it does **not** require GLIBC_2.38+. That keeps `alvit/ottplay-foss` runnable on Synology DSM Docker (x86_64) and other older-glibc hosts.
 
@@ -486,7 +492,7 @@ docker run -d -p 8080:8080 alvit/ottplay-foss
 docker run -d -p 8080:8080 -e EPG_URLS="http://example.com/epg.xml.gz" alvit/ottplay-foss
 ```
 
-Tags: `latest` (main), `1.2.3` / `1.2` (semver from `v*` tags), `sha-<short>`.
+Stable registry tags use `X.Y.Z`. Updating `latest` is a separate explicit option after the versioned image is published; main pushes and Git tags do not publish images.
 
 ## Build from Source
 

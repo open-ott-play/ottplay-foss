@@ -1,0 +1,395 @@
+name: Build release assets
+'on':
+  workflow_call:
+    inputs:
+      version:
+        description: Committed base version, without a v prefix or channel suffix
+        required: true
+        type: string
+      channel:
+        description: nightly, beta or rc; stable promotes existing RC bytes
+        required: true
+        type: string
+permissions:
+  contents: read
+env:
+  RELEASE_VERSION: ${{ inputs.version }}
+  RELEASE_CHANNEL: ${{ inputs.channel }}
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    name: Build player bundle
+    runs-on: ubuntu-latest
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+      with:
+        egress-policy: audit
+    - name: Checkout code
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+    - name: Verify committed release version
+      run: python3 scripts/check-release-version.py "$RELEASE_VERSION" "$RELEASE_CHANNEL"
+    - name: Set up Node.js
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+      with:
+        node-version: '22'
+        cache: npm
+    - name: Install dependencies
+      run: npm ci --ignore-scripts
+    - name: TypeScript check
+      run: npm run typecheck --ignore-scripts
+    - name: Build bundle
+      run: npm run build --ignore-scripts
+    - name: Package deployable bundle
+      run: |
+        tar -czf ottplay-foss-dist.tar.gz \
+          index.html favicon.ico dist fonts js stb stbPlayer prov
+        sha256sum ottplay-foss-dist.tar.gz > checksums.txt
+    - name: Package validated Mode A web root
+      run: |
+        npm run check:bundle
+        npm run check:es5
+        npm run package:modea
+        cp dist/ottplay-foss-modea.tar.gz dist/ottplay-foss-modea.sha256 .
+    - name: Store release assets
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: release-assets-web
+        path: |-
+          ottplay-foss-dist.tar.gz
+          checksums.txt
+          ottplay-foss-modea.tar.gz
+          ottplay-foss-modea.sha256
+        if-no-files-found: error
+        retention-days: 14
+    timeout-minutes: 90
+  tauri:
+    name: Build Tauri (${{ matrix.platform }} ${{ matrix.target || 'host' }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: macos-latest
+          target: aarch64-apple-darwin
+        - platform: macos-latest
+          target: x86_64-apple-darwin
+        - platform: ubuntu-latest
+          target: ''
+        - platform: ubuntu-24.04-arm
+          target: aarch64-unknown-linux-gnu
+        - platform: windows-latest
+          target: ''
+    runs-on: ${{ matrix.platform }}
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+      with:
+        egress-policy: audit
+    - name: Checkout code
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+    - name: Verify committed release version
+      run: python3 scripts/check-release-version.py "$RELEASE_VERSION" "$RELEASE_CHANNEL"
+    - name: Set up Node.js
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+      with:
+        node-version: '22'
+        cache: npm
+    - name: Install Rust stable
+      uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0
+      with:
+        toolchain: stable
+    - name: Install Rust target
+      if: matrix.target != ''
+      run: rustup target add ${{ matrix.target }}
+    - name: Rust cache
+      uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+      with:
+        workspaces: .
+        shared-key: tauri-${{ matrix.platform }}-${{ matrix.target || 'host' }}
+    - name: Install Linux deps
+      if: matrix.platform == 'ubuntu-latest' || matrix.platform == 'ubuntu-24.04-arm'
+      run: bash scripts/ci-tauri-linux-deps.sh
+    - name: Install JS dependencies
+      run: npm ci --ignore-scripts
+    - name: Build frontend
+      run: npm run build --ignore-scripts
+    - name: Detect optional signing / notarize secrets
+      id: signs
+      shell: bash
+      env:
+        TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      run: |
+        if [ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
+          echo "tauri_signing=true" >> "$GITHUB_OUTPUT"
+          echo "Updater signing key present — will create updater artifacts"
+        else
+          echo "tauri_signing=false" >> "$GITHUB_OUTPUT"
+          echo "No TAURI_SIGNING_PRIVATE_KEY — unsigned updater artifacts skipped"
+        fi
+        if [ "${{ matrix.platform }}" = "macos-latest" ] \
+          && [ -n "${APPLE_CERTIFICATE:-}" ] \
+          && [ -n "${APPLE_ID:-}" ] \
+          && [ -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" ] \
+          && [ -n "${APPLE_TEAM_ID:-}" ]; then
+          echo "apple_notarize=true" >> "$GITHUB_OUTPUT"
+          echo "Apple signing+notarize secrets present"
+        else
+          echo "apple_notarize=false" >> "$GITHUB_OUTPUT"
+          echo "Apple notarize secrets absent or non-macOS — unsigned macOS path"
+        fi
+    - name: Import Apple certificate (optional)
+      if: steps.signs.outputs.apple_notarize == 'true'
+      shell: bash
+      env:
+        APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+        APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      run: |
+        # Throwaway keychain; never echo cert/password material.
+        CERT_PATH="$RUNNER_TEMP/apple_cert.p12"
+        KEYCHAIN="$RUNNER_TEMP/ottplay-signing.keychain-db"
+        echo -n "$APPLE_CERTIFICATE" | base64 --decode > "$CERT_PATH"
+        KC_PASS="${KEYCHAIN_PASSWORD:-$(openssl rand -base64 32)}"
+        security create-keychain -p "$KC_PASS" "$KEYCHAIN"
+        security set-keychain-settings -lut 21600 "$KEYCHAIN"
+        security unlock-keychain -p "$KC_PASS" "$KEYCHAIN"
+        security import "$CERT_PATH" -P "${APPLE_CERTIFICATE_PASSWORD:-}" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+        security list-keychain -d user -s "$KEYCHAIN"
+        security set-key-partition-list -S apple-tool:,apple: -k "$KC_PASS" "$KEYCHAIN"
+        rm -f "$CERT_PATH"
+        echo "KEYCHAIN_PATH=$KEYCHAIN" >> "$GITHUB_ENV"
+    - name: Build desktop package
+      shell: bash
+      run: |
+        EXTRA_CONFIG=()
+        if [ "${TAURI_SIGNING:-}" = "true" ]; then
+          EXTRA_CONFIG+=(--config '{"bundle":{"createUpdaterArtifacts":true}}')
+        fi
+
+        # Apple notarize: only pass APPLE_* env when all secrets present.
+        # Otherwise leave them unset so Tauri does not attempt codesign/notarize.
+        if [ "${{ steps.signs.outputs.apple_notarize }}" = "true" ]; then
+          export APPLE_CERTIFICATE="$SIGN_APPLE_CERTIFICATE"
+          export APPLE_CERTIFICATE_PASSWORD="$SIGN_APPLE_CERTIFICATE_PASSWORD"
+          export APPLE_SIGNING_IDENTITY="$SIGN_APPLE_SIGNING_IDENTITY"
+          export APPLE_ID="$SIGN_APPLE_ID"
+          export APPLE_PASSWORD="$SIGN_APPLE_APP_SPECIFIC_PASSWORD"
+          export APPLE_TEAM_ID="$SIGN_APPLE_TEAM_ID"
+        else
+          export CSC_IDENTITY_AUTO_DISCOVERY=false
+        fi
+
+        if [ -n "${TAURI_TARGET:-}" ]; then
+          npx tauri build --ci --target "$TAURI_TARGET" "${EXTRA_CONFIG[@]}"
+        else
+          npx tauri build --ci "${EXTRA_CONFIG[@]}"
+        fi
+      working-directory: src-tauri
+      env:
+        CI: true
+        TAURI_TARGET: ${{ matrix.target }}
+        TAURI_SIGNING: ${{ steps.signs.outputs.tauri_signing }}
+        TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        SIGN_APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+        SIGN_APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        SIGN_APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        SIGN_APPLE_ID: ${{ secrets.APPLE_ID }}
+        SIGN_APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        SIGN_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    - name: Cleanup Apple keychain (optional)
+      if: always() && steps.signs.outputs.apple_notarize == 'true'
+      shell: bash
+      run: |
+        if [ -n "${KEYCHAIN_PATH:-}" ]; then
+          security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true
+        fi
+    - name: Collect desktop bundles
+      shell: bash
+      run: bash scripts/ci-tauri-collect-artifacts.sh
+      env:
+        TAURI_TARGET: ${{ matrix.target }}
+    - name: Store release assets
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: release-assets-desktop-${{ matrix.platform }}-${{ matrix.target || 'host' }}
+        path: tauri-artifacts/*
+        if-no-files-found: error
+        retention-days: 14
+    timeout-minutes: 90
+  mobile:
+    name: Build mobile (${{ matrix.type }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: macos-latest
+          type: ios
+        - platform: ubuntu-latest
+          type: android
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 60
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+      with:
+        egress-policy: audit
+    - name: Checkout code
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+    - name: Verify committed release version
+      run: python3 scripts/check-release-version.py "$RELEASE_VERSION" "$RELEASE_CHANNEL"
+    - name: Set up Node.js
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+      with:
+        node-version: '22'
+        cache: npm
+    - name: Install JS dependencies
+      run: npm ci --ignore-scripts
+    - name: iOS – build web + sync
+      if: matrix.type == 'ios'
+      run: npm run build:mobile
+      env:
+        CI: true
+    - name: iOS – discover scheme
+      if: matrix.type == 'ios'
+      id: discover
+      run: |
+        SCHEME=$(xcodebuild -list -project ios/App/App.xcodeproj | awk '/Schemes:/{getline; gsub(/^[ \t]+/,""); print; exit}')
+        if [ -z "$SCHEME" ]; then
+          echo "No scheme discovered via xcodebuild -list; falling back to App"
+          SCHEME=App
+        fi
+        echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
+        echo "Using scheme: $SCHEME"
+    - name: iOS – archive (unsigned)
+      if: matrix.type == 'ios'
+      run: |
+        SCHEME="${{ steps.discover.outputs.scheme }}"
+        SCHEME="${SCHEME:-App}"
+        # Archive for a device without depending on an attached device or
+        # parsing human-readable Xcode destination listings.
+        DEST="generic/platform=iOS"
+        echo "Using destination: $DEST"
+        xcodebuild clean archive \
+          -project "ios/App/App.xcodeproj" \
+          -scheme "$SCHEME" \
+          -sdk iphoneos \
+          -configuration Release \
+          -archivePath "${{ github.workspace }}/ottplay-foss-ios.xcarchive" \
+          CODE_SIGNING_ALLOWED=NO \
+          CODE_SIGN_IDENTITY="" \
+          DEVELOPMENT_TEAM="" \
+          -destination "$DEST" \
+          ONLY_ACTIVE_ARCH=NO \
+          ARCHS=arm64
+    - name: iOS – package IPA
+      if: matrix.type == 'ios'
+      run: |
+        XCA="${{ github.workspace }}/ottplay-foss-ios.xcarchive"
+        APP_DIR="$XCA/Products/Applications"
+        if [ ! -d "$APP_DIR" ]; then
+          echo "No .app found in archive at $APP_DIR"
+          ls -R "$XCA"
+          exit 1
+        fi
+        mkdir -p Payload
+        cp -R "$APP_DIR/"*.app Payload/
+        zip -qr "${{ github.workspace }}/ottplay-foss-ios-unsigned.ipa" Payload
+        rm -rf Payload
+        echo "Created ottplay-foss-ios-unsigned.ipa"
+    - name: Store release assets
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: release-assets-mobile-ios
+        path: ottplay-foss-ios-unsigned.ipa
+        if-no-files-found: error
+        retention-days: 14
+      if: matrix.type == 'ios'
+    - name: Android – setup Java
+      if: matrix.type == 'android'
+      uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c
+      with:
+        distribution: temurin
+        java-version: '21'
+    - name: Android – setup SDK
+      if: matrix.type == 'android'
+      uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+    - name: Android – install SDK components
+      if: matrix.type == 'android'
+      run: |
+        # sdkmanager closes stdin once installation finishes. Ignore only
+        # yes's expected SIGPIPE; sdkmanager failures still fail this step.
+        (yes || test "$?" -eq 141) | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" \
+          "platforms;android-36" \
+          "build-tools;34.0.0" \
+          "platform-tools" 2>&1 | tail -5
+        echo "✓ Android SDK components installed"
+    - name: Android – build web + sync
+      if: matrix.type == 'android'
+      run: npm run build:mobile
+      env:
+        CI: true
+    - name: Android – assemble release
+      if: matrix.type == 'android'
+      run: |
+        cd android
+        ./gradlew assembleRelease
+        # Both advertised Android package formats are required
+        ./gradlew bundleRelease
+    - name: Collect Android packages
+      if: matrix.type == 'android'
+      run: |-
+        mkdir -p release-output/android
+        APK=$(find android/app/build/outputs/apk -name '*release*.apk' -print -quit)
+        AAB=$(find android/app/build/outputs/bundle -name '*release*.aab' -print -quit)
+        test -n "$APK" && test -s "$APK"
+        test -n "$AAB" && test -s "$AAB"
+        cp "$APK" release-output/android/ottplay-foss-android-unsigned.apk
+        cp "$AAB" release-output/android/ottplay-foss-android-unsigned.aab
+    - name: Store release assets
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: release-assets-mobile-android
+        path: release-output/android/*
+        if-no-files-found: error
+        retention-days: 14
+      if: matrix.type == 'android'
+  container:
+    name: Build container archive
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+    - name: Harden runner
+      uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+      with:
+        egress-policy: audit
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+    - name: Verify committed release version
+      run: python3 scripts/check-release-version.py "$RELEASE_VERSION" "$RELEASE_CHANNEL"
+    - uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a
+    - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e
+    - name: Build OCI image archive
+      uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: false
+        outputs: type=oci,dest=ottplay-foss-container.oci.tar
+        tags: ottplay-foss:${{ inputs.version }}
+        sbom: true
+        provenance: mode=max
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    - name: Store release assets
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: release-assets-container
+        path: ottplay-foss-container.oci.tar
+        if-no-files-found: error
+        retention-days: 14
