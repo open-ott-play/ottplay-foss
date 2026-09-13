@@ -166,23 +166,127 @@ acceptance for decoder behavior, stream compatibility, DRM and real remote
 events. A successful simulator launch is separate from the automated Chromium
 matrix and from physical-device acceptance.
 
-## Other TV simulators on an Apple Silicon Mac
+## Android TV and Google TV
 
-- **Android TV / Google TV:** Google's [emulator acceleration requirements](https://developer.android.com/studio/run/emulator-acceleration)
-  support Apple Silicon, and the [official TV image catalog](https://dl.google.com/android/repository/sys-img/android-tv/sys-img2-3.xml)
-  contains Android 36 ARM64 TV images. Install a TV image and create a TV AVD;
-  a phone AVD does not cover remote/focus behavior. Access the host stack through
-  the emulator's [host alias `10.0.2.2`](https://developer.android.com/studio/run/emulator-networking),
-  not its own `127.0.0.1`. A web player launch also needs a browser/hosted shell,
-  or use this repository's Android app for native Android testing.
-- **Samsung Tizen TV:** the official [emulator requirements](https://developer.samsung.com/smarttv/develop/tools/prerequisites.html)
-  specify Intel hardware and VT-x, not Apple Silicon. Use a supported x86 host
-  for that emulator. The separate [TV Simulator](https://developer.samsung.com/smarttv/develop/getting-started/using-sdk/tv-simulator.html)
-  does not support hosted web apps and substitutes dummy video for HLS, so this
-  webOS hosted launcher cannot simply be reused.
-- **LG NetCast:** the archived [SDK 3.0.1 requirements](https://webostv.developer.lge.com/more/netcast/sdk-v301)
-  target old operating systems and VirtualBox 4.1–4.2. Keep its Chromium adapter
-  checks here; vendor emulator testing requires a compatible legacy host.
-- **MAG and other shipped adapters:** the existing Chromium matrix exercises
-  detection and key contracts. It does not emulate device firmware, native
-  services or decoders; retain real-device checks for those contracts.
+Install the [Android command-line tools](https://developer.android.com/tools) and
+Java first. This launcher reuses `ANDROID_HOME` / `ANDROID_SDK_ROOT`, or finds a
+standard macOS/Linux SDK location, including the Homebrew SDK on Apple Silicon.
+Then install the official TV image and create an isolated AVD:
+
+```sh
+./scripts/setup-android-tv-emulator.sh
+./scripts/run-android-tv-emulator.sh
+./scripts/run-android-tv-emulator.sh --stop
+```
+
+The default is Android TV API 36, the `tv_1080p` hardware profile and the name
+`OttplayAndroidTV`. The image uses ARM64 on Apple Silicon and x86_64 on Intel.
+`--google-tv` selects the separate Google TV image and `OttplayGoogleTV` name;
+pass it to both setup and run. Each image needs substantial disk space: the
+API 36 Android TV package alone extracts an 8 GB system image, before writable
+AVD storage. Install only the variants you need.
+
+Setup leaves SDK license prompts interactive. It never accepts terms for you
+and never overwrites an AVD. A matching existing AVD is retained; a conflicting
+image requires a different `--avd` name. Existing SDK packages are reused.
+Use `--image`, `--device`, `--avd` and `--sdk` to select another TV configuration.
+`--data-size 2048` is the default writable partition size in MB; it is applied
+only when creating a new AVD and never resizes an existing profile.
+For example, `--image 'system-images;android-35;android-tv;x86_64'` is an Intel
+host example, not a way to virtualize x86 through Rosetta on Apple Silicon.
+
+Run opens the TV home screen. It does not assume that a browser or player app
+is installed. To test an APK, pass its explicit activity component:
+
+```sh
+./scripts/run-android-tv-emulator.sh \
+  --apk /path/to/ottplay-native.apk \
+  --component play.ott.foss.nativeapp/play.ott.nativeapp.MainActivity
+```
+
+The current native Android product is maintained in
+[ottplay-android](https://github.com/open-ott-play/ottplay-android); installing
+that APK tests its native player, not this repository's JavaScript player.
+Testing the hosted web player requires a separately installed Android browser
+or WebView host. The script does not download APKs, build either product or
+change Android application code.
+
+The launcher checks the exact AVD identity before installing an APK or changing
+ports. It reuses an already running matching TV, leaves phone emulators alone,
+and refuses to take an occupied console port. A new instance uses port 5570;
+`--port 5572` can select another free even port. `--stop` only stops the named TV.
+Use `--headless` for a windowless instance and `--timeout 300` for a slower boot.
+Logs are under `build/emulator-logs/`.
+
+After boot, ADB reverses ports 8095 and 8090 for this emulator only, so the same
+`http://127.0.0.1:8095/` player and `http://127.0.0.1:8090/` playlist addresses
+reach the host stack. The script does not start that stack. The normal Android
+[host alias `10.0.2.2`](https://developer.android.com/studio/run/emulator-networking)
+is also available when explicitly configuring guest URLs without ADB reverse.
+
+Both scripts support `--dry-run` and `--help`. Integration tests use fake SDK
+commands in temporary directories and cover installation failure, AVD reuse,
+paths with spaces, occupied ports, boot timeouts and the exact target of APK,
+port-forwarding and stop operations. These tests do not boot an Android OS in CI.
+
+## Samsung TV Web Simulator on macOS
+
+The standalone Samsung TV Web Simulator is an Intel NW.js application. It is
+separate from the Tizen TV firmware emulator. Install the pinned official package:
+
+```sh
+./scripts/setup-tizen-simulator.sh
+./scripts/run-tizen-simulator.sh
+./scripts/run-tizen-simulator.sh --app /absolute/path/to/local/index.html
+```
+
+Setup downloads Samsung's macOS package 10.0.6, checks its pinned size and
+SHA256, validates archive paths, and extracts to
+`~/.local/share/ottplay/tizen-tv-simulator/10.0.6`. It neither runs a vendor
+installer nor accepts license dialogs. Review the Samsung license documents
+included with the package; any acceptance dialog remains a user action.
+An existing destination is never overwritten. `--destination` and `--cache`
+select other locations. The vendor SDK and its archive are not committed.
+
+Run accepts `--sdk` or `TIZEN_SIMULATOR_SDK` for an existing Tizen Studio root,
+`sec-tv-simulator` directory, or `nwjs.app`. With no `--app`, it opens the
+simulator home screen. `--app` accepts a local HTML entry point, using the same
+`--file=file:///...` convention as
+[Samsung's launcher](https://github.com/Samsung/webIDE-common-tizentv/blob/dev/lib/projectHelper.js).
+A hosted URL or a `.wgt` archive is not a local HTML entry point. Both scripts
+support `--dry-run` and `--help`.
+
+Samsung's [Simulator limitations](https://developer.samsung.com/smarttv/develop/getting-started/using-sdk/tv-simulator.html)
+exclude hosted applications, DRM and real HLS playback (HLS uses a dummy video).
+Consequently this is useful for local UI/API checks; the webOS redirect launcher
+on 8095 cannot be reused as a Samsung media compatibility test.
+
+## Rosetta, firmware emulators and legacy devices
+
+Rosetta remains available on macOS 26 and can run Intel macOS applications,
+including a compatible Intel simulator application. It does not emulate Intel
+VT-x or support Intel kernel extensions and applications that virtualize an
+x86_64 platform: see [Apple's Rosetta documentation](https://developer.apple.com/documentation/apple-silicon/about-the-rosetta-translation-environment).
+An installed Rosetta runtime alone does not establish that a particular old SDK
+works on the current macOS version.
+
+The full **Samsung Tizen TV Emulator** has
+[Intel/VT-x and GPU requirements](https://developer.samsung.com/smarttv/develop/tools/prerequisites.html).
+Samsung does not support running it inside VirtualBox, VMware or Parallels VMs.
+The Web Simulator above is the local macOS option; it must not be reported as
+booting Samsung firmware.
+
+The archived **LG NetCast SDK 3.0.1** targets old Intel operating systems,
+Java 6 and VirtualBox 4.1.18–4.2.18 according to its
+[requirements](https://webostv.developer.lge.com/more/netcast/sdk-v301).
+Rosetta cannot make those virtualization drivers compatible with Apple Silicon.
+No working NetCast firmware launcher on this Mac is claimed or added.
+
+[QEMU TCG](https://www.qemu.org/docs/master/about/emulation.html) can emulate an
+x86 system in software. Preparing a legacy guest OS and adapting a vendor TV
+image would be a separate experiment, with significant disk/performance costs;
+it is not a verified substitute for either vendor's supported host.
+
+For **MAG and other shipped adapters**, retain the Chromium detection/key
+matrix and real-device checks. Those tests do not emulate firmware, native
+services or hardware decoders.
