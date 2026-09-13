@@ -226,12 +226,25 @@
             var m = path.match(/^\/f\/((?:lg|samsung)\/[^\/]+|[^\/]+)(?:\/|$)/);
             if (m) return m[1].replace(/\/+$/, "");
             var ua = navigator.userAgent.toLowerCase();
-            if (ua.indexOf("web0s") !== -1 || ua.indexOf("webos") !== -1 || ua.indexOf("lg") !== -1)
+            if (ua.indexOf("web0s") !== -1 || ua.indexOf("webos") !== -1)
                 return "lg/webos";
+            // NetCast also advertises LG; explicit webOS wins over compatibility tokens.
+            if (ua.indexOf("netcast") !== -1) return "lg/netcast";
+            if (ua.indexOf("lg") !== -1) return "lg/webos";
+            // Inspect the bridge without calling native APIs during detection.
+            try {
+                var gstb = window.gSTB;
+                if (gstb && (typeof gstb.GetDeviceModel === "function" ||
+                    typeof gstb.GetDeviceMacAddress === "function" ||
+                    typeof gstb.GetMACAddress === "function")) return "mag";
+            } catch (_error) {
+                // Continue with user-agent detection if the bridge is unavailable.
+            }
+            // MAG may omit Infomir or advertise Maple compatibility.
+            if (/(?:^|[^a-z0-9])mag[0-9]+(?:[rw][0-9]+)?(?:$|[^a-z0-9])/.test(ua) ||
+                (ua.indexOf("stb") !== -1 && ua.indexOf("infomir") !== -1)) return "mag";
             if (ua.indexOf("tizen") !== -1) return "samsung/tizen";
             if (ua.indexOf("maple") !== -1) return "samsung/maple";
-            if (ua.indexOf("stb") !== -1 && ua.indexOf("infomir") !== -1)
-                return "mag";
             if (ua.indexOf("dune") !== -1) return "dune";
             if (ua.indexOf("android") !== -1) return "android";
             if (ua.indexOf("hbbtv") !== -1 || ua.indexOf("oipf") !== -1)
@@ -475,15 +488,29 @@
                     });
                 }
                 if (typeof Hls === "undefined") {
+                    // The local Android test APK identifies its modern WebView
+                    // without changing legacy Android/native-wrapper defaults.
+                    var testWebView = ott_device === "android" &&
+                        typeof window.__ottNativeRuntime === "undefined" &&
+                        typeof window.Capacitor === "undefined" &&
+                        typeof window.Android === "undefined" &&
+                        typeof window.__TAURI__ === "undefined" &&
+                        typeof window.__TAURI_INTERNALS__ === "undefined" &&
+                        /(?:^|\s)OttplayTestWebView\/1\.0(?=\s|$)/.test(navigator.userAgent || "");
                     // Unknown old STBs can be detected as pc. Do not send their
                     // pre-polyfill engines a modern CDN build either.
                     var modernPC = !window.__ottNativeRuntime && ott_device === "pc" &&
                         typeof Promise === "function" &&
                         typeof Uint8Array === "function" &&
                         typeof Array.from === "function";
-                    if (modernPC) {
+                    var modernTestWebView = testWebView &&
+                        typeof Promise === "function" &&
+                        typeof Uint8Array === "function" &&
+                        typeof Array.from === "function";
+                    if (modernPC || modernTestWebView) {
                         loadJS(
-                            "https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js",
+                            "https://cdn.jsdelivr.net/npm/hls.js@" +
+                                (modernTestWebView ? "1.7.3" : "1.6.16") + "/dist/hls.min.js",
                             function () {
                                 if (typeof Hls === "undefined") loadLocalHls();
                                 else checkDone();

@@ -2,6 +2,9 @@
 
 This guide documents how to add a new device profile (remote control key mappings) and provider script for the `ottplay-foss` player.
 
+For regression checks and an official LG Simulator launcher, see
+[Device detection and emulator testing](device-detection-testing.md).
+
 ## 1. Adding a New Device Profile
 
 Device profiles live in `src/stb/` and define the remote control key codes for a specific STB platform. Each profile is a JavaScript file named `{device-name}/stb.js` containing a `keys` object mapping symbolic key names to platform-specific key codes.

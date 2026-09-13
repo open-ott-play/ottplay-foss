@@ -83,6 +83,40 @@ try {
     result = inspect(root);
     assert.deepEqual(result.errors, []);
     assert.equal(result.reached, 4);
+    write(
+        "tests/browser/device.spec.cjs",
+        "// browser boot and keyboard scenarios\n"
+    );
+    assert(
+        inspect(root).errors.some((error) => error.includes("device.spec.cjs"))
+    );
+    const workflowPath = path.join(root, ".github/workflows/ci.yml");
+    const workflow = fs.readFileSync(workflowPath, "utf8");
+    write(
+        ".github/workflows/ci.yml",
+        workflow + "          npx playwright install chromium\n"
+    );
+    assert(
+        inspect(root).errors.some((error) => error.includes("device.spec.cjs"))
+    );
+    for (const runner of ["playwright", "npx playwright"]) {
+        write(
+            ".github/workflows/ci.yml",
+            workflow +
+                `          ${runner} test --list tests/browser/device.spec.cjs\n`
+        );
+        assert(
+            inspect(root).errors.some((error) =>
+                error.includes("device.spec.cjs")
+            )
+        );
+        write(
+            ".github/workflows/ci.yml",
+            workflow +
+                `          ${runner} test tests/browser/device.spec.cjs\n`
+        );
+        assert.deepEqual(inspect(root).errors, []);
+    }
     write("tests/test_new.cjs", "// uncovered test must fail the next PR\n");
     assert(inspect(root).errors.some((error) => error.includes("test_new")));
     write(

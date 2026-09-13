@@ -75,6 +75,7 @@ function getEpgList(e, r, t) {
         t();
         return;
     }
+    var requestList = cList;
     $(launch_id).append(_("epgs..."));
     var i = e.epg_server === void 0 ? m3u_defaults.epg_server : e.epg_server;
     var a = nativeMatchMetadata();
@@ -87,6 +88,8 @@ function getEpgList(e, r, t) {
         i + "/m3u/match-channels",
         n,
         function (e) {
+            // loadChannels replaces cList while retaining the shared channel map.
+            if (cList !== requestList) return;
             var r = e.split("\n\t\n");
             if (r.length != 3) return;
             var t, i, a, n;
@@ -219,9 +222,27 @@ function getEPGchanel(s, e) {
 }
 
 function provEpgLoader(e, r) {
+    var requestList = cList;
     if (r !== "")
         getEpgList(e, r, function () {
+            if (cList !== requestList) return;
+            // Rows may have requested EPG before matching supplied their URLs.
+            // Retry those misses without discarding valid full-schedule caches.
+            var now = Date.now() / 1000;
             var e = curList[primaryIndex];
+            for (var i = 0; i < requestList.length; i++) {
+                var id = requestList[i];
+                var ch = chanels[id];
+                if (ch && ch.time_request > now && getEPGurl(id)) {
+                    ch.time_request = 0;
+                    if (
+                        id !== e &&
+                        typeof getCurProgData === "function" &&
+                        typeof updateChanelList === "function"
+                    )
+                        getCurProgData(id, updateChanelList);
+                }
+            }
             if (e !== undefined) {
                 chanels[e].time_request = 0;
                 updateChanelInfo(e);

@@ -780,9 +780,41 @@ export function restoreContinueWatch(): boolean {
             }
         }
         if (resumeIdx === -1) return false; // channel no longer present
+        // A PIN adds another asynchronous step. Keep it tied to the playlist
+        // and provider that offered the bookmark, even when IDs are reused.
+        var source = {
+            categories: catsArray,
+            cats: cats,
+            channel: channels[cw.channelId],
+            channels: channels,
+            get: window.providerGetItem,
+            list:
+                (cats && catsArray && cats[catsArray[resumeCatIndex]]) ||
+                curList,
+            prefix: (window as any).p_pref,
+            set: window.providerSetItem,
+        };
+        var isCurrent = function (): boolean {
+            return (
+                catsArray === source.categories &&
+                cats === source.cats &&
+                channels === source.channels &&
+                channels[cw.channelId] === source.channel &&
+                ((cats && catsArray && cats[catsArray[resumeCatIndex]]) ||
+                    curList) === source.list &&
+                window.providerGetItem === source.get &&
+                window.providerSetItem === source.set &&
+                (window as any).p_pref === source.prefix &&
+                source.list.indexOf(cw.channelId) !== -1
+            );
+        };
         var playLiveFallback = function (): boolean {
+            if (!isCurrent()) return false;
             try {
-                window.playChannel(resumeCatIndex, resumeIdx);
+                window.playChannel(
+                    resumeCatIndex,
+                    source.list.indexOf(cw.channelId)
+                );
                 return true;
             } catch (_e) {
                 console.error(_e);
@@ -796,50 +828,40 @@ export function restoreContinueWatch(): boolean {
                 return false;
             }
         };
+        var playSavedArchive = function (): void {
+            if (!isCurrent()) return;
+            if (ifParentalAccessChId(cw.channelId, playSavedArchive)) return;
+            // Avoid setCurrent: it would overwrite the archive bookmark with live mode.
+            catIndex = resumeCatIndex;
+            curList = source.list;
+            primaryIndex = curList.indexOf(cw.channelId);
+            window.catIndex = catIndex;
+            window.curList = curList;
+            window.primaryIndex = primaryIndex;
+            if (typeof window.playArchive === "function") {
+                window.playArchive(cw.playType);
+                if (typeof cw.playTime === "number") {
+                    setTimeout(function () {
+                        if (
+                            isCurrent() &&
+                            curList === source.list &&
+                            curList[primaryIndex] === cw.channelId &&
+                            window.playType === Math.floor(cw.playType)
+                        )
+                            window.stbSetPosTime(cw.playTime);
+                    }, 500);
+                }
+            } else {
+                playLiveFallback();
+            }
+        };
 
         if (typeof window.confirmBox === "function") {
             window.confirmBox(
                 _("Resume from archive?") +
                     "<br><br>" +
                     _("Bookmark age: %1 days", Math.floor(ageMs / 86400000)),
-                function () {
-                    // 2) Option A: assign state directly without calling setCurrent,
-                    // so continueWatch is NOT rewritten with live playType=0 before
-                    // playArchive runs. This preserves the archive bookmark.
-                    catIndex = resumeCatIndex;
-                    curList =
-                        (cats && catsArray && cats[catsArray[catIndex]]) ||
-                        curList;
-                    primaryIndex = curList.indexOf(cw.channelId);
-                    if (primaryIndex === -1) {
-                        // Re-validate once: list may have churned between dialog open and Yes.
-                        primaryIndex = resumeIdx;
-                        if (
-                            primaryIndex < 0 ||
-                            primaryIndex >= curList.length ||
-                            curList[primaryIndex] !== cw.channelId
-                        ) {
-                            playLiveFallback();
-                            return;
-                        }
-                    }
-                    // Sync to window globals for legacy code compat
-                    window.catIndex = catIndex;
-                    window.curList = curList;
-                    window.primaryIndex = primaryIndex;
-                    // Now play archive — archive mode already gated above.
-                    if (typeof window.playArchive === "function") {
-                        window.playArchive(cw.playType);
-                        // Defer seek until playback has a chance to start.
-                        if (typeof cw.playTime === "number") {
-                            setTimeout(function () {
-                                window.stbSetPosTime(cw.playTime);
-                            }, 500);
-                        }
-                    } else {
-                        playLiveFallback();
-                    }
-                },
+                playSavedArchive,
                 function () {
                     playLiveFallback();
                 }
@@ -1658,6 +1680,9 @@ export function setCurProg(
  */
 export function onChanelsLoaded(): void {
     console.log("[onChanelsLoaded] cList.length=" + cList.length);
+    // Dismiss the old loading dialog before playback can open a PIN or resume
+    // prompt. Hiding it afterwards would close the newly created prompt.
+    $("#dialogbox").hide();
     try {
         if (cList.length) {
             // Save pending provider to storage on success
@@ -1837,8 +1862,7 @@ export function onChanelsLoaded(): void {
     } catch (e) {
         console.error(e);
     }
-    // Cleanup: hide loading element
-    $("#dialogbox").hide();
+    // Loading overlays can close now; keep any new playback prompt visible.
     $("#launch").hide();
     $("#buffering").hide();
     if (typeof (window as any).clearBootHide === "function")
@@ -5184,7 +5208,13 @@ export function _enterPinCode(
             case window.keys.N7:
             case window.keys.N8:
             case window.keys.N9: {
-                pin += (e - 48).toString();
+                // Native remotes use their own codes (Android digits are 7–16).
+                for (var digit = 0; digit < 10; digit++) {
+                    if (e === window.keys["N" + digit]) {
+                        pin += digit.toString();
+                        break;
+                    }
+                }
                 var pinEl = document.getElementById("pin");
                 if (pinEl)
                     pinEl.innerHTML = "# # # # ".substr(0, pin.length * 2);
@@ -5214,7 +5244,7 @@ export function _enterPinCode(
                 return;
             case window.keys.ENTER:
                 if (typeof window._doKey === "function") {
-                    window._doKey(window.keys.N0 + curIdx);
+                    window._doKey(window.keys["N" + curIdx]);
                 }
                 return;
         }
