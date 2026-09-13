@@ -267,6 +267,7 @@ const coreControls = functions("src/core/index.ts", [
     "isCoreThenable",
     "playCoreMedia",
     "cancelCoreSeek",
+    "cancelCoreAutoPlayback",
     "destroyCoreShaka",
     "stbContinue",
     "stbPause",
@@ -276,6 +277,7 @@ const coreControls = functions("src/core/index.ts", [
 for (const platform of Object.keys(nativeSources)) {
     let destroyed = 0;
     const w = {
+        _coreAutoCancel: null,
         _coreDemoMute: null,
         _corePendingSeek: null,
         _coreShakaTeardown: null,

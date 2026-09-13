@@ -13,6 +13,7 @@ const CLASSIC_MODULES = [
     "build/channels/search.js",
     "build/channels/index.js",
     "build/debug/playback-debug.js",
+    "build/core/auto-playback.js",
     "build/core/index.js",
     "build/swop/index.js",
     "build/ui/index.js",

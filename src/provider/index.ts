@@ -21,6 +21,8 @@ import {
     invalidateEpgCache,
 } from "../channels";
 import {
+    getDefaultPlayerMode,
+    normalizePlayerMode,
     restoreDemoMute,
     setPlayerMode,
     toggleAspectRatio,
@@ -1199,7 +1201,15 @@ export function loadChannels(): void {
             wShow.stbSetItem("sPreview", String(sPreview));
         }
     } catch (_mir) {}
-    sPlayers = providerGetNum("sPlayers", 0);
+    // Keep existing provider choices (including explicit HTML5) and use Auto
+    // only for providers that do not have a preference in the Tauri shell.
+    sPlayers = providerGetNum("sPlayers", getDefaultPlayerMode());
+    // Imported Auto must select a playable engine, including browsers without
+    // native HLS support, as well as an available menu item on STBs.
+    // Keep the stored preference intact so Tauri can use it again on return.
+    sPlayers = normalizePlayerMode(sPlayers);
+    wShow.sPlayers = sPlayers;
+    if (wShow.settings) wShow.settings.players = sPlayers;
     console.log("[loadChannels] sPlayers from storage=" + sPlayers);
     setPlayerMode(sPlayers);
     sNextCount = providerGetNum("sNextCount", 0);
