@@ -60,59 +60,84 @@ for the desired version and host OS, accepting its SDK agreement separately.
 The webOS TV 25 and 26 macOS downloads support ARM64. The SDK is not downloaded
 by CI or redistributed in this repository.
 
-The test launcher follows LG's
+Run the hosted app against the existing local stack:
+
+```sh
+./scripts/run-webos-simulator.sh
+```
+
+The defaults are webOS TV 26 and `http://127.0.0.1:8095/`. The launcher checks
+`/health` and the player page, prepares `build/device-webos-simulator`, then
+calls LG's `ares-launch`. It does not start another server, deploy a build or
+require local `dist/` files. The player uses the build already deployed to the
+stack. Port 8090 belongs to the playlist proxy, not the player.
+
+Install the official [webOS CLI](https://webostv.developer.lge.com/develop/tools/cli-installation)
+once, for example in a user-owned directory:
+
+```sh
+npm install --prefix "$HOME/.local/share/ottplay/webos-cli" @webos-tools/cli
+```
+
+The shell launcher checks `WEBOS_CLI`, then `ares-launch` on `PATH`, then that
+user-local installation. On the first launch, register the extracted Simulator
+SDK directory with the CLI:
+
+```sh
+./scripts/run-webos-simulator.sh --sdk "$HOME/Applications/webOS_TV_26_Simulator_1.5.0"
+```
+
+The CLI remembers the directory for subsequent launches. Keep the SDK in a
+persistent directory, not `/tmp`. The directory passed to `--sdk` contains the
+Simulator `.app` on macOS, rather than being the `.app` itself. SDK installation
+and acceptance of its agreement remain separate from this script.
+
+Other examples:
+
+```sh
+./scripts/run-webos-simulator.sh --version 25 --sdk /path/to/webOS_TV_25_Simulator_1.4.1
+./scripts/run-webos-simulator.sh --url http://127.0.0.1:8095/
+./scripts/run-webos-simulator.sh --dry-run
+./scripts/run-webos-simulator.sh --help
+```
+
+`WEBOS_VERSION`, `WEBOS_SDK_PATH`, `WEBOS_CLI` and `OTTP_PLAYER_URL` provide the
+same configuration through environment variables. `OTTP_DEVICE_TEST_PORT` is
+retained as a loopback URL fallback when `OTTP_PLAYER_URL` is not set. Explicit
+`--url` takes precedence. `--dry-run` prepares the app and prints the command
+without network checks or SDK execution. No SDK is downloaded automatically.
+
+The launcher follows LG's
 [hosted web app](https://webostv.developer.lge.com/develop/getting-started/web-app-types)
-model. It redirects to the built player's server root so automatic detection is
-exercised without forcing `/f/lg/webos/`. For detection and button checks,
-prepare it and leave the static test server running:
+model and redirects to the server root by default, preserving automatic device
+detection. You can also select `build/device-webos-simulator` through Simulator's
+**File > Launch App**. Use **File > Close App**, then launch again if an existing
+app has not picked up a changed target. Storage is origin-specific, so switching
+ports can require configuring the test playlist again.
+
+For EPG, the existing companion needs current XMLTV data in its configured
+`EPG_URLS` sources. A successful `/health` response does not establish EPG
+readiness: check actual programme data and the full guide. Using the same
+playlist URL in Chrome and Simulator does not guarantee the same EPG backend;
+compare the player's origin and its EPG server setting. Deploy the desired
+[Mode A package](mode-a-test-bundle.md) to the stack before checking PR changes.
+
+The separate static server used by Chromium tests is only for detection and
+button checks. To deliberately run this narrower manual test:
 
 ```sh
 npm run build
-node scripts/prepare-webos-simulator.cjs
-node tests/helpers/device-browser-server.cjs
+OTTP_DEVICE_TEST_DIAGNOSTICS=1 node tests/helpers/device-browser-server.cjs
+# In another terminal: prepare the SDK app, then launch it through File > Launch App.
+OTTP_DEVICE_TEST_PORT=4179 node scripts/prepare-webos-simulator.cjs
 ```
 
-The static test server has no companion APIs: `/m3u/match-channels` returns 405
-and `/epg/*` returns 404. Direct streams can play while the programme guide is
-empty. Using the same playlist URL in Chrome and Simulator does not guarantee
-the same EPG backend; compare the **player's origin** and its EPG server setting.
-
-For playback and EPG checks, serve the current [Mode A package](mode-a-test-bundle.md)
-with `ottplay-server`, configure its XMLTV sources using `EPG_URLS`, and point the
-launcher at that server instead. For example, if the companion runs on 8095:
-
-```sh
-OTTP_DEVICE_TEST_PORT=8095 node scripts/prepare-webos-simulator.cjs
-```
-
-Do not also start the static test server on that port. Use **Close App** and
-launch the prepared app again to load the new target. Storage is origin-specific,
-so a different port may require configuring the test playlist again. Check an
-actual channel's programme data; a successful `/health` response alone does not
-mean that XMLTV loading and matching have finished.
-
-For a visible snapshot of the actual runtime profile and button configuration,
-start the server with `OTTP_DEVICE_TEST_DIAGNOSTICS=1` instead. The test server
-adds a read-only badge and logs `Device runtime: {...}` with the actual UA,
-adapter, Left/Right/Back codes and Left/Right action indices. It reads no
-provider credentials and does not alter the build, settings or detection.
-Diagnostics are disabled by default, including in the Chromium CI matrix.
-The diagnostic server also logs EPG route classes and HTTP status codes, without
-playlist bodies, channel identifiers or query strings.
-
-In Simulator, use **File > Launch App** and select
-`build/device-webos-simulator`. Alternatively, install the official
-[webOS CLI](https://webostv.developer.lge.com/develop/tools/cli-installation)
-and launch from another terminal:
-
-```sh
-ares-launch -s 26 -sp /absolute/path/to/webOS_TV_26_Simulator_1.5.0 build/device-webos-simulator
-```
-
-Set `OTTP_DEVICE_TEST_PORT` to the same value for preparation and server commands
-if port 4179 is occupied. The server binds only to `127.0.0.1`, which works for
-LG's simulator on the same host. This launcher is for development and is not an
-installable product package.
+That static server has no companion APIs: matching returns 405 and `/epg/*`
+returns 404. The shell launcher's companion health check intentionally rejects
+it. Its opt-in read-only badge shows the actual UA, adapter, remote key codes
+and shortcut settings, and its diagnostic log includes EPG route classes and
+HTTP status codes without playlist bodies, channel identifiers or query strings.
+Diagnostics are disabled in the Chromium CI matrix.
 
 In the [Simulator Inspector](https://webostv.developer.lge.com/develop/tools/simulator-dev-guide),
 record `navigator.userAgent`, `ott_device`, `keys.RETURN`, console errors and the
@@ -132,3 +157,24 @@ include different media capabilities and no DRM support. Retain physical TV/STB
 acceptance for decoder behavior, stream compatibility, DRM and real remote
 events. A successful simulator launch is separate from the automated Chromium
 matrix and from physical-device acceptance.
+
+## Other TV simulators on an Apple Silicon Mac
+
+- **Android TV / Google TV:** Google's [emulator acceleration requirements](https://developer.android.com/studio/run/emulator-acceleration)
+  support Apple Silicon, and the [official TV image catalog](https://dl.google.com/android/repository/sys-img/android-tv/sys-img2-3.xml)
+  contains Android 36 ARM64 TV images. Install a TV image and create a TV AVD;
+  a phone AVD does not cover remote/focus behavior. Access the host stack through
+  the emulator's [host alias `10.0.2.2`](https://developer.android.com/studio/run/emulator-networking),
+  not its own `127.0.0.1`. A web player launch also needs a browser/hosted shell,
+  or use this repository's Android app for native Android testing.
+- **Samsung Tizen TV:** the official [emulator requirements](https://developer.samsung.com/smarttv/develop/tools/prerequisites.html)
+  specify Intel hardware and VT-x, not Apple Silicon. Use a supported x86 host
+  for that emulator. The separate [TV Simulator](https://developer.samsung.com/smarttv/develop/getting-started/using-sdk/tv-simulator.html)
+  does not support hosted web apps and substitutes dummy video for HLS, so this
+  webOS hosted launcher cannot simply be reused.
+- **LG NetCast:** the archived [SDK 3.0.1 requirements](https://webostv.developer.lge.com/more/netcast/sdk-v301)
+  target old operating systems and VirtualBox 4.1–4.2. Keep its Chromium adapter
+  checks here; vendor emulator testing requires a compatible legacy host.
+- **MAG and other shipped adapters:** the existing Chromium matrix exercises
+  detection and key contracts. It does not emulate device firmware, native
+  services or decoders; retain real-device checks for those contracts.
