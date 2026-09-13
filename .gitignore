@@ -56,3 +56,7 @@ google-services.json
 /.local-artifacts/
 /.herenow/
 /.local-ops/
+# Frozen release overlays and final build staging
+.release-plan.json
+.release-inputs.json
+release-assets/
