@@ -60,8 +60,8 @@ for the human UI checklist; this script automates build/sync/open helpers, dir
 presence, toolchain checks, and command-queue curl when Cap is listening.
 
 Flags:
-  --check-native         Verify android/ and ios/ project dirs exist
-  --build-sync           Run: npm run build:mobile
+  --check-native         Verify the active ios/ project directory exists
+  --build-sync           Run: npm run build:mobile (iOS only)
   --sync-only            Run: npm run cap:sync  (no vite rebuild)
   --queue                Check explicitly enabled HTTP control with QUEUE_HTTP_TOKEN
   --require-queue        With --queue: exit 1 if not listening (default: soft-skip)
@@ -72,7 +72,7 @@ Flags:
   --require-android-tools Fail if adb missing
   --adb-forward          Run: adb forward tcp:18081 tcp:18081
   --open-ios             Run: npm run cap:ios
-  --open-android         Run: npm run cap:android
+  --open-android         Report the separate Android application repository
   -h, --help             Show this help
 
 Env:
@@ -154,12 +154,6 @@ fi
 
 if [[ "$DO_CHECK_NATIVE" -eq 1 ]]; then
   missing=0
-  if [[ ! -d "$ROOT/android" ]]; then
-    echo "error: missing android/ — run npm run build:mobile or npm run cap:sync first" >&2
-    missing=1
-  else
-    echo "ok: android/ present"
-  fi
   if [[ ! -d "$ROOT/ios" ]]; then
     echo "error: missing ios/ — run npm run build:mobile or npm run cap:sync first" >&2
     missing=1
@@ -196,8 +190,8 @@ if [[ "$DO_OPEN_IOS" -eq 1 ]]; then
 fi
 
 if [[ "$DO_OPEN_ANDROID" -eq 1 ]]; then
-  echo "running: npm run cap:android"
-  npm run cap:android
+  echo "Android app builds moved to https://github.com/open-ott-play/ottplay-android (private preview; access required)." >&2
+  exit 3
 fi
 
 queue_listening() {

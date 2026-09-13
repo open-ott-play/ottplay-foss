@@ -22,8 +22,6 @@ on:
       - 'tests/test_frontend_safety.cjs'
       - 'stbPlayer/**'
       - 'fonts/**'
-      - 'scripts/*android*.cjs'
-      - 'scripts/android/**'
       - 'docs/privacy-policy.md'
       - 'tests/test_native_*'
       - 'tests/test_ios_*'
@@ -39,8 +37,6 @@ on:
       - 'capacitor.config.*'
       - 'vite.config.*'
       - '.github/workflows/native-parity.yml'
-      - 'scripts/ci-android-install-sdk.sh'
-      - '.github/release-tests/test_android_sdk_install.py'
   workflow_dispatch:
 
 permissions:
@@ -62,30 +58,22 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
-      - name: Install the release Android SDK components
-        run: bash scripts/ci-android-install-sdk.sh
-      - run: npm ci --ignore-scripts
-      - name: Verify optional authenticated HTTP smoke contract
-        run: python3 tests/test_command_queue_smoke.py
-      - run: node tests/test_android_activity.cjs
-      - name: Sync native plugins without shared frontend assets
-        run: node scripts/build-android.cjs sync
-      - name: Compile and package Full and Play native plugins
-        working-directory: android
-        run: ./gradlew :app:assembleFullDebug :app:bundlePlayRelease --no-daemon
-      - name: Verify packaged distribution identity and provider isolation
+      - name: Install Android API stubs for legacy JVM tests
         run: |
-          node scripts/verify-android-distribution.cjs android/app/build/outputs/apk/full/debug/app-full-debug.apk full
-          node scripts/verify-android-distribution.cjs android/app/build/outputs/bundle/playRelease/app-play-release.aab play
+          sdkmanager --sdk_root="$ANDROID_HOME" "platforms;android-36" </dev/null
+          test -s "$ANDROID_HOME/platforms/android-36/android.jar"
+      - run: npm ci --ignore-scripts
+      - name: Verify archived Android bridge contracts without building an application
+        run: |
+          python3 tests/test_command_queue_smoke.py
+          node tests/test_android_activity.cjs
           node tests/android_provider_policy.cjs
-          node tests/test_play_system_icons.cjs --bundle android/app/build/generated/ottplay/play/assets/public/dist/stbPlayer.js
+          node tests/test_play_system_icons.cjs
           node tests/test_native_runtime.cjs
           node tests/test_native_runtime_gate.cjs
           node tests/test_native_dev.cjs
-          OTTPLAY_TEST_JQUERY=android/app/build/generated/ottplay/play/assets/public/js/jquery.min.js node tests/test_frontend_safety.cjs --bundle android/app/build/generated/ottplay/play/assets/public/dist/stbPlayer.js
+          node tests/test_frontend_safety.cjs
           node tests/test_android_privacy_viewer.cjs
-          BUNDLETOOL_JAR="$PWD/android/build/tools/bundletool-all-1.18.3.jar" python3 tests/test_android_bundle_manifest.py
-          python3 tests/test_android_flavor_assets.py
           python3 tests/test_android_emoji_policy.py
       - name: Exercise native queue JSON and socket cleanup
         run: |

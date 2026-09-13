@@ -222,16 +222,8 @@ jobs:
         retention-days: 14
     timeout-minutes: 90
   mobile:
-    name: Build mobile (${{ matrix.type }})
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - platform: macos-latest
-          type: ios
-        - platform: ubuntu-latest
-          type: android
-    runs-on: ${{ matrix.platform }}
+    name: Build iOS
+    runs-on: macos-latest
     timeout-minutes: 60
     steps:
     - name: Harden the runner (Audit all outbound calls)
@@ -250,12 +242,10 @@ jobs:
     - name: Install JS dependencies
       run: npm ci --ignore-scripts
     - name: iOS – build web + sync
-      if: matrix.type == 'ios'
       run: npm run build:ios
       env:
         CI: true
     - name: iOS – discover scheme
-      if: matrix.type == 'ios'
       id: discover
       run: |
         SCHEME=$(xcodebuild -list -project ios/App/App.xcodeproj | awk '/Schemes:/{getline; gsub(/^[ \t]+/,""); print; exit}')
@@ -266,7 +256,6 @@ jobs:
         echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
         echo "Using scheme: $SCHEME"
     - name: iOS – archive (unsigned)
-      if: matrix.type == 'ios'
       run: |
         SCHEME="${{ steps.discover.outputs.scheme }}"
         SCHEME="${SCHEME:-App}"
@@ -287,7 +276,6 @@ jobs:
           ONLY_ACTIVE_ARCH=NO \
           ARCHS=arm64
     - name: iOS – audit final application and package IPA
-      if: matrix.type == 'ios'
       run: |
         XCA="${{ github.workspace }}/ottplay-foss-ios.xcarchive"
         APP_DIR="$XCA/Products/Applications"
@@ -310,56 +298,6 @@ jobs:
         path: ottplay-foss-ios-unsigned.ipa
         if-no-files-found: error
         retention-days: 14
-      if: matrix.type == 'ios'
-    - name: Android – setup Java
-      if: matrix.type == 'android'
-      uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c
-      with:
-        distribution: temurin
-        java-version: '21'
-    - name: Android – setup SDK
-      if: matrix.type == 'android'
-      uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
-    - name: Android – install SDK components
-      if: matrix.type == 'android'
-      run: bash scripts/ci-android-install-sdk.sh
-    - name: Android – sync native plugins without shared frontend assets
-      if: matrix.type == 'android'
-      run: node scripts/build-android.cjs sync
-      env:
-        CI: true
-    - name: Android – build unsigned Full APK and Play AAB
-      if: matrix.type == 'android'
-      working-directory: android
-      run: |
-        env -u KEYSTORE_FILE -u KEYSTORE_PASSWORD -u KEY_ALIAS -u KEY_PASSWORD \
-          ./gradlew --no-daemon :app:assembleFullRelease :app:bundlePlayRelease
-    - name: Android – audit both packaged distributions
-      if: matrix.type == 'android'
-      run: |
-        node scripts/verify-android-distribution.cjs android/app/build/outputs/apk/full/release/app-full-release-unsigned.apk full
-        node scripts/verify-android-distribution.cjs android/app/build/outputs/bundle/playRelease/app-play-release.aab play
-    - name: Collect Android packages
-      if: matrix.type == 'android'
-      run: |-
-        mkdir -p release-output/android
-        APK="android/app/build/outputs/apk/full/release/app-full-release-unsigned.apk"
-        AAB="android/app/build/outputs/bundle/playRelease/app-play-release.aab"
-        test -s "$APK"
-        test -s "$AAB"
-        # Full keeps its established APK name. Play is a separate, audited product.
-        cp "$APK" release-output/android/ottplay-foss-android-unsigned.apk
-        cp "$AAB" release-output/android/ottplay-foss-android-play-unsigned.aab
-    - name: Store release assets
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-      with:
-        name: release-assets-mobile-android
-        path: |-
-          release-output/android/ottplay-foss-android-unsigned.apk
-          release-output/android/ottplay-foss-android-play-unsigned.aab
-        if-no-files-found: error
-        retention-days: 14
-      if: matrix.type == 'android'
   container:
     name: Build container archive
     runs-on: ubuntu-latest

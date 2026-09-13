@@ -4,19 +4,13 @@
   "description": "OTT-play FOSS - IPTV/OTT set-top-box player",
   "type": "module",
   "scripts": {
-    "android:all": "node scripts/build-android.cjs all",
-    "android:full": "node scripts/build-android.cjs full",
-    "android:full:release": "node scripts/build-android.cjs full-release",
-    "android:play": "node scripts/build-android.cjs play",
-    "android:play:debug": "node scripts/build-android.cjs play-debug",
     "build": "vite build",
     "build:ios": "vite build && node scripts/native-runtime.cjs audit dist-mobile --platform capacitor && npx cap sync ios && node scripts/native-runtime.cjs audit ios/App/App/public --platform capacitor --source dist-mobile",
-    "build:mobile": "vite build && npx cap copy && npx cap sync",
+    "build:mobile": "npm run build:ios",
     "build:server": "vite build --mode server",
-    "cap:android": "npx cap open android",
-    "cap:copy": "vite build && npx cap copy",
+    "cap:copy": "vite build && npx cap copy ios",
     "cap:ios": "npx cap open ios",
-    "cap:sync": "npx cap sync",
+    "cap:sync": "npx cap sync ios",
     "check": "ultracite check",
     "check:bundle": "bash scripts/check-bundle-identifiers.sh && node tests/test_port_bundle_smoke.cjs && node tests/test_provider_storage_reset.cjs --bundle && node tests/test_demo_provider.cjs --bundle && node tests/test_channel_rendering_parity.cjs && node tests/test_favorites_access.cjs --bundle && node tests/test_debug_redaction.cjs --bundle",
     "check:es5": "node scripts/check-es5.cjs",
@@ -40,7 +34,6 @@
     "uuid": "11.1.1"
   },
   "dependencies": {
-    "@capacitor/android": "8.5.2",
     "@capacitor/app": "8.1.1",
     "@capacitor/cli": "8.5.2",
     "@capacitor/core": "8.5.2",
@@ -52,6 +45,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
+    "@capacitor/android": "8.5.2",
     "@tauri-apps/cli": "^2.11.4",
     "@types/jquery": "^4.0.1",
     "@types/node": "^26.5.0",

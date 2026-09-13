@@ -15,16 +15,15 @@
     "cargo test --locked --release --manifest-path tests/glib-variant-regression/Cargo.toml"
   ],
   "notes": [
-    "Retains all existing desktop and mobile build targets; signing/notarization remains optional exactly as before.",
+    "Retains web/server, desktop and iOS build targets. Native Android APK/AAB builds and publication belong to open-ott-play/ottplay-android.",
     "Classic emitted bundle smoke and ES5 checks are required, in addition to TypeScript checks.",
     "Physical TV/STB firmware, decoders, live IPTV streams and DRM are separate acceptance checks.",
     "OCI container archives are promoted without rebuild; deployment remains explicit.",
-    "Production automatic updating is not configured: updater public key is a placeholder and latest.json is not generated. Manual installers are supported; unsigned Android packages must be signed before installation and unsigned iOS packages need operator signing/sideloading."
+    "Production automatic updating is not configured: updater public key is a placeholder and latest.json is not generated. Manual installers are supported; unsigned iOS packages need operator signing/sideloading."
   ],
   "version_companions": [
     "src-tauri/Cargo.toml",
     "src-tauri/tauri.conf.json",
-    "android/app/build.gradle",
     "ios/App/App.xcodeproj/project.pbxproj"
   ],
   "container_assets": {
