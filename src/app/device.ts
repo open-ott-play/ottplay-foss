@@ -5,13 +5,17 @@
  * Exports globals expected by legacy code and provider scripts.
  */
 
-// URL-based device detection (legacy index.html:67-91)
+// Keep in sync with the pre-bundle device detector in index.html.
 export function detectDevice(): string {
     var path = window.location.pathname;
-    var m = path.match(/^\/f\/(.+?)(\/|$)/);
+    var m = path.match(/^\/f\/((?:lg|samsung)\/[^\/]+|[^\/]+)(?:\/|$)/);
     if (m) return m[1].replace(/\/+$/, "");
     var ua = navigator.userAgent.toLowerCase();
-    if (ua.indexOf("webos") !== -1 || ua.indexOf("lg") !== -1)
+    if (
+        ua.indexOf("web0s") !== -1 ||
+        ua.indexOf("webos") !== -1 ||
+        ua.indexOf("lg") !== -1
+    )
         return "lg/webos";
     if (ua.indexOf("tizen") !== -1) return "samsung/tizen";
     if (ua.indexOf("maple") !== -1) return "samsung/maple";
