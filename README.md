@@ -63,51 +63,36 @@ When debug is enabled:
   - Else: sets `ottplay_debug=1` + `ottplay_debug_hud=1` and prompts restart
 - Persistence: HUD state saved to `localStorage.ottplay_debug_hud` ("1"/"0") by `ottDebugSetHud`
 
-## Mobile Apps (iOS / Android)
+## iOS and native Android
 
-Capacitor wraps the same TypeScript frontend for native iOS and Android.
+This repository packages the shared TypeScript frontend with Capacitor for **iOS**.
+Tauri desktop and Capacitor iOS use system fonts and the npm-locked native runtime;
+the browser and legacy STB builds retain their existing vendor assets.
 
-Android has two separate installations: **Full** (`play.ott.foss`) retains the
-provider catalog for sideloading; **Play** (`play.ott.foss.play`) includes only
-user-configured M3U, Stalker, Xtream and our synthetic Demo. Both can be installed
-side by side. Play excludes branded provider files and activation code at build
-time. See [Android distributions](docs/android-distributions.md) for packaging,
-signing and the remaining store-submission requirements.
-
-Tauri and both Capacitor products use system fonts and npm-locked jQuery 4.0.0,
-hls.js 1.7.3 and Shaka Player 5.2.10. Native packages include their licenses and a
-`native-runtime.json` version/hash manifest; web and legacy builds retain their
-existing vendor libraries and fonts. Play requires HTTPS sources, while Full
-can use user-configured HTTP sources. The current Play submission targets phones
-and tablets, without a claim of Android TV qualification.
-
-[Play submission preparation](docs/play-submission.md) includes reviewer steps,
-privacy/Data safety and foreground-service drafts. The
-[inherited-code permission record](docs/legacy-provenance.md) identifies the
-specific provenance evidence still needed before a publication decision.
-
-The mobile interface stays in landscape and supports rotation between both landscape directions. Tablet multitasking and newer operating-system windowing policies can override the requested orientation; see the platform notes below. Use Settings → Lists to adjust the number of visible rows and spacing for smaller screens.
-
-Settings → Buttons preserves the selected seek intervals, and Settings → Interface applies the selected streaming engine when saved. The sleep timer choices are off, 30 minutes, 1 hour, 2 hours and 3 hours of inactivity. Saved button mappings, hidden menu items and parental preferences also survive settings export and subsequent saves.
-
-Settings → Remote control keeps its URL editing controls visible on small screens. Scroll long values with the arrow keys or a swipe. Local HTTP remote control is off by default and generates a secret device code when enabled. Clearing the local command URL disables proxy polling; clearing the swop URL disables remote text entry.
-
-Tauri and mobile exports open a selectable JSON backup with a Copy JSON control; browser exports download a JSON file. Import settings uses the app's text editor and requires confirmation before replacing saved preferences. URL editing and Tauri update confirmation also use the app's own dialogs.
+The native Android application, including all APK/AAB creation, signing and release
+workflows, has moved to [open-ott-play/ottplay-android](https://github.com/open-ott-play/ottplay-android).
+It is currently a **private preview requiring repository access**, not a public
+Android download. This repository no longer builds or publishes Android packages.
+Its Android browser/STB profiles and TypeScript bridge compatibility remain supported.
+The old Kotlin/manifest files under `android/` are [archived test fixtures](android/README.md).
 
 ```bash
-npm install
-npm run build:mobile          # vite build + cap copy + cap sync
+npm ci
+npm run build:ios             # build and audit the frontend, then sync iOS
 npm run cap:ios               # open in Xcode
-npm run cap:android           # open in Android Studio
-npm run android:full          # installable Full debug APK for local testing
-npm run android:play          # clean Play release AAB; separate upload signing
 ```
 
-See [docs/capacitor-mobile.md](docs/capacitor-mobile.md) for prerequisites, configuration, and gaps.
+See [Capacitor iOS](docs/capacitor-mobile.md) for configuration and smoke checks.
+The [historical Android distributions](docs/android-distributions.md) page explains
+the extraction; old Full/Play packaging instructions do not apply to the native app.
 
-Device smoke (Mode B sim/emulator checklist + helper; unpaid store / sideload): [docs/mode-b-device-smoke.md](docs/mode-b-device-smoke.md) — `./scripts/smoke-capacitor-device.sh --help`.
+The iOS interface uses landscape orientation. Settings, provider configuration,
+remote-control consent and JSON import/export continue to use the shared frontend.
+Tablet multitasking can override the requested orientation.
 
-Tauri desktop smoke (Mode B launch/play/PiP checklist + helper; unpaid/unsigned OK): [docs/mode-b-tauri-smoke.md](docs/mode-b-tauri-smoke.md) — `./scripts/smoke-tauri-desktop.sh --help`.
+Device smoke: [Mode B checklist](docs/mode-b-device-smoke.md) and
+`./scripts/smoke-capacitor-device.sh --help` (build/sync target iOS only).
+Tauri desktop smoke: [desktop checklist](docs/mode-b-tauri-smoke.md).
 
 ## Installation
 
@@ -117,15 +102,13 @@ Tauri desktop smoke (Mode B launch/play/PiP checklist + helper; unpaid/unsigned 
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | Various distributions |
 | **iOS** | `.ipa` via AltStore / TestFlight / Xcode | Sideload only — not on App Store yet |
-| **Android** | `.apk` direct install or ADB | arm64-v8a, armeabi-v7a, x86_64 |
+| **Android** | Separate [native application](https://github.com/open-ott-play/ottplay-android) | Private preview; repository access required |
 
 Supported installers are attached to qualified GitHub releases: [https://github.com/open-ott-play/ottplay-foss/releases/latest](https://github.com/open-ott-play/ottplay-foss/releases/latest)
 
-> **Note:** Release packages may be unsigned. Android requires a signed APK even
-> for sideloading; allowing unknown apps does not make an unsigned APK installable.
-> `npm run android:full` produces a debug-signed APK for testing. Production Full
-> APKs need a stable release certificate, and Play AABs need the separate upload
-> signing process. iOS also requires signing for device installation.
+> **Note:** Desktop and iOS release packages may be unsigned. iOS requires
+> signing before installation on a physical device. Android packages are not
+> part of releases from this repository.
 
 ---
 
@@ -251,99 +234,13 @@ If a TestFlight beta is available:
 
 ---
 
-### Android Installation
+### Android application
 
-#### Option 1: Direct Install (APK)
-
-1. Build a Full debug APK with `npm run android:full`, or obtain a Full APK signed
-   with your release certificate. The release file named `android-unsigned.apk`
-   must be signed before installation.
-2. Transfer to your Android device
-3. Open the APK file
-4. If prompted about unknown sources: Settings → Security → Allow unknown sources
-5. Tap Install
-
-**Note:** You may need to enable "Install unknown apps" for your browser or file manager.
-
-#### Option 2: ADB Installation (Recommended for developers)
-
-ADB gives you more control and is useful for debugging.
-
-**Prerequisites:**
-
-```bash
-# macOS
-brew install android-platform-tools
-
-# Ubuntu/Debian
-sudo apt install adb
-
-# Windows — download from:
-# https://developer.android.com/studio/releases/platform-tools
-```
-
-**Step 1: Enable USB Debugging**
-
-1. Go to Settings → About Phone
-2. Tap "Build Number" 7 times → Developer mode enabled
-3. Go back to Settings → Developer Options
-4. Enable "USB Debugging"
-5. Connect your device via USB
-
-**Step 2: Verify connection**
-
-```bash
-adb devices
-# Should show: "xxxxxxxx    device"
-```
-
-If you see "unauthorized", check your phone for a pairing confirmation dialog.
-
-**Step 3: Install APK**
-
-```bash
-wget https://github.com/open-ott-play/ottplay-foss/releases/latest/download/ottplay-foss-android-unsigned.apk
-
-adb install ottplay-foss-android-unsigned.apk
-```
-
-**Step 4: Launch**
-
-```bash
-# Option A: From command line
-adb shell am start -n play.ott.foss/.MainActivity
-
-# Option B: Tap the app icon on your device
-```
-
-**Useful ADB Commands**
-
-```bash
-# View logs (for debugging)
-adb logcat -s "OttPlay FOSS"
-
-# Reinstall (keeps app data)
-adb install -r ottplay-foss-android-unsigned.apk
-
-# Uninstall
-adb uninstall play.ott.foss
-```
-
-#### Option 3: Via Local Network (Wireless ADB)
-
-```bash
-# Connect via USB first, then enable wireless
-adb tcpip 5555
-
-# Disconnect USB, find device IP on phone
-# Settings → About Phone → Status → IP address
-
-# Connect wirelessly
-adb connect <device-ip>:5555
-
-# Install
-adb install ottplay-foss-android-unsigned.apk
-```
+Build and installation instructions belong to the separate
+[ottplay-android repository](https://github.com/open-ott-play/ottplay-android), which
+is currently a private preview. Access is required. Historical APKs in older
+`ottplay-foss` releases are retired Capacitor builds, not the new native application.
+No old release assets are deleted or replaced by this extraction.
 
 ---
 

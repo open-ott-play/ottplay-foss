@@ -37,7 +37,7 @@ const androidOutput = process.env.OTTPLAY_ANDROID_OUTPUT;
 const androidCompileRoot = process.env.OTTPLAY_ANDROID_COMPILE_ROOT;
 if (androidFlavor && (!androidOutput || !androidCompileRoot)) {
     throw new Error(
-        "Use scripts/prepare-android-assets.cjs for Android builds"
+        "Legacy Android frontend staging requires explicit output and compile roots; APK/AAB builds moved to open-ott-play/ottplay-android"
     );
 }
 const { prepareDistributionModules, stagePlayProviders } = classicRequire(

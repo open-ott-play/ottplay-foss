@@ -540,12 +540,21 @@ def candidate_tag(
     )
 
 
+def reject_retired_android_assets(names) -> None:
+    """Repository adapter: Android packages are released by ottplay-android only."""
+    require(
+        not any(Path(name).suffix.casefold() in {".apk", ".aab"} for name in names),
+        "Android APK/AAB publication moved to open-ott-play/ottplay-android",
+    )
+
+
 def stage_assets(source: Path, destination: Path) -> list[dict]:
     """Snapshot flat regular payload files and hash the private staged bytes."""
     require(
         source.is_dir() and not source.is_symlink(),
         "Assets must be a regular directory",
     )
+    reject_retired_android_assets(entry.name for entry in source.iterdir())
     assets = []
     folded_names = set()
     for entry in sorted(source.iterdir()):
@@ -581,6 +590,8 @@ def publish(
     gh: GitHub, tag: str, sha: str, directory: Path, prerelease: bool, body: str
 ) -> dict:
     """Keep draft creation, exact-byte upload checks and publication in one transaction."""
+    # Also applies to promotion of RCs built before Android extraction.
+    reject_retired_android_assets(entry.name for entry in directory.iterdir())
     ensure_absent(gh, tag)
     gh.api("git/refs", "POST", {"ref": f"refs/tags/{tag}", "sha": sha})
     release = gh.api(

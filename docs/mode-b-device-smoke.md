@@ -1,3 +1,5 @@
+> **Scope after Android extraction:** build/sync/open checks here target iOS. Android sections are historical runtime checks for already installed Capacitor builds; the standalone [native Android app](https://github.com/open-ott-play/ottplay-android) has its own checks and currently requires private-repository access.
+
 # Capacitor device smoke (Mode B)
 
 Repeatable **iOS Simulator / Android emulator** (and optional real-device) smoke for Mode B Capacitor.
@@ -21,9 +23,9 @@ Related:
 | Step | Automated? | Notes |
 | --- | --- | --- |
 | Tools present (`node` / `npm`; optional `xcrun` / `adb`) | Yes (helper) | Soft unless `--require-*` |
-| `android/` + `ios/` dirs after sync | Yes (helper) | Artifact presence only |
+| `ios/` directory after sync | Yes (helper) | Project presence only |
 | `npm run build:mobile` / `npm run cap:sync` | Optional (helper flags) | Local; flaky in headless CI if Xcode/SDK missing |
-| Open Xcode / Android Studio | Optional (helper flags) | Human continues in IDE |
+| Open Xcode | Optional (`--open-ios`) | Human continues in IDE |
 | Optional command-queue HTTP POST/GET | Only after explicit opt-in | HTTP is off by default; separate token-authenticated check, never required for normal playback |
 | UI: queue drain / EPG / M3U play / Stalker / swop | **Human** | Simulator, emulator, or real device |
 | Paid TestFlight / Play upload | **Out of scope** | Unpaid: sim + sideload APK / free Apple ID only |
@@ -56,9 +58,9 @@ Paid Apple Developer / Play Console accounts are **not** required for this smoke
 
 ```bash
 npm install
-npm run build:mobile          # vite build + cap copy + cap sync
+npm run build:mobile          # build, audit and sync iOS
 npm run cap:ios               # open Xcode (macOS)
-npm run cap:android           # open Android Studio
+# Android builds now live in open-ott-play/ottplay-android (private preview).
 ```
 
 Or via helper (best-effort; does not boot simulators by itself):

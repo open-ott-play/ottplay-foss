@@ -103,7 +103,7 @@ retrying. The tool refuses to overwrite them. Never rebuild an image for stable.
 - Classic emitted bundle smoke and ES5 checks are required, in addition to TypeScript checks.
 - Physical TV/STB firmware, decoders, live IPTV streams and DRM are separate acceptance checks.
 - OCI container archives are promoted without rebuild; deployment remains explicit.
-- Production automatic updating is not configured: updater public key is a placeholder and latest.json is not generated. Manual installers are supported; unsigned Android packages must be signed before installation and unsigned iOS packages need operator signing/sideloading.
+- Production automatic updating is not configured: updater public key is a placeholder and latest.json is not generated. Manual desktop and iOS installers are supported; unsigned iOS packages need operator signing/sideloading.
 
 For public repositories, merge and verify the workflows before enabling the
 additive Terraform **CI gate** ruleset. Where release/deployment workflows use
@@ -124,3 +124,12 @@ projects receive the local client, whose contracts run in the toolkit. Update th
 References: [GitHub schedules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule),
 [protected environments](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments),
 [artifact provenance](https://docs.github.com/en/rest/actions/artifacts).
+
+## Android extraction
+
+Only web/server, desktop, iOS and container artifacts are built here. Android APK/AAB
+builds and signing moved to [ottplay-android](https://github.com/open-ott-play/ottplay-android), currently a private preview
+requiring access. The publisher rejects `.apk` and `.aab` payloads, including stable
+promotion of old RCs; create a new RC without Android assets. Existing historical
+releases remain unchanged. Legacy Android bridge tests still run without an Android
+SDK or Gradle application build.
