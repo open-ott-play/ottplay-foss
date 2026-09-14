@@ -494,6 +494,21 @@ function setPlayer() {
     }
 }
 document.body.style.cursor = "pointer";
+function stbBindKeyHandler() {
+    var w = window;
+    if (typeof w.__ottKeydownListener !== "function") {
+        w.__ottKeydownListener = function (event) {
+            if (typeof w.keyHandler === "function") w.keyHandler(event);
+        };
+    }
+    // Replace the previous property binding without delivering a key twice.
+    w.onkeydown = null;
+    if (typeof w.addEventListener === "function") {
+        w.addEventListener("keydown", w.__ottKeydownListener, false);
+    } else {
+        w.onkeydown = w.__ottKeydownListener;
+    }
+}
 function stbInit() {
     $("body").css({ "background-color": "#111" });
     window.addEventListener("resize", function () {
@@ -629,7 +644,7 @@ function stbInit() {
         $("#launch").append(_("<br/>Setup STB..."));
     if (isNaN(Number.parseInt(stbGetItem("sEditor")))) stbSetItem("sEditor", 1);
     stbToFullScreen();
-    window.onkeydown = keyHandler;
+    stbBindKeyHandler();
 }
 function stbCSS() {
     if (typeof stbGetItem !== "function") return;

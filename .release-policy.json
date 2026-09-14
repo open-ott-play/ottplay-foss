@@ -10,6 +10,8 @@
     "npm run build",
     "npm run check:bundle",
     "npm run check:es5",
+    "npx playwright install chromium",
+    "npm run test:devices:browser",
     "npm run package:modea",
     "cargo test --locked -p ottplay-core -p ottplay-server",
     "cargo test --locked --release --manifest-path tests/glib-variant-regression/Cargo.toml"
@@ -32,5 +34,111 @@
   "repository": "open-ott-play/ottplay-foss",
   "mode": "release",
   "default_branch": "main",
-  "visibility": "public"
+  "visibility": "public",
+  "versioning": {
+    "schema": 1,
+    "promotion": "promote-bytes",
+    "files": [
+      {
+        "path": "package.json",
+        "format": "json",
+        "value": "package",
+        "field": "version"
+      },
+      {
+        "path": "package-lock.json",
+        "format": "npm-lock",
+        "value": "package",
+        "package": "ottplay-foss"
+      },
+      {
+        "path": "src-tauri/Cargo.toml",
+        "format": "toml",
+        "value": "package",
+        "field": "package.version"
+      },
+      {
+        "path": "src-tauri/tauri.conf.json",
+        "format": "json",
+        "value": "package",
+        "field": "version"
+      },
+      {
+        "path": "Cargo.lock",
+        "format": "cargo-lock",
+        "value": "package",
+        "package": "ottplay-tauri"
+      },
+      {
+        "path": "ios/App/App.xcodeproj/project.pbxproj",
+        "format": "pbxproj",
+        "value": "base",
+        "package": "504EC3171FED79650016851F",
+        "field": "MARKETING_VERSION"
+      },
+      {
+        "path": "ios/App/App.xcodeproj/project.pbxproj",
+        "format": "pbxproj",
+        "value": "apple-build",
+        "package": "504EC3171FED79650016851F",
+        "field": "CURRENT_PROJECT_VERSION"
+      },
+      {
+        "path": "ios/App/App.xcodeproj/project.pbxproj",
+        "format": "pbxproj",
+        "value": "base",
+        "package": "504EC3181FED79650016851F",
+        "field": "MARKETING_VERSION"
+      },
+      {
+        "path": "ios/App/App.xcodeproj/project.pbxproj",
+        "format": "pbxproj",
+        "value": "apple-build",
+        "package": "504EC3181FED79650016851F",
+        "field": "CURRENT_PROJECT_VERSION"
+      }
+    ],
+    "build_number_floor": 10142,
+    "artifacts": [
+      {
+        "path": "ottplay-foss-modea.tar.gz",
+        "format": "tar-json",
+        "value": "package",
+        "member": "build-info.json",
+        "field": "version"
+      },
+      {
+        "path": "ottplay-foss-dist.tar.gz",
+        "format": "tar-json",
+        "value": "package",
+        "member": "build-info.json",
+        "field": "version"
+      },
+      {
+        "path": "ottplay-foss-ios-unsigned.ipa",
+        "format": "ipa",
+        "value": "base",
+        "field": "CFBundleShortVersionString"
+      },
+      {
+        "path": "ottplay-foss-ios-unsigned.ipa",
+        "format": "ipa",
+        "value": "apple-build",
+        "field": "CFBundleVersion"
+      },
+      {
+        "path": "ottplay-foss-container.oci.tar",
+        "format": "oci",
+        "field": ["config", "Labels", "org.opencontainers.image.version"],
+        "value": "package"
+      }
+    ],
+    "toolkit_revision": "5671b9a05817576a8ae6bd69cacfb3202c60ad0a"
+  },
+  "asset_restrictions": [
+    {
+      "suffixes": [".apk", ".aab"],
+      "reason": "Android APK/AAB publication moved to open-ott-play/ottplay-android"
+    }
+  ]
 }

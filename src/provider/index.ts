@@ -1205,12 +1205,12 @@ export function loadChannels(): void {
             wShow.stbSetItem("sPreview", String(sPreview));
         }
     } catch (_mir) {}
-    // Keep existing provider choices (including explicit HTML5) and use Auto
-    // only for providers that do not have a preference in the Tauri shell.
+    // Load provider preferences; webOS chooses its engine automatically while
+    // other platforms retain their supported manual choices.
     sPlayers = providerGetNum("sPlayers", getDefaultPlayerMode());
     // Imported Auto must select a playable engine, including browsers without
     // native HLS support, as well as an available menu item on STBs.
-    // Keep the stored preference intact so Tauri can use it again on return.
+    // Keep stored preferences intact when normalizing for another platform.
     sPlayers = normalizePlayerMode(sPlayers);
     wShow.sPlayers = sPlayers;
     if (wShow.settings) wShow.settings.players = sPlayers;

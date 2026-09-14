@@ -77,7 +77,7 @@ function inspect(root) {
     ]
         .filter(
             (file) =>
-                /(?:^test[-_].*\.(?:cjs|ts|py)$|^android_provider_policy\.cjs$)/.test(
+                /(?:^test[-_].*\.(?:cjs|ts|py)$|\.spec\.(?:cjs|ts)$|^android_provider_policy\.cjs$)/.test(
                     path.basename(file)
                 ) || file.endsWith("/tests/variant_str_iter.rs")
         )
@@ -153,6 +153,26 @@ function inspect(root) {
                 if (!packageJson.scripts[name])
                     errors.push(`Missing npm script: ${name}`);
                 else readCommands(packageJson.scripts[name], cwd);
+            } else if (
+                (words[0] === "playwright" && words[1] === "test") ||
+                (words[0] === "npx" &&
+                    words[1] === "playwright" &&
+                    words[2] === "test")
+            ) {
+                // Require explicit spec paths so an unused npm script, install
+                // command or unrelated Playwright invocation cannot count as CI.
+                if (
+                    words.some((word) =>
+                        ["--list", "--help", "-h", "--version", "-V"].includes(
+                            word
+                        )
+                    )
+                )
+                    continue;
+                for (const file of words.slice(words[0] === "npx" ? 3 : 2)) {
+                    if (/\.spec\.(?:cjs|ts)$/.test(file))
+                        visit(relative(path.resolve(cwd, file)));
+                }
             } else if (["node", "python3", "python"].includes(words[0])) {
                 if (words.includes("unittest") && words.includes("discover")) {
                     const directory = words[words.indexOf("-s") + 1];

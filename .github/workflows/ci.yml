@@ -87,6 +87,23 @@ jobs:
       - name: Check emitted ES5 grammar
         run: npm run check:es5
 
+      - name: Install browser for device emulation
+        run: npx playwright install --with-deps chromium
+
+      - name: Test device boot and remote navigation in Chromium
+        run: npm run test:devices:browser
+
+      - name: Upload device browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: device-browser-failures-${{ github.sha }}
+          path: |
+            build/device-browser-report/
+            build/device-browser-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Package base OTT for device testing
         run: npm run package:modea
 

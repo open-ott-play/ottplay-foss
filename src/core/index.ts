@@ -28,13 +28,14 @@ export var video: HTMLVideoElement | null = null;
 export var videoPip: HTMLVideoElement | null = null;
 /**
  * Active playback engine mode:
- * 0 = native HTML5, 1 = hls.js, 2 = shaka-player, 3 = Tauri Auto.
+ * 0 = native HTML5, 1 = hls.js, 2 = shaka-player, 3 = per-stream Auto.
  */
 export var playerMode = 0;
 
 /**
  * Set the playback engine mode.
- * @param v - 0 (HTML5), 1 (hls.js), 2 (shaka), or 3 (Tauri Auto).
+ * @param v - 0 (HTML5), 1 (hls.js), 2 (shaka), or 3 (Auto).
+ * webOS always uses Auto without rewriting the stored provider preference.
  */
 export function setPlayerMode(v: number): void {
     var nextMode = normalizePlayerMode(v);
@@ -48,16 +49,49 @@ export var playerModeNames =
         ? ["html5", "hls.js", "shaka", "auto"]
         : ["html5", "hls.js", "shaka"];
 
-/** Preserve explicit provider preferences; Auto is the default only in Tauri. */
+/** Identify only the standalone Android TV test host, never a native app shell. */
+export function isOttplayTestWebView(): boolean {
+    if (typeof window === "undefined") return false;
+    var w = window as any;
+    try {
+        if (
+            w.ott_device !== "android" ||
+            typeof w.Capacitor !== "undefined" ||
+            typeof w.__ottNativeRuntime !== "undefined" ||
+            typeof w.Android !== "undefined" ||
+            typeof w.__TAURI__ !== "undefined" ||
+            typeof w.__TAURI_INTERNALS__ !== "undefined"
+        )
+            return false;
+        var ua = w.navigator && w.navigator.userAgent;
+        return (
+            typeof ua === "string" &&
+            /(?:^|\s)OttplayTestWebView\/1\.0(?=\s|$)/.test(ua)
+        );
+    } catch (_bridgeError) {
+        return false;
+    }
+}
+
+/** Auto handles stream formats on webOS, Tauri and the marked Android test host. */
 export function getDefaultPlayerMode(): number {
     return typeof window !== "undefined" &&
-        ((window as any).__TAURI__ || (window as any).__TAURI_INTERNALS__)
+        ((window as any).ott_device === "lg/webos" ||
+            (window as any).__TAURI__ ||
+            (window as any).__TAURI_INTERNALS__ ||
+            isOttplayTestWebView())
         ? 3
         : 0;
 }
 
-/** Imported Auto preferences use an available engine outside Tauri. */
+/** webOS selects its engine automatically; other platforms retain manual modes. */
 export function normalizePlayerMode(mode: number): number {
+    if (
+        typeof window !== "undefined" &&
+        (window as any).ott_device === "lg/webos"
+    )
+        return 3;
+    // Imported Auto uses an available manual mode outside Auto platforms.
     if (mode !== 3 || getDefaultPlayerMode() === 3) return mode;
     return video &&
         typeof video.canPlayType === "function" &&
@@ -140,6 +174,11 @@ function cancelCoreAutoPlayback(modeChange?: boolean): void {
 
 function coreAutoMode(url: string, media: HTMLVideoElement | null): number {
     if (/\.mpd(?:[?#]|$)/i.test(url)) return 2;
+    // This test WebView can advertise native HLS yet reject served manifests.
+    // Prefer MSE only in this host; native apps and working TV engines keep
+    // their existing native-first behavior and saved manual choices.
+    if (/\.m3u8(?:[?#]|$)/i.test(url) && isOttplayTestWebView())
+        return typeof Hls !== "undefined" && Hls.isSupported() ? 1 : 0;
     if (
         /\.m3u8(?:[?#]|$)/i.test(url) &&
         media &&
@@ -1795,12 +1834,20 @@ export function stbCSS(): void {
 }
 
 /**
- * Auto-detect the player mode: if the provider has not set a player preference and
- * the browser cannot play HLS natively (Apple's `canPlayType`), fall back to hls.js (mode 1).
+ * webOS always selects the engine per stream. Elsewhere, preserve explicit
+ * provider preferences; choose Auto in Tauri/the Android test host, or hls.js
+ * when native HLS is absent.
  *
- * Side effects: May set `playerMode` to 1.
+ * Side effects: May update `playerMode`; never changes the stored preference.
  */
 export function setPlayer(): void {
+    if (
+        typeof window !== "undefined" &&
+        (window as any).ott_device === "lg/webos"
+    ) {
+        setPlayerMode(3);
+        return;
+    }
     if (!providerHasItemValue("sPlayers") && getDefaultPlayerMode() === 3) {
         playerMode = 3;
         return;
@@ -1824,6 +1871,25 @@ export function stbExit(): void {
     window.close();
 }
 
+/** Keep remote input working when an embedding host replaces window.onkeydown. */
+export function stbBindKeyHandler(): void {
+    var w = window as any;
+    if (typeof w.__ottKeydownListener !== "function") {
+        w.__ottKeydownListener = function (event: KeyboardEvent): void {
+            if (typeof w.keyHandler === "function") w.keyHandler(event);
+        };
+    }
+    // Initialization historically replaced the property handler. Clear it so
+    // an earlier property binding cannot deliver the same key a second time.
+    w.onkeydown = null;
+    if (typeof w.addEventListener === "function") {
+        // Reusing this callback makes repeated initialization idempotent.
+        w.addEventListener("keydown", w.__ottKeydownListener, false);
+    } else {
+        w.onkeydown = w.__ottKeydownListener;
+    }
+}
+
 /**
  * Initialise the STB player: inject video DOM elements, attach event handlers,
  * go fullscreen, and set the global key handler.
@@ -1837,7 +1903,7 @@ export function stbExit(): void {
  * - Shows/hides #buffering and #video_res on playback events.
  * - Starts a 1-second interval to calculate and display decoded bitrate.
  * - Calls stbToFullScreen().
- * - Assigns `window.onkeydown = window.keyHandler`.
+ * - Installs the remote key listener through stbBindKeyHandler().
  */
 export function stbInit(): void {
     $("body").css({ "background-color": "#111" });
@@ -1993,7 +2059,7 @@ export function stbInit(): void {
         console.error(e);
     }
     stbToFullScreen();
-    window.onkeydown = window.keyHandler;
+    stbBindKeyHandler();
     try {
         installTauriFsKeyCapture();
     } catch (_fsKey) {}
