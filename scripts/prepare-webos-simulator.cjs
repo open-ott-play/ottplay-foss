@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, "..");
 const destination = path.join(root, "build/device-webos-simulator");
 let target = process.env.OTTP_PLAYER_URL;
 if (!target) {
-    const port = Number(process.env.OTTP_DEVICE_TEST_PORT || 8095);
+    const port = Number(process.env.OTTP_DEVICE_TEST_PORT || 8443);
     if (!Number.isInteger(port) || port < 1 || port > 65535)
         throw new Error("OTTP_DEVICE_TEST_PORT must be a valid TCP port");
     target = "http://127.0.0.1:" + port + "/";

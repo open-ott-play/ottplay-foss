@@ -27,7 +27,7 @@ Exit codes:
   2  HTTP/JSON assertion failed (or restart warm-up failed)
   3  usage / missing dependency
 
-Default BASE_URL http://127.0.0.1:8095. No secrets.
+Default BASE_URL http://127.0.0.1:8443. No secrets.
 """
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
-DEFAULT_BASE = "http://127.0.0.1:8095"
+DEFAULT_BASE = "http://127.0.0.1:8443"
 DEFAULT_CONNECT_TIMEOUT = 2.0
 DEFAULT_READ_TIMEOUT = 15.0
 DEFAULT_WARMUP_TIMEOUT = 180.0
@@ -60,7 +60,7 @@ def not_listening(url: str, detail: str = "") -> None:
     if detail:
         eprint(f"  detail: {detail}")
     eprint(
-        "hint: start ottplay-server (local install :8095, cargo/docker often :8080)"
+        "hint: start ottplay-server (local install :8443, cargo/docker often :8080)"
     )
     eprint(
         "      or archive/server.py on the same port; override with BASE_URL=..."

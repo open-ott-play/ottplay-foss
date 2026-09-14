@@ -7,8 +7,14 @@
   ],
   "remote": {
     "urls": [
-      "http://127.0.0.1:8095/*",
-      "http://localhost:8095/*",
+      "http://127.0.0.1:8443/*",
+      "http://127.0.0.1:8444/*",
+      "http://127.0.0.1:8445/*",
+      "http://127.0.0.1:8446/*",
+      "http://localhost:8443/*",
+      "http://localhost:8444/*",
+      "http://localhost:8445/*",
+      "http://localhost:8446/*",
       "http://tauri.localhost/*",
       "https://tauri.localhost/*",
       "http://asset.localhost/*",

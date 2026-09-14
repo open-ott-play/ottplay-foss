@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
 # Player half of the local macOS stack (called by install-local-stack.sh).
-# Syncs repo to ~/ottplay-foss-local, builds player + Rust binary, cert trust,
-# launchd agent with HTTP + all HTTPS ports (one --https-port each).
+# Syncs repo to ~/ottplay-foss-local, builds player + Rust binary, and installs
+# one loopback-only launchd agent with four independent HTTP browser origins.
 #
 # Prefer: scripts/install-local-stack.sh
 # Usage: scripts/install-ottplay-local-service.sh
-# Env overrides: OTTPLAY_SRC, OTTPLAY_DEST, OTTPLAY_PORT (default 8095 —
-#                8090 is taken by hls-proxy), OTTPLAY_HTTPS_PORTS
-#                (default "8443 8444 8445 8446" — one process, several HTTPS
-#                ports; each port is a separate browser origin, so Chrome
-#                keeps isolated player settings per port), OTTPLAY_LABEL,
-#                OTTPLAY_RUST_SRC (default ~/victron/ottplay-foss),
-#                OTTPLAY_DEBUG_ARCHIVE (default source repo/.local-artifacts/debug-archive).
-# Binds loopback only (--host 127.0.0.1); docker deployments stay wildcard.
+# Env overrides: OTTPLAY_SRC, OTTPLAY_DEST, OTTPLAY_HTTP_PORTS
+#                (default "8443 8444 8445 8446"), OTTPLAY_LABEL,
+#                OTTPLAY_RUST_SRC (default source repo), OTTPLAY_DEBUG_ARCHIVE.
+# HTTP allows legacy portals and media that do not support HTTPS. Each port
+# remains a separate browser origin with independent player settings.
+# Existing certificates and keychain trust are left untouched.
+# Binds loopback only (--host 127.0.0.1); Docker defaults are unchanged.
 #
 # Optional remote text entry (swop) — do NOT commit private Worker hostnames:
 #   export SWOP_BASE_URL=https://your-worker.example
@@ -30,29 +29,42 @@ case "$DEBUG_ARCHIVE" in
     /*) ;;
     *) DEBUG_ARCHIVE="$PWD/$DEBUG_ARCHIVE" ;;
 esac
-RUST_SRC="${OTTPLAY_RUST_SRC:-$HOME/victron/ottplay-foss}"
+RUST_SRC="${OTTPLAY_RUST_SRC:-$SRC}"
 DEST="${OTTPLAY_DEST:-$HOME/ottplay-foss-local}"
-PORT="${OTTPLAY_PORT:-8095}"
-# OTTPLAY_HTTPS_PORTS: space-separated list of HTTPS ports (one per browser origin).
-# Default: 8443 8444 8445 8446 (four origins for isolated player settings).
-HTTPS_PORTS="${OTTPLAY_HTTPS_PORTS:-8443 8444 8445 8446}"
+HTTP_PORTS="${OTTPLAY_HTTP_PORTS-8443 8444 8445 8446}"
 LABEL_BASE="${OTTPLAY_LABEL:-com.ottplay-foss-local}"
-CERT_DIR="$DEST/certs"
-CRT="$CERT_DIR/server.crt"
-KEY="$CERT_DIR/server.key"
 BIN="$DEST/ottplay-server"
 
-for tool in rsync node npm cargo; do
+if [ -n "${OTTPLAY_PORT:-}" ] || [ -n "${OTTPLAY_HTTPS_PORTS:-}" ]; then
+    echo "error: use OTTPLAY_HTTP_PORTS; OTTPLAY_PORT and OTTPLAY_HTTPS_PORTS are retired" >&2
+    exit 1
+fi
+# Reject invalid lists before syncing files or touching launchd.
+python3 - "$HTTP_PORTS" "$LABEL_BASE" <<'PYCONFIG'
+import re
+import sys
+ports = sys.argv[1].split()
+if (not ports or any(not re.fullmatch(r"[0-9]+", p) for p in ports)
+        or any(not 1 <= int(p) <= 65535 for p in ports)
+        or len({int(p) for p in ports}) != len(ports)
+        or 8095 in {int(p) for p in ports}):
+    sys.exit("error: OTTPLAY_HTTP_PORTS must contain distinct ports 1-65535, excluding retired port 8095")
+if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", sys.argv[2]):
+    sys.exit("error: invalid OTTPLAY_LABEL")
+PYCONFIG
+
+for tool in rsync node npm cargo python3; do
     command -v "$tool" >/dev/null || { echo "error: $tool not found" >&2; exit 1; }
 done
 
-echo "[1/6] sync $SRC -> $DEST"
+echo "[1/5] sync $SRC -> $DEST"
 mkdir -p "$DEST"
 # Preserve live debug flag/log across --delete. Keep source-local artifacts out
 # of DEST; the service receives the source archive path explicitly below.
 rsync -a --delete \
     --exclude .git --exclude node_modules --exclude logs --exclude .local-artifacts \
     --exclude target --exclude build --exclude .herenow --exclude .cache \
+    --exclude .local-ops --exclude ottplay-server \
     --exclude android --exclude ios --exclude .env --exclude '.env.*' \
     --exclude '*.local.py' --exclude 'certs' --exclude 'local' \
     --exclude 'debug.enabled' --exclude 'debug-playback.log' --exclude 'debug-playback.log.1' \
@@ -85,167 +97,118 @@ elif [ -f "$DEST/local/swop.json" ]; then
     echo "kept existing $DEST/local/swop.json (SWOP_BASE_URL unset)"
 fi
 
-echo "[2/6] npm ci + build"
+echo "[2/5] npm ci + build"
 cd "$DEST"
 npm ci --no-audit --no-fund 1>&2
 npm run build 1>&2
 
-# Self-signed cert for https://localhost (Chrome warning-free once trusted).
-# SAN must cover every name the browser will use.
-echo "[3/6] certificate"
-mkdir -p "$CERT_DIR"
-if [ ! -f "$CRT" ] || [ ! -f "$KEY" ]; then
-    LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || true)"
-    SAN="DNS:localhost,DNS:$(hostname),IP:127.0.0.1,IP:0:0:0:0:0:0:0:1"
-    [ -n "$LAN_IP" ] && SAN="$SAN,IP:$LAN_IP"
-    openssl req -x509 -newkey rsa:2048 -sha256 -days 825 -nodes \
-        -keyout "$KEY" -out "$CRT" \
-        -subj "/CN=OTT-play Local" -addext "subjectAltName=$SAN" 1>&2
-    echo "generated: $CRT (SAN: $SAN)"
-fi
-# Trust so Chrome/Safari accept https://localhost / https://127.0.0.1 without a warning.
-# Never rely on sudo -n alone — that fails silently without passwordless sudo.
-if security verify-cert -c "$CRT" >/dev/null 2>&1; then
-    echo "cert already trusted"
-else
-    TRUSTED=0
-    # Prefer System keychain (all browsers / users). Interactive sudo when a TTY is available.
-    if [ -t 0 ] || [ -t 1 ]; then
-        echo "trust: adding to System keychain (admin password may be required)…"
-        if sudo security add-trusted-cert -d -r trustRoot \
-            -k /Library/Keychains/System.keychain "$CRT"; then
-            echo "trusted: added to System keychain"
-            TRUSTED=1
-        fi
-    elif sudo -n true 2>/dev/null; then
-        if sudo -n security add-trusted-cert -d -r trustRoot \
-            -k /Library/Keychains/System.keychain "$CRT"; then
-            echo "trusted: added to System keychain"
-            TRUSTED=1
-        fi
-    fi
-    # Fallback: login keychain (may pop SecurityAgent — Approve it).
-    if [ "$TRUSTED" -eq 0 ]; then
-        LOGIN_KC="$HOME/Library/Keychains/login.keychain-db"
-        [ -f "$LOGIN_KC" ] || LOGIN_KC="$HOME/Library/Keychains/login.keychain"
-        echo "trust: trying login keychain (Approve the Security dialog if shown)…"
-        if security add-trusted-cert -r trustRoot -k "$LOGIN_KC" "$CRT"; then
-            echo "trusted: added to login keychain"
-            TRUSTED=1
-        fi
-    fi
-    if [ "$TRUSTED" -eq 0 ]; then
-        echo "error: could not trust cert automatically." >&2
-        echo "  Trust manually, then fully quit and reopen Chrome:" >&2
-        echo "  sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain '$CRT'" >&2
-        echo "  Continuing without trust — browsers will warn until the cert is trusted." >&2
-    else
-        echo "note: fully quit and reopen Chrome so it picks up the new trust."
-    fi
-fi
-
-echo "[4/6] build + install Rust binary"
+echo "[3/5] build Rust binary"
 mkdir -p "$DEST"
 (cd "$RUST_SRC" && cargo build --locked --release -p ottplay-server 1>&2)
-cp "$RUST_SRC/target/release/ottplay-server" "$BIN"
-chmod +x "$BIN"
 
-echo "[5/6] launchd service (http :$PORT, https :$HTTPS_PORTS)"
+echo "[4/5] launchd service (HTTP ports: $HTTP_PORTS)"
 mkdir -p "$HOME/Library/LaunchAgents" "$HOME/Library/Logs"
-
-# Stop old services (any variant of the label, including legacy multi-instance)
-for plist in "$HOME/Library/LaunchAgents/${LABEL_BASE}-"*.plist \
-             "$HOME/Library/LaunchAgents/${LABEL_BASE}.plist"; do
-    [ -f "$plist" ] || continue
-    launch_name="$(/usr/libexec/PlistBuddy -c "Print :Label" "$plist" 2>/dev/null || true)"
-    [ -n "$launch_name" ] && launchctl unload "$plist" 2>/dev/null || true
-done
-
-xml_escape() {
-    printf '%s' "$1" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g'
-}
-DEBUG_ARCHIVE_XML="$(xml_escape "$DEBUG_ARCHIVE")"
-
-LABEL="${LABEL_BASE}"
+DOMAIN="gui/$(id -u)"
+LABEL="$LABEL_BASE"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
-cat > "$PLIST" <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>$LABEL</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>$BIN</string>
-        <string>--port</string>
-        <string>$PORT</string>
-        <string>--host</string>
-        <string>127.0.0.1</string>
-EOF
-# One --https-port per origin (Rust clap ArgAction::Append).
-for HTTPS_PORT in $HTTPS_PORTS; do
-    cat >> "$PLIST" <<EOF
-        <string>--https-port</string>
-        <string>$HTTPS_PORT</string>
-EOF
-done
-cat >> "$PLIST" <<EOF
-        <string>--cert</string>
-        <string>$CRT</string>
-        <string>--key</string>
-        <string>$KEY</string>
-    </array>
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>EPG_URLS</key>
-        <string>http://epg.it999.ru/epg2.xml.gz</string>
-        <key>OTTPLAY_DEBUG_ARCHIVE</key>
-        <string>$DEBUG_ARCHIVE_XML</string>
-    </dict>
-    <key>WorkingDirectory</key>
-    <string>$DEST</string>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-    <key>StandardOutPath</key>
-    <string>$HOME/Library/Logs/${LABEL}.log</string>
-    <key>StandardErrorPath</key>
-    <string>$HOME/Library/Logs/${LABEL}.log</string>
-</dict>
-</plist>
-EOF
-launchctl load "$PLIST"
-echo "  loaded $LABEL (https :$HTTPS_PORTS)"
+# LaunchAgent environment may contain private values. Never place its backup
+# under the publicly served /local tree.
+mkdir -p "$DEST/.local-artifacts/service-backups"
+BACKUP_DIR="$(mktemp -d "$DEST/.local-artifacts/service-backups/install.XXXXXX")"
 
-echo "[6/6] verify"
+stop_service() {
+    local target="$DOMAIN/$1"
+    local status_error
+    status_error="$(mktemp)"
+    launchctl bootout "$target" 2>/dev/null || true
+    for attempt in $(seq 1 30); do
+        if ! LC_ALL=C launchctl print "$target" >/dev/null 2>"$status_error"; then
+            case "$(cat "$status_error")" in
+                *"Could not find service"*) rm -f "$status_error"; return ;;
+                *) rm -f "$status_error"; echo "error: cannot inspect service: $1" >&2; return 1 ;;
+            esac
+        fi
+        sleep 1
+    done
+    rm -f "$status_error"
+    echo "error: service did not unload: $1" >&2
+    return 1
+}
+
+# Retire owned legacy jobs and archive their plists outside LaunchAgents, so
+# their old HTTP/TLS listeners cannot return on the next login.
+stop_service "$LABEL"
+for plist in "$HOME/Library/LaunchAgents/${LABEL_BASE}-"*.plist; do
+    [ -f "$plist" ] || continue
+    launch_name="$(/usr/libexec/PlistBuddy -c "Print :Label" "$plist")"
+    case "$launch_name" in
+        "$LABEL_BASE"-*) ;;
+        *) echo "error: unexpected legacy service label in $plist" >&2; exit 1 ;;
+    esac
+    stop_service "$launch_name"
+    mv "$plist" "$BACKUP_DIR/"
+done
+[ ! -f "$PLIST" ] || cp -p "$PLIST" "$BACKUP_DIR/"
+[ ! -f "$BIN" ] || cp -p "$BIN" "$BACKUP_DIR/ottplay-server"
+
+cp "$RUST_SRC/target/release/ottplay-server" "$BIN.new"
+chmod +x "$BIN.new"
+mv -f "$BIN.new" "$BIN"
+# plistlib handles paths safely and preserves operator-specific environment,
+# logging and launchd options from an existing installation.
+python3 - "$PLIST" "$BIN" "$DEST" "$LABEL" "$DEBUG_ARCHIVE" "$HTTP_PORTS" <<'PYPLIST'
+import os
+from pathlib import Path
+import plistlib
+import sys
+path, binary, dest, label, archive, ports = sys.argv[1:]
+p = Path(path)
+config = plistlib.loads(p.read_bytes()) if p.exists() else {}
+config.update(Label=label, ProgramArguments=[binary, "--host", "127.0.0.1"] +
+              [value for port in ports.split() for value in ("--port", str(int(port)))],
+              WorkingDirectory=dest, RunAtLoad=True, KeepAlive=True)
+env = config.setdefault("EnvironmentVariables", {})
+env.setdefault("EPG_URLS", "http://epg.it999.ru/epg2.xml.gz")
+env["OTTPLAY_DEBUG_ARCHIVE"] = archive
+log = str(Path.home() / "Library/Logs" / (label + ".log"))
+config.setdefault("StandardOutPath", log)
+config.setdefault("StandardErrorPath", log)
+new = p.with_suffix(".plist.new")
+new.write_bytes(plistlib.dumps(config))
+os.chmod(new, 0o600)
+new.replace(p)
+PYPLIST
+launchctl bootstrap "$DOMAIN" "$PLIST"
+echo "  loaded $LABEL (HTTP ports: $HTTP_PORTS)"
+
+echo "[5/5] verify"
 ok=""
 for _ in $(seq 1 60); do
     all_up=1
-    for HTTPS_PORT in $HTTPS_PORTS; do
-        code="$(curl -m 3 -s --cacert "$CRT" -o /dev/null -w '%{http_code}' "https://localhost:$HTTPS_PORT/")" || all_up=0
+    for HTTP_PORT in $HTTP_PORTS; do
+        code="$(curl --noproxy '*' -m 3 -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$HTTP_PORT/health")" || all_up=0
         [ "$code" = "200" ] || all_up=0
     done
     [ "$all_up" = "1" ] && { ok=1; break; }
     sleep 3
 done
 if [ -z "$ok" ]; then
-    echo "warning: not all HTTPS ports responding — check ~/Library/Logs/${LABEL}.log" >&2
+    echo "error: not all HTTP ports responding; inspect ~/Library/Logs/${LABEL}.log" >&2
+    echo "previous service configuration and binary retained at: $BACKUP_DIR" >&2
     exit 1
 fi
-HTTPS_URLS=""
-for p in $HTTPS_PORTS; do
-    [ -n "$HTTPS_URLS" ] && HTTPS_URLS="$HTTPS_URLS, "
-    HTTPS_URLS="${HTTPS_URLS}https://localhost:$p"
+python3 - <<'PYRETIRED'
+import errno
+import socket
+for host in ("127.0.0.1", "::1"):
+    try:
+        with socket.create_connection((host, 8095), timeout=1):
+            raise SystemExit("error: retired player port 8095 is still listening; inspect its owner")
+    except OSError as error:
+        if error.errno not in (errno.ECONNREFUSED, errno.EAFNOSUPPORT):
+            raise SystemExit("error: cannot verify that retired player port 8095 is closed")
+PYRETIRED
+for p in $HTTP_PORTS; do
+    echo "installed: http://127.0.0.1:$p/"
 done
-if [ "$PORT" != "0" ]; then
-    code_http="$(curl -s -o /dev/null -w '%{http_code}' -m 3 "http://127.0.0.1:$PORT/")"
-    echo "installed: http://127.0.0.1:$PORT/ (HTTP $code_http) + $HTTPS_URLS"
-else
-    echo "installed: $HTTPS_URLS"
-fi
 echo "log: ~/Library/Logs/${LABEL}.log"
-if ! security verify-cert -c "$CRT" >/dev/null 2>&1; then
-    echo "warning: cert still untrusted — browsers will show a warning until you trust it (see [3/6] above)." >&2
-fi

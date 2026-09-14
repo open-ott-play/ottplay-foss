@@ -66,7 +66,7 @@ Run the hosted app against the existing local stack:
 ./scripts/run-webos-simulator.sh
 ```
 
-The defaults are webOS TV 26 and `http://127.0.0.1:8095/`. The launcher checks
+The defaults are webOS TV 26 and `http://127.0.0.1:8443/`. The launcher checks
 `/health` and the player page, prepares `build/device-webos-simulator`, then
 calls LG's `ares-launch`. It does not start another server, deploy a build or
 require local `dist/` files. The player uses the build already deployed to the
@@ -96,7 +96,7 @@ Other examples:
 
 ```sh
 ./scripts/run-webos-simulator.sh --version 25 --sdk /path/to/webOS_TV_25_Simulator_1.4.1
-./scripts/run-webos-simulator.sh --url http://127.0.0.1:8095/
+./scripts/run-webos-simulator.sh --url http://127.0.0.1:8443/
 ./scripts/run-webos-simulator.sh --dry-run
 ./scripts/run-webos-simulator.sh --help
 ```
@@ -197,7 +197,7 @@ only when creating a new AVD and never resizes an existing profile.
 For example, `--image 'system-images;android-35;android-tv;x86_64'` is an Intel
 host example, not a way to virtualize x86 through Rosetta on Apple Silicon.
 
-Run without arguments opens the existing hosted player at `http://127.0.0.1:8095/`.
+Run without arguments opens the existing hosted player at `http://127.0.0.1:8443/`.
 It checks the companion and player page, builds a small test APK with the installed
 SDK, boots or reuses the named TV AVD, installs the APK and opens the URL. A browser
 is not required: the test app uses the system
@@ -267,8 +267,8 @@ creates the guest keyboard only when `hw.keyboard` is enabled. A TV profile with
 `hw.dPad=yes` and `hw.keyboard=no` can therefore show remote buttons that send no
 key events into Android. Dry runs and `--stop` do not repair configuration.
 
-After boot, ADB reverses ports 8095 and 8090 for this emulator only, so the same
-`http://127.0.0.1:8095/` player and `http://127.0.0.1:8090/` playlist addresses
+After boot, ADB reverses ports 8443 and 8090 for this emulator only, so the same
+`http://127.0.0.1:8443/` player and `http://127.0.0.1:8090/` playlist addresses
 reach the host stack. A custom player URL using loopback also reverses its port.
 The script does not start that stack. The normal Android
 [host alias `10.0.2.2`](https://developer.android.com/studio/run/emulator-networking)
@@ -333,7 +333,7 @@ not require registration. See [Samsung's remote control guide](https://developer
 Samsung's [Simulator limitations](https://developer.samsung.com/smarttv/develop/getting-started/using-sdk/tv-simulator.html)
 exclude hosted applications, DRM and real HLS playback (HLS uses a dummy video).
 Consequently this is useful for local UI/API checks; the webOS redirect launcher
-on 8095 cannot be reused as a Samsung media compatibility test.
+on 8443 cannot be reused as a Samsung media compatibility test.
 
 For an **experimental server UI check**, run the launcher without arguments. It
 checks the existing companion and player page, generates a small local Tizen app
@@ -343,7 +343,7 @@ with the required manifest and redirect, and opens it in the simulator:
 ./scripts/run-tizen-simulator.sh
 ```
 
-The default player URL is `http://127.0.0.1:8095/`; `--url` or `OTTP_PLAYER_URL`
+The default player URL is `http://127.0.0.1:8443/`; `--url` or `OTTP_PLAYER_URL`
 overrides it. The launcher resolves its files relative to the script, so it also
 works when invoked by an absolute path from another directory. `--dry-run` prepares
 the app and prints the command without checking the server or opening the SDK.

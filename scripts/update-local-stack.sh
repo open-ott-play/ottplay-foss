@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # PUBLIC ENTRY POINT - update the local macOS stack.
 #
-# Rebuilds JS + Rust via install-ottplay-local-service.sh (certs preserved),
-# reloads hls-proxy + ottplay launchd agents, verifies all HTTPS ports.
+# Rebuilds JS + Rust via install-ottplay-local-service.sh, reloads the local
+# launchd agents, and verifies all four HTTP origins (:8443-8446).
 #
 # Usage: scripts/update-local-stack.sh
 # Env: OTTPLAY_*, SKIP_HLS_RELOAD=1 (same as install-ottplay-local-service)

@@ -13,7 +13,7 @@ Usage: scripts/run-tizen-simulator.sh [options]
   --sdk DIRECTORY   Tizen Studio root, sec-tv-simulator directory, or nwjs.app
                     (TIZEN_SIMULATOR_SDK; otherwise the user-local package or
                     ~/tizen-studio)
-  --url URL         Running player (default: http://127.0.0.1:8095/;
+  --url URL         Running player (default: http://127.0.0.1:8443/;
                     OTTP_PLAYER_URL)
   --app FILE        Open another local Tizen app with adjacent config.xml
   --home            Open the simulator home instead of the player

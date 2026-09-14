@@ -1,7 +1,7 @@
 """Mode A companion HTTP smoke via curl (JSON-driven checks).
 
 Reads scripts/modea-smoke-checks.json next to this file (or MODEA_SMOKE_CHECKS).
-Default BASE_URL http://127.0.0.1:8095 (install-ottplay-local-service.sh).
+Default BASE_URL http://127.0.0.1:8443 (install-ottplay-local-service.sh).
 Sibling concept: scripts/smoke-command-queue.sh for command-queue / local_proxy.
 
 Exit: 0 pass, 1 not listening, 2 required check failed, 3 usage/deps.
@@ -19,7 +19,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-DEFAULT_BASE = "http://127.0.0.1:8095"
+DEFAULT_BASE = "http://127.0.0.1:8443"
 
 
 def load_checks() -> list[dict[str, Any]]:
@@ -69,7 +69,7 @@ class Runner:
         if detail:
             print(f"  detail: {detail}", file=sys.stderr)
         print(
-            "hint: start ottplay-server (local install :8095, cargo/docker often :8080)",
+            "hint: start ottplay-server (local install :8443, cargo/docker often :8080)",
             file=sys.stderr,
         )
         print(
@@ -201,7 +201,7 @@ def main(argv: list[str] | None = None) -> int:
         description="curl smoke for Mode A companion (JSON-driven)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
-            "Env: BASE_URL (default http://127.0.0.1:8095), EPG_HASH, VERSION_REL "
+            "Env: BASE_URL (default http://127.0.0.1:8443), EPG_HASH, VERSION_REL "
             "(default index.html), CONNECT_TIMEOUT, STRICT_DIST, MODEA_SMOKE_CHECKS.\n"
             "See scripts/modea-smoke-checks.json and README Mode A companion smoke section."
         ),

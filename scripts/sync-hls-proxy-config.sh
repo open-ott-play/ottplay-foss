@@ -47,7 +47,7 @@ source "$SCRIPT_DIR/hls-proxy-lib.sh"
 if [ "${LOCAL_ONLY:-1}" = "1" ]; then
     hls_proxy_apply_loopback "$DEST/local.json"
     # Pin local port: docker container maps 8080->9999; on macOS we use 8090 to
-    # avoid colliding with anything else and keep ottplay-foss on 8095. Set
+    # avoid colliding with the player HTTP origins on 8443-8446. Set
     # HLS_PROXY_LOCAL_PORT=0 to inherit from the docker config instead.
     LOCAL_PORT="${HLS_PROXY_LOCAL_PORT:-8090}"
     if [ "$LOCAL_PORT" != "0" ]; then

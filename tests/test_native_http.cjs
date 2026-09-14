@@ -49,15 +49,16 @@ function response(body, status = 200, contentType = "application/json") {
         statusText: status === 200 ? "OK" : "Forbidden",
     };
 }
-function runtime(invoke, native = true, platform = "tauri") {
+function runtime(invoke, native = true, platform = "tauri", url) {
     const dom = new JSDOM(
         "<!doctype html><html><head></head><body></body></html>",
         {
             runScripts: "outside-only",
             url:
-                platform === "tauri"
+                url ||
+                (platform === "tauri"
                     ? "http://tauri.localhost/"
-                    : "capacitor://localhost/",
+                    : "capacitor://localhost/"),
         }
     );
     const w = dom.window;
@@ -123,6 +124,101 @@ function fallbackXhr() {
         status: 200,
         statusText: "OK",
     };
+}
+
+async function testTauriOriginRouting() {
+    const companionOrigins = ["127.0.0.1", "localhost"].flatMap((host) =>
+        [8443, 8444, 8445, 8446].map((port) => `http://${host}:${port}/`)
+    );
+    const embeddedOrigins = [
+        "http://tauri.localhost/",
+        "https://tauri.localhost/",
+        "http://asset.localhost/",
+        "https://asset.localhost/",
+        "tauri://localhost/",
+        "asset://localhost/",
+    ];
+    const capabilities = JSON.parse(
+        read("src-tauri/capabilities/default.json")
+    );
+    assert.deepEqual(
+        capabilities.remote.urls.slice().sort(),
+        [...companionOrigins, ...embeddedOrigins]
+            .map((url) => url + "*")
+            .sort(),
+        "Native capabilities allow the four HTTP companion ports and embedded origins only"
+    );
+    const retainedNativeOrigins = [
+        ...embeddedOrigins,
+        "http://127.0.0.1:5173/",
+        "http://localhost:5173/",
+        "https://127.0.0.1:8443/",
+        "http://provider.example:8443/",
+        "http://localhost.example:8443/",
+        "http://127.0.0.1:18443/",
+        "http://127.0.0.1:8447/",
+        "http://127.0.0.1:8095/",
+    ];
+    const cases = [
+        ...companionOrigins.map((url) => ({
+            embedded: false,
+            native: true,
+            url,
+        })),
+        ...retainedNativeOrigins.map((url) => ({
+            embedded: true,
+            native: true,
+            url,
+        })),
+        ...[
+            companionOrigins[0],
+            embeddedOrigins[0],
+            "http://localhost:5173/",
+        ].map((url) => ({ embedded: false, native: false, url })),
+    ];
+    for (const { embedded, native, url } of cases) {
+        const calls = [];
+        const r = runtime(
+            async (command, args) => {
+                calls.push({ args, command });
+                return "native-match";
+            },
+            native,
+            "tauri",
+            url
+        );
+        try {
+            let ordinaryXhrs = 0;
+            r.$.ajaxSettings.xhr = () => {
+                ordinaryXhrs++;
+                return fallbackXhr();
+            };
+            assert.equal(r.w.isTauriEmbedMode(), embedded, url);
+            assert.equal(r.$.ajax === r.originalAjax, !embedded, url);
+            const result = await finished(
+                r.$.ajax({
+                    data: "fixture-channels",
+                    dataType: "text",
+                    type: "POST",
+                    url: "/m3u/match-channels",
+                })
+            );
+            assert.equal(result.ok, true, url);
+            assert.equal(result.data, embedded ? "native-match" : "{}", url);
+            assert.equal(ordinaryXhrs, embedded ? 0 : 1, url);
+            assert.equal(calls.length, embedded ? 1 : 0, url);
+            if (embedded) {
+                assert.equal(calls[0].command, "match_channels", url);
+                assert.equal(calls[0].args.body, "fixture-channels", url);
+                assert.equal(calls[0].args.url, "/m3u/match-channels", url);
+            }
+        } finally {
+            r.close();
+        }
+    }
+    console.log(
+        "OK: Tauri HTTP companion origins retain real XHR; embedded and native dev origins retain IPC; browsers remain isolated"
+    );
 }
 
 async function run(platform) {
@@ -617,7 +713,8 @@ async function run(platform) {
         `OK: ${platform} HTTP with real jQuery 1.11.1, provider JSON/JSONP, VPortal JSON POST opt-in, status, callbacks, abort/timeout and browser isolation`
     );
 }
-run("tauri")
+testTauriOriginRouting()
+    .then(() => run("tauri"))
     .then(() => run("capacitor"))
     .then(
         () => clearTimeout(testDeadline),

@@ -132,6 +132,7 @@ jobs:
       - run: python3 tests/test_android_security_config.py
       - run: python3 tests/test_native_epg_cache.py --check-mirrors-only
       - run: python3 tests/test_mobile_orientation.py
+      - run: python3 tests/test_local_player_install.py
       - name: Test authenticated local command proxy
         run: |
           python3 tests/test_local_proxy.py

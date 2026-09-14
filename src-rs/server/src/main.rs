@@ -1,6 +1,7 @@
 mod debug_api;
 mod vportal_api;
 
+use anyhow::{bail, Context};
 use axum::{
     body::Bytes,
     extract::{Path, Query},
@@ -17,13 +18,14 @@ use rustls::ServerConfig;
 use rustls_pemfile::certs as pemfile_certs;
 use rustls_pemfile::pkcs8_private_keys;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::BufReader;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
+use tokio::task::JoinSet;
 use tokio_rustls::TlsAcceptor;
 use tower::Service;
 use tower_http::cors::{Any, CorsLayer};
@@ -67,20 +69,156 @@ fn epg_urls() -> Vec<String> {
 struct Cli {
     #[arg(long, default_value = "0.0.0.0")]
     host: String,
-    #[arg(long, default_value_t = 8080)]
-    port: u16,
-    #[arg(long)]
+    /// HTTP listen ports. Repeat --port; defaults to 8080 only when omitted.
+    #[arg(long, action = clap::ArgAction::Append, default_value = "8080")]
+    port: Vec<u16>,
+    #[arg(long, requires = "key")]
     cert: Option<String>,
-    #[arg(long)]
+    #[arg(long, requires = "cert")]
     key: Option<String>,
     /// HTTPS listen port(s). Repeatable: `--https-port 8443 --https-port 8444`.
     /// When `--cert`/`--key` are set and no ports are given, defaults to `[8443]`.
-    #[arg(long, action = clap::ArgAction::Append)]
+    #[arg(long, action = clap::ArgAction::Append, requires_all = ["cert", "key"])]
     https_port: Vec<u16>,
 }
 
+impl Cli {
+    fn listen_ports(&self) -> anyhow::Result<(Vec<u16>, Vec<u16>)> {
+        let https = if self.cert.is_some() && self.https_port.is_empty() {
+            vec![8443]
+        } else {
+            self.https_port.clone()
+        };
+        let mut used = HashSet::new();
+        for (scheme, ports) in [("HTTP", &self.port), ("HTTPS", &https)] {
+            for port in ports {
+                if !used.insert(*port) {
+                    bail!("duplicate or conflicting listen port {port} ({scheme})");
+                }
+            }
+        }
+        Ok((self.port.clone(), https))
+    }
+}
+
+struct BoundListeners {
+    http: Vec<TcpListener>,
+    https: Vec<TcpListener>,
+}
+
+async fn bind_listeners(host: &str, http: &[u16], https: &[u16]) -> anyhow::Result<BoundListeners> {
+    let mut listeners = BoundListeners {
+        http: Vec::new(),
+        https: Vec::new(),
+    };
+    // Bind everything before starting a task. A later bind failure drops all
+    // earlier sockets instead of leaving a partially available service.
+    for (scheme, ports, sockets) in [
+        ("HTTP", http, &mut listeners.http),
+        ("HTTPS", https, &mut listeners.https),
+    ] {
+        for port in ports {
+            sockets.push(
+                TcpListener::bind((host, *port))
+                    .await
+                    .with_context(|| format!("cannot bind {scheme} {host}:{port}"))?,
+            );
+        }
+    }
+    Ok(listeners)
+}
+
+async fn supervise_listeners(mut tasks: JoinSet<anyhow::Result<()>>) -> anyhow::Result<()> {
+    let failure = match tasks.join_next().await {
+        Some(Ok(Err(error))) => error,
+        Some(Err(error)) => anyhow::Error::new(error).context("listener task failed"),
+        Some(Ok(Ok(()))) => anyhow::anyhow!("listener stopped unexpectedly"),
+        None => anyhow::anyhow!("no listeners configured"),
+    };
+    tasks.abort_all();
+    while tasks.join_next().await.is_some() {}
+    Err(failure)
+}
+
+async fn serve_tls(
+    listener: TcpListener,
+    app: Router,
+    config: Arc<ServerConfig>,
+) -> anyhow::Result<()> {
+    let acceptor = TlsAcceptor::from(config);
+    loop {
+        let (stream, _) = match listener.accept().await {
+            Ok(connection) => connection,
+            Err(error) => {
+                tracing::warn!("TLS accept error: {error}");
+                continue;
+            }
+        };
+        let acceptor = acceptor.clone();
+        let app = app.clone();
+        tokio::spawn(async move {
+            let tls = match acceptor.accept(stream).await {
+                Ok(stream) => stream,
+                Err(error) => {
+                    // A client's rejected handshake does not stop other listeners.
+                    tracing::warn!("TLS handshake failed: {error}");
+                    return;
+                }
+            };
+            let io = hyper_util::rt::TokioIo::new(tls);
+            if let Err(error) = hyper::server::conn::http1::Builder::new()
+                .serve_connection(
+                    io,
+                    hyper::service::service_fn(move |req| {
+                        let app = app.clone();
+                        app.clone().call(req)
+                    }),
+                )
+                .await
+            {
+                tracing::warn!("TLS serve connection error: {error}");
+            }
+        });
+    }
+}
+
+async fn serve_listeners(
+    listeners: BoundListeners,
+    app: Router,
+    tls_config: Option<Arc<ServerConfig>>,
+) -> anyhow::Result<()> {
+    if !listeners.https.is_empty() && tls_config.is_none() {
+        bail!("HTTPS listeners require a certificate and key");
+    }
+    let mut tasks = JoinSet::new();
+    for listener in listeners.http {
+        let address = listener.local_addr()?;
+        println!("ottplay-server: http://{address}");
+        let app = app.clone();
+        tasks.spawn(async move {
+            axum::serve(listener, app)
+                .await
+                .with_context(|| format!("HTTP listener {address} failed"))
+        });
+    }
+    for listener in listeners.https {
+        let address = listener.local_addr()?;
+        println!("ottplay-server: https://{address}");
+        let app = app.clone();
+        let config = tls_config.clone().context("missing TLS configuration")?;
+        tasks.spawn(async move {
+            serve_tls(listener, app, config)
+                .await
+                .with_context(|| format!("HTTPS listener {address} failed"))
+        });
+    }
+    supervise_listeners(tasks).await
+}
+
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
+    let cli = Cli::parse();
+    let (http_ports, https_ports) = cli.listen_ports()?;
     // rustls 0.23: both aws-lc-rs and ring end up linked (reqwest + tokio-rustls feature
     // unification). Install an explicit process default before ServerConfig::builder(),
     // otherwise HTTPS listen panics with "no process-level CryptoProvider available".
@@ -88,10 +226,13 @@ async fn main() {
         .install_default()
         .expect("failed to install rustls CryptoProvider (aws-lc-rs)");
 
+    let tls_config = match (&cli.cert, &cli.key) {
+        (Some(cert), Some(key)) => Some(build_tls_config(cert, key)?),
+        _ => None,
+    };
+    let listeners = bind_listeners(&cli.host, &http_ports, &https_ports).await?;
     // HTTP startup must not wait for external EPG.
     spawn_epg_refresh(epg_urls());
-
-    let cli = Cli::parse();
     Lazy::force(&TMDB_KEY);
 
     let cors = CorsLayer::new()
@@ -132,68 +273,7 @@ async fn main() {
         .nest_service("/local", ServeDir::new("local"))
         .layer(cors);
 
-    println!("ottplay-server: http://{}:{}", cli.host, cli.port);
-
-    // TLS sidecars: one listener per --https-port, shared app + cert (Python HTTPS_PORTS parity).
-    if let (Some(cert_path), Some(key_path)) = (&cli.cert, &cli.key) {
-        let https_ports: Vec<u16> = if cli.https_port.is_empty() {
-            vec![8443]
-        } else {
-            cli.https_port.clone()
-        };
-        let tls_config = build_tls_config(cert_path, key_path);
-        let host_str = cli.host.clone();
-        for https_port in https_ports {
-            let listener = TcpListener::bind((host_str.as_str(), https_port))
-                .await
-                .unwrap_or_else(|e| panic!("cannot bind HTTPS {host_str}:{https_port}: {e}"));
-            println!("ottplay-server: https://{}:{}", host_str, https_port);
-            let app_clone = app.clone();
-            let tls_config = tls_config.clone();
-            tokio::spawn(async move {
-                let acceptor = TlsAcceptor::from(tls_config);
-                loop {
-                    match listener.accept().await {
-                        Ok((stream, _)) => {
-                            let acceptor = acceptor.clone();
-                            let app = app_clone.clone();
-                            tokio::spawn(async move {
-                                let tls = match acceptor.accept(stream).await {
-                                    Ok(s) => s,
-                                    Err(e) => {
-                                        // CertificateUnknown / handshake noise must not panic workers.
-                                        tracing::warn!("TLS handshake failed: {e}");
-                                        return;
-                                    }
-                                };
-                                let io = hyper_util::rt::TokioIo::new(tls);
-                                if let Err(e) = hyper::server::conn::http1::Builder::new()
-                                    .serve_connection(
-                                        io,
-                                        hyper::service::service_fn(move |req| {
-                                            let app = app.clone();
-                                            app.clone().call(req)
-                                        }),
-                                    )
-                                    .await
-                                {
-                                    tracing::warn!("TLS serve connection error: {e}");
-                                }
-                            });
-                        }
-                        Err(e) => {
-                            tracing::warn!("TLS accept error: {e}");
-                        }
-                    }
-                }
-            });
-        }
-    }
-
-    let listener = TcpListener::bind((cli.host.as_str(), cli.port))
-        .await
-        .unwrap_or_else(|e| panic!("cannot bind HTTP {}:{}: {e}", cli.host, cli.port));
-    axum::serve(listener, app).await.unwrap();
+    serve_listeners(listeners, app, tls_config).await
 }
 
 fn spawn_epg_refresh(urls: Vec<String>) {
@@ -240,30 +320,33 @@ where
     })
 }
 
-fn build_tls_config(cert_path: &str, key_path: &str) -> Arc<ServerConfig> {
+fn build_tls_config(cert_path: &str, key_path: &str) -> anyhow::Result<Arc<ServerConfig>> {
     // Load certificate
-    let mut cert_file = BufReader::new(File::open(cert_path).expect("cannot open cert"));
+    let mut cert_file = BufReader::new(File::open(cert_path).context("cannot open certificate")?);
     let certs: Vec<CertificateDer> = pemfile_certs(&mut cert_file)
         .collect::<Result<Vec<_>, _>>()
-        .expect("invalid cert");
+        .context("invalid certificate")?;
 
     // Load private key
-    let mut key_file = BufReader::new(File::open(key_path).expect("cannot open key"));
+    let mut key_file = BufReader::new(File::open(key_path).context("cannot open private key")?);
     let keys: Vec<PrivateKeyDer> = pkcs8_private_keys(&mut key_file)
         .map(|k| k.map(PrivateKeyDer::from))
         .collect::<Result<Vec<_>, _>>()
-        .expect("invalid key");
-    let key = keys.into_iter().next().expect("no private key found");
+        .context("invalid private key")?;
+    let key = keys
+        .into_iter()
+        .next()
+        .context("no PKCS#8 private key found")?;
 
     let mut config = ServerConfig::builder()
         .with_no_client_auth()
         .with_single_cert(certs, key)
-        .expect("bad certificate/key");
+        .context("bad certificate/key")?;
 
     // Configure ALPN for HTTP/1.1
     config.alpn_protocols = vec![b"http/1.1".to_vec()];
 
-    Arc::new(config)
+    Ok(Arc::new(config))
 }
 
 fn device_entry_routes() -> Router {
@@ -272,6 +355,193 @@ fn device_entry_routes() -> Router {
         .route("/f", get(root))
         .route("/f/", get(root))
         .route("/f/*device", get(root))
+}
+
+#[cfg(test)]
+mod listener_tests {
+    use super::*;
+
+    #[test]
+    fn repeated_http_ports_replace_the_default_and_https_remains_explicit() {
+        let defaults = Cli::try_parse_from(["ottplay-server"]).unwrap();
+        assert_eq!(defaults.host, "0.0.0.0");
+        assert_eq!(defaults.listen_ports().unwrap(), (vec![8080], vec![]));
+
+        let http = Cli::try_parse_from([
+            "ottplay-server",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8443",
+            "--port",
+            "8444",
+            "--port",
+            "8445",
+            "--port",
+            "8446",
+        ])
+        .unwrap();
+        assert_eq!(
+            http.listen_ports().unwrap(),
+            (vec![8443, 8444, 8445, 8446], vec![])
+        );
+        let tls = Cli::try_parse_from(["ottplay-server", "--cert", "cert.pem", "--key", "key.pem"])
+            .unwrap();
+        assert_eq!(tls.listen_ports().unwrap(), (vec![8080], vec![8443]));
+        let tls = Cli::try_parse_from([
+            "ottplay-server",
+            "--port",
+            "8090",
+            "--cert",
+            "cert.pem",
+            "--key",
+            "key.pem",
+            "--https-port",
+            "9443",
+            "--https-port",
+            "9444",
+        ])
+        .unwrap();
+        assert_eq!(tls.listen_ports().unwrap(), (vec![8090], vec![9443, 9444]));
+    }
+
+    #[test]
+    fn ambiguous_ports_and_incomplete_tls_options_are_rejected() {
+        for args in [
+            vec!["ottplay-server", "--port", "8443", "--port", "8443"],
+            vec![
+                "ottplay-server",
+                "--port",
+                "8443",
+                "--cert",
+                "cert.pem",
+                "--key",
+                "key.pem",
+            ],
+            vec![
+                "ottplay-server",
+                "--cert",
+                "cert.pem",
+                "--key",
+                "key.pem",
+                "--https-port",
+                "9443",
+                "--https-port",
+                "9443",
+            ],
+        ] {
+            let cli = Cli::try_parse_from(args).unwrap();
+            assert!(cli
+                .listen_ports()
+                .unwrap_err()
+                .to_string()
+                .contains("duplicate or conflicting"));
+        }
+        for args in [
+            vec!["ottplay-server", "--cert", "cert.pem"],
+            vec!["ottplay-server", "--key", "key.pem"],
+            vec!["ottplay-server", "--https-port", "8443"],
+            vec!["ottplay-server", "--port", "65536"],
+        ] {
+            assert!(Cli::try_parse_from(args).is_err());
+        }
+    }
+
+    #[tokio::test]
+    async fn four_http_listeners_serve_the_same_router_and_stop_together() {
+        let listeners = bind_listeners("127.0.0.1", &[0, 0, 0, 0], &[])
+            .await
+            .unwrap();
+        let addresses: Vec<_> = listeners
+            .http
+            .iter()
+            .map(|s| s.local_addr().unwrap())
+            .collect();
+        assert_eq!(addresses.iter().collect::<HashSet<_>>().len(), 4);
+        let app = Router::new().route("/health", get(health));
+        let task = tokio::spawn(serve_listeners(listeners, app, None));
+        let client = reqwest::Client::builder()
+            .no_proxy()
+            .timeout(std::time::Duration::from_secs(5))
+            .build()
+            .unwrap();
+        for address in &addresses {
+            let response = client
+                .get(format!("http://{address}/health"))
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(response.text().await.unwrap(), "OK");
+        }
+        task.abort();
+        assert!(task.await.unwrap_err().is_cancelled());
+        tokio::task::yield_now().await;
+        for address in addresses {
+            let rebound = TcpListener::bind(address).await.unwrap();
+            drop(rebound);
+        }
+    }
+
+    #[tokio::test]
+    async fn a_later_bind_failure_releases_all_earlier_http_and_tls_sockets() {
+        let occupied = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let occupied_port = occupied.local_addr().unwrap().port();
+        let available = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let available_port = available.local_addr().unwrap().port();
+        drop(available);
+        for (http, https) in [
+            (vec![available_port, occupied_port], vec![]),
+            (vec![available_port], vec![occupied_port]),
+            (vec![], vec![available_port, occupied_port]),
+        ] {
+            let error = match bind_listeners("127.0.0.1", &http, &https).await {
+                Ok(_) => panic!("an occupied port must prevent startup"),
+                Err(error) => error,
+            };
+            assert!(error
+                .to_string()
+                .contains(&format!("127.0.0.1:{occupied_port}")));
+            let rebound = TcpListener::bind(("127.0.0.1", available_port))
+                .await
+                .unwrap();
+            drop(rebound);
+        }
+    }
+
+    #[tokio::test]
+    async fn a_failed_listener_propagates_its_error_and_cancels_its_peers() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let mut tasks = JoinSet::new();
+        tasks.spawn(async move {
+            let _listener = listener;
+            std::future::pending::<anyhow::Result<()>>().await
+        });
+        tasks.spawn(async { anyhow::bail!("synthetic listener failure") });
+        assert_eq!(
+            supervise_listeners(tasks).await.unwrap_err().to_string(),
+            "synthetic listener failure"
+        );
+        let rebound = TcpListener::bind(address).await.unwrap();
+        drop(rebound);
+
+        let mut tasks = JoinSet::new();
+        tasks.spawn(async { Ok(()) });
+        assert!(supervise_listeners(tasks)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("stopped unexpectedly"));
+
+        let mut tasks: JoinSet<anyhow::Result<()>> = JoinSet::new();
+        tasks.spawn(async { panic!("synthetic listener panic") });
+        assert!(supervise_listeners(tasks)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("listener task failed"));
+    }
 }
 
 #[cfg(test)]

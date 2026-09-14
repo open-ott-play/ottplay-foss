@@ -22,7 +22,7 @@ Exit codes:
   2  assertion failed
   3  usage / missing dependency
 
-Default BASE_URL http://127.0.0.1:8095. No secrets / no private IPTV URLs.
+Default BASE_URL http://127.0.0.1:8443. No secrets / no private IPTV URLs.
 """
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import urlencode
 
-DEFAULT_BASE = "http://127.0.0.1:8095"
+DEFAULT_BASE = "http://127.0.0.1:8443"
 
 # Tiny HLS playlist — enough for Content-Type + first-bytes through /m3u/cp.php.
 DEFAULT_FIXTURE_BODY = (
@@ -62,7 +62,7 @@ def not_listening(url: str, detail: str = "") -> None:
     if detail:
         eprint(f"  detail: {detail}")
     eprint(
-        "hint: start ottplay-server (local install :8095, cargo/docker often :8080)"
+        "hint: start ottplay-server (local install :8443, cargo/docker often :8080)"
     )
     eprint(
         "      or archive/server.py on the same port; override with BASE_URL=..."
@@ -377,7 +377,7 @@ def main(argv: list[str] | None = None) -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Env:\n"
-            "  BASE_URL          Default http://127.0.0.1:8095\n"
+            "  BASE_URL          Default http://127.0.0.1:8443\n"
             "  EPG_HASH          Optional channel hash for GET /epg/<hash>.json\n"
             "  MEDIA_URL         Optional upstream media/echo URL for /m3u/cp.php.\n"
             "                    If unset, starts a local HLS-playlist fixture on\n"
