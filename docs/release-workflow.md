@@ -37,8 +37,8 @@ pushes request beta builds through the same validation and build gates. Publicat
 also requires the opt-in variable and an eligible unreleased base version. GitHub can delay
 scheduled runs; schedule timing is not an SLA. A committed base version (`X.Y.Z`)
 is required. Version changes go through PR review, including any native companion
-version files. Native binaries keep that base version; the release manifest records
-the beta/RC/nightly channel and exact source SHA.
+version files. The frozen release plan supplies full candidate versions to declared
+format adapters before compilation; the manifest binds the plan and build receipts.
 
 From a clean checkout matching GitHub's default-branch HEAD:
 
@@ -99,11 +99,11 @@ retrying. The tool refuses to overwrite them. Never rebuild an image for stable.
 
 ## Project limits and rollout requirements
 
-- Retains all existing desktop and mobile build targets; signing/notarization remains optional exactly as before.
+- Retains web/server, desktop and iOS build targets. Native Android APK/AAB builds and publication belong to open-ott-play/ottplay-android.
 - Classic emitted bundle smoke and ES5 checks are required, in addition to TypeScript checks.
 - Physical TV/STB firmware, decoders, live IPTV streams and DRM are separate acceptance checks.
 - OCI container archives are promoted without rebuild; deployment remains explicit.
-- Production automatic updating is not configured: updater public key is a placeholder and latest.json is not generated. Manual desktop and iOS installers are supported; unsigned iOS packages need operator signing/sideloading.
+- Production automatic updating is not configured: updater public key is a placeholder and latest.json is not generated. Manual installers are supported; unsigned iOS packages need operator signing/sideloading.
 
 For public repositories, merge and verify the workflows before enabling the
 additive Terraform **CI gate** ruleset. Where release/deployment workflows use
@@ -125,11 +125,8 @@ References: [GitHub schedules](https://docs.github.com/en/actions/reference/work
 [protected environments](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments),
 [artifact provenance](https://docs.github.com/en/rest/actions/artifacts).
 
-## Android extraction
+## Automatic version preparation
 
-Only web/server, desktop, iOS and container artifacts are built here. Android APK/AAB
-builds and signing moved to [ottplay-android](https://github.com/open-ott-play/ottplay-android), currently a private preview
-requiring access. The publisher rejects `.apk` and `.aab` payloads, including stable
-promotion of old RCs; create a new RC without Android assets. Existing historical
-releases remain unchanged. Legacy Android bridge tests still run without an Android
-SDK or Gradle application build.
+Run `python3 scripts/release.py prepare-version --pr` from the clean default-branch HEAD. The command refreshes tags and opens a PR with synchronized owned version fields. An existing unreleased base is retained; use `--bump minor`, `--bump major`, or `--version X.Y.Z` for explicit intent. See [version plans](VERSIONING.md) for build overlays, the dedicated allocation ledger and recovery.
+
+A local candidate package also needs the saved `.release-plan.json` at its exact source commit. Restore the `version_plan` object from the published `release-manifest.json` into a disposable checkout before `release.py package`; do not invent a tag or native counter locally. Ordinary development builds can use the project's native build command and explicitly local version identity.

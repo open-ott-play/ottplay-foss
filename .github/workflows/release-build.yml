@@ -10,6 +10,10 @@ name: Build release assets
         description: nightly, beta or rc; stable promotes existing RC bytes
         required: true
         type: string
+      release_plan_artifact:
+        description: Frozen version plan artifact allocated by the release workflow
+        required: true
+        type: string
 permissions:
   contents: read
 env:
@@ -29,6 +33,18 @@ jobs:
         egress-policy: audit
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+    - name: Set up release version tooling
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+      with:
+        python-version: '3.12'
+    - name: Download frozen release version plan
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: ${{ inputs.release_plan_artifact }}
+        path: .
+    - name: Apply frozen release version inputs
+      shell: bash
+      run: python3 scripts/version_plan.py sync --root . --plan .release-plan.json
     - name: Verify committed release version
       run: python3 scripts/check-release-version.py "$RELEASE_VERSION" "$RELEASE_CHANNEL"
     - name: Set up Node.js
@@ -43,23 +59,35 @@ jobs:
     - name: Build bundle
       run: npm run build --ignore-scripts
     - name: Package validated server web root
-      run: |
-        npm run check:bundle
+      run: 'npm run check:bundle
+
         npm run check:es5
+
         npm run package:modea
+
         cp build/packages/ottplay-foss-modea.tar.gz build/packages/ottplay-foss-modea.sha256 .
+
         # Keep the established download name, using only the audited staged web root.
+
         cp ottplay-foss-modea.tar.gz ottplay-foss-dist.tar.gz
+
         sha256sum ottplay-foss-dist.tar.gz > checksums.txt
+
+        '
+    - name: Verify and stage versioned release assets
+      shell: bash
+      env:
+        RELEASE_ASSET_TARGET: web
+        RELEASE_ASSET_PATTERN_0: ottplay-foss-dist.tar.gz
+        RELEASE_ASSET_PATTERN_1: checksums.txt
+        RELEASE_ASSET_PATTERN_2: ottplay-foss-modea.tar.gz
+        RELEASE_ASSET_PATTERN_3: ottplay-foss-modea.sha256
+      run: python3 scripts/stage_release_assets.py --target "$RELEASE_ASSET_TARGET" --pattern "$RELEASE_ASSET_PATTERN_0" --pattern "$RELEASE_ASSET_PATTERN_1" --pattern "$RELEASE_ASSET_PATTERN_2" --pattern "$RELEASE_ASSET_PATTERN_3"
     - name: Store release assets
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
         name: release-assets-web
-        path: |-
-          ottplay-foss-dist.tar.gz
-          checksums.txt
-          ottplay-foss-modea.tar.gz
-          ottplay-foss-modea.sha256
+        path: release-assets/web/*
         if-no-files-found: error
         retention-days: 14
     timeout-minutes: 90
@@ -87,6 +115,18 @@ jobs:
         egress-policy: audit
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+    - name: Set up release version tooling
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+      with:
+        python-version: '3.12'
+    - name: Download frozen release version plan
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: ${{ inputs.release_plan_artifact }}
+        path: .
+    - name: Apply frozen release version inputs
+      shell: bash
+      run: python3 scripts/version_plan.py sync --root . --plan .release-plan.json
     - name: Verify committed release version
       run: python3 scripts/check-release-version.py "$RELEASE_VERSION" "$RELEASE_CHANNEL"
     - name: Set up Node.js
@@ -122,25 +162,7 @@ jobs:
         APPLE_ID: ${{ secrets.APPLE_ID }}
         APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-      run: |
-        if [ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
-          echo "tauri_signing=true" >> "$GITHUB_OUTPUT"
-          echo "Updater signing key present — will create updater artifacts"
-        else
-          echo "tauri_signing=false" >> "$GITHUB_OUTPUT"
-          echo "No TAURI_SIGNING_PRIVATE_KEY — unsigned updater artifacts skipped"
-        fi
-        if [ "${{ matrix.platform }}" = "macos-latest" ] \
-          && [ -n "${APPLE_CERTIFICATE:-}" ] \
-          && [ -n "${APPLE_ID:-}" ] \
-          && [ -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" ] \
-          && [ -n "${APPLE_TEAM_ID:-}" ]; then
-          echo "apple_notarize=true" >> "$GITHUB_OUTPUT"
-          echo "Apple signing+notarize secrets present"
-        else
-          echo "apple_notarize=false" >> "$GITHUB_OUTPUT"
-          echo "Apple notarize secrets absent or non-macOS — unsigned macOS path"
-        fi
+      run: "if [ -n \"${TAURI_SIGNING_PRIVATE_KEY:-}\" ]; then\n  echo \"tauri_signing=true\" >> \"$GITHUB_OUTPUT\"\n  echo \"Updater signing key present \u2014 will create updater artifacts\"\nelse\n  echo \"tauri_signing=false\" >> \"$GITHUB_OUTPUT\"\n  echo \"No TAURI_SIGNING_PRIVATE_KEY \u2014 unsigned updater artifacts skipped\"\nfi\nif [ \"${{ matrix.platform }}\" = \"macos-latest\" ] \\\n  && [ -n \"${APPLE_CERTIFICATE:-}\" ] \\\n  && [ -n \"${APPLE_ID:-}\" ] \\\n  && [ -n \"${APPLE_APP_SPECIFIC_PASSWORD:-}\" ] \\\n  && [ -n \"${APPLE_TEAM_ID:-}\" ]; then\n  echo \"apple_notarize=true\" >> \"$GITHUB_OUTPUT\"\n  echo \"Apple signing+notarize secrets present\"\nelse\n  echo \"apple_notarize=false\" >> \"$GITHUB_OUTPUT\"\n  echo \"Apple notarize secrets absent or non-macOS \u2014 unsigned macOS path\"\nfi\n"
     - name: Import Apple certificate (optional)
       if: steps.signs.outputs.apple_notarize == 'true'
       shell: bash
@@ -148,46 +170,36 @@ jobs:
         APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
         APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-      run: |
-        # Throwaway keychain; never echo cert/password material.
+      run: '# Throwaway keychain; never echo cert/password material.
+
         CERT_PATH="$RUNNER_TEMP/apple_cert.p12"
+
         KEYCHAIN="$RUNNER_TEMP/ottplay-signing.keychain-db"
+
         echo -n "$APPLE_CERTIFICATE" | base64 --decode > "$CERT_PATH"
+
         KC_PASS="${KEYCHAIN_PASSWORD:-$(openssl rand -base64 32)}"
+
         security create-keychain -p "$KC_PASS" "$KEYCHAIN"
+
         security set-keychain-settings -lut 21600 "$KEYCHAIN"
+
         security unlock-keychain -p "$KC_PASS" "$KEYCHAIN"
+
         security import "$CERT_PATH" -P "${APPLE_CERTIFICATE_PASSWORD:-}" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+
         security list-keychain -d user -s "$KEYCHAIN"
+
         security set-key-partition-list -S apple-tool:,apple: -k "$KC_PASS" "$KEYCHAIN"
+
         rm -f "$CERT_PATH"
+
         echo "KEYCHAIN_PATH=$KEYCHAIN" >> "$GITHUB_ENV"
+
+        '
     - name: Build desktop package
       shell: bash
-      run: |
-        EXTRA_CONFIG=()
-        if [ "${TAURI_SIGNING:-}" = "true" ]; then
-          EXTRA_CONFIG+=(--config '{"bundle":{"createUpdaterArtifacts":true}}')
-        fi
-
-        # Apple notarize: only pass APPLE_* env when all secrets present.
-        # Otherwise leave them unset so Tauri does not attempt codesign/notarize.
-        if [ "${{ steps.signs.outputs.apple_notarize }}" = "true" ]; then
-          export APPLE_CERTIFICATE="$SIGN_APPLE_CERTIFICATE"
-          export APPLE_CERTIFICATE_PASSWORD="$SIGN_APPLE_CERTIFICATE_PASSWORD"
-          export APPLE_SIGNING_IDENTITY="$SIGN_APPLE_SIGNING_IDENTITY"
-          export APPLE_ID="$SIGN_APPLE_ID"
-          export APPLE_PASSWORD="$SIGN_APPLE_APP_SPECIFIC_PASSWORD"
-          export APPLE_TEAM_ID="$SIGN_APPLE_TEAM_ID"
-        else
-          export CSC_IDENTITY_AUTO_DISCOVERY=false
-        fi
-
-        if [ -n "${TAURI_TARGET:-}" ]; then
-          npx tauri build --ci --target "$TAURI_TARGET" "${EXTRA_CONFIG[@]}"
-        else
-          npx tauri build --ci "${EXTRA_CONFIG[@]}"
-        fi
+      run: "EXTRA_CONFIG=()\nif [ \"${TAURI_SIGNING:-}\" = \"true\" ]; then\n  EXTRA_CONFIG+=(--config '{\"bundle\":{\"createUpdaterArtifacts\":true}}')\nfi\n\n# Apple notarize: only pass APPLE_* env when all secrets present.\n# Otherwise leave them unset so Tauri does not attempt codesign/notarize.\nif [ \"${{ steps.signs.outputs.apple_notarize }}\" = \"true\" ]; then\n  export APPLE_CERTIFICATE=\"$SIGN_APPLE_CERTIFICATE\"\n  export APPLE_CERTIFICATE_PASSWORD=\"$SIGN_APPLE_CERTIFICATE_PASSWORD\"\n  export APPLE_SIGNING_IDENTITY=\"$SIGN_APPLE_SIGNING_IDENTITY\"\n  export APPLE_ID=\"$SIGN_APPLE_ID\"\n  export APPLE_PASSWORD=\"$SIGN_APPLE_APP_SPECIFIC_PASSWORD\"\n  export APPLE_TEAM_ID=\"$SIGN_APPLE_TEAM_ID\"\nelse\n  export CSC_IDENTITY_AUTO_DISCOVERY=false\nfi\n\nif [ -n \"${TAURI_TARGET:-}\" ]; then\n  npx tauri build --ci --target \"$TAURI_TARGET\" \"${EXTRA_CONFIG[@]}\"\nelse\n  npx tauri build --ci \"${EXTRA_CONFIG[@]}\"\nfi\n"
       working-directory: src-tauri
       env:
         CI: true
@@ -204,20 +216,23 @@ jobs:
     - name: Cleanup Apple keychain (optional)
       if: always() && steps.signs.outputs.apple_notarize == 'true'
       shell: bash
-      run: |
-        if [ -n "${KEYCHAIN_PATH:-}" ]; then
-          security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true
-        fi
+      run: "if [ -n \"${KEYCHAIN_PATH:-}\" ]; then\n  security delete-keychain \"$KEYCHAIN_PATH\" 2>/dev/null || true\nfi\n"
     - name: Collect desktop bundles
       shell: bash
       run: bash scripts/ci-tauri-collect-artifacts.sh
       env:
         TAURI_TARGET: ${{ matrix.target }}
+    - name: Verify and stage versioned release assets
+      shell: bash
+      env:
+        RELEASE_ASSET_TARGET: desktop-${{ matrix.platform }}-${{ matrix.target || 'host' }}
+        RELEASE_ASSET_PATTERN_0: tauri-artifacts/*
+      run: python3 scripts/stage_release_assets.py --target "$RELEASE_ASSET_TARGET" --pattern "$RELEASE_ASSET_PATTERN_0"
     - name: Store release assets
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
         name: release-assets-desktop-${{ matrix.platform }}-${{ matrix.target || 'host' }}
-        path: tauri-artifacts/*
+        path: release-assets/desktop-${{ matrix.platform }}-${{ matrix.target || 'host' }}/*
         if-no-files-found: error
         retention-days: 14
     timeout-minutes: 90
@@ -232,6 +247,18 @@ jobs:
         egress-policy: audit
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+    - name: Set up release version tooling
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+      with:
+        python-version: '3.12'
+    - name: Download frozen release version plan
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: ${{ inputs.release_plan_artifact }}
+        path: .
+    - name: Apply frozen release version inputs
+      shell: bash
+      run: python3 scripts/version_plan.py sync --root . --plan .release-plan.json
     - name: Verify committed release version
       run: python3 scripts/check-release-version.py "$RELEASE_VERSION" "$RELEASE_CHANNEL"
     - name: Set up Node.js
@@ -241,61 +268,28 @@ jobs:
         cache: npm
     - name: Install JS dependencies
       run: npm ci --ignore-scripts
-    - name: iOS – build web + sync
+    - name: "iOS \u2013 build web + sync"
       run: npm run build:ios
       env:
         CI: true
-    - name: iOS – discover scheme
+    - name: "iOS \u2013 discover scheme"
       id: discover
-      run: |
-        SCHEME=$(xcodebuild -list -project ios/App/App.xcodeproj | awk '/Schemes:/{getline; gsub(/^[ \t]+/,""); print; exit}')
-        if [ -z "$SCHEME" ]; then
-          echo "No scheme discovered via xcodebuild -list; falling back to App"
-          SCHEME=App
-        fi
-        echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
-        echo "Using scheme: $SCHEME"
-    - name: iOS – archive (unsigned)
-      run: |
-        SCHEME="${{ steps.discover.outputs.scheme }}"
-        SCHEME="${SCHEME:-App}"
-        # Archive for a device without depending on an attached device or
-        # parsing human-readable Xcode destination listings.
-        DEST="generic/platform=iOS"
-        echo "Using destination: $DEST"
-        xcodebuild clean archive \
-          -project "ios/App/App.xcodeproj" \
-          -scheme "$SCHEME" \
-          -sdk iphoneos \
-          -configuration Release \
-          -archivePath "${{ github.workspace }}/ottplay-foss-ios.xcarchive" \
-          CODE_SIGNING_ALLOWED=NO \
-          CODE_SIGN_IDENTITY="" \
-          DEVELOPMENT_TEAM="" \
-          -destination "$DEST" \
-          ONLY_ACTIVE_ARCH=NO \
-          ARCHS=arm64
-    - name: iOS – audit final application and package IPA
-      run: |
-        XCA="${{ github.workspace }}/ottplay-foss-ios.xcarchive"
-        APP_DIR="$XCA/Products/Applications"
-        APPS=("$APP_DIR/"*.app)
-        if [ "${#APPS[@]}" -ne 1 ] || [ ! -d "${APPS[0]}" ]; then
-          echo "Expected exactly one .app in archive at $APP_DIR"
-          exit 1
-        fi
-        node scripts/native-runtime.cjs audit "${APPS[0]}/public" \
-          --platform capacitor --source ios/App/App/public
-        mkdir -p Payload
-        cp -R "${APPS[0]}" Payload/
-        zip -qr "${{ github.workspace }}/ottplay-foss-ios-unsigned.ipa" Payload
-        rm -rf Payload
-        echo "Created ottplay-foss-ios-unsigned.ipa"
+      run: "SCHEME=$(xcodebuild -list -project ios/App/App.xcodeproj | awk '/Schemes:/{getline; gsub(/^[ \\t]+/,\"\"); print; exit}')\nif [ -z \"$SCHEME\" ]; then\n  echo \"No scheme discovered via xcodebuild -list; falling back to App\"\n  SCHEME=App\nfi\necho \"scheme=$SCHEME\" >> \"$GITHUB_OUTPUT\"\necho \"Using scheme: $SCHEME\"\n"
+    - name: "iOS \u2013 archive (unsigned)"
+      run: "SCHEME=\"${{ steps.discover.outputs.scheme }}\"\nSCHEME=\"${SCHEME:-App}\"\n# Archive for a device without depending on an attached device or\n# parsing human-readable Xcode destination listings.\nDEST=\"generic/platform=iOS\"\necho \"Using destination: $DEST\"\nxcodebuild clean archive \\\n  -project \"ios/App/App.xcodeproj\" \\\n  -scheme \"$SCHEME\" \\\n  -sdk iphoneos \\\n  -configuration Release \\\n  -archivePath \"${{ github.workspace }}/ottplay-foss-ios.xcarchive\" \\\n  CODE_SIGNING_ALLOWED=NO \\\n  CODE_SIGN_IDENTITY=\"\" \\\n  DEVELOPMENT_TEAM=\"\" \\\n  -destination \"$DEST\" \\\n  ONLY_ACTIVE_ARCH=NO \\\n  ARCHS=arm64\n"
+    - name: "iOS \u2013 audit final application and package IPA"
+      run: "XCA=\"${{ github.workspace }}/ottplay-foss-ios.xcarchive\"\nAPP_DIR=\"$XCA/Products/Applications\"\nAPPS=(\"$APP_DIR/\"*.app)\nif [ \"${#APPS[@]}\" -ne 1 ] || [ ! -d \"${APPS[0]}\" ]; then\n  echo \"Expected exactly one .app in archive at $APP_DIR\"\n  exit 1\nfi\nnode scripts/native-runtime.cjs audit \"${APPS[0]}/public\" \\\n  --platform capacitor --source ios/App/App/public\nmkdir -p Payload\ncp -R \"${APPS[0]}\" Payload/\nzip -qr \"${{ github.workspace }}/ottplay-foss-ios-unsigned.ipa\" Payload\nrm -rf Payload\necho \"Created ottplay-foss-ios-unsigned.ipa\"\n"
+    - name: Verify and stage versioned release assets
+      shell: bash
+      env:
+        RELEASE_ASSET_TARGET: mobile-ios
+        RELEASE_ASSET_PATTERN_0: ottplay-foss-ios-unsigned.ipa
+      run: python3 scripts/stage_release_assets.py --target "$RELEASE_ASSET_TARGET" --pattern "$RELEASE_ASSET_PATTERN_0"
     - name: Store release assets
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
         name: release-assets-mobile-ios
-        path: ottplay-foss-ios-unsigned.ipa
+        path: release-assets/mobile-ios/*
         if-no-files-found: error
         retention-days: 14
   container:
@@ -308,10 +302,25 @@ jobs:
       with:
         egress-policy: audit
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+    - name: Set up release version tooling
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+      with:
+        python-version: '3.12'
+    - name: Download frozen release version plan
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: ${{ inputs.release_plan_artifact }}
+        path: .
+    - name: Apply frozen release version inputs
+      shell: bash
+      run: python3 scripts/version_plan.py sync --root . --plan .release-plan.json
     - name: Verify committed release version
       run: python3 scripts/check-release-version.py "$RELEASE_VERSION" "$RELEASE_CHANNEL"
     - uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a
     - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e
+    - name: Check container version metadata
+      id: image-version
+      run: python3 scripts/release_container_labels.py --github-output "$GITHUB_OUTPUT"
     - name: Build OCI image archive
       uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
       with:
@@ -324,10 +333,21 @@ jobs:
         provenance: mode=max
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        labels: 'org.opencontainers.image.version=${{ steps.image-version.outputs.version }}
+
+          org.opencontainers.image.revision=${{ steps.image-version.outputs.revision }}
+
+          '
+    - name: Verify and stage versioned release assets
+      shell: bash
+      env:
+        RELEASE_ASSET_TARGET: container
+        RELEASE_ASSET_PATTERN_0: ottplay-foss-container.oci.tar
+      run: python3 scripts/stage_release_assets.py --target "$RELEASE_ASSET_TARGET" --pattern "$RELEASE_ASSET_PATTERN_0"
     - name: Store release assets
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
         name: release-assets-container
-        path: ottplay-foss-container.oci.tar
+        path: release-assets/container/*
         if-no-files-found: error
         retention-days: 14

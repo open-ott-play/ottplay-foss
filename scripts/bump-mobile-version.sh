@@ -1,13 +1,10 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+# Native build identity comes from the allocated release plan, never SemVer arithmetic.
+set -euo pipefail
 cd "$(dirname "$0")/.."
-VERSION=$(node -p "require('./package.json').version")
-IFS='.' read -r MA MI P <<< "$VERSION"
-VC=$((MA * 10000 + MI * 100 + P))
-
-# iOS
-sed -i.bak "s/MARKETING_VERSION = [0-9.]*;*/MARKETING_VERSION = $VERSION;/g" ios/App/App.xcodeproj/project.pbxproj
-sed -i.bak "s/CURRENT_PROJECT_VERSION = [0-9]*;/CURRENT_PROJECT_VERSION = $VC;/g" ios/App/App.xcodeproj/project.pbxproj
-rm -f ios/App/App.xcodeproj/project.pbxproj.bak
-
-echo "Bumped iOS to $VERSION (build $VC)"
+plan_path="${1:-${RELEASE_VERSION_PLAN:-.release-plan.json}}"
+if [[ ! -f "$plan_path" ]]; then
+  echo "A frozen release plan is required: bump-mobile-version.sh PATH_TO_PLAN" >&2
+  exit 1
+fi
+python3 scripts/version_plan.py sync --root . --plan "$plan_path"
