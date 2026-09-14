@@ -1890,6 +1890,47 @@ export function stbBindKeyHandler(): void {
     }
 }
 
+var _viewportSizeTimer: ReturnType<typeof setTimeout> | null = null;
+var _viewportSizeElement: HTMLElement | null = null;
+
+/** Briefly show the live viewport dimensions while the player window is resized. */
+function showViewportSizeIndicator(): void {
+    try {
+        var el = _viewportSizeElement;
+        if (!el || !el.parentNode) {
+            el = document.getElementById(
+                "ott_viewport_size"
+            ) as HTMLElement | null;
+            if (!el) {
+                el = document.createElement("div");
+                el.id = "ott_viewport_size";
+                el.setAttribute("aria-hidden", "true");
+                el.style.cssText =
+                    "position:fixed;top:10px;right:10px;z-index:2147483000;" +
+                    "padding:6px 9px;border:1px solid rgba(255,255,255,0.18);" +
+                    "border-radius:5px;background:rgba(72,72,72,0.41);color:#fff;" +
+                    "box-shadow:0 2px 8px rgba(0,0,0,0.3);font:600 13px/1.2 monospace;" +
+                    "letter-spacing:0.2px;white-space:nowrap;pointer-events:none;" +
+                    "user-select:none;-webkit-user-select:none;";
+                (document.body || document.documentElement).appendChild(el);
+            }
+            _viewportSizeElement = el;
+        }
+        el.textContent =
+            Math.round(window.innerWidth || 0) +
+            " × " +
+            Math.round(window.innerHeight || 0) +
+            " px";
+        el.style.display = "block";
+        if (_viewportSizeTimer) clearTimeout(_viewportSizeTimer);
+        _viewportSizeTimer = setTimeout(function () {
+            if (_viewportSizeElement)
+                _viewportSizeElement.style.display = "none";
+            _viewportSizeTimer = null;
+        }, 900);
+    } catch (_e) {}
+}
+
 /**
  * Initialise the STB player: inject video DOM elements, attach event handlers,
  * go fullscreen, and set the global key handler.
@@ -1908,6 +1949,7 @@ export function stbBindKeyHandler(): void {
 export function stbInit(): void {
     $("body").css({ "background-color": "#111" });
     window.addEventListener("resize", function () {
+        showViewportSizeIndicator();
         if (typeof window.setFontSize === "function") window.setFontSize();
         if (typeof window.setListPos === "function") window.setListPos();
         if (typeof window.setColor === "function") window.setColor();
