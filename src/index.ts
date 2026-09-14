@@ -1958,14 +1958,21 @@ function tauriInvoke<T>(
  */
 
 /**
- * True when the webview is the embedded frontendDist (Mode B), not the
- * companion server on :8095. Companion keeps real /m3u/* HTTP routes.
+ * True when Tauri needs native companion routes (Mode B), including native dev.
+ * Local HTTP companions on ports 8443–8446 keep their real /m3u/* HTTP routes.
  */
 function isTauriEmbedMode(): boolean {
     if (typeof window.__TAURI__ === "undefined") return false;
     try {
-        const host = String(window.location.host || "");
-        if (/:(8095)\b/.test(host)) return false;
+        const location = window.location;
+        if (
+            String(location.protocol || "").toLowerCase() === "http:" &&
+            /^(127\.0\.0\.1|localhost):844[3-6]$/i.test(
+                String(location.host || "")
+            )
+        ) {
+            return false;
+        }
         return true;
     } catch (_e) {
         return true;

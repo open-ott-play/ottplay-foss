@@ -10,14 +10,14 @@ use tokio::sync::RwLock;
 
 /// Default URL for the desktop shell webview.
 ///
-/// Debug builds point at the local companion (`:8095`) so Mode A paths work while
+/// Debug builds point at the local HTTP companion (`:8443`) so Mode A paths work while
 /// developing. Release builds default to empty so the app uses embedded
 /// `frontendDist` (`frontend/` — Mode A-like staged tree).
 ///
 /// Override with `OTTPLAY_WEB_URL` in either mode. Set it to empty to keep
 /// embedded `frontendDist`.
 #[cfg(debug_assertions)]
-const DEFAULT_WEB_URL: &str = "http://127.0.0.1:8095/";
+const DEFAULT_WEB_URL: &str = "http://127.0.0.1:8443/";
 #[cfg(not(debug_assertions))]
 const DEFAULT_WEB_URL: &str = "";
 

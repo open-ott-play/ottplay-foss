@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Mode B Tauri desktop-smoke helper (thin).
 # Automates what FOSS can without a headed GUI in CI: toolchain checks,
-# src-tauri/ presence, optional unsigned compile, optional companion curl on :8095,
+# src-tauri/ presence, optional unsigned compile, optional companion curl on :8443,
 # and optional command-queue curl on :18081+ when the desktop app is running.
 # Human still marks the UI checklist in docs/mode-b-tauri-smoke.md.
 #
@@ -16,7 +16,7 @@
 #   ./scripts/smoke-tauri-desktop.sh --require-cargo
 #
 # Env:
-#   BASE_URL           Default http://127.0.0.1:8095 (OTTPLAY_WEB_URL companion).
+#   BASE_URL           Default http://127.0.0.1:8443 (OTTPLAY_WEB_URL companion).
 #   CONNECT_TIMEOUT    curl connect timeout seconds (default 2).
 #   DEVICE_ID          Unused for Tauri companion soft curl.
 #
@@ -31,7 +31,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-BASE_URL="${BASE_URL:-${OTTPLAY_WEB_URL:-http://127.0.0.1:8095}}"
+BASE_URL="${BASE_URL:-${OTTPLAY_WEB_URL:-http://127.0.0.1:8443}}"
 BASE_URL="${BASE_URL%/}"
 DO_CHECK_SRC=0
 DO_BUILD=0
@@ -48,7 +48,7 @@ usage() {
 smoke-tauri-desktop.sh — Mode B Tauri desktop-smoke helper (checklist companion).
 
 Does NOT launch a headed GUI. Automates: toolchain checks, src-tauri/ presence,
-optional unsigned CI build, companion soft/hard curl on :8095, and command-queue
+optional unsigned CI build, companion soft/hard curl on :8443, and command-queue
 optional authenticated probe on explicitly enabled Tauri loopback HTTP :18081+.
 HTTP control is off by default; internal IPC does not require a listener. Human marks the UI checklist in
 docs/mode-b-tauri-smoke.md.
@@ -56,7 +56,7 @@ docs/mode-b-tauri-smoke.md.
 Flags:
   --check-src-tauri         Verify src-tauri/ exists
   --build           Run: ( cd src-tauri && npx tauri build --ci ) — unsigned
-  --check-companion                Soft curl companion at BASE_URL / OTTPLAY_WEB_URL (default :8095)
+  --check-companion                Soft curl companion at BASE_URL / OTTPLAY_WEB_URL (default :8443)
   --require-companion        With --check-companion: exit 1 if not listening (default: soft-skip)
   --check-queue              Check explicitly enabled HTTP control with QUEUE_HTTP_TOKEN
   --require-queue            With --check-queue: exit 1 if queue not listening
@@ -64,7 +64,7 @@ Flags:
   -h, --help                 Show this help
 
 Env:
-  BASE_URL / OTTPLAY_WEB_URL  Default http://127.0.0.1:8095 (debug companion).
+  BASE_URL / OTTPLAY_WEB_URL  Default http://127.0.0.1:8443 (debug companion).
   QUEUE_BASE_URL              Optional loopback queue URL (else authenticated --discover).
   QUEUE_HTTP_TOKEN / OTTPLAY_QUEUE_HTTP_TOKEN  Token for explicit HTTP opt-in, never logged.
   CONNECT_TIMEOUT             curl connect timeout seconds (default 2).
@@ -187,7 +187,7 @@ if [[ "$DO_CHECK_COMPANION" -eq 1 ]]; then
   probe_url="${BASE_URL}/"
   if ! listening "$probe_url"; then
     echo "soft-skip: companion not listening at ${BASE_URL}"
-    echo "  hint: start companion on :8095 for debug webview, or soft-skip;"
+    echo "  hint: start companion on :8443 for debug webview, or soft-skip;"
     echo "        release builds embed frontendDist — companion optional"
     echo "        then re-run with --check-companion (or --check-companion --require-companion)"
     if [[ "$REQUIRE_COMPANION" -eq 1 ]]; then
@@ -227,7 +227,7 @@ if [[ "$DO_CHECK_QUEUE" -eq 1 ]]; then
     echo "soft-skip: smoke-command-queue.sh missing"
   else
     echo "running: command-queue smoke against Tauri loopback (:18081+ / --discover)"
-    # BASE_URL here is the web companion (:8095). Queue uses QUEUE_BASE_URL or discover.
+    # BASE_URL here is the web companion (:8443). Queue uses QUEUE_BASE_URL or discover.
     set +e
     if [[ -n "${QUEUE_BASE_URL:-}" ]]; then
       CONNECT_TIMEOUT="${CONNECT_TIMEOUT:-2}" \

@@ -16,7 +16,7 @@ Exit codes:
   2  high error rate / HTTP assertion failed
   3  usage / missing dependency
 
-Default BASE_URL http://127.0.0.1:8095 (same as Mode A companion smoke /
+Default BASE_URL http://127.0.0.1:8443 (same as Mode A companion smoke /
 install-ottplay-local-service.sh). No secrets.
 """
 from __future__ import annotations
@@ -33,7 +33,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Sequence
 
-DEFAULT_BASE = "http://127.0.0.1:8095"
+DEFAULT_BASE = "http://127.0.0.1:8443"
 DEFAULT_CONCURRENCY = 200
 DEFAULT_TOTAL = 1000
 FULL_TOTAL = 10000
@@ -57,7 +57,7 @@ def not_listening(url: str, detail: str = "") -> None:
     if detail:
         print(f"  detail: {detail}", file=sys.stderr)
     print(
-        "hint: start ottplay-server (local install :8095, cargo/docker often :8080)",
+        "hint: start ottplay-server (local install :8443, cargo/docker often :8080)",
         file=sys.stderr,
     )
     print(

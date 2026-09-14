@@ -97,7 +97,7 @@ Run options:
   --port NUMBER     Console port for a new instance (default: 5570)
   --timeout SECONDS Boot timeout (default: 180)
   --headless        Start without a window
-  --url URL         Open the hosted player (default: http://127.0.0.1:8095/;
+  --url URL         Open the hosted player (default: http://127.0.0.1:8443/;
                     OTTP_PLAYER_URL)
   --home            Boot/connect without launching the player
   --apk FILE        Install an APK on this TV AVD; requires --component
@@ -110,7 +110,7 @@ Run opens the hosted player in a locally built test WebView app by default.
 This requires installed Android platform 36, build-tools 36 and Java 17+.
 --home skips the app; --apk/--component select another app. These modes cannot
 be combined with --url. It reverses ports
-8095 (existing player/companion) and 8090 (playlist proxy) through ADB so guest
+8443 (existing player/companion) and 8090 (playlist proxy) through ADB so guest
 127.0.0.1 reaches the host stack. No browser or player app is assumed installed.
 No server is started and no SDK or APK is downloaded by the run command.`);
 }
@@ -351,7 +351,7 @@ async function main() {
             playerUrl = new URL(
                 options.url ||
                     process.env.OTTP_PLAYER_URL ||
-                    "http://127.0.0.1:8095/"
+                    "http://127.0.0.1:8443/"
             );
             if (
                 !["http:", "https:"].includes(playerUrl.protocol) ||
@@ -363,7 +363,7 @@ async function main() {
             fail("Player URL must be an HTTP(S) URL without credentials");
         }
     }
-    const reversePorts = new Set([8095, 8090]);
+    const reversePorts = new Set([8443, 8090]);
     if (
         playerUrl &&
         ["127.0.0.1", "localhost", "[::1]"].includes(playerUrl.hostname)
@@ -661,7 +661,7 @@ async function main() {
         console.log(output);
     }
     console.log(
-        `Ready: ${avd} (${serial}). Host player: ${playerUrl ? playerUrl.href : "http://127.0.0.1:8095/"}; playlist proxy: http://127.0.0.1:8090/`
+        `Ready: ${avd} (${serial}). Host player: ${playerUrl ? playerUrl.href : "http://127.0.0.1:8443/"}; playlist proxy: http://127.0.0.1:8090/`
     );
 }
 main().catch((error) => {

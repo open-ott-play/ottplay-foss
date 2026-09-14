@@ -1,13 +1,13 @@
 # Tauri desktop smoke (Mode B)
 
 > **Mode B desktop (Tauri).** Sibling of Cap device smoke (`docs/mode-b-device-smoke.md`).
-> Debug webview often uses `OTTPLAY_WEB_URL=http://127.0.0.1:8095/`.
+> Debug webview often uses `OTTPLAY_WEB_URL=http://127.0.0.1:8443/`.
 > Native PiP: always-on-top `play_pip` / `stop_pip` / `set_pip_bounds` (#285). Unpaid/unsigned OK.
 > Helper: `./scripts/smoke-tauri-desktop.sh` - does **not** assert headed play/PiP.
 
 Repeatable **macOS / Windows / Linux** smoke for Mode B Tauri desktop.
 FOSS closes what can be automated without a headed GUI in CI: toolchain checks,
-`src-tauri/` presence, optional unsigned compile, optional companion curl on `:8095`,
+`src-tauri/` presence, optional unsigned compile, optional companion curl on `:8443`,
 and optional authenticated command-queue curl for an explicitly enabled loopback listener.
 Normal playback uses internal IPC; HTTP control is off by default.
 **A human still marks the UI checklist** on a desktop window (debug or built app).
@@ -66,7 +66,7 @@ Until media samples are available, the footer shows resolution without Mbps.
 | Tools present (`node` / `npm`; optional `cargo` / `rustc`) | Yes (helper) | Soft unless `--require-cargo` |
 | `src-tauri/` present | Yes (helper) | Scaffold presence only |
 | `npm run build` / `npx tauri build --ci` | Optional (`--build`) | Unsigned CI build inside `src-tauri/` |
-| Companion curl on `:8095` | Optional (helper flags) | Soft-skip if not up unless `--require-companion` |
+| Companion curl on `:8443` | Optional (helper flags) | Soft-skip if not up unless `--require-companion` |
 | Optional command-queue HTTP POST/GET | Only after explicit opt-in | Token required; never a normal playback prerequisite |
 | UI: window launch / paint / play / PiP | **Human** | Debug or built desktop app |
 | Paid notarize / code signing | **Out of scope** | Unpaid: unsigned / local debug OK |
@@ -100,11 +100,11 @@ Or via helper:
 ./scripts/smoke-tauri-desktop.sh --check-queue
 ```
 
-Set `OTTPLAY_WEB_URL=http://127.0.0.1:8095` for debug webview pointing at a local Mode A companion.
+Set `OTTPLAY_WEB_URL=http://127.0.0.1:8443` for debug webview pointing at a local Mode A companion.
 
 ## Automated companion curl
 
-When a Mode A companion is listening on `:8095`:
+When a Mode A companion is listening on `:8443`:
 
 ```bash
 ./scripts/smoke-tauri-desktop.sh --check-companion
@@ -174,7 +174,7 @@ focusing only the native window does not verify this behavior.
 ### E. Stalker portal (FOSS JSON-RPC)
 
 - [ ] Configure portal URL + MAC for a portal that speaks FOSS `stalker_portal/api/` JSON-RPC
-- [ ] Handshake + channel list without Mode A companion `:8095`
+- [ ] Handshake + channel list without Mode A companion `:8443`
 - [ ] Play one portal-built stream URL
 - [ ] **Skip** if no portal URL — mark "skipped: no portal"
 

@@ -302,7 +302,7 @@ try {
                 check(view.focused,"WebView focused");
                 check(view.client!=null && view.chromeClient!=null,"clients attached");
                 check(app.getWindow().getDecorView().visibilityFlags==(4|2|4096),"immersive fullscreen");
-                check(view.urls.size()==1 && view.urls.get(0).equals("http://127.0.0.1:8095/"),"default local player");
+                check(view.urls.size()==1 && view.urls.get(0).equals("http://127.0.0.1:8443/"),"default local player");
                 String markedUserAgent=view.getSettings().getUserAgentString();
                 check(markedUserAgent.equals(standardUserAgent+" "+marker),"standard Android/Chromium UA preserved with only test-host suffix");
                 check(markedUserAgent.indexOf(marker)==markedUserAgent.lastIndexOf(marker),"test-host marker appears once");
@@ -353,7 +353,7 @@ try {
                     check(blocked(view,url),"invalid navigation blocked: "+url);
                 }
                 app.onNewIntent(new Intent(null));
-                check(view.urls.get(view.urls.size()-1).equals("http://127.0.0.1:8095/"),"new intent default URL");
+                check(view.urls.get(view.urls.size()-1).equals("http://127.0.0.1:8443/"),"new intent default URL");
 
                 int[] codes={${Object.keys(mapping)
                     .map((key) => `KeyEvent.KEYCODE_${key}`)

@@ -78,7 +78,7 @@ public class MainActivity extends Activity {
 
     private void openPlayer(Intent intent) {
         String url = intent.getDataString();
-        if (url == null) url = "http://127.0.0.1:8095/";
+        if (url == null) url = "http://127.0.0.1:8443/";
         if (isPlayerUrl(url)) {
             webView.loadUrl(url);
         } else {

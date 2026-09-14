@@ -126,7 +126,7 @@ Run on **iOS Simulator and/or Android emulator** (optional: real device). Skip r
 ### E. Stalker portal (FOSS JSON-RPC)
 
 - [ ] Configure portal URL + MAC for a portal that speaks FOSS `stalker_portal/api/` JSON-RPC
-- [ ] Handshake + channel list without Mode A companion `:8095`
+- [ ] Handshake + channel list without Mode A companion `:8443`
 - [ ] Play one portal-built stream URL
 - [ ] **Skip** if no portal URL — mark "skipped: no portal"
 

@@ -11,7 +11,7 @@ usage() {
 Usage: scripts/run-webos-simulator.sh [options]
 
   --version NUMBER  webOS TV version (default: 26; WEBOS_VERSION)
-  --url URL         Running player (default: http://127.0.0.1:8095/;
+  --url URL         Running player (default: http://127.0.0.1:8443/;
                     OTTP_PLAYER_URL, or legacy OTTP_DEVICE_TEST_PORT)
   --sdk DIRECTORY   Simulator directory (WEBOS_SDK_PATH); otherwise the CLI
                     uses its previously registered SDK location

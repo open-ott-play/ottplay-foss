@@ -7,7 +7,7 @@ const destination = path.resolve(__dirname, "../build/device-tizen-simulator");
 let playerUrl;
 try {
     playerUrl = new URL(
-        process.env.OTTP_PLAYER_URL || "http://127.0.0.1:8095/"
+        process.env.OTTP_PLAYER_URL || "http://127.0.0.1:8443/"
     );
     if (
         !["http:", "https:"].includes(playerUrl.protocol) ||

@@ -13,6 +13,9 @@ See the [release strategy](RELEASING.md) for validation, nightly, beta, RC and s
 Open the [live demo](https://player.ottplay.here.now/), or build and serve the
 web player using the instructions below.
 
+The [local macOS deployment](docs/local-http-deployment.md) provides HTTP player
+origins on ports 8443–8446. Port 8095 is retired.
+
 On first launch, choose **Try demo** to play the moving test pattern,
 or configure your own M3U playlist or provider. The demo is also available later
 from **Change provider → Demo**.
@@ -268,7 +271,7 @@ On first load: press **F2 (Settings) → Providers → M3U**, enter your playlis
 Curl-based smoke for the Mode A companion (`ottplay-server` / `archive/server.py` parity): index, static dirs, `/logo`, `/version`, optional `/epg`, and a no-fetch probe of `POST /m3u/cp.php`.
 
 ```bash
-# Local install default (:8095 — scripts/install-ottplay-local-service.sh)
+# Local install default (:8443 — scripts/install-ottplay-local-service.sh)
 ./scripts/smoke-modea-companion.sh
 
 # Docker / cargo CLI default (:8080)
@@ -290,7 +293,7 @@ Contract (from `src-rs/core/src/m3u.rs` + `archive/server.py`):
 - Strips a leading `@` from `url` (provider jQuery form).
 
 ```bash
-# Companion must be listening (local install default :8095)
+# Companion must be listening (local install default :8443)
 ./scripts/smoke-m3u-stream-proxy-headers.sh
 
 # Docker / cargo CLI default (:8080) — echo must be reachable from the companion process
@@ -310,7 +313,7 @@ Exit: `0` pass, `1` not listening, `2` header/HTTP mismatch, `3` usage/deps. Sib
 Concurrent `GET /logo/<id>.svg` (optional `?ch=`) latency smoke against Mode A companion. Reports OK/fail counts and p50/p95/p99. Default is CI-local practical load (`CONCURRENCY=200`, `TOTAL=1000`); full 10k soak is optional (`--full` / `LOGO_BENCH_FULL=1` / `TOTAL=10000`).
 
 ```bash
-# Companion must be listening (local install default :8095)
+# Companion must be listening (local install default :8443)
 ./scripts/smoke-logo-concurrent-bench.sh
 
 # Docker / cargo CLI default (:8080)
@@ -340,7 +343,7 @@ Verifies Mode A companion XMLTV/EPG cache behavior honestly against `src-rs` (no
 Default path only curls — **does not kill processes**. Pass `--restart-cmd` / `RESTART_CMD` for automated kill+restart, or follow the manual `launchctl` steps in `--help`.
 
 ```bash
-# Companion must be listening (local install default :8095)
+# Companion must be listening (local install default :8443)
 ./scripts/smoke-xmltv-cache-refresh.sh
 
 # Docker / cargo CLI default (:8080)
@@ -373,7 +376,7 @@ Companion-side **play-path / stream readiness** smoke (HTTP only — **not** hea
 No private IPTV credentials. Sibling of `smoke-modea-companion.sh` (presence), `smoke-m3u-stream-proxy-headers.sh` (UA/Referer), `smoke-xmltv-cache-refresh.sh`.
 
 ```bash
-# Companion must be listening (local install default :8095)
+# Companion must be listening (local install default :8443)
 ./scripts/smoke-modea-e2e-play.sh
 
 # Docker / cargo CLI default (:8080) — fixture host must be reachable from the companion

@@ -25,7 +25,7 @@ Exit codes:
   2  header / HTTP assertion failed
   3  usage / missing dependency
 
-Default BASE_URL http://127.0.0.1:8095 (same as Mode A companion smoke /
+Default BASE_URL http://127.0.0.1:8443 (same as Mode A companion smoke /
 install-ottplay-local-service.sh).
 """
 from __future__ import annotations
@@ -41,7 +41,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import urlencode
 
-DEFAULT_BASE = "http://127.0.0.1:8095"
+DEFAULT_BASE = "http://127.0.0.1:8443"
 DEFAULT_UA = "OTT-play-FOSS/1.0"
 
 # Mirrored from src-rs/core/src/m3u.rs / archive/server.py UA_PRESETS.
@@ -97,7 +97,7 @@ def not_listening(url: str, detail: str = "") -> None:
     if detail:
         print(f"  detail: {detail}", file=sys.stderr)
     print(
-        "hint: start ottplay-server (local install :8095, cargo/docker often :8080)",
+        "hint: start ottplay-server (local install :8443, cargo/docker often :8080)",
         file=sys.stderr,
     )
     print(
@@ -203,7 +203,7 @@ def main(argv: list[str] | None = None) -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Env:\n"
-            "  BASE_URL          Default http://127.0.0.1:8095\n"
+            "  BASE_URL          Default http://127.0.0.1:8443\n"
             "  ECHO_URL          Optional public/local echo (httpbin /headers shape).\n"
             "                    If unset, starts a local mock on 127.0.0.1.\n"
             "  CONNECT_TIMEOUT   curl --connect-timeout seconds (default 2).\n"

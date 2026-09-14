@@ -435,10 +435,14 @@ try {
                 call.name === "emulator" && call.args.includes("-accel-check")
         )
     );
-    assert.ok(calls().some((call) => call.args.includes("tcp:8095")));
-    assert.ok(calls().some((call) => call.args.includes("tcp:8090")));
+    assert.deepEqual(
+        calls()
+            .filter((call) => call.args.includes("reverse"))
+            .map((call) => call.args.at(-1)),
+        ["tcp:8443", "tcp:8090"]
+    );
 
-    const defaultUrl = "http://127.0.0.1:8095/";
+    const defaultUrl = "http://127.0.0.1:8443/";
     const shellQuote = (value) => "'" + value.replace(/'/g, "'\\''") + "'";
     const hostedCalls = () =>
         calls().filter((call) =>
@@ -531,7 +535,7 @@ try {
         defaultCalls
             .filter((call) => call.name === "curl")
             .map((call) => call.args.find((arg) => /^https?:/.test(arg))),
-        ["http://127.0.0.1:8095/health", defaultUrl]
+        ["http://127.0.0.1:8443/health", defaultUrl]
     );
     assert.ok(
         defaultCalls
@@ -598,7 +602,7 @@ try {
         customCalls
             .filter((call) => call.args.includes("reverse"))
             .map((call) => call.args.at(-1)),
-        ["tcp:8095", "tcp:8090", "tcp:9012"]
+        ["tcp:8443", "tcp:8090", "tcp:9012"]
     );
     assert.equal(
         customCalls.find((call) => call.args.includes("start")).args.at(-1),
@@ -617,7 +621,7 @@ try {
         calls()
             .filter((call) => call.args.includes("reverse"))
             .map((call) => call.args.at(-1)),
-        ["tcp:8095", "tcp:8090"],
+        ["tcp:8443", "tcp:8090"],
         "remote URLs must not add an unrelated reverse port"
     );
     for (const args of [

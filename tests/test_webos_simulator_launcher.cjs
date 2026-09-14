@@ -69,12 +69,12 @@ const server = http.createServer((request, response) => {
 (async () => {
     try {
         const help = await run(["--help"]);
-        assert(help.stdout.includes("8095"));
+        assert(help.stdout.includes("http://127.0.0.1:8443/"));
         await run(["--dry-run"]);
         assert(
             fs
                 .readFileSync(path.join(app, "index.html"), "utf8")
-                .includes('location.replace("http://127.0.0.1:8095/")')
+                .includes('location.replace("http://127.0.0.1:8443/")')
         );
         assert(!fs.existsSync(capture));
         assert(

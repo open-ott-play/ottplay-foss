@@ -1,22 +1,47 @@
 #!/usr/bin/env bash
 # Remove the ottplay-foss-local launchd user agents and stop the services.
-# By default removes ALL instances (base :8095, extra :8096/:8097).
+# Removes the player job and any owned legacy instance jobs.
 # ~/ottplay-foss-local is left untouched.
 #
 # Usage: scripts/uninstall-ottplay-local-service.sh
-# Env overrides: OTTPLAY_LABEL (single label only), OTTPLAY_PORT (single port)
+# Env override: OTTPLAY_LABEL (single label only).
 set -euo pipefail
 
 if [ -n "${OTTPLAY_LABEL:-}" ]; then
     LABELS="${OTTPLAY_LABEL}"
 else
-    LABELS="com.ottplay-foss-local com.ottplay-foss-local-2 com.ottplay-foss-local-3"
+    LABELS="com.ottplay-foss-local"
+    for plist in "$HOME/Library/LaunchAgents/com.ottplay-foss-local-"*.plist; do
+        [ -f "$plist" ] || continue
+        label="$(basename "$plist" .plist)"
+        LABELS="$LABELS $label"
+    done
 fi
 
 for LABEL in $LABELS; do
+    case "$LABEL" in
+        *[!A-Za-z0-9.-]*|.*|-*) echo "error: invalid service label" >&2; exit 1 ;;
+    esac
+    TARGET="gui/$(id -u)/$LABEL"
     PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+    launchctl bootout "$TARGET" 2>/dev/null || true
+    stopped=0
+    status_error="$(mktemp)"
+    for _ in $(seq 1 30); do
+        if ! LC_ALL=C launchctl print "$TARGET" >/dev/null 2>"$status_error"; then
+            case "$(cat "$status_error")" in
+                *"Could not find service"*) stopped=1; break ;;
+                *) rm -f "$status_error"; echo "error: cannot inspect service: $LABEL" >&2; exit 1 ;;
+            esac
+        fi
+        sleep 1
+    done
+    rm -f "$status_error"
+    if [ "$stopped" != "1" ]; then
+        echo "error: service is still loaded: $LABEL" >&2
+        exit 1
+    fi
     if [ -f "$PLIST" ]; then
-        launchctl unload "$PLIST" 2>/dev/null || true
         rm -f "$PLIST"
         echo "removed: $PLIST"
     else
@@ -24,17 +49,6 @@ for LABEL in $LABELS; do
     fi
 done
 
-pkill -f "$HOME/ottplay-foss-local/ottplay-server" 2>/dev/null \
-    && echo "stopped leftover process(es)" || true
-for PORT in ${OTTPLAY_PORT:-8095 8096 8097}; do
-    # shellcheck disable=SC2046  # pids are numeric, splitting is safe
-    kill $(lsof -t -iTCP:"$PORT" -sTCP:LISTEN) 2>/dev/null || true
-done
-
-# Best-effort: drop the self-signed cert from System keychain trust.
-CRT="$HOME/ottplay-foss-local/certs/server.crt"
-if [ -f "$CRT" ]; then
-    sudo -n security delete-certificate -c "OTT-play Local" /Library/Keychains/System.keychain 2>/dev/null \
-        && echo "cert removed from System keychain" || true
-fi
+# Certificates and keychain trust belong to the operator. Keep them, and never
+# terminate unrelated processes merely because they occupy a former player port.
 echo "done (~/ottplay-foss-local kept; reinstall with scripts/install-local-stack.sh)"

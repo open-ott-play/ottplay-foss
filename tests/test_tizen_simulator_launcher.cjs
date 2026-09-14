@@ -135,7 +135,7 @@ try {
 
     assert.equal(
         prepare(undefined, true, ["--print-url"]).trim(),
-        "http://127.0.0.1:8095/"
+        "http://127.0.0.1:8443/"
     );
     assert.equal(
         fs.existsSync(generated),
@@ -261,7 +261,7 @@ try {
         "Dry run prepares files without curl or the SDK"
     );
     assert.equal(fs.existsSync(path.join(foreignCwd, "build")), false);
-    assert.equal(redirectTarget(), "http://127.0.0.1:8095/");
+    assert.equal(redirectTarget(), "http://127.0.0.1:8443/");
     run("run");
     function assertServerLaunch(target) {
         const actual = calls();
@@ -280,7 +280,7 @@ try {
         ]);
         assert.equal(redirectTarget(), new URL(target).href);
     }
-    assertServerLaunch("http://127.0.0.1:8095/");
+    assertServerLaunch("http://127.0.0.1:8443/");
     const customUrl =
         "http://localhost:8095/f/samsung/tizen/?config[provider]=m3u&label=space [test]";
     run("run", [], true, { OTTP_PLAYER_URL: customUrl });
@@ -305,7 +305,7 @@ try {
         assert.equal(requests.length, failedUrl.endsWith("/health") ? 1 : 2);
     }
 
-    assert.match(prepare(), /Player target: http:\/\/127\.0\.0\.1:8095\//);
+    assert.match(prepare(), /Player target: http:\/\/127\.0\.0\.1:8443\//);
     const xml = new JSDOM(fs.readFileSync(generatedManifest, "utf8"), {
         contentType: "text/xml",
     });
@@ -358,7 +358,7 @@ try {
         });
         return target;
     }
-    assert.equal(redirectTarget(), "http://127.0.0.1:8095/");
+    assert.equal(redirectTarget(), "http://127.0.0.1:8443/");
     const hostileUrl =
         "http://localhost:8095/?q=</script><script>alert(1)</script>";
     prepare(hostileUrl);

@@ -54,19 +54,19 @@ See root README § Mode A companion smoke. Does not cover `local_proxy.py` comma
 
 ### M3U stream-proxy header smoke
 
-`scripts/smoke-m3u-stream-proxy-headers.sh` — POST `/m3u/cp.php` at a local (or `ECHO_URL`) header echo and assert Mode A upstream headers match `ottplay-core` / `archive/server.py`: **User-Agent** inject (presets + default `OTT-play-FOSS/1.0`), **no Referer**. Default `BASE_URL=http://127.0.0.1:8095`. See root README § M3U stream-proxy header smoke.
+`scripts/smoke-m3u-stream-proxy-headers.sh` — POST `/m3u/cp.php` at a local (or `ECHO_URL`) header echo and assert Mode A upstream headers match `ottplay-core` / `archive/server.py`: **User-Agent** inject (presets + default `OTT-play-FOSS/1.0`), **no Referer**. Default `BASE_URL=http://127.0.0.1:8443`. See root README § M3U stream-proxy header smoke.
 
 ### Logo concurrent bench smoke
 
-`scripts/smoke-logo-concurrent-bench.sh` — concurrent `GET /logo/<id>.svg` (optional `?ch=`) with OK/fail + p50/p95/p99. Default `BASE_URL=http://127.0.0.1:8095`, `CONCURRENCY=200`, `TOTAL=1000`; optional `--full` / `LOGO_BENCH_FULL=1` for 10k soak. See root README § Logo concurrent bench smoke.
+`scripts/smoke-logo-concurrent-bench.sh` — concurrent `GET /logo/<id>.svg` (optional `?ch=`) with OK/fail + p50/p95/p99. Default `BASE_URL=http://127.0.0.1:8443`, `CONCURRENCY=200`, `TOTAL=1000`; optional `--full` / `LOGO_BENCH_FULL=1` for 10k soak. See root README § Logo concurrent bench smoke.
 
 ### XMLTV cache refresh / warm-up smoke
 
-`scripts/smoke-xmltv-cache-refresh.sh` — Mode A companion XMLTV/EPG cache warm-up: `GET /health`, probe `GET /epg/:hash` (always 200 + `epg_data`), optional `EPG_HASH`, optional `--restart-cmd` then wait for `/health`. HTTP startup does not wait for the background XMLTV fetch; `--strict-epg` with `EPG_HASH` also polls that channel for non-empty EPG within the same `--warmup-timeout` budget. Default `BASE_URL=http://127.0.0.1:8095`. Does not kill by default. See root README § XMLTV cache refresh / warm-up smoke.
+`scripts/smoke-xmltv-cache-refresh.sh` — Mode A companion XMLTV/EPG cache warm-up: `GET /health`, probe `GET /epg/:hash` (always 200 + `epg_data`), optional `EPG_HASH`, optional `--restart-cmd` then wait for `/health`. HTTP startup does not wait for the background XMLTV fetch; `--strict-epg` with `EPG_HASH` also polls that channel for non-empty EPG within the same `--warmup-timeout` budget. Default `BASE_URL=http://127.0.0.1:8443`. Does not kill by default. See root README § XMLTV cache refresh / warm-up smoke.
 
 ### Mode A E2E play-path smoke
 
-`scripts/smoke-modea-e2e-play.sh` — companion **play-path / stream readiness** (HTTP only, **not** headed UI): health/index, player-shell static assets, optional `EPG_HASH`, secret-free `POST /m3u/match-channels`, and `POST /m3u/cp.php` against a local (or `MEDIA_URL`) media fixture asserting HTTP 200 + body/`Content-Type`. Default `BASE_URL=http://127.0.0.1:8095`. See root README § Mode A E2E play-path smoke.
+`scripts/smoke-modea-e2e-play.sh` — companion **play-path / stream readiness** (HTTP only, **not** headed UI): health/index, player-shell static assets, optional `EPG_HASH`, secret-free `POST /m3u/match-channels`, and `POST /m3u/cp.php` against a local (or `MEDIA_URL`) media fixture asserting HTTP 200 + body/`Content-Type`. Default `BASE_URL=http://127.0.0.1:8443`. See root README § Mode A E2E play-path smoke.
 
 
 ### Separate process: `local_proxy.py` (port 8081)
