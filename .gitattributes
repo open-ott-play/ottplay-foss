@@ -1,0 +1,4 @@
+# Tauri normalizes these release inputs while packaging on Windows. Keep their
+# checkout bytes stable so the post-build receipt still matches version sync.
+/Cargo.lock text eol=lf
+/src-tauri/Cargo.toml text eol=lf
