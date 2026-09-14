@@ -103,6 +103,7 @@ retrying. The tool refuses to overwrite them. Never rebuild an image for stable.
 - Classic emitted bundle smoke and ES5 checks are required, in addition to TypeScript checks.
 - Physical TV/STB firmware, decoders, live IPTV streams and DRM are separate acceptance checks.
 - OCI container archives are promoted without rebuild; deployment remains explicit.
+- Tauri bundle metadata keeps the base SemVer because MSI rejects beta and RC labels; package and Cargo metadata retain the full candidate identity.
 - Production automatic updating is not configured: updater public key is a placeholder and latest.json is not generated. Manual installers are supported; unsigned iOS packages need operator signing/sideloading.
 
 For public repositories, merge and verify the workflows before enabling the
