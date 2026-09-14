@@ -59,6 +59,9 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+        with:
+          # The action installs command-line tools; its legacy "tools" default is unavailable.
+          packages: platform-tools
       - name: Install Android API stubs for legacy JVM tests
         run: |
           sdkmanager --sdk_root="$ANDROID_HOME" "platforms;android-36" </dev/null
