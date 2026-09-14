@@ -121,7 +121,7 @@ stop_service() {
     local status_error
     status_error="$(mktemp)"
     launchctl bootout "$target" 2>/dev/null || true
-    for attempt in $(seq 1 30); do
+    for _ in $(seq 1 30); do
         if ! LC_ALL=C launchctl print "$target" >/dev/null 2>"$status_error"; then
             case "$(cat "$status_error")" in
                 *"Could not find service"*) rm -f "$status_error"; return ;;
