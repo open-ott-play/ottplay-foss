@@ -1908,7 +1908,7 @@ function showViewportSizeIndicator(): void {
                 el.style.cssText =
                     "position:fixed;top:10px;right:10px;z-index:2147483000;" +
                     "padding:6px 9px;border:1px solid rgba(255,255,255,0.18);" +
-                    "border-radius:5px;background:rgba(72,72,72,0.82);color:#fff;" +
+                    "border-radius:5px;background:rgba(72,72,72,0.41);color:#fff;" +
                     "box-shadow:0 2px 8px rgba(0,0,0,0.3);font:600 13px/1.2 monospace;" +
                     "letter-spacing:0.2px;white-space:nowrap;pointer-events:none;" +
                     "user-select:none;-webkit-user-select:none;";
