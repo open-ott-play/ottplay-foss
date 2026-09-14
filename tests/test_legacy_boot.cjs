@@ -125,6 +125,7 @@ function boot(options = {}) {
     });
     context.window = context;
     context.self = context;
+    Object.assign(context, options.globals || {});
     if (options.storageError === "access") {
         Object.defineProperty(context, "localStorage", {
             get() {
@@ -237,6 +238,43 @@ for (const failure of [null, "cdnFailure", "cdnMissingGlobal"]) {
 }
 console.log(
     "OK: HTML boot without modern APIs, local TV libraries, persistent identity and PC CDN fallback"
+);
+
+// Only the marked test APK opts modern Android WebView into the current HLS
+// release. Real TV/native wrappers retain their established library policy.
+const androidWebViewUA =
+    "Mozilla/5.0 (Linux; Android 16; SDK TV; wv) AppleWebKit/537.36 " +
+    "Version/4.0 Chrome/143.0.7499.24 Safari/537.36";
+const testWebViewUA = androidWebViewUA + " OttplayTestWebView/1.0";
+for (const failure of [null, "cdnFailure", "cdnMissingGlobal"]) {
+    const options = { modern: true, userAgent: testWebViewUA };
+    if (failure) options[failure] = true;
+    const result = boot(options);
+    assert.equal(result.context.ott_device, "android");
+    assert(result.requests.some((url) => url.includes("hls.js@1.7.3/")));
+    assert.equal(
+        result.requests.some((url) => url.endsWith("/js/hls.min.js")),
+        Boolean(failure)
+    );
+}
+for (const options of [
+    { userAgent: androidWebViewUA },
+    { userAgent: androidWebViewUA + " NotOttplayTestWebView/1.0" },
+    { userAgent: testWebViewUA + "1" },
+    { modern: false, userAgent: testWebViewUA },
+    { globals: { Capacitor: {} }, userAgent: testWebViewUA },
+    { globals: { Android: {} }, userAgent: testWebViewUA },
+    { globals: { __ottNativeRuntime: {} }, userAgent: testWebViewUA },
+    { globals: { __TAURI__: {} }, userAgent: testWebViewUA },
+    { globals: { __TAURI_INTERNALS__: {} }, userAgent: testWebViewUA },
+    { pathname: "/f/lg/webos/", userAgent: testWebViewUA },
+]) {
+    const result = boot({ modern: true, ...options });
+    assert(!result.requests.some((url) => url.includes("hls.js@1.7.3/")));
+    assert(result.requests.some((url) => url.endsWith("/js/hls.min.js")));
+}
+console.log(
+    "OK: marked Android WebView HLS 1.7.3, fallback and legacy/native isolation"
 );
 
 // LG's Web0S token uses a zero and does not require an LG vendor marker.

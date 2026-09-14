@@ -19,6 +19,7 @@ on:
       - 'tests/test_play_system_icons.cjs'
       - 'scripts/play-system-icons.cjs'
       - 'scripts/native-*.cjs'
+      - 'scripts/fixtures/android-tv-webview/**'
       - 'tests/test_frontend_safety.cjs'
       - 'stbPlayer/**'
       - 'fonts/**'
@@ -63,6 +64,8 @@ jobs:
           sdkmanager --sdk_root="$ANDROID_HOME" "platforms;android-36" </dev/null
           test -s "$ANDROID_HOME/platforms/android-36/android.jar"
       - run: npm ci --ignore-scripts
+      - name: Verify Android TV WebView test host
+        run: node tests/test_android_tv_webview.cjs
       - name: Verify archived Android bridge contracts without building an application
         run: |
           python3 tests/test_command_queue_smoke.py

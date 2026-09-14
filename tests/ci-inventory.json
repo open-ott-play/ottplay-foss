@@ -10,6 +10,7 @@
       ["--platform", "ios"]
     ],
     "tests/test_favorites_access.cjs": [[], ["--bundle"]],
-    "tests/test_debug_redaction.cjs": [[], ["--bundle"]]
+    "tests/test_debug_redaction.cjs": [[], ["--bundle"]],
+    "tests/test_device_detection.cjs": [[], ["--bundle"]]
   }
 }

@@ -4141,6 +4141,7 @@ window._setSetup = function (
  */
 window.stbOptions = function (): void {
     var w = window as any;
+    var showPlayerChoice = w.ott_device !== "lg/webos";
     if (w.sPSoptions && w.parentPIN !== "*" && !w.parentAccess) {
         if (typeof w.enterPinAndSetAccess === "function")
             w.enterPinAndSetAccess(w.stbOptions);
@@ -4156,7 +4157,7 @@ window.stbOptions = function (): void {
             w.sEditor = w.listArray[i].val;
             w.stbSetItem("sEditor", w.listArray[i].val.toString());
         }
-        if (w.sPlayers !== w.listArray[++i].val) {
+        if (showPlayerChoice && w.sPlayers !== w.listArray[++i].val) {
             w.sPlayers = w.listArray[i].val;
             w.providerSetItem("sPlayers", w.listArray[i].val.toString());
             pullSettingsFromWindow();
@@ -4204,6 +4205,7 @@ window.stbOptions = function (): void {
             values: saveSettings,
         },
     ]);
+    if (!showPlayerChoice) w.listArray.splice(1, 1);
     var captionEl = document.getElementById("listCaption");
     if (captionEl) captionEl.innerHTML = w._("Settings STB") || "Settings STB";
     if (typeof w._setSetup === "function") {
@@ -4279,6 +4281,7 @@ window.saveIfChanged = function (
  */
 window.settingsInterface = function (): void {
     var w = window as any;
+    var showPlayerChoice = w.ott_device !== "lg/webos";
     /**
      * Persist all interface settings and re-apply them.
      * Conditionally saves PiP, OSD opacity, volume step, and editor
@@ -4326,7 +4329,7 @@ window.settingsInterface = function (): void {
             w.saveIfChanged(i++, "sMedCount", true);
         if (typeof w.showEditKey2 === "function")
             w.saveIfChanged(i++, "sEditor", true);
-        w.saveIfChanged(i++, "sPlayers");
+        if (showPlayerChoice) w.saveIfChanged(i++, "sPlayers");
         if (typeof w.stbSetBuffer === "function")
             w.saveIfChanged(i++, "sBufSize", true);
         if (typeof w.setTimezone === "function") w.setTimezone();
@@ -4510,6 +4513,7 @@ window.settingsInterface = function (): void {
         w.listArray[18].values = w.stbBufferSizes;
     if (typeof w.stbPlayers !== "undefined" && Array.isArray(w.stbPlayers))
         w.listArray[17].values = w.stbPlayers;
+    if (!showPlayerChoice) w.listArray.splice(17, 1);
     if (typeof w.showEditKey2 !== "function") w.listArray.splice(16, 1);
     if (typeof w.getMediaArray !== "function") w.listArray.splice(15, 1);
     if (typeof w.stbGetVolume !== "function") w.listArray.splice(7, 1);
