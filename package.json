@@ -51,7 +51,7 @@
     "shaka-player": "5.2.10"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.12",
+    "@biomejs/biome": "^2.5.13",
     "@capacitor/android": "8.5.2",
     "@playwright/test": "1.63.0",
     "@rollup/plugin-commonjs": "29.0.3",
