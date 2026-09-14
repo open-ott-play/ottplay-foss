@@ -5,7 +5,10 @@ const path = require("node:path");
 const { parse } = require("acorn");
 const { inlineScripts } = require("./html-scripts.cjs");
 const { auditNativeRuntime } = require("./native-runtime.cjs");
+const { auditMediaRuntime } = require("./media-runtime.cjs");
 const root = path.resolve(__dirname, "..");
+auditMediaRuntime(root);
+auditMediaRuntime(path.join(root, "dist"));
 let checked = 0;
 const failures = [];
 function check(code, name) {

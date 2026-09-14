@@ -20,6 +20,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Load the helper from its own CommonJS module so Vite's config bundler does
 // not rewrite its TypeScript dependency into a file-URL require.
 const classicRequire = createRequire(import.meta.url);
+const { buildMediaRuntime } = classicRequire(
+    resolve(__dirname, "scripts/media-runtime.cjs")
+);
 const { stageNativeRuntime } = classicRequire(
     resolve(__dirname, "scripts/native-runtime.cjs")
 );
@@ -69,7 +72,7 @@ function copyRuntimeAssets(source: string, destination: string): void {
             return (
                 info.isDirectory() ||
                 (info.isFile() &&
-                    /\.(html|js|css|json|png|gif|ico|jpe?g|svg|ttf|otf|eot|woff2?)$/i.test(
+                    /\.(html|js|css|json|txt|png|gif|ico|jpe?g|svg|ttf|otf|eot|woff2?)$/i.test(
                         name
                     ))
             );
@@ -257,6 +260,7 @@ export default defineConfig(({ mode }) => ({
             apply: "build",
             enforce: "post",
             async generateBundle() {
+                await buildMediaRuntime();
                 // Step 1: tsc compile (produces build/*.js)
                 console.log("Step 1: tsc compile...");
                 if (androidFlavor) {

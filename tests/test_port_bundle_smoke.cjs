@@ -328,16 +328,23 @@ function fixture(profile) {
             WeakSet = undefined; Symbol = undefined; Reflect = undefined; Proxy = undefined;
             Number.isFinite = undefined; Number.isNaN = undefined; Number.isInteger = undefined;
             Number.parseInt = undefined; Number.parseFloat = undefined; Object.assign = undefined;
-            String.prototype.includes = undefined; String.prototype.startsWith = undefined;
-            String.prototype.endsWith = undefined; String.prototype.repeat = undefined;
-            Array.prototype.findIndex = undefined; Array.prototype.find = undefined;
-            Array.prototype.includes = undefined; Array.from = undefined;
+            delete String.prototype.includes; delete String.prototype.startsWith;
+            delete String.prototype.endsWith; delete String.prototype.repeat;
+            delete Array.prototype.findIndex; delete Array.prototype.find;
+            delete Array.prototype.includes; Array.from = undefined;
             Object.entries = undefined; Object.values = undefined;
             TextEncoder = undefined; performance = undefined;
         `,
             w
         );
     }
+    vm.runInContext(
+        fs.readFileSync(
+            path.join(__dirname, "../js/runtime-polyfills.js"),
+            "utf8"
+        ),
+        w
+    );
     return w;
 }
 
@@ -516,9 +523,9 @@ async function main() {
         w.playType = originalPlayType;
         if (profile === "legacy") {
             assert.equal(
-                w.Promise,
-                undefined,
-                "generic STB startup must not require Promise"
+                typeof w.Promise,
+                "function",
+                "shared bootstrap supplies Promise before generic STB startup"
             );
         } else {
             const dash = await w.DashExoPlayer.isDashSupported();

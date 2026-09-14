@@ -26,6 +26,10 @@ async function run() {
         "Object.assign = undefined; Number.parseInt = undefined; Number.parseFloat = undefined; Number.isFinite = undefined; Number.isNaN = undefined; Number.isInteger = undefined; String.prototype.includes = undefined;",
         old
     );
+    vm.runInContext(
+        fs.readFileSync(path.join(root, "js/runtime-polyfills.js"), "utf8"),
+        old
+    );
     vm.runInContext(compile("src/polyfills/index.ts"), old);
     assert.equal(vm.runInContext('Number.parseInt("42", 10)', old), 42);
     assert.equal(vm.runInContext('Number.isFinite("42")', old), false);
@@ -39,10 +43,9 @@ async function run() {
         vm.runInContext("Object.assign({}, null, {x:1}, {x:2}).x", old),
         2
     );
-    assert.throws(
-        () => vm.runInContext("Object.assign(null, {})", old),
-        /target is null/
-    );
+    assert.throws(() => vm.runInContext("Object.assign(null, {})", old), {
+        name: "TypeError",
+    });
     // The second application must not replace the timezone the user selected.
     assert.equal(
         vm.runInContext(

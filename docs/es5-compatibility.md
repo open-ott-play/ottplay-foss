@@ -11,11 +11,21 @@ both packaged web roots. A syntax failure or missing asset fails the build.
 `npm run check:bundle` checks the required public identifiers and executes the
 actual bundle in legacy, modern and Capacitor runtime profiles.
 
-The compiler lowers syntax, not browser APIs. The first bundle module installs
-runtime shims, including `Object.assign`, numeric helpers and string search.
-Boot code runs before those shims and must only use available APIs or guarded
-fallbacks. Native media calls and input events must support older implementations
+The compiler lowers syntax, not browser APIs. A blocking local
+`js/runtime-polyfills.js` runs before third-party scripts, native environment
+setup and the application. It combines pinned `core-js/stable` with worker-safe
+web API shims. The application bundle retains its timezone customization.
+The same compatibility prelude precedes the upstream HLS worker in
+`js/hls.worker.js`; page globals are never assumed to exist in a Worker.
+Native media calls and input events must support older implementations
 where `video.play()` returns nothing and `event.key` / `new MouseEvent` are absent.
+
+All profiles use the same local npm-locked hls.js UMD version. No CDN version is
+selected by user agent, development host or device ID. `npm run build:media`
+regenerates assets and license notices; `npm run check:media` checks input/output
+hashes, ES5 syntax and the worker prelude. Normal builds regenerate these files
+and validate their staged copies. The development server uses the committed
+assets. See [External library upgrades](external-library-upgrades.md).
 
 Device IDs used by remote text input are generated with WebCrypto or `msCrypto`.
 Engines without those APIs still boot the player and retain existing IDs. New

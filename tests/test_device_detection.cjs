@@ -188,6 +188,10 @@ function runFixture(fixture, detector, legacy, nativeOverride) {
     };
     document.body.appendChild = document.head.appendChild;
     context = vm.createContext({
+        // Runtime loading is covered by test_legacy_boot; this fixture isolates
+        // detection and device adapters even without modern language APIs.
+        __ottMediaRuntimeVersion: "1234567890abcdef",
+        __ottRuntimePolyfillsReady: true,
         clearInterval() {},
         console,
         document,

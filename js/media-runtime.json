@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "builderSha256": "3c51ea77762125a17b207865ce3ce236c88656a8f313025009a3fc48ce2bbcd0",
+  "lockfileSha256": "da2b052c23b5d18d6bed35912829dc11520e0776658b98547cf6048a101bf993",
+  "packages": {
+    "core-js": {
+      "integrity": "sha512-BRWgOLKkFeCgRudR6zrs8p9XJZcE14grzKMMssoYrk6krtuEZ7MTKPIY5RzOnqsEKIR9kst7wNzphttraT+Yqw==",
+      "version": "3.50.0"
+    },
+    "hls.js": {
+      "integrity": "sha512-MsPlx6yVW4Qv4C7mEVou4/gk/5cN2dVxOTnrNjPSmyH2f0Ln+/UkG10Ax1PE6OvrmTVPKgQYozTtBaPOuCzq7A==",
+      "version": "1.7.3"
+    },
+    "typescript": {
+      "integrity": "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==",
+      "version": "5.9.3"
+    },
+    "rollup": {
+      "integrity": "sha512-3Df9jsstwhccuEfmAMi9l8XUh/GOkVObmFTU7CCVBysEbcOZLl84jCtaAZMcPiMz2EGKsATzQcU+Xr3n/wU6cg==",
+      "version": "4.63.1"
+    },
+    "terser": {
+      "integrity": "sha512-bWnjSNscmuI+GJze6ZupnHP8G/cTcsJF+bXCeQknk2SHQsgbNJnLrqiH9jZ2W4STPVXH2mDKKRX3iwPhc9Cn/Q==",
+      "version": "5.51.2"
+    },
+    "@rollup/plugin-commonjs": {
+      "integrity": "sha512-ZaOxZceP7SOUW7Lqw5IRVweSQYWaeIPnXIGLiB690EBA3FGJTO40EEr2L5yZplJWsgTCogILRSpcAe7+U0Otdg==",
+      "version": "29.0.3"
+    },
+    "@rollup/plugin-node-resolve": {
+      "integrity": "sha512-lUYM3UBGuM93CnMPG1YocWu7X802BrNF3jW2zny5gQyLQgRFJhV1Sq0Zi74+dh/6NBx1DxFC4b4GXg9wUCG5Qg==",
+      "version": "16.0.3"
+    }
+  },
+  "webPolyfillsSha256": "5e14970ea932f18c571a94e03758a08a6d3f559d04cf6033fd3970af895b9aab",
+  "assets": {
+    "hls.min.js": "a12e7ee1cd64a69dcdb314157e45dafcba705bfb0b1440b7935cb265d374423e",
+    "hls.worker.js": "f5640664ad74503e5c6bdbf5a22f82711b5e5ccccd30005bbe274c465d15ad50",
+    "runtime-polyfills.js": "3e78dee57d52ac7e1ddcefd87e2604662f529bd1411a00a893d27d366a313f9b"
+  },
+  "runtimeVersion": "0ba2e51c2ae71c3f"
+}

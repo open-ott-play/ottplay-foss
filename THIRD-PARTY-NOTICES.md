@@ -41,16 +41,26 @@ This is not a complete native dependency inventory. Preserve the notices of
 resolved transitive dependencies when updating packages. An MIT notice for
 Capacitor core does not replace the App plugin's different copyright statement.
 
+## Shared ES5 media runtime
+
+Every profile ships the same npm-locked **hls.js 1.7.3** UMD distribution.
+`js/runtime-polyfills.js` contains **core-js 3.50.0** (MIT) and the project's web
+API shims (MIT). It executes before third-party libraries in each page and is
+prepended to the standalone `js/hls.worker.js`. The worker is a modified
+distribution with its compatibility prelude identified in the generated file.
+`js/media-runtime.json` records inputs and output hashes. Runtime packages retain
+[core-js notices](js/licenses/core-js-LICENSE.txt),
+[hls.js notices](js/licenses/hls.js-LICENSE.txt),
+[the full Apache 2.0 license](js/licenses/Apache-2.0.txt), and
+[the project license](js/licenses/project-LICENSE.txt).
+
 ## Web and legacy player libraries
 
 - **jQuery 1.11.1** (`js/jquery-1.11.1.min.js`): MIT.
   [Complete license](licenses/android/jquery-1.11.1-LICENSE.txt), copied from
   [upstream 1.11.1](https://github.com/jquery/jquery/blob/1.11.1/MIT-LICENSE.txt).
-- **hls.js 0.14.17** (`js/hls.min.js`): Apache 2.0.
-  [Upstream copyright and license notices](licenses/android/hls.js-0.14.17-LICENSE.txt),
-  copied from [upstream v0.14.17](https://github.com/video-dev/hls.js/blob/v0.14.17/LICENSE),
-  retain both Dailymotion and Brightcove attribution.
-  The [complete Apache 2.0 text](licenses/android/Apache-2.0.txt) is also included.
+- **hls.js 1.7.3** (`js/hls.min.js`): Apache 2.0, unchanged upstream UMD bytes.
+  The shared media-runtime notices above apply to browser and native packages.
 - **Shaka Player 3.3.19** (`js/shaka-player.compiled.js`): Apache 2.0, with an
   additional MIT notice for language-mapping-list by Ali Al Dallal.
   [Complete upstream license and additional notice](licenses/android/shaka-player-3.3.19-LICENSE.txt),

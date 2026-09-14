@@ -223,8 +223,8 @@ The APK appends `OttplayTestWebView/1.0` to the standard WebView user agent.
 Only this marked Android host gets an `auto` engine setting by default: `.m3u8`
 uses hls.js when MSE is supported, `.mpd` uses Shaka, and progressive video uses
 HTML5. Existing explicit engine preferences remain selected; choose `auto` once
-in settings to replace a saved manual choice. The loader uses hls.js 1.7.3 for
-this host, with the bundled legacy version as its CDN failure fallback. Native
+in settings to replace a saved manual choice. All hosts load the same bundled
+hls.js 1.7.3 after the shared ES5 runtime; no CDN or device-specific version is selected. Native
 Android bridges and unmarked Android hosts keep their existing engine policy.
 The APK and the hosted frontend must both be updated for this behavior.
 These engines still use the WebView's media decoder; changing the JavaScript

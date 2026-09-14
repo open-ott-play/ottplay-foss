@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const { parse } = require("parse5");
 const { inlineScripts } = require("../scripts/html-scripts.cjs");
 
 assert.deepEqual(
@@ -14,13 +15,38 @@ assert.deepEqual(
 );
 
 const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
+const runtimeVersion = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "../js/media-runtime.json"), "utf8")
+).runtimeVersion;
+assert.match(runtimeVersion, /^[0-9a-f]{16}$/);
+const mediaURL = (name) =>
+    "http://legacy-player.test:8080/js/" + name + "?v=" + runtimeVersion;
 const scripts = inlineScripts(html);
 assert(scripts.length > 0, "The real HTML boot script must be exercised");
+const bootScripts = [];
+function collectScripts(node) {
+    if (node.tagName === "script") {
+        bootScripts.push({
+            src: node.attrs.find((attr) => attr.name === "src")?.value,
+            text: (node.childNodes || [])
+                .map((child) => child.value || "")
+                .join(""),
+        });
+    }
+    for (const child of node.childNodes || []) collectScripts(child);
+}
+collectScripts(parse(html));
+assert.equal(
+    bootScripts[0].src,
+    "/js/runtime-polyfills.js?v=" + runtimeVersion,
+    "Runtime support must load before every third-party and boot script"
+);
 
 function boot(options = {}) {
     const requests = [];
     const storage = options.storage || {};
     const elements = {};
+    const stoppedTimers = [];
     let starts = 0;
     let context;
     const document = {
@@ -45,18 +71,46 @@ function boot(options = {}) {
         appendChild(tag) {
             if (tag.tagName !== "script") return;
             requests.push(tag.src);
-            if (
-                options.cdnFailure &&
-                new URL(tag.src).hostname === "cdn.jsdelivr.net"
-            ) {
-                tag.onerror(new Error("TLS/network unavailable"));
+            const requestPath = new URL(tag.src).pathname;
+            const name = requestPath.slice(requestPath.lastIndexOf("/") + 1);
+            if (name === "runtime-polyfills.js") {
+                if (!options.polyfillsFailure) {
+                    if (options.realLibraries)
+                        vm.runInContext(
+                            fs.readFileSync(
+                                path.join(__dirname, "../js", name),
+                                "utf8"
+                            ),
+                            context,
+                            { filename: name }
+                        );
+                    else {
+                        context.__ottRuntimePolyfillsReady = true;
+                        context.__ottMediaRuntimeVersion = runtimeVersion;
+                    }
+                } else if (options.polyfillsFailure === "partial") {
+                    // A script can fire onload even after an uncaught exception.
+                    context.__ottRuntimePolyfillsReady = false;
+                } else if (options.polyfillsFailure === "missing-version") {
+                    context.__ottRuntimePolyfillsReady = true;
+                }
+                if (typeof tag.onload === "function") tag.onload();
+                return;
+            }
+            assert.equal(
+                context.__ottRuntimePolyfillsReady,
+                true,
+                "Third-party scripts must not run before runtime support finishes"
+            );
+            assert.equal(context.__ottMediaRuntimeVersion, runtimeVersion);
+            if (options.libraryFailures?.includes(name)) {
+                tag.onerror(new Error("Local library unavailable"));
                 return;
             }
             if (
                 options.realLibraries &&
-                /\/(hls.min.js|shaka-player.compiled.js)$/.test(tag.src)
+                /^(hls.min.js|shaka-player.compiled.js)$/.test(name)
             ) {
-                const name = tag.src.slice(tag.src.lastIndexOf("/") + 1);
                 vm.runInContext(
                     fs.readFileSync(
                         path.join(__dirname, "../js", name),
@@ -68,16 +122,13 @@ function boot(options = {}) {
                 if (typeof tag.onload === "function") tag.onload();
                 return;
             }
-            if (tag.src.indexOf("jquery-1.11.1.min.js") !== -1)
+            if (/\/jquery(?:-1\.11\.1)?\.min\.js$/.test(tag.src))
                 context.jQuery = {};
             else if (tag.src.indexOf("hls.min.js") !== -1) {
-                if (
-                    !(
-                        options.cdnMissingGlobal &&
-                        new URL(tag.src).hostname === "cdn.jsdelivr.net"
-                    )
-                )
+                if (!options.missingHlsGlobal) {
                     context.Hls = function Hls() {};
+                    context.Hls.DefaultConfig = {};
+                }
             } else if (tag.src.indexOf("shaka-player.compiled.js") !== -1)
                 context.shaka = { Player() {} };
             else if (tag.src.indexOf("/dist/stbPlayer.js?") !== -1)
@@ -89,7 +140,9 @@ function boot(options = {}) {
     };
     document.body.appendChild = document.head.appendChild;
     context = vm.createContext({
-        clearInterval() {},
+        clearInterval(timer) {
+            stoppedTimers.push(timer);
+        },
         console,
         document,
         localStorage: {
@@ -121,11 +174,24 @@ function boot(options = {}) {
         setTimeout() {
             return 1;
         },
-        URL: { createObjectURL() {} },
+        URL: Object.assign(function URL() {}, { createObjectURL() {} }),
     });
     context.window = context;
     context.self = context;
     Object.assign(context, options.globals || {});
+    const blobURLApi = {
+        createObjectURL() {
+            assert.equal(this.marker, "native-blob-provider");
+            return "blob:legacy-player.test/runtime-check";
+        },
+        marker: "native-blob-provider",
+        revokeObjectURL(url) {
+            assert.equal(this.marker, "native-blob-provider");
+            assert.equal(url, "blob:legacy-player.test/runtime-check");
+        },
+    };
+    if (options.objectValuedURL) context.URL = blobURLApi;
+    else Object.assign(context.URL, blobURLApi);
     if (options.storageError === "access") {
         Object.defineProperty(context, "localStorage", {
             get() {
@@ -134,7 +200,7 @@ function boot(options = {}) {
         });
     }
     if (options.noObjectURL) context.URL = undefined;
-    if (options.webkitURL) context.webkitURL = { createObjectURL() {} };
+    if (options.webkitURL) context.webkitURL = blobURLApi;
     if (options.noDateNow) vm.runInContext("Date.now = undefined;", context);
     if (options.modern) {
         context.crypto = {
@@ -161,9 +227,26 @@ function boot(options = {}) {
             context
         );
     }
-    for (const script of scripts)
-        vm.runInContext(script, context, { filename: "index.html boot" });
-    assert.equal(starts, 1, "Boot must reach startPlayer exactly once");
+    for (const script of bootScripts) {
+        if (script.src) {
+            document.head.appendChild({
+                src: new URL(script.src, "http://legacy-player.test:8080/")
+                    .href,
+                tagName: "script",
+            });
+        } else
+            vm.runInContext(script.text, context, {
+                filename: "index.html boot",
+            });
+    }
+    assert.equal(
+        starts,
+        options.polyfillsFailure ||
+            options.libraryFailures?.some((name) => /^jquery/.test(name))
+            ? 0
+            : 1,
+        "Boot must start once, or present a recoverable runtime/UI load failure"
+    );
     assert.match(context.__cv, /^dev_\d+_[0-9a-f]{8}$/);
     if (options.modern && !options.storage)
         assert.match(context.deviceUUID, /^dev_[0-9a-f]{32}$/);
@@ -179,7 +262,7 @@ function boot(options = {}) {
     )
         assert.equal(storage.ott_device_uuid, context.deviceUUID);
     else assert.equal(storage.ott_device_uuid, undefined);
-    return { context, requests, storage };
+    return { context, elements, requests, stoppedTimers, storage };
 }
 
 // A recognized TV and an unknown old STB both boot with no ES2015 APIs or WebCrypto.
@@ -190,7 +273,7 @@ for (const device of ["hisense", "pc"]) {
             (url) => url.indexOf("http://legacy-player.test:8080/") === 0
         )
     );
-    assert(result.requests.some((url) => url.endsWith("/js/hls.min.js")));
+    assert(result.requests.includes(mediaURL("hls.min.js")));
     assert(
         result.requests.some((url) =>
             url.endsWith("/js/shaka-player.compiled.js")
@@ -216,49 +299,16 @@ for (const device of ["hisense", "pc"]) {
     );
 }
 
-// Modern PC retains HLS 1.6.16; TLS failures and onload-without-Hls both use local fallback.
-for (const failure of [null, "cdnFailure", "cdnMissingGlobal"]) {
-    const options = { device: "pc", modern: true };
-    if (failure) options[failure] = true;
-    const result = boot(options);
-    assert(result.requests.some((url) => url.includes("hls.js@1.6.16/")));
-    assert.equal(
-        result.requests.some((url) => url.endsWith("/js/hls.min.js")),
-        Boolean(failure)
-    );
-    assert(
-        result.requests.some((url) =>
-            url.endsWith("/js/shaka-player.compiled.js")
-        )
-    );
-    assert(
-        !result.requests.some((url) => url.includes("shaka-player@")),
-        "Shaka always uses the patched local artifact"
-    );
-}
-console.log(
-    "OK: HTML boot without modern APIs, local TV libraries, persistent identity and PC CDN fallback"
-);
-
-// Only the marked test APK opts modern Android WebView into the current HLS
-// release. Real TV/native wrappers retain their established library policy.
+// Platform detection chooses the device adapter, never a different HLS release.
 const androidWebViewUA =
     "Mozilla/5.0 (Linux; Android 16; SDK TV; wv) AppleWebKit/537.36 " +
     "Version/4.0 Chrome/143.0.7499.24 Safari/537.36";
 const testWebViewUA = androidWebViewUA + " OttplayTestWebView/1.0";
-for (const failure of [null, "cdnFailure", "cdnMissingGlobal"]) {
-    const options = { modern: true, userAgent: testWebViewUA };
-    if (failure) options[failure] = true;
-    const result = boot(options);
-    assert.equal(result.context.ott_device, "android");
-    assert(result.requests.some((url) => url.includes("hls.js@1.7.3/")));
-    assert.equal(
-        result.requests.some((url) => url.endsWith("/js/hls.min.js")),
-        Boolean(failure)
-    );
-}
 for (const options of [
+    { device: "pc" },
+    { device: "pc", modern: false },
     { userAgent: androidWebViewUA },
+    { userAgent: testWebViewUA },
     { userAgent: androidWebViewUA + " NotOttplayTestWebView/1.0" },
     { userAgent: testWebViewUA + "1" },
     { modern: false, userAgent: testWebViewUA },
@@ -270,11 +320,65 @@ for (const options of [
     { pathname: "/f/lg/webos/", userAgent: testWebViewUA },
 ]) {
     const result = boot({ modern: true, ...options });
-    assert(!result.requests.some((url) => url.includes("hls.js@1.7.3/")));
-    assert(result.requests.some((url) => url.endsWith("/js/hls.min.js")));
+    const local = (name) => "http://legacy-player.test:8080/js/" + name;
+    assert.equal(result.requests[0], mediaURL("runtime-polyfills.js"));
+    assert.equal(
+        result.requests[1],
+        local(
+            options.globals?.__ottNativeRuntime
+                ? "jquery.min.js"
+                : "jquery-1.11.1.min.js"
+        )
+    );
+    assert.equal(result.requests[2], mediaURL("hls.min.js"));
+    assert.equal(result.requests[3], local("shaka-player.compiled.js"));
+    assert(result.requests[4].includes("/dist/stbPlayer.js?"));
+    assert.equal(
+        result.context.Hls.DefaultConfig.workerPath,
+        mediaURL("hls.worker.js")
+    );
+    assert(
+        !result.requests.some(
+            (url) => new URL(url).hostname === "cdn.jsdelivr.net"
+        )
+    );
+}
+// A preloaded HLS constructor must receive the same worker configuration.
+const preloadedHls = function Hls() {};
+preloadedHls.DefaultConfig = {};
+const preloaded = boot({ globals: { Hls: preloadedHls, jQuery: {} } });
+assert.equal(preloadedHls.DefaultConfig.workerPath, mediaURL("hls.worker.js"));
+assert(!preloaded.requests.includes(mediaURL("hls.min.js")));
+
+for (const options of [
+    { libraryFailures: ["hls.min.js"] },
+    { missingHlsGlobal: true },
+    { libraryFailures: ["shaka-player.compiled.js"] },
+    { libraryFailures: ["hls.min.js", "shaka-player.compiled.js"] },
+]) {
+    const result = boot(options);
+    assert.match(
+        result.elements["boot-log"].textContent,
+        /unavailable; using device playback/
+    );
+    assert(result.requests.some((url) => url.includes("/stb/hisense/stb.js?")));
+}
+for (const polyfillsFailure of ["network", "partial", "missing-version"]) {
+    const result = boot({ polyfillsFailure });
+    assert.deepEqual(result.requests, [mediaURL("runtime-polyfills.js")]);
+    assert.equal(
+        result.elements["boot-status"].textContent,
+        "Failed to load runtime support"
+    );
+    assert.match(result.elements["boot-log"].textContent, /Reload the player/);
+    assert.equal(result.context.document.body.className, "");
+    assert(
+        result.stoppedTimers.includes(1),
+        "A failed runtime load must stop the loading animation"
+    );
 }
 console.log(
-    "OK: marked Android WebView HLS 1.7.3, fallback and legacy/native isolation"
+    "OK: polyfills load first, unified local HLS and worker, visible failure and device playback fallback"
 );
 
 // LG's Web0S token uses a zero and does not require an LG vendor marker.
@@ -302,14 +406,14 @@ for (const userAgent of [
             "LG boot must request the webOS remote and playback adapter"
         );
         assert(
-            result.requests.some((url) => url.endsWith("/js/hls.min.js")),
+            result.requests.includes(mediaURL("hls.min.js")),
             "LG boot must retain the local TV library path even with modern APIs"
         );
         assert(
             !result.requests.some(
                 (url) => new URL(url).hostname === "cdn.jsdelivr.net"
             ),
-            "LG must not enter the modern PC CDN branch"
+            "LG must use the same local libraries as every other device"
         );
     }
 }
@@ -356,11 +460,17 @@ for (const storageError of ["access", "read", "write"]) {
 // Execute the actual vendor payloads, not a fake successful script download.
 for (const options of [
     { realLibraries: true },
+    { objectValuedURL: true, realLibraries: true },
     { noObjectURL: true, realLibraries: true },
     { noObjectURL: true, realLibraries: true, webkitURL: true },
 ]) {
     const result = boot(options);
     assert.equal(typeof result.context.Hls, "function");
+    assert.equal(result.context.Hls.version, "1.7.3");
+    assert.equal(
+        result.context.Hls.DefaultConfig.workerPath,
+        mediaURL("hls.worker.js")
+    );
     if (options.noObjectURL && !options.webkitURL) {
         assert(
             !result.requests.some((url) =>
@@ -369,6 +479,9 @@ for (const options of [
         );
     } else {
         assert.equal(typeof result.context.shaka.Player, "function");
+        const blobURL = result.context.URL.createObjectURL({});
+        assert.equal(blobURL, "blob:legacy-player.test/runtime-check");
+        result.context.URL.revokeObjectURL(blobURL);
     }
 }
 console.log(

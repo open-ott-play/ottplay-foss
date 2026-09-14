@@ -112,12 +112,21 @@
         }
     }
 
+    function configureHlsWorker() {
+        if (window.Hls && window.Hls.DefaultConfig) {
+            window.Hls.DefaultConfig.workerPath = new URL("./js/hls.worker.js?v=" + window.__ottMediaRuntimeVersion, window.location.href).href;
+        }
+    }
+
     function library(name, path) {
         if (libraries[name]) return libraries[name];
         libraries[name] = new Promise(function (resolve, reject) {
             var script = document.createElement("script");
-            script.src = new URL(path, window.location.href).href;
-            script.onload = resolve;
+            script.src = new URL(path + (name === "hls" ? "?v=" + window.__ottMediaRuntimeVersion : ""), window.location.href).href;
+            script.onload = function () {
+                if (name === "hls") configureHlsWorker();
+                resolve();
+            };
             script.onerror = function () {
                 delete libraries[name];
                 script.remove();
@@ -136,6 +145,7 @@
 
     function hls(state, nativeFallback) {
         function start() {
+            configureHlsWorker();
             if (!active(state)) return;
             if (!window.Hls || !window.Hls.isSupported()) {
                 if (
@@ -188,6 +198,7 @@
             if (state.video.error) fail(state);
         }
         function watch() {
+            configureHlsWorker();
             if (!active(state) || !state.autoNative) return;
             if (
                 !window.Hls ||
@@ -348,6 +359,11 @@
 
     function boot() {
         if (booted) return;
+        if (window.__ottRuntimePolyfillsReady !== true ||
+            !/^[a-f0-9]{16}$/.test(window.__ottMediaRuntimeVersion || "")) {
+            status("Compatibility runtime could not load. Reopen the player to retry.");
+            return;
+        }
         booted = true;
         document.addEventListener("mousedown", function (event) {
             if (event.button !== 0) return;

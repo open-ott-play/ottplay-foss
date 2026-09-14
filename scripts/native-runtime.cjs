@@ -5,6 +5,7 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const { transformPlaySystemIcons } = require("./play-system-icons.cjs");
+const { stageMediaRuntime, auditMediaRuntime } = require("./media-runtime.cjs");
 const root = path.resolve(__dirname, "..");
 
 const LIBRARIES = [
@@ -163,6 +164,7 @@ function stageNativeRuntime(directory, platform) {
             path.join(root, source),
             path.join(directory, destination)
         );
+    stageMediaRuntime(directory);
     const environment =
         "window.__ottNativeRuntime = true;\n" +
         "window.__ottNativeFontFamilies = " +
@@ -183,12 +185,17 @@ function stageNativeRuntime(directory, platform) {
     fs.writeFileSync(path.join(js, "native-environment.js"), environment);
     const index = path.join(directory, "index.html");
     const html = fs.readFileSync(index, "utf8");
-    assert(html.includes("<head>"), "Native entry point has no head");
+    const bootstrap =
+        /<script src="\/js\/runtime-polyfills\.js(\?v=[a-f0-9]+)"><\/script>/;
+    assert(
+        bootstrap.test(html),
+        "Native entry point has no compatibility bootstrap"
+    );
     fs.writeFileSync(
         index,
         html.replace(
-            "<head>",
-            '<head>\n<script src="./js/native-environment.js"></script>'
+            bootstrap,
+            '<script src="./js/runtime-polyfills.js$1"></script>\n<script src="./js/native-environment.js"></script>'
         )
     );
     fs.writeFileSync(
@@ -209,6 +216,7 @@ function stageNativeRuntime(directory, platform) {
 }
 
 function auditNativeRuntime(directory) {
+    auditMediaRuntime(directory);
     const manifest = JSON.parse(
         fs.readFileSync(path.join(directory, "native-runtime.json"))
     );
