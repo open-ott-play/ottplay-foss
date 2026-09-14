@@ -756,6 +756,15 @@ function getChanelsArray(a) {
             });
     }
     var t = m3uArr.M3Us[m3uArr.active].www;
+    if (/^portal:/i.test((t || "").trim())) {
+        alert(
+            _(
+                "Enter this link in VPortal link. Playlist URL requires an M3U playlist."
+            )
+        );
+        a();
+        return;
+    }
     if (typeof checkProviderUrl === "function" && !checkProviderUrl(t)) {
         a();
         return;
@@ -776,7 +785,103 @@ function _m3u2popup() {
     var e = Number.parseInt(m3uArr.active),
         r = m3uArr.M3Us[e];
     popupArray[popupActions.indexOf(doEditM3Ua)] =
-        _("Select playlist") + ": " + (e + 1 + " - " + (r.name || r.www || ""));
+        _("Select playlist") +
+        ": " +
+        (e + 1 + " - " + (r.name || m3uMediaDisplay(r.www)));
+}
+
+function m3uMediaHint() {
+    return (
+        _("Enter the VPortal link as shown in the cabinet") +
+        ":<br>portal::[key:...]http://host/api/v1/"
+    );
+}
+
+function m3uMediaDisplay(value) {
+    return String(value || "").replace(
+        /(portal::(?:\[|%5b)key:)[\s\S]*?(\]|%5d)/i,
+        "$1***$2"
+    );
+}
+
+function m3uNewMediaSourceId() {
+    return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
+}
+
+function m3uReopenEditor(initKeys) {
+    // The browser input editor tears down after setEdit returns. Reopen after it.
+    setTimeout(function () {
+        showEditKey(initKeys);
+    }, 0);
+}
+
+// VPortal is independent of the TV playlist and scoped to the selected M3U slot.
+function m3uUpdateMedia() {
+    var active = m3uArr.active;
+    var source = m3uArr.M3Us[active].medUrl || "";
+    var previous = window.providerMediaClient;
+    if (
+        previous &&
+        previous.m3uSource === source &&
+        previous.m3uActive === active &&
+        getMediaArray === previous.load
+    )
+        return;
+    if (previous) previous.dispose();
+    window.providerMediaClient = null;
+    if (typeof cancelMediaLoad === "function") cancelMediaLoad();
+    mediaUrls = null;
+    mediaNames = [];
+    mediaSelects = [0];
+    mediaRecords = [];
+    mediaRecordsPar = null;
+    getMediaArray = null;
+    if (typeof _playMedia === "function") playMedia = _playMedia;
+    if (!source) return;
+    var parsed =
+        typeof parseVPortalLink === "function" && parseVPortalLink(source);
+    if (parsed) {
+        if (
+            typeof checkProviderUrl === "function" &&
+            !checkProviderUrl(parsed.url)
+        )
+            return;
+        if (
+            !m3uArr.M3Us[active].medSourceId ||
+            (previous &&
+                previous.m3uActive === active &&
+                previous.m3uSource !== source)
+        ) {
+            m3uArr.M3Us[active].medSourceId = m3uNewMediaSourceId();
+            providerSetItem("m3uArr", JSON.stringify(m3uArr));
+        }
+        var client = createVPortalClient(source, {
+            isCurrent: function () {
+                return (
+                    m3uArr.active === active &&
+                    m3uArr.M3Us[active].medUrl === source &&
+                    getMediaArray === client.load &&
+                    playMedia === client.play
+                );
+            },
+            sourceId: m3uArr.M3Us[active].medSourceId,
+            title: m3uArr.M3Us[active].name || _("Media Library"),
+        });
+        client.m3uSource = source;
+        client.m3uActive = active;
+        window.providerMediaClient = client;
+        getMediaArray = client.load;
+        playMedia = client.play;
+    } else if (/^portal:/i.test(source.trim())) {
+        getMediaArray = function (_target, callback) {
+            mediaRecords = [];
+            alert(m3uMediaHint());
+            callback();
+        };
+    } else if (browserName() === "dune") {
+        // Preserve existing Dune catalogs stored before the VPortal setting.
+        getMediaArray = _getMediaArray;
+    }
 }
 
 function duneAddSettings(e) {
@@ -788,7 +893,7 @@ function duneAddSettings(e) {
     popupDetail.splice(e, 1, _("Select playlist"));
     popupActions.splice(e, 1, doEditM3Ua);
     _m3u2popup();
-    getMediaArray = m3uArr.M3Us[m3uArr.active].medUrl ? _getMediaArray : null;
+    m3uUpdateMedia();
 }
 
 function selectAndRestart(e) {
@@ -802,7 +907,7 @@ function selectAndRestart(e) {
 function loadPlaylist() {
     loadM3Uparams();
     _m3u2popup();
-    getMediaArray = m3uArr.M3Us[m3uArr.active].medUrl ? _getMediaArray : null;
+    m3uUpdateMedia();
     loadChannels();
 }
 var doEditM3Ua = function (e) {
@@ -816,7 +921,7 @@ var doEditM3Ua = function (e) {
             (sNoNumbersKeys || r >= 6
                 ? r + 1 + ":&nbsp;"
                 : '<div class="btn">' + (r + 1) + "</div>&nbsp;") +
-            (e.name || e.www || "—")
+            (e.name || m3uMediaDisplay(e.www) || "—")
         );
     };
     detailListAction = function () {
@@ -832,7 +937,7 @@ var doEditM3Ua = function (e) {
             ':<br/><span " style="color:' +
             curColor +
             ';">' +
-            (e.www || "") +
+            m3uMediaDisplay(e.www) +
             "</span><br/>" +
             _("Archive hours") +
             ': <span " style="color:' +
@@ -840,11 +945,11 @@ var doEditM3Ua = function (e) {
             ';">' +
             (e.rechours || 0) +
             "</span><br/>" +
-            _("Media Library URL") +
+            _("VPortal link") +
             ':<br/><span " style="color:' +
             curColor +
             ';">' +
-            (e.medUrl || "") +
+            m3uMediaDisplay(e.medUrl) +
             "</span>";
         listPodval.innerHTML =
             btnDiv(keys.RETURN, strRETURN, "Close") +
@@ -889,7 +994,7 @@ function doEditListData(r) {
     function n() {
         var e = 0;
         listArray[e++] = _("Playlist Name") + ": " + (s.name || "");
-        listArray[e++] = _("Playlist URL") + ": " + (s.www || "");
+        listArray[e++] = _("Playlist URL") + ": " + m3uMediaDisplay(s.www);
         if (typeof readFile === "function") {
             var r = "";
             if (s.www && s.www[0] === "/") {
@@ -899,7 +1004,7 @@ function doEditListData(r) {
             listArray[e++] = _("Playlist file") + ": " + r + strNew;
         }
         listArray[e++] = _("Archive hours") + ": " + (s.rechours || 0);
-        listArray[e] = _("Media Library URL") + ": " + (s.medUrl || "");
+        listArray[e] = _("VPortal link") + ": " + m3uMediaDisplay(s.medUrl);
         listDataArray = listArray;
     }
 
@@ -908,6 +1013,36 @@ function doEditListData(r) {
         editvar = (s[r] || "").toString();
         setEdit = function () {
             if (s[r] == editvar.trim()) return;
+            if (r === "www" && /^portal:/i.test(editvar.trim())) {
+                alert(
+                    _(
+                        "Enter this link in VPortal link. Playlist URL requires an M3U playlist."
+                    )
+                );
+                m3uReopenEditor(t);
+                return;
+            }
+            if (r === "medUrl") {
+                editvar = editvar.trim();
+                if (
+                    editvar &&
+                    (typeof parseVPortalLink !== "function" ||
+                        !parseVPortalLink(editvar))
+                ) {
+                    alert(m3uMediaHint());
+                    m3uReopenEditor(t);
+                    return;
+                }
+                if (
+                    editvar &&
+                    typeof checkProviderUrl === "function" &&
+                    !checkProviderUrl(parseVPortalLink(editvar).url)
+                ) {
+                    m3uReopenEditor(t);
+                    return;
+                }
+                s.medSourceId = m3uNewMediaSourceId();
+            }
             if (a)
                 pdsa.forEach(function (e) {
                     providerDelItem(e);
@@ -915,9 +1050,7 @@ function doEditListData(r) {
             s[r] = i ? Number.parseInt(editvar) || 0 : editvar;
             providerSetItem("m3uArr", JSON.stringify(m3uArr));
             n();
-            getMediaArray = m3uArr.M3Us[m3uArr.active].medUrl
-                ? _getMediaArray
-                : null;
+            m3uUpdateMedia();
             showPage();
         };
         showEditKey(t);
@@ -930,7 +1063,7 @@ function doEditListData(r) {
             _("Enter playlist Name"),
             _("Enter playlist URL") + e,
             _("Enter playlist archive hours") + e,
-            _("Enter Media Library URL"),
+            m3uMediaHint(),
             "",
             _("Load playlist"),
         ],
@@ -997,7 +1130,7 @@ function doEditListData(r) {
                         );
                         return true;
                     case o:
-                        t("Enter Media Library URL", "medUrl");
+                        t("Edit VPortal link", "medUrl");
                         return true;
                     case l:
                         if (_number > 0 && _number <= m3uCap) loadPlaylist();

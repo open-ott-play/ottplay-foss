@@ -85,6 +85,8 @@ var keyStrings = {
         "Enter the full CDN host from the cabinet stream URL (e.g. subdomain.cdn-domain.tld), not a bare subdomain",
     "Enter the VPortal link as shown in the cabinet":
         "Enter the VPortal link as shown in the cabinet",
+    "Enter this link in VPortal link. Playlist URL requires an M3U playlist.":
+        "Enter this link in VPortal link. Playlist URL requires an M3U playlist.",
     EPG: "EPG",
     Exit: "Exit",
     "epg.one (Ordered)": "epg.one (Ordered)",
@@ -94,6 +96,7 @@ var keyStrings = {
     "Failed to load channel list!": "Failed to load channel list!",
     "Favorite lists": "Favorite lists",
     Favorites: "Favorites",
+    Filters: "Filters",
     "First Run Setup": "First-run setup",
     "For download settings file open": "To download the settings file, open",
     "For enter value open": "To enter a value, open",
@@ -138,6 +141,7 @@ var keyStrings = {
     "m3u-m3u8 playlists": "M3U / M3U8 playlists",
     min: "min",
     "New list name": "New list name",
+    Next: "Next page",
     "No channel name": "No channel name",
     "Not reduce video when showing the list (bugfix)":
         "Do not shrink video when showing the list (bug fix)",
@@ -207,6 +211,8 @@ var keyStrings = {
     "Type of player for streaming": "Streaming player type",
     "VOD not supported by provider": "VOD is not supported by this provider",
     "VPortal link": "VPortal link",
+    "VPortal request failed":
+        "Could not load VPortal. Check the link, access key, and portal availability.",
     "Wrong parental code !!!": "Wrong parental code!",
     yes: "yes",
 };

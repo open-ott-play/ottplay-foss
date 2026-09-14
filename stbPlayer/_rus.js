@@ -63,6 +63,8 @@ var keyStrings = {
         "Введите полный хост CDN из URL потока в личном кабинете (например subdomain.cdn-domain.tld), не один поддомен",
     "Enter the VPortal link as shown in the cabinet":
         "Введите ссылку VPortal так как она выглядит в кабинете",
+    "Enter this link in VPortal link. Playlist URL requires an M3U playlist.":
+        "Введите эту ссылку в поле «Ссылка VPortal». Для телеканалов в поле «Адрес плейлиста» нужна ссылка на M3U.",
     EPG: "Программа",
     Exit: "Выход",
     "epg.one (Ordered)": "epg.one (Упорядоченный)",
@@ -71,6 +73,7 @@ var keyStrings = {
     "Failed to load channel list!": "Не удалось загрузить список каналов!",
     "Favorite lists": "Списки избранного",
     Favorites: "Избранные",
+    Filters: "Фильтры",
     "For enter value open": "Для ввода значения откройте",
     "HTTP port": "HTTP-порт",
     "HTTP remote control is unavailable on this device.":
@@ -94,6 +97,7 @@ var keyStrings = {
     "m3u-m3u8 playlists": "m3u-m3u8 плейлисты",
     min: "минут",
     "New list name": "Имя нового списка",
+    Next: "Следующая страница",
     "No channel name": "Нет названия канала",
     Nothing: "Ничего",
     native: "родной",
@@ -129,6 +133,8 @@ var keyStrings = {
     "Try demo": "Попробовать демо",
     "Type of player for streaming": "Тип плеера для воспроизведения",
     "VPortal link": "Ссылка VPortal",
+    "VPortal request failed":
+        "Не удалось загрузить VPortal. Проверьте ссылку, ключ и доступность портала.",
     "Wrong parental code !!!": "Неверный родительский код !!!",
     yes: "да",
 };

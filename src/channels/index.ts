@@ -291,10 +291,12 @@ export interface MediaHistoryEntry {
     name?: string;
     playlist_name?: string;
     playlist_url?: MediaTarget;
+    request?: Record<string, unknown>;
     search_on?: boolean | number | string;
     stream_url?: string | (() => string);
     submenu?: MediaHistoryEntry[];
     title?: string;
+    vportalSource?: string;
 }
 
 /* ---------------------------------------------------------------------------
@@ -2872,6 +2874,7 @@ export function rememberMediaView(pending = false): void {
 /** Closing/reloading while fetching must not reopen a departed VOD view. */
 export function cancelMediaLoad(): void {
     var w = window as any;
+    if (w.providerMediaClient) w.providerMediaClient.cancel();
     var state: MediaLoadState | undefined = w._mediaLoadState;
     if (state && state.pending) {
         w.mediaUrls = null;

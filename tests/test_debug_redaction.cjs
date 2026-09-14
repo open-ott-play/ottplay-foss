@@ -46,6 +46,8 @@ const flushIngest = context.ottDebugFlushIngest;
 context.ottDebugFlushIngest = () => {};
 const original = {
     items: [
+        "portal::[key:DUMMY_SECRET]http://portal.invalid/api/v1/",
+        "portal::%5Bkey:DUMMY_SECRET%5Dhttp://portal.invalid/api/v1/",
         "Bearer DUMMY_SECRET",
         "password=DUMMY_SECRET",
         "token%3dDUMMY_SECRET",

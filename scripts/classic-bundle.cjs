@@ -30,6 +30,7 @@ const CLASSIC_MODULES = [
     "build/plugins/dash-exo-player.js",
     "build/plugins/m3u-proxy.js",
     "build/plugins/stalker-portal.js",
+    "build/plugins/vportal.js",
     "build/index.js",
 ];
 const fs = require("node:fs");

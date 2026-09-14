@@ -144,6 +144,7 @@ function ottDebugTagEvent(ev: OttDebugEvent): OttDebugEvent {
 function ottDebugRedactText(text: string): string {
     // Paths may contain Xtream credentials, so retain only the authority.
     return text
+        .replace(/(portal::(?:\[|%5b)key:)[\s\S]*?(\]|%5d)/gi, "$1[redacted]$2")
         .replace(/\b(?:https?|rtsp|rtmp):\/\/[^\s"'<>\\]+/gi, function (url) {
             var match = /^(https?):\/\/([^/?#]+)/i.exec(url);
             if (!match) return "[redacted URL]";

@@ -860,6 +860,10 @@ export function loadProv(providerId?: string): void {
     }
     cancelPortChannelIdMigration();
     cancelMediaLoad();
+    if ((window as any).providerMediaClient) {
+        (window as any).providerMediaClient.dispose();
+        (window as any).providerMediaClient = null;
+    }
     invalidateEpgCache();
     /**
      * Handle provider script load failure.

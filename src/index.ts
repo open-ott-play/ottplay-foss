@@ -2410,6 +2410,8 @@ function setupTauriEpgCacheReady(): void {
  * and client_feedb(). If parental access is required, defers via callback.
  */
 function _playChannel(catIdx: number, chIdx: number): void {
+    if ((window as any).providerMediaClient)
+        (window as any).providerMediaClient.cancel();
     console.log(
         "[playChannel] catIdx=" +
             catIdx +
@@ -2478,6 +2480,8 @@ function _playChannel(catIdx: number, chIdx: number): void {
  * If mediaUrls last element is -1, resets mediaSelects[0] to 0.
  */
 function _playMedia(item: MediaHistoryEntry): void {
+    if ((window as any).providerMediaClient)
+        (window as any).providerMediaClient.cancel();
     if (!item) return;
     var streamUrl =
         typeof item.stream_url === "function"
@@ -2493,10 +2497,24 @@ function _playMedia(item: MediaHistoryEntry): void {
     setCurrent(catIndex, -1);
     var resumePos = 0;
     var historyIdx = medHistory.findIndex(function (e: MediaHistoryEntry) {
-        return e.stream_url === item.stream_url;
+        return (
+            e.stream_url === item.stream_url ||
+            Boolean(
+                item.vportalSource &&
+                    item.request &&
+                    e.request &&
+                    e.vportalSource === item.vportalSource &&
+                    JSON.stringify(e.request) === JSON.stringify(item.request)
+            )
+        );
     });
     if (historyIdx !== -1) {
-        if (historyIdx === 0 && (window as any).playType === -1e11) return;
+        if (
+            historyIdx === 0 &&
+            (window as any).playType === -1e11 &&
+            medHistory[historyIdx].stream_url === streamUrl
+        )
+            return;
         resumePos =
             Math.floor((medHistory[historyIdx]?.current ?? 0) / 60) * 60;
         medHistory.splice(historyIdx, 1);
