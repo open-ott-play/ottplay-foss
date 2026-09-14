@@ -1,4 +1,5 @@
 const CLASSIC_MODULES = [
+    "build/polyfills/runtime.js",
     "build/polyfills/index.js",
     "build/utils/lzstring.js",
     "build/storage/index.js",

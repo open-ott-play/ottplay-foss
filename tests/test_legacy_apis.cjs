@@ -134,8 +134,7 @@ const dateContext = vm.createContext({
 dateContext.window = dateContext;
 vm.runInContext(
     "Date.now = undefined;" +
-        compile("src/polyfills/index.ts", ["polyfillPerformanceNow"]) +
-        "polyfillPerformanceNow();",
+        fs.readFileSync(path.join(root, "js/runtime-polyfills.js"), "utf8"),
     dateContext
 );
 assert.equal(vm.runInContext("typeof Date.now()", dateContext), "number");

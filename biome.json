@@ -169,6 +169,8 @@
       "!index.html",
       "!dist/**",
       "!fonts/**",
+      "!js/**",
+      "!tests/fixtures/**",
       "!node_modules/**",
       "!ios/**",
       "!android/**",

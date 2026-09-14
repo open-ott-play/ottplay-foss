@@ -212,6 +212,7 @@ function fixture(script, options = {}) {
         error: (...args) => errors.push(args),
         warn: (...args) => errors.push(args),
     };
+    if (!options.noRuntime) w.eval(read("js/runtime-polyfills.js"));
     const run = () => w.eval(script);
     run();
     return {
@@ -269,6 +270,17 @@ async function run() {
     );
     const cases = [];
     const test = (name, options, check) => cases.push({ check, name, options });
+    test("missing compatibility bootstrap shows an error before native readiness", {
+        noRuntime: true,
+    }, async (f) => {
+        f.ready();
+        await settle();
+        assert.equal(f.calls.length, 0);
+        assert.match(
+            f.w.document.getElementById("ottplay-pip-status").textContent,
+            /Compatibility runtime could not load/
+        );
+    });
     const request = (session, url, extra = {}) => ({
         instance: 73,
         session,

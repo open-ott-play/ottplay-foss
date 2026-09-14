@@ -12,10 +12,11 @@ repos:
       - id: end-of-file-fixer
         # vendored / generated trees stay untouched
         # Preserve these published crate bytes; check-glib-backport verifies them.
-        exclude: '^(js|stb|stbPlayer|prov|fonts)/|^vendor/glib-0\.18\.5/(LICENSE|\.cargo_vcs_info\.json)$'
+        # MPEG-TS fixtures are binary transport streams despite their .ts suffix.
+        exclude: '^(js|stb|stbPlayer|prov|fonts)/|^tests/fixtures/media-runtime/.*\.ts$|^vendor/glib-0\.18\.5/(LICENSE|\.cargo_vcs_info\.json)$'
       - id: trailing-whitespace
         # A unified patch uses a single space for an empty context line.
-        exclude: '^(js|stb|stbPlayer|prov|fonts)/|^vendor/glib-0\.18\.5-RUSTSEC-2024-0429\.patch$'
+        exclude: '^(js|stb|stbPlayer|prov|fonts)/|^tests/fixtures/media-runtime/.*\.ts$|^vendor/glib-0\.18\.5-RUSTSEC-2024-0429\.patch$'
       - id: check-yaml
 
   - repo: https://github.com/jumanjihouse/pre-commit-hooks

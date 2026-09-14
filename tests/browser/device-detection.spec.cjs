@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { test, expect } = require("@playwright/test");
 const fixtures = require("../fixtures/device-detection.json");
+const runtimeVersion = require("../../js/media-runtime.json").runtimeVersion;
 
 const adapterRoot = path.resolve(__dirname, "../../stb");
 const adapterNames = [];
@@ -64,6 +65,7 @@ for (const fixture of fixtures.concat(routeFixtures)) {
         }, testInfo) => {
             const localOrigin = new URL(baseURL).origin;
             const loadedScripts = [];
+            const mediaVersions = [];
             const blockedRequests = [];
             const pageErrors = [];
             page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -72,15 +74,21 @@ for (const fixture of fixtures.concat(routeFixtures)) {
                     response.request().resourceType() === "script" &&
                     response.ok()
                 ) {
-                    loadedScripts.push(new URL(response.url()).pathname);
+                    const url = new URL(response.url());
+                    loadedScripts.push(url.pathname);
+                    if (
+                        /\/js\/(runtime-polyfills|hls.min)\.js$/.test(
+                            url.pathname
+                        )
+                    )
+                        mediaVersions.push(url.searchParams.get("v"));
                 }
             });
             await context.route("**/*", async (route) => {
                 if (new URL(route.request().url()).origin === localOrigin) {
                     await route.continue();
                 } else {
-                    // In particular, the optional PC HLS CDN must fall back to
-                    // the packaged library. Never contact live APIs/providers.
+                    // Keep the device matrix independent of live providers.
                     blockedRequests.push(route.request().url());
                     await route.abort("blockedbyclient");
                 }
@@ -139,6 +147,22 @@ for (const fixture of fixtures.concat(routeFixtures)) {
                 enter: remote.ENTER,
             });
             expect(loadedScripts).toContain("/dist/stbPlayer.js");
+            expect(loadedScripts[0]).toBe("/js/runtime-polyfills.js");
+            expect(loadedScripts).toContain("/js/hls.min.js");
+            expect(
+                await page.evaluate(() => ({
+                    ready: window.__ottRuntimePolyfillsReady,
+                    runtimeVersion: window.__ottMediaRuntimeVersion,
+                    version: window.Hls.version,
+                    worker: window.Hls.DefaultConfig.workerPath,
+                }))
+            ).toEqual({
+                ready: true,
+                runtimeVersion,
+                version: "1.7.3",
+                worker: localOrigin + "/js/hls.worker.js?v=" + runtimeVersion,
+            });
+            expect(mediaVersions).toEqual([runtimeVersion, runtimeVersion]);
             expect(
                 loadedScripts.filter((url) => /^\/stb\/.+\/stb\.js$/.test(url))
             ).toEqual(["/stb/" + fixture.expectedDevice + "/stb.js"]);
@@ -173,6 +197,35 @@ for (const fixture of fixtures.concat(routeFixtures)) {
         });
     });
 }
+
+test("a failed runtime download shows a retry message before loading libraries", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const requestedScripts = [];
+    page.on("request", (request) => {
+        if (request.resourceType() === "script")
+            requestedScripts.push(new URL(request.url()).pathname);
+    });
+    const localOrigin = new URL(baseURL).origin;
+    await context.route("**/*", async (route) => {
+        const url = new URL(route.request().url());
+        if (
+            url.origin !== localOrigin ||
+            url.pathname === "/js/runtime-polyfills.js"
+        )
+            await route.abort("blockedbyclient");
+        else await route.continue();
+    });
+    await page.goto("/f/lg/webos/", { waitUntil: "load" });
+    await expect(page.locator("#boot-status")).toHaveText(
+        "Failed to load runtime support"
+    );
+    await expect(page.locator("#boot-log")).toContainText("Reload the player");
+    await expect(page.locator("body")).not.toHaveClass(/\bbooting\b/);
+    expect(requestedScripts).toEqual(["/js/runtime-polyfills.js"]);
+});
 
 async function enterViewingMode(page) {
     await expect(page.locator("#listCaption")).toHaveText("First-run setup");

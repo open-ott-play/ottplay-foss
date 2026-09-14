@@ -8,7 +8,9 @@ COPY scripts/classic-bundle.cjs ./scripts/classic-bundle.cjs
 COPY scripts/android-distribution.cjs ./scripts/android-distribution.cjs
 COPY scripts/html-scripts.cjs ./scripts/html-scripts.cjs
 COPY scripts/check-es5.cjs ./scripts/check-es5.cjs
-COPY scripts/native-runtime.cjs scripts/native-dev.cjs scripts/play-system-icons.cjs ./scripts/
+COPY scripts/native-runtime.cjs scripts/native-dev.cjs scripts/play-system-icons.cjs scripts/media-runtime.cjs ./scripts/
+COPY LICENSE ./
+COPY licenses/android/Apache-2.0.txt ./licenses/android/Apache-2.0.txt
 COPY index.html favicon.ico ./
 COPY fonts ./fonts
 COPY js ./js

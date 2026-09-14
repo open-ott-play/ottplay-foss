@@ -11,14 +11,39 @@ const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const scripts = inlineScripts(html);
 assert(scripts.length > 0);
-const boot = scripts[0];
-acorn.parse(boot, { ecmaVersion: 5 });
-const identityStart = boot.indexOf("function bootSecureDeviceId()");
-const identityEnd = boot.indexOf("window.deviceUUID = deviceUUID;");
-assert(identityStart >= 0 && identityEnd > identityStart);
-const bootIdentity = boot.slice(
+const identityScript = scripts
+    .map((text) => ({ ast: acorn.parse(text, { ecmaVersion: 5 }), text }))
+    .find(({ ast }) =>
+        ast.body.some(
+            (node) =>
+                node.type === "FunctionDeclaration" &&
+                node.id.name === "bootSecureDeviceId"
+        )
+    );
+assert(
+    identityScript,
+    "Exercise the real identity declaration regardless of preceding scripts"
+);
+const identityStart = identityScript.ast.body.find(
+    (node) =>
+        node.type === "FunctionDeclaration" &&
+        node.id.name === "bootSecureDeviceId"
+).start;
+const identityAssignment = identityScript.ast.body.find((node) => {
+    const expression = node.type === "ExpressionStatement" && node.expression;
+    const member =
+        expression?.type === "AssignmentExpression" && expression.left;
+    return (
+        member?.type === "MemberExpression" &&
+        !member.computed &&
+        member.object.name === "window" &&
+        member.property.name === "deviceUUID"
+    );
+});
+assert(identityAssignment && identityAssignment.end > identityStart);
+const bootIdentity = identityScript.text.slice(
     identityStart,
-    identityEnd + "window.deviceUUID = deviceUUID;".length
+    identityAssignment.end
 );
 
 const file = path.join(root, "src/swop/index.ts");

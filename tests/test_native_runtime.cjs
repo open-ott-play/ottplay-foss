@@ -226,12 +226,17 @@ function verifyStage(folder, platform) {
     );
     assert.equal(
         doc.window.document.querySelector("script").getAttribute("src"),
+        "./js/runtime-polyfills.js?v=" +
+            JSON.parse(read("js/media-runtime.json")).runtimeVersion
+    );
+    assert.equal(
+        doc.window.document.querySelectorAll("script")[1].getAttribute("src"),
         "./js/native-environment.js"
     );
     doc.window.close();
     pass(
         platform +
-            " stage: exact npm bytes/licenses, no custom fonts/PUA, environment first"
+            " stage: exact npm bytes/licenses, no custom fonts/PUA, polyfills before environment"
     );
 }
 function browser(folder, platform) {
@@ -262,6 +267,10 @@ function browser(folder, platform) {
         throw new Error("Unexpected WebSocket");
     };
     w.eval(
+        fs.readFileSync(path.join(folder, "js/runtime-polyfills.js"), "utf8")
+    );
+    assert.equal(w.__ottRuntimePolyfillsReady, true);
+    w.eval(
         fs.readFileSync(path.join(folder, "js/native-environment.js"), "utf8")
     );
     w.settings = { fontSize: 0 };
@@ -282,7 +291,12 @@ function browser(folder, platform) {
             "Native boot requested a non-local dependency: " + url
         );
         loaded.push(url);
-        w.eval(fs.readFileSync(path.join(folder, url.slice(1)), "utf8"));
+        w.eval(
+            fs.readFileSync(
+                path.join(folder, url.slice(1).split("?")[0]),
+                "utf8"
+            )
+        );
         done();
     };
     const inline = Array.from(
@@ -300,7 +314,7 @@ function browser(folder, platform) {
     w.loadJQ();
     assert.deepEqual(loaded, [
         "/js/jquery.min.js",
-        "/js/hls.min.js",
+        "/js/hls.min.js?v=" + w.__ottMediaRuntimeVersion,
         "/js/shaka-player.compiled.js",
     ]);
     assert.equal(w.fixturePlayerSawEnvironment, true);

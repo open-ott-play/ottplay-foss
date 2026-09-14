@@ -26,7 +26,7 @@ try {
     fs.mkdirSync(path.join(source, "dist"));
     fs.writeFileSync(
         path.join(source, "index.html"),
-        '<html><head></head><body><script src="./dist/stbPlayer.js"></script></body></html>'
+        '<html><head><script src="/js/runtime-polyfills.js"></script></head><body><script src="./dist/stbPlayer.js"></script></body></html>'
     );
     fs.writeFileSync(
         path.join(source, "stbPlayer/1280.css"),

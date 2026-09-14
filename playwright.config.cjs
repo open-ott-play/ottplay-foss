@@ -16,7 +16,7 @@ module.exports = defineConfig({
     ],
     retries: 0,
     testDir: "./tests/browser",
-    testMatch: "device-detection.spec.cjs",
+    testMatch: ["device-detection.spec.cjs", "media-runtime.spec.cjs"],
     timeout: 30000,
     use: {
         baseURL: "http://127.0.0.1:" + port,

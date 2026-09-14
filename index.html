@@ -3,6 +3,7 @@
     <head>
         <title>OTT-play FOSS (__OTTP_VERSION__)</title>
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <script src="/js/runtime-polyfills.js?v=0ba2e51c2ae71c3f"></script>
         <meta
             name="viewport"
             content="width=device-width, initial-scale=1.0, user-scalable=no"
@@ -209,7 +210,7 @@
             (window.location.host ? window.location.protocol + "//" + window.location.host : "http://localhost:8080");
         if (!Date.now) Date.now = function () { return new Date().getTime(); };
         var __dev = true; // set false for production
-        // Boot runs before the bundle's polyfills. Cache-busting labels are not secrets.
+        // Cache-busting labels are not secrets; boot also handles a missing runtime.
         function bootRandomHex(length) {
             var text = "";
             for (var i = 0; i < length; i++)
@@ -480,46 +481,16 @@
                 function checkDone() {
                     if (++need === 2) loadSTB();
                 }
-                function loadLocalHls() {
-                    // Checked with the bundle: HLS 0.14.17 for legacy TV engines.
-                    loadJS(host + "/js/hls.min.js", checkDone, _head, function () {
-                        bootLog("Local HLS unavailable; using device playback");
-                        checkDone();
-                    });
+                function hlsReady() {
+                    if (typeof Hls === "function" && Hls.DefaultConfig)
+                        Hls.DefaultConfig.workerPath = host + "/js/hls.worker.js?v=" + window.__ottMediaRuntimeVersion;
+                    else bootLog("Local HLS unavailable; using device playback");
+                    checkDone();
                 }
                 if (typeof Hls === "undefined") {
-                    // The local Android test APK identifies its modern WebView
-                    // without changing legacy Android/native-wrapper defaults.
-                    var testWebView = ott_device === "android" &&
-                        typeof window.__ottNativeRuntime === "undefined" &&
-                        typeof window.Capacitor === "undefined" &&
-                        typeof window.Android === "undefined" &&
-                        typeof window.__TAURI__ === "undefined" &&
-                        typeof window.__TAURI_INTERNALS__ === "undefined" &&
-                        /(?:^|\s)OttplayTestWebView\/1\.0(?=\s|$)/.test(navigator.userAgent || "");
-                    // Unknown old STBs can be detected as pc. Do not send their
-                    // pre-polyfill engines a modern CDN build either.
-                    var modernPC = !window.__ottNativeRuntime && ott_device === "pc" &&
-                        typeof Promise === "function" &&
-                        typeof Uint8Array === "function" &&
-                        typeof Array.from === "function";
-                    var modernTestWebView = testWebView &&
-                        typeof Promise === "function" &&
-                        typeof Uint8Array === "function" &&
-                        typeof Array.from === "function";
-                    if (modernPC || modernTestWebView) {
-                        loadJS(
-                            "https://cdn.jsdelivr.net/npm/hls.js@" +
-                                (modernTestWebView ? "1.7.3" : "1.6.16") + "/dist/hls.min.js",
-                            function () {
-                                if (typeof Hls === "undefined") loadLocalHls();
-                                else checkDone();
-                            },
-                            _head,
-                            loadLocalHls
-                        );
-                    } else loadLocalHls();
-                } else checkDone();
+                    // Every platform uses the same pinned local build and worker.
+                    loadJS(host + "/js/hls.min.js?v=" + window.__ottMediaRuntimeVersion, hlsReady, _head, hlsReady);
+                } else hlsReady();
                 // Older WebKit exposes blob URLs under webkitURL. Shaka reads
                 // createObjectURL while loading, before it can report support.
                 if (!window.URL && window.webkitURL) window.URL = window.webkitURL;
@@ -563,6 +534,15 @@
             window.getScriptDOM = getScriptDOM;
 
             bootLog("device: " + ott_device);
+            if (window.__ottRuntimePolyfillsReady !== true ||
+                typeof window.__ottMediaRuntimeVersion !== "string" ||
+                !/^[0-9a-f]{16}$/.test(window.__ottMediaRuntimeVersion)) {
+                clearInterval(_bootTimer);
+                clearBootHide();
+                bootStatus("Failed to load runtime support");
+                bootLog("Reload the player to retry loading js/runtime-polyfills.js");
+                return;
+            }
             if (typeof jQuery === "undefined") loadJQ();
             else {
                 bootStatus("Loading UI…");

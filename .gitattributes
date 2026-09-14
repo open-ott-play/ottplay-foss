@@ -2,3 +2,6 @@
 # checkout bytes stable so the post-build receipt still matches version sync.
 /Cargo.lock text eol=lf
 /src-tauri/Cargo.toml text eol=lf
+
+# MPEG-TS test fixtures are media, not TypeScript source.
+/tests/fixtures/media-runtime/*.ts binary

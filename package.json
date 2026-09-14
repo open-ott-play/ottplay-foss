@@ -6,6 +6,7 @@
   "scripts": {
     "build": "vite build",
     "build:ios": "vite build && node scripts/native-runtime.cjs audit dist-mobile --platform capacitor && npx cap sync ios && node scripts/native-runtime.cjs audit ios/App/App/public --platform capacitor --source dist-mobile",
+    "build:media": "node scripts/media-runtime.cjs build",
     "build:mobile": "npm run build:ios",
     "build:server": "vite build --mode server",
     "cap:copy": "vite build && npx cap copy ios",
@@ -15,6 +16,7 @@
     "check:bundle": "bash scripts/check-bundle-identifiers.sh && node tests/test_port_bundle_smoke.cjs && node tests/test_provider_storage_reset.cjs --bundle && node tests/test_demo_provider.cjs --bundle && node tests/test_channel_rendering_parity.cjs && node tests/test_favorites_access.cjs --bundle && node tests/test_debug_redaction.cjs --bundle && node tests/test_device_detection.cjs --bundle && node tests/test_tizen_remote.cjs --bundle && node tests/test_keyboard_binding.cjs --bundle && node tests/test_parental_pin_input.cjs --bundle && node tests/test_parental_startup.cjs --bundle && node tests/test_m3u_vportal.cjs --bundle",
     "check:es5": "node scripts/check-es5.cjs",
     "check:glib-backport": "node scripts/check-glib-backport.cjs",
+    "check:media": "node scripts/media-runtime.cjs check",
     "check:test-inventory": "node scripts/check-test-inventory.cjs",
     "dev": "vite",
     "dev:native": "npm run build && vite --mode native",
@@ -26,10 +28,12 @@
     "test": "node --import=tsx tests/test_channel_filtering.ts && node --import=tsx tests/test-epg-matching.ts && node --import=tsx tests/test_listKeyHandler_alias.ts && node --import=tsx tests/test_popup_menu.ts && node tests/test_package_modea.cjs && node tests/test_ci_inventory.cjs && npm run test:port",
     "test:android:policy": "node tests/android_provider_policy.cjs && node tests/test_play_system_icons.cjs",
     "test:devices": "node tests/test_device_detection.cjs",
-    "test:devices:browser": "playwright test tests/browser/device-detection.spec.cjs",
+    "test:devices:browser": "playwright test tests/browser/device-detection.spec.cjs tests/browser/media-runtime.spec.cjs",
+    "test:media": "node tests/test_media_runtime.cjs && node tests/test_runtime_web_polyfills.cjs",
+    "test:media:browser": "playwright test tests/browser/media-runtime.spec.cjs",
     "test:native:runtime": "node tests/test_native_runtime.cjs && node tests/test_native_runtime_gate.cjs && node tests/test_native_dev.cjs && node tests/test_frontend_safety.cjs",
     "test:native-dash": "python3 tests/test_native_dash_state.py",
-    "test:port": "node tests/test_classic_linker.cjs && node tests/test_port_runtime.cjs && node --import=tsx tests/test_port_playback.ts && node tests/test_port_vod.cjs && node tests/test_port_stb_adapters.cjs && node tests/test_legacy_boot.cjs && node tests/test_device_identity.cjs && node tests/test_port_edem_search.cjs && node tests/test_port_pause_intent.cjs && node tests/test_provider_storage_reset.cjs && node tests/test_demo_provider.cjs && node tests/test_frontend_staging.cjs && node tests/test_port_engine_lifecycle.cjs && node tests/test_stream_bitrate.cjs && node tests/test_tauri_auto_playback.cjs && node tests/test_port_dash_lifecycle.cjs && node tests/test_port_native_pip_lifecycle.cjs && node tests/test_port_tauri_session.cjs && node tests/test_legacy_apis.cjs && node tests/test_encoding_hashes.cjs && node tests/test_channel_id_migration.cjs && node tests/test_native_shell_parity.cjs && node tests/test_capacitor_playback_parity.cjs && node tests/test_native_http.cjs && node --import=tsx tests/test-native-epg-parity.ts && node tests/test_settings_parity.cjs && node tests/test_m3u_epg_match.cjs && node tests/test_webos_simulator_launcher.cjs && node tests/test_android_tv_launcher.cjs && node tests/test_android_tv_player.cjs && node tests/test_tizen_simulator_launcher.cjs && node tests/test_tizen_remote.cjs && node tests/test_keyboard_binding.cjs && node tests/test_parental_pin_input.cjs && node tests/test_parental_startup.cjs && node tests/test_remote_settings_layout.cjs && node tests/test_local_http_remote.cjs && node tests/test_local_http_native_bridge.cjs && node tests/test_http_remote_cloud.cjs && node tests/test_native_settings_export.cjs && node tests/test_tauri_updater_dialogs.cjs && npm run test:android:policy && node tests/test_android_privacy_viewer.cjs && npm run test:native:runtime && node tests/test_favorites_access.cjs && node tests/test_debug_redaction.cjs && npm run test:devices && node tests/test_vportal.cjs && node tests/test_m3u_vportal.cjs",
+    "test:port": "npm run test:media && node tests/test_classic_linker.cjs && node tests/test_port_runtime.cjs && node --import=tsx tests/test_port_playback.ts && node tests/test_port_vod.cjs && node tests/test_port_stb_adapters.cjs && node tests/test_legacy_boot.cjs && node tests/test_device_identity.cjs && node tests/test_port_edem_search.cjs && node tests/test_port_pause_intent.cjs && node tests/test_provider_storage_reset.cjs && node tests/test_demo_provider.cjs && node tests/test_frontend_staging.cjs && node tests/test_port_engine_lifecycle.cjs && node tests/test_stream_bitrate.cjs && node tests/test_tauri_auto_playback.cjs && node tests/test_port_dash_lifecycle.cjs && node tests/test_port_native_pip_lifecycle.cjs && node tests/test_port_tauri_session.cjs && node tests/test_legacy_apis.cjs && node tests/test_encoding_hashes.cjs && node tests/test_channel_id_migration.cjs && node tests/test_native_shell_parity.cjs && node tests/test_capacitor_playback_parity.cjs && node tests/test_native_http.cjs && node --import=tsx tests/test-native-epg-parity.ts && node tests/test_settings_parity.cjs && node tests/test_m3u_epg_match.cjs && node tests/test_webos_simulator_launcher.cjs && node tests/test_android_tv_launcher.cjs && node tests/test_android_tv_player.cjs && node tests/test_tizen_simulator_launcher.cjs && node tests/test_tizen_remote.cjs && node tests/test_keyboard_binding.cjs && node tests/test_parental_pin_input.cjs && node tests/test_parental_startup.cjs && node tests/test_remote_settings_layout.cjs && node tests/test_local_http_remote.cjs && node tests/test_local_http_native_bridge.cjs && node tests/test_http_remote_cloud.cjs && node tests/test_native_settings_export.cjs && node tests/test_tauri_updater_dialogs.cjs && npm run test:android:policy && node tests/test_android_privacy_viewer.cjs && npm run test:native:runtime && node tests/test_favorites_access.cjs && node tests/test_debug_redaction.cjs && npm run test:devices && node tests/test_vportal.cjs && node tests/test_m3u_vportal.cjs",
     "typecheck": "tsc --noEmit"
   },
   "overrides": {
@@ -41,6 +45,7 @@
     "@capacitor/core": "8.5.2",
     "@capacitor/ios": "8.5.2",
     "@tauri-apps/plugin-updater": "2.11.0",
+    "core-js": "3.50.0",
     "hls.js": "1.7.3",
     "jquery": "4.0.0",
     "shaka-player": "5.2.10"
@@ -49,6 +54,8 @@
     "@biomejs/biome": "^2.5.12",
     "@capacitor/android": "8.5.2",
     "@playwright/test": "1.63.0",
+    "@rollup/plugin-commonjs": "29.0.3",
+    "@rollup/plugin-node-resolve": "16.0.3",
     "@tauri-apps/cli": "^2.11.4",
     "@types/jquery": "^4.0.1",
     "@types/node": "^26.5.0",
