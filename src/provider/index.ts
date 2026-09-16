@@ -293,11 +293,9 @@ function detailProg(): void {
         var t = Math.round((Date.now() / 1e3 - e.time) / 60);
         // Title yellow (OTT); time on next line; descr clipped; next on yellow line.
         var r =
-            '<div id="_name"><div style="color:' +
-            accent +
-            ';">' +
+            '<div id="_name"><div class="ott-channel-detail-accent">' +
             metadataText(e.name) +
-            '</div><div style="font-size:smaller;">' +
+            '</div><div class="ott-channel-detail-time">' +
             time2time(e.time) +
             " - " +
             time2time(e.time_to) +
@@ -307,31 +305,45 @@ function detailProg(): void {
             " " +
             _("min") +
             ")</div></div>" +
-            '<div id="_descr" style="font-size:smaller;overflow:hidden;position:relative;"><div id="_prd">' +
-            getThumbnail(e.icon) +
+            '<div id="_descr" class="ott-channel-description"><div id="_prd">' +
+            (wdet.sThumbnail && metadataCssUrl(e.icon)
+                ? '<div class="img ott-channel-thumbnail"></div>'
+                : "") +
             metadataHtml(e.descr) +
             "</div></div>";
         if (e.nextpr && nextCountL) {
             // Gold: absolute to listDetail bottom (yellow podval border).
             r +=
-                '<div id="_nextpr" style="' +
-                (showDescr
-                    ? "position:absolute;left:0;right:0;bottom:0;z-index:3;box-sizing:border-box;padding:4px 14px;background-color:rgba(8,8,14,0.96);"
-                    : "") +
-                'width:100%;white-space:nowrap;font-size:smaller;">';
+                '<div id="_nextpr" class="ott-channel-next' +
+                (showDescr ? " ott-channel-next-overlay" : "") +
+                '">';
             e.nextpr.forEach(function (n: any, i: number) {
                 if (i < nextCountL)
                     r +=
                         time2time(n.time) +
-                        ' <span style="color:' +
-                        accent +
-                        ';">' +
+                        ' <span class="ott-channel-detail-accent">' +
                         metadataText(n.name) +
                         "</span></br>";
             });
             r += "</div>";
         }
         listDetail.innerHTML = r;
+        // Only app-owned elements receive styles; metadataHtml strips classes
+        // and styles from provider descriptions before they enter this tree.
+        var accents = listDetail.querySelectorAll(".ott-channel-detail-accent");
+        for (var ai = 0; ai < accents.length; ai++)
+            (accents[ai] as HTMLElement).style.color = accent;
+        var thumbnail = listDetail.querySelector(
+            ".ott-channel-thumbnail"
+        ) as HTMLElement | null;
+        if (thumbnail) {
+            var thumbnailWidth = Math.floor(133 * getWidthK());
+            thumbnail.style.width = thumbnailWidth + "px";
+            thumbnail.style.height = Math.floor(200 * getHeightK()) + "px";
+            thumbnail.style.margin = Math.floor(thumbnailWidth / 15) + "px";
+            thumbnail.style.backgroundImage =
+                'url("' + metadataCssUrl(e.icon) + '")';
+        }
         // Gold formula (no extra nextGap). Prefer outerHeight so padding counts.
         var nextH = 0;
         try {
@@ -1881,7 +1893,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     // Vertical-only margins — all-side margin inflated the flex cross-size.
     var progMargin = showProgress ? Math.floor((boxH - progBarH) / 2) : 0;
 
-    getListItemFn = function (chId: string, idx: number) {
+    var channelItemFormatter = function (chId: string, idx: number) {
         var ch = channels[chId];
         if (!ch)
             return (
@@ -1890,11 +1902,8 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                 " id=" +
                 metadataText(chId)
             );
-        // .item is already display:flex (1280.css + showPage). Emit direct flex
-        // children — a nested width:100% flex wrapper + max-width:textW from
-        // itemWith made WKWebView/Tauri clip progress and wrap number/name.
-        // Browser :8443 tolerated it; Tauri did not. Escape picUrl so tvg-logo /
-        // data URIs cannot break the style attribute and drop the rest of the row.
+        // Keep the legacy string formatter ABI. Structural classes and the
+        // scoped DOM pass below work under Tauri's nonced style policy.
         // Queue EPG fill for every visible row (OTT). Re-read ch after call:
         // deferred doGetCurProg may not have run yet; time_to hit returns true.
         getCurProgData(chId, updateChanelList);
@@ -1905,107 +1914,139 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                 : "";
         if (ch.outdated === true)
             progName =
-                '<i style="color:#3c3c0a">' +
+                '<i class="ott-channel-no-epg">' +
                 _("no epg at current time") +
                 "</i>";
-        var pct = progName
-            ? ((Date.now() / 1e3 - ch.time) / (ch.time_to - ch.time)) * 100
-            : 0;
-        var parentalStyle =
-            !sPSchannels ||
-            parentPIN === "*" ||
-            parentalArray.indexOf(chId) === -1
-                ? ""
-                : "color:#a00;";
-        var picUrl = "";
-        try {
-            if (typeof getChannelPicon === "function")
-                picUrl = getChannelPicon(chId) || "";
-            else if ((ch as any).logo) picUrl = String((ch as any).logo);
-        } catch (_pic) {
-            try {
-                if ((ch as any).logo) picUrl = String((ch as any).logo);
-            } catch (_pic2) {}
-        }
-        var safePic = metadataText(metadataCssUrl(picUrl))
-            .replace(/\\/g, "\\\\")
-            .replace(/'/g, "%27")
-            .replace(/"/g, "%22")
-            .replace(/[\r\n\f]/g, "");
-        var iconH = Math.max(1, Math.min(pikonSize || 0, Math.floor(boxH) - 2));
         return (
             (numWidth
-                ? '<div style="flex:0 0 ' +
-                  numWidth +
-                  "px;max-width:" +
-                  numWidth +
-                  "px;min-height:0;max-height:100%;text-align:right;line-height:inherit;white-space:nowrap;overflow:hidden;" +
-                  parentalStyle +
-                  '">' +
-                  (idx + 1) +
-                  "</div>"
+                ? '<div class="ott-channel-number">' + (idx + 1) + "</div>"
                 : "") +
-            (archWidth
-                ? '<div style="flex:0 0 ' +
-                  archWidth +
-                  "px;" +
-                  (ch.rec ? "background-color:lime;" : "") +
-                  "margin:" +
-                  archWidth +
-                  "px;height:" +
-                  (boxH - archWidth * 2) +
-                  'px"></div>'
-                : "") +
-            (pikonSize
-                ? '<div class="img" style="flex:0 0 ' +
-                  pikonSize +
-                  "px;width:" +
-                  pikonSize +
-                  "px;height:" +
-                  iconH +
-                  "px;min-height:0;max-height:100%;margin-left:" +
-                  pikonMargin +
-                  "px;margin-right:8px;background-image:url('" +
-                  safePic +
-                  "');\"></div>"
-                : "") +
-            '<div style="flex:1 1 auto;min-width:0;min-height:0;max-height:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:inherit;color:' +
-            ((typeof bodyColor === "string" && bodyColor) ||
-                (window as any).bodyColor ||
-                "#f0f0f0") +
-            ';">&nbsp;' +
+            (archWidth ? '<div class="ott-channel-archive"></div>' : "") +
+            (pikonSize ? '<div class="img ott-channel-picon"></div>' : "") +
+            '<div class="ott-channel-label" data-channel-id="' +
+            metadataText(chId) +
+            '">&nbsp;' +
             (showName ? metadataText(ch.channel_name) + "&nbsp;" : "") +
             (showProgram
                 ? '<span id="pn' +
-                  chId +
-                  '" style="color:' +
-                  ((typeof curColor === "string" && curColor) ||
-                      (window as any).curColor ||
-                      "gold") +
-                  ';">' +
+                  metadataText(chId) +
+                  '" class="ott-channel-programme">' +
                   progName +
                   "</span></div>"
                 : "</div>") +
             (progWidth
-                ? '<div class="progress_div" style="flex:0 0 ' +
-                  progWidth +
-                  "px;width:" +
-                  progWidth +
-                  "px;min-height:0;max-height:100%;margin:" +
-                  progMargin +
-                  'px 0;margin-left:auto;align-self:center;background-color:rgba(68,68,102,0.55);"><div id="pr' +
-                  chId +
-                  '" style="width:' +
-                  pct +
-                  "%;height:" +
-                  progBarH +
-                  "px;background-color:" +
-                  ((typeof curColor === "string" && curColor) ||
-                      (window as any).curColor ||
-                      "gold") +
-                  ';font-size:1px;"></div></div>'
+                ? '<div class="progress_div ott-channel-progress"><div id="pr' +
+                  metadataText(chId) +
+                  '" class="ott-channel-progress-fill"></div></div>'
                 : "")
         );
+    };
+    getListItemFn = channelItemFormatter;
+    wglob.applyChannelListStyles = function (container: HTMLElement): void {
+        // A later menu/provider can replace the formatter. Never apply channel
+        // styling to another list or replay styles supplied in metadata.
+        if (getListItemFn !== channelItemFormatter) return;
+        var labels = container.querySelectorAll(".ott-channel-label");
+        var accent =
+            (typeof curColor === "string" && curColor) ||
+            wglob.curColor ||
+            "gold";
+        var foreground =
+            (typeof bodyColor === "string" && bodyColor) ||
+            wglob.bodyColor ||
+            "#f0f0f0";
+        for (var li = 0; li < labels.length; li++) {
+            var label = labels[li] as HTMLElement;
+            var chId = label.getAttribute("data-channel-id") || "";
+            var ch = channels[chId];
+            var row = label.parentElement;
+            if (!ch || !row) continue;
+            label.style.color = foreground;
+            var number = row.querySelector(
+                ".ott-channel-number"
+            ) as HTMLElement | null;
+            if (number) {
+                number.style.flexBasis = numWidth + "px";
+                number.style.maxWidth = numWidth + "px";
+                number.style.color =
+                    sPSchannels &&
+                    parentPIN !== "*" &&
+                    parentalArray.indexOf(
+                        listArray[Number(row.getAttribute("data-idx"))]
+                    ) !== -1
+                        ? "#a00"
+                        : "";
+            }
+            var archive = row.querySelector(
+                ".ott-channel-archive"
+            ) as HTMLElement | null;
+            if (archive) {
+                archive.style.flexBasis = archWidth + "px";
+                archive.style.margin = archWidth + "px";
+                archive.style.height = Math.max(1, boxH - archWidth * 2) + "px";
+                archive.style.backgroundColor = ch.rec ? "lime" : "";
+            }
+            var picon = row.querySelector(
+                ".ott-channel-picon"
+            ) as HTMLElement | null;
+            if (picon) {
+                var safePic = "";
+                try {
+                    var picUrl = "";
+                    try {
+                        picUrl =
+                            typeof getChannelPicon === "function"
+                                ? getChannelPicon(chId) || ""
+                                : String((ch as any).logo || "");
+                    } catch (_pic) {
+                        picUrl = String((ch as any).logo || "");
+                    }
+                    safePic = metadataCssUrl(picUrl);
+                } catch (_invalidPicon) {}
+                picon.style.flexBasis = pikonSize + "px";
+                picon.style.width = pikonSize + "px";
+                picon.style.height =
+                    Math.max(1, Math.min(pikonSize, boxH - 2)) + "px";
+                picon.style.marginLeft = pikonMargin + "px";
+                picon.style.backgroundImage = safePic
+                    ? 'url("' + safePic + '")'
+                    : "";
+            }
+            var programme = row.querySelector(
+                ".ott-channel-programme"
+            ) as HTMLElement | null;
+            if (programme) programme.style.color = accent;
+            var progress = row.querySelector(
+                ".ott-channel-progress"
+            ) as HTMLElement | null;
+            if (progress) {
+                progress.style.flexBasis = progWidth + "px";
+                progress.style.width = progWidth + "px";
+                progress.style.marginTop = progMargin + "px";
+                progress.style.marginBottom = progMargin + "px";
+                var fill = progress.firstElementChild as HTMLElement | null;
+                if (fill) {
+                    var current =
+                        ch.time_to &&
+                        ch.time_to >= Date.now() / 1e3 &&
+                        ch.time_to > ch.time;
+                    fill.style.width =
+                        (current
+                            ? Math.max(
+                                  0,
+                                  Math.min(
+                                      100,
+                                      ((Date.now() / 1e3 - ch.time) /
+                                          (ch.time_to - ch.time)) *
+                                          100
+                                  )
+                              )
+                            : 0) + "%";
+                    fill.style.height = progBarH + "px";
+                    fill.style.backgroundColor = accent;
+                }
+            }
+        }
     };
     listDetail.innerHTML = "";
     detailListAction = detailProg;

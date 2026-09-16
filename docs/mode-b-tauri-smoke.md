@@ -102,6 +102,28 @@ Or via helper:
 
 Set `OTTPLAY_WEB_URL=http://127.0.0.1:8443` for debug webview pointing at a local Mode A companion.
 
+## Channel list formatting under native CSP
+
+The packaged Tauri page adds a nonce to its style policy. Dynamically inserted
+HTML style attributes are therefore blocked, even when the same HTML renders
+correctly on the HTTP companion. The shared channel renderer uses external CSS
+classes and explicit DOM style properties for trusted layout and theme values.
+Provider descriptions still pass through metadata sanitization; the Tauri CSP
+and its script/style nonce handling remain enabled.
+
+After building the emitted bundles, run the browser regression in both Chromium
+and WebKit:
+
+```bash
+npx playwright install chromium webkit
+npm run test:native:ui
+```
+
+Check programme accents, channel logos, archive markers, progress bars, selection,
+and programme details with the same settings and EPG data in both targets.
+The browser test enforces the packaged style policy; JSDOM renderer tests alone
+do not enforce CSP. Also check the installed native app after replacement.
+
 ## Automated companion curl
 
 When a Mode A companion is listening on `:8443`:

@@ -919,32 +919,22 @@ export function showPage(): void {
         var sn = typeof sv === "number" ? sv : parseInt(String(sv), 10);
         if (!isNaN(sn)) showScroll = sn;
     } catch (_sc) {}
+    var scrollWidth = 0;
+    var totalPages = 1;
+    var currentPage = 0;
     if (showScroll && dataArr.length > pageSz) {
         itemWidth = getWidthK() * 720;
         (window as any).itemWith = itemWidth;
-        var scrollWidth = 10 * getWidthK();
-        var totalPages =
+        scrollWidth = 10 * getWidthK();
+        totalPages =
             Math.floor(dataArr.length / pageSz) +
             (dataArr.length % pageSz ? 1 : 0);
-        var currentPage = Math.floor(selIndex / pageSz);
+        currentPage = Math.floor(selIndex / pageSz);
         // Absolute scrollbar (NOT float:right): float-first layout made
         // visual rows miss their #itN hit targets in WKWebView/Tauri.
-        html +=
-            '<div class="list-scroll" onclick="event.stopPropagation();changeSelect(' +
-            pageSz +
-            ');" style="position:absolute;right:0;top:0;bottom:0;width:' +
-            scrollWidth +
-            'px; border: 1px solid rgba(240,240,240,0.35); border-radius: 4px; background-color: rgba(255,255,255,0.06);z-index:2;">';
-        html +=
-            '<div onclick="event.stopPropagation();changeSelect(-' +
-            pageSz +
-            ');" style="width:100%;height:' +
-            (currentPage / totalPages) * 100 +
-            '%;"></div>';
-        html +=
-            '<div style="background-color: rgba(180,180,200,0.85); border-radius: 3px; width:100%;height:' +
-            100 / totalPages +
-            '%;"></div></div>';
+        html += '<div class="list-scroll">';
+        html += '<div class="list-scroll-before"></div>';
+        html += '<div class="list-scroll-thumb"></div></div>';
     } else {
         itemWidth = getWidthK() * 735;
         (window as any).itemWith = itemWidth;
@@ -962,7 +952,6 @@ export function showPage(): void {
         }
     } catch (_wCap) {}
     for (var i = pageStart; i < pageEnd; i++) {
-        var selected = i === selIndex;
         html +=
             '<div id="it' +
             i +
@@ -971,32 +960,7 @@ export function showPage(): void {
             '" onclick="event.stopPropagation();setSelect(' +
             i +
             ')" role="button" tabindex="0" onkeydown="if(event.keyCode===13||event.keyCode===32){event.preventDefault();event.stopPropagation();this.click();}" class="item"';
-        // Integer px boxes from listRowHeight. Zero vertical padding; horizontal
-        // inset only. WKWebView subpixel/flex min-content previously grew rows
-        // past avail/pageSize (~21 of 25 visible) — lock height+line-height+
-        // min/max and re-pack after paint via packListRowBoxes.
-        html +=
-            ' style="display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;' +
-            "box-sizing:border-box;margin:0;padding:0 10px;border:none;border-radius:3px;" +
-            "height:" +
-            itemHeight +
-            "px;max-height:" +
-            itemHeight +
-            "px;min-height:" +
-            itemHeight +
-            "px;line-height:" +
-            itemHeight +
-            "px;width:" +
-            itemWidth +
-            "px;overflow:hidden;white-space:nowrap;flex-shrink:0;contain:layout style;";
-        if (selected)
-            html +=
-                "color:" +
-                (curColor || "gold") +
-                "; background-color:" +
-                (curColorB || "#668") +
-                ";";
-        html += '">';
+        html += ">";
         try {
             html += getListItemFn ? getListItemFn(dataArr[i], i) : "";
         } catch (e) {
@@ -1007,6 +971,46 @@ export function showPage(): void {
     if (listInElement) {
         listInElement.scrollTop = 0;
         listInElement.innerHTML = html;
+        // Assign only app-owned geometry/theme properties. Tauri's style nonce
+        // blocks attributes parsed from HTML but allows these DOM properties.
+        for (var ri = pageStart; ri < pageEnd; ri++) {
+            var row = document.getElementById("it" + ri);
+            if (!row) continue;
+            row.style.height = itemHeight + "px";
+            row.style.maxHeight = itemHeight + "px";
+            row.style.minHeight = itemHeight + "px";
+            row.style.lineHeight = itemHeight + "px";
+            row.style.width = itemWidth + "px";
+            if (ri === selIndex) {
+                row.style.color = curColor || "gold";
+                row.style.backgroundColor = curColorB || "#668";
+            }
+        }
+        var scrollbar = listInElement.querySelector(
+            ".list-scroll"
+        ) as HTMLElement | null;
+        if (scrollbar) {
+            scrollbar.style.width = scrollWidth + "px";
+            var scrollBefore = scrollbar.querySelector(
+                ".list-scroll-before"
+            ) as HTMLElement;
+            var scrollThumb = scrollbar.querySelector(
+                ".list-scroll-thumb"
+            ) as HTMLElement;
+            scrollBefore.style.height = (currentPage / totalPages) * 100 + "%";
+            scrollThumb.style.height = 100 / totalPages + "%";
+            scrollbar.onclick = function (event): void {
+                event.stopPropagation();
+                changeSelect(pageSz);
+            };
+            scrollBefore.onclick = function (event): void {
+                event.stopPropagation();
+                changeSelect(-pageSz);
+            };
+        }
+        var applyChannelStyles = (window as any).applyChannelListStyles;
+        if (typeof applyChannelStyles === "function")
+            applyChannelStyles(listInElement);
     }
     // OTT: after rows are in the DOM, paint #pn* for channels that already
     // have current programme data (playing / previously warmed). Cold rows

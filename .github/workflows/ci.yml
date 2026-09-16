@@ -87,11 +87,14 @@ jobs:
       - name: Check emitted ES5 grammar
         run: npm run check:es5
 
-      - name: Install browser for device emulation
-        run: npx playwright install --with-deps chromium
+      - name: Install browsers for device and native UI checks
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Test device boot and remote navigation in Chromium
         run: npm run test:devices:browser
+
+      - name: Test native channel formatting with enforced CSP
+        run: npm run test:native:ui
 
       - name: Upload device browser failure diagnostics
         if: failure()
@@ -101,6 +104,8 @@ jobs:
           path: |
             build/device-browser-report/
             build/device-browser-results/
+            build/native-ui-report/
+            build/native-ui-results/
           if-no-files-found: ignore
           retention-days: 7
 

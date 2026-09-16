@@ -150,7 +150,11 @@ for (const profile of ["server", "tauri", "capacitor"]) {
     );
     assert.equal(row.style.backgroundColor, "rgb(0, 0, 128)");
     assert.ok(row.querySelector(".img"));
-    assert.ok(row.querySelector('[style*="background-color:lime"]'));
+    assert.equal(
+        w.getComputedStyle(row.querySelector(".ott-channel-archive"))
+            .backgroundColor,
+        "rgb(0, 255, 0)"
+    );
     assert.equal(
         w.document.getElementById("it1").firstElementChild.style.color,
         "rgb(170, 0, 0)"
@@ -171,7 +175,7 @@ for (const profile of ["server", "tauri", "capacitor"]) {
     );
     assert.equal(w.document.querySelector("#listIn .img"), null);
     assert.equal(
-        w.document.querySelector('#listIn [style*="background-color\:lime"]'),
+        w.document.querySelector("#listIn .ott-channel-archive"),
         null
     );
     assert.equal(w.document.querySelector("#listIn .progress_div"), null);

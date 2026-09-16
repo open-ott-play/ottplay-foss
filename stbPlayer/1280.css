@@ -247,10 +247,31 @@ body {
     overflow: hidden;
 }
 #listDetail #_nextpr {
-    /* Anchored to bottom (yellow listPodval border) via inline absolute. */
+    /* Channel details anchor this above the list footer when descriptions show. */
     z-index: 3;
     box-sizing: border-box;
     line-height: 1.35;
+}
+.ott-channel-detail-time,
+.ott-channel-description,
+.ott-channel-next {
+    font-size: smaller;
+}
+.ott-channel-next {
+    width: 100%;
+    white-space: nowrap;
+}
+.ott-channel-next-overlay {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    padding: 4px 14px;
+    background-color: rgba(8, 8, 14, 0.96);
+}
+#listDetail .ott-channel-thumbnail {
+    float: left;
+    background-size: cover;
 }
 #listPopUp {
     position: absolute;
@@ -282,6 +303,17 @@ body {
     bottom: 0;
     z-index: 2;
     pointer-events: auto;
+    background-color: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(240, 240, 240, 0.35);
+    border-radius: 4px;
+}
+.list-scroll-before,
+.list-scroll-thumb {
+    width: 100%;
+}
+.list-scroll-thumb {
+    background-color: rgba(180, 180, 200, 0.85);
+    border-radius: 3px;
 }
 #listAbout {
     position: absolute;
@@ -398,6 +430,41 @@ body {
     background-color: rgba(68, 68, 102, 0.55);
     border-radius: 3px;
 }
+.ott-channel-number,
+.ott-channel-archive,
+.ott-channel-picon,
+.ott-channel-progress {
+    flex-grow: 0;
+    flex-shrink: 0;
+    min-height: 0;
+    max-height: 100%;
+}
+.ott-channel-number {
+    overflow: hidden;
+    line-height: inherit;
+    text-align: right;
+    white-space: nowrap;
+}
+.ott-channel-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: inherit;
+    white-space: nowrap;
+}
+.ott-channel-no-epg {
+    color: #3c3c0a;
+}
+.ott-channel-progress {
+    align-self: center;
+    margin-left: auto;
+}
+.ott-channel-progress-fill {
+    font-size: 1px;
+}
 /* Settings / submenu name+value rows (replaces float:left/right).
    Keep in sync with inline styles in window._setSetup — WKWebView needs both. */
 .item-label {
@@ -419,8 +486,8 @@ body {
     white-space: nowrap;
 }
 .img {
-    /* Channel-row picon: in-flow flex child (never float). Explicit inline
-       width/height from _channelsList; avoid height:auto collapse in WKWebView. */
+    /* Channel-row picon: in-flow flex child. DOM width/height from the channel
+       renderer avoid height:auto collapse under the native style policy. */
     float: none;
     flex-shrink: 0;
     min-width: 0;
