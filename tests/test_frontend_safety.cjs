@@ -177,12 +177,12 @@ test("channel list keeps hostile titles as text and preserves intentional row la
         let renderer;
         function visit(n) {
             if (
-                ts.isBinaryExpression(n) &&
-                n.left.getText(a) === "getListItemFn" &&
-                ts.isFunctionExpression(n.right) &&
-                n.right.getText(a).includes("safePic")
+                ts.isVariableDeclaration(n) &&
+                n.name.getText(a) === "channelItemFormatter" &&
+                n.initializer &&
+                ts.isFunctionExpression(n.initializer)
             )
-                renderer = n.right;
+                renderer = n.initializer;
             ts.forEachChild(n, visit);
         }
         visit(a);
