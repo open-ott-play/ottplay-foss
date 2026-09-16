@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { test, expect } = require("@playwright/test");
+const { JSDOM } = require("jsdom");
 
 const root = path.resolve(__dirname, "../..");
 const origin = "http://127.0.0.1:4198";
@@ -138,14 +139,15 @@ async function fixturePage(browser, profile) {
     const native = profile === "tauri";
     const stage = native ? "src-tauri/frontend/" : "";
     const html = read(native ? stage + "index.html" : "dist/index.html");
-    const body = html
-        .match(/<body\b[^>]*>[\s\S]*?<\/body>/i)[0]
-        .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
-    const styles = Array.from(
-        html.matchAll(/<style\b[^>]*>[\s\S]*?<\/style>/gi),
-        (match) =>
-            match[0].replace(/<style\b[^>]*>/i, '<style nonce="' + nonce + '">')
-    );
+    const parsed = new JSDOM(html);
+    const document = parsed.window.document;
+    for (const script of document.querySelectorAll("script")) script.remove();
+    const body = document.body.outerHTML;
+    const styles = Array.from(document.querySelectorAll("style"), (style) => {
+        style.setAttribute("nonce", nonce);
+        return style.outerHTML;
+    });
+    parsed.window.close();
     const scripts = [
         "/fixture-init.js",
         "/js/runtime-polyfills.js",
