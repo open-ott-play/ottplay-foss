@@ -25,6 +25,7 @@
     "lint": "biome check . && npm run lint:correctness",
     "lint:correctness": "biome lint --config-path=biome-correctness.json .",
     "lint:fix": "biome check --write .",
+    "measure:classic": "tsc && node scripts/measure-classic-options.cjs",
     "package:modea": "node scripts/package-modea.cjs",
     "test": "node --import=tsx tests/test_channel_filtering.ts && node --import=tsx tests/test-epg-matching.ts && node --import=tsx tests/test_listKeyHandler_alias.ts && node --import=tsx tests/test_popup_menu.ts && node tests/test_package_modea.cjs && node tests/test_ci_inventory.cjs && npm run test:port",
     "test:android:policy": "node tests/android_provider_policy.cjs && node tests/test_play_system_icons.cjs",

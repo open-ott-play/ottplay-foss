@@ -24,6 +24,10 @@ implementation details while preserving every top-level binding, property name,
 function name and function arity. Menu preferences persist `callback.name`; these
 names must survive optimization. Top-level and property mangling, unsafe rewrites,
 getter purity assumptions, and IE-incompatible `typeof` rewrites remain disabled.
+The compressor uses three passes. On the measured player, further passes produced
+identical bytes; declaration hoisting increased gzip size. Indexed-argument
+rewrites and Boolean-to-integer conversion are explicitly disabled because they
+change omitted/mapped arguments and native bridge Boolean contracts.
 The optimizer parses both input and output as ES5 and rejects missing globals.
 Put leaf modules before consumers that use their values during initialization, and avoid
 duplicate global declarations when extracting new modules. This linker preserves
@@ -87,3 +91,20 @@ Run `npm test`, `npm run check:bundle`, `npm run check:size`, `npm run check:es5
 pipeline. Differential optimizer tests cover late provider mutations, reentrant
 callbacks, eval, function identity/arity, getters, side effects and sloppy-mode
 behavior. Actual device codec/DRM acceptance remains a separate playback check.
+
+## Comparing minifier options
+
+`npm run measure:classic` compiles fresh ES5 modules and compares bounded Terser
+profiles against an explicit one-pass baseline. It writes candidate scripts to
+`build/experiments/classic-options` and measurements to
+`build/reports/minify-options.json`, without changing shipped bundles. Use
+`npm run measure:classic -- --rounds 2` to check reproducible output across two
+runs. Timings are local samples, not stable build-speed measurements. Brotli
+quality 11 is a comparison metric, not the native packager's compression profile.
+
+Diagnostic profiles deliberately include options rejected by runtime contracts.
+ES5 parsing and preserved global declarations alone do not make them safe. The
+optimizer tests compare original and optimized behavior, including the real HTTP
+remote bridge, and prove the assertions reject changed getter, argument and
+Boolean behavior. Keep these tests and the emitted-bundle/browser checks passing
+before adopting a different profile.
