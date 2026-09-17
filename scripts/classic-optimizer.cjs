@@ -19,11 +19,14 @@ function classicOptimizerMetadata() {
         engineVersion,
         options: {
             compress: {
+                // Preserve omitted/mapped arguments and native Boolean payloads.
+                arguments: false,
+                booleans_as_integers: false,
                 defaults: true,
                 drop_console: false,
                 drop_debugger: false,
                 keep_fargs: true,
-                passes: 1,
+                passes: 3,
                 pure_getters: false,
                 toplevel: false,
                 // Terser documents typeof rewrites as unsafe on IE <= 10.
