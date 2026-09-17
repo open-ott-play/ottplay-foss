@@ -3,6 +3,38 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const acorn = require("acorn");
+const {
+    checkBundleIdentifiers,
+} = require("../scripts/check-bundle-identifiers.cjs");
+
+const publicFixture = `
+    function startPlayer() {} var popupActions = [];
+    function noProvParam() {} function optionsList() {}
+    function makeRedefinable(name, get, set) {
+        Object.defineProperty(window, name, { get: get, set: set });
+    }
+    makeRedefinable("listKeyHandler", function () {}, function (value) {});
+    window.chanels = [];
+`;
+checkBundleIdentifiers(publicFixture);
+assert.throws(
+    () => checkBundleIdentifiers(JSON.stringify(publicFixture) + ";"),
+    /Missing classic global/,
+    "Identifier strings alone do not establish the plugin ABI"
+);
+assert.throws(
+    () => checkBundleIdentifiers("(function () {" + publicFixture + "})();"),
+    /Missing classic global/,
+    "Locally scoped names cannot satisfy the bare-global ABI"
+);
+assert.throws(
+    () =>
+        checkBundleIdentifiers(
+            publicFixture.replace("window.chanels = []", "other.chanels = []")
+        ),
+    /chanels/,
+    "An unrelated object property cannot satisfy a window publication"
+);
 
 // No network requests or timer callbacks are run. This checks script loading and
 // wiring against a minimal DOM, not media decoding or a full browser UI session.
@@ -10,6 +42,7 @@ const bundlePath = path.resolve(
     process.argv[2] || path.join(__dirname, "../dist/stbPlayer.js")
 );
 const bundle = fs.readFileSync(bundlePath, "utf8");
+checkBundleIdentifiers(bundle);
 const globalNames = new Set();
 function collectGlobals(node) {
     if (!node || typeof node !== "object") return;
@@ -419,6 +452,8 @@ async function main() {
             "handleCommand",
             "settingsCommands",
             "resolveNativePlugin",
+            "noProvParam",
+            "optionsList",
         ]) {
             assert.equal(
                 typeof w[name],
@@ -426,6 +461,16 @@ async function main() {
                 profile + ": missing global " + name
             );
         }
+        assert.equal(
+            Array.isArray(w.popupActions),
+            true,
+            profile + ": public popup action table"
+        );
+        assert.equal(
+            w.chanels,
+            w.channels,
+            profile + ": legacy channel alias keeps the actual table"
+        );
         assert.ok(
             w.optionsArr.some(
                 (item) =>

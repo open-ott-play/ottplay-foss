@@ -7,6 +7,7 @@
  */
 
 import { resolveNativePlugin } from "./native-bridge";
+import { nativeWebFallback } from "./web-fallback";
 
 /** Metadata pushed into OS Now Playing / MediaSession (Mode B Cap only). */
 export interface BackgroundAudioMeta {
@@ -93,123 +94,161 @@ export interface MobileNativeMediaPlugin {
 }
 
 class MobileNativeMediaWeb implements MobileNativeMediaPlugin {
-    async enterSystemPip(): Promise<{
+    enterSystemPip(): Promise<{
         ok: boolean;
         unsupported?: boolean;
     }> {
-        return { ok: false, unsupported: true };
+        return nativeWebFallback(function () {
+            return { ok: false, unsupported: true };
+        });
     }
-    async getVolume(): Promise<{
-        ok: boolean;
-        unsupported?: boolean;
-        volume: number;
-    }> {
-        console.warn("[MobileNativeMedia] web fallback: getVolume unsupported");
-        return { ok: false, unsupported: true, volume: 0 };
-    }
-
-    async setVolume(_opts: { volume: number }): Promise<{
+    getVolume(): Promise<{
         ok: boolean;
         unsupported?: boolean;
         volume: number;
     }> {
-        console.warn("[MobileNativeMedia] web fallback: setVolume unsupported");
-        return { ok: false, unsupported: true, volume: 0 };
+        return nativeWebFallback(function () {
+            console.warn(
+                "[MobileNativeMedia] web fallback: getVolume unsupported"
+            );
+            return { ok: false, unsupported: true, volume: 0 };
+        });
     }
 
-    async playPip(_opts: { url: string; loop?: boolean }): Promise<{
+    setVolume(_opts: { volume: number }): Promise<{
+        ok: boolean;
+        unsupported?: boolean;
+        volume: number;
+    }> {
+        return nativeWebFallback(function () {
+            console.warn(
+                "[MobileNativeMedia] web fallback: setVolume unsupported"
+            );
+            return { ok: false, unsupported: true, volume: 0 };
+        });
+    }
+
+    playPip(_opts: { url: string; loop?: boolean }): Promise<{
         ok: boolean;
         unsupported?: boolean;
         error?: string;
     }> {
-        console.warn("[MobileNativeMedia] web fallback: playPip unsupported");
-        return { ok: false, unsupported: true };
+        return nativeWebFallback(function () {
+            console.warn(
+                "[MobileNativeMedia] web fallback: playPip unsupported"
+            );
+            return { ok: false, unsupported: true };
+        });
     }
 
-    async stopPip(): Promise<{ ok: boolean; unsupported?: boolean }> {
-        console.warn("[MobileNativeMedia] web fallback: stopPip unsupported");
-        return { ok: false, unsupported: true };
+    stopPip(): Promise<{ ok: boolean; unsupported?: boolean }> {
+        return nativeWebFallback(function () {
+            console.warn(
+                "[MobileNativeMedia] web fallback: stopPip unsupported"
+            );
+            return { ok: false, unsupported: true };
+        });
     }
 
-    async setFullscreen(_opts: {
+    setFullscreen(_opts: {
         fullscreen: boolean;
     }): Promise<{ ok: boolean; unsupported?: boolean }> {
-        console.warn(
-            "[MobileNativeMedia] web fallback: setFullscreen unsupported"
-        );
-        return { ok: false, unsupported: true };
+        return nativeWebFallback(function () {
+            console.warn(
+                "[MobileNativeMedia] web fallback: setFullscreen unsupported"
+            );
+            return { ok: false, unsupported: true };
+        });
     }
 
-    async allowSleep(): Promise<{ ok: boolean; unsupported?: boolean }> {
-        console.warn(
-            "[MobileNativeMedia] web fallback: allowSleep unsupported"
-        );
-        return { ok: false, unsupported: true };
+    allowSleep(): Promise<{ ok: boolean; unsupported?: boolean }> {
+        return nativeWebFallback(function () {
+            console.warn(
+                "[MobileNativeMedia] web fallback: allowSleep unsupported"
+            );
+            return { ok: false, unsupported: true };
+        });
     }
 
-    async exitApp(): Promise<{
+    exitApp(): Promise<{
         ok: boolean;
         unsupported?: boolean;
         error?: string;
     }> {
-        console.warn("[MobileNativeMedia] web fallback: exitApp unsupported");
-        return { ok: false, unsupported: true };
+        return nativeWebFallback(function () {
+            console.warn(
+                "[MobileNativeMedia] web fallback: exitApp unsupported"
+            );
+            return { ok: false, unsupported: true };
+        });
     }
 
-    async preventSleep(): Promise<{ ok: boolean; unsupported?: boolean }> {
-        console.warn(
-            "[MobileNativeMedia] web fallback: preventSleep unsupported"
-        );
-        return { ok: false, unsupported: true };
+    preventSleep(): Promise<{ ok: boolean; unsupported?: boolean }> {
+        return nativeWebFallback(function () {
+            console.warn(
+                "[MobileNativeMedia] web fallback: preventSleep unsupported"
+            );
+            return { ok: false, unsupported: true };
+        });
     }
 
-    async startBackgroundAudio(
+    startBackgroundAudio(
         _opts?: BackgroundAudioMeta
     ): Promise<{ ok: boolean; unsupported?: boolean; error?: string }> {
-        console.warn(
-            "[MobileNativeMedia] web fallback: startBackgroundAudio unsupported"
-        );
-        return { ok: false, unsupported: true };
+        return nativeWebFallback(function () {
+            console.warn(
+                "[MobileNativeMedia] web fallback: startBackgroundAudio unsupported"
+            );
+            return { ok: false, unsupported: true };
+        });
     }
 
-    async pauseBackgroundAudio(): Promise<{
+    pauseBackgroundAudio(): Promise<{
         ok: boolean;
         unsupported?: boolean;
         error?: string;
     }> {
-        console.warn(
-            "[MobileNativeMedia] web fallback: pauseBackgroundAudio unsupported"
-        );
-        return { ok: false, unsupported: true };
+        return nativeWebFallback(function () {
+            console.warn(
+                "[MobileNativeMedia] web fallback: pauseBackgroundAudio unsupported"
+            );
+            return { ok: false, unsupported: true };
+        });
     }
 
-    async resumeBackgroundAudio(
+    resumeBackgroundAudio(
         _opts?: BackgroundAudioMeta
     ): Promise<{ ok: boolean; unsupported?: boolean; error?: string }> {
-        console.warn(
-            "[MobileNativeMedia] web fallback: resumeBackgroundAudio unsupported"
-        );
-        return { ok: false, unsupported: true };
+        return nativeWebFallback(function () {
+            console.warn(
+                "[MobileNativeMedia] web fallback: resumeBackgroundAudio unsupported"
+            );
+            return { ok: false, unsupported: true };
+        });
     }
 
-    async updateBackgroundAudio(
+    updateBackgroundAudio(
         _opts?: BackgroundAudioMeta
     ): Promise<{ ok: boolean; unsupported?: boolean; error?: string }> {
-        console.warn(
-            "[MobileNativeMedia] web fallback: updateBackgroundAudio unsupported"
-        );
-        return { ok: false, unsupported: true };
+        return nativeWebFallback(function () {
+            console.warn(
+                "[MobileNativeMedia] web fallback: updateBackgroundAudio unsupported"
+            );
+            return { ok: false, unsupported: true };
+        });
     }
 
-    async stopBackgroundAudio(): Promise<{
+    stopBackgroundAudio(): Promise<{
         ok: boolean;
         unsupported?: boolean;
         error?: string;
     }> {
-        console.warn(
-            "[MobileNativeMedia] web fallback: stopBackgroundAudio unsupported"
-        );
-        return { ok: false, unsupported: true };
+        return nativeWebFallback(function () {
+            console.warn(
+                "[MobileNativeMedia] web fallback: stopBackgroundAudio unsupported"
+            );
+            return { ok: false, unsupported: true };
+        });
     }
 }
 

@@ -1,5 +1,6 @@
 import { resolveNativePlugin } from "./native-bridge";
 import type { NativeHttpResponse } from "./native-http";
+import { nativeWebFallback } from "./web-fallback";
 
 /**
  * Stalker portal + host_ott swop shim — Mode B native HTTP transport.
@@ -52,12 +53,14 @@ export interface StalkerPortalPlugin {
 }
 
 class StalkerPortalWeb implements StalkerPortalPlugin {
-    async httpRequest(): Promise<NativeHttpResponse> {
-        throw new Error(
-            "[StalkerPortal] native HTTP unavailable (web fallback)"
-        );
+    httpRequest(): Promise<NativeHttpResponse> {
+        return nativeWebFallback(function () {
+            throw new Error(
+                "[StalkerPortal] native HTTP unavailable (web fallback)"
+            );
+        });
     }
-    async portalRequest(_opts: {
+    portalRequest(_opts: {
         url: string;
         method?: string;
         body?: string;
@@ -69,10 +72,12 @@ class StalkerPortalWeb implements StalkerPortalPlugin {
         contentType: string;
         setCookie?: string[];
     }> {
-        // Web fallback must not pretend the portal answered.
-        throw new Error(
-            "[StalkerPortal] native plugin unavailable (web fallback)"
-        );
+        return nativeWebFallback(function () {
+            // Web fallback must not pretend the portal answered.
+            throw new Error(
+                "[StalkerPortal] native plugin unavailable (web fallback)"
+            );
+        });
     }
 }
 

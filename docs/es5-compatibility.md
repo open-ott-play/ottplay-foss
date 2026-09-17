@@ -1,8 +1,10 @@
 # Legacy engine compatibility
 
 The shared player is a classic ES5 script. Keep `tsconfig.json` target `ES5`,
-Terser `ecma: 5` and `mangle: false`: device adapters and provider scripts use
-its published global names.
+Terser `ecma: 5` and preservation of top-level bindings, property names and
+function names/arity: device adapters, providers and menu preferences use this
+public contract. Local variable names may be shortened; see
+[Classic build pipeline](build-pipeline.md) for the guarded optimizer.
 
 Every Vite build (web, Capacitor and Tauri) parses the final bundle and shipped
 JavaScript with Acorn's ES5 grammar. `npm run check:es5` repeats that check and
@@ -23,8 +25,8 @@ where `video.play()` returns nothing and `event.key` / `new MouseEvent` are abse
 All profiles use the same local npm-locked hls.js UMD version. No CDN version is
 selected by user agent, development host or device ID. `npm run build:media`
 regenerates assets and license notices; `npm run check:media` checks input/output
-hashes, ES5 syntax and the worker prelude. Normal builds regenerate these files
-and validate their staged copies. The development server uses the committed
+hashes, ES5 syntax and the worker prelude. Normal builds fully audit and reuse unchanged assets; stale assets are
+regenerated and audited again before staging. Staged copies are also validated. The development server uses the committed
 assets. See [External library upgrades](external-library-upgrades.md).
 
 Device IDs used by remote text input are generated with WebCrypto or `msCrypto`.

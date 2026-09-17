@@ -55,7 +55,12 @@ async function run() {
         -180
     );
 
-    const files = ["native-bridge", "mobile-native-media", "dash-exo-player"];
+    const files = [
+        "native-bridge",
+        "web-fallback",
+        "mobile-native-media",
+        "dash-exo-player",
+    ];
     const methods = [];
     const media = {
         setVolume: async (opts) => {
