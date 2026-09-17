@@ -19,6 +19,12 @@ Run `scripts/install-local-stack.sh` for a full local stack installation or
 alone while updating the player. The installer archives old instance plists
 outside `LaunchAgents`, so legacy listeners do not restart at the next login.
 
+The player installer downloads npm and Cargo packages directly. For those
+commands it clears inherited proxy variables and overrides package-manager
+proxy settings, including proxies injected by office shell configuration.
+The reset is scoped to those commands; shell settings, npm/Cargo configuration
+files, registry selection and the running HLS proxy are not modified by it.
+
 `OTTPLAY_HTTP_PORTS` can override the space-separated HTTP port list. Port 8095,
 empty lists, duplicates and invalid ports are rejected before installation.
 The old `OTTPLAY_PORT` and `OTTPLAY_HTTPS_PORTS` overrides are rejected with a

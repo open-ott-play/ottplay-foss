@@ -12,6 +12,7 @@
 # remains a separate browser origin with independent player settings.
 # Existing certificates and keychain trust are left untouched.
 # Binds loopback only (--host 127.0.0.1); Docker defaults are unchanged.
+# Package downloads bypass inherited proxies and package-manager proxy settings.
 #
 # Optional remote text entry (swop) — do NOT commit private Worker hostnames:
 #   export SWOP_BASE_URL=https://your-worker.example
@@ -57,15 +58,26 @@ for tool in rsync node npm cargo python3; do
     command -v "$tool" >/dev/null || { echo "error: $tool not found" >&2; exit 1; }
 done
 
+# Office shells may inject proxy variables on every launch. Keep the reset local
+# to package downloads; explicit npm/Cargo options also override proxy config files.
+without_download_proxy() (
+    unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy PROXY proxy
+    unset NPM_CONFIG_PROXY NPM_CONFIG_HTTPS_PROXY npm_config_proxy npm_config_https_proxy
+    unset CARGO_HTTP_PROXY
+    export NO_PROXY='*' no_proxy='*'
+    "$@"
+)
+
 echo "[1/5] sync $SRC -> $DEST"
 mkdir -p "$DEST"
 # Preserve live debug flag/log across --delete. Keep source-local artifacts out
 # of DEST; the service receives the source archive path explicitly below.
+# Anchor native project exclusions so platform adapters and licenses are copied.
 rsync -a --delete \
     --exclude .git --exclude node_modules --exclude logs --exclude .local-artifacts \
     --exclude target --exclude build --exclude .herenow --exclude .cache \
     --exclude .local-ops --exclude ottplay-server \
-    --exclude android --exclude ios --exclude .env --exclude '.env.*' \
+    --exclude /android --exclude /ios --exclude .env --exclude '.env.*' \
     --exclude '*.local.py' --exclude 'certs' --exclude 'local' \
     --exclude 'debug.enabled' --exclude 'debug-playback.log' --exclude 'debug-playback.log.1' \
     "$SRC/" "$DEST/"
@@ -99,12 +111,12 @@ fi
 
 echo "[2/5] npm ci + build"
 cd "$DEST"
-npm ci --no-audit --no-fund 1>&2
+without_download_proxy npm ci --proxy=null --https-proxy=null --no-audit --no-fund 1>&2
 npm run build 1>&2
 
 echo "[3/5] build Rust binary"
 mkdir -p "$DEST"
-(cd "$RUST_SRC" && cargo build --locked --release -p ottplay-server 1>&2)
+(cd "$RUST_SRC" && without_download_proxy cargo --config 'http.proxy=""' build --locked --release -p ottplay-server 1>&2)
 
 echo "[4/5] launchd service (HTTP ports: $HTTP_PORTS)"
 mkdir -p "$HOME/Library/LaunchAgents" "$HOME/Library/Logs"
