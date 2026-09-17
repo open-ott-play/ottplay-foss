@@ -22,8 +22,264 @@ const entry = read("src/index.ts");
 const begin = entry.indexOf("// Capacitor Mode C: native media bridges");
 const end = entry.indexOf("// Tauri Mode B: OS MediaSession", begin);
 assert(begin >= 0 && end > begin);
-const wrapper = compile(entry.slice(begin, end));
+const nativeEnd = entry.indexOf("// Tauri Mode B: frameless window", end);
+assert(nativeEnd > end);
+const entryAst = ts.createSourceFile(
+    "index.ts",
+    entry,
+    ts.ScriptTarget.Latest,
+    true
+);
+const metadataDeclaration = entryAst.statements.find(
+    (node) =>
+        ts.isFunctionDeclaration(node) &&
+        node.name?.text === "nativeMediaMetadata"
+);
+assert(metadataDeclaration, "Exercise the actual shared metadata collector");
+const metadata = compile(metadataDeclaration.getText(entryAst));
+const wrapper = metadata + compile(entry.slice(begin, end));
+const nativeWrappers = metadata + compile(entry.slice(begin, nativeEnd));
 const settle = () => new Promise((resolve) => setImmediate(resolve));
+
+function metadataFixture(platform) {
+    const calls = [];
+    const reads = [];
+    const timers = new Map();
+    let nextTimer = 0;
+    let playing = false;
+    const values = {
+        channelText: "  News  ",
+        duration: 300,
+        fallbackText: "Fallback",
+        picon: "  https://example.invalid/picon.png  ",
+        position: 45,
+    };
+    const w = {
+        channels: {
+            news: { channel_name: "Channel name", icon: "fallback.png" },
+        },
+        clearInterval(id) {
+            timers.delete(id);
+        },
+        clearTimeout(id) {
+            timers.delete(id);
+        },
+        console: { warn() {} },
+        curList: ["news"],
+        document: {
+            getElementById(id) {
+                reads.push("element:" + id);
+                return {
+                    textContent:
+                        id === "channel"
+                            ? values.channelText
+                            : values.fallbackText,
+                };
+            },
+        },
+        getChannelPicon(id) {
+            reads.push("picon:" + id);
+            return values.picon;
+        },
+        playType: 1,
+        primaryIndex: 0,
+        setInterval(fn) {
+            timers.set(++nextTimer, fn);
+            return nextTimer;
+        },
+        setTimeout(fn) {
+            timers.set(++nextTimer, fn);
+            return nextTimer;
+        },
+        stbContinue() {
+            playing = !playing;
+        },
+        stbGetLen() {
+            reads.push("duration");
+            return values.duration;
+        },
+        stbGetPosTime() {
+            reads.push("position");
+            return values.position;
+        },
+        stbIsPlaying() {
+            return playing;
+        },
+        stbPause() {
+            playing = false;
+        },
+        stbPlay(url) {
+            reads.push("play:" + url);
+            playing = true;
+        },
+        stbStop() {
+            playing = false;
+        },
+    };
+    if (platform === "tauri") {
+        w.__TAURI__ = {};
+        w.tauriInvoke = (method, value) => {
+            calls.push([method, value]);
+            return Promise.resolve({ ok: true });
+        };
+    } else {
+        w.Capacitor = { getPlatform: () => platform };
+        w.MobileNativeMedia = new Proxy(
+            {},
+            {
+                get: (_, method) => (value) => {
+                    calls.push([method, value]);
+                    return Promise.resolve({ ok: true });
+                },
+            }
+        );
+    }
+    w.window = w;
+    vm.createContext(w);
+    vm.runInContext(nativeWrappers, w);
+    const startName =
+        platform === "tauri" ? "start_media_session" : "startBackgroundAudio";
+    const updateName =
+        platform === "tauri" ? "update_media_session" : "updateBackgroundAudio";
+    function play() {
+        w.stbPlay("fixture.mp4");
+        const value = calls.findLast(([method]) => method === startName)?.[1];
+        assert(value, platform + " starts its actual native metadata bridge");
+        return JSON.parse(JSON.stringify(value));
+    }
+    function update() {
+        for (const callback of [...timers.values()]) callback();
+        const value = calls.findLast(([method]) => method === updateName)?.[1];
+        assert(value, platform + " updates its actual native metadata bridge");
+        return JSON.parse(JSON.stringify(value));
+    }
+    return { play, reads, update, values, w };
+}
+
+function checkNativeMetadata() {
+    for (const platform of ["android", "ios", "tauri"]) {
+        {
+            const f = metadataFixture(platform);
+            const first = f.play();
+            assert.deepEqual(first, {
+                artist: "Now playing",
+                artworkUrl: "https://example.invalid/picon.png",
+                durationSec: 300,
+                positionSec: 45,
+                seekable: true,
+                title: "News",
+            });
+            assert.deepEqual(f.reads, [
+                "play:fixture.mp4",
+                "element:channel",
+                "picon:news",
+                "duration",
+                "position",
+            ]);
+            f.values.channelText = "Updated title";
+            f.values.position = 90;
+            assert.deepEqual(f.update(), {
+                ...first,
+                positionSec: 90,
+                title: "Updated title",
+            });
+            assert.equal(
+                first.title,
+                "News",
+                "Earlier payloads remain independent"
+            );
+        }
+        {
+            const f = metadataFixture(platform);
+            f.w.playType = 0;
+            assert.deepEqual(f.play(), {
+                artist: "Now playing",
+                artworkUrl: "https://example.invalid/picon.png",
+                seekable: false,
+                title: "News",
+            });
+            assert.deepEqual(
+                f.reads.slice(-2),
+                ["duration", "position"],
+                "Live still performs the existing reads"
+            );
+        }
+        {
+            const f = metadataFixture(platform);
+            f.values.channelText = "";
+            f.values.fallbackText = "";
+            f.values.picon = {};
+            f.values.duration = Infinity;
+            f.values.position = -1;
+            assert.deepEqual(f.play(), {
+                artist: "Now playing",
+                artworkUrl: "fallback.png",
+                seekable: false,
+                title: "Channel name",
+            });
+            assert.deepEqual(f.reads.slice(1, 3), [
+                "element:channel",
+                "element:cname",
+            ]);
+        }
+        {
+            const f = metadataFixture(platform);
+            f.values.channelText = "   ";
+            f.values.picon = "";
+            f.w.channels.news.icon = "";
+            f.values.position = NaN;
+            assert.deepEqual(
+                f.play(),
+                {
+                    artist: "Now playing",
+                    durationSec: 300,
+                    seekable: true,
+                    title: "OTT-play FOSS",
+                },
+                "Whitespace title and invalid position retain existing omission rules"
+            );
+        }
+        {
+            const f = metadataFixture(platform);
+            f.values.picon = "";
+            Object.defineProperty(f.w.channels.news, "icon", {
+                get() {
+                    f.reads.push("throwing-icon-getter");
+                    throw Error("Fixture bridge not ready");
+                },
+            });
+            assert.deepEqual(f.play(), {
+                artist: "Now playing",
+                seekable: false,
+                title: "News",
+            });
+            assert.deepEqual(
+                f.reads,
+                [
+                    "play:fixture.mp4",
+                    "element:channel",
+                    "picon:news",
+                    "throwing-icon-getter",
+                ],
+                "A thrown getter stops subsequent metadata reads without stopping playback"
+            );
+        }
+        {
+            const f = metadataFixture(platform);
+            f.w.stbGetLen = () => {
+                f.reads.push("throwing-duration");
+                throw Error("Fixture duration unavailable");
+            };
+            assert.deepEqual(f.play(), {
+                artist: "Now playing",
+                artworkUrl: "https://example.invalid/picon.png",
+                seekable: false,
+                title: "News",
+            });
+            assert.equal(f.reads.includes("position"), false);
+        }
+    }
+}
 
 function fixture(platform = "android") {
     const nativeCalls = [];
@@ -191,6 +447,7 @@ function fixture(platform = "android") {
 }
 
 async function run() {
+    checkNativeMetadata();
     {
         const { w, streams, original, nativeCalls, elements } = fixture();
         w.setPlayerMode(2);
@@ -331,7 +588,7 @@ async function run() {
         assert.equal(nativeCalls.at(-1)[0], "stopPip");
     }
     console.log(
-        "OK: Capacitor shares TS playback/control/layout, cancels stale callbacks, and opens the requested Android second channel"
+        "OK: Capacitor shares TS playback/control/layout and cancels stale callbacks; both native shells preserve shared metadata and exception behavior"
     );
 }
 run().catch((error) => {

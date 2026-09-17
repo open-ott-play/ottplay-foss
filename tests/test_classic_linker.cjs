@@ -6,6 +6,7 @@ const vm = require("node:vm");
 const acorn = require("acorn");
 const ts = require("typescript");
 const { assembleClassic } = require("../scripts/classic-bundle.cjs");
+const { optimizeClassic } = require("../scripts/classic-optimizer.cjs");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-linker-"));
 function write(name, source) {
     const file = path.join(root, name);
@@ -33,6 +34,156 @@ function helperCount(source, name) {
                     (declaration) => declaration.id.name === name
                 )
         ).length;
+}
+
+async function testPrivateBoundary() {
+    const privateFile = "build/debug/playback-debug.js";
+    write("private-before.js", "var events = ['before']; var liveValue = 2;");
+    write(
+        privateFile,
+        `
+        var privateState = 3;
+        var moduleReceiver = this;
+        function privateRead(value) { return privateState + liveValue + value; }
+        function unusedPrivateFunction() { return 'unreachable'; }
+        window.__ottDebug = {
+            read: privateRead,
+            change: function(value) { privateState = value; },
+            receiver: moduleReceiver
+        };
+        events.push('private');
+    `
+    );
+    write(
+        "private-after.js",
+        "events.push('after'); var publicCallback = window.__ottDebug.read;"
+    );
+    const linked = assembleClassic(root, [
+        "private-before.js",
+        privateFile,
+        "private-after.js",
+    ]);
+    const optimized = await optimizeClassic(linked);
+    for (const source of [linked, optimized.code]) {
+        acorn.parse(source, { ecmaVersion: 5 });
+        const context = vm.createContext({ privateState: 100 });
+        context.window = context;
+        vm.runInContext(source, context);
+        assert.deepEqual(Array.from(context.events), [
+            "before",
+            "private",
+            "after",
+        ]);
+        assert.equal(
+            context.__ottDebug.receiver,
+            vm.runInContext("this", context)
+        );
+        assert.equal(
+            context.privateState,
+            100,
+            "An existing global cannot overwrite private state"
+        );
+        assert.equal(context.privateRead, undefined);
+        assert.equal(context.unusedPrivateFunction, undefined);
+        assert.equal(context.publicCallback(1), 6);
+        assert.equal(context.publicCallback.name, "privateRead");
+        assert.equal(context.publicCallback.length, 1);
+        context.liveValue = 10;
+        context.__ottDebug.change(5);
+        assert.equal(
+            context.publicCallback(2),
+            17,
+            "Public callbacks retain private state and live global reads"
+        );
+        context.__ottDebug.read = () => 99;
+        assert.equal(
+            context.__ottDebug.read(),
+            99,
+            "Public API properties remain replaceable"
+        );
+        assert.equal(context.publicCallback(2), 17);
+    }
+    assert(
+        !optimized.code.includes("unusedPrivateFunction"),
+        "The real optimizer can eliminate an unreferenced private function"
+    );
+    for (const reference of [
+        "var leaked = privateState;",
+        "var leaked = window.privateState;",
+        "var leaked = window['privateState'];",
+        "import { privateState } from './build/debug/playback-debug';",
+    ]) {
+        write("private-leak.js", reference);
+        assert.throws(
+            () => assembleClassic(root, [privateFile, "private-leak.js"]),
+            /private classic/
+        );
+    }
+    write(
+        "private-shadow.js",
+        "function ownState(privateState) { return privateState; }" +
+            "function ownWindow(window) { return window.privateState; }"
+    );
+    assert.doesNotThrow(() =>
+        assembleClassic(root, [privateFile, "private-shadow.js"])
+    );
+    for (const invalid of [
+        "export var leaked = 1;",
+        "export { privateState }; var privateState = 1;",
+        "export {}; var privateState = 1;",
+        "import { video } from '../../dep';",
+    ]) {
+        write(privateFile, invalid);
+        assert.throws(
+            () => assembleClassic(root, ["dep.js", privateFile]),
+            /private classic module must publish window properties/
+        );
+    }
+    write(
+        privateFile,
+        `
+        if (true) { var branchState = 1; }
+        for (var loopState = 0; loopState < 1; loopState++) {}
+        window.__ottDebug = { value: branchState + loopState };
+    `
+    );
+    for (const reference of [
+        "branchState",
+        "loopState",
+        "window.branchState",
+        "window['loopState']",
+    ]) {
+        write("private-hoisted-leak.js", "var leaked = " + reference + ";");
+        assert.throws(
+            () =>
+                assembleClassic(root, [privateFile, "private-hoisted-leak.js"]),
+            /reference to private classic binding/
+        );
+    }
+    write(
+        privateFile,
+        compile(`
+        async function privateAwait(value) { return await value; }
+        window.__ottDebug = { wait: privateAwait };
+    `)
+    );
+    write(
+        "public-async.js",
+        compile(
+            "export async function publicAwait(value) { return await value; }"
+        )
+    );
+    const asyncSource = assembleClassic(root, [privateFile, "public-async.js"]);
+    assert.equal(
+        helperCount(asyncSource, "__awaiter"),
+        1,
+        "A private helper must not replace the global helper initialization"
+    );
+    const asyncContext = vm.createContext({});
+    asyncContext.window = asyncContext;
+    vm.runInContext(asyncSource, asyncContext);
+    assert.equal(await asyncContext.__ottDebug.wait(Promise.resolve(7)), 7);
+    assert.equal(await asyncContext.publicAwait(Promise.resolve(9)), 9);
 }
 
 async function testHelpers() {
@@ -360,6 +511,7 @@ async function main() {
             /missing explicit classic bridge/
         );
         await testHelpers();
+        await testPrivateBoundary();
         console.log(
             "PASS: classic ES5 linker preserves live aliases, lexical bindings and async behavior; validates ABI bridges and deduplicates identical TypeScript helpers"
         );

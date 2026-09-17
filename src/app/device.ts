@@ -57,7 +57,8 @@ export function detectDevice(): string {
 
 /**
  * Global variables expected by legacy code and provider scripts.
- * These are initialized in index.ts before the bundle loads.
+ * Initialize these during bundle evaluation, before HTML loads the device
+ * adapter and calls startPlayer(). detectDevice() always returns a nonempty route.
  */
 
 export let host = window.location.origin || "http://localhost:8080";

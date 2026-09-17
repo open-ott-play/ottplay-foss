@@ -67,6 +67,7 @@ function runtime(invoke, native = true, platform = "tauri", url) {
     if (platform === "capacitor")
         w.Capacitor = { isNativePlatform: () => native };
     w.tauriInvoke = invoke;
+    w.eval(compile(read("src/plugins/jquery-bridge.ts")));
     w.eval(compile(read("src/plugins/native-http.ts")));
     w.eval(shim);
     const originalAjax = w.$.ajax;

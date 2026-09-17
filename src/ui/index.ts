@@ -3402,14 +3402,6 @@ function _localizedAlphabet(): string {
     return _keysRu;
 }
 
-/** True when keyStrings.alhabet is a real alphabet, not the English placeholder. */
-function _hasLocalizedAlphabet(): boolean {
-    var t = _("alhabet");
-    return (
-        typeof t === "string" && t.length > 0 && t !== "alhabet" && t !== _keysL
-    );
-}
-
 /**
  * Always show Lang: English UI still needs a Cyrillic layout for search/edit.
  * (Legacy hid Lang when ottplaylang == "_eng".)

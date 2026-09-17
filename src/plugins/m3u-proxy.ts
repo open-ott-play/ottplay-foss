@@ -1,3 +1,4 @@
+import { nativePromiseToJq } from "./jquery-bridge";
 import { resolveNativePlugin } from "./native-bridge";
 import { installCapacitorHttpTransport } from "./native-http";
 import { StalkerPortal } from "./stalker-portal";
@@ -220,44 +221,6 @@ function setupCapacitorCompanionShim(): void {
     installCapacitorHttpTransport($, StalkerPortal);
     const origAjax = $.ajax.bind($);
 
-    function jqFromPromise(promise: Promise<string>, opts: any): any {
-        const dfd = $.Deferred();
-        promise.then(
-            (text: string) => {
-                try {
-                    if (typeof opts.success === "function") {
-                        opts.success(text, "success", dfd);
-                    }
-                } catch (_e) {}
-                try {
-                    if (typeof opts.complete === "function") {
-                        opts.complete(dfd, "success");
-                    }
-                } catch (_e3) {}
-                dfd.resolve(text);
-            },
-            (err: any) => {
-                const msg = err != null ? String(err) : "proxy_fetch failed";
-                try {
-                    if (typeof opts.error === "function") {
-                        opts.error(
-                            { responseText: msg, status: 0 },
-                            "error",
-                            msg
-                        );
-                    }
-                } catch (_e2) {}
-                try {
-                    if (typeof opts.complete === "function") {
-                        opts.complete(dfd, "error");
-                    }
-                } catch (_e3) {}
-                dfd.reject(msg);
-            }
-        );
-        return dfd.promise(dfd) as any;
-    }
-
     $.ajax = function (urlOrOpts: any, maybeOpts?: any): any {
         let opts: any;
         if (typeof urlOrOpts === "string") {
@@ -271,12 +234,14 @@ function setupCapacitorCompanionShim(): void {
             isLocalCapacitorCompanionUrl(url) &&
             /\/m3u\/match-(channels|logos)(?:[?#]|$)/.test(url)
         ) {
-            return jqFromPromise(
+            return nativePromiseToJq(
+                $,
                 matchCapacitorM3u(
                     typeof opts.data === "string" ? opts.data : "",
                     url.indexOf("match-logos") >= 0
                 ),
-                opts
+                opts,
+                "proxy_fetch failed"
             );
         }
         if (
@@ -303,13 +268,15 @@ function setupCapacitorCompanionShim(): void {
             }
             const ua = extractUA(data);
             const referer = extractReferer(data);
-            return jqFromPromise(
+            return nativePromiseToJq(
+                $,
                 M3UProxy.proxyFetch({
                     referer,
                     url: target,
                     userAgent: ua,
                 }).then((res) => res.body),
-                opts
+                opts,
+                "proxy_fetch failed"
             );
         }
 

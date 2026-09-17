@@ -1618,7 +1618,7 @@ function body_handleTouchEnd(e: any): void {
  * Prefer window.innerHeight / visualViewport — never body getBoundingClientRect
  * alone (oversized body makes the bottom band unreachable → every click is middle).
  */
-function ottBandViewportHeight(): number {
+export function ottBandViewportHeight(): number {
     try {
         const ih =
             typeof window.innerHeight === "number" ? window.innerHeight : 0;
@@ -1644,7 +1644,7 @@ function ottBandViewportHeight(): number {
  * Y where the bottom info band starts (clientY above this → showChanelInfo).
  * Wider than legacy 20%: ~30% of viewport or at least ~140 CSS px.
  */
-function ottBottomInfoBandStart(h: number): number {
+export function ottBottomInfoBandStart(h: number): number {
     const band = Math.max(h * 0.3, 140);
     return h - band;
 }

@@ -138,7 +138,6 @@
       "body_onUnloadHidden",
       "onPlayerStart",
       "selectLang",
-      "loadProvCallback",
       "startPlayer",
       "optionsArr",
       "indexOfAction",

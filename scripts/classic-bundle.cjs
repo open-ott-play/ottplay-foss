@@ -26,6 +26,7 @@ const CLASSIC_MODULES = [
     "build/settings/sleepTimer.js",
     "build/plugins/native-bridge.js",
     "build/plugins/web-fallback.js",
+    "build/plugins/jquery-bridge.js",
     "build/plugins/native-http.js",
     "build/plugins/local-http-remote.js",
     "build/plugins/mobile-native-media.js",
@@ -35,6 +36,12 @@ const CLASSIC_MODULES = [
     "build/plugins/vportal.js",
     "build/index.js",
 ];
+// Explicitly audited implementation boundaries; all other modules retain the
+// legacy bare-global ABI. These modules publish their API as window properties
+// and execute immediately at their original position in CLASSIC_MODULES.
+const CLASSIC_PRIVATE_MODULES = Object.freeze({
+    "build/debug/playback-debug.js": Object.freeze(["window.__ottDebug"]),
+});
 const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
@@ -234,7 +241,107 @@ function assembleClassic(root, modules) {
     const checker = program.getTypeChecker();
     const host = ts.createCompilerHost(options);
     const sources = files.map((file) => program.getSourceFile(file));
-    const redundantHelpers = duplicateHelpers(sources, checker);
+    const privateFiles = new Set(
+        Object.keys(CLASSIC_PRIVATE_MODULES).map((file) =>
+            path.resolve(root, file)
+        )
+    );
+    const isPrivate = (source) => privateFiles.has(source.fileName);
+    // A private module's compiler helpers belong to its own function scope.
+    const redundantHelpers = duplicateHelpers(
+        sources.filter((source) => !isPrivate(source)),
+        checker
+    );
+    const privateNames = new Set();
+    for (const source of sources.filter(isPrivate)) {
+        for (const statement of source.statements) {
+            if (
+                ts.isImportDeclaration(statement) ||
+                ts.isExportAssignment(statement) ||
+                ts.isExportDeclaration(statement) ||
+                (statement.modifiers || []).some(
+                    (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword
+                )
+            )
+                throw new Error(
+                    source.fileName +
+                        ": private classic module must publish window properties, not module bindings"
+                );
+        }
+        function collectPrivateNames(node) {
+            if (ts.isFunctionDeclaration(node)) {
+                if (node.name) privateNames.add(node.name.text);
+                return;
+            }
+            if (ts.isFunctionLike(node)) return;
+            if (
+                ts.isVariableDeclaration(node) &&
+                !ts.isCatchClause(node.parent) &&
+                ts.isIdentifier(node.name)
+            )
+                privateNames.add(node.name.text);
+            ts.forEachChild(node, collectPrivateNames);
+        }
+        collectPrivateNames(source);
+    }
+    // Catch ordinary static dependencies on a newly private implementation.
+    // Dynamic property names remain part of the explicit boundary audit.
+    for (const source of sources.filter((source) => !isPrivate(source))) {
+        function visitPrivateReference(node) {
+            if (ts.isIdentifier(node) && privateNames.has(node.text)) {
+                const symbol = checker.getSymbolAtLocation(node);
+                if (
+                    symbol?.declarations?.length &&
+                    symbol.declarations.every((declaration) =>
+                        isPrivate(declaration.getSourceFile())
+                    )
+                )
+                    throw new Error(
+                        source.fileName +
+                            ": reference to private classic binding: " +
+                            node.text
+                    );
+            }
+            if (
+                ts.isPropertyAccessExpression(node) ||
+                ts.isElementAccessExpression(node)
+            ) {
+                const name = ts.isPropertyAccessExpression(node)
+                    ? node.name.text
+                    : ts.isStringLiteral(node.argumentExpression)
+                      ? node.argumentExpression.text
+                      : undefined;
+                if (
+                    privateNames.has(name) &&
+                    ts.isIdentifier(node.expression) &&
+                    ["window", "self", "globalThis", "global"].includes(
+                        node.expression.text
+                    ) &&
+                    !(
+                        checker.getSymbolAtLocation(node.expression)
+                            ?.declarations || []
+                    ).some((declaration) => {
+                        for (
+                            let owner = declaration.parent;
+                            owner;
+                            owner = owner.parent
+                        ) {
+                            if (ts.isFunctionLike(owner)) return true;
+                            if (ts.isSourceFile(owner)) return false;
+                        }
+                        return false;
+                    })
+                )
+                    throw new Error(
+                        source.fileName +
+                            ": reference to private classic binding: " +
+                            name
+                    );
+            }
+            ts.forEachChild(node, visitPrivateReference);
+        }
+        visitPrivateReference(source);
+    }
     // app/state is an ESM-only mirror; index.ts owns these arrays for provider ABI.
     // Every deliberate bridge is enumerated and checked against emitted declarations.
     const bridges = new Map([
@@ -245,6 +352,7 @@ function assembleClassic(root, modules) {
     ]);
     const globals = new Set();
     for (const source of sources) {
+        if (isPrivate(source)) continue;
         for (const statement of source.statements) {
             if (
                 (ts.isFunctionDeclaration(statement) ||
@@ -307,6 +415,14 @@ function assembleClassic(root, modules) {
                     );
                 }
                 const clause = statement.importClause;
+                if (
+                    clause &&
+                    privateFiles.has(path.resolve(resolved.resolvedFileName))
+                )
+                    throw new Error(
+                        source.fileName +
+                            ": cannot import bindings from a private classic module"
+                    );
                 if (!clause && bridge)
                     throw new Error(
                         source.fileName +
@@ -423,7 +539,11 @@ function assembleClassic(root, modules) {
         let text = source.text;
         for (const edit of edits.sort((a, b) => b.start - a.start))
             text = text.slice(0, edit.start) + edit.text + text.slice(edit.end);
-        return text;
+        // call(this) preserves the classic script's top-level receiver. Do not
+        // defer initialization or add strict mode: both would change behavior.
+        return isPrivate(source)
+            ? "(function () {\n" + text + "\n}).call(this);"
+            : text;
     });
     const prelude = Array.from(
         readers,
@@ -432,4 +552,4 @@ function assembleClassic(root, modules) {
     return prelude + "\n" + linked.join("\n");
 }
 
-module.exports = { assembleClassic, CLASSIC_MODULES };
+module.exports = { assembleClassic, CLASSIC_MODULES, CLASSIC_PRIVATE_MODULES };

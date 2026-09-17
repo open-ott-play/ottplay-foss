@@ -7,13 +7,14 @@ import { hasTmdbService, metadataCssUrl, metadataText } from "./utils/helpers";
  * - Initialize storage, UI, and STB emulation layer.
  * - Load language files and provider scripts.
  * - Provide the settings subsystem (stbOptions, settingsInterface, etc.).
- * - Expose every function/constant on window.* for legacy compatibility.
+ * - Publish the legacy provider/device interface on window.*.
  * - Handle playback (channel and media), channel list display, archive mode.
  * - Manage sleep timers, info bar, PiP, preview, and cloud settings sync.
  *
  * Build contract: TypeScript emits ES5 modules; the classic linker removes
  * module syntax and combines them in dependency order. Top-level declarations
- * remain public because separately loaded device/provider scripts use them.
+ * remain public in legacy modules because separately loaded device/provider
+ * scripts use them. Audited private modules expose only an explicit window API.
  * The optimizer preserves those bindings, property names and function names
  * (menu preferences persist callback.name). Only compiler-generated helpers
  * with identical verified implementations are shared by the linker.
@@ -24,6 +25,7 @@ import { hasTmdbService, metadataCssUrl, metadataText } from "./utils/helpers";
 // Polyfills (must run first)
 import "./polyfills";
 
+import { nativePromiseToJq } from "./plugins/jquery-bridge";
 import { createLocalHttpRemote } from "./plugins/local-http-remote";
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
 import { MobileNativeMedia } from "./plugins/mobile-native-media";
@@ -294,7 +296,13 @@ declare var $: any;
 // Command handler (push commands via webhook)
 import { type Command, handleCommand, showPopup } from "./commands";
 // Key handler
-import { dispatchKey, keyHandler, keys } from "./keyhandler";
+import {
+    dispatchKey,
+    keyHandler,
+    keys,
+    ottBandViewportHeight,
+    ottBottomInfoBandStart,
+} from "./keyhandler";
 // Provider — only import what actually exists
 import {
     edit_dealer,
@@ -1670,20 +1678,6 @@ function selectLang(): void {
     showPage();
 }
 
-// Load provider callback (called after language JS loaded)
-
-/**
- * Callback invoked after a language script has been loaded.
- * Delegates to loadChannels(), then configures the player mode and player.
- *
- * Side effects: Calls loadChannels(), setPlayerMode(), and setPlayer().
- */
-function loadProvCallback(): void {
-    if (typeof loadChannels === "function") loadChannels();
-    setPlayerMode(sPlayers);
-    if (typeof setPlayer === "function") setPlayer();
-}
-
 // Main entry point
 
 /**
@@ -1889,23 +1883,11 @@ function onStbReady(): void {
     }
 }
 
-// Auto-start when DOM ready
-if (
-    typeof (window as any).ott_device === "undefined" ||
-    (window as any).ott_device === ""
-) {
-    if (document.readyState === "complete") {
-        startPlayer();
-    } else {
-        document.addEventListener("DOMContentLoaded", startPlayer);
-    }
-}
-
 console.log("player loaded!");
 
 // Expose globals for backward compat with HTML and other scripts
 declare var window: any;
-// @legacy-bridge: entry point — called by HTML on DOMContentLoaded or auto-start guard.
+// @legacy-bridge: HTML starts the player after the selected device adapter loads.
 // Required by: index.html (the only caller).
 window.startPlayer = startPlayer;
 // @legacy-bridge: post-init hook — merges window.keys, loads settings, starts provider.
@@ -2101,45 +2083,6 @@ function setupTauriCompanionShim(): void {
     // jQuery retains serialization, converters, callback order and jqXHR state.
     installTauriHttpTransport($, tauriInvoke);
 
-    function jqFromInvoke(invokePromise: Promise<string>, opts: any): any {
-        const dfd = $.Deferred();
-        invokePromise.then(
-            (text: string) => {
-                try {
-                    if (typeof opts.success === "function") {
-                        opts.success(text, "success", dfd);
-                    }
-                } catch (_e) {}
-                try {
-                    if (typeof opts.complete === "function") {
-                        opts.complete(dfd, "success");
-                    }
-                } catch (_e3) {}
-                dfd.resolve(text);
-            },
-            (err: any) => {
-                const msg = err != null ? String(err) : "proxy_fetch failed";
-                try {
-                    if (typeof opts.error === "function") {
-                        opts.error(
-                            { responseText: msg, status: 0 },
-                            "error",
-                            msg
-                        );
-                    }
-                } catch (_e2) {}
-                try {
-                    if (typeof opts.complete === "function") {
-                        opts.complete(dfd, "error");
-                    }
-                } catch (_e3) {}
-                dfd.reject(msg);
-            }
-        );
-        // jQuery 1.x: callers chain .done/.fail/.always on the return value.
-        return dfd.promise(dfd) as any;
-    }
-
     $.ajax = function (urlOrOpts: any, maybeOpts?: any) {
         let opts: any;
         if (typeof urlOrOpts === "string") {
@@ -2172,11 +2115,13 @@ function setupTauriCompanionShim(): void {
                     ? "match_channels"
                     : "match_logos";
             const isLogos = cmd === "match_logos";
-            return jqFromInvoke(
+            return nativePromiseToJq(
+                $,
                 tauriInvoke<string>(cmd, { body, url }).then((text: string) =>
                     isLogos ? rewriteLogoUrls(text) : text
                 ),
-                opts
+                opts,
+                "proxy_fetch failed"
             );
         }
 
@@ -2242,8 +2187,12 @@ function setupTauriCompanionShim(): void {
                 }
                 return text;
             });
-            // jqFromInvoke types as Promise<string> but forwards whatever resolves.
-            return jqFromInvoke(invokePromise as Promise<any>, opts);
+            return nativePromiseToJq(
+                $,
+                invokePromise,
+                opts,
+                "proxy_fetch failed"
+            );
         }
 
         // Mode A companion: GET /version/<rel> → file metadata JSON.
@@ -2266,7 +2215,12 @@ function setupTauriCompanionShim(): void {
                 }
                 return text;
             });
-            return jqFromInvoke(invokePromise as Promise<any>, opts);
+            return nativePromiseToJq(
+                $,
+                invokePromise,
+                opts,
+                "proxy_fetch failed"
+            );
         }
 
         // Mode A companion: GET/POST /feedback/*, /api/*, POST /report_feedb.
@@ -2320,7 +2274,12 @@ function setupTauriCompanionShim(): void {
                     }
                     return text;
                 });
-                return jqFromInvoke(invokePromise as Promise<any>, opts);
+                return nativePromiseToJq(
+                    $,
+                    invokePromise,
+                    opts,
+                    "proxy_fetch failed"
+                );
             }
         }
 
@@ -2635,6 +2594,95 @@ if (typeof window.__TAURI__ !== "undefined") {
 // Tauri Mode B: player volume only. video.volume is the app source of truth.
 // No OS system-volume change — matches commercial OTT behaviour.
 
+/** Read current playback metadata for either native shell at the time of each call. */
+function nativeMediaMetadata(): {
+    artist: string;
+    artworkUrl?: string;
+    durationSec?: number;
+    positionSec?: number;
+    seekable: boolean;
+    title: string;
+} {
+    let title = "OTT-play FOSS";
+    let artist = "Now playing";
+    let artworkUrl: string | undefined;
+    let durationSec: number | undefined;
+    let positionSec: number | undefined;
+    let seekable = false;
+    try {
+        const chName =
+            (document.getElementById("channel") as HTMLElement | null)
+                ?.textContent ||
+            (document.getElementById("cname") as HTMLElement | null)
+                ?.textContent ||
+            "";
+        if (chName && chName.trim()) title = chName.trim();
+        const w = window as any;
+        const curList = w.curList;
+        const primaryIndex = w.primaryIndex;
+        let chId: any;
+        if (
+            Array.isArray(curList) &&
+            typeof primaryIndex === "number" &&
+            curList[primaryIndex] != null
+        ) {
+            chId = curList[primaryIndex];
+        }
+        if (chId != null) {
+            if (typeof w.getChannelPicon === "function") {
+                const pic = w.getChannelPicon(String(chId));
+                if (pic && typeof pic === "string" && pic.trim()) {
+                    artworkUrl = pic.trim();
+                }
+            }
+            const ch =
+                (w.channels &&
+                    (w.channels[chId] || w.channels[String(chId)])) ||
+                null;
+            if (ch) {
+                const icon = ch.icon || ch.logo_30x30 || ch.logo || "";
+                if (
+                    !artworkUrl &&
+                    icon &&
+                    typeof icon === "string" &&
+                    icon.trim()
+                ) {
+                    artworkUrl = icon.trim();
+                }
+                if (ch.channel_name && !chName) {
+                    title = String(ch.channel_name);
+                }
+            }
+        }
+        // Live IPTV (playType === 0): not seekable. Archive/VOD only when
+        // duration is finite and usable.
+        const playType = typeof w.playType === "number" ? w.playType : 0;
+        const dur =
+            typeof w.stbGetLen === "function" ? Number(w.stbGetLen()) : NaN;
+        const pos =
+            typeof w.stbGetPosTime === "function"
+                ? Number(w.stbGetPosTime())
+                : NaN;
+        if (playType !== 0 && Number.isFinite(dur) && dur > 0 && dur < 1e7) {
+            seekable = true;
+            durationSec = dur;
+            if (Number.isFinite(pos) && pos >= 0) positionSec = pos;
+        }
+    } catch (_e) {}
+    const out: {
+        artist: string;
+        artworkUrl?: string;
+        durationSec?: number;
+        positionSec?: number;
+        seekable: boolean;
+        title: string;
+    } = { artist, seekable, title };
+    if (artworkUrl) out.artworkUrl = artworkUrl;
+    if (durationSec != null) out.durationSec = durationSec;
+    if (positionSec != null) out.positionSec = positionSec;
+    return out;
+}
+
 // Capacitor Mode C: native media bridges (volume, PiP, fullscreen, standby).
 // Mirrors Tauri Mode B shims below; gates on window.Capacitor so Mode A stays untouched.
 if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
@@ -2760,101 +2808,7 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         // on Cap path (Mode A / Tauri unchanged). Artwork + honest seek
         // (live disables OS seek; VOD/archive when duration known).
 
-        const bgMeta = (): {
-            artist: string;
-            artworkUrl?: string;
-            durationSec?: number;
-            positionSec?: number;
-            seekable: boolean;
-            title: string;
-        } => {
-            let title = "OTT-play FOSS";
-            let artist = "Now playing";
-            let artworkUrl: string | undefined;
-            let durationSec: number | undefined;
-            let positionSec: number | undefined;
-            let seekable = false;
-            try {
-                const chName =
-                    (document.getElementById("channel") as HTMLElement | null)
-                        ?.textContent ||
-                    (document.getElementById("cname") as HTMLElement | null)
-                        ?.textContent ||
-                    "";
-                if (chName && chName.trim()) title = chName.trim();
-                const w = window as any;
-                const curList = w.curList;
-                const primaryIndex = w.primaryIndex;
-                let chId: any;
-                if (
-                    Array.isArray(curList) &&
-                    typeof primaryIndex === "number" &&
-                    curList[primaryIndex] != null
-                ) {
-                    chId = curList[primaryIndex];
-                }
-                if (chId != null) {
-                    if (typeof w.getChannelPicon === "function") {
-                        const pic = w.getChannelPicon(String(chId));
-                        if (pic && typeof pic === "string" && pic.trim()) {
-                            artworkUrl = pic.trim();
-                        }
-                    }
-                    const ch =
-                        (w.channels &&
-                            (w.channels[chId] || w.channels[String(chId)])) ||
-                        null;
-                    if (ch) {
-                        const icon = ch.icon || ch.logo_30x30 || ch.logo || "";
-                        if (
-                            !artworkUrl &&
-                            icon &&
-                            typeof icon === "string" &&
-                            icon.trim()
-                        ) {
-                            artworkUrl = icon.trim();
-                        }
-                        if (ch.channel_name && !chName) {
-                            title = String(ch.channel_name);
-                        }
-                    }
-                }
-                // Live IPTV (playType === 0): not seekable. Archive/VOD only when
-                // duration is finite and usable.
-                const playType =
-                    typeof w.playType === "number" ? w.playType : 0;
-                const dur =
-                    typeof w.stbGetLen === "function"
-                        ? Number(w.stbGetLen())
-                        : NaN;
-                const pos =
-                    typeof w.stbGetPosTime === "function"
-                        ? Number(w.stbGetPosTime())
-                        : NaN;
-                if (
-                    playType !== 0 &&
-                    Number.isFinite(dur) &&
-                    dur > 0 &&
-                    dur < 1e7
-                ) {
-                    seekable = true;
-                    durationSec = dur;
-                    if (Number.isFinite(pos) && pos >= 0) positionSec = pos;
-                }
-            } catch (_e) {}
-            const out: {
-                artist: string;
-                artworkUrl?: string;
-                durationSec?: number;
-                positionSec?: number;
-                seekable: boolean;
-                title: string;
-            } = { artist, seekable, title };
-            if (artworkUrl) out.artworkUrl = artworkUrl;
-            if (durationSec != null) out.durationSec = durationSec;
-            if (positionSec != null) out.positionSec = positionSec;
-            return out;
-        };
+        const bgMeta = nativeMediaMetadata;
 
         let _bgPosTimer: ReturnType<typeof setInterval> | null = null;
         let _bgMetaTimer: ReturnType<typeof setTimeout> | null = null;
@@ -2943,101 +2897,7 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
 // transport + artwork/seek when souvlaki + duration allow. Cap path unchanged; Mode A unchanged.
 if (typeof window.__TAURI__ !== "undefined") {
     (function () {
-        const bgMeta = (): {
-            artist: string;
-            artworkUrl?: string;
-            durationSec?: number;
-            positionSec?: number;
-            seekable: boolean;
-            title: string;
-        } => {
-            let title = "OTT-play FOSS";
-            let artist = "Now playing";
-            let artworkUrl: string | undefined;
-            let durationSec: number | undefined;
-            let positionSec: number | undefined;
-            let seekable = false;
-            try {
-                const chName =
-                    (document.getElementById("channel") as HTMLElement | null)
-                        ?.textContent ||
-                    (document.getElementById("cname") as HTMLElement | null)
-                        ?.textContent ||
-                    "";
-                if (chName && chName.trim()) title = chName.trim();
-                const w = window as any;
-                const curList = w.curList;
-                const primaryIndex = w.primaryIndex;
-                let chId: any;
-                if (
-                    Array.isArray(curList) &&
-                    typeof primaryIndex === "number" &&
-                    curList[primaryIndex] != null
-                ) {
-                    chId = curList[primaryIndex];
-                }
-                if (chId != null) {
-                    if (typeof w.getChannelPicon === "function") {
-                        const pic = w.getChannelPicon(String(chId));
-                        if (pic && typeof pic === "string" && pic.trim()) {
-                            artworkUrl = pic.trim();
-                        }
-                    }
-                    const ch =
-                        (w.channels &&
-                            (w.channels[chId] || w.channels[String(chId)])) ||
-                        null;
-                    if (ch) {
-                        const icon = ch.icon || ch.logo_30x30 || ch.logo || "";
-                        if (
-                            !artworkUrl &&
-                            icon &&
-                            typeof icon === "string" &&
-                            icon.trim()
-                        ) {
-                            artworkUrl = icon.trim();
-                        }
-                        if (ch.channel_name && !chName) {
-                            title = String(ch.channel_name);
-                        }
-                    }
-                }
-                // Live IPTV (playType === 0): not seekable. Archive/VOD only when
-                // duration is finite and usable.
-                const playType =
-                    typeof w.playType === "number" ? w.playType : 0;
-                const dur =
-                    typeof w.stbGetLen === "function"
-                        ? Number(w.stbGetLen())
-                        : NaN;
-                const pos =
-                    typeof w.stbGetPosTime === "function"
-                        ? Number(w.stbGetPosTime())
-                        : NaN;
-                if (
-                    playType !== 0 &&
-                    Number.isFinite(dur) &&
-                    dur > 0 &&
-                    dur < 1e7
-                ) {
-                    seekable = true;
-                    durationSec = dur;
-                    if (Number.isFinite(pos) && pos >= 0) positionSec = pos;
-                }
-            } catch (_e) {}
-            const out: {
-                artist: string;
-                artworkUrl?: string;
-                durationSec?: number;
-                positionSec?: number;
-                seekable: boolean;
-                title: string;
-            } = { artist, seekable, title };
-            if (artworkUrl) out.artworkUrl = artworkUrl;
-            if (durationSec != null) out.durationSec = durationSec;
-            if (positionSec != null) out.positionSec = positionSec;
-            return out;
-        };
+        const bgMeta = nativeMediaMetadata;
 
         let _msPosTimer: ReturnType<typeof setInterval> | null = null;
         let _msRefreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -3446,33 +3306,6 @@ if (typeof window.__TAURI__ !== "undefined") {
         // mousedown-preventDefault there would kill the click.
         // Prefer viewport height (innerHeight / visualViewport), not body rect —
         // oversized body made the bottom band unreachable ("даже по низу" → ENTER).
-        const ottBandViewportHeight = (): number => {
-            try {
-                const ih =
-                    typeof window.innerHeight === "number"
-                        ? window.innerHeight
-                        : 0;
-                const vv =
-                    window.visualViewport &&
-                    typeof window.visualViewport.height === "number"
-                        ? window.visualViewport.height
-                        : 0;
-                if (ih > 0 && vv > 0) return Math.min(ih, vv);
-                if (ih > 0) return ih;
-                if (vv > 0) return vv;
-                const docEl = document.documentElement;
-                const docH =
-                    docEl && typeof docEl.clientHeight === "number"
-                        ? docEl.clientHeight
-                        : 0;
-                if (docH > 0) return docH;
-            } catch (_vh) {}
-            return 0;
-        };
-        const ottBottomInfoBandStart = (h: number): number => {
-            const band = Math.max(h * 0.3, 140);
-            return h - band;
-        };
         const isDragHandle = (t: Element, clientY: number): boolean => {
             if ((window as any).__ottTauriNativeFs) return false;
             if (listOverlayOpen()) return false;
