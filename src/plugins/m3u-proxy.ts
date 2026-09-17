@@ -1,6 +1,7 @@
 import { resolveNativePlugin } from "./native-bridge";
 import { installCapacitorHttpTransport } from "./native-http";
 import { StalkerPortal } from "./stalker-portal";
+import { nativeWebFallback } from "./web-fallback";
 
 export interface M3UProxyPlugin {
     /**
@@ -35,15 +36,17 @@ function resolveUA(input?: string): string {
 }
 
 class M3UProxyWeb {
-    async proxyFetch(_opts: {
+    proxyFetch(_opts: {
         url: string;
         referer?: string;
         userAgent?: string;
     }): Promise<{ body: string }> {
-        console.warn(
-            "[M3UProxy] native impl not available, returning empty body"
-        );
-        return { body: "" };
+        return nativeWebFallback(function () {
+            console.warn(
+                "[M3UProxy] native impl not available, returning empty body"
+            );
+            return { body: "" };
+        });
     }
 }
 

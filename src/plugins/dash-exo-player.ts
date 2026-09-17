@@ -9,6 +9,7 @@
  */
 
 import { resolveNativePlugin } from "./native-bridge";
+import { nativeWebFallback } from "./web-fallback";
 
 export interface DashPlaybackState {
     duration: number;
@@ -44,63 +45,79 @@ export interface DashExoPlayerPlugin {
 }
 
 class DashExoPlayerWeb implements DashExoPlayerPlugin {
-    async getPlaybackState(): Promise<DashPlaybackState> {
-        return {
-            duration: 0,
-            ended: false,
-            ok: false,
-            playing: false,
-            position: 0,
-            unsupported: true,
-        };
+    getPlaybackState(): Promise<DashPlaybackState> {
+        return nativeWebFallback(function () {
+            return {
+                duration: 0,
+                ended: false,
+                ok: false,
+                playing: false,
+                position: 0,
+                unsupported: true,
+            };
+        });
     }
 
-    async seekDash(_opts: {
+    seekDash(_opts: {
         position: number;
     }): Promise<{ ok: boolean; unsupported?: boolean }> {
-        return { ok: false, unsupported: true };
+        return nativeWebFallback(function () {
+            return { ok: false, unsupported: true };
+        });
     }
 
-    async isDashSupported(): Promise<{ ok: boolean; unsupported?: boolean }> {
-        console.warn(
-            "[DashExoPlayer] web fallback: isDashSupported unsupported"
-        );
-        return { ok: false, unsupported: true };
+    isDashSupported(): Promise<{ ok: boolean; unsupported?: boolean }> {
+        return nativeWebFallback(function () {
+            console.warn(
+                "[DashExoPlayer] web fallback: isDashSupported unsupported"
+            );
+            return { ok: false, unsupported: true };
+        });
     }
 
-    async playDash(_opts: {
+    playDash(_opts: {
         url: string;
         position?: number;
     }): Promise<{ ok: boolean; unsupported?: boolean; error?: string }> {
-        console.warn("[DashExoPlayer] web fallback: playDash unsupported");
-        return { ok: false, unsupported: true };
+        return nativeWebFallback(function () {
+            console.warn("[DashExoPlayer] web fallback: playDash unsupported");
+            return { ok: false, unsupported: true };
+        });
     }
 
-    async pauseDash(): Promise<{
+    pauseDash(): Promise<{
         ok: boolean;
         unsupported?: boolean;
         error?: string;
     }> {
-        console.warn("[DashExoPlayer] web fallback: pauseDash unsupported");
-        return { ok: false, unsupported: true };
+        return nativeWebFallback(function () {
+            console.warn("[DashExoPlayer] web fallback: pauseDash unsupported");
+            return { ok: false, unsupported: true };
+        });
     }
 
-    async resumeDash(): Promise<{
+    resumeDash(): Promise<{
         ok: boolean;
         unsupported?: boolean;
         error?: string;
     }> {
-        console.warn("[DashExoPlayer] web fallback: resumeDash unsupported");
-        return { ok: false, unsupported: true };
+        return nativeWebFallback(function () {
+            console.warn(
+                "[DashExoPlayer] web fallback: resumeDash unsupported"
+            );
+            return { ok: false, unsupported: true };
+        });
     }
 
-    async stopDash(): Promise<{
+    stopDash(): Promise<{
         ok: boolean;
         unsupported?: boolean;
         error?: string;
     }> {
-        console.warn("[DashExoPlayer] web fallback: stopDash unsupported");
-        return { ok: false, unsupported: true };
+        return nativeWebFallback(function () {
+            console.warn("[DashExoPlayer] web fallback: stopDash unsupported");
+            return { ok: false, unsupported: true };
+        });
     }
 }
 

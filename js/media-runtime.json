@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "builderSha256": "3c51ea77762125a17b207865ce3ce236c88656a8f313025009a3fc48ce2bbcd0",
-  "lockfileSha256": "f3244e9fd69c0657eb3c4023b372b3bb618eeb08a3481b2d0faba4270dd947b8",
+  "lockfileSha256": "b65ff03f1f374a95934b290785154c3768dbf1b17f5dab888c0ac7485dfd39f0",
   "packages": {
     "core-js": {
       "integrity": "sha512-BRWgOLKkFeCgRudR6zrs8p9XJZcE14grzKMMssoYrk6krtuEZ7MTKPIY5RzOnqsEKIR9kst7wNzphttraT+Yqw==",
@@ -16,8 +16,8 @@
       "version": "5.9.3"
     },
     "rollup": {
-      "integrity": "sha512-3Df9jsstwhccuEfmAMi9l8XUh/GOkVObmFTU7CCVBysEbcOZLl84jCtaAZMcPiMz2EGKsATzQcU+Xr3n/wU6cg==",
-      "version": "4.63.1"
+      "integrity": "sha512-l5eyksV4tPBj6lJyEa37YzIOCSOV7lkZzEHUdpjWZbtD7wTcFYmEYXSgm5bT4vV+dZLb9rBG1W9GROOG4NS4Ew==",
+      "version": "4.63.2"
     },
     "terser": {
       "integrity": "sha512-bWnjSNscmuI+GJze6ZupnHP8G/cTcsJF+bXCeQknk2SHQsgbNJnLrqiH9jZ2W4STPVXH2mDKKRX3iwPhc9Cn/Q==",
@@ -35,8 +35,8 @@
   "webPolyfillsSha256": "5e14970ea932f18c571a94e03758a08a6d3f559d04cf6033fd3970af895b9aab",
   "assets": {
     "hls.min.js": "a12e7ee1cd64a69dcdb314157e45dafcba705bfb0b1440b7935cb265d374423e",
-    "hls.worker.js": "93c907150e552287e9e4ea7a5a06c506e919012e84e08f13bcd3cc72490397b9",
-    "runtime-polyfills.js": "6106b031cb3aec619cf6124d514e1d4e40a184cf51d6fb5a03241c1e840cb32a"
+    "hls.worker.js": "a3b2e5a9e42d2bdbfe36dd5d9a785c97d818ce2477754fa75423ad62bcd4271f",
+    "runtime-polyfills.js": "a94832db2424febc5f7530f37e02c19d65efa4624059e893f180e930a4cffe44"
   },
-  "runtimeVersion": "cbb6c93c450a2709"
+  "runtimeVersion": "2fe5543f92881175"
 }

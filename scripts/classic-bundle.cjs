@@ -25,6 +25,7 @@ const CLASSIC_MODULES = [
     "build/app/device.js",
     "build/settings/sleepTimer.js",
     "build/plugins/native-bridge.js",
+    "build/plugins/web-fallback.js",
     "build/plugins/native-http.js",
     "build/plugins/local-http-remote.js",
     "build/plugins/mobile-native-media.js",
@@ -37,6 +38,178 @@ const CLASSIC_MODULES = [
 const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
+
+let helperSignatures;
+function emittedHelperSignatures() {
+    if (!helperSignatures) {
+        // Compare with this compiler's output, rather than assuming that a name
+        // or a function-shaped initializer identifies a TypeScript helper.
+        const emitted = ts.transpileModule(
+            "export async function helperFixture(value: unknown) { return await value; }",
+            {
+                compilerOptions: {
+                    module: ts.ModuleKind.ES2015,
+                    removeComments: true,
+                    target: ts.ScriptTarget.ES5,
+                },
+            }
+        ).outputText;
+        const source = ts.createSourceFile(
+            "typescript-helpers.js",
+            emitted,
+            ts.ScriptTarget.ES5,
+            true,
+            ts.ScriptKind.JS
+        );
+        helperSignatures = new Map();
+        for (const statement of source.statements) {
+            const name = helperName(statement);
+            if (name) helperSignatures.set(name, helperSignature(statement));
+        }
+    }
+    return helperSignatures;
+}
+
+const helperPrinter = ts.createPrinter({ removeComments: true });
+function helperSignature(statement) {
+    return helperPrinter.printNode(
+        ts.EmitHint.Unspecified,
+        statement,
+        statement.getSourceFile()
+    );
+}
+
+function helperName(statement) {
+    if (
+        !ts.isVariableStatement(statement) ||
+        statement.declarationList.declarations.length !== 1
+    )
+        return undefined;
+    const name = statement.declarationList.declarations[0].name;
+    return ts.isIdentifier(name) &&
+        (name.text === "__awaiter" || name.text === "__generator")
+        ? name.text
+        : undefined;
+}
+
+function duplicateHelpers(sources, checker) {
+    const signatures = emittedHelperSignatures();
+    const occurrences = new Map();
+    const emitted = new Set();
+    for (const source of sources) {
+        for (const statement of source.statements) {
+            const name = helperName(statement);
+            if (name && helperSignature(statement) === signatures.get(name)) {
+                if (!occurrences.has(name)) occurrences.set(name, []);
+                occurrences.get(name).push(statement);
+                emitted.add(statement);
+            }
+        }
+    }
+    const duplicates = new Set(
+        Array.from(occurrences)
+            .filter(([, statements]) => statements.length > 1)
+            .map(([name]) => name)
+    );
+    if (!duplicates.size) return new Set();
+
+    function isSharedBinding(node) {
+        const symbol = ts.isShorthandPropertyAssignment(node.parent)
+            ? checker.getShorthandAssignmentValueSymbol(node.parent)
+            : checker.getSymbolAtLocation(node);
+        return (
+            !symbol ||
+            (symbol.declarations || []).some((declaration) => {
+                // Parameters, local variables and named function expressions
+                // do not share the classic script's top-level helper binding.
+                if (ts.isFunctionExpression(declaration)) return false;
+                for (
+                    let owner = declaration.parent;
+                    owner;
+                    owner = owner.parent
+                ) {
+                    if (ts.isFunctionLike(owner)) return false;
+                    if (ts.isSourceFile(owner)) return true;
+                }
+                return false;
+            })
+        );
+    }
+    function hasDynamicCodeReference(node) {
+        if (
+            ts.isIdentifier(node) &&
+            (node.text === "eval" || node.text === "Function")
+        ) {
+            const parent = node.parent;
+            const propertyKey =
+                (ts.isPropertyAssignment(parent) ||
+                    ts.isMethodDeclaration(parent) ||
+                    ts.isGetAccessorDeclaration(parent) ||
+                    ts.isSetAccessorDeclaration(parent)) &&
+                parent.name === node;
+            if (!propertyKey && isSharedBinding(node)) return true;
+        }
+        return ts.forEachChild(node, hasDynamicCodeReference) || false;
+    }
+    // Known dynamic-code entry points (including aliases and indirect eval)
+    // can reset a shared helper between initializers. Their source is unknown,
+    // so retain the original fallbacks. This is not a general host-effect proof.
+    if (sources.some(hasDynamicCodeReference)) return new Set();
+    function conflict(source, name) {
+        throw new Error(
+            source.fileName + ": conflicting classic TypeScript helper: " + name
+        );
+    }
+    for (const source of sources) {
+        function visit(node) {
+            if (emitted.has(node)) return;
+            if (
+                ts.isPropertyAccessExpression(node) ||
+                ts.isElementAccessExpression(node)
+            ) {
+                const property = ts.isPropertyAccessExpression(node)
+                    ? node.name.text
+                    : ts.isStringLiteral(node.argumentExpression)
+                      ? node.argumentExpression.text
+                      : undefined;
+                const target = node.expression;
+                if (
+                    duplicates.has(property) &&
+                    (target.kind === ts.SyntaxKind.ThisKeyword ||
+                        (ts.isIdentifier(target) &&
+                            ["window", "self", "globalThis", "global"].includes(
+                                target.text
+                            ) &&
+                            isSharedBinding(target)))
+                )
+                    conflict(source, property);
+            }
+            if (ts.isIdentifier(node) && duplicates.has(node.text)) {
+                const parent = node.parent;
+                const propertyName =
+                    (ts.isPropertyAccessExpression(parent) &&
+                        parent.name === node) ||
+                    ((ts.isPropertyAssignment(parent) ||
+                        ts.isMethodDeclaration(parent)) &&
+                        parent.name === node);
+                const helperCall =
+                    ts.isCallExpression(parent) && parent.expression === node;
+                // Compiler call sites are safe. An assignment, alternate global
+                // declaration or escaping reference could make a later fallback
+                // initializer observable, so fail closed instead of removing it.
+                if (!propertyName && !helperCall && isSharedBinding(node))
+                    conflict(source, node.text);
+            }
+            ts.forEachChild(node, visit);
+        }
+        visit(source);
+    }
+    // Keep the first initialization in its original position: preceding code
+    // and a pre-existing global helper must see the same execution order.
+    return new Set(
+        Array.from(occurrences.values()).flatMap((items) => items.slice(1))
+    );
+}
 
 // These modules deliberately share a classic-script global ABI. Resolve actual
 // import symbols instead of dropping import lines and leaving aliases undefined.
@@ -61,6 +234,7 @@ function assembleClassic(root, modules) {
     const checker = program.getTypeChecker();
     const host = ts.createCompilerHost(options);
     const sources = files.map((file) => program.getSourceFile(file));
+    const redundantHelpers = duplicateHelpers(sources, checker);
     // app/state is an ESM-only mirror; index.ts owns these arrays for provider ABI.
     // Every deliberate bridge is enumerated and checked against emitted declarations.
     const bridges = new Map([
@@ -107,7 +281,9 @@ function assembleClassic(root, modules) {
             edits.push({ end: node.end, start: node.getStart(source), text });
         }
         for (const statement of source.statements) {
-            if (ts.isImportDeclaration(statement)) {
+            if (redundantHelpers.has(statement)) {
+                replace(statement, "");
+            } else if (ts.isImportDeclaration(statement)) {
                 const specifier = statement.moduleSpecifier.text;
                 const resolved = ts.resolveModuleName(
                     specifier,

@@ -1,5 +1,8 @@
 Current implementation: [classic ES5 pipeline](build-pipeline.md). The historical strip-by-line findings below are superseded by the AST linker and dependency validation.
 
+> Historical audit. The current linker, optimizer contracts and size gates are
+> documented in [Classic build pipeline](build-pipeline.md).
+
 # Build Pipeline Audit — Phase 5.3
 
 ## 5.3.1 — `vite.config.ts` concat pipeline

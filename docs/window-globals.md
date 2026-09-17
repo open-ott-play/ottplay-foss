@@ -352,7 +352,10 @@ This file is an inventory only. CI enforces a small must-keep identifier snapsho
 | `settingsCommands` | 3846 |
 ## CI must-keep
 
-After the Vite build, the classic ES5 bundle must still contain these identifier strings (mangle stays off). The list key handler name is required by plugins even when index primarily assigns the Fn alias / wiring elsewhere in concat.
+After the Vite build, the ES5 AST must retain these global declarations or window
+publications. Local names may be shortened; public bindings, property names and
+function names/arity remain unchanged. The runtime smoke test also checks the
+published values and live list-key-handler alias used by providers.
 
 | Identifier | Why |
 | --- | --- |
@@ -360,6 +363,6 @@ After the Vite build, the classic ES5 bundle must still contain these identifier
 | `popupActions` | prov.js mutates popup action table (splice / labels) |
 | `noProvParam` | provider Close / restart path; regression surface for early-execute bugs |
 | `optionsList` | settings / options UI entry used from keyhandler and boot paths |
-| `listKeyHandler` | providers assign bare listKeyHandler; must remain in bundle text |
+| `listKeyHandler` | providers assign bare listKeyHandler; preserve the live public accessor |
 | `chanels` | legacy misspelling alias (window.chanels = channels); old plugins/HTML |
 **Unique names assigned in `src/index.ts`:** 335

@@ -11,26 +11,14 @@ import { hasTmdbService, metadataCssUrl, metadataText } from "./utils/helpers";
  * - Handle playback (channel and media), channel list display, archive mode.
  * - Manage sleep timers, info bar, PiP, preview, and cloud settings sync.
  *
- * ─── BUILD CONSTRAINT: duplicate function bodies required ─────────────────
- * `vite.config.ts` runs `tsc` then `stripModule()` (inline, `enforce: "post"`)
- * which removes every `import`/`export` line, then concatenates all .js files
- * in the fixed `MODULES` order and runs terser to produce `dist/stbPlayer.js`.
- * The legacy code in this file uses top-level `function X` declarations
- * (not `export function`), which become global function declarations after
- * the strip step and therefore land in the bundle as callable symbols.
- *
- * New code lives in `src/app/*.ts` and `src/view/*.ts` as proper ES modules
- * with named exports — those are tree-shaken at the TypeScript level
- * (imports become references), but their body is inlined into the bundle
- * in the `MODULES` order. The legacy `function X` blocks further down are
- * therefore REQUIRED for the bundle to work: they provide the surface that
- * the concat step turns into globals for non-module callers (stbPlayer,
- * dune plugins, runtime providers).
- *
- * Do NOT delete these duplicates as part of the ES-module refactor. The
- * full migration to post-bundle architecture (drop the concat pipeline,
- * use real ES modules, drop the globals) is tracked separately.
- * ──────────────────────────────────────────────────────────────────────────
+ * Build contract: TypeScript emits ES5 modules; the classic linker removes
+ * module syntax and combines them in dependency order. Top-level declarations
+ * remain public because separately loaded device/provider scripts use them.
+ * The optimizer preserves those bindings, property names and function names
+ * (menu preferences persist callback.name). Only compiler-generated helpers
+ * with identical verified implementations are shared by the linker.
+ * TypeScript does not tree-shake implementations. Remove or move a function
+ * only after checking its runtime callers and the classic global contract.
  */
 
 // Polyfills (must run first)

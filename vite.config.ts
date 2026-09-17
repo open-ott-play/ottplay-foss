@@ -1,5 +1,4 @@
 import { createRequire } from "node:module";
-import { parse } from "acorn";
 import { execFileSync, execSync } from "child_process";
 import {
     cpSync,
@@ -12,7 +11,6 @@ import {
     writeFileSync,
 } from "fs";
 import { basename, dirname, join, resolve } from "path";
-import { minify } from "terser";
 import { fileURLToPath } from "url";
 import { defineConfig } from "vite";
 
@@ -20,8 +18,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Load the helper from its own CommonJS module so Vite's config bundler does
 // not rewrite its TypeScript dependency into a file-URL require.
 const classicRequire = createRequire(import.meta.url);
-const { buildMediaRuntime } = classicRequire(
-    resolve(__dirname, "scripts/media-runtime.cjs")
+const { ensureMediaRuntime } = classicRequire(
+    resolve(__dirname, "scripts/media-runtime-cache.cjs")
+);
+const { optimizeClassic } = classicRequire(
+    resolve(__dirname, "scripts/classic-optimizer.cjs")
+);
+const { measureBundle, writeBundleReport } = classicRequire(
+    resolve(__dirname, "scripts/classic-size.cjs")
 );
 const { stageNativeRuntime } = classicRequire(
     resolve(__dirname, "scripts/native-runtime.cjs")
@@ -211,9 +215,9 @@ export default defineConfig(({ mode }) => ({
         emptyOutDir: false,
         outDir: "dist",
         rollupOptions: {
-            // Use src/index.ts as placeholder entry (exists, compiles OK).
-            // generateBundle() overwrites dist/stbPlayer.js anyway.
-            input: resolve(__dirname, "src/index.ts"),
+            // TypeScript and the classic linker own the real graph. Avoid
+            // transforming a second bundle that generateBundle never uses.
+            input: "virtual:classic-build",
         },
         write: false,
     },
@@ -258,9 +262,25 @@ export default defineConfig(({ mode }) => ({
         },
         {
             apply: "build",
+            load(id) {
+                if (id === "\0virtual:classic-build") return "";
+            },
+            name: "classic-build-entry",
+            resolveId(id) {
+                if (id === "virtual:classic-build")
+                    return "\0virtual:classic-build";
+            },
+        },
+        {
+            apply: "build",
             enforce: "post",
             async generateBundle() {
-                await buildMediaRuntime();
+                const media = await ensureMediaRuntime(__dirname);
+                console.log(
+                    media.rebuilt
+                        ? "Rebuilt media runtime"
+                        : "Verified media runtime: reused unchanged assets"
+                );
                 // Step 1: tsc compile (produces build/*.js)
                 console.log("Step 1: tsc compile...");
                 if (androidFlavor) {
@@ -307,30 +327,19 @@ export default defineConfig(({ mode }) => ({
                 bundle = bundle.replace(/__OTTP_VERSION__/g, version);
 
                 const outPath = join(outDir, "stbPlayer.js");
-                writeFileSync(outPath, bundle);
-                console.log(
-                    "Concatenated: dist/stbPlayer.js (" +
-                        bundle.length +
-                        " bytes)"
-                );
-
-                // Step 3: minify with terser (same options as rewrite)
-                console.log("Step 3: minify with terser...");
-                const result = await minify(bundle, {
-                    compress: { defaults: false },
-                    ecma: 5,
-                    mangle: false,
-                    module: false,
-                    output: { comments: false },
-                });
-                if (result.error) throw result.error;
-                // Parsing the final output catches syntax that minification cannot downlevel.
-                parse(result.code, { ecmaVersion: 5, sourceType: "script" });
+                // Optimize local implementation details while preserving the classic ABI.
+                console.log("Step 3: optimize ES5 classic bundle...");
+                const result = await optimizeClassic(bundle);
+                const size = measureBundle(result.code, "dist/stbPlayer.js");
                 writeFileSync(outPath, result.code);
                 console.log(
-                    "Minified: dist/stbPlayer.js (" +
-                        result.code.length +
-                        " bytes)"
+                    "Classic bundle: " +
+                        result.report.inputBytes +
+                        " -> " +
+                        size.bytes +
+                        " bytes (gzip " +
+                        size.gzipBytes +
+                        ")"
                 );
 
                 // Copy index.html with version substituted
@@ -437,9 +446,25 @@ export default defineConfig(({ mode }) => ({
                 // stb/fonts/prov/js — URL shapes unchanged.
                 if (androidFlavor) {
                     stageNativeRuntime(outDir, "capacitor");
+                    // The retained legacy Android export also applies native
+                    // transformations before its final size gate.
+                    measureBundle(
+                        readFileSync(outPath),
+                        "android/stbPlayer.js"
+                    );
+                    measureBundle(
+                        readFileSync(join(outDir, "dist/stbPlayer.js")),
+                        "android/dist/stbPlayer.js"
+                    );
                     return;
                 }
                 if (mode === "server") {
+                    writeBundleReport(
+                        __dirname,
+                        result.report,
+                        CLASSIC_MODULES,
+                        ["dist/stbPlayer.js"]
+                    );
                     execFileSync(
                         process.execPath,
                         ["scripts/check-es5.cjs", "--server-only"],
@@ -457,6 +482,7 @@ export default defineConfig(({ mode }) => ({
                 const mobileDir = resolve(__dirname, "dist-mobile");
                 copyRuntimeAssets(outDir, mobileDir);
                 stageNativeRuntime(mobileDir, "capacitor");
+                writeBundleReport(__dirname, result.report, CLASSIC_MODULES);
                 // Only the server/legacy assets are constrained to ES5. Native
                 // vendor files are checked against their pinned npm bytes.
                 execSync("node scripts/check-es5.cjs", {
