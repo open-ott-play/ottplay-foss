@@ -78,6 +78,10 @@ jobs:
 
       - run: npm ci --ignore-scripts
 
+      - name: Build container frontend from declared inputs
+        timeout-minutes: 10
+        run: docker build --target build --progress=plain .
+
       - name: Build bundle
         run: npm run build
 
