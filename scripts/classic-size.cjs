@@ -39,6 +39,7 @@ function inspectBundles(root, artifacts = ARTIFACTS) {
 }
 
 function writeBundleReport(root, optimizer, modules, artifacts = ARTIFACTS) {
+    const { CLASSIC_PRIVATE_MODULES } = require("./classic-bundle.cjs");
     const measured = inspectBundles(root, artifacts);
     if (measured[0].sha256 !== optimizer.outputSha256)
         throw new Error(
@@ -49,6 +50,11 @@ function writeBundleReport(root, optimizer, modules, artifacts = ARTIFACTS) {
         budget: BUDGET,
         modules,
         optimizer,
+        privateModules: Object.fromEntries(
+            Object.entries(CLASSIC_PRIVATE_MODULES).filter(([file]) =>
+                modules.includes(file)
+            )
+        ),
         schema: 1,
         toolchain: { node: process.versions.node, zlib: process.versions.zlib },
     };

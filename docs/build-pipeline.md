@@ -18,8 +18,8 @@ and cannot capture a same-named parameter in the caller. An alias such as
 or replacement. Default and namespace imports are rejected with a diagnostic;
 use named imports for this classic output.
 
-The modules still share a global scope because STB adapters and provider scripts
-use bare public identifiers. `scripts/classic-optimizer.cjs` compresses local
+Classic adapter/provider modules share a global scope because separately loaded
+scripts use bare public identifiers. `scripts/classic-optimizer.cjs` compresses local
 implementation details while preserving every top-level binding, property name,
 function name and function arity. Menu preferences persist `callback.name`; these
 names must survive optimization. Top-level and property mangling, unsafe rewrites,
@@ -30,8 +30,22 @@ rewrites and Boolean-to-integer conversion are explicitly disabled because they
 change omitted/mapped arguments and native bridge Boolean contracts.
 The optimizer parses both input and output as ES5 and rejects missing globals.
 Put leaf modules before consumers that use their values during initialization, and avoid
-duplicate global declarations when extracting new modules. This linker preserves
-the public ABI; it does not make internal modules independent scopes.
+duplicate global declarations when extracting new modules.
+
+`CLASSIC_PRIVATE_MODULES` declares audited implementation boundaries. The debug
+controller publishes `window.__ottDebug`; its functions, queue and timer state
+run in a private immediate scope at the original module position. The scope
+retains the script's receiver and does not introduce strict mode or deferred
+initialization. Compiler helpers inside private modules are not shared across
+the boundary. Named imports/exports, bare private references and direct named
+`window`/global-object property reads fail the build. Aliases, `this` receivers,
+computed property names and external device/provider scripts still require a
+reachability audit; the linker cannot prove their intent.
+
+The HTML bootstrap owns startup: runtime support, media libraries, player bundle,
+selected adapter, then `startPlayer()`. Device detection always returns a
+nonempty route. The old empty-device auto-start branch never ran in shipped
+profiles and has been removed; there is no competing DOM-ready startup path.
 
 `src/app/state.ts` remains an ESM-only state mirror. Its three provider popup
 imports (`popupActions`, `popupArray`, `popupDetail`) explicitly resolve to the
@@ -65,6 +79,33 @@ in the shared bundle. Splitting them requires an explicit capability bootstrap,
 versioned chunk loading, offline packaging and cross-chunk ABI tests first.
 Do not select code solely by URL or development computer identity.
 
+Native adapters share Promise-to-jQuery settlement and playback metadata
+collection. Platform wrappers retain their own request arguments, lifecycle,
+timers and session ownership. The shared Deferred bridge subscribes directly to
+the existing thenable and retains callback receivers, completion-before-settlement,
+error conversion and return-object identity on legacy and current jQuery.
+
+## Reachability and future module boundaries
+
+Classify entry points before removing code: HTML startup, bare provider/device
+globals, `window` publications, saved callback names, native/plugin APIs and
+registered event callbacks are roots. A missing TypeScript import does not
+establish dead code. All 24 device adapters remain reachable through explicit
+`/f/<adapter>` routes; native bridges remain reachable from HTTP-hosted shells.
+
+The removed `_hasLocalizedAlphabet`, `loadProvCallback`, `time2dateStr`,
+`positionToText` and its only dependency `secondsToText` had no runtime callers,
+publications, documented API or original-player global contract. Preserve
+historical globals such as `handleTouchEnd` and the documented `DashExoPlayer`
+API even when current automatic playback does not call them.
+
+For further extraction, define the public interface and immediate initialization
+effects first, then isolate internal state and test through that interface.
+Prefer shared operations behind capability-specific adapters over copied platform
+implementations. Lazy loading needs versioned chunk paths, offline/native staging,
+failure recovery and ordering tests before it can replace the current bootstrap.
+An automatic tree-shaker over all legacy globals would discard supported hooks.
+
 ## Build validation and size budgets
 
 Normal builds audit the complete media runtime before reuse. The audit checks
@@ -81,7 +122,7 @@ These budgets cover `stbPlayer.js`, not external media libraries or the complete
 application download. Raise a budget only with a reviewed feature/size tradeoff.
 
 `build/reports/classic-bundle.json` records module order, optimizer version/options,
-public bindings, source/output hashes and final artifact sizes. CI publishes it
+public bindings, private-module interfaces, source/output hashes and final artifact sizes. CI publishes it
 alongside the normal checks. It lives outside the served roots and is deterministic
 for identical inputs and toolchain; it records Node/zlib versions and contains no
 absolute machine paths, timestamps or performance claims.

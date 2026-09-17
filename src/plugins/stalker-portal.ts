@@ -1,3 +1,4 @@
+import { nativePromiseToJq } from "./jquery-bridge";
 import { resolveNativePlugin } from "./native-bridge";
 import type { NativeHttpResponse } from "./native-http";
 import { nativeWebFallback } from "./web-fallback";
@@ -285,44 +286,6 @@ export function setupStalkerPortalShim(): void {
     (window as any).__ottStalkerPortalShim = true;
     const origAjax = $.ajax.bind($);
 
-    function jqFromPromise(promise: Promise<any>, opts: any): any {
-        const dfd = $.Deferred();
-        promise.then(
-            (val: any) => {
-                try {
-                    if (typeof opts.success === "function") {
-                        opts.success(val, "success", dfd);
-                    }
-                } catch (_e) {}
-                try {
-                    if (typeof opts.complete === "function") {
-                        opts.complete(dfd, "success");
-                    }
-                } catch (_e3) {}
-                dfd.resolve(val);
-            },
-            (err: any) => {
-                const msg = err != null ? String(err) : "portalRequest failed";
-                try {
-                    if (typeof opts.error === "function") {
-                        opts.error(
-                            { responseText: msg, status: 0 },
-                            "error",
-                            msg
-                        );
-                    }
-                } catch (_e2) {}
-                try {
-                    if (typeof opts.complete === "function") {
-                        opts.complete(dfd, "error");
-                    }
-                } catch (_e3) {}
-                dfd.reject(msg);
-            }
-        );
-        return dfd.promise(dfd) as any;
-    }
-
     function parseResponseBody(
         body: string,
         opts: any,
@@ -394,7 +357,12 @@ export function setupStalkerPortalShim(): void {
                     res.contentType || ""
                 );
             });
-            return jqFromPromise(invokePromise, opts);
+            return nativePromiseToJq(
+                $,
+                invokePromise,
+                opts,
+                "portalRequest failed"
+            );
         }
 
         const capPromise = StalkerPortal.portalRequest({
@@ -427,7 +395,7 @@ export function setupStalkerPortalShim(): void {
                 );
             }
         );
-        return jqFromPromise(capPromise, opts);
+        return nativePromiseToJq($, capPromise, opts, "portalRequest failed");
     };
 }
 

@@ -278,56 +278,6 @@ export function time2time(timestamp: number): string {
 }
 
 /**
- * Convert a Unix timestamp to a formatted date-time string.
- *
- * @param timestamp - Seconds since 1970-01-01 UTC.
- * @returns A string in the format `"DD.MM.YYYY HH:MM"` using local time.
- */
-export function time2dateStr(timestamp: number): string {
-    var date = new Date(timestamp * 1000);
-    return (
-        formatTwoDigits(date.getDate()) +
-        "." +
-        formatTwoDigits(date.getMonth() + 1) +
-        "." +
-        date.getFullYear() +
-        " " +
-        time2time(timestamp)
-    );
-}
-
-/**
- * Convert a duration in seconds to `"H:MM:SS"` format.
- *
- * @param totalSeconds - A non-negative duration in seconds.
- * @returns A formatted string (e.g. `"1:05:30"` for 3930 seconds).
- *
- * @remarks
- * Hours can exceed 23 for very long durations. Minutes and seconds are
- * always zero-padded to two digits.
- */
-export function secondsToText(totalSeconds: number): string {
-    var h = Math.floor(totalSeconds / 3600);
-    var m = Math.floor((totalSeconds % 3600) / 60);
-    var s = Math.floor(totalSeconds % 60);
-    return h + ":" + formatTwoDigits(m) + ":" + formatTwoDigits(s);
-}
-
-/**
- * Format playback position and duration as a readable string.
- *
- * @param position - Current playback position in seconds.
- * @param duration - Total duration in seconds.
- * @returns A string in the format `"H:MM:SS / H:MM:SS"`.
- *
- * @remarks
- * Both values are formatted via `secondsToText` and joined with `" / "`.
- */
-export function positionToText(position: number, duration: number): string {
-    return secondsToText(position) + " / " + secondsToText(duration);
-}
-
-/**
  * Detect the current browser name from the user-agent string.
  *
  * @returns One of `'Firefox'`, `'Opera'`, `'IE'`, `'Edge'`, `'Chrome'`,

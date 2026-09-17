@@ -98,6 +98,17 @@ for (const fixture of fixtures.concat(routeFixtures)) {
                 socket.close();
             });
             await context.addInitScript((capability) => {
+                const originalLog = console.log;
+                window.__testPlayerStarts = [];
+                console.log = function (...args) {
+                    if (args[0] === "startPlayer") {
+                        window.__testPlayerStarts.push({
+                            back: window.keys && window.keys.RETURN,
+                            device: window.ott_device,
+                        });
+                    }
+                    return originalLog.apply(this, args);
+                };
                 localStorage.setItem("ottplaylang", "_eng");
                 if (capability === "mag") {
                     window.gSTB = {
@@ -146,6 +157,11 @@ for (const fixture of fixtures.concat(routeFixtures)) {
                 down: remote.DOWN,
                 enter: remote.ENTER,
             });
+            expect(
+                await page.evaluate(() => window.__testPlayerStarts)
+            ).toEqual([
+                { back: remote.RETURN, device: fixture.expectedDevice },
+            ]);
             expect(loadedScripts).toContain("/dist/stbPlayer.js");
             expect(loadedScripts[0]).toBe("/js/runtime-polyfills.js");
             expect(loadedScripts).toContain("/js/hls.min.js");
