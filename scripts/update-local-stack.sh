@@ -29,7 +29,7 @@ if [ "${SKIP_HLS_RELOAD:-0}" != "1" ] && [ -f "$HLS_PLIST" ]; then
 fi
 
 if [ -f "$HLS_PLIST" ]; then
-    if curl -s -o /dev/null -m 3 "http://127.0.0.1:8090/" 2>/dev/null; then
+    if curl --noproxy '*' -s -o /dev/null -m 3 "http://127.0.0.1:8090/" 2>/dev/null; then
         echo "hls-proxy :8090 ok"
     else
         echo "warning: hls-proxy :8090 not responding" >&2
