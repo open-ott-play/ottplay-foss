@@ -43,7 +43,7 @@ const channelFunctions = functions("src/channels/index.ts", [
     "epgTimezoneHours",
     "epgArchiveHours",
     "applyChannelTvgShift",
-    "getEPGchanelCached",
+    "getChannelEpgCached",
 ]);
 
 for (const platform of ["browser", "tauri", "capacitor"]) {
@@ -71,7 +71,7 @@ for (const platform of ["browser", "tauri", "capacitor"]) {
             ],
         };
         const w: any = {
-            getEPGchanel(id: number, callback: Function) {
+            getChannelEpg(id: number, callback: Function) {
                 providerCalls++;
                 callback(id, schedule);
             },
@@ -97,7 +97,7 @@ for (const platform of ["browser", "tauri", "capacitor"]) {
         });
         vm.runInContext(channelFunctions, ctx);
         const result: any = await new Promise((resolve) =>
-            ctx.getEPGchanelCached(42, (_id: number, rows: any) =>
+            ctx.getChannelEpgCached(42, (_id: number, rows: any) =>
                 resolve(rows)
             )
         );
@@ -132,13 +132,13 @@ for (const platform of ["browser", "tauri", "capacitor"]) {
 }
 const providerEpg = () => {};
 const override = context({
-    getEPGchanelCached() {},
-    window: { __TAURI__: {}, getEPGchanel: providerEpg },
+    getChannelEpgCached() {},
+    window: { __TAURI__: {}, getChannelEpg: providerEpg },
 });
 vm.runInContext(functions("src/index.ts", ["setupTauriEpgOverride"]), override);
 override.setupTauriEpgOverride();
 assert.equal(
-    override.window.getEPGchanel,
+    override.window.getChannelEpg,
     providerEpg,
     "boot never replaces the provider EPG function"
 );

@@ -82,11 +82,11 @@ function fixture() {
         _: (text) => text,
         _prog100: { name: "Live" },
         $,
-        btnDiv: (key, icon, text) => text,
         calls,
         catIndex: 0,
         cats: { All: [1] },
         catsArray: ["All"],
+        channelNumberElement: element("#numprog"),
         clearTimeout() {},
         closeList() {
             calls.push(["close"]);
@@ -107,9 +107,10 @@ function fixture() {
             calls.push(["pin"]);
             c.unlock = next;
         },
-        getHeightK: () => 1,
+        formatSeekOffset: String,
         getThumbnail: () => "",
-        getWidthK: () => 1,
+        getViewportHeightScale: () => 1,
+        getViewportWidthScale: () => 1,
         infoBox(text) {
             calls.push(["message", text]);
         },
@@ -153,7 +154,6 @@ function fixture() {
         mediaSelects: [],
         mediaUrls: null,
         Number,
-        numprogElement: element("#numprog"),
         parentAccess: false,
         parentPIN: "1234",
         playTime: 0,
@@ -165,6 +165,7 @@ function fixture() {
         primaryIndex: 0,
         providerSetItem: (key, value) => (stored[key] = value),
         refreshAudioBadge() {},
+        renderButtonHint: (key, icon, text) => text,
         sArrowFun: 0,
         selIndex: 0,
         setInterval: (fn) => (timers.push(fn), timers.length),
@@ -202,7 +203,6 @@ function fixture() {
         stbStop() {
             calls.push(["stop"]);
         },
-        step2text: String,
         stored,
         timers,
         video: null,
@@ -590,9 +590,9 @@ function fixture() {
 // Edem lazy descriptions fetch pages: one Info action must trigger only one request.
 {
     const c = fixture();
-    c.saveCPD = () => {};
+    c.saveListPanelState = () => {};
     c.listCaptionElement = null;
-    c.listPodvalElement = null;
+    c.listFooterElement = null;
     c.host = "";
     c._vpurl = "https://example.invalid/vportal";
     let requests = 0;

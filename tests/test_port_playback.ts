@@ -64,6 +64,7 @@ function fixture() {
         _: (s: string) => s,
         $: () => chain,
         $i1: chain,
+        applyChannelPreference() {},
         catIndex: 1,
         clearInterval(n: number) {
             intervals.delete(n);
@@ -78,7 +79,6 @@ function fixture() {
                 return { innerHTML: "" };
             },
         },
-        execCHarr() {},
         fileArchive: false,
         keys: {
             DOWN: 40,
@@ -169,7 +169,7 @@ function fixture() {
     };
     for (const name of [
         "showShift",
-        "showChanelInfo",
+        "showChannelInfo",
         "playArchive",
         "shiftArchive",
         "numberProg",

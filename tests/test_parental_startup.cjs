@@ -1,3 +1,7 @@
+const {
+    attachSourceAliases,
+    sourceNames,
+} = require("./helpers/english-source-fixture.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -8,6 +12,7 @@ const root = path.resolve(__dirname, "..");
 const bundle = process.argv.includes("--bundle");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 function functions(file, names) {
+    names = sourceNames(file, names);
     const ast = ts.createSourceFile(
         file,
         read(file),
@@ -17,16 +22,27 @@ function functions(file, names) {
     const selected = new Map();
     function include(name) {
         if (selected.has(name)) return;
-        const declarations = ast.statements.filter(
-            (node) => ts.isFunctionDeclaration(node) && node.name?.text === name
-        );
+        const declarations = ast.statements.flatMap((node) => {
+            if (ts.isFunctionDeclaration(node) && node.name?.text === name)
+                return [node];
+            if (ts.isVariableStatement(node))
+                return [...node.declarationList.declarations].filter(
+                    (item) => item.name.getText(ast) === name
+                );
+            return [];
+        });
         assert.equal(
             declarations.length,
             1,
             `${file}: actual ${name} declaration`
         );
         const declaration = declarations[0];
-        selected.set(name, declaration.getText(ast));
+        selected.set(
+            name,
+            ts.isVariableDeclaration(declaration)
+                ? "var " + declaration.getText(ast) + ";"
+                : declaration.getText(ast)
+        );
         function visit(node) {
             if (ts.isIdentifier(node) && /^__ottReadImport\d+$/.test(node.text))
                 include(node.text);
@@ -47,6 +63,12 @@ function functions(file, names) {
               })
               .outputText.replace(/^export /gm, "");
 }
+const bundleAliases = bundle
+    ? functions("dist/stbPlayer.js", [
+          "legacyPlayerBindings",
+          "installEnglishPlayerAliases",
+      ])
+    : "";
 const modules = {
     "src/channels/index.ts": [
         "onChanelsLoaded",
@@ -109,6 +131,10 @@ function fixture({
             v: 1,
         });
     w.eval(read("js/jquery-1.11.1.min.js"));
+    if (bundle) {
+        w.eval(bundleAliases);
+        w.installEnglishPlayerAliases(w);
+    } else attachSourceAliases(w);
     w.$.expr.filters.visible = (element) => element.style.display !== "none";
     let prompts = 0;
     const html = w.$.fn.html;
@@ -190,6 +216,7 @@ function fixture({
         useGraphicIcons: false,
     });
     w.eval(code);
+    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     w._ = w.translate;
     assert.equal(
         w.translate("Fixture %1", "ready"),

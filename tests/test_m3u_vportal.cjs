@@ -1,3 +1,7 @@
+const {
+    attachSourceAliases,
+    sourceNames,
+} = require("./helpers/english-source-fixture.cjs");
 /* Exercise the shipped M3U settings and loader against the shared VPortal client. */
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -27,6 +31,7 @@ function transpile(source) {
 }
 
 function declarations(file, names) {
+    names = sourceNames(file, names);
     const ast = ts.createSourceFile(
         file,
         read(file),
@@ -81,6 +86,7 @@ function fixture(
     w.setTimeout = w.setInterval = () => 1;
     w.console = { error() {}, log() {}, warn() {} };
     vm.runInContext(clientCode, w);
+    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     const saved = new Map([
         ["m3um3uArr", JSON.stringify({ active: 0, M3Us: slots })],
     ]);
@@ -202,6 +208,7 @@ function fixture(
     };
     if (!bundled) vm.runInContext(cancellationCode, w);
     vm.runInContext(adapter, w);
+    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     w.duneAddSettings(0);
     return { alerts, created, dom, played, requests, saved, w };
 }

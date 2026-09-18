@@ -65,7 +65,7 @@ function checkBundleIdentifiers(code) {
         .filter((name) => !bindings.has(name))
         .concat(
             ["listKeyHandler", "chanels"].filter(
-                (name) => !publications.has(name)
+                (name) => !publications.has(name) && !bindings.has(name)
             )
         );
     if (missing.length)

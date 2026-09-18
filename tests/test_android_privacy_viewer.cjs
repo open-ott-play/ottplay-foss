@@ -34,7 +34,10 @@ function extract(file, names) {
     return code;
 }
 const viewer = extract("src/index.ts", ["privacyPolicy"]);
-const cpd = extract("src/ui/index.ts", ["saveCPD", "restoreCPD"]);
+const cpd = extract("src/ui/index.ts", [
+    "saveListPanelState",
+    "restoreListPanelState",
+]);
 const documentText = read("docs/privacy-policy.md");
 const parentHtml = ["First Run Setup", "Choose an action", "Parent footer"];
 
@@ -60,7 +63,7 @@ function fixture({
         keys: { DOWN: 40, ENTER: 13, EXIT: 27, RETURN: 8, UP: 38 },
         listCaptionElement: w.document.getElementById("listCaption"),
         listDetailElement: w.document.getElementById("listDetail"),
-        listPodvalElement: w.document.getElementById("listPodval"),
+        listFooterElement: w.document.getElementById("listPodval"),
         ui_state: {},
     });
     // Fail any accidental external/network request. Both success and failure
@@ -96,7 +99,7 @@ function fixture({
         parent: () => [
             w.listCaptionElement.innerHTML,
             w.listDetailElement.innerHTML,
-            w.listPodvalElement.innerHTML,
+            w.listFooterElement.innerHTML,
         ],
         previousHandler,
         requests,

@@ -114,12 +114,21 @@ the worker prelude. Missing or stale assets trigger regeneration and another
 full audit. `npm run build:media` always rebuilds explicitly. No timestamp or
 process-local cache can bypass validation.
 
-Each final classic bundle is limited to 470,000 UTF-8 bytes and 125,000 bytes
+Each final classic bundle is limited to 470,000 UTF-8 bytes and 128,000 bytes
 compressed with gzip level 9. Both limits apply independently to server, Tauri
 and Capacitor artifacts. Native transformations are measured after staging.
 `npm run check:size` reads the actual artifacts; it does not trust a prior report.
 These budgets cover `stbPlayer.js`, not external media libraries or the complete
 application download. Raise a budget only with a reviewed feature/size tradeoff.
+
+The command-server connection and compatibility boundary measured 466,901 raw
+bytes / 126,699 gzip bytes against the prior 445,756 / 120,643 baseline with the
+same optimizer and version substitution: +6,056 gzip bytes (5.02%). This includes
+the outbound transport, retry/acknowledgement state, settings UI, command fixes,
+and live provider aliases. Direct unshadowed global reads save 167 gzip bytes
+without changing compression options or shadowed-binding behavior. The raw
+ceiling remains unchanged; the gzip ceiling allows this measured feature growth.
+
 
 `build/reports/classic-bundle.json` records module order, optimizer version/options,
 public bindings, private-module interfaces, source/output hashes and final artifact sizes. CI publishes it

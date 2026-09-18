@@ -1,3 +1,7 @@
+import {
+    readLegacySettingsFields,
+    writeLegacySettingsFields,
+} from "../compatibility/legacy-names";
 /**
  * Player settings — all ~100 configuration parameters.
  *
@@ -72,7 +76,7 @@ export function applyTimezoneSetting(index: number): number {
  * @property listPosition      - Remember list scroll position (0/1).
  * @property editor            - Enable channel editor (0/1).
  * @property showNumber        - Show channel number in list (0/1).
- * @property showPicon         - Show channel picon (0/1).
+ * @property channelLogoMode   - Channel logo layout: hidden, square, or portrait (0/1/2).
  * @property showName          - Show channel name (0/1).
  * @property showProgress      - Show progress bar (0/1).
  * @property showArchive       - Show archive indicator (0/1).
@@ -84,17 +88,17 @@ export function applyTimezoneSetting(index: number): number {
  * @property nextCountList     - Number of next programmes in list view.
  * @property favorites         - Enable favourites filtering (0/1).
  * @property permanentTime     - Always show time in OSD (0/1).
- * @property res10Resume       - Resume playback from last position (0/1).
+ * @property resumeWithTenSecondRewind - Rewind ten seconds when resuming (0/1).
  * @property prevCount         - Number of previous programmes shown.
  * @property medCount          - Media item count threshold.
  * @property psChannels        - Provider-switch channel mapping (0/1).
  * @property psOptions         - Provider-switch options (0/1).
- * @property psProvs           - Provider-switch provider list (0/1).
+ * @property requirePinForProviderSelection - Require a PIN to select a provider (0/1).
  * @property hdmiSupport       - Enable HDMI-CEC support (0/1).
  * @property autorun           - Auto-start on boot (0/1).
  * @property players           - Player type selection.
  * @property bufSize           - Buffer size in KB.
- * @property grapI             - Use graphical icons for yes/no/off (0/1).
+ * @property useGraphicalIndicators - Use graphical icons for yes/no/off (0/1).
  * @property parentPin         - Parental control PIN code.
  * @property hideMenus         - List of menu IDs to hide.
  * @property highlightColorSel - Selected item highlight colour (HSL H,S).
@@ -110,6 +114,10 @@ export interface PlayerSettings {
     autorun: number;
     bFun: number;
     bufSize: number;
+    channelLogoMode: number;
+    commandServerAddress: string;
+    commandServerEnabled: number;
+    commandServerToken: string;
     deviceUuid: string;
     editor: number;
     eFun: number;
@@ -119,7 +127,6 @@ export interface PlayerSettings {
     fontShift: number;
     fontSize: number;
     gFun: number;
-    grapI: number;
     hdmiSupport: number;
     hideMenus: string[];
     highlightColor: string;
@@ -155,8 +162,8 @@ export interface PlayerSettings {
     preview: number;
     psChannels: number;
     psOptions: number;
-    psProvs: number;
-    res10Resume: number;
+    requirePinForProviderSelection: number;
+    resumeWithTenSecondRewind: number;
     rewFun: number;
     rFun: number;
     rwFun: number;
@@ -167,7 +174,6 @@ export interface PlayerSettings {
     showDescription: number;
     showName: number;
     showNumber: number;
-    showPicon: number;
     showProgram: number;
     showProgress: number;
     showScroll: number;
@@ -176,6 +182,7 @@ export interface PlayerSettings {
     swopBaseUrl: string;
     thumbnail: number;
     timezone: number;
+    useGraphicalIndicators: number;
     volumeStep: number;
     yFun: number;
 }
@@ -205,6 +212,10 @@ export function defaultSettings(): PlayerSettings {
         autorun: 0,
         bFun: 9,
         bufSize: 0,
+        channelLogoMode: 1,
+        commandServerAddress: "",
+        commandServerEnabled: 0,
+        commandServerToken: "",
         deviceUuid: "",
         editor: 0,
         eFun: 0,
@@ -214,7 +225,6 @@ export function defaultSettings(): PlayerSettings {
         fontShift: 4,
         fontSize: 4,
         gFun: 0,
-        grapI: 0,
         hdmiSupport: 0,
         hideMenus: [],
         highlightColor: "50,85",
@@ -250,8 +260,8 @@ export function defaultSettings(): PlayerSettings {
         preview: 0,
         psChannels: 1,
         psOptions: 0,
-        psProvs: 0,
-        res10Resume: 1,
+        requirePinForProviderSelection: 0,
+        resumeWithTenSecondRewind: 1,
         rewFun: 0,
         rFun: 10,
         rwFun: 18,
@@ -262,7 +272,6 @@ export function defaultSettings(): PlayerSettings {
         showDescription: 1,
         showName: 1,
         showNumber: 1,
-        showPicon: 1,
         showProgram: 1,
         showProgress: 1,
         showScroll: 1,
@@ -271,6 +280,7 @@ export function defaultSettings(): PlayerSettings {
         swopBaseUrl: "",
         thumbnail: 1,
         timezone: 0,
+        useGraphicalIndicators: 0,
         volumeStep: 5,
         yFun: 1,
     };
@@ -312,6 +322,10 @@ export function loadSettings(): PlayerSettings {
         autorun: s.getI("sAutorun", 0),
         bFun: s.getI("sBfun", 9),
         bufSize: s.getI("sBufSize", 0),
+        channelLogoMode: s.getI("sShowPikon", 1),
+        commandServerAddress: s.get("commandServerAddress") || "",
+        commandServerEnabled: s.get("commandServerEnabled") === "1" ? 1 : 0,
+        commandServerToken: s.get("commandServerToken") || "",
         deviceUuid: s.get("sDeviceUuid") || "",
         editor: (() => {
             const raw = storage.get("sEditor");
@@ -344,7 +358,6 @@ export function loadSettings(): PlayerSettings {
         fontShift: s.getI("sFontShift", 4),
         fontSize: s.getI("sFont", 4),
         gFun: s.getI("sGfun", 0),
-        grapI: s.getI("sGrapI", 0),
         hdmiSupport: s.getI("sHDMIsupport", 0),
         hideMenus: (s.get("sHideMenus") || "").split(",").filter(function (
             x: string
@@ -384,8 +397,8 @@ export function loadSettings(): PlayerSettings {
         preview: s.getI("sPreview", 0),
         psChannels: s.getI("sPSchannels", 1),
         psOptions: s.getI("sPSoptions", 0),
-        psProvs: s.getI("sPSprovs", 0),
-        res10Resume: s.getI("s10resum", 1),
+        requirePinForProviderSelection: s.getI("sPSprovs", 0),
+        resumeWithTenSecondRewind: s.getI("s10resum", 1),
         rewFun: s.getI("sRewFun", 0),
         rFun: s.getI("sRfun", 10),
         rwFun: s.getI("sRWfun", 18),
@@ -396,7 +409,6 @@ export function loadSettings(): PlayerSettings {
         showDescription: s.getI("sShowDescr", 1),
         showName: s.getI("sShowName", 1),
         showNumber: s.getI("sShowNum", 1),
-        showPicon: s.getI("sShowPikon", 1),
         showProgram: s.getI("sShowProgram", 1),
         showProgress: s.getI("sShowProgress", 1),
         showScroll: s.getI("sShowScroll", 1),
@@ -405,6 +417,7 @@ export function loadSettings(): PlayerSettings {
         swopBaseUrl: s.get("sSwopBaseUrl") || "",
         thumbnail: s.getI("sThumbnail", 1),
         timezone: s.getI("sTimezone", 0),
+        useGraphicalIndicators: s.getI("sGrapI", 0),
         volumeStep: s.getI("sVolumeStep", 5),
         yFun: s.getI("sYfun", 1),
     };
@@ -470,7 +483,7 @@ export function saveSettings(s: PlayerSettings): void {
     store.setI("sListPos", s.listPosition);
     store.setI("sEditor", s.editor);
     store.setI("sShowNum", s.showNumber);
-    store.setI("sShowPikon", s.showPicon);
+    store.setI("sShowPikon", s.channelLogoMode);
     store.setI("sShowName", s.showName);
     store.setI("sShowProgress", s.showProgress);
     store.setI("sShowArchive", s.showArchive);
@@ -482,22 +495,26 @@ export function saveSettings(s: PlayerSettings): void {
     store.setI("sNextCountL", s.nextCountList);
     store.setI("sFavorites", s.favorites);
     store.setI("sPermanentTime", s.permanentTime);
-    store.setI("s10resum", s.res10Resume);
+    store.setI("s10resum", s.resumeWithTenSecondRewind);
     store.setI("sPrevCount", s.prevCount);
     store.setI("sMedCount", s.medCount);
     store.setI("sPSchannels", s.psChannels);
     store.setI("sPSoptions", s.psOptions);
-    store.setI("sPSprovs", s.psProvs);
+    store.setI("sPSprovs", s.requirePinForProviderSelection);
     store.setI("sHDMIsupport", s.hdmiSupport);
     store.setI("sAutorun", s.autorun);
     store.setI("sPlayers", s.players);
     store.setI("sBufSize", s.bufSize);
-    store.setI("sGrapI", s.grapI);
+    store.setI("sGrapI", s.useGraphicalIndicators);
     store.set("parentPIN", s.parentPin);
     store.set("sHideMenus", s.hideMenus.join(","));
     store.set("sSHLcolSel", s.highlightColorSel);
     store.set("sSHLcolor", s.highlightColor);
     store.set("sSHLcolorB", s.highlightColorB);
+    store.set("commandServerEnabled", "0");
+    store.set("commandServerAddress", s.commandServerAddress);
+    store.set("commandServerToken", s.commandServerToken);
+    if (s.commandServerEnabled === 1) store.set("commandServerEnabled", "1");
     store.set("sLocalCmdUrl", s.localCmdUrl);
     store.setI("sLocalHttpEnabled", s.localHttpEnabled === 1 ? 1 : 0);
     store.set("sLocalHttpDeviceCode", s.localHttpDeviceCode);
@@ -511,7 +528,14 @@ export function saveSettings(s: PlayerSettings): void {
 export interface ExportEnvelopeV1 {
     favoritesArray: number[];
     parentalArray: number[];
-    settings: Omit<PlayerSettings, "localHttpEnabled" | "localHttpDeviceCode">;
+    settings: Omit<
+        PlayerSettings,
+        | "localHttpEnabled"
+        | "localHttpDeviceCode"
+        | "commandServerAddress"
+        | "commandServerToken"
+        | "commandServerEnabled"
+    >;
     timestamp: number;
     version: 1;
 }
@@ -531,12 +555,17 @@ export function exportSettings(): string {
     }
     // Consent and credentials belong to this installation, never a backup.
     const exportedSettings = { ...settings };
+    delete (exportedSettings as Partial<PlayerSettings>).commandServerAddress;
+    delete (exportedSettings as Partial<PlayerSettings>).commandServerToken;
+    delete (exportedSettings as Partial<PlayerSettings>).commandServerEnabled;
     delete (exportedSettings as Partial<PlayerSettings>).localHttpEnabled;
     delete (exportedSettings as Partial<PlayerSettings>).localHttpDeviceCode;
     const env: ExportEnvelopeV1 = {
         favoritesArray: window.providerGetJson?.("favoritesArray", []) || [],
         parentalArray: window.providerGetJson?.("parentalArray", []) || [],
-        settings: exportedSettings,
+        settings: writeLegacySettingsFields(
+            exportedSettings
+        ) as ExportEnvelopeV1["settings"],
         timestamp: Date.now(),
         version: 1,
     };
@@ -600,10 +629,22 @@ export function importSettings(
 }
 
 function applyImport(env: ExportEnvelopeV1): void {
+    var remote = (window as any).__ottCommandServer;
+    if (remote)
+        remote.configure({
+            address: settings.commandServerAddress,
+            enabled: false,
+            token: settings.commandServerToken,
+        });
     // Ignore even explicitly injected credentials/consent in imported JSON.
     // Importing ordinary preferences preserves this installation's own consent.
     saveSettings({
-        ...env.settings,
+        ...(readLegacySettingsFields(
+            env.settings
+        ) as ExportEnvelopeV1["settings"]),
+        commandServerAddress: settings.commandServerAddress || "",
+        commandServerEnabled: 0,
+        commandServerToken: settings.commandServerToken || "",
         localHttpDeviceCode: settings.localHttpDeviceCode || "",
         localHttpEnabled: settings.localHttpEnabled === 1 ? 1 : 0,
     });

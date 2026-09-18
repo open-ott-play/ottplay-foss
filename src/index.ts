@@ -1,3 +1,4 @@
+import { popupActionId } from "./compatibility/legacy-names";
 import { hasTmdbService, metadataCssUrl, metadataText } from "./utils/helpers";
 /**
  * OTT-play FOSS — main entry point.
@@ -25,12 +26,19 @@ import { hasTmdbService, metadataCssUrl, metadataText } from "./utils/helpers";
 // Polyfills (must run first)
 import "./polyfills";
 
+import {
+    createCommandServer,
+    createCommandServerTransport,
+} from "./plugins/command-server";
 import { nativePromiseToJq } from "./plugins/jquery-bridge";
 import { createLocalHttpRemote } from "./plugins/local-http-remote";
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
 import { MobileNativeMedia } from "./plugins/mobile-native-media";
 import { installTauriHttpTransport } from "./plugins/native-http";
-import { setupStalkerPortalShim } from "./plugins/stalker-portal";
+import {
+    StalkerPortal,
+    setupStalkerPortalShim,
+} from "./plugins/stalker-portal";
 
 // Utils
 import * as encoding from "./utils/encoding";
@@ -48,7 +56,6 @@ import {
     addFavoritesList,
     addToFavorites,
     applyChannelTvgShift,
-    arrayGetCurProg,
     aSubs,
     aZooms,
     bucketsList,
@@ -58,9 +65,9 @@ import {
     channels,
     channelsList,
     curList,
+    currentProgramRequestQueue,
     deleteFavoritesList,
     detailEPG,
-    doGetCurProg,
     enterPinAndSetAccess,
     enterPinCode,
     epg,
@@ -70,17 +77,15 @@ import {
     epgKeyHandler,
     epgList,
     epgListAlpha,
-    epglisted,
-    epgPodval,
+    epgListMode,
     epgreturn,
-    epgShow_miniproc,
     epgTimezoneHours,
     favoritesArray,
     fileArchive,
     getActiveFavoritesListName,
+    getChannelEpgCached,
     getChannelUrl,
     getCurProgData,
-    getEPGchanelCached,
     getMediaDescr,
     handleNumberInput,
     ifParentalAccessChId,
@@ -88,6 +93,7 @@ import {
     itemEPG,
     listEpgArray,
     listFavoritesLists,
+    loadEpgListData,
     type MediaHistoryEntry,
     medFavorites,
     medHistory,
@@ -103,9 +109,11 @@ import {
     prevArr,
     prevChannel,
     primaryIndex,
+    processCurrentProgramQueue,
     recordsList,
     removeFromFavorites,
     renameFavoritesList,
+    renderEpgFooter,
     saveChannelsCats,
     selectEpg,
     setActiveFavoritesList,
@@ -166,9 +174,8 @@ import {
 } from "./storage";
 import { client_feedb, PostFeedback } from "./utils/helpers";
 
-// Sync channels to window.channels and window.chanels (alias) so provider scripts and UI can access it globally
+// Publish the canonical channel map; the compatibility module links legacy access.
 (window as any).channels = channels;
-(window as any).chanels = channels;
 
 // Core
 import {
@@ -232,7 +239,6 @@ import {
 // UI — popup functions
 import {
     backColorDialog,
-    btnDiv,
     changeSelect,
     closeList,
     colorDialog,
@@ -240,12 +246,12 @@ import {
     editKey1,
     editKey2,
     exitPortal,
+    formatSeekOffset,
     hsvToRgb,
     infoBarHide,
     infoBarHideT,
     infoBox,
     infoList,
-    infoProgramm,
     initBackgroundIntervals,
     playPipChannel,
     popBuckets,
@@ -260,17 +266,18 @@ import {
     popTogglePip,
     popupList,
     refreshAudioBadge,
-    restoreCPD,
-    saveCPD,
+    renderButtonHint,
+    restoreListPanelState,
+    saveListPanelState,
     selColorDialog,
     setSelect,
-    showChanelInfo,
+    showChannelInfo,
     showEditKey1,
     showEditKey2,
     showPage,
+    showProgramInfo,
     showSelectBox,
     showShift,
-    step2text,
     strDOWN,
     strFF,
     strLEFT,
@@ -286,7 +293,7 @@ import {
     strSubt,
     strUP,
     uiInit,
-    updateChanelInfo,
+    updateChannelInfo,
     updateMediaInfo,
 } from "./ui";
 
@@ -310,11 +317,11 @@ import {
     isPlayDistribution,
     loadChannels,
     loadProv,
-    noProvParam,
-    noSelProv,
     optionsList,
     restart,
-    selectProvaider,
+    showProviderSelection,
+    toggleProviderSelectionVisibility,
+    toggleProviderSettingsVisibility,
 } from "./provider";
 
 // duneAddSettings — initially null, set by provider scripts
@@ -322,14 +329,14 @@ declare var duneAddSettings: ((_index: number) => void) | null;
 
 // nofun — no-op callback used by firstRun list
 /** A no-op function used as a placeholder callback in list entries and popup menus. */
-function nofun(): void {}
+function noop(): void {}
 
 // Version
 var PLAYER_VERSION = "__OTTP_VERSION__";
 
 // Backward compat globals (were defined in old monolithic bundle)
 // itemWith — channel list item width, updated by showPage()
-(window as any).itemWith = 735;
+(window as any).channelListItemWidth = 735;
 // client_can — capability detection for provider scripts
 (window as any).client_can_https = false;
 (window as any).client_can = {
@@ -411,8 +418,8 @@ var popupActions: any[] = [
     popEpg,
     popRecords,
     popMedia,
-    noProvParam,
-    nofun,
+    toggleProviderSettingsVisibility,
+    noop,
     optionsList,
     restart,
     exitPortal,
@@ -572,14 +579,14 @@ var TMDb: any = {
             function (s: string) {
                 return s;
             };
-        const getHeightK =
-            (window as any).getHeightK ||
+        const getViewportHeightScale =
+            (window as any).getViewportHeightScale ||
             function () {
                 return 1;
             };
         const api_lang =
             TMDb.la[(window as any).stbGetItem?.("ottplaylang")] || "en";
-        function item2descr(item: any): string {
+        function renderMediaDescription(item: any): string {
             function it(val: any, title?: string): string {
                 return val
                     ? (title ? "<b>" + _(title) + ": </b>" : "") +
@@ -613,7 +620,7 @@ var TMDb: any = {
                     else if (val.job === "Screenplay") script.push(val.name);
                 });
             }
-            const hk = getHeightK();
+            const hk = getViewportHeightScale();
             const poster = item.poster_path
                 ? "https://image.tmdb.org/t/p/w500/" + item.poster_path
                 : "";
@@ -662,7 +669,7 @@ var TMDb: any = {
             );
         }
         function show() {
-            $("#dialogbox").html(item2descr(TMDb.data)).show();
+            $("#dialogbox").html(renderMediaDescription(TMDb.data)).show();
             (window as any).dialogBoxKeyHandler = function (key: any) {
                 const keys = (window as any).keys || {};
                 if (key === keys.RETURN || key === keys.EXIT) {
@@ -846,7 +853,9 @@ var TMDb: any = {
     select: function () {
         const $ = (window as any).$;
         const keys = (window as any).keys || {};
-        TMDb.hk = (window as any).getHeightK ? (window as any).getHeightK() : 1;
+        TMDb.hk = (window as any).getViewportHeightScale
+            ? (window as any).getViewportHeightScale()
+            : 1;
         TMDb.fun = (window as any).sInfoSlide ? "animate" : "css";
         let s =
             '<span id="_sel">1</span>/' +
@@ -1419,7 +1428,7 @@ function setPipPosBuf(): void {
  * Edge case: This is a simplified stub — the full channel list with EPG
  * and progress bars is rendered by _channelsList in the provider module.
  */
-function showChanelsList(): void {
+function showFallbackCategoryList(): void {
     isListVisible = true;
     listDataArray = catsArray.slice();
     listSelectionIndex = catIndex >= 0 ? catIndex : 0;
@@ -1670,9 +1679,13 @@ function selectLang(): void {
     if (listDetailEl) listDetailEl.innerHTML = "";
     var listCaptionEl = document.getElementById("listCaption");
     if (listCaptionEl) listCaptionEl.innerHTML = _("Choose language");
-    var listPodvalEl = document.getElementById("listPodval");
-    if (listPodvalEl)
-        listPodvalEl.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
+    var listFooterElement = document.getElementById("listPodval");
+    if (listFooterElement)
+        listFooterElement.innerHTML = renderButtonHint(
+            keys.RETURN,
+            strRETURN,
+            "Close"
+        );
     var listPopUpEl = document.getElementById("listPopUp");
     if (listPopUpEl) listPopUpEl.style.display = "none";
     showPage();
@@ -1738,7 +1751,7 @@ export function startPlayer(): void {
 
         uiInit();
         initBackgroundIntervals();
-        (window as any).listPodval = (window as any).listPodvalElement;
+        (window as any).listFooter = (window as any).listFooterElement;
         if (typeof stbInit === "function" && (stbInit() as any) !== false) {
             onStbReady();
         }
@@ -1785,6 +1798,11 @@ function onStbReady(): void {
         // Sync PlayerSettings → window.* for settings submenu compatibility
         applySettingsToWindow(settings);
         (window as any).__ottLocalHttpRemote.init();
+        (window as any).__ottCommandServer.configure({
+            address: settings.commandServerAddress,
+            enabled: settings.commandServerEnabled === 1,
+            token: settings.commandServerToken,
+        });
         // Device UUID for remote control / swop allowlist; optional /local/swop.json
         if (typeof (window as any).ensureDeviceClientId === "function")
             (window as any).ensureDeviceClientId();
@@ -2291,7 +2309,7 @@ function setupTauriEpgOverride(): void {
     if (typeof window.__TAURI__ === "undefined") return;
     // Keep provider getEPGchanel intact. The shared cache chooses native XMLTV
     // only for the built-in M3U companion, and delegates all provider APIs.
-    (window as any).getEPGchanelCurCached = getEPGchanelCached;
+    (window as any).getCachedChannelEpg = getChannelEpgCached;
 }
 
 /**
@@ -2329,9 +2347,9 @@ function setupTauriEpgCacheReady(): void {
                         : null;
                 if (
                     curId != null &&
-                    typeof (window as any).updateChanelInfo === "function"
+                    typeof (window as any).updateChannelInfo === "function"
                 ) {
-                    (window as any).updateChanelInfo(curId);
+                    (window as any).updateChannelInfo(curId);
                 }
             } catch (e) {
                 console.warn("[Tauri] epg-cache-ready handler failed:", e);
@@ -2406,8 +2424,8 @@ function _playChannel(catIdx: number, chIdx: number): void {
             " url=" +
             getChannelUrl(channelId)
     );
-    updateChanelInfo(channelId);
-    if (sInfoSwitch) showChanelInfo(settings.infoTimeout);
+    updateChannelInfo(channelId);
+    if (sInfoSwitch) showChannelInfo(settings.infoTimeout);
     (window as any).playType = 0;
     if (typeof setPlayer === "function") setPlayer();
     stbPlay(getChannelUrl(channelId));
@@ -2498,14 +2516,14 @@ function _playMedia(item: MediaHistoryEntry): void {
     $("#programm_name2").text("");
     $("#programm_duration").text("");
     $("#programm_descr").html(getMediaDescr(item));
-    if (sInfoSwitch) showChanelInfo(settings.infoTimeout);
+    if (sInfoSwitch) showChannelInfo(settings.infoTimeout);
     (window as any).playTime = 0;
     (window as any).playType = -1e11;
     if (sStopPlay) stbStop();
     stbPlay(streamUrl);
     if (resumePos)
         confirmBox(
-            _("Continue watching?") + "<br><br>" + step2text(resumePos),
+            _("Continue watching?") + "<br><br>" + formatSeekOffset(resumePos),
             function () {
                 if (
                     (window as any).playType === -1e11 &&
@@ -2525,7 +2543,7 @@ window.playChannel = playChannel;
 window._playMedia = _playMedia;
 window.playMedia = playMedia;
 
-window.showChanelsList = showChanelsList;
+window.showFallbackCategoryList = showFallbackCategoryList;
 // window.refreshchanelsList = refreshchanelsList; // not yet ported
 window.showPage = showPage;
 window.closeList = closeList;
@@ -2536,7 +2554,7 @@ window.showShift = showShift;
 window.showSelectBox = showSelectBox;
 window.infoBox = infoBox;
 window.confirmBox = confirmBox;
-window.updateChanelInfo = updateChanelInfo;
+window.updateChannelInfo = updateChannelInfo;
 window.updateMediaInfo = updateMediaInfo;
 window.refreshAudioBadge = refreshAudioBadge;
 window.stbPlay = stbPlay;
@@ -3471,9 +3489,9 @@ if (typeof window.__TAURI__ !== "undefined") {
                                 try {
                                     if (
                                         typeof (window as any)
-                                            .showChanelInfo === "function"
+                                            .showChannelInfo === "function"
                                     ) {
-                                        (window as any).showChanelInfo();
+                                        (window as any).showChannelInfo();
                                     }
                                 } catch (_sci) {}
                                 // Race-safe: clear after click window, not only setTimeout 0.
@@ -3552,9 +3570,10 @@ if (typeof window.__TAURI__ !== "undefined") {
                         ev.stopPropagation();
                     } else if (ev.clientY > ottBottomInfoBandStart(h)) {
                         if (
-                            typeof (window as any).showChanelInfo === "function"
+                            typeof (window as any).showChannelInfo ===
+                            "function"
                         ) {
-                            (window as any).showChanelInfo();
+                            (window as any).showChannelInfo();
                         }
                         // Stop ENTER / body_onClick from also firing.
                         ev.preventDefault();
@@ -3903,22 +3922,22 @@ window._setSetup = function (
                     : item.cur) + (item.desc ? "<br/><br/>" + item.desc : "");
         }
     };
-    var podvalEl = document.getElementById("listPodval");
-    if (podvalEl) {
-        podvalEl.innerHTML =
-            (window as any).btnDiv(
+    var footerElement = document.getElementById("listPodval");
+    if (footerElement) {
+        footerElement.innerHTML =
+            (window as any).renderButtonHint(
                 (window as any).keys.RETURN,
                 (window as any).strRETURN,
                 "Close"
             ) +
-            (window as any).btnDiv(
+            (window as any).renderButtonHint(
                 (window as any).keys.ENTER,
                 (window as any).strENTER,
                 "Change value",
                 (window as any).strLEFT,
                 (window as any).strRIGHT
             ) +
-            (window as any).btnDiv(
+            (window as any).renderButtonHint(
                 (window as any).keys.GREEN,
                 "",
                 "Save Settings",
@@ -4040,7 +4059,7 @@ window.stbOptions = function (): void {
             val: w.sBufSize,
             values: w.bufferSizes,
         },
-        { cur: "", name: "", val: 0, values: w.nofun || [] },
+        { cur: "", name: "", val: 0, values: w.noop || [] },
         {
             cur: "",
             name:
@@ -4344,7 +4363,7 @@ window.settingsInterface = function (): void {
             val: w.sBufSize,
             values: w.bufferSizes,
         },
-        { cur: "", name: "", val: 0, values: w.nofun || [] },
+        { cur: "", name: "", val: 0, values: w.noop || [] },
         {
             cur: "",
             name:
@@ -4442,7 +4461,7 @@ window.settingsInfobar = function (): void {
             val: w.sThumbnail,
             values: noyes,
         },
-        { cur: "", name: "", val: 0, values: w.nofun || [] },
+        { cur: "", name: "", val: 0, values: w.noop || [] },
         {
             cur: "",
             name:
@@ -4560,7 +4579,7 @@ window.settingsLists = function (): void {
             val: w.sShowScroll,
             values: noyes,
         },
-        { cur: "", name: "", val: 0, values: w.nofun || [] },
+        { cur: "", name: "", val: 0, values: w.noop || [] },
         {
             cur: "",
             name:
@@ -4682,7 +4701,7 @@ window.settingsChannels = function (): void {
             name:
                 w._("Channel list editing style") ||
                 "Channel list editing style",
-            val: w.sFavorites !== -1 ? w.sFavorites : w.nofun || [],
+            val: w.sFavorites !== -1 ? w.sFavorites : w.noop || [],
             values:
                 w.sFavorites !== -1
                     ? [
@@ -4693,7 +4712,7 @@ window.settingsChannels = function (): void {
                       (w._('"Favorites"') || '"Favorites"') +
                       "</span>",
         },
-        { cur: "", name: "", val: 0, values: w.nofun || [] },
+        { cur: "", name: "", val: 0, values: w.noop || [] },
         {
             cur: "",
             name:
@@ -4814,8 +4833,8 @@ window.settingsButtons = function (): void {
         5, 10, 15, 20, 30, 60, 120, 180, 240, 300, 600, 900, 1200, 1800, 3600,
     ];
     var p = d.map(function (e: number) {
-        return typeof w.step2text === "function"
-            ? w.step2text(e).substr(2).trim()
+        return typeof w.formatSeekOffset === "function"
+            ? w.formatSeekOffset(e).substr(2).trim()
             : e.toString();
     });
     if (typeof w.stbToggleAspectRatio !== "function") u[5] = "@@@";
@@ -4928,7 +4947,7 @@ window.settingsButtons = function (): void {
             val: w.sNoNumbersKeys,
             values: noyes,
         },
-        { cur: "", name: "", val: 0, values: w.nofun || [] },
+        { cur: "", name: "", val: 0, values: w.noop || [] },
         {
             cur: "",
             name: a + (w._("Save Settings") || "Save Settings") + o,
@@ -4965,8 +4984,13 @@ window.settingsMenu = function (): void {
     /** Build the sHideMenus array from toggled list items and persist it. */
     function save(): void {
         w.sHideMenus = [];
-        for (var i = 0; i < w.popupActions.indexOf(w.noProvParam); i++) {
-            if (w.listArray[i].val) w.sHideMenus.push(w.popupActions[i].name);
+        for (
+            var i = 0;
+            i < w.popupActions.indexOf(w.toggleProviderSettingsVisibility);
+            i++
+        ) {
+            if (w.listArray[i].val)
+                w.sHideMenus.push(popupActionId(w.popupActions[i]));
         }
         if (typeof w.stbSetItem === "function")
             w.stbSetItem("sHideMenus", w.sHideMenus.join(","));
@@ -4977,17 +5001,23 @@ window.settingsMenu = function (): void {
     }
     var noyes = [w._("yes") || "yes", w._("no") || "no"];
     w.listArray = [];
-    for (var i = 0; i < w.popupActions.indexOf(w.noProvParam); i++) {
+    for (
+        var i = 0;
+        i < w.popupActions.indexOf(w.toggleProviderSettingsVisibility);
+        i++
+    ) {
         w.listArray.push({
             name: w._(w.popupArray[i]),
             val:
-                (w.sHideMenus || []).indexOf(w.popupActions[i].name) === -1
+                (w.sHideMenus || []).indexOf(
+                    popupActionId(w.popupActions[i])
+                ) === -1
                     ? 0
                     : 1,
             values: noyes,
         });
     }
-    w.listArray.push({ cur: "", name: "", val: 0, values: w.nofun || [] });
+    w.listArray.push({ cur: "", name: "", val: 0, values: w.noop || [] });
     w.listArray.push({
         cur: "",
         name:
@@ -5022,7 +5052,7 @@ window.exportSettingsUI = function (): void {
     ) {
         // These native shells do not provide a Blob download destination.
         // Keep the JSON available even when clipboard permission is denied.
-        w.saveCPD();
+        w.saveListPanelState();
         var previousHandler = w.aboutKeyHandler;
         var caption = document.getElementById("listCaption");
         var detail = document.getElementById("listDetail");
@@ -5033,8 +5063,8 @@ window.exportSettingsUI = function (): void {
                 "Copy the JSON to keep a backup. Use Import settings to restore it.";
         if (footer)
             footer.innerHTML =
-                w.btnDiv(w.keys.RETURN, w.strRETURN, "Close") +
-                w.btnDiv(w.keys.ENTER, w.strENTER, "Copy JSON");
+                w.renderButtonHint(w.keys.RETURN, w.strRETURN, "Close") +
+                w.renderButtonHint(w.keys.ENTER, w.strENTER, "Copy JSON");
         $("#listAbout")
             .show()
             .html(
@@ -5077,7 +5107,7 @@ window.exportSettingsUI = function (): void {
             backupOpen = false;
             $("#listAbout").hide().text("");
             w.aboutKeyHandler = previousHandler;
-            w.restoreCPD();
+            w.restoreListPanelState();
         };
         w.aboutKeyHandler = function (key: number): boolean {
             if (key === w.keys.RETURN || key === w.keys.EXIT) {
@@ -5122,16 +5152,17 @@ function editSettingsText(
     caption: string,
     value: string,
     onSave: (value: string) => void,
-    onClose?: () => void
+    onClose?: () => void,
+    secret?: boolean
 ): void {
     var w = window as any;
     if (typeof w.showEditKey2 !== "function") {
-        var result = prompt(caption + ":", value);
+        var result = prompt(caption + ":", secret ? "" : value);
         if (onClose) onClose();
         if (result !== null) onSave(result);
         return;
     }
-    var restore = w.restoreCPD;
+    var restore = w.restoreListPanelState;
     var previousSetEdit = w.setEdit;
     var savedValue: string | undefined;
     w.editCaption = caption;
@@ -5139,15 +5170,15 @@ function editSettingsText(
     w.setEdit = function (): void {
         savedValue = String(w.editvar);
     };
-    w.restoreCPD = function (): void {
-        w.restoreCPD = restore;
+    w.restoreListPanelState = function (): void {
+        w.restoreListPanelState = restore;
         w.setEdit = previousSetEdit;
         restore();
         if (onClose) onClose();
         // Import opens a confirmation dialog: do not let editor teardown close it.
         if (savedValue !== undefined) onSave(savedValue);
     };
-    w.showEditKey2();
+    w.showEditKey2(undefined, secret);
 }
 
 /** Read pasted settings JSON, then use the existing validated import/confirmation flow. */
@@ -5201,7 +5232,7 @@ window.settingsManage = function (): void {
             action: w.cloudLoadSettings,
             name: w._("Load settings") || "Load settings",
         },
-        { action: w.nofun || function () {}, name: "" },
+        { action: w.noop || function () {}, name: "" },
         {
             action: w.exportSettingsUI,
             name: w._("Export settings") || "Export settings",
@@ -5210,12 +5241,12 @@ window.settingsManage = function (): void {
             action: w.importSettingsUI,
             name: w._("Import settings") || "Import settings",
         },
-        { action: w.nofun || function () {}, name: "" },
+        { action: w.noop || function () {}, name: "" },
         {
             action: clearSettings,
             name: w._("Clear settings") || "Clear settings",
         },
-        { action: w.nofun || function () {}, name: "" },
+        { action: w.noop || function () {}, name: "" },
         {
             action: w.edit_dealer,
             name: w._("Enter Provider Code") || "Enter Provider Code",
@@ -5302,8 +5333,13 @@ window.settingsManage = function (): void {
     };
     var capEl = document.getElementById("listCaption");
     if (capEl) capEl.innerHTML = w._("Manage settings") || "Manage settings";
-    var podEl = document.getElementById("listPodval");
-    if (podEl) podEl.innerHTML = w.btnDiv(w.keys.RETURN, w.strRETURN, "Close");
+    var footerElement = document.getElementById("listPodval");
+    if (footerElement)
+        footerElement.innerHTML = w.renderButtonHint(
+            w.keys.RETURN,
+            w.strRETURN,
+            "Close"
+        );
     if (typeof jQuery !== "undefined") jQuery("#listPopUp").hide();
     w.listDataArray = w.listArray;
     if (typeof w.showPage === "function") w.showPage();
@@ -5392,7 +5428,7 @@ window.addChannel2bucket = function (): void {
                     (w._(" added to favorites") || " added to favorites")
             );
     } else {
-        if (typeof w.saveCPD === "function") w.saveCPD();
+        if (typeof w.saveListPanelState === "function") w.saveListPanelState();
         var savedIdx = w.selIndex;
         var savedList = w.listArray;
         var savedGetListItem = w.getListItem;
@@ -5428,7 +5464,8 @@ window.addChannel2bucket = function (): void {
                 default:
                     return false;
             }
-            if (typeof w.restoreCPD === "function") w.restoreCPD();
+            if (typeof w.restoreListPanelState === "function")
+                w.restoreListPanelState();
             w.selIndex = savedIdx;
             w.listArray = savedList;
             w.getListItem = savedGetListItem;
@@ -5444,9 +5481,13 @@ window.addChannel2bucket = function (): void {
             captionEl.innerHTML =
                 w._("Select category to add channel") ||
                 "Select category to add channel";
-        var podvalEl = document.getElementById("listPodval");
-        if (podvalEl)
-            podvalEl.innerHTML = w.btnDiv(w.keys.RETURN, w.strRETURN, "Close");
+        var footerElement = document.getElementById("listPodval");
+        if (footerElement)
+            footerElement.innerHTML = w.renderButtonHint(
+                w.keys.RETURN,
+                w.strRETURN,
+                "Close"
+            );
         if (typeof $ !== "undefined") $("#listPopUp").hide();
         if (typeof w.showPage === "function") w.showPage();
     }
@@ -5556,9 +5597,9 @@ window.checkMedia = checkMedia;
 window.setCurrent = setCurrent;
 window.setCurProg = setCurProg;
 window.getCurProgData = getCurProgData;
-window.doGetCurProg = doGetCurProg;
-window.arrayGetCurProg = arrayGetCurProg;
-window.getEPGchanelCached = getEPGchanelCached;
+window.processCurrentProgramQueue = processCurrentProgramQueue;
+window.currentProgramRequestQueue = currentProgramRequestQueue;
+window.getChannelEpgCached = getChannelEpgCached;
 window.nextChannel = nextChannel;
 window.prevChannel = prevChannel;
 window.handleNumberInput = handleNumberInput;
@@ -5575,25 +5616,25 @@ window.deleteFavoritesList = deleteFavoritesList;
 window.listFavoritesLists = listFavoritesLists;
 window.epgList = epgList;
 window.epgListAlpha = epgListAlpha;
-window.epgShow_miniproc = epgShow_miniproc;
+window.loadEpgListData = loadEpgListData;
 window.epgKeyHandler = epgKeyHandler;
-window.epgPodval = epgPodval;
+window.renderEpgFooter = renderEpgFooter;
 window.detailEPG = detailEPG;
 window.setEpgTimer = setEpgTimer;
 window.itemEPG = itemEPG;
 window.epgArray = epgArray;
 window.listEpgArray = listEpgArray;
 window.epg_ch_id = epg_ch_id;
-window.epglisted = epglisted;
+window.epgListMode = epgListMode;
 window.epgreturn = epgreturn;
 window.channelsList = channelsList;
 window.bucketsList = bucketsList;
 window.recordsList = recordsList;
 window.selectEpg = selectEpg;
-window.infoProgramm = infoProgramm;
+window.showProgramInfo = showProgramInfo;
 window.updateArchiveInfo = updateArchiveInfo;
 window.initBackgroundIntervals = initBackgroundIntervals;
-window.btnDiv = btnDiv;
+window.renderButtonHint = renderButtonHint;
 window.setPipPosition = setPipPosition;
 window.pullSettingsFromWindow = pullSettingsFromWindow;
 window.getPipPosition = setPipPosition;
@@ -5733,8 +5774,8 @@ if (typeof window !== "undefined" && !(window as any).__ottListResizeBound) {
 
 window.setFontSize = setFontSize;
 window.setTimezone = setTimezone;
-window.saveCPD = saveCPD;
-window.restoreCPD = restoreCPD;
+window.saveListPanelState = saveListPanelState;
+window.restoreListPanelState = restoreListPanelState;
 window.getMacAddress = getMacAddress;
 // client_feedb and PostFeedback from helpers.ts already global
 window.ottpStorage = storage;
@@ -5753,7 +5794,6 @@ window.lzstring = {
     decompressFromUTF16: (window as any).decompressFromUTF16,
 };
 window.channels = channels;
-(window as any).chanels = channels;
 window.cats = cats;
 window.catsArray = catsArray;
 window.curList = curList;
@@ -5774,7 +5814,7 @@ window.listDataArray = listDataArray;
 window.listSelectionIndex = listSelectionIndex;
 window.popupActions = popupActions;
 window.popupList = popupList;
-window.noProvParam = noProvParam;
+window.toggleProviderSettingsVisibility = toggleProviderSettingsVisibility;
 window.popupArray = popupArray;
 window.popupDetail = popupDetail;
 window.pipIndex = pipIndex;
@@ -5789,8 +5829,8 @@ window.selColorDialog = selColorDialog;
 window.backColorDialog = backColorDialog;
 window.optionsList = optionsList;
 window.restart = restart;
-window.step2text = step2text;
-window.nofun = nofun;
+window.formatSeekOffset = formatSeekOffset;
+window.noop = noop;
 window.toggleAspectRatio = toggleAspectRatio;
 window.toggleZoom = toggleZoom;
 window.toggleAudioTrack = toggleAudioTrack;
@@ -5840,7 +5880,7 @@ function pluginInfo(): void {
         "<br/><br/>" +
         _("Device info:") +
         "<br/>";
-    (window as any).saveCPD();
+    (window as any).saveListPanelState();
     $("#listAbout").show().html(html);
     if (typeof (window as any).stbInfo === "function")
         (window as any).stbInfo();
@@ -5855,14 +5895,15 @@ function privacyPolicy(onClose?: () => void): void {
     var previousHandler = w.aboutKeyHandler;
     var closed = false;
     var panel = $("#listAbout");
-    if (typeof w.saveCPD === "function") w.saveCPD();
+    if (typeof w.saveListPanelState === "function") w.saveListPanelState();
     panel.empty().show();
     var close = function (): void {
         if (closed) return;
         closed = true;
         panel.hide().empty();
         w.aboutKeyHandler = previousHandler;
-        if (typeof w.restoreCPD === "function") w.restoreCPD();
+        if (typeof w.restoreListPanelState === "function")
+            w.restoreListPanelState();
         if (typeof onClose === "function") onClose();
     };
     $("<button type='button'>")
@@ -5997,7 +6038,7 @@ function buttonsInfo(): void {
         (strRed
             ? "<br/>" + e + strRed + t + _("Show EPG and archive for channel")
             : "");
-    (window as any).saveCPD();
+    (window as any).saveListPanelState();
     $("#listAbout")
         .html('<div id="_prd">' + html + "</div>")
         .show();
@@ -6008,7 +6049,7 @@ function buttonsInfo(): void {
             e === (window as any).keys.RETURN ||
             e === (window as any).keys.EXIT
         ) {
-            (window as any).restoreCPD();
+            (window as any).restoreListPanelState();
             $("#listAbout").hide().text("");
             clearTimeout((window as any).detailTimer);
         }
@@ -6029,7 +6070,7 @@ function toggleDebugHudInfo(): void {
 
 var infoArr: any[] = [
     { action: buttonsInfo, name: "Description of remote control buttons" },
-    { action: nofun },
+    { action: noop },
     { action: pluginInfo, desc: "Player and device info", name: "About" },
     {
         action: toggleDebugHudInfo,
@@ -6139,6 +6180,35 @@ window.showPopup = showPopup;
         stbSetItem("sLocalHttpDeviceCode", code);
         if (enabled) stbSetItem("sLocalHttpEnabled", "1");
     }
+);
+
+// Outbound server credentials are entered on this installation, never generated by a listener.
+(window as any).__ottCommandServer = createCommandServer(
+    window,
+    createCommandServerTransport(
+        window,
+        typeof window.__TAURI__ !== "undefined"
+            ? function (request: any): Promise<any> {
+                  return tauriInvoke("proxy_http", request);
+              }
+            : (window as any).Capacitor &&
+                (!(window as any).Capacitor.isNativePlatform ||
+                    (window as any).Capacitor.isNativePlatform())
+              ? function (request: any): Promise<any> {
+                    return StalkerPortal.httpRequest(request);
+                }
+              : undefined
+    ),
+    function (config: any): void {
+        settings.commandServerAddress = config.address;
+        settings.commandServerToken = config.token;
+        settings.commandServerEnabled = config.enabled ? 1 : 0;
+        stbSetItem("commandServerEnabled", "0");
+        stbSetItem("commandServerAddress", config.address);
+        stbSetItem("commandServerToken", config.token);
+        if (config.enabled) stbSetItem("commandServerEnabled", "1");
+    },
+    handleCommand
 );
 
 // Tauri Mode B: poll the native command queue (queue_poll invoke) instead of
@@ -6338,17 +6408,17 @@ function applySettingsToWindow(s: PlayerSettings): void {
     window.sHideMenus = s.hideMenus.slice();
     window.sFavorites = s.favorites;
     window.sPermanentTime = s.permanentTime;
-    window.s10resum = s.res10Resume;
+    window.s10resum = s.resumeWithTenSecondRewind;
     window.sPrevCount = s.prevCount;
     window.sMedCount = s.medCount;
     window.sPSchannels = s.psChannels;
     window.sPSoptions = s.psOptions;
-    window.sPSprovs = s.psProvs;
+    window.sPSprovs = s.requirePinForProviderSelection;
     window.sHDMIsupport = s.hdmiSupport;
     window.sAutorun = s.autorun;
     window.sPlayers = s.players;
     window.sBufSize = s.bufSize;
-    window.sGrapI = s.grapI;
+    window.sGrapI = s.useGraphicalIndicators;
     window.parentPIN = s.parentPin;
     window.sSHLcolSel = s.highlightColorSel;
     window.sSHLcolor = s.highlightColor;
@@ -6406,7 +6476,11 @@ function pullSettingsFromWindow(): void {
         s.psChannels = num(w.sPSchannels, s.psChannels);
     if (w.sPSoptions !== undefined)
         s.psOptions = num(w.sPSoptions, s.psOptions);
-    if (w.sPSprovs !== undefined) s.psProvs = num(w.sPSprovs, s.psProvs);
+    if (w.sPSprovs !== undefined)
+        s.requirePinForProviderSelection = num(
+            w.sPSprovs,
+            s.requirePinForProviderSelection
+        );
     if (w.sHDMIsupport !== undefined)
         s.hdmiSupport = num(w.sHDMIsupport, s.hdmiSupport);
     if (typeof w.parentPIN === "string") s.parentPin = w.parentPIN;
@@ -6435,9 +6509,13 @@ function pullSettingsFromWindow(): void {
     if (w.sEditor !== undefined) s.editor = num(w.sEditor, s.editor);
     if (w.sPermanentTime !== undefined)
         s.permanentTime = num(w.sPermanentTime, s.permanentTime);
-    if (w.sGrapI !== undefined) s.grapI = num(w.sGrapI, s.grapI);
+    if (w.sGrapI !== undefined)
+        s.useGraphicalIndicators = num(w.sGrapI, s.useGraphicalIndicators);
     if (w.s10resum !== undefined)
-        s.res10Resume = num(w.s10resum, s.res10Resume);
+        s.resumeWithTenSecondRewind = num(
+            w.s10resum,
+            s.resumeWithTenSecondRewind
+        );
     if (w.sPrevCount !== undefined)
         s.prevCount = num(w.sPrevCount, s.prevCount);
     if (w.sMedCount !== undefined) s.medCount = num(w.sMedCount, s.medCount);
@@ -6449,7 +6527,7 @@ function pullSettingsFromWindow(): void {
     if (typeof w.sSHLcolorB === "string") s.highlightColorB = w.sSHLcolorB;
     if (w.sShowNum !== undefined) s.showNumber = num(w.sShowNum, s.showNumber);
     if (w.sShowPikon !== undefined)
-        s.showPicon = num(w.sShowPikon, s.showPicon);
+        s.channelLogoMode = num(w.sShowPikon, s.channelLogoMode);
     if (w.sShowName !== undefined) s.showName = num(w.sShowName, s.showName);
     if (w.sShowProgress !== undefined)
         s.showProgress = num(w.sShowProgress, s.showProgress);
@@ -6489,9 +6567,39 @@ function pullSettingsFromWindow(): void {
  */
 window.settingsCommands = function (): void {
     var w = window as any;
+    var commandServer = w.__ottCommandServer;
+    function refreshServerStatus(): void {
+        if (!commandServer) return;
+        var status = commandServer.status();
+        var label = document.getElementById("commandServerStatus");
+        if (label) label.textContent = w._(status.message);
+        var button = document.getElementById("commandServerConnectLabel");
+        if (button)
+            button.textContent = w._(status.enabled ? "Disconnect" : "Connect");
+    }
+    if (commandServer) commandServer.subscribe(refreshServerStatus);
     var changingHttpRemote = false;
     var httpRemoteError = false;
     var closed = false;
+    var selectedControl = w.sNoNumbersKeys ? 0 : -1;
+    var controls: HTMLElement[] = [];
+    var controlActions = [
+        function (): void {
+            editServer(false);
+        },
+        function (): void {
+            editServer(true);
+        },
+        toggleServer,
+        function (): void {
+            editUrl(false);
+        },
+        function (): void {
+            editUrl(true);
+        },
+        toggleHttpRemote,
+        close,
+    ];
     var parent = ["listCaption", "listDetail", "listPodval"].map(function (id) {
         var element = document.getElementById(id);
         return element ? element.innerHTML : "";
@@ -6516,6 +6624,57 @@ window.settingsCommands = function (): void {
             .replace(/'/g, "&#39;");
     }
 
+    function selectControl(index: number, focus: boolean): void {
+        selectedControl = index;
+        for (var i = 0; i < controls.length; i++) {
+            controls[i].style.outline =
+                i === index ? "2px solid currentColor" : "";
+            controls[i].style.outlineOffset = i === index ? "2px" : "";
+        }
+        if (focus && controls[index]) controls[index].focus();
+    }
+    function bindControl(element: HTMLElement, index: number): void {
+        controls[index] = element;
+        element.tabIndex = 0;
+        element.onclick = function (event): void {
+            event.stopPropagation();
+            selectControl(index, false);
+            controlActions[index]();
+        };
+        element.onfocus = function (): void {
+            selectControl(index, false);
+        };
+        element.onkeydown = function (event): void {
+            var key =
+                typeof w.stbEventToKeyCode === "function"
+                    ? w.stbEventToKeyCode(event)
+                    : event.keyCode;
+            if (
+                key === w.keys.ENTER ||
+                key === w.keys.LEFT ||
+                key === w.keys.RIGHT ||
+                key === w.keys.UP ||
+                key === w.keys.DOWN
+            ) {
+                event.preventDefault();
+                event.stopPropagation();
+                w.aboutKeyHandler(key);
+            }
+        };
+    }
+    function close(): void {
+        closed = true;
+        if (commandServer) commandServer.subscribe(null);
+        $("#listAbout").hide().text("");
+        ["listCaption", "listDetail", "listPodval"].forEach(
+            function (id, index) {
+                var element = document.getElementById(id);
+                if (element) element.innerHTML = parent[index];
+            }
+        );
+        w.optionsList(w.settingsCommands);
+    }
+
     // Refresh content after an edit without overwriting the saved parent screen.
     function render(): void {
         if (closed) return;
@@ -6531,21 +6690,66 @@ window.settingsCommands = function (): void {
         if (detail) detail.textContent = "";
         if (footer)
             footer.innerHTML =
-                w.btnDiv(w.keys.RETURN, w.strRETURN, "Close") +
-                w.btnDiv(w.keys.ENTER, w.strENTER, "Local URL") +
-                w.btnDiv(w.keys.N2 || 50, "2", "Swop URL") +
-                w.btnDiv(
+                w.renderButtonHint(w.keys.RETURN, w.strRETURN, "Close") +
+                w.renderButtonHint(w.keys.ENTER, w.strENTER, "Local URL") +
+                w.renderButtonHint(w.keys.N2 || 50, "2", "Swop URL") +
+                w.renderButtonHint(
                     w.keys.N1 || 49,
                     "1",
                     remoteStatus.enabled
                         ? "Disable HTTP remote"
                         : "Enable HTTP remote"
                 ) +
-                '<span style="white-space:nowrap;">↑↓ Scroll</span>';
+                '<span style="white-space:nowrap;">' +
+                text(w._("↑↓ Scroll")) +
+                "</span>";
         var lurl = w.sLocalCmdUrl || "";
         var swopUrl = w.sSwopBaseUrl || "";
         var html =
             '<div id="remoteSettingsContent" style="height:100%;min-height:0;min-width:0;box-sizing:border-box;overflow-y:auto;overflow-x:hidden;overflow-wrap:anywhere;word-break:break-word;-webkit-overflow-scrolling:touch;">' +
+            "<b>" +
+            text(w._("Command server")) +
+            "</b><br/>" +
+            text(
+                w._(
+                    "Connect this player to your remote-control server. Use its device access code; no local HTTP listener is required."
+                )
+            ) +
+            "<br/>" +
+            text(
+                w._(
+                    "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll."
+                )
+            ) +
+            "<br/>" +
+            "<b>" +
+            text(w._("Server address")) +
+            ":</b> " +
+            text(settings.commandServerAddress || w._("not set")) +
+            "<br/>" +
+            "<b>" +
+            text(w._("Access code")) +
+            ":</b> " +
+            text(
+                w._(
+                    settings.commandServerToken
+                        ? "saved on this device"
+                        : "not set"
+                )
+            ) +
+            "<br/>" +
+            "<b>" +
+            text(w._("Status")) +
+            ':</b> <span id="commandServerStatus"></span><br/>' +
+            '<button id="commandServerAddress"><span class="btn">3</span> ' +
+            text(w._("Server address")) +
+            "</button> " +
+            '<button id="commandServerToken"><span class="btn">4</span> ' +
+            text(w._("Access code")) +
+            "</button> " +
+            '<button id="commandServerConnect"><span class="btn">5</span> <span id="commandServerConnectLabel">' +
+            text(w._("Connect")) +
+            "</span></button><br/><br/>" +
             "<b>" +
             text(w._("Local HTTP remote control")) +
             ":</b> " +
@@ -6610,9 +6814,43 @@ window.settingsCommands = function (): void {
             text(swopUrl || "not configured (♥™ no-op)") +
             "<br/><br/>" +
             "<b>Push commands (via webhook):</b><br/>" +
-            "popup_message, channel_by_number, channel_by_name, random_channel, change_provider, change_playlist<br/><br/>" +
-            "UP/DOWN or swipe to scroll. Use the controls below to edit or close.</div>";
+            "popup_message, channel_by_number, channel_by_name, random_channel, change_provider, change_provider_settings, change_playlist, set_volume, exit_player<br/><br/>" +
+            text(
+                w._(
+                    "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll."
+                )
+            ) +
+            "</div>";
         $("#listAbout").show().html(html);
+        // Trusted layout uses CSSOM so the native CSP does not drop inline styles.
+        var content = document.getElementById("remoteSettingsContent");
+        if (content) {
+            content.style.height = "100%";
+            content.style.minHeight = "0";
+            content.style.minWidth = "0";
+            content.style.boxSizing = "border-box";
+            content.style.overflowY = "auto";
+            content.style.overflowX = "hidden";
+            content.style.wordBreak = "break-word";
+        }
+        controls = [];
+        bindControl(document.getElementById("commandServerAddress")!, 0);
+        bindControl(document.getElementById("commandServerToken")!, 1);
+        bindControl(document.getElementById("commandServerConnect")!, 2);
+        var footerControls = footer
+            ? footer.querySelectorAll("span[onclick]")
+            : [];
+        // Keep the existing footer shortcuts while making every action reachable
+        // by a remote with only directional keys, OK and Back.
+        [1, 2, 3, 0].forEach(function (footerIndex, index) {
+            if (footerControls[footerIndex])
+                bindControl(
+                    footerControls[footerIndex] as HTMLElement,
+                    index + 3
+                );
+        });
+        selectControl(selectedControl, selectedControl >= 0);
+        refreshServerStatus();
         var codeInput = document.getElementById(
             "localHttpDeviceCode"
         ) as HTMLInputElement | null;
@@ -6634,6 +6872,39 @@ window.settingsCommands = function (): void {
         }
     }
 
+    function editServer(secret: boolean): void {
+        $("#listAbout").hide();
+        editSettingsText(
+            w._(
+                secret
+                    ? "Server device access code"
+                    : "Server address (for example 192.168.1.20:8081)"
+            ),
+            secret
+                ? settings.commandServerToken
+                : settings.commandServerAddress,
+            function (value): void {
+                if (commandServer)
+                    commandServer.configure({
+                        address: secret ? settings.commandServerAddress : value,
+                        enabled: false,
+                        token: secret ? value : settings.commandServerToken,
+                    });
+                render();
+            },
+            render,
+            secret
+        );
+    }
+    function toggleServer(): void {
+        if (commandServer)
+            commandServer.configure({
+                address: settings.commandServerAddress,
+                enabled: !commandServer.status().enabled,
+                token: settings.commandServerToken,
+            });
+        render();
+    }
     function toggleHttpRemote(): void {
         if (changingHttpRemote) return;
         var remote = w.__ottLocalHttpRemote;
@@ -6695,15 +6966,24 @@ window.settingsCommands = function (): void {
 
     w.aboutKeyHandler = function (e: number): boolean {
         if (e === w.keys.RETURN || e === w.keys.EXIT) {
-            closed = true;
-            $("#listAbout").hide().text("");
-            ["listCaption", "listDetail", "listPodval"].forEach(
-                function (id, index) {
-                    var element = document.getElementById(id);
-                    if (element) element.innerHTML = parent[index];
-                }
-            );
-            w.optionsList(w.settingsCommands);
+            close();
+            return true;
+        }
+        if (e === w.keys.LEFT || e === w.keys.RIGHT) {
+            var next =
+                selectedControl < 0
+                    ? e === w.keys.LEFT
+                        ? controls.length - 1
+                        : 0
+                    : (selectedControl +
+                          (e === w.keys.LEFT ? -1 : 1) +
+                          controls.length) %
+                      controls.length;
+            selectControl(next, true);
+            return true;
+        }
+        if (e === w.keys.ENTER && selectedControl >= 0) {
+            controlActions[selectedControl]();
             return true;
         }
         if (e === w.keys.UP || e === w.keys.DOWN) {
@@ -6717,11 +6997,23 @@ window.settingsCommands = function (): void {
             }
             return true;
         }
+        if (e === w.keys.N3 || e === 51 || e === w.keys.N4 || e === 52) {
+            selectControl(e === w.keys.N4 || e === 52 ? 1 : 0, false);
+            editServer(e === w.keys.N4 || e === 52);
+            return true;
+        }
+        if (e === w.keys.N5 || e === 53) {
+            selectControl(2, false);
+            toggleServer();
+            return true;
+        }
         if (e === w.keys.ENTER || e === w.keys.N2 || e === 50) {
+            selectControl(e === w.keys.ENTER ? 3 : 4, false);
             editUrl(e !== w.keys.ENTER);
             return true;
         }
         if (e === w.keys.N1 || e === 49) {
+            selectControl(5, false);
             toggleHttpRemote();
             return true;
         }
@@ -6740,9 +7032,9 @@ optionsArr.push({ action: _o.settingsInfobar, name: "Infobar settings" });
 optionsArr.push({ action: _o.settingsButtons, name: "Buttons settings" });
 optionsArr.push({ action: _o.settingsMenu, name: "Menu items settings" });
 optionsArr.push({ action: _o.parentControlSetup, name: "Parental control" });
-optionsArr.push({ action: noSelProv });
+optionsArr.push({ action: toggleProviderSelectionVisibility });
 optionsArr.push({
-    action: selectProvaider,
+    action: showProviderSelection,
     desc: "Change provider - you can change the provider, and it will be remembered at the next start of player!",
     name: "Change provider",
 });
@@ -6752,7 +7044,7 @@ optionsArr.push({ action: edit_dealer, name: "Enter Provider Code" });
 optionsArr.push({ action: _o.settingsManage, name: "Manage settings" });
 optionsArr.push({
     action: _o.settingsCommands,
-    desc: "Device ID, local command URL, and swop (remote text entry) settings",
+    desc: "Command server address, device access code, local HTTP control, and remote text entry settings",
     name: "Remote control",
 });
 optionsArr.push({ action: selectLang, name: "Change interface language" });

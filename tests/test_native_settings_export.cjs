@@ -48,13 +48,13 @@ async function testNative(profile, clipboardMode) {
     Object.assign(w, {
         _: (value) => value,
         aboutKeyHandler: previous,
-        btnDiv: (_key, _icon, title) => title,
         exportSettings: () => backup,
         keys: { ENTER: 13, EXIT: 27, RETURN: 8 },
-        restoreCPD() {
+        renderButtonHint: (_key, _icon, title) => title,
+        restoreListPanelState() {
             restored++;
         },
-        saveCPD() {
+        saveListPanelState() {
             saved++;
         },
         showShift(message) {
@@ -129,8 +129,8 @@ async function testClosedBackup(complete) {
         __TAURI__: {},
         exportSettings: () => backup,
         keys: { ENTER: 13, EXIT: 27, RETURN: 8 },
-        restoreCPD() {},
-        saveCPD() {},
+        restoreListPanelState() {},
+        saveListPanelState() {},
         showShift: (message) => notices.push(message),
     });
     Object.defineProperty(w.navigator, "clipboard", {

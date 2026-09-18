@@ -17,6 +17,20 @@ const publicFixture = `
     window.chanels = [];
 `;
 checkBundleIdentifiers(publicFixture);
+checkBundleIdentifiers(
+    publicFixture.replace("window.chanels = []", "var chanels = []")
+);
+assert.throws(
+    () =>
+        checkBundleIdentifiers(
+            publicFixture.replace(
+                "window.chanels = []",
+                "(function () { var chanels = []; })()"
+            )
+        ),
+    /chanels/,
+    "A function-local declaration must not satisfy browser global publication"
+);
 assert.throws(
     () => checkBundleIdentifiers(JSON.stringify(publicFixture) + ";"),
     /Missing classic global/,
@@ -525,6 +539,27 @@ async function main() {
             callback,
             profile + ": detail callback alias must stay synchronized"
         );
+        for (const pair of w.legacyPlayerBindings) {
+            assert.equal(
+                w[pair[0]],
+                w[pair[1]],
+                profile + ": shared naming alias " + pair[0]
+            );
+        }
+        const originalProvider = w.getChannelsArray;
+        vm.runInContext(
+            "function getChanelsArray() { return 'provider override'; }",
+            w
+        );
+        assert.equal(w.getChannelsArray(), "provider override");
+        w.getChannelsArray = originalProvider;
+        assert.equal(w.getChanelsArray, originalProvider);
+        const originalChannels = w.channels;
+        const replacementChannels = { 123: { name: "Alias fixture" } };
+        w.chanels = replacementChannels;
+        assert.equal(w.channels, replacementChannels);
+        w.channels = originalChannels;
+        assert.equal(w.chanels, originalChannels);
         for (const name of [
             "MobileNativeMedia",
             "DashExoPlayer",

@@ -9,7 +9,7 @@
  * 4-byte UTF-8 sequences. Characters up to U+1FFFFF are supported. This
  * matches the `TextEncoder.encode()` behaviour in modern browsers.
  */
-export function str2arr_u8_utf(input: string): number[] {
+export function stringToUtf8Bytes(input: string): number[] {
     var bytes: number[] = [];
     var index = -1;
     var length = input.length;
@@ -54,7 +54,7 @@ export function str2arr_u8_utf(input: string): number[] {
  * Non-Latin-1 characters are silently truncated (code & 0xFF). This is
  * suitable for protocols or file formats that expect single-byte encoding.
  */
-export function str2arr_u8_latin1(input: string): number[] {
+export function stringToLatin1Bytes(input: string): number[] {
     var length = input.length;
     var bytes: number[] = [];
     for (var index = 0; index < length; index++) {
@@ -76,7 +76,7 @@ export function str2arr_u8_latin1(input: string): number[] {
  * expected value for "http" / "https". This is a performance optimisation
  * for STB environments where string operations are slow.
  */
-export function StripHttp(input: string): string {
+export function stripHttpScheme(input: string): string {
     if (input.charCodeAt(3) === 0x70) {
         var hash =
             input.charCodeAt(0) +
@@ -357,7 +357,7 @@ function recordPreviousPortHash(
 export function murmurhash3_32_gc(input: string, seed?: number): number {
     if (input) {
         if (seed === undefined) seed = 0;
-        var bytes = str2arr_u8_utf(input);
+        var bytes = stringToUtf8Bytes(input);
         var result = murmurhash3_32(bytes, seed);
         recordPreviousPortHash("murmur", bytes, seed, result);
         return result;
@@ -475,7 +475,7 @@ export function xxHash32S(
             input = input.toLowerCase();
         }
         if (seed === undefined) seed = 0;
-        var bytes = str2arr_u8_utf(input);
+        var bytes = stringToUtf8Bytes(input);
         var result = xxHash32(bytes, seed);
         recordPreviousPortHash("xxhash", bytes, seed, result);
         return result;
@@ -496,7 +496,7 @@ export function xxHash32S(
  */
 export function xxHash32Si(input: string): string {
     if (!input) return "0";
-    var bytes = str2arr_u8_utf(input.toLowerCase());
+    var bytes = stringToUtf8Bytes(input.toLowerCase());
     var result = xxHash32(bytes, 0);
     recordPreviousPortHash("xxhash", bytes, 0, result);
     return result.toString(10);

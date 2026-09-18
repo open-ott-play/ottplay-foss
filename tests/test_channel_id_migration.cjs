@@ -1,3 +1,7 @@
+const {
+    attachSourceAliases,
+    sourceNames,
+} = require("./helpers/english-source-fixture.cjs");
 /* Actual provider load, storage and favorites code: only proven channel identities migrate. */
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -6,6 +10,7 @@ const vm = require("node:vm");
 const ts = require("typescript");
 const root = path.join(__dirname, "..");
 function source(file, names) {
+    names = sourceNames(file, names);
     const text = fs.readFileSync(path.join(root, file), "utf8");
     if (!names) return text.replace(/^export\s+/gm, "");
     const ast = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
@@ -88,6 +93,7 @@ vm.runInContext(
     ).outputText,
     c
 );
+attachSourceAliases(c);
 c.setProviderPrefix("current:");
 const put = (key, value) => c.providerSetItem(key, JSON.stringify(value));
 const read = (key) => JSON.parse(c.providerGetItem(key));
@@ -189,6 +195,64 @@ c.providerGetItem = () => "[100]";
 c.finishPortChannelIdMigration(migration);
 c.providerGetItem = oldGet;
 assert.deepEqual(read("favoritesArray"), [100]);
+// A completed request from an older load cannot release queued channel commands.
+let completedLoads = 0;
+const played = [];
+c.onChannelsLoaded = () => {
+    completedLoads++;
+    c.channels = { ready: { channel_name: "Ready" } };
+    c.cList = c.curList = ["ready"];
+    c.catsArray = ["Current"];
+    c.cats = { Current: ["ready"] };
+};
+c.playChannel = (category, channel) => played.push([category, channel]);
+c.exports = {};
+c.require = () => ({});
+c.document = { getElementById: () => null };
+vm.runInContext(
+    ts.transpileModule(
+        fs.readFileSync(path.join(root, "src/commands/index.ts"), "utf8"),
+        {
+            compilerOptions: {
+                module: ts.ModuleKind.CommonJS,
+                target: ts.ScriptTarget.ES5,
+            },
+        }
+    ).outputText,
+    c
+);
+const command = { channel_number: 1, command: "channel_by_number" };
+c.loadChannels();
+const olderLoad = loaded;
+c.loadChannels();
+const currentLoad = loaded;
+assert.equal(c.commandChannelsReady, false);
+olderLoad();
+assert.equal(completedLoads, 0, "stale completion cannot run current startup");
+assert.equal(c.commandChannelsReady, false);
+assert.equal(c.exports.handleCommand(command), "deferred");
+assert.deepEqual(played, []);
+currentLoad();
+assert.equal(completedLoads, 1);
+assert.equal(c.commandChannelsReady, true);
+assert.equal(c.exports.handleCommand(command), "accepted");
+assert.deepEqual(played, [[0, 0]]);
+olderLoad();
+assert.equal(completedLoads, 1);
+
+// A provider startup callback can itself start another asynchronous channel load.
+c.onChannelsLoaded = () => c.loadChannels();
+c.loadChannels();
+loaded();
+assert.equal(
+    c.commandChannelsReady,
+    false,
+    "nested load remains unready after its parent returns"
+);
+assert.equal(c.exports.handleCommand(command), "deferred");
+c.onChannelsLoaded = () => {};
+loaded();
+assert.equal(c.commandChannelsReady, true);
 console.log(
     "PASS channel ID migration: actual load/storage/favorites, collision safety, provider isolation and reload"
 );

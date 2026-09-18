@@ -556,3 +556,64 @@ export const stbClearAllItems = storage.clear;
  * @see StorageAdapter.dump
  */
 export const stbGetAllItems = storage.dump;
+
+/** Credentials, consent and recursive snapshots belong to this installation. */
+export function isPortableSettingsKey(key: string): boolean {
+    return (
+        key !== "commandServerAddress" &&
+        key !== "commandServerToken" &&
+        key !== "commandServerEnabled" &&
+        key !== "sLocalHttpEnabled" &&
+        key !== "sLocalHttpDeviceCode" &&
+        key !== "stb_settings_backup"
+    );
+}
+
+/** Copy ordinary settings without changing provider payload strings. */
+export function portableSettingsSnapshot(
+    items: Record<string, any>
+): Record<string, any> {
+    if (!items || typeof items !== "object" || Array.isArray(items))
+        throw new Error("Invalid settings snapshot");
+    var result: Record<string, any> = Object.create(null);
+    for (var key in items) {
+        if (
+            Object.prototype.hasOwnProperty.call(items, key) &&
+            isPortableSettingsKey(key)
+        )
+            result[key] = items[key];
+    }
+    return result;
+}
+
+/** Restore ordinary local backup data without importing remote-control authority. */
+export function restoreLocalSettingsSnapshot(items: Record<string, any>): void {
+    var imported = portableSettingsSnapshot(items);
+    var w = window as any;
+    var current = w.stbGetAllItems();
+    var address = current.commandServerAddress || "";
+    var token = current.commandServerToken || "";
+    var localEnabled = String(current.sLocalHttpEnabled) === "1" ? "1" : "0";
+    var localCode = current.sLocalHttpDeviceCode || "";
+    // Cancel delivery before clearing storage. Keep this installation's own
+    // credentials, but require an explicit reconnect after restoring settings.
+    if (w.__ottCommandServer)
+        w.__ottCommandServer.configure({
+            address: address,
+            enabled: false,
+            token: token,
+        });
+    w.stbSetItem("commandServerEnabled", "0");
+    w.stbClearAllItems();
+    for (var key in imported) {
+        if (Object.prototype.hasOwnProperty.call(imported, key))
+            w.stbSetItem(key, imported[key]);
+    }
+    w.stbSetItem("commandServerAddress", address);
+    w.stbSetItem("commandServerToken", token);
+    w.stbSetItem("commandServerEnabled", "0");
+    // The existing native listener is independent. Preserve current local
+    // consent and its code; imported values can neither enable nor replace it.
+    w.stbSetItem("sLocalHttpEnabled", localEnabled);
+    w.stbSetItem("sLocalHttpDeviceCode", localCode);
+}

@@ -29,9 +29,9 @@ const c = vm.createContext({});
 c.window = c;
 vm.runInContext(code, c);
 for (const row of fixtures.strings) {
-    assert.equal(c.StripHttp(row.input), row.stripped);
+    assert.equal(c.stripHttpScheme(row.input), row.stripped);
     assert.equal(
-        Buffer.from(c.str2arr_u8_utf(row.input)).toString("hex"),
+        Buffer.from(c.stringToUtf8Bytes(row.input)).toString("hex"),
         row.utf8Hex
     );
     assert.equal(c.murmurhash3_32_gc(row.input, 0), row.murmur0);
@@ -53,16 +53,16 @@ for (const row of fixtures.bytes) {
 }
 for (const url of [fixtures.xmltv.url, "http://EPG.test/Feed.xml.gz"]) {
     assert.equal(
-        c.xxHash32Si(c.StripHttp(url)),
+        c.xxHash32Si(c.stripHttpScheme(url)),
         fixtures.xmltv.hash,
         "Both URL schemes resolve to the legacy XMLTV source ID"
     );
 }
 assert.equal(
-    c.StripHttp("ftp://epg.test/feed.xml.gz"),
+    c.stripHttpScheme("ftp://epg.test/feed.xml.gz"),
     "ftp://epg.test/feed.xml.gz"
 );
-assert.equal(c.StripHttp("relative/feed.xml.gz"), "relative/feed.xml.gz");
+assert.equal(c.stripHttpScheme("relative/feed.xml.gz"), "relative/feed.xml.gz");
 
 // The optional migration observer must compare exact same inputs/seeds and not
 // modify the canonical return value or compute historical hashes in normal use.

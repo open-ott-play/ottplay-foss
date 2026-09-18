@@ -1,3 +1,4 @@
+import { isPortableSettingsKey } from "../storage/index";
 /**
  * Cloud settings helpers — upload/download settings via the
  * host_ott/swop/a.php service (STB firmware only).
@@ -70,8 +71,7 @@ export function cloudSendSettings(): void {
     for (var prop in items) {
         if (
             Object.prototype.hasOwnProperty.call(items, prop) &&
-            prop !== "sLocalHttpEnabled" &&
-            prop !== "sLocalHttpDeviceCode"
+            isPortableSettingsKey(prop)
         )
             xml += '\n<entry key="' + prop + '">' + items[prop] + "</entry>";
     }
@@ -204,6 +204,12 @@ export function cloudLoadSettings(): void {
                             var entries = xml.split('<entry key="');
                             entries.shift();
                             try {
+                                if (w.__ottCommandServer)
+                                    w.__ottCommandServer.configure({
+                                        address: "",
+                                        enabled: false,
+                                        token: "",
+                                    });
                                 if (typeof w.stbClearAllItems === "function")
                                     w.stbClearAllItems();
                             } catch (e) {
@@ -214,8 +220,7 @@ export function cloudLoadSettings(): void {
                                     .split("</entry>")[0]
                                     .split('">');
                                 if (
-                                    parts[0] !== "sLocalHttpEnabled" &&
-                                    parts[0] !== "sLocalHttpDeviceCode" &&
+                                    isPortableSettingsKey(parts[0]) &&
                                     typeof w.stbSetItem === "function"
                                 )
                                     w.stbSetItem(parts[0], parts[1]);

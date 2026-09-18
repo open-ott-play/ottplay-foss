@@ -83,7 +83,7 @@ export function isProviderAllowed(id: string): boolean {
     );
 }
 
-export var arrayProvaiders = [
+export var providerIds = [
     "m3u",
     "stalker",
     "xtream",
@@ -138,11 +138,11 @@ export var arrayProvaiders = [
     // OTTPLAY_FULL_ONLY_END
 ];
 
-export var provArray: string[] | null = null;
+export var providerLabels: string[] | null = null;
 
 // ─── Storage keys for provider data ──────────────────────────────────────────
 
-var pdsa: string[] = [
+var providerScopedStorageKeys: string[] = [
     "catsArray",
     "cats",
     "favoritesArray",
@@ -165,7 +165,7 @@ var pdsa: string[] = [
 // Initialised with full defaults (matching original) so the menu works even
 // when loadProv is not called (e.g. PC/browser without a provider script).
 
-export var nofun = function () {};
+export var noop = function () {};
 
 import { popupActions, popupArray, popupDetail } from "../app/state";
 
@@ -213,15 +213,15 @@ declare var stbStop: () => void;
 declare var stbSetItem: (key: string, val: string) => void;
 declare var stbGetItem: (key: string) => string;
 declare var stbPlayPip: (url: string) => void;
-declare var getEPGchanel: (
+declare var getChannelEpg: (
     chId: string,
     cb: (id: string, data: any[]) => void
 ) => void;
-declare var getEPGchanelCached: (
+declare var getChannelEpgCached: (
     chId: string,
     cb: (id: string, data: any[]) => void
 ) => void;
-declare var epgCash: number;
+declare var epgCacheCapacity: number;
 declare var getCurProgData: (
     chId: string,
     cb: (chId: string) => void
@@ -239,9 +239,9 @@ declare var channelsKeyHandler: (key: number) => boolean;
  * Side effects: DOM mutations to #pn{chId}, #pr{chId}.
  * Called as the EPG callback from getCurProgData.
  */
-function updateChanelList(chId: string): void {
+function updateChannelListRow(chId: string): void {
     var ch = channels[chId as any];
-    if (!ch && (window as any).chanels) ch = (window as any).chanels[chId];
+    if (!ch && (window as any).channels) ch = (window as any).channels[chId];
     if (!ch && (window as any).channels) ch = (window as any).channels[chId];
     if (!ch) return;
     var pn = document.getElementById("pn" + chId);
@@ -254,7 +254,7 @@ function updateChanelList(chId: string): void {
     }
     if (listArray[selIndex] == chId) detailProg();
 }
-(window as any).updateChanelList = updateChanelList;
+(window as any).updateChannelListRow = updateChannelListRow;
 /**
  * Render the detail/program info panel for the currently selected channel.
  * Shows current program name, time range, elapsed/total duration, description
@@ -337,9 +337,10 @@ function detailProg(): void {
             ".ott-channel-thumbnail"
         ) as HTMLElement | null;
         if (thumbnail) {
-            var thumbnailWidth = Math.floor(133 * getWidthK());
+            var thumbnailWidth = Math.floor(133 * getViewportWidthScale());
             thumbnail.style.width = thumbnailWidth + "px";
-            thumbnail.style.height = Math.floor(200 * getHeightK()) + "px";
+            thumbnail.style.height =
+                Math.floor(200 * getViewportHeightScale()) + "px";
             thumbnail.style.margin = Math.floor(thumbnailWidth / 15) + "px";
             thumbnail.style.backgroundImage =
                 'url("' + metadataCssUrl(e.icon) + '")';
@@ -373,24 +374,25 @@ function detailProg(): void {
 function setPopupChannels(): void {
     if ((!sFavorites && listCatIndex) || (sFavorites && !listCatIndex)) {
         $("#listPopUp").html(
-            btnDiv(keys.N1, "1", "Move channel up") +
+            renderButtonHint(keys.N1, "1", "Move channel up") +
                 "<br/>" +
-                btnDiv(keys.N7, "7", "Move channel down") +
+                renderButtonHint(keys.N7, "7", "Move channel down") +
                 "<br/>" +
-                btnDiv(keys.N8, "8", "Delete channel") +
+                renderButtonHint(keys.N8, "8", "Delete channel") +
                 (sFavorites
                     ? ""
-                    : "<br/>" + btnDiv(keys.N3, "3", "Add channel to category"))
+                    : "<br/>" +
+                      renderButtonHint(keys.N3, "3", "Add channel to category"))
         );
     } else {
         $("#listPopUp").html(
-            btnDiv(
+            renderButtonHint(
                 keys.N3,
                 "3",
                 "Add channel to " + (sFavorites ? "favorites" : "category")
             ) +
                 "<br/>" +
-                btnDiv(
+                renderButtonHint(
                     keys.N9,
                     "9",
                     _("Sort channels") +
@@ -401,10 +403,10 @@ function setPopupChannels(): void {
     }
     if (sPSchannels && parentPIN != "*") {
         $("#listPopUp").append(
-            "<br/>" + btnDiv(keys.N4, "4", "Channel parental control")
+            "<br/>" + renderButtonHint(keys.N4, "4", "Channel parental control")
         );
     }
-    $("#listPopUp").append("<br/>" + btnDiv(keys.N6, "6", "Search"));
+    $("#listPopUp").append("<br/>" + renderButtonHint(keys.N6, "6", "Search"));
 }
 declare var sPreview: number;
 declare var previewChan: any;
@@ -421,8 +423,8 @@ declare var selIndex: number;
 declare var listArray: any[];
 declare var listDetail: HTMLElement;
 declare var listCaptionElement: HTMLElement;
-var listPodval: HTMLElement | null = null;
-declare var itemWith: number;
+var listFooter: HTMLElement | null = null;
+declare var channelListItemWidth: number;
 declare var pageSize: number;
 declare var bodyColor: string;
 declare var curColor: string;
@@ -446,8 +448,8 @@ declare var cList: string[];
 declare var channels: Record<string, any>;
 declare var epg: any;
 declare var curList: string[];
-declare var epgCashObj: Record<string, any>;
-declare var epgCashArr: string[];
+declare var epgCacheByChannel: Record<string, any>;
+declare var epgCacheChannelOrder: string[];
 declare var _crData: { catIndex: number; data: any[]; selIndex: number };
 declare var aAspects: Record<string, any>;
 declare var aAudios: Record<string, any>;
@@ -461,7 +463,7 @@ declare var listKeyHandler: (key: number) => boolean;
 declare var listKeyHandlerFn: (key: number) => boolean;
 declare var showPage: () => void;
 declare var closeList: () => void;
-declare var btnDiv: (
+declare var renderButtonHint: (
     key: number,
     label: string,
     desc: string,
@@ -545,7 +547,7 @@ declare var _playMedia: (item: any) => void;
 declare var playChannel: (catIdx: number, chIdx: number) => void;
 declare var bucketsList: (catIdx: number) => void;
 declare var playMedia: (item: any) => void;
-declare var onChanelsLoaded: () => void;
+declare var onChannelsLoaded: () => void;
 declare var client_feedb: (msg: string) => void;
 declare var infoBox: (msg: string) => void;
 /**
@@ -588,8 +590,8 @@ export function optionsList(fn?: () => void): void {
         listDataArray.push(_(opt.name || ""));
     });
     listArray = listDataArray;
-    if (!sNoNumbersKeys) addBtn2menu(optionsArr, selectProvaider, "9");
-    addBtn2menu(optionsArr, selectProvaider, strTools);
+    if (!sNoNumbersKeys) addBtn2menu(optionsArr, showProviderSelection, "9");
+    addBtn2menu(optionsArr, showProviderSelection, strTools);
     selIndex = 0;
     if (typeof fn !== "undefined") {
         for (var t = 0; t < optionsArr.length; t++) {
@@ -606,7 +608,8 @@ export function optionsList(fn?: () => void): void {
         listDetail.innerHTML = _(
             optionsArr[selIndex].desc || optionsArr[selIndex].name || ""
         );
-        if (optionsArr[selIndex].action == noSelProv) nselprov = 0;
+        if (optionsArr[selIndex].action == toggleProviderSelectionVisibility)
+            providerSelectionUnlockCount = 0;
     };
     listKeyHandlerFn = function (key: number): boolean {
         console.log(
@@ -635,13 +638,14 @@ export function optionsList(fn?: () => void): void {
                 return true;
             case keys.TOOLS:
             case keys.N9:
-                if (optIndexOf(selectProvaider) > -1) selectProvaider();
+                if (optIndexOf(showProviderSelection) > -1)
+                    showProviderSelection();
                 return true;
         }
         return false;
     };
     listCaptionElement.innerHTML = _("Settings");
-    listPodval!.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
+    listFooter!.innerHTML = renderButtonHint(keys.RETURN, strRETURN, "Close");
     $("#listPopUp").hide();
     showPage();
 }
@@ -651,8 +655,8 @@ declare var loadOpt: (() => void) | undefined;
 declare var delOption: (fn: () => void) => void;
 // popupActions/popupArray/popupDetail defined as export let above
 
-var nselprov = 0,
-    nprovparams = 0,
+var providerSelectionUnlockCount = 0,
+    providerSettingsUnlockCount = 0,
     _clearAll = 0;
 
 /**
@@ -663,11 +667,13 @@ var nselprov = 0,
  *
  * Side effects: Writes 'noSelProv' to stb storage, then calls restart().
  */
-export function noSelProv(): void {
-    if (++nselprov < 7) return;
+export function toggleProviderSelectionVisibility(): void {
+    if (++providerSelectionUnlockCount < 7) return;
     if (sPSprovs && parentPIN != "*" && !(window as any).parentAccess) {
         if (typeof (window as any).enterPinAndSetAccess === "function") {
-            (window as any).enterPinAndSetAccess(noSelProv);
+            (window as any).enterPinAndSetAccess(
+                toggleProviderSelectionVisibility
+            );
         }
         return;
     }
@@ -676,7 +682,7 @@ export function noSelProv(): void {
         stbSetItem("noSelProv", e ? "1" : "0");
         restart();
     });
-    nselprov = 0;
+    providerSelectionUnlockCount = 0;
 }
 
 /**
@@ -687,11 +693,13 @@ export function noSelProv(): void {
  *
  * Side effects: Writes 'noProvParam' to stb storage, then calls restart().
  */
-export function noProvParam(): void {
-    if (++nprovparams < 7) return;
+export function toggleProviderSettingsVisibility(): void {
+    if (++providerSettingsUnlockCount < 7) return;
     if (sPSoptions && parentPIN != "*" && !(window as any).parentAccess) {
         if (typeof (window as any).enterPinAndSetAccess === "function") {
-            (window as any).enterPinAndSetAccess(noProvParam);
+            (window as any).enterPinAndSetAccess(
+                toggleProviderSettingsVisibility
+            );
         }
         return;
     }
@@ -703,7 +711,7 @@ export function noProvParam(): void {
             restart();
         }
     );
-    nprovparams = 0;
+    providerSettingsUnlockCount = 0;
 }
 
 /**
@@ -718,7 +726,7 @@ export function restart(): void {
     window.location.reload();
 }
 declare var setPlayer: () => void;
-declare var getEPGchanelCur:
+declare var getCurrentChannelEpg:
     | ((chId: string, cb: (id: string, data: any[]) => void) => void)
     | null;
 declare var getMediaArray:
@@ -784,15 +792,15 @@ declare var sBufSize: number;
 declare var sAutorun: number;
 declare var sThumbnail: number;
 declare var p_pref: string;
-declare var _epgDomen: string;
+declare var providerEpgBaseUrl: string;
 declare var ott_event: any;
 declare var keyStrings: Record<string, string>;
 declare function _(key: string, ...args: any[]): string;
-declare function getWidthK(): number;
-declare function getHeightK(): number;
+declare function getViewportWidthScale(): number;
+declare function getViewportHeightScale(): number;
 declare var aboutKeyHandler: (key: number) => boolean;
-declare var saveCPD: () => void;
-declare var restoreCPD: () => void;
+declare var saveListPanelState: () => void;
+declare var restoreListPanelState: () => void;
 declare var stbExit: () => void;
 declare var version: string;
 declare var s: string;
@@ -835,6 +843,9 @@ declare var confirmBox: (
  * If noProvParam=1, splices provider settings out of popup arrays.
  */
 export function loadProv(providerId?: string): void {
+    var commandLoad = {};
+    (window as any).__ottCommandChannelLoad = commandLoad;
+    (window as any).commandChannelsReady = false;
     if (!isProviderAllowed((window as any)._pendingProvId || ""))
         (window as any)._pendingProvId = "";
     // An explicit choice made from Demo wins for this load only. The stored
@@ -845,7 +856,7 @@ export function loadProv(providerId?: string): void {
             : "";
     // A provider switch retires demo playback before any asynchronous load.
     if ((window as any).ottplayDemoActive === true) {
-        var demoMenuIndex = popupActions.indexOf(selectProvaider);
+        var demoMenuIndex = popupActions.indexOf(showProviderSelection);
         if (demoMenuIndex !== -1) {
             popupActions.splice(demoMenuIndex, 1);
             popupArray.splice(demoMenuIndex, 1);
@@ -885,6 +896,7 @@ export function loadProv(providerId?: string): void {
      * Side effects: Alert dialog; DOM append to launch_id; hides the element.
      */
     function onError(): void {
+        if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
         (window as any)._pendingProvId = "";
         if (s !== "no") {
             alert(s + ": load error!!!");
@@ -907,7 +919,7 @@ export function loadProv(providerId?: string): void {
     }
 
     version = savedPopup.ver;
-    getEPGchanelCur = null;
+    getCurrentChannelEpg = null;
     getMediaArray = null;
     // Assign provider callback stubs (ported from original)
     if (typeof _playChannel !== "undefined") playChannel = _playChannel;
@@ -967,27 +979,27 @@ export function loadProv(providerId?: string): void {
         }
         if (s.indexOf("*") > -1 && !stbGetItem("ottplayprov")) {
             s = s.replace(/\*/g, "");
-            if (isProviderAllowed(s) && arrayProvaiders.indexOf(s) > -1) {
+            if (isProviderAllowed(s) && providerIds.indexOf(s) > -1) {
                 stbSetItem("ottplayprov", s);
                 stbSetItem("noSelProv", "1");
                 s = "";
             }
         }
-        if (!isProviderAllowed(s) || arrayProvaiders.indexOf(s) === -1) s = "";
+        if (!isProviderAllowed(s) || providerIds.indexOf(s) === -1) s = "";
     }
-    if (s) delOption(selectProvaider);
+    if (s) delOption(showProviderSelection);
     else
         s =
             demoProviderSelection ||
             (providerId === "demo" ? "demo" : stbGetItem("ottplayprov") || s);
-    if (!isProviderAllowed(s) || arrayProvaiders.indexOf(s) === -1) s = "";
+    if (!isProviderAllowed(s) || providerIds.indexOf(s) === -1) s = "";
     if (!s) {
         s = "no";
         onError();
         return;
     }
     if (Number.parseInt(stbGetItem("noSelProv") || "0"))
-        delOption(selectProvaider);
+        delOption(showProviderSelection);
     else {
         $(launch_id).append("<br/>");
         $(launch_id).append(
@@ -998,6 +1010,7 @@ export function loadProv(providerId?: string): void {
     getScriptDOM(
         host + "/prov/" + s + "/prov.js?" + __cv,
         function () {
+            if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
             try {
                 if (typeof duneAddSettings === "function") {
                     $(launch_id).append("<br/>Loading settings...");
@@ -1007,7 +1020,9 @@ export function loadProv(providerId?: string): void {
                     (window as any).popupActions = popupActions;
                     (window as any).popupArray = popupArray;
                     (window as any).popupDetail = popupDetail;
-                    var idx = popupActions.indexOf(noProvParam) + 1;
+                    var idx =
+                        popupActions.indexOf(toggleProviderSettingsVisibility) +
+                        1;
                     duneAddSettings(idx);
                     // Sync the window globals back into the working arrays so
                     // a provider's modifications become the new popup state.
@@ -1040,8 +1055,14 @@ export function loadProv(providerId?: string): void {
                         // settings have been filtered, without changing locks.
                         var demoExit = popupActions.indexOf(optionsList);
                         if (demoExit < 0) demoExit = popupActions.length;
-                        if (popupActions.indexOf(selectProvaider) === -1) {
-                            popupActions.splice(demoExit, 0, selectProvaider);
+                        if (
+                            popupActions.indexOf(showProviderSelection) === -1
+                        ) {
+                            popupActions.splice(
+                                demoExit,
+                                0,
+                                showProviderSelection
+                            );
                             popupArray.splice(
                                 demoExit,
                                 0,
@@ -1053,9 +1074,9 @@ export function loadProv(providerId?: string): void {
                                 _("Choose provider")
                             );
                         }
-                        if (optIndexOf(selectProvaider) === -1)
+                        if (optIndexOf(showProviderSelection) === -1)
                             optionsArr.push({
-                                action: selectProvaider,
+                                action: showProviderSelection,
                                 name: "Change provider",
                             });
                     }
@@ -1090,12 +1111,12 @@ export function loadProv(providerId?: string): void {
                         });
                         $(launch_id).append(img);
                     }
-                    if (typeof getEPGchanelCur !== "function")
-                        getEPGchanelCur = epgCash
-                            ? getEPGchanelCached
-                            : getEPGchanel;
+                    if (typeof getCurrentChannelEpg !== "function")
+                        getCurrentChannelEpg = epgCacheCapacity
+                            ? getChannelEpgCached
+                            : getChannelEpg;
                     // Expose for doGetCurProg queue processing
-                    (window as any).getEPGchanelCurCached = getEPGchanelCur;
+                    (window as any).getCachedChannelEpg = getCurrentChannelEpg;
                     loadChannels();
                 } else {
                     console.error("duneAddSettings is not a function");
@@ -1136,6 +1157,9 @@ export function loadProv(providerId?: string): void {
  * Edge case: Stops any active playback before loading.
  */
 export function loadChannels(): void {
+    var commandLoad = {};
+    (window as any).__ottCommandChannelLoad = commandLoad;
+    (window as any).commandChannelsReady = false;
     var idMigration = beginPortChannelIdMigration();
     if (!$("#launch").is(":visible")) {
         if (stbIsPlaying()) stbStop();
@@ -1196,7 +1220,7 @@ export function loadChannels(): void {
     if (wShow.settings) {
         wShow.settings.showNumber = sShowNum;
         wShow.settings.showName = sShowName;
-        wShow.settings.showPicon = sShowPikon;
+        wShow.settings.channelLogoMode = sShowPikon;
         wShow.settings.showProgress = sShowProgress;
         wShow.settings.showProgram = sShowProgram;
         wShow.settings.showDescription = sShowDescr;
@@ -1242,14 +1266,56 @@ export function loadChannels(): void {
         if (typeof (window as any).clearBootHide === "function")
             (window as any).clearBootHide();
     }, 3000);
-    getChanelsArray(function () {
+    getChannelsArray(function () {
         clearTimeout(_loadTimer);
+        if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
         finishPortChannelIdMigration(idMigration);
-        onChanelsLoaded();
+        onChannelsLoaded();
+        // Startup callbacks may synchronously switch provider or reload channels.
+        if ((window as any).__ottCommandChannelLoad === commandLoad)
+            (window as any).commandChannelsReady = true;
     });
 }
 
 // ─── Provider selection UI ────────────────────────────────────────────────────
+
+/** Select a provider from the current registry without bypassing parental or distribution policy. */
+export function selectProviderByIndex(index: number): boolean {
+    if (
+        typeof index !== "number" ||
+        !isFinite(index) ||
+        index < 0 ||
+        Math.floor(index) !== index
+    )
+        return false;
+    var id = providerIds[index];
+    if (!id || !isProviderAllowed(id)) return false;
+    if (sPSprovs && parentPIN !== "*" && !(window as any).parentAccess) {
+        enterPinAndSetAccess(function (): void {
+            selectProviderByIndex(providerIds.indexOf(id));
+        });
+        return false;
+    }
+    if (stbGetItem("ottplayprov") === id) return true;
+    var recent: string[] = [];
+    try {
+        recent = JSON.parse(stbGetItem("ottplayprovs") || "[]");
+    } catch (_error) {}
+    if (!Array.isArray(recent)) recent = [];
+    if (index > 2) {
+        var previous = recent.indexOf(id);
+        if (previous !== -1) recent.splice(previous, 1);
+        recent.push(id);
+        stbSetItem("ottplayprovs", JSON.stringify(recent));
+    }
+    stbSetItem("ottplayprov", id);
+    loadProv(
+        id === "demo" || (window as any).ottplayDemoActive === true
+            ? id
+            : undefined
+    );
+    return true;
+}
 
 /**
  * Show the provider selection list UI.
@@ -1270,18 +1336,18 @@ export function loadChannels(): void {
  * - If sNoNumbersKeys, hides number-key shortcuts.
  * - RETURN from a non-dune setup calls firstRun(); otherwise calls optionsList.
  */
-export function selectProvaider(): void {
+export function showProviderSelection(): void {
     if (sPSprovs && parentPIN !== "*" && !(window as any).parentAccess) {
-        enterPinAndSetAccess(selectProvaider);
+        enterPinAndSetAccess(showProviderSelection);
         return;
     }
     if (isPlayDistribution()) {
         // Imported/recent Full selections cannot expand this registry.
-        arrayProvaiders = ["m3u", "stalker", "xtream", "", "demo"];
-        provArray = null;
+        providerIds = ["m3u", "stalker", "xtream", "", "demo"];
+        providerLabels = null;
     }
-    if (!provArray || provArray.some((p) => typeof p !== "string"))
-        provArray = [
+    if (!providerLabels || providerLabels.some((p) => typeof p !== "string"))
+        providerLabels = [
             (sNoColorKeys ? "" : '<div class="btn red">&nbsp;</div>&nbsp;') +
                 _("m3u-m3u8 playlists"),
             (sNoColorKeys ? "" : '<div class="btn green">&nbsp;</div>&nbsp;') +
@@ -1332,9 +1398,9 @@ export function selectProvaider(): void {
     // OTTPLAY_FULL_ONLY_BEGIN
     var cbkey = stbGetItem("cbkey");
     if (!cbkey) {
-        for (var i = 0; i < provArray.length; i++) {
-            if (provArray[i] === "Гомельсат (cbilling)") {
-                provArray.splice(i, 1);
+        for (var i = 0; i < providerLabels.length; i++) {
+            if (providerLabels[i] === "Гомельсат (cbilling)") {
+                providerLabels.splice(i, 1);
                 break;
             }
         }
@@ -1356,9 +1422,9 @@ export function selectProvaider(): void {
                 listDetail.innerHTML.replace("display:none", "") +
                 "</div>"
         );
-        saveCPD();
+        saveListPanelState();
         aboutKeyHandler = function () {
-            restoreCPD();
+            restoreListPanelState();
             $("#listAbout").hide();
             return true;
         };
@@ -1377,11 +1443,11 @@ export function selectProvaider(): void {
     function selectProv(id: string): void {
         if (!id || !isProviderAllowed(id)) return;
         if (savedProvId === id) {
-            optionsList(selectProvaider);
+            optionsList(showProviderSelection);
             return;
         }
         stbSetItem("ottplayprov", id);
-        if (arrayProvaiders.indexOf(id) > recentCount - 1) {
+        if (providerIds.indexOf(id) > recentCount - 1) {
             var recent = recentProviders.slice();
             var idx = recent.indexOf(id);
             if (idx !== -1) recent.splice(idx, 1);
@@ -1416,19 +1482,19 @@ export function selectProvaider(): void {
         // OTTPLAY_FULL_ONLY_BEGIN
         if (!cbkey && prov === "cbilling") return;
         // OTTPLAY_FULL_ONLY_END
-        var idx = arrayProvaiders.indexOf(prov);
+        var idx = providerIds.indexOf(prov);
         if (idx === -1) return;
-        arrayProvaiders.splice(idx, 1);
-        arrayProvaiders.splice(recentCount + 1, 0, prov);
-        var name = provArray![idx];
-        provArray!.splice(idx, 1);
-        provArray!.splice(recentCount + 1, 0, name);
+        providerIds.splice(idx, 1);
+        providerIds.splice(recentCount + 1, 0, prov);
+        var name = providerLabels![idx];
+        providerLabels!.splice(idx, 1);
+        providerLabels!.splice(recentCount + 1, 0, name);
     });
 
-    selIndex = arrayProvaiders.indexOf(savedProvId);
-    if (selIndex === -1 || selIndex >= provArray!.length) selIndex = 0;
-    listArray = provArray!;
-    listDataArray = provArray!;
+    selIndex = providerIds.indexOf(savedProvId);
+    if (selIndex === -1 || selIndex >= providerLabels!.length) selIndex = 0;
+    listArray = providerLabels!;
+    listDataArray = providerLabels!;
     getListItemFn = function (item: string, idx: number) {
         return (
             "&nbsp;&nbsp;" +
@@ -1439,12 +1505,8 @@ export function selectProvaider(): void {
         );
     };
     detailListAction = function () {
-        if (
-            arrayProvaiders[selIndex] &&
-            isProviderAllowed(arrayProvaiders[selIndex])
-        ) {
-            var aboutUrl =
-                host + "/prov/" + arrayProvaiders[selIndex] + "/about";
+        if (providerIds[selIndex] && isProviderAllowed(providerIds[selIndex])) {
+            var aboutUrl = host + "/prov/" + providerIds[selIndex] + "/about";
             var lang = stbGetItem("ottplaylang") || "";
             if (lang === "_eng") lang = "";
             $("#listDetail").load(
@@ -1467,7 +1529,7 @@ export function selectProvaider(): void {
             case keys.N7:
             case keys.N8:
             case keys.N9:
-                selectProv(arrayProvaiders[key - 49 + recentCount + 1]);
+                selectProv(providerIds[key - 49 + recentCount + 1]);
                 return true;
             case keys.RED:
                 selectProv("m3u");
@@ -1479,12 +1541,12 @@ export function selectProvaider(): void {
                 selectProv("xtream");
                 return true;
             case keys.ENTER:
-                selectProv(arrayProvaiders[selIndex]);
+                selectProv(providerIds[selIndex]);
                 return true;
             case keys.RETURN:
                 if (typeof duneAddSettings !== "function") {
                     firstRun();
-                } else optionsList(selectProvaider);
+                } else optionsList(showProviderSelection);
                 return true;
             case keys.RIGHT:
                 if (sArrowFun !== 2) return false;
@@ -1506,9 +1568,9 @@ export function selectProvaider(): void {
         }
     };
     listCaptionElement.innerHTML = _("Choose provider");
-    listPodval!.innerHTML =
-        btnDiv(keys.RETURN, strRETURN, "Close") +
-        btnDiv(keys.N0, strInfo, "Description", "0");
+    listFooter!.innerHTML =
+        renderButtonHint(keys.RETURN, strRETURN, "Close") +
+        renderButtonHint(keys.N0, strInfo, "Description", "0");
     $("#listPopUp").hide();
     showPage();
 }
@@ -1530,7 +1592,7 @@ export function selectProvaider(): void {
  */
 export function edit_dealer(): void {
     if (isPlayDistribution()) {
-        selectProvaider();
+        showProviderSelection();
         return;
     }
     // OTTPLAY_FULL_ONLY_BEGIN
@@ -1589,7 +1651,7 @@ export function edit_dealer(): void {
  */
 export function edit_dealer_remote(): void {
     if (isPlayDistribution()) {
-        selectProvaider();
+        showProviderSelection();
         return;
     }
     // OTTPLAY_FULL_ONLY_BEGIN
@@ -1674,7 +1736,7 @@ export function edit_dealer_remote(): void {
         });
     }
 
-    listPodval!.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
+    listFooter!.innerHTML = renderButtonHint(keys.RETURN, strRETURN, "Close");
     $("#listEdit")
         .html(
             '<div style="text-align:center;font-size:larger;"><br/><br/>' +
@@ -1756,7 +1818,7 @@ declare var duneAddSettings: ((_index: number) => void) | null;
  *
  * @param _callback - Function to call once channel data is loaded.
  */
-export function getChanelsArray(_callback: () => void): void {
+export function getChannelsArray(_callback: () => void): void {
     // Override in provider scripts
     _callback();
 }
@@ -1802,7 +1864,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     (window as any).selIndex = selIndex;
     listCatIndex = catIdx;
     listArray = cats[catsArray[listCatIndex]] || [];
-    var wk = getWidthK();
+    var wk = getViewportWidthScale();
     var wglob = window as any;
     // window.s* (settings / saveIfChanged) can diverge from concat-scope lets
     // after Menu→Channel list settings; prefer window, then let, default on.
@@ -1814,7 +1876,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     }
     var showNum = listFlag("sShowNum", sShowNum, 1);
     var showName = listFlag("sShowName", sShowName, 1);
-    var showPikon = listFlag("sShowPikon", sShowPikon, 1);
+    var channelLogoMode = listFlag("sShowPikon", sShowPikon, 1);
     var showProgress = listFlag("sShowProgress", sShowProgress, 1);
     var showProgram = listFlag("sShowProgram", sShowProgram, 1);
     var showArchive = listFlag("sShowArchive", sShowArchive, 1);
@@ -1824,7 +1886,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     // Keep lets + window aligned for subsequent renders / settings screens.
     sShowNum = showNum;
     sShowName = showName;
-    sShowPikon = showPikon;
+    sShowPikon = channelLogoMode;
     sShowProgress = showProgress;
     sShowProgram = showProgram;
     sShowArchive = showArchive;
@@ -1833,7 +1895,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     sNextCountL = nextCountL;
     wglob.sShowNum = showNum;
     wglob.sShowName = showName;
-    wglob.sShowPikon = showPikon;
+    wglob.sShowPikon = channelLogoMode;
     wglob.sShowProgress = showProgress;
     wglob.sShowProgram = showProgram;
     wglob.sShowArchive = showArchive;
@@ -1843,7 +1905,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     if (wglob.settings) {
         wglob.settings.showNumber = showNum;
         wglob.settings.showName = showName;
-        wglob.settings.showPicon = showPikon;
+        wglob.settings.channelLogoMode = channelLogoMode;
         wglob.settings.showProgress = showProgress;
         wglob.settings.showProgram = showProgram;
         wglob.settings.showArchive = showArchive;
@@ -1859,15 +1921,15 @@ function _channelsList(catIdx: number, channelIdx: number): void {
         ((wglob.settings && wglob.settings.pageSize) || pageSize || 25) | 0
     );
     wglob.listPageSize = pageSz;
-    var itemH = (window.innerHeight - 90 * getHeightK()) / pageSz;
+    var itemH = (window.innerHeight - 90 * getViewportHeightScale()) / pageSz;
     if (!(itemH > 0) || isNaN(itemH)) {
-        itemH = Math.max(12 * getHeightK(), 16);
+        itemH = Math.max(12 * getViewportHeightScale(), 16);
     }
     // Real showPage row box (130 / live #listIn) — cap picon/archive to it.
     var rowH =
         typeof wglob.listRowHeight === "function"
             ? wglob.listRowHeight(pageSz)
-            : (window.innerHeight - 130 * getHeightK()) / pageSz;
+            : (window.innerHeight - 130 * getViewportHeightScale()) / pageSz;
     if (!(rowH > 0) || isNaN(rowH)) rowH = itemH;
     var boxH = Math.max(1, Math.floor(Math.min(itemH, rowH)));
     var numWidth = 0;
@@ -1885,9 +1947,11 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     // Picon/progress geometry must fit the real showPage row box (boxH).
     // Sizing from taller 90-chrome itemH made flex children outgrow #itN in
     // WKWebView even with max-height on the row.
-    var pikonRaw = [0, Math.max(0, boxH - 2), boxH * 1.5][showPikon];
-    var pikonSize = pikonRaw > 0 ? pikonRaw : 0;
-    var pikonMargin = pikonSize || !archWidth ? 6 * wk : 0;
+    var channelLogoRawSize = [0, Math.max(0, boxH - 2), boxH * 1.5][
+        channelLogoMode
+    ];
+    var channelLogoSize = channelLogoRawSize > 0 ? channelLogoRawSize : 0;
+    var channelLogoMargin = channelLogoSize || !archWidth ? 6 * wk : 0;
     var progWidth = showProgress ? 40 * wk : 0;
     var progBarH = Math.max(1, Math.floor(boxH / 3.5));
     // Vertical-only margins — all-side margin inflated the flex cross-size.
@@ -1906,7 +1970,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
         // scoped DOM pass below work under Tauri's nonced style policy.
         // Queue EPG fill for every visible row (OTT). Re-read ch after call:
         // deferred doGetCurProg may not have run yet; time_to hit returns true.
-        getCurProgData(chId, updateChanelList);
+        getCurProgData(chId, updateChannelListRow);
         var nowSec = Date.now() / 1e3;
         var progName =
             ch.time_to && ch.time_to >= nowSec && ch.name
@@ -1922,7 +1986,9 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                 ? '<div class="ott-channel-number">' + (idx + 1) + "</div>"
                 : "") +
             (archWidth ? '<div class="ott-channel-archive"></div>' : "") +
-            (pikonSize ? '<div class="img ott-channel-picon"></div>' : "") +
+            (channelLogoSize
+                ? '<div class="img ott-channel-picon"></div>'
+                : "") +
             '<div class="ott-channel-label" data-channel-id="' +
             metadataText(chId) +
             '">&nbsp;' +
@@ -2003,11 +2069,11 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                     }
                     safePic = metadataCssUrl(picUrl);
                 } catch (_invalidPicon) {}
-                picon.style.flexBasis = pikonSize + "px";
-                picon.style.width = pikonSize + "px";
+                picon.style.flexBasis = channelLogoSize + "px";
+                picon.style.width = channelLogoSize + "px";
                 picon.style.height =
-                    Math.max(1, Math.min(pikonSize, boxH - 2)) + "px";
-                picon.style.marginLeft = pikonMargin + "px";
+                    Math.max(1, Math.min(channelLogoSize, boxH - 2)) + "px";
+                picon.style.marginLeft = channelLogoMargin + "px";
                 picon.style.backgroundImage = safePic
                     ? 'url("' + safePic + '")'
                     : "";
@@ -2060,8 +2126,8 @@ function _channelsList(catIdx: number, channelIdx: number): void {
         }
     }
     listCaptionElement.textContent = _("Channel list. Category: ") + catName;
-    listPodval!.innerHTML =
-        btnDiv(
+    listFooter!.innerHTML =
+        renderButtonHint(
             keys.RED,
             "",
             "EPG",
@@ -2074,7 +2140,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                     ? strNEXT
                     : ""
         ) +
-        btnDiv(
+        renderButtonHint(
             keys.BLUE,
             "",
             "Category",
@@ -2087,10 +2153,10 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                     ? strPREV
                     : ""
         ) +
-        btnDiv(keys.YELLOW, "", "Actions", strTools, "0") +
-        btnDiv(keys.N2, strInfo, "Description", "2") +
+        renderButtonHint(keys.YELLOW, "", "Actions", strTools, "0") +
+        renderButtonHint(keys.N2, strInfo, "Description", "2") +
         (typeof stbPlayPip === "function"
-            ? btnDiv(keys.PIP, strPip, "Open in PiP", strSTOP, "5")
+            ? renderButtonHint(keys.PIP, strPip, "Open in PiP", strSTOP, "5")
             : "");
     setPopupChannels();
     $("#listPopUp").hide();
@@ -2124,9 +2190,9 @@ export function firstRun(): void {
             name: _("Enter Provider Code on PC or Phone"),
         },
         { action: loadSettings, name: _("Load settings") },
-        { action: nofun, name: "" },
+        { action: noop, name: "" },
         // OTTPLAY_FULL_ONLY_END
-        { action: selectProvaider, name: _("Manual setup") },
+        { action: showProviderSelection, name: _("Manual setup") },
     ];
     // OTTPLAY_FULL_ONLY_BEGIN
     if (typeof loadOpt === "function")
@@ -2173,7 +2239,7 @@ export function firstRun(): void {
         return false;
     };
     listCaptionElement.innerHTML = _("First Run Setup");
-    listPodval!.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
+    listFooter!.innerHTML = renderButtonHint(keys.RETURN, strRETURN, "Close");
     $("#listPopUp").hide();
     listDataArray = listArray;
     showPage();

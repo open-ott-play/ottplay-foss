@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
+const { compatibilitySource } = require("./helpers/english-source-fixture.cjs");
 const root = path.resolve(__dirname, "..");
 
 function selectedSource(file, functions, assignments = [], variables = []) {
@@ -27,15 +28,18 @@ function selectedSource(file, functions, assignments = [], variables = []) {
         .join("\n");
 }
 function compile(source) {
-    return ts
-        .transpileModule(source, {
-            compilerOptions: {
-                module: ts.ModuleKind.ES2015,
-                target: ts.ScriptTarget.ES2018,
-            },
-        })
-        .outputText.replace(/^import .*$/gm, "")
-        .replace(/^export /gm, "");
+    return (
+        compatibilitySource +
+        ts
+            .transpileModule(source, {
+                compilerOptions: {
+                    module: ts.ModuleKind.ES2015,
+                    target: ts.ScriptTarget.ES2018,
+                },
+            })
+            .outputText.replace(/^import .*$/gm, "")
+            .replace(/^export /gm, "")
+    );
 }
 const menus = [
     "stbOptions",
@@ -80,9 +84,6 @@ function fixture(
         },
         backColorDialog() {},
         beginPortChannelIdMigration() {},
-        btnDiv() {
-            return "";
-        },
         bufferSizes: ["auto", "1", "2"],
         channels: {},
         clearTimeout(id) {
@@ -98,7 +99,7 @@ function fixture(
             },
         },
         finishPortChannelIdMigration() {},
-        getChanelsArray: (done) => done(),
+        getChannelsArray: (done) => done(),
         getMediaArray() {},
         Hls: {
             isSupported() {
@@ -120,8 +121,8 @@ function fixture(
             RW: 82,
         },
         launch_id: "#launch",
-        nofun() {},
-        onChanelsLoaded() {},
+        noop() {},
+        onChannelsLoaded() {},
         optIndexOf() {
             return 0;
         },
@@ -134,7 +135,7 @@ function fixture(
         popupActions: [
             function channels() {},
             function epg() {},
-            function noProvParam() {},
+            function toggleProviderSettingsVisibility() {},
         ],
         popupArray: ["Channels", "EPG", "Provider"],
         providerGetItem: (key) => storage.get("provider:" + key),
@@ -143,8 +144,10 @@ function fixture(
             return stored.has("provider:" + key);
         },
         providerSetItem: (key, value) => storage.set("provider:" + key, value),
+        renderButtonHint() {
+            return "";
+        },
         selColorDialog() {},
-        selectProvaider() {},
         setAutorun() {},
         setColor() {},
         setEditor() {},
@@ -163,6 +166,7 @@ function fixture(
         setTimezone() {},
         showEditKey2() {},
         showPage() {},
+        showProviderSelection() {},
         showShift() {},
         stbClearAllItems() {},
         stbGetAllItems() {},
@@ -187,7 +191,7 @@ function fixture(
             },
         },
     };
-    w.noProvParam = w.popupActions[2];
+    w.toggleProviderSettingsVisibility = w.popupActions[2];
     if (device !== undefined) w.ott_device = device;
     if (profile === "tauri") w.__TAURI__ = {};
     if (profile === "tauri-internals") w.__TAURI_INTERNALS__ = {};
@@ -871,7 +875,7 @@ for (const profile of [
     save(parental.w);
     assert.equal(parental.stored.get("sPSchannels"), "0");
     assert.equal(parental.stored.get("sPSoptions"), "1");
-    assert.equal(parental.typed().psProvs, 1);
+    assert.equal(parental.typed().requirePinForProviderSelection, 1);
     const { w, stored, typed, timers } = fixture(profile);
     assert.equal(
         typed().localHttpEnabled,
@@ -880,6 +884,8 @@ for (const profile of [
     );
     assert.equal(typed().localHttpDeviceCode, "");
     assert.equal(w.sLocalHttpEnabled, 0);
+    assert.equal(typed().commandServerEnabled, 0);
+    assert.equal(typed().commandServerToken, "");
     w.settingsButtons();
     save(w);
     assert.deepEqual(
@@ -938,7 +944,25 @@ for (const profile of [
         sPSoptions: 1,
         sRfun: 4,
     });
+    vm.runInContext(
+        'settings.commandServerAddress = "http://private-server:8081"; settings.commandServerToken = "private-code"; settings.commandServerEnabled = 1;',
+        w
+    );
+    let serverRevoked = false;
+    w.__ottCommandServer = {
+        configure(config) {
+            assert.equal(config.enabled, false);
+            serverRevoked = true;
+        },
+    };
     const exported = JSON.parse(w.exportSettings());
+    for (const key of [
+        "commandServerAddress",
+        "commandServerToken",
+        "commandServerEnabled",
+    ])
+        assert.equal(Object.hasOwn(exported.settings, key), false);
+
     assert.equal(exported.settings.rFun, 4);
     assert.equal(
         Object.hasOwn(exported.settings, "localHttpEnabled"),
@@ -971,6 +995,9 @@ for (const profile of [
             ...exported,
             settings: {
                 ...exported.settings,
+                commandServerAddress: "https://attacker",
+                commandServerEnabled: 1,
+                commandServerToken: "injected-code",
                 localHttpDeviceCode: "injected",
                 localHttpEnabled: 1,
             },
@@ -981,6 +1008,14 @@ for (const profile of [
         "a".repeat(64),
         "import cannot replace this device's credential"
     );
+    assert.equal(
+        serverRevoked,
+        true,
+        "JSON import revokes an active connection immediately"
+    );
+    assert.equal(typed().commandServerEnabled, 0);
+    assert.equal(typed().commandServerToken, "private-code");
+    assert.equal(typed().commandServerAddress, "http://private-server:8081");
     stored.set("sLocalHttpEnabled", "0");
     stored.set("sLocalHttpDeviceCode", "");
     vm.runInContext("applySettingsToWindow(loadSettings());", w);
@@ -989,6 +1024,9 @@ for (const profile of [
             ...exported,
             settings: {
                 ...exported.settings,
+                commandServerAddress: "https://attacker",
+                commandServerEnabled: 1,
+                commandServerToken: "injected-code",
                 localHttpDeviceCode: "injected",
                 localHttpEnabled: 1,
             },

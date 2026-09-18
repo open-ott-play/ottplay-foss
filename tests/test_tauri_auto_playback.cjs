@@ -163,13 +163,13 @@ function fixture(options = {}) {
         _: (text) => text,
         __TAURI__: options.tauri === false ? undefined : {},
         $: () => ({ css() {}, hide() {}, html() {}, show() {} }),
+        applyChannelPreference() {},
         clearInterval() {},
         clearTimeout(timer) {
             timers.delete(timer);
         },
         console: { error() {}, log() {}, warn() {} },
         document: { body: { style: {} } },
-        execCHarr() {},
         Hls,
         innerHeight: 720,
         innerWidth: 1280,
@@ -184,7 +184,7 @@ function fixture(options = {}) {
             preferences[key] = String(value);
         },
         Set: undefined,
-        saveCHarr() {},
+        saveChannelPreference() {},
         setInterval() {
             return ++nextTimer;
         },

@@ -89,7 +89,7 @@ const keyboard = declarations(
         "_setPunct",
         "showEditKey1",
         "showEdit",
-        "btnDiv",
+        "renderButtonHint",
     ],
     true
 );
@@ -165,7 +165,7 @@ function makeStage(directory) {
     try {
         fs.writeFileSync(
             path.join(directory, "controls.html"),
-            w.btnDiv(w.keys.PLAY, w.strPlayPause, "Play / pause")
+            w.renderButtonHint(w.keys.PLAY, w.strPlayPause, "Play / pause")
         );
     } finally {
         w.close();
@@ -197,8 +197,8 @@ function domFixture(code = "", css = "") {
             RETURN: 14,
             YELLOW: 12,
         },
-        listPodvalElement: w.document.getElementById("listPodval"),
-        saveCPD() {},
+        listFooterElement: w.document.getElementById("listPodval"),
+        saveListPanelState() {},
         sNoColorKeys: false,
         stbGetItem: () => "_eng",
     });
@@ -478,7 +478,7 @@ try {
                 actual.keyStrings = { yes: "Enabled" };
                 assert.equal(actual._("yes"), "Enabled");
                 const controls = w.document.getElementById("controls");
-                controls.innerHTML = actual.btnDiv(
+                controls.innerHTML = actual.renderButtonHint(
                     actual.keys.PLAY,
                     actual.strPlayPause,
                     "Play / pause"

@@ -34,6 +34,7 @@ function fixture() {
         keys: { EXIT: 27, RETURN: 8 },
         setTimeout: () => 1,
     });
+    w.eval(func("src/storage/index.ts", "isPortableSettingsKey"));
     return w;
 }
 
@@ -49,9 +50,15 @@ test("cloud export omits this device's consent and secret code", () => {
         w.host_ott = "fixture.invalid";
         w.host_ott_proto = "https://";
         w.stbGetAllItems = () => ({
+            commandServerAddress: "https://private-server",
+            commandServerEnabled: "1",
+            commandServerToken: "private-server-code",
             fixture: "value",
             sLocalHttpDeviceCode: "private-device-code-do-not-upload",
             sLocalHttpEnabled: "1",
+            stb_settings_backup: JSON.stringify({
+                commandServerToken: "nested-secret-code",
+            }),
         });
         let post;
         w.$.ajax = (options) => {
@@ -60,9 +67,19 @@ test("cloud export omits this device's consent and secret code", () => {
         w.cloudSendSettings();
         assert.equal(post.url, "https://fixture.invalid/swop/a.php");
         assert(post.data.d.includes('<entry key="fixture">value</entry>'));
+        for (const key of [
+            "commandServerAddress",
+            "commandServerToken",
+            "commandServerEnabled",
+            "private-server-code",
+            "private-server",
+        ])
+            assert(!post.data.d.includes(key));
         assert(!post.data.d.includes("sLocalHttpEnabled"));
         assert(!post.data.d.includes("sLocalHttpDeviceCode"));
         assert(!post.data.d.includes("private-device-code-do-not-upload"));
+        assert(!post.data.d.includes("stb_settings_backup"));
+        assert(!post.data.d.includes("nested-secret-code"));
     } finally {
         w.close();
     }
@@ -76,6 +93,13 @@ test("cloud restore ignores injected local HTTP consent and credentials", () => 
             ["sLocalHttpDeviceCode", "old-local-code"],
             ["ordinary", "old-value"],
         ]);
+        let revoked = false;
+        w.__ottCommandServer = {
+            configure(config) {
+                assert.equal(config.enabled, false);
+                revoked = true;
+            },
+        };
         let cleared = 0;
         let restarted = 0;
         let post;
@@ -83,6 +107,11 @@ test("cloud restore ignores injected local HTTP consent and credentials", () => 
         w.host_ott = "fixture.invalid";
         w.host_ott_proto = "https://";
         w.stbClearAllItems = () => {
+            assert.equal(
+                revoked,
+                true,
+                "disconnect before clearing credentials"
+            );
             cleared++;
             stored.clear();
         };
@@ -110,6 +139,10 @@ test("cloud restore ignores injected local HTTP consent and credentials", () => 
             data:
                 "<properties><comment>OTT-Play Preferences</comment>" +
                 '<entry key="ordinary">restored-value</entry>' +
+                '<entry key="commandServerAddress">https://injected</entry>' +
+                '<entry key="commandServerToken">injected-code</entry>' +
+                '<entry key="commandServerEnabled">1</entry>' +
+                '<entry key="stb_settings_backup">{"commandServerToken":"nested-secret-code","commandServerEnabled":"1"}</entry>' +
                 '<entry key="sLocalHttpEnabled">1</entry>' +
                 '<entry key="sLocalHttpDeviceCode">injected-code</entry>' +
                 "</properties>",
@@ -117,6 +150,13 @@ test("cloud restore ignores injected local HTTP consent and credentials", () => 
         });
         assert.equal(cleared, 1);
         assert.equal(restarted, 1);
+        for (const key of [
+            "commandServerAddress",
+            "commandServerToken",
+            "commandServerEnabled",
+            "stb_settings_backup",
+        ])
+            assert.equal(stored.has(key), false);
         assert.equal(stored.get("ordinary"), "restored-value");
         assert.equal(
             stored.has("sLocalHttpEnabled"),

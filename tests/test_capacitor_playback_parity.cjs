@@ -382,6 +382,7 @@ function fixture(platform = "android") {
                 },
             };
         },
+        applyChannelPreference() {},
         Capacitor: { getPlatform: () => platform },
         clearInterval(id) {
             timers.delete(id);
@@ -404,7 +405,6 @@ function fixture(platform = "android") {
             body: { classList: { add() {}, remove() {} }, style: {} },
             getElementById: (id) => elements[id] || null,
         },
-        execCHarr() {},
         Hls,
         innerHeight: 720,
         innerWidth: 1280,
