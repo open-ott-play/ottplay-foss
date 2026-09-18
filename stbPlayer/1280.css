@@ -834,8 +834,8 @@ body {
 }
 .ott-spinner .blob {
     position: absolute;
-    width: 16%;
-    height: 16%;
+    width: 20%;
+    height: 20%;
     background: #82e4e0;
     border-radius: 50%;
     /* A dark edge keeps the light dots distinct over bright video. */
@@ -844,28 +844,28 @@ body {
     animation: ott-spinner-breathe 1.6s ease-in-out infinite;
 }
 .ott-spinner .blob:nth-child(1) {
-    top: 14%;
-    left: 41%;
-    width: 18%;
-    height: 18%;
+    top: 12%;
+    left: 39%;
+    width: 22%;
+    height: 22%;
     background: #e1fff7;
 }
 .ott-spinner .blob:nth-child(2) {
-    top: 42%;
-    left: 69%;
+    top: 40%;
+    left: 67%;
     -webkit-animation-delay: -1.2s;
     animation-delay: -1.2s;
 }
 .ott-spinner .blob:nth-child(3) {
-    top: 69%;
-    left: 42%;
+    top: 67%;
+    left: 40%;
     background: #9ebcff;
     -webkit-animation-delay: -0.8s;
     animation-delay: -0.8s;
 }
 .ott-spinner .blob:nth-child(4) {
-    top: 42%;
-    left: 15%;
+    top: 40%;
+    left: 13%;
     background: #c4a8f0;
     -webkit-animation-delay: -0.4s;
     animation-delay: -0.4s;
@@ -892,7 +892,7 @@ body {
         -webkit-transform: scale(1);
     }
     50% {
-        -webkit-transform: scale(0.7);
+        -webkit-transform: scale(0.8);
     }
 }
 @keyframes ott-spinner-breathe {
@@ -901,7 +901,7 @@ body {
         transform: scale(1);
     }
     50% {
-        transform: scale(0.7);
+        transform: scale(0.8);
     }
 }
 @media (prefers-reduced-motion: reduce) {
