@@ -820,177 +820,92 @@ body {
     color: lime;
 }
 
-/* Shared liquid indicator for playback, PiP, menus and provider dialogs. */
+/* Shared orbit indicator for playback, PiP, menus and provider dialogs.
+   Keep the 30px layout box; separated dots leave the center and edges clear.
+   Position and size both change so motion remains readable at TV distance. */
 .ott-spinner {
     width: 30px;
     height: 30px;
     pointer-events: none;
     background: none;
     border: none;
-    -webkit-animation: none;
-    animation: none;
+    -webkit-animation: ott-spinner-orbit 1.6s linear infinite;
+    animation: ott-spinner-orbit 1.6s linear infinite;
 }
 .ott-spinner .blob {
     position: absolute;
-    top: 9%;
-    left: 9%;
-    width: 82%;
-    height: 82%;
-    border-radius: 42% 58% 57% 43% / 48% 40% 60% 52%;
-    -webkit-animation: ott-liquid-shape 5.6s ease-in-out infinite;
-    animation: ott-liquid-shape 5.6s ease-in-out infinite;
+    width: 16%;
+    height: 16%;
+    background: #82e4e0;
+    border-radius: 50%;
+    /* A dark edge keeps the light dots distinct over bright video. */
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.85);
+    -webkit-animation: ott-spinner-breathe 1.6s ease-in-out infinite;
+    animation: ott-spinner-breathe 1.6s ease-in-out infinite;
 }
 .ott-spinner .blob:nth-child(1) {
-    background-color: #78b8e4;
-    background-image:
-        radial-gradient(
-            ellipse at 22% 20%,
-            #c8fff0 0%,
-            rgba(111, 232, 218, 0) 62%
-        ),
-        radial-gradient(
-            ellipse at 82% 78%,
-            #c29bea 0%,
-            rgba(154, 112, 226, 0) 65%
-        ),
-        linear-gradient(135deg, #58cfc9, #709be3 52%, #9f83d6);
-    background-size:
-        140% 140%,
-        140% 140%,
-        100% 100%;
-    box-shadow:
-        0 0 4px rgba(104, 194, 223, 0.2),
-        inset 1px 1px 2px rgba(225, 255, 248, 0.45),
-        inset -1px -2px 3px rgba(45, 57, 118, 0.3);
-    -webkit-animation:
-        ott-liquid-shape 5.6s ease-in-out infinite,
-        ott-liquid-color 8s ease-in-out infinite;
-    animation:
-        ott-liquid-shape 5.6s ease-in-out infinite,
-        ott-liquid-color 8s ease-in-out infinite;
+    top: 14%;
+    left: 41%;
+    width: 18%;
+    height: 18%;
+    background: #e1fff7;
 }
 .ott-spinner .blob:nth-child(2) {
-    top: 14%;
-    left: 12%;
-    width: 65%;
-    height: 64%;
-    background: radial-gradient(
-        ellipse at 36% 32%,
-        rgba(202, 255, 223, 0.85),
-        rgba(103, 227, 214, 0) 72%
-    );
-    -webkit-animation: ott-liquid-flow 6.2s ease-in-out -2s infinite;
-    animation: ott-liquid-flow 6.2s ease-in-out -2s infinite;
+    top: 42%;
+    left: 69%;
+    -webkit-animation-delay: -1.2s;
+    animation-delay: -1.2s;
 }
 .ott-spinner .blob:nth-child(3) {
-    top: 24%;
-    left: 28%;
-    width: 59%;
-    height: 60%;
-    background: radial-gradient(
-        ellipse at 56% 58%,
-        rgba(235, 179, 233, 0.85),
-        rgba(183, 128, 225, 0) 72%
-    );
-    -webkit-animation: ott-liquid-flow 7.4s ease-in-out -5s infinite reverse;
-    animation: ott-liquid-flow 7.4s ease-in-out -5s infinite reverse;
+    top: 69%;
+    left: 42%;
+    background: #9ebcff;
+    -webkit-animation-delay: -0.8s;
+    animation-delay: -0.8s;
 }
 .ott-spinner .blob:nth-child(4) {
-    top: 17%;
-    left: 22%;
-    width: 34%;
-    height: 30%;
-    background: radial-gradient(
-        ellipse at 42% 40%,
-        rgba(244, 255, 248, 0.8),
-        rgba(244, 255, 248, 0) 70%
-    );
-    -webkit-animation: ott-liquid-flow 5.6s ease-in-out -1s infinite;
-    animation: ott-liquid-flow 5.6s ease-in-out -1s infinite;
+    top: 42%;
+    left: 15%;
+    background: #c4a8f0;
+    -webkit-animation-delay: -0.4s;
+    animation-delay: -0.4s;
 }
-@-webkit-keyframes ott-liquid-shape {
-    0%,
-    100% {
-        border-radius: 42% 58% 57% 43% / 48% 40% 60% 52%;
-        -webkit-transform: rotate(-8deg) scale(0.94);
+@-webkit-keyframes ott-spinner-orbit {
+    from {
+        -webkit-transform: rotate(0deg);
     }
-    33% {
-        border-radius: 58% 42% 38% 62% / 40% 54% 46% 60%;
-        -webkit-transform: rotate(8deg) scale(1);
-    }
-    66% {
-        border-radius: 46% 54% 64% 36% / 60% 42% 58% 40%;
-        -webkit-transform: rotate(-4deg) scale(0.96);
+    to {
+        -webkit-transform: rotate(360deg);
     }
 }
-@keyframes ott-liquid-shape {
-    0%,
-    100% {
-        border-radius: 42% 58% 57% 43% / 48% 40% 60% 52%;
-        transform: rotate(-8deg) scale(0.94);
+@keyframes ott-spinner-orbit {
+    from {
+        transform: rotate(0deg);
     }
-    33% {
-        border-radius: 58% 42% 38% 62% / 40% 54% 46% 60%;
-        transform: rotate(8deg) scale(1);
-    }
-    66% {
-        border-radius: 46% 54% 64% 36% / 60% 42% 58% 40%;
-        transform: rotate(-4deg) scale(0.96);
+    to {
+        transform: rotate(360deg);
     }
 }
-@-webkit-keyframes ott-liquid-color {
+@-webkit-keyframes ott-spinner-breathe {
     0%,
     100% {
-        background-position:
-            0% 0%,
-            100% 100%,
-            0% 0%;
+        -webkit-transform: scale(1);
     }
     50% {
-        background-position:
-            100% 40%,
-            0% 60%,
-            0% 0%;
+        -webkit-transform: scale(0.7);
     }
 }
-@keyframes ott-liquid-color {
+@keyframes ott-spinner-breathe {
     0%,
     100% {
-        background-position:
-            0% 0%,
-            100% 100%,
-            0% 0%;
+        transform: scale(1);
     }
     50% {
-        background-position:
-            100% 40%,
-            0% 60%,
-            0% 0%;
-    }
-}
-@-webkit-keyframes ott-liquid-flow {
-    0%,
-    100% {
-        opacity: 0.55;
-        -webkit-transform: translate(-4%, 3%) scale(0.86) rotate(-14deg);
-    }
-    50% {
-        opacity: 0.95;
-        -webkit-transform: translate(8%, -5%) scale(1.04) rotate(16deg);
-    }
-}
-@keyframes ott-liquid-flow {
-    0%,
-    100% {
-        opacity: 0.55;
-        transform: translate(-4%, 3%) scale(0.86) rotate(-14deg);
-    }
-    50% {
-        opacity: 0.95;
-        transform: translate(8%, -5%) scale(1.04) rotate(16deg);
+        transform: scale(0.7);
     }
 }
 @media (prefers-reduced-motion: reduce) {
+    .ott-spinner,
     .ott-spinner .blob:nth-child(n) {
         -webkit-animation: none;
         animation: none;
