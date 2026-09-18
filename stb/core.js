@@ -694,8 +694,10 @@ function stbToggleZoom() {
 }
 function saveOpt() {
     if (typeof stbGetAllItems !== "function") return;
-    var items = stbGetAllItems();
     try {
+        if (typeof portableSettingsSnapshot !== "function")
+            throw new Error("Settings backup policy is unavailable");
+        var items = portableSettingsSnapshot(stbGetAllItems());
         localStorage.setItem("stb_settings_backup", JSON.stringify(items));
         showShift(_("Settings saved to storage"));
     } catch (e) {
@@ -709,13 +711,9 @@ function loadOpt() {
             showShift(_("No saved settings found"));
             return;
         }
-        var items = JSON.parse(data);
-        if (typeof stbClearAllItems === "function") stbClearAllItems();
-        for (var k in items) {
-            if (items.hasOwnProperty(k) && typeof stbSetItem === "function") {
-                stbSetItem(k, items[k]);
-            }
-        }
+        if (typeof restoreLocalSettingsSnapshot !== "function")
+            throw new Error("Settings backup policy is unavailable");
+        restoreLocalSettingsSnapshot(JSON.parse(data));
         showShift(_("Settings loaded from storage"));
     } catch (e) {
         console.error("[stb] loadOpt error:", e);

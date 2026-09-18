@@ -149,6 +149,7 @@ function fixture() {
             html() {},
             show() {},
         }),
+        applyChannelPreference() {},
         clearInterval,
         clearTimeout,
         console: {
@@ -159,7 +160,6 @@ function fixture() {
             warn() {},
         },
         document: { body: { style: {} } },
-        execCHarr() {},
         Hls,
         innerHeight: 720,
         innerWidth: 1280,
@@ -167,7 +167,7 @@ function fixture() {
         // Mode A must still run without the ES2015 Promise constructor.
         Promise: undefined,
         Set: undefined,
-        saveCHarr() {},
+        saveChannelPreference() {},
         setInterval,
         setTimeout,
         shaka: { Player: Shaka },

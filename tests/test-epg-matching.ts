@@ -32,11 +32,10 @@ async function getModule() {
 
 const mockWindow: Record<string, any> = {
     _: (s: string) => s,
-    chanels: {} as Record<number, any>,
     channels: {} as Record<number, any>,
     confirmBox: null as any,
     curColor: "#fff",
-    getEPGchanel: null as any,
+    getChannelEpg: null as any,
     host: "http://localhost",
     infoBox: null as any,
     listArray: [] as any[],
@@ -50,7 +49,7 @@ const mockWindow: Record<string, any> = {
     stbSetItem: null as any,
 };
 
-// Stub jQuery (used by epgShow_miniproc for spinner)
+// Stub jQuery (used by loadEpgListData for spinner)
 (global as any).$ = function (selector: string) {
     return {
         hide: () => mockWindow,
@@ -66,16 +65,15 @@ function applyMocks(ch: Awaited<ReturnType<typeof getModule>>) {
 }
 
 function clearMocks() {
-    mockWindow.chanels = {};
-    mockWindow.channels = mockWindow.chanels; // alias — code reads window.channels
+    mockWindow.channels = {};
     mockWindow.listChannel = 0;
     mockWindow.primaryIndex = 0;
     mockWindow.selIndex = 0;
     mockWindow.listArray = [];
     mockWindow.playType = 0;
     mockWindow.playTime = 0;
-    mockWindow.getEPGchanel = null;
-    mockWindow.epgCash = 10;
+    mockWindow.getChannelEpg = null;
+    mockWindow.epgCacheCapacity = 10;
     mockWindow.setCurProg = null;
     mockWindow.stbGetItem = null;
     mockWindow.stbSetItem = null;
@@ -141,38 +139,38 @@ function testFormatEpgTime(ch: Awaited<ReturnType<typeof getModule>>) {
 }
 
 // ---------------------------------------------------------------------------
-// getEPGchanelCached / getEPGchanelCurCached / getEpgFromCash tests
+// getChannelEpgCached / getCachedChannelEpg / getEpgFromCache tests
 // ---------------------------------------------------------------------------
 
 function testEpglCacheLookups(ch: Awaited<ReturnType<typeof getModule>>) {
     const {
-        getEPGchanelCached,
-        getEPGchanelCurCached,
-        getEpgFromCash,
+        getChannelEpgCached,
+        getCachedChannelEpg,
+        getEpgFromCache,
         epg,
-        epgCashObj,
+        epgCacheByChannel,
     } = ch;
 
     // Empty cache
     let received: any[] | null = [];
-    getEPGchanelCached(999, (_id: number, programs: any[]) => {
+    getChannelEpgCached(999, (_id: number, programs: any[]) => {
         received = programs;
     });
     assert.strictEqual(
         received,
         null,
-        "getEPGchanelCached returns null for missing entry"
+        "getChannelEpgCached returns null for missing entry"
     );
 
     assert.strictEqual(
-        getEPGchanelCurCached(999),
+        getCachedChannelEpg(999),
         null,
-        "getEPGchanelCurCached returns null for missing entry"
+        "getCachedChannelEpg returns null for missing entry"
     );
     assert.strictEqual(
-        getEpgFromCash(999),
+        getEpgFromCache(999),
         null,
-        "getEpgFromCash returns null for missing entry"
+        "getEpgFromCache returns null for missing entry"
     );
 
     // Populate the full cache through a provider response, never via now/next.
@@ -191,36 +189,36 @@ function testEpglCacheLookups(ch: Awaited<ReturnType<typeof getModule>>) {
             time_to: now + 200,
         },
     ];
-    mockWindow.getEPGchanel = (id: number, done: any) => done(id, sample);
-    getEPGchanelCached(42, () => {});
-    mockWindow.getEPGchanel = () => {
+    mockWindow.getChannelEpg = (id: number, done: any) => done(id, sample);
+    getChannelEpgCached(42, () => {});
+    mockWindow.getChannelEpg = () => {
         throw new Error("unexpected refetch");
     };
 
     received = [];
-    getEPGchanelCached(42, (_id: number, programs: any[]) => {
+    getChannelEpgCached(42, (_id: number, programs: any[]) => {
         received = programs;
     });
     assert.deepStrictEqual(
         received,
         sample,
-        "getEPGchanelCached returns cached array"
+        "getChannelEpgCached returns cached array"
     );
 
     assert.deepStrictEqual(
-        getEPGchanelCurCached(42),
+        getCachedChannelEpg(42),
         sample,
-        "getEPGchanelCurCached returns cached array"
+        "getCachedChannelEpg returns cached array"
     );
     assert.deepStrictEqual(
-        getEpgFromCash(42),
+        getEpgFromCache(42),
         sample,
-        "getEpgFromCash returns cached array"
+        "getEpgFromCache returns cached array"
     );
 
     // Cleanup - use undefined assignment instead of delete
     epg[42] = undefined;
-    epgCashObj[42] = undefined;
+    epgCacheByChannel[42] = undefined;
 
     console.log("  EPG cache lookups: OK");
 }
@@ -289,7 +287,7 @@ function testRenderEpgHTML(ch: Awaited<ReturnType<typeof getModule>>) {
 // ---------------------------------------------------------------------------
 
 function testSetCurProg(ch: Awaited<ReturnType<typeof getModule>>) {
-    const { setCurProg, epg, epgCashObj, channels } = ch;
+    const { setCurProg, epg, epgCacheByChannel, channels } = ch;
 
     const now = Math.floor(Date.now() / 1000);
     const sample: any[] = [
@@ -310,7 +308,7 @@ function testSetCurProg(ch: Awaited<ReturnType<typeof getModule>>) {
 
     // Set up channel object in the global map
     const channelId = 77;
-    mockWindow.chanels[channelId] = {};
+    mockWindow.channels[channelId] = {};
     channels[channelId] = { ch_id: channelId } as any;
 
     setCurProg(channelId, sample);
@@ -321,7 +319,7 @@ function testSetCurProg(ch: Awaited<ReturnType<typeof getModule>>) {
         "setCurProg does not write a now/next slice to the full epg cache"
     );
     assert.deepStrictEqual(
-        epgCashObj[channelId],
+        epgCacheByChannel[channelId],
         undefined,
         "setCurProg does not write a now/next slice to the secondary cache"
     );
@@ -352,8 +350,8 @@ function testSetCurProg(ch: Awaited<ReturnType<typeof getModule>>) {
 
     // Cleanup - use undefined assignment instead of delete
     epg[channelId] = undefined;
-    epgCashObj[channelId] = undefined;
-    mockWindow.chanels[channelId] = undefined;
+    epgCacheByChannel[channelId] = undefined;
+    mockWindow.channels[channelId] = undefined;
     mockWindow.channels[channelId] = undefined;
     channels[channelId] = undefined;
 
@@ -367,7 +365,7 @@ function testSetCurProg(ch: Awaited<ReturnType<typeof getModule>>) {
 function testSetCurProgNoCurrentProgram(
     ch: Awaited<ReturnType<typeof getModule>>
 ) {
-    const { setCurProg, epg, epgCashObj, channels } = ch;
+    const { setCurProg, epg, epgCacheByChannel, channels } = ch;
 
     const now = Math.floor(Date.now() / 1000);
     // All programs are in the past
@@ -381,7 +379,7 @@ function testSetCurProgNoCurrentProgram(
     ];
 
     const channelId = 88;
-    mockWindow.chanels[channelId] = {};
+    mockWindow.channels[channelId] = {};
     channels[channelId] = { ch_id: channelId } as any;
 
     setCurProg(channelId, pastEntries);
@@ -403,8 +401,8 @@ function testSetCurProgNoCurrentProgram(
 
     // Cleanup - use undefined assignment instead of delete
     epg[channelId] = undefined;
-    epgCashObj[channelId] = undefined;
-    mockWindow.chanels[channelId] = undefined;
+    epgCacheByChannel[channelId] = undefined;
+    mockWindow.channels[channelId] = undefined;
     mockWindow.channels[channelId] = undefined;
     channels[channelId] = undefined;
 
@@ -424,7 +422,7 @@ async function testGetCurProgDataCacheHit(
     const channelId = 55;
 
     // Case 1: channel already has time_to (sync hit)
-    mockWindow.chanels[channelId] = { time_to: now + 3600 };
+    mockWindow.channels[channelId] = { time_to: now + 3600 };
     channels[channelId] = { ch_id: channelId } as any;
 
     let callbackCalled = false;
@@ -443,7 +441,7 @@ async function testGetCurProgDataCacheHit(
     );
 
     // Case 2: time_request not expired yet (skip)
-    mockWindow.chanels[channelId] = { time_request: now + 3600, time_to: 0 };
+    mockWindow.channels[channelId] = { time_request: now + 3600, time_to: 0 };
     callbackCalled = false;
     const result2 = getCurProgData(channelId, () => {
         callbackCalled = true;
@@ -460,7 +458,7 @@ async function testGetCurProgDataCacheHit(
     );
 
     // Case 3: cache hit with current program (async path)
-    mockWindow.chanels[channelId] = { time_request: 0, time_to: 0 };
+    mockWindow.channels[channelId] = { time_request: 0, time_to: 0 };
     const schedule = [
         { descr: "", name: "Prev", time: now - 3600, time_to: now - 1800 },
         {
@@ -470,8 +468,8 @@ async function testGetCurProgDataCacheHit(
             time_to: now + 600,
         },
     ];
-    mockWindow.getEPGchanel = (id: number, done: any) => done(id, schedule);
-    ch.getEPGchanelCached(channelId, () => {});
+    mockWindow.getChannelEpg = (id: number, done: any) => done(id, schedule);
+    ch.getChannelEpgCached(channelId, () => {});
     callbackCalled = false;
     let finishCallback: (id: number) => void = () => {};
     const callbackResult = new Promise<number>((resolve) => {
@@ -506,14 +504,14 @@ async function testGetCurProgDataCacheHit(
             channelId,
             "callback receives the channel ID"
         );
-        assert.strictEqual(mockWindow.chanels[channelId].name, "Now Showing");
+        assert.strictEqual(mockWindow.channels[channelId].name, "Now Showing");
     } finally {
         clearTimeout(timeout);
     }
 
     // Cleanup - use undefined assignment instead of delete
     epg[channelId] = undefined;
-    mockWindow.chanels[channelId] = undefined;
+    mockWindow.channels[channelId] = undefined;
     channels[channelId] = undefined;
 
     console.log("  getCurProgData cache hit: OK");
@@ -783,7 +781,7 @@ function testSetEpgTimerAddRemove(ch: Awaited<ReturnType<typeof getModule>>) {
     mockWindow.selIndex = 0;
     mockWindow.listCatIndex = 0;
     mockWindow.listChannel = 0;
-    mockWindow.epglisted = true;
+    mockWindow.epgListMode = true;
     mockWindow.epg_ch_id = channelId;
 
     let confirmMsg = "";
@@ -851,7 +849,7 @@ async function testEpgLifecycle(ch: Awaited<ReturnType<typeof getModule>>) {
     const id = 700;
     const request = () =>
         new Promise<any>((resolve) =>
-            ch.getEPGchanelCached(id, (_id, data) => resolve(data))
+            ch.getChannelEpgCached(id, (_id, data) => resolve(data))
         );
     const schedule = (title: string) => [
         { name: "history", time: now / 1000 - 200, time_to: now / 1000 - 100 },
@@ -861,11 +859,11 @@ async function testEpgLifecycle(ch: Awaited<ReturnType<typeof getModule>>) {
     ];
     try {
         ch.invalidateEpgCache();
-        mockWindow.chanels = ch.channels;
+        mockWindow.channels = ch.channels;
         mockWindow.channels = ch.channels;
         ch.channels[id] = { ch_id: id, channel_name: "Fixture" };
         let calls = 0;
-        mockWindow.getEPGchanel = (channelId: number, done: any) => {
+        mockWindow.getChannelEpg = (channelId: number, done: any) => {
             calls++;
             done(channelId, schedule("current"));
         };
@@ -889,22 +887,22 @@ async function testEpgLifecycle(ch: Awaited<ReturnType<typeof getModule>>) {
             2,
             "full schedules refresh after the legacy 12-hour TTL"
         );
-        mockWindow.epgCash = 0;
+        mockWindow.epgCacheCapacity = 0;
         await request();
         await request();
         assert.strictEqual(
             calls,
             4,
-            "epgCash=0 bypasses completed-response caching"
+            "epgCacheCapacity=0 bypasses completed-response caching"
         );
-        mockWindow.epgCash = 10;
+        mockWindow.epgCacheCapacity = 10;
 
         ch.invalidateEpgCache();
         const pending: Array<(id: number, data: any) => void> = [];
-        mockWindow.getEPGchanel = (_id: number, done: any) =>
+        mockWindow.getChannelEpg = (_id: number, done: any) =>
             pending.push(done);
         let staleCallback = false;
-        ch.getEPGchanelCached(id, () => {
+        ch.getChannelEpgCached(id, () => {
             staleCallback = true;
         });
         ch.invalidateEpgCache();
@@ -1012,7 +1010,7 @@ async function testEpgLifecycle(ch: Awaited<ReturnType<typeof getModule>>) {
     } finally {
         delete mockWindow.Capacitor;
         delete mockWindow.p_pref;
-        mockWindow.epgCash = 10;
+        mockWindow.epgCacheCapacity = 10;
         Date.now = realNow;
         ch.invalidateEpgCache();
         delete ch.channels[id];
@@ -1050,10 +1048,10 @@ async function testWarmEpgView(ch: Awaited<ReturnType<typeof getModule>>) {
         Object.assign(mockWindow, {
             cats: ch.cats,
             catsArray: ch.catsArray,
-            chanels: ch.channels,
             channels: ch.channels,
-            getEPGchanel: (_id: number, done: any) => pending.push(done),
-            getEPGchanelCached: ch.getEPGchanelCached,
+            channels: ch.channels,
+            getChannelEpg: (_id: number, done: any) => pending.push(done),
+            getChannelEpgCached: ch.getChannelEpgCached,
             isListVisible: false,
             showPage: () => {
                 mockWindow.isListVisible = true;
@@ -1104,7 +1102,7 @@ async function testWarmEpgView(ch: Awaited<ReturnType<typeof getModule>>) {
         ch.invalidateEpgCache(true);
         pending[3](id, schedule("Z current"));
         assert.strictEqual(
-            ch.epglisted,
+            ch.epgListMode,
             2,
             "warm-up preserves alphabetical mode"
         );

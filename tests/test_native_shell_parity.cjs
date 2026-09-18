@@ -234,7 +234,7 @@ for (const [innerHeight, viewportHeight, documentHeight, expected] of [
         w.keys = { ENTER: 13 };
         w._doKey = (key) => calls.push(key);
         w.popupList = () => calls.push("popup");
-        w.showChanelInfo = () => calls.push("info");
+        w.showChannelInfo = () => calls.push("info");
         w.listOverlayOpen = () => !!w.isListVisible;
         w.eval(bandCode + "\n" + dragCode);
         assert.equal(w.ottBandViewportHeight(), expected);

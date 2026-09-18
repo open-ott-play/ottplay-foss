@@ -204,8 +204,8 @@ const c = vm.createContext({
     jQuery: $,
     keys: { ENTER: 13, EXIT: 27, RETURN: 8 },
     list_OnClick() {},
-    restoreCPD() {},
-    saveCPD() {},
+    restoreListPanelState() {},
+    saveListPanelState() {},
     setEdit() {
         savedValues.push(c.editvar);
     },

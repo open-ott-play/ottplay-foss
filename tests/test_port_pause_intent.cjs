@@ -49,13 +49,13 @@ function fixture() {
     const w = {
         _: (s) => s,
         $: () => ({ hide() {}, html() {} }),
+        applyChannelPreference() {},
         clearInterval() {},
         clearTimeout(id) {
             timers.delete(id);
         },
         console: { error() {}, log() {}, warn() {} },
         document: { body: { style: {} } },
-        execCHarr() {},
         Hls,
         setInterval() {},
         setTimeout(fn) {

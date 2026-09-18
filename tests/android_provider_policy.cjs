@@ -1,3 +1,7 @@
+const {
+    attachSourceAliases,
+    sourceNames,
+} = require("./helpers/english-source-fixture.cjs");
 /* Exercise the shipped distribution transform and production provider entry points. */
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -109,7 +113,7 @@ function distribution(flavor) {
     }
 }
 const profiles = { full: distribution("full"), play: distribution("play") };
-const names = [
+const names = sourceNames("src/provider/index.ts", [
     "__spreadArray",
     "providerDistribution",
     "isPlayDistribution",
@@ -123,7 +127,7 @@ const names = [
     "edit_dealer_remote",
     "optionsList",
     "syncFromWindow",
-];
+]);
 function executable(code) {
     const parsed = ts.createSourceFile(
         "provider.js",
@@ -293,6 +297,7 @@ function fixture(
     w.window = w;
     vm.createContext(w);
     vm.runInContext(code[flavor], w);
+    attachSourceAliases(w);
     return {
         about,
         appendedImages,
@@ -719,6 +724,7 @@ function startupFixture(
         uiInit: () => calls.push("ui"),
     });
     w.eval(code[flavor] + startup);
+    attachSourceAliases(w);
     w.startPlayer();
     return { calls, close: () => w.close(), errors, w };
 }
@@ -818,6 +824,7 @@ for (const flavor of ["full", "play"]) {
                         "utf8"
                     )
                 );
+                attachSourceAliases(w);
                 Object.defineProperty(w.navigator, "userAgent", {
                     value: "Fixture Android Agent",
                 });
@@ -843,6 +850,7 @@ for (const flavor of ["full", "play"]) {
                         diagnosticProfiles[flavor] +
                         pluginInfoCompiled
                 );
+                attachSourceAliases(w);
                 w.pluginInfo();
                 const panel = w.document.getElementById("listAbout");
                 assert(

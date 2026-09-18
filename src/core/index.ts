@@ -16,10 +16,17 @@ declare function showSelectBox(
 ): void;
 declare function showShift(msg: string): void;
 declare function _(key: string, ...args: any[]): string;
-declare function saveCHarr(key: string, val: number): void;
-declare function execCHarr(key: string, callback: (val: number) => void): void;
+declare function saveChannelPreference(key: string, val: number): void;
+declare function applyChannelPreference(
+    key: string,
+    callback: (val: number) => void
+): void;
 
-import { providerHasItemValue } from "../storage/index";
+import {
+    portableSettingsSnapshot,
+    providerHasItemValue,
+    restoreLocalSettingsSnapshot,
+} from "../storage/index";
 import { watchAutoNativePlayback } from "./auto-playback";
 
 /** Reference to the primary <video> DOM element. */
@@ -1206,14 +1213,14 @@ function startCorePlayback(
             function (_e: any, d: any) {
                 if (session !== _playSession || hlsInstance !== playbackHls)
                     return;
-                execCHarr("aAudios", function (i: number) {
+                applyChannelPreference("aAudios", function (i: number) {
                     if (hlsInstance) hlsInstance.audioTrack = i;
                 });
                 if (typeof (window as any).refreshAudioBadge === "function")
                     (window as any).refreshAudioBadge();
             }
         );
-        execCHarr("aSubs", function (i: number) {
+        applyChannelPreference("aSubs", function (i: number) {
             if (hlsInstance) hlsInstance.subtitleTrack = i - 1;
         });
     } else if (
@@ -1632,7 +1639,7 @@ export function applyAspectRatio(): void {
 export function stbToggleAspectRatio(): void {
     showSelectBox(aspectRatio, ["contain", "cover"], function (v: number) {
         setAspect(v);
-        saveCHarr("aAspects", v);
+        saveChannelPreference("aAspects", v);
     });
 }
 
@@ -2019,11 +2026,11 @@ export function stbInit(): void {
                 $("#video_res").html(
                     "<br/>" + video!.videoWidth + "x" + video!.videoHeight
                 );
-            if (typeof execCHarr === "function") {
-                execCHarr("aAspects", setAspect);
-                execCHarr("aZooms", setZoom);
-                execCHarr("aSubs", setSubtitleTrack);
-                execCHarr("aAudios", setAudioTrack);
+            if (typeof applyChannelPreference === "function") {
+                applyChannelPreference("aAspects", setAspect);
+                applyChannelPreference("aZooms", setZoom);
+                applyChannelPreference("aSubs", setSubtitleTrack);
+                applyChannelPreference("aAudios", setAudioTrack);
             }
         });
         video!.addEventListener("playing", function () {
@@ -2191,7 +2198,7 @@ export function stbToggleAudioTrack(): void {
         function (v: number) {
             if (v !== cur) {
                 setAudioTrack(v);
-                saveCHarr("aAudios", v);
+                saveChannelPreference("aAudios", v);
             }
         },
         -1
@@ -2286,7 +2293,7 @@ export function stbToggleSubtitle(): void {
             var eng = indexMap[v];
             // setSubtitleTrack expects 0 = Off, 1..N = engine index + 1
             setSubtitleTrack(eng < 0 ? 0 : eng + 1);
-            saveCHarr("aSubs", eng < 0 ? 0 : eng + 1);
+            saveChannelPreference("aSubs", eng < 0 ? 0 : eng + 1);
         },
         -1
     );
@@ -2323,7 +2330,7 @@ export function setZoom(v: number): void {
 export function stbToggleZoom(): void {
     showSelectBox(zoomLevel, zoomLabels, function (v: number) {
         setZoom(v);
-        saveCHarr("aZooms", v);
+        saveChannelPreference("aZooms", v);
     });
 }
 
@@ -2389,21 +2396,21 @@ export function toggleSubtitle(): void {
 }
 
 /**
- * Backup all STB settings (from stbGetAllItems) into localStorage under `stb_settings_backup`.
+ * Back up portable STB preferences locally, excluding credentials, consent and nested backups.
  *
  * Side effects: Writes to localStorage; calls showShift on success.
  */
 export function saveAllOptions(): void {
     try {
-        var items = window.stbGetAllItems();
+        var items = portableSettingsSnapshot(window.stbGetAllItems());
         localStorage.setItem("stb_settings_backup", JSON.stringify(items));
         window.showShift(_("Settings saved to storage"));
     } catch (e) {}
 }
 
 /**
- * Restore all STB settings from the localStorage backup (created by saveAllOptions).
- * Clears all existing items first, then writes each backed-up key.
+ * Restore ordinary preferences from a local backup (created by saveAllOptions).
+ * Preserves local credentials and disconnects outbound command delivery.
  *
  * Side effects: Reads from localStorage; calls stbClearAllItems and stbSetItem for each key.
  */
@@ -2414,10 +2421,7 @@ export function loadAllOptions(): void {
             window.showShift(_("No saved settings found"));
             return;
         }
-        var items = JSON.parse(d);
-        window.stbClearAllItems();
-        for (var k in items)
-            if (items.hasOwnProperty(k)) window.stbSetItem(k, items[k]);
+        restoreLocalSettingsSnapshot(JSON.parse(d));
         window.showShift(_("Settings loaded from storage"));
     } catch (e) {}
 }

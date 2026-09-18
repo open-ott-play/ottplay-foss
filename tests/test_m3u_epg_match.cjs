@@ -1,3 +1,7 @@
+const {
+    attachSourceAliases,
+    sourceNames,
+} = require("./helpers/english-source-fixture.cjs");
 // Exercise late M3U matching through the real provider, queue and EPG cache.
 // Only HTTP responses, timers and UI callbacks are controlled by this fixture.
 const assert = require("node:assert/strict");
@@ -9,6 +13,7 @@ const ts = require("typescript");
 
 const root = path.resolve(__dirname, "..");
 function functions(file, names) {
+    names = sourceNames(file, names);
     const text = fs.readFileSync(path.join(root, file), "utf8");
     const ast = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
     const selected = ast.statements.filter(
@@ -129,6 +134,7 @@ function fixture(cacheLimit = 16) {
     c.window = c;
     c.chanels = c.channels;
     vm.runInContext(provider + "\n" + channels, c);
+    attachSourceAliases(c);
     c.setCurProg(3, existingSchedule);
     function drain() {
         let count = 0;

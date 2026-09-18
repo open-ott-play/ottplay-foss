@@ -1,3 +1,7 @@
+const {
+    attachSourceAliases,
+    sourceNames,
+} = require("./helpers/english-source-fixture.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -7,6 +11,7 @@ const acorn = require("acorn");
 
 const root = path.resolve(__dirname, "..");
 function source(file, names) {
+    names = sourceNames(file, names);
     const text = fs.readFileSync(path.join(root, file), "utf8");
     const ast = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
     const selected = names
@@ -216,7 +221,9 @@ function fixture(code, nativeMode = "working") {
     w.window = w;
     vm.createContext(w);
     vm.runInContext(handlers, w);
+    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     vm.runInContext(code, w);
+    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     function key(keyCode) {
         w.keyHandler({
             keyCode,

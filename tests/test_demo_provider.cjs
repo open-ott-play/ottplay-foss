@@ -1,3 +1,7 @@
+const {
+    attachSourceAliases,
+    sourceNames,
+} = require("./helpers/english-source-fixture.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -12,27 +16,42 @@ const mediaBase = "https://liminal-sketch-vv8r.here.now/demo/";
 acorn.parse(adapter, { ecmaVersion: 5 });
 
 function declarations(file, names) {
+    names = sourceNames(file, names);
     const ast = ts.createSourceFile(
         file,
         read(file),
         ts.ScriptTarget.Latest,
         true
     );
-    const selected = [];
-    for (const node of ast.statements) {
-        if (ts.isFunctionDeclaration(node) && names.includes(node.name.text))
-            selected.push(node.getText(ast).replace(/^export\s+/, ""));
-        else if (ts.isVariableStatement(node))
-            for (const item of node.declarationList.declarations)
-                if (names.includes(item.name.getText(ast)))
-                    selected.push("var " + item.getText(ast) + ";");
+    const selected = new Map();
+    function include(name) {
+        if (selected.has(name)) return;
+        let declaration;
+        let text;
+        for (const node of ast.statements) {
+            if (ts.isFunctionDeclaration(node) && node.name?.text === name) {
+                declaration = node;
+                text = node.getText(ast).replace(/^export\s+/, "");
+            } else if (ts.isVariableStatement(node)) {
+                for (const item of node.declarationList.declarations) {
+                    if (item.name.getText(ast) === name) {
+                        declaration = item;
+                        text = "var " + item.getText(ast) + ";";
+                    }
+                }
+            }
+        }
+        assert(declaration, `${file}: actual ${name} declaration`);
+        selected.set(name, text);
+        function visit(node) {
+            if (ts.isIdentifier(node) && /^__ottReadImport\d+$/.test(node.text))
+                include(node.text);
+            ts.forEachChild(node, visit);
+        }
+        visit(declaration);
     }
-    assert.equal(
-        selected.length,
-        names.length,
-        "all production declarations found"
-    );
-    return ts.transpileModule(selected.join("\n"), {
+    names.forEach(include);
+    return ts.transpileModule([...selected.values()].join("\n"), {
         compilerOptions: {
             module: ts.ModuleKind.None,
             target: ts.ScriptTarget.ES5,
@@ -42,15 +61,25 @@ function declarations(file, names) {
 const providerSource = process.argv.includes("--bundle")
     ? "dist/stbPlayer.js"
     : "src/provider/index.ts";
-const providerUi = declarations(providerSource, [
-    "providerDistribution",
-    "isPlayDistribution",
-    "isProviderAllowed",
-    "arrayProvaiders",
-    "provArray",
-    "firstRun",
-    "selectProvaider",
-]);
+const providerUi =
+    (process.argv.includes("--bundle")
+        ? declarations(providerSource, [
+              "legacyPlayerBindings",
+              "installEnglishPlayerAliases",
+              "translate",
+              "legacyPopupActionIds",
+              "popupActionId",
+          ])
+        : "") +
+    declarations(providerSource, [
+        "providerDistribution",
+        "isPlayDistribution",
+        "isProviderAllowed",
+        "arrayProvaiders",
+        "provArray",
+        "firstRun",
+        "selectProvaider",
+    ]);
 const providerLoad =
     (process.argv.includes("--bundle")
         ? declarations(providerSource, ["__spreadArray"])
@@ -126,10 +155,14 @@ function uiFixture() {
         stbSetItem: (key, value) => saved.set(key, String(value)),
         strInfo: "",
         strRETURN: "",
+        translations: {},
+        useGraphicIcons: false,
     };
     w.window = w;
     vm.createContext(w);
     vm.runInContext(providerUi, w);
+    if (process.argv.includes("--bundle")) w.installEnglishPlayerAliases(w);
+    else attachSourceAliases(w);
     return { loaded, media, saved, w };
 }
 
@@ -181,6 +214,7 @@ test("later selection and recent-provider reordering retain the demo ID/name pai
 test("provider switch clears both loop flags and retires demo before loading", () => {
     const { w, media, loaded } = uiFixture();
     vm.runInContext(providerLoad, w);
+    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     w.ottplayDemoActive = true;
     w.loadProv();
     assert.equal(w.ottplayDemoActive, false);
@@ -188,9 +222,47 @@ test("provider switch clears both loop flags and retires demo before loading", (
     assert.equal(loaded[0], "https://player.invalid/prov/m3u/prov.js?fixture");
 });
 
+test("provider reload revokes channel readiness before its script completes", () => {
+    const { w } = uiFixture();
+    vm.runInContext(providerLoad, w);
+    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
+    const previous = {};
+    w.__ottCommandChannelLoad = previous;
+    w.commandChannelsReady = true;
+    w.loadProv();
+    assert.equal(w.commandChannelsReady, false);
+    assert.notEqual(w.__ottCommandChannelLoad, previous);
+});
+
+test("an older provider script completion cannot start the current channel load", () => {
+    const { w } = menuFixture(0, 0);
+    const scripts = [];
+    let channelLoads = 0;
+    let fallbackScreens = 0;
+    w.loadChannels = () => channelLoads++;
+    w.firstRun = () => fallbackScreens++;
+    w.getScriptDOM = (_url, ready, failed) => scripts.push({ failed, ready });
+    w.loadProv();
+    w.loadProv();
+    scripts[0].ready();
+    assert.equal(channelLoads, 0);
+    scripts[0].failed(new Error("Retired provider"));
+    assert.equal(
+        fallbackScreens,
+        0,
+        "stale error cannot replace the current setup"
+    );
+    assert.equal(w.commandChannelsReady, false);
+    // Supply the current provider's actual hook through its checked-in adapter.
+    vm.runInContext(adapter, w);
+    scripts[1].ready();
+    assert.equal(channelLoads, 1);
+});
+
 test("Try demo can recover from a failed URL-pinned provider", () => {
     const { w, loaded } = uiFixture();
     vm.runInContext(providerLoad, w);
+    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     w.location.search = "?m3u";
     w.firstRun();
     w.listKeyHandlerFn(w.keys.ENTER);
@@ -200,6 +272,7 @@ test("Try demo can recover from a failed URL-pinned provider", () => {
 test("leaving demo stops the shell PiP once before retiring its active flag", () => {
     const { w, loaded } = uiFixture();
     vm.runInContext(providerLoad, w);
+    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     const stops = [];
     w.ottplayDemoActive = true;
     w.pipIndex = 0;
@@ -216,6 +289,7 @@ test("leaving demo stops the shell PiP once before retiring its active flag", ()
 test("demo retirement continues when a shell PiP stop throws", () => {
     const { w, loaded } = uiFixture();
     vm.runInContext(providerLoad, w);
+    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     w.ottplayDemoActive = true;
     w.pipIndex = 0;
     w.stbStopPip = () => {
@@ -230,6 +304,7 @@ test("demo retirement continues when a shell PiP stop throws", () => {
 test("provider switch retires an older demo channel-loader callback", () => {
     const { w, loaded } = uiFixture();
     vm.runInContext(providerLoad + adapter, w);
+    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     w.cList = [];
     w.chanels = {};
     const retiredLoad = w.getChanelsArray;
@@ -247,6 +322,7 @@ test("provider switch retires an older demo channel-loader callback", () => {
 test("saved demo survives restart of a URL-pinned player and can return to its provider", () => {
     const { w, saved, loaded } = uiFixture();
     vm.runInContext(providerLoad, w);
+    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     w.location.search = "?m3u";
     w.firstRun();
     w.listKeyHandlerFn(w.keys.ENTER);
@@ -271,6 +347,7 @@ test("saved demo survives restart of a URL-pinned player and can return to its p
 test("clear URL still resets a saved demo", () => {
     const { w, saved, loaded } = uiFixture();
     vm.runInContext(providerLoad, w);
+    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     saved.set("ottplayprov", "demo");
     w.location.search = "?clear";
     w.loadProv();
@@ -283,6 +360,7 @@ test("clear URL still resets a saved demo", () => {
 test("URL provider keeps its existing priority over other saved providers", () => {
     const { w, saved, loaded } = uiFixture();
     vm.runInContext(providerLoad, w);
+    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     saved.set("ottplayprov", "stalker");
     w.location.search = "?m3u";
     w.loadProv();
@@ -334,17 +412,21 @@ function menuFixture(noSelProv, noProvParam, query = "") {
     w.noProvParam = function noProvParam() {};
     w.optionsArr = [];
     vm.runInContext(
-        declarations("src/index.ts", [
-            "indexOfAction",
-            "optIndexOf",
-            "delOption",
-            "addBtn2menu",
-        ]) +
+        declarations(
+            process.argv.includes("--bundle") ? providerSource : "src/index.ts",
+            ["indexOfAction", "optIndexOf", "delOption", "addBtn2menu"]
+        ) +
             declarations(providerSource, ["optionsList", "syncFromWindow"]) +
-            declarations("src/ui/index.ts", ["popupList"]) +
+            declarations(
+                process.argv.includes("--bundle")
+                    ? providerSource
+                    : "src/ui/index.ts",
+                ["popupList"]
+            ) +
             providerLoad,
         w
     );
+    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     w.optionsArr.push({ action: w.selectProvaider, name: "Change provider" });
     w.savedPopup = {
         popupActions: [w.noProvParam, w.nofun, w.optionsList],
@@ -496,7 +578,9 @@ function adapterFixture(url, capacitor) {
     w.stbSetItem = (key, value) => saved.set(key, String(value));
     w.stbDelItem = (key) => saved.delete(key);
     w.eval("function getChannelUrl() { return 'previous-provider'; }");
+    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     w.eval(adapter);
+    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     return { dom, saved, w };
 }
 
@@ -690,6 +774,7 @@ function coreFixture() {
     w.window = w;
     vm.createContext(w);
     vm.runInContext(core, w);
+    attachSourceAliases(w);
     w.video = media();
     w.videoPip = media();
     return { hls, shaka, w };
@@ -846,6 +931,7 @@ for (const initiallyMuted of [false, true]) {
             const { w, loaded } = uiFixture();
             w.console.log = () => {};
             vm.runInContext(core + providerLoad, w);
+            attachSourceAliases(w);
             w.video = media();
             w.videoPip = media();
             w.video.muted = initiallyMuted;

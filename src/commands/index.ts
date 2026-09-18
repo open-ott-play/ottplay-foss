@@ -1,3 +1,5 @@
+import { checkProviderUrl, selectProviderByIndex } from "../provider";
+
 /**
  * Command handler — dispatches push commands received via webhook poll.
  *
@@ -75,9 +77,9 @@ export function showPopup(text: string, durationSec = 5) {
  */
 function findChannelIndices(chId: number): [number, number] {
     var w = window;
-    for (var ci = 0; ci < w.catsArray.length; ci++) {
+    for (var ci = 0; w.catsArray && w.cats && ci < w.catsArray.length; ci++) {
         var cat = w.catsArray[ci];
-        var list = w.cats[cat];
+        var list = w.cats[cat] || [];
         for (var i = 0; i < list.length; i++) {
             if (list[i] === chId) return [ci, i];
         }
@@ -131,14 +133,14 @@ function channelByName(name: string): void {
     if (!name) return;
     var w = window;
     var needle = name.toLowerCase();
-    var bestChId = -1;
+    var bestChId: number | string | null = null;
     var bestCatIdx = -1;
     var bestChIdx = -1;
 
     // Search all categories
-    for (var ci = 0; ci < w.catsArray.length; ci++) {
+    for (var ci = 0; w.catsArray && w.cats && ci < w.catsArray.length; ci++) {
         var cat = w.catsArray[ci];
-        var list = w.cats[cat];
+        var list = w.cats[cat] || [];
         for (var i = 0; i < list.length; i++) {
             var chId = list[i];
             var ch = w.channels && w.channels[chId];
@@ -226,53 +228,68 @@ function randomChannel(rangeStart?: number, rangeEnd?: number): void {
  * @param providerIdx - Index in window.arrayProvaiders.
  */
 function changeProvider(providerIdx: number): void {
-    var w = window;
-    if (typeof w.selectProvaider === "function") {
-        w.selectProvaider(providerIdx);
+    if (selectProviderByIndex(providerIdx)) {
         showPopup("Switching provider...");
     } else {
         showPopup("Provider switching not available");
     }
 }
 
-/**
- * Update provider settings (e.g., portal URL, credentials).
- * The settings string is stored and the provider is reloaded.
- *
- * @param settingsJson - JSON string with provider configuration.
- */
-function changeProviderSettings(settingsJson: string): void {
-    var w = window;
-    if (!settingsJson) return;
-    try {
-        // Store the raw settings string; provider scripts read from storage
-        if (typeof w.providerSetItem === "function") {
-            w.providerSetItem("provider_settings", settingsJson);
-        }
-        if (typeof w.restart === "function") {
-            w.restart();
-        }
-        showPopup("Provider settings updated");
-    } catch (e) {
-        showPopup("Failed to update provider settings");
-    }
+/** Provider configuration schemas differ; no generic remote replacement is supported. */
+function changeProviderSettings(): string {
+    showPopup(
+        "Remote provider settings are not supported. Use the player's provider settings."
+    );
+    return "unsupported";
 }
 
-/**
- * Load a new M3U playlist URL.
- *
- * @param url - M3U playlist URL.
- */
-function changePlaylist(url: string): void {
+/** Update only the active M3U entry through the provider's existing persistence/reload contract. */
+function changePlaylist(url: string): string {
     var w = window;
-    if (!url) return;
-    if (typeof w.providerSetItem === "function") {
-        w.providerSetItem("m3u_url", url);
+    if (
+        w.p_pref !== "m3u" ||
+        typeof w.providerSetItem !== "function" ||
+        typeof w.loadPlaylist !== "function" ||
+        !w.m3uArr ||
+        !Array.isArray(w.m3uArr.M3Us)
+    ) {
+        showPopup("Remote playlist changes require the M3U provider.");
+        return "unsupported";
     }
-    if (typeof w.restart === "function") {
-        w.restart();
+    if (
+        (w.sPSprovs || w.sPSoptions) &&
+        w.parentPIN !== "*" &&
+        !w.parentAccess
+    ) {
+        showPopup("Unlock the player's settings before changing its playlist.");
+        return "rejected";
     }
-    showPopup("Playlist changed, restarting...");
+    try {
+        var parsed = new URL(url);
+        if (
+            !/^https?:$/.test(parsed.protocol) ||
+            !parsed.hostname ||
+            !checkProviderUrl(url)
+        )
+            return "rejected";
+        var active = Number(w.m3uArr.active);
+        if (
+            !isFinite(active) ||
+            active < 0 ||
+            Math.floor(active) !== active ||
+            !w.m3uArr.M3Us[active]
+        )
+            return "rejected";
+        var next = JSON.parse(JSON.stringify(w.m3uArr));
+        next.M3Us[active].www = url;
+        w.providerSetItem("m3uArr", JSON.stringify(next));
+        w.loadPlaylist();
+        showPopup("Loading the new playlist...");
+        return "accepted";
+    } catch (_error) {
+        showPopup("Could not change the playlist.");
+        return "rejected";
+    }
 }
 
 /**
@@ -332,9 +349,67 @@ function exitPlayer(): void {
  *
  * @param cmd - Command object with a "command" field.
  */
-export function handleCommand(cmd: Command): void {
-    if (!(cmd && cmd.command)) return;
+export function handleCommand(cmd: Command): string {
+    if (!(cmd && typeof cmd.command === "string")) return "rejected";
+    function finite(value: any): boolean {
+        return typeof value === "number" && isFinite(value);
+    }
+    function integer(value: any, minimum: number): boolean {
+        return finite(value) && Math.floor(value) === value && value >= minimum;
+    }
+    if (
+        cmd.popup_duration !== undefined &&
+        (!finite(cmd.popup_duration) ||
+            cmd.popup_duration <= 0 ||
+            cmd.popup_duration > 3600)
+    )
+        return "rejected";
+    if (cmd.channel_number !== undefined && !integer(cmd.channel_number, 1))
+        return "rejected";
+    if (cmd.provider !== undefined && !integer(cmd.provider, 0))
+        return "rejected";
+    if (cmd.volume !== undefined && !finite(cmd.volume)) return "rejected";
+    if (cmd.volume_step !== undefined && !finite(cmd.volume_step))
+        return "rejected";
+    if (
+        cmd.random_range !== undefined &&
+        (!Array.isArray(cmd.random_range) ||
+            cmd.random_range.length !== 2 ||
+            !integer(cmd.random_range[0], 1) ||
+            !integer(cmd.random_range[1], 1) ||
+            cmd.random_range[0] > cmd.random_range[1])
+    )
+        return "rejected";
+    if (cmd.channel_name !== undefined && typeof cmd.channel_name !== "string")
+        return "rejected";
+    if (cmd.message !== undefined && typeof cmd.message !== "string")
+        return "rejected";
+    if (cmd.playlist !== undefined && typeof cmd.playlist !== "string")
+        return "rejected";
+    if (
+        cmd.provider_settings !== undefined &&
+        typeof cmd.provider_settings !== "string"
+    )
+        return "rejected";
 
+    if (
+        cmd.command === "channel_by_number" ||
+        cmd.command === "channel_by_name" ||
+        cmd.command === "random_channel"
+    ) {
+        var w = window;
+        if (
+            w.commandChannelsReady === false ||
+            (w.commandChannelsReady !== true &&
+                !(
+                    w.catsArray &&
+                    w.catsArray.length &&
+                    w.curList &&
+                    w.curList.length
+                ))
+        )
+            return "deferred";
+    }
     switch (cmd.command) {
         case "popup_message":
             showPopup(cmd.message || "", cmd.popup_duration || 5);
@@ -368,13 +443,13 @@ export function handleCommand(cmd: Command): void {
 
         case "change_provider_settings":
             if (cmd.provider_settings) {
-                changeProviderSettings(cmd.provider_settings);
+                return changeProviderSettings();
             }
             break;
 
         case "change_playlist":
             if (cmd.playlist) {
-                changePlaylist(cmd.playlist);
+                return changePlaylist(cmd.playlist);
             }
             break;
 
@@ -387,8 +462,8 @@ export function handleCommand(cmd: Command): void {
             break;
 
         default:
-            // Unknown command — ignore silently
-            console.log("[CMD] Unknown command: " + cmd.command);
-            break;
+            showPopup("This remote command is not supported by the player.");
+            return "unsupported";
     }
+    return "accepted";
 }

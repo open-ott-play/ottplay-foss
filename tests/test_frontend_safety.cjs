@@ -2,6 +2,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const assert = require("node:assert/strict");
 const acorn = require("acorn");
+const {
+    attachSourceAliases,
+    classicName,
+} = require("./helpers/english-source-fixture.cjs");
 const root = path.resolve(__dirname, "..");
 const ts = require(path.join(root, "node_modules/typescript"));
 const asts = {};
@@ -39,6 +43,7 @@ function js(text) {
     }).outputText;
 }
 function func(file, name) {
+    if (file.startsWith("src/") && bundleAst) name = classicName(name);
     const a = (file.startsWith("src/") && bundleAst) || ast(file),
         n = a.statements.find(
             (n) => ts.isFunctionDeclaration(n) && n.name?.text === name
@@ -61,6 +66,7 @@ function fixture() {
         { runScripts: "dangerously", url: "https://localhost/index.html" }
     );
     const w = d.window;
+    if (bundleAst) attachSourceAliases(w);
     w.console.warn = () => {};
     w.eval(
         fs.readFileSync(
@@ -90,8 +96,6 @@ function fixture() {
     Object.assign(w, {
         _: (x) => x,
         bodyColor: "#fff",
-        btnDiv: (key, s, label) =>
-            '<span data-key="' + key + '">' + label + "</span>",
         curColor: "gold",
         curColorB: "#668",
         host: "https://localhost",
@@ -107,9 +111,11 @@ function fixture() {
         },
         listCaptionElement: w.document.getElementById("listCaption"),
         listDetail: w.document.getElementById("listDetail"),
-        listPodvalElement: w.document.getElementById("listPodval"),
-        restoreCPD() {},
-        saveCPD() {},
+        listFooterElement: w.document.getElementById("listPodval"),
+        renderButtonHint: (key, s, label) =>
+            '<span data-key="' + key + '">' + label + "</span>",
+        restoreListPanelState() {},
+        saveListPanelState() {},
         scrollUp() {},
         showPage() {},
         stbEventToKeyCode: (e) => e.keyCode,
@@ -158,6 +164,7 @@ function fixture() {
     w.setTimeout = () => 1;
     w.clearTimeout = () => {};
     w.requestAnimationFrame = () => {};
+    w.eval(func("src/storage/index.ts", "isPortableSettingsKey"));
     return w;
 }
 
@@ -190,8 +197,8 @@ test("channel list keeps hostile titles as text and preserves intentional row la
         Object.assign(w, {
             $infoBar: w.$("<div>"),
             archWidth: 0,
-            arrayGetCurProg: [],
             boxH: 28,
+            channelLogoSize: 0,
             channels: {
                 fixture: {
                     channel_name: hostile,
@@ -200,9 +207,10 @@ test("channel list keeps hostile titles as text and preserves intentional row la
                     time_to: Date.now() / 1000 + 30,
                 },
             },
+            currentProgramRequestQueue: [],
             detailListActionWithTimeOut() {},
             getCurProgData() {},
-            getWidthK: () => 1,
+            getViewportWidthScale: () => 1,
             listArray: [],
             listDataArray: ["fixture"],
             listElement: null,
@@ -212,7 +220,6 @@ test("channel list keeps hostile titles as text and preserves intentional row la
             packListRowBoxes() {},
             parentalArray: [],
             parentPIN: "*",
-            pikonSize: 0,
             progBarH: 1,
             progMargin: 0,
             progWidth: 0,
@@ -221,7 +228,7 @@ test("channel list keeps hostile titles as text and preserves intentional row la
             showName: true,
             showProgram: true,
             sPSchannels: false,
-            updateChanelList() {},
+            updateChannelListRow() {},
         });
         w.eval(
             js("window.getListItemFn=" + renderer.getText(a) + ";") +
@@ -251,8 +258,8 @@ test("VOD descriptions and thumbnails preserve formatting while removing active 
                 func("src/utils/helpers.ts", "getThumbnail")
         );
         w.sThumbnail = 1;
-        w.getWidthK = () => 1;
-        w.getHeightK = () => 1;
+        w.getViewportWidthScale = () => 1;
+        w.getViewportHeightScale = () => 1;
         const description =
             "<b>Heading</b><br>Detail <i>italic</i>" +
             hostile +
@@ -443,12 +450,12 @@ test("Capacitor hides unavailable TMDb; web and Tauri retain the functional acti
     try {
         w.eval(
             variable("src/index.ts", "TMDb") +
-                func("src/ui/index.ts", "infoProgramm")
+                func("src/ui/index.ts", "showProgramInfo")
         );
         let calls = [];
         w.$.ajax = (opts) => calls.push(opts);
         w.Capacitor = {};
-        w.infoProgramm("A programme");
+        w.showProgramInfo("A programme");
         assert(
             !w.document
                 .getElementById("listPodval")
@@ -458,7 +465,7 @@ test("Capacitor hides unavailable TMDb; web and Tauri retain the functional acti
         assert.equal(calls.length, 0);
         delete w.Capacitor;
         w.__TAURI__ = {};
-        w.infoProgramm("A programme");
+        w.showProgramInfo("A programme");
         assert(
             w.document.getElementById("listPodval").textContent.includes("TMDb")
         );
@@ -478,7 +485,7 @@ test("real password action selects a secret editor; normal input restores text a
         w.eval(
             func("src/ui/index.ts", "showEditKey2") +
                 func("prov/xtream/prov.js", "editXtreamSettings") +
-                func("src/ui/index.ts", "btnDiv")
+                func("src/ui/index.ts", "renderButtonHint")
         );
         w.xtream = {
             password: "synthetic-secret",
@@ -488,7 +495,8 @@ test("real password action selects a secret editor; normal input restores text a
         w.loadXtreamParams = () => {};
         w.showEditKey = w.showEditKey2;
         w.listCaption = w.document.getElementById("listCaption");
-        w.listPodval = w.document.getElementById("listPodval");
+        w.listFooter = w.document.getElementById("listPodval");
+        attachSourceAliases(w);
         w.editXtreamSettings();
         w.selIndex = 2;
         w.listKeyHandler(w.keys.ENTER);
@@ -503,7 +511,7 @@ test("real password action selects a secret editor; normal input restores text a
         input = w.document.getElementById("editvar");
         assert.equal(input.type, "text");
         assert.equal(input.value, w.editvar);
-        w.document.getElementById("listPodval").innerHTML = w.btnDiv(
+        w.document.getElementById("listPodval").innerHTML = w.renderButtonHint(
             13,
             "▸",
             "<b>Play</b> / pause"
@@ -532,8 +540,8 @@ test("notifications and stream selectors sanitize metadata while preserving fixe
         const info = w.document.createElement("div");
         info.id = "info";
         w.document.body.appendChild(info);
-        w.numprogElement = w.document.createElement("div");
-        w.document.body.appendChild(w.numprogElement);
+        w.channelNumberElement = w.document.createElement("div");
+        w.document.body.appendChild(w.channelNumberElement);
         w.closeList = () => {};
         w.eval(
             func("src/ui/index.ts", "showShift") +
@@ -552,15 +560,18 @@ test("notifications and stream selectors sanitize metadata while preserving fixe
             : legacyIcon;
         w.showSelectBox(0, [hostile, icon], () => {}, -1);
         assert.equal(
-            w.numprogElement.querySelectorAll("script,[onerror]").length,
+            w.channelNumberElement.querySelectorAll("script,[onerror]").length,
             0
         );
         assert(
-            w.numprogElement.querySelector("span.fontello, span.system-icons")
+            w.channelNumberElement.querySelector(
+                "span.fontello, span.system-icons"
+            )
         );
         assert.equal(
-            w.numprogElement.querySelector("span.fontello, span.system-icons")
-                .textContent,
+            w.channelNumberElement.querySelector(
+                "span.fontello, span.system-icons"
+            ).textContent,
             new JSDOM(icon).window.document.querySelector("span").textContent
         );
         assert.equal(w.__executed, undefined);

@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
+const { compatibilitySource } = require("./helpers/english-source-fixture.cjs");
 const { JSDOM } = require("jsdom");
 const root = path.resolve(__dirname, "..");
 function extract(file, names, assignments = []) {
@@ -33,6 +34,7 @@ const dom = new JSDOM(
     { runScripts: "dangerously", url: "https://example.invalid/" }
 );
 const w = dom.window;
+w.eval(compatibilitySource);
 w.eval(fs.readFileSync(path.join(root, "js/jquery-1.11.1.min.js"), "utf8"));
 const stored = new Map();
 Object.assign(w, {
@@ -41,7 +43,7 @@ Object.assign(w, {
     keys: { DOWN: 40, ENTER: 13, EXIT: 8, N2: 50, RETURN: 27, UP: 38 },
     listCaptionElement: w.document.getElementById("listCaption"),
     listDetailElement: w.document.getElementById("listDetail"),
-    listPodvalElement: w.document.getElementById("listPodval"),
+    listFooterElement: w.document.getElementById("listPodval"),
     saveSettings(settings) {
         stored.set("bulkLocal", settings.localCmdUrl);
         stored.set("bulkSwop", settings.swopBaseUrl);
@@ -66,9 +68,9 @@ w.eval(
 );
 w.eval(
     extract("src/ui/index.ts", [
-        "saveCPD",
-        "restoreCPD",
-        "btnDiv",
+        "saveListPanelState",
+        "restoreListPanelState",
+        "renderButtonHint",
         "showEditKey2",
         "editKey2",
     ])
@@ -81,8 +83,8 @@ w.eval(
     )
 );
 let saves = 0;
-const originalSave = w.saveCPD;
-w.saveCPD = () => {
+const originalSave = w.saveListPanelState;
+w.saveListPanelState = () => {
     saves++;
     originalSave();
 };
@@ -91,7 +93,7 @@ w.optionsList = () => {
     restored = [
         w.listCaptionElement.innerHTML,
         w.listDetailElement.innerHTML,
-        w.listPodvalElement.innerHTML,
+        w.listFooterElement.innerHTML,
     ];
 };
 w._doKey = (key) =>
@@ -124,11 +126,11 @@ assert.equal(w.aboutKeyHandler(w.keys.DOWN), true);
 assert.equal(content.scrollTop, 100);
 w.aboutKeyHandler(w.keys.UP);
 assert.equal(content.scrollTop, 0);
-let controls = w.listPodvalElement.querySelectorAll("span[onclick]");
+let controls = w.listFooterElement.querySelectorAll("span[onclick]");
 assert.equal(
     controls.length,
     4,
-    "controls stay outside the scrollable overlay"
+    "existing footer actions fit one row; server shortcuts stay on their visible buttons"
 );
 function editor() {
     return w.document.getElementById("editvar");
@@ -158,14 +160,14 @@ assert.equal(stored.get("sLocalCmdUrl"), w.sLocalCmdUrl);
 assert.equal(w.settings.localCmdUrl, w.sLocalCmdUrl);
 assert.equal(w.document.getElementById("listEdit").style.display, "none");
 assert.equal(w.listCaptionElement.textContent, "Remote control");
-assert.ok(w.listPodvalElement.textContent.includes("↑↓ Scroll"));
-controls = w.listPodvalElement.querySelectorAll("span[onclick]");
+assert.ok(w.listFooterElement.textContent.includes("↑↓ Scroll"));
+controls = w.listFooterElement.querySelectorAll("span[onclick]");
 controls[2].click();
 submit(" https://example.invalid/new-swop/// ");
 assert.equal(w.sSwopBaseUrl, "https://example.invalid/new-swop");
 assert.equal(stored.get("bulkLocal"), w.sLocalCmdUrl);
 assert.equal(stored.get("bulkSwop"), w.sSwopBaseUrl);
-w.aboutKeyHandler(w.keys.ENTER);
+w.listFooterElement.querySelectorAll("span[onclick]")[1].click();
 assert.equal(
     editor().value,
     w.sLocalCmdUrl,
@@ -196,7 +198,7 @@ assert.equal(
     0,
     "shared editor does not rely on native prompt support"
 );
-w.listPodvalElement.querySelector("span[onclick]").click();
+w.listFooterElement.querySelector("span[onclick]").click();
 assert.deepEqual(restored, ["Settings", "Parent detail", "Parent footer"]);
 assert.equal(w.document.getElementById("listAbout").style.display, "none");
 assert.equal(w.document.getElementById("remoteSettingsContent"), null);
@@ -204,6 +206,188 @@ assert.equal(w.aboutKeyHandler(999), false);
 w.settingsCommands();
 w.aboutKeyHandler(w.keys.EXIT);
 assert.deepEqual(restored, ["Settings", "Parent detail", "Parent footer"]);
+// Outbound controls are separate from the inbound listener and never expose the saved code.
+let serverListener = null;
+let serverState = { enabled: false, message: "Disconnected" };
+const serverChanges = [];
+w.__ottCommandServer = {
+    configure(config) {
+        serverChanges.push({ ...config });
+        w.settings.commandServerAddress = config.address.trim();
+        w.settings.commandServerToken = config.token.trim();
+        w.settings.commandServerEnabled = config.enabled ? 1 : 0;
+        serverState = {
+            enabled: config.enabled,
+            message: config.enabled ? "Connecting..." : "Disconnected",
+        };
+        if (serverListener) serverListener();
+    },
+    status() {
+        return serverState;
+    },
+    subscribe(listener) {
+        serverListener = listener;
+    },
+};
+w.settings.commandServerAddress = "";
+w.settings.commandServerToken = "";
+w.settingsCommands();
+w.document.getElementById("commandServerAddress").click();
+submit(" 192.168.1.20:8081 ");
+assert.equal(w.settings.commandServerAddress, "192.168.1.20:8081");
+assert.equal(
+    serverChanges.at(-1).enabled,
+    false,
+    "editing an address disconnects before any new endpoint can run"
+);
+w.aboutKeyHandler(52);
+assert.equal(editor().type, "password", "access code editor must be masked");
+const serverSecret = "s".repeat(64);
+submit(serverSecret);
+assert.equal(w.settings.commandServerToken, serverSecret);
+assert.ok(
+    !w.document.getElementById("listAbout").textContent.includes(serverSecret)
+);
+w.document.getElementById("commandServerConnect").click();
+assert.equal(serverChanges.at(-1).enabled, true);
+assert.equal(
+    w.document.getElementById("commandServerStatus").textContent,
+    "Connecting..."
+);
+serverState = { enabled: true, message: "Connected" };
+serverListener();
+assert.equal(
+    w.document.getElementById("commandServerStatus").textContent,
+    "Connected"
+);
+w.aboutKeyHandler(53);
+assert.equal(serverChanges.at(-1).enabled, false);
+w.aboutKeyHandler(w.keys.RETURN);
+assert.equal(
+    serverListener,
+    null,
+    "closed settings unsubscribe status updates"
+);
+
+// A remote without digits or a pointer can configure the new server with
+// directional keys and OK. Exercise actual DOM key events and selected controls.
+w.sNoNumbersKeys = 1;
+w.keys.LEFT = 37;
+w.keys.RIGHT = 39;
+w.settingsCommands();
+function remoteKey(key) {
+    const event = new w.KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        keyCode: key,
+    });
+    w.document.activeElement.dispatchEvent(event);
+    assert.equal(
+        event.defaultPrevented,
+        true,
+        "focused control consumes remote key once"
+    );
+}
+assert.deepEqual(
+    [...w.document.querySelectorAll("#remoteSettingsContent button .btn")].map(
+        (badge) => badge.textContent
+    ),
+    ["3", "4", "5"],
+    "numeric shortcuts remain visible without duplicated footer hints"
+);
+assert.equal(w.document.activeElement.id, "commandServerAddress");
+assert.match(w.document.activeElement.style.outline, /2px solid/);
+remoteKey(w.keys.ENTER);
+assert.equal(editor().value, "192.168.1.20:8081");
+submit("192.168.1.30:8081");
+assert.equal(w.settings.commandServerAddress, "192.168.1.30:8081");
+assert.equal(w.document.activeElement.id, "commandServerAddress");
+remoteKey(w.keys.RIGHT);
+assert.equal(w.document.activeElement.id, "commandServerToken");
+remoteKey(w.keys.ENTER);
+assert.equal(editor().type, "password");
+submit("d".repeat(64));
+assert.equal(w.settings.commandServerToken, "d".repeat(64));
+remoteKey(w.keys.RIGHT);
+assert.equal(w.document.activeElement.id, "commandServerConnect");
+const previousChanges = serverChanges.length;
+remoteKey(w.keys.ENTER);
+assert.equal(
+    serverChanges.length,
+    previousChanges + 1,
+    "OK performs one connect action"
+);
+assert.equal(serverChanges.at(-1).enabled, true);
+assert.equal(w.document.activeElement.id, "commandServerConnect");
+const keyboardContent = w.document.getElementById("remoteSettingsContent");
+Object.defineProperty(keyboardContent, "clientHeight", { value: 200 });
+remoteKey(w.keys.DOWN);
+assert.equal(keyboardContent.scrollTop, 100, "UP/DOWN retain scrolling");
+remoteKey(w.keys.UP);
+assert.equal(keyboardContent.scrollTop, 0);
+remoteKey(w.keys.RIGHT);
+assert.match(w.document.activeElement.textContent, /Local URL/);
+remoteKey(w.keys.ENTER);
+assert.match(w.editCaption, /Local command URL/);
+w.editKey2(w.keys.RETURN);
+remoteKey(w.keys.RIGHT);
+assert.match(w.document.activeElement.textContent, /Swop URL/);
+remoteKey(w.keys.RIGHT);
+assert.match(w.document.activeElement.textContent, /HTTP remote/);
+remoteKey(w.keys.RIGHT);
+assert.match(w.document.activeElement.textContent, /Close/);
+remoteKey(w.keys.RIGHT);
+assert.equal(
+    w.document.activeElement.id,
+    "commandServerAddress",
+    "selection wraps"
+);
+remoteKey(w.keys.LEFT);
+assert.match(w.document.activeElement.textContent, /Close/);
+remoteKey(w.keys.ENTER);
+assert.equal(w.document.getElementById("listAbout").style.display, "none");
+assert.equal(serverListener, null);
+w.sNoNumbersKeys = 0;
+
+// New server copy uses the existing translator; missing entries remain English.
+const originalTranslate = w._;
+const translated = {
+    "Access code": "Translated access code",
+    "Command server": "Translated server",
+    Connected: "Translated connected",
+    Disconnect: "Translated disconnect",
+    "Server address": "Translated address",
+    "Server device access code": "Translated code editor",
+};
+w._ = (key) => translated[key] || key;
+serverState = { enabled: true, message: "Connected" };
+w.settingsCommands();
+assert.equal(
+    w.document.querySelector("#remoteSettingsContent b").textContent,
+    translated["Command server"]
+);
+assert.equal(
+    w.document.getElementById("commandServerAddress").textContent,
+    "3 " + translated["Server address"]
+);
+assert.equal(
+    w.document.getElementById("commandServerToken").textContent,
+    "4 " + translated["Access code"]
+);
+assert.equal(
+    w.document.getElementById("commandServerStatus").textContent,
+    translated.Connected
+);
+assert.equal(
+    w.document.getElementById("commandServerConnect").textContent,
+    "5 " + translated.Disconnect
+);
+w.aboutKeyHandler(52);
+assert.equal(w.editCaption, translated["Server device access code"]);
+w.editKey2(w.keys.RETURN);
+w.aboutKeyHandler(w.keys.RETURN);
+w._ = originalTranslate;
+
 // Exercise the actual import validation/confirmation/apply functions after real editor teardown.
 w.eval(extract("src/settings/index.ts", ["importSettings", "applyImport"]));
 let confirmation;
@@ -272,7 +456,7 @@ assert.equal(stored.get("favoritesArray"), "[3]");
 assert.equal(successes, 1);
 assert.equal(reloads, 1);
 assert.equal(restarts, 1);
-// Touch controls use the real dialog renderer and btnDiv dispatch boundary.
+// Touch controls use the real dialog renderer and renderButtonHint dispatch boundary.
 const dialog = w.document.createElement("div");
 dialog.id = "dialogbox";
 w.document.body.appendChild(dialog);
@@ -377,7 +561,7 @@ async function testHttpRemoteSettings() {
         w.document.getElementById("remoteSettingsContent").textContent,
         /HTTP remote control: off/
     );
-    const httpToggle = w.listPodvalElement.querySelectorAll("span[onclick]")[3];
+    const httpToggle = w.listFooterElement.querySelectorAll("span[onclick]")[3];
     assert.match(httpToggle.textContent, /Enable HTTP remote/);
     httpToggle.click();
     w.aboutKeyHandler(49);
@@ -416,7 +600,7 @@ async function testHttpRemoteSettings() {
         w.document.getElementById("remoteSettingsContent").textContent,
         /Authorization: Bearer/
     );
-    assert.match(w.listPodvalElement.textContent, /Disable HTTP remote/);
+    assert.match(w.listFooterElement.textContent, /Disable HTTP remote/);
     w.aboutKeyHandler(49);
     await tick();
     assert.deepEqual(requests, [true, false]);
@@ -478,7 +662,7 @@ async function testHttpRemoteSettings() {
         w.document.getElementById("remoteSettingsContent").textContent,
         /Код доступа к устройству/
     );
-    assert.match(w.listPodvalElement.textContent, /Выключить HTTP-пульт/);
+    assert.match(w.listFooterElement.textContent, /Выключить HTTP-пульт/);
     w.aboutKeyHandler(w.keys.RETURN);
 }
 testHttpRemoteSettings()

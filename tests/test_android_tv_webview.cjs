@@ -1,3 +1,7 @@
+const {
+    attachSourceAliases,
+    sourceNames,
+} = require("./helpers/english-source-fixture.cjs");
 // Compile the actual simulator Activity against minimal Android doubles, then
 // execute its emitted JavaScript with the shipped PC and Android key maps.
 // This verifies the local host contract; it does not emulate WebView or media.
@@ -34,6 +38,7 @@ function write(name, source) {
 }
 
 function playerFunctions(file, names) {
+    names = sourceNames(file, names);
     const ast = ts.createSourceFile(
         file,
         read(file),
@@ -484,6 +489,7 @@ try {
             "window._doKey=function(key){received.push(key);receivers.push(this===window);};",
             w
         );
+        attachSourceAliases(w);
         for (const [nativeKey, playerKey] of Object.entries(mapping)) {
             assert.equal(
                 typeof keyMap[playerKey],
@@ -545,7 +551,9 @@ try {
             "window.keys={UP:9123};window._doKey=function(key){received.push(key*2);receivers.push(this===window);};",
             w
         );
+        attachSourceAliases(w);
         vm.runInContext(scripts.DPAD_UP, w);
+        attachSourceAliases(w);
         assert.equal(
             w.received.at(-1),
             18246,
@@ -562,6 +570,7 @@ try {
             "window._doKey={};",
         ]) {
             vm.runInContext(incomplete, w);
+            attachSourceAliases(w);
             assert.equal(vm.runInContext(scripts.DPAD_UP, w), true);
             assert.equal(
                 w.received.length,
@@ -617,6 +626,7 @@ try {
                 "window._doKey=dispatchKey;window.editKey=editKey2;",
             player
         );
+        attachSourceAliases(player);
         for (const nativeKey of [
             "0",
             "1",

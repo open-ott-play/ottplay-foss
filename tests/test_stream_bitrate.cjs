@@ -119,6 +119,7 @@ function fixture() {
             show() {},
         }),
         addEventListener() {},
+        applyChannelPreference() {},
         clearInterval() {},
         clearTimeout() {},
         console: { error() {}, log() {}, warn() {} },
@@ -130,14 +131,13 @@ function fixture() {
                 return id === "vdiv" ? {} : null;
             },
         },
-        execCHarr() {},
         Hls,
         innerHeight: 720,
         innerWidth: 1280,
         Map: undefined,
         Promise: undefined,
         Set: undefined,
-        saveCHarr() {},
+        saveChannelPreference() {},
         setInterval: () => ++timer,
         setTimeout: () => ++timer,
     };

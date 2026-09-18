@@ -101,7 +101,7 @@ var _fbTimer: any = null;
  * Used for responsive scaling of UI elements in an STB environment where
  * 1280×720 is the reference resolution.
  */
-export function getWidthK(): number {
+export function getViewportWidthScale(): number {
     return window.innerWidth / 1280;
 }
 
@@ -114,7 +114,7 @@ export function getWidthK(): number {
  * Used for responsive scaling of UI elements in an STB environment where
  * 1280×720 is the reference resolution.
  */
-export function getHeightK(): number {
+export function getViewportHeightScale(): number {
     return window.innerHeight / 720;
 }
 
@@ -163,7 +163,7 @@ export function listRowHeight(pageSize: number): number {
     var ps = Math.max(1, pageSize | 0);
     var classic = Math.max(
         1,
-        Math.floor((window.innerHeight - 130 * getHeightK()) / ps)
+        Math.floor((window.innerHeight - 130 * getViewportHeightScale()) / ps)
     );
     var avail = listInContentHeight();
     if (avail > 40) {
@@ -240,8 +240,8 @@ export function packListRowBoxes(
 
 // Expose globally for UI code that uses window.getWidthK / window.getHeightK
 if (typeof window !== "undefined") {
-    (window as any).getWidthK = getWidthK;
-    (window as any).getHeightK = getHeightK;
+    (window as any).getViewportWidthScale = getViewportWidthScale;
+    (window as any).getViewportHeightScale = getViewportHeightScale;
     (window as any).listInContentHeight = listInContentHeight;
     (window as any).listFitPageSize = listFitPageSize;
     (window as any).listRowHeight = listRowHeight;
@@ -534,8 +534,8 @@ export function hasTmdbService(): boolean {
  */
 export function getThumbnail(url: string): string {
     if ((window as any).sThumbnail && url) {
-        var w = Math.floor(133 * getWidthK());
-        var h = Math.floor(200 * getHeightK());
+        var w = Math.floor(133 * getViewportWidthScale());
+        var h = Math.floor(200 * getViewportHeightScale());
         var m = Math.floor(w / 15);
         return (
             '<div class="img" style="background-image: url(\'' +
@@ -562,7 +562,7 @@ export function getThumbnail(url: string): string {
  * name. In the original codebase it may have been intended for server-side
  * error reporting; currently it only logs to console.
  */
-export function ErrPOST(msg: any): void {
+export function logPlayerError(msg: any): void {
     if (msg) console.log("[ERR]", msg);
 }
 
@@ -577,7 +577,7 @@ export function ErrPOST(msg: any): void {
  * environments). Iterates over each character: `h = imul(h ^ charCode, 387420489)`.
  * Finalises with `h ^ (h >>> 9)`. Not cryptographically secure.
  */
-export function TSH(str: string): number {
+export function hashString32(str: string): number {
     for (var i = 0, h = 9; i < str.length; ) {
         h = Math.imul(h ^ str.charCodeAt(i++), 387420489);
     }

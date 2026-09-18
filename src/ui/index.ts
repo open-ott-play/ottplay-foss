@@ -1,3 +1,4 @@
+import { popupActionId } from "../compatibility/legacy-names";
 import {
     hasTmdbService,
     metadataCssUrl,
@@ -9,8 +10,8 @@ import {
  */
 
 import {
-    arrayGetCurProg,
     cancelMediaLoad,
+    currentProgramRequestQueue,
     getCurProgData,
     ifParentalAccessChId,
     type MediaHistoryEntry,
@@ -25,9 +26,9 @@ import { settings } from "../settings";
 import { swopLoadValue } from "../swop";
 import {
     formatTwoDigits,
-    getHeightK,
     getThumbnail,
-    getWidthK,
+    getViewportHeightScale,
+    getViewportWidthScale,
     listRowHeight,
     packListRowBoxes,
     time2time,
@@ -48,7 +49,7 @@ declare var primaryIndex: number;
 declare var sHideMenus: string[];
 declare var sNoNumbersKeys: number;
 declare var sNoColorKeys: number;
-declare var nprovparams: number;
+declare var providerSettingsUnlockCount: number;
 
 // DOM element references
 var $infoBar: any;
@@ -56,9 +57,9 @@ var infoTimeout: any = null;
 var listElement: HTMLElement | null = null;
 var listInElement: HTMLElement | null = null;
 var listCaptionElement: HTMLElement | null = null;
-var listPodvalElement: HTMLElement | null = null;
+var listFooterElement: HTMLElement | null = null;
 var listDetailElement: HTMLElement | null = null;
-var numprogElement: HTMLElement | null = null;
+var channelNumberElement: HTMLElement | null = null;
 
 // State
 var listDataArray: any[] = [];
@@ -252,7 +253,7 @@ var _keysSymbol: any[] = [
     {
         a: function () {
             clearInterval(cursorInterval);
-            (window as any).restoreCPD();
+            (window as any).restoreListPanelState();
             $("#listEdit").hide();
             if (typeof (window as any).setEdit === "function")
                 (window as any).setEdit();
@@ -325,11 +326,11 @@ export function uiInit(): void {
     if (listElement) listElement.onclick = list_OnClick;
     listInElement = document.getElementById("listIn");
     listCaptionElement = document.getElementById("listCaption");
-    listPodvalElement = document.getElementById("listPodval");
+    listFooterElement = document.getElementById("listPodval");
     listDetailElement = document.getElementById("listDetail");
     listPopUpElement = document.getElementById("listPopUp");
-    numprogElement = document.getElementById("numprog");
-    if (numprogElement) numprogElement.style.display = "none";
+    channelNumberElement = document.getElementById("numprog");
+    if (channelNumberElement) channelNumberElement.style.display = "none";
 
     var host = (window as any).__host || "";
     var version = (window as any).__av || "local";
@@ -378,8 +379,8 @@ export function uiInit(): void {
         $(this)
             .css({ height: "auto", left: 0, top: 0, width: "auto" })
             .css({
-                left: (1260 * getWidthK() - $(this).width()) / 2,
-                top: (720 * getHeightK() - $(this).height()) / 2,
+                left: (1260 * getViewportWidthScale() - $(this).width()) / 2,
+                top: (720 * getViewportHeightScale() - $(this).height()) / 2,
             });
     });
 
@@ -387,8 +388,8 @@ export function uiInit(): void {
     $infoBar.click(function (e: any) {
         if (!e) e = event;
         e.stopPropagation();
-        if (typeof (window as any).showChanelInfo === "function")
-            (window as any).showChanelInfo();
+        if (typeof (window as any).showChannelInfo === "function")
+            (window as any).showChannelInfo();
     });
 
     // Mousewheel on list
@@ -499,11 +500,12 @@ export function uiInit(): void {
 
     // Podval btnDiv: capture-phase so Tauri drag suppress / #_b / video
     // compositing cannot swallow EPG/Category/Actions/Description/PiP clicks.
-    var podEl = listPodvalElement || document.getElementById("listPodval");
-    if (podEl && !(podEl as any).__ottPodvalClickBound) {
-        (podEl as any).__ottPodvalClickBound = true;
-        var podRoot: HTMLElement = podEl as HTMLElement;
-        var firePodval = function (ev: Event): void {
+    var footerElement =
+        listFooterElement || document.getElementById("listPodval");
+    if (footerElement && !(footerElement as any).__ottPodvalClickBound) {
+        (footerElement as any).__ottPodvalClickBound = true;
+        var footerRoot: HTMLElement = footerElement as HTMLElement;
+        var dispatchFooterAction = function (ev: Event): void {
             try {
                 (window as any).__ottTauriSuppressClick = false;
             } catch (_s) {}
@@ -512,7 +514,7 @@ export function uiInit(): void {
             var span = $(t).closest("span[onclick]")[0] as
                 | HTMLElement
                 | undefined;
-            if (!span || !podRoot.contains(span)) return;
+            if (!span || !footerRoot.contains(span)) return;
             var oc = span.getAttribute("onclick") || "";
             var m = oc.match(/_doKey\((\d+)/);
             if (!m) return;
@@ -528,10 +530,10 @@ export function uiInit(): void {
                 (window as any)._doKey(keyNum, ev);
             }
         };
-        podRoot.addEventListener("click", firePodval, true);
+        footerRoot.addEventListener("click", dispatchFooterAction, true);
         // mousedown arm: clear suppress before click; do not _doKey here
         // (would double-fire with click).
-        podRoot.addEventListener(
+        footerRoot.addEventListener(
             "mousedown",
             function (ev: Event): void {
                 try {
@@ -573,10 +575,10 @@ export function uiInit(): void {
         if (
             !(
                 w.playType ||
-                (w.chanels &&
+                (w.channels &&
                     w.curList &&
-                    w.chanels[w.curList[w.primaryIndex]] &&
-                    w.chanels[w.curList[w.primaryIndex]].rec)
+                    w.channels[w.curList[w.primaryIndex]] &&
+                    w.channels[w.curList[w.primaryIndex]].rec)
             )
         )
             return;
@@ -621,7 +623,7 @@ export function uiInit(): void {
                 return;
             }
             if (typeof w.showShift === "function")
-                w.showShift(">> " + pos2text(r2) + " <<");
+                w.showShift(">> " + formatClockTime(r2) + " <<");
             if (typeof w.playArchive === "function") w.playArchive(r2);
         } else {
             if (typeof w.showShift === "function")
@@ -643,10 +645,10 @@ export function uiInit(): void {
         if (
             !(
                 w.playType ||
-                (w.chanels &&
+                (w.channels &&
                     w.curList &&
-                    w.chanels[w.curList[w.primaryIndex]] &&
-                    w.chanels[w.curList[w.primaryIndex]].rec)
+                    w.channels[w.curList[w.primaryIndex]] &&
+                    w.channels[w.curList[w.primaryIndex]].rec)
             )
         )
             return;
@@ -691,7 +693,7 @@ export function uiInit(): void {
                 return;
             }
             if (typeof w.showShift === "function")
-                w.showShift(">> " + pos2text(r2) + " <<");
+                w.showShift(">> " + formatClockTime(r2) + " <<");
             if (typeof w.playArchive === "function") w.playArchive(r2);
         } else {
             if (typeof w.showShift === "function")
@@ -713,10 +715,10 @@ export function uiInit(): void {
         if (
             !(
                 w.playType ||
-                (w.chanels &&
+                (w.channels &&
                     w.curList &&
-                    w.chanels[w.curList[w.primaryIndex]] &&
-                    w.chanels[w.curList[w.primaryIndex]].rec)
+                    w.channels[w.curList[w.primaryIndex]] &&
+                    w.channels[w.curList[w.primaryIndex]].rec)
             )
         )
             return;
@@ -744,7 +746,7 @@ export function uiInit(): void {
             var r2 = Math.round(
                 frac * (w._prog100.time_to - w._prog100.time) + w._prog100.time
             );
-            $tooltipSpan.text(pos2text(r2));
+            $tooltipSpan.text(formatClockTime(r2));
         } else if (
             w._prog100 &&
             w._prog100.time != null &&
@@ -754,12 +756,12 @@ export function uiInit(): void {
             var r3 = Math.round(
                 frac * (w._prog100.time_to - w._prog100.time) + w._prog100.time
             );
-            $tooltipSpan.text(pos2text(r3));
+            $tooltipSpan.text(formatClockTime(r3));
         } else {
             // No EPG data — show playback position based on playTime (seconds elapsed)
             var elapsed = w.playType > 0 ? (w.playTime ?? 0) : 0;
             var r3 = Math.round(elapsed);
-            $tooltipSpan.text(pos2text(r3));
+            $tooltipSpan.text(formatClockTime(r3));
         }
     });
 }
@@ -816,7 +818,7 @@ export function infoBarHide(): void {
  * @returns void
  * @sideeffect Shows `$infoBar`, clears any existing `infoTimeout`, and sets a new timeout to call `infoBarHide`.
  */
-export function showChanelInfo(timeoutSec: number): void {
+export function showChannelInfo(timeoutSec: number): void {
     var w = window as any;
     clearTimeout(detailTimer);
     clearTimeout(infoTimeout);
@@ -889,7 +891,7 @@ export function showPage(): void {
     // Gold showPage clears the EPG queue before re-rendering rows so each
     // visible channel re-queues getCurProgData → updateChanelList (now/next).
     try {
-        arrayGetCurProg.length = 0;
+        currentProgramRequestQueue.length = 0;
     } catch (_q) {}
 
     if (listInElement) listInElement.innerHTML = "";
@@ -957,9 +959,9 @@ export function showPage(): void {
     var totalPages = 1;
     var currentPage = 0;
     if (showScroll && dataArr.length > pageSz) {
-        itemWidth = getWidthK() * 720;
-        (window as any).itemWith = itemWidth;
-        scrollWidth = 10 * getWidthK();
+        itemWidth = getViewportWidthScale() * 720;
+        (window as any).channelListItemWidth = itemWidth;
+        scrollWidth = 10 * getViewportWidthScale();
         totalPages =
             Math.floor(dataArr.length / pageSz) +
             (dataArr.length % pageSz ? 1 : 0);
@@ -970,8 +972,8 @@ export function showPage(): void {
         html += '<div class="list-scroll-before"></div>';
         html += '<div class="list-scroll-thumb"></div></div>';
     } else {
-        itemWidth = getWidthK() * 735;
-        (window as any).itemWith = itemWidth;
+        itemWidth = getViewportWidthScale() * 735;
+        (window as any).channelListItemWidth = itemWidth;
     }
     // Never let row width exceed the live #listIn box (window-state restore /
     // non-1280 sizes used to overflow → wrap / clipped values in WKWebView).
@@ -980,9 +982,11 @@ export function showPage(): void {
         if (listInBox && (listInBox as HTMLElement).clientWidth > 40) {
             var avail =
                 (listInBox as HTMLElement).clientWidth -
-                (showScroll && dataArr.length > pageSz ? 12 * getWidthK() : 0);
+                (showScroll && dataArr.length > pageSz
+                    ? 12 * getViewportWidthScale()
+                    : 0);
             if (avail > 40) itemWidth = Math.min(itemWidth, Math.floor(avail));
-            (window as any).itemWith = itemWidth;
+            (window as any).channelListItemWidth = itemWidth;
         }
     } catch (_wCap) {}
     for (var i = pageStart; i < pageEnd; i++) {
@@ -1050,8 +1054,8 @@ export function showPage(): void {
     // have current programme data (playing / previously warmed). Cold rows
     // fill via deferred doGetCurProg → updateChanelList (single-flight).
     try {
-        var upd = (window as any).updateChanelList;
-        var cmap = (window as any).chanels || (window as any).channels || null;
+        var upd = (window as any).updateChannelListRow;
+        var cmap = (window as any).channels || null;
         var nowWarm = Date.now() / 1000;
         if (typeof upd === "function" && cmap) {
             for (var wi = pageStart; wi < pageEnd; wi++) {
@@ -1337,7 +1341,7 @@ export function infoBox(message: string): void {
         .html(
             metadataHtml(message) +
                 "<br/><br/>" +
-                btnDiv(keys.ENTER, strENTER, "Ok")
+                renderButtonHint(keys.ENTER, strENTER, "Ok")
         )
         .show();
     (window as any).dialogBoxKeyHandler = function (_e: number): void {
@@ -1379,8 +1383,8 @@ export function confirmBox(
             "<center>" +
                 escapeHtml(_(message)) +
                 "<br/><br/>" +
-                btnDiv(keys.ENTER, strENTER, "Yes") +
-                btnDiv(keys.RETURN, strRETURN, "No") +
+                renderButtonHint(keys.ENTER, strENTER, "Yes") +
+                renderButtonHint(keys.RETURN, strRETURN, "No") +
                 "</center>"
         )
         .show();
@@ -1445,10 +1449,11 @@ export function showSelectBox(
                 metadataHtml(val) +
                 "&nbsp;&nbsp;</div>";
         });
-        if (numprogElement) numprogElement.innerHTML = html;
+        if (channelNumberElement) channelNumberElement.innerHTML = html;
         if (a)
             (window as any).numTimeout = setTimeout(function () {
-                if (numprogElement) numprogElement.style.display = "none";
+                if (channelNumberElement)
+                    channelNumberElement.style.display = "none";
                 (window as any).selectBoxKeyHandler = null;
             }, a);
     }
@@ -1462,11 +1467,12 @@ export function showSelectBox(
         r(s);
         (window as any).numTimeout = setTimeout(function () {
             i(s);
-            if (numprogElement) numprogElement.style.display = "none";
+            if (channelNumberElement)
+                channelNumberElement.style.display = "none";
             (window as any).selectBoxKeyHandler = null;
         }, 2000);
     }
-    if (numprogElement) numprogElement.style.display = "";
+    if (channelNumberElement) channelNumberElement.style.display = "";
     (window as any).selectBoxKeyHandler = function (e: number): boolean {
         clearTimeout((window as any).numTimeout);
         switch (e) {
@@ -1475,7 +1481,8 @@ export function showSelectBox(
             // falls through
             case keys.RETURN:
             case keys.EXIT:
-                if (numprogElement) numprogElement.style.display = "none";
+                if (channelNumberElement)
+                    channelNumberElement.style.display = "none";
                 (window as any).selectBoxKeyHandler = null;
                 return true;
             case keys.UP:
@@ -1496,7 +1503,8 @@ export function showSelectBox(
                 if (clickIdx < 0 || clickIdx >= n.length) return false;
                 if (clickIdx === s) {
                     if (!a) i(s);
-                    if (numprogElement) numprogElement.style.display = "none";
+                    if (channelNumberElement)
+                        channelNumberElement.style.display = "none";
                     (window as any).selectBoxKeyHandler = null;
                 } else r(clickIdx);
                 return true;
@@ -1542,7 +1550,7 @@ export function virtualTimeshiftProg(nowSec?: number): {
     };
 }
 
-export function updateChanelInfo(channelId: number): void {
+export function updateChannelInfo(channelId: number): void {
     if (channelId == null) return;
     var curList = (window as any).curList || [];
     var primaryIndex = (window as any).primaryIndex;
@@ -1556,7 +1564,7 @@ export function updateChanelInfo(channelId: number): void {
     var programDurationEl = document.getElementById("programm_duration");
     var beginTimeEl = document.getElementById("begin_time");
     var endTimeEl = document.getElementById("end_time");
-    var nprogramNameEl = document.getElementById("nprogramm_name");
+    var nextProgramNameElement = document.getElementById("nprogramm_name");
     var nbeginTimeEl = document.getElementById("nbegin_time");
     var nendTimeEl = document.getElementById("nend_time");
     var progressEl = document.getElementById("progress");
@@ -1569,8 +1577,8 @@ export function updateChanelInfo(channelId: number): void {
             "" + ((primaryIndex != null ? primaryIndex : -1) + 1);
 
     // Channel info from global chanels
-    var t = (window as any).chanels
-        ? (window as any).chanels[channelId]
+    var t = (window as any).channels
+        ? (window as any).channels[channelId]
         : undefined;
     if (t) {
         if (channelNameEl) channelNameEl.textContent = t.channel_name || "";
@@ -1600,13 +1608,13 @@ export function updateChanelInfo(channelId: number): void {
     if (progressDivEl)
         progressDivEl.style.backgroundColor = "rgba(68,68,102,0.55)";
     if (progressREl) progressREl.style.width = "0%";
-    if (nprogramNameEl) nprogramNameEl.innerHTML = "&nbsp; ";
+    if (nextProgramNameElement) nextProgramNameElement.innerHTML = "&nbsp; ";
     if (nbeginTimeEl) nbeginTimeEl.textContent = "";
     if (nendTimeEl) nendTimeEl.textContent = "";
 
     // EPG data — legacy stbPlayer.js:1258-1281 uses getCurProgData return,
     // then always writes +remaining minutes and next-program duration.
-    var hasProg = getCurProgData(channelId, updateChanelInfo);
+    var hasProg = getCurProgData(channelId, updateChannelInfo);
     if (hasProg && t && t.time_to) {
         // Has current EPG program
         if (programNameEl) programNameEl.textContent = t.name;
@@ -1623,7 +1631,7 @@ export function updateChanelInfo(channelId: number): void {
             endTimeEl.textContent = "+" + Math.round((t.time_to - nowSec) / 60);
         if (programDurationEl) {
             programDurationEl.innerHTML =
-                time2str(t.time) +
+                formatProgramDateTime(t.time) +
                 " - " +
                 time2time(t.time_to) +
                 ' (<span id="cur_time">' +
@@ -1642,7 +1650,8 @@ export function updateChanelInfo(channelId: number): void {
         }
         // Next program
         if (t.nextpr && t.nextpr.length) {
-            if (nprogramNameEl) nprogramNameEl.textContent = t.nextpr[0].name;
+            if (nextProgramNameElement)
+                nextProgramNameElement.textContent = t.nextpr[0].name;
             if (nbeginTimeEl)
                 nbeginTimeEl.textContent = time2time(t.nextpr[0].time);
             var nextDur = Math.round(
@@ -1757,9 +1766,9 @@ export function updateChanelInfo(channelId: number): void {
             $infoBar &&
             typeof $infoBar.is === "function" &&
             !$infoBar.is(":visible") &&
-            typeof w.showChanelInfo === "function"
+            typeof w.showChannelInfo === "function"
         ) {
-            w.showChanelInfo(1);
+            w.showChannelInfo(1);
         }
     } catch (_info) {}
 }
@@ -1828,9 +1837,9 @@ export function initBackgroundIntervals(): void {
         // Channel EPG must not replace the movie title/progress during VOD.
         if (
             !(window as any).playType &&
-            typeof (window as any).updateChanelInfo === "function"
+            typeof (window as any).updateChannelInfo === "function"
         ) {
-            (window as any).updateChanelInfo((window as any).listChannel);
+            (window as any).updateChannelInfo((window as any).listChannel);
         }
     }, 30000);
 }
@@ -1888,12 +1897,12 @@ export function refreshAudioBadge(): void {
  * @sideeffect Stores innerHTML of listCaptionElement, listPodvalElement, listDetailElement in `ui_state` object.
  *             Clears the innerHTML of all three elements.
  */
-export function saveCPD(): void {
+export function saveListPanelState(): void {
     ui_state.lc = listCaptionElement ? listCaptionElement.innerHTML : "";
-    ui_state.lp = listPodvalElement ? listPodvalElement.innerHTML : "";
+    ui_state.lp = listFooterElement ? listFooterElement.innerHTML : "";
     ui_state.ld = listDetailElement ? listDetailElement.innerHTML : "";
     if (listCaptionElement) listCaptionElement.innerHTML = "";
-    if (listPodvalElement) listPodvalElement.innerHTML = "";
+    if (listFooterElement) listFooterElement.innerHTML = "";
     if (listDetailElement) listDetailElement.innerHTML = "";
 }
 
@@ -1904,9 +1913,9 @@ export function saveCPD(): void {
  * @sideeffect Restores innerHTML of listCaptionElement, listPodvalElement, listDetailElement from saved values.
  *             Resets `ui_state` to an empty object.
  */
-export function restoreCPD(): void {
+export function restoreListPanelState(): void {
     if (listCaptionElement) listCaptionElement.innerHTML = ui_state.lc || "";
-    if (listPodvalElement) listPodvalElement.innerHTML = ui_state.lp || "";
+    if (listFooterElement) listFooterElement.innerHTML = ui_state.lp || "";
     if (listDetailElement) listDetailElement.innerHTML = ui_state.ld || "";
     ui_state = {};
 }
@@ -1925,7 +1934,7 @@ export function restoreCPD(): void {
  *             If both label and badges are empty, the description itself is wrapped in a plain `.btn` div.
  *             The entire span has an onclick that calls `_doKey(keyLabel)`.
  */
-export function btnDiv(
+export function renderButtonHint(
     keyLabel: number,
     label: string,
     description: string,
@@ -2007,7 +2016,7 @@ function detailListActionWithTimeOut(): void {
  * @param e - Unix timestamp in seconds.
  * @returns string — Formatted as "HH:MM:SS".
  */
-export function pos2text(e: number): string {
+export function formatClockTime(e: number): string {
     var t = new Date(e * 1e3);
     return (
         _t2(t.getHours()) +
@@ -2025,7 +2034,7 @@ export function pos2text(e: number): string {
  * @param e - Offset in seconds (positive = forward, negative = backward).
  * @returns string — HTML string, or `&nbsp;` if offset is 0.
  */
-export function step2text(e: number): string {
+export function formatSeekOffset(e: number): string {
     var t = Math.floor(Math.abs(e) / 60);
     var r = Math.abs(e) % 60;
     return !e
@@ -2042,7 +2051,7 @@ export function step2text(e: number): string {
  * @param e - Unix timestamp in seconds.
  * @returns string — Formatted as "Day dd.mm HH:MM".
  */
-export function time2str(e: number): string {
+export function formatProgramDateTime(e: number): string {
     var days = _("Su Mo Tu We Th Fr Sa").split(" ");
     var d = new Date(e * 1e3);
     return (
@@ -2118,23 +2127,23 @@ export function scrollUp(el: string, px: number, delay: number): void {
  * @sideeffect Hides `listPopUp`. Calls `saveCPD()`. Sets caption/podval elements.
  *             Registers `aboutKeyHandler` for TMDb search and close. Shows `#listAbout`.
  */
-export function infoProgramm(title: string): void {
+export function showProgramInfo(title: string): void {
     if (!title) {
         infoBox(_("no epg at current time"));
         return;
     }
     $("#listPopUp").hide();
-    saveCPD();
+    saveListPanelState();
     if (listCaptionElement) listCaptionElement.textContent = title;
-    if (listPodvalElement) {
+    if (listFooterElement) {
         var extra = "";
         if ((window as any).sArrowFun === 2) extra = strRIGHT;
         else if ((window as any).sRewFun === 1) extra = strFF;
         else if ((window as any).sPNFun === 1) extra = strNEXT;
-        listPodvalElement.innerHTML =
-            btnDiv(keys.RETURN, strRETURN, "Close") +
+        listFooterElement.innerHTML =
+            renderButtonHint(keys.RETURN, strRETURN, "Close") +
             (title && hasTmdbService()
-                ? btnDiv(keys.N2, strInfo, "TMDb", "2", extra)
+                ? renderButtonHint(keys.N2, strInfo, "TMDb", "2", extra)
                 : "");
     }
     // Legacy stbPlayer.js:2251-2282 — TMDb keys search; any other key closes.
@@ -2173,7 +2182,7 @@ export function infoProgramm(title: string): void {
                     return true;
             }
         }
-        restoreCPD();
+        restoreListPanelState();
         $("#listAbout").hide().text("");
         $("#_prd").css("margin-top", 0);
         if ((window as any).detailTimer)
@@ -2212,18 +2221,18 @@ export function infoMedia(): void {
     var description = getMediaDescr(la[si]);
     if (!description) return;
     $("#listPopUp").hide();
-    saveCPD();
+    saveListPanelState();
     var t = la[si].title || "";
     if (listCaptionElement) listCaptionElement.textContent = t;
-    if (listPodvalElement) {
+    if (listFooterElement) {
         var extra = "";
         if ((window as any).sArrowFun === 2) extra = strRIGHT;
         else if ((window as any).sRewFun === 1) extra = strFF;
         else if ((window as any).sPNFun === 1) extra = strNEXT;
-        listPodvalElement.innerHTML =
-            btnDiv(keys.RETURN, strRETURN, "Close") +
+        listFooterElement.innerHTML =
+            renderButtonHint(keys.RETURN, strRETURN, "Close") +
             (t && hasTmdbService()
-                ? btnDiv(keys.N2, strInfo, "TMDb", "2", extra)
+                ? renderButtonHint(keys.N2, strInfo, "TMDb", "2", extra)
                 : "");
     }
     aboutKeyHandler = function (e: number): boolean {
@@ -2243,7 +2252,7 @@ export function infoMedia(): void {
                     return true;
             }
         }
-        restoreCPD();
+        restoreListPanelState();
         $("#listAbout").hide().text("");
         aboutKeyHandler = null;
         return true;
@@ -2316,8 +2325,12 @@ export function infoList(e?: string): void {
     (window as any).listDataArray = listDataArray;
     (window as any).listArray = listArray;
     if (listCaptionElement) listCaptionElement.innerHTML = _("Info");
-    if (listPodvalElement)
-        listPodvalElement.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
+    if (listFooterElement)
+        listFooterElement.innerHTML = renderButtonHint(
+            keys.RETURN,
+            strRETURN,
+            "Close"
+        );
     showPage();
 }
 
@@ -2345,7 +2358,7 @@ export function popupList(i?: any): void {
     $("#buffering").hide();
     if ($("#listAbout").is(":visible")) {
         $("#listAbout").hide();
-        restoreCPD();
+        restoreListPanelState();
     }
 
     var popupActions: any[] = (window as any).popupActions || [];
@@ -2389,7 +2402,7 @@ export function popupList(i?: any): void {
 
     var u = -1; // counter for added elements
     var playType: number = (window as any).playType || 0;
-    var chanels: any = (window as any).chanels || {};
+    var channels: any = (window as any).channels || {};
     var popStop: any = (window as any).popStop;
     var popPause: any = (window as any).popPause;
     var popTogglePip: any = (window as any).popTogglePip;
@@ -2406,7 +2419,8 @@ export function popupList(i?: any): void {
     var optionsList: any = (window as any).optionsList;
     var exitPortal: any = (window as any).exitPortal;
     var infoList: any = (window as any).infoList;
-    var noProvParam: any = (window as any).noProvParam;
+    var toggleProviderSettingsVisibility: any = (window as any)
+        .toggleProviderSettingsVisibility;
     var popBuckets: any = (window as any).popBuckets;
     var popEpg: any = (window as any).popEpg;
 
@@ -2417,7 +2431,7 @@ export function popupList(i?: any): void {
 
     popupActions.forEach(function (action: any, t: number) {
         if (!action) return;
-        if (sHideMenus.indexOf(popupActions[t].name) !== -1) return;
+        if (sHideMenus.indexOf(popupActionId(popupActions[t])) !== -1) return;
         var r = popupArray[t] ? popupArray[t] : "";
 
         try {
@@ -2449,7 +2463,7 @@ export function popupList(i?: any): void {
                     );
                 case popShift:
                 case popRecords:
-                    if (playType < 0 || !c || !chanels[c] || chanels[c].rec)
+                    if (playType < 0 || !c || !channels[c] || channels[c].rec)
                         break;
                     return;
                 case popTogglePip:
@@ -2574,7 +2588,8 @@ export function popupList(i?: any): void {
         // Push to array as OBJECT (not string!)
         listArray.push({ action: action, desc: s, name: r });
 
-        if (action == noProvParam) a = listArray.length - 1;
+        if (action == toggleProviderSettingsVisibility)
+            a = listArray.length - 1;
         if (action == optionsList) o = listArray.length;
     });
 
@@ -2587,8 +2602,8 @@ export function popupList(i?: any): void {
         if (item && listDetailElement) {
             listDetailElement.innerHTML = item.desc || "";
         }
-        if (item && item.action == noProvParam) {
-            (window as any).nprovparams = 0;
+        if (item && item.action == toggleProviderSettingsVisibility) {
+            (window as any).providerSettingsUnlockCount = 0;
         }
     };
 
@@ -2682,8 +2697,12 @@ export function popupList(i?: any): void {
     };
 
     if (listCaptionElement) listCaptionElement.innerHTML = _("Menu");
-    if (listPodvalElement)
-        listPodvalElement.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
+    if (listFooterElement)
+        listFooterElement.innerHTML = renderButtonHint(
+            keys.RETURN,
+            strRETURN,
+            "Close"
+        );
 
     // Sync listArray and listDataArray so showPage() and changeSelect() can read them
     listDataArray = listArray;
@@ -3049,12 +3068,12 @@ export function colorDialog(): void {
         n = 85;
     s = Number.parseInt(((window as any).eSHLcolor || "50,85").split(",")[0]);
     n = Number.parseInt(((window as any).eSHLcolor || "50,85").split(",")[1]);
-    saveCPD();
+    saveListPanelState();
     if (listCaptionElement) listCaptionElement.innerHTML = _("Color spectrum");
-    if (listPodvalElement)
-        listPodvalElement.innerHTML =
-            btnDiv(keys.RETURN, strRETURN, "Close") +
-            btnDiv(keys.ENTER, strENTER, "Set");
+    if (listFooterElement)
+        listFooterElement.innerHTML =
+            renderButtonHint(keys.RETURN, strRETURN, "Close") +
+            renderButtonHint(keys.ENTER, strENTER, "Set");
     if (listDetailElement) listDetailElement.innerHTML = "";
     $("#listAbout")
         .html(
@@ -3076,11 +3095,11 @@ export function colorDialog(): void {
                 "</div>&nbsp;" +
                 _("Saturation") +
                 "<br>" +
-                btnDiv(keys.YELLOW, "", "Yellow") +
+                renderButtonHint(keys.YELLOW, "", "Yellow") +
                 "<br>" +
-                btnDiv(keys.GREEN, "", "Green") +
+                renderButtonHint(keys.GREEN, "", "Green") +
                 "<br>" +
-                btnDiv(keys.BLUE, "", "Blue") +
+                renderButtonHint(keys.BLUE, "", "Blue") +
                 "</div>"
         )
         .show();
@@ -3116,7 +3135,7 @@ export function colorDialog(): void {
                 (window as any).eSHLcolor = s + "," + n;
             case keys.RETURN:
                 $("#listAbout").text("").hide();
-                restoreCPD();
+                restoreListPanelState();
                 return true;
             default:
                 return false;
@@ -3152,12 +3171,12 @@ export function selColorDialog(): void {
     var n = Number.parseInt(
         ((window as any).eSHLcolSel || "50,85").split(",")[1]
     );
-    saveCPD();
+    saveListPanelState();
     if (listCaptionElement) listCaptionElement.innerHTML = _("Select color");
-    if (listPodvalElement)
-        listPodvalElement.innerHTML =
-            btnDiv(keys.RETURN, strRETURN, "Close") +
-            btnDiv(keys.ENTER, strENTER, "Set");
+    if (listFooterElement)
+        listFooterElement.innerHTML =
+            renderButtonHint(keys.RETURN, strRETURN, "Close") +
+            renderButtonHint(keys.ENTER, strENTER, "Set");
     if (listDetailElement) listDetailElement.innerHTML = "";
     $("#listAbout")
         .html(
@@ -3200,7 +3219,7 @@ export function selColorDialog(): void {
                 (window as any).eSHLcolSel = s + "," + n;
             case keys.RETURN:
                 $("#listAbout").text("").hide();
-                restoreCPD();
+                restoreListPanelState();
                 return true;
             default:
                 return false;
@@ -3234,13 +3253,13 @@ export function backColorDialog(): void {
     var n = Number.parseInt(
         ((window as any).eSHLcolorB || "255,0").split(",")[1]
     );
-    saveCPD();
+    saveListPanelState();
     if (listCaptionElement)
         listCaptionElement.innerHTML = _("Background color");
-    if (listPodvalElement)
-        listPodvalElement.innerHTML =
-            btnDiv(keys.RETURN, strRETURN, "Close") +
-            btnDiv(keys.ENTER, strENTER, "Set");
+    if (listFooterElement)
+        listFooterElement.innerHTML =
+            renderButtonHint(keys.RETURN, strRETURN, "Close") +
+            renderButtonHint(keys.ENTER, strENTER, "Set");
     if (listDetailElement) listDetailElement.innerHTML = "";
     $("#listAbout")
         .html(
@@ -3283,7 +3302,7 @@ export function backColorDialog(): void {
                 (window as any).eSHLcolorB = s + "," + n;
             case keys.RETURN:
                 $("#listAbout").text("").hide();
-                restoreCPD();
+                restoreListPanelState();
                 return true;
             default:
                 return false;
@@ -3322,21 +3341,25 @@ export function joyMenu(): void {
             '<table style="font-size:inherit">' +
                 "<tr><td></td>" +
                 btn +
-                btnDiv(keys.UP, strUP, "<br>Rewind<br>") +
+                renderButtonHint(keys.UP, strUP, "<br>Rewind<br>") +
                 "</td><td></td></tr>" +
                 "<tr>" +
                 btn +
-                btnDiv(keys.LEFT, strLEFT, "<br>Menu") +
+                renderButtonHint(keys.LEFT, strLEFT, "<br>Menu") +
                 "</td>" +
                 btn +
-                btnDiv(keys.ENTER, strENTER, "<br>Pause<br>") +
+                renderButtonHint(keys.ENTER, strENTER, "<br>Pause<br>") +
                 "</td>" +
                 btn +
-                btnDiv(keys.RIGHT, strRIGHT, "<br>Toggle<br>sound track") +
+                renderButtonHint(
+                    keys.RIGHT,
+                    strRIGHT,
+                    "<br>Toggle<br>sound track"
+                ) +
                 "</td></tr>" +
                 "<tr><td></td>" +
                 btn +
-                btnDiv(
+                renderButtonHint(
                     keys.DOWN,
                     strDOWN,
                     (window as any).playType
@@ -3345,7 +3368,7 @@ export function joyMenu(): void {
                 ) +
                 "</td><td></td></tr>" +
                 "</table>" +
-                btnDiv(keys.RETURN, strRETURN, "Close")
+                renderButtonHint(keys.RETURN, strRETURN, "Close")
         )
         .show();
     dialogBoxKeyHandler = function (e: number): void {
@@ -3503,7 +3526,7 @@ export function showEditKey1(_initKeys: any, secret?: boolean): void {
         w.showEditKey2(_initKeys, secret);
         return;
     }
-    saveCPD();
+    saveListPanelState();
     // Legacy stbPlayer.js:3993 uses == "_eng" (not ===)
     if (_ottplaylang() == "_eng") _keyE = true;
     _keysSymbol[1].s = _showLangKey()
@@ -3582,16 +3605,16 @@ export function showEdit(): void {
         "background-color": (window as any).curColorB,
         color: (window as any).curColor,
     });
-    if (listPodvalElement)
-        listPodvalElement.innerHTML =
-            btnDiv(keys.RETURN, strRETURN, "Close") +
-            btnDiv(
+    if (listFooterElement)
+        listFooterElement.innerHTML =
+            renderButtonHint(keys.RETURN, strRETURN, "Close") +
+            renderButtonHint(
                 keys.RED,
                 "",
                 _keysSymbol[0].s ? (_keyUp ? "&darr;a" : "&uarr;A") : "",
                 strTools
             ) +
-            btnDiv(
+            renderButtonHint(
                 keys.GREEN,
                 "",
                 _keysSymbol[1].s
@@ -3604,8 +3627,8 @@ export function showEdit(): void {
                     : "",
                 strFF
             ) +
-            btnDiv(keys.YELLOW, "", "Delete", strRW) +
-            btnDiv(keys.BLUE, "", "Ok", strPlayPause);
+            renderButtonHint(keys.YELLOW, "", "Delete", strRW) +
+            renderButtonHint(keys.BLUE, "", "Ok", strPlayPause);
 }
 
 /**
@@ -3748,8 +3771,8 @@ export function editKey1(e: number): void {
         case (window as any).keys.EXIT:
         case (window as any).keys.RETURN:
             clearInterval(cursorInterval);
-            if (typeof (window as any).restoreCPD === "function")
-                (window as any).restoreCPD();
+            if (typeof (window as any).restoreListPanelState === "function")
+                (window as any).restoreListPanelState();
             $("#listEdit").hide();
             return;
         default: {
@@ -3786,14 +3809,14 @@ export function editKey2(code: number): void {
             // Same teardown as EXIT/RETURN so #listEdit closes after save;
             // jQuery .hide() triggers uiInit hide handler which clears __ottEditKey2Handler.
             $("#listEdit").hide();
-            if (typeof (window as any).restoreCPD === "function")
-                (window as any).restoreCPD();
+            if (typeof (window as any).restoreListPanelState === "function")
+                (window as any).restoreListPanelState();
             break;
         case (window as any).keys.EXIT:
         case (window as any).keys.RETURN:
             $("#listEdit").hide();
-            if (typeof (window as any).restoreCPD === "function")
-                (window as any).restoreCPD();
+            if (typeof (window as any).restoreListPanelState === "function")
+                (window as any).restoreListPanelState();
             break;
     }
 }
@@ -3808,8 +3831,8 @@ export function editKey2(code: number): void {
  *             and save/discard buttons. Focuses the input field.
  */
 export function showEditKey2(_initKeys?: number[], secret?: boolean): void {
-    if (typeof (window as any).saveCPD === "function")
-        (window as any).saveCPD();
+    if (typeof (window as any).saveListPanelState === "function")
+        (window as any).saveListPanelState();
     var caption = (window as any).editCaption || "";
     var val = (window as any).editvar || "";
     var keys = (window as any).keys || {};
@@ -3829,7 +3852,7 @@ export function showEditKey2(_initKeys?: number[], secret?: boolean): void {
     html +=
         "<br/>" +
         (
-            (window as any).btnDiv ||
+            (window as any).renderButtonHint ||
             function () {
                 return "";
             }
@@ -3837,7 +3860,7 @@ export function showEditKey2(_initKeys?: number[], secret?: boolean): void {
     html +=
         "<br/>" +
         (
-            (window as any).btnDiv ||
+            (window as any).renderButtonHint ||
             function () {
                 return "";
             }
@@ -3902,7 +3925,7 @@ function showMediaList1(): void {
     w.listArray = data;
     w.listDataArray = data;
     var rowHeight =
-        (window.innerHeight - 90 * getHeightK()) /
+        (window.innerHeight - 90 * getViewportHeightScale()) /
             (w.pageSize || settings.pageSize) -
         2;
     w.getListItemFn = function (item: MediaHistoryEntry, _idx: number) {
@@ -3913,7 +3936,7 @@ function showMediaList1(): void {
                   "');width:" +
                   rowHeight +
                   "px;margin-left:" +
-                  6 * getWidthK() +
+                  6 * getViewportWidthScale() +
                   'px;"></div>&nbsp;'
                 : "&nbsp;&nbsp;") + metadataText(item.title || item.name || "")
         );
@@ -3953,11 +3976,11 @@ function showMediaList1(): void {
             w._("Media Library");
     var detailEl = document.getElementById("listDetail");
     if (detailEl) detailEl.innerHTML = "";
-    var podvalEl = document.getElementById("listPodval");
+    var footerElement = document.getElementById("listPodval");
     var urls: MediaTarget[] = w.mediaUrls || [];
-    if (podvalEl) {
-        podvalEl.innerHTML =
-            w.btnDiv(
+    if (footerElement) {
+        footerElement.innerHTML =
+            w.renderButtonHint(
                 w.keys.RED,
                 "",
                 "Close",
@@ -3965,8 +3988,8 @@ function showMediaList1(): void {
                 "0"
             ) +
             (w.sArrowFun === 2
-                ? w.btnDiv(w.keys.LEFT, w.strLEFT, "Back")
-                : w.btnDiv(
+                ? w.renderButtonHint(w.keys.LEFT, w.strLEFT, "Back")
+                : w.renderButtonHint(
                       w.keys.RETURN,
                       w.strRETURN,
                       "Back",
@@ -3976,9 +3999,9 @@ function showMediaList1(): void {
                             ? w.strPREV
                             : ""
                   )) +
-            w.btnDiv(w.keys.N2, w.strInfo, "Description", "2") +
+            w.renderButtonHint(w.keys.N2, w.strInfo, "Description", "2") +
             (data.length && w.sFavorites !== -1 && urls.length > 1
-                ? w.btnDiv(
+                ? w.renderButtonHint(
                       w.keys.GREEN,
                       "",
                       urls[urls.length - 1] === -2
@@ -4105,12 +4128,12 @@ export function selectValue(t: any): void {
     });
     _curVal = r.indexOf(t.values[t.val]);
     if (_curVal < 0) _curVal = 0;
-    saveCPD();
+    saveListPanelState();
     if (listCaptionElement) listCaptionElement.textContent = t.name;
-    if (listPodvalElement)
-        listPodvalElement.innerHTML =
-            btnDiv(keys.RETURN, strRETURN, "Close") +
-            btnDiv(keys.ENTER, strENTER, "Set");
+    if (listFooterElement)
+        listFooterElement.innerHTML =
+            renderButtonHint(keys.RETURN, strRETURN, "Close") +
+            renderButtonHint(keys.ENTER, strENTER, "Set");
     if (listDetailElement) listDetailElement.innerHTML = "";
 
     /* Measure longest text to calculate column count */
@@ -4130,7 +4153,9 @@ export function selectValue(t: any): void {
         );
     }
 
-    var lineHeight = Math.floor((800 * getHeightK()) / settings.pageSize);
+    var lineHeight = Math.floor(
+        (800 * getViewportHeightScale()) / settings.pageSize
+    );
 
     var html = "";
     for (var i = 0; i < r.length; i++) {
@@ -4214,7 +4239,7 @@ export function selectValue(t: any): void {
             case keys.RETURN:
             case keys.EXIT:
                 $("#listAbout").text("").hide();
-                restoreCPD();
+                restoreListPanelState();
                 showPage();
                 return true;
             default:

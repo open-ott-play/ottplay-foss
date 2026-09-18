@@ -1,3 +1,7 @@
+const {
+    attachSourceAliases,
+    sourceNames,
+} = require("./helpers/english-source-fixture.cjs");
 /* Use one classic-script scope, as the shipped concatenated bundle does. */
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -14,6 +18,7 @@ const policyNames = [
 ];
 
 function declarations(file, names) {
+    names = sourceNames(file, names);
     const source = fs.readFileSync(path.join(root, file), "utf8");
     const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
     const selected = [];
@@ -113,6 +118,7 @@ vm.runInContext(
     }).outputText,
     context
 );
+if (!process.argv.includes("--bundle")) attachSourceAliases(context);
 
 // First-run reset and repeated reloads must restore originals after provider overrides.
 for (let round = 0; round < 3; round++) {

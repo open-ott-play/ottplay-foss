@@ -485,6 +485,8 @@ Player supports 24 device types. Detection: by URL `/f/{device_id}/` first, then
 
 ## Push Command System
 
+For a separate multi-device service, use [OTT-play Control Server](https://github.com/open-ott-play/ottplay-control-server) and the new **Command server** section in **Settings → Remote control**. Enter its address and device access code, then connect. This outbound connection supports acknowledged delivery and does not require a local listener. See [connection and compatibility details](docs/remote-command-server.md). The examples below describe the existing local-proxy/listener mode.
+
 Local HTTP remote control is **off by default** in the browser/OTT server player, Tauri, and Capacitor. Enable it in **Player settings → Remote control** to generate a secret device code. Commands are JSON objects with a `"command"` field; HTTP requests require `Authorization: Bearer <device-code>`.
 
 ### Architecture
@@ -526,7 +528,7 @@ are on **different networks**, via a Cloudflare Worker session handoff.
   Not enabled by default; never bake `ADMIN_TOKEN` into the image.
 - **Status:** Worker allowlist + foss client ♥™ wiring landed
 
-> The central OTT server keeps `/api/webhook/commands`, `/webhook/poll`, `/webhook/notify`, and command health aliases disabled for every HTTP method. Use an explicitly configured authenticated `local_proxy.py` for Mode A; the central server has no broadcast command queue.
+> The central OTT server keeps `/api/webhook/commands`, `/webhook/poll`, `/webhook/notify`, and command health aliases disabled for every HTTP method. Use the separate command server or an explicitly configured authenticated `local_proxy.py` for Mode A; the central server has no broadcast command queue.
 
 ### Available Commands
 
@@ -818,7 +820,7 @@ automation:
 
 ### Webhook Endpoints (Rust `ottplay-server`)
 
-The Rust server and archived Python fallback reject command endpoints with HTTP 403. `/api/webhook/commands`, `/webhook/notify`, `/webhook/poll`, and command health aliases do not enqueue, broadcast, or drain commands. The generic feedback API cannot override these reserved routes. Mode A command delivery uses the separately enabled and authenticated local proxy described above.
+The Rust server and archived Python fallback reject command endpoints with HTTP 403. `/api/webhook/commands`, `/webhook/notify`, `/webhook/poll`, and command health aliases do not enqueue, broadcast, or drain commands. The generic feedback API cannot override these reserved routes. Mode A command delivery uses the separately configured command server or authenticated local proxy described above.
 
 ### Other Endpoints
 

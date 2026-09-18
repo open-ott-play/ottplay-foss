@@ -1,3 +1,8 @@
+const {
+    attachSourceAliases,
+    sourceName,
+    sourceNames,
+} = require("./helpers/english-source-fixture.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -9,6 +14,7 @@ const bundle = process.argv.includes("--bundle");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
 function declarations(file, names) {
+    names = sourceNames(file, names);
     const ast = ts.createSourceFile(
         file,
         read(file),
@@ -25,6 +31,7 @@ function declarations(file, names) {
 }
 
 function variable(file, name) {
+    name = sourceName(file, name);
     const ast = ts.createSourceFile(
         file,
         read(file),
@@ -40,6 +47,7 @@ function variable(file, name) {
 }
 
 function assignment(file, name) {
+    name = sourceName(file, name);
     const ast = ts.createSourceFile(
         file,
         read(file),
@@ -106,8 +114,11 @@ function fixture(saved = new Map()) {
     w.console = { debug() {}, error() {}, info() {}, log() {}, warn() {} };
     w.confirm = () => false;
     w.eval(read("js/jquery-1.11.1.min.js"));
+    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     w.$.expr.filters.visible = (element) => element.style.display !== "none";
     vm.runInContext(source, dom.getInternalVMContext(), { timeout: 10000 });
+    if (!process.argv.includes("--bundle"))
+        attachSourceAliases(dom.getInternalVMContext());
     const calls = [];
     const pending = [];
     Object.assign(w, {

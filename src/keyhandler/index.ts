@@ -173,7 +173,7 @@ export function keyHandler(event: KeyboardEvent): void {
                 case (window as any).keys.EXIT:
                 case (window as any).keys.RETURN:
                     $("#listAbout").text("").hide();
-                    (window as any).restoreCPD();
+                    (window as any).restoreListPanelState();
                     (window as any).showPage();
                     return;
             }
@@ -258,7 +258,7 @@ function toggleMainPlayback(): void {
     if (w.stbIsPlaying()) {
         w.forcePlay = false;
         if (typeof w.showShift === "function") w.showShift(_("Pause"));
-        if (typeof w.showChanelInfo === "function") w.showChanelInfo(2);
+        if (typeof w.showChannelInfo === "function") w.showChannelInfo(2);
         if (typeof w.stbPause === "function") w.stbPause();
     } else {
         w.forcePlay = true;
@@ -534,8 +534,8 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
                 (window as any).toggleStandby();
             break;
         case keys.INFO:
-            if (typeof (window as any).showChanelInfo === "function")
-                (window as any).showChanelInfo(settings.infoTimeout);
+            if (typeof (window as any).showChannelInfo === "function")
+                (window as any).showChannelInfo(settings.infoTimeout);
             break;
         case keys.EPG:
             if (
@@ -778,9 +778,9 @@ function handleEditKey(keyCode: number, event: KeyboardEvent): void {
             (window as any).setEdit();
     } else if (
         (keyCode === keys.RETURN || keyCode === keys.EXIT) &&
-        typeof (window as any).restoreCPD === "function"
+        typeof (window as any).restoreListPanelState === "function"
     )
-        (window as any).restoreCPD();
+        (window as any).restoreListPanelState();
 }
 
 /* ---------------------------------------------------------------------------
@@ -881,8 +881,8 @@ export function keyFun(fn: number): void {
                 (window as any).shiftArchiveSelect(0);
             return;
         case 4:
-            if (typeof (window as any).showChanelInfo === "function")
-                (window as any).showChanelInfo();
+            if (typeof (window as any).showChannelInfo === "function")
+                (window as any).showChannelInfo();
             return;
         case 5:
             if (typeof (window as any).toggleAspectRatio === "function")
@@ -1230,8 +1230,8 @@ function onPrevSelect(sel: number): void {
         }
         if (typeof (window as any).setCurrent === "function")
             (window as any).setCurrent(r, n, true);
-        if (typeof (window as any).getEPGchanelCached === "function") {
-            (window as any).getEPGchanelCached(
+        if (typeof (window as any).getChannelEpgCached === "function") {
+            (window as any).getChannelEpgCached(
                 chId,
                 (_t: any, epgData: any) => {
                     var recent: any[] = [];
@@ -1313,8 +1313,8 @@ export function prevProg(): void {
     function fmtTime(e: number): string {
         return timeToday(e)
             ? (window as any).time2time(e)
-            : (window as any).time2str
-              ? (window as any).time2str(e)
+            : (window as any).formatProgramDateTime
+              ? (window as any).formatProgramDateTime(e)
               : "";
     }
     var r: number, n: number;
@@ -1693,7 +1693,7 @@ function body_onClick(e: any): void {
             if (typeof e.preventDefault === "function") e.preventDefault();
             if (typeof e.stopPropagation === "function") e.stopPropagation();
         } catch (_sp) {}
-        (window as any).showChanelInfo();
+        (window as any).showChannelInfo();
     } else (window as any)._doKey((window as any).keys.ENTER, e);
 }
 

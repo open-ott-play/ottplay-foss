@@ -150,8 +150,8 @@ export const POPUP_ACTION_NAMES: string[] = [
     "popEpg", // 11
     "popRecords", // 12
     "popMedia", // 13
-    "noProvParam", // 14
-    "nofun", // 15
+    "toggleProviderSettingsVisibility", // 14
+    "noop", // 15
     "optionsList", // 16
     "restart", // 17
     "exitPortal", // 18

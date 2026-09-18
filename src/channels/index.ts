@@ -456,9 +456,9 @@ export let playType = 0,
     playTime = 0;
 export let _prog100: any = null,
     _tmedia: any = null;
-export let epgCash = 0;
-export let epgCashObj: Record<number, EPGEntry[]> = {};
-export let epgCashArr: number[] = [];
+export let epgCacheCapacity = 0;
+export let epgCacheByChannel: Record<number, EPGEntry[]> = {};
+export let epgCacheChannelOrder: number[] = [];
 const EPG_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 let epgCacheFetchedAt: Record<number, number> = {};
 let epgCacheGeneration = 0;
@@ -485,9 +485,9 @@ export function invalidateEpgCache(refetchPending = false): void {
     epgPending = {};
     epgCacheFetchedAt = {};
     for (var key in epg) delete epg[key];
-    for (var key in epgCashObj) delete epgCashObj[key];
-    epgCashArr.length = 0;
-    arrayGetCurProg.length = 0;
+    for (var key in epgCacheByChannel) delete epgCacheByChannel[key];
+    epgCacheChannelOrder.length = 0;
+    currentProgramRequestQueue.length = 0;
     // Backend warm-up invalidates schedules, not the menu's selected channel.
     // Its in-flight callback renders rows but does not reassign epg_ch_id.
     if (!refetchPending) epg_ch_id = null;
@@ -506,16 +506,16 @@ export function invalidateEpgCache(refetchPending = false): void {
             var request = waiting[key];
             if (request.channel !== channels[key]) continue;
             request.callbacks.forEach(function (notify) {
-                getEPGchanelCached(Number(key), notify);
+                getChannelEpgCached(Number(key), notify);
             });
         }
         // A completed visible menu has no pending consumer to reissue.
         // Reopen its current view so fresh rows and archive/timer actions agree.
         if (refreshView) {
             var channelIndex = w.listChannel & 65535;
-            if (epglisted === 0)
+            if (epgListMode === 0)
                 recordsList(w.listCatIndex, channelIndex, w.epgreturn);
-            else if (epglisted === 2)
+            else if (epgListMode === 2)
                 epgListAlpha(w.listCatIndex, channelIndex, w.epgreturn);
             else epgList(w.listCatIndex, channelIndex, w.epgreturn);
         }
@@ -525,9 +525,9 @@ export function invalidateEpgCache(refetchPending = false): void {
 function epgCacheLimit(): number {
     var configured =
         typeof window !== "undefined" &&
-        typeof (window as any).epgCash !== "undefined"
-            ? Number((window as any).epgCash)
-            : epgCash;
+        typeof (window as any).epgCacheCapacity !== "undefined"
+            ? Number((window as any).epgCacheCapacity)
+            : epgCacheCapacity;
     return Number.isFinite(configured) && configured > 0
         ? Math.floor(configured)
         : 0;
@@ -545,15 +545,15 @@ function readEpgCache(channelId: number): EPGEntry[] | null {
         })
     ) {
         delete epg[channelId];
-        delete epgCashObj[channelId];
+        delete epgCacheByChannel[channelId];
         delete epgCacheFetchedAt[channelId];
-        var staleIndex = epgCashArr.indexOf(channelId);
-        if (staleIndex !== -1) epgCashArr.splice(staleIndex, 1);
+        var staleIndex = epgCacheChannelOrder.indexOf(channelId);
+        if (staleIndex !== -1) epgCacheChannelOrder.splice(staleIndex, 1);
         return null;
     }
-    var index = epgCashArr.indexOf(channelId);
-    if (index !== -1) epgCashArr.splice(index, 1);
-    epgCashArr.unshift(channelId);
+    var index = epgCacheChannelOrder.indexOf(channelId);
+    if (index !== -1) epgCacheChannelOrder.splice(index, 1);
+    epgCacheChannelOrder.unshift(channelId);
     return data;
 }
 
@@ -562,22 +562,22 @@ function cacheFetchedEpg(channelId: number, data: EPGEntry[] | null): void {
     var limit = epgCacheLimit();
     if (!limit || !data || !data.length) return;
     epg[channelId] = data;
-    epgCashObj[channelId] = data;
+    epgCacheByChannel[channelId] = data;
     epgCacheFetchedAt[channelId] = Date.now();
-    var index = epgCashArr.indexOf(channelId);
-    if (index !== -1) epgCashArr.splice(index, 1);
-    epgCashArr.unshift(channelId);
-    epgCashArr.splice(limit).forEach(function (id) {
+    var index = epgCacheChannelOrder.indexOf(channelId);
+    if (index !== -1) epgCacheChannelOrder.splice(index, 1);
+    epgCacheChannelOrder.unshift(channelId);
+    epgCacheChannelOrder.splice(limit).forEach(function (id) {
         delete epg[id];
-        delete epgCashObj[id];
+        delete epgCacheByChannel[id];
         delete epgCacheFetchedAt[id];
     });
 }
-export let arrayGetCurProg: Array<{
+export let currentProgramRequestQueue: Array<{
     ch_id: number;
     callback: (chId: number) => void;
 }> = [];
-export let epglisted = 0,
+export let epgListMode = 0,
     epgreturn = false,
     listChannel = 0,
     listEpgArray: EPGEntry[] = [],
@@ -588,20 +588,20 @@ export let epglisted = 0,
  * via getEPGchanelCurCached, then recurses until the queue is empty.
  * Matches old stbPlayer.js doGetCurProg() behavior.
  */
-export function doGetCurProg(): void {
-    if (arrayGetCurProg.length === 0) return;
-    var entry = arrayGetCurProg.shift();
+export function processCurrentProgramQueue(): void {
+    if (currentProgramRequestQueue.length === 0) return;
+    var entry = currentProgramRequestQueue.shift();
     var chId = entry!.ch_id;
     // Always use getEPGchanelCached (same path as EPG menu). With epgCash=0,
     // gold wires getEPGchanelCurCached → getEPGchanel; Mode B must share the
     // Cached path so list/podval see programmes already loaded for the browser.
     // (The sync helper getEPGchanelCurCached(id) ignores callbacks — never use it.)
-    getEPGchanelCached(chId, function (id: any, epgData: EPGEntry[] | null) {
+    getChannelEpgCached(chId, function (id: any, epgData: EPGEntry[] | null) {
         // Legacy: setCurProg(e, t, r.callback) — callback receives channel id.
         setCurProg(id, epgData, entry!.callback);
         // Defer next queue item so a sync getEPGchanel(null) cannot nest forever
         // before setCurProg has a chance to set time_request.
-        setTimeout(doGetCurProg, 0);
+        setTimeout(processCurrentProgramQueue, 0);
     });
 }
 export let curEpgData: EPGEntry[] | null = null;
@@ -1104,9 +1104,13 @@ export function popFavLists(): void {
                 (w._ ? w._("Favorite lists") : "Favorite lists") +
                 ": " +
                 listName;
-        var pod = document.getElementById("listPodval");
-        if (pod && typeof w.btnDiv === "function") {
-            pod.innerHTML = w.btnDiv(keys.RETURN, w.strRETURN, "Close");
+        var footerElement = document.getElementById("listPodval");
+        if (footerElement && typeof w.renderButtonHint === "function") {
+            footerElement.innerHTML = w.renderButtonHint(
+                keys.RETURN,
+                w.strRETURN,
+                "Close"
+            );
         }
         try {
             if (typeof $ !== "undefined") $("#listPopUp").hide();
@@ -1156,9 +1160,13 @@ export function popFavLists(): void {
             cap.innerHTML = w._
                 ? w._("Add / rename / delete\u2026")
                 : "Add / rename / delete\u2026";
-        var pod = document.getElementById("listPodval");
-        if (pod && typeof w.btnDiv === "function") {
-            pod.innerHTML = w.btnDiv(keys.RETURN, w.strRETURN, "Close");
+        var footerElement = document.getElementById("listPodval");
+        if (footerElement && typeof w.renderButtonHint === "function") {
+            footerElement.innerHTML = w.renderButtonHint(
+                keys.RETURN,
+                w.strRETURN,
+                "Close"
+            );
         }
         try {
             if (typeof $ !== "undefined") $("#listPopUp").hide();
@@ -1207,11 +1215,15 @@ export function popFavLists(): void {
         };
         var cap = document.getElementById("listCaption");
         if (cap) cap.innerHTML = w._ ? w._("Favorite lists") : "Favorite lists";
-        var pod = document.getElementById("listPodval");
-        if (pod && typeof w.btnDiv === "function") {
-            pod.innerHTML =
-                w.btnDiv(keys.RETURN, w.strRETURN, "Close") +
-                w.btnDiv(keys.ENTER, "Ok", w._ ? w._("Switch") : "Switch");
+        var footerElement = document.getElementById("listPodval");
+        if (footerElement && typeof w.renderButtonHint === "function") {
+            footerElement.innerHTML =
+                w.renderButtonHint(keys.RETURN, w.strRETURN, "Close") +
+                w.renderButtonHint(
+                    keys.ENTER,
+                    "Ok",
+                    w._ ? w._("Switch") : "Switch"
+                );
         }
         try {
             if (typeof $ !== "undefined") $("#listPopUp").hide();
@@ -1362,7 +1374,7 @@ export function channelXmltvUrls(ch: Channel | undefined): string[] {
     });
 }
 
-export function getEPGchanelCached(
+export function getChannelEpgCached(
     channelId: number,
     callback: (chId: number, programs: EPGEntry[] | null) => void
 ): void {
@@ -1505,8 +1517,8 @@ export function getEPGchanelCached(
         }
         // Fall through to provider fetch (Mode A / browser / STB)
         var w = window as any;
-        if (typeof w.getEPGchanel === "function") {
-            w.getEPGchanel(channelId, finish);
+        if (typeof w.getChannelEpg === "function") {
+            w.getChannelEpg(channelId, finish);
         } else {
             finish(channelId, null);
         }
@@ -1522,7 +1534,7 @@ export function getEPGchanelCached(
  * @param channelId - Channel ID.
  * @returns The EPGEntry[] or null if not cached.
  */
-export function getEPGchanelCurCached(channelId: number): EPGEntry[] | null {
+export function getCachedChannelEpg(channelId: number): EPGEntry[] | null {
     return readEpgCache(channelId);
 }
 
@@ -1533,7 +1545,7 @@ export function getEPGchanelCurCached(channelId: number): EPGEntry[] | null {
  * @param channelId - Channel ID.
  * @returns The EPGEntry[] or null.
  */
-export function getEpgFromCash(channelId: number): EPGEntry[] | null {
+export function getEpgFromCache(channelId: number): EPGEntry[] | null {
     return readEpgCache(channelId);
 }
 
@@ -1552,8 +1564,8 @@ export function getCurProgData(
     // Legacy stbPlayer.js getCurProgData — uses chanels[], nextpr advance, then queue.
     // Do NOT sync-invoke updateChanelInfo from a cache hit: that re-enters this
     // function on the same stack when setCurProg cannot stick time_to / time_request.
-    var ch = (window as any).chanels
-        ? (window as any).chanels[channelId]
+    var ch = (window as any).channels
+        ? (window as any).channels[channelId]
         : window.channels
           ? window.channels[channelId]
           : undefined;
@@ -1567,8 +1579,8 @@ export function getCurProgData(
         var cachedLock = readEpgCache(channelId);
         if (cachedLock && cachedLock.length) {
             var nofunLock =
-                typeof (window as any).nofun === "function"
-                    ? (window as any).nofun
+                typeof (window as any).noop === "function"
+                    ? (window as any).noop
                     : function () {};
             setCurProg(channelId, cachedLock, nofunLock);
             if (ch.time_to && ch.time_to >= now) return true;
@@ -1577,19 +1589,20 @@ export function getCurProgData(
     }
     var found = false;
     if (ch.nextpr) {
-        var nofun =
-            typeof (window as any).nofun === "function"
-                ? (window as any).nofun
+        var noop =
+            typeof (window as any).noop === "function"
+                ? (window as any).noop
                 : function () {};
-        setCurProg(channelId, ch.nextpr, nofun);
+        setCurProg(channelId, ch.nextpr, noop);
         ch.time_request = 0;
     }
     if (ch.time_to && ch.time_to >= now) found = true;
-    arrayGetCurProg.push({ callback: callback, ch_id: channelId });
+    currentProgramRequestQueue.push({ callback: callback, ch_id: channelId });
     // Defer queue drain past showPage's innerHTML. Sync cache hits used to
     // call updateChanelList before #pn* nodes existed, so only the playing
     // channel (time_to already set → baked into row HTML) showed EPG.
-    if (arrayGetCurProg.length < 2) setTimeout(doGetCurProg, 0);
+    if (currentProgramRequestQueue.length < 2)
+        setTimeout(processCurrentProgramQueue, 0);
     return found;
 }
 
@@ -1625,8 +1638,8 @@ export function setCurProg(
     var idx = sorted.findIndex(function (entry: EPGEntry) {
         return entry.time_to >= now && entry.time <= now;
     });
-    var ch = (window as any).chanels
-        ? (window as any).chanels[safeChannelId]
+    var ch = (window as any).channels
+        ? (window as any).channels[safeChannelId]
         : window.channels
           ? window.channels[safeChannelId]
           : undefined;
@@ -1680,7 +1693,7 @@ export function setCurProg(
  * - Calls `window.loadEpgTimers`.
  * - Console log "player ready!".
  */
-export function onChanelsLoaded(): void {
+export function onChannelsLoaded(): void {
     console.log("[onChanelsLoaded] cList.length=" + cList.length);
     // Dismiss the old loading dialog before playback can open a PIN or resume
     // prompt. Hiding it afterwards would close the newly created prompt.
@@ -1695,7 +1708,7 @@ export function onChanelsLoaded(): void {
                 window.stbSetItem("ottplayprov", window._pendingProvId);
                 if (typeof window.stbSetItem === "function") {
                     var id = window._pendingProvId;
-                    var arr = window.arrayProvaiders;
+                    var arr = window.providerIds;
                     var recentCount = 3;
                     if (arr && arr.indexOf(id) > recentCount - 1) {
                         var recentProviders: any[] = [];
@@ -1964,7 +1977,7 @@ export function itemEPG(item: EPGEntry, index: number): string {
  * - Shows/hides #listPopUp spinner.
  * - Calls `window.getEPGchanelCached` (provider API) and `window.setCurProg` on success.
  */
-export function epgShow_miniproc(
+export function loadEpgListData(
     mode: number,
     catIdx: number,
     chIdx: number,
@@ -1976,8 +1989,8 @@ export function epgShow_miniproc(
     //   epgShow_miniproc(mode, catIdx, chIdx, epgreturn, cb)
     //   a = cats[catsArray[listCatIndex]][listChannel]
     //   getEPGchanelCached(a, ...)  // internal channel id, NOT ch.ch_id
-    epglisted = mode;
-    w.epglisted = mode;
+    epgListMode = mode;
+    w.epgListMode = mode;
     epgreturn = epgReturn;
     w.epgreturn = epgReturn;
     w.listCatIndex = catIdx;
@@ -1994,8 +2007,8 @@ export function epgShow_miniproc(
     epg_ch_id = a;
     w.epg_ch_id = a;
 
-    if (typeof w.getEPGchanelCached !== "function") {
-        epglisted = 0;
+    if (typeof w.getChannelEpgCached !== "function") {
+        epgListMode = 0;
         return;
     }
     if (mode) {
@@ -2005,11 +2018,11 @@ export function epgShow_miniproc(
             )
             .show();
     }
-    w.getEPGchanelCached(a, function (id: any, data: EPGEntry[]) {
+    w.getChannelEpgCached(a, function (id: any, data: EPGEntry[]) {
         // Legacy does not clear epglisted here — it is the list mode
         // (by-time / alpha / records) used by epgPodval + RED / setEpgTimer.
         if (!data) {
-            epglisted = 0;
+            epgListMode = 0;
             curEpgData = null;
             $("#listPopUp").hide();
             w.listChannel |= 65536;
@@ -2032,10 +2045,7 @@ export function epgShow_miniproc(
  * @param chIdx  - Current channel index within the category (`listChannel`).
  * @returns `true` if the channel has no EPG (and an infoBox was shown), `false` otherwise.
  */
-export function epgCheckEmpty_miniproc(
-    catIdx: number,
-    chIdx?: number
-): boolean {
+export function showMissingEpgNotice(catIdx: number, chIdx?: number): boolean {
     var w = window as any;
     if (
         (w.listChannel & 65536) === 65536 &&
@@ -2054,7 +2064,7 @@ export function epgList(catIdx: number, chIdx: number, force: boolean): void {
     epgreturn = force || false;
     w.epgreturn = epgreturn;
 
-    if (epgCheckEmpty_miniproc(catIdx, chIdx)) return;
+    if (showMissingEpgNotice(catIdx, chIdx)) return;
 
     function onDataReady(channelId: any) {
         var epgData: EPGEntry[] = [];
@@ -2103,12 +2113,12 @@ export function epgList(catIdx: number, chIdx: number, force: boolean): void {
                 w._("EPG and archive. Channel: ") + (ch.channel_name || "")
             );
 
-        if (typeof epgPodval === "function") epgPodval();
+        if (typeof renderEpgFooter === "function") renderEpgFooter();
         $("#listPopUp").hide();
         if (typeof w.showPage === "function") w.showPage();
     }
 
-    epgShow_miniproc(1, catIdx, chIdx, force || false, onDataReady);
+    loadEpgListData(1, catIdx, chIdx, force || false, onDataReady);
 }
 
 /**
@@ -2130,7 +2140,8 @@ export function selectEpg(): void {
     if (!item) return;
 
     if (!ch.rec || item.time > Date.now() / 1000) {
-        if (typeof w.infoProgramm === "function") w.infoProgramm(item.name);
+        if (typeof w.showProgramInfo === "function")
+            w.showProgramInfo(item.name);
         return;
     }
 
@@ -2157,18 +2168,18 @@ export function selectEpg(): void {
  *
  * Side effects: Injects innerHTML into #listPodval.
  */
-export function epgPodval(): void {
+export function renderEpgFooter(): void {
     var w = window as any;
-    var podvalEl = document.getElementById("listPodval");
-    if (!podvalEl) return;
+    var footerElement = document.getElementById("listPodval");
+    if (!footerElement) return;
     // Legacy stbPlayer.js:6528-6531
     var ch = (channels[epg_ch_id] || {}) as Channel;
     var redLabel =
-        epglisted == 2
+        epgListMode == 2
             ? ch.rec
                 ? "Records"
                 : "By time"
-            : epglisted
+            : epgListMode
               ? "By alphabet"
               : "By time";
     var yellowExtra =
@@ -2187,13 +2198,25 @@ export function epgPodval(): void {
               : w.sPNFun == 1
                 ? w.strNEXT
                 : "";
-    podvalEl.innerHTML =
-        w.btnDiv(w.keys.RED, "", redLabel, w.strSTOP, "0") +
-        w.btnDiv(w.keys.BLUE, "", "Category", w.strPlayPause, "1") +
-        w.btnDiv(w.keys.YELLOW, "", "Channel list", "3", yellowExtra) +
-        w.btnDiv(w.keys.N2, w.strInfo, "Description", "2", descExtra) +
+    footerElement.innerHTML =
+        w.renderButtonHint(w.keys.RED, "", redLabel, w.strSTOP, "0") +
+        w.renderButtonHint(w.keys.BLUE, "", "Category", w.strPlayPause, "1") +
+        w.renderButtonHint(
+            w.keys.YELLOW,
+            "",
+            "Channel list",
+            "3",
+            yellowExtra
+        ) +
+        w.renderButtonHint(
+            w.keys.N2,
+            w.strInfo,
+            "Description",
+            "2",
+            descExtra
+        ) +
         '<span id="bTimer" style="display:none;">' +
-        w.btnDiv(w.keys.GREEN, "", "Timer", w.strTools, "8") +
+        w.renderButtonHint(w.keys.GREEN, "", "Timer", w.strTools, "8") +
         "</span>" +
         (ch.rec
             ? '<span class="epg-podval-archive">' +
@@ -2253,7 +2276,8 @@ export function epgKeyHandler(keyCode: number): boolean {
             if (w.sArrowFun !== 2) return false;
         // fallthrough
         case keys.N2:
-            if (typeof w.infoProgramm === "function") w.infoProgramm(item.name);
+            if (typeof w.showProgramInfo === "function")
+                w.showProgramInfo(item.name);
             return true;
         case keys.RW:
             if (w.sRewFun !== 1) return false;
@@ -2267,17 +2291,19 @@ export function epgKeyHandler(keyCode: number): boolean {
             return true;
         case keys.FF:
             if (w.sRewFun !== 1) return false;
-            if (typeof w.infoProgramm === "function") w.infoProgramm(item.name);
+            if (typeof w.showProgramInfo === "function")
+                w.showProgramInfo(item.name);
             return true;
         case keys.NEXT:
             if (w.sPNFun !== 1) return false;
-            if (typeof w.infoProgramm === "function") w.infoProgramm(item.name);
+            if (typeof w.showProgramInfo === "function")
+                w.showProgramInfo(item.name);
             return true;
         case keys.N0:
         case keys.EPG:
         case keys.STOP:
         case keys.RED:
-            switch (epglisted) {
+            switch (epgListMode) {
                 case 0:
                     if (typeof w.epgList === "function")
                         w.epgList(
@@ -2320,7 +2346,8 @@ export function epgKeyHandler(keyCode: number): boolean {
             if (typeof setEpgTimer === "function") setEpgTimer();
             return true;
         case keys.INFO:
-            if (typeof w.infoProgramm === "function") w.infoProgramm(item.name);
+            if (typeof w.showProgramInfo === "function")
+                w.showProgramInfo(item.name);
             return true;
         case keys.N5:
             searchEpgByTitle();
@@ -2350,8 +2377,8 @@ export function detailEPG(channelId: number): void {
         ';">' +
         metadataText(item.name) +
         '</div><div style="font-size:smaller;">' +
-        (typeof w.time2str === "function"
-            ? w.time2str(item.time)
+        (typeof w.formatProgramDateTime === "function"
+            ? w.formatProgramDateTime(item.time)
             : formatEpgTime(item.time)) +
         " - " +
         (typeof w.time2time === "function"
@@ -2576,7 +2603,7 @@ export function setEpgTimer(_channelId?: any, _time?: number): void {
     var w = window as any;
     // Legacy stbPlayer.js:3735-3760 — uses list selection + epglisted mode
     var item = w.listArray[w.selIndex];
-    if (!w.epglisted || !item || item.time < Date.now() / 1000) return;
+    if (!w.epgListMode || !item || item.time < Date.now() / 1000) return;
 
     var idx = epgTimers.findIndex(function (t) {
         return t.ci == w.epg_ch_id && t.t == item.time;
@@ -2639,7 +2666,7 @@ export function epgListAlpha(
     // Legacy stbPlayer.js:6602-6638 — alphabetical EPG list
     if (typeof catIdx !== "number") return;
     var w = window as any;
-    if (epgCheckEmpty_miniproc(catIdx, chIdx)) return;
+    if (showMissingEpgNotice(catIdx, chIdx)) return;
 
     function onDataReady(channelId: any): void {
         var byTime: EPGEntry[] = [];
@@ -2695,11 +2722,11 @@ export function epgListAlpha(
             captionEl.innerHTML = metadataText(
                 w._("EPG and archive. Channel: ") + (ch.channel_name || "")
             );
-        if (typeof epgPodval === "function") epgPodval();
+        if (typeof renderEpgFooter === "function") renderEpgFooter();
         $("#listPopUp").hide();
         if (typeof w.showPage === "function") w.showPage();
     }
-    epgShow_miniproc(2, catIdx, chIdx as number, force || false, onDataReady);
+    loadEpgListData(2, catIdx, chIdx as number, force || false, onDataReady);
 }
 
 /**
@@ -2715,7 +2742,7 @@ export function recordsList(
 ): void {
     var w = window as any;
     // Legacy stbPlayer.js:6641-6656 recordsList(e, t, r)
-    if (epgCheckEmpty_miniproc(catIdx, chIdx)) return;
+    if (showMissingEpgNotice(catIdx, chIdx)) return;
 
     function onDataReady(channelId: any): void {
         var e: EPGEntry[] = [];
@@ -2767,11 +2794,11 @@ export function recordsList(
             captionEl.innerHTML = metadataText(
                 w._("Archive. Channel: ") + (ch.channel_name || "")
             );
-        if (typeof epgPodval === "function") epgPodval();
+        if (typeof renderEpgFooter === "function") renderEpgFooter();
         $("#listPopUp").hide();
         if (typeof w.showPage === "function") w.showPage();
     }
-    epgShow_miniproc(0, catIdx, chIdx, epgReturn, onDataReady);
+    loadEpgListData(0, catIdx, chIdx, epgReturn, onDataReady);
 }
 
 export function selectREC(index: number): void {
@@ -2846,9 +2873,13 @@ export function catRecordsList(catIdx: number): void {
                 w._("Records for channel: ") + (ch.channel_name || "")
             );
 
-        var podvalEl = document.getElementById("listPodval");
-        if (podvalEl) {
-            podvalEl.innerHTML = w.btnDiv(w.keys.RETURN, w.strRETURN, "Close");
+        var footerElement = document.getElementById("listPodval");
+        if (footerElement) {
+            footerElement.innerHTML = w.renderButtonHint(
+                w.keys.RETURN,
+                w.strRETURN,
+                "Close"
+            );
         }
 
         if (typeof w.showPage === "function") w.showPage();
@@ -3127,7 +3158,7 @@ export function playArchive(e: number): void {
     w.playType = playType;
     w.playTime = playTime;
     updateArchiveInfo(e);
-    if (w.sInfoRew) w.showChanelInfo(1);
+    if (w.sInfoRew) w.showChannelInfo(1);
     var r = curList[primaryIndex];
     // Prefer EPG program; else synthetic window from updateArchiveInfo (_prog100
     // rolling 1h/80% when no EPG); else legacy clock-hour like stbPlayer.js.
@@ -3334,7 +3365,7 @@ export function updateArchiveInfo(position: number): void {
             return e.time > position;
         });
     }
-    var nprogramNameEl = document.getElementById("nprogramm_name");
+    var nextProgramNameElement = document.getElementById("nprogramm_name");
     var nbeginTimeEl = document.getElementById("nbegin_time");
     var nendTimeEl = document.getElementById("nend_time");
     if (
@@ -3343,30 +3374,31 @@ export function updateArchiveInfo(position: number): void {
         epgArray[nextProgIdx]
     ) {
         var nextProg = epgArray[nextProgIdx];
-        if (nprogramNameEl) nprogramNameEl.textContent = nextProg.name;
+        if (nextProgramNameElement)
+            nextProgramNameElement.textContent = nextProg.name;
         if (nbeginTimeEl) nbeginTimeEl.textContent = time2time(nextProg.time);
         if (nendTimeEl)
             nendTimeEl.textContent =
                 "" + Math.round((nextProg.time_to - nextProg.time) / 60);
     } else {
-        if (nprogramNameEl) nprogramNameEl.innerHTML = "  ";
+        if (nextProgramNameElement) nextProgramNameElement.innerHTML = "  ";
         if (nbeginTimeEl) nbeginTimeEl.textContent = "";
         if (nendTimeEl) nendTimeEl.textContent = "";
     }
 
     // Trigger channel info refresh
-    if (typeof w.updateChanelInfo === "function") {
-        w.updateChanelInfo(listChannel);
+    if (typeof w.updateChannelInfo === "function") {
+        w.updateChannelInfo(listChannel);
     }
 
     // EPG re-fetch on seek-cross-boundary (stbPlayer.js:1744-1746)
     // If curProg changed and bar is not visible, auto-show
     if (w.sInfoChange && prevProg !== curProg && !$("#info1").is(":visible")) {
-        w.showChanelInfo(1);
+        w.showChannelInfo(1);
     }
     // Re-fetch EPG if seek crossed program window boundary and we don't have
     // enough future programs
-    if (prevProg !== curProg && typeof w.getEPGchanelCached === "function") {
+    if (prevProg !== curProg && typeof w.getChannelEpgCached === "function") {
         // Check if next program is missing from epgArray
         var needFetch = false;
         if (nextProgIdx >= epgArray.length || !epgArray[nextProgIdx]) {
@@ -3378,7 +3410,7 @@ export function updateArchiveInfo(position: number): void {
             needFetch = true;
         }
         if (needFetch) {
-            w.getEPGchanelCached(
+            w.getChannelEpgCached(
                 channelId,
                 function (_chId: number, data: EPGEntry[] | null) {
                     if (data && data.length) {
@@ -3403,7 +3435,7 @@ export function liveStop(): void {
     if (!stbIsPlaying()) return;
     var e = curList[primaryIndex];
     if (!channels[e].rec) return;
-    getEPGchanelCached(e, function (t: number, e: any) {
+    getChannelEpgCached(e, function (t: number, e: any) {
         var r: any[] = [];
         if (e !== null && e.length) {
             r = e
@@ -3421,8 +3453,8 @@ export function liveStop(): void {
         setCurProg(t, e, undefined as any);
         playType = Math.round(Date.now() / 1e3);
         playTime = 0;
-        if (typeof window.showChanelInfo === "function")
-            window.showChanelInfo(2);
+        if (typeof window.showChannelInfo === "function")
+            window.showChannelInfo(2);
         if (typeof window.showShift === "function")
             window.showShift(window._("Pause"));
         stbPause();
@@ -3472,9 +3504,10 @@ export function shiftArchive(e: number): void {
     }
     _shiftSec += e;
     clearTimeout(_shiftTimer);
-    if (w.sInfoRew && typeof w.showChanelInfo === "function")
-        w.showChanelInfo(1);
-    if (typeof w.showShift === "function") w.showShift(step2text(_shiftSec));
+    if (w.sInfoRew && typeof w.showChannelInfo === "function")
+        w.showChannelInfo(1);
+    if (typeof w.showShift === "function")
+        w.showShift(formatSeekOffset(_shiftSec));
     _shiftTimer = setTimeout(_shiftArchive, 500);
 }
 
@@ -3507,7 +3540,8 @@ function _shiftArchive(): void {
             if (typeof w.showShift === "function")
                 w.showShift((w._ && w._("To begining")) || "To beginning");
         } else {
-            if (typeof w.showShift === "function") w.showShift(step2text(e));
+            if (typeof w.showShift === "function")
+                w.showShift(formatSeekOffset(e));
         }
     }
     if (playType < 0) {
@@ -3519,8 +3553,8 @@ function _shiftArchive(): void {
         if (len && newPos > len) return;
         if (typeof w.stbSetPosTime === "function") w.stbSetPosTime(newPos);
         announce();
-        if (w.sInfoRew && typeof w.showChanelInfo === "function")
-            w.showChanelInfo(1);
+        if (w.sInfoRew && typeof w.showChannelInfo === "function")
+            w.showChannelInfo(1);
         return;
     }
     playType = playType + e + playTime;
@@ -3542,7 +3576,7 @@ function _shiftArchive(): void {
  * @param e - Delta in seconds.
  * Side effects: Reads global window._ for localization.
  */
-function step2text(e: number): string {
+function formatSeekOffset(e: number): string {
     if (!e) return "&nbsp;";
     var abs = Math.abs(e);
     var m = Math.floor(abs / 60);
@@ -3578,15 +3612,15 @@ export function shiftArchiveSelect(initialDelta: number): void {
         clearTimeout(t);
         i += delta;
         var stepEl = document.getElementById("step");
-        if (stepEl && typeof w.step2text === "function")
-            stepEl.innerHTML = w.step2text(i);
+        if (stepEl && typeof w.formatSeekOffset === "function")
+            stepEl.innerHTML = w.formatSeekOffset(i);
         t = setTimeout(function () {
             $("#dialogbox").hide();
             if (w.tooltip) w.tooltip.style.display = "";
             shiftArchive(i);
         }, 3000);
     }
-    var btnDiv = w.btnDiv;
+    var renderButtonHint = w.renderButtonHint;
     $("#dialogbox")
         .html(
             w._("Rewind") +
@@ -3605,14 +3639,14 @@ export function shiftArchiveSelect(initialDelta: number): void {
                 "</div>&nbsp;+/- " +
                 w._("10 Seconds") +
                 "<br/>" +
-                (typeof btnDiv === "function"
-                    ? btnDiv(keys.ENTER, w.strENTER, "Go to") +
-                      btnDiv(keys.RETURN, w.strRETURN, "Close")
+                (typeof renderButtonHint === "function"
+                    ? renderButtonHint(keys.ENTER, w.strENTER, "Go to") +
+                      renderButtonHint(keys.RETURN, w.strRETURN, "Close")
                     : "")
         )
         .show();
-    if (w.sInfoRew && typeof w.showChanelInfo === "function")
-        w.showChanelInfo(1);
+    if (w.sInfoRew && typeof w.showChannelInfo === "function")
+        w.showChannelInfo(1);
     r(initialDelta);
     w.dialogBoxKeyHandler = function (e: number): void {
         switch (e) {
@@ -3672,12 +3706,12 @@ export function timeShift(n: number): void {
     var chId = curList[primaryIndex];
     var ch = channels[chId];
     if (!ch || !ch.rec) return;
-    if (typeof w.getEPGchanelCached !== "function") {
+    if (typeof w.getChannelEpgCached !== "function") {
         // No EPG helper — seek by delta using archivePos as the base time
         if (n > 0) playArchive(Date.now() / 1000 - n);
         return;
     }
-    w.getEPGchanelCached(chId, function (_t: any, epgData: EPGEntry[] | null) {
+    w.getChannelEpgCached(chId, function (_t: any, epgData: EPGEntry[] | null) {
         var r: EPGEntry[] = [];
         if (
             epgData !== null &&
@@ -3699,7 +3733,8 @@ export function timeShift(n: number): void {
         setCurrent(catIndex, primaryIndex, true);
         if (n) {
             var delta = Math.round(Date.now() / 1000) - n;
-            if (typeof w.showShift === "function") w.showShift(step2text(-n));
+            if (typeof w.showShift === "function")
+                w.showShift(formatSeekOffset(-n));
             playArchive(delta);
         } else {
             if (typeof w.showShift === "function")
@@ -3796,33 +3831,33 @@ export function bucketsList(catIdx: number, _channelIdx?: number): void {
     var captionEl = document.getElementById("listCaption");
     if (captionEl) captionEl.innerHTML = w._("Category selection");
 
-    var podvalEl = document.getElementById("listPodval");
-    if (podvalEl) {
-        var html = w.btnDiv(
+    var footerElement = document.getElementById("listPodval");
+    if (footerElement) {
+        var html = w.renderButtonHint(
             w.keys.RED,
             "",
             w._(w.strPlayPause || strPlayPause),
             w.strPRECH
         );
         if (!sFavorites) {
-            html += w.btnDiv(w.keys.YELLOW, "", w._(w.strTools), "0");
+            html += w.renderButtonHint(w.keys.YELLOW, "", w._(w.strTools), "0");
         }
-        podvalEl.innerHTML = html;
+        footerElement.innerHTML = html;
     }
 
     if (!sFavorites) {
         var popupHtml =
-            w.btnDiv(w.keys.N1, "1", w._("Move category up")) +
+            w.renderButtonHint(w.keys.N1, "1", w._("Move category up")) +
             "<br/>" +
-            w.btnDiv(w.keys.N7, "7", w._("Move category down")) +
+            w.renderButtonHint(w.keys.N7, "7", w._("Move category down")) +
             "<br/>" +
-            w.btnDiv(w.keys.N3, "3", w._("Create category")) +
+            w.renderButtonHint(w.keys.N3, "3", w._("Create category")) +
             "<br/>" +
-            w.btnDiv(w.keys.N6, "6", w._("Rename category")) +
+            w.renderButtonHint(w.keys.N6, "6", w._("Rename category")) +
             "<br/>" +
-            w.btnDiv(w.keys.N9, "9", w._("Copy category")) +
+            w.renderButtonHint(w.keys.N9, "9", w._("Copy category")) +
             "<br/>" +
-            w.btnDiv(w.keys.N8, "8", w._("Delete category"));
+            w.renderButtonHint(w.keys.N8, "8", w._("Delete category"));
         $("#listPopUp").html(popupHtml);
     }
     $("#listPopUp").hide();
@@ -4183,14 +4218,19 @@ export function searchEpgByTitle(): void {
         var captionEl = document.getElementById("listCaption");
         if (captionEl) captionEl.textContent = caption;
 
-        var podvalEl = document.getElementById("listPodval");
-        if (podvalEl) {
-            podvalEl.innerHTML =
-                (typeof w.btnDiv === "function"
-                    ? w.btnDiv(w.keys.RETURN, w.strRETURN, "Close", "")
+        var footerElement = document.getElementById("listPodval");
+        if (footerElement) {
+            footerElement.innerHTML =
+                (typeof w.renderButtonHint === "function"
+                    ? w.renderButtonHint(
+                          w.keys.RETURN,
+                          w.strRETURN,
+                          "Close",
+                          ""
+                      )
                     : "") +
-                (typeof w.btnDiv === "function"
-                    ? w.btnDiv(w.keys.ENTER, "", "Open", "")
+                (typeof w.renderButtonHint === "function"
+                    ? w.renderButtonHint(w.keys.ENTER, "", "Open", "")
                     : "");
         }
 
@@ -4279,13 +4319,13 @@ export function searchChannel(): void {
                     ) {
                         setCurrent(w.listCatIndex, idx);
                         var t = (w.curList || [])[w.primaryIndex];
-                        if (typeof w.updateChanelInfo === "function")
-                            w.updateChanelInfo(t);
+                        if (typeof w.updateChannelInfo === "function")
+                            w.updateChannelInfo(t);
                         if (
                             w.sInfoSwitch &&
-                            typeof w.showChanelInfo === "function"
+                            typeof w.showChannelInfo === "function"
                         )
-                            w.showChanelInfo(1);
+                            w.showChannelInfo(1);
                         w.playType = 0;
                         return;
                     }
@@ -4314,9 +4354,9 @@ export function searchChannel(): void {
                         r = channels[w.listArray[w.selIndex]];
                         if (
                             r !== undefined &&
-                            typeof w.infoProgramm === "function"
+                            typeof w.showProgramInfo === "function"
                         )
-                            w.infoProgramm(r.name);
+                            w.showProgramInfo(r.name);
                         return true;
                     case w.keys.RW:
                         if (w.sRewFun != 1) return false;
@@ -4333,18 +4373,18 @@ export function searchChannel(): void {
                         r = channels[w.listArray[w.selIndex]];
                         if (
                             r !== undefined &&
-                            typeof w.infoProgramm === "function"
+                            typeof w.showProgramInfo === "function"
                         )
-                            w.infoProgramm(r.name);
+                            w.showProgramInfo(r.name);
                         return true;
                     case w.keys.NEXT:
                         if (w.sPNFun != 1) return false;
                         r = channels[w.listArray[w.selIndex]];
                         if (
                             r !== undefined &&
-                            typeof w.infoProgramm === "function"
+                            typeof w.showProgramInfo === "function"
                         )
-                            w.infoProgramm(r.name);
+                            w.showProgramInfo(r.name);
                         return true;
                     case w.keys.N0:
                     case w.keys.YELLOW:
@@ -4376,11 +4416,11 @@ export function searchChannel(): void {
                         ")";
                 }
             })();
-            var podvalEl = document.getElementById("listPodval");
-            if (podvalEl) {
-                podvalEl.innerHTML =
-                    (typeof w.btnDiv === "function"
-                        ? w.btnDiv(
+            var footerElement = document.getElementById("listPodval");
+            if (footerElement) {
+                footerElement.innerHTML =
+                    (typeof w.renderButtonHint === "function"
+                        ? w.renderButtonHint(
                               w.keys.RETURN,
                               w.strRETURN,
                               "Close",
@@ -4393,8 +4433,8 @@ export function searchChannel(): void {
                                       : ""
                           )
                         : "") +
-                    (typeof w.btnDiv === "function"
-                        ? w.btnDiv(
+                    (typeof w.renderButtonHint === "function"
+                        ? w.renderButtonHint(
                               w.keys.N2,
                               w.strInfo,
                               "Description",
@@ -4408,11 +4448,17 @@ export function searchChannel(): void {
                                       : ""
                           )
                         : "") +
-                    (typeof w.btnDiv === "function"
-                        ? w.btnDiv(w.keys.YELLOW, "", "Search", w.strTools, "0")
+                    (typeof w.renderButtonHint === "function"
+                        ? w.renderButtonHint(
+                              w.keys.YELLOW,
+                              "",
+                              "Search",
+                              w.strTools,
+                              "0"
+                          )
                         : "") +
-                    (typeof w.btnDiv === "function"
-                        ? w.btnDiv(
+                    (typeof w.renderButtonHint === "function"
+                        ? w.renderButtonHint(
                               w.keys.GREEN,
                               "",
                               "Add channel to " +
@@ -4461,14 +4507,18 @@ export function showActionsDialog(): void {
         '<table style="font-size:inherit" width="100%">' +
         "<tr><td></td>" +
         e +
-        (typeof w.btnDiv === "function"
-            ? w.btnDiv(w.keys.UP, w.strUP, t ? "<br>Up<br>" : "<br><br>")
+        (typeof w.renderButtonHint === "function"
+            ? w.renderButtonHint(
+                  w.keys.UP,
+                  w.strUP,
+                  t ? "<br>Up<br>" : "<br><br>"
+              )
             : "") +
         "</td><td></td></tr>" +
         "<tr>" +
         e +
-        (typeof w.btnDiv === "function"
-            ? w.btnDiv(
+        (typeof w.renderButtonHint === "function"
+            ? w.renderButtonHint(
                   w.keys.LEFT,
                   w.strLEFT,
                   t
@@ -4481,8 +4531,8 @@ export function showActionsDialog(): void {
             : "") +
         "</td>" +
         e +
-        (typeof w.btnDiv === "function"
-            ? w.btnDiv(
+        (typeof w.renderButtonHint === "function"
+            ? w.renderButtonHint(
                   w.keys.ENTER,
                   w.strENTER,
                   !w.sFavorites || w.listCatIndex
@@ -4493,8 +4543,8 @@ export function showActionsDialog(): void {
             : "") +
         "</td>" +
         e +
-        (typeof w.btnDiv === "function"
-            ? w.btnDiv(
+        (typeof w.renderButtonHint === "function"
+            ? w.renderButtonHint(
                   w.keys.RIGHT,
                   w.strRIGHT,
                   w.sPSchannels && w.parentPIN != "*"
@@ -4505,16 +4555,20 @@ export function showActionsDialog(): void {
         "</td></tr>" +
         "<tr><td></td>" +
         e +
-        (typeof w.btnDiv === "function"
-            ? w.btnDiv(w.keys.DOWN, w.strDOWN, t ? "<br>Down<br>" : "<br><br>")
+        (typeof w.renderButtonHint === "function"
+            ? w.renderButtonHint(
+                  w.keys.DOWN,
+                  w.strDOWN,
+                  t ? "<br>Down<br>" : "<br><br>"
+              )
             : "") +
         "</td><td></td></tr>" +
         "</table>" +
-        (typeof w.btnDiv === "function"
-            ? w.btnDiv(w.keys.RETURN, w.strRETURN, "Close")
+        (typeof w.renderButtonHint === "function"
+            ? w.renderButtonHint(w.keys.RETURN, w.strRETURN, "Close")
             : "") +
-        (typeof w.btnDiv === "function"
-            ? w.btnDiv(w.keys.YELLOW, "", "Search", w.strTools)
+        (typeof w.renderButtonHint === "function"
+            ? w.renderButtonHint(w.keys.YELLOW, "", "Search", w.strTools)
             : "");
     $(dialog!).show();
     w.dialogBoxKeyHandler = function (ev: number): boolean {
@@ -4668,8 +4722,8 @@ export function searchRec(): void {
                     // falls through
                     case w.keys.N2:
                     case w.keys.INFO:
-                        if (typeof w.infoProgramm === "function")
-                            w.infoProgramm(w.listArray[w.selIndex].name);
+                        if (typeof w.showProgramInfo === "function")
+                            w.showProgramInfo(w.listArray[w.selIndex].name);
                         return true;
                     case w.keys.RW:
                         if (w.sRewFun != 1) return false;
@@ -4683,13 +4737,13 @@ export function searchRec(): void {
                         return true;
                     case w.keys.FF:
                         if (w.sRewFun != 1) return false;
-                        if (typeof w.infoProgramm === "function")
-                            w.infoProgramm(w.listArray[w.selIndex].name);
+                        if (typeof w.showProgramInfo === "function")
+                            w.showProgramInfo(w.listArray[w.selIndex].name);
                         return true;
                     case w.keys.NEXT:
                         if (w.sPNFun != 1) return false;
-                        if (typeof w.infoProgramm === "function")
-                            w.infoProgramm(w.listArray[w.selIndex].name);
+                        if (typeof w.showProgramInfo === "function")
+                            w.showProgramInfo(w.listArray[w.selIndex].name);
                         return true;
                     case w.keys.N0:
                     case w.keys.YELLOW:
@@ -4723,10 +4777,10 @@ export function searchRec(): void {
                     '" (' +
                     w.listArray.length +
                     ")";
-            var podvalEl = document.getElementById("listPodval");
-            if (podvalEl) {
-                podvalEl.innerHTML =
-                    w.btnDiv(
+            var footerElement = document.getElementById("listPodval");
+            if (footerElement) {
+                footerElement.innerHTML =
+                    w.renderButtonHint(
                         w.keys.RETURN,
                         w.strRETURN,
                         "Records",
@@ -4738,7 +4792,7 @@ export function searchRec(): void {
                                 ? w.strPREV
                                 : ""
                     ) +
-                    w.btnDiv(
+                    w.renderButtonHint(
                         w.keys.N2,
                         w.strInfo,
                         "Description",
@@ -4751,7 +4805,13 @@ export function searchRec(): void {
                                 ? w.strNEXT
                                 : ""
                     ) +
-                    w.btnDiv(w.keys.YELLOW, "", "Search", w.strTools, "0");
+                    w.renderButtonHint(
+                        w.keys.YELLOW,
+                        "",
+                        "Search",
+                        w.strTools,
+                        "0"
+                    );
             }
             $("#listPopUp").hide();
             if (typeof w.showPage === "function") w.showPage();
@@ -4796,7 +4856,7 @@ function _ch_id(arrayName: string): string | null {
  * @returns The stored numeric value, or 0 when unset (contain for aAspects,
  *   matching OTT companion — never invent cover).
  */
-export function getCHarr(arrayName: string): number {
+export function getChannelPreference(arrayName: string): number {
     if (typeof arrayName !== "string") return 0;
     var chId = _ch_id(arrayName);
     if (chId == null) return 0;
@@ -4815,7 +4875,7 @@ export function getCHarr(arrayName: string): number {
  *
  * Side effects: None (the callback may have side effects).
  */
-export function execCHarr(
+export function applyChannelPreference(
     arrayName: string,
     callback: (val: number) => void
 ): void {
@@ -4846,7 +4906,7 @@ export function execCHarr(
  *
  * Side effects: Writes to provider storage; mutates the global array object.
  */
-export function saveCHarr(
+export function saveChannelPreference(
     arrayName: string,
     val: number | undefined | null
 ): void {
@@ -4922,14 +4982,14 @@ export function channelsKeyHandler(keyCode: number): boolean {
                     var chId = window.curList
                         ? window.curList[window.primaryIndex]
                         : undefined;
-                    if (typeof window.updateChanelInfo === "function") {
-                        window.updateChanelInfo(chId);
+                    if (typeof window.updateChannelInfo === "function") {
+                        window.updateChannelInfo(chId);
                     }
                     if (
-                        typeof window.showChanelInfo === "function" &&
+                        typeof window.showChannelInfo === "function" &&
                         window.sInfoSwitch
                     ) {
-                        window.showChanelInfo(window.settings.infoTimeout);
+                        window.showChannelInfo(window.settings.infoTimeout);
                     }
                     window.playType = 0;
                 }
@@ -4979,9 +5039,9 @@ export function channelsKeyHandler(keyCode: number): boolean {
             if (
                 ch &&
                 typeof ch.name !== "undefined" &&
-                typeof window.infoProgramm === "function"
+                typeof window.showProgramInfo === "function"
             ) {
-                window.infoProgramm(ch.name);
+                window.showProgramInfo(ch.name);
             }
             return true;
         }
@@ -5364,8 +5424,8 @@ export function parentControlSetup(): void {
                 window.saveIfChanged(idx++, "sPSoptions", true);
             if (
                 typeof window.optIndexOf === "function" &&
-                typeof window.selectProvaider !== "undefined" &&
-                window.optIndexOf(window.selectProvaider) !== -1 &&
+                typeof window.showProviderSelection !== "undefined" &&
+                window.optIndexOf(window.showProviderSelection) !== -1 &&
                 typeof window.saveIfChanged === "function"
             )
                 window.saveIfChanged(idx++, "sPSprovs", true);
@@ -5445,7 +5505,7 @@ export function parentControlSetup(): void {
             val: window.sPSprovs,
             values: yesNo,
         },
-        { cur: "", name: "", val: 0, values: window.nofun || [] },
+        { cur: "", name: "", val: 0, values: window.noop || [] },
         {
             cur: "",
             name:
@@ -5458,8 +5518,8 @@ export function parentControlSetup(): void {
     ];
     if (
         typeof window.optIndexOf === "function" &&
-        typeof window.selectProvaider !== "undefined" &&
-        window.optIndexOf(window.selectProvaider) === -1
+        typeof window.showProviderSelection !== "undefined" &&
+        window.optIndexOf(window.showProviderSelection) === -1
     ) {
         window.listArray.splice(3, 1);
     }

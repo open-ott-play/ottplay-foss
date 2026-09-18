@@ -12,7 +12,7 @@ import { makeQrSvg } from "../utils/qrcode";
 
 declare var $: any;
 declare var keys: any;
-declare var btnDiv: (
+declare var renderButtonHint: (
     keyLabel: number,
     label: string,
     description: string,
@@ -315,8 +315,13 @@ export function swopLoadValue(): void {
         });
     }
 
-    var pod = document.getElementById("listPodval");
-    if (pod) pod.innerHTML = btnDiv(keys.RETURN, strRETURN, "Close");
+    var footerElement = document.getElementById("listPodval");
+    if (footerElement)
+        footerElement.innerHTML = renderButtonHint(
+            keys.RETURN,
+            strRETURN,
+            "Close"
+        );
 
     showMsg((_("Send request") || "Send request") + "...");
     w.editKey = function (key: number): boolean {

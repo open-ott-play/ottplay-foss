@@ -1,6 +1,7 @@
 const CLASSIC_MODULES = [
     "build/polyfills/runtime.js",
     "build/polyfills/index.js",
+    "build/compatibility/legacy-names.js",
     "build/utils/lzstring.js",
     "build/storage/index.js",
     "build/localization/index.js",
@@ -29,6 +30,7 @@ const CLASSIC_MODULES = [
     "build/plugins/jquery-bridge.js",
     "build/plugins/native-http.js",
     "build/plugins/local-http-remote.js",
+    "build/plugins/command-server.js",
     "build/plugins/mobile-native-media.js",
     "build/plugins/dash-exo-player.js",
     "build/plugins/m3u-proxy.js",
@@ -218,6 +220,56 @@ function duplicateHelpers(sources, checker) {
     );
 }
 
+// The manifest is data, not executable build configuration. Only public classic
+// bindings are lowered; property names and lexical shadow bindings stay intact.
+function classicLegacyNames(root, sources) {
+    const source = sources.find(
+        (item) =>
+            item.fileName ===
+            path.resolve(root, "build/compatibility/legacy-names.js")
+    );
+    const names = new Map();
+    if (!source) return names;
+    let initializer;
+    for (const statement of source.statements) {
+        if (!ts.isVariableStatement(statement)) continue;
+        for (const declaration of statement.declarationList.declarations) {
+            if (
+                ts.isIdentifier(declaration.name) &&
+                declaration.name.text === "legacyPlayerBindings"
+            )
+                initializer = declaration.initializer;
+        }
+    }
+    if (!initializer || !ts.isArrayLiteralExpression(initializer))
+        throw new Error("Classic legacy-name manifest must be a literal array");
+    const legacy = new Set();
+    for (const entry of initializer.elements) {
+        if (
+            !ts.isArrayLiteralExpression(entry) ||
+            entry.elements.length !== 2 ||
+            !entry.elements.every((item) => ts.isStringLiteral(item))
+        )
+            throw new Error("Invalid classic legacy-name entry");
+        const [canonical, previous] = entry.elements.map((item) => item.text);
+        if (
+            !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(canonical) ||
+            !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(previous) ||
+            canonical === previous ||
+            names.has(canonical) ||
+            legacy.has(previous)
+        )
+            throw new Error("Conflicting classic legacy-name entry");
+        names.set(canonical, previous);
+        legacy.add(previous);
+    }
+    for (const name of names.keys()) {
+        if (legacy.has(name))
+            throw new Error("Chained classic legacy names are unsupported");
+    }
+    return names;
+}
+
 // These modules deliberately share a classic-script global ABI. Resolve actual
 // import symbols instead of dropping import lines and leaving aliases undefined.
 function assembleClassic(root, modules) {
@@ -247,6 +299,8 @@ function assembleClassic(root, modules) {
         )
     );
     const isPrivate = (source) => privateFiles.has(source.fileName);
+    const legacyNames = classicLegacyNames(root, sources);
+    const loweredGlobals = new Set(legacyNames.values());
     // A private module's compiler helpers belong to its own function scope.
     const redundantHelpers = duplicateHelpers(
         sources.filter((source) => !isPrivate(source)),
@@ -368,6 +422,12 @@ function assembleClassic(root, modules) {
                 }
         }
     }
+    for (const [canonical, legacy] of legacyNames) {
+        if (globals.has(canonical) && globals.has(legacy))
+            throw new Error(
+                "Classic canonical/legacy declarations collide: " + canonical
+            );
+    }
     const allText = sources.map((source) => source.text).join("\n");
     const readers = new Map();
     function reader(name) {
@@ -473,8 +533,11 @@ function assembleClassic(root, modules) {
                                     entry.name.text
                             );
                         }
-                        if (entry.name.text !== declaration.name.text)
-                            aliases.set(alias, declaration.name.text);
+                        const emittedName =
+                            legacyNames.get(declaration.name.text) ||
+                            declaration.name.text;
+                        if (entry.name.text !== emittedName)
+                            aliases.set(alias, emittedName);
                     }
                 }
                 replace(statement, "");
@@ -523,7 +586,102 @@ function assembleClassic(root, modules) {
                     ? checker.getShorthandAssignmentValueSymbol(node.parent)
                     : checker.getSymbolAtLocation(node);
                 const target = aliases.get(symbol);
+                const parent = node.parent;
+                const propertyName =
+                    (ts.isPropertyAccessExpression(parent) &&
+                        parent.name === node) ||
+                    ((ts.isPropertyAssignment(parent) ||
+                        ts.isMethodDeclaration(parent) ||
+                        ts.isGetAccessorDeclaration(parent) ||
+                        ts.isSetAccessorDeclaration(parent)) &&
+                        parent.name === node) ||
+                    (ts.isBindingElement(parent) &&
+                        parent.propertyName === node) ||
+                    ts.isLabeledStatement(parent) ||
+                    ts.isBreakStatement(parent) ||
+                    ts.isContinueStatement(parent);
+                function isSharedDeclaration(declaration) {
+                    for (
+                        let owner = declaration.parent;
+                        owner;
+                        owner = owner.parent
+                    ) {
+                        if (ts.isFunctionLike(owner)) return false;
+                        if (ts.isSourceFile(owner)) return !isPrivate(owner);
+                    }
+                    return false;
+                }
+                const legacy = !propertyName && legacyNames.get(node.text);
+                if (
+                    !target &&
+                    legacy &&
+                    (!symbol ||
+                        (symbol.declarations || []).some(isSharedDeclaration))
+                ) {
+                    const captured = checker.resolveName(
+                        legacy,
+                        node,
+                        ts.SymbolFlags.Value,
+                        false
+                    );
+                    const localCapture = (captured?.declarations || []).some(
+                        (declaration) => !isSharedDeclaration(declaration)
+                    );
+                    if (localCapture) {
+                        const write =
+                            (ts.isBinaryExpression(parent) &&
+                                parent.left === node &&
+                                parent.operatorToken.kind >=
+                                    ts.SyntaxKind.FirstAssignment &&
+                                parent.operatorToken.kind <=
+                                    ts.SyntaxKind.LastAssignment) ||
+                            ((ts.isPrefixUnaryExpression(parent) ||
+                                ts.isPostfixUnaryExpression(parent)) &&
+                                (parent.operator ===
+                                    ts.SyntaxKind.PlusPlusToken ||
+                                    parent.operator ===
+                                        ts.SyntaxKind.MinusMinusToken)) ||
+                            ((ts.isForInStatement(parent) ||
+                                ts.isForOfStatement(parent)) &&
+                                parent.initializer === node);
+                        if (write)
+                            throw new Error(
+                                "Classic legacy write would capture a local binding: " +
+                                    legacy
+                            );
+                        const read = reader(legacy);
+                        replace(
+                            node,
+                            shorthand
+                                ? node.text + ": " + read
+                                : "(" + read + ")"
+                        );
+                    } else {
+                        replace(
+                            node,
+                            shorthand ? node.text + ": " + legacy : legacy
+                        );
+                    }
+                }
                 if (target) {
+                    const captured = checker.resolveName(
+                        target,
+                        node,
+                        ts.SymbolFlags.Value,
+                        false
+                    );
+                    const localCapture = (captured?.declarations || []).some(
+                        (declaration) => !isSharedDeclaration(declaration)
+                    );
+                    // An unshadowed legacy global is already a live binding.
+                    // Keep the reader only where lowering would capture a local.
+                    if (loweredGlobals.has(target) && !localCapture) {
+                        replace(
+                            node,
+                            shorthand ? node.text + ": " + target : target
+                        );
+                        return;
+                    }
                     // A reader preserves live values and cannot capture a same-named
                     // function parameter in the importing module. It needs no ES2015 API.
                     const read = reader(target);
