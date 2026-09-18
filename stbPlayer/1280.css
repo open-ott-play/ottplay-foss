@@ -836,8 +836,8 @@ body {
     position: absolute;
     width: 16%;
     height: 16%;
-    border-radius: 50%;
     background: #82e4e0;
+    border-radius: 50%;
     /* A dark edge keeps the light dots distinct over bright video. */
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.85);
     -webkit-animation: ott-spinner-breathe 1.6s ease-in-out infinite;
