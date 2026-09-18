@@ -221,7 +221,13 @@ vm.runInContext(
         "metadataCssUrl",
         "metadataHtml",
         "hasTmdbService",
-    ]) + compile("src/ui/index.ts", ["uiInit", "showEditKey2", "editKey2"]),
+    ]) +
+        compile("src/ui/index.ts", [
+            "usesLgPointerInput",
+            "uiInit",
+            "showEditKey2",
+            "editKey2",
+        ]),
     c
 );
 c.uiInit();

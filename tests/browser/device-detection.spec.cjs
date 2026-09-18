@@ -366,3 +366,213 @@ for (const device of ["lg/webos", "lg/netcast", "pc"]) {
         }
     );
 }
+
+async function bootForMagicRemote(page, context, baseURL, device, visible) {
+    const origin = new URL(baseURL).origin;
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await context.route("**/*", async (route) => {
+        if (new URL(route.request().url()).origin === origin)
+            await route.continue();
+        else await route.abort("blockedbyclient");
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript((initialVisibility) => {
+        localStorage.setItem("ottplaylang", "_eng");
+        window.__testCursor = {
+            changes: [],
+            visible: initialVisibility,
+        };
+        // Model the optional shim called by the shipped adapter. This is an
+        // observable native boundary, not an emulation of LG firmware APIs.
+        window.webOS = {
+            device: {
+                cursorVisible: function (nextVisibility) {
+                    window.__testCursor.changes.push(nextVisibility);
+                    window.__testCursor.visible = nextVisibility;
+                },
+            },
+        };
+    }, visible);
+    await page.goto("/f/" + device + "/", { waitUntil: "load" });
+    await expect(page.locator("#listCaption")).toHaveText("First-run setup");
+    expect(await page.evaluate(() => window.ott_device)).toBe(device);
+    await page.evaluate(() => {
+        // Observe the real router without replacing page actions or selection.
+        const original = window.keyHandler;
+        window.__testEnterCount = 0;
+        window.keyHandler = function (event) {
+            if (event.keyCode === 13) window.__testEnterCount++;
+            return original.apply(this, arguments);
+        };
+    });
+    return errors;
+}
+
+test.describe("LG Magic Remote pointer and button transitions", () => {
+    test.use({
+        userAgent:
+            "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 Chrome/120.0 Safari/537.36 WebAppManager",
+    });
+
+    for (const visible of [true, false]) {
+        test(
+            "webOS boot preserves a " +
+                (visible ? "visible" : "hidden") +
+                " system pointer",
+            async ({ page, context, baseURL }) => {
+                const errors = await bootForMagicRemote(
+                    page,
+                    context,
+                    baseURL,
+                    "lg/webos",
+                    visible
+                );
+                expect(await page.evaluate(() => window.__testCursor)).toEqual({
+                    changes: [],
+                    visible,
+                });
+                expect(errors).toEqual([]);
+            }
+        );
+    }
+
+    for (const device of ["lg/webos", "lg/netcast"]) {
+        test(
+            device +
+                " hover, wheel, arrows and one-click activation share selection",
+            async ({ page, context, baseURL }) => {
+                const errors = await bootForMagicRemote(
+                    page,
+                    context,
+                    baseURL,
+                    device,
+                    true
+                );
+                const manual = page.locator("#listIn").getByRole("button", {
+                    exact: true,
+                    name: "Manual setup",
+                });
+                const manualIndex = Number(
+                    await manual.getAttribute("data-idx")
+                );
+                expect(manualIndex).toBeGreaterThan(0);
+                // Genuine pointer movement must focus an unselected row without
+                // activating it. A click can then perform the same action as OK.
+                await manual.hover();
+                await expect
+                    .poll(() => page.evaluate(() => window.selIndex))
+                    .toBe(manualIndex);
+                await expect(page.locator("#listCaption")).toHaveText(
+                    "First-run setup"
+                );
+                expect(await page.evaluate(() => window.__testEnterCount)).toBe(
+                    0
+                );
+                await page.mouse.wheel(0, -120);
+                await expect
+                    .poll(() => page.evaluate(() => window.selIndex))
+                    .toBe(manualIndex - 1);
+                await page.evaluate(() => {
+                    // Native 5-way navigation hides the pointer. This event
+                    // reports the system state, rather than requesting it.
+                    document.dispatchEvent(
+                        new CustomEvent("cursorStateChange", {
+                            detail: { visibility: false },
+                        })
+                    );
+                });
+                await page.keyboard.press("ArrowDown");
+                await expect
+                    .poll(() => page.evaluate(() => window.selIndex))
+                    .toBe(manualIndex);
+                await page.keyboard.press("ArrowUp");
+                await expect
+                    .poll(() => page.evaluate(() => window.selIndex))
+                    .toBe(manualIndex - 1);
+                // Return to pointer mode after buttons changed focus. Move away
+                // first so this exercises a fresh pointer entry into the row.
+                await page.evaluate(() => {
+                    document.dispatchEvent(
+                        new CustomEvent("cursorStateChange", {
+                            detail: { visibility: true },
+                        })
+                    );
+                });
+                await page.mouse.move(1100, 100);
+                await manual.hover();
+                await expect
+                    .poll(() => page.evaluate(() => window.selIndex))
+                    .toBe(manualIndex);
+                // The pointer can stay on a row while a key or page change
+                // moves selection elsewhere. Click without a mousemove must
+                // still focus and activate the row exactly once.
+                await page.keyboard.press("ArrowUp");
+                await expect
+                    .poll(() => page.evaluate(() => window.selIndex))
+                    .toBe(manualIndex - 1);
+                await page.mouse.down();
+                await page.mouse.up();
+                await expect(page.locator("#listCaption")).toHaveText(
+                    "Choose provider"
+                );
+                expect(await page.evaluate(() => window.__testEnterCount)).toBe(
+                    1
+                );
+                const back = device === "lg/webos" ? 461 : 8;
+                await remoteKey(page, back, "BrowserBack");
+                await expect(page.locator("#listCaption")).toHaveText(
+                    "First-run setup"
+                );
+                await remoteKey(page, back, "BrowserBack");
+                await expect(page.locator("#listCaption")).toHaveText(
+                    "Choose language"
+                );
+                await remoteKey(page, 13, "Enter");
+                await expect(page.locator("#listCaption")).toHaveText(
+                    "First-run setup"
+                );
+                expect(await page.evaluate(() => window.__testEnterCount)).toBe(
+                    2
+                );
+                expect(
+                    await page.evaluate(() => window.__testCursor.changes)
+                ).toEqual([]);
+                expect(errors).toEqual([]);
+            }
+        );
+    }
+
+    test("PC keeps click-to-select then click-to-activate behavior", async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        const errors = await bootForMagicRemote(
+            page,
+            context,
+            baseURL,
+            "pc",
+            true
+        );
+        const manual = page.locator("#listIn").getByRole("button", {
+            exact: true,
+            name: "Manual setup",
+        });
+        const manualIndex = Number(await manual.getAttribute("data-idx"));
+        await manual.hover();
+        expect(await page.evaluate(() => window.selIndex)).toBe(0);
+        await manual.click();
+        expect(await page.evaluate(() => window.selIndex)).toBe(manualIndex);
+        await expect(page.locator("#listCaption")).toHaveText(
+            "First-run setup"
+        );
+        expect(await page.evaluate(() => window.__testEnterCount)).toBe(0);
+        await manual.click();
+        await expect(page.locator("#listCaption")).toHaveText(
+            "Choose provider"
+        );
+        expect(await page.evaluate(() => window.__testEnterCount)).toBe(1);
+        expect(errors).toEqual([]);
+    });
+});
