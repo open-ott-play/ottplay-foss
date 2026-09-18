@@ -36,6 +36,164 @@ function helperCount(source, name) {
         ).length;
 }
 
+// Exercise Windows path identities with the real compiler on every CI host.
+// TypeScript's SourceFile paths use '/', even when root file names use '\\'.
+function windowsLinker(files) {
+    const normalize = (file) => path.win32.resolve(file).replace(/\\/g, "/");
+    const contents = new Map(
+        Object.entries(files).map(([file, text]) => [normalize(file), text])
+    );
+    const observed = { roots: [], sources: [] };
+    function compilerHost(options) {
+        const host = ts.createCompilerHost(options);
+        host.getCurrentDirectory = () => "C:/checkout";
+        host.getCanonicalFileName = (file) => file.toLowerCase();
+        host.useCaseSensitiveFileNames = () => false;
+        host.fileExists = (file) => contents.has(normalize(file));
+        host.readFile = (file) => contents.get(normalize(file));
+        host.directoryExists = (directory) =>
+            Array.from(contents.keys()).some((file) =>
+                file.startsWith(normalize(directory) + "/")
+            );
+        host.getSourceFile = (file, languageVersion) => {
+            const text = host.readFile(file);
+            if (text === undefined) return undefined;
+            const source = ts.createSourceFile(
+                file,
+                text,
+                languageVersion,
+                true
+            );
+            observed.sources.push(source.fileName);
+            return source;
+        };
+        return host;
+    }
+    const compiler = {
+        ...ts,
+        createCompilerHost: compilerHost,
+        createProgram(files, options) {
+            observed.roots.push(...files);
+            return ts.createProgram(files, options, compilerHost(options));
+        },
+    };
+    const module = { exports: {} };
+    vm.runInNewContext(
+        fs.readFileSync(
+            path.join(__dirname, "../scripts/classic-bundle.cjs"),
+            "utf8"
+        ),
+        {
+            module,
+            require(name) {
+                if (name === "node:path") return path.win32;
+                if (name === "node:fs")
+                    return {
+                        existsSync: (file) => contents.has(normalize(file)),
+                    };
+                if (name === "typescript") return compiler;
+                throw new Error(
+                    "Unexpected classic linker dependency: " + name
+                );
+            },
+        }
+    );
+    return { assemble: module.exports.assembleClassic, observed };
+}
+
+async function testWindowsPaths() {
+    const windowsRoot = "C:\\checkout";
+    const manifest = "build/compatibility/legacy-names.js";
+    const privateFile = "build/debug/playback-debug.js";
+    const modules = [manifest, "before.js", "dep.js", privateFile, "entry.js"];
+    const files = {
+        [path.win32.join(windowsRoot, manifest)]:
+            'var legacyPlayerBindings = [["channelName", "chName"], ["getChannel", "getCh"]];',
+        [path.win32.join(windowsRoot, "before.js")]: "var events = ['before'];",
+        [path.win32.join(windowsRoot, "dep.js")]:
+            'export var channelName = "first"; export function getChannel() { return channelName; }',
+        [path.win32.join(windowsRoot, privateFile)]:
+            "var privateState = 3; function privateRead() { return privateState; } " +
+            "window.__ottDebug = { read: privateRead }; events.push('private');",
+        [path.win32.join(windowsRoot, "entry.js")]:
+            'import { channelName as currentName, getChannel } from "./dep"; ' +
+            "export function publicRead(channelName) { return [getChannel(), currentName, channelName]; } " +
+            "events.push('after');",
+    };
+    const linker = windowsLinker(files);
+    const linked = linker.assemble(windowsRoot, modules);
+    assert(
+        linker.observed.roots.every((file) =>
+            file.startsWith("C:\\checkout\\")
+        ),
+        "The compiler receives Windows-native root paths"
+    );
+    assert(
+        linker.observed.sources.every((file) =>
+            file.startsWith("C:/checkout/")
+        ),
+        "The real compiler normalizes source-file paths to forward slashes"
+    );
+    const optimized = await optimizeClassic(linked);
+    for (const source of [linked, optimized.code]) {
+        acorn.parse(source, { ecmaVersion: 5 });
+        const context = vm.createContext({ privateState: 100 });
+        context.window = context;
+        vm.runInContext(source, context);
+        assert.equal(
+            typeof context.getCh,
+            "function",
+            "Keep the provider's legacy global ABI on Windows"
+        );
+        assert.equal(context.getChannel, undefined);
+        assert.equal(context.chName, "first");
+        assert.deepEqual(Array.from(context.publicRead("local")), [
+            "first",
+            "first",
+            "local",
+        ]);
+        context.chName = "changed by provider";
+        assert.deepEqual(Array.from(context.publicRead("local")), [
+            "changed by provider",
+            "changed by provider",
+            "local",
+        ]);
+        vm.runInContext(
+            'function getCh() { return "provider hook"; }',
+            context
+        );
+        assert.deepEqual(Array.from(context.publicRead("local")), [
+            "provider hook",
+            "changed by provider",
+            "local",
+        ]);
+        assert.equal(
+            context.privateState,
+            100,
+            "The Windows build isolates debug state"
+        );
+        assert.equal(context.privateRead, undefined);
+        assert.equal(context.__ottDebug.read(), 3);
+        assert.deepEqual(Array.from(context.events), [
+            "before",
+            "private",
+            "after",
+        ]);
+    }
+    for (const reference of ["privateState", "window.privateState"]) {
+        const leakingFiles = {
+            ...files,
+            [path.win32.join(windowsRoot, "entry.js")]:
+                "var leaked = " + reference + ";",
+        };
+        assert.throws(
+            () => windowsLinker(leakingFiles).assemble(windowsRoot, modules),
+            /reference to private classic binding/,
+            "Windows cannot bypass private-boundary validation"
+        );
+    }
+}
+
 async function testPrivateBoundary() {
     const privateFile = "build/debug/playback-debug.js";
     write("private-before.js", "var events = ['before']; var liveValue = 2;");
@@ -512,6 +670,7 @@ async function main() {
         );
         await testHelpers();
         await testPrivateBoundary();
+        await testWindowsPaths();
         console.log(
             "PASS: classic ES5 linker preserves live aliases, lexical bindings and async behavior; validates ABI bridges and deduplicates identical TypeScript helpers"
         );

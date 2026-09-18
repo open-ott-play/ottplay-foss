@@ -225,7 +225,7 @@ function duplicateHelpers(sources, checker) {
 function classicLegacyNames(root, sources) {
     const source = sources.find(
         (item) =>
-            item.fileName ===
+            path.resolve(item.fileName) ===
             path.resolve(root, "build/compatibility/legacy-names.js")
     );
     const names = new Map();
@@ -298,7 +298,8 @@ function assembleClassic(root, modules) {
             path.resolve(root, file)
         )
     );
-    const isPrivate = (source) => privateFiles.has(source.fileName);
+    const isPrivate = (source) =>
+        privateFiles.has(path.resolve(source.fileName));
     const legacyNames = classicLegacyNames(root, sources);
     const loweredGlobals = new Set(legacyNames.values());
     // A private module's compiler helpers belong to its own function scope.
