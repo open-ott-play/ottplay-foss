@@ -22,6 +22,7 @@ for (const adapter of adapters) {
         const callbacks = [];
         let readyCalls = 0;
         const deviceCalls = [];
+        const cursorChanges = [];
         const w = {
             Android: {},
             Common: { API: {} },
@@ -42,7 +43,9 @@ for (const adapter of adapters) {
             version: "test",
             webOS: {
                 app: { requestWindowFocus: () => deviceCalls.push("focus") },
-                device: { cursorVisible: () => deviceCalls.push("cursor") },
+                device: {
+                    cursorVisible: (visible) => cursorChanges.push(visible),
+                },
                 platform: {
                     setWindowOrientation: () => deviceCalls.push("orientation"),
                 },
@@ -87,12 +90,12 @@ for (const adapter of adapters) {
         if (adapter === "mag")
             assert.equal(w.stb.getMacAddress(), "device-mac");
         if (adapter === "lg/webos") {
-            assert.deepEqual(deviceCalls, [
-                "splash",
-                "cursor",
-                "orientation",
-                "focus",
-            ]);
+            assert.deepEqual(
+                cursorChanges,
+                [],
+                "LG initialization must preserve Magic Remote pointer mode"
+            );
+            assert.deepEqual(deviceCalls, ["splash", "orientation", "focus"]);
         }
     }
     // Native platform APIs are optional; an absent API must retain the base result too.

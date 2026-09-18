@@ -64,18 +64,6 @@ function _hideSplash() {
         }
     } catch (e) {}
 }
-// Hide magic-remote cursor — STB remotes have no pointer, cursor = visual noise
-function _hideCursor() {
-    try {
-        if (
-            typeof webOS !== "undefined" &&
-            webOS.device &&
-            typeof webOS.device.cursorVisible === "function"
-        ) {
-            webOS.device.cursorVisible(false);
-        }
-    } catch (e) {}
-}
 // Lock window to landscape — WebOS supports portrait, we don't
 function _lockLandscape() {
     try {
@@ -126,7 +114,7 @@ stbInit = function () {
             return baseInitResult;
         }
         _hideSplash();
-        _hideCursor();
+        // webOS manages Magic Remote pointer visibility and directional mode.
         _lockLandscape();
         _focusApp();
         _showPipMenu();

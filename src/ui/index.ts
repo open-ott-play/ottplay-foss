@@ -301,6 +301,12 @@ export var strZoom = "E";
 export var strAudio = "S";
 export var strPRECH = "?";
 
+/** LG Magic Remote pointer selection activates the row like its OK button. */
+function usesLgPointerInput(): boolean {
+    var device = (window as any).ott_device;
+    return device === "lg/webos" || device === "lg/netcast";
+}
+
 /**
  * Initialize UI module — cache DOM element references, load CSS, patch jQuery show/hide,
  * bind click/wheel/progress-bar event handlers.
@@ -420,6 +426,27 @@ export function uiInit(): void {
             (listInEl as any).__ottListClickBound = true;
             var listInClickRoot: HTMLElement = listInEl;
             listInClickRoot.addEventListener(
+                "mousemove",
+                function (ev: MouseEvent): void {
+                    if (!usesLgPointerInput() || ev.buttons) return;
+                    var target = ev.target;
+                    if (!target || (target as Node).nodeType !== 1) return;
+                    var item = $(target).closest(".item")[0] as
+                        | HTMLElement
+                        | undefined;
+                    if (!item || !listInClickRoot.contains(item)) return;
+                    var raw =
+                        item.getAttribute("data-idx") ||
+                        (item.id && item.id.indexOf("it") === 0
+                            ? item.id.slice(2)
+                            : "");
+                    var index = parseInt(raw as string, 10);
+                    // Movement only focuses; repeated movement never activates.
+                    if (!isNaN(index) && index !== selIndex) setSelect(index);
+                },
+                false
+            );
+            listInClickRoot.addEventListener(
                 "click",
                 function (ev: MouseEvent): void {
                     if ((window as any).__ottTauriSuppressClick) return;
@@ -452,7 +479,14 @@ export function uiInit(): void {
                     ev.preventDefault();
                     ev.stopPropagation();
                     ev.stopImmediatePropagation();
-                    if (typeof (window as any).setSelect === "function") {
+                    if (usesLgPointerInput()) {
+                        // A click can arrive without movement after a menu opens.
+                        // Focus first, then dispatch exactly one OK action.
+                        if (idx !== selIndex) setSelect(idx);
+                        dispatchKey(keys.ENTER);
+                    } else if (
+                        typeof (window as any).setSelect === "function"
+                    ) {
                         (window as any).setSelect(idx);
                     } else {
                         setSelect(idx);
