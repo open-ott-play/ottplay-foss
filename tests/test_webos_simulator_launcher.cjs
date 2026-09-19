@@ -21,9 +21,9 @@ const app = path.join(fixture, "build/device-webos-simulator");
 const script = path.join(fixture, "scripts/run-webos-simulator.sh");
 const env = {
     ...process.env,
-    HOME: path.join(fixture, "home"),
-    CAPTURE_FILE: capture,
     BOOTSTRAP_CAPTURE: bootstrapCapture,
+    CAPTURE_FILE: capture,
+    HOME: path.join(fixture, "home"),
     MOCK_CLI: cli,
 };
 for (const key of [
@@ -49,12 +49,30 @@ fs.mkdirSync(env.HOME);
 // Keep a globally installed ares-launch from escaping the fixture.
 const toolBin = path.join(fixture, "tools");
 fs.mkdirSync(toolBin);
-for (const name of ["bash", "cat", "dirname", "basename", "curl", "mkdir", "mktemp", "rm", "mv", "uname", "python3", "ditto", "npm"]) {
+for (const name of [
+    "bash",
+    "cat",
+    "dirname",
+    "basename",
+    "curl",
+    "mkdir",
+    "mktemp",
+    "rm",
+    "mv",
+    "uname",
+    "python3",
+    "ditto",
+    "npm",
+]) {
     const executable = process.env.PATH.split(path.delimiter)
         .map((directory) => path.join(directory, name))
         .find((candidate) => {
-            try { fs.accessSync(candidate, fs.constants.X_OK); return true; }
-            catch (_) { return false; }
+            try {
+                fs.accessSync(candidate, fs.constants.X_OK);
+                return true;
+            } catch (_) {
+                return false;
+            }
         });
     if (executable) fs.symlinkSync(executable, path.join(toolBin, name));
 }
@@ -62,7 +80,12 @@ fs.symlinkSync(process.execPath, path.join(toolBin, "node"));
 env.PATH = toolBin;
 function createSimulator(directory, version = "26", release = "1.5.0") {
     const name = `webOS_TV_${version}_Simulator_${release}`;
-    const executable = path.join(directory, name + ".app", "Contents/MacOS", name);
+    const executable = path.join(
+        directory,
+        name + ".app",
+        "Contents/MacOS",
+        name
+    );
     fs.mkdirSync(path.dirname(executable), { recursive: true });
     fs.writeFileSync(executable, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
 }
@@ -105,7 +128,9 @@ async function run(args, extraEnv = {}) {
     });
 }
 async function rejects(args, pattern, extraEnv = {}) {
-    await assert.rejects(run(args, extraEnv), (error) => pattern.test(error.stderr));
+    await assert.rejects(run(args, extraEnv), (error) =>
+        pattern.test(error.stderr)
+    );
     assert(!fs.existsSync(capture), "Failed preflight must not launch the SDK");
 }
 
@@ -181,38 +206,57 @@ const server = http.createServer((request, response) => {
             server.listen(0, "127.0.0.1", resolve);
         });
         const origin = "http://127.0.0.1:" + server.address().port;
-        const managedSdk = path.join(env.HOME, ".local/share/ottplay/webos-tv-simulator/26");
+        const managedSdk = path.join(
+            env.HOME,
+            ".local/share/ottplay/webos-tv-simulator/26"
+        );
         fs.mkdirSync(path.join(env.HOME, ".webos/tv"), { recursive: true });
         fs.writeFileSync(
             path.join(env.HOME, ".webos/tv/simulator-config.json"),
-            JSON.stringify({ "26": path.join(fixture, "deleted installation") })
+            JSON.stringify({ 26: path.join(fixture, "deleted installation") })
         );
         await run(["--url", origin], { WEBOS_CLI: "" });
-        assert.deepEqual(JSON.parse(fs.readFileSync(bootstrapCapture, "utf8")), [
-            "--version", "26", "--destination", managedSdk,
-        ]);
+        assert.deepEqual(
+            JSON.parse(fs.readFileSync(bootstrapCapture, "utf8")),
+            ["--version", "26", "--destination", managedSdk]
+        );
         assert.deepEqual(JSON.parse(fs.readFileSync(capture, "utf8")), [
-            "-s", "26", "-sp", managedSdk, app,
+            "-s",
+            "26",
+            "-sp",
+            managedSdk,
+            app,
         ]);
         fs.unlinkSync(capture);
         fs.unlinkSync(bootstrapCapture);
         await run(["--url", origin], { WEBOS_CLI: "" });
-        assert(!fs.existsSync(bootstrapCapture), "Second launch must reuse installed tools");
+        assert(
+            !fs.existsSync(bootstrapCapture),
+            "Second launch must reuse installed tools"
+        );
         fs.unlinkSync(capture);
         const alternateSdk = path.join(fixture, "another registered SDK");
         createSimulator(alternateSdk);
         fs.writeFileSync(
             path.join(env.HOME, ".webos/tv/simulator-config.json"),
-            JSON.stringify({ "26": alternateSdk })
+            JSON.stringify({ 26: alternateSdk })
         );
         await run(["--url", origin]);
-        assert.equal(JSON.parse(fs.readFileSync(capture, "utf8"))[3], alternateSdk);
-        assert(!fs.existsSync(bootstrapCapture), "Registered SDK should be reused");
+        assert.equal(
+            JSON.parse(fs.readFileSync(capture, "utf8"))[3],
+            alternateSdk
+        );
+        assert(
+            !fs.existsSync(bootstrapCapture),
+            "Registered SDK should be reused"
+        );
         fs.unlinkSync(capture);
 
         const missingSdk = path.join(fixture, "missing explicit SDK");
         await assert.rejects(
-            run(["--url", origin, "--sdk", missingSdk], { FAIL_BOOTSTRAP: "1" }),
+            run(["--url", origin, "--sdk", missingSdk], {
+                FAIL_BOOTSTRAP: "1",
+            }),
             (error) => error.code === 31
         );
         assert(!fs.existsSync(capture), "Failed setup must not launch");
@@ -241,28 +285,58 @@ const server = http.createServer((request, response) => {
         fs.unlinkSync(capture);
         healthStatus = 503;
         await rejects(args, /companion is unavailable/);
-        await rejects(["--url", origin, "--sdk", missingSdk], /companion is unavailable/);
-        assert(!fs.existsSync(bootstrapCapture), "Unavailable server must not trigger downloads");
+        await rejects(
+            ["--url", origin, "--sdk", missingSdk],
+            /companion is unavailable/
+        );
+        assert(
+            !fs.existsSync(bootstrapCapture),
+            "Unavailable server must not trigger downloads"
+        );
         await new Promise((resolve) => server.close(resolve));
         await rejects(args, /companion is unavailable/);
 
         // Exercise the real installer's no-op and rejection paths, without
         // downloading vendor software or executing a vendor installer.
         const realSetup = path.join(root, "scripts/setup-webos-simulator.sh");
-        const setupEnv = { ...env, WEBOS_VERSION: "26", WEBOS_SDK_PATH: managedSdk };
-        const existingSetup = await exec("bash", [realSetup], { env: setupEnv });
+        const setupEnv = {
+            ...env,
+            WEBOS_SDK_PATH: managedSdk,
+            WEBOS_VERSION: "26",
+        };
+        const existingSetup = await exec("bash", [realSetup], {
+            env: setupEnv,
+        });
         assert.match(existingSetup.stdout, /already installed/);
-        const registeredSetup = await exec("bash", [realSetup], { env: { ...setupEnv, WEBOS_SDK_PATH: "" } });
-        assert(registeredSetup.stdout.includes(alternateSdk), "Standalone setup must reuse the registered SDK");
+        const registeredSetup = await exec("bash", [realSetup], {
+            env: { ...setupEnv, WEBOS_SDK_PATH: "" },
+        });
+        assert(
+            registeredSetup.stdout.includes(alternateSdk),
+            "Standalone setup must reuse the registered SDK"
+        );
         const olderRelease = path.join(fixture, "older working release");
         createSimulator(olderRelease, "26", "1.4.9");
-        const reusedRelease = await exec("bash", [realSetup, "--destination", olderRelease], { env: setupEnv });
+        const reusedRelease = await exec(
+            "bash",
+            [realSetup, "--destination", olderRelease],
+            { env: setupEnv }
+        );
         assert.match(reusedRelease.stdout, /already installed/);
-        const reusedVersion = await exec("bash", [realSetup, "--version", "25", "--destination", sdk], { env: setupEnv });
+        const reusedVersion = await exec(
+            "bash",
+            [realSetup, "--version", "25", "--destination", sdk],
+            { env: setupEnv }
+        );
         assert.match(reusedVersion.stdout, /already installed/);
         const absent = path.join(fixture, "never installed");
-        await exec("bash", [realSetup, "--destination", absent, "--dry-run"], { env: setupEnv });
-        assert(!fs.existsSync(absent), "Setup dry run must not create SDK files");
+        await exec("bash", [realSetup, "--destination", absent, "--dry-run"], {
+            env: setupEnv,
+        });
+        assert(
+            !fs.existsSync(absent),
+            "Setup dry run must not create SDK files"
+        );
         await assert.rejects(
             exec("bash", [realSetup, "--version", "25"], { env: setupEnv }),
             (error) => /supports webOS 26/.test(error.stderr)
@@ -270,47 +344,103 @@ const server = http.createServer((request, response) => {
         const incomplete = path.join(fixture, "incomplete SDK");
         fs.mkdirSync(incomplete);
         await assert.rejects(
-            exec("bash", [realSetup, "--destination", incomplete], { env: setupEnv }),
+            exec("bash", [realSetup, "--destination", incomplete], {
+                env: setupEnv,
+            }),
             (error) => /refusing to overwrite/.test(error.stderr)
         );
         const binaries = path.join(fixture, "bin");
         fs.mkdirSync(binaries);
-        fs.writeFileSync(path.join(binaries, "uname"), '#!/bin/sh\nif [ "$1" = "-s" ]; then echo Darwin; else echo arm64; fi\n', { mode: 0o755 });
-        fs.writeFileSync(path.join(binaries, "ditto"), '#!/bin/sh\necho "Unexpected extraction" >&2\nexit 91\n', { mode: 0o755 });
+        fs.writeFileSync(
+            path.join(binaries, "uname"),
+            '#!/bin/sh\nif [ "$1" = "-s" ]; then echo Darwin; else echo arm64; fi\n',
+            { mode: 0o755 }
+        );
+        fs.writeFileSync(
+            path.join(binaries, "ditto"),
+            '#!/bin/sh\necho "Unexpected extraction" >&2\nexit 91\n',
+            { mode: 0o755 }
+        );
         const badArchive = path.join(fixture, "bad.zip");
         fs.writeFileSync(badArchive, "not the official archive");
         await assert.rejects(
-            exec("bash", [realSetup, "--destination", absent, "--archive", badArchive], {
-                env: { ...setupEnv, PATH: binaries + path.delimiter + setupEnv.PATH },
-            }),
+            exec(
+                "bash",
+                [realSetup, "--destination", absent, "--archive", badArchive],
+                {
+                    env: {
+                        ...setupEnv,
+                        PATH: binaries + path.delimiter + setupEnv.PATH,
+                    },
+                }
+            ),
             (error) => /Archive size differs/.test(error.stderr)
         );
-        assert(!fs.existsSync(absent), "Invalid archive must not create the SDK");
+        assert(
+            !fs.existsSync(absent),
+            "Invalid archive must not create the SDK"
+        );
         fs.truncateSync(badArchive, 111268559);
         await assert.rejects(
-            exec("bash", [realSetup, "--destination", absent, "--archive", badArchive], {
-                env: { ...setupEnv, PATH: binaries + path.delimiter + setupEnv.PATH },
-            }),
+            exec(
+                "bash",
+                [realSetup, "--destination", absent, "--archive", badArchive],
+                {
+                    env: {
+                        ...setupEnv,
+                        PATH: binaries + path.delimiter + setupEnv.PATH,
+                    },
+                }
+            ),
             (error) => /Archive checksum differs/.test(error.stderr)
         );
-        assert(!fs.existsSync(absent), "Invalid checksum must not create the SDK");
-        assert(!fs.readdirSync(fixture).some((name) => name.startsWith(".webos-simulator-install.")), "Failed setup must remove its temporary downloads");
+        assert(
+            !fs.existsSync(absent),
+            "Invalid checksum must not create the SDK"
+        );
+        assert(
+            !fs
+                .readdirSync(fixture)
+                .some((name) => name.startsWith(".webos-simulator-install.")),
+            "Failed setup must remove its temporary downloads"
+        );
         const cliHome = path.join(fixture, "CLI-only home");
         const npmCapture = path.join(fixture, "npm args.json");
-        fs.writeFileSync(path.join(binaries, "npm"), `#!/usr/bin/env node
+        fs.writeFileSync(
+            path.join(binaries, "npm"),
+            `#!/usr/bin/env node
 const fs = require('node:fs'), path = require('node:path');
 fs.writeFileSync(process.env.NPM_CAPTURE, JSON.stringify(process.argv.slice(2)));
 const prefix = process.argv[process.argv.indexOf('--prefix') + 1];
 const binary = path.join(prefix, 'node_modules/.bin/ares-launch');
 fs.mkdirSync(path.dirname(binary), {recursive: true});
 fs.copyFileSync(process.env.MOCK_CLI, binary);
-`, { mode: 0o755 });
-        const cliEnv = { ...setupEnv, HOME: cliHome, WEBOS_CLI: "", NPM_CAPTURE: npmCapture, PATH: binaries + path.delimiter + setupEnv.PATH };
-        await exec("bash", [realSetup, "--cli-only", "--version", "25"], { env: cliEnv });
-        assert(JSON.parse(fs.readFileSync(npmCapture, "utf8")).includes("@webos-tools/cli@3.2.6"));
+`,
+            { mode: 0o755 }
+        );
+        const cliEnv = {
+            ...setupEnv,
+            HOME: cliHome,
+            NPM_CAPTURE: npmCapture,
+            PATH: binaries + path.delimiter + setupEnv.PATH,
+            WEBOS_CLI: "",
+        };
+        await exec("bash", [realSetup, "--cli-only", "--version", "25"], {
+            env: cliEnv,
+        });
+        assert(
+            JSON.parse(fs.readFileSync(npmCapture, "utf8")).includes(
+                "@webos-tools/cli@3.2.6"
+            )
+        );
         fs.unlinkSync(npmCapture);
-        await exec("bash", [realSetup, "--cli-only", "--version", "25"], { env: cliEnv });
-        assert(!fs.existsSync(npmCapture), "Installed CLI must not be reinstalled");
+        await exec("bash", [realSetup, "--cli-only", "--version", "25"], {
+            env: cliEnv,
+        });
+        assert(
+            !fs.existsSync(npmCapture),
+            "Installed CLI must not be reinstalled"
+        );
         console.log(
             "PASS webOS shell launcher: missing-tool bootstrap, reuse, stale registration, setup failure, dry run, archive rejection, exact CLI arguments and preflight"
         );

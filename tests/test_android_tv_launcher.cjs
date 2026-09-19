@@ -26,11 +26,19 @@ for (const name of [
     "setup-android-tv-emulator.sh",
     "run-android-tv-emulator.sh",
 ]) {
-    let source = fs.readFileSync(path.join(__dirname, "../scripts", name), "utf8");
+    let source = fs.readFileSync(
+        path.join(__dirname, "../scripts", name),
+        "utf8"
+    );
     // Use a tiny local fixture in place of Google's large download; checksum
     // verification and the full bootstrap control flow still execute normally.
     if (name === "android-tv-emulator.cjs")
-        source = source.replace(/"[0-9a-f]{64}"/g, JSON.stringify(createHash("sha256").update("fixture SDK archive").digest("hex")));
+        source = source.replace(
+            /"[0-9a-f]{64}"/g,
+            JSON.stringify(
+                createHash("sha256").update("fixture SDK archive").digest("hex")
+            )
+        );
     fs.writeFileSync(path.join(root, "scripts", name), source);
 }
 fs.writeFileSync(
@@ -202,8 +210,8 @@ function run(mode, args = [], extraEnv = {}, success = true) {
                 NOT_BOOTED: "",
                 OTTP_PLAYER_URL: "",
                 PATH: bin + path.delimiter + process.env.PATH,
-                STATE_FILE: state,
                 SKIP_BUILD_PACKAGES: "",
+                STATE_FILE: state,
                 STOP_DELAY_POLLS: "",
                 STOP_STUCK: "",
                 ...extraEnv,
@@ -249,7 +257,8 @@ try {
         /Required SDK packages were not installed: platforms;android-36, build-tools;36.0.0/
     );
     assert.equal(
-        calls().some((call) => call.name === "avdmanager"), false,
+        calls().some((call) => call.name === "avdmanager"),
+        false,
         "sdkmanager exit zero with missing packages must not create an AVD"
     );
     assert.match(run("setup"), /Ready: OttplayAndroidTV/);
@@ -324,25 +333,63 @@ try {
         run("run", ["--home", "--avd", "Absent", "--no-install"], {}, false),
         /not installed/
     );
-    assert.equal(calls().length, 0, "--no-install must fail without SDK mutations");
+    assert.equal(
+        calls().length,
+        0,
+        "--no-install must fail without SDK mutations"
+    );
     assert.match(run("run", ["--stop", "--avd", "Absent"]), /nothing to stop/);
-    assert.equal(calls().length, 0, "stopping a removed TV must not reinstall it");
+    assert.equal(
+        calls().length,
+        0,
+        "stopping a removed TV must not reinstall it"
+    );
     assert.match(run("run", ["--home", "--avd", "Absent"]), /Starting Absent/);
     assert.ok(calls().some((call) => call.name === "avdmanager"));
     assert.match(run("run", ["--home", "--avd", "Absent"]), /Reusing Absent/);
-    assert.equal(calls().some((call) => ["sdkmanager", "avdmanager"].includes(call.name)), false);
+    assert.equal(
+        calls().some((call) =>
+            ["sdkmanager", "avdmanager"].includes(call.name)
+        ),
+        false
+    );
     devices({});
-    assert.match(run("run", ["--google-tv", "--home"]), /Starting OttplayGoogleTV/);
-    assert.ok(calls().find((call) => call.name === "sdkmanager").args.includes(image.replace("android-tv", "google-tv")));
-    assert.match(fs.readFileSync(path.join(avdHome, "OttplayGoogleTV.avd/config.ini"), "utf8"), /tag.id=google-tv/);
+    assert.match(
+        run("run", ["--google-tv", "--home"]),
+        /Starting OttplayGoogleTV/
+    );
+    assert.ok(
+        calls()
+            .find((call) => call.name === "sdkmanager")
+            .args.includes(image.replace("android-tv", "google-tv"))
+    );
+    assert.match(
+        fs.readFileSync(
+            path.join(avdHome, "OttplayGoogleTV.avd/config.ini"),
+            "utf8"
+        ),
+        /tag.id=google-tv/
+    );
     devices({});
     fs.rmSync(path.join(imagePath, "system.img"));
     fs.rmSync(path.join(sdk, "emulator/emulator"));
     fs.rmSync(path.join(sdk, "platform-tools/adb"));
     assert.match(run("run", ["--home"]), /Starting OttplayAndroidTV/);
-    assert.deepEqual(calls().find((call) => call.name === "sdkmanager").args.slice(2), [image, "emulator", "platform-tools"]);
-    assert.equal(fs.readFileSync(configFile, "utf8"), originalConfig, "repair of removed packages preserves AVD config");
-    assert.equal(calls().some((call) => call.name === "avdmanager"), false);
+    assert.deepEqual(
+        calls()
+            .find((call) => call.name === "sdkmanager")
+            .args.slice(2),
+        [image, "emulator", "platform-tools"]
+    );
+    assert.equal(
+        fs.readFileSync(configFile, "utf8"),
+        originalConfig,
+        "repair of removed packages preserves AVD config"
+    );
+    assert.equal(
+        calls().some((call) => call.name === "avdmanager"),
+        false
+    );
     devices({ "emulator-5554": "ExistingPhone", "emulator-5570": "OtherTV" });
     assert.match(run("run", ["--home"], {}, false), /occupied/);
     assert.equal(
@@ -941,30 +988,79 @@ try {
 
     // Reinstall from an absent SDK without using the host SDK, network or VM.
     const cleanSdk = path.join(tmp, "fresh SDK");
-    const isolatedEnv = { PATH: [bin, "/usr/bin", "/bin"].join(path.delimiter) };
+    const isolatedEnv = {
+        PATH: [bin, "/usr/bin", "/bin"].join(path.delimiter),
+    };
     const freshArgs = ["--home", "--avd", "FreshTV", "--sdk", cleanSdk];
     devices({});
     const freshDry = run("run", [...freshArgs, "--dry-run"], isolatedEnv);
-    assert.match(freshDry, /dl\.google\.com\/android\/repository\/commandlinetools-/);
+    assert.match(
+        freshDry,
+        /dl\.google\.com\/android\/repository\/commandlinetools-/
+    );
     assert.match(freshDry, /Verify SHA-256/);
     assert.match(freshDry, /sdkmanager.*--install/);
     assert.equal(calls().length, 0);
-    assert.equal(fs.existsSync(cleanSdk), false, "dry bootstrap leaves no files");
-    assert.match(run("run", freshArgs, { ...isolatedEnv, FAIL_DOWNLOAD: "1" }, false), /failed/);
-    assert.equal(calls().some((call) => call.name === "unzip"), false);
-    assert.deepEqual(fs.readdirSync(path.join(cleanSdk, "cmdline-tools")), [], "failed download is cleaned up");
-    assert.match(run("run", freshArgs, { ...isolatedEnv, BAD_CHECKSUM: "1" }, false), /checksum mismatch/);
-    assert.equal(calls().some((call) => call.name === "unzip"), false, "unverified archive must never be extracted");
+    assert.equal(
+        fs.existsSync(cleanSdk),
+        false,
+        "dry bootstrap leaves no files"
+    );
+    assert.match(
+        run("run", freshArgs, { ...isolatedEnv, FAIL_DOWNLOAD: "1" }, false),
+        /failed/
+    );
+    assert.equal(
+        calls().some((call) => call.name === "unzip"),
+        false
+    );
+    assert.deepEqual(
+        fs.readdirSync(path.join(cleanSdk, "cmdline-tools")),
+        [],
+        "failed download is cleaned up"
+    );
+    assert.match(
+        run("run", freshArgs, { ...isolatedEnv, BAD_CHECKSUM: "1" }, false),
+        /checksum mismatch/
+    );
+    assert.equal(
+        calls().some((call) => call.name === "unzip"),
+        false,
+        "unverified archive must never be extracted"
+    );
     assert.deepEqual(fs.readdirSync(path.join(cleanSdk, "cmdline-tools")), []);
-    assert.match(run("run", freshArgs, { ...isolatedEnv, FAIL_INSTALL: "1" }, false), /failed/);
+    assert.match(
+        run("run", freshArgs, { ...isolatedEnv, FAIL_INSTALL: "1" }, false),
+        /failed/
+    );
     assert.ok(calls().some((call) => call.name === "unzip"));
-    assert.equal(fs.existsSync(path.join(avdHome, "FreshTV.ini")), false, "failed SDK installation must not create an AVD");
-    assert.deepEqual(fs.readdirSync(path.join(cleanSdk, "cmdline-tools")), ["ottplay-15859902"], "successful bootstrap retains tools only, no downloaded archive");
+    assert.equal(
+        fs.existsSync(path.join(avdHome, "FreshTV.ini")),
+        false,
+        "failed SDK installation must not create an AVD"
+    );
+    assert.deepEqual(
+        fs.readdirSync(path.join(cleanSdk, "cmdline-tools")),
+        ["ottplay-15859902"],
+        "successful bootstrap retains tools only, no downloaded archive"
+    );
     assert.match(run("run", freshArgs, isolatedEnv), /Starting FreshTV/);
-    assert.equal(calls().some((call) => ["curl", "unzip"].includes(call.name)), false, "retry reuses verified command-line tools");
-    assert.ok(fs.existsSync(path.join(cleanSdk, ...image.split(";"), "system.img")));
+    assert.equal(
+        calls().some((call) => ["curl", "unzip"].includes(call.name)),
+        false,
+        "retry reuses verified command-line tools"
+    );
+    assert.ok(
+        fs.existsSync(path.join(cleanSdk, ...image.split(";"), "system.img"))
+    );
     assert.match(run("run", freshArgs, isolatedEnv), /Reusing FreshTV/);
-    assert.equal(calls().some((call) => ["sdkmanager", "avdmanager", "curl", "unzip"].includes(call.name)), false, "complete installation is reused");
+    assert.equal(
+        calls().some((call) =>
+            ["sdkmanager", "avdmanager", "curl", "unzip"].includes(call.name)
+        ),
+        false,
+        "complete installation is reused"
+    );
     console.log("Android TV setup/launcher integration tests passed");
 } finally {
     fs.rmSync(tmp, { force: true, recursive: true });
