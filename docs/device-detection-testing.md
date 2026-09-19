@@ -55,10 +55,10 @@ the syntax requirements of older engines.
 
 ## Official LG webOS TV Simulator
 
-Install the [LG Simulator](https://webostv.developer.lge.com/develop/tools/simulator-installation)
-for the desired version and host OS, accepting its SDK agreement separately.
-The webOS TV 25 and 26 macOS downloads support ARM64. The SDK is not downloaded
-by CI or redistributed in this repository.
+The launcher installs the official [LG Simulator](https://webostv.developer.lge.com/develop/tools/simulator-installation)
+and webOS CLI if missing. Automatic simulator installation targets webOS TV 26
+on Apple Silicon; other versions and hosts can use a separately installed SDK
+via `--sdk`. SDK packages are downloaded from LG, never redistributed here.
 
 Run the hosted app against the existing local stack:
 
@@ -72,16 +72,20 @@ calls LG's `ares-launch`. It does not start another server, deploy a build or
 require local `dist/` files. The player uses the build already deployed to the
 stack. Port 8090 belongs to the playlist proxy, not the player.
 
-Install the official [webOS CLI](https://webostv.developer.lge.com/develop/tools/cli-installation)
-once, for example in a user-owned directory:
+To install prerequisites without launching the player:
 
 ```sh
-npm install --prefix "$HOME/.local/share/ottplay/webos-cli" @webos-tools/cli
+./scripts/setup-webos-simulator.sh
 ```
 
 The shell launcher checks `WEBOS_CLI`, then `ares-launch` on `PATH`, then that
-user-local installation. On the first launch, register the extracted Simulator
-SDK directory with the CLI:
+user-local installation at `~/.local/share/ottplay/webos-cli`. Existing simulator
+registrations and installations are reused when their files still exist. A
+missing default SDK is restored automatically; temporary download files are
+removed after setup. Setup checks the pinned archive size and SHA-256 before
+extraction. `--no-install` disables automatic setup on launch; setup's `--archive`
+option accepts an already downloaded official ZIP. To select another extracted
+Simulator directory:
 
 ```sh
 ./scripts/run-webos-simulator.sh --sdk "$HOME/Applications/webOS_TV_26_Simulator_1.5.0"
@@ -89,8 +93,8 @@ SDK directory with the CLI:
 
 The CLI remembers the directory for subsequent launches. Keep the SDK in a
 persistent directory, not `/tmp`. The directory passed to `--sdk` contains the
-Simulator `.app` on macOS, rather than being the `.app` itself. SDK installation
-and acceptance of its agreement remain separate from this script.
+Simulator `.app` on macOS, rather than being the `.app` itself. Review the vendor
+license documents; any license dialogs remain interactive.
 
 Other examples:
 
@@ -105,7 +109,8 @@ Other examples:
 same configuration through environment variables. `OTTP_DEVICE_TEST_PORT` is
 retained as a loopback URL fallback when `OTTP_PLAYER_URL` is not set. Explicit
 `--url` takes precedence. `--dry-run` prepares the app and prints the command
-without network checks or SDK execution. No SDK is downloaded automatically.
+without network checks, downloads or SDK execution. Missing dependencies appear
+in the printed setup plan.
 
 The launcher follows LG's
 [hosted web app](https://webostv.developer.lge.com/develop/getting-started/web-app-types)
@@ -168,10 +173,12 @@ matrix and from physical-device acceptance.
 
 ## Android TV and Google TV
 
-Install the [Android command-line tools](https://developer.android.com/tools) and
-Java first. This launcher reuses `ANDROID_HOME` / `ANDROID_SDK_ROOT`, or finds a
-standard macOS/Linux SDK location, including the Homebrew SDK on Apple Silicon.
-Then install the official TV image and create an isolated AVD:
+Install Java first. Setup and launch install missing [Android command-line tools](https://developer.android.com/tools),
+emulator packages, the TV system image and an isolated AVD (virtual device).
+The launcher reuses `ANDROID_HOME` / `ANDROID_SDK_ROOT`, or finds a standard
+macOS/Linux SDK location, including the Homebrew SDK on Apple Silicon.
+Command-line tools are downloaded from Google with pinned checksums on macOS
+ARM64/Intel and Linux x86_64. The separate setup step is optional:
 
 ```sh
 ./scripts/setup-android-tv-emulator.sh
@@ -182,15 +189,20 @@ Then install the official TV image and create an isolated AVD:
 The default is Android TV API 36, the `tv_1080p` hardware profile and the name
 `OttplayAndroidTV`. The image uses ARM64 on Apple Silicon and x86_64 on Intel.
 `--google-tv` selects the separate Google TV image and `OttplayGoogleTV` name;
-pass it to both setup and run. Each image needs substantial disk space: the
-API 36 Android TV package alone extracts an 8 GB system image, before writable
-AVD storage. Install only the variants you need.
+use `./scripts/run-android-tv-emulator.sh --google-tv` to install and launch it.
+If using the separate setup command, pass the flag there too. Each image needs
+substantial disk space: the API 36 Android TV package alone extracts an 8 GB
+system image, before writable AVD storage. Install only the variants you need.
 
-Setup leaves SDK license prompts interactive. It never accepts terms for you
-and never overwrites an AVD. A matching existing AVD is retained; a conflicting
-image requires a different `--avd` name. Existing SDK packages are reused.
+Setup and launch leave SDK license prompts interactive. They never accept terms
+for you and never overwrite an AVD. A matching existing AVD is retained; a
+conflicting image requires a different `--avd` name. Existing SDK packages are reused.
 Setup also installs Android platform 36 and build-tools 36.0.0 when missing; the
 default launcher uses these with Java 17+ to build its small WebView test app.
+An existing AVD keeps its selected image and API version on launch. Missing
+packages are restored without replacing the device. `--no-install` disables
+automatic installation on launch; `--stop` never installs anything. `--dry-run`
+prints the setup/launch plan without downloading or creating a virtual device.
 Use `--image`, `--device`, `--avd` and `--sdk` to select another TV configuration.
 `--data-size 2048` is the default writable partition size in MB; it is applied
 only when creating a new AVD and never resizes an existing profile.
@@ -295,7 +307,8 @@ Android OS in CI.
 ## Samsung TV Web Simulator on macOS
 
 The standalone Samsung TV Web Simulator is an Intel NW.js application. It is
-separate from the Tizen TV firmware emulator. Install the pinned official package:
+separate from the Tizen TV firmware emulator. The launcher installs the pinned
+official package if missing; the separate setup step is optional:
 
 ```sh
 ./scripts/setup-tizen-simulator.sh
@@ -308,12 +321,17 @@ SHA256, validates archive paths, and extracts to
 `~/.local/share/ottplay/tizen-tv-simulator/10.0.6`. It neither runs a vendor
 installer nor accepts license dialogs. Review the Samsung license documents
 included with the package; any acceptance dialog remains a user action.
-An existing destination is never overwritten. `--destination` and `--cache`
-select other locations. The vendor SDK and its archive are not committed.
+A working installation is reused. Other existing destinations are never
+overwritten. `--destination` and `--cache` select other locations. A newly
+downloaded archive is removed after successful extraction unless `--keep-archive`
+is set; pre-existing cached archives are preserved. The vendor SDK and its
+archive are not committed.
 
 Run accepts `--sdk` or `TIZEN_SIMULATOR_SDK` for an existing Tizen Studio root,
-`sec-tv-simulator` directory, or `nwjs.app`. Without arguments it opens the local
-player; `--home` opens the simulator home screen. `--app` accepts a local Tizen
+`sec-tv-simulator` directory, or `nwjs.app`. An explicit SDK path must be valid;
+automatic installation applies when no override is supplied and the standard
+user-local package and `~/tizen-studio` have no simulator. Without arguments it
+opens the local player; `--home` opens the simulator home screen. `--app` accepts a local Tizen
 app HTML entry point with a valid `config.xml` manifest in the same directory,
 using the same
 `--file=file:///...` convention as

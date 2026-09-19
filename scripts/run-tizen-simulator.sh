@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launch Samsung's separately installed TV Web Simulator (NW.js).
+# Install if missing and launch Samsung's TV Web Simulator (NW.js).
 # This is a UI/API simulator; it does not run the Tizen TV firmware.
 set -euo pipefail
 
@@ -18,11 +18,13 @@ Usage: scripts/run-tizen-simulator.sh [options]
   --app FILE        Open another local Tizen app with adjacent config.xml
   --home            Open the simulator home instead of the player
   --dry-run         Prepare the player app and print the command without
-                    checking the server or launching the simulator
+                    downloading, checking the server or launching the simulator
   -h, --help        Show this help
 
-Requires Samsung TV Web Simulator for macOS. Intel builds use macOS Rosetta.
-The script does not install an SDK, accept licenses, build or serve the player.
+Uses Samsung TV Web Simulator for macOS. If neither the user-local package nor
+~/tizen-studio contains it, installs the pinned simulator with setup-tizen-simulator.sh.
+An explicit --sdk or TIZEN_SIMULATOR_SDK must already contain a working simulator.
+Intel builds use macOS Rosetta. The script does not accept licenses, build or serve the player.
 By default it prepares a manifest/redirect app for the existing local stack.
 --url, --app and --home are mutually exclusive. If the simulator is already
 running, quit it normally before launching a different app.
@@ -57,33 +59,44 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [[ -z "$sdk" ]]; then
-    sdk="$HOME/.local/share/ottplay/tizen-tv-simulator/10.0.6"
-    if [[ ! -d "$sdk" ]]; then sdk="$HOME/tizen-studio"; fi
-fi
-if [[ -d "$sdk" ]]; then
-    sdk="$(cd "$sdk" && pwd)"
-fi
-simulator="$sdk/tools/sec-tv-simulator/nwjs.app/Contents/MacOS/nwjs"
-if [[ -x "$sdk/nwjs.app/Contents/MacOS/nwjs" ]]; then
-    simulator="$sdk/nwjs.app/Contents/MacOS/nwjs"
-elif [[ -x "$sdk/Contents/MacOS/nwjs" ]]; then
-    simulator="$sdk/Contents/MacOS/nwjs"
-elif [[ -x "$sdk/data/tools/sec-tv-simulator/nwjs.app/Contents/MacOS/nwjs" ]]; then
-    simulator="$sdk/data/tools/sec-tv-simulator/nwjs.app/Contents/MacOS/nwjs"
-elif [[ -f "$sdk/simulator-app-path.txt" ]]; then
-    simulator_relative_path="$(cat "$sdk/simulator-app-path.txt")"
-    case "$simulator_relative_path" in
-        ""|/*|..|../*|*/..|*/../*|*$'\n'*|*$'\r'*|*\\*) die "Invalid local simulator path marker" ;;
-    esac
-    case "$simulator_relative_path" in
-        nwjs.app|*/nwjs.app) ;;
-        *) die "Invalid local simulator path marker" ;;
-    esac
-    simulator="$sdk/$simulator_relative_path/Contents/MacOS/nwjs"
-fi
-if [[ ! -x "$simulator" && "$dry_run" == 0 ]]; then
-    die "Samsung TV Web Simulator not found at $simulator. Install the TV Extensions simulator package or set --sdk."
+resolve_simulator() {
+    if [[ -d "$sdk" ]]; then sdk="$(cd "$sdk" && pwd)"; fi
+    simulator="$sdk/tools/sec-tv-simulator/nwjs.app/Contents/MacOS/nwjs"
+    if [[ -x "$sdk/nwjs.app/Contents/MacOS/nwjs" ]]; then
+        simulator="$sdk/nwjs.app/Contents/MacOS/nwjs"
+    elif [[ -x "$sdk/Contents/MacOS/nwjs" ]]; then
+        simulator="$sdk/Contents/MacOS/nwjs"
+    elif [[ -x "$sdk/data/tools/sec-tv-simulator/nwjs.app/Contents/MacOS/nwjs" ]]; then
+        simulator="$sdk/data/tools/sec-tv-simulator/nwjs.app/Contents/MacOS/nwjs"
+    elif [[ -f "$sdk/simulator-app-path.txt" ]]; then
+        simulator_relative_path="$(cat "$sdk/simulator-app-path.txt")"
+        case "$simulator_relative_path" in
+            ""|/*|..|../*|*/..|*/../*|*$'\n'*|*$'\r'*|*\\*) die "Invalid local simulator path marker" ;;
+        esac
+        case "$simulator_relative_path" in
+            nwjs.app|*/nwjs.app) ;;
+            *) die "Invalid local simulator path marker" ;;
+        esac
+        simulator="$sdk/$simulator_relative_path/Contents/MacOS/nwjs"
+    fi
+}
+
+needs_setup=0
+if [[ -n "$sdk" ]]; then
+    resolve_simulator
+    [[ -x "$simulator" ]] || die "Samsung TV Web Simulator not found at $simulator. Correct --sdk or TIZEN_SIMULATOR_SDK, or omit it for automatic setup."
+else
+    default_sdk="$HOME/.local/share/ottplay/tizen-tv-simulator/10.0.6"
+    for candidate_sdk in "$default_sdk" "$HOME/tizen-studio"; do
+        sdk="$candidate_sdk"
+        resolve_simulator
+        if [[ -x "$simulator" ]]; then break; fi
+    done
+    if [[ ! -x "$simulator" ]]; then
+        sdk="$default_sdk"
+        resolve_simulator
+        needs_setup=1
+    fi
 fi
 
 if [[ -z "$launch_mode" || "$launch_mode" == player ]]; then
@@ -101,7 +114,7 @@ if [[ -z "$launch_mode" || "$launch_mode" == player ]]; then
     app="$PROJECT_ROOT/build/device-tizen-simulator/index.html"
 fi
 
-command_args=("$simulator")
+app_url=""
 if [[ -n "$app" ]]; then
     [[ -f "$app" ]] || die "Local HTML entry point not found: $app"
     case "$app" in
@@ -112,10 +125,26 @@ if [[ -n "$app" ]]; then
     [[ -f "$app_directory/config.xml" ]] || die "Local Tizen app manifest not found: $app_directory/config.xml. --app requires an HTML entry point with an adjacent config.xml."
     command -v node >/dev/null || die "Node.js is required with --app"
     app_url="$(node -e 'process.stdout.write(require("node:url").pathToFileURL(require("node:path").resolve(process.argv[1])).href)' "$app")"
-    # Same --file argument used by Samsung/webIDE-common-tizentv's
-    # TVWebApp.launchOnSimulator; keep the URL as one argument.
-    command_args+=("--file=$app_url")
 fi
+
+if [[ "$needs_setup" == 1 ]]; then
+    setup_args=(--destination "$sdk")
+    if [[ "$dry_run" == 1 ]]; then setup_args+=(--dry-run); fi
+    bash "$SCRIPT_DIR/setup-tizen-simulator.sh" "${setup_args[@]}"
+    resolve_simulator
+    if [[ "$dry_run" == 1 && ! -x "$simulator" ]]; then
+        # The pinned vendor ZIP places the simulator under data/. A dry run
+        # cannot discover its path marker because extraction has not happened.
+        simulator="$sdk/data/tools/sec-tv-simulator/nwjs.app/Contents/MacOS/nwjs"
+    fi
+    if [[ "$dry_run" == 0 && ! -x "$simulator" ]]; then
+        die "Samsung TV Web Simulator is still missing after setup: $simulator"
+    fi
+fi
+command_args=("$simulator")
+# Same --file argument used by Samsung/webIDE-common-tizentv's
+# TVWebApp.launchOnSimulator; keep the URL as one argument.
+if [[ -n "$app_url" ]]; then command_args+=("--file=$app_url"); fi
 
 printf 'Samsung TV Web Simulator (UI/API checks; not firmware emulation)\n'
 printf 'Launch:'

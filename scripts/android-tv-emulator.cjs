@@ -1,9 +1,27 @@
 #!/usr/bin/env node
-// SDK orchestration only: no server, firmware download mirror or license acceptance.
+// Official SDK bootstrap only: no server, firmware mirror or license acceptance.
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { spawn, spawnSync } = require("node:child_process");
+const { createHash } = require("node:crypto");
+
+// Published checksums: https://developer.android.com/studio#command-tools
+const commandLineTools = {
+    "darwin-arm64": [
+        "mac_arm64",
+        "835b62a26162b229b441d1f6d4680383815a270809eb33522c0d480fa5002c4e",
+    ],
+    "darwin-x64": [
+        "mac_x86_64",
+        "c5a6378ab5cf7e0d5701921405115befff13e9ff7417fb588389338f8bd050f3",
+    ],
+    "linux-x64": [
+        "linux",
+        "4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583",
+    ],
+};
+const commandLineToolsVersion = "15859902";
 
 function fail(message) {
     throw new Error(message);
@@ -31,10 +49,94 @@ function invoke(command, args, options = {}) {
         (result.stdout || "") + (includeStderr ? result.stderr || "" : "")
     ).trim();
 }
-function tool(sdk, relative, fallback) {
-    const candidate = path.join(sdk, relative);
-    if (fs.existsSync(candidate)) return candidate;
-    return fallback;
+function executable(file) {
+    try {
+        fs.accessSync(file, fs.constants.X_OK);
+        return fs.statSync(file).isFile();
+    } catch (_) {
+        return false;
+    }
+}
+function sdkTool(sdk, name) {
+    const root = path.join(sdk, "cmdline-tools");
+    const versions = fs.existsSync(root)
+        ? fs.readdirSync(root).sort().reverse()
+        : [];
+    return [
+        path.join(root, "latest/bin", name),
+        ...versions.map((version) => path.join(root, version, "bin", name)),
+        ...(process.env.PATH || "")
+            .split(path.delimiter)
+            .map((dir) => path.join(dir, name)),
+    ].find(executable);
+}
+async function bootstrapCommandLineTools(sdk, dry) {
+    const release = commandLineTools[`${process.platform}-${process.arch}`];
+    if (!release)
+        fail(
+            "Automatic Android SDK setup supports macOS ARM64/Intel and Linux x86_64; install command-line tools manually on this host"
+        );
+    const [platform, sha256] = release;
+    const url = `https://dl.google.com/android/repository/commandlinetools-${platform}-${commandLineToolsVersion}_latest.zip`;
+    const target = path.join(
+        sdk,
+        "cmdline-tools",
+        `ottplay-${commandLineToolsVersion}`
+    );
+    if (fs.existsSync(target))
+        fail(
+            `Incomplete command-line tools at ${target}; repair that installation before retrying`
+        );
+    if (dry) {
+        print("curl", [
+            "--fail",
+            "--location",
+            "--output",
+            "<temporary SDK archive>",
+            url,
+        ]);
+        console.log(
+            `Verify SHA-256 ${sha256}, extract command-line tools to ${target}, remove temporary archive`
+        );
+        return target;
+    }
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    const work = fs.mkdtempSync(
+        path.join(path.dirname(target), ".ottplay-tools-")
+    );
+    try {
+        const archive = path.join(work, "tools.zip");
+        invoke(
+            "curl",
+            [
+                "--fail",
+                "--location",
+                "--show-error",
+                "--retry",
+                "2",
+                "--output",
+                archive,
+                url,
+            ],
+            { stdio: "inherit", timeout: 0 }
+        );
+        const hash = createHash("sha256");
+        for await (const chunk of fs.createReadStream(archive))
+            hash.update(chunk);
+        if (hash.digest("hex") !== sha256)
+            fail(
+                "Android command-line tools checksum mismatch; archive was not extracted"
+            );
+        invoke("unzip", ["-q", archive, "-d", work], { timeout: 120000 });
+        const extracted = path.join(work, "cmdline-tools");
+        for (const name of ["sdkmanager", "avdmanager"])
+            if (!executable(path.join(extracted, "bin", name)))
+                fail(`Downloaded command-line tools are missing ${name}`);
+        fs.renameSync(extracted, target);
+        return target;
+    } finally {
+        fs.rmSync(work, { force: true, recursive: true });
+    }
 }
 function readIni(file) {
     return Object.fromEntries(
@@ -103,16 +205,19 @@ Run options:
   --apk FILE        Install an APK on this TV AVD; requires --component
   --component NAME  Launch an installed activity, e.g. package/.MainActivity
   --stop            Stop only this named TV AVD
+  --no-install      Fail if the TV AVD or required SDK packages are missing
 
-Requires separately installed Android command-line tools and Java.
-Setup leaves license prompts interactive and never overwrites an existing AVD.
+Setup and run install missing SDK tools, TV image and AVD automatically.
+Command-line tools are downloaded from Google with a pinned SHA-256 on macOS
+ARM64/Intel and Linux x86_64. Requires Java and curl/unzip for first setup.
+SDK license prompts stay interactive; existing AVDs are never overwritten.
 Run opens the hosted player in a locally built test WebView app by default.
 This requires installed Android platform 36, build-tools 36 and Java 17+.
 --home skips the app; --apk/--component select another app. These modes cannot
 be combined with --url. It reverses ports
 8443 (existing player/companion) and 8090 (playlist proxy) through ADB so guest
 127.0.0.1 reaches the host stack. No browser or player app is assumed installed.
-No server is started and no SDK or APK is downloaded by the run command.`);
+No server is started. --stop never installs anything.`);
 }
 
 async function main() {
@@ -148,6 +253,7 @@ async function main() {
                 "--headless",
                 "--stop",
                 "--home",
+                "--no-install",
             ].includes(argv[i])
         )
             options[key] = true;
@@ -163,6 +269,7 @@ async function main() {
               "stop",
               "url",
               "home",
+              "no-install",
           ]
         : ["image", "device", "data-size"]) {
         if (options[key] !== undefined)
@@ -197,26 +304,38 @@ async function main() {
             "avd"
         );
     const avdIni = path.join(avdHome, `${avd}.ini`);
-    const sdkmanager = tool(
-        sdk,
-        "cmdline-tools/latest/bin/sdkmanager",
-        "sdkmanager"
-    );
-    const avdmanager = tool(
-        sdk,
-        "cmdline-tools/latest/bin/avdmanager",
-        "avdmanager"
-    );
     const emulator = path.join(sdk, "emulator/emulator");
     const adb = path.join(sdk, "platform-tools/adb");
     const dry = options["dry-run"];
-    if (mode === "setup") {
+    async function ensureSetup(forRun = false) {
         const dataSize = Number(options["data-size"] || 2048);
         if (!Number.isInteger(dataSize) || dataSize < 512 || dataSize > 65536)
             fail("--data-size must be an integer between 512 and 65536 MB");
-        const image =
+        let image =
             options.image ||
             `system-images;android-36;${tag};${process.arch === "arm64" ? "arm64-v8a" : "x86_64"}`;
+        const existingAvd = fs.existsSync(avdIni);
+        let config;
+        if (existingAvd) {
+            config = readIni(
+                path.join(
+                    readIni(avdIni).path || path.join(avdHome, `${avd}.avd`),
+                    "config.ini"
+                )
+            );
+            if (!["android-tv", "google-tv"].includes(config["tag.id"]))
+                fail(`AVD ${avd} is not an Android TV / Google TV profile`);
+            // Launch preserves a previously selected API/image, including custom AVDs.
+            if (forRun)
+                image = path
+                    .relative(
+                        sdk,
+                        path.resolve(sdk, config["image.sysdir.1"] || "")
+                    )
+                    .split(path.sep)
+                    .join(";");
+            image = image.replace(/;+$/, "");
+        }
         if (
             !/^system-images;android-\d+;(android-tv|google-tv);(arm64-v8a|x86_64)$/.test(
                 image
@@ -232,14 +351,7 @@ async function main() {
                 "The Android Emulator on Apple Silicon requires an ARM64 image; Rosetta does not provide x86 VM acceleration"
             );
         const imagePath = path.join(sdk, ...image.split(";"));
-        const existingAvd = fs.existsSync(avdIni);
         if (existingAvd) {
-            const config = readIni(
-                path.join(
-                    readIni(avdIni).path || path.join(avdHome, `${avd}.avd`),
-                    "config.ini"
-                )
-            );
             if (
                 path.resolve(sdk, config["image.sysdir.1"] || "") !==
                 path.resolve(imagePath)
@@ -248,15 +360,38 @@ async function main() {
                     `Existing ${avd} uses a different image; choose another --avd name`
                 );
         }
-        const packages = fs.existsSync(path.join(imagePath, "package.xml"))
-            ? []
-            : [image];
-        if (!fs.existsSync(emulator)) packages.push("emulator");
-        if (!fs.existsSync(adb)) packages.push("platform-tools");
-        if (!fs.existsSync(path.join(sdk, "platforms/android-36/android.jar")))
-            packages.push("platforms;android-36");
-        if (!fs.existsSync(path.join(sdk, "build-tools/36.0.0/apksigner")))
-            packages.push("build-tools;36.0.0");
+        const installed = {
+            [image]: () =>
+                ["package.xml", "system.img"].every((file) =>
+                    fs.existsSync(path.join(imagePath, file))
+                ),
+            emulator: () => executable(emulator),
+            "platform-tools": () => executable(adb),
+        };
+        if (!forRun || (!options.home && !options.component)) {
+            installed["platforms;android-36"] = () =>
+                fs.existsSync(
+                    path.join(sdk, "platforms/android-36/android.jar")
+                );
+            installed["build-tools;36.0.0"] = () =>
+                ["aapt", "d8", "zipalign", "apksigner"].every((name) =>
+                    executable(path.join(sdk, "build-tools/36.0.0", name))
+                );
+        }
+        const missingPackages = () =>
+            Object.keys(installed).filter((name) => !installed[name]());
+        const packages = missingPackages();
+        if (options["no-install"] && (packages.length || !existingAvd))
+            fail(
+                `AVD ${avd} or required SDK packages are not installed; remove --no-install or run setup-android-tv-emulator.sh`
+            );
+        let sdkmanager = sdkTool(sdk, "sdkmanager");
+        let avdmanager = sdkTool(sdk, "avdmanager");
+        if ((packages.length && !sdkmanager) || (!existingAvd && !avdmanager)) {
+            const toolsDirectory = await bootstrapCommandLineTools(sdk, dry);
+            sdkmanager = path.join(toolsDirectory, "bin/sdkmanager");
+            avdmanager = path.join(toolsDirectory, "bin/avdmanager");
+        }
         const installArgs = [`--sdk_root=${sdk}`, "--install", ...packages];
         const createArgs = [
             "create",
@@ -275,9 +410,10 @@ async function main() {
                 stdio: "inherit",
                 timeout: 0,
             });
-            if (!fs.existsSync(path.join(imagePath, "package.xml")))
+            const missing = missingPackages();
+            if (missing.length)
                 fail(
-                    "System image was not installed; review any SDK license prompt manually"
+                    `Required SDK packages were not installed: ${missing.join(", ")}; review any SDK license prompt manually`
                 );
         }
         if (existingAvd) {
@@ -311,6 +447,10 @@ async function main() {
                 `Ready: ${avd}. Run ./scripts/run-android-tv-emulator.sh --avd ${avd}`
             );
         }
+        return;
+    }
+    if (mode === "setup") {
+        await ensureSetup();
         return;
     }
     const port = Number(options.port || 5570);
@@ -362,6 +502,11 @@ async function main() {
         } catch (_) {
             fail("Player URL must be an HTTP(S) URL without credentials");
         }
+    }
+    if (!options.stop) await ensureSetup(true);
+    else if (!fs.existsSync(avdIni) || !executable(adb)) {
+        console.log(`${avd} is not installed/running; nothing to stop`);
+        return;
     }
     const reversePorts = new Set([8443, 8090]);
     if (
