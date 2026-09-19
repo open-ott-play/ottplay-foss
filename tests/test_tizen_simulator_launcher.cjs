@@ -30,6 +30,15 @@ else if (name === 'curl') {
     // Real curl treats query brackets as glob syntax unless globbing is disabled.
     if (urls[0].includes('[') && !args.includes('--globoff') && !args.includes('-g')) process.exit(3);
     if (urls[0] === process.env.CURL_FAIL_URL) process.exit(22);
+    if (args.includes('--output')) fs.writeFileSync(args[args.indexOf('--output') + 1], 'mock pinned archive');
+}
+else if (name === 'python3') console.log('vendor/resources/nwjs.app');
+else if (name === 'ditto') {
+    if (process.env.MOCK_EXTRACT_FAIL === '1') process.exit(1);
+    const executable = path.join(process.argv.at(-1), 'vendor/resources/nwjs.app/Contents/MacOS/nwjs');
+    fs.mkdirSync(path.dirname(executable), { recursive: true });
+    fs.copyFileSync(process.argv[1], executable);
+    fs.chmodSync(executable, 0o755);
 }
 else if (name !== 'nwjs') process.exit(98);
 `;
@@ -128,6 +137,15 @@ try {
     assert.match(
         run("run", ["--app", app], false),
         /manifest not found:.*config\.xml/
+    );
+    assert.equal(calls().length, 0);
+    assert.match(
+        run(
+            "run",
+            ["--sdk", path.join(tmp, "missing SDK"), "--home", "--dry-run"],
+            false
+        ),
+        /Simulator not found/
     );
     assert.equal(calls().length, 0);
     fs.rmdirSync(manifest);
@@ -440,6 +458,171 @@ try {
         /Archive size differs/
     );
     assert.deepEqual(calls(), [{ args: ["-s"], name: "uname" }]);
+
+    // Mock only vendor archive verification/extraction from here on. The real
+    // shell setup and launcher still run end-to-end without network or SDKs.
+    executable(path.join(tools, "python3"));
+    const fakeHome = path.join(tmp, "clean home");
+    fs.mkdirSync(fakeHome);
+    const bootstrapEnv = { HOME: fakeHome, TIZEN_SIMULATOR_SDK: "" };
+    const autoDestination = path.join(
+        fakeHome,
+        ".local/share/ottplay/tizen-tv-simulator/10.0.6"
+    );
+    const defaultCache = path.join(root, "build/vendor-tools/samsung");
+    const archiveName = "tv-samsung-websimulator-core_10.0.6_macos-64.zip";
+    const bootstrapPlan = run(
+        "run",
+        ["--home", "--dry-run"],
+        true,
+        bootstrapEnv
+    );
+    assert.match(bootstrapPlan, /Download:/);
+    assert.match(
+        bootstrapPlan,
+        /10\.0\.6\/data\/tools\/sec-tv-simulator\/nwjs\.app\/Contents\/MacOS\/nwjs/
+    );
+    assert.equal(calls().length, 0);
+    assert.equal(fs.existsSync(autoDestination), false);
+    assert.equal(fs.existsSync(defaultCache), false);
+    run("run", ["--home"], true, bootstrapEnv);
+    assert.deepEqual(
+        calls().map((call) => call.name),
+        ["uname", "curl", "python3", "ditto", "nwjs"]
+    );
+    assert.equal(
+        fs.existsSync(path.join(autoDestination, "simulator-app-path.txt")),
+        true
+    );
+    assert.equal(
+        fs.existsSync(path.join(defaultCache, archiveName)),
+        false,
+        "New successful downloads do not occupy disk twice"
+    );
+    run("run", ["--home"], true, bootstrapEnv);
+    assert.deepEqual(
+        calls().map((call) => call.name),
+        ["nwjs"],
+        "Installed default is reused"
+    );
+    assert.match(
+        run("setup", ["--destination", autoDestination]),
+        /already installed/
+    );
+    assert.equal(calls().length, 0, "Setup itself is idempotent");
+
+    const studioHome = path.join(tmp, "studio home");
+    executable(
+        path.join(
+            studioHome,
+            "tizen-studio/tools/sec-tv-simulator/nwjs.app/Contents/MacOS/nwjs"
+        )
+    );
+    fs.mkdirSync(
+        path.join(studioHome, ".local/share/ottplay/tizen-tv-simulator/10.0.6"),
+        { recursive: true }
+    );
+    run("run", ["--home"], true, { HOME: studioHome, TIZEN_SIMULATOR_SDK: "" });
+    assert.deepEqual(
+        calls().map((call) => call.name),
+        ["nwjs"],
+        "A working Studio simulator is reused even if the local directory is incomplete"
+    );
+    for (const args of [[], ["--dry-run"]]) {
+        assert.match(
+            run("setup", args, true, {
+                HOME: studioHome,
+                TIZEN_SIMULATOR_SDK: "",
+            }),
+            /already installed:.*tizen-studio/
+        );
+        assert.equal(
+            calls().length,
+            0,
+            "Standalone setup reuses Studio without a duplicate download"
+        );
+    }
+    assert.match(
+        run("setup", [], true, { HOME: studioHome }),
+        /already installed:/
+    );
+    assert.equal(
+        calls().length,
+        0,
+        "Standalone setup respects a valid configured SDK"
+    );
+    assert.match(
+        run("setup", [], false, {
+            HOME: studioHome,
+            TIZEN_SIMULATOR_SDK: path.join(tmp, "missing configured SDK"),
+        }),
+        /Simulator not found at TIZEN_SIMULATOR_SDK/
+    );
+    assert.equal(calls().length, 0);
+    assert.match(
+        run(
+            "setup",
+            ["--destination", path.join(tmp, "explicit new SDK"), "--dry-run"],
+            true,
+            { HOME: studioHome }
+        ),
+        /Download:/
+    );
+    assert.equal(
+        calls().length,
+        0,
+        "Explicit destination overrides discovery and configured SDK"
+    );
+
+    const keptCache = path.join(tmp, "kept cache");
+    run("setup", [
+        "--destination",
+        path.join(tmp, "kept installation"),
+        "--cache",
+        keptCache,
+        "--keep-archive",
+    ]);
+    assert.equal(fs.existsSync(path.join(keptCache, archiveName)), true);
+    run("setup", [
+        "--destination",
+        path.join(tmp, "cached installation"),
+        "--cache",
+        keptCache,
+    ]);
+    assert.equal(
+        fs.existsSync(path.join(keptCache, archiveName)),
+        true,
+        "Pre-existing archives are preserved"
+    );
+    assert.equal(
+        calls().some((call) => call.name === "curl"),
+        false
+    );
+
+    const failedDestination = path.join(tmp, "failed installation");
+    const failedCache = path.join(tmp, "failed cache");
+    run(
+        "setup",
+        ["--destination", failedDestination, "--cache", failedCache],
+        false,
+        { MOCK_EXTRACT_FAIL: "1" }
+    );
+    assert.equal(
+        fs.existsSync(failedDestination),
+        false,
+        "Extraction failure does not publish a partial installation"
+    );
+    assert.equal(
+        fs.existsSync(path.join(failedCache, archiveName)),
+        true,
+        "Failed extraction retains the download for retry"
+    );
+    assert.equal(
+        fs
+            .readdirSync(tmp)
+            .some((name) => name.startsWith(".tizen-simulator-extract.")),
+        false
+    );
     console.log("Samsung TV Simulator setup/launcher integration tests passed");
 } finally {
     fs.rmSync(tmp, { force: true, recursive: true });
