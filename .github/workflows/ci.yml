@@ -169,6 +169,8 @@ jobs:
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+      - name: Test isolated container workspace and lockfile inputs
+        run: python3 tests/test_container_workspace.py
       - name: Test core and server without desktop system dependencies
         run: cargo test --locked -p ottplay-core -p ottplay-server
       - name: Verify published GLib source and security backport
