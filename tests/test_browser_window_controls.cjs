@@ -16,7 +16,9 @@ const bootstrapBlock = html.match(
     /<!-- Browser window controls: start -->([\s\S]*?)<!-- Browser window controls: end -->/
 );
 assert.ok(bootstrapBlock, "browser bootstrap has an explicit boundary");
-const bootstrap = bootstrapBlock[1].match(/<script>([\s\S]*?)<\/script>/)[1];
+const bootstrap = JSDOM.fragment(bootstrapBlock[1]).querySelector(
+    "script"
+).textContent;
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 let passed = 0;
 
