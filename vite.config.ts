@@ -59,7 +59,11 @@ const privateAssetDirectories = new Set([
     "build",
 ]);
 
-function copyRuntimeAssets(source: string, destination: string): void {
+function copyRuntimeAssets(
+    source: string,
+    destination: string,
+    includeBrowserApp = true
+): void {
     // Replace copied trees so previously staged local logs also disappear.
     // Only public runtime assets belong in native bundles; never follow links.
     rmSync(destination, { force: true, recursive: true });
@@ -69,6 +73,8 @@ function copyRuntimeAssets(source: string, destination: string): void {
             if (name.startsWith(".") || privateAssetDirectories.has(name)) {
                 return false;
             }
+            // Installation metadata and artwork belong only to browser builds.
+            if (!includeBrowserApp && name === "browser-app") return false;
             const info = lstatSync(path);
             if (info.isSymbolicLink()) {
                 throw new Error("Runtime asset must not be a symlink: " + path);
@@ -76,7 +82,7 @@ function copyRuntimeAssets(source: string, destination: string): void {
             return (
                 info.isDirectory() ||
                 (info.isFile() &&
-                    /\.(html|js|css|json|txt|png|gif|ico|jpe?g|svg|ttf|otf|eot|woff2?)$/i.test(
+                    /\.(html|js|css|json|webmanifest|txt|png|gif|ico|jpe?g|svg|ttf|otf|eot|woff2?)$/i.test(
                         name
                     ))
             );
@@ -410,7 +416,11 @@ export default defineConfig(({ mode }) => ({
                     }
                     const src = join(__dirname, dir);
                     if (existsSync(src)) {
-                        copyRuntimeAssets(src, join(outDir, dir));
+                        copyRuntimeAssets(
+                            src,
+                            join(outDir, dir),
+                            dir !== "js" || !androidFlavor
+                        );
                     }
                 }
 
