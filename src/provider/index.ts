@@ -1,8 +1,8 @@
 import { metadataCssUrl, metadataHtml, metadataText } from "../utils/helpers";
 /**
  * Provider management — load, parse, and manage IPTV service providers.
- * Ported from stbPlayer.js: loadProv, loadChannels, selectProvaider,
- * edit_dealer, edit_dealer_remote, firstRun, duneAddSettings, getChanelsArray.
+ * Preserves the original player's provider loading, selection, setup and
+ * channel-fetch callback contracts.
  *
  * This module handles:
  * - Dynamic loading of provider scripts (prov.js)
@@ -175,8 +175,8 @@ import { popupActions, popupArray, popupDetail } from "../app/state";
  *
  * The popup arrays must stay the same objects for their whole lifetime
  * (`src/app/state.ts` documents the mutation contract; ~47 prov/*\/prov.js
- * plugins splice into them and locate their slot with
- * `popupActions.indexOf(noProvParam)`). Because we publish those same
+ * plugins splice into them and locate the provider-settings action through
+ * its stable compatibility identity). Because we publish those same
  * objects on `window` before handing control to a provider script, the
  * common case is `window[name] === target` and there is nothing to copy —
  * copying anyway (clear + spread self) empties the array and blanks the
@@ -275,15 +275,19 @@ function detailProg(): void {
     if (e === undefined) return;
     var wdet = window as any;
     // Prefer window flags (Channel list settings → saveIfChanged) over stale lets.
-    function detFlag(name: string, localVal: any, fallback: number): number {
+    function readDetailSetting(
+        name: string,
+        localVal: any,
+        fallback: number
+    ): number {
         var v = wdet[name];
         if (v === undefined || v === null || v === "") v = localVal;
         var n = typeof v === "number" ? v : parseInt(String(v), 10);
         return isNaN(n) ? fallback : n;
     }
-    var showDescr = detFlag("sShowDescr", sShowDescr, 1);
-    var nextCountL = detFlag("sNextCountL", sNextCountL, 1);
-    var previewMode = detFlag("sPreview", sPreview, 0);
+    var showDescr = readDetailSetting("sShowDescr", sShowDescr, 1);
+    var nextCountL = readDetailSetting("sNextCountL", sNextCountL, 1);
+    var previewMode = readDetailSetting("sPreview", sPreview, 0);
     sShowDescr = showDescr;
     sNextCountL = nextCountL;
     sPreview = previewMode;
@@ -312,7 +316,7 @@ function detailProg(): void {
             metadataHtml(e.descr) +
             "</div></div>";
         if (e.nextpr && nextCountL) {
-            // Gold: absolute to listDetail bottom (yellow podval border).
+            // Gold: absolute to listDetail bottom (yellow footer border).
             r +=
                 '<div id="_nextpr" class="ott-channel-next' +
                 (showDescr ? " ott-channel-next-overlay" : "") +
@@ -548,7 +552,7 @@ declare var playChannel: (catIdx: number, chIdx: number) => void;
 declare var bucketsList: (catIdx: number) => void;
 declare var playMedia: (item: any) => void;
 declare var onChannelsLoaded: () => void;
-declare var client_feedb: (msg: string) => void;
+declare var sendClientFeedback: (msg: string) => void;
 declare var infoBox: (msg: string) => void;
 /**
  * Show the Settings list (optionsArr) as a navigable list UI.
@@ -560,10 +564,10 @@ declare var infoBox: (msg: string) => void;
  *
  * Side effects: Populates listDataArray, listArray, installs getListItemFn /
  * detailListActionFn / listKeyHandlerFn; writes to listCaptionElement,
- * listPodval, hides #listPopUp; calls showPage() to render.
+ * listFooter, hides #listPopUp; calls showPage() to render.
  *
  * Edge case: If sNoNumbersKeys is falsy, appends a "9" shortcut button
- * for selectProvaider. Always appends strTools button for selectProvaider.
+ * for showProviderSelection. Always appends strTools button for showProviderSelection.
  */
 export function optionsList(fn?: () => void): void {
     if (sPSoptions && parentPIN != "*" && !(window as any).parentAccess) {
@@ -590,8 +594,9 @@ export function optionsList(fn?: () => void): void {
         listDataArray.push(_(opt.name || ""));
     });
     listArray = listDataArray;
-    if (!sNoNumbersKeys) addBtn2menu(optionsArr, showProviderSelection, "9");
-    addBtn2menu(optionsArr, showProviderSelection, strTools);
+    if (!sNoNumbersKeys)
+        prependMenuButtonHint(optionsArr, showProviderSelection, "9");
+    prependMenuButtonHint(optionsArr, showProviderSelection, strTools);
     selIndex = 0;
     if (typeof fn !== "undefined") {
         for (var t = 0; t < optionsArr.length; t++) {
@@ -638,7 +643,7 @@ export function optionsList(fn?: () => void): void {
                 return true;
             case keys.TOOLS:
             case keys.N9:
-                if (optIndexOf(showProviderSelection) > -1)
+                if (findOptionIndex(showProviderSelection) > -1)
                     showProviderSelection();
                 return true;
         }
@@ -652,7 +657,7 @@ export function optionsList(fn?: () => void): void {
 declare var selectLang: () => void;
 declare var loadSettings: () => void;
 declare var loadOpt: (() => void) | undefined;
-declare var delOption: (fn: () => void) => void;
+declare var removeOption: (fn: () => void) => void;
 // popupActions/popupArray/popupDetail defined as export let above
 
 var providerSelectionUnlockCount = 0,
@@ -661,7 +666,7 @@ var providerSelectionUnlockCount = 0,
 
 /**
  * Toggle the "Show providers?" / "Hide providers?" setting.
- * Requires 7 rapid invocations (nselprov counter) before the confirmation
+ * Requires 7 rapid invocations (providerSelectionUnlockCount counter) before the confirmation
  * dialog appears — a hidden/secret access pattern.
  * Checks parental PIN gate (sPSprovs).
  *
@@ -687,8 +692,8 @@ export function toggleProviderSelectionVisibility(): void {
 
 /**
  * Toggle the "Show provider settings?" / "Hide provider settings?" flag.
- * Requires 7 rapid invocations (nprovparams counter) before confirmation —
- * same hidden-access pattern as noSelProv.
+ * Requires 7 rapid invocations (providerSettingsUnlockCount counter) before confirmation —
+ * same hidden-access pattern as toggleProviderSelectionVisibility.
  * Checks parental PIN gate (sPSoptions).
  *
  * Side effects: Writes 'noProvParam' to stb storage, then calls restart().
@@ -809,11 +814,15 @@ declare var getThumbnail: (url: string) => string;
 declare var scrollUp: (el: string, px: number, delay: number) => void;
 declare var listDataArray: any[];
 declare var optionsArr: { action: any; name?: string; desc?: string }[];
-declare var addBtn2menu: (arr: any[], action: any, label: string) => void;
+declare var prependMenuButtonHint: (
+    arr: any[],
+    action: any,
+    label: string
+) => void;
 declare var getListItemFn: (item: any, idx: number) => string;
 declare var detailListActionFn: () => void;
 declare var popupList: (i?: any) => void;
-declare var optIndexOf: (action: any) => number;
+declare var findOptionIndex: (action: any) => number;
 declare var confirmBox: (
     message: string,
     onYes: () => void,
@@ -839,8 +848,8 @@ declare var confirmBox: (
  * playing, calls closeList(), writes to provider storage for 'ottplayprov'.
  * Logs extensively to console.
  *
- * Edge case: If noSelProv=1, removes selectProvaider action from optionsArr.
- * If noProvParam=1, splices provider settings out of popup arrays.
+ * Edge case: The stored "noSelProv" flag hides the provider-selection action.
+ * The stored "noProvParam" flag hides provider settings in popup arrays.
  */
 export function loadProv(providerId?: string): void {
     var commandLoad = {};
@@ -849,7 +858,7 @@ export function loadProv(providerId?: string): void {
     if (!isProviderAllowed((window as any)._pendingProvId || ""))
         (window as any)._pendingProvId = "";
     // An explicit choice made from Demo wins for this load only. The stored
-    // URL/noSelProv restrictions still apply to ordinary provider reloads.
+    // URL and stored provider-visibility restrictions still apply on reload.
     var demoProviderSelection =
         (window as any).ottplayDemoActive === true && providerId
             ? providerId
@@ -987,7 +996,7 @@ export function loadProv(providerId?: string): void {
         }
         if (!isProviderAllowed(s) || providerIds.indexOf(s) === -1) s = "";
     }
-    if (s) delOption(showProviderSelection);
+    if (s) removeOption(showProviderSelection);
     else
         s =
             demoProviderSelection ||
@@ -999,13 +1008,13 @@ export function loadProv(providerId?: string): void {
         return;
     }
     if (Number.parseInt(stbGetItem("noSelProv") || "0"))
-        delOption(showProviderSelection);
+        removeOption(showProviderSelection);
     else {
         $(launch_id).append("<br/>");
         $(launch_id).append(
             document.createTextNode("Loading provider " + s + " script ...")
         );
-        delOption(edit_dealer);
+        removeOption(edit_dealer);
     }
     getScriptDOM(
         host + "/prov/" + s + "/prov.js?" + __cv,
@@ -1074,7 +1083,7 @@ export function loadProv(providerId?: string): void {
                                 _("Choose provider")
                             );
                         }
-                        if (optIndexOf(showProviderSelection) === -1)
+                        if (findOptionIndex(showProviderSelection) === -1)
                             optionsArr.push({
                                 action: showProviderSelection,
                                 name: "Change provider",
@@ -1115,7 +1124,7 @@ export function loadProv(providerId?: string): void {
                         getCurrentChannelEpg = epgCacheCapacity
                             ? getChannelEpgCached
                             : getChannelEpg;
-                    // Expose for doGetCurProg queue processing
+                    // Expose for processCurrentProgramQueue queue processing
                     (window as any).getCachedChannelEpg = getCurrentChannelEpg;
                     loadChannels();
                 } else {
@@ -1145,13 +1154,13 @@ export function loadProv(providerId?: string): void {
 // ─── Load channels ────────────────────────────────────────────────────────────
 
 /**
- * Load channels via the provider's getChanelsArray callback.
+ * Load channels via the provider's getChannelsArray callback.
  * Resets all channel/category/EPG state to defaults, then restores
  * persisted values from provider storage (catIndex, aAspects, etc.).
  *
  * Side effects: Clears channels, epg, catsArray, cats, favoritesArray,
  * parentalArray, etc. Writes to DOM (#launch / #dialogbox). Calls
- * getChanelsArray(onChanelsLoaded) to trigger the actual provider fetch.
+ * getChannelsArray(onChannelsLoaded) to trigger the actual provider fetch.
  * Calls setPlayerMode() and setPlayer().
  *
  * Edge case: Stops any active playback before loading.
@@ -1258,7 +1267,7 @@ export function loadChannels(): void {
     if (typeof setPlayer === "function") setPlayer();
 
     $(launch_id).append("<br/>Loading channel list...");
-    // If getChanelsArray doesn't call back (e.g. empty playlist URL), hide spinners after timeout
+    // If getChannelsArray doesn't call back (e.g. empty playlist URL), hide spinners after timeout
     var _loadTimer = setTimeout(function () {
         $("#dialogbox").hide();
         $("#buffering").hide();
@@ -1319,7 +1328,7 @@ export function selectProviderByIndex(index: number): boolean {
 
 /**
  * Show the provider selection list UI.
- * Builds provArray with display names for each known provider, reorders
+ * Builds providerLabels with display names for each known provider, reorders
  * recently used providers to the top, handles PIN parental gate, and
  * installs list handlers for navigation and selection.
  *
@@ -1327,7 +1336,7 @@ export function selectProviderByIndex(index: number): boolean {
  * - showAbout(): Loads and displays the provider's about HTML description.
  * - selectProv(id): Persists the chosen provider and calls loadProv().
  *
- * Side effects: Reorders arrayProvaiders and provArray based on recent
+ * Side effects: Reorders providerIds and providerLabels based on recent
  * usage; writes 'ottplayprov' to stb storage; writes to DOM elements
  * (#listCaption, #listPodval, #listDetail, etc.); calls showPage().
  *
@@ -1808,7 +1817,7 @@ export function edit_dealer_remote(): void {
  */
 declare var duneAddSettings: ((_index: number) => void) | null;
 
-// ─── getChanelsArray callback pattern ─────────────────────────────────────────
+// ─── getChannelsArray callback pattern ─────────────────────────────────────────
 
 /**
  * Called by provider scripts to supply the channel list.
@@ -1834,7 +1843,7 @@ export function getChannelsArray(_callback: () => void): void {
  * @param channelIdx - Initial selection index within the category.
  *
  * Side effects: Populates getListItemFn, detailListAction, listKeyHandlerFn;
- * writes to listDetail, listCaptionElement, listPodval, #listPopUp;
+ * writes to listDetail, listCaptionElement, listFooter, #listPopUp;
  * calls setPopupChannels() and showPage(). Sets previewChan if sPreview
  * matches.
  *
@@ -1851,7 +1860,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                 catIdx +
                 " does not exist!<br /> Please select other"
         );
-        client_feedb(
+        sendClientFeedback(
             "category_trouble_channelsList: " +
                 catIdx +
                 " / " +
@@ -1868,21 +1877,25 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     var wglob = window as any;
     // window.s* (settings / saveIfChanged) can diverge from concat-scope lets
     // after Menu→Channel list settings; prefer window, then let, default on.
-    function listFlag(name: string, localVal: any, fallback: number): number {
+    function readListSetting(
+        name: string,
+        localVal: any,
+        fallback: number
+    ): number {
         var v = wglob[name];
         if (v === undefined || v === null || v === "") v = localVal;
         var n = typeof v === "number" ? v : parseInt(String(v), 10);
         return isNaN(n) ? fallback : n;
     }
-    var showNum = listFlag("sShowNum", sShowNum, 1);
-    var showName = listFlag("sShowName", sShowName, 1);
-    var channelLogoMode = listFlag("sShowPikon", sShowPikon, 1);
-    var showProgress = listFlag("sShowProgress", sShowProgress, 1);
-    var showProgram = listFlag("sShowProgram", sShowProgram, 1);
-    var showArchive = listFlag("sShowArchive", sShowArchive, 1);
-    var showDescr = listFlag("sShowDescr", sShowDescr, 1);
-    var showPreview = listFlag("sPreview", sPreview, 0);
-    var nextCountL = listFlag("sNextCountL", sNextCountL, 1);
+    var showNum = readListSetting("sShowNum", sShowNum, 1);
+    var showName = readListSetting("sShowName", sShowName, 1);
+    var channelLogoMode = readListSetting("sShowPikon", sShowPikon, 1);
+    var showProgress = readListSetting("sShowProgress", sShowProgress, 1);
+    var showProgram = readListSetting("sShowProgram", sShowProgram, 1);
+    var showArchive = readListSetting("sShowArchive", sShowArchive, 1);
+    var showDescr = readListSetting("sShowDescr", sShowDescr, 1);
+    var showPreview = readListSetting("sPreview", sPreview, 0);
+    var nextCountL = readListSetting("sNextCountL", sNextCountL, 1);
     // Keep lets + window aligned for subsequent renders / settings screens.
     sShowNum = showNum;
     sShowName = showName;
@@ -1969,7 +1982,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
         // Keep the legacy string formatter ABI. Structural classes and the
         // scoped DOM pass below work under Tauri's nonced style policy.
         // Queue EPG fill for every visible row (OTT). Re-read ch after call:
-        // deferred doGetCurProg may not have run yet; time_to hit returns true.
+        // deferred processCurrentProgramQueue may not have run yet; time_to hit returns true.
         getCurProgData(chId, updateChannelListRow);
         var nowSec = Date.now() / 1e3;
         var progName =
@@ -2176,7 +2189,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
  * settings, or manually select a provider.
  *
  * Side effects: Populates listArray with action entries; installs list
- * handlers; writes to listCaptionElement, listPodval; calls showPage().
+ * handlers; writes to listCaptionElement, listFooter; calls showPage().
  *
  * Edge case: If loadOpt (loadAllOptions) is a function, inserts an extra
  * "Load settings from storage" entry at index 3.

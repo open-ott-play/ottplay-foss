@@ -98,6 +98,9 @@ function fixture(
                 return elements.get(id);
             },
         },
+        findOptionIndex() {
+            return 0;
+        },
         finishPortChannelIdMigration() {},
         getChannelsArray: (done) => done(),
         getMediaArray() {},
@@ -123,9 +126,6 @@ function fixture(
         launch_id: "#launch",
         noop() {},
         onChannelsLoaded() {},
-        optIndexOf() {
-            return 0;
-        },
         optionsList() {
             calls.push("options");
         },

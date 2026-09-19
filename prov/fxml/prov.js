@@ -243,7 +243,7 @@ function _fxml_edit() {
         usr = _fxml_cfg.user,
         pwd = _fxml_cfg.pass,
         m3u = _fxml_cfg.m3u;
-    function bl() {
+    function rebuildSettingsList() {
         listArray = [
             _("Server") + ": " + (srv || ""),
             _("Login") + ": " + (usr || ""),
@@ -261,7 +261,7 @@ function _fxml_edit() {
         "",
         _("Save & load channels"),
     ];
-    bl();
+    rebuildSettingsList();
     getListItem = function (e, r) {
         return "&nbsp;&nbsp;" + e;
     };
@@ -277,7 +277,7 @@ function _fxml_edit() {
                         editvar = srv;
                         setEdit = function () {
                             srv = editvar.trim();
-                            bl();
+                            rebuildSettingsList();
                             showPage();
                         };
                         showEditKey(keys.ENTER);
@@ -287,7 +287,7 @@ function _fxml_edit() {
                         editvar = usr;
                         setEdit = function () {
                             usr = editvar.trim();
-                            bl();
+                            rebuildSettingsList();
                             showPage();
                         };
                         showEditKey(keys.ENTER);
@@ -297,7 +297,7 @@ function _fxml_edit() {
                         editvar = pwd;
                         setEdit = function () {
                             pwd = editvar.trim();
-                            bl();
+                            rebuildSettingsList();
                             showPage();
                         };
                         showEditKey(keys.ENTER);
@@ -307,7 +307,7 @@ function _fxml_edit() {
                         editvar = m3u;
                         setEdit = function () {
                             m3u = editvar.trim();
-                            bl();
+                            rebuildSettingsList();
                             showPage();
                         };
                         showEditKey(keys.ENTER);

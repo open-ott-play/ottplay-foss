@@ -349,7 +349,7 @@ function recordPreviousPortHash(
  * @returns The 32-bit hash, or 0 if the string is empty/falsy.
  *
  * @remarks
- * UTF-8-encodes the string first via `str2arr_u8_utf`, then hashes the
+ * UTF-8-encodes the string first via `stringToUtf8Bytes`, then hashes the
  * resulting byte array. The suffix "gc" indicates this is the "garbage
  * collector" / string-friendly variant from the original MurmurHash3
  * reference implementation.
@@ -490,7 +490,7 @@ export function xxHash32S(
  * @returns The hash as a base-10 string, or `'0'` if the input is empty/falsy.
  *
  * @remarks
- * Convenience wrapper around `xxHash32(str2arr_u8_utf(input.toLowerCase()), 0)`
+ * Convenience wrapper around `xxHash32(stringToUtf8Bytes(input.toLowerCase()), 0)`
  * that returns a string suitable for use as a key or identifier. The "Si"
  * suffix stands for "string, case-insensitive".
  */

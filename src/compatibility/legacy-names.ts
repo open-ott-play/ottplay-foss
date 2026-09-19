@@ -52,6 +52,14 @@ export const legacyPlayerBindings: Array<[string, string]> = [
     ["hashString32", "TSH"],
     ["channels", "chanels"],
     ["channelNumberElement", "numprogElement"],
+    ["sendClientFeedback", "client_feedb"],
+    ["queueFeedbackPost", "PostFeedback"],
+    ["sendFeedback", "FeedbPOST"],
+    ["hideInfoBarWhenReady", "infoBarHideT"],
+    ["scheduleListDetailUpdate", "detailListActionWithTimeOut"],
+    ["findOptionIndex", "optIndexOf"],
+    ["removeOption", "delOption"],
+    ["prependMenuButtonHint", "addBtn2menu"],
 ];
 
 export const legacySettingsFields: Array<[string, string]> = [

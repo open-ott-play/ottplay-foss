@@ -283,7 +283,7 @@ function toggleMainPlayback(): void {
  * @returns void
  * @sideeffect Calls any of the following on `window`: numberProg, keyFun, channelsList, infoBarHide, exitPortal,
  *             popupList, prevProg, stbPause/stbContinue, playChannel, stbToggleMute, stbSetVolume,
- *             showShift, showChanelInfo, epgList, togglePip, toggleStandby, stbExit, etc.
+ *             showShift, showChannelInfo, epgList, togglePip, toggleStandby, stbExit, etc.
  *             Sets `window.isListVisible` for CH_LIST and SETUP.
  * @analysis Digits 0-9 are handled before the switch. Color keys are skipped when settings.noColorKeys is set.
  *             RETURN dispatches based on settings.eFun (0-4). The PLAY/PAUSE toggle uses stbIsPlaying().
@@ -733,9 +733,9 @@ function handleListKey(keyCode: number, event: KeyboardEvent): boolean {
  * @param event - The original KeyboardEvent (provides `.key` for physical keyboard detection).
  * @returns void
  * @sideeffect Sets `isEditMode = false`, modifies `window.editvar` and `window.editPos`, calls `window._changeEdit`,
- *             `window.setEdit`, or `window.restoreCPD`.
+ *             `window.setEdit`, or `window.restoreListPanelState`.
  * @analysis Single printable characters (event.key.length === 1) are inserted directly, bypassing `editKey`.
- *             Backspace deletes one character before the cursor position. ENTER calls setEdit; RETURN/EXIT calls restoreCPD.
+ *             Backspace deletes one character before the cursor position. ENTER calls setEdit; RETURN/EXIT calls restoreListPanelState.
  */
 function handleEditKey(keyCode: number, event: KeyboardEvent): void {
     isEditMode = false;
@@ -850,7 +850,7 @@ export function dispatchKey(keyCode: number, event?: Event): void {
  *
  * @param fn - The function index (0 through 21).
  * @returns void
- * @sideeffect Dispatches to: recordsList, popupList, prevProg, shiftArchiveSelect, showChanelInfo,
+ * @sideeffect Dispatches to: recordsList, popupList, prevProg, shiftArchiveSelect, showChannelInfo,
  *             toggleAspectRatio, toggleAudioTrack, togglePip, stbStopPip, bucketsList, epgList,
  *             popMedia, joyMenu, changeVolume, shiftArchive, plusProg/minusProg, toggleSubtitle,
  *             playArchive, playChannel, showShift, timeShift.
@@ -1103,7 +1103,7 @@ var numProgEl: HTMLElement | null = null;
  *
  * @param digit - The digit (0-9) pressed.
  * @returns void
- * @sideeffect Mutates the `numprogElement` DOM node (shows/hides it, sets innerHTML).
+ * @sideeffect Mutates the `channelNumberElement` DOM node (shows/hides it, sets innerHTML).
  *             Uses setTimeout to delay channel switch; clears previous timeout on each new digit.
  *             Special sequences: "9999" + 7 toggles info visibility; "9999" + 9 opens popup menu.
  * @analysis Max 4 digits accumulated. Leading zero is rejected (empty string + 0 returns early).
@@ -1200,7 +1200,7 @@ export function minusProg(): void {
  *
  * @param sel - Selected index into the `prevArr` array.
  * @returns void
- * @sideeffect Calls `window.setCurrent`, `window.getEPGchanelCached`, `window.setCurProg`,
+ * @sideeffect Calls `window.setCurrent`, `window.getChannelEpgCached`, `window.setCurProg`,
  *             `window.playArchive`, or `window.playChannel`.
  * @analysis If the selected entry has a timestamp (.t), fetches EPG for that channel and plays archive at that time.
  *             Otherwise simply switches to the channel live. Falls back to category "All" if not found in the
@@ -1305,7 +1305,7 @@ export function prevProg(): void {
     }
     /**
      * Format a Unix timestamp for display. If it falls within today, uses time2time (HH:MM).
-     * Otherwise uses time2str (day + date + time).
+     * Otherwise uses formatProgramDateTime (day + date + time).
      *
      * @param e - Unix timestamp in seconds.
      * @returns string — Formatted time string, or empty string if neither helper is available.
@@ -1641,7 +1641,7 @@ export function ottBandViewportHeight(): number {
 }
 
 /**
- * Y where the bottom info band starts (clientY above this → showChanelInfo).
+ * Y where the bottom info band starts (clientY above this → showChannelInfo).
  * Wider than legacy 20%: ~30% of viewport or at least ~140 CSS px.
  */
 export function ottBottomInfoBandStart(h: number): number {
@@ -1653,12 +1653,12 @@ export function ottBottomInfoBandStart(h: number): number {
  * Handle `click` events on the document body (assigned to `document.body.onclick`).
  * Interprets the vertical click position:
  * - Top 20% → open popup menu (popupList)
- * - Bottom ~30% (min ~140px) → show channel info (showChanelInfo)
+ * - Bottom ~30% (min ~140px) → show channel info (showChannelInfo)
  * - Middle → dispatch ENTER key
  *
  * @param e - The MouseEvent object (typed as `any` for compatibility).
  * @returns void — early return if `e.clientY` is undefined.
- * @sideeffect Calls `window.popupList()`, `window.showChanelInfo()`, or `window._doKey(keys.ENTER, e)`.
+ * @sideeffect Calls `window.popupList()`, `window.showChannelInfo()`, or `window._doKey(keys.ENTER, e)`.
  * @analysis Uses `ottBandViewportHeight()` (innerHeight / visualViewport), not body rect alone.
  */
 function body_onClick(e: any): void {
@@ -1670,8 +1670,8 @@ function body_onClick(e: any): void {
     // click (WKWebView sometimes omits the following click entirely).
     if ((window as any).__ottInfoBandFromMouseUp) return;
     if (e.clientY === undefined) return;
-    // Channel list / OSD / edit open: podval btnDiv clicks must not also hit
-    // the bottom-band showChanelInfo / middle ENTER (looked like dead buttons).
+    // Channel list / OSD / edit open: footer renderButtonHint clicks must not also hit
+    // the bottom-band showChannelInfo / middle ENTER (looked like dead buttons).
     try {
         if (typeof $ !== "undefined") {
             if (

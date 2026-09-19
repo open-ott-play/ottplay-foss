@@ -225,7 +225,7 @@ function randomChannel(rangeStart?: number, rangeEnd?: number): void {
 /**
  * Switch IPTV provider by index in the provider array.
  *
- * @param providerIdx - Index in window.arrayProvaiders.
+ * @param providerIdx - Index in window.providerIds.
  */
 function changeProvider(providerIdx: number): void {
     if (selectProviderByIndex(providerIdx)) {

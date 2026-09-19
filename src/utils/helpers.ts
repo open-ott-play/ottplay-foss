@@ -32,15 +32,15 @@ export function createNewEvent(type: string): Event {
  * @param message - The message string to report.
  *
  * @sideEffects
- * Delegates to `PostFeedback()` which buffers and asynchronously POSTs
+ * Delegates to `queueFeedbackPost()` which buffers and asynchronously POSTs
  * feedback data to the server.
  */
-export function client_feedb(message: string): void {
-    PostFeedback(message, "/report_feedb");
+export function sendClientFeedback(message: string): void {
+    queueFeedbackPost(message, "/report_feedb");
 }
 
-var FeedbPOST: (msg: string) => void = function (msg: string): void {
-    PostFeedback(msg, "/report_feedb");
+var sendFeedback: (msg: string) => void = function (msg: string): void {
+    queueFeedbackPost(msg, "/report_feedb");
 };
 
 /**
@@ -58,7 +58,7 @@ var FeedbPOST: (msg: string) => void = function (msg: string): void {
  * - On flush, performs an AJAX POST request to `{host}/api/feedback`
  *   using jQuery (`$.ajax`) if available.
  */
-export function PostFeedback(data: any, endpoint?: string): void {
+export function queueFeedbackPost(data: any, endpoint?: string): void {
     try {
         _fbBuffer.push({
             msg: data,
@@ -121,7 +121,7 @@ export function getViewportHeightScale(): number {
 /**
  * Live `#listIn` content height (padding excluded), or 0 if not laid out.
  * Forces a layout read so Tauri/WKWebView does not report a stale height
- * before caption/podval chrome finishes.
+ * before caption/footer chrome finishes.
  */
 export function listInContentHeight(): number {
     try {
@@ -238,7 +238,7 @@ export function packListRowBoxes(
     return h;
 }
 
-// Expose globally for UI code that uses window.getWidthK / window.getHeightK
+// Expose globally for UI code that uses window.getViewportWidthScale / window.getViewportHeightScale
 if (typeof window !== "undefined") {
     (window as any).getViewportWidthScale = getViewportWidthScale;
     (window as any).getViewportHeightScale = getViewportHeightScale;
@@ -527,7 +527,7 @@ export function hasTmdbService(): boolean {
  *          falsy or `url` is empty.
  *
  * @remarks
- * Width and height are scaled by `getWidthK()` / `getHeightK()` relative to
+ * Width and height are scaled by `getViewportWidthScale()` / `getViewportHeightScale()` relative to
  * the 1280×720 baseline. Base values: width = 133px, height = 200px,
  * margin = width/15. Does NOT insert DOM elements — returns an HTML string
  * for callers to use (e.g. via `innerHTML`).

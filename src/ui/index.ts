@@ -41,7 +41,11 @@ declare var jQuery: any;
 declare var selIndex: number;
 declare var isListVisible: boolean;
 declare var listPopUpElement: HTMLElement | null;
-declare var addBtn2menu: (arr: any[], action: any, label: string) => void;
+declare var prependMenuButtonHint: (
+    arr: any[],
+    action: any,
+    label: string
+) => void;
 declare var dialogBoxKeyHandler: ((key: number) => void) | null;
 declare var listArray: any[];
 declare var curList: any[];
@@ -498,12 +502,12 @@ export function uiInit(): void {
         }
     }
 
-    // Podval btnDiv: capture-phase so Tauri drag suppress / #_b / video
+    // Capture footer button clicks before Tauri drag suppression or video
     // compositing cannot swallow EPG/Category/Actions/Description/PiP clicks.
     var footerElement =
         listFooterElement || document.getElementById("listPodval");
-    if (footerElement && !(footerElement as any).__ottPodvalClickBound) {
-        (footerElement as any).__ottPodvalClickBound = true;
+    if (footerElement && !(footerElement as any).__ottFooterClickBound) {
+        (footerElement as any).__ottFooterClickBound = true;
         var footerRoot: HTMLElement = footerElement as HTMLElement;
         var dispatchFooterAction = function (ev: Event): void {
             try {
@@ -774,14 +778,14 @@ export function uiInit(): void {
  * @sideeffect Calls `infoBarHide()` immediately or schedules itself again via `setTimeout`.
  * @analysis This is a polling-style hide: it keeps retrying every 5s until conditions are right for immediate hide.
  */
-export function infoBarHideT(): void {
+export function hideInfoBarWhenReady(): void {
     if (typeof (window as any).stbIsPlaying === "function") {
         if (
             $("#buffering").is(":visible") ||
             !(window as any).stbIsPlaying() ||
             $("#step").is(":visible")
         ) {
-            infoTimeout = setTimeout(infoBarHideT, 5000);
+            infoTimeout = setTimeout(hideInfoBarWhenReady, 5000);
         } else {
             infoBarHide();
         }
@@ -829,7 +833,10 @@ export function showChannelInfo(timeoutSec: number): void {
         $infoBar.is(":visible") &&
         !$("#descr").is(":visible")
     ) {
-        infoTimeout = setTimeout(infoBarHideT, (w.sInfoTimeout || 5) * 1000);
+        infoTimeout = setTimeout(
+            hideInfoBarWhenReady,
+            (w.sInfoTimeout || 5) * 1000
+        );
         return;
     }
     // Hide first for animated re-show (when timeoutSec is 1 or 2)
@@ -849,7 +856,7 @@ export function showChannelInfo(timeoutSec: number): void {
         }
         if (timeoutSec !== 2) {
             infoTimeout = setTimeout(
-                infoBarHideT,
+                hideInfoBarWhenReady,
                 (timeoutSec > 0 ? timeoutSec : w.sInfoTimeout || 5) * 1000
             );
         }
@@ -876,7 +883,7 @@ export function showChannelInfo(timeoutSec: number): void {
  *
  * @returns void
  * @sideeffect Hides info bar and permanentTime. Shows `list_osd` or `list_window`. Sets `listInElement.innerHTML`.
- *             Calls `detailListActionWithTimeOut()` after rendering.
+ *             Calls `scheduleListDetailUpdate()` after rendering.
  * @analysis Falls back to `window.listDataArray` if the module-level `listDataArray` is empty.
  *             Each item is rendered as a `<div id="it{i}">` with the result of `getListItemFn(item, i)`.
  *             The scrollbar shows the current page position as a colored bar.
@@ -889,7 +896,7 @@ export function showPage(): void {
     $infoBar.hide();
     $("#permanentTime").hide();
     // Gold showPage clears the EPG queue before re-rendering rows so each
-    // visible channel re-queues getCurProgData → updateChanelList (now/next).
+    // visible channel re-queues getCurProgData → updateChannelListRow (now/next).
     try {
         currentProgramRequestQueue.length = 0;
     } catch (_q) {}
@@ -1052,7 +1059,7 @@ export function showPage(): void {
     }
     // OTT: after rows are in the DOM, paint #pn* for channels that already
     // have current programme data (playing / previously warmed). Cold rows
-    // fill via deferred doGetCurProg → updateChanelList (single-flight).
+    // fill via deferred processCurrentProgramQueue → updateChannelListRow (single-flight).
     try {
         var upd = (window as any).updateChannelListRow;
         var cmap = (window as any).channels || null;
@@ -1150,7 +1157,7 @@ export function showPage(): void {
         }
     } catch (_pin) {}
     (window as any).selIndex = selIndex;
-    detailListActionWithTimeOut();
+    scheduleListDetailUpdate();
 }
 
 /**
@@ -1160,7 +1167,7 @@ export function showPage(): void {
  *
  * @param delta - Number of positions to move (positive = down, negative = up). Large values (pageSize) skip pages.
  * @returns void — early return if the data array is empty.
- * @sideeffect Modifies `selIndex`. Updates DOM element styles for old/new selection. Calls `detailListActionWithTimeOut()`.
+ * @sideeffect Modifies `selIndex`. Updates DOM element styles for old/new selection. Calls `scheduleListDetailUpdate()`.
  * @analysis Wrapping behavior differs for delta ±1 (wrap to opposite end) vs larger jumps (clamp at boundary).
  *             `showPage()` is called if the new index is not yet rendered on the current page.
  */
@@ -1217,7 +1224,7 @@ export function changeSelect(delta: number): void {
         }
         newItem.style.backgroundColor = curColorB || "#668";
         newItem.style.color = curColor || "gold";
-        detailListActionWithTimeOut();
+        scheduleListDetailUpdate();
     } else {
         showPage();
     }
@@ -1231,7 +1238,7 @@ export function changeSelect(delta: number): void {
  * @param index - The target item index to select.
  * @returns void
  * @sideeffect Dispatches ENTER key if already on the target. Updates DOM styles for old/new selection.
- *             Calls `detailListActionWithTimeOut()`.
+ *             Calls `scheduleListDetailUpdate()`.
  */
 export function setSelect(index: number): void {
     if (selIndex === index) {
@@ -1249,7 +1256,7 @@ export function setSelect(index: number): void {
             newItem.style.backgroundColor = curColorB || "#668";
             newItem.style.color = curColor || "gold";
         }
-        detailListActionWithTimeOut();
+        scheduleListDetailUpdate();
     }
 }
 
@@ -1426,7 +1433,7 @@ export function showSelectBox(
      *
      * @param e - New selection index (may wrap).
      * @returns void
-     * @sideeffect Updates `numprogElement.innerHTML`. Sets timeout for auto-hide when `a` is truthy.
+     * @sideeffect Updates `channelNumberElement.innerHTML`. Sets timeout for auto-hide when `a` is truthy.
      */
     function r(e: number) {
         if (e === n.length) s = 0;
@@ -1576,7 +1583,7 @@ export function updateChannelInfo(channelId: number): void {
         channelNumEl.innerHTML =
             "" + ((primaryIndex != null ? primaryIndex : -1) + 1);
 
-    // Channel info from global chanels
+    // Channel info from global channels
     var t = (window as any).channels
         ? (window as any).channels[channelId]
         : undefined;
@@ -1786,7 +1793,7 @@ function _t2(n: number): string {
 /**
  * Start periodic timers:
  * 1. Every 1s — update clock displays and increment `window.playTime` when playing.
- * 2. Every 30s — refresh channel info via `updateChanelInfo`.
+ * 2. Every 30s — refresh channel info via `updateChannelInfo`.
  *
  * @returns void
  * @sideeffect Sets up two `setInterval` calls that run indefinitely. Updates DOM elements `current_t`,
@@ -1817,7 +1824,7 @@ export function initBackgroundIntervals(): void {
             (window as any).playTime = ((window as any).playTime || 0) + 1;
         }
         // Drive archive OSD progress bar (stbPlayer.js:1744-1746 tick).
-        // Skip live mode (playType === 0) — showChanelInfo already covers it.
+        // Skip live mode (playType === 0) — showChannelInfo already covers it.
         var w_t = window as any;
         if (
             w_t.playType > 0 &&
@@ -1890,11 +1897,11 @@ export function refreshAudioBadge(): void {
 }
 
 /**
- * Save the current list caption, podval (footer), and detail elements into `ui_state` and clear them.
+ * Save the current list caption, footer, and detail elements into `ui_state` and clear them.
  * Used before showing a temporary overlay (e.g., info, edit, color dialog) so the state can be restored later.
  *
  * @returns void
- * @sideeffect Stores innerHTML of listCaptionElement, listPodvalElement, listDetailElement in `ui_state` object.
+ * @sideeffect Stores innerHTML of listCaptionElement, listFooterElement, listDetailElement in `ui_state` object.
  *             Clears the innerHTML of all three elements.
  */
 export function saveListPanelState(): void {
@@ -1907,10 +1914,10 @@ export function saveListPanelState(): void {
 }
 
 /**
- * Restore the list caption, podval, and detail elements from `ui_state` and reset the state object.
+ * Restore the list caption, footer, and detail elements from `ui_state` and reset the state object.
  *
  * @returns void
- * @sideeffect Restores innerHTML of listCaptionElement, listPodvalElement, listDetailElement from saved values.
+ * @sideeffect Restores innerHTML of listCaptionElement, listFooterElement, listDetailElement from saved values.
  *             Resets `ui_state` to an empty object.
  */
 export function restoreListPanelState(): void {
@@ -1997,7 +2004,7 @@ var detailTimer: any = null;
  * @sideeffect Clears `detailTimer`. Clears `listDetailElement.innerHTML`. Calls `detailListActionFn` after delay.
  * @analysis This prevents rapid selection changes from producing excessive detail re-renders.
  */
-function detailListActionWithTimeOut(): void {
+function scheduleListDetailUpdate(): void {
     clearTimeout(detailTimer);
     if (listDetailElement) listDetailElement.innerHTML = "";
     detailTimer = setTimeout(function () {
@@ -2124,7 +2131,7 @@ export function scrollUp(el: string, px: number, delay: number): void {
  *
  * @param title - The program title to display. If falsy, shows "no epg at current time" in an infoBox.
  * @returns void
- * @sideeffect Hides `listPopUp`. Calls `saveCPD()`. Sets caption/podval elements.
+ * @sideeffect Hides `listPopUp`. Calls `saveListPanelState()`. Sets caption/footer elements.
  *             Registers `aboutKeyHandler` for TMDb search and close. Shows `#listAbout`.
  */
 export function showProgramInfo(title: string): void {
@@ -2212,7 +2219,7 @@ export function showProgramInfo(title: string): void {
  * title and description with TMDb search and close buttons.
  *
  * @returns void — early return if the selected item has no description.
- * @sideeffect Hides `listPopUp`. Calls `saveCPD()`. Sets caption/podval elements.
+ * @sideeffect Hides `listPopUp`. Calls `saveListPanelState()`. Sets caption/footer elements.
  *             Registers `aboutKeyHandler` for TMDb search and close. Shows `#listAbout`.
  */
 export function infoMedia(): void {
@@ -2269,7 +2276,7 @@ export function infoMedia(): void {
  * @param e - Optional action name to pre-select. If provided, searches `infoArr` for a matching `.action` and selects it.
  * @returns void
  * @sideeffect Sets up `listDataArray`, `getListItemFn`, `detailListActionFn`, `listKeyHandlerFn`.
- *             Sets caption/podval. Calls `showPage()`.
+ *             Sets caption/footer. Calls `showPage()`.
  * @analysis Info items are rendered from `infoArr`; each has `.name` and `.action`. N2/INFO triggers pluginInfo.
  */
 export function infoList(e?: string): void {
@@ -2279,10 +2286,10 @@ export function infoList(e?: string): void {
         listDataArray.push(_(item.name || ""));
     });
     if (!(window as any).sNoNumbersKeys) {
-        addBtn2menu(infoArr, (window as any).pluginInfo, "2");
-        addBtn2menu(infoArr, (window as any).betaPage, "8");
+        prependMenuButtonHint(infoArr, (window as any).pluginInfo, "2");
+        prependMenuButtonHint(infoArr, (window as any).betaPage, "8");
     }
-    addBtn2menu(infoArr, (window as any).pluginInfo, strInfo);
+    prependMenuButtonHint(infoArr, (window as any).pluginInfo, strInfo);
     selIndex = 0;
     if (typeof e !== "undefined") {
         for (var t = 0; t < infoArr.length; t++) {
@@ -2350,7 +2357,7 @@ export function infoList(e?: string): void {
  *             Registers `listKeyHandlerFn` for all popup interactions. Shows `#list_window` and calls `showPage()`.
  * @analysis Items are filtered by `sHideMenus` array. Behavior switches (e.g. play/pause toggle) use `splitSlash` to
  *             show the active label. Number-key and color-key bindings are added conditionally based on settings.
- *             PIN-check items (noProvParam) toggle `window.nprovparams`.
+ *             PIN-check items (toggleProviderSettingsVisibility) toggle `window.providerSettingsUnlockCount`.
  */
 export function popupList(i?: any): void {
     // Hide any loading spinner before showing menu
@@ -3058,7 +3065,7 @@ export function hsvToRgb(h: number, s: number, v: number): number[] {
  * The selected color is stored in `window.eSHLcolor` as "hue,saturation".
  *
  * @returns void
- * @sideeffect Calls `saveCPD()`. Modifies list caption/podval/detail. Shows `#listAbout` with color controls.
+ * @sideeffect Calls `saveListPanelState()`. Modifies list caption/footer/detail. Shows `#listAbout` with color controls.
  *             Registers `aboutKeyHandler` for color adjustment keys.
  * @analysis The live preview updates the `#step` span's CSS color. YELLOW/GREEN/BLUE keys set predefined hues.
  *             ENTER saves and closes; RETURN closes without saving (fall-through in switch).
@@ -3160,7 +3167,7 @@ export function colorDialog(): void {
  * in `window.eSHLcolSel`.
  *
  * @returns void
- * @sideeffect Calls `saveCPD()`. Modifies list caption/podval. Shows `#listAbout` with preview.
+ * @sideeffect Calls `saveListPanelState()`. Modifies list caption/footer. Shows `#listAbout` with preview.
  *             Registers `aboutKeyHandler`. Updates `#step` background-color in real time.
  * @analysis Unlike `colorDialog`, this one modifies background-color (not color) and uses V=50.
  */
@@ -3243,7 +3250,7 @@ export function selColorDialog(): void {
  * the result in `window.eSHLcolorB` and applies it as background-color.
  *
  * @returns void
- * @sideeffect Calls `saveCPD()`. Modifies list caption/podval. Shows `#listAbout`.
+ * @sideeffect Calls `saveListPanelState()`. Modifies list caption/footer. Shows `#listAbout`.
  *             Registers `aboutKeyHandler`. Updates `#step` background-color preview.
  */
 export function backColorDialog(): void {
@@ -3509,7 +3516,7 @@ var showEditKey: any = showEditKey1;
  *
  * @param _initKeys - Ignored (accepts any value for API compatibility with `showEdit`).
  * @returns void
- * @sideeffect Calls `saveCPD()`. Modifies `_keysSymbol` entries. Sets `editPos`, `_keyCur`. Calls `_setPunct` and `showEdit`.
+ * @sideeffect Calls `saveListPanelState()`. Modifies `_keysSymbol` entries. Sets `editPos`, `_keyCur`. Calls `_setPunct` and `showEdit`.
  * @analysis Checks `window.stbGetItem('ottplaylang') === '_eng'` to determine initial language.
  *             Color-key underlines are added to shift/lang/backspace/ok symbols if color keys are enabled.
  */
@@ -3566,7 +3573,7 @@ export function showEditKey1(_initKeys: any, secret?: boolean): void {
  *
  * @returns void
  * @sideeffect Sets `#listEdit` innerHTML. Calls `_changeEdit()` to update the edit preview.
- *             Sets podval buttons for close/case/lang/delete/ok.
+ *             Sets footer buttons for close/case/lang/delete/ok.
  * @analysis Keys are laid out in rows of 10. Each key cell has an `onclick` that calls `clickKey(s)`.
  *             Symbol keys (indices 0-9) use their custom render function; others show the raw character.
  */
@@ -3691,7 +3698,7 @@ export function clickKey(e: number): void {
  * @sideeffect Modifies `(window as any).editvar` and `editPos`. Updates key highlight styles. Calls `_changeEdit()`.
  *             Special keys: UP/DOWN/LEFT/RIGHT move keyboard focus. RED=case, GREEN=lang, YELLOW=delete,
  *             BLUE/PLAY=ok. ENTER types the focused character or invokes the symbol action.
- *             RETURN/EXIT closes the editor and calls `restoreCPD()`.
+ *             RETURN/EXIT closes the editor and calls `restoreListPanelState()`.
  * @analysis If the pressed key maps to a character in `_keys`, the behavior depends on whether that index
  *             is the currently focused key: if same, type it; if different, move focus and type.
  *             Symbol keys (charCode <= 9) invoke their action function instead of typing.
@@ -3798,7 +3805,7 @@ export function editKey1(e: number): void {
  * @param code - The numeric key code.
  * @returns void
  * @sideeffect Reads `#editvar` value on ENTER, calls `window.setEdit()`, then hides `#listEdit`
- *             and calls `window.restoreCPD()` (same teardown as RETURN/EXIT).
+ *             and calls `window.restoreListPanelState()` (same teardown as RETURN/EXIT).
  */
 export function editKey2(code: number): void {
     switch (code) {
@@ -3827,7 +3834,7 @@ export function editKey2(code: number): void {
  *
  * @param _initKeys - Optional array of initial key values (unused, for API compatibility).
  * @returns void
- * @sideeffect Calls `window.saveCPD()` if available. Renders `#listEdit` with an `<input>` field
+ * @sideeffect Calls `window.saveListPanelState()` if available. Renders `#listEdit` with an `<input>` field
  *             and save/discard buttons. Focuses the input field.
  */
 export function showEditKey2(_initKeys?: number[], secret?: boolean): void {
@@ -4116,11 +4123,11 @@ export function clickVal(e: number): void {
  *
  * @param t - An object with `.name` (dialog title), `.values` (array of value strings), and `.val` (current value index).
  * @returns void
- * @sideeffect Calls `saveCPD()`. Sets caption/podval/detail. Shows `#listAbout` with a grid of clickable divs.
+ * @sideeffect Calls `saveListPanelState()`. Sets caption/footer/detail. Shows `#listAbout` with a grid of clickable divs.
  *             Registers `aboutKeyHandler` for keyboard navigation.
  * @analysis Values containing "@@@" are filtered out. Column count is calculated by measuring the widest label
  *             text against `#listAbout` width. UP/DOWN/LEFT/RIGHT navigate the grid; ENTER saves the value;
- *             RETURN/EXIT discards and calls `restoreCPD()`.
+ *             RETURN/EXIT discards and calls `restoreListPanelState()`.
  */
 export function selectValue(t: any): void {
     var r = t.values.filter(function (v: any) {

@@ -244,7 +244,7 @@ function _sharavoz_edit() {
         usr = _sharavoz_cfg.user,
         pwd = _sharavoz_cfg.pass,
         m3u = _sharavoz_cfg.m3u;
-    function bl() {
+    function rebuildSettingsList() {
         listArray = [
             _("Server") + ": " + (srv || ""),
             _("Login") + ": " + (usr || ""),
@@ -262,7 +262,7 @@ function _sharavoz_edit() {
         "",
         _("Save & load channels"),
     ];
-    bl();
+    rebuildSettingsList();
     getListItem = function (e, r) {
         return "&nbsp;&nbsp;" + e;
     };
@@ -278,7 +278,7 @@ function _sharavoz_edit() {
                         editvar = srv;
                         setEdit = function () {
                             srv = editvar.trim();
-                            bl();
+                            rebuildSettingsList();
                             showPage();
                         };
                         showEditKey(keys.ENTER);
@@ -288,7 +288,7 @@ function _sharavoz_edit() {
                         editvar = usr;
                         setEdit = function () {
                             usr = editvar.trim();
-                            bl();
+                            rebuildSettingsList();
                             showPage();
                         };
                         showEditKey(keys.ENTER);
@@ -298,7 +298,7 @@ function _sharavoz_edit() {
                         editvar = pwd;
                         setEdit = function () {
                             pwd = editvar.trim();
-                            bl();
+                            rebuildSettingsList();
                             showPage();
                         };
                         showEditKey(keys.ENTER);
@@ -308,7 +308,7 @@ function _sharavoz_edit() {
                         editvar = m3u;
                         setEdit = function () {
                             m3u = editvar.trim();
-                            bl();
+                            rebuildSettingsList();
                             showPage();
                         };
                         showEditKey(keys.ENTER);

@@ -5,6 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const acorn = require("acorn");
+const { JSDOM } = require("jsdom");
 const { assembleClassic } = require("../scripts/classic-bundle.cjs");
 const { optimizeClassic } = require("../scripts/classic-optimizer.cjs");
 const repository = path.resolve(__dirname, "..");
@@ -65,7 +66,282 @@ function context() {
     result.window = result;
     return result;
 }
+
+function sourceDefinitions(file, names) {
+    const source = ts.createSourceFile(
+        file,
+        fs.readFileSync(path.join(repository, file), "utf8"),
+        ts.ScriptTarget.Latest,
+        true
+    );
+    const wanted = new Set(names);
+    const result = [];
+    for (const statement of source.statements) {
+        const declarations = ts.isVariableStatement(statement)
+            ? statement.declarationList.declarations
+            : [statement];
+        if (
+            declarations.some(
+                (declaration) =>
+                    declaration.name && wanted.has(declaration.name.text)
+            )
+        ) {
+            result.push(statement.getText(source));
+            for (const declaration of declarations) {
+                if (declaration.name) wanted.delete(declaration.name.text);
+            }
+        }
+    }
+    assert.deepEqual(
+        Array.from(wanted),
+        [],
+        "Extract actual renamed implementations: " + file
+    );
+    return result.join("\n");
+}
+
+async function testRenamedHelpers() {
+    const pairs = [
+        ["sendClientFeedback", "client_feedb"],
+        ["queueFeedbackPost", "PostFeedback"],
+        ["sendFeedback", "FeedbPOST"],
+        ["hideInfoBarWhenReady", "infoBarHideT"],
+        ["scheduleListDetailUpdate", "detailListActionWithTimeOut"],
+        ["findOptionIndex", "optIndexOf"],
+        ["removeOption", "delOption"],
+        ["prependMenuButtonHint", "addBtn2menu"],
+    ];
+    write(
+        "renamed-helpers.js",
+        compile(
+            "var optionsArr=[], listArray=[], infoTimeout=null, detailTimer=null, _fbBuffer=[], _fbTimer=null;\n" +
+                sourceDefinitions("src/utils/helpers.ts", [
+                    "sendClientFeedback",
+                    "queueFeedbackPost",
+                    "sendFeedback",
+                ]) +
+                "\n" +
+                sourceDefinitions("src/ui/index.ts", [
+                    "hideInfoBarWhenReady",
+                    "scheduleListDetailUpdate",
+                ]) +
+                "\n" +
+                sourceDefinitions("src/index.ts", [
+                    "indexOfAction",
+                    "findOptionIndex",
+                    "removeOption",
+                    "prependMenuButtonHint",
+                ])
+        )
+    );
+    const source = assembleClassic(root, [manifest, "renamed-helpers.js"]);
+    const optimized = await optimizeClassic(source);
+    for (const code of [source, optimized.code]) {
+        acorn.parse(code, { ecmaVersion: 5 });
+        const timers = [];
+        const requests = [];
+        let buffering = true;
+        let hidden = 0;
+        let details = 0;
+        const c = context();
+        c.host = "https://player.example";
+        c.setTimeout = (callback, delay) => {
+            timers.push({ active: true, callback, delay });
+            return timers.length;
+        };
+        c.clearTimeout = (id) => {
+            if (timers[id - 1]) timers[id - 1].active = false;
+        };
+        c.$ = (selector) => ({
+            is: () => selector === "#buffering" && buffering,
+        });
+        c.$.ajax = (request) => requests.push(request);
+        c.stbIsPlaying = () => true;
+        c.infoBarHide = () => hidden++;
+        c.listDetailElement = { innerHTML: "old details" };
+        c.detailListActionFn = () => details++;
+        vm.runInContext(code, c);
+        for (const [canonical, legacy] of pairs) {
+            assert.equal(typeof c[canonical], "function");
+            assert.equal(
+                c[canonical],
+                c[legacy],
+                canonical + " retains its classic identity"
+            );
+        }
+        c.sendClientFeedback("first");
+        c.FeedbPOST("second");
+        c.queueFeedbackPost({ message: "third" }, "/custom-report");
+        assert.equal(timers.length, 1);
+        assert.equal(timers[0].delay, 5000);
+        timers[0].callback();
+        assert.equal(requests.length, 1);
+        assert.equal(requests[0].url, "https://player.example/api/feedback");
+        assert.deepEqual(
+            JSON.parse(requests[0].data).map((entry) => [
+                entry.msg,
+                entry.path,
+            ]),
+            [
+                ["first", "/report_feedb"],
+                ["second", "/report_feedb"],
+                [{ message: "third" }, "/custom-report"],
+            ]
+        );
+        c.hideInfoBarWhenReady();
+        assert.equal(hidden, 0);
+        assert.equal(timers[1].callback, c.infoBarHideT);
+        assert.equal(timers[1].delay, 5000);
+        buffering = false;
+        timers[1].callback();
+        assert.equal(hidden, 1);
+        c.scheduleListDetailUpdate();
+        c.scheduleListDetailUpdate();
+        assert.equal(c.listDetailElement.innerHTML, "");
+        assert.equal(timers[2].active, false);
+        assert.equal(timers[3].delay, 200);
+        timers[3].callback();
+        assert.equal(details, 1);
+        const first = () => {};
+        const second = () => {};
+        c.optionsArr.push({ action: first }, { action: second });
+        c.listArray.push("first", "second");
+        assert.equal(c.findOptionIndex(second), 1);
+        c.prependMenuButtonHint(c.optionsArr, second, "9");
+        assert.equal(c.listArray[0], "first");
+        assert.equal(c.listArray[1], '<div class="btn">9</div> second');
+        c.delOption(first);
+        assert.equal(c.findOptionIndex(first), -1);
+        assert.equal(c.findOptionIndex(second), 0);
+        for (const [canonical, legacy] of pairs) {
+            const original = c[legacy];
+            const replacement = function providerReplacement() {};
+            c[canonical] = replacement;
+            assert.equal(c[legacy], replacement);
+            c[legacy] = original;
+            assert.equal(c[canonical], original);
+        }
+    }
+}
+
+function testProviderLocalNames() {
+    let settingsLists = 0;
+    let archiveTemplates = 0;
+    function walk(directory) {
+        for (const entry of fs.readdirSync(directory, {
+            withFileTypes: true,
+        })) {
+            const file = path.join(directory, entry.name);
+            if (entry.isDirectory()) {
+                walk(file);
+                continue;
+            }
+            if (!file.endsWith(".js")) continue;
+            const text = fs.readFileSync(file, "utf8");
+            const source = ts.createSourceFile(
+                file,
+                text,
+                ts.ScriptTarget.Latest,
+                true
+            );
+            function visit(node) {
+                if (ts.isFunctionDeclaration(node) && node.name) {
+                    assert(
+                        !["bl", "insPar"].includes(node.name.text),
+                        "Provider-local helpers use descriptive names: " + file
+                    );
+                    if (node.name.text === "rebuildSettingsList") {
+                        settingsLists++;
+                        const c = vm.createContext({
+                            _: (value) => value,
+                            listArray: [],
+                        });
+                        const render = vm.runInContext(
+                            "(function(){var srv='',usr='viewer',pwd='secret',m3u='https://playlist.example/list.m3u';" +
+                                node.getText(source) +
+                                "; return function(server){srv=server;rebuildSettingsList();return listArray;};})()",
+                            c
+                        );
+                        assert.equal(
+                            render("https://one.example")[0],
+                            "Server: https://one.example"
+                        );
+                        const rows = render("https://two.example");
+                        assert.equal(rows[0], "Server: https://two.example");
+                        assert.equal(rows[2], "Password: ********");
+                        assert.equal(
+                            c.rebuildSettingsList,
+                            undefined,
+                            "Settings helper remains private to its provider editor"
+                        );
+                    } else if (node.name.text === "expandArchiveTemplate") {
+                        archiveTemplates++;
+                        const c = vm.createContext({ time: 100, time_to: 160 });
+                        vm.runInContext(node.getText(source), c);
+                        assert.equal(
+                            c.expandArchiveTemplate(
+                                "s=${start}&e=${end}&d=${duration}"
+                            ),
+                            "s=100&e=160&d=60"
+                        );
+                    }
+                }
+                ts.forEachChild(node, visit);
+            }
+            visit(source);
+        }
+    }
+    walk(path.join(repository, "prov"));
+    assert.equal(settingsLists, 34);
+    assert.equal(archiveTemplates, 1);
+}
+
+function testFooterNaming() {
+    const dom = new JSDOM(
+        fs.readFileSync(path.join(repository, "index.html"), "utf8"),
+        {
+            runScripts: "outside-only",
+        }
+    );
+    const style = dom.window.document.createElement("style");
+    style.textContent = fs.readFileSync(
+        path.join(repository, "stbPlayer/1280.css"),
+        "utf8"
+    );
+    dom.window.document.head.appendChild(style);
+    Object.assign(dom.window, {
+        channels: { 1: { rec: 1 } },
+        epg_ch_id: 1,
+        epgListMode: 0,
+        keys: { BLUE: 2, GREEN: 3, N2: 50, RED: 1, YELLOW: 4 },
+        renderButtonHint: () => "",
+    });
+    try {
+        vm.runInContext(
+            compile(
+                sourceDefinitions("src/channels/index.ts", ["renderEpgFooter"])
+            ).replace(/^export /gm, ""),
+            dom.getInternalVMContext()
+        );
+        dom.window.renderEpgFooter();
+        const footer = dom.window.document.getElementById("listPodval");
+        assert(footer, "The provider-visible footer DOM ID stays compatible");
+        const archive = footer.querySelector(".epg-footer-archive");
+        assert(archive, "The actual EPG renderer uses the English CSS class");
+        assert.equal(archive.textContent, "Archive: ENTER on past programs");
+        const computed = dom.window.getComputedStyle(archive);
+        assert.equal(computed.marginLeft, "12px");
+        assert.equal(computed.fontSize, "12px");
+        assert.equal(computed.color, "rgb(0, 255, 0)");
+    } finally {
+        dom.window.close();
+    }
+}
+
 async function run() {
+    await testRenamedHelpers();
+    testProviderLocalNames();
+    testFooterNaming();
     const optimized = await optimizeClassic(linked);
     for (const code of [linked, optimized.code]) {
         acorn.parse(code, { ecmaVersion: 5 });
@@ -221,6 +497,13 @@ async function run() {
             Array.from(sourceContext.legacySettingsFields, (pair) => pair[1])
         )
     );
+    for (const name of [
+        "nofunLock",
+        "__ottPodvalClickBound",
+        "detFlag",
+        "listFlag",
+    ])
+        oldNames.add(name);
     const stale = [];
     function auditSource(directory) {
         for (const entry of fs.readdirSync(directory, {
@@ -259,7 +542,7 @@ async function run() {
         "Legacy identifiers belong only at the explicit compatibility boundary; stored strings and DOM IDs remain allowed"
     );
     console.log(
-        "PASS English naming: source/classic identities, live provider declarations and assignments, lexical scope, stable action IDs, legacy settings and ES5 optimizer"
+        "PASS English naming: actual helper behavior and live classic aliases, provider-local closures, footer CSS/DOM contract, stable action IDs/settings and ES5 optimizer"
     );
 }
 run()

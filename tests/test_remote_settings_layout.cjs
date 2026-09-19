@@ -76,6 +76,9 @@ w.eval(
     ])
 );
 w.eval(
+    extract("src/plugins/command-server.ts", ["normalizeCommandServerAddress"])
+);
+w.eval(
     extract(
         "src/index.ts",
         ["pullSettingsFromWindow", "editSettingsText"],
@@ -238,7 +241,7 @@ assert.equal(w.settings.commandServerAddress, "192.168.1.20:8081");
 assert.equal(
     serverChanges.at(-1).enabled,
     false,
-    "editing an address disconnects before any new endpoint can run"
+    "an address without an access code does not connect"
 );
 w.aboutKeyHandler(52);
 assert.equal(editor().type, "password", "access code editor must be masked");
@@ -248,8 +251,11 @@ assert.equal(w.settings.commandServerToken, serverSecret);
 assert.ok(
     !w.document.getElementById("listAbout").textContent.includes(serverSecret)
 );
-w.document.getElementById("commandServerConnect").click();
-assert.equal(serverChanges.at(-1).enabled, true);
+assert.equal(
+    serverChanges.at(-1).enabled,
+    true,
+    "saving the second required field connects without an extra action"
+);
 assert.equal(
     w.document.getElementById("commandServerStatus").textContent,
     "Connecting..."
@@ -315,9 +321,9 @@ remoteKey(w.keys.ENTER);
 assert.equal(
     serverChanges.length,
     previousChanges + 1,
-    "OK performs one connect action"
+    "OK performs one connection toggle"
 );
-assert.equal(serverChanges.at(-1).enabled, true);
+assert.equal(serverChanges.at(-1).enabled, false);
 assert.equal(w.document.activeElement.id, "commandServerConnect");
 const keyboardContent = w.document.getElementById("remoteSettingsContent");
 Object.defineProperty(keyboardContent, "clientHeight", { value: 200 });

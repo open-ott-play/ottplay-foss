@@ -10,7 +10,7 @@
  * `startPlayer()` after `stbPlayer.js` + device `stb.js`.
  */
 
-import { client_feedb } from "../utils/helpers";
+import { sendClientFeedback } from "../utils/helpers";
 
 // Global error handler (legacy index.html:108-122)
 (function () {
@@ -53,7 +53,7 @@ import { client_feedb } from "../utils/helpers";
         }
         var errMsg = etext.join("\n");
         console.error("[window.onerror]", errMsg);
-        client_feedb("window_onerror::" + errMsg.replace(/\n/g, "__"));
+        sendClientFeedback("window_onerror::" + errMsg.replace(/\n/g, "__"));
         return true;
     };
 })();
