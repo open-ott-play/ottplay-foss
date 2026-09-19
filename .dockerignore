@@ -1,4 +1,10 @@
 node_modules/
+target/
+**/target/
+release-assets/
+container-parts/
+.container-platforms/
+*.oci.tar
 build/
 dist/
 dist-mobile/

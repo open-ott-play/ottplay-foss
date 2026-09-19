@@ -1,7 +1,9 @@
 # Build the TS bundle (dist/stbPlayer.js)
-FROM node:26-alpine@sha256:ef24c5053d50fdc3e4e56eb4e7ddb7861874ab0fdc797046ba897581deb8e868 AS build
+FROM --platform=$BUILDPLATFORM node:26-alpine@sha256:ef24c5053d50fdc3e4e56eb4e7ddb7861874ab0fdc797046ba897581deb8e868 AS build
 WORKDIR /app
-COPY package.json package-lock.json tsconfig.json vite.config.ts ./
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY tsconfig.json vite.config.ts ./
 COPY src ./src
 # Keep the build helpers together so new transitive dependencies are available.
 # The final image receives only the validated web root, not these scripts.
@@ -15,7 +17,18 @@ COPY stb ./stb
 COPY stbPlayer ./stbPlayer
 COPY prov ./prov
 COPY src-tauri/pip ./src-tauri/pip
-RUN npm ci --ignore-scripts && npm run typecheck && npm run build:server
+RUN npm run typecheck && npm run build:server
+
+# Resolve the server workspace before the target compilation cache boundary.
+# Desktop release version changes must not invalidate unchanged server inputs.
+FROM --platform=$BUILDPLATFORM rust:1.98-alpine@sha256:1716b3aa042d735f4566d14dc54e8037de9d69556e2d5dd58131d93a613d173d AS server-inputs
+RUN apk add --no-cache python3
+WORKDIR /app
+COPY Cargo.toml Cargo.lock ./
+COPY vendor ./vendor
+COPY src-rs ./src-rs
+COPY scripts/prepare-container-workspace.py ./scripts/prepare-container-workspace.py
+RUN python3 scripts/prepare-container-workspace.py --workspace /app --output /prepared
 
 # Build Rust server against musl so the published image does not need
 # GLIBC_2.38+ (Hub :latest built on a newer glibc toolchain failed on
@@ -23,13 +36,10 @@ RUN npm ci --ignore-scripts && npm run typecheck && npm run build:server
 FROM rust:1.98-alpine@sha256:1716b3aa042d735f4566d14dc54e8037de9d69556e2d5dd58131d93a613d173d AS rust-build
 RUN apk add --no-cache musl-dev build-base
 WORKDIR /app
-COPY Cargo.toml Cargo.lock ./
+COPY --from=server-inputs /prepared/Cargo.toml /prepared/Cargo.lock ./
 COPY vendor ./vendor
 COPY src-rs ./src-rs
-# Workspace lists src-tauri (desktop shell). Server image only builds
-# ottplay-server - drop that member so cargo does not need /app/src-tauri.
-RUN sed -i 's/, "src-tauri"//' Cargo.toml \
- && cargo build --release --bin ottplay-server
+RUN cargo build --locked --release --bin ottplay-server
 
 # Musl runtime (no glibc). ca-certificates for outbound HTTPS (EPG / M3U).
 FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
