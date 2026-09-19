@@ -57,6 +57,18 @@ try {
     const sources = assets.map((name) =>
         requirePath("dist/" + name, name !== "favicon.ico")
     );
+    // Require built installation assets; a stale dist must not silently package
+    // an installable entry point without its metadata, icon or window layout.
+    for (const file of [
+        "manifest.webmanifest",
+        "index.webmanifest",
+        "pc.webmanifest",
+        "pc-plain.webmanifest",
+        "icon-512.png",
+        "window-controls.js",
+        "window-controls.css",
+    ])
+        requirePath("dist/js/browser-app/" + file, false);
     const pkg = JSON.parse(
         fs.readFileSync(path.join(root, "package.json"), "utf8")
     );

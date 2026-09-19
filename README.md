@@ -25,6 +25,13 @@ and HLS test channels are hosted on here.now and shared by the web player, Tauri
 Capacitor and OTT Server. Video files are not included in application bundles.
 Existing provider settings are preserved when switching.
 
+Installed desktop browser windows support **Window Controls Overlay**: Chrome can
+hide the separate title bar while retaining its window buttons and app menu over
+the player. Open the installed app and choose **Hide title bar** when Chrome
+offers it; **Show title bar** restores the usual frame. Ordinary tabs and TV/native
+shell layouts keep their existing behavior. See [browser window controls](docs/browser-window-controls.md)
+for supported installation URLs, updating an existing shortcut, and verification.
+
 The synthetic test pattern can be regenerated with `scripts/generate-demo-media.sh`
 (requires FFmpeg); generated media stays in the ignored `.local-artifacts` directory.
 

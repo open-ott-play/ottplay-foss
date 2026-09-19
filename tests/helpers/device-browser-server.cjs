@@ -31,6 +31,7 @@ const types = {
     ".png": "image/png",
     ".svg": "image/svg+xml",
     ".ttf": "font/ttf",
+    ".webmanifest": "application/manifest+json",
     ".woff": "font/woff",
     ".woff2": "font/woff2",
 };
