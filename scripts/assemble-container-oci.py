@@ -172,6 +172,10 @@ class NativeArchive:
             reference = descriptor.get("annotations", {}).get("vnd.docker.reference.digest")
             subject = manifest.get("subject", {}).get("digest")
             require((reference or subject) == self.image["digest"], "Attestation is not bound to its native image")
+            # Unnamed BuildKit OCI exports omit statement subjects. The verified
+            # OCI artifact subject still binds their statements to this image.
+            # https://github.com/moby/buildkit/blob/9a16a73a42d124083021137bf62e38532c8ba46d/exporter/containerimage/writer.go#L326-L340
+            artifact_bound = manifest.get("artifactType") == ATTESTATION and subject == self.image["digest"]
             for layer in manifest["layers"]:
                 statement = self.blob(layer)
                 require(
@@ -181,7 +185,7 @@ class NativeArchive:
                 subjects = statement.get("subject")
                 require(
                     isinstance(subjects, list)
-                    and subjects
+                    and (subjects or artifact_bound)
                     and all(
                         isinstance(item, dict) and item.get("digest", {}).get("sha256") == self.image["digest"][7:]
                         for item in subjects

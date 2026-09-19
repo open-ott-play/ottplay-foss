@@ -51,6 +51,8 @@ def native_entries(
     subject=None,
     later_layers=(),
     user="65532",
+    empty_subjects=False,
+    artifact_subject=True,
 ):
     entries = {"oci-layout": assembly.canonical({"imageLayoutVersion": "1.0.0"})}
 
@@ -99,7 +101,9 @@ def native_entries(
         statement = {
             "_type": "https://in-toto.io/Statement/v1",
             "predicateType": predicate,
-            "subject": [{"name": "native", "digest": {"sha256": subject or image["digest"][7:]}}],
+            "subject": []
+            if empty_subjects
+            else [{"name": "native", "digest": {"sha256": subject or image["digest"][7:]}}],
             "predicate": {"fixture": predicate},
         }
         attestations.append(blob(statement, "application/vnd.in-toto+json"))
@@ -110,9 +114,9 @@ def native_entries(
         attest_config = blob({"architecture": "unknown", "os": "unknown"}, "application/vnd.oci.image.config.v1+json")
     attestation = {"schemaVersion": 2, "mediaType": assembly.MANIFEST, "config": attest_config, "layers": attestations}
     if artifact:
-        attestation.update(
-            artifactType=assembly.ATTESTATION, subject={key: image[key] for key in ("mediaType", "digest", "size")}
-        )
+        attestation["artifactType"] = assembly.ATTESTATION
+        if artifact_subject:
+            attestation["subject"] = {key: image[key] for key in ("mediaType", "digest", "size")}
     attestation_descriptor = blob(attestation, assembly.MANIFEST)
     attestation_descriptor.update(
         platform={"os": "unknown", "architecture": "unknown"},
@@ -298,6 +302,27 @@ class AssemblyTests(unittest.TestCase):
         entries, _ = native_entries("arm64", later_layers=({"app/dist": None, "app/js": None},))
         write_archive(self.paths["linux/arm64"], entries)
         self.assertEqual(self.assemble()["web_files"], 3)
+
+    def test_unnamed_oci_artifact_statements_use_verified_manifest_subject(self):
+        for platform, path in self.paths.items():
+            entries, _ = native_entries(platform.split("/")[1], artifact=True, empty_subjects=True)
+            write_archive(path, entries)
+            checked = assembly.inspect_native(path, platform, VERSION, REVISION)
+            self.assertEqual(checked["predicate_types"], sorted([SPDX, SLSA]))
+        self.assertEqual(len(self.assemble()["platforms"]), 2)
+
+    def test_empty_or_wrong_subjects_without_valid_oci_artifact_binding_fail(self):
+        for arguments in [
+            {"empty_subjects": True},
+            {"artifact": True, "empty_subjects": True, "artifact_subject": False},
+            {"artifact": True, "subject": "0" * 64},
+        ]:
+            with self.subTest(arguments=arguments):
+                entries, _ = native_entries("arm64", **arguments)
+                write_archive(self.paths["linux/arm64"], entries)
+                with self.assertRaises((ValueError, assembly.version_plan.VersionError)):
+                    self.assemble()
+                self.assertFalse(self.output.exists())
 
 
 if __name__ == "__main__":

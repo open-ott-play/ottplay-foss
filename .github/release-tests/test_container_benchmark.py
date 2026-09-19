@@ -202,6 +202,48 @@ class SourceTests(TemporaryTest):
                 benchmark.benchmark(self.directory, "linux/arm64", self.directory)
             command.assert_not_called()
 
+    def test_inspection_failure_preserves_completed_timings_phase_and_safe_reason(self):
+        root = self.fixture()
+        output = self.directory / "output"
+        real_command = benchmark.command
+
+        def fake_command(args, **kwargs):
+            if args[:3] == ["git", "rev-parse", "HEAD"]:
+                return result(SHA)
+            if args[:3] == ["docker", "buildx", "version"]:
+                return result("fixture")
+            return real_command(args, **kwargs)
+
+        def fake_build(context, directory, name, platform, plan, cache, warm, archive):
+            archive.write_bytes(b"retained failed-inspection archive")
+            return {"case": name, "rustCached": warm}
+
+        with (
+            patch.object(benchmark.shutil, "which", return_value="tool"),
+            patch.object(benchmark, "require_native"),
+            patch.object(benchmark, "command", side_effect=fake_command),
+            patch.object(benchmark, "build_case", side_effect=fake_build),
+            patch.object(
+                benchmark,
+                "inspect_archive",
+                side_effect=ValueError(
+                    "Attestation statement has a different subject https://signed.invalid/?token=private-value"
+                ),
+            ),
+            patch.object(benchmark, "smoke_archive") as smoke,
+            self.assertRaisesRegex(ValueError, "different subject"),
+        ):
+            benchmark.benchmark(root, "linux/arm64", output)
+        smoke.assert_not_called()
+        report = json.loads((output / "report.json").read_text())
+        self.assertFalse(report["passed"])
+        self.assertEqual(report["phase"], "inspect-oci")
+        self.assertEqual(report["error"]["type"], "ValueError")
+        self.assertEqual(len(report["cases"]), 3)
+        self.assertTrue((output / "native.oci.tar").exists())
+        self.assertIn("different subject", (output / "failure.log").read_text())
+        self.assertNotIn("private-value", (output / "failure.log").read_text())
+
 
 class BuildTests(TemporaryTest):
     def test_each_build_has_own_builder_with_explicit_export_or_import_and_no_publish(self):
@@ -245,6 +287,8 @@ class BuildTests(TemporaryTest):
         self.assertIn(str(cache), builds[1][builds[1].index("--cache-from") + 1])
         for args in builds:
             self.assertNotIn("--push", args)
+            self.assertNotIn("--load", args)
+            self.assertEqual(args[args.index("--tag") + 1], "ottplay-container-benchmark:1.2.3-beta.1")
             self.assertIn("--sbom=true", args)
             self.assertIn("--provenance=mode=max", args)
             self.assertIn("oci-mediatypes=true,compression=gzip", args[args.index("--output") + 1])

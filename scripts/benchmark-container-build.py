@@ -191,6 +191,8 @@ def build_case(context, output, name, platform, plan, cache, warm, archive):
             "--progress=rawjson",
             "--sbom=true",
             "--provenance=mode=max",
+            "--tag",
+            "ottplay-container-benchmark:" + plan["version"],
             "--label",
             "org.opencontainers.image.version=" + plan["version"],
             "--label",
@@ -346,7 +348,14 @@ def benchmark(root, platform, output):
     require_native(platform)
     command(["docker", "buildx", "version"])
     output.mkdir(parents=True)
-    report = {"diagnosticOnly": True, "registryWrites": False, "platform": platform, "cases": [], "passed": False}
+    report = {
+        "diagnosticOnly": True,
+        "registryWrites": False,
+        "platform": platform,
+        "cases": [],
+        "passed": False,
+        "phase": "prepare",
+    }
     try:
         revision = command(["git", "rev-parse", "HEAD"], cwd=root).stdout.strip()
         policy = json.loads((root / ".release-policy.json").read_bytes())
@@ -370,20 +379,31 @@ def benchmark(root, platform, output):
             cache = output / "cache"
             intermediate = Path(temporary) / "intermediate.oci.tar"
             for name, warm in (("cold-beta1", False), ("warm-same-beta1", True)):
+                report["phase"] = name
                 report["cases"].append(build_case(context, output, name, platform, plans[0], cache, warm, intermediate))
                 intermediate.unlink()
             version_plan.sync_versions(context, policy, plans[1])
             with (context / "index.html").open("a") as html:
                 html.write(FRONTEND_MARKER)
             archive = output / "native.oci.tar"
+            report["phase"] = "warm-next-beta2-frontend"
             report["cases"].append(
                 build_case(context, output, "warm-next-beta2-frontend", platform, plans[1], cache, True, archive)
             )
+            report["phase"] = "inspect-oci"
             inspected = inspect_archive(archive, platform, plans[1]["version"], revision)
             report["archive"] = {"path": archive.name, **inspected}
+            report["phase"] = "smoke-oci"
             report["smoke"] = smoke_archive(archive, platform, inspected)
             report["passed"] = True
+            report["phase"] = "complete"
         return report
+    except (BenchmarkError, OSError, ValueError, subprocess.SubprocessError) as error:
+        report["error"] = {"type": type(error).__name__, "message": safe_diagnostic(str(error))}
+        (output / "failure.log").write_text(
+            report["phase"] + ": " + report["error"]["type"] + ": " + report["error"]["message"] + "\n"
+        )
+        raise
     finally:
         report["finishedAtUtc"] = datetime.now(timezone.utc).isoformat()
         write_json(output / "report.json", report)
