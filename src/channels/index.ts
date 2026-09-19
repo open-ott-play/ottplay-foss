@@ -585,21 +585,21 @@ export let epgListMode = 0,
 
 /**
  * Process the EPG request queue. Pops the next entry and fetches EPG data
- * via getEPGchanelCurCached, then recurses until the queue is empty.
- * Matches old stbPlayer.js doGetCurProg() behavior.
+ * through the shared cache, then continues until the queue is empty.
+ * Preserves the legacy EPG request queue behavior.
  */
 export function processCurrentProgramQueue(): void {
     if (currentProgramRequestQueue.length === 0) return;
     var entry = currentProgramRequestQueue.shift();
     var chId = entry!.ch_id;
-    // Always use getEPGchanelCached (same path as EPG menu). With epgCash=0,
-    // gold wires getEPGchanelCurCached → getEPGchanel; Mode B must share the
-    // Cached path so list/podval see programmes already loaded for the browser.
-    // (The sync helper getEPGchanelCurCached(id) ignores callbacks — never use it.)
+    // Always use getChannelEpgCached (same path as EPG menu). With epgCacheCapacity=0,
+    // gold wires getCachedChannelEpg → getChannelEpg; Mode B must share the
+    // Cached path so list/footer see programmes already loaded for the browser.
+    // (The sync helper getCachedChannelEpg(id) ignores callbacks — never use it.)
     getChannelEpgCached(chId, function (id: any, epgData: EPGEntry[] | null) {
         // Legacy: setCurProg(e, t, r.callback) — callback receives channel id.
         setCurProg(id, epgData, entry!.callback);
-        // Defer next queue item so a sync getEPGchanel(null) cannot nest forever
+        // Defer next queue item so a sync getChannelEpg(null) cannot nest forever
         // before setCurProg has a chance to set time_request.
         setTimeout(processCurrentProgramQueue, 0);
     });
@@ -1314,7 +1314,7 @@ export function ifParentalAccessChId(
  * Timezone hours for Mode B get_epg. NEVER use channel.rec — that is archive
  * depth (M3U rechours / catchup-days), not timezone. Pass 0 so Rust applies
  * time_shift_by_epg from match_channels; tvg-shift (ch.ts, seconds) is applied
- * client-side after fetch like Mode A m3u getEPGchanel.
+ * client-side after fetch like Mode A m3u getChannelEpg.
  */
 export function epgTimezoneHours(_ch: any): number {
     return 0;
@@ -1539,7 +1539,7 @@ export function getCachedChannelEpg(channelId: number): EPGEntry[] | null {
 }
 
 /**
- * Retrieve EPG data from the secondary EPG cash (`epgCashObj`).
+ * Retrieve EPG data from the secondary EPG cache (`epgCacheByChannel`).
  * This is a separate cache from `epg` (used for older fetched data).
  *
  * @param channelId - Channel ID.
@@ -1561,8 +1561,8 @@ export function getCurProgData(
     channelId: number,
     callback: (chId: number) => void
 ): boolean {
-    // Legacy stbPlayer.js getCurProgData — uses chanels[], nextpr advance, then queue.
-    // Do NOT sync-invoke updateChanelInfo from a cache hit: that re-enters this
+    // Legacy stbPlayer.js getCurProgData — uses channels[], nextpr advance, then queue.
+    // Do NOT sync-invoke updateChannelInfo from a cache hit: that re-enters this
     // function on the same stack when setCurProg cannot stick time_to / time_request.
     var ch = (window as any).channels
         ? (window as any).channels[channelId]
@@ -1575,14 +1575,14 @@ export function getCurProgData(
     if (ch.time_request && ch.time_request > now) {
         // Miss lock: re-evaluate cached programmes against wall clock so a
         // prior "no current" (wrong timezone / programme gap) does not keep
-        // list/podval blank for an hour while the EPG menu still has data.
+        // list/footer blank for an hour while the EPG menu still has data.
         var cachedLock = readEpgCache(channelId);
         if (cachedLock && cachedLock.length) {
-            var nofunLock =
+            var refreshWithoutCallback =
                 typeof (window as any).noop === "function"
                     ? (window as any).noop
                     : function () {};
-            setCurProg(channelId, cachedLock, nofunLock);
+            setCurProg(channelId, cachedLock, refreshWithoutCallback);
             if (ch.time_to && ch.time_to >= now) return true;
         }
         return false;
@@ -1599,7 +1599,7 @@ export function getCurProgData(
     if (ch.time_to && ch.time_to >= now) found = true;
     currentProgramRequestQueue.push({ callback: callback, ch_id: channelId });
     // Defer queue drain past showPage's innerHTML. Sync cache hits used to
-    // call updateChanelList before #pn* nodes existed, so only the playing
+    // call updateChannelListRow before #pn* nodes existed, so only the playing
     // channel (time_to already set → baked into row HTML) showed EPG.
     if (currentProgramRequestQueue.length < 2)
         setTimeout(processCurrentProgramQueue, 0);
@@ -1608,7 +1608,7 @@ export function getCurProgData(
 
 /**
  * Update a channel's now/next display from a full schedule or a nextpr slice.
- * Full-schedule caching belongs to getEPGchanelCached, never this UI helper.
+ * Full-schedule caching belongs to getChannelEpgCached, never this UI helper.
  *
  * @param channelId - Channel ID to associate the data with.
  * @param epgData   - Programs used to update the current channel display.
@@ -1621,9 +1621,9 @@ export function setCurProg(
     epgData: EPGEntry[] | null,
     callback?: ((chId: number) => void) | (() => void)
 ): void {
-    // Legacy always updates chanels[id] even when epgData is null/empty, and sets
-    // time_request=now+3600 on miss so updateChanelInfo → getCurProgData cannot
-    // re-queue forever (sync getEPGchanel(null) path).
+    // Legacy always updates channels[id] even when epgData is null/empty, and sets
+    // time_request=now+3600 on miss so updateChannelInfo → getCurProgData cannot
+    // re-queue forever (sync getChannelEpg(null) path).
     var safeChannelId = Number(channelId);
     if (!Number.isFinite(safeChannelId) || !Number.isInteger(safeChannelId))
         return;
@@ -1738,7 +1738,7 @@ export function onChannelsLoaded(): void {
             }
             // Virtual categories are re-added below. saveChannelsCats persists
             // them, so reloading without stripping yields duplicate "All"
-            // (and language flips All/Все/Усе can stack).
+            // (localized names for the All category can stack).
             var allLabel = window._("All");
             var favLabel = window._("Favorites");
             var virtualNames: Record<string, boolean> = {};
@@ -1770,8 +1770,8 @@ export function onChannelsLoaded(): void {
                 });
             }
             // Merge playlist group-titles missing from cached cats (stale
-            // storage / Mode A embed vs companion) so categories like
-            // беларускія / музыка match the live playlist OTT uses.
+            // storage / Mode A embed vs companion) so localized category
+            // names match the live playlist.
             if (cList.length) {
                 cList.forEach(function (chId: number) {
                     var ch = window.channels[chId];
@@ -1972,10 +1972,10 @@ export function itemEPG(item: EPGEntry, index: number): string {
  * @param callback  - Called with `channelId` once EPG data is ready (or fails).
  *
  * Side effects:
- * - Mutates `epglisted` flag (prevents concurrent EPG fetches).
+ * - Mutates `epgListMode` flag (prevents concurrent EPG fetches).
  * - Sets `epg_ch_id`, `curEpgData`.
  * - Shows/hides #listPopUp spinner.
- * - Calls `window.getEPGchanelCached` (provider API) and `window.setCurProg` on success.
+ * - Calls `window.getChannelEpgCached` (provider API) and `window.setCurProg` on success.
  */
 export function loadEpgListData(
     mode: number,
@@ -1985,10 +1985,8 @@ export function loadEpgListData(
     callback: (chId: any) => void
 ): void {
     var w = window as any;
-    // Legacy stbPlayer.js:6534-6556
-    //   epgShow_miniproc(mode, catIdx, chIdx, epgreturn, cb)
-    //   a = cats[catsArray[listCatIndex]][listChannel]
-    //   getEPGchanelCached(a, ...)  // internal channel id, NOT ch.ch_id
+    // Preserve the legacy category-selection lookup: the cache receives the
+    // internal channel ID from the selected category, not its provider ch_id.
     epgListMode = mode;
     w.epgListMode = mode;
     epgreturn = epgReturn;
@@ -2019,8 +2017,8 @@ export function loadEpgListData(
             .show();
     }
     w.getChannelEpgCached(a, function (id: any, data: EPGEntry[]) {
-        // Legacy does not clear epglisted here — it is the list mode
-        // (by-time / alpha / records) used by epgPodval + RED / setEpgTimer.
+        // Legacy does not clear epgListMode here — it is the list mode
+        // (by-time / alpha / records) used by renderEpgFooter + RED / setEpgTimer.
         if (!data) {
             epgListMode = 0;
             curEpgData = null;
@@ -2128,7 +2126,7 @@ export function epgList(catIdx: number, chIdx: number, force: boolean): void {
  *   after checking parental access.
  *
  * Side effects:
- * - Calls `window.infoProgramm` for future/non-archive entries.
+ * - Calls `window.showProgramInfo` for future/non-archive entries.
  * - Calls `ifParentalAccessChId` for locked channels.
  * - Calls `window.closeList`, `setCurrent`, `playArchive`.
  * - Sets `window.epgArray`.
@@ -2163,7 +2161,7 @@ export function selectEpg(): void {
 }
 
 /**
- * Render the EPG list footer (podval) with button-hint icons for
+ * Render the EPG list footer with button-hint icons for
  * Return, Enter, Red (Description), Green (Set timer), Yellow (TMDb).
  *
  * Side effects: Injects innerHTML into #listPodval.
@@ -2219,7 +2217,7 @@ export function renderEpgFooter(): void {
         w.renderButtonHint(w.keys.GREEN, "", "Timer", w.strTools, "8") +
         "</span>" +
         (ch.rec
-            ? '<span class="epg-podval-archive">' +
+            ? '<span class="epg-footer-archive">' +
               (w._
                   ? w._("Archive: ENTER on past programs")
                   : "Archive: ENTER on past programs") +
@@ -2235,7 +2233,7 @@ export function renderEpgFooter(): void {
  * @param keyCode - The pressed key code.
  * @returns `true` if the key was handled, `false` to bubble up.
  *
- * Side effects: Delegates to `selectEpg`, `setEpgTimer`, `infoProgramm`,
+ * Side effects: Delegates to `selectEpg`, `setEpgTimer`, `showProgramInfo`,
  * `w.TMDb.search`, or `w.closeList`.
  */
 export function epgKeyHandler(keyCode: number): boolean {
@@ -2601,7 +2599,7 @@ export function loadEpgTimers(): void {
  */
 export function setEpgTimer(_channelId?: any, _time?: number): void {
     var w = window as any;
-    // Legacy stbPlayer.js:3735-3760 — uses list selection + epglisted mode
+    // Legacy stbPlayer.js:3735-3760 — uses list selection + epgListMode mode
     var item = w.listArray[w.selIndex];
     if (!w.epgListMode || !item || item.time < Date.now() / 1000) return;
 
@@ -2650,13 +2648,13 @@ export function setEpgTimer(_channelId?: any, _time?: number): void {
 
 /**
  * Alphabetical EPG list (mode=2). vs gold stbPlayer.js:6602.
- * Not an alias — delegates to epgShow_miniproc(2, ...) then sorts by name.
+ * Not an alias — delegates to loadEpgListData(2, ...) then sorts by name.
  *
  * @param catIdx - Category index.
  * @param chIdx  - Channel index within the category.
  * @param force  - If true, forces EPG refresh.
  *
- * Side effects: Same as epgShow_miniproc + sets listArray/listDataArray/listKeyHandler.
+ * Side effects: Same as loadEpgListData + sets listArray/listDataArray/listKeyHandler.
  */
 export function epgListAlpha(
     catIdx: number | EPGEntry[],
@@ -3151,7 +3149,7 @@ export function playArchive(e: number): void {
     // stbPlay clears it too, but only on the happy path; if stbPlay throws
     // before ticker init, this would leak.
     clearPlayTimeInterval();
-    // Set archive playType before updateArchiveInfo so nested updateChanelInfo
+    // Set archive playType before updateArchiveInfo so nested updateChannelInfo
     // sees archive mode (not live virtual timeshift) when EPG is missing.
     playTime = 0;
     playType = Math.floor(e);
@@ -3219,8 +3217,8 @@ export function playArchive(e: number): void {
  * - Populates DOM: #programm_name, #programm_name2, #programm_duration,
  *   #begin_time, #end_time, #nprogramm_name, #nbegin_time, #nend_time,
  *   #programm_descr, #progress, #progress_r, #progress_div background.
- * - Calls `window.updateChanelInfo` to refresh the OSD.
- * - Calls `getEPGchanelCached` if seek crossed the EPG program window.
+ * - Calls `window.updateChannelInfo` to refresh the OSD.
+ * - Calls `getChannelEpgCached` if seek crossed the EPG program window.
  */
 export function updateArchiveInfo(position: number): void {
     archivePos = position;
@@ -3303,7 +3301,7 @@ export function updateArchiveInfo(position: number): void {
     else if (endTimeEl) endTimeEl.textContent = "";
 
     // Duration / current time
-    // Inline time2str — not re-exported from utils/helpers
+    // Inline formatProgramDateTime — not re-exported from utils/helpers
     var progStartStr = (function () {
         var d = new Date((prog ? prog.time : position) * 1000);
         var days = (
@@ -4053,12 +4051,12 @@ export function bucketsKeyHandler(keyCode: number): boolean {
  * the inline editor with caption "String for search" seeded from
  * stbGetItem("chSearch") (empty default), and on submit persists the new
  * query, filters the current category by channel_name, installs a fresh
- * listKeyHandler for the search view, updates listCaption/listPodval and
+ * listKeyHandler for the search view, updates listCaption/listFooter and
  * re-renders via showPage().
  *
  * Side effects:
  *  - Writes "chSearch" to stb storage on submit.
- *  - Mutates global listArray, listKeyHandler, listCaption, listPodval.
+ *  - Mutates global listArray, listKeyHandler, listCaption, listFooter.
  *  - Hides #listPopUp.
  *
  * The installed listKeyHandler mirrors the original: YELLOW/TOOLS/N0
@@ -4069,7 +4067,7 @@ export function bucketsKeyHandler(keyCode: number): boolean {
  */
 /**
  * Search EPG programmes by title across the in-memory `epg` cache
- * (per-channel programmes already fetched by getEPGchanelCached).
+ * (per-channel programmes already fetched by getChannelEpgCached).
  * No network fetch — only the loaded window is searched.
  *
  * Flow:
@@ -4945,7 +4943,7 @@ export function saveChannelPreference(
  * @returns `true` if handled, `false` to bubble up.
  *
  * Side effects: Delegates to playChannel, stbPlayPip, epgList, bucketsList,
- * showActionsDialog, infoProgramm, moveChannel, deleteChannel, etc.
+ * showActionsDialog, showProgramInfo, moveChannel, deleteChannel, etc.
  */
 export function channelsKeyHandler(keyCode: number): boolean {
     var keys = window.keys;
@@ -5423,9 +5421,9 @@ export function parentControlSetup(): void {
             if (typeof window.saveIfChanged === "function")
                 window.saveIfChanged(idx++, "sPSoptions", true);
             if (
-                typeof window.optIndexOf === "function" &&
+                typeof window.findOptionIndex === "function" &&
                 typeof window.showProviderSelection !== "undefined" &&
-                window.optIndexOf(window.showProviderSelection) !== -1 &&
+                window.findOptionIndex(window.showProviderSelection) !== -1 &&
                 typeof window.saveIfChanged === "function"
             )
                 window.saveIfChanged(idx++, "sPSprovs", true);
@@ -5517,9 +5515,9 @@ export function parentControlSetup(): void {
         },
     ];
     if (
-        typeof window.optIndexOf === "function" &&
+        typeof window.findOptionIndex === "function" &&
         typeof window.showProviderSelection !== "undefined" &&
-        window.optIndexOf(window.showProviderSelection) === -1
+        window.findOptionIndex(window.showProviderSelection) === -1
     ) {
         window.listArray.splice(3, 1);
     }

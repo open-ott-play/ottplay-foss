@@ -52,7 +52,7 @@ function getChannelUrl(ch_id) {
 }
 
 function getArchiveUrl(ch_id, time, time_to) {
-    function insPar(u) {
+    function expandArchiveTemplate(u) {
         return u
             .replace(/\$\{start\}/g, Math.floor(time))
             .replace(/\$\{end\}/g, Math.floor(time_to))
@@ -111,9 +111,11 @@ function getArchiveUrl(ch_id, time, time_to) {
     if (chanels[ch_id].caso)
         switch (chanels[ch_id].ca) {
             case "append":
-                return insPar(chanels[ch_id].url + chanels[ch_id].caso);
+                return expandArchiveTemplate(
+                    chanels[ch_id].url + chanels[ch_id].caso
+                );
             default:
-                return insPar(chanels[ch_id].caso);
+                return expandArchiveTemplate(chanels[ch_id].caso);
         }
     var c = chanels[ch_id].url.indexOf("?") == -1 ? "?" : "&";
     return (

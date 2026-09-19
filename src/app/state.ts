@@ -56,7 +56,7 @@ export let pipCatIndex = 0;
 export let previewChan: any = null;
 export let previewTimer: any = null;
 
-// ─── Popup menu ("вкладка Menu") — CANONICAL DEFINITION ────────────────────
+// ─── Popup menu — CANONICAL DEFINITION ────────────────────
 //
 // CONCAT POLICY: this module must stay OFF vite MODULES. Runtime popup
 // arrays are allocated in src/index.ts (classic concat). This file is the
@@ -70,8 +70,8 @@ export let previewTimer: any = null;
 // MUTATION CONTRACT — these must remain the SAME array objects for the
 // whole lifetime of the player. `src/provider/index.ts` and all ~47
 // `prov/*/prov.js` plugins mutate them in place with `.splice()`,
-// `.push()`, `.length = 0` and locate their insertion point with
-// `popupActions.indexOf(noProvParam)`. Never rebind with `=` — always
+// `.push()`, `.length = 0` and locate the provider-settings action through
+// its stable compatibility identity. Never rebind with `=` — always
 // mutate the existing array.
 
 /** Default popup labels. Index-aligned with POPUP_ACTION_NAMES / POPUP_DETAILS. */
@@ -90,8 +90,8 @@ export const POPUP_LABELS: string[] = [
     "Show EPG and archive for channel", // 11
     "Show list of channel archive records", // 12
     "Show Media Library", // 13
-    "", // 14 — noProvParam (provider insertion point)
-    "", // 15 — nofun (spacer)
+    "", // 14 — toggleProviderSettingsVisibility (provider insertion point)
+    "", // 15 — noop (spacer)
     "Settings", // 16
     "Restart player", // 17
     "Exit player", // 18

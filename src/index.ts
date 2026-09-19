@@ -29,6 +29,7 @@ import "./polyfills";
 import {
     createCommandServer,
     createCommandServerTransport,
+    normalizeCommandServerAddress,
 } from "./plugins/command-server";
 import { nativePromiseToJq } from "./plugins/jquery-bridge";
 import { createLocalHttpRemote } from "./plugins/local-http-remote";
@@ -172,7 +173,7 @@ import {
     stbSetItem,
     storage,
 } from "./storage";
-import { client_feedb, PostFeedback } from "./utils/helpers";
+import { queueFeedbackPost, sendClientFeedback } from "./utils/helpers";
 
 // Publish the canonical channel map; the compatibility module links legacy access.
 (window as any).channels = channels;
@@ -247,9 +248,9 @@ import {
     editKey2,
     exitPortal,
     formatSeekOffset,
+    hideInfoBarWhenReady,
     hsvToRgb,
     infoBarHide,
-    infoBarHideT,
     infoBox,
     infoList,
     initBackgroundIntervals,
@@ -327,7 +328,7 @@ import {
 // duneAddSettings — initially null, set by provider scripts
 declare var duneAddSettings: ((_index: number) => void) | null;
 
-// nofun — no-op callback used by firstRun list
+// noop — no-op callback used by firstRun list
 /** A no-op function used as a placeholder callback in list entries and popup menus. */
 function noop(): void {}
 
@@ -335,7 +336,7 @@ function noop(): void {}
 var PLAYER_VERSION = "__OTTP_VERSION__";
 
 // Backward compat globals (were defined in old monolithic bundle)
-// itemWith — channel list item width, updated by showPage()
+// channelListItemWidth — channel list item width, updated by showPage()
 (window as any).channelListItemWidth = 735;
 // client_can — capability detection for provider scripts
 (window as any).client_can_https = false;
@@ -504,7 +505,7 @@ function indexOfAction(arr: any[], action: any): number {
  * @param action - The action function to find.
  * @returns Index in optionsArr, or -1.
  */
-function optIndexOf(action: any): number {
+function findOptionIndex(action: any): number {
     return indexOfAction(optionsArr, action);
 }
 
@@ -514,8 +515,8 @@ function optIndexOf(action: any): number {
  * @param action - The action to remove. No-op if not found.
  * Side effects: Mutates optionsArr.
  */
-function delOption(action: any): void {
-    var idx = optIndexOf(action);
+function removeOption(action: any): void {
+    var idx = findOptionIndex(action);
     if (idx > -1) optionsArr.splice(idx, 1);
 }
 
@@ -530,7 +531,7 @@ function delOption(action: any): void {
  * Side effects: Mutates listArray (via global reference cast).
  * No-op if label is empty or action not found.
  */
-function addBtn2menu(arr: any[], action: any, label: string): void {
+function prependMenuButtonHint(arr: any[], action: any, label: string): void {
     if (!label) return;
     var idx = indexOfAction(arr, action);
     if (idx > -1)
@@ -944,7 +945,7 @@ var TMDb: any = {
 };
 
 // Feedback
-// client_feedb and PostFeedback defined in utils/helpers.ts
+// sendClientFeedback and queueFeedbackPost defined in utils/helpers.ts
 
 // Performance stamps
 var perfStamps: string[] = [];
@@ -1539,7 +1540,7 @@ if (navigator.userAgent.search(/Maple/i) === -1) {
             /* ignore */
         }
     } else if ((window as any).attachEvent) {
-        client_feedb("is window.attachEvent");
+        sendClientFeedback("is window.attachEvent");
         (window as any).attachEvent("onbeforeunload", body_onUnload);
         (window as any).attachEvent("onunload", body_onUnload);
     }
@@ -1873,8 +1874,8 @@ function onStbReady(): void {
         );
 
         // Re-apply Tauri IPC override after provider script loads.
-        // This ensures the getEPGchanel override persists even when provider scripts
-        // attempt to reset window.getEPGchanel (as they do in loadProv → getScriptDOM callback).
+        // This ensures the getChannelEpg override persists even when provider scripts
+        // attempt to reset window.getChannelEpg (as they do in loadProv → getScriptDOM callback).
         if (typeof window.__TAURI__ !== "undefined") {
             setupTauriEpgOverride();
             setupTauriEpgCacheReady();
@@ -1917,8 +1918,8 @@ window._doKey = dispatchKey;
 window.keys = keys;
 
 // Tauri IPC detection and EPG override
-// When running under Tauri (Mode B), override getEPGchanel to use invoke()
-// When running in browser/STB (Mode A), leave getEPGchanel unchanged for provider HTTP fetch
+// When running under Tauri (Mode B), override getChannelEpg to use invoke()
+// When running in browser/STB (Mode A), leave getChannelEpg unchanged for provider HTTP fetch
 
 /**
  * Shared Tauri invoke helper. Uses @tauri-apps/api/core if available,
@@ -1937,8 +1938,8 @@ function tauriInvoke<T>(
 }
 
 /**
- * Setup Tauri EPG override for getEPGchanel. Uses Tauri IPC instead of HTTP fetch.
- * Mode A (browser/STB): leaves getEPGchanel unchanged — provider HTTP fetch path.
+ * Setup Tauri EPG override for getChannelEpg. Uses Tauri IPC instead of HTTP fetch.
+ * Mode A (browser/STB): leaves getChannelEpg unchanged — provider HTTP fetch path.
  * Mode B (Tauri): passes playlist channel name + epg_url hash so Rust can resolve
  *   xmltv_id via match_channel / epg_to_xmltv (same as companion /epg/{hash}).
  * Invoke arg keys must be Tauri 2 camelCase: channelId, timeShiftHours,
@@ -2242,7 +2243,7 @@ function setupTauriCompanionShim(): void {
         }
 
         // Mode A companion: GET/POST /feedback/*, /api/*, POST /report_feedb.
-        // PostFeedback flushes to {host}/api/feedback — must work in embed.
+        // queueFeedbackPost flushes to {host}/api/feedback — must work in embed.
         {
             let pathOnly = url;
             const qIdx = pathOnly.indexOf("?");
@@ -2307,7 +2308,7 @@ function setupTauriCompanionShim(): void {
 
 function setupTauriEpgOverride(): void {
     if (typeof window.__TAURI__ === "undefined") return;
-    // Keep provider getEPGchanel intact. The shared cache chooses native XMLTV
+    // Keep provider getChannelEpg intact. The shared cache chooses native XMLTV
     // only for the built-in M3U companion, and delegates all provider APIs.
     (window as any).getCachedChannelEpg = getChannelEpgCached;
 }
@@ -2315,7 +2316,7 @@ function setupTauriEpgOverride(): void {
 /**
  * Listen for Rust `epg-cache-ready` (startup warm / refresh). Clears
  * old full schedules and time_request miss locks so channel list,
- * podval now/next, and EPG menu progressively refill once XMLTV is warm —
+ * footer now/next, and EPG menu progressively refill once XMLTV is warm —
  * matching Mode A companion where the cache is already hot at first paint.
  */
 function setupTauriEpgCacheReady(): void {
@@ -2339,7 +2340,7 @@ function setupTauriEpgCacheReady(): void {
                 ) {
                     (window as any).showPage();
                 }
-                // Podval / info1 for the playing channel.
+                // footer / info1 for the playing channel.
                 const curId =
                     typeof (window as any).curList !== "undefined" &&
                     typeof (window as any).primaryIndex === "number"
@@ -2374,12 +2375,12 @@ function setupTauriEpgCacheReady(): void {
  * @param catIdx - Category index.
  * @param chIdx - Channel index within the category.
  *
- * Side effects: Calls stbStop(), setCurrent(), updateChanelInfo(),
- * showChanelInfo(), stbPlay(). Sets window.playType = 0. Creates a
+ * Side effects: Calls stbStop(), setCurrent(), updateChannelInfo(),
+ * showChannelInfo(), stbPlay(). Sets window.playType = 0. Creates a
  * setTimeout for checkMedia.
  *
  * Edge case: If the category doesn't exist, shows an error via infoBox()
- * and client_feedb(). If parental access is required, defers via callback.
+ * and sendClientFeedback(). If parental access is required, defers via callback.
  */
 function _playChannel(catIdx: number, chIdx: number): void {
     if ((window as any).providerMediaClient)
@@ -2398,7 +2399,7 @@ function _playChannel(catIdx: number, chIdx: number): void {
                 catIdx +
                 " does not exist!<br /> Please select other"
         );
-        client_feedb(
+        sendClientFeedback(
             "category_trouble_playChannel: " +
                 catIdx +
                 " / " +
@@ -2446,7 +2447,7 @@ function _playChannel(catIdx: number, chIdx: number): void {
  * (#picon, #channel_name, #nprogramm_name, #nbegin_time, #nend_time,
  * #programm_name, #progress_div, #progress_r, #progress, #begin_time,
  * #end_time, #programm_name2, #programm_duration, #programm_descr).
- * Calls stbStop(), stbPlay(), showChanelInfo().
+ * Calls stbStop(), stbPlay(), showChannelInfo().
  *
  * Edge case: If stream_url is a function, calls it to get the URL.
  * If mediaUrls last element is -1, resets mediaSelects[0] to 0.
@@ -3156,7 +3157,7 @@ if (typeof window.__TAURI__ !== "undefined") {
                 (window as any).__ottTauriSuppressClick = false;
             }
             // Native <video> often sits above HTML regardless of z-index; while
-            // Channel list / OSD is open, disable hit-testing so podval buttons
+            // Channel list / OSD is open, disable hit-testing so footer buttons
             // and rows receive clicks.
             try {
                 for (const id of ["video", "vdiv", "videopip"]) {
@@ -3320,10 +3321,10 @@ if (typeof window.__TAURI__ !== "undefined") {
 
         // JS drag from empty plane (strip + chrome + #video), overlays closed.
         // Never CSS -webkit-app-region:drag on body — overlays must keep row hits.
-        // Bottom info band (body_onClick → showChanelInfo) is not a drag handle;
+        // Bottom info band (body_onClick → showChannelInfo) is not a drag handle;
         // mousedown-preventDefault there would kill the click.
         // Prefer viewport height (innerHeight / visualViewport), not body rect —
-        // oversized body made the bottom band unreachable ("даже по низу" → ENTER).
+        // an oversized body mapped clicks in the bottom band to ENTER.
         const isDragHandle = (t: Element, clientY: number): boolean => {
             if ((window as any).__ottTauriNativeFs) return false;
             if (listOverlayOpen()) return false;
@@ -3410,7 +3411,7 @@ if (typeof window.__TAURI__ !== "undefined") {
                 // Do not startDragging yet — wait for small movement.
                 // Do NOT preventDefault here: WKWebView suppresses the following
                 // click after mousedown.preventDefault, which killed bottom-band
-                // showChanelInfo / middle ENTER. preventDefault only when drag starts.
+                // showChannelInfo / middle ENTER. preventDefault only when drag starts.
                 // Do not stopImmediatePropagation — Tauri's drag.js also listens.
             },
             true
@@ -3542,7 +3543,7 @@ if (typeof window.__TAURI__ !== "undefined") {
         // WKWebView <video>/#vdiv often does not bubble click to body.onclick.
         // Capture on the video surface and run the same band logic as
         // keyhandler body_onClick; stopPropagation avoids double-fire when
-        // the event does bubble. List-open podval stays safe via overlay guard
+        // the event does bubble. List-open footer stays safe via overlay guard
         // + pointer-events:none on video while the list is open.
         document.addEventListener(
             "click",
@@ -5407,7 +5408,7 @@ window.previewChId = function (chId: number): void {
  *
  * Side effects: Mutates cats[favorites] or cats[selectedCategory];
  * calls saveChannelsCats(), showShift(); DOM mutations to listCaption,
- * listPodval; saves/restores CPD.
+ * listFooter; saves/restores CPD.
  *
  * Edge case: Returns early if sFavorites and !listCatIndex.
  */
@@ -5777,7 +5778,7 @@ window.setTimezone = setTimezone;
 window.saveListPanelState = saveListPanelState;
 window.restoreListPanelState = restoreListPanelState;
 window.getMacAddress = getMacAddress;
-// client_feedb and PostFeedback from helpers.ts already global
+// sendClientFeedback and queueFeedbackPost from helpers.ts already global
 window.ottpStorage = storage;
 window.lzstring = {
     compress: (window as any).compress,
@@ -6560,8 +6561,8 @@ function pullSettingsFromWindow(): void {
 
 /**
  * Show the "Remote control" settings screen.
- * Displays the device UUID (read-only) and the local command URL setting.
- * Provides info about push command capabilities.
+ * Configure outbound command polling and local remote-control options.
+ * Saving a complete server connection starts polling immediately.
  *
  * Side effects: Writes to #listAbout; sets listKeyHandlerFn for ENTER/RETURN.
  */
@@ -6572,7 +6573,14 @@ window.settingsCommands = function (): void {
         if (!commandServer) return;
         var status = commandServer.status();
         var label = document.getElementById("commandServerStatus");
-        if (label) label.textContent = w._(status.message);
+        var message = status.message;
+        if (status.state === "disconnected") {
+            if (!settings.commandServerAddress)
+                message = "Enter the command server IP or address.";
+            else if (!settings.commandServerToken)
+                message = "Enter this player's device access code to connect.";
+        }
+        if (label) label.textContent = w._(message);
         var button = document.getElementById("commandServerConnectLabel");
         if (button)
             button.textContent = w._(status.enabled ? "Disconnect" : "Connect");
@@ -6712,7 +6720,13 @@ window.settingsCommands = function (): void {
             "</b><br/>" +
             text(
                 w._(
-                    "Connect this player to your remote-control server. Use its device access code; no local HTTP listener is required."
+                    "Enter the server IP or address and this player's device access code from the server configuration. Saving both starts checking for volume, channel and other commands automatically."
+                )
+            ) +
+            "<br/>" +
+            text(
+                w._(
+                    "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop."
                 )
             ) +
             "<br/>" +
@@ -6884,11 +6898,31 @@ window.settingsCommands = function (): void {
                 ? settings.commandServerToken
                 : settings.commandServerAddress,
             function (value): void {
-                if (commandServer)
+                var address = String(
+                    (secret ? settings.commandServerAddress : value) || ""
+                ).trim();
+                var token = String(
+                    (secret ? value : settings.commandServerToken) || ""
+                ).trim();
+                // Equivalent edits preserve a deliberate disconnect and an active request.
+                try {
+                    if (
+                        normalizeCommandServerAddress(address) ===
+                        normalizeCommandServerAddress(
+                            settings.commandServerAddress
+                        )
+                    )
+                        address = settings.commandServerAddress;
+                } catch (_error) {}
+                if (
+                    commandServer &&
+                    (address !== settings.commandServerAddress ||
+                        token !== settings.commandServerToken)
+                )
                     commandServer.configure({
-                        address: secret ? settings.commandServerAddress : value,
-                        enabled: false,
-                        token: secret ? value : settings.commandServerToken,
+                        address: address,
+                        enabled: !!address && !!token,
+                        token: token,
                     });
                 render();
             },

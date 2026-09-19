@@ -2,7 +2,11 @@
 
 The separate [OTT-play Control Server](https://github.com/open-ott-play/ottplay-control-server) provides per-player command queues, portable server binaries, Docker images for amd64/arm64, and Kubernetes/k3s packages. It follows the optional `local_proxy.py` example and adds separate administrator/device credentials and acknowledged delivery.
 
-Open **Settings → Remote control → Command server**. Enter the server IP, hostname, or HTTP(S) address and the device access code from its configuration, then select **Connect**. A bare IP or hostname defaults to HTTP port 8081. Bracketed IPv6 and a reverse-proxy base path are accepted. An old full command endpoint is normalized to the new acknowledgement endpoint. Credentials belong in the separate masked access-code editor, never the address.
+Open **Settings → Remote control → Command server**. Enter the server IP, hostname, or HTTP(S) address and this player's device access code from the server configuration. Saving the second field starts polling immediately; either field can be entered first. For example, enter `192.168.1.20` for a server listening on the default HTTP port 8081, or `192.168.1.20:9000` for a different port. Use the device's `token`, never the server's `admin_token`.
+
+Changing the address or access code reconnects automatically once both fields are present and valid. Clear either field or select **Disconnect** to stop. Cancelling an edit, saving an unchanged value, or reopening the settings does not reconnect a deliberately disconnected client. Select **Connect** to resume without changing the saved values. An enabled connection resumes when the player starts again.
+
+Bracketed IPv6 and a reverse-proxy base path are accepted. An old full command endpoint is normalized to the new acknowledgement endpoint. Credentials belong in the separate masked access-code editor, never the address. The status shows a missing field, connection progress, access denial or a transport error.
 
 This connection is disabled by default and independent of the local HTTP listener. It works without WebCrypto because the server supplies the access code. The player stores the address, code and enablement on this device only. JSON exports, cloud exports and local backups omit them, including nested backups from older versions. Importing or restoring settings disconnects the connection and cannot grant consent or import another installation's credentials; the current device's address and code remain available for an explicit reconnect.
 

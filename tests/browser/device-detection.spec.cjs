@@ -409,6 +409,93 @@ async function bootForMagicRemote(page, context, baseURL, device, visible) {
     return errors;
 }
 
+test("command server settings start and stop polling in the shipped player", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const errors = await bootForMagicRemote(
+        page,
+        context,
+        baseURL,
+        "pc",
+        false
+    );
+    const token = "browser-fixture-device-code-1234567890";
+    const requests = [];
+    await context.route("http://192.0.2.20:8081/**", async (route) => {
+        const request = route.request();
+        if (request.method() === "OPTIONS") {
+            await route.fulfill({
+                headers: {
+                    "Access-Control-Allow-Headers": "authorization",
+                    "Access-Control-Allow-Methods": "GET",
+                    "Access-Control-Allow-Origin": new URL(baseURL).origin,
+                },
+                status: 204,
+            });
+            return;
+        }
+        requests.push({
+            authorization: request.headers().authorization,
+            method: request.method(),
+            url: request.url(),
+        });
+        await route.fulfill({
+            body: JSON.stringify({
+                commands: [],
+                server_time: Date.now() / 1000,
+            }),
+            contentType: "application/json",
+            headers: { "Access-Control-Allow-Origin": new URL(baseURL).origin },
+        });
+    });
+    await page.evaluate(() => window.settingsCommands());
+    await page.locator("#commandServerAddress").click();
+    await page.locator("#editvar").fill("192.0.2.20");
+    await page.locator("#editvar").press("Enter");
+    await expect(page.locator("#commandServerStatus")).toContainText(
+        "device access code"
+    );
+    expect(requests).toHaveLength(0);
+    await page.locator("#commandServerToken").click();
+    await expect(page.locator("#editvar")).toHaveAttribute("type", "password");
+    await page.locator("#editvar").fill(token);
+    await page.locator("#editvar").press("Enter");
+    await expect(page.locator("#commandServerStatus")).toHaveText("Connected");
+    expect(requests[0]).toEqual({
+        authorization: "Bearer " + token,
+        method: "GET",
+        url: "http://192.0.2.20:8081/api/webhook/commands?delivery=ack",
+    });
+    await expect(page.locator("#remoteSettingsContent")).not.toContainText(
+        token
+    );
+    const beforeReload = requests.length;
+    await page.reload({ waitUntil: "load" });
+    await expect.poll(() => requests.length).toBeGreaterThan(beforeReload);
+    await page.evaluate(() => window.settingsCommands());
+    await expect(page.locator("#commandServerStatus")).toHaveText("Connected");
+    await page.locator("#commandServerConnect").click();
+    await expect(page.locator("#commandServerStatus")).toHaveText(
+        "Disconnected"
+    );
+    const stoppedCount = requests.length;
+    await page.reload({ waitUntil: "load" });
+    await expect(page.locator("#listCaption")).toHaveText("First-run setup");
+    await page.evaluate(() => window.settingsCommands());
+    // Saving the equivalent bare IP must not undo the user's Disconnect.
+    await page.locator("#commandServerAddress").click();
+    await page.locator("#editvar").fill("192.0.2.20");
+    await page.locator("#editvar").press("Enter");
+    await expect(page.locator("#commandServerStatus")).toHaveText(
+        "Disconnected"
+    );
+    await page.waitForTimeout(1200);
+    expect(requests).toHaveLength(stoppedCount);
+    expect(errors).toEqual([]);
+});
+
 test.describe("LG Magic Remote pointer and button transitions", () => {
     test.use({
         userAgent:

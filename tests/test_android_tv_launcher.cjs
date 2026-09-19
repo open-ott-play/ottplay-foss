@@ -87,6 +87,10 @@ if (name === 'curl') {
     fs.copyFileSync(path.join(dir,'config.ini'),path.join(dir,'hardware-qemu.ini'));
   }
 } else if (name === 'adb') {
+  // A newly spawned emulator may not have registered its serial yet.
+  if (args[0] === '-s' && !Object.prototype.hasOwnProperty.call(devices, args[1])) {
+    console.error("error: device '"+args[1]+"' not found"); process.exit(1);
+  }
   if (args[0] === 'devices') {
     const boot = JSON.parse(fs.readFileSync(process.env.BOOT_STATE));
     if (boot.stopping && !process.env.STOP_STUCK) {

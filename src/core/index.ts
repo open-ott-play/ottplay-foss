@@ -879,7 +879,7 @@ export function stbEventToKeyCode(event: any): number {
  * - Destroys any previous hls.js or shaka instance.
  * - Attaches hls.js or shaka to the video element if that engine is active.
  * - Calls video!.play() exactly once.
- * - Automatically restores previous audio/subtitle track settings via execCHarr.
+ * - Automatically restores previous audio/subtitle track settings via applyChannelPreference.
  */
 export function stbPlay(url: string, position?: number): void {
     setCoreDemoMute((window as any).ottplayDemoActive === true);
@@ -1475,7 +1475,7 @@ export function stbSetWindow(): void {
     var h = window.innerHeight / 720,
         w = window.innerWidth / 1280;
     // List chrome: #list margin 10 + caption 52 (yellow border under caption).
-    // Old top:50*h sat under that line ("жёлтая линия отрезает шапку").
+    // The previous top:50*h position put the header behind the yellow line.
     // Keep 512×288 hole; #_t/#_b are synced in setColor to the same metrics.
     var listMargin = 10 * h;
     var capH = 52 * h;
@@ -1632,7 +1632,7 @@ export function applyAspectRatio(): void {
 
 /**
  * Open a selection box to let the user toggle between "contain" and "cover" aspect ratios.
- * On selection, persists the choice via saveCHarr.
+ * On selection, persists the choice via saveChannelPreference.
  *
  * Side effects: Shows a select-box UI; writes to per-channel storage (aAspects).
  */
@@ -2162,7 +2162,7 @@ function setAudioTrack(index: number): void {
 
 /**
  * Open a selection box listing all available audio tracks.
- * On selection, switches to the chosen track and persists the choice via saveCHarr.
+ * On selection, switches to the chosen track and persists the choice via saveChannelPreference.
  *
  * Side effects: Shows a select-box UI; calls setAudioTrack; writes to aAudios storage.
  */
@@ -2226,7 +2226,7 @@ function setSubtitleTrack(index: number): void {
 
 /**
  * Open a selection box listing all available subtitle tracks (including "Off").
- * On selection, switches to the chosen track and persists via saveCHarr.
+ * On selection, switches to the chosen track and persists via saveChannelPreference.
  *
  * Side effects: Shows a select-box UI; calls setSubtitleTrack; writes to aSubs storage.
  */
@@ -2324,7 +2324,7 @@ export function setZoom(v: number): void {
 }
 
 /**
- * Open a selection box for digital zoom (100–175%). Persists via saveCHarr(aZooms).
+ * Open a selection box for digital zoom (100–175%). Persists via saveChannelPreference(aZooms).
  * Replaces the old body.stb-zoom toggle that had no CSS and looked like a no-op.
  */
 export function stbToggleZoom(): void {
