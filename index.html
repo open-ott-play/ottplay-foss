@@ -136,6 +136,42 @@
             white-space: pre-wrap;
         }
         </style>
+        <!-- Browser window controls: start -->
+        <script>
+        (function () {
+            "use strict";
+            // Installed desktop browser windows only. Legacy and native shells
+            // keep their original bootstrap, device profile and window layout.
+            try {
+                if (!navigator.windowControlsOverlay || window.__TAURI__ ||
+                    window.__TAURI_INTERNALS__ || window.Capacitor ||
+                    window.__ottNativeRuntime || window.Android ||
+                    !/^https?:$/.test(window.location.protocol)) return;
+                var routes = {
+                    "/": "manifest.webmanifest",
+                    "/index.html": "index.webmanifest",
+                    "/f/pc/": "pc.webmanifest",
+                    "/f/pc": "pc-plain.webmanifest"
+                };
+                var file = routes[window.location.pathname];
+                // Query parameters can select a different installation/profile.
+                // Do not replace such an app's identity with a canonical URL.
+                if (!file || window.location.search || window.location.hash) return;
+                var base = "/js/browser-app/", head = document.getElementsByTagName("head")[0];
+                var manifest = document.createElement("link"), css = document.createElement("link");
+                manifest.rel = "manifest"; manifest.href = base + file;
+                css.rel = "stylesheet"; css.href = base + "window-controls.css";
+                head.appendChild(manifest); head.appendChild(css);
+                var theme = document.createElement("meta");
+                theme.name = "theme-color"; theme.content = "#111111";
+                head.appendChild(theme);
+                var script = document.createElement("script");
+                script.src = base + "window-controls.js";
+                head.appendChild(script);
+            } catch (ignore) { /* Optional desktop decoration must not stop playback. */ }
+        }());
+        </script>
+        <!-- Browser window controls: end -->
     </head>
     <body class="booting" style="background: #111; color: #ccc;">
         <div id="permanentTime" class="osd"></div>

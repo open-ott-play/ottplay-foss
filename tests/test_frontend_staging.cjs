@@ -94,6 +94,11 @@ try {
         "src/js/hls.min.js",
         "src/js/jquery-1.11.1.min.js",
         "src/js/shaka-player.compiled.js",
+        "src/js/browser-app/manifest.webmanifest",
+        "src/js/browser-app/index.webmanifest",
+        "src/js/browser-app/pc.webmanifest",
+        "src/js/browser-app/pc-plain.webmanifest",
+        "src/js/browser-app/icon-512.png",
         "src/favicon.ico",
         "src/src-tauri/pip/pip.html",
         "src/src-tauri/pip/pip-player.js",
@@ -171,6 +176,7 @@ try {
         "stbPlayer/logo.png",
         "stbPlayer/debug.js",
         "stbPlayer/logs",
+        "js/browser-app",
     ])
         assert.equal(exists(`stage/${name}`), false, name);
     assert.equal(exists("src/stb/logs/pre_tool_use.json"), true);
@@ -194,6 +200,43 @@ try {
     assert.equal(exists("cap/stb/logs"), false);
     assert.equal(exists("cap/stb/removed-adapter.js"), false);
     assert.equal(exists("cap/stb/lg/webos.js"), true);
+
+    // Browser installations need the complete manifest tree in production;
+    // native distributions must also retire browser artwork from old output.
+    context.copyRuntimeAssets(
+        path.join(fixture, "src/js"),
+        path.join(fixture, "browser/js")
+    );
+    for (const name of [
+        "manifest.webmanifest",
+        "index.webmanifest",
+        "pc.webmanifest",
+        "pc-plain.webmanifest",
+        "icon-512.png",
+    ])
+        assert.equal(
+            fs.readFileSync(
+                path.join(fixture, "browser/js/browser-app", name),
+                "utf8"
+            ),
+            fs.readFileSync(
+                path.join(fixture, "src/js/browser-app", name),
+                "utf8"
+            ),
+            "Browser installation asset: " + name
+        );
+    context.copyRuntimeAssets(
+        path.join(fixture, "src/js"),
+        path.join(fixture, "browser/js"),
+        false
+    );
+    assert.equal(
+        exists("browser/js/browser-app"),
+        false,
+        "Native staging removes browser manifests and inherited icon artwork"
+    );
+    assert.equal(exists("browser/js/hls.min.js"), true);
+    assert.equal(exists("src/js/browser-app/icon-512.png"), true);
 
     // A persistent Capacitor output can contain old permitted-looking files as
     // well as old artwork. Restage real files; do not merely skip future copies.
@@ -377,7 +420,7 @@ try {
     );
     assert.equal(exists("rejected/public.json"), false);
     console.log(
-        "Frontend staging: Full icon required, Play icon retired; CSS/locales preserved; unused/private/stale assets excluded; required assets and symlinks guarded"
+        "Frontend staging: Full icon required, Play icon retired; browser manifests preserved and native browser artwork excluded; CSS/locales preserved; unused/private/stale assets excluded; required assets and symlinks guarded"
     );
 } finally {
     fs.rmSync(fixture, { force: true, recursive: true });

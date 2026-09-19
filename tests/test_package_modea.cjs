@@ -42,6 +42,10 @@ try {
     );
     fs.writeFileSync(path.join(root, "dist/stbPlayer.js"), bundle);
     fs.writeFileSync(path.join(root, "dist/favicon.ico"), "icon");
+    const browserAssets = path.resolve(__dirname, "../js/browser-app");
+    fs.cpSync(browserAssets, path.join(root, "dist/js/browser-app"), {
+        recursive: true,
+    });
     git("init", "--quiet");
     git("add", ".");
     git(
@@ -97,14 +101,88 @@ try {
         metadata.bundleSha256,
         createHash("sha256").update(bundle).digest("hex")
     );
+    const archive = path.join(root, "build/packages/ottplay-foss-modea.tar.gz");
+    for (const [file, entry] of [
+        ["manifest.webmanifest", "/"],
+        ["index.webmanifest", "/index.html"],
+        ["pc.webmanifest", "/f/pc/"],
+        ["pc-plain.webmanifest", "/f/pc"],
+    ]) {
+        const bytes = execFileSync("tar", [
+            "-xOf",
+            archive,
+            "./js/browser-app/" + file,
+        ]);
+        assert.deepEqual(
+            bytes,
+            fs.readFileSync(path.join(browserAssets, file))
+        );
+        const manifest = JSON.parse(bytes);
+        assert.equal(manifest.id, entry, "Keep installed shortcut identity");
+        assert.equal(
+            manifest.start_url,
+            entry,
+            "Keep the selected device route"
+        );
+        assert.equal(manifest.scope, "/");
+        assert.equal(manifest.lang, "en");
+        assert.equal(manifest.display, "standalone");
+        assert.deepEqual(manifest.display_override, [
+            "window-controls-overlay",
+        ]);
+        assert.deepEqual(manifest.icons, [
+            {
+                purpose: "any",
+                sizes: "512x512",
+                src: "/js/browser-app/icon-512.png",
+                type: "image/png",
+            },
+        ]);
+    }
+    const icon = execFileSync("tar", [
+        "-xOf",
+        archive,
+        "./js/browser-app/icon-512.png",
+    ]);
+    assert.deepEqual(
+        icon,
+        fs.readFileSync(path.join(browserAssets, "icon-512.png"))
+    );
+    assert.deepEqual(
+        icon.subarray(0, 8),
+        Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
+    );
+    assert.equal(icon.readUInt32BE(16), 512);
+    assert.equal(icon.readUInt32BE(20), 512);
+    for (const file of ["window-controls.js", "window-controls.css"])
+        assert.deepEqual(
+            execFileSync("tar", ["-xOf", archive, "./js/browser-app/" + file]),
+            fs.readFileSync(path.join(browserAssets, file)),
+            "Package the current browser window behavior and layout: " + file
+        );
     fs.rmSync(path.join(root, ".git"), { recursive: true });
     assert.equal(
         packageAndRead().revision,
         "unknown",
         "A source archive must not borrow the workflow event SHA"
     );
+    for (const file of [
+        "pc.webmanifest",
+        "window-controls.js",
+        "window-controls.css",
+    ]) {
+        const staged = path.join(root, "dist/js/browser-app", file);
+        fs.unlinkSync(staged);
+        assert.throws(
+            packageAndRead,
+            (error) =>
+                error.message.includes("Missing dist/js/browser-app/" + file),
+            "Missing built installation assets must fail packaging: " + file
+        );
+        fs.copyFileSync(path.join(browserAssets, file), staged);
+    }
     console.log(
-        "PASS actual Mode A archive metadata: checked-out tag, bundle hash, no misleading event-SHA fallback"
+        "PASS actual Mode A archive metadata and browser installation assets: checked-out tag, bundle hash, route identity, icon/helper/CSS bytes, missing asset rejection, no misleading event-SHA fallback"
     );
 } finally {
     fs.rmSync(root, { force: true, recursive: true });
