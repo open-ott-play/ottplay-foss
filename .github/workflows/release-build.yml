@@ -1,6 +1,25 @@
 name: Build release assets
 'on':
   workflow_call:
+    secrets:
+      APPLE_APP_SPECIFIC_PASSWORD:
+        required: false
+      APPLE_CERTIFICATE:
+        required: false
+      APPLE_CERTIFICATE_PASSWORD:
+        required: false
+      APPLE_ID:
+        required: false
+      APPLE_SIGNING_IDENTITY:
+        required: false
+      APPLE_TEAM_ID:
+        required: false
+      KEYCHAIN_PASSWORD:
+        required: false
+      TAURI_SIGNING_PRIVATE_KEY:
+        required: false
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD:
+        required: false
     inputs:
       version:
         description: Committed base version, without a v prefix or channel suffix

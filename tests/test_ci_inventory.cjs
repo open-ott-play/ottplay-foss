@@ -117,6 +117,26 @@ try {
         );
         assert.deepEqual(inspect(root).errors, []);
     }
+    write(
+        "tests/python-suites.json",
+        JSON.stringify({ portable: [["tests/test_python_suite.py"]] })
+    );
+    write("tests/test_python_suite.py", "# registered portable test\n");
+    write(
+        ".github/workflows/ci.yml",
+        workflow + "          python3 scripts/test-python.py --help\n"
+    );
+    assert(
+        inspect(root).errors.some((error) =>
+            error.includes("test_python_suite.py")
+        )
+    );
+    write(
+        ".github/workflows/ci.yml",
+        workflow +
+            "          python3 scripts/test-python.py --profile portable\n          playwright test tests/browser/device.spec.cjs\n"
+    );
+    assert.deepEqual(inspect(root).errors, []);
     write("tests/test_new.cjs", "// uncovered test must fail the next PR\n");
     assert(inspect(root).errors.some((error) => error.includes("test_new")));
     write(

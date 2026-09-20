@@ -4,7 +4,10 @@ const path = require("node:path");
 const ts = require("typescript");
 const { JSDOM } = require("jsdom");
 const root = path.resolve(__dirname, "..");
-const source = fs.readFileSync(path.join(root, "src/index.ts"), "utf8");
+const source = fs.readFileSync(
+    path.join(root, "src/settings/transfer-ui.ts"),
+    "utf8"
+);
 const ast = ts.createSourceFile(
     "index.ts",
     source,
@@ -13,13 +16,15 @@ const ast = ts.createSourceFile(
 );
 const statement = ast.statements.find(
     (node) =>
-        ts.isExpressionStatement(node) &&
-        ts.isBinaryExpression(node.expression) &&
-        node.expression.left.getText(ast) === "window.exportSettingsUI"
+        ts.isFunctionDeclaration(node) && node.name?.text === "exportSettingsUI"
 );
-const code = ts.transpileModule(statement.getText(ast), {
-    compilerOptions: { target: ts.ScriptTarget.ES2018 },
-}).outputText;
+const code = ts.transpileModule(
+    statement.getText(ast).replace(/^export /, "") +
+        "\nwindow.exportSettingsUI = exportSettingsUI;",
+    {
+        compilerOptions: { target: ts.ScriptTarget.ES2018 },
+    }
+).outputText;
 const backup = JSON.stringify(
     {
         settings: {

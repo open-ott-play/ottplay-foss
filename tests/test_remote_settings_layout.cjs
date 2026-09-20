@@ -81,9 +81,15 @@ w.eval(
 w.eval(
     extract(
         "src/index.ts",
-        ["pullSettingsFromWindow", "editSettingsText"],
-        ["window.settingsCommands", "window.importSettingsUI"]
+        ["pullSettingsFromWindow"],
+        ["window.settingsCommands"]
     )
+);
+w.eval(
+    extract("src/settings/transfer-ui.ts", [
+        "editSettingsText",
+        "importSettingsUI",
+    ]) + "\nwindow.importSettingsUI = importSettingsUI;"
 );
 let saves = 0;
 const originalSave = w.saveListPanelState;
