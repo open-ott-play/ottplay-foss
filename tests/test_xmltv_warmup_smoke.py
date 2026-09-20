@@ -111,5 +111,33 @@ class WarmupSmokeTests(unittest.TestCase):
         self.assertEqual(self.now, 0)
 
 
+class SmokeFailureTests(unittest.TestCase):
+    """Failures remain failures without contacting a companion or restarting anything."""
+
+    def test_http_error_retains_status_and_connection_failure_has_distinct_exit(self):
+        import urllib.error
+        error = urllib.error.HTTPError("http://fixture", 503, "unavailable", {}, io.BytesIO(b"retry"))
+        with patch.object(SMOKE.urllib.request, "urlopen", side_effect=error):
+            self.assertEqual(SMOKE.http_get("http://fixture", connect_timeout=1, read_timeout=1), (503, b"retry"))
+        with patch.object(SMOKE.urllib.request, "urlopen", side_effect=OSError("offline")):
+            with self.assertRaises(SystemExit) as raised:
+                SMOKE.http_get("http://fixture", connect_timeout=1, read_timeout=1)
+            self.assertEqual(raised.exception.code, 1)
+
+    def test_restart_exit_status_is_not_mistaken_for_readiness(self):
+        import subprocess
+        with patch.object(SMOKE.subprocess, "run", return_value=subprocess.CompletedProcess([], 4, "attempted", "failed")):
+            with self.assertRaises(SystemExit) as raised:
+                SMOKE.run_restart("synthetic-command")
+            self.assertEqual(raised.exception.code, 2)
+        with patch.object(SMOKE.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "done", "")) as run:
+            SMOKE.run_restart("synthetic-command")
+            run.assert_called_once()
+        with patch.object(SMOKE.subprocess, "run", side_effect=OSError("denied")):
+            with self.assertRaises(SystemExit) as raised:
+                SMOKE.run_restart("synthetic-command")
+            self.assertEqual(raised.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main()

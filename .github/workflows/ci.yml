@@ -149,16 +149,20 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run check:test-inventory
       - run: npm test
-      - run: python3 tests/test_android_security_config.py
-      - run: python3 tests/test_native_epg_cache.py --check-mirrors-only
-      - run: python3 tests/test_mobile_orientation.py
-      - run: python3 tests/test_local_player_install.py
-      - name: Test authenticated local command proxy
-        run: |
-          python3 tests/test_local_proxy.py
-          PYTHONDONTWRITEBYTECODE=1 python3 tests/test_proxy_security.py
-      - name: Verify authenticated command smoke contract
-        run: python3 tests/test_command_queue_smoke.py
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: |
+          python3 -m pip install --only-binary=:all: -r requirements-test.txt
+      - name: Python suite and runtime branch coverage gate
+        run: npm run test:python
+      - name: Preserve Python suite evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: python-suite-evidence
+          path: reports/python/
+          retention-days: 14
 
   rust-tests:
     name: Rust Core and Server Tests

@@ -174,7 +174,28 @@ function inspect(root) {
                         visit(relative(path.resolve(cwd, file)));
                 }
             } else if (["node", "python3", "python"].includes(words[0])) {
-                if (words.includes("unittest") && words.includes("discover")) {
+                if (
+                    words[1] === "scripts/test-python.py" &&
+                    !words.some((word) => ["--help", "-h"].includes(word))
+                ) {
+                    const profile = words.includes("--profile")
+                        ? words[words.indexOf("--profile") + 1]
+                        : "portable";
+                    const suites = JSON.parse(
+                        fs.readFileSync(
+                            path.join(root, "tests/python-suites.json"),
+                            "utf8"
+                        )
+                    );
+                    if (!suites[profile])
+                        errors.push(`Unknown Python suite profile: ${profile}`);
+                    else
+                        for (const [file, ...args] of suites[profile])
+                            visit(file, args);
+                } else if (
+                    words.includes("unittest") &&
+                    words.includes("discover")
+                ) {
                     const directory = words[words.indexOf("-s") + 1];
                     const pattern = words.includes("-p")
                         ? words[words.indexOf("-p") + 1]

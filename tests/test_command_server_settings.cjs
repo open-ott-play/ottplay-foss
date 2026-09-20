@@ -159,7 +159,8 @@ function fixture(initial = []) {
         ])
     );
     w.eval(
-        functions("src/index.ts", ["editSettingsText", "applySettingsToWindow"])
+        functions("src/settings/transfer-ui.ts", ["editSettingsText"]) +
+            functions("src/index.ts", ["applySettingsToWindow"])
     );
     w.eval(controllerSource);
     w.XMLHttpRequest = class {

@@ -7,6 +7,7 @@ const CLASSIC_MODULES = [
     "build/localization/index.js",
     "build/settings/cloud.js",
     "build/settings/index.js",
+    "build/settings/transfer-ui.js",
     "build/utils/helpers.js",
     "build/utils/encoding.js",
     "build/utils/qrcode.js",

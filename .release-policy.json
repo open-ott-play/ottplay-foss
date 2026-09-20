@@ -141,5 +141,16 @@
       "suffixes": [".apk", ".aab"],
       "reason": "Android APK/AAB publication moved to open-ott-play/ottplay-android"
     }
+  ],
+  "build_secrets": [
+    "APPLE_APP_SPECIFIC_PASSWORD",
+    "APPLE_CERTIFICATE",
+    "APPLE_CERTIFICATE_PASSWORD",
+    "APPLE_ID",
+    "APPLE_SIGNING_IDENTITY",
+    "APPLE_TEAM_ID",
+    "KEYCHAIN_PASSWORD",
+    "TAURI_SIGNING_PRIVATE_KEY",
+    "TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
   ]
 }
