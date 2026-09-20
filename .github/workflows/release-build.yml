@@ -311,10 +311,18 @@ jobs:
         path: release-assets/mobile-ios/*
         if-no-files-found: error
         retention-days: 14
-  container:
-    name: Build container archive
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
+  container-platform:
+    name: Build native container (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: amd64
+          runner: ubuntu-24.04
+        - arch: arm64
+          runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
     steps:
     - name: Harden runner
       uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
@@ -335,7 +343,6 @@ jobs:
       run: python3 scripts/version_plan.py sync --root . --plan .release-plan.json
     - name: Verify committed release version
       run: python3 scripts/check-release-version.py "$RELEASE_VERSION" "$RELEASE_CHANNEL"
-    - uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a
     - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e
     - name: Check container version metadata
       id: image-version
@@ -344,19 +351,82 @@ jobs:
       uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
       with:
         context: .
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/${{ matrix.arch }}
         push: false
-        outputs: type=oci,dest=ottplay-foss-container.oci.tar
+        outputs: type=oci,dest=ottplay-container-${{ matrix.arch }}.oci.tar,oci-mediatypes=true,compression=gzip
         tags: ottplay-foss:${{ inputs.version }}
         sbom: true
         provenance: mode=max
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-from: type=gha,scope=ottplay-container-${{ matrix.arch }}
+        cache-to: type=gha,mode=max,scope=ottplay-container-${{ matrix.arch }}
         labels: 'org.opencontainers.image.version=${{ steps.image-version.outputs.version }}
 
           org.opencontainers.image.revision=${{ steps.image-version.outputs.revision }}
 
           '
+    - name: Store native OCI input
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: container-platform-${{ matrix.arch }}
+        path: ottplay-container-${{ matrix.arch }}.oci.tar
+        if-no-files-found: error
+        compression-level: 0
+        retention-days: 14
+  container:
+    name: Build container archive
+    needs: container-platform
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+    - name: Harden runner
+      uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+      with:
+        egress-policy: audit
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+    - name: Set up release version tooling
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+      with:
+        python-version: '3.12'
+    - name: Download frozen release version plan
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: ${{ inputs.release_plan_artifact }}
+        path: .
+    - name: Apply frozen release version inputs
+      run: python3 scripts/version_plan.py sync --root . --plan .release-plan.json
+    - name: Verify committed release version
+      run: python3 scripts/check-release-version.py "$RELEASE_VERSION" "$RELEASE_CHANNEL"
+    - name: Check container version metadata
+      id: image-version
+      run: python3 scripts/release_container_labels.py --github-output "$GITHUB_OUTPUT"
+    - name: Download native AMD64 image
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: container-platform-amd64
+        path: .container-platforms/amd64
+    - name: Download native ARM64 image
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: container-platform-arm64
+        path: .container-platforms/arm64
+    - name: Assemble and validate the exact multi-platform OCI archive
+      env:
+        IMAGE_VERSION: ${{ steps.image-version.outputs.version }}
+        IMAGE_REVISION: ${{ steps.image-version.outputs.revision }}
+      run: |
+        python3 scripts/assemble-container-oci.py \
+          --input linux/amd64=.container-platforms/amd64/ottplay-container-amd64.oci.tar \
+          --input linux/arm64=.container-platforms/arm64/ottplay-container-arm64.oci.tar \
+          --version "$IMAGE_VERSION" --revision "$IMAGE_REVISION" \
+          --output ottplay-foss-container.oci.tar \
+          --report build/reports/container-assembly.json
+    - name: Store OCI assembly evidence
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: container-assembly-report
+        path: build/reports/container-assembly.json
+        if-no-files-found: error
+        retention-days: 14
     - name: Verify and stage versioned release assets
       shell: bash
       env:

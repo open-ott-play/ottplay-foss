@@ -6,9 +6,10 @@ per-test timeouts/logs, an aggregate result and an 80% statement/branch coverage
 gate. Every `tests/test*.py` must appear in the manifest; missing inventory fails.
 Artifacts are in `reports/python/` and CI uploads them even when tests fail.
 
-Coverage currently gates three bounded executable Python modules:
-`local_proxy.py`, `archive/proxy_security.py`, and
-`scripts/smoke-xmltv-cache-refresh.py`. Tests themselves never contribute to the
+Coverage currently gates four bounded executable Python modules:
+`local_proxy.py`, `archive/proxy_security.py`,
+`scripts/smoke-xmltv-cache-refresh.py`, and `scripts/prepare-container-workspace.py`.
+The offline workspace integration tests also use Cargo. Tests themselves never contribute to the
 coverage denominator. Missing coverage for any of these files fails. The
 legacy `archive/server.py` is exercised by proxy tests but is not covered by
 this first threshold; native Kotlin/Swift behavior is tested in its platform

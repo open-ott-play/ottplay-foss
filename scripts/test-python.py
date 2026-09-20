@@ -48,7 +48,7 @@ def main():
         subprocess.run([*coverage, "combine"], cwd=ROOT, check=True)
         subprocess.run([*coverage, "json", "-o", "reports/python/coverage.json"], cwd=ROOT, check=False)
         measured = json.loads((report / "coverage.json").read_text())["files"]
-        required = {"local_proxy.py", "archive/proxy_security.py", "scripts/smoke-xmltv-cache-refresh.py"}
+        required = {"local_proxy.py", "archive/proxy_security.py", "scripts/smoke-xmltv-cache-refresh.py", "scripts/prepare-container-workspace.py"}
         if not required.issubset(measured):
             failures = True
             print("Missing runtime coverage:", sorted(required - set(measured)))

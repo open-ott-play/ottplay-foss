@@ -1,0 +1,103 @@
+name: Container validation
+
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - Cargo.toml
+      - Cargo.lock
+      - src-rs/**/Cargo.toml
+      - .github/workflows/container-validation.yml
+      - .github/workflows/release-build.yml
+      - scripts/prepare-container-workspace.py
+      - scripts/assemble-container-oci.py
+      - scripts/benchmark-container-build.py
+      - tests/test_container_workspace.py
+      - .github/release-tests/test_container_*.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    name: Native container (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e
+      - name: Install offline OCI import tool
+        run: sudo apt-get update && sudo apt-get install -y skopeo
+      - name: Measure cold and restored-cache builds and exercise the image
+        run: python3 scripts/benchmark-container-build.py --platform linux/${{ matrix.arch }} --output "$RUNNER_TEMP/container-validation"
+      - name: Save measurements and verified platform archive
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: container-validation-${{ matrix.arch }}
+          path: |
+            ${{ runner.temp }}/container-validation/*.json
+            ${{ runner.temp }}/container-validation/*.jsonl
+            ${{ runner.temp }}/container-validation/*.log
+            ${{ runner.temp }}/container-validation/native.oci.tar
+          if-no-files-found: error
+          retention-days: 7
+
+  assemble:
+    name: Validate combined container archive
+    needs: native
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: container-validation-amd64
+          path: container-parts/amd64
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: container-validation-arm64
+          path: container-parts/arm64
+      - name: Verify immutable images, attestations and cross-platform web parity
+        run: |
+          VERSION=$(python3 -c 'import json; print(json.load(open("package.json"))["version"] + "-beta.2")')
+          python3 scripts/assemble-container-oci.py \
+            --input linux/amd64=container-parts/amd64/native.oci.tar \
+            --input linux/arm64=container-parts/arm64/native.oci.tar \
+            --version "$VERSION" --revision "$(git rev-parse HEAD)" \
+            --output "$RUNNER_TEMP/validated-container.oci.tar" \
+            --report "$RUNNER_TEMP/container-assembly.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: container-validation-assembly
+          path: ${{ runner.temp }}/container-assembly.json
+          if-no-files-found: error
+          retention-days: 14

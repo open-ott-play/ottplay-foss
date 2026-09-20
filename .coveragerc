@@ -5,6 +5,7 @@ data_file = reports/python/.coverage
 include =
     local_proxy.py
     archive/proxy_security.py
+    scripts/prepare-container-workspace.py
     scripts/smoke-xmltv-cache-refresh.py
 
 [report]
