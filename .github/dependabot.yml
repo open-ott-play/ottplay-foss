@@ -10,6 +10,17 @@ updates:
           - "*"
 
   - package-ecosystem: npm
+    # The classic browser/STB compiler must keep ES5 emit and its JavaScript API.
+    # TypeScript 6 deprecates ES5; TypeScript 7 removes it.
+    ignore:
+      - dependency-name: typescript
+        versions: [">=6"]
+    # The media manifest hashes the complete lockfile. Refresh generated media
+    # with npm run build:media before merging this dependency batch.
+    groups:
+      npm-lockfile:
+        patterns:
+          - "*"
     directory: /
     schedule:
       interval: daily
