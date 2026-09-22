@@ -1,6 +1,8 @@
 """Keep expensive container validation required only for relevant changes."""
 import importlib.util
 import unittest
+import subprocess
+import tempfile
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -10,7 +12,7 @@ SPEC.loader.exec_module(scope)
 
 class ContainerValidationScopeTests(unittest.TestCase):
     def test_inputs_trigger_both_architectures(self):
-        for path in ["Dockerfile", "Cargo.lock", "src-rs/player/Cargo.toml", "scripts/container_validation_scope.py", ".github/release-tests/test_container_workspace.py"]:
+        for path in ["Dockerfile", "Cargo.lock", "src-rs/player/Cargo.toml", "src-rs/Cargo.toml", "scripts/container_validation_scope.py", ".github/release-tests/test_container_workspace.py"]:
             self.assertTrue(scope.relevant([path]), path)
 
     def test_unrelated_changes_skip_builds(self):
@@ -32,3 +34,21 @@ class ContainerValidationScopeTests(unittest.TestCase):
         self.assertTrue(scope.run_required("workflow_dispatch", {}, Mock()))
         self.assertFalse(scope.run_required("push", {}, Mock()))
         self.assertFalse(scope.run_required("schedule", {}, Mock()))
+
+    def test_renamed_input_still_requires_container_validation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            def git(*args):
+                return subprocess.check_output(["git", "-c", "commit.gpgsign=false", "-c", "user.name=CI fixture", "-c", "user.email=ci@example.invalid", *args], cwd=root, text=True, stderr=subprocess.DEVNULL).strip()
+            git("init")
+            (root / "Cargo.toml").write_text("[workspace]\nmembers = []\n")
+            git("add", ".")
+            git("commit", "-m", "fixture")
+            base = git("rev-parse", "HEAD")
+            git("mv", "Cargo.toml", "build-config.txt")
+            git("commit", "-m", "rename input")
+            head = git("rev-parse", "HEAD")
+            paths = scope.git_changes(base, head, directory=root)
+            self.assertIn("Cargo.toml", paths)
+            self.assertIn("build-config.txt", paths)
+            self.assertTrue(scope.relevant(paths))
