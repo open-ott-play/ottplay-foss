@@ -3206,7 +3206,7 @@ dependencies = [
 
 [[package]]
 name = "ottplay-tauri"
-version = "1.1.43"
+version = "1.1.44"
 dependencies = [
  "anyhow",
  "axum",
