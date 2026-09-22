@@ -327,19 +327,25 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(StalkerItem, 'StalkerItem');
   initMetadataForClass(StalkerResult, 'StalkerResult');
   initMetadataForObject(StalkerProtocol, 'StalkerProtocol');
+  initMetadataForClass(StreamingGuideIdentity, 'StreamingGuideIdentity');
+  initMetadataForClass(StreamingGuideCoverage, 'StreamingGuideCoverage');
+  initMetadataForClass(Entry_0, 'Entry');
+  initMetadataForCompanion(Companion_14);
+  initMetadataForClass(sam$kotlin_Comparator$0_4, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
+  initMetadataForClass(StreamingGuide, 'StreamingGuide');
   initMetadataForClass(XtreamItem, 'XtreamItem');
   initMetadataForClass(XtreamCatalog, 'XtreamCatalog');
   initMetadataForClass(XtreamSeries, 'XtreamSeries');
   initMetadataForClass(XtreamSeriesParent, 'XtreamSeriesParent');
-  initMetadataForClass(sam$kotlin_Comparator$0_4, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
   initMetadataForClass(sam$kotlin_Comparator$0_5, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
+  initMetadataForClass(sam$kotlin_Comparator$0_6, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
   initMetadataForObject(XtreamCatalogs, 'XtreamCatalogs');
   initMetadataForClass(XtreamFormat, 'XtreamFormat', VOID, Enum);
   initMetadataForClass(XtreamFailure, 'XtreamFailure', VOID, Exception);
   initMetadataForClass(XtreamRequest, 'XtreamRequest');
   initMetadataForClass(XtreamSession, 'XtreamSession');
   initMetadataForClass(XtreamSource, 'XtreamSource');
-  initMetadataForCompanion(Companion_14);
+  initMetadataForCompanion(Companion_15);
   initMetadataForClass(XtreamAddresses, 'XtreamAddresses');
   initMetadataForClass(ScheduleSelection, 'ScheduleSelection');
   initMetadataForClass(NativeMatch, 'NativeMatch');
@@ -349,6 +355,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(BrowserLookupItem, 'BrowserLookupItem');
   initMetadataForClass(StalkerClient, 'StalkerClient');
   initMetadataForClass(LegacyStalkerClient, 'LegacyStalkerClient');
+  initMetadataForClass(StreamingGuideFilter, 'StreamingGuideFilter');
   initMetadataForClass(XtreamClient, 'XtreamClient');
   //endregion
   function CharSequence() {
@@ -616,19 +623,19 @@ if (typeof String.prototype.startsWith === 'undefined') {
       if (resultSize <= 0)
         return emptyList();
       if (resultSize === 1)
-        return listOf(last(_this__u8e3s4));
+        return listOf(last_0(_this__u8e3s4));
       list = ArrayList_init_$Create$_0(resultSize);
       if (isInterface(_this__u8e3s4, KtList)) {
         if (isInterface(_this__u8e3s4, RandomAccess)) {
           var inductionVariable = n;
-          var last_0 = _this__u8e3s4.get_size_woubt6_k$();
-          if (inductionVariable < last_0)
+          var last = _this__u8e3s4.get_size_woubt6_k$();
+          if (inductionVariable < last)
             do {
               var index = inductionVariable;
               inductionVariable = inductionVariable + 1 | 0;
               list.add_utx5q5_k$(_this__u8e3s4.get_c1px32_k$(index));
             }
-             while (inductionVariable < last_0);
+             while (inductionVariable < last);
         } else {
           // Inline function 'kotlin.collections.iterator' call
           var _iterator__ex2g4s = _this__u8e3s4.listIterator_70e65o_k$(n);
@@ -802,6 +809,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return tmp;
   }
+  function last(_this__u8e3s4) {
+    if (_this__u8e3s4.isEmpty_y1axqb_k$())
+      throw NoSuchElementException_init_$Create$_0('List is empty.');
+    return _this__u8e3s4.get_c1px32_k$(get_lastIndex_0(_this__u8e3s4));
+  }
   function first(_this__u8e3s4) {
     if (isInterface(_this__u8e3s4, KtList))
       return first_0(_this__u8e3s4);
@@ -812,17 +824,17 @@ if (typeof String.prototype.startsWith === 'undefined') {
       return iterator.next_20eer_k$();
     }
   }
-  function last(_this__u8e3s4) {
+  function last_0(_this__u8e3s4) {
     if (isInterface(_this__u8e3s4, KtList))
-      return last_0(_this__u8e3s4);
+      return last(_this__u8e3s4);
     else {
       var iterator = _this__u8e3s4.iterator_jk1svi_k$();
       if (!iterator.hasNext_bitz1p_k$())
         throw NoSuchElementException_init_$Create$_0('Collection is empty.');
-      var last = iterator.next_20eer_k$();
+      var last_0 = iterator.next_20eer_k$();
       while (iterator.hasNext_bitz1p_k$())
-        last = iterator.next_20eer_k$();
-      return last;
+        last_0 = iterator.next_20eer_k$();
+      return last_0;
     }
   }
   function toMutableList_0(_this__u8e3s4) {
@@ -842,11 +854,6 @@ if (typeof String.prototype.startsWith === 'undefined') {
     if (_this__u8e3s4.isEmpty_y1axqb_k$())
       throw NoSuchElementException_init_$Create$_0('List is empty.');
     return _this__u8e3s4.get_c1px32_k$(0);
-  }
-  function last_0(_this__u8e3s4) {
-    if (_this__u8e3s4.isEmpty_y1axqb_k$())
-      throw NoSuchElementException_init_$Create$_0('List is empty.');
-    return _this__u8e3s4.get_c1px32_k$(get_lastIndex_0(_this__u8e3s4));
   }
   function single_0(_this__u8e3s4) {
     if (isInterface(_this__u8e3s4, KtList))
@@ -961,6 +968,21 @@ if (typeof String.prototype.startsWith === 'undefined') {
   protoOf(asIterable$$inlined$Iterable$1).iterator_jk1svi_k$ = function () {
     return this.$this_asIterable_1.iterator_jk1svi_k$();
   };
+  function plus_0(_this__u8e3s4, elements) {
+    var tmp0_safe_receiver = collectionSizeOrNull(elements);
+    var tmp;
+    if (tmp0_safe_receiver == null) {
+      tmp = null;
+    } else {
+      // Inline function 'kotlin.let' call
+      tmp = _this__u8e3s4.get_size_woubt6_k$() + tmp0_safe_receiver | 0;
+    }
+    var tmp1_elvis_lhs = tmp;
+    var result = LinkedHashSet_init_$Create$_1(mapCapacity(tmp1_elvis_lhs == null ? imul(_this__u8e3s4.get_size_woubt6_k$(), 2) : tmp1_elvis_lhs));
+    result.addAll_h3ej1q_k$(_this__u8e3s4);
+    addAll(result, elements);
+    return result;
+  }
   function firstOrNull_0(_this__u8e3s4) {
     var tmp;
     // Inline function 'kotlin.text.isEmpty' call
@@ -5379,6 +5401,15 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return tmp;
   }
+  function collectionSizeOrNull(_this__u8e3s4) {
+    var tmp;
+    if (isInterface(_this__u8e3s4, Collection)) {
+      tmp = _this__u8e3s4.get_size_woubt6_k$();
+    } else {
+      tmp = null;
+    }
+    return tmp;
+  }
   function IndexingIterator(iterator) {
     this.iterator_1 = iterator;
     this.index_1 = 0;
@@ -5428,13 +5459,13 @@ if (typeof String.prototype.startsWith === 'undefined') {
     var tmp = EmptyMap_getInstance();
     return isInterface(tmp, KtMap) ? tmp : THROW_CCE();
   }
-  function plus_0(_this__u8e3s4, map) {
+  function plus_1(_this__u8e3s4, map) {
     // Inline function 'kotlin.apply' call
     var this_0 = LinkedHashMap_init_$Create$_1(_this__u8e3s4);
     this_0.putAll_wgg6cj_k$(map);
     return this_0;
   }
-  function plus_1(_this__u8e3s4, pair) {
+  function plus_2(_this__u8e3s4, pair) {
     var tmp;
     if (_this__u8e3s4.isEmpty_y1axqb_k$()) {
       tmp = mapOf(pair);
@@ -12196,7 +12227,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       }
       return new PlaylistArchive(type, tmp_6, days, number_0($this, archive$value(attrs, defaults, 'catchup-correction')));
     }
-    var all = plus_0(defaults, attrs);
+    var all = plus_1(defaults, attrs);
     var tmp0_1 = $this.archiveKeys_1;
     var tmp$ret$19;
     $l$block_1: {
@@ -12760,7 +12791,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
             tmp_10 = false;
           }
           if (tmp_10) {
-            attrs._v = plus_1(attrs._v, to('group-title', value));
+            attrs._v = plus_2(attrs._v, to('group-title', value));
           }
         }
       } else if (browser && equals_0(line, '#EXT-X-PLAYLIST-TYPE:VOD', true) && pending._v) {
@@ -15206,6 +15237,727 @@ if (typeof String.prototype.startsWith === 'undefined') {
     static_init_9();
     return StalkerFormat_RPC_instance;
   }
+  function StreamingGuideIdentity(id, tvgName, name, days) {
+    this.id_1 = id;
+    this.tvgName_1 = tvgName;
+    this.name_1 = name;
+    this.days_1 = days;
+  }
+  protoOf(StreamingGuideIdentity).get_names_ivn21r_k$ = function () {
+    return listOf_0([this.tvgName_1, this.name_1]);
+  };
+  protoOf(StreamingGuideIdentity).toString = function () {
+    return 'StreamingGuideIdentity(id=' + this.id_1 + ', tvgName=' + this.tvgName_1 + ', name=' + this.name_1 + ', days=' + this.days_1 + ')';
+  };
+  protoOf(StreamingGuideIdentity).hashCode = function () {
+    var result = getStringHashCode(this.id_1);
+    result = imul(result, 31) + getStringHashCode(this.tvgName_1) | 0;
+    result = imul(result, 31) + getStringHashCode(this.name_1) | 0;
+    result = imul(result, 31) + getNumberHashCode(this.days_1) | 0;
+    return result;
+  };
+  protoOf(StreamingGuideIdentity).equals = function (other) {
+    if (this === other)
+      return true;
+    if (!(other instanceof StreamingGuideIdentity))
+      return false;
+    if (!(this.id_1 === other.id_1))
+      return false;
+    if (!(this.tvgName_1 === other.tvgName_1))
+      return false;
+    if (!(this.name_1 === other.name_1))
+      return false;
+    if (!equals(this.days_1, other.days_1))
+      return false;
+    return true;
+  };
+  function StreamingGuideCoverage(start, end, programmeLimit, truncatedChannels) {
+    this.start_1 = start;
+    this.end_1 = end;
+    this.programmeLimit_1 = programmeLimit;
+    this.truncatedChannels_1 = truncatedChannels;
+  }
+  protoOf(StreamingGuideCoverage).toString = function () {
+    return 'StreamingGuideCoverage(start=' + this.start_1 + ', end=' + this.end_1 + ', programmeLimit=' + this.programmeLimit_1 + ', truncatedChannels=' + this.truncatedChannels_1 + ')';
+  };
+  protoOf(StreamingGuideCoverage).hashCode = function () {
+    var result = getNumberHashCode(this.start_1);
+    result = imul(result, 31) + getNumberHashCode(this.end_1) | 0;
+    result = imul(result, 31) + getNumberHashCode(this.programmeLimit_1) | 0;
+    result = imul(result, 31) + this.truncatedChannels_1 | 0;
+    return result;
+  };
+  protoOf(StreamingGuideCoverage).equals = function (other) {
+    if (this === other)
+      return true;
+    if (!(other instanceof StreamingGuideCoverage))
+      return false;
+    if (!equals(this.start_1, other.start_1))
+      return false;
+    if (!equals(this.end_1, other.end_1))
+      return false;
+    if (!equals(this.programmeLimit_1, other.programmeLimit_1))
+      return false;
+    if (!(this.truncatedChannels_1 === other.truncatedChannels_1))
+      return false;
+    return true;
+  };
+  function Entry_0(id, start, end, payload) {
+    this.id_1 = id;
+    this.start_1 = start;
+    this.end_1 = end;
+    this.payload_1 = payload;
+  }
+  function retainDepth($this, index, key, days) {
+    // Inline function 'kotlin.text.isNotEmpty' call
+    if (charSequenceLength(key) > 0) {
+      var tmp0_elvis_lhs = index.get_wei43m_k$(key);
+      // Inline function 'kotlin.comparisons.maxOf' call
+      var a = tmp0_elvis_lhs == null ? 1.0 : tmp0_elvis_lhs;
+      // Inline function 'kotlin.collections.set' call
+      var value = Math.max(a, days);
+      index.put_4fpzoq_k$(key, value);
+    }
+  }
+  function priority($this, entry) {
+    var tmp;
+    if (entry.start_1 <= $this.clock_1 && (entry.end_1 == null || entry.end_1 > $this.clock_1)) {
+      tmp = -1.0E12 + $this.clock_1 - entry.start_1;
+    } else if ($this.nextEntries_1.get_wei43m_k$(entry.id_1) === entry) {
+      tmp = -5.0E11 + entry.start_1 - $this.clock_1;
+    } else {
+      // Inline function 'kotlin.math.abs' call
+      var x = entry.start_1 - $this.clock_1;
+      tmp = Math.abs(x);
+    }
+    return tmp;
+  }
+  function Companion_14() {
+  }
+  protoOf(Companion_14).identities_h380h1_k$ = function (rows) {
+    // Inline function 'kotlin.collections.linkedMapOf' call
+    var result = LinkedHashMap_init_$Create$();
+    var _iterator__ex2g4s = rows.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var raw = _iterator__ex2g4s.next_20eer_k$();
+      var key = new Triple(CoreText_getInstance().trim$default_yjecrm_k$(raw.id_1), GuideNames_instance.normalized_qcj5er_k$(raw.tvgName_1), GuideNames_instance.normalized_qcj5er_k$(raw.name_1));
+      var tmp;
+      var tmp_0;
+      // Inline function 'kotlin.text.isNotEmpty' call
+      var this_0 = key.first_1;
+      if (charSequenceLength(this_0) > 0) {
+        tmp_0 = true;
+      } else {
+        // Inline function 'kotlin.text.isNotEmpty' call
+        var this_1 = key.second_1;
+        tmp_0 = charSequenceLength(this_1) > 0;
+      }
+      if (tmp_0) {
+        tmp = true;
+      } else {
+        // Inline function 'kotlin.text.isNotEmpty' call
+        var this_2 = key.third_1;
+        tmp = charSequenceLength(this_2) > 0;
+      }
+      // Inline function 'kotlin.require' call
+      // Inline function 'kotlin.require' call
+      if (!tmp) {
+        var message = 'Failed requirement.';
+        throw IllegalArgumentException_init_$Create$_0(toString_1(message));
+      }
+      var tmp2 = raw.days_1;
+      var tmp0_safe_receiver = result.get_wei43m_k$(key);
+      var tmp1_elvis_lhs = tmp0_safe_receiver == null ? null : tmp0_safe_receiver.days_1;
+      // Inline function 'kotlin.comparisons.maxOf' call
+      var c = tmp1_elvis_lhs == null ? 0.0 : tmp1_elvis_lhs;
+      var tmp$ret$7 = Math.max(1.0, tmp2, c);
+      // Inline function 'kotlin.collections.set' call
+      var value = new StreamingGuideIdentity(key.first_1, key.second_1, key.third_1, tmp$ret$7);
+      result.put_4fpzoq_k$(key, value);
+    }
+    return toList_0(result.get_values_ksazhn_k$());
+  };
+  var Companion_instance_14;
+  function Companion_getInstance_14() {
+    return Companion_instance_14;
+  }
+  function sam$kotlin_Comparator$0_4(function_0) {
+    this.function_1 = function_0;
+  }
+  protoOf(sam$kotlin_Comparator$0_4).compare_bczr_k$ = function (a, b) {
+    return this.function_1(a, b);
+  };
+  protoOf(sam$kotlin_Comparator$0_4).compare = function (a, b) {
+    return this.compare_bczr_k$(a, b);
+  };
+  protoOf(sam$kotlin_Comparator$0_4).getFunctionDelegate_jtodtf_k$ = function () {
+    return this.function_1;
+  };
+  protoOf(sam$kotlin_Comparator$0_4).equals = function (other) {
+    var tmp;
+    if (!(other == null) ? isInterface(other, Comparator) : false) {
+      var tmp_0;
+      if (!(other == null) ? isInterface(other, FunctionAdapter) : false) {
+        tmp_0 = equals(this.getFunctionDelegate_jtodtf_k$(), other.getFunctionDelegate_jtodtf_k$());
+      } else {
+        tmp_0 = false;
+      }
+      tmp = tmp_0;
+    } else {
+      tmp = false;
+    }
+    return tmp;
+  };
+  protoOf(sam$kotlin_Comparator$0_4).hashCode = function () {
+    return hashCode_0(this.getFunctionDelegate_jtodtf_k$());
+  };
+  function StreamingGuide$programme$lambda(this$0) {
+    return function (a, b) {
+      // Inline function 'kotlin.comparisons.compareValuesBy' call
+      var this_0 = this$0;
+      var tmp = priority(this_0, a);
+      var this_1 = this$0;
+      var tmp$ret$2 = priority(this_1, b);
+      return compareValues(tmp, tmp$ret$2);
+    };
+  }
+  function StreamingGuide$output$lambda($entries) {
+    return function (it) {
+      return $entries.get_c1px32_k$(it).start_1;
+    };
+  }
+  function StreamingGuide$output$lambda_0($entries) {
+    return function (it) {
+      var tmp0_elvis_lhs = $entries.get_c1px32_k$(it).end_1;
+      return tmp0_elvis_lhs == null ? Infinity : tmp0_elvis_lhs;
+    };
+  }
+  function StreamingGuide(requested, clock, programmeLimit, perChannel) {
+    this.requested_1 = requested;
+    this.clock_1 = clock;
+    this.programmeLimit_1 = programmeLimit;
+    this.perChannel_1 = perChannel;
+    var tmp = this;
+    // Inline function 'kotlin.collections.linkedMapOf' call
+    tmp.idDepths_1 = LinkedHashMap_init_$Create$();
+    var tmp_0 = this;
+    // Inline function 'kotlin.collections.linkedMapOf' call
+    tmp_0.nameDepths_1 = LinkedHashMap_init_$Create$();
+    var tmp_1 = this;
+    // Inline function 'kotlin.collections.linkedMapOf' call
+    tmp_1.aliasDepths_1 = LinkedHashMap_init_$Create$();
+    var tmp_2 = this;
+    // Inline function 'kotlin.collections.mutableMapOf' call
+    tmp_2.candidateDepths_1 = LinkedHashMap_init_$Create$();
+    var tmp_3 = this;
+    // Inline function 'kotlin.collections.linkedMapOf' call
+    tmp_3.metadata_1 = LinkedHashMap_init_$Create$();
+    var tmp_4 = this;
+    // Inline function 'kotlin.collections.mutableMapOf' call
+    tmp_4.aliases_1 = LinkedHashMap_init_$Create$();
+    var tmp_5 = this;
+    // Inline function 'kotlin.collections.mutableMapOf' call
+    tmp_5.canonicalAliases_1 = LinkedHashMap_init_$Create$();
+    var tmp_6 = this;
+    // Inline function 'kotlin.collections.mutableMapOf' call
+    tmp_6.programmes_1 = LinkedHashMap_init_$Create$();
+    var tmp_7 = this;
+    // Inline function 'kotlin.collections.mutableMapOf' call
+    tmp_7.nextCandidates_1 = LinkedHashMap_init_$Create$();
+    var tmp_8 = this;
+    // Inline function 'kotlin.collections.mutableMapOf' call
+    tmp_8.nextEntries_1 = LinkedHashMap_init_$Create$();
+    var tmp_9 = this;
+    // Inline function 'kotlin.collections.mutableSetOf' call
+    tmp_9.truncated_1 = LinkedHashSet_init_$Create$();
+    this.programmeCount_1 = 0;
+    this.programmeCap_1 = this.perChannel_1;
+    var tmp_10 = this;
+    var tmp0 = this.requested_1;
+    var tmp$ret$11;
+    $l$block: {
+      // Inline function 'kotlin.collections.maxOfOrNull' call
+      var iterator = tmp0.iterator_jk1svi_k$();
+      if (!iterator.hasNext_bitz1p_k$()) {
+        tmp$ret$11 = null;
+        break $l$block;
+      }
+      var maxValue = iterator.next_20eer_k$().days_1;
+      while (iterator.hasNext_bitz1p_k$()) {
+        var v = iterator.next_20eer_k$().days_1;
+        // Inline function 'kotlin.comparisons.maxOf' call
+        var a = maxValue;
+        maxValue = Math.max(a, v);
+      }
+      tmp$ret$11 = maxValue;
+    }
+    var tmp0_elvis_lhs = tmp$ret$11;
+    tmp_10.startWindow_1 = this.clock_1 - (tmp0_elvis_lhs == null ? 1.0 : tmp0_elvis_lhs) * 86400;
+    this.endWindow_1 = this.clock_1 + 86400;
+    var _iterator__ex2g4s = this.requested_1.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var row = _iterator__ex2g4s.next_20eer_k$();
+      retainDepth(this, this.idDepths_1, row.id_1, row.days_1);
+      var _iterator__ex2g4s_0 = row.get_names_ivn21r_k$().iterator_jk1svi_k$();
+      while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
+        var name = _iterator__ex2g4s_0.next_20eer_k$();
+        retainDepth(this, this.nameDepths_1, name, row.days_1);
+        retainDepth(this, this.aliasDepths_1, GuideNames_instance.canonical_yvzfne_k$(name), row.days_1);
+      }
+    }
+    this.candidateCount_1 = this.idDepths_1.get_size_woubt6_k$();
+  }
+  protoOf(StreamingGuide).channel_c4n2uz_k$ = function (id, names, icon) {
+    // Inline function 'kotlin.collections.map' call
+    // Inline function 'kotlin.collections.mapTo' call
+    var destination = ArrayList_init_$Create$_0(collectionSizeOrDefault(names, 10));
+    var _iterator__ex2g4s = names.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var item = _iterator__ex2g4s.next_20eer_k$();
+      var tmp$ret$2 = GuideNames_instance.normalized_qcj5er_k$(item);
+      destination.add_utx5q5_k$(tmp$ret$2);
+    }
+    // Inline function 'kotlin.collections.filter' call
+    // Inline function 'kotlin.collections.filterTo' call
+    var destination_0 = ArrayList_init_$Create$();
+    var _iterator__ex2g4s_0 = destination.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
+      var element = _iterator__ex2g4s_0.next_20eer_k$();
+      // Inline function 'kotlin.collections.contains' call
+      // Inline function 'kotlin.collections.containsKey' call
+      var this_0 = this.nameDepths_1;
+      if ((isInterface(this_0, KtMap) ? this_0 : THROW_CCE()).containsKey_aw81wo_k$(element)) {
+        destination_0.add_utx5q5_k$(element);
+      }
+    }
+    var matches = destination_0;
+    // Inline function 'kotlin.collections.map' call
+    // Inline function 'kotlin.collections.mapTo' call
+    var destination_1 = ArrayList_init_$Create$_0(collectionSizeOrDefault(names, 10));
+    var _iterator__ex2g4s_1 = names.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_1.hasNext_bitz1p_k$()) {
+      var item_0 = _iterator__ex2g4s_1.next_20eer_k$();
+      var tmp$ret$10 = GuideNames_instance.canonical_yvzfne_k$(item_0);
+      destination_1.add_utx5q5_k$(tmp$ret$10);
+    }
+    // Inline function 'kotlin.collections.filter' call
+    // Inline function 'kotlin.collections.filterTo' call
+    var destination_2 = ArrayList_init_$Create$();
+    var _iterator__ex2g4s_2 = destination_1.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_2.hasNext_bitz1p_k$()) {
+      var element_0 = _iterator__ex2g4s_2.next_20eer_k$();
+      // Inline function 'kotlin.collections.contains' call
+      // Inline function 'kotlin.collections.containsKey' call
+      var this_1 = this.aliasDepths_1;
+      if ((isInterface(this_1, KtMap) ? this_1 : THROW_CCE()).containsKey_aw81wo_k$(element_0)) {
+        destination_2.add_utx5q5_k$(element_0);
+      }
+    }
+    var canonicalMatches = destination_2;
+    var tmp;
+    var tmp_0;
+    // Inline function 'kotlin.collections.contains' call
+    // Inline function 'kotlin.collections.containsKey' call
+    var this_2 = this.idDepths_1;
+    if (!(isInterface(this_2, KtMap) ? this_2 : THROW_CCE()).containsKey_aw81wo_k$(id)) {
+      tmp_0 = matches.isEmpty_y1axqb_k$();
+    } else {
+      tmp_0 = false;
+    }
+    if (tmp_0) {
+      tmp = canonicalMatches.isEmpty_y1axqb_k$();
+    } else {
+      tmp = false;
+    }
+    if (tmp)
+      return true;
+    var tmp_1;
+    if (this.metadata_1.get_size_woubt6_k$() >= 16384) {
+      // Inline function 'kotlin.collections.contains' call
+      // Inline function 'kotlin.collections.containsKey' call
+      var this_3 = this.metadata_1;
+      tmp_1 = !(isInterface(this_3, KtMap) ? this_3 : THROW_CCE()).containsKey_aw81wo_k$(id);
+    } else {
+      tmp_1 = false;
+    }
+    if (tmp_1)
+      return false;
+    var tmp0_elvis_lhs = this.idDepths_1.get_wei43m_k$(id);
+    var days = tmp0_elvis_lhs == null ? 1.0 : tmp0_elvis_lhs;
+    var _iterator__ex2g4s_3 = matches.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_3.hasNext_bitz1p_k$()) {
+      var name = _iterator__ex2g4s_3.next_20eer_k$();
+      var tmp0 = days;
+      var tmp1_elvis_lhs = this.nameDepths_1.get_wei43m_k$(name);
+      // Inline function 'kotlin.comparisons.maxOf' call
+      var b = tmp1_elvis_lhs == null ? 1.0 : tmp1_elvis_lhs;
+      days = Math.max(tmp0, b);
+    }
+    var _iterator__ex2g4s_4 = canonicalMatches.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_4.hasNext_bitz1p_k$()) {
+      var name_0 = _iterator__ex2g4s_4.next_20eer_k$();
+      var tmp0_0 = days;
+      var tmp2_elvis_lhs = this.aliasDepths_1.get_wei43m_k$(name_0);
+      // Inline function 'kotlin.comparisons.maxOf' call
+      var b_0 = tmp2_elvis_lhs == null ? 1.0 : tmp2_elvis_lhs;
+      days = Math.max(tmp0_0, b_0);
+    }
+    retainDepth(this, this.candidateDepths_1, id, days);
+    var previous = this.metadata_1.get_wei43m_k$(id);
+    if (previous == null) {
+      var tmp0_1 = this.metadata_1;
+      // Inline function 'kotlin.collections.set' call
+      var value = new GuideStation(id, toMutableList(names), icon);
+      tmp0_1.put_4fpzoq_k$(id, value);
+      // Inline function 'kotlin.collections.contains' call
+      // Inline function 'kotlin.collections.containsKey' call
+      var this_4 = this.idDepths_1;
+      if (!(isInterface(this_4, KtMap) ? this_4 : THROW_CCE()).containsKey_aw81wo_k$(id)) {
+        this.candidateCount_1 = this.candidateCount_1 + 1 | 0;
+      }
+    } else {
+      var combined = distinct(plus(previous.names_1, names));
+      previous.names_1.clear_j9egeb_k$();
+      previous.names_1.addAll_h3ej1q_k$(combined);
+      // Inline function 'kotlin.text.isEmpty' call
+      var this_5 = previous.logo_1;
+      if (charSequenceLength(this_5) === 0)
+        previous.logo_1 = icon;
+    }
+    var _iterator__ex2g4s_5 = matches.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_5.hasNext_bitz1p_k$()) {
+      var name_1 = _iterator__ex2g4s_5.next_20eer_k$();
+      // Inline function 'kotlin.collections.getOrPut' call
+      var this_6 = this.aliases_1;
+      var value_0 = this_6.get_wei43m_k$(name_1);
+      var tmp_2;
+      if (value_0 == null) {
+        // Inline function 'kotlin.collections.linkedSetOf' call
+        var answer = LinkedHashSet_init_$Create$();
+        this_6.put_4fpzoq_k$(name_1, answer);
+        tmp_2 = answer;
+      } else {
+        tmp_2 = value_0;
+      }
+      tmp_2.add_utx5q5_k$(id);
+    }
+    var _iterator__ex2g4s_6 = canonicalMatches.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_6.hasNext_bitz1p_k$()) {
+      var name_2 = _iterator__ex2g4s_6.next_20eer_k$();
+      // Inline function 'kotlin.collections.getOrPut' call
+      var this_7 = this.canonicalAliases_1;
+      var value_1 = this_7.get_wei43m_k$(name_2);
+      var tmp_3;
+      if (value_1 == null) {
+        // Inline function 'kotlin.collections.linkedSetOf' call
+        var answer_0 = LinkedHashSet_init_$Create$();
+        this_7.put_4fpzoq_k$(name_2, answer_0);
+        tmp_3 = answer_0;
+      } else {
+        tmp_3 = value_1;
+      }
+      tmp_3.add_utx5q5_k$(id);
+    }
+    return true;
+  };
+  protoOf(StreamingGuide).accepts_pt7gjr_k$ = function (id, start, end) {
+    var tmp0_elvis_lhs = this.idDepths_1.get_wei43m_k$(id);
+    var tmp0 = tmp0_elvis_lhs == null ? 1.0 : tmp0_elvis_lhs;
+    var tmp1_elvis_lhs = this.candidateDepths_1.get_wei43m_k$(id);
+    // Inline function 'kotlin.comparisons.maxOf' call
+    var b = tmp1_elvis_lhs == null ? 1.0 : tmp1_elvis_lhs;
+    var tmp$ret$0 = Math.max(tmp0, b);
+    var lower = this.clock_1 - tmp$ret$0 * 86400;
+    var tmp;
+    if (!(start == null) && start < this.endWindow_1 && (end == null ? start >= lower : end > lower && end > start)) {
+      var tmp_0;
+      // Inline function 'kotlin.collections.contains' call
+      // Inline function 'kotlin.collections.containsKey' call
+      var this_0 = this.idDepths_1;
+      if ((isInterface(this_0, KtMap) ? this_0 : THROW_CCE()).containsKey_aw81wo_k$(id)) {
+        tmp_0 = true;
+      } else {
+        // Inline function 'kotlin.collections.contains' call
+        // Inline function 'kotlin.collections.containsKey' call
+        var this_1 = this.metadata_1;
+        tmp_0 = (isInterface(this_1, KtMap) ? this_1 : THROW_CCE()).containsKey_aw81wo_k$(id);
+      }
+      tmp = tmp_0;
+    } else {
+      tmp = false;
+    }
+    return tmp;
+  };
+  protoOf(StreamingGuide).programme_4t147i_k$ = function (id, start, end, payload) {
+    var tmp = this;
+    var tmp0 = this.programmeCap_1;
+    var tmp2 = this.candidateCount_1;
+    // Inline function 'kotlin.comparisons.maxOf' call
+    var c = this.requested_1.get_size_woubt6_k$();
+    var tmp$ret$0 = Math.max(1, tmp2, c);
+    // Inline function 'kotlin.math.floor' call
+    var x = this.programmeLimit_1 / tmp$ret$0;
+    // Inline function 'kotlin.comparisons.minOf' call
+    var b = Math.floor(x);
+    // Inline function 'kotlin.comparisons.maxOf' call
+    var b_0 = Math.min(tmp0, b);
+    tmp.programmeCap_1 = Math.max(1.0, b_0);
+    // Inline function 'kotlin.collections.getOrPut' call
+    var this_0 = this.programmes_1;
+    var value = this_0.get_wei43m_k$(id);
+    var tmp_0;
+    if (value == null) {
+      // Inline function 'kotlin.collections.mutableListOf' call
+      var answer = ArrayList_init_$Create$();
+      this_0.put_4fpzoq_k$(id, answer);
+      tmp_0 = answer;
+    } else {
+      tmp_0 = value;
+    }
+    var entries = tmp_0;
+    var item = new Entry_0(id, start, end, payload);
+    if (start > this.clock_1 && (this.nextCandidates_1.get_wei43m_k$(id) == null || start < getValue(this.nextCandidates_1, id).start_1)) {
+      var tmp0_0 = this.nextCandidates_1;
+      // Inline function 'kotlin.collections.set' call
+      var value_0 = new Entry_0(id, start, end, Unit_instance);
+      tmp0_0.put_4fpzoq_k$(id, value_0);
+      // Inline function 'kotlin.collections.set' call
+      this.nextEntries_1.put_4fpzoq_k$(id, item);
+      // Inline function 'kotlin.comparisons.compareBy' call
+      var tmp_1 = StreamingGuide$programme$lambda(this);
+      var tmp$ret$9 = new sam$kotlin_Comparator$0_4(tmp_1);
+      sortWith_0(entries, tmp$ret$9);
+    }
+    var score = priority(this, item);
+    if (entries.get_size_woubt6_k$() >= this.programmeCap_1) {
+      this.truncated_1.add_utx5q5_k$(id);
+      if (score >= priority(this, last(entries))) {
+        if (this.nextEntries_1.get_wei43m_k$(id) === item) {
+          this.nextEntries_1.remove_gppy8k_k$(id);
+        }
+        return Unit_instance;
+      }
+      var removed = entries.removeAt_6niowx_k$(get_lastIndex_0(entries));
+      if (this.nextEntries_1.get_wei43m_k$(id) === removed) {
+        this.nextEntries_1.remove_gppy8k_k$(id);
+      }
+      this.programmeCount_1 = this.programmeCount_1 - 1 | 0;
+    }
+    if (this.programmeCount_1 >= this.programmeLimit_1) {
+      this.truncated_1.add_utx5q5_k$(id);
+      if (this.nextEntries_1.get_wei43m_k$(id) === item) {
+        this.nextEntries_1.remove_gppy8k_k$(id);
+      }
+      return Unit_instance;
+    }
+    var low = 0;
+    var high = entries.get_size_woubt6_k$();
+    while (low < high) {
+      var middle = (low + high | 0) >>> 1 | 0;
+      if (priority(this, entries.get_c1px32_k$(middle)) <= score)
+        low = middle + 1 | 0;
+      else
+        high = middle;
+    }
+    entries.add_dl6gt3_k$(low, item);
+    this.programmeCount_1 = this.programmeCount_1 + 1 | 0;
+  };
+  protoOf(StreamingGuide).output_ll6xq7_k$ = function (limit, channel, programme, bytes, emit) {
+    // Inline function 'kotlin.collections.linkedMapOf' call
+    var selected = LinkedHashMap_init_$Create$();
+    var _iterator__ex2g4s = this.requested_1.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var row = _iterator__ex2g4s.next_20eer_k$();
+      var tmp = GuideNames_instance;
+      var tmp_0;
+      var tmp_1;
+      // Inline function 'kotlin.text.isNotEmpty' call
+      var this_0 = row.id_1;
+      if (charSequenceLength(this_0) > 0) {
+        var tmp_2;
+        var tmp0 = this.metadata_1;
+        // Inline function 'kotlin.collections.contains' call
+        // Inline function 'kotlin.collections.containsKey' call
+        var key = row.id_1;
+        if ((isInterface(tmp0, KtMap) ? tmp0 : THROW_CCE()).containsKey_aw81wo_k$(key)) {
+          tmp_2 = true;
+        } else {
+          var tmp0_0 = this.programmes_1;
+          // Inline function 'kotlin.collections.contains' call
+          // Inline function 'kotlin.collections.containsKey' call
+          var key_0 = row.id_1;
+          tmp_2 = (isInterface(tmp0_0, KtMap) ? tmp0_0 : THROW_CCE()).containsKey_aw81wo_k$(key_0);
+        }
+        tmp_1 = tmp_2;
+      } else {
+        tmp_1 = false;
+      }
+      if (tmp_1) {
+        tmp_0 = listOf(row.id_1);
+      } else {
+        tmp_0 = emptyList();
+      }
+      var tmp_3 = tmp_0;
+      // Inline function 'kotlin.collections.map' call
+      var this_1 = row.get_names_ivn21r_k$();
+      // Inline function 'kotlin.collections.mapTo' call
+      var destination = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_1, 10));
+      var _iterator__ex2g4s_0 = this_1.iterator_jk1svi_k$();
+      while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
+        var item = _iterator__ex2g4s_0.next_20eer_k$();
+        var tmp0_safe_receiver = this.aliases_1.get_wei43m_k$(item);
+        // Inline function 'kotlin.collections.orEmpty' call
+        var tmp0_elvis_lhs = tmp0_safe_receiver == null ? null : toList_0(tmp0_safe_receiver);
+        var tmp$ret$8 = tmp0_elvis_lhs == null ? emptyList() : tmp0_elvis_lhs;
+        destination.add_utx5q5_k$(tmp$ret$8);
+      }
+      var tmp_4 = destination;
+      // Inline function 'kotlin.collections.map' call
+      var this_2 = row.get_names_ivn21r_k$();
+      // Inline function 'kotlin.collections.mapTo' call
+      var destination_0 = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_2, 10));
+      var _iterator__ex2g4s_1 = this_2.iterator_jk1svi_k$();
+      while (_iterator__ex2g4s_1.hasNext_bitz1p_k$()) {
+        var item_0 = _iterator__ex2g4s_1.next_20eer_k$();
+        var tmp0_safe_receiver_0 = this.canonicalAliases_1.get_wei43m_k$(GuideNames_instance.canonical_yvzfne_k$(item_0));
+        // Inline function 'kotlin.collections.orEmpty' call
+        var tmp0_elvis_lhs_0 = tmp0_safe_receiver_0 == null ? null : toList_0(tmp0_safe_receiver_0);
+        var tmp$ret$12 = tmp0_elvis_lhs_0 == null ? emptyList() : tmp0_elvis_lhs_0;
+        destination_0.add_utx5q5_k$(tmp$ret$12);
+      }
+      var id = tmp.chooseOrdered_naq0mk_k$(tmp_3, tmp_4, destination_0);
+      if (!(id == null)) {
+        var tmp0_elvis_lhs_1 = selected.get_wei43m_k$(id);
+        var tmp0_1 = tmp0_elvis_lhs_1 == null ? 1.0 : tmp0_elvis_lhs_1;
+        // Inline function 'kotlin.comparisons.maxOf' call
+        var b = row.days_1;
+        // Inline function 'kotlin.collections.set' call
+        var value = Math.max(tmp0_1, b);
+        selected.put_4fpzoq_k$(id, value);
+      }
+    }
+    var size = 512.0;
+    var _iterator__ex2g4s_2 = distinct(plus_0(this.metadata_1.get_keys_wop4xp_k$(), selected.get_keys_wop4xp_k$())).iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_2.hasNext_bitz1p_k$()) {
+      var id_0 = _iterator__ex2g4s_2.next_20eer_k$();
+      var tmp1_elvis_lhs = this.metadata_1.get_wei43m_k$(id_0);
+      var fragment = channel(tmp1_elvis_lhs == null ? new GuideStation(id_0) : tmp1_elvis_lhs);
+      size = size + bytes(fragment);
+      if (size > limit)
+        return null;
+      emit(fragment);
+    }
+    // Inline function 'kotlin.collections.map' call
+    // Inline function 'kotlin.collections.mapTo' call
+    var destination_1 = ArrayList_init_$Create$_0(selected.get_size_woubt6_k$());
+    // Inline function 'kotlin.collections.iterator' call
+    var _iterator__ex2g4s_3 = selected.get_entries_p20ztl_k$().iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_3.hasNext_bitz1p_k$()) {
+      var item_1 = _iterator__ex2g4s_3.next_20eer_k$();
+      // Inline function 'kotlin.collections.component1' call
+      var id_1 = item_1.get_key_18j28a_k$();
+      // Inline function 'kotlin.collections.component2' call
+      var days = item_1.get_value_j01efc_k$();
+      var lower = this.clock_1 - days * 86400;
+      // Inline function 'kotlin.collections.orEmpty' call
+      var tmp0_elvis_lhs_2 = this.programmes_1.get_wei43m_k$(id_1);
+      // Inline function 'kotlin.collections.filter' call
+      var tmp0_2 = tmp0_elvis_lhs_2 == null ? emptyList() : tmp0_elvis_lhs_2;
+      // Inline function 'kotlin.collections.filterTo' call
+      var destination_2 = ArrayList_init_$Create$();
+      var _iterator__ex2g4s_4 = tmp0_2.iterator_jk1svi_k$();
+      while (_iterator__ex2g4s_4.hasNext_bitz1p_k$()) {
+        var element = _iterator__ex2g4s_4.next_20eer_k$();
+        if (element.end_1 == null ? element.start_1 >= lower : element.end_1 > lower) {
+          destination_2.add_utx5q5_k$(element);
+        }
+      }
+      var entries = destination_2;
+      var tmp_5 = GuideSchedule_instance;
+      var tmp_6 = entries.get_size_woubt6_k$();
+      var tmp_7 = StreamingGuide$output$lambda(entries);
+      var selection = tmp_5.select_mlzbmh_k$(tmp_6, tmp_7, StreamingGuide$output$lambda_0(entries), this.clock_1, true);
+      var current = getOrNull_0(entries, selection.current_1);
+      var next = getOrNull_0(entries, selection.next_1);
+      var tmp_8 = listOfNotNull([current, next]);
+      // Inline function 'kotlin.collections.filter' call
+      // Inline function 'kotlin.collections.filterTo' call
+      var destination_3 = ArrayList_init_$Create$();
+      var _iterator__ex2g4s_5 = entries.iterator_jk1svi_k$();
+      while (_iterator__ex2g4s_5.hasNext_bitz1p_k$()) {
+        var element_0 = _iterator__ex2g4s_5.next_20eer_k$();
+        if (!(element_0 === current) && !(element_0 === next)) {
+          destination_3.add_utx5q5_k$(element_0);
+        }
+      }
+      var tmp$ret$19 = to(id_1, plus(tmp_8, destination_3));
+      destination_1.add_utx5q5_k$(tmp$ret$19);
+    }
+    var schedules = destination_1;
+    var count = 0;
+    var round = 0;
+    while (round < this.perChannel_1) {
+      var _iterator__ex2g4s_6 = schedules.iterator_jk1svi_k$();
+      $l$loop_0: while (_iterator__ex2g4s_6.hasNext_bitz1p_k$()) {
+        var _destruct__k2r9zo = _iterator__ex2g4s_6.next_20eer_k$();
+        var id_2 = _destruct__k2r9zo.component1_7eebsc_k$();
+        var entries_0 = _destruct__k2r9zo.component2_7eebsb_k$();
+        var tmp2_elvis_lhs = getOrNull_0(entries_0, round);
+        var tmp_9;
+        if (tmp2_elvis_lhs == null) {
+          continue $l$loop_0;
+        } else {
+          tmp_9 = tmp2_elvis_lhs;
+        }
+        var entry = tmp_9;
+        var fragment_0 = programme(id_2, entry.payload_1);
+        var length = bytes(fragment_0);
+        if (size + length > limit || count >= this.programmeLimit_1) {
+          this.truncated_1.add_utx5q5_k$(id_2);
+          continue $l$loop_0;
+        }
+        size = size + length;
+        count = count + 1 | 0;
+        emit(fragment_0);
+      }
+      round = round + 1 | 0;
+    }
+    // Inline function 'kotlin.math.floor' call
+    var x = this.startWindow_1;
+    var tmp_10 = Math.floor(x);
+    // Inline function 'kotlin.math.floor' call
+    var x_0 = this.endWindow_1;
+    var tmp_11 = Math.floor(x_0);
+    var tmp_12 = this.programmeCap_1;
+    var tmp0_3 = this.truncated_1;
+    var tmp$ret$31;
+    $l$block: {
+      // Inline function 'kotlin.collections.count' call
+      var tmp_13;
+      if (isInterface(tmp0_3, Collection)) {
+        tmp_13 = tmp0_3.isEmpty_y1axqb_k$();
+      } else {
+        tmp_13 = false;
+      }
+      if (tmp_13) {
+        tmp$ret$31 = 0;
+        break $l$block;
+      }
+      var count_0 = 0;
+      var _iterator__ex2g4s_7 = tmp0_3.iterator_jk1svi_k$();
+      while (_iterator__ex2g4s_7.hasNext_bitz1p_k$()) {
+        var element_1 = _iterator__ex2g4s_7.next_20eer_k$();
+        // Inline function 'kotlin.collections.contains' call
+        // Inline function 'kotlin.collections.containsKey' call
+        if ((isInterface(selected, KtMap) ? selected : THROW_CCE()).containsKey_aw81wo_k$(element_1)) {
+          count_0 = count_0 + 1 | 0;
+          checkCountOverflow(count_0);
+        }
+      }
+      tmp$ret$31 = count_0;
+    }
+    return new StreamingGuideCoverage(tmp_10, tmp_11, tmp_12, tmp$ret$31);
+  };
   function XtreamItem(id, providerId, kind, name, url, group, logo, epgId, description, adult, archiveDays, archiveSource, generatedName, generatedGroup, season, episode) {
     epgId = epgId === VOID ? '' : epgId;
     description = description === VOID ? '' : description;
@@ -15414,36 +16166,6 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function identity($this, format, source, kind, id, component, hash) {
     return format.equals(XtreamFormat_BROWSER_getInstance()) ? component(CoreText_getInstance().trim$default_yjecrm_k$(source.id_1)) + (':xtream:' + kind + ':' + id) : hash(listOf_0([source.id_1, kind, id]));
   }
-  function sam$kotlin_Comparator$0_4(function_0) {
-    this.function_1 = function_0;
-  }
-  protoOf(sam$kotlin_Comparator$0_4).compare_bczr_k$ = function (a, b) {
-    return this.function_1(a, b);
-  };
-  protoOf(sam$kotlin_Comparator$0_4).compare = function (a, b) {
-    return this.compare_bczr_k$(a, b);
-  };
-  protoOf(sam$kotlin_Comparator$0_4).getFunctionDelegate_jtodtf_k$ = function () {
-    return this.function_1;
-  };
-  protoOf(sam$kotlin_Comparator$0_4).equals = function (other) {
-    var tmp;
-    if (!(other == null) ? isInterface(other, Comparator) : false) {
-      var tmp_0;
-      if (!(other == null) ? isInterface(other, FunctionAdapter) : false) {
-        tmp_0 = equals(this.getFunctionDelegate_jtodtf_k$(), other.getFunctionDelegate_jtodtf_k$());
-      } else {
-        tmp_0 = false;
-      }
-      tmp = tmp_0;
-    } else {
-      tmp = false;
-    }
-    return tmp;
-  };
-  protoOf(sam$kotlin_Comparator$0_4).hashCode = function () {
-    return hashCode_0(this.getFunctionDelegate_jtodtf_k$());
-  };
   function sam$kotlin_Comparator$0_5(function_0) {
     this.function_1 = function_0;
   }
@@ -15472,6 +16194,36 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return tmp;
   };
   protoOf(sam$kotlin_Comparator$0_5).hashCode = function () {
+    return hashCode_0(this.getFunctionDelegate_jtodtf_k$());
+  };
+  function sam$kotlin_Comparator$0_6(function_0) {
+    this.function_1 = function_0;
+  }
+  protoOf(sam$kotlin_Comparator$0_6).compare_bczr_k$ = function (a, b) {
+    return this.function_1(a, b);
+  };
+  protoOf(sam$kotlin_Comparator$0_6).compare = function (a, b) {
+    return this.compare_bczr_k$(a, b);
+  };
+  protoOf(sam$kotlin_Comparator$0_6).getFunctionDelegate_jtodtf_k$ = function () {
+    return this.function_1;
+  };
+  protoOf(sam$kotlin_Comparator$0_6).equals = function (other) {
+    var tmp;
+    if (!(other == null) ? isInterface(other, Comparator) : false) {
+      var tmp_0;
+      if (!(other == null) ? isInterface(other, FunctionAdapter) : false) {
+        tmp_0 = equals(this.getFunctionDelegate_jtodtf_k$(), other.getFunctionDelegate_jtodtf_k$());
+      } else {
+        tmp_0 = false;
+      }
+      tmp = tmp_0;
+    } else {
+      tmp = false;
+    }
+    return tmp;
+  };
+  protoOf(sam$kotlin_Comparator$0_6).hashCode = function () {
     return hashCode_0(this.getFunctionDelegate_jtodtf_k$());
   };
   function XtreamCatalogs$seasons$lambda(a, b) {
@@ -15560,7 +16312,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     // Inline function 'kotlin.collections.sortedBy' call
     // Inline function 'kotlin.comparisons.compareBy' call
     var tmp_1 = XtreamCatalogs$seasons$lambda;
-    var tmp$ret$11 = new sam$kotlin_Comparator$0_4(tmp_1);
+    var tmp$ret$11 = new sam$kotlin_Comparator$0_5(tmp_1);
     return sortedWith(destination_0, tmp$ret$11);
   };
   protoOf(XtreamCatalogs).catalog_uygjsh_k$ = function (data, format, source, addresses, resolve, component, hash, kinds, deduplicate) {
@@ -16069,7 +16821,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         // Inline function 'kotlin.collections.sortedBy' call
         // Inline function 'kotlin.comparisons.compareBy' call
         var tmp_28 = XtreamCatalogs$episodes$lambda;
-        var tmp$ret$43 = new sam$kotlin_Comparator$0_5(tmp_28);
+        var tmp$ret$43 = new sam$kotlin_Comparator$0_6(tmp_28);
         var list_0 = sortedWith(element_2, tmp$ret$43);
         addAll(destination_2, list_0);
       }
@@ -16090,9 +16842,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
       // Inline function 'kotlin.comparisons.compareBy' call
       var tmp_30 = XtreamCatalogs$episodes$lambda_0;
       // Inline function 'kotlin.comparisons.thenBy' call
-      var this_7 = new sam$kotlin_Comparator$0_5(tmp_30);
+      var this_7 = new sam$kotlin_Comparator$0_6(tmp_30);
       var tmp_31 = XtreamCatalogs$episodes$lambda_1(this_7);
-      var tmp$ret$47 = new sam$kotlin_Comparator$0_5(tmp_31);
+      var tmp$ret$47 = new sam$kotlin_Comparator$0_6(tmp_31);
       tmp_26 = sortedWith(tmp_29, tmp$ret$47);
     }
     var items = tmp_26;
@@ -16318,9 +17070,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function credentials($this) {
     return listOf_0([to('username', $this.source_1.username_1), to('password', $this.source_1.password_1)]);
   }
-  function Companion_14() {
+  function Companion_15() {
   }
-  protoOf(Companion_14).browserBase_s0uj0h_k$ = function (value) {
+  protoOf(Companion_15).browserBase_s0uj0h_k$ = function (value) {
     var clean = substringBefore(substringBefore(value, _Char___init__impl__6a9atx(63)), _Char___init__impl__6a9atx(35));
     var candidate = removeSuffix(clean, '/');
     // Inline function 'kotlin.text.lowercase' call
@@ -16328,9 +17080,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
     var last = substringAfterLast(candidate, _Char___init__impl__6a9atx(47)).toLowerCase();
     return trimEnd(listOf_0(['player_api.php', 'get.php', 'xmltv.php']).contains_aljjnj_k$(last) ? substringBeforeLast(candidate, _Char___init__impl__6a9atx(47)) : clean, charArrayOf([_Char___init__impl__6a9atx(47)]));
   };
-  var Companion_instance_14;
-  function Companion_getInstance_14() {
-    return Companion_instance_14;
+  var Companion_instance_15;
+  function Companion_getInstance_15() {
+    return Companion_instance_15;
   }
   function XtreamAddresses(source, render, segment) {
     this.source_1 = source;
@@ -18235,8 +18987,108 @@ if (typeof String.prototype.startsWith === 'undefined') {
   protoOf(LegacyStalkerClient).guide = function (response) {
     return legacyGuide(this.core_1.guide_lhn7f_k$(wire(response)));
   };
+  function streamingGuideIdentities(rows) {
+    var tmp = Companion_instance_14;
+    // Inline function 'kotlin.js.unsafeCast' call
+    // Inline function 'kotlin.collections.map' call
+    // Inline function 'kotlin.collections.mapTo' call
+    var destination = ArrayList_init_$Create$_0(rows.length);
+    var inductionVariable = 0;
+    var last = rows.length;
+    while (inductionVariable < last) {
+      var item = rows[inductionVariable];
+      inductionVariable = inductionVariable + 1 | 0;
+      var tmp0_elvis_lhs = item.tvgId;
+      // Inline function 'kotlin.js.unsafeCast' call
+      var tmp_0 = tmp0_elvis_lhs == null ? '' : tmp0_elvis_lhs;
+      var tmp1_elvis_lhs = item.tvgName;
+      // Inline function 'kotlin.js.unsafeCast' call
+      var tmp_1 = tmp1_elvis_lhs == null ? '' : tmp1_elvis_lhs;
+      var tmp2_elvis_lhs = item.name;
+      // Inline function 'kotlin.js.unsafeCast' call
+      var tmp_2 = tmp2_elvis_lhs == null ? '' : tmp2_elvis_lhs;
+      var tmp3_elvis_lhs = item.archiveDays;
+      // Inline function 'kotlin.js.unsafeCast' call
+      var tmp$ret$7 = tmp3_elvis_lhs == null ? 0.0 : tmp3_elvis_lhs;
+      var tmp$ret$3 = new StreamingGuideIdentity(tmp_0, tmp_1, tmp_2, tmp$ret$7);
+      destination.add_utx5q5_k$(tmp$ret$3);
+    }
+    // Inline function 'kotlin.collections.map' call
+    var this_0 = tmp.identities_h380h1_k$(destination);
+    // Inline function 'kotlin.collections.mapTo' call
+    var destination_0 = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_0, 10));
+    var _iterator__ex2g4s = this_0.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var item_0 = _iterator__ex2g4s.next_20eer_k$();
+      // Inline function 'kotlin.arrayOf' call
+      // Inline function 'kotlin.js.unsafeCast' call
+      // Inline function 'kotlin.js.asDynamic' call
+      var tmp$ret$10 = [item_0.id_1, item_0.tvgName_1, item_0.name_1, item_0.days_1];
+      destination_0.add_utx5q5_k$(tmp$ret$10);
+    }
+    // Inline function 'kotlin.collections.toTypedArray' call
+    return copyToArray(destination_0);
+  }
+  function StreamingGuideFilter$output$lambda($channel) {
+    return function (it) {
+      // Inline function 'kotlin.collections.toTypedArray' call
+      var this_0 = it.names_1;
+      var tmp$ret$0 = copyToArray(this_0);
+      return $channel(it.id_1, tmp$ret$0, it.logo_1);
+    };
+  }
+  function StreamingGuideFilter(requested, clock, programmeLimit, perChannel) {
+    var tmp = this;
+    // Inline function 'kotlin.js.unsafeCast' call
+    // Inline function 'kotlin.collections.map' call
+    // Inline function 'kotlin.collections.mapTo' call
+    var destination = ArrayList_init_$Create$_0(requested.length);
+    var inductionVariable = 0;
+    var last = requested.length;
+    while (inductionVariable < last) {
+      var item = requested[inductionVariable];
+      inductionVariable = inductionVariable + 1 | 0;
+      // Inline function 'kotlin.js.unsafeCast' call
+      var tmp_0 = item[0];
+      // Inline function 'kotlin.js.unsafeCast' call
+      var tmp_1 = item[1];
+      // Inline function 'kotlin.js.unsafeCast' call
+      var tmp_2 = item[2];
+      // Inline function 'kotlin.js.unsafeCast' call
+      var tmp$ret$7 = item[3];
+      var tmp$ret$3 = new StreamingGuideIdentity(tmp_0, tmp_1, tmp_2, tmp$ret$7);
+      destination.add_utx5q5_k$(tmp$ret$3);
+    }
+    tmp.guide_1 = new StreamingGuide(destination, clock, programmeLimit, perChannel);
+  }
+  protoOf(StreamingGuideFilter).channel = function (id, names, icon) {
+    return this.guide_1.channel_c4n2uz_k$(id, toList(names), icon);
+  };
+  protoOf(StreamingGuideFilter).accepts = function (id, start, end) {
+    return this.guide_1.accepts_pt7gjr_k$(id, start, end);
+  };
+  protoOf(StreamingGuideFilter).programme = function (id, start, end, payload) {
+    // Inline function 'kotlin.js.unsafeCast' call
+    return this.guide_1.programme_4t147i_k$(id, start, end, payload);
+  };
+  protoOf(StreamingGuideFilter).output = function (limit, channel, programme, bytes, emit) {
+    var tmp0_elvis_lhs = this.guide_1.output_ll6xq7_k$(limit, StreamingGuideFilter$output$lambda(channel), programme, bytes, emit);
+    var tmp;
+    if (tmp0_elvis_lhs == null) {
+      return null;
+    } else {
+      tmp = tmp0_elvis_lhs;
+    }
+    var coverage = tmp;
+    var result = {};
+    result.start = coverage.start_1;
+    result.end = coverage.end_1;
+    result.programmeLimit = coverage.programmeLimit_1;
+    result.truncatedChannels = coverage.truncatedChannels_1;
+    return result;
+  };
   function xtreamBase(value) {
-    return Companion_instance_14.browserBase_s0uj0h_k$(value);
+    return Companion_instance_15.browserBase_s0uj0h_k$(value);
   }
   function item_0($this, entry) {
     var result = {};
@@ -18641,8 +19493,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
   CoreNumber_instance = new CoreNumber();
   StalkerCatalogs_instance = new StalkerCatalogs();
   StalkerProtocol_instance = new StalkerProtocol();
-  XtreamCatalogs_instance = new XtreamCatalogs();
   Companion_instance_14 = new Companion_14();
+  XtreamCatalogs_instance = new XtreamCatalogs();
+  Companion_instance_15 = new Companion_15();
   //endregion
   //region block: exports
   function $jsExportAll$(_) {
@@ -18688,6 +19541,8 @@ if (typeof String.prototype.startsWith === 'undefined') {
     _.stalkerConfig = stalkerConfig;
     _.StalkerClient = StalkerClient;
     _.LegacyStalkerClient = LegacyStalkerClient;
+    _.streamingGuideIdentities = streamingGuideIdentities;
+    _.StreamingGuideFilter = StreamingGuideFilter;
     _.xtreamBase = xtreamBase;
     _.XtreamClient = XtreamClient;
     _.legacyXtreamClient = legacyXtreamClient;
