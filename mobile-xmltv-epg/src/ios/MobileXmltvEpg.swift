@@ -21,24 +21,27 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         return docs.appendingPathComponent("epg2.meta")
     }()
     private let cacheLock = NSLock()
-    private let ttl: TimeInterval = 2 * 3600
-    private let defaultURL = "https://cdn.epg.one/epg2.xml.gz"
+    private let policyLock = NSLock()
+    private var policy: SharedGuide?
+    private func withPolicy<T>(_ action: (SharedGuide) throws -> T) throws -> T {
+        policyLock.lock()
+        defer { policyLock.unlock() }
+        if policy == nil { policy = try SharedGuide() }
+        return try action(policy!)
+    }
 
     private typealias Parsed = (channels: [String: String], programs: [String: [(start: Int, stop: Int, title: String, desc: String)]], icons: [String: String], names: [String: [String]])
     private let sourceLock = NSLock()
     private var parsedCache: [String: (fetched: TimeInterval, data: Parsed)] = [:]
     private var pendingSources: [String: [(Result<Parsed, Error>) -> Void]] = [:]
 
-    private func sourceUrls(_ call: CAPPluginCall) -> [String] {
-        let supplied = call.getArray("xmltv_urls", String.self) ?? []
-        let single = call.getString("xmltv_url") ?? ""
-        let values = supplied.isEmpty ? (single.isEmpty ? [defaultURL] : [single]) : supplied
-        var urls: [String] = []
-        for value in values {
-            let value = value.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !value.isEmpty && !urls.contains(value) { urls.append(value) }
-        }
-        return urls.isEmpty ? [defaultURL] : urls
+    private func sourceUrls(_ call: CAPPluginCall) throws -> [String] {
+        try withPolicy { try $0.sources(call.getArray("xmltv_urls", String.self) ?? [], single: call.getString("xmltv_url") ?? "") }
+    }
+
+    private func loadSources(_ call: CAPPluginCall, force: Bool = false, completion: @escaping (Result<Parsed, Error>) -> Void) {
+        do { loadSources(try sourceUrls(call), force: force, completion: completion) }
+        catch { completion(.failure(error)) }
     }
 
     private func loadSource(_ source: String, force: Bool = false, completion: @escaping (Result<Parsed, Error>) -> Void) {
@@ -47,10 +50,14 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
             return
         }
         sourceLock.lock()
-        if !force, let cached = parsedCache[source], Date().timeIntervalSince1970 - cached.fetched < ttl {
+        let action: String
+        do { action = try withPolicy { try $0.lookup(now: Date().timeIntervalSince1970, fetched: parsedCache[source]?.fetched,
+            force: force, pending: pendingSources[source] != nil) } }
+        catch { sourceLock.unlock(); completion(.failure(error)); return }
+        if action == "CACHE", let cached = parsedCache[source] {
             sourceLock.unlock(); completion(.success(cached.data)); return
         }
-        if pendingSources[source] != nil {
+        if action == "JOIN" {
             pendingSources[source]!.append(completion); sourceLock.unlock(); return
         }
         pendingSources[source] = [completion]
@@ -96,8 +103,11 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
             loadSource(sources[index], force: force) { result in
                 switch result {
                 case .success(let parsed):
-                    for (id, name) in parsed.channels where merged.channels[id] == nil {
-                        merged.channels[id] = name
+                    let ids: [String]
+                    do { ids = try self.withPolicy { try $0.unowned(Array(merged.channels.keys), incoming: Array(parsed.channels.keys)) } }
+                    catch { completion(.failure(error)); return }
+                    for id in ids {
+                        merged.channels[id] = parsed.channels[id]
                         merged.programs[id] = parsed.programs[id]
                         merged.icons[id] = parsed.icons[id]
                         merged.names[id] = parsed.names[id]
@@ -111,7 +121,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func getEpg(_ call: CAPPluginCall) {
-        loadSources(sourceUrls(call)) { result in
+        loadSources(call) { result in
             switch result {
             case .success(let parsed):
                 do { call.resolve(try self.buildSlice(parsed, channelId: call.getString("channel_id") ?? "",
@@ -126,7 +136,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func getChannels(_ call: CAPPluginCall) {
-        loadSources(sourceUrls(call)) { result in
+        loadSources(call) { result in
             switch result {
             case .success(let parsed):
                 let rows: [[String: Any]] = parsed.channels.keys.sorted().map { id in
@@ -140,7 +150,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func prefetch(_ call: CAPPluginCall) {
-        loadSources(sourceUrls(call), force: true) { result in
+        loadSources(call, force: true) { result in
             switch result {
             case .success: call.resolve()
             case .failure(let error): call.reject(error.localizedDescription)
@@ -156,9 +166,9 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         let meta = try String(contentsOf: metaURL, encoding: .utf8)
         let fields = meta.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
         // Timestamp-only metadata predates source tracking and cannot be trusted.
-        guard fields.count == 2, fields[1] == url.absoluteString,
-              let fetched = Double(fields[0]),
-              allowStale || Date().timeIntervalSince1970 - fetched < ttl else { return nil }
+        guard fields.count == 2, let fetched = Double(fields[0]),
+              try withPolicy({ try $0.disk(source: url.absoluteString, storedSource: String(fields[1]),
+                  now: Date().timeIntervalSince1970, fetched: fetched, stale: allowStale) }) else { return nil }
         let gz = try Data(contentsOf: cacheURL)
         guard let xml = gunzip(gz) else { return nil }
         return String(data: xml, encoding: .utf8)
@@ -414,6 +424,27 @@ private final class SharedGuide {
     private func call(_ name: String, _ arguments: [Any]) throws -> JavaScriptCore.JSValue {
         if functions[name] == nil { functions[name] = core.forProperty(name) }
         return try checked { functions[name]?.call(withArguments: arguments) }
+    }
+    func sources(_ supplied: [String], single: String) throws -> [String] {
+        let trim: @convention(block) (String) -> String = { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let identity: @convention(block) (String) -> String = { $0.precomposedStringWithCanonicalMapping }
+        guard let values = try call("nativeGuideSources", [supplied, single, trim, identity]).toArray() as? [String] else {
+            throw Self.failure("Invalid shared guide sources")
+        }
+        return values
+    }
+    func unowned(_ existing: [String], incoming: [String]) throws -> [String] {
+        let identity: @convention(block) (String) -> String = { $0.precomposedStringWithCanonicalMapping }
+        guard let values = try call("nativeGuideUnowned", [existing, incoming, identity]).toArray() as? [String] else {
+            throw Self.failure("Invalid shared guide ownership")
+        }
+        return values
+    }
+    func lookup(now: Double, fetched: Double?, force: Bool, pending: Bool) throws -> String {
+        try call("nativeGuideLookup", [now, fetched as Any? ?? NSNull(), force, pending]).toString()
+    }
+    func disk(source: String, storedSource: String, now: Double, fetched: Double, stale: Bool) throws -> Bool {
+        try call("nativeGuideDisk", [source, storedSource, now, fetched, stale]).toBool()
     }
     func time(_ input: String) throws -> Int { Int(try call("nativeGuideTime", [input, "swift"]).toDouble()) }
     func shift(_ input: String) throws -> Int { Int(try call("nativeGuideShift", [input, "swift"]).toInt32()) }

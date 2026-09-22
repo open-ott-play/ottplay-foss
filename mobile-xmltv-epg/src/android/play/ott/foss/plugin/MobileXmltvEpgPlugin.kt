@@ -15,7 +15,9 @@ import okhttp3.Response
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
-import kotlin.math.max
+import play.ott.core.NativeGuideSources
+import play.ott.core.NativeSourceFormat
+import play.ott.core.NativeCacheLookup
 import play.ott.core.NativeGuideClock
 import play.ott.core.NativeGuideFormat
 import play.ott.core.NativeGuideNames
@@ -40,25 +42,15 @@ class MobileXmltvEpgPlugin : Plugin() {
 
     private val cacheLock = Any()
 
-    companion object {
-        private const val TTL_SECONDS = 2 * 3600
-        private const val DEFAULT_URL = "https://cdn.epg.one/epg2.xml.gz"
-    }
-
     private val sourceLock = Any()
     private val parsedCache = mutableMapOf<String, Pair<Long, Parsed>>()
     private val pendingSources = mutableMapOf<String, MutableList<(Result<Parsed>) -> Unit>>()
 
     private fun sourceUrls(call: PluginCall): List<String> {
         val supplied = call.getArray("xmltv_urls")
-        val urls = (0 until (supplied?.length() ?: 0)).map { supplied!!.optString(it) }.filter { it.isNotBlank() }
-        if (urls.isNotEmpty()) return urls.map { it.trim() }.distinct()
-        val explicit = call.getString("xmltv_url")?.trim()?.takeIf { it.isNotEmpty() }
-        if (explicit != null) return listOf(explicit)
-        // Play fetches only sources supplied by the user or their playlist.
-        // An empty source list produces empty EPG/channels without consulting
-        // the Full edition's defaults, including any previously cached feed.
-        return if (BuildConfig.BUNDLED_EPG_DEFAULTS) listOf(DEFAULT_URL) else emptyList()
+        return NativeGuideSources.urls(
+            (0 until (supplied?.length() ?: 0)).map { supplied!!.optString(it) },
+            call.getString("xmltv_url") ?: "", BuildConfig.BUNDLED_EPG_DEFAULTS, NativeSourceFormat.ANDROID)
     }
 
     private fun loadSource(source: String, force: Boolean = false, completion: (Result<Parsed>) -> Unit) {
@@ -67,10 +59,11 @@ class MobileXmltvEpgPlugin : Plugin() {
         }
         synchronized(sourceLock) {
             val cached = parsedCache[source]
-            if (!force && cached != null && System.currentTimeMillis() / 1000 - cached.first < TTL_SECONDS) {
-                completion(Result.success(cached.second)); return
+            when (NativeGuideSources.lookupAndroid(System.currentTimeMillis() / 1000, cached?.first, force, pendingSources.containsKey(source))) {
+                NativeCacheLookup.CACHE -> { completion(Result.success(cached!!.second)); return }
+                NativeCacheLookup.JOIN -> { pendingSources[source]!!.add(completion); return }
+                NativeCacheLookup.LOAD -> Unit
             }
-            pendingSources[source]?.let { it.add(completion); return }
             pendingSources[source] = mutableListOf(completion)
         }
         fun finish(result: Result<Parsed>) {
@@ -127,13 +120,12 @@ class MobileXmltvEpgPlugin : Plugin() {
             }
             loadSource(sources[index], force) { result ->
                 result.onSuccess { parsed ->
-                    parsed.channels.forEach { (id, name) ->
-                        if (!channels.containsKey(id)) {
-                            channels[id] = name
-                            programs[id] = parsed.programs[id] ?: emptyList()
-                            icons[id] = parsed.icons[id] ?: ""
-                            names[id] = parsed.names[id] ?: listOf(name)
-                        }
+                    NativeGuideSources.unowned(channels.keys, parsed.channels.keys.toList()).forEach { id ->
+                        val name = parsed.channels.getValue(id)
+                        channels[id] = name
+                        programs[id] = parsed.programs[id] ?: emptyList()
+                        icons[id] = parsed.icons[id] ?: ""
+                        names[id] = parsed.names[id] ?: listOf(name)
                     }
                 }.onFailure { if (firstError == null) firstError = it }
                 next(index + 1)
@@ -185,10 +177,9 @@ class MobileXmltvEpgPlugin : Plugin() {
         if (!metaFile.exists() || !cacheFile.exists()) return@synchronized null
         val fields = metaFile.readText().split('\n', limit = 2)
         // Timestamp-only metadata predates source tracking and cannot be trusted.
-        if (fields.size != 2 || fields[1] != sourceUrl) return@synchronized null
+        if (fields.size != 2) return@synchronized null
         val fetched = fields[0].toLongOrNull() ?: return@synchronized null
-        val age = max(0L, System.currentTimeMillis() / 1000 - fetched)
-        if (!allowStale && age > TTL_SECONDS) return@synchronized null
+        if (!NativeGuideSources.diskAndroid(sourceUrl, fields[1], System.currentTimeMillis() / 1000, fetched, allowStale)) return@synchronized null
         gunzip(cacheFile.readBytes())?.let { String(it, Charsets.UTF_8) }
     }
 

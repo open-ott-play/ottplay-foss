@@ -56,6 +56,23 @@ pub fn text<T: for<'js> FromJs<'js>>(method: &str, value: &str) -> anyhow::Resul
     })
 }
 
+pub fn unowned(existing: Vec<String>, incoming: Vec<String>) -> anyhow::Result<Vec<String>> {
+    scalar(|ctx| core(&ctx)?.get::<_, Function>("nativeGuideUnowned")?.call((existing, incoming)))
+}
+
+pub fn source_fresh(age: u64) -> anyhow::Result<bool> {
+    // Saturating clock subtraction is supplied by Rust. Every age near the TTL is exact in JS.
+    scalar(|ctx| core(&ctx)?.get::<_, Function>("nativeGuideFresh")?.call((age as f64,)))
+}
+
+pub fn source_refresh(failed: bool, empty: bool, stale: bool) -> anyhow::Result<String> {
+    scalar(|ctx| core(&ctx)?.get::<_, Function>("nativeGuideRefresh")?.call((failed, empty, stale)))
+}
+
+pub fn evict_source_set(count: usize, existing: bool) -> anyhow::Result<bool> {
+    scalar(|ctx| core(&ctx)?.get::<_, Function>("nativeGuideEvictSourceSet")?.call((count as i32, existing)))
+}
+
 impl GuideIndex {
     pub fn new(rows: Vec<Vec<String>>) -> anyhow::Result<Self> {
         let context = context()?;

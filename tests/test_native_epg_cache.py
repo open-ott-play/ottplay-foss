@@ -2,7 +2,8 @@
 """Run native cache regressions with Swift and Kotlin/JVM (no mobile SDK/build).
 
 The actual plugin sources are compiled with small Capacitor/network stubs. Only
-platform imports/annotations are adapted; cache and callback code is unchanged.
+platform imports/annotations and the fixed clock are adapted; cache decisions
+and callback code are unchanged.
 Requires swift, kotlinc and java on PATH. Run: python3 tests/test_native_epg_cache.py
 Use --check-sources-only for the source ownership guard without native compilers.
 """
@@ -17,6 +18,7 @@ import pathlib
 import shutil
 import subprocess
 import tempfile
+from native_epg_policy_cases import methods
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 XML = '<tv><channel id="a"><display-name>Feed A</display-name></channel></tv>'
@@ -397,19 +399,21 @@ def main():
             swift = swift.replace('Bundle.main.url(forResource: "ottplay-core.manifest", withExtension: "json")', f'Optional(URL(fileURLWithPath: {receipt}))')
             swift = swift.replace("@objc(MobileXmltvEpg)", "").replace("@objc ", "")
             # Swift's assert autoclosure cannot throw; evaluate the real read first.
-            tests = SWIFT_TESTS.replace("GZIP_FIXTURE", GZIP)
+            tests = SWIFT_TESTS.replace("GZIP_FIXTURE", GZIP) + methods(GZIP)[0]
             tests = tests.replace("assert(try readCache", "assert(try! readCache")
             swift = swift.replace("    // MARK: - Cache", tests + "\n    // MARK: - Cache")
-            swift += "\ntry MobileXmltvEpg().runCacheTests()\n"
+            swift += "\ntry MobileXmltvEpg().runCacheTests()\ntry MobileXmltvEpg().runPolicyTests()\n"
+            swift = swift.replace("Date().timeIntervalSince1970", "TimeInterval(1000000)")
             (tmp / "CacheTest.swift").write_text(swift)
             run("swift", "-module-cache-path", str(tmp / "swift-module-cache"), "CacheTest.swift", cwd=tmp)
 
         if options.platform in ["android", "all"]:
             kotlin = (ROOT / "mobile-xmltv-epg/src/android/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt").read_text()
             kotlin = kotlin.replace(
-                "    // MARK: - Cache", KOTLIN_TESTS.replace("GZIP_FIXTURE", GZIP) + "\n    // MARK: - Cache"
+                "    // MARK: - Cache", KOTLIN_TESTS.replace("GZIP_FIXTURE", GZIP) + methods(GZIP)[1] + "\n    // MARK: - Cache"
             )
-            kotlin += "\nfun main() { MobileXmltvEpgPlugin().runCacheTests() }\n"
+            kotlin += "\nfun main() { MobileXmltvEpgPlugin().runCacheTests(); MobileXmltvEpgPlugin().runPolicyTests() }\n"
+            kotlin = kotlin.replace("System.currentTimeMillis()", "1000000000L")
             (tmp / "CacheTest.kt").write_text(kotlin)
             (tmp / "Capacitor.kt").write_text(KOTLIN_CAPACITOR)
             (tmp / "Http.kt").write_text(KOTLIN_HTTP)

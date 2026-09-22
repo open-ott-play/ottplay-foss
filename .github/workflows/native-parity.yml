@@ -25,6 +25,7 @@ on:
       - 'fonts/**'
       - 'docs/privacy-policy.md'
       - 'tests/test_native_*'
+      - 'tests/native_epg_policy_cases.py'
       - 'tests/test_ios_*'
       - 'tests/test_xmltv_*'
       - 'scripts/smoke-xmltv-*'

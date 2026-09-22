@@ -293,6 +293,10 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(Name, 'Name');
   initMetadataForClass(NativeGuideIndex, 'NativeGuideIndex');
   initMetadataForClass(NativeGuideWindow, 'NativeGuideWindow');
+  initMetadataForClass(NativeSourceFormat, 'NativeSourceFormat', VOID, Enum);
+  initMetadataForClass(NativeCacheLookup, 'NativeCacheLookup', VOID, Enum);
+  initMetadataForClass(NativeCacheRefresh, 'NativeCacheRefresh', VOID, Enum);
+  initMetadataForObject(NativeGuideSources, 'NativeGuideSources');
   initMetadataForClass(OperatorEntry, 'OperatorEntry');
   initMetadataForClass(OperatorCatalog, 'OperatorCatalog');
   initMetadataForClass(PlaylistMedia, 'PlaylistMedia');
@@ -789,6 +793,15 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function distinct(_this__u8e3s4) {
     return toList_0(toMutableSet(_this__u8e3s4));
   }
+  function toMutableSet(_this__u8e3s4) {
+    var tmp;
+    if (isInterface(_this__u8e3s4, Collection)) {
+      tmp = LinkedHashSet_init_$Create$_0(_this__u8e3s4);
+    } else {
+      tmp = toCollection_0(_this__u8e3s4, LinkedHashSet_init_$Create$());
+    }
+    return tmp;
+  }
   function first(_this__u8e3s4) {
     if (isInterface(_this__u8e3s4, KtList))
       return first_0(_this__u8e3s4);
@@ -824,15 +837,6 @@ if (typeof String.prototype.startsWith === 'undefined') {
       destination.add_utx5q5_k$(item);
     }
     return destination;
-  }
-  function toMutableSet(_this__u8e3s4) {
-    var tmp;
-    if (isInterface(_this__u8e3s4, Collection)) {
-      tmp = LinkedHashSet_init_$Create$_0(_this__u8e3s4);
-    } else {
-      tmp = toCollection_0(_this__u8e3s4, LinkedHashSet_init_$Create$());
-    }
-    return tmp;
   }
   function first_0(_this__u8e3s4) {
     if (_this__u8e3s4.isEmpty_y1axqb_k$())
@@ -6496,6 +6500,29 @@ if (typeof String.prototype.startsWith === 'undefined') {
     requireNonNegativeLimit(limit);
     return new DelimitedRangesSequence(_this__u8e3s4, startIndex, limit, rangesDelimitedBy$lambda_0(delimiters, ignoreCase));
   }
+  function trim(_this__u8e3s4) {
+    // Inline function 'kotlin.text.trim' call
+    var startIndex = 0;
+    var endIndex = charSequenceLength(_this__u8e3s4) - 1 | 0;
+    var startFound = false;
+    $l$loop: while (startIndex <= endIndex) {
+      var index = !startFound ? startIndex : endIndex;
+      var p0 = charSequenceGet(_this__u8e3s4, index);
+      var match = isWhitespace(p0);
+      if (!startFound) {
+        if (!match)
+          startFound = true;
+        else
+          startIndex = startIndex + 1 | 0;
+      } else {
+        if (!match)
+          break $l$loop;
+        else
+          endIndex = endIndex - 1 | 0;
+      }
+    }
+    return charSequenceSubSequence(_this__u8e3s4, startIndex, endIndex + 1 | 0);
+  }
   function lineSequence(_this__u8e3s4) {
     // Inline function 'kotlin.sequences.Sequence' call
     return new lineSequence$$inlined$Sequence$1(_this__u8e3s4);
@@ -6519,29 +6546,6 @@ if (typeof String.prototype.startsWith === 'undefined') {
     else {
       return regionMatchesImpl(_this__u8e3s4, 0, prefix, 0, charSequenceLength(prefix), ignoreCase);
     }
-  }
-  function trim(_this__u8e3s4) {
-    // Inline function 'kotlin.text.trim' call
-    var startIndex = 0;
-    var endIndex = charSequenceLength(_this__u8e3s4) - 1 | 0;
-    var startFound = false;
-    $l$loop: while (startIndex <= endIndex) {
-      var index = !startFound ? startIndex : endIndex;
-      var p0 = charSequenceGet(_this__u8e3s4, index);
-      var match = isWhitespace(p0);
-      if (!startFound) {
-        if (!match)
-          startFound = true;
-        else
-          startIndex = startIndex + 1 | 0;
-      } else {
-        if (!match)
-          break $l$loop;
-        else
-          endIndex = endIndex - 1 | 0;
-      }
-    }
-    return charSequenceSubSequence(_this__u8e3s4, startIndex, endIndex + 1 | 0);
   }
   function trimStart(_this__u8e3s4) {
     var tmp$ret$0;
@@ -11070,6 +11074,219 @@ if (typeof String.prototype.startsWith === 'undefined') {
     static_init_2();
     return NativeGuideFormat_WEB_instance;
   }
+  var static_init_called_3;
+  function static_init_3() {
+    if (static_init_called_3)
+      return Unit_instance;
+    static_init_called_3 = true;
+    NativeSourceFormat_SWIFT_instance = new NativeSourceFormat('SWIFT', 0);
+    NativeSourceFormat_ANDROID_instance = new NativeSourceFormat('ANDROID', 1);
+    NativeSourceFormat_ANDROID_RAW_instance = new NativeSourceFormat('ANDROID_RAW', 2);
+  }
+  var NativeSourceFormat_SWIFT_instance;
+  var NativeSourceFormat_ANDROID_instance;
+  var NativeSourceFormat_ANDROID_RAW_instance;
+  function NativeSourceFormat(name, ordinal) {
+    Enum.call(this, name, ordinal);
+  }
+  var static_init_called_4;
+  function static_init_4() {
+    if (static_init_called_4)
+      return Unit_instance;
+    static_init_called_4 = true;
+    NativeCacheLookup_CACHE_instance = new NativeCacheLookup('CACHE', 0);
+    NativeCacheLookup_JOIN_instance = new NativeCacheLookup('JOIN', 1);
+    NativeCacheLookup_LOAD_instance = new NativeCacheLookup('LOAD', 2);
+  }
+  var NativeCacheLookup_CACHE_instance;
+  var NativeCacheLookup_JOIN_instance;
+  var NativeCacheLookup_LOAD_instance;
+  function NativeCacheLookup(name, ordinal) {
+    Enum.call(this, name, ordinal);
+  }
+  var static_init_called_5;
+  function static_init_5() {
+    if (static_init_called_5)
+      return Unit_instance;
+    static_init_called_5 = true;
+    NativeCacheRefresh_STALE_instance = new NativeCacheRefresh('STALE', 0);
+    NativeCacheRefresh_REPLACE_instance = new NativeCacheRefresh('REPLACE', 1);
+    NativeCacheRefresh_FAIL_instance = new NativeCacheRefresh('FAIL', 2);
+  }
+  var NativeCacheRefresh_STALE_instance;
+  var NativeCacheRefresh_REPLACE_instance;
+  var NativeCacheRefresh_FAIL_instance;
+  function NativeCacheRefresh(name, ordinal) {
+    Enum.call(this, name, ordinal);
+  }
+  function lookup($this, fresh, force, pending) {
+    return !force && fresh ? NativeCacheLookup_CACHE_getInstance() : pending ? NativeCacheLookup_JOIN_getInstance() : NativeCacheLookup_LOAD_getInstance();
+  }
+  function NativeGuideSources() {
+    this.DEFAULT_URL_1 = 'https://cdn.epg.one/epg2.xml.gz';
+    this.TTL_1 = 7200;
+  }
+  protoOf(NativeGuideSources).urls_6o027a_k$ = function (supplied, single, bundled, format, trim, identity) {
+    if (format.equals(NativeSourceFormat_ANDROID_RAW_getInstance())) {
+      // Inline function 'kotlin.collections.filter' call
+      var tmp0 = plus(listOf(single), supplied);
+      // Inline function 'kotlin.collections.filterTo' call
+      var destination = ArrayList_init_$Create$();
+      var _iterator__ex2g4s = tmp0.iterator_jk1svi_k$();
+      while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+        var element = _iterator__ex2g4s.next_20eer_k$();
+        // Inline function 'kotlin.text.isNotBlank' call
+        if (!isBlank(element)) {
+          destination.add_utx5q5_k$(element);
+        }
+      }
+      return distinct(destination);
+    }
+    var fallback = bundled ? listOf('https://cdn.epg.one/epg2.xml.gz') : emptyList();
+    var tmp;
+    if (format.equals(NativeSourceFormat_SWIFT_getInstance())) {
+      var tmp_0;
+      // Inline function 'kotlin.collections.isNotEmpty' call
+      if (!supplied.isEmpty_y1axqb_k$()) {
+        tmp_0 = supplied;
+      } else {
+        tmp_0 = listOf(single);
+      }
+      tmp = tmp_0;
+    } else {
+      // Inline function 'kotlin.collections.filter' call
+      // Inline function 'kotlin.collections.filterTo' call
+      var destination_0 = ArrayList_init_$Create$();
+      var _iterator__ex2g4s_0 = supplied.iterator_jk1svi_k$();
+      while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
+        var element_0 = _iterator__ex2g4s_0.next_20eer_k$();
+        // Inline function 'kotlin.text.isNotBlank' call
+        if (!isBlank(element_0)) {
+          destination_0.add_utx5q5_k$(element_0);
+        }
+      }
+      // Inline function 'kotlin.collections.ifEmpty' call
+      var tmp_1;
+      if (destination_0.isEmpty_y1axqb_k$()) {
+        tmp_1 = listOf(single);
+      } else {
+        tmp_1 = destination_0;
+      }
+      tmp = tmp_1;
+    }
+    var candidates = tmp;
+    // Inline function 'kotlin.collections.map' call
+    // Inline function 'kotlin.collections.mapTo' call
+    var destination_1 = ArrayList_init_$Create$_0(collectionSizeOrDefault(candidates, 10));
+    var _iterator__ex2g4s_1 = candidates.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_1.hasNext_bitz1p_k$()) {
+      var item = _iterator__ex2g4s_1.next_20eer_k$();
+      destination_1.add_utx5q5_k$(trim(item));
+    }
+    // Inline function 'kotlin.collections.filter' call
+    // Inline function 'kotlin.collections.filterTo' call
+    var destination_2 = ArrayList_init_$Create$();
+    var _iterator__ex2g4s_2 = destination_1.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_2.hasNext_bitz1p_k$()) {
+      var element_1 = _iterator__ex2g4s_2.next_20eer_k$();
+      // Inline function 'kotlin.text.isNotEmpty' call
+      if (charSequenceLength(element_1) > 0) {
+        destination_2.add_utx5q5_k$(element_1);
+      }
+    }
+    // Inline function 'kotlin.collections.distinctBy' call
+    var set = HashSet_init_$Create$();
+    var list = ArrayList_init_$Create$();
+    var _iterator__ex2g4s_3 = destination_2.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_3.hasNext_bitz1p_k$()) {
+      var e = _iterator__ex2g4s_3.next_20eer_k$();
+      var key = identity(e);
+      if (set.add_utx5q5_k$(key)) {
+        list.add_utx5q5_k$(e);
+      }
+    }
+    // Inline function 'kotlin.collections.ifEmpty' call
+    var tmp_2;
+    if (list.isEmpty_y1axqb_k$()) {
+      tmp_2 = fallback;
+    } else {
+      tmp_2 = list;
+    }
+    return tmp_2;
+  };
+  protoOf(NativeGuideSources).unowned_jpm54w_k$ = function (existing, incoming, identity) {
+    // Inline function 'kotlin.collections.map' call
+    // Inline function 'kotlin.collections.mapTo' call
+    var destination = ArrayList_init_$Create$_0(collectionSizeOrDefault(existing, 10));
+    var _iterator__ex2g4s = existing.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var item = _iterator__ex2g4s.next_20eer_k$();
+      destination.add_utx5q5_k$(identity(item));
+    }
+    var seen = toMutableSet(destination);
+    // Inline function 'kotlin.collections.filter' call
+    // Inline function 'kotlin.collections.filterTo' call
+    var destination_0 = ArrayList_init_$Create$();
+    var _iterator__ex2g4s_0 = incoming.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
+      var element = _iterator__ex2g4s_0.next_20eer_k$();
+      if (seen.add_utx5q5_k$(identity(element))) {
+        destination_0.add_utx5q5_k$(element);
+      }
+    }
+    return destination_0;
+  };
+  protoOf(NativeGuideSources).fresh_w660h4_k$ = function (age) {
+    return age < 7200;
+  };
+  protoOf(NativeGuideSources).lookup_lo9ey9_k$ = function (now, fetched, force, pending) {
+    return lookup(this, !(fetched == null) && this.fresh_w660h4_k$(now - fetched), force, pending);
+  };
+  protoOf(NativeGuideSources).diskSwift_wifyxd_k$ = function (source, storedSource, now, fetched, stale) {
+    return source === storedSource && (stale || this.fresh_w660h4_k$(now - fetched));
+  };
+  protoOf(NativeGuideSources).refresh_lm5uba_k$ = function (failed, empty, stale) {
+    return stale && (failed || empty) ? NativeCacheRefresh_STALE_getInstance() : empty ? NativeCacheRefresh_FAIL_getInstance() : NativeCacheRefresh_REPLACE_getInstance();
+  };
+  protoOf(NativeGuideSources).evictSourceSet_idede3_k$ = function (count, existing) {
+    return count >= 8 && !existing;
+  };
+  var NativeGuideSources_instance;
+  function NativeGuideSources_getInstance() {
+    return NativeGuideSources_instance;
+  }
+  function NativeSourceFormat_SWIFT_getInstance() {
+    static_init_3();
+    return NativeSourceFormat_SWIFT_instance;
+  }
+  function NativeSourceFormat_ANDROID_RAW_getInstance() {
+    static_init_3();
+    return NativeSourceFormat_ANDROID_RAW_instance;
+  }
+  function NativeCacheLookup_CACHE_getInstance() {
+    static_init_4();
+    return NativeCacheLookup_CACHE_instance;
+  }
+  function NativeCacheLookup_JOIN_getInstance() {
+    static_init_4();
+    return NativeCacheLookup_JOIN_instance;
+  }
+  function NativeCacheLookup_LOAD_getInstance() {
+    static_init_4();
+    return NativeCacheLookup_LOAD_instance;
+  }
+  function NativeCacheRefresh_STALE_getInstance() {
+    static_init_5();
+    return NativeCacheRefresh_STALE_instance;
+  }
+  function NativeCacheRefresh_REPLACE_getInstance() {
+    static_init_5();
+    return NativeCacheRefresh_REPLACE_instance;
+  }
+  function NativeCacheRefresh_FAIL_getInstance() {
+    static_init_5();
+    return NativeCacheRefresh_FAIL_instance;
+  }
   function OperatorEntry(id, name, generatedName, url, group, category, logo, epgId, epgName, hours, fallbackHours, mode, archive, feed, drm, server, token) {
     this.id_1 = id;
     this.name_1 = name;
@@ -11674,11 +11891,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function OperatorPlaylist_getInstance() {
     return OperatorPlaylist_instance;
   }
-  var static_init_called_3;
-  function static_init_3() {
-    if (static_init_called_3)
+  var static_init_called_6;
+  function static_init_6() {
+    if (static_init_called_6)
       return Unit_instance;
-    static_init_called_3 = true;
+    static_init_called_6 = true;
     PlaylistFormat_BROWSER_instance = new PlaylistFormat('BROWSER', 0);
     PlaylistFormat_ANDROID_instance = new PlaylistFormat('ANDROID', 1);
   }
@@ -12855,18 +13072,18 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return Playlist_instance;
   }
   function PlaylistFormat_BROWSER_getInstance() {
-    static_init_3();
+    static_init_6();
     return PlaylistFormat_BROWSER_instance;
   }
   function PlaylistFormat_ANDROID_getInstance() {
-    static_init_3();
+    static_init_6();
     return PlaylistFormat_ANDROID_instance;
   }
-  var static_init_called_4;
-  function static_init_4() {
-    if (static_init_called_4)
+  var static_init_called_7;
+  function static_init_7() {
+    if (static_init_called_7)
       return Unit_instance;
-    static_init_called_4 = true;
+    static_init_called_7 = true;
     ProviderPlaylistFormat_GENERIC_instance = new ProviderPlaylistFormat('GENERIC', 0);
     ProviderPlaylistFormat_M3U_instance = new ProviderPlaylistFormat('M3U', 1);
   }
@@ -13437,18 +13654,18 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return ProviderPlaylist_instance;
   }
   function ProviderPlaylistFormat_GENERIC_getInstance() {
-    static_init_4();
+    static_init_7();
     return ProviderPlaylistFormat_GENERIC_instance;
   }
   function ProviderPlaylistFormat_M3U_getInstance() {
-    static_init_4();
+    static_init_7();
     return ProviderPlaylistFormat_M3U_instance;
   }
-  var static_init_called_5;
-  function static_init_5() {
-    if (static_init_called_5)
+  var static_init_called_8;
+  function static_init_8() {
+    if (static_init_called_8)
       return Unit_instance;
-    static_init_called_5 = true;
+    static_init_called_8 = true;
     ProviderValueKind_MISSING_instance = new ProviderValueKind('MISSING', 0);
     ProviderValueKind_NULL_instance = new ProviderValueKind('NULL', 1);
     ProviderValueKind_TEXT_instance = new ProviderValueKind('TEXT', 2);
@@ -13789,31 +14006,31 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return CoreNumber_instance;
   }
   function ProviderValueKind_MISSING_getInstance() {
-    static_init_5();
+    static_init_8();
     return ProviderValueKind_MISSING_instance;
   }
   function ProviderValueKind_NULL_getInstance() {
-    static_init_5();
+    static_init_8();
     return ProviderValueKind_NULL_instance;
   }
   function ProviderValueKind_TEXT_getInstance() {
-    static_init_5();
+    static_init_8();
     return ProviderValueKind_TEXT_instance;
   }
   function ProviderValueKind_NUMBER_getInstance() {
-    static_init_5();
+    static_init_8();
     return ProviderValueKind_NUMBER_instance;
   }
   function ProviderValueKind_BOOLEAN_getInstance() {
-    static_init_5();
+    static_init_8();
     return ProviderValueKind_BOOLEAN_instance;
   }
   function ProviderValueKind_ARRAY_getInstance() {
-    static_init_5();
+    static_init_8();
     return ProviderValueKind_ARRAY_instance;
   }
   function ProviderValueKind_OBJECT_getInstance() {
-    static_init_5();
+    static_init_8();
     return ProviderValueKind_OBJECT_instance;
   }
   function current($this, node) {
@@ -14297,11 +14514,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function StalkerCatalogs_getInstance() {
     return StalkerCatalogs_instance;
   }
-  var static_init_called_6;
-  function static_init_6() {
-    if (static_init_called_6)
+  var static_init_called_9;
+  function static_init_9() {
+    if (static_init_called_9)
       return Unit_instance;
-    static_init_called_6 = true;
+    static_init_called_9 = true;
     StalkerFormat_BROWSER_instance = new StalkerFormat('BROWSER', 0);
     StalkerFormat_NATIVE_instance = new StalkerFormat('NATIVE', 1);
     StalkerFormat_RPC_instance = new StalkerFormat('RPC', 2);
@@ -14982,11 +15199,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return StalkerProtocol_instance;
   }
   function StalkerFormat_BROWSER_getInstance() {
-    static_init_6();
+    static_init_9();
     return StalkerFormat_BROWSER_instance;
   }
   function StalkerFormat_RPC_getInstance() {
-    static_init_6();
+    static_init_9();
     return StalkerFormat_RPC_instance;
   }
   function XtreamItem(id, providerId, kind, name, url, group, logo, epgId, description, adult, archiveDays, archiveSource, generatedName, generatedGroup, season, episode) {
@@ -15885,11 +16102,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function XtreamCatalogs_getInstance() {
     return XtreamCatalogs_instance;
   }
-  var static_init_called_7;
-  function static_init_7() {
-    if (static_init_called_7)
+  var static_init_called_10;
+  function static_init_10() {
+    if (static_init_called_10)
       return Unit_instance;
-    static_init_called_7 = true;
+    static_init_called_10 = true;
     XtreamFormat_BROWSER_instance = new XtreamFormat('BROWSER', 0);
     XtreamFormat_ANDROID_instance = new XtreamFormat('ANDROID', 1);
     XtreamFormat_LEGACY_instance = new XtreamFormat('LEGACY', 2);
@@ -16159,15 +16376,15 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return trimEnd(this.render_1(listOf_0(['timeshift', this.source_1.username_1, this.source_1.password_1]), emptyList()), charArrayOf([_Char___init__impl__6a9atx(47)])) + '/{durationMinutes}/{startDate}/' + this.segment_1(id + '.ts');
   };
   function XtreamFormat_BROWSER_getInstance() {
-    static_init_7();
+    static_init_10();
     return XtreamFormat_BROWSER_instance;
   }
   function XtreamFormat_ANDROID_getInstance() {
-    static_init_7();
+    static_init_10();
     return XtreamFormat_ANDROID_instance;
   }
   function XtreamFormat_LEGACY_getInstance() {
-    static_init_7();
+    static_init_10();
     return XtreamFormat_LEGACY_instance;
   }
   function get_nativeClocks() {
@@ -17468,6 +17685,57 @@ if (typeof String.prototype.startsWith === 'undefined') {
       return wire($values[it].time_to).number_h3u0fr_k$();
     };
   }
+  function nativeGuideSources(supplied, single, trim, identity) {
+    identity = identity === VOID ? null : identity;
+    var tmp = NativeGuideSources_instance;
+    var tmp_0 = toList(supplied);
+    var tmp_1 = NativeSourceFormat_SWIFT_getInstance();
+    var tmp_2;
+    if (identity == null) {
+      tmp_2 = nativeGuideSources$lambda;
+    } else {
+      tmp_2 = identity;
+    }
+    // Inline function 'kotlin.collections.toTypedArray' call
+    var this_0 = tmp.urls_6o027a_k$(tmp_0, single, true, tmp_1, trim, tmp_2);
+    return copyToArray(this_0);
+  }
+  function nativeGuideUnowned(existing, incoming, identity) {
+    identity = identity === VOID ? null : identity;
+    var tmp = NativeGuideSources_instance;
+    var tmp_0 = toList(existing);
+    var tmp_1 = toList(incoming);
+    var tmp_2;
+    if (identity == null) {
+      tmp_2 = nativeGuideUnowned$lambda;
+    } else {
+      tmp_2 = identity;
+    }
+    // Inline function 'kotlin.collections.toTypedArray' call
+    var this_0 = tmp.unowned_jpm54w_k$(tmp_0, tmp_1, tmp_2);
+    return copyToArray(this_0);
+  }
+  function nativeGuideLookup(now, fetched, force, pending) {
+    return NativeGuideSources_instance.lookup_lo9ey9_k$(now, fetched, force, pending).name_1;
+  }
+  function nativeGuideDisk(source, storedSource, now, fetched, stale) {
+    return NativeGuideSources_instance.diskSwift_wifyxd_k$(source, storedSource, now, fetched, stale);
+  }
+  function nativeGuideFresh(age) {
+    return NativeGuideSources_instance.fresh_w660h4_k$(age);
+  }
+  function nativeGuideRefresh(failed, empty, stale) {
+    return NativeGuideSources_instance.refresh_lm5uba_k$(failed, empty, stale).name_1;
+  }
+  function nativeGuideEvictSourceSet(count, existing) {
+    return NativeGuideSources_instance.evictSourceSet_idede3_k$(count, existing);
+  }
+  function nativeGuideSources$lambda(it) {
+    return it;
+  }
+  function nativeGuideUnowned$lambda(it) {
+    return it;
+  }
   function wire(value) {
     var tmp;
     if (typeof value === 'undefined') {
@@ -18367,6 +18635,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   GuideSchedule_instance = new GuideSchedule();
   LegacyXtream_instance = new LegacyXtream();
   NativeGuideNames_instance = new NativeGuideNames();
+  NativeGuideSources_instance = new NativeGuideSources();
   OperatorPlaylist_instance = new OperatorPlaylist();
   ProviderPlaylist_instance = new ProviderPlaylist();
   CoreNumber_instance = new CoreNumber();
@@ -18408,6 +18677,13 @@ if (typeof String.prototype.startsWith === 'undefined') {
     _.legacyGuideCacheCapacity = legacyGuideCacheCapacity;
     _.legacyGuideCacheRead = legacyGuideCacheRead;
     _.legacyGuideCacheOrder = legacyGuideCacheOrder;
+    _.nativeGuideSources = nativeGuideSources;
+    _.nativeGuideUnowned = nativeGuideUnowned;
+    _.nativeGuideLookup = nativeGuideLookup;
+    _.nativeGuideDisk = nativeGuideDisk;
+    _.nativeGuideFresh = nativeGuideFresh;
+    _.nativeGuideRefresh = nativeGuideRefresh;
+    _.nativeGuideEvictSourceSet = nativeGuideEvictSourceSet;
     _.stalkerTextDenied = stalkerTextDenied;
     _.stalkerConfig = stalkerConfig;
     _.StalkerClient = StalkerClient;

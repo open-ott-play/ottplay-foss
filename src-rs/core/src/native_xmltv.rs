@@ -4,10 +4,10 @@ use std::sync::{Arc, LazyLock};
 use tokio::sync::Mutex;
 use serde::Deserialize;
 use crate::xmltv::{self, XmltvCache};
+use crate::shared_guide;
 
 type SourceSlot = Arc<Mutex<Option<Arc<XmltvCache>>>>;
 static SOURCES: LazyLock<Mutex<HashMap<Vec<String>, SourceSlot>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
-const TTL: u64 = 2 * 3600;
 
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct MatchChannel {
@@ -52,12 +52,13 @@ pub fn resolve_in_index(_cache: &XmltvCache, index: &xmltv::MatchIndex, tvg_id: 
 }
 
 /// First feed defining an ID owns that channel and its programmes.
-pub fn merge_source(target: &mut XmltvCache, source: XmltvCache) {
-    for (id, channel) in source.channels {
-        if target.channels.contains_key(&id) { continue; }
-        target.channels.insert(id.clone(), channel);
-        if let Some(programs) = source.programs.get(&id) { target.programs.insert(id, programs.clone()); }
+pub fn merge_source(target: &mut XmltvCache, mut source: XmltvCache) -> anyhow::Result<()> {
+    let ids = shared_guide::unowned(target.channels.keys().cloned().collect(), source.channels.keys().cloned().collect())?;
+    for id in ids {
+        if let Some(channel) = source.channels.remove(&id) { target.channels.insert(id.clone(), channel); }
+        if let Some(programs) = source.programs.remove(&id) { target.programs.insert(id, programs); }
     }
+    Ok(())
 }
 
 pub async fn load_sources(urls: &[String]) -> anyhow::Result<Arc<XmltvCache>> {
@@ -66,7 +67,7 @@ pub async fn load_sources(urls: &[String]) -> anyhow::Result<Arc<XmltvCache>> {
     let slot = {
         let mut sources = SOURCES.lock().await;
         // Bound resident source sets; active calls retain their Arc when evicted.
-        if sources.len() >= 8 && !sources.contains_key(urls) {
+        if shared_guide::evict_source_set(sources.len(), sources.contains_key(urls))? {
             if let Some(key) = sources.keys().next().cloned() { sources.remove(&key); }
         }
         sources.entry(urls.to_vec()).or_insert_with(|| Arc::new(Mutex::new(None))).clone()
@@ -74,24 +75,22 @@ pub async fn load_sources(urls: &[String]) -> anyhow::Result<Arc<XmltvCache>> {
     let mut guard = slot.lock().await;
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_secs();
     if let Some(cache) = guard.as_ref() {
-        if now.saturating_sub(cache.fetched_at) < TTL { return Ok(cache.clone()); }
+        if shared_guide::source_fresh(now.saturating_sub(cache.fetched_at))? { return Ok(cache.clone()); }
     }
     let mut merged = XmltvCache::default();
     let mut last_error = None;
     for url in urls {
         match xmltv::fetch_single_native(url).await {
-            Ok((channels, programs)) => merge_source(&mut merged, XmltvCache { channels, programs, fetched_at: now }),
+            Ok((channels, programs)) => merge_source(&mut merged, XmltvCache { channels, programs, fetched_at: now })?,
             Err(error) => last_error = Some(error),
         }
     }
-    if last_error.is_some() {
-        // A partial refresh must not replace the earlier source with a later duplicate ID.
-        if let Some(stale) = guard.as_ref() { return Ok(stale.clone()); }
-    }
-    if merged.channels.is_empty() {
-        // Offline fallback is restricted to this exact ordered source set.
-        if let Some(stale) = guard.as_ref() { return Ok(stale.clone()); }
-        return Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Empty XMLTV sources")));
+    match shared_guide::source_refresh(last_error.is_some(), merged.channels.is_empty(), guard.is_some())?.as_str() {
+        // A partial refresh retains ownership for this exact ordered source set.
+        "STALE" => return Ok(guard.as_ref().expect("core selected an existing stale entry").clone()),
+        "FAIL" => return Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Empty XMLTV sources"))),
+        "REPLACE" => (),
+        _ => anyhow::bail!("Invalid shared guide refresh decision"),
     }
     merged.fetched_at = now;
     let fresh = Arc::new(merged);
@@ -102,6 +101,31 @@ pub async fn load_sources(urls: &[String]) -> anyhow::Result<Arc<XmltvCache>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn partial_refresh_preserves_old_ownership_only_for_the_same_ordered_sources() {
+        use axum::{http::StatusCode, routing::get, Router};
+        let app = Router::new()
+            .route("/bad", get(|| async { (StatusCode::BAD_GATEWAY, "offline") }))
+            .route("/good", get(|| async { "<tv><channel id=\"private-id\"><display-name>Later source</display-name></channel></tv>" }));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        struct Server(tokio::task::JoinHandle<()>);
+        impl Drop for Server { fn drop(&mut self) { self.0.abort(); } }
+        let _server = Server(tokio::spawn(async move { axum::serve(listener, app).await.unwrap(); }));
+        let urls = vec![format!("http://{address}/bad"), format!("http://{address}/good")];
+        let stale = Arc::new(fixture("private-id", "Earlier source", "original schedule"));
+        SOURCES.lock().await.insert(urls.clone(), Arc::new(Mutex::new(Some(stale.clone()))));
+        let retained = load_sources(&urls).await.unwrap();
+        assert!(Arc::ptr_eq(&retained, &stale));
+        assert_eq!(retained.programs["private-id"][0].title, "original schedule");
+        let reversed: Vec<_> = urls.iter().rev().cloned().collect();
+        let partial = load_sources(&reversed).await.unwrap();
+        assert_eq!(partial.channels["private-id"].name, "Later source");
+        assert!(!Arc::ptr_eq(&partial, &stale));
+        assert!(load_sources(&urls[..1]).await.is_err());
+        let mut sources = SOURCES.lock().await;
+        sources.remove(&urls); sources.remove(&reversed); sources.remove(&urls[..1]);
+    }
     fn fixture(id: &str, name: &str, title: &str) -> XmltvCache {
         XmltvCache { channels: HashMap::from([(id.into(), xmltv::Channel { id: id.into(), name: name.into(), icon: "https://fixture/logo.png".into(), names: vec![name.into()] })]),
             programs: HashMap::from([(id.into(), vec![xmltv::Programme { title: title.into(), ..Default::default() }])]), ..Default::default() }
@@ -109,8 +133,8 @@ mod tests {
     #[test]
     fn exact_id_wins_and_source_priority_is_stable() {
         let mut cache = fixture("private-id", "One", "first feed");
-        merge_source(&mut cache, fixture("private-id", "Wrong", "second feed"));
-        merge_source(&mut cache, fixture("other", "Other", "other feed"));
+        merge_source(&mut cache, fixture("private-id", "Wrong", "second feed")).unwrap();
+        merge_source(&mut cache, fixture("other", "Other", "other feed")).unwrap();
         assert_eq!(resolve_id(&cache, "private-id", "Other", "Other").unwrap(), Some("private-id".into()));
         assert_eq!(cache.programs["private-id"][0].title, "first feed");
         assert_eq!(resolve_id(&cache, "missing", "Other", "One").unwrap(), Some("other".into()));
@@ -118,7 +142,7 @@ mod tests {
     #[test]
     fn exact_display_name_wins_before_fuzzy_tvg_name_and_aliases_survive() {
         let mut cache = fixture("news", "News", "news");
-        merge_source(&mut cache, fixture("cinema", "Cinema", "cinema"));
+        merge_source(&mut cache, fixture("cinema", "Cinema", "cinema")).unwrap();
         cache.channels.get_mut("cinema").unwrap().names.push("Films".into());
         assert_eq!(resolve_id(&cache, "missing", "News Extra", "Cinema").unwrap(), Some("cinema".into()));
         assert_eq!(resolve_id(&cache, "missing", "Films", "Renamed").unwrap(), Some("cinema".into()));

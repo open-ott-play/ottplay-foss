@@ -23,6 +23,7 @@ from test_native_epg_cache import (
 
 KOTLIN_TESTS = r'''
     fun runEditionTests() {
+        val DEFAULT_URL = "https://cdn.epg.one/epg2.xml.gz"
         val dir = java.nio.file.Files.createTempDirectory("epg-edition-test").toFile()
         context = com.getcapacitor.Context(dir, dir)
         val data = java.util.Base64.getDecoder().decode("GZIP_FIXTURE")
