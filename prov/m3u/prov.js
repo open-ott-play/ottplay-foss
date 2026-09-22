@@ -379,7 +379,19 @@ function getChannelUrl(e) {
 function getArchiveUrl(ch_id, time, time_to) {
     var channel = chanels[ch_id];
     if (!channel) return "";
-    return OttPlayCore.providerArchiveUrl("m3u", channel.url || "", channel.caso || "", channel.ca || "", Number(time), Number(time_to), Date.now() / 1000, browserName() === "dune", 0) || "";
+    return (
+        OttPlayCore.providerArchiveUrl(
+            "m3u",
+            channel.url || "",
+            channel.caso || "",
+            channel.ca || "",
+            Number(time),
+            Number(time_to),
+            Date.now() / 1000,
+            browserName() === "dune",
+            0
+        ) || ""
+    );
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];
@@ -507,9 +519,14 @@ function getChanelsArray(a) {
             N = "",
             b = { foss: {}, raw: [] };
         try {
-            var catalog = OttPlayCore.parseProviderPlaylist(e, "m3u", function (url) {
-                    return murmurhash3_32_gc(url, 10);
-                }, Number.parseInt(m3uArr.M3Us[m3uArr.active].rechours)),
+            var catalog = OttPlayCore.parseProviderPlaylist(
+                    e,
+                    "m3u",
+                    function (url) {
+                        return murmurhash3_32_gc(url, 10);
+                    },
+                    Number.parseInt(m3uArr.M3Us[m3uArr.active].rechours)
+                ),
                 i = catalog.header;
             cList = catalog.ids;
             chanels = catalog.channels;
@@ -528,10 +545,19 @@ function getChanelsArray(a) {
             w(b.raw, O(i, "url-tvg"));
             w(b.raw, O(i, "x-tvg-url"));
             catalog.entries.forEach(function (entry) {
-                var i = [entry.raw], n = entry.epgId, s = entry.epgName, l = entry.logo,
-                    p = [], d = entry.generatedName ? _("??? No channel name") : entry.name,
-                    m = entry.titleHashInput ? xxHash32S(entry.titleHashInput, true) : 0,
-                    y = entry.id, x;
+                var i = [entry.raw],
+                    n = entry.epgId,
+                    s = entry.epgName,
+                    l = entry.logo,
+                    p = [],
+                    d = entry.generatedName
+                        ? _("??? No channel name")
+                        : entry.name,
+                    m = entry.titleHashInput
+                        ? xxHash32S(entry.titleHashInput, true)
+                        : 0,
+                    y = entry.id,
+                    x;
                 chanels[y].channel_name = d;
                 w(p, O(entry.raw, "tvg-source"), b);
                 w(p, O(entry.raw, "url-tvg"), b);
@@ -550,8 +576,7 @@ function getChanelsArray(a) {
                           )
                         : (b.native_xmltv_urls || []).slice();
                     chanels[y].epg_external = !!(
-                        b.epg_server &&
-                        b.epg_server !== m3u_defaults.epg_server
+                        b.epg_server && b.epg_server !== m3u_defaults.epg_server
                     );
                 }
                 if (
@@ -1197,7 +1222,6 @@ function getMediaArrayXML(e, r) {
 }
 
 function getMediaArrayEXTM3U(e) {
-
     function u(e, r) {
         return (
             "<table><h2><center>" +
@@ -1218,7 +1242,9 @@ function getMediaArrayEXTM3U(e) {
             var name = entry.generatedName ? "??? Нет названия" : entry.name;
             mediaRecords.push({
                 description: u(name, entry.logo),
-                logo_30x30: entry.logo, stream_url: entry.url, title: name
+                logo_30x30: entry.logo,
+                stream_url: entry.url,
+                title: name,
             });
         });
     } catch (e) {

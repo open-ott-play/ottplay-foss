@@ -90,7 +90,19 @@ function getChannelUrl(ch_id) {
 
 function getArchiveUrl(ch_id, time, time_to) {
     _getParams();
-    return OttPlayCore.providerArchiveUrl("utc-now", getChannelUrl(ch_id), "", "", Number(time), Number(time_to), Date.now() / 1000, browserName() === "dune", 0) || "";
+    return (
+        OttPlayCore.providerArchiveUrl(
+            "utc-now",
+            getChannelUrl(ch_id),
+            "",
+            "",
+            Number(time),
+            Number(time_to),
+            Date.now() / 1000,
+            browserName() === "dune",
+            0
+        ) || ""
+    );
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];
@@ -150,13 +162,21 @@ function getChanelsArray(callback) {
             chanels = {};
             cats = {};
             catsArray = [];
-            var catalog = OttPlayCore.parseOperatorPlaylist(data, "edem", function () { return 0; }, []);
+            var catalog = OttPlayCore.parseOperatorPlaylist(
+                data,
+                "edem",
+                function () {
+                    return 0;
+                },
+                []
+            );
             cats = catalog.groups;
             catsArray = catalog.groupOrder;
             cList = catalog.ids;
             chanels = catalog.channels;
             catalog.entries.forEach(function (entry) {
-                if (entry.generatedName) entry.channel.channel_name = _("??? No channel name");
+                if (entry.generatedName)
+                    entry.channel.channel_name = _("??? No channel name");
             });
             if (catalog.malformed) throw new Error("Malformed playlist entry");
             if (!edkey) {

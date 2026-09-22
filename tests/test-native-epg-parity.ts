@@ -35,7 +35,13 @@ function functions(path: string, names: string[]) {
 }
 function context(values: Record<string, any>) {
     const ctx = vm.createContext({ console, ...values });
-    vm.runInContext(fs.readFileSync(new URL("../vendor/ottplay-core.js", import.meta.url), "utf8"), ctx);
+    vm.runInContext(
+        fs.readFileSync(
+            new URL("../vendor/ottplay-core.js", import.meta.url),
+            "utf8"
+        ),
+        ctx
+    );
     if (ctx.window) ctx.window.OttPlayCore = ctx.OttPlayCore;
     return ctx;
 }
@@ -173,7 +179,13 @@ for (const native of [false, true]) {
         xxHash32S: (value: string) => value.length,
         xxHash32Si: (value: string) => value.length,
     });
-    vm.runInContext(fs.readFileSync(new URL("../vendor/ottplay-core.js", import.meta.url), "utf8"), ctx);
+    vm.runInContext(
+        fs.readFileSync(
+            new URL("../vendor/ottplay-core.js", import.meta.url),
+            "utf8"
+        ),
+        ctx
+    );
     vm.runInContext(
         functions("prov/m3u/prov.js", [
             "getChanelsArray",

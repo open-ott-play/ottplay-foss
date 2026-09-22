@@ -147,7 +147,19 @@ function runFixture(fixture, detector, legacy, nativeOverride) {
             const requestPath = new URL(tag.src).pathname;
             requests.push(requestPath);
             if (requestPath === "/js/ottplay-core.js") {
-                context.OttPlayCore = { NativeGuide: function () {}, providerArchiveUrl: function () {}, parseProviderPlaylist: function () {}, parseOperatorPlaylist: function () {}, parsePlaylistMedia: function () {}, XtreamClient: function () {}, StalkerClient: function () {}, LegacyStalkerClient: function () {}, legacyXtreamClient: function () {}, legacyGuideSelection: function () {}, legacyGuideCacheRead: function () {} };
+                context.OttPlayCore = {
+                    LegacyStalkerClient: function () {},
+                    legacyGuideCacheRead: function () {},
+                    legacyGuideSelection: function () {},
+                    legacyXtreamClient: function () {},
+                    NativeGuide: function () {},
+                    parseOperatorPlaylist: function () {},
+                    parsePlaylistMedia: function () {},
+                    parseProviderPlaylist: function () {},
+                    providerArchiveUrl: function () {},
+                    StalkerClient: function () {},
+                    XtreamClient: function () {},
+                };
             } else if (requestPath === "/dist/stbPlayer.js") {
                 bootDevice = context.ott_device;
                 vm.runInContext(detector.code, context, {

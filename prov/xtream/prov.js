@@ -63,11 +63,28 @@ function getChannelUrl(e) {
 function getArchiveUrl(ch_id, time, time_to) {
     var channel = chanels[ch_id];
     if (!channel) return "";
-    return OttPlayCore.providerArchiveUrl("template", channel.url || "", channel.caso || "", channel.ca || "", Number(time), Number(time_to), Date.now() / 1000, browserName() === "dune", 0) || "";
+    return (
+        OttPlayCore.providerArchiveUrl(
+            "template",
+            channel.url || "",
+            channel.caso || "",
+            channel.ca || "",
+            Number(time),
+            Number(time_to),
+            Date.now() / 1000,
+            browserName() === "dune",
+            0
+        ) || ""
+    );
 }
 
 function xtreamCore() {
-    return OttPlayCore.legacyXtreamClient(xtream.server, xtream.username, xtream.password, encodeURIComponent);
+    return OttPlayCore.legacyXtreamClient(
+        xtream.server,
+        xtream.username,
+        xtream.password,
+        encodeURIComponent
+    );
 }
 
 function getEPGchanel(s, e) {
@@ -90,7 +107,9 @@ function getEPGchanel(s, e) {
         url: url,
     })
         .done(function (r) {
-            var o = client.guide(r, function (value) { return new Date(value).getTime() / 1e3; });
+            var o = client.guide(r, function (value) {
+                return new Date(value).getTime() / 1e3;
+            });
             e(s, o);
         })
         .fail(function () {
@@ -130,7 +149,9 @@ function getChanelsArray(callback) {
                 callback();
                 return;
             }
-            var catalog = client.legacyCatalog(function (name) { return xxHash32S(name, true); });
+            var catalog = client.legacyCatalog(function (name) {
+                return xxHash32S(name, true);
+            });
             cList = catalog.ids;
             chanels = catalog.channels;
             cats = catalog.groups;

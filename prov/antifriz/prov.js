@@ -60,7 +60,19 @@ function getChannelUrl(ch_id) {
 
 function getArchiveUrl(ch_id, time, time_to) {
     var channel = chanels[ch_id];
-    return OttPlayCore.providerArchiveUrl("antifriz", "http://" + getServ(ch_id) + ":80/" + ch_id + "/", "?token=" + channel.token, "", Number(time), Number(time_to), Date.now() / 1000, browserName() === "dune", Number(mpeg || __hls)) || "";
+    return (
+        OttPlayCore.providerArchiveUrl(
+            "antifriz",
+            "http://" + getServ(ch_id) + ":80/" + ch_id + "/",
+            "?token=" + channel.token,
+            "",
+            Number(time),
+            Number(time_to),
+            Date.now() / 1000,
+            browserName() === "dune",
+            Number(mpeg || __hls)
+        ) || ""
+    );
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];
@@ -128,13 +140,21 @@ function getChanelsArray(callback) {
             chanels = {};
             cats = {};
             catsArray = [];
-            var catalog = OttPlayCore.parseOperatorPlaylist(data, "antifriz", function () { return 0; }, []);
+            var catalog = OttPlayCore.parseOperatorPlaylist(
+                data,
+                "antifriz",
+                function () {
+                    return 0;
+                },
+                []
+            );
             cats = catalog.groups;
             catsArray = catalog.groupOrder;
             cList = catalog.ids;
             chanels = catalog.channels;
             catalog.entries.forEach(function (entry) {
-                if (entry.generatedName) entry.channel.channel_name = _("??? No channel name");
+                if (entry.generatedName)
+                    entry.channel.channel_name = _("??? No channel name");
             });
             if (catalog.malformed) throw new Error("Malformed playlist entry");
             if (key.length != 8) {
@@ -481,7 +501,9 @@ function getMediaArrayEXTM3U(data) {
             var name = entry.generatedName ? "??? Нет названия" : entry.name;
             mediaRecords.push({
                 description: item2descr(name, entry.logo),
-                logo_30x30: entry.logo, stream_url: entry.url, title: name
+                logo_30x30: entry.logo,
+                stream_url: entry.url,
+                title: name,
             });
         });
     } catch (e) {

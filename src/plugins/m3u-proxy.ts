@@ -64,22 +64,45 @@ interface NativeXmltvChannel {
 }
 
 /** Data conversion only: ordered ID/alias/fuzzy decisions belong to the shared core. */
-function createNativeXmltvMatcher(entries: NativeXmltvChannel[]): (id: string, tvgName: string, name: string) => NativeXmltvChannel | undefined {
+function createNativeXmltvMatcher(
+    entries: NativeXmltvChannel[]
+): (
+    id: string,
+    tvgName: string,
+    name: string
+) => NativeXmltvChannel | undefined {
     var rows: string[][] = [];
     entries.forEach(function (entry) {
         // Retain explicit IDs even when a channel has no searchable aliases.
         var aliases = entry.names || [entry.name];
-        (aliases.length ? aliases : [""]).forEach(function (alias) { rows.push([entry.id, alias]); });
+        (aliases.length ? aliases : [""]).forEach(function (alias) {
+            rows.push([entry.id, alias]);
+        });
     });
-    var index = new (window as any).OttPlayCore.NativeGuide(rows, "web",
-        function (value: string) { return value.length; }, function (value: number) { return value; });
+    var index = new (window as any).OttPlayCore.NativeGuide(
+        rows,
+        "web",
+        function (value: string) {
+            return value.length;
+        },
+        function (value: number) {
+            return value;
+        }
+    );
     return function (id: string, tvgName: string, name: string) {
         var resolved = index.resolve(id, [tvgName, name]);
-        return entries.filter(function (entry) { return entry.id === resolved; })[0];
+        return entries.filter(function (entry) {
+            return entry.id === resolved;
+        })[0];
     };
 }
 
-export function matchNativeXmltvChannel(entries: NativeXmltvChannel[], id: string, tvgName: string, name: string): NativeXmltvChannel | undefined {
+export function matchNativeXmltvChannel(
+    entries: NativeXmltvChannel[],
+    id: string,
+    tvgName: string,
+    name: string
+): NativeXmltvChannel | undefined {
     return createNativeXmltvMatcher(entries)(id, tvgName, name);
 }
 
@@ -119,7 +142,13 @@ export async function matchCapacitorM3u(
             var sources = Array.isArray(info.xmltv_urls) ? info.xmltv_urls : [];
             var key = JSON.stringify(sources);
             if (!groups[key])
-                groups[key] = plugin.getChannels({ xmltv_urls: sources }).then(function (result: { channels: NativeXmltvChannel[] }) { return createNativeXmltvMatcher(result.channels); });
+                groups[key] = plugin
+                    .getChannels({ xmltv_urls: sources })
+                    .then(function (result: {
+                        channels: NativeXmltvChannel[];
+                    }) {
+                        return createNativeXmltvMatcher(result.channels);
+                    });
             var index = await groups[key];
             var found = index(
                 String(info.tvg_id || ""),

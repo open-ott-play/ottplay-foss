@@ -133,7 +133,10 @@ function fixture(cacheLimit = 16) {
     });
     c.window = c;
     c.chanels = c.channels;
-    vm.runInContext(fs.readFileSync(path.join(root, "vendor/ottplay-core.js"), "utf8"), c);
+    vm.runInContext(
+        fs.readFileSync(path.join(root, "vendor/ottplay-core.js"), "utf8"),
+        c
+    );
     vm.runInContext(provider + "\n" + channels, c);
     attachSourceAliases(c);
     c.setCurProg(3, existingSchedule);

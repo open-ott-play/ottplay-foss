@@ -96,7 +96,14 @@ function _d_maxtv_parseM3U(data, cb) {
     cats = {};
     catsArray = [];
     try {
-        var catalog = OttPlayCore.parseProviderPlaylist(data, "generic", function (url) { return xxHash32S(url, true); }, 0);
+        var catalog = OttPlayCore.parseProviderPlaylist(
+            data,
+            "generic",
+            function (url) {
+                return xxHash32S(url, true);
+            },
+            0
+        );
         cList = catalog.ids;
         chanels = catalog.channels;
         cats = catalog.groups;

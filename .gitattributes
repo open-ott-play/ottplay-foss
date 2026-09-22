@@ -5,3 +5,7 @@
 
 # MPEG-TS test fixtures are media, not TypeScript source.
 /tests/fixtures/media-runtime/*.ts binary
+
+# Receipt-pinned compiler output must have identical bytes on every host.
+/vendor/ottplay-core.* -text
+/licenses/native/* -text

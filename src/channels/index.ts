@@ -533,7 +533,14 @@ function epgCacheLimit(): number {
 function readEpgCache(channelId: number): EPGEntry[] | null {
     var data = epg[channelId];
     var core = (window as any).OttPlayCore;
-    var state = core.legacyGuideCacheRead(data, epgCacheFetchedAt[channelId], epgCacheLimit(), function () { return Date.now(); });
+    var state = core.legacyGuideCacheRead(
+        data,
+        epgCacheFetchedAt[channelId],
+        epgCacheLimit(),
+        function () {
+            return Date.now();
+        }
+    );
     if (state === 0) return null;
     if (state < 0) {
         delete epg[channelId];
@@ -553,7 +560,12 @@ function cacheFetchedEpg(channelId: number, data: EPGEntry[] | null): void {
     epg[channelId] = data;
     epgCacheByChannel[channelId] = data;
     epgCacheFetchedAt[channelId] = Date.now();
-    (window as any).OttPlayCore.legacyGuideCacheOrder(epgCacheChannelOrder, channelId, limit, false).forEach(function (id: number) {
+    (window as any).OttPlayCore.legacyGuideCacheOrder(
+        epgCacheChannelOrder,
+        channelId,
+        limit,
+        false
+    ).forEach(function (id: number) {
         delete epg[id];
         delete epgCacheByChannel[id];
         delete epgCacheFetchedAt[id];
@@ -1604,8 +1616,15 @@ export function setCurProg(
     if (!Number.isFinite(safeChannelId) || !Number.isInteger(safeChannelId))
         return;
     var hasData = Array.isArray(epgData) && epgData.length > 0;
-    var nextCount = typeof (window as any).sNextCount === "number" ? (window as any).sNextCount : 0;
-    var selection = (window as any).OttPlayCore.legacyGuideSelection(hasData ? epgData : [], Date.now() / 1000, nextCount);
+    var nextCount =
+        typeof (window as any).sNextCount === "number"
+            ? (window as any).sNextCount
+            : 0;
+    var selection = (window as any).OttPlayCore.legacyGuideSelection(
+        hasData ? epgData : [],
+        Date.now() / 1000,
+        nextCount
+    );
     var ch = (window as any).channels
         ? (window as any).channels[safeChannelId]
         : window.channels

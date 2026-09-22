@@ -97,7 +97,14 @@ function _bestlist_stalker_parseM3U(data, cb) {
     cats = {};
     catsArray = [];
     try {
-        var catalog = OttPlayCore.parseProviderPlaylist(data, "generic", function (url) { return xxHash32S(url, true); }, 0);
+        var catalog = OttPlayCore.parseProviderPlaylist(
+            data,
+            "generic",
+            function (url) {
+                return xxHash32S(url, true);
+            },
+            0
+        );
         cList = catalog.ids;
         chanels = catalog.channels;
         cats = catalog.groups;
@@ -108,22 +115,40 @@ function _bestlist_stalker_parseM3U(data, cb) {
     cb();
 }
 function bestlistStalkerCore() {
-    return OttPlayCore.legacyXtreamClient(_bestlist_stalker_cfg.server, _bestlist_stalker_cfg.user, _bestlist_stalker_cfg.pass, encodeURIComponent);
+    return OttPlayCore.legacyXtreamClient(
+        _bestlist_stalker_cfg.server,
+        _bestlist_stalker_cfg.user,
+        _bestlist_stalker_cfg.pass,
+        encodeURIComponent
+    );
 }
 
 function _bestlist_stalker_xtream(cb) {
     $(launch_id).append(_("Loading from API..."));
     var client = bestlistStalkerCore();
-    $.ajax({ dataType: "json", timeout: 15e3, type: "GET", url: client.request() })
+    $.ajax({
+        dataType: "json",
+        timeout: 15e3,
+        type: "GET",
+        url: client.request(),
+    })
         .done(function (r) {
-            cList = []; chanels = {}; cats = {}; catsArray = [];
+            cList = [];
+            chanels = {};
+            cats = {};
+            catsArray = [];
             if (client.accept(r)) {
                 _bestlist_stalker_cfg.m3u = client.fallbackPlaylist(false);
                 _bestlist_stalker_m3u(cb);
                 return;
             }
-            var catalog = client.legacyCatalog(function (name) { return xxHash32S(name, true); });
-            cList = catalog.ids; chanels = catalog.channels; cats = catalog.groups; catsArray = catalog.groupOrder;
+            var catalog = client.legacyCatalog(function (name) {
+                return xxHash32S(name, true);
+            });
+            cList = catalog.ids;
+            chanels = catalog.channels;
+            cats = catalog.groups;
+            catsArray = catalog.groupOrder;
             cb();
         })
         .fail(function () {

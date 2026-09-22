@@ -54,7 +54,19 @@ function getChannelUrl(ch_id) {
 function getArchiveUrl(ch_id, time, time_to) {
     var channel = chanels[ch_id];
     if (!channel) return "";
-    return OttPlayCore.providerArchiveUrl("kb", channel.url || "", channel.caso || "", channel.ca || "", Number(time), Number(time_to), Date.now() / 1000, browserName() === "dune", 0) || "";
+    return (
+        OttPlayCore.providerArchiveUrl(
+            "kb",
+            channel.url || "",
+            channel.caso || "",
+            channel.ca || "",
+            Number(time),
+            Number(time_to),
+            Date.now() / 1000,
+            browserName() === "dune",
+            0
+        ) || ""
+    );
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];
@@ -160,16 +172,29 @@ function getChanelsArray(callback) {
             chanels = {};
             cats = {};
             catsArray = [];
-            var catalog = OttPlayCore.parseOperatorPlaylist(data, "kb-team", function (url) { return murmurhash3_32_gc(url, 10); }, []);
+            var catalog = OttPlayCore.parseOperatorPlaylist(
+                data,
+                "kb-team",
+                function (url) {
+                    return murmurhash3_32_gc(url, 10);
+                },
+                []
+            );
             cats = catalog.groups;
             catsArray = catalog.groupOrder;
             cList = catalog.ids;
             chanels = catalog.channels;
             catalog.entries.forEach(function (entry) {
-                if (entry.generatedName) entry.channel.channel_name = _("??? No channel name");
-                var ci = entry.id, channel = entry.channel, epg = channel.epg, tn = channel.tn, cn = channel.channel_name, utvg = channel.utvg, logo = channel.logo;
-                if (epg && utvg)
-                    cepg[ci] = { e: epg, n: tn || cn, u: utvg };
+                if (entry.generatedName)
+                    entry.channel.channel_name = _("??? No channel name");
+                var ci = entry.id,
+                    channel = entry.channel,
+                    epg = channel.epg,
+                    tn = channel.tn,
+                    cn = channel.channel_name,
+                    utvg = channel.utvg,
+                    logo = channel.logo;
+                if (epg && utvg) cepg[ci] = { e: epg, n: tn || cn, u: utvg };
                 else if (utvg) cepg[ci] = { n: cn, u: utvg };
                 else cepg[ci] = { n: tn || cn };
                 if (!logo) {
@@ -525,10 +550,14 @@ function getMediaArrayEXTM3U(data) {
         mediaName = mediaName || "?";
         mediaRecords = [];
         OttPlayCore.parsePlaylistMedia(data).forEach(function (entry) {
-            var name = entry.generatedName ? _("??? No channel name") : entry.name;
+            var name = entry.generatedName
+                ? _("??? No channel name")
+                : entry.name;
             mediaRecords.push({
                 description: item2descr(name, entry.logo),
-                logo_30x30: entry.logo, stream_url: entry.url, title: name
+                logo_30x30: entry.logo,
+                stream_url: entry.url,
+                title: name,
             });
         });
     } catch (e) {

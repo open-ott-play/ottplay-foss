@@ -312,7 +312,15 @@ function browser(folder, platform) {
             )
         );
     w.loadJS("/js/ottplay-core.js", () => {
-        const guide = new w.OttPlayCore.NativeGuide([["news", "News"], ["film", "Films"]], "web", value => value.length, value => value);
+        const guide = new w.OttPlayCore.NativeGuide(
+            [
+                ["news", "News"],
+                ["film", "Films"],
+            ],
+            "web",
+            (value) => value.length,
+            (value) => value
+        );
         assert.equal(guide.resolve("", ["News Extra", "Films"]), "film");
         w.loadJQ();
     });

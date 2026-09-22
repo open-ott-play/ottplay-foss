@@ -77,7 +77,19 @@ function getChannelUrl(ch_id) {
 
 function getArchiveUrl(ch_id, time, time_to) {
     var channel = chanels[ch_id];
-    return OttPlayCore.providerArchiveUrl("itv", "http://" + channel.server_cdn + "/" + ch_id + "/", "?token=" + channel.token, "", Number(time), Number(time_to), Date.now() / 1000, browserName() === "dune", Number(itvmpeg)) || "";
+    return (
+        OttPlayCore.providerArchiveUrl(
+            "itv",
+            "http://" + channel.server_cdn + "/" + ch_id + "/",
+            "?token=" + channel.token,
+            "",
+            Number(time),
+            Number(time_to),
+            Date.now() / 1000,
+            browserName() === "dune",
+            Number(itvmpeg)
+        ) || ""
+    );
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];

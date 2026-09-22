@@ -64,7 +64,19 @@ function getChannelUrl(ch_id) {
 }
 
 function getArchiveUrl(ch_id, time, time_to) {
-    return OttPlayCore.providerArchiveUrl("utc", getChannelUrl(ch_id), "", "", Number(time), Number(time_to), Date.now() / 1000, browserName() === "dune", 0) || "";
+    return (
+        OttPlayCore.providerArchiveUrl(
+            "utc",
+            getChannelUrl(ch_id),
+            "",
+            "",
+            Number(time),
+            Number(time_to),
+            Date.now() / 1000,
+            browserName() === "dune",
+            0
+        ) || ""
+    );
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];
@@ -132,13 +144,21 @@ function getChanelsArray(callback) {
             chanels = {};
             cats = {};
             catsArray = [];
-            var catalog = OttPlayCore.parseOperatorPlaylist(data, "shara-tv", function () { return 0; }, []);
+            var catalog = OttPlayCore.parseOperatorPlaylist(
+                data,
+                "shara-tv",
+                function () {
+                    return 0;
+                },
+                []
+            );
             cats = catalog.groups;
             catsArray = catalog.groupOrder;
             cList = catalog.ids;
             chanels = catalog.channels;
             catalog.entries.forEach(function (entry) {
-                if (entry.generatedName) entry.channel.channel_name = "??? Нет названия канала";
+                if (entry.generatedName)
+                    entry.channel.channel_name = "??? Нет названия канала";
             });
             if (catalog.malformed) throw new Error("Malformed playlist entry");
             if (login.length != 8 || pass.length != 8) {

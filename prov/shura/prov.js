@@ -53,7 +53,19 @@ function getChannelUrl(ch_id) {
 }
 
 function getArchiveUrl(ch_id, time, time_to) {
-    return OttPlayCore.providerArchiveUrl("archive", getChannelUrl(ch_id), "", "", Number(time), Number(time_to), Date.now() / 1000, browserName() === "dune", 0) || "";
+    return (
+        OttPlayCore.providerArchiveUrl(
+            "archive",
+            getChannelUrl(ch_id),
+            "",
+            "",
+            Number(time),
+            Number(time_to),
+            Date.now() / 1000,
+            browserName() === "dune",
+            0
+        ) || ""
+    );
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];
@@ -72,7 +84,14 @@ function getChanelsArray(callback) {
 
     function aSuccess(data) {
         try {
-            var catalog = OttPlayCore.parseOperatorPlaylist(data, "shura", function () { return 0; }, Object.keys(chanels));
+            var catalog = OttPlayCore.parseOperatorPlaylist(
+                data,
+                "shura",
+                function () {
+                    return 0;
+                },
+                Object.keys(chanels)
+            );
             cats = catalog.groups;
             catsArray = catalog.groupOrder;
             catalog.entries.forEach(function (entry) {

@@ -293,7 +293,11 @@ function testProviderLocalNames() {
     }
     walk(path.join(repository, "prov"));
     assert.equal(settingsLists, 34);
-    assert.equal(archiveTemplates, 0, "Archive templates belong to the shared core");
+    assert.equal(
+        archiveTemplates,
+        0,
+        "Archive templates belong to the shared core"
+    );
 }
 
 function testFooterNaming() {

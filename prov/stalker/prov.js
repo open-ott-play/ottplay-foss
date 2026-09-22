@@ -58,7 +58,19 @@ function getChannelUrl(e) {
 function getArchiveUrl(ch_id, time, time_to) {
     var channel = chanels[ch_id];
     if (!channel) return "";
-    return OttPlayCore.providerArchiveUrl("template", channel.url || "", channel.caso || "", channel.ca || "", Number(time), Number(time_to), Date.now() / 1000, browserName() === "dune", 0) || "";
+    return (
+        OttPlayCore.providerArchiveUrl(
+            "template",
+            channel.url || "",
+            channel.caso || "",
+            channel.ca || "",
+            Number(time),
+            Number(time_to),
+            Date.now() / 1000,
+            browserName() === "dune",
+            0
+        ) || ""
+    );
 }
 
 function getEPGchanel(s, e) {
@@ -74,7 +86,9 @@ function getEPGchanel(s, e) {
     }
     var client = stalkerCore();
     var apiUrl = client.endpoint();
-    var data = client.guideRequest(chId, function () { return Date.now() / 1e3; });
+    var data = client.guideRequest(chId, function () {
+        return Date.now() / 1e3;
+    });
     $.ajax({
         contentType: "application/json",
         data: JSON.stringify(data),
@@ -134,16 +148,28 @@ function getChanelsArray(callback) {
     function next() {
         var request = client.request();
         if (request === null) {
-            var catalog = client.catalog(function (name) { return xxHash32S(name, true); });
-            cList = catalog.ids; chanels = catalog.channels; cats = catalog.groups; catsArray = catalog.groupOrder;
+            var catalog = client.catalog(function (name) {
+                return xxHash32S(name, true);
+            });
+            cList = catalog.ids;
+            chanels = catalog.channels;
+            cats = catalog.groups;
+            catsArray = catalog.groupOrder;
             callback();
             return;
         }
-        if (request.method === "get_channels") $(launch_id).append(_("Loading channels..."));
+        if (request.method === "get_channels")
+            $(launch_id).append(_("Loading channels..."));
         stalkerApiCall(request.method, request.params, function (response) {
             var error = client.accept(response);
             if (error) {
-                alert(_(error.failure === "LEGACY_CONNECT" ? "Failed to connect to Stalker portal" : "Failed to load channels from Stalker portal"));
+                alert(
+                    _(
+                        error.failure === "LEGACY_CONNECT"
+                            ? "Failed to connect to Stalker portal"
+                            : "Failed to load channels from Stalker portal"
+                    )
+                );
                 callback();
             } else next();
         });
