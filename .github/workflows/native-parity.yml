@@ -2,42 +2,6 @@ name: Native Shells
 
 on:
   workflow_call: {}
-  pull_request:
-    branches: [main]
-    paths:
-      - 'android/**'
-      - 'ios/**'
-      - 'mobile-*/**'
-      - 'src/**'
-      - 'src-rs/**'
-      - 'src-tauri/**'
-      - 'prov/**'
-      - 'stb/**'
-      - 'css/**'
-      - 'tests/test_android_*'
-      - 'tests/android_provider_policy.cjs'
-      - 'tests/test_play_system_icons.cjs'
-      - 'scripts/play-system-icons.cjs'
-      - 'scripts/native-*.cjs'
-      - 'scripts/fixtures/android-tv-webview/**'
-      - 'tests/test_frontend_safety.cjs'
-      - 'stbPlayer/**'
-      - 'fonts/**'
-      - 'docs/privacy-policy.md'
-      - 'tests/test_native_*'
-      - 'tests/test_ios_*'
-      - 'tests/test_xmltv_*'
-      - 'scripts/smoke-xmltv-*'
-      - 'scripts/smoke-command-queue.sh'
-      - 'scripts/smoke-capacitor-device.sh'
-      - 'scripts/smoke-tauri-desktop.sh'
-      - 'tests/test_command_queue_smoke.py'
-      - 'tests/test-native-*'
-      - 'package*.json'
-      - 'Cargo.*'
-      - 'capacitor.config.*'
-      - 'vite.config.*'
-      - '.github/workflows/native-parity.yml'
   workflow_dispatch:
 
 permissions:

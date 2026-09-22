@@ -2,10 +2,6 @@ name: CI
 
 on:
   workflow_call: {}
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
 
 env:
   NODE_VERSION: '22'
@@ -36,6 +32,7 @@ jobs:
       - name: TypeScript check
         run: npm run typecheck
 
+    timeout-minutes: 30
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -58,6 +55,7 @@ jobs:
       - name: Biome lint
         run: npm run lint
 
+    timeout-minutes: 30
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -137,6 +135,7 @@ jobs:
           retention-days: 14
 
 
+    timeout-minutes: 30
   frontend-tests:
     name: Frontend Tests
     runs-on: ubuntu-latest
@@ -164,6 +163,7 @@ jobs:
           path: reports/python/
           retention-days: 14
 
+    timeout-minutes: 30
   rust-tests:
     name: Rust Core and Server Tests
     runs-on: ubuntu-latest
@@ -183,3 +183,4 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libglib2.0-dev pkg-config
       - name: Exercise patched GLib iterator through FFI in release mode
         run: cargo test --locked --release --manifest-path tests/glib-variant-regression/Cargo.toml
+    timeout-minutes: 30
