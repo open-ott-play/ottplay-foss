@@ -3,7 +3,7 @@
   "name": "ottplay-shared-core",
   "version": "0.1.0-dev",
   "source": {
-    "sha256": "af95a2ee0059f7d6f392b35c058435bd921d909cbb1f78f3c28513215ef0363a",
+    "sha256": "eac5c02b7ee8df54875c1d5afd77951c129f6f567fa99b62fbc5cfe95f6edf14",
     "files": {
       "LICENSE": "ec6a17ce723ea8b4c6b08f277ab84750440a8c3e5401aaa9f4e4e9d5fd0fd72c",
       "build.gradle.kts": "e89cc0e4057ab3989c6d4048d6b2ee7b5efb023a7c96c2886d8dd62778e42a73",
@@ -27,6 +27,7 @@
       "src/commonMain/kotlin/play/ott/core/LegacyXtream.kt": "b86d8491d85e347d30ca7c5c0d270e1027b0cdffe63b7111f53de5a5ccc88aca",
       "src/commonMain/kotlin/play/ott/core/NativeGuide.kt": "85f8c3c46fc050005d065c3b8eb35a4c55e2fbd62c874eb6a4afc296678a0e00",
       "src/commonMain/kotlin/play/ott/core/NativeGuideSources.kt": "6c7b1af63ce7cf7c4c78f004c6d044f5cc130c4b8b2a45ce9223fedb9ab4b9ec",
+      "src/commonMain/kotlin/play/ott/core/NativeSourceLoad.kt": "cb165d2c95d0ce6ccc94422790236fddbebf3da0ffc488d89f1d4532aaffc1f9",
       "src/commonMain/kotlin/play/ott/core/OperatorPlaylist.kt": "298019d520ba6e614c829f404be8657f6ae47d855e805eda9f26ba7d3ef59cdb",
       "src/commonMain/kotlin/play/ott/core/Playlist.kt": "ab2b86c27c841c4e9759592b4cc652e2413b6452303ac1d3bc6646e974d35ebb",
       "src/commonMain/kotlin/play/ott/core/ProviderPlaylist.kt": "ab1bca4f6956348d21db4c70e0f3b438f399b61b6119ea28de0fde4029dccdbd",
@@ -41,6 +42,7 @@
       "src/commonTest/kotlin/play/ott/core/GuideFeedTest.kt": "1261aec4db22bc2e7f7d8a60e0aac89c9f4354eca7f873c178978e34c0752299",
       "src/commonTest/kotlin/play/ott/core/GuideTest.kt": "369936429caf00934f15d58d26642d02ca7ef13832a5d70d2b90095e36d90b4f",
       "src/commonTest/kotlin/play/ott/core/NativeGuideTest.kt": "531642ad0620ff1986ea8946d975cfa642a5d61226509e6ca2aa75b469b18800",
+      "src/commonTest/kotlin/play/ott/core/NativeSourceLoadTest.kt": "fd1d50c2d67e41deed054af7444b35c0aca0d282ab593b9eda8ea1d38294c118",
       "src/commonTest/kotlin/play/ott/core/NativeSourceTest.kt": "19cee073dfd86f456cb351ed8e94c14228d84acf4755a0ca70b67195bc1dea99",
       "src/commonTest/kotlin/play/ott/core/OperatorPlaylistTest.kt": "06d8644750eeda7363b2b5c65f17412804a492076b3136a8e8d9e2b621558b46",
       "src/commonTest/kotlin/play/ott/core/PlaylistTest.kt": "38f8a985a5a2e38669363852b1f68c24059dfc6513ce65ad4fc5389e3f036238",
@@ -49,7 +51,7 @@
       "src/commonTest/kotlin/play/ott/core/XtreamTest.kt": "f0c51171a2479fcd1ed385a90beed0dd0d61ea5c54d8d2906c35f792913a9694",
       "src/jsMain/kotlin/Exports.kt": "8cba52393b445812eabdc0f831b4b8270ddc2b69065410df15e73a8862b9b528",
       "src/jsMain/kotlin/GuideExports.kt": "8c891e93cbbd0cc9a8140d36b5955ec3b0bd6c29bed7d947a12d78c9264c3ec2",
-      "src/jsMain/kotlin/NativeSourceExports.kt": "e0a3ad789859e1895e93119a051261ec5af938c22bf80c8670141617fdcab776",
+      "src/jsMain/kotlin/NativeSourceExports.kt": "92ecd63541911437b21db50184ea89c5f934a60b112cbf719a6680e0ed7717be",
       "src/jsMain/kotlin/ProviderExports.kt": "e393f37d8f7503f95464f956fc3d8f16a80be0f01b2266a0e478e482caef454f",
       "src/jsMain/kotlin/StalkerExports.kt": "8c7d1e72fba73551497c4de9798fdaa0e064a8a9f91465f749b75b88c792afb1",
       "src/jsMain/kotlin/StreamingGuideExports.kt": "a76e7f5d86db76b36e4463d6323ef9aa866d8323060efda99810c4c9e839b3fb",
@@ -64,16 +66,16 @@
   },
   "artifacts": {
     "ottplay-core.js": {
-      "sha256": "5763ef8475b328ee8fac460a6df2a4588938c381fa43f81786b713c40ae7296f",
-      "bytes": 770661
+      "sha256": "ab8a2b374594cb803715ab7af796bbc7cbfb396743691d7fdcdf99ce322cc6dd",
+      "bytes": 781098
     },
     "ottplay-core.d.ts": {
-      "sha256": "a2d2139b70caa8e9bfd7497875e1d9af4c2d356665cbaaab97bb590030f9aca8",
-      "bytes": 9184
+      "sha256": "05ed18f4aefeb969664112b4bc3d3e083746cf4cdc9da1fa63bfaf2daa2b0af6",
+      "bytes": 9851
     },
     "ottplay-core.jar": {
-      "sha256": "f7ec5ab1ed3643daf711c80e59e7264d5dac917912ab99ad3880b5cc4767f031",
-      "bytes": 337017
+      "sha256": "9f3e985e0c701857ed22aa590b79882332a6ccb48eef1ee1447cae92a8c68d3e",
+      "bytes": 342047
     },
     "ottplay-core.LICENSE.txt": {
       "sha256": "1e72da3623b91daad1013e577c3611ad6ed314da508b757abe9a1b27a88a14cc",

@@ -69,55 +69,102 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
             sourceLock.unlock()
             callbacks.forEach { $0(result) }
         }
-        if !force, let xml = try? readCache(for: url) {
-            let parsed = try? parseXmltv(xml)
-            // Old or interrupted disk entries may decode successfully but contain invalid XML.
-            if let parsed = parsed, !parsed.channels.isEmpty { finish(.success(parsed)); return }
+        var disk: Parsed?
+        var memory: Parsed?
+        var network: (data: Data, xml: String)?
+        var parsedNetwork: Parsed?
+        var failure: Error = NSError(domain: "MobileXmltvEpg", code: -4,
+            userInfo: [NSLocalizedDescriptionKey: "invalid or empty XMLTV"])
+        func next(_ action: String, _ succeeded: Bool, _ channels: Int = 0) throws -> String {
+            try self.withPolicy { try $0.loadNext(action, succeeded: succeeded, channels: channels) }
         }
-        fetchAndCache(url) { result in
-            switch result {
-            case .success(let xml): finish(Result { try self.parseXmltv(xml) })
-            case .failure(let error):
-                self.sourceLock.lock()
-                let memory = self.parsedCache[source]?.data
-                self.sourceLock.unlock()
-                if let memory = memory { finish(.success(memory)) }
-                else if let xml = try? self.readCache(for: url, allowStale: true) {
-                    if let parsed = try? self.parseXmltv(xml), !parsed.channels.isEmpty { finish(.success(parsed)) }
-                    else { finish(.failure(error)) }
-                } else { finish(.failure(error)) }
-            }
+        func perform(_ action: String) {
+            do {
+                switch action {
+                case "READ_FRESH_DISK", "READ_STALE_DISK":
+                    let xml = try? self.readCache(for: url, allowStale: action == "READ_STALE_DISK")
+                    disk = xml.flatMap { try? self.parseXmltv($0) }
+                    perform(try next(action, disk != nil, disk?.channels.count ?? 0))
+                case "FETCH":
+                    self.fetchXmltv(url) { result in
+                        do {
+                            switch result {
+                            case .success(let response):
+                                network = response
+                                // The first parse historically maps parser failure to the invalid-XMLTV error.
+                                parsedNetwork = try? self.parseXmltv(response.xml)
+                                perform(try next(action, parsedNetwork != nil, parsedNetwork?.channels.count ?? 0))
+                            case .failure(let error):
+                                failure = error
+                                perform(try next(action, false))
+                            }
+                        } catch { finish(.failure(error)) }
+                    }
+                case "WRITE_DISK":
+                    var written = false
+                    do { try self.writeCache(network!.data, for: url); written = true }
+                    catch { failure = error }
+                    perform(try next(action, written))
+                case "REPARSE_NETWORK":
+                    do { parsedNetwork = try self.parseXmltv(network!.xml) }
+                    catch { parsedNetwork = nil; failure = error }
+                    perform(try next(action, parsedNetwork != nil, parsedNetwork?.channels.count ?? 0))
+                case "READ_MEMORY":
+                    self.sourceLock.lock()
+                    memory = self.parsedCache[source]?.data
+                    self.sourceLock.unlock()
+                    perform(try next(action, memory != nil, memory?.channels.count ?? 0))
+                case "USE_FRESH_DISK", "USE_STALE_DISK": finish(.success(disk!))
+                case "USE_NETWORK": finish(.success(parsedNetwork!))
+                case "USE_MEMORY": finish(.success(memory!))
+                case "FAIL": finish(.failure(failure))
+                default: finish(.failure(NSError(domain: "SharedGuide", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Invalid source load action"])))
+                }
+            } catch { finish(.failure(error)) }
         }
+        do { perform(try withPolicy { try $0.loadStart(force: force) }) }
+        catch { finish(.failure(error)) }
     }
 
     // Source order is significant: the first feed defining an ID owns its programs.
     private func loadSources(_ sources: [String], force: Bool = false, completion: @escaping (Result<Parsed, Error>) -> Void) {
         var merged: Parsed = ([:], [:], [:], [:])
-        var firstError: Error?
-        func next(_ index: Int) {
-            if index == sources.count {
-                if merged.channels.isEmpty, let error = firstError { completion(.failure(error)) }
-                else { completion(.success(merged)) }
-                return
-            }
-            loadSource(sources[index], force: force) { result in
-                switch result {
-                case .success(let parsed):
-                    let ids: [String]
-                    do { ids = try self.withPolicy { try $0.unowned(Array(merged.channels.keys), incoming: Array(parsed.channels.keys)) } }
-                    catch { completion(.failure(error)); return }
-                    for id in ids {
-                        merged.channels[id] = parsed.channels[id]
-                        merged.programs[id] = parsed.programs[id]
-                        merged.icons[id] = parsed.icons[id]
-                        merged.names[id] = parsed.names[id]
-                    }
-                case .failure(let error): if firstError == nil { firstError = error }
+        var errors: [Int: Error] = [:]
+        let batch: JavaScriptCore.JSValue
+        do { batch = try withPolicy { try $0.sourceBatch(sources.count) } }
+        catch { completion(.failure(error)); return }
+        func next() {
+            do {
+                let index = try self.withPolicy { try $0.batchNext(batch) }
+                if index < 0 {
+                    let failed = try self.withPolicy { try $0.batchFailure(batch) }
+                    if failed >= 0 { completion(.failure(errors[failed]!)) }
+                    else { completion(.success(merged)) }
+                    return
                 }
-                next(index + 1)
-            }
+                loadSource(sources[index], force: force) { result in
+                    do {
+                        switch result {
+                        case .success(let parsed):
+                            let ids = try self.withPolicy { try $0.unowned(Array(merged.channels.keys), incoming: Array(parsed.channels.keys)) }
+                            for id in ids {
+                                merged.channels[id] = parsed.channels[id]
+                                merged.programs[id] = parsed.programs[id]
+                                merged.icons[id] = parsed.icons[id]
+                                merged.names[id] = parsed.names[id]
+                            }
+                            try self.withPolicy { try $0.batchAdvance(batch, succeeded: true, channels: parsed.channels.count) }
+                        case .failure(let error):
+                            errors[index] = error
+                            try self.withPolicy { try $0.batchAdvance(batch, succeeded: false, channels: 0) }
+                        }
+                        next()
+                    } catch { completion(.failure(error)) }
+                }
+            } catch { completion(.failure(error)) }
         }
-        next(0)
+        next()
     }
 
     @objc func getEpg(_ call: CAPPluginCall) {
@@ -186,7 +233,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         try meta.write(to: metaURL, atomically: true, encoding: .utf8)
     }
 
-    private func fetchAndCache(_ url: URL, completion: @escaping (Result<String, Error>) -> Void) {
+    private func fetchXmltv(_ url: URL, completion: @escaping (Result<(data: Data, xml: String), Error>) -> Void) {
         URLSession.shared.dataTask(with: url) { data, response, err in
             if let response = response as? HTTPURLResponse, !(200...299).contains(response.statusCode) {
                 completion(.failure(NSError(domain: "MobileXmltvEpg", code: response.statusCode))); return
@@ -196,20 +243,12 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                 completion(.failure(NSError(domain: "MobileXmltvEpg", code: -1, userInfo: [NSLocalizedDescriptionKey: "empty response"])))
                 return
             }
-            do {
-                guard let xml = self.gunzip(data),
-                      let xmlStr = String(data: xml, encoding: .utf8) else {
-                    completion(.failure(NSError(domain: "MobileXmltvEpg", code: -2, userInfo: [NSLocalizedDescriptionKey: "gunzip failed"])))
-                    return
-                }
-                guard let parsed = try? self.parseXmltv(xmlStr), !parsed.channels.isEmpty else {
-                    completion(.failure(NSError(domain: "MobileXmltvEpg", code: -4, userInfo: [NSLocalizedDescriptionKey: "invalid or empty XMLTV"]))); return
-                }
-                try self.writeCache(data, for: url)
-                completion(.success(xmlStr))
-            } catch {
-                completion(.failure(error))
+            guard let xml = self.gunzip(data),
+                  let xmlStr = String(data: xml, encoding: .utf8) else {
+                completion(.failure(NSError(domain: "MobileXmltvEpg", code: -2, userInfo: [NSLocalizedDescriptionKey: "gunzip failed"])))
+                return
             }
+            completion(.success((data, xmlStr)))
         }.resume()
     }
 
@@ -445,6 +484,25 @@ private final class SharedGuide {
     }
     func disk(source: String, storedSource: String, now: Double, fetched: Double, stale: Bool) throws -> Bool {
         try call("nativeGuideDisk", [source, storedSource, now, fetched, stale]).toBool()
+    }
+    func loadStart(force: Bool) throws -> String { try call("nativeGuideLoadStart", [force]).toString() }
+    func loadNext(_ action: String, succeeded: Bool, channels: Int) throws -> String {
+        try call("nativeGuideLoadNext", [action, succeeded, channels, "swift"]).toString()
+    }
+    func sourceBatch(_ count: Int) throws -> JavaScriptCore.JSValue {
+        try checked { core.forProperty("NativeGuideSourceBatch")?.construct(withArguments: [count]) }
+    }
+    func batchNext(_ batch: JavaScriptCore.JSValue) throws -> Int {
+        Int(try checked { batch.invokeMethod("next", withArguments: []) }.toInt32())
+    }
+    func batchAdvance(_ batch: JavaScriptCore.JSValue, succeeded: Bool, channels: Int) throws {
+        // Unit-returning JS methods produce undefined; check the VM exception explicitly.
+        context.exception = nil
+        batch.invokeMethod("advance", withArguments: [succeeded, channels])
+        if context.exception != nil { throw Self.failure("Shared guide execution failed") }
+    }
+    func batchFailure(_ batch: JavaScriptCore.JSValue) throws -> Int {
+        Int(try checked { batch.invokeMethod("failure", withArguments: []) }.toInt32())
     }
     func time(_ input: String) throws -> Int { Int(try call("nativeGuideTime", [input, "swift"]).toDouble()) }
     func shift(_ input: String) throws -> Int { Int(try call("nativeGuideShift", [input, "swift"]).toInt32()) }

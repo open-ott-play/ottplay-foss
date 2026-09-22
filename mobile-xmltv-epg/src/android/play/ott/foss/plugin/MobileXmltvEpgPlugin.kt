@@ -17,6 +17,9 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import play.ott.core.NativeGuideSources
 import play.ott.core.NativeSourceFormat
+import play.ott.core.NativeSourceLoad
+import play.ott.core.NativeSourceLoadAction
+import play.ott.core.NativeSourceBatch
 import play.ott.core.NativeCacheLookup
 import play.ott.core.NativeGuideClock
 import play.ott.core.NativeGuideFormat
@@ -73,36 +76,58 @@ class MobileXmltvEpgPlugin : Plugin() {
             }
             callbacks.forEach { it(result) }
         }
-        if (!force) {
-            val fresh = try { readCache(source) } catch (_: Throwable) { null }
-            val parsed = fresh?.let { runCatching { parseXmltv(it) }.getOrNull() }
-            // A readable disk entry can still be truncated or contain a non-XMLTV document.
-            if (parsed != null && parsed.channels.isNotEmpty()) { finish(Result.success(parsed)); return }
-        }
-        fun failed(error: Throwable) {
-            val memory = synchronized(sourceLock) { parsedCache[source]?.second }
-            if (memory != null) { finish(Result.success(memory)); return }
-            val stale = try { readCache(source, allowStale = true) } catch (_: Throwable) { null }
-            val parsed = stale?.let { runCatching { parseXmltv(it) }.getOrNull() }
-            finish(if (parsed != null && parsed.channels.isNotEmpty()) Result.success(parsed) else Result.failure(error))
-        }
-        try {
-            client.newCall(Request.Builder().url(source).build()).enqueue(object : Callback {
-                override fun onFailure(httpCall: Call, e: IOException) { failed(e) }
-                override fun onResponse(httpCall: Call, response: Response) {
-                    try {
-                        if (!response.isSuccessful) throw IOException("XMLTV HTTP ${response.code}")
-                        val data = response.body?.bytes() ?: throw IOException("empty XMLTV body")
-                        val xml = gunzip(data) ?: throw IOException("invalid XMLTV encoding")
-                        val parsed = parseXmltv(String(xml, Charsets.UTF_8))
-                        if (parsed.channels.isEmpty()) throw IOException("invalid or empty XMLTV")
-                        try { writeCache(data, source) } catch (_: Throwable) { }
-                        finish(Result.success(parsed))
-                    } catch (error: Throwable) { failed(error) }
-                    finally { response.close() }
+        var parsed: Parsed? = null
+        var networkData: ByteArray? = null
+        var failure: Throwable = IOException("invalid or empty XMLTV")
+        fun transition(action: NativeSourceLoadAction, succeeded: Boolean = parsed != null) =
+            NativeSourceLoad.next(action, succeeded, parsed?.channels?.size ?: 0, NativeSourceFormat.ANDROID)
+        fun dispatch(action: NativeSourceLoadAction) {
+            when (action) {
+                NativeSourceLoadAction.READ_FRESH_DISK, NativeSourceLoadAction.READ_STALE_DISK -> {
+                    parsed = runCatching {
+                        readCache(source, allowStale = action == NativeSourceLoadAction.READ_STALE_DISK)?.let { parseXmltv(it) }
+                    }.getOrNull()
+                    dispatch(transition(action))
                 }
-            })
-        } catch (error: Throwable) { failed(error) }
+                NativeSourceLoadAction.READ_MEMORY -> {
+                    parsed = synchronized(sourceLock) { parsedCache[source]?.second }
+                    dispatch(transition(action))
+                }
+                NativeSourceLoadAction.FETCH -> {
+                    parsed = null
+                    fun failed(error: Throwable) {
+                        failure = error
+                        dispatch(transition(action, false))
+                    }
+                    try {
+                        client.newCall(Request.Builder().url(source).build()).enqueue(object : Callback {
+                            override fun onFailure(httpCall: Call, e: IOException) { failed(e) }
+                            override fun onResponse(httpCall: Call, response: Response) {
+                                try {
+                                    if (!response.isSuccessful) throw IOException("XMLTV HTTP ${response.code}")
+                                    val data = response.body?.bytes() ?: throw IOException("empty XMLTV body")
+                                    val xml = gunzip(data) ?: throw IOException("invalid XMLTV encoding")
+                                    parsed = parseXmltv(String(xml, Charsets.UTF_8))
+                                    networkData = data
+                                    dispatch(transition(action))
+                                } catch (error: Throwable) { failed(error) }
+                                finally { response.close() }
+                            }
+                        })
+                    } catch (error: Throwable) { failed(error) }
+                }
+                NativeSourceLoadAction.WRITE_DISK -> {
+                    val written = runCatching { writeCache(networkData!!, source) }.isSuccess
+                    dispatch(transition(action, written))
+                }
+                NativeSourceLoadAction.USE_FRESH_DISK, NativeSourceLoadAction.USE_NETWORK,
+                NativeSourceLoadAction.USE_MEMORY, NativeSourceLoadAction.USE_STALE_DISK ->
+                    finish(Result.success(parsed!!))
+                NativeSourceLoadAction.FAIL -> finish(Result.failure(failure))
+                NativeSourceLoadAction.REPARSE_NETWORK -> error("Unexpected Android source action: $action")
+            }
+        }
+        dispatch(NativeSourceLoad.start(force))
     }
 
     // The first feed defining an ID owns that channel and its programs.
@@ -111,10 +136,13 @@ class MobileXmltvEpgPlugin : Plugin() {
         val programs = mutableMapOf<String, List<Program>>()
         val icons = mutableMapOf<String, String>()
         val names = mutableMapOf<String, List<String>>()
-        var firstError: Throwable? = null
-        fun next(index: Int) {
-            if (index == sources.size) {
-                completion(if (channels.isEmpty() && firstError != null) Result.failure(firstError!!)
+        val batch = NativeSourceBatch(sources.size)
+        val errors = mutableMapOf<Int, Throwable>()
+        fun next() {
+            val index = batch.next()
+            if (index < 0) {
+                val failure = batch.failure()
+                completion(if (failure >= 0) Result.failure(errors.getValue(failure))
                     else Result.success(Parsed(channels, programs, icons, names)))
                 return
             }
@@ -127,11 +155,12 @@ class MobileXmltvEpgPlugin : Plugin() {
                         icons[id] = parsed.icons[id] ?: ""
                         names[id] = parsed.names[id] ?: listOf(name)
                     }
-                }.onFailure { if (firstError == null) firstError = it }
-                next(index + 1)
+                }.onFailure { errors[index] = it }
+                batch.advance(result.isSuccess, result.getOrNull()?.channels?.size ?: 0)
+                next()
             }
         }
-        next(0)
+        next()
     }
 
     @PluginMethod

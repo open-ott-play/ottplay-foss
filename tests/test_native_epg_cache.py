@@ -2,8 +2,8 @@
 """Run native cache regressions with Swift and Kotlin/JVM (no mobile SDK/build).
 
 The actual plugin sources are compiled with small Capacitor/network stubs. Only
-platform imports/annotations and the fixed clock are adapted; cache decisions
-and callback code are unchanged.
+platform imports/annotations, clock, HTTP delivery and VM allocation are adapted;
+cache decisions, parser branches and callback code are unchanged.
 Requires swift, kotlinc and java on PATH. Run: python3 tests/test_native_epg_cache.py
 Use --check-sources-only for the source ownership guard without native compilers.
 """
@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import tempfile
 from native_epg_policy_cases import methods
+from native_epg_fallback_cases import fallback_methods
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 XML = '<tv><channel id="a"><display-name>Feed A</display-name></channel></tv>'
@@ -41,6 +42,16 @@ def check_shipping_sources():
     for duplicate in obsolete:
         if (ROOT / duplicate).exists():
             raise AssertionError(f"Duplicate native source reintroduced: {duplicate}")
+    for path, required in (
+        ("mobile-xmltv-epg/src/ios/MobileXmltvEpg.swift", (
+            "nativeGuideLoadStart", "nativeGuideLoadNext", "NativeGuideSourceBatch")),
+        ("mobile-xmltv-epg/src/android/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt", (
+            "NativeSourceLoad.start", "NativeSourceLoad.next", "NativeSourceBatch(")),
+    ):
+        source = (ROOT / path).read_text()
+        for api in required:
+            assert api in source, f"Native load policy must use {api}: {path}"
+        assert "firstError" not in source, f"Native batch failure policy reintroduced: {path}"
     project = (ROOT / "ios/App/App.xcodeproj/project.pbxproj").read_text()
     if '../../../mobile-xmltv-epg/src/ios/MobileXmltvEpg.swift' not in project:
         raise AssertionError("iOS must compile the canonical XMLTV adapter")
@@ -55,24 +66,45 @@ public class CAPPlugin: NSObject {}
 public protocol CAPBridgedPlugin {}
 public struct CAPPluginMethod { init(name: String, returnType: String) {} }
 let CAPPluginReturnPromise = "promise"
+enum FixtureClock { static var now: TimeInterval = 1000000 }
+// Model a platform VM allocation failure without modifying parser/load branches.
+enum FixtureJavaScript {
+    static var remaining: Int?
+    static func context() -> JSContext? {
+        if let count = remaining {
+            if count == 0 { return nil }
+            remaining = count - 1
+        }
+        return JSContext()
+    }
+}
 class CAPPluginCall {
     let source: String
     var values: [String: Any] = [:]
     var result: [String: Any] = [:]
     var resolved = false
     var rejected = false
+    var resolveCount = 0
+    var rejectCount = 0
+    var rejection = ""
     init(_ source: String) { self.source = source }
     func getString(_ key: String) -> String? { key == "xmltv_url" ? source : values[key] as? String }
     func getArray<T>(_ key: String, _ ofType: T.Type) -> [T]? { values[key] as? [T] }
     func getInt(_ key: String) -> Int? { values[key] as? Int }
-    func resolve(_ result: [String: Any] = [:]) { resolved = true; self.result = result }
-    func reject(_ message: String) { rejected = true }
+    func resolve(_ result: [String: Any] = [:]) { resolveCount += 1; resolved = true; self.result = result }
+    func reject(_ message: String) { rejectCount += 1; rejected = true; rejection = message }
 }
 class URLSession {
     static let shared = URLSession()
     var data: Data?
     var requests = 0
     var sources: [String: Data] = [:]
+    var errors: [String: Error] = [:]
+    var deferred = false
+    var queue: [() -> Void] = []
+    var requestUrls: [String] = []
+    func releaseOne() { precondition(!queue.isEmpty); queue.removeFirst()() }
+    func reset() { data = nil; requests = 0; sources = [:]; errors = [:]; deferred = false; queue = []; requestUrls = [] }
     class Task {
         let action: () -> Void
         init(_ action: @escaping () -> Void) { self.action = action }
@@ -80,7 +112,15 @@ class URLSession {
     }
     func dataTask(with url: URL, completionHandler: @escaping (Data?, Any?, Error?) -> Void) -> Task {
         requests += 1
-        return Task { let body = self.sources[url.absoluteString] ?? self.data; completionHandler(body, nil, body == nil ? NSError(domain: "offline", code: 1) : nil) }
+        requestUrls.append(url.absoluteString)
+        return Task {
+            let action = {
+                let body = self.sources[url.absoluteString] ?? self.data
+                let error = self.errors[url.absoluteString] ?? (body == nil ? NSError(domain: "offline", code: 1) : nil)
+                completionHandler(body, nil, error)
+            }
+            if self.deferred { self.queue.append(action) } else { action() }
+        }
     }
 }
 """
@@ -208,6 +248,7 @@ SWIFT_TESTS = r"""
 KOTLIN_CAPACITOR = r"""
 package com.getcapacitor
 import java.io.File
+object FixtureClock { var now = 1000000000L }
 class Context(var cacheDir: File, var filesDir: File)
 open class Plugin { var context = Context(File("."), File(".")) }
 class PluginCall(val source: String) {
@@ -215,11 +256,14 @@ class PluginCall(val source: String) {
     var result = JSObject()
     var resolved = false
     var rejected = false
+    var resolveCount = 0
+    var rejectCount = 0
+    var rejection = ""
     fun getString(key: String): String? = if (key == "xmltv_url") source else values[key] as? String
     fun getArray(key: String): JSArray? = values[key] as? JSArray
     fun getInt(key: String): Int? = values[key] as? Int
-    fun resolve(value: JSObject = JSObject()) { resolved = true; result = value }
-    fun reject(message: String) { rejected = true }
+    fun resolve(value: JSObject = JSObject()) { resolveCount++; resolved = true; result = value }
+    fun reject(message: String) { rejectCount++; rejected = true; rejection = message }
 }
 annotation class PluginMethod
 class JSObject { val values = mutableMapOf<String, Any>(); fun put(key: String, value: Any) { values[key] = value } }
@@ -230,7 +274,17 @@ KOTLIN_HTTP = r"""
 package okhttp3
 import java.io.IOException
 import java.util.concurrent.TimeUnit
-object Fixture { var data: ByteArray? = null; var requests = 0; val sources = mutableMapOf<String, ByteArray>(); val requestUrls = mutableListOf<String>() }
+object Fixture {
+    var data: ByteArray? = null
+    var requests = 0
+    val sources = mutableMapOf<String, ByteArray>()
+    val errors = mutableMapOf<String, IOException>()
+    val requestUrls = mutableListOf<String>()
+    var deferred = false
+    val queue = mutableListOf<() -> Unit>()
+    fun releaseOne() { check(queue.isNotEmpty()); queue.removeAt(0)() }
+    fun reset() { data = null; requests = 0; sources.clear(); errors.clear(); requestUrls.clear(); deferred = false; queue.clear() }
+}
 interface Call { fun enqueue(callback: Callback) }
 interface Callback {
     fun onFailure(call: Call, e: IOException)
@@ -251,9 +305,13 @@ class OkHttpClient {
         override fun enqueue(callback: Callback) {
             Fixture.requests++
             Fixture.requestUrls.add(request.url)
-            val data = Fixture.sources[request.url] ?: Fixture.data
-            if (data == null) callback.onFailure(this, IOException("offline"))
-            else callback.onResponse(this, Response(Body(data)))
+            val action = {
+                val data = Fixture.sources[request.url] ?: Fixture.data
+                val error = Fixture.errors[request.url]
+                if (error != null || data == null) callback.onFailure(this, error ?: IOException("offline"))
+                else callback.onResponse(this, Response(Body(data)))
+            }
+            if (Fixture.deferred) Fixture.queue.add(action) else action()
         }
     }
 }
@@ -391,29 +449,30 @@ def main():
         tmp = pathlib.Path(directory)
         if options.platform in ["ios", "all"]:
             swift = (ROOT / "mobile-xmltv-epg/src/ios/MobileXmltvEpg.swift").read_text()
+            swift = swift.replace("JSContext()", "FixtureJavaScript.context()")
             swift = swift.replace("import Capacitor", SWIFT_STUBS)
-            # Only the bundle resource lookup changes; execute the real JavaScriptCore bridge.
+            # Point bundle lookups at the actual vendored artifacts; execute the real bridge.
             resource = json.dumps(str(ROOT / "vendor/ottplay-core.js"))
             swift = swift.replace('Bundle.main.url(forResource: "ottplay-core", withExtension: "js")', f'Optional(URL(fileURLWithPath: {resource}))')
             receipt = json.dumps(str(ROOT / "vendor/ottplay-core.manifest.json"))
             swift = swift.replace('Bundle.main.url(forResource: "ottplay-core.manifest", withExtension: "json")', f'Optional(URL(fileURLWithPath: {receipt}))')
             swift = swift.replace("@objc(MobileXmltvEpg)", "").replace("@objc ", "")
             # Swift's assert autoclosure cannot throw; evaluate the real read first.
-            tests = SWIFT_TESTS.replace("GZIP_FIXTURE", GZIP) + methods(GZIP)[0]
+            tests = SWIFT_TESTS.replace("GZIP_FIXTURE", GZIP) + methods(GZIP)[0] + fallback_methods()[0]
             tests = tests.replace("assert(try readCache", "assert(try! readCache")
             swift = swift.replace("    // MARK: - Cache", tests + "\n    // MARK: - Cache")
-            swift += "\ntry MobileXmltvEpg().runCacheTests()\ntry MobileXmltvEpg().runPolicyTests()\n"
-            swift = swift.replace("Date().timeIntervalSince1970", "TimeInterval(1000000)")
+            swift += "\ntry MobileXmltvEpg().runCacheTests()\ntry MobileXmltvEpg().runPolicyTests()\ntry MobileXmltvEpg().runFallbackTests()\n"
+            swift = swift.replace("Date().timeIntervalSince1970", "FixtureClock.now")
             (tmp / "CacheTest.swift").write_text(swift)
             run("swift", "-module-cache-path", str(tmp / "swift-module-cache"), "CacheTest.swift", cwd=tmp)
 
         if options.platform in ["android", "all"]:
             kotlin = (ROOT / "mobile-xmltv-epg/src/android/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt").read_text()
             kotlin = kotlin.replace(
-                "    // MARK: - Cache", KOTLIN_TESTS.replace("GZIP_FIXTURE", GZIP) + methods(GZIP)[1] + "\n    // MARK: - Cache"
+                "    // MARK: - Cache", KOTLIN_TESTS.replace("GZIP_FIXTURE", GZIP) + methods(GZIP)[1] + fallback_methods()[1] + "\n    // MARK: - Cache"
             )
-            kotlin += "\nfun main() { MobileXmltvEpgPlugin().runCacheTests(); MobileXmltvEpgPlugin().runPolicyTests() }\n"
-            kotlin = kotlin.replace("System.currentTimeMillis()", "1000000000L")
+            kotlin += "\nfun main() { MobileXmltvEpgPlugin().runCacheTests(); MobileXmltvEpgPlugin().runPolicyTests(); MobileXmltvEpgPlugin().runFallbackTests() }\n"
+            kotlin = kotlin.replace("System.currentTimeMillis()", "com.getcapacitor.FixtureClock.now")
             (tmp / "CacheTest.kt").write_text(kotlin)
             (tmp / "Capacitor.kt").write_text(KOTLIN_CAPACITOR)
             (tmp / "Http.kt").write_text(KOTLIN_HTTP)

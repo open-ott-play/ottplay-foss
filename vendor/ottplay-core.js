@@ -297,6 +297,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(NativeCacheLookup, 'NativeCacheLookup', VOID, Enum);
   initMetadataForClass(NativeCacheRefresh, 'NativeCacheRefresh', VOID, Enum);
   initMetadataForObject(NativeGuideSources, 'NativeGuideSources');
+  initMetadataForClass(NativeSourceLoadAction, 'NativeSourceLoadAction', VOID, Enum);
+  initMetadataForObject(NativeSourceLoad, 'NativeSourceLoad');
+  initMetadataForClass(NativeSourceBatch, 'NativeSourceBatch');
   initMetadataForClass(OperatorEntry, 'OperatorEntry');
   initMetadataForClass(OperatorCatalog, 'OperatorCatalog');
   initMetadataForClass(PlaylistMedia, 'PlaylistMedia');
@@ -353,6 +356,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(BrowserGuideLookup, 'BrowserGuideLookup');
   initMetadataForClass(GuideModels, 'GuideModels');
   initMetadataForClass(BrowserLookupItem, 'BrowserLookupItem');
+  initMetadataForClass(NativeGuideSourceBatch, 'NativeGuideSourceBatch');
   initMetadataForClass(StalkerClient, 'StalkerClient');
   initMetadataForClass(LegacyStalkerClient, 'LegacyStalkerClient');
   initMetadataForClass(StreamingGuideFilter, 'StreamingGuideFilter');
@@ -2075,6 +2079,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
   }
   function THROW_CCE() {
     throw ClassCastException_init_$Create$();
+  }
+  function THROW_IAE(msg) {
+    throw IllegalArgumentException_init_$Create$_0(msg);
   }
   function ensureNotNull(v) {
     var tmp;
@@ -11290,6 +11297,10 @@ if (typeof String.prototype.startsWith === 'undefined') {
     static_init_3();
     return NativeSourceFormat_SWIFT_instance;
   }
+  function NativeSourceFormat_ANDROID_getInstance() {
+    static_init_3();
+    return NativeSourceFormat_ANDROID_instance;
+  }
   function NativeSourceFormat_ANDROID_RAW_getInstance() {
     static_init_3();
     return NativeSourceFormat_ANDROID_RAW_instance;
@@ -11317,6 +11328,201 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function NativeCacheRefresh_FAIL_getInstance() {
     static_init_5();
     return NativeCacheRefresh_FAIL_instance;
+  }
+  var static_init_called_6;
+  function static_init_6() {
+    if (static_init_called_6)
+      return Unit_instance;
+    static_init_called_6 = true;
+    NativeSourceLoadAction_READ_FRESH_DISK_instance = new NativeSourceLoadAction('READ_FRESH_DISK', 0);
+    NativeSourceLoadAction_FETCH_instance = new NativeSourceLoadAction('FETCH', 1);
+    NativeSourceLoadAction_WRITE_DISK_instance = new NativeSourceLoadAction('WRITE_DISK', 2);
+    NativeSourceLoadAction_REPARSE_NETWORK_instance = new NativeSourceLoadAction('REPARSE_NETWORK', 3);
+    NativeSourceLoadAction_READ_MEMORY_instance = new NativeSourceLoadAction('READ_MEMORY', 4);
+    NativeSourceLoadAction_READ_STALE_DISK_instance = new NativeSourceLoadAction('READ_STALE_DISK', 5);
+    NativeSourceLoadAction_USE_FRESH_DISK_instance = new NativeSourceLoadAction('USE_FRESH_DISK', 6);
+    NativeSourceLoadAction_USE_NETWORK_instance = new NativeSourceLoadAction('USE_NETWORK', 7);
+    NativeSourceLoadAction_USE_MEMORY_instance = new NativeSourceLoadAction('USE_MEMORY', 8);
+    NativeSourceLoadAction_USE_STALE_DISK_instance = new NativeSourceLoadAction('USE_STALE_DISK', 9);
+    NativeSourceLoadAction_FAIL_instance = new NativeSourceLoadAction('FAIL', 10);
+  }
+  var NativeSourceLoadAction_READ_FRESH_DISK_instance;
+  var NativeSourceLoadAction_FETCH_instance;
+  var NativeSourceLoadAction_WRITE_DISK_instance;
+  var NativeSourceLoadAction_REPARSE_NETWORK_instance;
+  var NativeSourceLoadAction_READ_MEMORY_instance;
+  var NativeSourceLoadAction_READ_STALE_DISK_instance;
+  var NativeSourceLoadAction_USE_FRESH_DISK_instance;
+  var NativeSourceLoadAction_USE_NETWORK_instance;
+  var NativeSourceLoadAction_USE_MEMORY_instance;
+  var NativeSourceLoadAction_USE_STALE_DISK_instance;
+  var NativeSourceLoadAction_FAIL_instance;
+  function valueOf(value) {
+    static_init_6();
+    switch (value) {
+      case 'READ_FRESH_DISK':
+        return NativeSourceLoadAction_READ_FRESH_DISK_getInstance();
+      case 'FETCH':
+        return NativeSourceLoadAction_FETCH_getInstance();
+      case 'WRITE_DISK':
+        return NativeSourceLoadAction_WRITE_DISK_getInstance();
+      case 'REPARSE_NETWORK':
+        return NativeSourceLoadAction_REPARSE_NETWORK_getInstance();
+      case 'READ_MEMORY':
+        return NativeSourceLoadAction_READ_MEMORY_getInstance();
+      case 'READ_STALE_DISK':
+        return NativeSourceLoadAction_READ_STALE_DISK_getInstance();
+      case 'USE_FRESH_DISK':
+        return NativeSourceLoadAction_USE_FRESH_DISK_getInstance();
+      case 'USE_NETWORK':
+        return NativeSourceLoadAction_USE_NETWORK_getInstance();
+      case 'USE_MEMORY':
+        return NativeSourceLoadAction_USE_MEMORY_getInstance();
+      case 'USE_STALE_DISK':
+        return NativeSourceLoadAction_USE_STALE_DISK_getInstance();
+      case 'FAIL':
+        return NativeSourceLoadAction_FAIL_getInstance();
+      default:
+        THROW_IAE('No enum constant play.ott.core.NativeSourceLoadAction.' + value);
+        break;
+    }
+  }
+  function NativeSourceLoadAction(name, ordinal) {
+    Enum.call(this, name, ordinal);
+  }
+  function NativeSourceLoad() {
+  }
+  protoOf(NativeSourceLoad).start_4vcdj7_k$ = function (force) {
+    return force ? NativeSourceLoadAction_FETCH_getInstance() : NativeSourceLoadAction_READ_FRESH_DISK_getInstance();
+  };
+  protoOf(NativeSourceLoad).next_ryrxq3_k$ = function (action, succeeded, channels, format) {
+    // Inline function 'kotlin.require' call
+    // Inline function 'kotlin.require' call
+    if (!(format.equals(NativeSourceFormat_SWIFT_getInstance()) || format.equals(NativeSourceFormat_ANDROID_getInstance()))) {
+      var message = 'Failed requirement.';
+      throw IllegalArgumentException_init_$Create$_0(toString_1(message));
+    }
+    // Inline function 'kotlin.require' call
+    // Inline function 'kotlin.require' call
+    if (!(channels >= 0)) {
+      var message_0 = 'Failed requirement.';
+      throw IllegalArgumentException_init_$Create$_0(toString_1(message_0));
+    }
+    var usable = succeeded && channels > 0;
+    var tmp;
+    switch (action.ordinal_1) {
+      case 0:
+        tmp = usable ? NativeSourceLoadAction_USE_FRESH_DISK_getInstance() : NativeSourceLoadAction_FETCH_getInstance();
+        break;
+      case 1:
+        tmp = usable ? NativeSourceLoadAction_WRITE_DISK_getInstance() : NativeSourceLoadAction_READ_MEMORY_getInstance();
+        break;
+      case 2:
+        tmp = format.equals(NativeSourceFormat_ANDROID_getInstance()) ? NativeSourceLoadAction_USE_NETWORK_getInstance() : succeeded ? NativeSourceLoadAction_REPARSE_NETWORK_getInstance() : NativeSourceLoadAction_READ_MEMORY_getInstance();
+        break;
+      case 3:
+        tmp = succeeded ? NativeSourceLoadAction_USE_NETWORK_getInstance() : NativeSourceLoadAction_FAIL_getInstance();
+        break;
+      case 4:
+        tmp = succeeded ? NativeSourceLoadAction_USE_MEMORY_getInstance() : NativeSourceLoadAction_READ_STALE_DISK_getInstance();
+        break;
+      case 5:
+        tmp = usable ? NativeSourceLoadAction_USE_STALE_DISK_getInstance() : NativeSourceLoadAction_FAIL_getInstance();
+        break;
+      default:
+        // Inline function 'kotlin.error' call
+
+        var message_1 = 'Native source load already completed';
+        throw IllegalStateException_init_$Create$_0(toString_1(message_1));
+    }
+    return tmp;
+  };
+  var NativeSourceLoad_instance;
+  function NativeSourceLoad_getInstance() {
+    return NativeSourceLoad_instance;
+  }
+  function NativeSourceBatch(count) {
+    this.count_1 = count;
+    this.index_1 = 0;
+    this.firstFailure_1 = -1;
+    this.populated_1 = false;
+    // Inline function 'kotlin.require' call
+    // Inline function 'kotlin.require' call
+    if (!(this.count_1 >= 0)) {
+      var message = 'Failed requirement.';
+      throw IllegalArgumentException_init_$Create$_0(toString_1(message));
+    }
+  }
+  protoOf(NativeSourceBatch).next_20eer_k$ = function () {
+    return this.index_1 < this.count_1 ? this.index_1 : -1;
+  };
+  protoOf(NativeSourceBatch).advance_cfek05_k$ = function (succeeded, channels) {
+    // Inline function 'kotlin.check' call
+    if (!(this.index_1 < this.count_1)) {
+      throw IllegalStateException_init_$Create$_0('Check failed.');
+    }
+    // Inline function 'kotlin.require' call
+    // Inline function 'kotlin.require' call
+    if (!(channels >= 0)) {
+      var message = 'Failed requirement.';
+      throw IllegalArgumentException_init_$Create$_0(toString_1(message));
+    }
+    if (succeeded)
+      this.populated_1 = this.populated_1 || channels > 0;
+    else if (this.firstFailure_1 < 0)
+      this.firstFailure_1 = this.index_1;
+    this.index_1 = this.index_1 + 1 | 0;
+  };
+  protoOf(NativeSourceBatch).failure_hyx20m_k$ = function () {
+    // Inline function 'kotlin.check' call
+    if (!(this.index_1 === this.count_1)) {
+      throw IllegalStateException_init_$Create$_0('Check failed.');
+    }
+    return this.populated_1 ? -1 : this.firstFailure_1;
+  };
+  function NativeSourceLoadAction_READ_FRESH_DISK_getInstance() {
+    static_init_6();
+    return NativeSourceLoadAction_READ_FRESH_DISK_instance;
+  }
+  function NativeSourceLoadAction_FETCH_getInstance() {
+    static_init_6();
+    return NativeSourceLoadAction_FETCH_instance;
+  }
+  function NativeSourceLoadAction_WRITE_DISK_getInstance() {
+    static_init_6();
+    return NativeSourceLoadAction_WRITE_DISK_instance;
+  }
+  function NativeSourceLoadAction_REPARSE_NETWORK_getInstance() {
+    static_init_6();
+    return NativeSourceLoadAction_REPARSE_NETWORK_instance;
+  }
+  function NativeSourceLoadAction_READ_MEMORY_getInstance() {
+    static_init_6();
+    return NativeSourceLoadAction_READ_MEMORY_instance;
+  }
+  function NativeSourceLoadAction_READ_STALE_DISK_getInstance() {
+    static_init_6();
+    return NativeSourceLoadAction_READ_STALE_DISK_instance;
+  }
+  function NativeSourceLoadAction_USE_FRESH_DISK_getInstance() {
+    static_init_6();
+    return NativeSourceLoadAction_USE_FRESH_DISK_instance;
+  }
+  function NativeSourceLoadAction_USE_NETWORK_getInstance() {
+    static_init_6();
+    return NativeSourceLoadAction_USE_NETWORK_instance;
+  }
+  function NativeSourceLoadAction_USE_MEMORY_getInstance() {
+    static_init_6();
+    return NativeSourceLoadAction_USE_MEMORY_instance;
+  }
+  function NativeSourceLoadAction_USE_STALE_DISK_getInstance() {
+    static_init_6();
+    return NativeSourceLoadAction_USE_STALE_DISK_instance;
+  }
+  function NativeSourceLoadAction_FAIL_getInstance() {
+    static_init_6();
+    return NativeSourceLoadAction_FAIL_instance;
   }
   function OperatorEntry(id, name, generatedName, url, group, category, logo, epgId, epgName, hours, fallbackHours, mode, archive, feed, drm, server, token) {
     this.id_1 = id;
@@ -11922,11 +12128,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function OperatorPlaylist_getInstance() {
     return OperatorPlaylist_instance;
   }
-  var static_init_called_6;
-  function static_init_6() {
-    if (static_init_called_6)
+  var static_init_called_7;
+  function static_init_7() {
+    if (static_init_called_7)
       return Unit_instance;
-    static_init_called_6 = true;
+    static_init_called_7 = true;
     PlaylistFormat_BROWSER_instance = new PlaylistFormat('BROWSER', 0);
     PlaylistFormat_ANDROID_instance = new PlaylistFormat('ANDROID', 1);
   }
@@ -13103,18 +13309,18 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return Playlist_instance;
   }
   function PlaylistFormat_BROWSER_getInstance() {
-    static_init_6();
+    static_init_7();
     return PlaylistFormat_BROWSER_instance;
   }
   function PlaylistFormat_ANDROID_getInstance() {
-    static_init_6();
+    static_init_7();
     return PlaylistFormat_ANDROID_instance;
   }
-  var static_init_called_7;
-  function static_init_7() {
-    if (static_init_called_7)
+  var static_init_called_8;
+  function static_init_8() {
+    if (static_init_called_8)
       return Unit_instance;
-    static_init_called_7 = true;
+    static_init_called_8 = true;
     ProviderPlaylistFormat_GENERIC_instance = new ProviderPlaylistFormat('GENERIC', 0);
     ProviderPlaylistFormat_M3U_instance = new ProviderPlaylistFormat('M3U', 1);
   }
@@ -13685,18 +13891,18 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return ProviderPlaylist_instance;
   }
   function ProviderPlaylistFormat_GENERIC_getInstance() {
-    static_init_7();
+    static_init_8();
     return ProviderPlaylistFormat_GENERIC_instance;
   }
   function ProviderPlaylistFormat_M3U_getInstance() {
-    static_init_7();
+    static_init_8();
     return ProviderPlaylistFormat_M3U_instance;
   }
-  var static_init_called_8;
-  function static_init_8() {
-    if (static_init_called_8)
+  var static_init_called_9;
+  function static_init_9() {
+    if (static_init_called_9)
       return Unit_instance;
-    static_init_called_8 = true;
+    static_init_called_9 = true;
     ProviderValueKind_MISSING_instance = new ProviderValueKind('MISSING', 0);
     ProviderValueKind_NULL_instance = new ProviderValueKind('NULL', 1);
     ProviderValueKind_TEXT_instance = new ProviderValueKind('TEXT', 2);
@@ -14037,31 +14243,31 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return CoreNumber_instance;
   }
   function ProviderValueKind_MISSING_getInstance() {
-    static_init_8();
+    static_init_9();
     return ProviderValueKind_MISSING_instance;
   }
   function ProviderValueKind_NULL_getInstance() {
-    static_init_8();
+    static_init_9();
     return ProviderValueKind_NULL_instance;
   }
   function ProviderValueKind_TEXT_getInstance() {
-    static_init_8();
+    static_init_9();
     return ProviderValueKind_TEXT_instance;
   }
   function ProviderValueKind_NUMBER_getInstance() {
-    static_init_8();
+    static_init_9();
     return ProviderValueKind_NUMBER_instance;
   }
   function ProviderValueKind_BOOLEAN_getInstance() {
-    static_init_8();
+    static_init_9();
     return ProviderValueKind_BOOLEAN_instance;
   }
   function ProviderValueKind_ARRAY_getInstance() {
-    static_init_8();
+    static_init_9();
     return ProviderValueKind_ARRAY_instance;
   }
   function ProviderValueKind_OBJECT_getInstance() {
-    static_init_8();
+    static_init_9();
     return ProviderValueKind_OBJECT_instance;
   }
   function current($this, node) {
@@ -14545,11 +14751,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function StalkerCatalogs_getInstance() {
     return StalkerCatalogs_instance;
   }
-  var static_init_called_9;
-  function static_init_9() {
-    if (static_init_called_9)
+  var static_init_called_10;
+  function static_init_10() {
+    if (static_init_called_10)
       return Unit_instance;
-    static_init_called_9 = true;
+    static_init_called_10 = true;
     StalkerFormat_BROWSER_instance = new StalkerFormat('BROWSER', 0);
     StalkerFormat_NATIVE_instance = new StalkerFormat('NATIVE', 1);
     StalkerFormat_RPC_instance = new StalkerFormat('RPC', 2);
@@ -15230,11 +15436,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return StalkerProtocol_instance;
   }
   function StalkerFormat_BROWSER_getInstance() {
-    static_init_9();
+    static_init_10();
     return StalkerFormat_BROWSER_instance;
   }
   function StalkerFormat_RPC_getInstance() {
-    static_init_9();
+    static_init_10();
     return StalkerFormat_RPC_instance;
   }
   function StreamingGuideIdentity(id, tvgName, name, days) {
@@ -16854,11 +17060,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function XtreamCatalogs_getInstance() {
     return XtreamCatalogs_instance;
   }
-  var static_init_called_10;
-  function static_init_10() {
-    if (static_init_called_10)
+  var static_init_called_11;
+  function static_init_11() {
+    if (static_init_called_11)
       return Unit_instance;
-    static_init_called_10 = true;
+    static_init_called_11 = true;
     XtreamFormat_BROWSER_instance = new XtreamFormat('BROWSER', 0);
     XtreamFormat_ANDROID_instance = new XtreamFormat('ANDROID', 1);
     XtreamFormat_LEGACY_instance = new XtreamFormat('LEGACY', 2);
@@ -17128,15 +17334,15 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return trimEnd(this.render_1(listOf_0(['timeshift', this.source_1.username_1, this.source_1.password_1]), emptyList()), charArrayOf([_Char___init__impl__6a9atx(47)])) + '/{durationMinutes}/{startDate}/' + this.segment_1(id + '.ts');
   };
   function XtreamFormat_BROWSER_getInstance() {
-    static_init_10();
+    static_init_11();
     return XtreamFormat_BROWSER_instance;
   }
   function XtreamFormat_ANDROID_getInstance() {
-    static_init_10();
+    static_init_11();
     return XtreamFormat_ANDROID_instance;
   }
   function XtreamFormat_LEGACY_getInstance() {
-    static_init_10();
+    static_init_11();
     return XtreamFormat_LEGACY_instance;
   }
   function get_nativeClocks() {
@@ -18482,6 +18688,40 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function nativeGuideEvictSourceSet(count, existing) {
     return NativeGuideSources_instance.evictSourceSet_idede3_k$(count, existing);
   }
+  function nativeGuideLoadStart(force) {
+    return NativeSourceLoad_instance.start_4vcdj7_k$(force).name_1;
+  }
+  function nativeGuideLoadNext(action, succeeded, channels, format) {
+    var tmp = NativeSourceLoad_instance;
+    var tmp_0 = valueOf(action);
+    var tmp_1;
+    switch (format) {
+      case 'swift':
+        tmp_1 = NativeSourceFormat_SWIFT_getInstance();
+        break;
+      case 'android':
+        tmp_1 = NativeSourceFormat_ANDROID_getInstance();
+        break;
+      default:
+        // Inline function 'kotlin.error' call
+
+        var message = 'Unknown native source format';
+        throw IllegalStateException_init_$Create$_0(toString_1(message));
+    }
+    return tmp.next_ryrxq3_k$(tmp_0, succeeded, channels, tmp_1).name_1;
+  }
+  function NativeGuideSourceBatch(count) {
+    this.batch_1 = new NativeSourceBatch(count);
+  }
+  protoOf(NativeGuideSourceBatch).next = function () {
+    return this.batch_1.next_20eer_k$();
+  };
+  protoOf(NativeGuideSourceBatch).advance = function (succeeded, channels) {
+    return this.batch_1.advance_cfek05_k$(succeeded, channels);
+  };
+  protoOf(NativeGuideSourceBatch).failure = function () {
+    return this.batch_1.failure_hyx20m_k$();
+  };
   function nativeGuideSources$lambda(it) {
     return it;
   }
@@ -19488,6 +19728,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   LegacyXtream_instance = new LegacyXtream();
   NativeGuideNames_instance = new NativeGuideNames();
   NativeGuideSources_instance = new NativeGuideSources();
+  NativeSourceLoad_instance = new NativeSourceLoad();
   OperatorPlaylist_instance = new OperatorPlaylist();
   ProviderPlaylist_instance = new ProviderPlaylist();
   CoreNumber_instance = new CoreNumber();
@@ -19537,6 +19778,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
     _.nativeGuideFresh = nativeGuideFresh;
     _.nativeGuideRefresh = nativeGuideRefresh;
     _.nativeGuideEvictSourceSet = nativeGuideEvictSourceSet;
+    _.nativeGuideLoadStart = nativeGuideLoadStart;
+    _.nativeGuideLoadNext = nativeGuideLoadNext;
+    _.NativeGuideSourceBatch = NativeGuideSourceBatch;
     _.stalkerTextDenied = stalkerTextDenied;
     _.stalkerConfig = stalkerConfig;
     _.StalkerClient = StalkerClient;
