@@ -12,6 +12,9 @@ pub struct GuideIndex(Context);
 /// Batched XML events cross the VM boundary; the shared core owns record state.
 pub struct GuideRecords(Context);
 
+/// The host executes effects; the shared core owns refresh transitions and channel ownership.
+pub struct GuideRefresh(Context);
+
 fn context() -> anyhow::Result<Context> {
     let runtime = Runtime::new()?;
     runtime.set_max_stack_size(1024 * 1024);
@@ -90,6 +93,58 @@ pub fn evict_source_set(count: usize, existing: bool) -> anyhow::Result<bool> {
             .get::<_, Function>("nativeGuideEvictSourceSet")?
             .call((count as i32, existing))
     })
+}
+
+pub fn refresh_interval() -> anyhow::Result<u64> {
+    scalar(|ctx| {
+        core(&ctx)?
+            .get::<_, Function>("nativeGuideRefreshInterval")?
+            .call(("rust-server",))
+    })
+}
+
+impl GuideRefresh {
+    pub fn new(count: usize) -> anyhow::Result<Self> {
+        let context = context()?;
+        checked(&context, |ctx| {
+            let constructor: Constructor = core(&ctx)?.get("NativeGuideRefresh")?;
+            let refresh: Object = constructor.construct((count as f64, "rust-server"))?;
+            ctx.globals().set("guideRefresh", refresh)
+        })?;
+        Ok(Self(context))
+    }
+
+    pub fn action(&self) -> anyhow::Result<String> {
+        checked(&self.0, |ctx| {
+            let refresh: Object = ctx.globals().get("guideRefresh")?;
+            let method: Function = refresh.get("action")?;
+            method.call((This(refresh),))
+        })
+    }
+
+    pub fn index(&self) -> anyhow::Result<usize> {
+        checked(&self.0, |ctx| {
+            let refresh: Object = ctx.globals().get("guideRefresh")?;
+            let method: Function = refresh.get("index")?;
+            method.call((This(refresh),))
+        })
+    }
+
+    pub fn advance(&self, succeeded: bool, available: bool) -> anyhow::Result<()> {
+        checked(&self.0, |ctx| {
+            let refresh: Object = ctx.globals().get("guideRefresh")?;
+            let method: Function = refresh.get("advance")?;
+            method.call((This(refresh), succeeded, available))
+        })
+    }
+
+    pub fn unowned(&self, incoming: Vec<String>) -> anyhow::Result<Vec<String>> {
+        checked(&self.0, |ctx| {
+            let refresh: Object = ctx.globals().get("guideRefresh")?;
+            let method: Function = refresh.get("unowned")?;
+            method.call((This(refresh), incoming))
+        })
+    }
 }
 
 impl GuideIndex {

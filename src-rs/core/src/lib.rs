@@ -21,20 +21,29 @@ mod shared_guide;
 
 /// Fetch XMLTV from `urls`, parse, persist to SQLite, return channels+programs.
 pub async fn fetch_xmltv(urls: &[String]) -> anyhow::Result<xmltv::XmltvCache> {
+    let refresh = shared_guide::GuideRefresh::new(urls.len())?;
     let mut all_channels: HashMap<String, xmltv::Channel> = HashMap::new();
     let mut all_programs: HashMap<String, Vec<xmltv::Programme>> = HashMap::new();
 
-    for url in urls {
+    while refresh.action()? == "FETCH" {
+        let url = &urls[refresh.index()?];
         match xmltv::fetch_single(url).await {
-            Ok((ch, pr)) => {
-                for (id, c) in ch {
-                    all_channels.entry(id.clone()).or_insert(c);
+            Ok((mut ch, pr)) => {
+                for id in refresh.unowned(ch.keys().cloned().collect())? {
+                    let channel = ch
+                        .remove(&id)
+                        .expect("shared core selected an incoming channel");
+                    all_channels.insert(id, channel);
                 }
                 for (id, progs) in pr {
-                    all_programs.entry(id.clone()).or_default().extend(progs);
+                    all_programs.entry(id).or_default().extend(progs);
                 }
+                refresh.advance(true, true)?;
             }
-            Err(e) => tracing::warn!("XMLTV fetch failed for {url}: {e}"),
+            Err(e) => {
+                tracing::warn!("XMLTV fetch failed for {url}: {e}");
+                refresh.advance(false, true)?;
+            }
         }
     }
 
@@ -47,14 +56,37 @@ pub async fn fetch_xmltv(urls: &[String]) -> anyhow::Result<xmltv::XmltvCache> {
             .as_secs(),
     };
 
-    // Persist to SQLite
-    if let Some(pool) = db::pool().await? {
-        if let Err(e) = db::persist(&pool, &cache).await {
-            tracing::warn!("SQLite persist error: {e}");
+    let mut pool = None;
+    let mut failure = None;
+    loop {
+        match refresh.action()?.as_str() {
+            "OPEN_DATABASE" => match db::pool().await {
+                Ok(opened) => {
+                    refresh.advance(true, opened.is_some())?;
+                    pool = opened;
+                }
+                Err(error) => {
+                    failure = Some(error);
+                    refresh.advance(false, false)?;
+                }
+            },
+            "WRITE_DATABASE" => {
+                let result = db::persist(
+                    pool.as_ref().expect("shared core requested an open pool"),
+                    &cache,
+                )
+                .await;
+                let succeeded = result.is_ok();
+                if let Err(error) = result {
+                    tracing::warn!("SQLite persist error: {error}");
+                }
+                refresh.advance(succeeded, true)?;
+            }
+            "REPLACE" => return Ok(cache),
+            "FAIL" => return Err(failure.expect("shared core retained a database failure")),
+            _ => anyhow::bail!("Unexpected shared guide refresh action"),
         }
     }
-
-    Ok(cache)
 }
 
 /// Return EPG slice for `channel_id`.
@@ -91,7 +123,14 @@ pub fn match_channel(name: &str, channels: &xmltv::Channels) -> anyhow::Result<O
 
 /// Background task: refresh XMLTV every 2h, update the shared cache.
 pub async fn background_refresh(xmltv_urls: Vec<String>, cache: Arc<RwLock<xmltv::XmltvCache>>) {
-    let mut ticker = interval(Duration::from_secs(2 * 3600));
+    let seconds = match shared_guide::refresh_interval() {
+        Ok(seconds) => seconds,
+        Err(error) => {
+            tracing::warn!("XMLTV refresh policy failed: {error}");
+            return;
+        }
+    };
+    let mut ticker = interval(Duration::from_secs(seconds));
     loop {
         ticker.tick().await;
         tracing::info!("XMLTV background refresh triggered");
