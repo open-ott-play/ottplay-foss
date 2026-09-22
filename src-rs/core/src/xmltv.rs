@@ -99,10 +99,7 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
     let mut channels: Channels = HashMap::new();
     let mut programs: Programs = HashMap::new();
 
-    let mut current_channel: Option<Channel> = None;
-    let mut current_programme: Option<(String, Programme)> = None;
-    let mut text_target: Option<TextTarget> = None;
-    let mut text_buffer = String::new();
+    let mut records = RecordTokens::new(native)?;
 
     let mut buf = Vec::new();
     let mut depth = 0usize;
@@ -110,194 +107,248 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
     let mut root_closed = false;
     loop {
         let event = reader.read_event_into(&mut buf);
-        if native {
-            // quick_xml can return EOF after complete channels inside an unclosed root.
-            // Such a partial download must never replace the native cache.
-            match &event {
-                Ok(Event::Start(element)) => {
-                    if depth == 0 {
+        let validation = (|| -> anyhow::Result<()> {
+            if native {
+                // quick_xml can return EOF after complete channels inside an unclosed root.
+                // Such a partial download must never replace the native cache.
+                match &event {
+                    Ok(Event::Start(element)) => {
+                        if depth == 0 {
+                            anyhow::ensure!(
+                                !root_seen && element.name().as_ref() == b"tv",
+                                "Invalid XMLTV root"
+                            );
+                            root_seen = true;
+                        }
+                        depth += 1;
+                    }
+                    Ok(Event::Empty(element)) if depth == 0 => {
                         anyhow::ensure!(
                             !root_seen && element.name().as_ref() == b"tv",
                             "Invalid XMLTV root"
                         );
                         root_seen = true;
-                    }
-                    depth += 1;
-                }
-                Ok(Event::Empty(element)) if depth == 0 => {
-                    anyhow::ensure!(
-                        !root_seen && element.name().as_ref() == b"tv",
-                        "Invalid XMLTV root"
-                    );
-                    root_seen = true;
-                    root_closed = true;
-                }
-                Ok(Event::End(element)) => {
-                    anyhow::ensure!(depth > 0, "Unexpected XMLTV closing element");
-                    depth -= 1;
-                    if depth == 0 {
-                        anyhow::ensure!(
-                            element.name().as_ref() == b"tv",
-                            "Invalid XMLTV closing root"
-                        );
                         root_closed = true;
                     }
+                    Ok(Event::End(element)) => {
+                        anyhow::ensure!(depth > 0, "Unexpected XMLTV closing element");
+                        depth -= 1;
+                        if depth == 0 {
+                            anyhow::ensure!(
+                                element.name().as_ref() == b"tv",
+                                "Invalid XMLTV closing root"
+                            );
+                            root_closed = true;
+                        }
+                    }
+                    Ok(Event::Text(text)) if depth == 0 => {
+                        anyhow::ensure!(
+                            text.decode()?.trim().is_empty(),
+                            "Text outside XMLTV root"
+                        );
+                    }
+                    Ok(Event::GeneralRef(_)) if depth == 0 => {
+                        anyhow::bail!("Entity outside XMLTV root")
+                    }
+                    Ok(Event::CData(_)) if depth == 0 => anyhow::bail!("CDATA outside XMLTV root"),
+                    Ok(Event::Eof) => anyhow::ensure!(
+                        root_seen && root_closed && depth == 0,
+                        "Incomplete XMLTV document"
+                    ),
+                    _ => {}
                 }
-                Ok(Event::Text(text)) if depth == 0 => {
-                    anyhow::ensure!(text.decode()?.trim().is_empty(), "Text outside XMLTV root");
-                }
-                Ok(Event::GeneralRef(_)) if depth == 0 => {
-                    anyhow::bail!("Entity outside XMLTV root")
-                }
-                Ok(Event::CData(_)) if depth == 0 => anyhow::bail!("CDATA outside XMLTV root"),
-                Ok(Event::Eof) => anyhow::ensure!(
-                    root_seen && root_closed && depth == 0,
-                    "Incomplete XMLTV document"
-                ),
-                _ => {}
             }
+            Ok(())
+        })();
+        if let Err(error) = validation {
+            records.flush(&mut channels, &mut programs)?;
+            return Err(error);
         }
         match event {
-            Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
-                let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
-                match name.as_str() {
-                    "channel" => {
-                        let id = attr(&e, "id").unwrap_or_default();
-                        current_channel = Some(Channel {
-                            id,
-                            name: String::new(),
-                            icon: String::new(),
-                            names: Vec::new(),
-                        });
+            Ok(Event::Start(element)) | Ok(Event::Empty(element)) => {
+                // Empty elements have always supplied only a start event here.
+                let mut row = vec![
+                    "start".into(),
+                    String::from_utf8_lossy(element.name().as_ref()).into_owned(),
+                ];
+                for key in ["id", "channel", "start", "stop", "src"] {
+                    if let Some(value) = attr(&element, key) {
+                        row.push(key.into());
+                        row.push(value);
                     }
-                    "programme" => {
-                        let channel = attr(&e, "channel").unwrap_or_default();
-                        let start = parse_xmltv_time(&attr(&e, "start").unwrap_or_default())?;
-                        let stop = parse_xmltv_time(&attr(&e, "stop").unwrap_or_default())?;
-                        current_programme = Some((
-                            channel,
-                            Programme {
-                                start,
-                                stop,
-                                title: String::new(),
-                                desc: String::new(),
-                                icon: String::new(),
-                            },
-                        ));
-                    }
-                    "display-name" if current_channel.is_some() => {
-                        text_target = Some(TextTarget::ChannelName);
-                        text_buffer.clear();
-                    }
-                    "title" if current_programme.is_some() => {
-                        text_target = Some(TextTarget::ProgTitle);
-                        text_buffer.clear();
-                    }
-                    "desc" if current_programme.is_some() => {
-                        text_target = Some(TextTarget::ProgDesc);
-                        text_buffer.clear();
-                    }
-                    "icon" => {
-                        if let Some(src) = attr(&e, "src") {
-                            if let Some(c) = current_channel.as_mut() {
-                                c.icon = src;
-                            } else if let Some((_, p)) = current_programme.as_mut() {
-                                p.icon = src;
-                            }
-                        }
-                    }
-                    _ => {}
                 }
+                records.push(row, &mut channels, &mut programs)?;
             }
-            Ok(Event::Text(t)) => {
-                if text_target.is_some() {
-                    text_buffer.push_str(&t.decode()?);
-                }
+            Ok(Event::Text(text)) => {
+                records.text(
+                    text.decode()
+                        .map(|text| text.into_owned())
+                        .map_err(Into::into),
+                    &mut channels,
+                    &mut programs,
+                )?;
             }
-            Ok(Event::CData(t)) => {
-                if text_target.is_some() {
-                    text_buffer.push_str(&t.decode()?);
-                }
+            Ok(Event::CData(text)) => {
+                records.text(
+                    text.decode()
+                        .map(|text| text.into_owned())
+                        .map_err(Into::into),
+                    &mut channels,
+                    &mut programs,
+                )?;
             }
             Ok(Event::GeneralRef(reference)) => {
-                if text_target.is_some() {
+                let decoded = (|| -> anyhow::Result<String> {
                     if let Some(character) = reference.resolve_char_ref()? {
-                        text_buffer.push(character);
-                    } else {
-                        let name = reference.decode()?;
-                        match quick_xml::escape::resolve_predefined_entity(&name) {
-                            Some(value) => text_buffer.push_str(value),
-                            None => anyhow::bail!("Unsupported XML entity: &{name};"),
-                        }
+                        return Ok(character.to_string());
                     }
-                }
+                    let name = reference.decode()?;
+                    match quick_xml::escape::resolve_predefined_entity(&name) {
+                        Some(value) => Ok(value.into()),
+                        None => anyhow::bail!("Unsupported XML entity: &{name};"),
+                    }
+                })();
+                records.text(decoded, &mut channels, &mut programs)?;
             }
-            Ok(Event::End(e)) => {
-                let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
-                match name.as_str() {
-                    "display-name" | "title" | "desc" => {
-                        if let Some(target) = text_target.take() {
-                            let value = text_buffer.trim().to_owned();
-                            match target {
-                                TextTarget::ChannelName => {
-                                    if let Some(c) = current_channel.as_mut() {
-                                        c.names.push(value.clone());
-                                        c.name = value;
-                                    }
-                                }
-                                TextTarget::ProgTitle => {
-                                    if let Some((_, p)) = current_programme.as_mut() {
-                                        p.title = value;
-                                    }
-                                }
-                                TextTarget::ProgDesc => {
-                                    if let Some((_, p)) = current_programme.as_mut() {
-                                        p.desc = value;
-                                    }
-                                }
-                            }
-                        }
-                        text_buffer.clear();
-                    }
-                    "channel" => {
-                        if let Some(mut c) = current_channel.take() {
-                            if c.name.is_empty() {
-                                c.name = c.id.clone();
-                            }
-                            channels.insert(c.id.clone(), c);
-                        }
-                    }
-                    "programme" => {
-                        if let Some((channel_id, p)) = current_programme.take() {
-                            if !p.title.is_empty() {
-                                programs.entry(channel_id).or_default().push(p);
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-                text_target = None;
-            }
+            Ok(Event::End(element)) => records.push(
+                vec![
+                    "end".into(),
+                    String::from_utf8_lossy(element.name().as_ref()).into_owned(),
+                ],
+                &mut channels,
+                &mut programs,
+            )?,
             Ok(Event::Eof) => break,
-            Err(e) => anyhow::bail!("XML parse error at {}: {e}", reader.buffer_position()),
+            Err(error) => {
+                // A prior batched decode error keeps its original precedence.
+                records.flush(&mut channels, &mut programs)?;
+                anyhow::bail!("XML parse error at {}: {error}", reader.buffer_position());
+            }
             _ => {}
         }
         buf.clear();
     }
 
+    records.flush(&mut channels, &mut programs)?;
     if native {
-        for programs in programs.values_mut() {
-            programs.sort_by_key(|program| program.start);
+        for entries in programs.values_mut() {
+            let order = records
+                .core
+                .order(entries.iter().map(|entry| entry.start as f64).collect())?;
+            anyhow::ensure!(order.len() == entries.len(), "Invalid shared XMLTV order");
+            let mut original: Vec<_> = std::mem::take(entries).into_iter().map(Some).collect();
+            for index in order {
+                entries.push(
+                    original
+                        .get_mut(index)
+                        .and_then(Option::take)
+                        .ok_or_else(|| anyhow::anyhow!("Invalid shared XMLTV order"))?,
+                );
+            }
         }
     }
     Ok((channels, programs))
 }
 
-#[derive(Copy, Clone)]
-enum TextTarget {
-    ChannelName,
-    ProgTitle,
-    ProgDesc,
+/// The bounded transport queue contains XML tokens and original decoder errors.
+/// Only the shared reducer decides whether a text token belongs to a field.
+struct RecordTokens {
+    core: crate::shared_guide::GuideRecords,
+    rows: Vec<Vec<String>>,
+    bytes: usize,
+    errors: Vec<Option<anyhow::Error>>,
+}
+
+impl RecordTokens {
+    const MAX_ROWS: usize = 256;
+    const MAX_BYTES: usize = 64 * 1024;
+
+    fn new(native: bool) -> anyhow::Result<Self> {
+        Ok(Self {
+            core: crate::shared_guide::GuideRecords::new(native)?,
+            rows: Vec::new(),
+            bytes: 0,
+            errors: Vec::new(),
+        })
+    }
+
+    fn push(
+        &mut self,
+        row: Vec<String>,
+        channels: &mut Channels,
+        programs: &mut Programs,
+    ) -> anyhow::Result<()> {
+        self.bytes += row.iter().map(String::len).sum::<usize>();
+        self.rows.push(row);
+        if self.rows.len() >= Self::MAX_ROWS || self.bytes >= Self::MAX_BYTES {
+            self.flush(channels, programs)?;
+        }
+        Ok(())
+    }
+
+    fn text(
+        &mut self,
+        value: anyhow::Result<String>,
+        channels: &mut Channels,
+        programs: &mut Programs,
+    ) -> anyhow::Result<()> {
+        let row = match value {
+            Ok(value) => vec!["text".into(), value],
+            Err(error) => {
+                let index = self.errors.len();
+                self.errors.push(Some(error));
+                vec!["text-error".into(), index.to_string()]
+            }
+        };
+        self.push(row, channels, programs)
+    }
+
+    fn flush(&mut self, channels: &mut Channels, programs: &mut Programs) -> anyhow::Result<()> {
+        if self.rows.is_empty() {
+            return Ok(());
+        }
+        let actions = self.core.accept(std::mem::take(&mut self.rows))?;
+        for action in actions {
+            match action.first().map(String::as_str) {
+                Some("replace-channel") if action.len() >= 4 => {
+                    let mut fields = action.into_iter().skip(1);
+                    let id = fields.next().expect("checked length");
+                    channels.insert(
+                        id.clone(),
+                        Channel {
+                            id,
+                            name: fields.next().expect("checked length"),
+                            icon: fields.next().expect("checked length"),
+                            names: fields.collect(),
+                        },
+                    );
+                }
+                Some("programme") if action.len() == 7 => {
+                    let mut fields = action.into_iter().skip(1);
+                    let channel = fields.next().expect("checked length");
+                    programs.entry(channel).or_default().push(Programme {
+                        start: fields.next().expect("checked length").parse::<f64>()? as i64,
+                        stop: fields.next().expect("checked length").parse::<f64>()? as i64,
+                        title: fields.next().expect("checked length"),
+                        desc: fields.next().expect("checked length"),
+                        icon: fields.next().expect("checked length"),
+                    });
+                }
+                Some("error") if action.len() == 2 => {
+                    let index: usize = action[1].parse()?;
+                    return Err(self
+                        .errors
+                        .get_mut(index)
+                        .and_then(Option::take)
+                        .ok_or_else(|| anyhow::anyhow!("Invalid shared XMLTV decoder error"))?);
+                }
+                _ => anyhow::bail!("Invalid shared XMLTV action"),
+            }
+        }
+        self.bytes = 0;
+        self.errors.clear();
+        Ok(())
+    }
 }
 
 fn attr(e: &quick_xml::events::BytesStart<'_>, key: &str) -> Option<String> {
@@ -324,7 +375,12 @@ pub fn normalize_name(name: &str) -> anyhow::Result<String> {
 }
 
 pub fn build_match_index(channels: &Channels) -> anyhow::Result<MatchIndex> {
-    MatchIndex::new(channels.iter().map(|(id, c)| vec![id.clone(), c.name.clone()]).collect())
+    MatchIndex::new(
+        channels
+            .iter()
+            .map(|(id, c)| vec![id.clone(), c.name.clone()])
+            .collect(),
+    )
 }
 
 pub fn match_in_index(name: &str, index: &MatchIndex) -> anyhow::Result<Option<(String, f32)>> {

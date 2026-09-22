@@ -9,6 +9,9 @@ const CORE: &str = include_str!("../../../vendor/ottplay-core.js");
 #[derive(Clone)]
 pub struct GuideIndex(Context);
 
+/// Batched XML events cross the VM boundary; the shared core owns record state.
+pub struct GuideRecords(Context);
+
 fn context() -> anyhow::Result<Context> {
     let runtime = Runtime::new()?;
     runtime.set_max_stack_size(1024 * 1024);
@@ -57,20 +60,36 @@ pub fn text<T: for<'js> FromJs<'js>>(method: &str, value: &str) -> anyhow::Resul
 }
 
 pub fn unowned(existing: Vec<String>, incoming: Vec<String>) -> anyhow::Result<Vec<String>> {
-    scalar(|ctx| core(&ctx)?.get::<_, Function>("nativeGuideUnowned")?.call((existing, incoming)))
+    scalar(|ctx| {
+        core(&ctx)?
+            .get::<_, Function>("nativeGuideUnowned")?
+            .call((existing, incoming))
+    })
 }
 
 pub fn source_fresh(age: u64) -> anyhow::Result<bool> {
     // Saturating clock subtraction is supplied by Rust. Every age near the TTL is exact in JS.
-    scalar(|ctx| core(&ctx)?.get::<_, Function>("nativeGuideFresh")?.call((age as f64,)))
+    scalar(|ctx| {
+        core(&ctx)?
+            .get::<_, Function>("nativeGuideFresh")?
+            .call((age as f64,))
+    })
 }
 
 pub fn source_refresh(failed: bool, empty: bool, stale: bool) -> anyhow::Result<String> {
-    scalar(|ctx| core(&ctx)?.get::<_, Function>("nativeGuideRefresh")?.call((failed, empty, stale)))
+    scalar(|ctx| {
+        core(&ctx)?
+            .get::<_, Function>("nativeGuideRefresh")?
+            .call((failed, empty, stale))
+    })
 }
 
 pub fn evict_source_set(count: usize, existing: bool) -> anyhow::Result<bool> {
-    scalar(|ctx| core(&ctx)?.get::<_, Function>("nativeGuideEvictSourceSet")?.call((count as i32, existing)))
+    scalar(|ctx| {
+        core(&ctx)?
+            .get::<_, Function>("nativeGuideEvictSourceSet")?
+            .call((count as i32, existing))
+    })
 }
 
 impl GuideIndex {
@@ -102,6 +121,40 @@ impl GuideIndex {
             let index: Object = ctx.globals().get("guideIndex")?;
             let method: Function = index.get("resolve")?;
             method.call((This(index), id, names.to_vec()))
+        })
+    }
+}
+
+impl GuideRecords {
+    pub fn new(native: bool) -> anyhow::Result<Self> {
+        let context = context()?;
+        checked(&context, |ctx| {
+            let trim = Function::new(ctx.clone(), |value: String| value.trim().to_owned())?;
+            let identity = Function::new(ctx.clone(), |value: String| value)?;
+            let constructor: Constructor = core(&ctx)?.get("XmltvRecords")?;
+            let records: Object = constructor.construct((
+                if native { "rust-native" } else { "rust" },
+                trim,
+                identity,
+            ))?;
+            ctx.globals().set("guideRecords", records)
+        })?;
+        Ok(Self(context))
+    }
+
+    pub fn accept(&self, rows: Vec<Vec<String>>) -> anyhow::Result<Vec<Vec<String>>> {
+        checked(&self.0, |ctx| {
+            let records: Object = ctx.globals().get("guideRecords")?;
+            let method: Function = records.get("accept")?;
+            method.call((This(records), rows))
+        })
+    }
+
+    pub fn order(&self, starts: Vec<f64>) -> anyhow::Result<Vec<usize>> {
+        checked(&self.0, |ctx| {
+            core(&ctx)?
+                .get::<_, Function>("nativeXmltvOrder")?
+                .call((starts, "rust-native"))
         })
     }
 }

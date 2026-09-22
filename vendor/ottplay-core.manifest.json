@@ -3,7 +3,7 @@
   "name": "ottplay-shared-core",
   "version": "0.1.0-dev",
   "source": {
-    "sha256": "eac5c02b7ee8df54875c1d5afd77951c129f6f567fa99b62fbc5cfe95f6edf14",
+    "sha256": "bca46d6f41aecaad9697677a8f911fad69e08aa3e1a932b189d27dc83723b9e5",
     "files": {
       "LICENSE": "ec6a17ce723ea8b4c6b08f277ab84750440a8c3e5401aaa9f4e4e9d5fd0fd72c",
       "build.gradle.kts": "e89cc0e4057ab3989c6d4048d6b2ee7b5efb023a7c96c2886d8dd62778e42a73",
@@ -36,6 +36,7 @@
       "src/commonMain/kotlin/play/ott/core/StalkerCatalog.kt": "7a7f60a1818891090eba4ee63ec754e0832a111ea8fb3f57c44c6a7a1fe14495",
       "src/commonMain/kotlin/play/ott/core/StalkerProtocol.kt": "8a0d4b3e20fc77978695a1a8b86b0aa53fd4e62b08b201b4474730128711eaf8",
       "src/commonMain/kotlin/play/ott/core/StreamingGuide.kt": "785423ca21dda0964509383199778eec40b6029eb5e376515716cd3f7dd59a60",
+      "src/commonMain/kotlin/play/ott/core/XmltvRecords.kt": "d15e5d286c78a7066f6399b2a9d82bef0cd122827adfd3d4a81bc2564dadd777",
       "src/commonMain/kotlin/play/ott/core/XtreamCatalog.kt": "c1fbfacd51ea71a10cca603536f2b60c5d14ce0a3e1a0bfa91644c8b2f5836de",
       "src/commonMain/kotlin/play/ott/core/XtreamSession.kt": "9d92d2cfd49ab89ff49084dba6787829fd914587f15c1414af96faba9cda2f9b",
       "src/commonTest/kotlin/play/ott/core/ArchiveTest.kt": "a648fbf79e296172f50bd11387e92bcb0f9549ddbd961a927e8610e9e55b7951",
@@ -48,6 +49,7 @@
       "src/commonTest/kotlin/play/ott/core/PlaylistTest.kt": "38f8a985a5a2e38669363852b1f68c24059dfc6513ce65ad4fc5389e3f036238",
       "src/commonTest/kotlin/play/ott/core/StalkerTest.kt": "06f7741c6fe0b9cb8971f4d3a944a43c43ca7c7bcd840618dfb28ebfeebba4b1",
       "src/commonTest/kotlin/play/ott/core/StreamingGuideTest.kt": "9e73c3a373a7c1f1d64037caf0147064ae21caf88edbbf9913833fdde9c98a8b",
+      "src/commonTest/kotlin/play/ott/core/XmltvRecordsTest.kt": "5858fe4a8cc196045bfa5fa583f6ba3869a7a51e7dcef60fc26614947e01c7a6",
       "src/commonTest/kotlin/play/ott/core/XtreamTest.kt": "f0c51171a2479fcd1ed385a90beed0dd0d61ea5c54d8d2906c35f792913a9694",
       "src/jsMain/kotlin/Exports.kt": "8cba52393b445812eabdc0f831b4b8270ddc2b69065410df15e73a8862b9b528",
       "src/jsMain/kotlin/GuideExports.kt": "8c891e93cbbd0cc9a8140d36b5955ec3b0bd6c29bed7d947a12d78c9264c3ec2",
@@ -55,6 +57,7 @@
       "src/jsMain/kotlin/ProviderExports.kt": "e393f37d8f7503f95464f956fc3d8f16a80be0f01b2266a0e478e482caef454f",
       "src/jsMain/kotlin/StalkerExports.kt": "8c7d1e72fba73551497c4de9798fdaa0e064a8a9f91465f749b75b88c792afb1",
       "src/jsMain/kotlin/StreamingGuideExports.kt": "a76e7f5d86db76b36e4463d6323ef9aa866d8323060efda99810c4c9e839b3fb",
+      "src/jsMain/kotlin/XmltvRecordExports.kt": "887d7d14d3607eedea143362e946549f9be1bbcfe23f9da2ff579e399c7167a2",
       "src/jsMain/kotlin/XtreamExports.kt": "dfd51f22afaa9049f7419be61da85a6aab0386dd5a09195fb5c71208d0336637",
       "src/jvmTest/kotlin/play/ott/core/CalendarOracleTest.kt": "32d3c8a7179e1eb5981fc3ac9020504e51835be0ff59971de4191441242b3974"
     }
@@ -66,16 +69,16 @@
   },
   "artifacts": {
     "ottplay-core.js": {
-      "sha256": "ab8a2b374594cb803715ab7af796bbc7cbfb396743691d7fdcdf99ce322cc6dd",
-      "bytes": 781098
+      "sha256": "a9982330754e2d9d3aadba06573f3927374fd42c26ac850fccfee47fc9f909a3",
+      "bytes": 804184
     },
     "ottplay-core.d.ts": {
-      "sha256": "05ed18f4aefeb969664112b4bc3d3e083746cf4cdc9da1fa63bfaf2daa2b0af6",
-      "bytes": 9851
+      "sha256": "1a901b24ff7c73c51c56dea7e5340318c29a987e712f4a8bc49e20f3710c4ed4",
+      "bytes": 10429
     },
     "ottplay-core.jar": {
-      "sha256": "9f3e985e0c701857ed22aa590b79882332a6ccb48eef1ee1447cae92a8c68d3e",
-      "bytes": 342047
+      "sha256": "88e2f7a82fd5b0396e0eb0e56150a0ac9d7b663418b00ef896a994409acfc40f",
+      "bytes": 354467
     },
     "ottplay-core.LICENSE.txt": {
       "sha256": "1e72da3623b91daad1013e577c3611ad6ed314da508b757abe9a1b27a88a14cc",

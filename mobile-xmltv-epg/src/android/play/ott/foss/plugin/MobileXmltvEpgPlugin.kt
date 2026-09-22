@@ -21,12 +21,14 @@ import play.ott.core.NativeSourceLoad
 import play.ott.core.NativeSourceLoadAction
 import play.ott.core.NativeSourceBatch
 import play.ott.core.NativeCacheLookup
-import play.ott.core.NativeGuideClock
 import play.ott.core.NativeGuideFormat
 import play.ott.core.NativeGuideNames
 import play.ott.core.NativeGuideEntry
 import play.ott.core.NativeGuideIndex
 import play.ott.core.NativeGuideWindow
+import play.ott.core.NativeRecordRules
+import play.ott.core.XmltvRecordFormat
+import play.ott.core.XmltvRecords
 
 @CapacitorPlugin(name = "MobileXmltvEpg")
 class MobileXmltvEpgPlugin : Plugin() {
@@ -249,14 +251,7 @@ class MobileXmltvEpgPlugin : Plugin() {
         val programs = mutableMapOf<String, MutableList<Program>>()
         val icons = mutableMapOf<String, String>()
         val names = mutableMapOf<String, MutableList<String>>()
-        private var currentChannelId: String? = null
-        private var currentProgChannel: String? = null
-        private var currentProgStart = 0
-        private var currentProgStop = 0
-        private var currentProgTitle = StringBuilder()
-        private var currentProgDesc = StringBuilder()
-        private var channelName = StringBuilder()
-        private var textTarget: String? = null
+        private val records = XmltvRecords(XmltvRecordFormat.ARCHIVED_ANDROID)
 
         fun parse(xml: String) {
             val factory = javax.xml.parsers.SAXParserFactory.newInstance()
@@ -266,51 +261,23 @@ class MobileXmltvEpgPlugin : Plugin() {
         }
 
         override fun startElement(uri: String?, local: String?, name: String, attrs: org.xml.sax.Attributes) {
-            when (name) {
-                "channel" -> currentChannelId = attrs.getValue("id")
-                "programme" -> {
-                    currentProgChannel = attrs.getValue("channel")
-                    currentProgStart = parseTime(attrs.getValue("start") ?: "")
-                    currentProgStop = parseTime(attrs.getValue("stop") ?: "")
-                    currentProgTitle = StringBuilder(); currentProgDesc = StringBuilder()
-                }
-                "display-name" -> if (currentChannelId != null) { channelName = StringBuilder(); textTarget = "ch" }
-                "title" -> if (currentProgChannel != null) textTarget = "title"
-                "desc" -> if (currentProgChannel != null) textTarget = "desc"
-                "icon" -> currentChannelId?.let { icons[it] = attrs.getValue("src") ?: "" }
-            }
+            records.start(name, (0 until attrs.length).associate { attrs.getQName(it) to attrs.getValue(it) })
         }
 
         override fun endElement(uri: String?, local: String?, name: String) {
-            when (name) {
-                "channel" -> { currentChannelId?.let { channels.putIfAbsent(it, it) }; currentChannelId = null; textTarget = null }
-                "display-name" -> {
-                    currentChannelId?.let { id ->
-                        val value = channelName.toString().trim()
-                        if (value.isNotEmpty()) { channels.putIfAbsent(id, value); names.getOrPut(id) { mutableListOf() }.add(value) }
-                    }
-                    textTarget = null
-                }
-                "programme" -> {
-                    currentProgChannel?.let { if (currentProgTitle.isNotBlank()) {
-                        programs.getOrPut(it) { mutableListOf() }.add(Program(currentProgStart, currentProgStop, currentProgTitle.toString(), currentProgDesc.toString()))
-                    } }
-                    currentProgChannel = null; textTarget = null
-                }
-                "title", "desc" -> textTarget = null
+            records.end(name)
+            for (row in records.drain()) when (row[0]) {
+                "channel" -> channels[row[1]] = row[2]
+                "name" -> names.getOrPut(row[1]) { mutableListOf() }.add(row[2])
+                "icon" -> icons[row[1]] = row[2]
+                "programme" -> programs.getOrPut(row[1]) { mutableListOf() }
+                    .add(Program(row[2].toInt(), row[3].toInt(), row[4], row[5]))
             }
         }
 
         override fun characters(chars: CharArray, start: Int, length: Int) {
-            when (textTarget) {
-                "ch" -> channelName.append(chars, start, length)
-                "title" -> currentProgTitle.append(chars, start, length)
-                "desc" -> currentProgDesc.append(chars, start, length)
-            }
+            records.text(String(chars, start, length))
         }
-
-        private val guideClock = NativeGuideClock(NativeGuideFormat.ARCHIVED_ANDROID)
-        private fun parseTime(ts: String): Int = guideClock.seconds(ts).toInt()
     }
 
     // MARK: - Channel resolution + EPG slice
@@ -341,7 +308,8 @@ class MobileXmltvEpgPlugin : Plugin() {
 
         val epgData = JSObject()
         val list = JSArray()
-        for (prog in progs.sortedBy { it.start }) {
+        for (index in NativeRecordRules.order(progs.map { it.start.toDouble() }, XmltvRecordFormat.ARCHIVED_ANDROID)) {
+            val prog = progs[index]
             val start = (prog.start + window.shift).toInt()
             val stop = (prog.stop + window.shift).toInt()
             if (!window.includes(prog.start.toDouble(), prog.stop.toDouble())) continue

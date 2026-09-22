@@ -336,12 +336,17 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForCompanion(Companion_14);
   initMetadataForClass(sam$kotlin_Comparator$0_4, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
   initMetadataForClass(StreamingGuide, 'StreamingGuide');
+  initMetadataForClass(XmltvRecordFormat, 'XmltvRecordFormat', VOID, Enum);
+  initMetadataForClass(sam$kotlin_Comparator$0_5, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
+  initMetadataForObject(NativeRecordRules, 'NativeRecordRules');
+  initMetadataForClass(Time, 'Time');
+  initMetadataForClass(XmltvRecords, 'XmltvRecords');
   initMetadataForClass(XtreamItem, 'XtreamItem');
   initMetadataForClass(XtreamCatalog, 'XtreamCatalog');
   initMetadataForClass(XtreamSeries, 'XtreamSeries');
   initMetadataForClass(XtreamSeriesParent, 'XtreamSeriesParent');
-  initMetadataForClass(sam$kotlin_Comparator$0_5, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
   initMetadataForClass(sam$kotlin_Comparator$0_6, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
+  initMetadataForClass(sam$kotlin_Comparator$0_7, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
   initMetadataForObject(XtreamCatalogs, 'XtreamCatalogs');
   initMetadataForClass(XtreamFormat, 'XtreamFormat', VOID, Enum);
   initMetadataForClass(XtreamFailure, 'XtreamFailure', VOID, Exception);
@@ -360,6 +365,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(StalkerClient, 'StalkerClient');
   initMetadataForClass(LegacyStalkerClient, 'LegacyStalkerClient');
   initMetadataForClass(StreamingGuideFilter, 'StreamingGuideFilter');
+  initMetadataForClass(XmltvRecords_0, 'XmltvRecords');
   initMetadataForClass(XtreamClient, 'XtreamClient');
   //endregion
   function CharSequence() {
@@ -4464,6 +4470,10 @@ if (typeof String.prototype.startsWith === 'undefined') {
   protoOf(StringBuilder).toString = function () {
     return this.string_1;
   };
+  protoOf(StringBuilder).clear_1keqml_k$ = function () {
+    this.string_1 = '';
+    return this;
+  };
   function uppercaseChar(_this__u8e3s4) {
     // Inline function 'kotlin.text.uppercase' call
     // Inline function 'kotlin.js.asDynamic' call
@@ -5263,6 +5273,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
   }
   function listOfNotNull(elements) {
     return filterNotNull(elements);
+  }
+  function get_indices(_this__u8e3s4) {
+    return numberRangeToNumber(0, _this__u8e3s4.get_size_woubt6_k$() - 1 | 0);
   }
   function EmptyList() {
     EmptyList_instance = this;
@@ -8420,6 +8433,28 @@ if (typeof String.prototype.startsWith === 'undefined') {
   protoOf(GuideProgrammeRules).legacyShift_98wu3x_k$ = function (shift, start, end) {
     return !(shift === 0.0) && !isNaN_0(shift) && start > 0 && end > 0;
   };
+  protoOf(GuideProgrammeRules).validAndroid_h230qr_k$ = function (channel, start, end) {
+    var tmp;
+    var tmp_0;
+    var tmp_1;
+    // Inline function 'kotlin.text.isNotBlank' call
+    if (!isBlank(channel)) {
+      tmp_1 = !(start == null);
+    } else {
+      tmp_1 = false;
+    }
+    if (tmp_1) {
+      tmp_0 = !(end == null);
+    } else {
+      tmp_0 = false;
+    }
+    if (tmp_0) {
+      tmp = compare(end, start) > 0;
+    } else {
+      tmp = false;
+    }
+    return tmp;
+  };
   var GuideProgrammeRules_instance;
   function GuideProgrammeRules_getInstance() {
     return GuideProgrammeRules_instance;
@@ -9917,6 +9952,10 @@ if (typeof String.prototype.startsWith === 'undefined') {
       offset = imul(imul(hours, 3600) + imul(minutes, 60) | 0, charCodeAt(zone, 0) === _Char___init__impl__6a9atx(45) ? -1 : 1);
     }
     return millis / 1000 - offset;
+  };
+  protoOf(GuideTime).parse_yvvfo7_k$ = function (value, format) {
+    var tmp0_safe_receiver = this.milliseconds_lcf5oq_k$(value, format);
+    return tmp0_safe_receiver == null ? null : numberToLong(tmp0_safe_receiver);
   };
   protoOf(GuideTime).milliseconds_lcf5oq_k$ = function (value, format) {
     var tmp = CoreText_getInstance();
@@ -16164,6 +16203,495 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return new StreamingGuideCoverage(tmp_10, tmp_11, tmp_12, tmp$ret$31);
   };
+  var static_init_called_11;
+  function static_init_11() {
+    if (static_init_called_11)
+      return Unit_instance;
+    static_init_called_11 = true;
+    XmltvRecordFormat_SWIFT_instance = new XmltvRecordFormat('SWIFT', 0);
+    XmltvRecordFormat_ARCHIVED_ANDROID_instance = new XmltvRecordFormat('ARCHIVED_ANDROID', 1);
+    XmltvRecordFormat_ANDROID_instance = new XmltvRecordFormat('ANDROID', 2);
+    XmltvRecordFormat_RUST_instance = new XmltvRecordFormat('RUST', 3);
+    XmltvRecordFormat_RUST_NATIVE_instance = new XmltvRecordFormat('RUST_NATIVE', 4);
+  }
+  var XmltvRecordFormat_SWIFT_instance;
+  var XmltvRecordFormat_ARCHIVED_ANDROID_instance;
+  var XmltvRecordFormat_ANDROID_instance;
+  var XmltvRecordFormat_RUST_instance;
+  var XmltvRecordFormat_RUST_NATIVE_instance;
+  function XmltvRecordFormat(name, ordinal) {
+    Enum.call(this, name, ordinal);
+  }
+  function sam$kotlin_Comparator$0_5(function_0) {
+    this.function_1 = function_0;
+  }
+  protoOf(sam$kotlin_Comparator$0_5).compare_bczr_k$ = function (a, b) {
+    return this.function_1(a, b);
+  };
+  protoOf(sam$kotlin_Comparator$0_5).compare = function (a, b) {
+    return this.compare_bczr_k$(a, b);
+  };
+  protoOf(sam$kotlin_Comparator$0_5).getFunctionDelegate_jtodtf_k$ = function () {
+    return this.function_1;
+  };
+  protoOf(sam$kotlin_Comparator$0_5).equals = function (other) {
+    var tmp;
+    if (!(other == null) ? isInterface(other, Comparator) : false) {
+      var tmp_0;
+      if (!(other == null) ? isInterface(other, FunctionAdapter) : false) {
+        tmp_0 = equals(this.getFunctionDelegate_jtodtf_k$(), other.getFunctionDelegate_jtodtf_k$());
+      } else {
+        tmp_0 = false;
+      }
+      tmp = tmp_0;
+    } else {
+      tmp = false;
+    }
+    return tmp;
+  };
+  protoOf(sam$kotlin_Comparator$0_5).hashCode = function () {
+    return hashCode_0(this.getFunctionDelegate_jtodtf_k$());
+  };
+  function NativeRecordRules$order$lambda($starts) {
+    return function (a, b) {
+      // Inline function 'kotlin.comparisons.compareValuesBy' call
+      var tmp = $starts.get_c1px32_k$(a);
+      var tmp$ret$2 = $starts.get_c1px32_k$(b);
+      return compareValues(tmp, tmp$ret$2);
+    };
+  }
+  function NativeRecordRules() {
+  }
+  protoOf(NativeRecordRules).order_ew65tb_k$ = function (starts, format) {
+    var tmp;
+    if (format.equals(XmltvRecordFormat_RUST_getInstance()) || format.equals(XmltvRecordFormat_ANDROID_getInstance())) {
+      tmp = toList_0(get_indices(starts));
+    } else {
+      // Inline function 'kotlin.collections.sortedBy' call
+      var this_0 = get_indices(starts);
+      // Inline function 'kotlin.comparisons.compareBy' call
+      var tmp_0 = NativeRecordRules$order$lambda(starts);
+      var tmp$ret$1 = new sam$kotlin_Comparator$0_5(tmp_0);
+      tmp = sortedWith(this_0, tmp$ret$1);
+    }
+    return tmp;
+  };
+  var NativeRecordRules_instance;
+  function NativeRecordRules_getInstance() {
+    return NativeRecordRules_instance;
+  }
+  function Time(epoch, encoded) {
+    this.epoch_1 = epoch;
+    this.encoded_1 = encoded;
+  }
+  protoOf(Time).toString = function () {
+    return 'Time(epoch=' + toString_0(this.epoch_1) + ', encoded=' + this.encoded_1 + ')';
+  };
+  protoOf(Time).hashCode = function () {
+    var result = this.epoch_1 == null ? 0 : this.epoch_1.hashCode();
+    result = imul(result, 31) + getStringHashCode(this.encoded_1) | 0;
+    return result;
+  };
+  protoOf(Time).equals = function (other) {
+    if (this === other)
+      return true;
+    if (!(other instanceof Time))
+      return false;
+    if (!equals(this.epoch_1, other.epoch_1))
+      return false;
+    if (!(this.encoded_1 === other.encoded_1))
+      return false;
+    return true;
+  };
+  function time($this, value) {
+    var tmp0_safe_receiver = $this.encodedTimes_1.get_wei43m_k$(value);
+    if (tmp0_safe_receiver == null)
+      null;
+    else {
+      // Inline function 'kotlin.let' call
+      return tmp0_safe_receiver;
+    }
+    var tmp;
+    if ($this.android_1) {
+      tmp = GuideTime_getInstance().parse_yvvfo7_k$(value, GuideTimeFormat_ANDROID_getInstance());
+    } else {
+      // Inline function 'kotlin.let' call
+      var it = $this.clock_1.seconds_rbj0rf_k$(value);
+      tmp = $this.format_1.equals(XmltvRecordFormat_ARCHIVED_ANDROID_getInstance()) ? fromInt(numberToInt(it)) : numberToLong(it);
+    }
+    var epoch = tmp;
+    var result = new Time(epoch, toString_0(epoch));
+    if (value.length <= 64) {
+      var tmp1_safe_receiver = $this.encodedKeys_1[$this.encodedCursor_1];
+      if (tmp1_safe_receiver == null)
+        null;
+      else {
+        // Inline function 'kotlin.let' call
+        $this.encodedTimes_1.remove_gppy8k_k$(tmp1_safe_receiver);
+      }
+      $this.encodedKeys_1[$this.encodedCursor_1] = value;
+      $this.encodedCursor_1 = ($this.encodedCursor_1 + 1 | 0) % $this.encodedKeys_1.length | 0;
+      // Inline function 'kotlin.collections.set' call
+      $this.encodedTimes_1.put_4fpzoq_k$(value, result);
+    }
+    return result;
+  }
+  function firstName($this, id, name) {
+    if ($this.knownChannels_1.add_utx5q5_k$($this.identity_1(id))) {
+      $this.actions_1.add_utx5q5_k$(listOf_0(['channel', id, name]));
+    }
+  }
+  function XmltvRecords$_init_$lambda_2qmrqa(it) {
+    // Inline function 'kotlin.text.trim' call
+    return toString_1(trim(isCharSequence(it) ? it : THROW_CCE()));
+  }
+  function XmltvRecords$_init_$lambda_2qmrqa_0(it) {
+    return it;
+  }
+  function XmltvRecords(format, trim, identity) {
+    var tmp;
+    if (trim === VOID) {
+      tmp = XmltvRecords$_init_$lambda_2qmrqa;
+    } else {
+      tmp = trim;
+    }
+    trim = tmp;
+    var tmp_0;
+    if (identity === VOID) {
+      tmp_0 = XmltvRecords$_init_$lambda_2qmrqa_0;
+    } else {
+      tmp_0 = identity;
+    }
+    identity = tmp_0;
+    this.format_1 = format;
+    this.trim_1 = trim;
+    this.identity_1 = identity;
+    this.rust_1 = this.format_1.equals(XmltvRecordFormat_RUST_getInstance()) || this.format_1.equals(XmltvRecordFormat_RUST_NATIVE_getInstance());
+    this.android_1 = this.format_1.equals(XmltvRecordFormat_ANDROID_getInstance());
+    var tmp_1 = this;
+    var tmp0 = this.format_1.ordinal_1;
+    tmp_1.clock_1 = new NativeGuideClock(tmp0 === 0 ? NativeGuideFormat_SWIFT_getInstance() : tmp0 === 1 ? NativeGuideFormat_ARCHIVED_ANDROID_getInstance() : NativeGuideFormat_RUST_getInstance());
+    var tmp_2 = this;
+    // Inline function 'kotlin.collections.mutableSetOf' call
+    tmp_2.knownChannels_1 = LinkedHashSet_init_$Create$();
+    this.channel_1 = null;
+    this.channelName_1 = '';
+    this.channelIcon_1 = '';
+    var tmp_3 = this;
+    // Inline function 'kotlin.collections.mutableListOf' call
+    tmp_3.aliases_1 = ArrayList_init_$Create$();
+    this.programme_1 = null;
+    this.from_1 = null;
+    this.to_1 = null;
+    var tmp_4 = this;
+    // Inline function 'kotlin.collections.mutableMapOf' call
+    tmp_4.encodedTimes_1 = LinkedHashMap_init_$Create$();
+    var tmp_5 = this;
+    // Inline function 'kotlin.arrayOfNulls' call
+    tmp_5.encodedKeys_1 = Array(4096);
+    this.encodedCursor_1 = 0;
+    this.title_1 = StringBuilder_init_$Create$_0();
+    this.description_1 = StringBuilder_init_$Create$_0();
+    this.programmeIcon_1 = '';
+    this.field_1 = null;
+    this.text_1 = StringBuilder_init_$Create$_0();
+    var tmp_6 = this;
+    // Inline function 'kotlin.collections.mutableListOf' call
+    tmp_6.actions_1 = ArrayList_init_$Create$();
+    this.failed_1 = false;
+  }
+  protoOf(XmltvRecords).startDecoded_6ledwt_k$ = function (name, id, programmeId, start, stop, icon) {
+    if (this.failed_1)
+      return Unit_instance;
+    switch (name) {
+      case 'channel':
+        if (!this.android_1) {
+          var tmp = this;
+          var tmp_0;
+          if (this.rust_1) {
+            // Inline function 'kotlin.text.orEmpty' call
+            tmp_0 = id == null ? '' : id;
+          } else {
+            tmp_0 = id;
+          }
+          tmp.channel_1 = tmp_0;
+          if (this.rust_1) {
+            this.channelName_1 = '';
+            this.channelIcon_1 = '';
+            var tmp_1 = this;
+            // Inline function 'kotlin.collections.mutableListOf' call
+            tmp_1.aliases_1 = ArrayList_init_$Create$();
+          }
+        }
+
+        break;
+      case 'programme':
+        var tmp_2 = this;
+        var tmp_3;
+        if (this.android_1) {
+          // Inline function 'kotlin.text.orEmpty' call
+          var tmp$ret$2 = programmeId == null ? '' : programmeId;
+          tmp_3 = this.trim_1(tmp$ret$2);
+        } else if (this.rust_1) {
+          // Inline function 'kotlin.text.orEmpty' call
+          tmp_3 = programmeId == null ? '' : programmeId;
+        } else {
+          tmp_3 = programmeId;
+        }
+
+        tmp_2.programme_1 = tmp_3;
+        var tmp_4 = this;
+        // Inline function 'kotlin.text.orEmpty' call
+
+        var tmp$ret$4 = start == null ? '' : start;
+        tmp_4.from_1 = time(this, tmp$ret$4);
+        var tmp_5 = this;
+        // Inline function 'kotlin.text.orEmpty' call
+
+        var tmp$ret$5 = stop == null ? '' : stop;
+        tmp_5.to_1 = time(this, tmp$ret$5);
+        this.title_1.clear_1keqml_k$();
+        this.description_1.clear_1keqml_k$();
+        this.programmeIcon_1 = '';
+        if (this.android_1)
+          this.field_1 = null;
+        break;
+      case 'display-name':
+        if (!this.android_1 && !(this.channel_1 == null)) {
+          this.text_1.clear_1keqml_k$();
+          this.field_1 = 'display-name';
+        }
+
+        break;
+      case 'title':
+      case 'desc':
+        if (!(this.programme_1 == null)) {
+          this.field_1 = name;
+          if (this.rust_1 || this.android_1) {
+            this.text_1.clear_1keqml_k$();
+          }
+        }
+
+        break;
+      case 'icon':
+        if (!this.android_1) {
+          if (this.rust_1) {
+            if (icon == null)
+              null;
+            else {
+              // Inline function 'kotlin.let' call
+              if (!(this.channel_1 == null))
+                this.channelIcon_1 = icon;
+              else if (!(this.programme_1 == null))
+                this.programmeIcon_1 = icon;
+            }
+          } else {
+            var tmp2_safe_receiver = this.channel_1;
+            if (tmp2_safe_receiver == null)
+              null;
+            else {
+              // Inline function 'kotlin.let' call
+              var tmp_6 = this.actions_1;
+              // Inline function 'kotlin.text.orEmpty' call
+              var tmp$ret$10 = icon == null ? '' : icon;
+              tmp_6.add_utx5q5_k$(listOf_0(['icon', tmp2_safe_receiver, tmp$ret$10]));
+            }
+          }
+        }
+
+        break;
+    }
+  };
+  protoOf(XmltvRecords).text_x72pul_k$ = function (value) {
+    if (this.failed_1 || this.field_1 == null)
+      return Unit_instance;
+    if (this.rust_1 || this.android_1 || this.field_1 === 'display-name')
+      this.text_1.append_22ad7x_k$(value);
+    else if (this.field_1 === 'title')
+      this.title_1.append_22ad7x_k$(value);
+    else
+      this.description_1.append_22ad7x_k$(value);
+  };
+  protoOf(XmltvRecords).textError_gkacxb_k$ = function (index) {
+    if (!this.failed_1 && !(this.field_1 == null)) {
+      this.actions_1.add_utx5q5_k$(listOf_0(['error', index]));
+      this.failed_1 = true;
+    }
+  };
+  protoOf(XmltvRecords).end_laoys1_k$ = function (name) {
+    if (this.failed_1)
+      return Unit_instance;
+    if (this.android_1) {
+      if (name === this.field_1) {
+        if (name === 'title' && isBlank(this.title_1)) {
+          this.title_1.clear_1keqml_k$();
+          this.title_1.append_22ad7x_k$(this.trim_1(this.text_1.toString()));
+        }
+        if (name === 'desc' && isBlank(this.description_1)) {
+          this.description_1.clear_1keqml_k$();
+          this.description_1.append_22ad7x_k$(this.trim_1(this.text_1.toString()));
+        }
+        this.field_1 = null;
+      }
+      if (name === 'programme') {
+        // Inline function 'kotlin.text.orEmpty' call
+        var tmp0_elvis_lhs = this.programme_1;
+        var id = tmp0_elvis_lhs == null ? '' : tmp0_elvis_lhs;
+        var tmp = GuideProgrammeRules_instance;
+        var tmp0_safe_receiver = this.from_1;
+        var tmp_0 = tmp0_safe_receiver == null ? null : tmp0_safe_receiver.epoch_1;
+        var tmp1_safe_receiver = this.to_1;
+        if (tmp.validAndroid_h230qr_k$(id, tmp_0, tmp1_safe_receiver == null ? null : tmp1_safe_receiver.epoch_1)) {
+          var tmp_1 = this.actions_1;
+          var tmp_2 = ensureNotNull(this.from_1).encoded_1;
+          var tmp_3 = ensureNotNull(this.to_1).encoded_1;
+          // Inline function 'kotlin.text.ifBlank' call
+          var this_0 = this.title_1.toString();
+          var tmp_4;
+          if (isBlank(this_0)) {
+            tmp_4 = 'Untitled programme';
+          } else {
+            tmp_4 = this_0;
+          }
+          var tmp$ret$1 = tmp_4;
+          tmp_1.add_utx5q5_k$(listOf_0(['programme', id, tmp_2, tmp_3, tmp$ret$1, this.description_1.toString(), '']));
+        }
+        this.programme_1 = null;
+      }
+      return Unit_instance;
+    }
+    switch (name) {
+      case 'display-name':
+      case 'title':
+      case 'desc':
+        if (this.rust_1) {
+          var value = this.trim_1(this.text_1.toString());
+          switch (this.field_1) {
+            case 'display-name':
+              if (!(this.channel_1 == null)) {
+                this.aliases_1.add_utx5q5_k$(value);
+                this.channelName_1 = value;
+              }
+
+              break;
+            case 'title':
+              if (!(this.programme_1 == null)) {
+                this.title_1.clear_1keqml_k$();
+                this.title_1.append_22ad7x_k$(value);
+              }
+
+              break;
+            case 'desc':
+              if (!(this.programme_1 == null)) {
+                this.description_1.clear_1keqml_k$();
+                this.description_1.append_22ad7x_k$(value);
+              }
+
+              break;
+          }
+          this.text_1.clear_1keqml_k$();
+        } else if (name === 'display-name') {
+          var tmp4_safe_receiver = this.channel_1;
+          if (tmp4_safe_receiver == null)
+            null;
+          else {
+            // Inline function 'kotlin.let' call
+            var value_0 = this.trim_1(this.text_1.toString());
+            // Inline function 'kotlin.text.isNotEmpty' call
+            if (charSequenceLength(value_0) > 0) {
+              this.actions_1.add_utx5q5_k$(listOf_0(['name', tmp4_safe_receiver, value_0]));
+              firstName(this, tmp4_safe_receiver, value_0);
+            }
+          }
+        }
+
+        this.field_1 = null;
+        break;
+      case 'channel':
+        var tmp5_safe_receiver = this.channel_1;
+        if (tmp5_safe_receiver == null)
+          null;
+        else {
+          // Inline function 'kotlin.let' call
+          var tmp_5;
+          if (this.rust_1) {
+            var tmp_6 = this.actions_1;
+            // Inline function 'kotlin.text.ifEmpty' call
+            var this_1 = this.channelName_1;
+            var tmp_7;
+            // Inline function 'kotlin.text.isEmpty' call
+            if (charSequenceLength(this_1) === 0) {
+              tmp_7 = tmp5_safe_receiver;
+            } else {
+              tmp_7 = this_1;
+            }
+            var tmp$ret$8 = tmp_7;
+            tmp_5 = tmp_6.add_utx5q5_k$(plus(listOf_0(['replace-channel', tmp5_safe_receiver, tmp$ret$8, this.channelIcon_1]), this.aliases_1));
+          } else {
+            firstName(this, tmp5_safe_receiver, tmp5_safe_receiver);
+            tmp_5 = Unit_instance;
+          }
+        }
+
+        this.channel_1 = null;
+        this.field_1 = null;
+        break;
+      case 'programme':
+        var tmp6_safe_receiver = this.programme_1;
+        if (tmp6_safe_receiver == null)
+          null;
+        else {
+          // Inline function 'kotlin.let' call
+          var value_1 = this.title_1.toString();
+          var tmp_8;
+          if (this.format_1.equals(XmltvRecordFormat_ARCHIVED_ANDROID_getInstance())) {
+            // Inline function 'kotlin.text.isNotBlank' call
+            tmp_8 = !isBlank(value_1);
+          } else {
+            // Inline function 'kotlin.text.isNotEmpty' call
+            tmp_8 = charSequenceLength(value_1) > 0;
+          }
+          var admitted = tmp_8;
+          if (admitted) {
+            this.actions_1.add_utx5q5_k$(listOf_0(['programme', tmp6_safe_receiver, ensureNotNull(this.from_1).encoded_1, ensureNotNull(this.to_1).encoded_1, value_1, this.description_1.toString(), this.programmeIcon_1]));
+          }
+        }
+
+        this.programme_1 = null;
+        this.field_1 = null;
+        break;
+    }
+    if (this.rust_1)
+      this.field_1 = null;
+  };
+  protoOf(XmltvRecords).drain_1l2ad4_k$ = function () {
+    // Inline function 'kotlin.also' call
+    var this_0 = this.actions_1;
+    var tmp = this;
+    // Inline function 'kotlin.collections.mutableListOf' call
+    tmp.actions_1 = ArrayList_init_$Create$();
+    return this_0;
+  };
+  function XmltvRecordFormat_SWIFT_getInstance() {
+    static_init_11();
+    return XmltvRecordFormat_SWIFT_instance;
+  }
+  function XmltvRecordFormat_ARCHIVED_ANDROID_getInstance() {
+    static_init_11();
+    return XmltvRecordFormat_ARCHIVED_ANDROID_instance;
+  }
+  function XmltvRecordFormat_ANDROID_getInstance() {
+    static_init_11();
+    return XmltvRecordFormat_ANDROID_instance;
+  }
+  function XmltvRecordFormat_RUST_getInstance() {
+    static_init_11();
+    return XmltvRecordFormat_RUST_instance;
+  }
+  function XmltvRecordFormat_RUST_NATIVE_getInstance() {
+    static_init_11();
+    return XmltvRecordFormat_RUST_NATIVE_instance;
+  }
   function XtreamItem(id, providerId, kind, name, url, group, logo, epgId, description, adult, archiveDays, archiveSource, generatedName, generatedGroup, season, episode) {
     epgId = epgId === VOID ? '' : epgId;
     description = description === VOID ? '' : description;
@@ -16372,36 +16900,6 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function identity($this, format, source, kind, id, component, hash) {
     return format.equals(XtreamFormat_BROWSER_getInstance()) ? component(CoreText_getInstance().trim$default_yjecrm_k$(source.id_1)) + (':xtream:' + kind + ':' + id) : hash(listOf_0([source.id_1, kind, id]));
   }
-  function sam$kotlin_Comparator$0_5(function_0) {
-    this.function_1 = function_0;
-  }
-  protoOf(sam$kotlin_Comparator$0_5).compare_bczr_k$ = function (a, b) {
-    return this.function_1(a, b);
-  };
-  protoOf(sam$kotlin_Comparator$0_5).compare = function (a, b) {
-    return this.compare_bczr_k$(a, b);
-  };
-  protoOf(sam$kotlin_Comparator$0_5).getFunctionDelegate_jtodtf_k$ = function () {
-    return this.function_1;
-  };
-  protoOf(sam$kotlin_Comparator$0_5).equals = function (other) {
-    var tmp;
-    if (!(other == null) ? isInterface(other, Comparator) : false) {
-      var tmp_0;
-      if (!(other == null) ? isInterface(other, FunctionAdapter) : false) {
-        tmp_0 = equals(this.getFunctionDelegate_jtodtf_k$(), other.getFunctionDelegate_jtodtf_k$());
-      } else {
-        tmp_0 = false;
-      }
-      tmp = tmp_0;
-    } else {
-      tmp = false;
-    }
-    return tmp;
-  };
-  protoOf(sam$kotlin_Comparator$0_5).hashCode = function () {
-    return hashCode_0(this.getFunctionDelegate_jtodtf_k$());
-  };
   function sam$kotlin_Comparator$0_6(function_0) {
     this.function_1 = function_0;
   }
@@ -16430,6 +16928,36 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return tmp;
   };
   protoOf(sam$kotlin_Comparator$0_6).hashCode = function () {
+    return hashCode_0(this.getFunctionDelegate_jtodtf_k$());
+  };
+  function sam$kotlin_Comparator$0_7(function_0) {
+    this.function_1 = function_0;
+  }
+  protoOf(sam$kotlin_Comparator$0_7).compare_bczr_k$ = function (a, b) {
+    return this.function_1(a, b);
+  };
+  protoOf(sam$kotlin_Comparator$0_7).compare = function (a, b) {
+    return this.compare_bczr_k$(a, b);
+  };
+  protoOf(sam$kotlin_Comparator$0_7).getFunctionDelegate_jtodtf_k$ = function () {
+    return this.function_1;
+  };
+  protoOf(sam$kotlin_Comparator$0_7).equals = function (other) {
+    var tmp;
+    if (!(other == null) ? isInterface(other, Comparator) : false) {
+      var tmp_0;
+      if (!(other == null) ? isInterface(other, FunctionAdapter) : false) {
+        tmp_0 = equals(this.getFunctionDelegate_jtodtf_k$(), other.getFunctionDelegate_jtodtf_k$());
+      } else {
+        tmp_0 = false;
+      }
+      tmp = tmp_0;
+    } else {
+      tmp = false;
+    }
+    return tmp;
+  };
+  protoOf(sam$kotlin_Comparator$0_7).hashCode = function () {
     return hashCode_0(this.getFunctionDelegate_jtodtf_k$());
   };
   function XtreamCatalogs$seasons$lambda(a, b) {
@@ -16518,7 +17046,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     // Inline function 'kotlin.collections.sortedBy' call
     // Inline function 'kotlin.comparisons.compareBy' call
     var tmp_1 = XtreamCatalogs$seasons$lambda;
-    var tmp$ret$11 = new sam$kotlin_Comparator$0_5(tmp_1);
+    var tmp$ret$11 = new sam$kotlin_Comparator$0_6(tmp_1);
     return sortedWith(destination_0, tmp$ret$11);
   };
   protoOf(XtreamCatalogs).catalog_uygjsh_k$ = function (data, format, source, addresses, resolve, component, hash, kinds, deduplicate) {
@@ -17027,7 +17555,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         // Inline function 'kotlin.collections.sortedBy' call
         // Inline function 'kotlin.comparisons.compareBy' call
         var tmp_28 = XtreamCatalogs$episodes$lambda;
-        var tmp$ret$43 = new sam$kotlin_Comparator$0_6(tmp_28);
+        var tmp$ret$43 = new sam$kotlin_Comparator$0_7(tmp_28);
         var list_0 = sortedWith(element_2, tmp$ret$43);
         addAll(destination_2, list_0);
       }
@@ -17048,9 +17576,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
       // Inline function 'kotlin.comparisons.compareBy' call
       var tmp_30 = XtreamCatalogs$episodes$lambda_0;
       // Inline function 'kotlin.comparisons.thenBy' call
-      var this_7 = new sam$kotlin_Comparator$0_6(tmp_30);
+      var this_7 = new sam$kotlin_Comparator$0_7(tmp_30);
       var tmp_31 = XtreamCatalogs$episodes$lambda_1(this_7);
-      var tmp$ret$47 = new sam$kotlin_Comparator$0_6(tmp_31);
+      var tmp$ret$47 = new sam$kotlin_Comparator$0_7(tmp_31);
       tmp_26 = sortedWith(tmp_29, tmp$ret$47);
     }
     var items = tmp_26;
@@ -17060,11 +17588,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function XtreamCatalogs_getInstance() {
     return XtreamCatalogs_instance;
   }
-  var static_init_called_11;
-  function static_init_11() {
-    if (static_init_called_11)
+  var static_init_called_12;
+  function static_init_12() {
+    if (static_init_called_12)
       return Unit_instance;
-    static_init_called_11 = true;
+    static_init_called_12 = true;
     XtreamFormat_BROWSER_instance = new XtreamFormat('BROWSER', 0);
     XtreamFormat_ANDROID_instance = new XtreamFormat('ANDROID', 1);
     XtreamFormat_LEGACY_instance = new XtreamFormat('LEGACY', 2);
@@ -17334,15 +17862,15 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return trimEnd(this.render_1(listOf_0(['timeshift', this.source_1.username_1, this.source_1.password_1]), emptyList()), charArrayOf([_Char___init__impl__6a9atx(47)])) + '/{durationMinutes}/{startDate}/' + this.segment_1(id + '.ts');
   };
   function XtreamFormat_BROWSER_getInstance() {
-    static_init_11();
+    static_init_12();
     return XtreamFormat_BROWSER_instance;
   }
   function XtreamFormat_ANDROID_getInstance() {
-    static_init_11();
+    static_init_12();
     return XtreamFormat_ANDROID_instance;
   }
   function XtreamFormat_LEGACY_getInstance() {
-    static_init_11();
+    static_init_12();
     return XtreamFormat_LEGACY_instance;
   }
   function get_nativeClocks() {
@@ -19327,6 +19855,128 @@ if (typeof String.prototype.startsWith === 'undefined') {
     result.truncatedChannels = coverage.truncatedChannels_1;
     return result;
   };
+  function XmltvRecords$records$lambda(it) {
+    return it;
+  }
+  function XmltvRecords_0(format, trim, identity) {
+    identity = identity === VOID ? null : identity;
+    var tmp = this;
+    var tmp_0 = recordFormat(format);
+    var tmp_1;
+    if (identity == null) {
+      tmp_1 = XmltvRecords$records$lambda;
+    } else {
+      tmp_1 = identity;
+    }
+    tmp.records_1 = new XmltvRecords(tmp_0, trim, tmp_1);
+  }
+  protoOf(XmltvRecords_0).accept = function (rows) {
+    var inductionVariable = 0;
+    var last = rows.length;
+    while (inductionVariable < last) {
+      var row = rows[inductionVariable];
+      inductionVariable = inductionVariable + 1 | 0;
+      switch (row[0]) {
+        case 'start':
+          // Inline function 'kotlin.require' call
+
+          // Inline function 'kotlin.require' call
+
+          if (!(row.length >= 2 && (row.length % 2 | 0) === 0)) {
+            var message = 'Failed requirement.';
+            throw IllegalArgumentException_init_$Create$_0(toString_1(message));
+          }
+
+          var id = null;
+          var channel = null;
+          var start = null;
+          var stop = null;
+          var icon = null;
+          var index = 2;
+          while (index < row.length) {
+            switch (row[index]) {
+              case 'id':
+                id = row[index + 1 | 0];
+                break;
+              case 'channel':
+                channel = row[index + 1 | 0];
+                break;
+              case 'start':
+                start = row[index + 1 | 0];
+                break;
+              case 'stop':
+                stop = row[index + 1 | 0];
+                break;
+              case 'src':
+                icon = row[index + 1 | 0];
+                break;
+            }
+            index = index + 2 | 0;
+          }
+
+          this.records_1.startDecoded_6ledwt_k$(row[1], id, channel, start, stop, icon);
+          break;
+        case 'text':
+          this.records_1.text_x72pul_k$(row[1]);
+          break;
+        case 'end':
+          this.records_1.end_laoys1_k$(row[1]);
+          break;
+        case 'text-error':
+          this.records_1.textError_gkacxb_k$(row[1]);
+          break;
+        default:
+          // Inline function 'kotlin.error' call
+
+          var message_0 = 'Unknown XMLTV event';
+          throw IllegalStateException_init_$Create$_0(toString_1(message_0));
+      }
+    }
+    // Inline function 'kotlin.collections.map' call
+    var this_0 = this.records_1.drain_1l2ad4_k$();
+    // Inline function 'kotlin.collections.mapTo' call
+    var destination = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_0, 10));
+    var _iterator__ex2g4s = this_0.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var item = _iterator__ex2g4s.next_20eer_k$();
+      // Inline function 'kotlin.collections.toTypedArray' call
+      var tmp$ret$6 = copyToArray(item);
+      destination.add_utx5q5_k$(tmp$ret$6);
+    }
+    // Inline function 'kotlin.collections.toTypedArray' call
+    return copyToArray(destination);
+  };
+  function nativeXmltvOrder(starts, format) {
+    // Inline function 'kotlin.collections.toTypedArray' call
+    var this_0 = NativeRecordRules_instance.order_ew65tb_k$(toList(starts), recordFormat(format));
+    return copyToArray(this_0);
+  }
+  function recordFormat(value) {
+    var tmp;
+    switch (value) {
+      case 'swift':
+        tmp = XmltvRecordFormat_SWIFT_getInstance();
+        break;
+      case 'android':
+        tmp = XmltvRecordFormat_ARCHIVED_ANDROID_getInstance();
+        break;
+      case 'active-android':
+        tmp = XmltvRecordFormat_ANDROID_getInstance();
+        break;
+      case 'rust':
+        tmp = XmltvRecordFormat_RUST_getInstance();
+        break;
+      case 'rust-native':
+        tmp = XmltvRecordFormat_RUST_NATIVE_getInstance();
+        break;
+      default:
+        // Inline function 'kotlin.error' call
+
+        var message = 'Unknown XMLTV record format';
+        throw IllegalStateException_init_$Create$_0(toString_1(message));
+    }
+    return tmp;
+  }
   function xtreamBase(value) {
     return Companion_instance_15.browserBase_s0uj0h_k$(value);
   }
@@ -19735,6 +20385,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   StalkerCatalogs_instance = new StalkerCatalogs();
   StalkerProtocol_instance = new StalkerProtocol();
   Companion_instance_14 = new Companion_14();
+  NativeRecordRules_instance = new NativeRecordRules();
   XtreamCatalogs_instance = new XtreamCatalogs();
   Companion_instance_15 = new Companion_15();
   //endregion
@@ -19787,6 +20438,8 @@ if (typeof String.prototype.startsWith === 'undefined') {
     _.LegacyStalkerClient = LegacyStalkerClient;
     _.streamingGuideIdentities = streamingGuideIdentities;
     _.StreamingGuideFilter = StreamingGuideFilter;
+    _.XmltvRecords = XmltvRecords_0;
+    _.nativeXmltvOrder = nativeXmltvOrder;
     _.xtreamBase = xtreamBase;
     _.XtreamClient = XtreamClient;
     _.legacyXtreamClient = legacyXtreamClient;

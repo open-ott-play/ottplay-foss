@@ -44,14 +44,15 @@ def check_shipping_sources():
             raise AssertionError(f"Duplicate native source reintroduced: {duplicate}")
     for path, required in (
         ("mobile-xmltv-epg/src/ios/MobileXmltvEpg.swift", (
-            "nativeGuideLoadStart", "nativeGuideLoadNext", "NativeGuideSourceBatch")),
+            "nativeGuideLoadStart", "nativeGuideLoadNext", "NativeGuideSourceBatch", "XmltvRecords", "nativeXmltvOrder")),
         ("mobile-xmltv-epg/src/android/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt", (
-            "NativeSourceLoad.start", "NativeSourceLoad.next", "NativeSourceBatch(")),
+            "NativeSourceLoad.start", "NativeSourceLoad.next", "NativeSourceBatch(", "XmltvRecords(", "NativeRecordRules.order")),
     ):
         source = (ROOT / path).read_text()
         for api in required:
             assert api in source, f"Native load policy must use {api}: {path}"
         assert "firstError" not in source, f"Native batch failure policy reintroduced: {path}"
+        assert "currentProgTitle" not in source and "currentProgChannel" not in source, f"Native XMLTV record reducer reintroduced: {path}"
     project = (ROOT / "ios/App/App.xcodeproj/project.pbxproj").read_text()
     if '../../../mobile-xmltv-epg/src/ios/MobileXmltvEpg.swift' not in project:
         raise AssertionError("iOS must compile the canonical XMLTV adapter")

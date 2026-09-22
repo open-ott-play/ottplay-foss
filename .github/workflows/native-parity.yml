@@ -71,6 +71,7 @@ jobs:
           npm run test:native-dash
           python3 tests/test_native_media_lifecycle.py --platform android
           python3 tests/test_native_epg_cache.py --platform android
+          python3 tests/test_native_xmltv_records.py --platform android
 
   apple:
     name: iOS and Tauri native code
@@ -95,6 +96,7 @@ jobs:
           python3 tests/test_ios_demo_media.py
           python3 tests/test_native_media_lifecycle.py --platform ios
           python3 tests/test_native_epg_cache.py --platform ios
+          python3 tests/test_native_xmltv_records.py --platform ios
           python3 tests/test_ios_proxy.py
           python3 tests/test_xmltv_warmup_smoke.py
       - name: Test iOS command queue consent and authentication

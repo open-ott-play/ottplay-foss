@@ -306,93 +306,80 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
 
     private class XmltvParser: NSObject, XMLParserDelegate {
         private let guide: SharedGuide
+        private let records: JavaScriptCore.JSValue
         private var coreError: Error?
-        init(core: Void) throws { guide = try SharedGuide(); super.init() }
+        private var tokens: [[String]] = []
+        private var tokenBytes = 0
+
+        init(core: Void) throws {
+            let guide = try SharedGuide()
+            self.guide = guide
+            records = try guide.xmltvRecords()
+            super.init()
+        }
         var channels: [String: String] = [:]
         var icons: [String: String] = [:]
         var names: [String: [String]] = [:]
-        private var channelName = ""
         var programs: [String: [(start: Int, stop: Int, title: String, desc: String)]] = [:]
-
-        private var currentChannelId: String?
-        private var currentProgChannel: String?
-        private var currentProgStart: Int = 0
-        private var currentProgStop: Int = 0
-        private var currentProgTitle: String = ""
-        private var currentProgDesc: String = ""
-        private var textTarget: TextTarget?
-
-        enum TextTarget { case channelName, progTitle, progDesc }
 
         func parse(_ data: Data) throws {
             let parser = XMLParser(data: data)
             parser.delegate = self
-            if !parser.parse() { channels.removeAll(); programs.removeAll() }
+            let succeeded = parser.parse()
             if let error = coreError { throw error }
+            // Preserve completed metadata even when Foundation rejects a later XML token.
+            try flush()
+            if !succeeded { channels.removeAll(); programs.removeAll() }
+        }
+
+        private func flush() throws {
+            guard !tokens.isEmpty else { return }
+            let actions = try guide.xmltvAccept(records, tokens: tokens)
+            tokens.removeAll(keepingCapacity: true)
+            tokenBytes = 0
+            for row in actions {
+                switch row.first {
+                case "channel" where row.count == 3: channels[row[1]] = row[2]
+                case "name" where row.count == 3: names[row[1], default: []].append(row[2])
+                case "icon" where row.count == 3: icons[row[1]] = row[2]
+                case "programme" where row.count == 7:
+                    guard let start = Int(row[2]), let stop = Int(row[3]) else {
+                        throw NSError(domain: "SharedGuide", code: 1,
+                            userInfo: [NSLocalizedDescriptionKey: "Invalid shared XMLTV programme"])
+                    }
+                    programs[row[1], default: []].append((start, stop, row[4], row[5]))
+                default:
+                    throw NSError(domain: "SharedGuide", code: 1,
+                        userInfo: [NSLocalizedDescriptionKey: "Invalid shared XMLTV action"])
+                }
+            }
+        }
+
+        private func enqueue(_ row: [String], parser: XMLParser) {
+            guard coreError == nil else { return }
+            tokens.append(row)
+            tokenBytes += row.reduce(0) { $0 + $1.utf8.count }
+            if tokens.count >= 256 || tokenBytes >= 64 * 1024 {
+                do { try flush() }
+                catch { coreError = error; parser.abortParsing() }
+            }
         }
 
         func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String]) {
-            switch elementName {
-            case "channel":
-                currentChannelId = attributeDict["id"]
-            case "programme":
-                currentProgChannel = attributeDict["channel"]
-                do {
-                    currentProgStart = try guide.time(attributeDict["start"] ?? "")
-                    currentProgStop = try guide.time(attributeDict["stop"] ?? "")
-                } catch { coreError = error; parser.abortParsing(); return }
-                currentProgTitle = ""
-                currentProgDesc = ""
-            case "display-name" where currentChannelId != nil:
-                channelName = ""
-                textTarget = .channelName
-            case "icon" where currentChannelId != nil:
-                icons[currentChannelId!] = attributeDict["src"] ?? ""
-            case "title" where currentProgChannel != nil:
-                textTarget = .progTitle
-            case "desc" where currentProgChannel != nil:
-                textTarget = .progDesc
-            default:
-                break
+            var row = ["start", elementName]
+            for name in ["id", "channel", "start", "stop", "src"] {
+                if let value = attributeDict[name] { row.append(name); row.append(value) }
             }
+            enqueue(row, parser: parser)
         }
 
         func parser(_ parser: XMLParser, foundCharacters string: String) {
-            guard let target = textTarget else { return }
-            switch target {
-            case .channelName:
-                channelName += string
-            case .progTitle:
-                currentProgTitle += string
-            case .progDesc:
-                currentProgDesc += string
-            }
+            enqueue(["text", string], parser: parser)
         }
 
         func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
-            switch elementName {
-            case "channel":
-                if let id = currentChannelId, channels[id] == nil { channels[id] = id }
-                currentChannelId = nil
-                textTarget = nil
-            case "programme":
-                if let ch = currentProgChannel, !currentProgTitle.isEmpty {
-                    programs[ch, default: []].append((currentProgStart, currentProgStop, currentProgTitle, currentProgDesc))
-                }
-                currentProgChannel = nil
-                textTarget = nil
-            case "display-name":
-                if let id = currentChannelId {
-                    let name = channelName.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !name.isEmpty { names[id, default: []].append(name); if channels[id] == nil { channels[id] = name } }
-                }
-                textTarget = nil
-            case "title", "desc": textTarget = nil
-            default:
-                break
-            }
+            enqueue(["end", elementName], parser: parser)
         }
-
     }
 
     // MARK: - Channel Resolution + EPG Slice
@@ -403,7 +390,8 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
             (parsed.names[id] ?? [parsed.channels[id]!]).map { [id, $0.precomposedStringWithCanonicalMapping] }
         }
         let xmltvId = try guide.resolve(rows, id: hash, names: [tvgName ?? "", ch ?? ""].map { $0.precomposedStringWithCanonicalMapping }) ?? hash
-        let progs = (parsed.programs[xmltvId] ?? []).sorted { $0.start < $1.start }
+        let unsorted = parsed.programs[xmltvId] ?? []
+        let progs = try guide.xmltvOrder(unsorted.map { Double($0.start) }).map { unsorted[$0] }
         let shift = timeShiftHours != 0 ? timeShiftHours : try guide.shift(ch ?? tvgName ?? "")
         let selection = try guide.slice(progs.map { [Double($0.start), Double($0.stop)] },
             now: Date().timeIntervalSince1970, archive: archiveHours, shift: shift)
@@ -417,7 +405,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
     }
 }
 
-/// JavaScriptCore supplies execution and Swift's grapheme-count primitive only.
+/// JavaScriptCore supplies execution and Swift string primitives only.
 /// The bundled compiler output is the same artifact used by the browser and Rust.
 private final class SharedGuide {
     private static let source: Result<String, Error> = Result {
@@ -440,6 +428,7 @@ private final class SharedGuide {
     private let context: JSContext
     private let core: JavaScriptCore.JSValue
     private var functions: [String: JavaScriptCore.JSValue] = [:]
+    private var xmltvBatch: JavaScriptCore.JSValue?
 
     private static func failure(_ message: String) -> Error {
         NSError(domain: "SharedGuide", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
@@ -504,7 +493,31 @@ private final class SharedGuide {
     func batchFailure(_ batch: JavaScriptCore.JSValue) throws -> Int {
         Int(try checked { batch.invokeMethod("failure", withArguments: []) }.toInt32())
     }
-    func time(_ input: String) throws -> Int { Int(try call("nativeGuideTime", [input, "swift"]).toDouble()) }
+    func xmltvRecords() throws -> JavaScriptCore.JSValue {
+        let trim: @convention(block) (String) -> String = { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let identity: @convention(block) (String) -> String = { $0.precomposedStringWithCanonicalMapping }
+        return try checked { core.forProperty("XmltvRecords")?.construct(withArguments: ["swift", trim, identity]) }
+    }
+    func xmltvAccept(_ records: JavaScriptCore.JSValue, tokens: [[String]]) throws -> [[String]] {
+        if xmltvBatch == nil {
+            xmltvBatch = try checked { context.evaluateScript(
+                "(function (records, tokens) { return JSON.stringify(records.accept(JSON.parse(tokens))); })") }
+        }
+        // Transfer strings in bounded batches; Foundation array proxies are costly per token.
+        let encoded = String(data: try JSONSerialization.data(withJSONObject: tokens), encoding: .utf8)!
+        guard let output = try checked({ xmltvBatch?.call(withArguments: [records, encoded]) }).toString(),
+              let data = output.data(using: .utf8),
+              let result = try JSONSerialization.jsonObject(with: data) as? [[String]] else {
+            throw Self.failure("Invalid shared XMLTV records")
+        }
+        return result
+    }
+    func xmltvOrder(_ starts: [Double]) throws -> [Int] {
+        guard let result = try call("nativeXmltvOrder", [starts, "swift"]).toArray() as? [Int] else {
+            throw Self.failure("Invalid shared XMLTV order")
+        }
+        return result
+    }
     func shift(_ input: String) throws -> Int { Int(try call("nativeGuideShift", [input, "swift"]).toInt32()) }
     func resolve(_ rows: [[String]], id: String, names: [String]) throws -> String? {
         let measure: @convention(block) (String) -> Int = { $0.count }
