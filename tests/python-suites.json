@@ -17,6 +17,7 @@
     ["tests/test_native_dash_state.py"],
     ["tests/test_android_epg_editions.py"],
     ["tests/test_native_epg_cache.py", "--platform", "android"],
+    ["tests/test_native_xmltv_records.py", "--platform", "android"],
     ["tests/test_native_media_lifecycle.py", "--platform", "android"]
   ],
   "ios": [
@@ -24,6 +25,7 @@
     ["tests/test_ios_demo_media.py"],
     ["tests/test_ios_proxy.py"],
     ["tests/test_native_epg_cache.py", "--platform", "ios"],
+    ["tests/test_native_xmltv_records.py", "--platform", "ios"],
     ["tests/test_native_media_lifecycle.py", "--platform", "ios"]
   ]
 }
