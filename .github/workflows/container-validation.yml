@@ -1,21 +1,8 @@
 name: Container validation
 
 on:
-  pull_request:
-    paths:
-      - Dockerfile
-      - .dockerignore
-      - Cargo.toml
-      - Cargo.lock
-      - src-rs/**/Cargo.toml
-      - .github/workflows/container-validation.yml
-      - .github/workflows/release-build.yml
-      - scripts/prepare-container-workspace.py
-      - scripts/assemble-container-oci.py
-      - scripts/benchmark-container-build.py
-      - tests/test_container_workspace.py
-      - .github/release-tests/test_container_*.py
   workflow_dispatch:
+  workflow_call: {}
 
 permissions:
   contents: read
@@ -25,6 +12,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Select container validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.scope.outputs.run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Select changed container inputs
+        id: scope
+        run: python3 scripts/container_validation_scope.py >> "$GITHUB_OUTPUT"
   native:
     name: Native container (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
@@ -66,9 +67,14 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+    needs:
+      - changes
+    if: needs.changes.outputs.run == 'true'
   assemble:
     name: Validate combined container archive
-    needs: native
+    needs:
+      - changes
+      - native
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -101,3 +107,29 @@ jobs:
           path: ${{ runner.temp }}/container-assembly.json
           if-no-files-found: error
           retention-days: 14
+    if: needs.changes.outputs.run == 'true'
+  complete:
+    name: Container validation gate
+    needs:
+      - changes
+      - native
+      - assemble
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          RESULTS: ${{ toJSON(needs) }}
+          SHOULD_RUN: ${{ needs.changes.outputs.run }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os
+          results = json.loads(os.environ['RESULTS'])
+          required = os.environ['SHOULD_RUN']
+          if required not in {'true', 'false'} or results['changes']['result'] != 'success':
+              raise SystemExit('Could not determine container validation scope')
+          expected = 'success' if required == 'true' else 'skipped'
+          if any(results[name]['result'] != expected for name in ('native', 'assemble')):
+              raise SystemExit('Container validation did not complete successfully')
+          print('Container validation passed' if required == 'true' else 'No container inputs changed')
+          PYTHON

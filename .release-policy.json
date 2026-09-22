@@ -1,6 +1,12 @@
 {
   "version_file": "package.json",
-  "validation_workflows": ["ci.yml", "native-parity.yml", "codeql.yml"],
+  "validation_workflows": [
+    "ci.yml",
+    "native-parity.yml",
+    "codeql.yml",
+    "dependency-review.yml",
+    "container-validation.yml"
+  ],
   "artifact_pattern": "release-assets*",
   "local_checks": [
     "npm ci --ignore-scripts",
@@ -152,5 +158,6 @@
     "KEYCHAIN_PASSWORD",
     "TAURI_SIGNING_PRIVATE_KEY",
     "TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
-  ]
+  ],
+  "single_entry_ci": true
 }
