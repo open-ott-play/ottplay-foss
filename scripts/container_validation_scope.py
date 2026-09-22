@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path
 
 PATTERNS = (
-    "Dockerfile", ".dockerignore", "Cargo.toml", "Cargo.lock", "src-rs/**/Cargo.toml",
+    "Dockerfile", ".dockerignore", "Cargo.toml", "Cargo.lock", "src-rs/Cargo.toml", "src-rs/**/Cargo.toml",
     ".github/workflows/container-validation.yml", ".github/workflows/release-build.yml",
     "scripts/prepare-container-workspace.py", "scripts/assemble-container-oci.py",
     "scripts/benchmark-container-build.py", "scripts/container_validation_scope.py",
@@ -33,8 +33,8 @@ def run_required(kind, event, changed_paths):
     return relevant(changed_paths(base, head))
 
 
-def git_changes(base, head):
-    return subprocess.check_output(["git", "diff", "--name-only", "-z", base, head, "--"], text=True).split("\0")
+def git_changes(base, head, directory=None):
+    return subprocess.check_output(["git", "diff", "--no-renames", "--name-only", "-z", base, head, "--"], text=True, cwd=directory).split("\0")
 
 
 if __name__ == "__main__":
