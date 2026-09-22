@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "name": "ottplay-shared-core",
+  "version": "0.1.0-dev",
+  "source": {
+    "sha256": "24993729c1c63974b71dfe7c9aed44a59b8bdec7d92441b1312ba2431eecef61",
+    "files": {
+      "LICENSE": "ec6a17ce723ea8b4c6b08f277ab84750440a8c3e5401aaa9f4e4e9d5fd0fd72c",
+      "build.gradle.kts": "e89cc0e4057ab3989c6d4048d6b2ee7b5efb023a7c96c2886d8dd62778e42a73",
+      "gradle.properties": "dd942c44c3d22f584bcdea5f5f72325b7b49af1b42a5e73ed0b82ef665d1c9e1",
+      "gradle/wrapper/gradle-wrapper.jar": "7a9ce74cff467ca1bf60a4fcd9f05185acceda4d0f382434d393e17864262c5d",
+      "gradle/wrapper/gradle-wrapper.properties": "7ecd08c4b304cb5c5091a7c9e3d3cbcb31dc48b3d77410f6ded99da2ee88977b",
+      "licenses/kotlin-LICENSE.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "licenses/kotlin-NOTICE.txt": "0b09a83d3ef7795c7dec65e815866597c066c53898f2852a76599b8f5552941a",
+      "package.json": "cad1cc1027fe35d7f90fb9b133c9ef0bcc0620f0937d16babf9cf66a86eae849",
+      "scripts/distribute.cjs": "695cb1e4b79aed5fed8be7f98c3c026e87e6097013b579e2cb86a130954e61d8",
+      "settings.gradle.kts": "de8cc9d9be33ed5e41247734b1cbac66deb0d372f550e2e263033ecb7e18ce05",
+      "src/commonMain/kotlin/play/ott/core/Archive.kt": "6c588d4c4696f98e34f40e3253c98d072db2b656d4184e47ffd6c06b6c667522",
+      "src/commonMain/kotlin/play/ott/core/CoreText.kt": "23563e36428144351929739f2ff8c09a33853fc9433aa00b1bf6918ea1f4f3b8",
+      "src/commonMain/kotlin/play/ott/core/GuideCache.kt": "dc9250ff8776cc0ae6bd306609fa9f3f776e40a7dcd28c4b9c0524b651e613a4",
+      "src/commonMain/kotlin/play/ott/core/GuideFeed.kt": "a58fc31b7ada6692a209501cea68058da5fb8e7f2a8956de3bfa9c167593bf81",
+      "src/commonMain/kotlin/play/ott/core/GuideNames.kt": "4fb05f86b86d4ea2b34b8c31697fef307e790c7757c1fa3af7e20178b5f7a390",
+      "src/commonMain/kotlin/play/ott/core/GuideSchedule.kt": "f66476d52e5eed2ba6f3de1412ff5c4e5244e530f4af73bc27367ee3a48509f9",
+      "src/commonMain/kotlin/play/ott/core/GuideTime.kt": "ad5b3458c584f207f535f1db064e76cbdeeb52f8bb1006cc0c205edfb061008a",
+      "src/commonMain/kotlin/play/ott/core/LegacyStalker.kt": "2a509fc6fa4c2519f4e87fd8dfdb02a60a8a4896d8ae19f7fa7af6c0b4f6206f",
+      "src/commonMain/kotlin/play/ott/core/LegacyXtream.kt": "b86d8491d85e347d30ca7c5c0d270e1027b0cdffe63b7111f53de5a5ccc88aca",
+      "src/commonMain/kotlin/play/ott/core/NativeGuide.kt": "85f8c3c46fc050005d065c3b8eb35a4c55e2fbd62c874eb6a4afc296678a0e00",
+      "src/commonMain/kotlin/play/ott/core/OperatorPlaylist.kt": "298019d520ba6e614c829f404be8657f6ae47d855e805eda9f26ba7d3ef59cdb",
+      "src/commonMain/kotlin/play/ott/core/Playlist.kt": "ab2b86c27c841c4e9759592b4cc652e2413b6452303ac1d3bc6646e974d35ebb",
+      "src/commonMain/kotlin/play/ott/core/ProviderPlaylist.kt": "ab1bca4f6956348d21db4c70e0f3b438f399b61b6119ea28de0fde4029dccdbd",
+      "src/commonMain/kotlin/play/ott/core/ProviderValue.kt": "a1073cd8689e8244241673335f5f576991d799dffef1572d3c003b54b26c98c5",
+      "src/commonMain/kotlin/play/ott/core/StalkerBrowser.kt": "038d7edc23fc0fa5e4e80f9a23eb14cf7b8af65909a1a19c6280b63259abc727",
+      "src/commonMain/kotlin/play/ott/core/StalkerCatalog.kt": "7a7f60a1818891090eba4ee63ec754e0832a111ea8fb3f57c44c6a7a1fe14495",
+      "src/commonMain/kotlin/play/ott/core/StalkerProtocol.kt": "8a0d4b3e20fc77978695a1a8b86b0aa53fd4e62b08b201b4474730128711eaf8",
+      "src/commonMain/kotlin/play/ott/core/XtreamCatalog.kt": "c1fbfacd51ea71a10cca603536f2b60c5d14ce0a3e1a0bfa91644c8b2f5836de",
+      "src/commonMain/kotlin/play/ott/core/XtreamSession.kt": "9d92d2cfd49ab89ff49084dba6787829fd914587f15c1414af96faba9cda2f9b",
+      "src/commonTest/kotlin/play/ott/core/ArchiveTest.kt": "a648fbf79e296172f50bd11387e92bcb0f9549ddbd961a927e8610e9e55b7951",
+      "src/commonTest/kotlin/play/ott/core/GuideFeedTest.kt": "1261aec4db22bc2e7f7d8a60e0aac89c9f4354eca7f873c178978e34c0752299",
+      "src/commonTest/kotlin/play/ott/core/GuideTest.kt": "369936429caf00934f15d58d26642d02ca7ef13832a5d70d2b90095e36d90b4f",
+      "src/commonTest/kotlin/play/ott/core/NativeGuideTest.kt": "531642ad0620ff1986ea8946d975cfa642a5d61226509e6ca2aa75b469b18800",
+      "src/commonTest/kotlin/play/ott/core/OperatorPlaylistTest.kt": "06d8644750eeda7363b2b5c65f17412804a492076b3136a8e8d9e2b621558b46",
+      "src/commonTest/kotlin/play/ott/core/PlaylistTest.kt": "38f8a985a5a2e38669363852b1f68c24059dfc6513ce65ad4fc5389e3f036238",
+      "src/commonTest/kotlin/play/ott/core/StalkerTest.kt": "06f7741c6fe0b9cb8971f4d3a944a43c43ca7c7bcd840618dfb28ebfeebba4b1",
+      "src/commonTest/kotlin/play/ott/core/XtreamTest.kt": "f0c51171a2479fcd1ed385a90beed0dd0d61ea5c54d8d2906c35f792913a9694",
+      "src/jsMain/kotlin/Exports.kt": "8cba52393b445812eabdc0f831b4b8270ddc2b69065410df15e73a8862b9b528",
+      "src/jsMain/kotlin/GuideExports.kt": "8c891e93cbbd0cc9a8140d36b5955ec3b0bd6c29bed7d947a12d78c9264c3ec2",
+      "src/jsMain/kotlin/ProviderExports.kt": "e393f37d8f7503f95464f956fc3d8f16a80be0f01b2266a0e478e482caef454f",
+      "src/jsMain/kotlin/StalkerExports.kt": "8c7d1e72fba73551497c4de9798fdaa0e064a8a9f91465f749b75b88c792afb1",
+      "src/jsMain/kotlin/XtreamExports.kt": "dfd51f22afaa9049f7419be61da85a6aab0386dd5a09195fb5c71208d0336637",
+      "src/jvmTest/kotlin/play/ott/core/CalendarOracleTest.kt": "32d3c8a7179e1eb5981fc3ac9020504e51835be0ff59971de4191441242b3974"
+    }
+  },
+  "runtime": {
+    "kotlin": "2.4.20",
+    "jvm": 17,
+    "javascript": "ES5 with core-js 3.50.0 on legacy hosts"
+  },
+  "artifacts": {
+    "ottplay-core.js": {
+      "sha256": "86347adb02dfa9b63288b83b8b1337caca381bfefa5f993b634cd2f5dfd160f6",
+      "bytes": 722961
+    },
+    "ottplay-core.d.ts": {
+      "sha256": "d9f9c3b34b4c4a3149c3198ec1d46c243ed5672a596726b5a0ae67384cdfad63",
+      "bytes": 7407
+    },
+    "ottplay-core.jar": {
+      "sha256": "2d575b2745463845f6a8aaef993f6dc02f249ce1c3fbffe4b5d25e631fd37584",
+      "bytes": 310573
+    },
+    "ottplay-core.LICENSE.txt": {
+      "sha256": "1e72da3623b91daad1013e577c3611ad6ed314da508b757abe9a1b27a88a14cc",
+      "bytes": 12937
+    }
+  }
+}

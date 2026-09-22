@@ -220,10 +220,10 @@ pub async fn get_epg(
     let sources = xmltv_urls.unwrap_or_default();
     if !sources.is_empty() {
         let cache = ottplay_core::native_xmltv::load_sources(&sources).await.map_err(|error| error.to_string())?;
-        let id = ottplay_core::native_xmltv::resolve_id(&cache, tvg_id, tvg_name, ch.as_deref().unwrap_or(""));
+        let id = ottplay_core::native_xmltv::resolve_id(&cache, tvg_id, tvg_name, ch.as_deref().unwrap_or("")).map_err(|error| error.to_string())?;
         let shift = if time_shift_hours != 0 { time_shift_hours }
-            else { ottplay_core::xmltv::extract_time_shift(ch.as_deref().unwrap_or(tvg_name)) };
-        return Ok(ottplay_core::get_epg_slice(&cache, &hash, id.as_deref().unwrap_or(""), shift, archive_hours.unwrap_or(0)).await);
+            else { ottplay_core::xmltv::extract_time_shift(ch.as_deref().unwrap_or(tvg_name)).map_err(|error| error.to_string())? };
+        return ottplay_core::get_epg_slice(&cache, &hash, id.as_deref().unwrap_or(""), shift, archive_hours.unwrap_or(0)).await.map_err(|error| error.to_string());
     }
     // Ensure before taking map locks — never hold epg_to_xmltv across a 40MB fetch.
     ensure_xmltv_cache(&state).await?;
@@ -233,23 +233,23 @@ pub async fn get_epg(
     // time_shift_hours is timezone only. Archive depth is archive_hours.
     let mut shift = time_shift_hours;
     if shift == 0 {
-        shift = shift_map.get(&hash).copied().unwrap_or_else(||
-            ottplay_core::xmltv::extract_time_shift(ch.as_deref().unwrap_or(tvg_name)));
+        shift = match shift_map.get(&hash) { Some(value) => *value, None =>
+            ottplay_core::xmltv::extract_time_shift(ch.as_deref().unwrap_or(tvg_name)).map_err(|error| error.to_string())? };
 
     }
     let archive = archive_hours.unwrap_or(0);
 
     let cache_guard = state.xmltv_cache.read().await;
     let cache = cache_guard.as_ref().ok_or("EPG cache empty")?;
-    let xmltv_id = ottplay_core::native_xmltv::resolve_id(cache, tvg_id, tvg_name, ch.as_deref().unwrap_or(""))
-        .unwrap_or_else(|| resolve_xmltv_id(cache, &hash, &channel_id, ch.as_deref(), &epg_map));
-    Ok(ottplay_core::get_epg_slice(
+    let xmltv_id = ottplay_core::native_xmltv::resolve_id(cache, tvg_id, tvg_name, ch.as_deref().unwrap_or("")).map_err(|error| error.to_string())?;
+    let xmltv_id = match xmltv_id { Some(id) => id, None => resolve_xmltv_id(cache, &hash, &channel_id, ch.as_deref(), &epg_map)? };
+    ottplay_core::get_epg_slice(
         cache,
         &hash,
         &xmltv_id,
         shift,
         archive,
-    ).await)
+    ).await.map_err(|error| error.to_string())
 }
 
 /// Resolve xmltv_id like server's epg_handler:
@@ -262,19 +262,19 @@ fn resolve_xmltv_id(
     channel_id: &str,
     ch: Option<&str>,
     epg_to_xmltv: &std::collections::HashMap<String, String>,
-) -> String {
+) -> Result<String, String> {
     if let Some(name) = ch {
-        if let Some((id, _score)) = ottplay_core::match_channel(name, &cache.channels) {
-            return id;
+        if let Some((id, _score)) = ottplay_core::match_channel(name, &cache.channels).map_err(|error| error.to_string())? {
+            return Ok(id);
         }
     }
     if !hash.is_empty() {
         if let Some(id) = epg_to_xmltv.get(hash) {
-            return id.clone();
+            return Ok(id.clone());
         }
-        return hash.to_string();
+        return Ok(hash.to_string());
     }
-    channel_id.to_string()
+    Ok(channel_id.to_string())
 }
 
 /// Tracks macOS simple-fullscreen intent + pre-FS outer geometry.

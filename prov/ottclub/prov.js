@@ -43,12 +43,7 @@ function getChannelUrl(ch_id) {
 }
 
 function getArchiveUrl(ch_id, time, time_to) {
-    return (
-        getChannelUrl(ch_id) +
-        (time_to < Date.now() / 1000 && browserName() != "dune"
-            ? "?archive=" + time + "&archive_end=" + time_to
-            : "?timeshift=" + time + "&timenow=" + Date.now() / 1000)
-    );
+    return OttPlayCore.providerArchiveUrl("club", getChannelUrl(ch_id), "", "", Number(time), Number(time_to), Date.now() / 1000, browserName() === "dune", 0) || "";
 }
 
 $.support.cors = true;

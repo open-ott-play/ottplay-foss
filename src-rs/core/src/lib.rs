@@ -13,6 +13,7 @@ mod proxy;
 pub mod tmdb;
 pub mod vportal;
 pub mod xmltv;
+mod shared_guide;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -69,39 +70,22 @@ pub async fn get_epg_slice(
     channel_id: &str,
     time_shift_hours: i64,
     archive_hours: i64,
-) -> JsonValue {
+) -> anyhow::Result<JsonValue> {
     let now = chrono::Utc::now().timestamp();
-    let lookback_h = if archive_hours > 0 { archive_hours } else { 48 };
-    let window_start = now - lookback_h * 3600;
-    let window_end = now + 48 * 3600;
-    let shift_secs = time_shift_hours * 3600;
-
-    let programs = cache.programs.get(channel_id).cloned().unwrap_or_default();
-
-    let epg_data: Vec<JsonValue> = programs
-        .into_iter()
-        .filter(|p| {
-            let start = p.start + shift_secs;
-            let stop = p.stop + shift_secs;
-            stop > window_start && start < window_end
-        })
-        .map(|p| {
-            serde_json::json!({
-                "time": p.start + shift_secs,
-                "time_to": p.stop + shift_secs,
-                "name": p.title,
-                "descr": p.desc,
-                "icon": p.icon,
-            })
-        })
-        .collect();
-
-    serde_json::json!({ "epg_data": epg_data })
+    let programs = cache.programs.get(channel_id).map(Vec::as_slice).unwrap_or(&[]);
+    let times = programs.iter().map(|p| vec![p.start as f64, p.stop as f64]).collect();
+    let rows = shared_guide::slice(times, now, archive_hours, time_shift_hours)?;
+    let epg_data: Vec<JsonValue> = rows.into_iter().map(|row| {
+        let p = &programs[row[0] as usize];
+        serde_json::json!({ "time": row[1] as i64, "time_to": row[2] as i64,
+            "name": p.title, "descr": p.desc, "icon": p.icon })
+    }).collect();
+    Ok(serde_json::json!({ "epg_data": epg_data }))
 }
 
 /// Fuzzy-match a playlist channel name against XMLTV channels.
 /// Returns `(xmltv_channel_id, channel_name, score)`.
-pub fn match_channel(name: &str, channels: &xmltv::Channels) -> Option<(String, f32)> {
+pub fn match_channel(name: &str, channels: &xmltv::Channels) -> anyhow::Result<Option<(String, f32)>> {
     xmltv::match_channel(name, channels)
 }
 
@@ -178,7 +162,7 @@ mod tests {
     async fn archive_hours_extends_lookback() {
         let now = chrono::Utc::now().timestamp();
         let cache = sample_cache(now);
-        let def = get_epg_slice(&cache, "", "ch1", 0, 0).await;
+        let def = get_epg_slice(&cache, "", "ch1", 0, 0).await.unwrap();
         let def_arr = def["epg_data"].as_array().unwrap();
         // Default 48h lookback excludes the 72h-old programme
         assert!(
@@ -187,7 +171,7 @@ mod tests {
             def_arr
         );
 
-        let deep = get_epg_slice(&cache, "", "ch1", 0, 144).await;
+        let deep = get_epg_slice(&cache, "", "ch1", 0, 144).await.unwrap();
         let deep_arr = deep["epg_data"].as_array().unwrap();
         assert!(
             deep_arr.iter().any(|p| p["name"] == "old"),

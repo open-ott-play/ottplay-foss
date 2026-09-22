@@ -459,7 +459,6 @@ export let _prog100: any = null,
 export let epgCacheCapacity = 0;
 export let epgCacheByChannel: Record<number, EPGEntry[]> = {};
 export let epgCacheChannelOrder: number[] = [];
-const EPG_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 let epgCacheFetchedAt: Record<number, number> = {};
 let epgCacheGeneration = 0;
 type EpgCallback = (chId: number, programs: EPGEntry[] | null) => void;
@@ -528,32 +527,22 @@ function epgCacheLimit(): number {
         typeof (window as any).epgCacheCapacity !== "undefined"
             ? Number((window as any).epgCacheCapacity)
             : epgCacheCapacity;
-    return Number.isFinite(configured) && configured > 0
-        ? Math.floor(configured)
-        : 0;
+    return (window as any).OttPlayCore.legacyGuideCacheCapacity(configured);
 }
 
 function readEpgCache(channelId: number): EPGEntry[] | null {
-    if (!epgCacheLimit()) return null;
     var data = epg[channelId];
-    var fetchedAt = epgCacheFetchedAt[channelId];
-    if (!data || !data.length || fetchedAt === undefined) return null;
-    if (
-        Date.now() - fetchedAt >= EPG_CACHE_TTL_MS ||
-        !data.some(function (entry) {
-            return entry.time_to >= Date.now() / 1000;
-        })
-    ) {
+    var core = (window as any).OttPlayCore;
+    var state = core.legacyGuideCacheRead(data, epgCacheFetchedAt[channelId], epgCacheLimit(), function () { return Date.now(); });
+    if (state === 0) return null;
+    if (state < 0) {
         delete epg[channelId];
         delete epgCacheByChannel[channelId];
         delete epgCacheFetchedAt[channelId];
-        var staleIndex = epgCacheChannelOrder.indexOf(channelId);
-        if (staleIndex !== -1) epgCacheChannelOrder.splice(staleIndex, 1);
+        core.legacyGuideCacheOrder(epgCacheChannelOrder, channelId, null, true);
         return null;
     }
-    var index = epgCacheChannelOrder.indexOf(channelId);
-    if (index !== -1) epgCacheChannelOrder.splice(index, 1);
-    epgCacheChannelOrder.unshift(channelId);
+    core.legacyGuideCacheOrder(epgCacheChannelOrder, channelId, null, false);
     return data;
 }
 
@@ -564,10 +553,7 @@ function cacheFetchedEpg(channelId: number, data: EPGEntry[] | null): void {
     epg[channelId] = data;
     epgCacheByChannel[channelId] = data;
     epgCacheFetchedAt[channelId] = Date.now();
-    var index = epgCacheChannelOrder.indexOf(channelId);
-    if (index !== -1) epgCacheChannelOrder.splice(index, 1);
-    epgCacheChannelOrder.unshift(channelId);
-    epgCacheChannelOrder.splice(limit).forEach(function (id) {
+    (window as any).OttPlayCore.legacyGuideCacheOrder(epgCacheChannelOrder, channelId, limit, false).forEach(function (id: number) {
         delete epg[id];
         delete epgCacheByChannel[id];
         delete epgCacheFetchedAt[id];
@@ -1332,17 +1318,7 @@ export function applyChannelTvgShift(
     ch: any,
     epgData: EPGEntry[] | null
 ): EPGEntry[] | null {
-    if (!epgData || !epgData.length) return epgData;
-    if (!ch || typeof ch.ts !== "number" || !ch.ts) return epgData;
-    var t = ch.ts;
-    for (var i = 0; i < epgData.length; i++) {
-        var e = epgData[i];
-        if (e && e.time > 0 && e.time_to > 0) {
-            e.time += t;
-            e.time_to += t;
-        }
-    }
-    return epgData;
+    return (window as any).OttPlayCore.legacyGuideShift(epgData, ch && ch.ts);
 }
 
 /** Only the built-in M3U companion uses native XMLTV. Other providers own EPG. */
@@ -1627,44 +1603,32 @@ export function setCurProg(
     var safeChannelId = Number(channelId);
     if (!Number.isFinite(safeChannelId) || !Number.isInteger(safeChannelId))
         return;
-    var sorted: EPGEntry[] = [];
     var hasData = Array.isArray(epgData) && epgData.length > 0;
-    if (hasData) {
-        sorted = epgData!.slice().sort(function (a: EPGEntry, b: EPGEntry) {
-            return a.time - b.time;
-        });
-    }
-    var now = Date.now() / 1000;
-    var idx = sorted.findIndex(function (entry: EPGEntry) {
-        return entry.time_to >= now && entry.time <= now;
-    });
+    var nextCount = typeof (window as any).sNextCount === "number" ? (window as any).sNextCount : 0;
+    var selection = (window as any).OttPlayCore.legacyGuideSelection(hasData ? epgData : [], Date.now() / 1000, nextCount);
     var ch = (window as any).channels
         ? (window as any).channels[safeChannelId]
         : window.channels
           ? window.channels[safeChannelId]
           : undefined;
     if (ch) {
-        var nextCount =
-            typeof (window as any).sNextCount === "number"
-                ? (window as any).sNextCount
-                : 0;
-        if (idx === -1) {
+        if (!selection.current) {
             ch.name = "";
             ch.time = 0;
             ch.time_to = 0;
             ch.descr = "";
             ch.nextpr = null;
-            ch.time_request = now + 3600;
+            ch.time_request = selection.retryAt;
             if (hasData) ch.outdated = true;
         } else {
-            var cur = sorted[idx];
+            var cur = selection.current;
             ch.name = cur.name;
             ch.time = cur.time;
             ch.time_to = cur.time_to;
             ch.descr = cur.descr || "";
             ch.time_request = 0;
             if (cur.icon !== undefined) ch.icon = cur.icon;
-            ch.nextpr = sorted.slice(idx + 1, idx + 1 + nextCount + 1);
+            ch.nextpr = selection.following;
             if (ch.nextpr.length === 0) ch.nextpr = null;
             if (typeof ch.outdated !== "undefined") delete ch.outdated;
         }

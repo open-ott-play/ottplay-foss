@@ -146,7 +146,9 @@ function runFixture(fixture, detector, legacy, nativeOverride) {
             if (tag.tagName !== "script") return;
             const requestPath = new URL(tag.src).pathname;
             requests.push(requestPath);
-            if (requestPath === "/dist/stbPlayer.js") {
+            if (requestPath === "/js/ottplay-core.js") {
+                context.OttPlayCore = { NativeGuide: function () {}, providerArchiveUrl: function () {}, parseProviderPlaylist: function () {}, parseOperatorPlaylist: function () {}, parsePlaylistMedia: function () {}, XtreamClient: function () {}, StalkerClient: function () {}, LegacyStalkerClient: function () {}, legacyXtreamClient: function () {}, legacyGuideSelection: function () {}, legacyGuideCacheRead: function () {} };
+            } else if (requestPath === "/dist/stbPlayer.js") {
                 bootDevice = context.ott_device;
                 vm.runInContext(detector.code, context, {
                     filename: detector.name,
@@ -257,6 +259,7 @@ function runFixture(fixture, detector, legacy, nativeOverride) {
         vm.runInContext(script, context, { filename: "index.html boot" });
     assert.equal(starts, 1, "Boot reaches startPlayer once");
     assert.deepEqual(requests, [
+        "/js/ottplay-core.js",
         "/dist/stbPlayer.js",
         "/stb/" + fixture.expectedDevice + "/stb.js",
     ]);

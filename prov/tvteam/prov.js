@@ -86,16 +86,7 @@ function getChannelUrl(ch_id) {
 }
 
 function getArchiveUrl(ch_id, time, time_to) {
-    var u = chanels[ch_id].url,
-        c = u.indexOf("?") == -1 ? "?" : "&";
-    return (
-        u +
-        c +
-        "utc=" +
-        Math.floor(time) +
-        "&lutc=" +
-        Math.floor(Date.now() / 1000)
-    );
+    return OttPlayCore.providerArchiveUrl("auto-utc-now", chanels[ch_id].url, "", "", Number(time), Number(time_to), Date.now() / 1000, browserName() === "dune", 0) || "";
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];
@@ -107,13 +98,6 @@ function addChan2cat(cat, ci) {
         cats[cat] = [];
     }
     cats[cat].push(ci);
-}
-
-function getAttribute(text, attribute) {
-    var a = text.split(attribute + "=");
-    if (a.length == 1 || a[1].length == 0) return "";
-    if (a[1][0] == '"') return a[1].split('"')[1] || "";
-    return a[1].split(/[ ,]+/)[0] || "";
 }
 
 function getChanelsArray(callback) {
@@ -171,53 +155,15 @@ function getChanelsArray(callback) {
             chanels = {};
             cats = {};
             catsArray = [];
-            var arrEXTINF = data.split("#EXTINF:");
-            arrEXTINF.shift();
-            arrEXTINF.forEach(function (val) {
-                var e = val.split("\n"),
-                    cat = getAttribute(e[0], "group-title"),
-                    logo = getAttribute(e[0], "tvg-logo"),
-                    ci = getAttribute(e[0], "tvg-name"),
-                    rec =
-                        (parseInt(getAttribute(e[0], "timeshift"), 10) || 0) *
-                        7 *
-                        24,
-                    cn = _("??? No channel name"),
-                    url = "";
-                try {
-                    cn = e[0].split(",")[1].trim();
-                } catch (ex) {}
-                try {
-                    url = e[1].trim();
-                } catch (ex) {}
-                if (url.indexOf("#EXTGRP:") != -1) {
-                    try {
-                        url = e[2].trim();
-                    } catch (ex) {}
-                    if (!cat) {
-                        try {
-                            cat = e[1].split("#EXTGRP:")[1].trim();
-                        } catch (ex) {}
-                    }
-                }
-                if (!(url && ci)) return;
-                addChan2cat(cat, ci);
-                if (cList.indexOf(ci) == -1) {
-                    cList.push(ci);
-                    chanels[ci] = {
-                        category: {
-                            class: catsArray.indexOf(cat) + 2,
-                            name: cat,
-                        },
-                        channel_name: cn,
-                        logo: logo,
-                        rec: rec,
-                        time: 0,
-                        time_to: 0,
-                        url: url,
-                    };
-                }
+            var catalog = OttPlayCore.parseOperatorPlaylist(data, "tvteam", function () { return 0; }, []);
+            cats = catalog.groups;
+            catsArray = catalog.groupOrder;
+            cList = catalog.ids;
+            chanels = catalog.channels;
+            catalog.entries.forEach(function (entry) {
+                if (entry.generatedName) entry.channel.channel_name = _("??? No channel name");
             });
+            if (catalog.malformed) throw new Error("Malformed playlist entry");
             if (!tvteamwww || tvteamwww.length < 8) {
                 try {
                     popupList(popupActions.indexOf(noProvParam) + 1);

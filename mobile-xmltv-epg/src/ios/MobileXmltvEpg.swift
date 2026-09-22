@@ -1,5 +1,7 @@
 import Capacitor
 import zlib
+import JavaScriptCore
+import CryptoKit
 
 @objc(MobileXmltvEpg)
 public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
@@ -61,21 +63,21 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
             callbacks.forEach { $0(result) }
         }
         if !force, let xml = try? readCache(for: url) {
-            let parsed = parseXmltv(xml)
+            let parsed = try? parseXmltv(xml)
             // Old or interrupted disk entries may decode successfully but contain invalid XML.
-            if !parsed.channels.isEmpty { finish(.success(parsed)); return }
+            if let parsed = parsed, !parsed.channels.isEmpty { finish(.success(parsed)); return }
         }
         fetchAndCache(url) { result in
             switch result {
-            case .success(let xml): finish(.success(self.parseXmltv(xml)))
+            case .success(let xml): finish(Result { try self.parseXmltv(xml) })
             case .failure(let error):
                 self.sourceLock.lock()
                 let memory = self.parsedCache[source]?.data
                 self.sourceLock.unlock()
                 if let memory = memory { finish(.success(memory)) }
                 else if let xml = try? self.readCache(for: url, allowStale: true) {
-                    let parsed = self.parseXmltv(xml)
-                    finish(parsed.channels.isEmpty ? .failure(error) : .success(parsed))
+                    if let parsed = try? self.parseXmltv(xml), !parsed.channels.isEmpty { finish(.success(parsed)) }
+                    else { finish(.failure(error)) }
                 } else { finish(.failure(error)) }
             }
         }
@@ -112,11 +114,12 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         loadSources(sourceUrls(call)) { result in
             switch result {
             case .success(let parsed):
-                call.resolve(self.buildSlice(parsed, channelId: call.getString("channel_id") ?? "",
+                do { call.resolve(try self.buildSlice(parsed, channelId: call.getString("channel_id") ?? "",
                     ch: call.getString("ch"), hash: call.getString("hash") ?? "",
                     timeShiftHours: call.getInt("time_shift_hours") ?? 0,
                     archiveHours: call.getInt("archive_hours") ?? 0,
-                    tvgName: call.getString("tvg_name")))
+                    tvgName: call.getString("tvg_name"))) }
+                catch { call.reject(error.localizedDescription) }
             case .failure(let error): call.reject(error.localizedDescription)
             }
         }
@@ -189,7 +192,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                     completion(.failure(NSError(domain: "MobileXmltvEpg", code: -2, userInfo: [NSLocalizedDescriptionKey: "gunzip failed"])))
                     return
                 }
-                guard !self.parseXmltv(xmlStr).channels.isEmpty else {
+                guard let parsed = try? self.parseXmltv(xmlStr), !parsed.channels.isEmpty else {
                     completion(.failure(NSError(domain: "MobileXmltvEpg", code: -4, userInfo: [NSLocalizedDescriptionKey: "invalid or empty XMLTV"]))); return
                 }
                 try self.writeCache(data, for: url)
@@ -245,14 +248,17 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: - XMLTV Parse
 
-    private func parseXmltv(_ xml: String) -> Parsed {
+    private func parseXmltv(_ xml: String) throws -> Parsed {
         guard let data = xml.data(using: .utf8) else { return ([:], [:], [:], [:]) }
-        let parser = XmltvParser()
-        parser.parse(data)
+        let parser = try XmltvParser(core: ())
+        try parser.parse(data)
         return (parser.channels, parser.programs, parser.icons, parser.names)
     }
 
     private class XmltvParser: NSObject, XMLParserDelegate {
+        private let guide: SharedGuide
+        private var coreError: Error?
+        init(core: Void) throws { guide = try SharedGuide(); super.init() }
         var channels: [String: String] = [:]
         var icons: [String: String] = [:]
         var names: [String: [String]] = [:]
@@ -269,10 +275,11 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
 
         enum TextTarget { case channelName, progTitle, progDesc }
 
-        func parse(_ data: Data) {
+        func parse(_ data: Data) throws {
             let parser = XMLParser(data: data)
             parser.delegate = self
             if !parser.parse() { channels.removeAll(); programs.removeAll() }
+            if let error = coreError { throw error }
         }
 
         func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String]) {
@@ -281,8 +288,10 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                 currentChannelId = attributeDict["id"]
             case "programme":
                 currentProgChannel = attributeDict["channel"]
-                currentProgStart = parseTime(attributeDict["start"] ?? "")
-                currentProgStop = parseTime(attributeDict["stop"] ?? "")
+                do {
+                    currentProgStart = try guide.time(attributeDict["start"] ?? "")
+                    currentProgStop = try guide.time(attributeDict["stop"] ?? "")
+                } catch { coreError = error; parser.abortParsing(); return }
                 currentProgTitle = ""
                 currentProgDesc = ""
             case "display-name" where currentChannelId != nil:
@@ -319,7 +328,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                 textTarget = nil
             case "programme":
                 if let ch = currentProgChannel, !currentProgTitle.isEmpty {
-                    programs[ch] = (programs[ch] ?? []) + [(currentProgStart, currentProgStop, currentProgTitle, currentProgDesc)]
+                    programs[ch, default: []].append((currentProgStart, currentProgStop, currentProgTitle, currentProgDesc))
                 }
                 currentProgChannel = nil
                 textTarget = nil
@@ -335,103 +344,90 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
             }
         }
 
-        private func parseTime(_ ts: String) -> Int {
-            let trimmed = ts.trimmingCharacters(in: .whitespaces)
-            guard trimmed.count >= 14 else { return 0 }
-            let datePart = String(trimmed.prefix(14))
-            let tzPart = String(trimmed.dropFirst(14)).trimmingCharacters(in: .whitespaces)
-
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyyMMddHHmmss"
-            formatter.timeZone = TimeZone(secondsFromGMT: 0)
-            guard let date = formatter.date(from: datePart) else { return 0 }
-            var unix = Int(date.timeIntervalSince1970)
-
-            if tzPart.count >= 5 {
-                let sign: Int = tzPart.hasPrefix("+") ? 1 : (tzPart.hasPrefix("-") ? -1 : 0)
-                if sign != 0 {
-                    let hours = Int(tzPart.dropFirst().prefix(2)) ?? 0
-                    let mins = Int(tzPart.dropFirst(3).prefix(2)) ?? 0
-                    unix -= sign * (hours * 3600 + mins * 60)
-                }
-            }
-            return unix
-        }
     }
 
     // MARK: - Channel Resolution + EPG Slice
 
-    private func matchScore(_ a: String, _ b: String) -> Double {
-        if a.isEmpty || b.isEmpty { return 0 }
-        if a.contains(b) || b.contains(a) { return Double(min(a.count, b.count)) / Double(max(a.count, b.count)) }
-        let aa = Set(a.split(whereSeparator: { $0.isWhitespace }))
-        let bb = Set(b.split(whereSeparator: { $0.isWhitespace }))
-        let common = aa.intersection(bb).count
-        return common >= max(2, min(aa.count, bb.count) / 2) ? Double(common) / Double(max(aa.count, bb.count)) : 0
-    }
-
-    private func resolveXmltvId(channels: [String: String], ch: String?, hash: String, tvgName: String? = nil, names: [String: [String]] = [:]) -> String {
-        if !hash.isEmpty && channels[hash] != nil { return hash }
-        let candidates = [tvgName ?? "", ch ?? ""].filter { !$0.isEmpty }.map { normalize($0) }
-        let ids = channels.keys.sorted()
-        for candidate in candidates where !candidate.isEmpty {
-            for id in ids where (names[id] ?? [channels[id]!]).contains(where: { normalize($0) == candidate }) { return id }
+    private func buildSlice(_ parsed: Parsed, channelId: String, ch: String?, hash: String, timeShiftHours: Int, archiveHours: Int, tvgName: String? = nil) throws -> [String: Any] {
+        let guide = try SharedGuide()
+        let rows = parsed.channels.keys.sorted().flatMap { id in
+            (parsed.names[id] ?? [parsed.channels[id]!]).map { [id, $0.precomposedStringWithCanonicalMapping] }
         }
-        var best = ""
-        var score = 0.0
-        for candidate in candidates where !candidate.isEmpty {
-            for id in ids {
-                for name in names[id] ?? [channels[id]!] {
-                    let name = normalize(name)
-                    let next = matchScore(candidate, name)
-                    if next >= 0.4 && next > score { best = id; score = next }
-                }
-            }
-        }
-        return best.isEmpty ? hash : best
-    }
-
-    private func regionalShift(_ name: String) -> Int {
-        let expression = try! NSRegularExpression(pattern: #"([+-])\s*(\d+)\s*(?:ч|h|hours?)?"#, options: .caseInsensitive)
-        let value = name as NSString
-        guard let match = expression.firstMatch(in: name, range: NSRange(location: 0, length: value.length)),
-              let hours = Int(value.substring(with: match.range(at: 2))) else { return 0 }
-        return (value.substring(with: match.range(at: 1)) == "-" ? -1 : 1) * (hours > 24 ? hours % 24 : hours)
-    }
-
-    private func normalize(_ name: String) -> String {
-        var s = name.lowercased()
-        s = s.replacingOccurrences(of: #"[+-]\s*\d+\s*(ч|h|hours?)?"#, with: "", options: .regularExpression)
-        s = s.replacingOccurrences(of: #"\([^)]*\)"#, with: "", options: .regularExpression)
-        s = s.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
-        s = s.trimmingCharacters(in: .whitespaces)
-        s = s.replacingOccurrences(of: #"^(hd|fhd|uhd|4k)\s+"#, with: "", options: .regularExpression)
-        s = s.replacingOccurrences(of: #"\s+(hd|fhd|uhd|4k)$"#, with: "", options: .regularExpression)
-        return s.trimmingCharacters(in: .whitespaces)
-    }
-
-    private func buildSlice(_ parsed: Parsed, channelId: String, ch: String?, hash: String, timeShiftHours: Int, archiveHours: Int, tvgName: String? = nil) -> [String: Any] {
-        let xmltvId = resolveXmltvId(channels: parsed.channels, ch: ch, hash: hash, tvgName: tvgName, names: parsed.names)
-        let progs = parsed.programs[xmltvId] ?? []
-        let now = Int(Date().timeIntervalSince1970)
-        let lookbackH = archiveHours > 0 ? archiveHours : 48
-        let windowStart = now - lookbackH * 3600
-        let windowEnd = now + 48 * 3600
-        let shift = (timeShiftHours != 0 ? timeShiftHours : regionalShift(ch ?? tvgName ?? "")) * 3600
-
-        let epgData: [[String: Any]] = progs.sorted { $0.start < $1.start }.compactMap { prog in
-            let start = prog.0 + shift
-            let stop = prog.1 + shift
-            guard stop > windowStart && start < windowEnd else { return nil }
-            return [
-                "time": start,
-                "time_to": stop,
-                "name": prog.2,
-                "descr": prog.3,
-                "icon": ""
-            ]
+        let xmltvId = try guide.resolve(rows, id: hash, names: [tvgName ?? "", ch ?? ""].map { $0.precomposedStringWithCanonicalMapping }) ?? hash
+        let progs = (parsed.programs[xmltvId] ?? []).sorted { $0.start < $1.start }
+        let shift = timeShiftHours != 0 ? timeShiftHours : try guide.shift(ch ?? tvgName ?? "")
+        let selection = try guide.slice(progs.map { [Double($0.start), Double($0.stop)] },
+            now: Date().timeIntervalSince1970, archive: archiveHours, shift: shift)
+        let epgData: [[String: Any]] = selection.map { row in
+            let prog = progs[Int(row[0])]
+            return ["time": Int(row[1]), "time_to": Int(row[2]), "name": prog.title,
+                    "descr": prog.desc, "icon": ""]
         }
 
         return ["epg_data": epgData]
+    }
+}
+
+/// JavaScriptCore supplies execution and Swift's grapheme-count primitive only.
+/// The bundled compiler output is the same artifact used by the browser and Rust.
+private final class SharedGuide {
+    private static let source: Result<String, Error> = Result {
+        guard let url = Bundle.main.url(forResource: "ottplay-core", withExtension: "js") else {
+            throw failure("Missing shared guide resource")
+        }
+        guard let manifest = Bundle.main.url(forResource: "ottplay-core.manifest", withExtension: "json"),
+              let receipt = try JSONSerialization.jsonObject(with: Data(contentsOf: manifest)) as? [String: Any],
+              let artifacts = receipt["artifacts"] as? [String: [String: Any]],
+              let expected = artifacts["ottplay-core.js"]?["sha256"] as? String else {
+            throw failure("Missing shared guide receipt")
+        }
+        let data = try Data(contentsOf: url)
+        let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        guard digest == expected, let source = String(data: data, encoding: .utf8) else {
+            throw failure("Modified shared guide resource")
+        }
+        return source
+    }
+    private let context: JSContext
+    private let core: JavaScriptCore.JSValue
+    private var functions: [String: JavaScriptCore.JSValue] = [:]
+
+    private static func failure(_ message: String) -> Error {
+        NSError(domain: "SharedGuide", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
+    }
+    init() throws {
+        guard let context = JSContext() else { throw Self.failure("Cannot create shared guide context") }
+        context.evaluateScript(try Self.source.get())
+        guard context.exception == nil, let core = context.objectForKeyedSubscript("OttPlayCore"), !core.isUndefined else {
+            throw Self.failure("Cannot initialize shared guide")
+        }
+        self.context = context
+        self.core = core
+    }
+    private func checked(_ action: () -> JavaScriptCore.JSValue?) throws -> JavaScriptCore.JSValue {
+        context.exception = nil
+        guard let value = action(), context.exception == nil, !value.isUndefined else {
+            throw Self.failure("Shared guide execution failed")
+        }
+        return value
+    }
+    private func call(_ name: String, _ arguments: [Any]) throws -> JavaScriptCore.JSValue {
+        if functions[name] == nil { functions[name] = core.forProperty(name) }
+        return try checked { functions[name]?.call(withArguments: arguments) }
+    }
+    func time(_ input: String) throws -> Int { Int(try call("nativeGuideTime", [input, "swift"]).toDouble()) }
+    func shift(_ input: String) throws -> Int { Int(try call("nativeGuideShift", [input, "swift"]).toInt32()) }
+    func resolve(_ rows: [[String]], id: String, names: [String]) throws -> String? {
+        let measure: @convention(block) (String) -> Int = { $0.count }
+        let precision: @convention(block) (Double) -> Double = { $0 }
+        let index = try checked { core.forProperty("NativeGuide")?.construct(withArguments: [rows, "swift", measure, precision]) }
+        let result = try checked { index.invokeMethod("resolve", withArguments: [id, names]) }
+        return result.isNull ? nil : result.toString()
+    }
+    func slice(_ times: [[Double]], now: Double, archive: Int, shift: Int) throws -> [[Double]] {
+        guard let result = try call("nativeGuideSlice", [times, now.rounded(.towardZero), archive, shift]).toArray() as? [[Double]] else {
+            throw Self.failure("Invalid shared guide slice")
+        }
+        return result
     }
 }

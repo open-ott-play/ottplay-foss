@@ -31,39 +31,24 @@ pub fn match_ids(body: &str) -> Vec<String> {
 }
 
 /// Explicit XMLTV IDs are authoritative; names are a fallback, in provider order.
-pub fn resolve_id(cache: &XmltvCache, tvg_id: &str, tvg_name: &str, name: &str) -> Option<String> {
-    resolve_in_index(cache, &build_index(cache), tvg_id, tvg_name, name)
+pub fn resolve_id(cache: &XmltvCache, tvg_id: &str, tvg_name: &str, name: &str) -> anyhow::Result<Option<String>> {
+    resolve_in_index(cache, &build_index(cache)?, tvg_id, tvg_name, name)
 }
 
-pub fn build_index(cache: &XmltvCache) -> xmltv::MatchIndex {
-    let mut index = xmltv::MatchIndex::default();
+pub fn build_index(cache: &XmltvCache) -> anyhow::Result<xmltv::MatchIndex> {
+    let mut rows = Vec::new();
     let mut ids: Vec<_> = cache.channels.keys().collect();
     ids.sort();
     for id in ids {
         let channel = &cache.channels[id];
         let names = if channel.names.is_empty() { vec![channel.name.clone()] } else { channel.names.clone() };
-        for name in names {
-            let normalized = xmltv::normalize_name(&name);
-            if normalized.is_empty() { continue; }
-            index.by_norm.entry(normalized.clone()).or_insert_with(|| id.clone());
-            index.entries.push((id.clone(), name, normalized));
-        }
+        for name in names { rows.push(vec![id.clone(), name]); }
     }
-    index
+    xmltv::MatchIndex::new(rows)
 }
 
-pub fn resolve_in_index(cache: &XmltvCache, index: &xmltv::MatchIndex, tvg_id: &str, tvg_name: &str, name: &str) -> Option<String> {
-    if !tvg_id.is_empty() && cache.channels.contains_key(tvg_id) { return Some(tvg_id.to_string()); }
-    for candidate in [tvg_name, name] {
-        if let Some(id) = index.by_norm.get(&xmltv::normalize_name(candidate)) { return Some(id.clone()); }
-    }
-    let mut best: Option<(String, f32)> = None;
-    for candidate in [tvg_name, name] {
-        if let Some(found) = xmltv::match_in_index(candidate, index) {
-            if best.as_ref().map(|entry| found.1 > entry.1).unwrap_or(true) { best = Some(found); }
-        }
-    }
-    best.map(|entry| entry.0)
+pub fn resolve_in_index(_cache: &XmltvCache, index: &xmltv::MatchIndex, tvg_id: &str, tvg_name: &str, name: &str) -> anyhow::Result<Option<String>> {
+    index.resolve(tvg_id, &[tvg_name, name])
 }
 
 /// First feed defining an ID owns that channel and its programmes.
@@ -126,17 +111,17 @@ mod tests {
         let mut cache = fixture("private-id", "One", "first feed");
         merge_source(&mut cache, fixture("private-id", "Wrong", "second feed"));
         merge_source(&mut cache, fixture("other", "Other", "other feed"));
-        assert_eq!(resolve_id(&cache, "private-id", "Other", "Other"), Some("private-id".into()));
+        assert_eq!(resolve_id(&cache, "private-id", "Other", "Other").unwrap(), Some("private-id".into()));
         assert_eq!(cache.programs["private-id"][0].title, "first feed");
-        assert_eq!(resolve_id(&cache, "missing", "Other", "One"), Some("other".into()));
+        assert_eq!(resolve_id(&cache, "missing", "Other", "One").unwrap(), Some("other".into()));
     }
     #[test]
     fn exact_display_name_wins_before_fuzzy_tvg_name_and_aliases_survive() {
         let mut cache = fixture("news", "News", "news");
         merge_source(&mut cache, fixture("cinema", "Cinema", "cinema"));
         cache.channels.get_mut("cinema").unwrap().names.push("Films".into());
-        assert_eq!(resolve_id(&cache, "missing", "News Extra", "Cinema"), Some("cinema".into()));
-        assert_eq!(resolve_id(&cache, "missing", "Films", "Renamed"), Some("cinema".into()));
+        assert_eq!(resolve_id(&cache, "missing", "News Extra", "Cinema").unwrap(), Some("cinema".into()));
+        assert_eq!(resolve_id(&cache, "missing", "Films", "Renamed").unwrap(), Some("cinema".into()));
     }
     #[test]
     fn custom_feed_cdata_aliases_and_programme_order() {

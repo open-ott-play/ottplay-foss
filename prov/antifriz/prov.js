@@ -59,42 +59,8 @@ function getChannelUrl(ch_id) {
 }
 
 function getArchiveUrl(ch_id, time, time_to) {
-    var _m = mpeg || __hls;
-    if (time_to < time) time_to = Date.now() / 1000 + 600;
-    if (_m == 1 || time > Date.now() / 1000 - 600)
-        return (
-            "http://" +
-            getServ(ch_id) +
-            ":80/" +
-            ch_id +
-            "/" +
-            [
-                "timeshift_abs-",
-                "timeshift_abs/",
-                "video-timeshift_abs-",
-                "mono-timeshift_abs-",
-                "timeshift_abs-",
-            ][_m] +
-            Math.floor(time) +
-            [".m3u8", "", ".m3u8", ".m3u8", ".mpd"][_m] +
-            "?token=" +
-            chanels[ch_id].token
-        );
-    if (browserName() == "dune") time_to = Math.floor(time_to) + 7200;
-    return (
-        "http://" +
-        getServ(ch_id) +
-        ":80/" +
-        ch_id +
-        "/" +
-        ["index-", "", "video-", "mono-", "index-"][_m] +
-        Math.floor(time) +
-        "-" +
-        Math.floor(time_to - time) +
-        [".m3u8", "", ".m3u8", ".m3u8", ".mpd"][_m] +
-        "?token=" +
-        chanels[ch_id].token
-    );
+    var channel = chanels[ch_id];
+    return OttPlayCore.providerArchiveUrl("antifriz", "http://" + getServ(ch_id) + ":80/" + ch_id + "/", "?token=" + channel.token, "", Number(time), Number(time_to), Date.now() / 1000, browserName() === "dune", Number(mpeg || __hls)) || "";
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];
@@ -106,13 +72,6 @@ function addChan2cat(cat, ci) {
         cats[cat] = [];
     }
     cats[cat].push(ci);
-}
-
-function getAttribute(text, attribute) {
-    var a = text.split(attribute + "=");
-    if (a.length == 1 || a[1].length == 0) return "";
-    if (a[1][0] == '"') return a[1].split('"')[1] || "";
-    return a[1].split(/[ ,]+/)[0] || "";
 }
 
 function getChanelsArray(callback) {
@@ -169,46 +128,15 @@ function getChanelsArray(callback) {
             chanels = {};
             cats = {};
             catsArray = [];
-            var arrEXTINF = data.split("#EXTINF:");
-            arrEXTINF.shift();
-            arrEXTINF.forEach(function (val) {
-                var e = val.split(","),
-                    cat = getAttribute(e[0], "group-title"),
-                    rec = parseInt(getAttribute(e[0], "tvg-rec"), 10) || 0,
-                    epg = getAttribute(e[0], "tvg-id"),
-                    logo = getAttribute(e[0], "tvg-logo").replace(
-                        "https:",
-                        "http:"
-                    ),
-                    e1 = e[1].split("\n"),
-                    cn = e1[0],
-                    url = e1[2] || e1[1] || "",
-                    parts = url.split("/"),
-                    ci = (parts[5] || "").split(".")[0],
-                    serv = (parts[2] || "").split(":")[0],
-                    token = parts[4] || "";
-                if (!ci || !url) return;
-                addChan2cat(cat, ci);
-                if (cList.indexOf(ci) == -1) {
-                    cList.push(ci);
-                    chanels[ci] = {
-                        category: {
-                            class: catsArray.indexOf(cat) + 2,
-                            name: cat,
-                        },
-                        channel_name: cn,
-                        epg: epg,
-                        epg_id: epg,
-                        logo: logo,
-                        rec: rec * 24,
-                        server: serv,
-                        time: 0,
-                        time_to: 0,
-                        token: token,
-                        url: url,
-                    };
-                }
+            var catalog = OttPlayCore.parseOperatorPlaylist(data, "antifriz", function () { return 0; }, []);
+            cats = catalog.groups;
+            catsArray = catalog.groupOrder;
+            cList = catalog.ids;
+            chanels = catalog.channels;
+            catalog.entries.forEach(function (entry) {
+                if (entry.generatedName) entry.channel.channel_name = _("??? No channel name");
             });
+            if (catalog.malformed) throw new Error("Malformed playlist entry");
             if (key.length != 8) {
                 try {
                     popupList(popupActions.indexOf(noProvParam) + 1);
@@ -549,34 +477,12 @@ function getMediaArrayEXTM3U(data) {
     try {
         mediaName = mediaName || "?";
         mediaRecords = [];
-        var arrEXTINF = data.split("#EXTINF:");
-        arrEXTINF.shift();
-        arrEXTINF.forEach(function (val) {
-            var e = val.split("\n");
-            var logo = getAttribute(e[0], "tvg-logo");
-            var cn = "??? Нет названия";
-            try {
-                cn = e[0].split(",")[1].trim();
-            } catch (ex) {}
-            var url = "",
-                n = 1;
-            try {
-                url = e[1].trim();
-            } catch (ex) {}
-            while (url.indexOf("#") === 0) {
-                try {
-                    url = e[++n].trim();
-                } catch (ex) {
-                    url = "";
-                }
-            }
-            if (url)
-                mediaRecords.push({
-                    description: item2descr(cn, logo),
-                    logo_30x30: logo,
-                    stream_url: url,
-                    title: cn,
-                });
+        OttPlayCore.parsePlaylistMedia(data).forEach(function (entry) {
+            var name = entry.generatedName ? "??? Нет названия" : entry.name;
+            mediaRecords.push({
+                description: item2descr(name, entry.logo),
+                logo_30x30: entry.logo, stream_url: entry.url, title: name
+            });
         });
     } catch (e) {
         alert("Error M3U !!!");

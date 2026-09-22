@@ -76,37 +76,8 @@ function getChannelUrl(ch_id) {
 }
 
 function getArchiveUrl(ch_id, time, time_to) {
-    if (time_to < time) time_to = Date.now() / 1000 + 600;
-    // MPEGTS or last 10 minutes → absolute timeshift
-    if (itvmpeg == 1 || time > Date.now() / 1000 - 600)
-        return (
-            "http://" +
-            chanels[ch_id].server_cdn +
-            "/" +
-            ch_id +
-            "/" +
-            ["timeshift_abs-", "timeshift_abs/", "timeshift_abs_video-"][
-                itvmpeg
-            ] +
-            Math.floor(time) +
-            [".m3u8", "", ".m3u8"][itvmpeg] +
-            "?token=" +
-            chanels[ch_id].token
-        );
-    if (browserName() == "dune") time_to = Math.floor(time_to) + 7200;
-    return (
-        "http://" +
-        chanels[ch_id].server_cdn +
-        "/" +
-        ch_id +
-        "/" +
-        ["index-", "", "video-"][itvmpeg] +
-        Math.floor(time) +
-        "-" +
-        Math.floor(time_to - time) +
-        ".m3u8?token=" +
-        chanels[ch_id].token
-    );
+    var channel = chanels[ch_id];
+    return OttPlayCore.providerArchiveUrl("itv", "http://" + channel.server_cdn + "/" + ch_id + "/", "?token=" + channel.token, "", Number(time), Number(time_to), Date.now() / 1000, browserName() === "dune", Number(itvmpeg)) || "";
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];

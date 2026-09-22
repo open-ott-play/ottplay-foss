@@ -3,6 +3,10 @@
  * Run: node --import=tsx tests/test-epg-matching.ts
  */
 import assert from "assert";
+import fs from "node:fs";
+import vm from "node:vm";
+const coreContext = vm.createContext({});
+vm.runInContext(fs.readFileSync(new URL("../vendor/ottplay-core.js", import.meta.url), "utf8"), coreContext);
 
 // Top-level regex literals for performance
 const MORNING_SHOW_REGEX = /Morning Show/;
@@ -31,6 +35,7 @@ async function getModule() {
 // ---------------------------------------------------------------------------
 
 const mockWindow: Record<string, any> = {
+    OttPlayCore: coreContext.OttPlayCore,
     _: (s: string) => s,
     channels: {} as Record<number, any>,
     confirmBox: null as any,

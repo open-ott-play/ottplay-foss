@@ -97,6 +97,15 @@ function boot(options = {}) {
                 if (typeof tag.onload === "function") tag.onload();
                 return;
             }
+            if (name === "ottplay-core.js") {
+                if (options.libraryFailures?.includes(name)) { tag.onerror(new Error("Missing core")); return; }
+                if (options.realLibraries) {
+                    vm.runInContext(fs.readFileSync(path.join(__dirname, "../vendor/ottplay-core.js"), "utf8"), context);
+                    assert.equal(context.OttPlayCore.nativeGuideName("First HD", "web"), "first");
+                } else if (!options.missingCoreGlobal) context.OttPlayCore = { NativeGuide: function () {}, providerArchiveUrl: function () {}, parseProviderPlaylist: function () {}, parseOperatorPlaylist: function () {}, parsePlaylistMedia: function () {}, XtreamClient: function () {}, StalkerClient: function () {}, LegacyStalkerClient: function () {}, legacyXtreamClient: function () {}, legacyGuideSelection: function () {}, legacyGuideCacheRead: function () {} };
+                if (typeof tag.onload === "function") tag.onload();
+                return;
+            }
             assert.equal(
                 context.__ottRuntimePolyfillsReady,
                 true,
@@ -241,8 +250,8 @@ function boot(options = {}) {
     }
     assert.equal(
         starts,
-        options.polyfillsFailure ||
-            options.libraryFailures?.some((name) => /^jquery/.test(name))
+        options.polyfillsFailure || options.missingCoreGlobal ||
+            options.libraryFailures?.some((name) => /^jquery|^ottplay-core/.test(name))
             ? 0
             : 1,
         "Boot must start once, or present a recoverable runtime/UI load failure"
@@ -322,17 +331,18 @@ for (const options of [
     const result = boot({ modern: true, ...options });
     const local = (name) => "http://legacy-player.test:8080/js/" + name;
     assert.equal(result.requests[0], mediaURL("runtime-polyfills.js"));
+    assert(result.requests[1].startsWith(local("ottplay-core.js?")));
     assert.equal(
-        result.requests[1],
+        result.requests[2],
         local(
             options.globals?.__ottNativeRuntime
                 ? "jquery.min.js"
                 : "jquery-1.11.1.min.js"
         )
     );
-    assert.equal(result.requests[2], mediaURL("hls.min.js"));
-    assert.equal(result.requests[3], local("shaka-player.compiled.js"));
-    assert(result.requests[4].includes("/dist/stbPlayer.js?"));
+    assert.equal(result.requests[3], mediaURL("hls.min.js"));
+    assert.equal(result.requests[4], local("shaka-player.compiled.js"));
+    assert(result.requests[5].includes("/dist/stbPlayer.js?"));
     assert.equal(
         result.context.Hls.DefaultConfig.workerPath,
         mediaURL("hls.worker.js")
@@ -487,3 +497,9 @@ for (const options of [
 console.log(
     "OK: denied/quota storage, pre-bundle Date.now and actual old-API vendor payloads"
 );
+
+for (const options of [{ libraryFailures: ["ottplay-core.js"] }, { missingCoreGlobal: true }]) {
+    const result = boot(options);
+    assert.equal(result.elements["boot-status"].textContent, "Failed to load shared core");
+    assert.equal(result.requests.length, 2, "A broken core must not start the player");
+}

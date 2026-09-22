@@ -90,13 +90,7 @@ function getChannelUrl(ch_id) {
 
 function getArchiveUrl(ch_id, time, time_to) {
     _getParams();
-    return (
-        getChannelUrl(ch_id) +
-        "?utc=" +
-        Math.floor(time) +
-        "&lutc=" +
-        Math.floor(Date.now() / 1000)
-    );
+    return OttPlayCore.providerArchiveUrl("utc-now", getChannelUrl(ch_id), "", "", Number(time), Number(time_to), Date.now() / 1000, browserName() === "dune", 0) || "";
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];
@@ -108,17 +102,6 @@ function addChan2cat(cat, ci) {
         cats[cat] = [];
     }
     cats[cat].push(ci);
-}
-
-function getAttribute(text, attribute) {
-    var a = text.split(attribute + "=");
-    if (a.length == 1 || a[1].length == 0) return "";
-    if (a[1][0] == '"') return a[1].split('"')[1] || "";
-    return a[1].split(/[ ,]+/)[0] || "";
-}
-
-function getAint(text, attribute) {
-    return parseInt(getAttribute(text, attribute), 10) || 0;
 }
 
 function getChanelsArray(callback) {
@@ -167,94 +150,15 @@ function getChanelsArray(callback) {
             chanels = {};
             cats = {};
             catsArray = [];
-            var ccat = "";
-            var arrEXTINF = data.split("#EXTINF:"),
-                l1 = arrEXTINF[0],
-                g_utvg =
-                    getAttribute(l1, "url-tvg") ||
-                    getAttribute(l1, "x-tvg-url"),
-                gRec =
-                    l1.indexOf("catchup-days") > -1
-                        ? getAint(l1, "catchup-days") * 24
-                        : l1.indexOf("timeshift") > -1
-                          ? getAint(l1, "timeshift") * 24
-                          : l1.indexOf("tvg-rec") > -1
-                            ? getAint(l1, "tvg-rec") * 24
-                            : "0",
-                gC =
-                    getAttribute(l1, "catchup") ||
-                    getAttribute(l1, "catchup-type"),
-                gCS = getAttribute(l1, "catchup-source");
-            arrEXTINF.shift();
-            arrEXTINF.forEach(function (val) {
-                var e = val.split("\n"),
-                    cat = getAttribute(e[0], "group-title"),
-                    epg = getAttribute(e[0], "tvg-id"),
-                    tn = getAttribute(e[0], "tvg-name"),
-                    logo = getAttribute(e[0], "tvg-logo");
-                logo =
-                    logo.indexOf("//") === 0 ||
-                    logo.toLowerCase().indexOf("http") === 0
-                        ? logo
-                        : "";
-                var rec =
-                        e[0].indexOf("catchup-days") > -1
-                            ? getAint(e[0], "catchup-days") * 24
-                            : e[0].indexOf("timeshift") > -1
-                              ? getAint(e[0], "timeshift") * 24
-                              : e[0].indexOf("tvg-rec") > -1
-                                ? getAint(e[0], "tvg-rec") * 24
-                                : gRec,
-                    ca =
-                        getAttribute(e[0], "catchup") ||
-                        getAttribute(e[0], "catchup-type") ||
-                        gC,
-                    caso = getAttribute(e[0], "catchup-source") || gCS,
-                    utvg = getAttribute(e[0], "url-tvg") || g_utvg,
-                    cn = _("??? No channel name"),
-                    url = "",
-                    n = 1;
-                try {
-                    var comma = e[0].indexOf(",");
-                    cn = comma > 0 ? e[0].substr(comma + 1).trim() : cn;
-                } catch (ex) {}
-                try {
-                    url = e[1].trim();
-                } catch (ex) {}
-                while (url.indexOf("#") === 0) {
-                    if (url.indexOf("#EXTGRP:") != -1)
-                        if (!cat) cat = url.split("#EXTGRP:")[1].trim();
-                    try {
-                        url = e[++n].trim();
-                    } catch (ex) {
-                        url = "";
-                    }
-                }
-                if (cat == "") cat = ccat;
-                else ccat = cat;
-                var ci = (e[1] || url).split("/")[5];
-                addChan2cat(cat, ci);
-                if (url && cList.indexOf(ci) == -1) {
-                    cList.push(ci);
-                    chanels[ci] = {
-                        ca: ca,
-                        caso: caso,
-                        category: {
-                            class: catsArray.indexOf(cat) + 2,
-                            name: cat,
-                        },
-                        channel_name: cn,
-                        epg: epg,
-                        logo: logo,
-                        rec: rec,
-                        time: 0,
-                        time_to: 0,
-                        tn: tn,
-                        url: url,
-                        utvg: utvg,
-                    };
-                }
+            var catalog = OttPlayCore.parseOperatorPlaylist(data, "edem", function () { return 0; }, []);
+            cats = catalog.groups;
+            catsArray = catalog.groupOrder;
+            cList = catalog.ids;
+            chanels = catalog.channels;
+            catalog.entries.forEach(function (entry) {
+                if (entry.generatedName) entry.channel.channel_name = _("??? No channel name");
             });
+            if (catalog.malformed) throw new Error("Malformed playlist entry");
             if (!edkey) {
                 doEditData();
                 infoBox(

@@ -53,7 +53,7 @@ function getChannelUrl(ch_id) {
 }
 
 function getArchiveUrl(ch_id, time, time_to) {
-    return getChannelUrl(ch_id) + "?archive=" + Math.floor(time);
+    return OttPlayCore.providerArchiveUrl("archive", getChannelUrl(ch_id), "", "", Number(time), Number(time_to), Date.now() / 1000, browserName() === "dune", 0) || "";
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];
@@ -67,37 +67,18 @@ function addChan2cat(cat, ci) {
     cats[cat].push(ci);
 }
 
-function getAttribute(text, attribute) {
-    var a = text.split(attribute + "=");
-    if (a.length == 1 || a[1].length == 0) return "";
-    if (a[1][0] == '"') return a[1].split('"')[1] || "";
-    return a[1].split(/[ ,]+/)[0] || "";
-}
-
 function getChanelsArray(callback) {
     _getParams();
 
     function aSuccess(data) {
         try {
-            var arrEXTINF = data.split("#EXTINF:");
-            arrEXTINF.shift();
-            cats = {};
-            catsArray = [];
-            arrEXTINF.forEach(function (val) {
-                var e = val.split("\n"),
-                    cat = getAttribute(e[0], "group-title"),
-                    ci = null;
-                try {
-                    ci = e[1].split("/")[4];
-                } catch (ex) {}
-                if (ci && chanels[ci]) {
-                    addChan2cat(cat, ci);
-                    chanels[ci].category = {
-                        class: catsArray.indexOf(cat) + 2,
-                        name: cat,
-                    };
-                }
+            var catalog = OttPlayCore.parseOperatorPlaylist(data, "shura", function () { return 0; }, Object.keys(chanels));
+            cats = catalog.groups;
+            catsArray = catalog.groupOrder;
+            catalog.entries.forEach(function (entry) {
+                chanels[entry.id].category = entry.channel.category;
             });
+            if (catalog.malformed) throw new Error("Malformed playlist entry");
         } catch (e) {
             console.log(
                 "Exception: name " +

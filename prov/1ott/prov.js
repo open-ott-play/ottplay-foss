@@ -45,7 +45,7 @@ function getChannelUrl(ch_id) {
 }
 
 function getArchiveUrl(ch_id, time, time_to) {
-    return chanels[ch_id].url + "?utc=" + Math.floor(time);
+    return OttPlayCore.providerArchiveUrl("utc", chanels[ch_id].url, "", "", Number(time), Number(time_to), Date.now() / 1000, browserName() === "dune", 0) || "";
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];
@@ -57,17 +57,6 @@ function addChan2cat(cat, ci) {
         cats[cat] = [];
     }
     cats[cat].push(ci);
-}
-
-function getAttribute(text, attribute) {
-    var a = text.split(attribute + "=");
-    if (a.length == 1 || a[1].length == 0) return "";
-    if (a[1][0] == '"') return a[1].split('"')[1] || "";
-    return a[1].split(/[ ,]+/)[0] || "";
-}
-
-function getAint(text, attribute) {
-    return parseInt(getAttribute(text, attribute), 10) || 0;
 }
 
 function getChanelsArray(callback) {
@@ -124,41 +113,15 @@ function getChanelsArray(callback) {
             chanels = {};
             cats = {};
             catsArray = [];
-            var arrEXTINF = data.split("#EXTINF:");
-            arrEXTINF.shift();
-            arrEXTINF.forEach(function (val) {
-                var e = val.split("\n"),
-                    cat = getAttribute(e[0], "group-title"),
-                    epg = getAttribute(e[0], "tvg-id"),
-                    logo = getAttribute(e[0], "tvg-logo"),
-                    rec = getAint(e[0], "catchup-days") * 24,
-                    cn = _("??? No channel name"),
-                    url = "";
-                try {
-                    cn = e[0].split(",")[1].trim();
-                } catch (ex) {}
-                try {
-                    url = e[1].trim();
-                } catch (ex) {}
-                var ci = url.split("/")[4] || epg;
-                addChan2cat(cat, ci);
-                if (url && ci && cList.indexOf(ci) == -1) {
-                    cList.push(ci);
-                    chanels[ci] = {
-                        category: {
-                            class: catsArray.indexOf(cat) + 2,
-                            name: cat,
-                        },
-                        channel_name: cn,
-                        epg: epg,
-                        logo: logo,
-                        rec: rec,
-                        time: 0,
-                        time_to: 0,
-                        url: url,
-                    };
-                }
+            var catalog = OttPlayCore.parseOperatorPlaylist(data, "1ott", function () { return 0; }, []);
+            cats = catalog.groups;
+            catsArray = catalog.groupOrder;
+            cList = catalog.ids;
+            chanels = catalog.channels;
+            catalog.entries.forEach(function (entry) {
+                if (entry.generatedName) entry.channel.channel_name = _("??? No channel name");
             });
+            if (catalog.malformed) throw new Error("Malformed playlist entry");
             if (!__id || !__pin) {
                 try {
                     popupList(popupActions.indexOf(noProvParam) + 1);

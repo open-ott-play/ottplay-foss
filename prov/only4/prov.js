@@ -45,29 +45,7 @@ function getChannelUrl(ch_id) {
 }
 
 function getArchiveUrl(ch_id, time, time_to) {
-    var u = chanels[ch_id].url.split("index.m3u8");
-    if (time_to < time) time_to = Date.now() / 1000 + 600;
-    // MPEGTS or last 10 minutes → absolute timeshift
-    if (!ts_hls || time > Date.now() / 1000 - 600)
-        return (
-            u[0] +
-            ["timeshift_abs/", "timeshift_abs_video-", "timeshift_abs-"][
-                ts_hls
-            ] +
-            Math.floor(time) +
-            ["", ".m3u8", ".m3u8"][ts_hls] +
-            u[1]
-        );
-    if (browserName() == "dune") time_to = Math.floor(time_to) + 7200;
-    return (
-        u[0] +
-        ["", "video-", "index-"][ts_hls] +
-        Math.floor(time) +
-        "-" +
-        Math.floor(time_to - time) +
-        ".m3u8" +
-        u[1]
-    );
+    return OttPlayCore.providerArchiveUrl("only4", chanels[ch_id].url, "", "", Number(time), Number(time_to), Date.now() / 1000, browserName() === "dune", Number(ts_hls)) || "";
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];
@@ -79,17 +57,6 @@ function addChan2cat(cat, ci) {
         cats[cat] = [];
     }
     cats[cat].push(ci);
-}
-
-function getAttribute(text, attribute) {
-    var a = text.split(attribute + "=");
-    if (a.length == 1 || a[1].length == 0) return "";
-    if (a[1][0] == '"') return a[1].split('"')[1] || "";
-    return a[1].split(/[ ,]+/)[0] || "";
-}
-
-function getAint(text, attribute) {
-    return parseInt(getAttribute(text, attribute), 10) || 0;
 }
 
 function getChanelsArray(callback) {
@@ -146,41 +113,15 @@ function getChanelsArray(callback) {
             chanels = {};
             cats = {};
             catsArray = [];
-            var arrEXTINF = data.split("#EXTINF:");
-            arrEXTINF.shift();
-            arrEXTINF.forEach(function (val) {
-                var e = val.split("\n"),
-                    cat = getAttribute(e[0], "group-title"),
-                    epg = getAttribute(e[0], "tvg-id"),
-                    logo = getAttribute(e[0], "tvg-logo"),
-                    rec = getAint(e[0], "catchup-days") * 24,
-                    cn = "??? Нет названия канала",
-                    url = "";
-                try {
-                    cn = e[0].split(",").splice(1, 100).join(",").trim();
-                } catch (ex) {}
-                try {
-                    url = e[1].trim();
-                } catch (ex) {}
-                var ci = url.split("/")[3] || "";
-                addChan2cat(cat, ci);
-                if (url && ci && cList.indexOf(ci) == -1) {
-                    cList.push(ci);
-                    chanels[ci] = {
-                        category: {
-                            class: catsArray.indexOf(cat) + 2,
-                            name: cat,
-                        },
-                        channel_name: cn,
-                        epg: epg,
-                        logo: logo,
-                        rec: rec,
-                        time: 0,
-                        time_to: 0,
-                        url: url,
-                    };
-                }
+            var catalog = OttPlayCore.parseOperatorPlaylist(data, "only4", function () { return 0; }, []);
+            cats = catalog.groups;
+            catsArray = catalog.groupOrder;
+            cList = catalog.ids;
+            chanels = catalog.channels;
+            catalog.entries.forEach(function (entry) {
+                if (entry.generatedName) entry.channel.channel_name = "??? Нет названия канала";
             });
+            if (catalog.malformed) throw new Error("Malformed playlist entry");
             if (token.length != 10) {
                 try {
                     popupList(popupActions.indexOf(noProvParam) + 1);

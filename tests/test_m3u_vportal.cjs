@@ -207,6 +207,7 @@ function fixture(
         return client;
     };
     if (!bundled) vm.runInContext(cancellationCode, w);
+    vm.runInContext(read("vendor/ottplay-core.js"), w);
     vm.runInContext(adapter, w);
     if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     w.duneAddSettings(0);

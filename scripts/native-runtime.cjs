@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { transformPlaySystemIcons } = require("./play-system-icons.cjs");
 const { stageMediaRuntime, auditMediaRuntime } = require("./media-runtime.cjs");
+const sharedCore = require("./shared-core.cjs");
 const root = path.resolve(__dirname, "..");
 
 const LIBRARIES = [
@@ -165,6 +166,7 @@ function stageNativeRuntime(directory, platform) {
             path.join(directory, destination)
         );
     stageMediaRuntime(directory);
+    sharedCore.stage(directory);
     const environment =
         "window.__ottNativeRuntime = true;\n" +
         "window.__ottNativeFontFamilies = " +
@@ -217,6 +219,7 @@ function stageNativeRuntime(directory, platform) {
 
 function auditNativeRuntime(directory) {
     auditMediaRuntime(directory);
+    sharedCore.checkStaged(directory);
     const manifest = JSON.parse(
         fs.readFileSync(path.join(directory, "native-runtime.json"))
     );

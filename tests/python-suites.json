@@ -8,7 +8,7 @@
     ["tests/test_proxy_security.py"],
     ["tests/test_command_queue_smoke.py"],
     ["tests/test_xmltv_warmup_smoke.py"],
-    ["tests/test_native_epg_cache.py", "--check-mirrors-only"],
+    ["tests/test_native_epg_cache.py", "--check-sources-only"],
     ["tests/test_container_workspace.py"]
   ],
   "android": [

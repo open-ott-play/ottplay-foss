@@ -10,6 +10,8 @@ COPY src ./src
 COPY scripts ./scripts
 COPY LICENSE ./
 COPY licenses/android/Apache-2.0.txt ./licenses/android/Apache-2.0.txt
+COPY licenses/native ./licenses/native
+COPY vendor/ottplay-core.js vendor/ottplay-core.manifest.json vendor/ottplay-core.LICENSE.txt ./vendor/
 COPY index.html favicon.ico ./
 COPY fonts ./fonts
 COPY js ./js

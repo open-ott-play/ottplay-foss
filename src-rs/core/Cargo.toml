@@ -16,6 +16,10 @@ serde = { version = "1", features = ["derive"] }
 tracing = "0.1"
 anyhow = "1"
 chrono = "0.4"
-regex = "1"
 serde_json = "1"
 urlencoding = "2"
+rquickjs = { version = "=0.14.0", features = ["parallel"] }
+
+[build-dependencies]
+sha2 = "0.10"
+serde_json = "1"

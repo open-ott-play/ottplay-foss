@@ -34,7 +34,10 @@ function functions(path: string, names: string[]) {
     ).outputText;
 }
 function context(values: Record<string, any>) {
-    return vm.createContext({ console, ...values });
+    const ctx = vm.createContext({ console, ...values });
+    vm.runInContext(fs.readFileSync(new URL("../vendor/ottplay-core.js", import.meta.url), "utf8"), ctx);
+    if (ctx.window) ctx.window.OttPlayCore = ctx.OttPlayCore;
+    return ctx;
 }
 const schedule = [{ name: "Provider programme", time: 10000, time_to: 11000 }];
 const channelFunctions = functions("src/channels/index.ts", [
@@ -170,6 +173,7 @@ for (const native of [false, true]) {
         xxHash32S: (value: string) => value.length,
         xxHash32Si: (value: string) => value.length,
     });
+    vm.runInContext(fs.readFileSync(new URL("../vendor/ottplay-core.js", import.meta.url), "utf8"), ctx);
     vm.runInContext(
         functions("prov/m3u/prov.js", [
             "getChanelsArray",
@@ -239,10 +243,11 @@ const matcher = context({
         },
     },
 });
+vm.runInContext(fs.readFileSync("vendor/ottplay-core.js", "utf8"), matcher);
+matcher.window.OttPlayCore = matcher.OttPlayCore;
 vm.runInContext(
     functions("src/plugins/m3u-proxy.ts", [
-        "normalizeNativeEpgName",
-        "nativeEpgMatchScore",
+        "createNativeXmltvMatcher",
         "matchNativeXmltvChannel",
         "nativeLogoFallback",
         "matchCapacitorM3u",

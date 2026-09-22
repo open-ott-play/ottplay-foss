@@ -4,12 +4,15 @@
 The actual plugin sources are compiled with small Capacitor/network stubs. Only
 platform imports/annotations are adapted; cache and callback code is unchanged.
 Requires swift, kotlinc and java on PATH. Run: python3 tests/test_native_epg_cache.py
-Use --check-mirrors-only for the shipping-source guard without native compilers.
+Use --check-sources-only for the source ownership guard without native compilers.
 """
 
 import argparse
 import base64
 import gzip
+import hashlib
+import json
+import os
 import pathlib
 import shutil
 import subprocess
@@ -25,17 +28,23 @@ def run(*args, cwd):
 
 
 def check_shipping_sources():
-    mirrors = (
-        ("mobile-xmltv-epg/src/ios/MobileXmltvEpg.swift", "ios/App/CapApp-SPM/Sources/CapApp-SPM/MobileXmltvEpg.swift"),
-        (
-            "mobile-xmltv-epg/src/android/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt",
-            "android/app/src/main/java/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt",
-        ),
+    receipt = json.loads((ROOT / "vendor/ottplay-core.manifest.json").read_text())
+    for name in ("ottplay-core.js", "ottplay-core.jar", "ottplay-core.LICENSE.txt"):
+        assert hashlib.sha256((ROOT / "vendor" / name).read_bytes()).hexdigest() == receipt["artifacts"][name]["sha256"], name
+    # The iOS target and JVM fixtures must use one source per adapter.
+    obsolete = (
+        "ios/App/CapApp-SPM/Sources/CapApp-SPM/MobileXmltvEpg.swift",
+        "android/app/src/main/java/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt",
     )
-    for source, shipping in mirrors:
-        if (ROOT / source).read_bytes() != (ROOT / shipping).read_bytes():
-            raise AssertionError(f"Shipping native source differs from template: {shipping}")
-    print("PASS native shipping source mirrors match templates", flush=True)
+    for duplicate in obsolete:
+        if (ROOT / duplicate).exists():
+            raise AssertionError(f"Duplicate native source reintroduced: {duplicate}")
+    project = (ROOT / "ios/App/App.xcodeproj/project.pbxproj").read_text()
+    if '../../../mobile-xmltv-epg/src/ios/MobileXmltvEpg.swift' not in project:
+        raise AssertionError("iOS must compile the canonical XMLTV adapter")
+    if project.count('E6D5F404FEDC1B000F3C39F /* MobileXmltvEpg.swift in Sources */') != 2:
+        raise AssertionError("Canonical XMLTV adapter must appear once in the iOS Sources phase")
+    print("PASS native XMLTV adapters have one source and iOS compiles it directly", flush=True)
 
 
 SWIFT_STUBS = r"""
@@ -148,16 +157,18 @@ SWIFT_TESTS = r"""
         let start = format.string(from: Date(timeIntervalSince1970: Double(now)))
         let stop = format.string(from: Date(timeIntervalSince1970: Double(now + 3600)))
         let fixture = "<tv><channel id=\"wanted\"><display-name>Original &amp; A</display-name><display-name>Alias</display-name><icon src=\"https://icons.test/a.png\"/></channel><channel id=\"wrong\"><display-name>Private</display-name></channel><programme channel=\"wanted\" start=\"\(start)\" stop=\"\(stop)\"><title><![CDATA[Morning & News]]></title><desc>Details</desc></programme></tv>"
-        let parsed = parseXmltv(fixture)
+        let parsed = try parseXmltv(fixture)
         assert(parsed.names["wanted"] == ["Original & A", "Alias"])
         assert(parsed.icons["wanted"] == "https://icons.test/a.png")
-        assert(resolveXmltvId(channels: parsed.channels, ch: "Private +4", hash: "wanted", names: parsed.names) == "wanted")
-        assert(resolveXmltvId(channels: parsed.channels, ch: "Renamed", hash: "", tvgName: "Alias", names: parsed.names) == "wanted")
-        let plus = buildSlice(parsed, channelId: "42", ch: "Private +4", hash: "wanted", timeShiftHours: 0, archiveHours: 168)
+        let guide = try SharedGuide()
+        let guideRows = parsed.channels.keys.sorted().flatMap { id in (parsed.names[id] ?? [parsed.channels[id]!]).map { [id, $0] } }
+        assert(try! guide.resolve(guideRows, id: "wanted", names: ["", "Private +4"]) == "wanted")
+        assert(try! guide.resolve(guideRows, id: "", names: ["Alias", "Renamed"]) == "wanted")
+        let plus = try buildSlice(parsed, channelId: "42", ch: "Private +4", hash: "wanted", timeShiftHours: 0, archiveHours: 168)
         let plusRows = plus["epg_data"] as! [[String: Any]]
         assert(plusRows[0]["time"] as! Int == now + 14400)
         assert(plusRows[0]["name"] as! String == "Morning & News")
-        let explicit = buildSlice(parsed, channelId: "42", ch: "Private +4", hash: "wanted", timeShiftHours: -2, archiveHours: 168)
+        let explicit = try buildSlice(parsed, channelId: "42", ch: "Private +4", hash: "wanted", timeShiftHours: -2, archiveHours: 168)
         assert((explicit["epg_data"] as! [[String: Any]])[0]["time"] as! Int == now - 7200)
         let sourceA = "http://custom.test/a.xml"
         let sourceB = "https://custom.test/b.xml"
@@ -362,11 +373,11 @@ KOTLIN_TESTS = r'''
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check-mirrors-only", action="store_true")
+    parser.add_argument("--check-sources-only", "--check-mirrors-only", dest="check_sources_only", action="store_true")
     parser.add_argument("--platform", choices=["android", "ios", "all"], default="all")
     options = parser.parse_args()
     check_shipping_sources()
-    if options.check_mirrors_only:
+    if options.check_sources_only:
         return
     required = (["kotlinc", "java"] if options.platform in ["android", "all"] else []) + (
         ["swift"] if options.platform in ["ios", "all"] else []
@@ -379,6 +390,11 @@ def main():
         if options.platform in ["ios", "all"]:
             swift = (ROOT / "mobile-xmltv-epg/src/ios/MobileXmltvEpg.swift").read_text()
             swift = swift.replace("import Capacitor", SWIFT_STUBS)
+            # Only the bundle resource lookup changes; execute the real JavaScriptCore bridge.
+            resource = json.dumps(str(ROOT / "vendor/ottplay-core.js"))
+            swift = swift.replace('Bundle.main.url(forResource: "ottplay-core", withExtension: "js")', f'Optional(URL(fileURLWithPath: {resource}))')
+            receipt = json.dumps(str(ROOT / "vendor/ottplay-core.manifest.json"))
+            swift = swift.replace('Bundle.main.url(forResource: "ottplay-core.manifest", withExtension: "json")', f'Optional(URL(fileURLWithPath: {receipt}))')
             swift = swift.replace("@objc(MobileXmltvEpg)", "").replace("@objc ", "")
             # Swift's assert autoclosure cannot throw; evaluate the real read first.
             tests = SWIFT_TESTS.replace("GZIP_FIXTURE", GZIP)
@@ -411,12 +427,14 @@ def main():
                 "Annotation.kt",
                 "BuildConfig.kt",
                 "-nowarn",
+                "-classpath", str(ROOT / "vendor/ottplay-core.jar"),
+                "-jvm-target", "17",
                 "-include-runtime",
                 "-d",
                 "cache-test.jar",
                 cwd=tmp,
             )
-            run("java", "-jar", "cache-test.jar", cwd=tmp)
+            run("java", "-cp", "cache-test.jar" + os.pathsep + str(ROOT / "vendor/ottplay-core.jar"), "play.ott.foss.plugin.CacheTestKt", cwd=tmp)
 
 
 if __name__ == "__main__":

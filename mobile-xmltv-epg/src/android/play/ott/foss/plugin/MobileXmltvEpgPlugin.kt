@@ -16,6 +16,12 @@ import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
+import play.ott.core.NativeGuideClock
+import play.ott.core.NativeGuideFormat
+import play.ott.core.NativeGuideNames
+import play.ott.core.NativeGuideEntry
+import play.ott.core.NativeGuideIndex
+import play.ott.core.NativeGuideWindow
 
 @CapacitorPlugin(name = "MobileXmltvEpg")
 class MobileXmltvEpgPlugin : Plugin() {
@@ -283,73 +289,19 @@ class MobileXmltvEpgPlugin : Plugin() {
             }
         }
 
-        private fun parseTime(ts: String): Int {
-            val trimmed = ts.trim()
-            if (trimmed.length < 14) return 0
-            val datePart = trimmed.substring(0, 14)
-            val tzPart = trimmed.substring(14).trim()
-            val sdf = java.text.SimpleDateFormat("yyyyMMddHHmmss")
-            sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
-            return try {
-                val date = sdf.parse(datePart) ?: return 0
-                var unix = (date.time / 1000).toInt()
-                if (tzPart.length >= 5) {
-                    val sign = if (tzPart[0] == '+') 1 else if (tzPart[0] == '-') -1 else 0
-                    if (sign != 0) {
-                        val hours = tzPart.substring(1, 3).toIntOrNull() ?: 0
-                        val mins = tzPart.substring(3, 5).toIntOrNull() ?: 0
-                        unix -= sign * (hours * 3600 + mins * 60)
-                    }
-                }
-                unix
-            } catch (_: Throwable) { 0 }
-        }
+        private val guideClock = NativeGuideClock(NativeGuideFormat.ARCHIVED_ANDROID)
+        private fun parseTime(ts: String): Int = guideClock.seconds(ts).toInt()
     }
 
     // MARK: - Channel resolution + EPG slice
 
-    private fun matchScore(a: String, b: String): Double {
-        if (a.isEmpty() || b.isEmpty()) return 0.0
-        if (a.contains(b) || b.contains(a)) return minOf(a.length, b.length).toDouble() / maxOf(a.length, b.length)
-        val aa = a.split(" ").toSet()
-        val bb = b.split(" ").toSet()
-        val common = aa.intersect(bb).size
-        return if (common >= maxOf(2, minOf(aa.size, bb.size) / 2)) common.toDouble() / maxOf(aa.size, bb.size) else 0.0
-    }
-
     private fun resolveXmltvId(channels: Map<String, String>, ch: String?, hash: String,
         tvgName: String? = null, names: Map<String, List<String>> = emptyMap()): String {
-        if (hash.isNotEmpty() && channels.containsKey(hash)) return hash
-        val candidates = listOfNotNull(tvgName, ch).map { normalize(it) }.filter { it.isNotEmpty() }
-        val ids = channels.keys.sorted()
-        for (candidate in candidates) {
-            ids.firstOrNull { id -> (names[id] ?: listOf(channels[id]!!)).any { normalize(it) == candidate } }?.let { return it }
+        val rows = channels.keys.sorted().flatMap { id ->
+            (names[id] ?: listOf(channels[id]!!)).ifEmpty { listOf("") }.map { NativeGuideEntry(id, it) }
         }
-        var best = ""
-        var score = 0.0
-        for (candidate in candidates) for (id in ids) for (name in names[id] ?: listOf(channels[id]!!)) {
-            val value = normalize(name)
-            val next = matchScore(candidate, value)
-            if (next >= 0.4 && next > score) { best = id; score = next }
-        }
-        return best.ifEmpty { hash }
-    }
-
-    private fun regionalShift(name: String): Int {
-        val match = Regex("""([+-])\s*(\d+)\s*(?:ч|h|hours?)?""", RegexOption.IGNORE_CASE).find(name) ?: return 0
-        val hours = match.groupValues[2].toIntOrNull() ?: return 0
-        return (if (match.groupValues[1] == "-") -1 else 1) * (if (hours > 24) hours % 24 else hours)
-    }
-
-    private fun normalize(name: String): String {
-        var s = name.lowercase()
-        s = s.replace(Regex("""[+-]\s*\d+\s*(ч|h|hours?)?"""), "")
-        s = s.replace(Regex("""\([^)]*\)"""), "")
-        s = s.replace(Regex("""\s+"""), " ")
-        s = s.trim()
-        s = s.replace(Regex("""^(hd|fhd|uhd|4k)\s+"""), "")
-        s = s.replace(Regex("""\s+(hd|fhd|uhd|4k)$"""), "")
-        return s.trim()
+        return NativeGuideIndex(rows, NativeGuideFormat.ARCHIVED_ANDROID)
+            .resolve(hash, listOfNotNull(tvgName, ch)) ?: hash
     }
 
     private fun buildSlice(
@@ -364,17 +316,15 @@ class MobileXmltvEpgPlugin : Plugin() {
         val xmltvId = resolveXmltvId(parsed.channels, ch, hash, tvgName, parsed.names)
         val progs = parsed.programs[xmltvId] ?: emptyList()
         val now = (System.currentTimeMillis() / 1000).toInt()
-        val lookbackH = if (archiveHours > 0) archiveHours else 48
-        val windowStart = now - lookbackH * 3600
-        val windowEnd = now + 48 * 3600
-        val shift = (if (timeShiftHours != 0) timeShiftHours else regionalShift(ch ?: tvgName ?: "")) * 3600
+        val hours = if (timeShiftHours != 0) timeShiftHours else NativeGuideNames.regionalShift(ch ?: tvgName ?: "", NativeGuideFormat.ARCHIVED_ANDROID)
+        val window = NativeGuideWindow(now.toDouble(), archiveHours.toDouble(), hours.toDouble())
 
         val epgData = JSObject()
         val list = JSArray()
         for (prog in progs.sortedBy { it.start }) {
-            val start = prog.start + shift
-            val stop = prog.stop + shift
-            if (stop <= windowStart || start >= windowEnd) continue
+            val start = (prog.start + window.shift).toInt()
+            val stop = (prog.stop + window.shift).toInt()
+            if (!window.includes(prog.start.toDouble(), prog.stop.toDouble())) continue
             val entry = JSObject().apply {
                 put("time", start)
                 put("time_to", stop)

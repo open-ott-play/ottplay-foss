@@ -579,12 +579,24 @@
                 bootLog("Reload the player to retry loading js/runtime-polyfills.js");
                 return;
             }
-            if (typeof jQuery === "undefined") loadJQ();
-            else {
-                bootStatus("Loading UI…");
-                loadCSS(host + "/stbPlayer/1280.css?" + __av, _head);
-                loadLibraries();
+            function coreFailed() {
+                clearInterval(_bootTimer);
+                clearBootHide();
+                bootStatus("Failed to load shared core");
+                bootLog("Reload the player to retry loading js/ottplay-core.js");
             }
+            loadJS(host + "/js/ottplay-core.js?" + __av, function () {
+                if (!window.OttPlayCore || typeof window.OttPlayCore.NativeGuide !== "function" || typeof window.OttPlayCore.providerArchiveUrl !== "function" || typeof window.OttPlayCore.parseProviderPlaylist !== "function" || typeof window.OttPlayCore.parseOperatorPlaylist !== "function" || typeof window.OttPlayCore.parsePlaylistMedia !== "function" || typeof window.OttPlayCore.XtreamClient !== "function" || typeof window.OttPlayCore.StalkerClient !== "function" || typeof window.OttPlayCore.LegacyStalkerClient !== "function" || typeof window.OttPlayCore.legacyXtreamClient !== "function" || typeof window.OttPlayCore.legacyGuideSelection !== "function" || typeof window.OttPlayCore.legacyGuideCacheRead !== "function") {
+                    coreFailed();
+                    return;
+                }
+                if (typeof jQuery === "undefined") loadJQ();
+                else {
+                    bootStatus("Loading UI…");
+                    loadCSS(host + "/stbPlayer/1280.css?" + __av, _head);
+                    loadLibraries();
+                }
+            }, _head, coreFailed);
 
             // Local HTTP command polling is owned by the consent/authentication
             // controller in stbPlayer.js. A configured URL alone never starts it.
