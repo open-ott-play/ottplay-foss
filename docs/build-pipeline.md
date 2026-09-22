@@ -114,7 +114,7 @@ the worker prelude. Missing or stale assets trigger regeneration and another
 full audit. `npm run build:media` always rebuilds explicitly. No timestamp or
 process-local cache can bypass validation.
 
-Each final classic bundle is limited to 470,000 UTF-8 bytes and 128,000 bytes
+Each final classic bundle is limited to 475,000 UTF-8 bytes and 130,000 bytes
 compressed with gzip level 9. Both limits apply independently to server, Tauri
 and Capacitor artifacts. Native transformations are measured after staging.
 `npm run check:size` reads the actual artifacts; it does not trust a prior report.
@@ -128,6 +128,16 @@ the outbound transport, retry/acknowledgement state, settings UI, command fixes,
 and live provider aliases. Direct unshadowed global reads save 167 gzip bytes
 without changing compression options or shadowed-binding behavior. The raw
 ceiling remains unchanged; the gzip ceiling allows this measured feature growth.
+
+The shared-domain integration measures 473,261 raw / 129,329 gzip bytes after
+version substitution. Rebuilding baseline `b3c8cc0` with the same Terser 5.51.2
+options and version produces 466,922 raw / 126,848 gzip bytes: +6,339 raw bytes
+(1.36%) and +2,481 gzip bytes (1.96%). The integration adds the common operator
+transport adapter and generated wire validators to the classic bundle while
+removing more than 5,000 duplicated lines from separately loaded provider scripts. The resulting ceilings are
+475,000 raw / 130,000 gzip bytes; all three staged artifacts remain independently
+checked. The separate shared-core script is pinned and checked by its artifact
+receipt and ES5 runtime checks, and is not included in these bundle measurements.
 
 
 `build/reports/classic-bundle.json` records module order, optimizer version/options,

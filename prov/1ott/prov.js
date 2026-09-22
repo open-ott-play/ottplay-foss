@@ -62,61 +62,11 @@ function getArchiveUrl(ch_id, time, time_to) {
 
 if (typeof catsArray == "undefined") var catsArray = [];
 
-function addChan2cat(cat, ci) {
-    if (!(cat && ci)) return;
-    if (!cats[cat]) {
-        catsArray.push(cat);
-        cats[cat] = [];
-    }
-    cats[cat].push(ci);
-}
-
 function getChanelsArray(callback) {
     _getParams();
 
     function loadPlaylist(url, success, cb) {
-        if (typeof launch_id == "undefined") launch_id = "#launch";
-        if (!url) {
-            cb();
-            return;
-        }
-        var cpurl = url;
-        if (typeof stbInterceptRequest === "function") {
-            stbInterceptRequest(url);
-            url +=
-                (url.indexOf("?") == -1 ? "?" : "&") +
-                "url=" +
-                encodeURIComponent(url);
-        }
-        $.ajax({
-            dataType: "text",
-            error: function () {
-                $(launch_id).append("p...");
-                $.ajax({
-                    data: { url: "@" + cpurl },
-                    dataType: "text",
-                    error: function (jqXHR, textStatus, errorThrown) {
-                        console.log(
-                            "channels : jqXHR:" +
-                                JSON.stringify(jqXHR) +
-                                "; textStatus: " +
-                                textStatus +
-                                ", errorThrown: " +
-                                errorThrown
-                        );
-                        alert(_("Failed to load channel list!"));
-                        cb();
-                    },
-                    method: "post",
-                    success: success,
-                    timeout: 30000,
-                    url: host + "/m3u/cp.php",
-                });
-            },
-            success: success,
-            timeout: 30000,
-            url: url,
-        });
+        operatorLoadPlaylist(url, success, cb, "classic");
     }
 
     function aSuccess(data) {
@@ -142,7 +92,7 @@ function getChanelsArray(callback) {
                     entry.channel.channel_name = _("??? No channel name");
             });
             if (catalog.malformed) throw new Error("Malformed playlist entry");
-            if (!__id || !__pin) {
+            if (!OttPlayCore.operatorCredentialsValid("1ott", __id, __pin)) {
                 try {
                     popupList(popupActions.indexOf(noProvParam) + 1);
                 } catch (ex) {}
@@ -162,7 +112,7 @@ function getChanelsArray(callback) {
         callback();
     }
 
-    if (!__id || !__pin) {
+    if (!OttPlayCore.operatorCredentialsValid("1ott", __id, __pin)) {
         try {
             popupList(popupActions.indexOf(noProvParam) + 1);
         } catch (ex) {}
@@ -172,14 +122,18 @@ function getChanelsArray(callback) {
     }
 
     loadPlaylist(
-        url_srv + "/PinApi/" + __id + "/" + __pin,
+        OttPlayCore.operatorProfileUrl("1ott", "account", {
+            base: url_srv,
+            id: __id,
+            pin: __pin,
+        }),
         function (data) {
             try {
                 loadPlaylist(
-                    url_srv +
-                        "/api/" +
-                        JSON.parse(data).token +
-                        "/high/ottnav.m3u8",
+                    OttPlayCore.operatorProfileUrl("1ott", "playlist", {
+                        base: url_srv,
+                        token: JSON.parse(data).token,
+                    }),
                     aSuccess,
                     callback
                 );

@@ -40,16 +40,11 @@ function getChannelPicon(ch_id) {
 }
 
 function getChannelUrl(ch_id) {
-    return (
-        "http://s" +
-        shserver +
-        ".tvshka.net/~" +
-        shkey +
-        "/" +
-        ch_id +
-        "/" +
-        (mpeg ? "" : "hls/pl.m3u8")
-    );
+    return OttPlayCore.operatorLiveUrl("shura", String(ch_id), chanels[ch_id], {
+        key: shkey,
+        mode: mpeg,
+        server: shserver,
+    });
 }
 
 function getArchiveUrl(ch_id, time, time_to) {
@@ -69,15 +64,6 @@ function getArchiveUrl(ch_id, time, time_to) {
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];
-
-function addChan2cat(cat, ci) {
-    if (!(cat && ci)) return;
-    if (!cats[cat]) {
-        catsArray.push(cat);
-        cats[cat] = [];
-    }
-    cats[cat].push(ci);
-}
 
 function getChanelsArray(callback) {
     _getParams();
@@ -108,7 +94,7 @@ function getChanelsArray(callback) {
                     typeof e
             );
         }
-        if (!shkey || shkey.length < 8) {
+        if (!OttPlayCore.operatorCredentialsValid("shura", shkey, "")) {
             try {
                 popupList(popupActions.indexOf(noProvParam) + 1);
             } catch (ex) {}
@@ -118,42 +104,29 @@ function getChanelsArray(callback) {
     }
 
     function loadCategories() {
-        var www = "http://pl.tvshka.net/?uid=shxxxxxxxxxxx&srv=1&type=halva";
-        $.ajax({
-            dataType: "text",
-            error: function () {
-                $.ajax({
-                    data: { url: "@" + www },
-                    dataType: "text",
-                    error: function (jqXHR, textStatus, errorThrown) {
-                        console.log(
-                            "channels : jqXHR:" +
-                                JSON.stringify(jqXHR) +
-                                "; textStatus: " +
-                                textStatus +
-                                ", errorThrown: " +
-                                errorThrown
-                        );
-                        if (!shkey || shkey.length < 8) {
-                            try {
-                                popupList(
-                                    popupActions.indexOf(noProvParam) + 1
-                                );
-                            } catch (ex) {}
-                            infoBox("Для доступа необходимо ввести ключ!");
-                        }
-                        callback();
-                    },
-                    method: "post",
-                    success: aSuccess,
-                    timeout: 10000,
-                    url: host + "/m3u/cp.php",
-                });
-            },
-            success: aSuccess,
-            timeout: 10000,
-            url: www,
-        });
+        operatorLoadPlaylist(
+            OttPlayCore.operatorProfileUrl("shura", "categories", {}),
+            aSuccess,
+            callback,
+            "shura",
+            function (jqXHR, textStatus, errorThrown) {
+                console.log(
+                    "channels : jqXHR:" +
+                        JSON.stringify(jqXHR) +
+                        "; textStatus: " +
+                        textStatus +
+                        ", errorThrown: " +
+                        errorThrown
+                );
+                if (!OttPlayCore.operatorCredentialsValid("shura", shkey, "")) {
+                    try {
+                        popupList(popupActions.indexOf(noProvParam) + 1);
+                    } catch (ex) {}
+                    infoBox("Для доступа необходимо ввести ключ!");
+                }
+                callback();
+            }
+        );
     }
 
     cList = [];
@@ -178,96 +151,38 @@ function getChanelsArray(callback) {
             );
         },
         success: function (data) {
-            if (!data || !data.forEach) return;
-            data.forEach(function (val) {
-                cList.push(val.id);
-                chanels[val.id] = {
-                    category: { class: 0 },
-                    channel_name: val.name,
-                    rec: val.archive,
-                    time: 0,
-                    time_to: 0,
-                };
-            });
+            var reducer = new OttPlayCore.OperatorCatalogClient("shura");
+            try {
+                reducer.accept(data, []);
+            } finally {
+                var catalog = reducer.result();
+                cList = catalog.ids;
+                chanels = catalog.channels;
+            }
         },
         timeout: 10000,
-        url: "http://pl.tvshka.net",
+        url: OttPlayCore.operatorProfileUrl("shura", "account", {}),
     });
-}
-
-function val2epg(v) {
-    return {
-        descr: v.text,
-        duration: v.duration,
-        name: v.name,
-        time: v.start_time,
-        time_to: v.start_time + v.duration,
-    };
 }
 
 function getEPGchanel(ch_id, callback) {
-    var d = null;
-    $.ajax({
-        complete: function () {
-            $.ajax({
-                complete: function () {
-                    callback(ch_id, d);
-                },
-                dataType: "jsonp",
-                success: function (data) {
-                    if (data !== null) {
-                        if (!d) d = [];
-                        if (chanels[ch_id] && chanels[ch_id].rec == "0")
-                            data.pop();
-                        data.forEach(function (val) {
-                            d.unshift(val2epg(val));
-                        });
-                    }
-                },
-                timeout: 10000,
-                url:
-                    "http://s" +
-                    shserver +
-                    ".tvshka.net/" +
-                    ch_id +
-                    "/epg/" +
-                    (chanels[ch_id] && chanels[ch_id].rec == "0"
-                        ? "pf.jsonp"
-                        : "archive.jsonp"),
-            });
-        },
-        dataType: "jsonp",
-        success: function (data) {
-            if (data !== null) {
-                d = [];
-                data.forEach(function (val) {
-                    d.push(val2epg(val));
-                });
-            }
-        },
-        timeout: 10000,
-        url: "http://s" + shserver + ".tvshka.net/" + ch_id + "/epg/week.jsonp",
-    });
+    operatorLoadGuide(
+        "shura",
+        ch_id,
+        { rec: chanels[ch_id] && chanels[ch_id].rec, server: shserver },
+        callback,
+        false
+    );
 }
 
 function getEPGchanelCur(ch_id, callback) {
-    var d = null;
-    $.ajax({
-        complete: function () {
-            callback(ch_id, d);
-        },
-        dataType: "jsonp",
-        success: function (data) {
-            if (data !== null) {
-                d = [];
-                data.forEach(function (val) {
-                    d.push(val2epg(val));
-                });
-            }
-        },
-        timeout: 10000,
-        url: "http://s" + shserver + ".tvshka.net/" + ch_id + "/epg/pf.jsonp",
-    });
+    operatorLoadGuide(
+        "shura",
+        ch_id,
+        { rec: chanels[ch_id] && chanels[ch_id].rec, server: shserver },
+        callback,
+        true
+    );
 }
 
 var cbTarr = ["HLS", "MPEGTS"];

@@ -40,8 +40,9 @@ function getChannelPicon(ch_id) {
 }
 
 function getChannelUrl(ch_id) {
-    var u = chanels[ch_id].url.split("index.m3u8");
-    return u[0] + ["mpegts", "video.m3u8", "index.m3u8"][ts_hls] + u[1];
+    return OttPlayCore.operatorLiveUrl("only4", String(ch_id), chanels[ch_id], {
+        mode: ts_hls,
+    });
 }
 
 function getArchiveUrl(ch_id, time, time_to) {
@@ -62,61 +63,11 @@ function getArchiveUrl(ch_id, time, time_to) {
 
 if (typeof catsArray == "undefined") var catsArray = [];
 
-function addChan2cat(cat, ci) {
-    if (!(cat && ci)) return;
-    if (!cats[cat]) {
-        catsArray.push(cat);
-        cats[cat] = [];
-    }
-    cats[cat].push(ci);
-}
-
 function getChanelsArray(callback) {
     _getParams();
 
     function loadPlaylist(url, success, cb) {
-        if (typeof launch_id == "undefined") launch_id = "#launch";
-        if (!url) {
-            cb();
-            return;
-        }
-        var cpurl = url;
-        if (typeof stbInterceptRequest === "function") {
-            stbInterceptRequest(url);
-            url +=
-                (url.indexOf("?") == -1 ? "?" : "&") +
-                "url=" +
-                encodeURIComponent(url);
-        }
-        $.ajax({
-            dataType: "text",
-            error: function () {
-                $(launch_id).append("p...");
-                $.ajax({
-                    data: { url: "@" + cpurl },
-                    dataType: "text",
-                    error: function (jqXHR, textStatus, errorThrown) {
-                        console.log(
-                            "channels : jqXHR:" +
-                                JSON.stringify(jqXHR) +
-                                "; textStatus: " +
-                                textStatus +
-                                ", errorThrown: " +
-                                errorThrown
-                        );
-                        alert(_("Failed to load channel list!"));
-                        cb();
-                    },
-                    method: "post",
-                    success: success,
-                    timeout: 30000,
-                    url: host + "/m3u/cp.php",
-                });
-            },
-            success: success,
-            timeout: 30000,
-            url: url,
-        });
+        operatorLoadPlaylist(url, success, cb, "classic");
     }
 
     function aSuccess(data) {
@@ -142,7 +93,7 @@ function getChanelsArray(callback) {
                     entry.channel.channel_name = "??? Нет названия канала";
             });
             if (catalog.malformed) throw new Error("Malformed playlist entry");
-            if (token.length != 10) {
+            if (!OttPlayCore.operatorCredentialsValid("only4", token, "")) {
                 try {
                     popupList(popupActions.indexOf(noProvParam) + 1);
                 } catch (ex) {}
@@ -166,7 +117,7 @@ function getChanelsArray(callback) {
         callback();
     }
 
-    if (token.length != 10) {
+    if (!OttPlayCore.operatorCredentialsValid("only4", token, "")) {
         try {
             popupList(popupActions.indexOf(noProvParam) + 1);
         } catch (ex) {}
@@ -177,7 +128,9 @@ function getChanelsArray(callback) {
 
     if (token)
         loadPlaylist(
-            "http://only4.tv/pl/" + token + "/102/only4tv.m3u8",
+            OttPlayCore.operatorProfileUrl("only4", "playlist", {
+                token: token,
+            }),
             aSuccess,
             callback
         );

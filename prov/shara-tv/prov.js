@@ -39,9 +39,9 @@ function getProviderParams() {
         $("#login").val(login);
         $("#pass").val(pass);
     } catch (e) {}
-    if (login.length != 8 || pass.length != 8)
+    if (!OttPlayCore.operatorCredentialsValid("shara-tv", login, pass))
         alert("Для доступа необходимо ввести Логин и пароль!");
-    return login.length == 8 && pass.length == 8;
+    return OttPlayCore.operatorCredentialsValid("shara-tv", login, pass);
 }
 
 function setProviderParams() {
@@ -50,7 +50,7 @@ function setProviderParams() {
     providerSetItem("pass", decodeURIComponent($("#pass").val().trim()));
     changed = changed || pass != providerGetItem("pass");
     _getParams();
-    if (login.length != 8 || pass.length != 8)
+    if (!OttPlayCore.operatorCredentialsValid("shara-tv", login, pass))
         alert("Для доступа необходимо ввести Логин и пароль!");
     return changed;
 }
@@ -81,61 +81,11 @@ function getArchiveUrl(ch_id, time, time_to) {
 
 if (typeof catsArray == "undefined") var catsArray = [];
 
-function addChan2cat(cat, ci) {
-    if (!(cat && ci)) return;
-    if (!cats[cat]) {
-        catsArray.push(cat);
-        cats[cat] = [];
-    }
-    cats[cat].push(ci);
-}
-
 function getChanelsArray(callback) {
     _getParams();
 
     function loadPlaylist(url, success, cb) {
-        if (typeof launch_id == "undefined") launch_id = "#launch";
-        if (!url) {
-            cb();
-            return;
-        }
-        var cpurl = url;
-        if (typeof stbInterceptRequest === "function") {
-            stbInterceptRequest(url);
-            url +=
-                (url.indexOf("?") == -1 ? "?" : "&") +
-                "url=" +
-                encodeURIComponent(url);
-        }
-        $.ajax({
-            dataType: "text",
-            error: function () {
-                $(launch_id).append("p...");
-                $.ajax({
-                    data: { url: "@" + cpurl },
-                    dataType: "text",
-                    error: function (jqXHR, textStatus, errorThrown) {
-                        console.log(
-                            "channels : jqXHR:" +
-                                JSON.stringify(jqXHR) +
-                                "; textStatus: " +
-                                textStatus +
-                                ", errorThrown: " +
-                                errorThrown
-                        );
-                        alert(_("Failed to load channel list!"));
-                        cb();
-                    },
-                    method: "post",
-                    success: success,
-                    timeout: 30000,
-                    url: host + "/m3u/cp.php",
-                });
-            },
-            success: success,
-            timeout: 30000,
-            url: url,
-        });
+        operatorLoadPlaylist(url, success, cb, "classic");
     }
 
     function aSuccess(data) {
@@ -161,7 +111,9 @@ function getChanelsArray(callback) {
                     entry.channel.channel_name = "??? Нет названия канала";
             });
             if (catalog.malformed) throw new Error("Malformed playlist entry");
-            if (login.length != 8 || pass.length != 8) {
+            if (
+                !OttPlayCore.operatorCredentialsValid("shara-tv", login, pass)
+            ) {
                 try {
                     popupList(popupActions.indexOf(noProvParam) + 1);
                 } catch (ex) {}
@@ -183,7 +135,7 @@ function getChanelsArray(callback) {
         callback();
     }
 
-    if (!login || !pass || login.length != 8 || pass.length != 8) {
+    if (!OttPlayCore.operatorCredentialsValid("shara-tv", login, pass)) {
         try {
             popupList(popupActions.indexOf(noProvParam) + 1);
         } catch (ex) {}
@@ -197,7 +149,10 @@ function getChanelsArray(callback) {
     }
 
     loadPlaylist(
-        "http://tvfor.pro/g/" + login + ":" + pass + "/1/playlist.m3u",
+        OttPlayCore.operatorProfileUrl("shara-tv", "playlist", {
+            login: login,
+            password: pass,
+        }),
         aSuccess,
         callback
     );

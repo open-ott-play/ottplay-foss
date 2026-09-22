@@ -71,51 +71,9 @@ function getArchiveUrl(ch_id, time, time_to) {
 
 if (typeof catsArray == "undefined") var catsArray = [];
 
-function addChan2cat(cat, ci) {
-    if (!(cat && ci)) return;
-    if (!cats[cat]) {
-        catsArray.push(cat);
-        cats[cat] = [];
-    }
-    cats[cat].push(ci);
-}
-
 function getChanelsArray(callback) {
     function loadPlaylist(url, success, cb) {
-        if (typeof launch_id == "undefined") launch_id = "#launch";
-        if (!url) {
-            cb();
-            return;
-        }
-        var cpurl = url;
-        if (typeof stbInterceptRequest === "function") {
-            stbInterceptRequest(url);
-            url +=
-                (url.indexOf("?") == -1 ? "?" : "&") +
-                "url=" +
-                encodeURIComponent(url);
-        }
-        $.ajax({
-            dataType: "text",
-            error: function () {
-                $(launch_id).append("p...");
-                $.ajax({
-                    data: { url: "@" + cpurl },
-                    dataType: "text",
-                    error: function () {
-                        alert(_("Failed to load channel list!"));
-                        cb();
-                    },
-                    method: "post",
-                    success: success,
-                    timeout: 30000,
-                    url: host + "/m3u/cp.php",
-                });
-            },
-            success: success,
-            timeout: 30000,
-            url: url,
-        });
+        operatorLoadPlaylist(url, success, cb, "quiet");
     }
 
     function getEpgList(cepg, cb) {
@@ -243,23 +201,15 @@ function getChanelsArray(callback) {
             });
     }
 
-    if (!box_mac) {
+    if (!OttPlayCore.operatorCredentialsValid("kb-team", box_mac || "", "")) {
         alert(_("Device MAC is required for KBC (Kinoboom) playlists"));
         callback();
         return;
     }
-    var playlistUrl = "";
-    if (v_list == 0)
-        playlistUrl =
-            "http://kb-team.club/?do=/plugin&id=iptvkino&m3u&box_mac=" +
-            box_mac;
-    else if (v_list == 1)
-        playlistUrl =
-            "http://kb-team.club/?do=/plugin&bid=federaltv&m3u&box_mac=" +
-            box_mac;
-    else if (v_list == 2)
-        playlistUrl =
-            "http://kb-team.club/?do=/plugin&bid=iptvk&m3u&box_mac=" + box_mac;
+    var playlistUrl = OttPlayCore.operatorProfileUrl("kb-team", "playlist", {
+        list: v_list,
+        mac: box_mac,
+    });
     loadPlaylist(playlistUrl, aSuccess, callback);
 }
 
@@ -290,283 +240,19 @@ function getEPGchanel(ch_id, callback) {
 }
 
 function xml2json1(xml, tab) {
-    var X = {
-        escape: function (txt) {
-            return txt
-                .replace(/[\\]/g, "\\\\")
-                .replace(/[\"]/g, '\\"')
-                .replace(/[\n]/g, "\\n")
-                .replace(/[\r]/g, "\\r");
-        },
-        innerXml: function (node) {
-            var s = "";
-            if ("innerHTML" in node) s = node.innerHTML;
-            else {
-                var asXml = function (n) {
-                    var s = "";
-                    if (n.nodeType == 1) {
-                        s += "<" + n.nodeName;
-                        for (var i = 0; i < n.attributes.length; i++)
-                            s +=
-                                " " +
-                                n.attributes[i].nodeName +
-                                '="' +
-                                (n.attributes[i].nodeValue || "").toString() +
-                                '"';
-                        if (n.firstChild) {
-                            s += ">";
-                            for (var c = n.firstChild; c; c = c.nextSibling)
-                                s += asXml(c);
-                            s += "</" + n.nodeName + ">";
-                        } else s += "/>";
-                    } else if (n.nodeType == 3) s += n.nodeValue;
-                    else if (n.nodeType == 4)
-                        s += "<![CDATA[" + n.nodeValue + "]]>";
-                    return s;
-                };
-                for (var c = node.firstChild; c; c = c.nextSibling)
-                    s += asXml(c);
-            }
-            return s;
-        },
-        removeWhite: function (e) {
-            e.normalize();
-            for (var n = e.firstChild; n; ) {
-                if (n.nodeType == 3) {
-                    if (!n.nodeValue.match(/[^ \f\n\r\t\v]/)) {
-                        var nxt = n.nextSibling;
-                        e.removeChild(n);
-                        n = nxt;
-                    } else n = n.nextSibling;
-                } else if (n.nodeType == 1) {
-                    X.removeWhite(n);
-                    n = n.nextSibling;
-                } else n = n.nextSibling;
-            }
-            return e;
-        },
-        toJson: function (o, name, ind) {
-            var json = name ? '"' + name + '"' : "";
-            if (o instanceof Array) {
-                for (var i = 0, n = o.length; i < n; i++)
-                    o[i] = X.toJson(o[i], "", ind + "\t");
-                json +=
-                    (name ? ":[" : "[") +
-                    (o.length > 1
-                        ? "\n" +
-                          ind +
-                          "\t" +
-                          o.join(",\n" + ind + "\t") +
-                          "\n" +
-                          ind
-                        : o.join("")) +
-                    "]";
-            } else if (o == null) json += (name && ":") + "null";
-            else if (typeof o == "object") {
-                var arr = [];
-                for (var m in o)
-                    arr[arr.length] = X.toJson(o[m], m, ind + "\t");
-                json +=
-                    (name ? ":{" : "{") +
-                    (arr.length > 1
-                        ? "\n" +
-                          ind +
-                          "\t" +
-                          arr.join(",\n" + ind + "\t") +
-                          "\n" +
-                          ind
-                        : arr.join("")) +
-                    "}";
-            } else if (typeof o == "string")
-                json += (name && ":") + '"' + o.toString() + '"';
-            else json += (name && ":") + o.toString();
-            return json;
-        },
-        toObj: function (xml) {
-            var o = {};
-            if (xml.nodeType == 1) {
-                if (xml.attributes.length)
-                    for (var i = 0; i < xml.attributes.length; i++)
-                        o["@" + xml.attributes[i].nodeName] = (
-                            xml.attributes[i].nodeValue || ""
-                        ).toString();
-                if (xml.firstChild) {
-                    var textChild = 0,
-                        cdataChild = 0,
-                        hasElementChild = false;
-                    for (var n = xml.firstChild; n; n = n.nextSibling) {
-                        if (n.nodeType == 1) hasElementChild = true;
-                        else if (
-                            n.nodeType == 3 &&
-                            n.nodeValue.match(/[^ \f\n\r\t\v]/)
-                        )
-                            textChild++;
-                        else if (n.nodeType == 4) cdataChild++;
-                    }
-                    if (hasElementChild) {
-                        if (textChild < 2 && cdataChild < 2) {
-                            X.removeWhite(xml);
-                            for (
-                                var n2 = xml.firstChild;
-                                n2;
-                                n2 = n2.nextSibling
-                            ) {
-                                if (n2.nodeType == 3)
-                                    o["#text"] = X.escape(n2.nodeValue);
-                                else if (n2.nodeType == 4)
-                                    o["#cdata"] = X.escape(n2.nodeValue);
-                                else if (o[n2.nodeName]) {
-                                    if (o[n2.nodeName] instanceof Array)
-                                        o[n2.nodeName][o[n2.nodeName].length] =
-                                            X.toObj(n2);
-                                    else
-                                        o[n2.nodeName] = [
-                                            o[n2.nodeName],
-                                            X.toObj(n2),
-                                        ];
-                                } else o[n2.nodeName] = X.toObj(n2);
-                            }
-                        } else {
-                            if (!xml.attributes.length)
-                                o = X.escape(X.innerXml(xml));
-                            else o["#text"] = X.escape(X.innerXml(xml));
-                        }
-                    } else if (textChild) {
-                        if (!xml.attributes.length)
-                            o = X.escape(X.innerXml(xml));
-                        else o["#text"] = X.escape(X.innerXml(xml));
-                    } else if (cdataChild) {
-                        if (cdataChild > 1) o = X.escape(X.innerXml(xml));
-                        else
-                            for (
-                                var n3 = xml.firstChild;
-                                n3;
-                                n3 = n3.nextSibling
-                            )
-                                o = X.escape(n3.nodeValue);
-                    }
-                }
-                if (!(xml.attributes.length || xml.firstChild)) o = null;
-            } else if (xml.nodeType == 9) o = X.toObj(xml.documentElement);
-            return o;
-        },
-    };
-    if (xml.nodeType == 9) xml = xml.documentElement;
-    var json = X.toJson(X.toObj(X.removeWhite(xml)), xml.nodeName, "\t");
-    return (
-        "{\n" +
-        tab +
-        (tab ? json.replace(/\t/g, tab) : json.replace(/\t|\n/g, "")) +
-        "\n}"
-    );
+    return operatorXmlToJson(xml, tab);
 }
 
 function getMediaArrayXML(murl, callback) {
-    mediaUrls[mediaUrls.length - 1] = murl;
-    if (murl === "") {
-        callback();
-        return;
-    }
-    $("#dialogbox")
-        .html(
-            '<span class="ott-spinner ott-spinner--inline" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></span> ' +
-                _("Download! Wait ...")
-        )
-        .show();
-    if (typeof box_mac !== "undefined" && box_mac)
-        murl +=
-            (murl.indexOf("?") == -1 ? "?" : "&") +
-            "box_client=ott-play&box_mac=" +
-            box_mac;
-    $.ajax({
-        complete: function () {
-            if (callback.isCurrent && !callback.isCurrent()) return;
-            $("#dialogbox").hide();
-            callback();
-        },
-        dataType: "text",
-        success: function (data) {
-            if (callback.isCurrent && !callback.isCurrent()) return;
-            try {
-                var i = data.indexOf("<?xml");
-                if (i !== -1) {
-                    if (i > 0) data = data.substr(i);
-                    var jj;
-                    try {
-                        data = xml2json1(jQuery.parseXML(data), " ");
-                    } catch (e) {
-                        alert("Error XML !!!");
-                        return;
-                    }
-                } else {
-                    i = data.indexOf("#EXTM3U");
-                    if (i !== -1) {
-                        getMediaArrayEXTM3U(data);
-                        return;
-                    }
-                }
-                try {
-                    jj = JSON.parse(data);
-                } catch (e) {
-                    alert("Error JSON !!!");
-                    return;
-                }
-                if (jj.items) jj = jj.items;
-                mediaName = jj.playlist_name || jj.title || mediaName || "?";
-                var cc = jj.channel || jj.channels;
-                mediaRecords = !cc ? [] : Array.isArray(cc) ? cc : [cc];
-                if (jj.next_page_url)
-                    mediaRecords.push({
-                        description: "...",
-                        logo_30x30: "",
-                        playlist_url: jj.next_page_url,
-                        title: "...",
-                    });
-            } catch (e) {
-                console.log(e);
-            }
-        },
-        timeout: 60000,
-        url: murl,
-    });
+    operatorLoadVod("kb-team", murl, callback);
 }
 
 function getMediaArrayEXTM3U(data) {
-    function item2descr(n, i) {
-        return (
-            "<table>" +
-            "<h2><center>" +
-            n +
-            "</center></h2>" +
-            (i
-                ? '<img id="detal" height="285" src="' +
-                  i +
-                  '" style="float: left; margin-right: 5px; margin-bottom: 5px; border-width: 0px; border-style: solid;" width="210">'
-                : "") +
-            "</table>"
-        );
-    }
-    try {
-        mediaName = mediaName || "?";
-        mediaRecords = [];
-        OttPlayCore.parsePlaylistMedia(data).forEach(function (entry) {
-            var name = entry.generatedName
-                ? _("??? No channel name")
-                : entry.name;
-            mediaRecords.push({
-                description: item2descr(name, entry.logo),
-                logo_30x30: entry.logo,
-                stream_url: entry.url,
-                title: name,
-            });
-        });
-    } catch (e) {
-        alert("Error M3U !!!");
-    }
+    operatorMediaPlaylist("kb-team", data);
 }
 
 var getMediaArray = function (murl, callback) {
-    if (murl === "") murl = "http://89.163.215.125";
+    murl = OttPlayCore.operatorVodRoot("kb-team", murl, "");
     getMediaArrayXML(murl, callback);
 };
 

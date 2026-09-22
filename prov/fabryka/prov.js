@@ -46,143 +46,24 @@ function getChannelUrl(e) {
 function getEPGchanel(s, e) {
     e(s, null);
 }
-function addChan2cat(catName, hash) {
-    if (!(catName && hash)) return;
-    if (!cats[catName]) {
-        catsArray.push(catName);
-        cats[catName] = [];
-    }
-    cats[catName].push(hash);
-}
 function getChanelsArray(cb) {
     _fabryka_load();
-    if (_fabryka_cfg.server && _fabryka_cfg.user && _fabryka_cfg.pass)
-        _fabryka_xtream(cb);
-    else if (_fabryka_cfg.m3u) _fabryka_m3u(cb);
+    var action = OttPlayCore.operatorSourceAction(_fabryka_cfg);
+    if (action === "API") _fabryka_xtream(cb);
+    else if (action === "PLAYLIST") _fabryka_m3u(cb);
     else {
         alert(_("Configure Fabryka.TV in Settings -> Provider Settings"));
         cb();
     }
 }
 function _fabryka_m3u(cb) {
-    $(launch_id).append(_("Loading M3U..."));
-    $.ajax({
-        error: function () {
-            $.ajax({
-                data: { url: "@" + _fabryka_cfg.m3u },
-                dataType: "text",
-                error: function () {
-                    alert(_("Failed to load!"));
-                    cb();
-                },
-                method: "post",
-                success: function (d) {
-                    _fabryka_parseM3U(d, cb);
-                },
-                timeout: 15e3,
-                url: host + "/m3u/cp.php",
-            });
-        },
-        success: function (d) {
-            _fabryka_parseM3U(d, cb);
-        },
-        timeout: 15e3,
-        url: _fabryka_cfg.m3u,
-    });
+    operatorGenericPlaylist(_fabryka_cfg, cb);
 }
 function _fabryka_parseM3U(data, cb) {
-    cList = [];
-    chanels = {};
-    cats = {};
-    catsArray = [];
-    try {
-        var catalog = OttPlayCore.parseProviderPlaylist(
-            data,
-            "generic",
-            function (url) {
-                return xxHash32S(url, true);
-            },
-            0
-        );
-        cList = catalog.ids;
-        chanels = catalog.channels;
-        cats = catalog.groups;
-        catsArray = catalog.groupOrder;
-    } catch (error) {
-        console.log(error);
-    }
-    cb();
+    operatorParsePlaylist(data, cb);
 }
 function _fabryka_xtream(cb) {
-    $(launch_id).append(_("Loading from API..."));
-    var api =
-        _fabryka_cfg.server +
-        "/player_api.php?username=" +
-        encodeURIComponent(_fabryka_cfg.user) +
-        "&password=" +
-        encodeURIComponent(_fabryka_cfg.pass);
-    $.ajax({ dataType: "json", timeout: 15e3, type: "GET", url: api })
-        .done(function (r) {
-            cList = [];
-            chanels = {};
-            cats = {};
-            catsArray = [];
-            if (!(r && r.live_streams)) {
-                _fabryka_cfg.m3u =
-                    api.replace("/player_api.php", "/get.php") +
-                    "&type=m3u_plus&output=ts";
-                _fabryka_m3u(cb);
-                return;
-            }
-            var cm = {};
-            if (r.categories)
-                r.categories.forEach(function (c) {
-                    cm[c.category_id] = c.category_name || "Unknown";
-                });
-            r.live_streams.forEach(function (s) {
-                var h = xxHash32S(s.name, true);
-                var cn = cm[s.category_id] || "Other";
-                addChan2cat(cn, h);
-                if (cList.indexOf(h) === -1) {
-                    cList.push(h);
-                    chanels[h] = {
-                        ca: "",
-                        caso: "",
-                        category: {
-                            class: catsArray.indexOf(cn) + 2,
-                            name: cn,
-                        },
-                        channel_name: s.name,
-                        epg: String(s.stream_id),
-                        logo: s.stream_icon || "",
-                        rec: 0,
-                        time: 0,
-                        time_to: 0,
-                        tn: s.name,
-                        url:
-                            _fabryka_cfg.server +
-                            "/live/" +
-                            encodeURIComponent(_fabryka_cfg.user) +
-                            "/" +
-                            encodeURIComponent(_fabryka_cfg.pass) +
-                            "/" +
-                            s.stream_id +
-                            ".m3u8",
-                    };
-                }
-            });
-            cb();
-        })
-        .fail(function () {
-            _fabryka_cfg.m3u =
-                _fabryka_cfg.server.replace(/\/+$/, "") +
-                "/get.php?username=" +
-                encodeURIComponent(_fabryka_cfg.user) +
-                "&password=" +
-                encodeURIComponent(_fabryka_cfg.pass) +
-                "&type=m3u_plus&output=ts";
-            _fabryka_m3u(cb);
-        });
+    operatorGenericSession(_fabryka_cfg, cb);
 }
 function duneAddSettings(e) {
     _fabryka_load();
