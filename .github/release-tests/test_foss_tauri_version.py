@@ -217,8 +217,9 @@ class FossTauriVersionTests(unittest.TestCase):
                 self.assertIn(b"\n", contents)
                 self.assertNotIn(b"\r\n", contents)
 
-            plan = load_version_plan().create_plan(
-                "1.1.43",
+            planner = load_version_plan()
+            plan = planner.create_plan(
+                planner.read_base_version(checkout, policy),
                 "beta",
                 5,
                 source_sha,
