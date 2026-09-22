@@ -5,7 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { gzipSync } = require("node:zlib");
 
-const BUDGET = Object.freeze({ bytes: 470000, gzipBytes: 128000 });
+const BUDGET = Object.freeze({ bytes: 475000, gzipBytes: 130000 });
 const ARTIFACTS = Object.freeze([
     "dist/stbPlayer.js",
     "src-tauri/frontend/dist/stbPlayer.js",

@@ -69,6 +69,7 @@ const c = {
 };
 c.window = c;
 vm.createContext(c);
+require("./helpers/shared-core-runtime.cjs")(c);
 vm.runInContext(
     ts.transpileModule(
         [
@@ -207,7 +208,8 @@ c.onChannelsLoaded = () => {
 };
 c.playChannel = (category, channel) => played.push([category, channel]);
 c.exports = {};
-c.require = () => ({});
+c.require = (name) =>
+    name === "../shared/wire-contracts" ? require("./load-wire.cjs")() : {};
 c.document = { getElementById: () => null };
 vm.runInContext(
     ts.transpileModule(

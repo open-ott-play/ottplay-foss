@@ -178,6 +178,7 @@ function fixture() {
     };
     w.window = w;
     vm.createContext(w);
+    require("./helpers/shared-core-runtime.cjs")(w);
     vm.runInContext(core, w);
     w.video = media();
     w.videoPip = media();

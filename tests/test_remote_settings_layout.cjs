@@ -34,6 +34,8 @@ const dom = new JSDOM(
     { runScripts: "dangerously", url: "https://example.invalid/" }
 );
 const w = dom.window;
+require("./helpers/shared-core-runtime.cjs")(dom.getInternalVMContext());
+Object.assign(w, require("./load-wire.cjs")());
 w.eval(compatibilitySource);
 w.eval(fs.readFileSync(path.join(root, "js/jquery-1.11.1.min.js"), "utf8"));
 const stored = new Map();

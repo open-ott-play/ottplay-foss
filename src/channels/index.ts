@@ -883,8 +883,12 @@ export function restoreContinueWatch(): boolean {
  * Side effects: Calls `window.playChannel` which triggers playback switch.
  */
 export function nextChannel(): void {
-    var nextIndex = primaryIndex + 1;
-    if (nextIndex >= curList.length) nextIndex = 0;
+    var nextIndex = (window as any).OttPlayCore.playbackChannelIndex(
+        primaryIndex,
+        curList.length,
+        1,
+        "classic"
+    );
     if (typeof window.playChannel === "function")
         window.playChannel(catIndex, nextIndex);
 }
@@ -895,8 +899,12 @@ export function nextChannel(): void {
  * Side effects: Calls `window.playChannel` which triggers playback switch.
  */
 export function prevChannel(): void {
-    var prevIndex = primaryIndex - 1;
-    if (prevIndex < 0) prevIndex = curList.length - 1;
+    var prevIndex = (window as any).OttPlayCore.playbackChannelIndex(
+        primaryIndex,
+        curList.length,
+        -1,
+        "classic"
+    );
     if (typeof window.playChannel === "function")
         window.playChannel(catIndex, prevIndex);
 }
@@ -937,7 +945,7 @@ export function getChannelUrl(channelOrId: Channel | number): string {
  */
 export function addToFavorites(channelId: number): void {
     var lst = activeFavoritesList();
-    if (lst.indexOf(channelId) === -1) lst.push(channelId);
+    (window as any).OttPlayCore.editFavoriteSelection(lst, channelId, "add");
     syncFavoritesArrayFromActive();
 }
 
@@ -948,8 +956,7 @@ export function addToFavorites(channelId: number): void {
  */
 export function removeFromFavorites(channelId: number): void {
     var lst = activeFavoritesList();
-    var idx = lst.indexOf(channelId);
-    if (idx !== -1) lst.splice(idx, 1);
+    (window as any).OttPlayCore.editFavoriteSelection(lst, channelId, "remove");
     syncFavoritesArrayFromActive();
 }
 
@@ -1271,9 +1278,11 @@ export function hasParentalLock(channelId: number): boolean {
  */
 export function ifParentalAccess(callback: () => void): boolean {
     if (
-        settings.psChannels &&
-        window.parentPIN !== "*" &&
-        !window.parentAccess
+        (window as any).OttPlayCore.classicParentalPrompt(
+            settings.psChannels,
+            window.parentPIN,
+            window.parentAccess
+        )
     ) {
         if (typeof window.enterPinAndSetAccess === "function")
             window.enterPinAndSetAccess(callback);

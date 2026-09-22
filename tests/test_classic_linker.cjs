@@ -566,6 +566,71 @@ async function testHelpers() {
     await assert.rejects(legacy.rejectAsync(), /failure after await/);
 }
 
+async function testWireProviderGlobals() {
+    const wireModule = "build/shared/wire-contracts.js";
+    write(
+        wireModule,
+        compile(
+            fs.readFileSync(
+                path.join(__dirname, "../src/shared/wire-contracts.ts"),
+                "utf8"
+            )
+        )
+    );
+    write(
+        "build/wire-consumer.js",
+        compile(`
+            import { validDeviceToken, validDeviceId, validPlayerCommand }
+                from "./shared/wire-contracts";
+            export function readWireValidation(value) {
+                return [validDeviceToken(value), validDeviceId("device:1"),
+                    validPlayerCommand({ command: "volume", volume: 10 })];
+            }
+        `)
+    );
+    const linked = assembleClassic(root, [
+        wireModule,
+        "build/wire-consumer.js",
+    ]);
+    const optimized = await optimizeClassic(linked);
+    const provider = fs.readFileSync(
+        path.join(__dirname, "../prov/only4/prov.js"),
+        "utf8"
+    );
+    for (const source of [linked, optimized.code]) {
+        acorn.parse(source, { ecmaVersion: 5 });
+        let storedToken = "only4-token";
+        const context = vm.createContext({
+            stbGetItem(key) {
+                return key === "o4token" ? storedToken : "";
+            },
+            version: "fixture",
+        });
+        const validToken = "a".repeat(32);
+        vm.runInContext(source, context);
+        assert.deepEqual(Array.from(context.readWireValidation(validToken)), [
+            true,
+            true,
+            true,
+        ]);
+        vm.runInContext(provider, context);
+        assert.equal(context.token, storedToken);
+        assert.deepEqual(
+            Array.from(context.readWireValidation(validToken)),
+            [true, true, true],
+            "Only4's classic global token must not overwrite wire validation state"
+        );
+        storedToken = "";
+        context._getParams();
+        assert.equal(context.token, "");
+        assert.deepEqual(
+            Array.from(context.readWireValidation("short")),
+            [false, true, true],
+            "Provider credential changes preserve the wire token contract"
+        );
+    }
+}
+
 async function main() {
     try {
         write(
@@ -671,6 +736,7 @@ async function main() {
         await testHelpers();
         await testPrivateBoundary();
         await testWindowsPaths();
+        await testWireProviderGlobals();
         console.log(
             "PASS: classic ES5 linker preserves live aliases, lexical bindings and async behavior; validates ABI bridges and deduplicates identical TypeScript helpers"
         );

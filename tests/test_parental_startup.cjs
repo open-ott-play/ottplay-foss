@@ -108,6 +108,7 @@ function fixture({
         }
     );
     const w = dom.window;
+    require("./helpers/shared-core-runtime.cjs")(dom.getInternalVMContext());
     const played = [],
         stopped = [],
         archives = [],

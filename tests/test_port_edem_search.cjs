@@ -57,6 +57,7 @@ function parseSearch(query) {
         options.complete();
     };
     vm.createContext(context);
+    context.OttPlayCore = require("./helpers/shared-core-runtime.cjs")(context);
     vm.runInContext(declaration.getText(ast), context);
     context._getMediaArray("search?search=" + query, () => {
         completed = true;

@@ -198,6 +198,7 @@ function fixture(options = {}) {
     if (options.hlsMissing) delete w.Hls;
     w.window = w;
     vm.createContext(w);
+    require("./helpers/shared-core-runtime.cjs")(w);
     vm.runInContext(source, w);
     w.video = media(options.nativeHls !== false);
     w.videoPip = media(options.nativeHls !== false);

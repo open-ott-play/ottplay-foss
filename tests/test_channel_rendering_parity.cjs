@@ -108,6 +108,7 @@ for (const profile of ["server", "tauri", "capacitor"]) {
         w.eval(read(stage + "/js/native-environment.js"));
         w.eval(read(stage + "/js/jquery.min.js"));
     }
+    require("./helpers/shared-core-runtime.cjs")(dom.getInternalVMContext());
     vm.runInContext(read(bundles[profile]), dom.getInternalVMContext(), {
         timeout: 10000,
     });

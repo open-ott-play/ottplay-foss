@@ -554,12 +554,9 @@ export function exportSettings(): string {
         window.pullSettingsFromWindow();
     }
     // Consent and credentials belong to this installation, never a backup.
-    const exportedSettings = { ...settings };
-    delete (exportedSettings as Partial<PlayerSettings>).commandServerAddress;
-    delete (exportedSettings as Partial<PlayerSettings>).commandServerToken;
-    delete (exportedSettings as Partial<PlayerSettings>).commandServerEnabled;
-    delete (exportedSettings as Partial<PlayerSettings>).localHttpEnabled;
-    delete (exportedSettings as Partial<PlayerSettings>).localHttpDeviceCode;
+    const exportedSettings = (
+        window as any
+    ).OttPlayCore.classicPortableSnapshot(settings, false);
     const env: ExportEnvelopeV1 = {
         favoritesArray: window.providerGetJson?.("favoritesArray", []) || [],
         parentalArray: window.providerGetJson?.("parentalArray", []) || [],
@@ -597,19 +594,10 @@ export function importSettings(
         return;
     }
 
-    if (
-        !env ||
-        env.version !== 1 ||
-        !env.settings ||
-        typeof env.settings !== "object"
-    ) {
+    if (!(window as any).OttPlayCore.classicImportEnvelope(env)) {
         if (onConfirm) onConfirm(false);
         return;
     }
-
-    // Coerce arrays to ensure they are proper arrays
-    if (!Array.isArray(env.parentalArray)) env.parentalArray = [];
-    if (!Array.isArray(env.favoritesArray)) env.favoritesArray = [];
 
     if (typeof window.confirmBox === "function") {
         window.confirmBox(
@@ -642,11 +630,10 @@ function applyImport(env: ExportEnvelopeV1): void {
         ...(readLegacySettingsFields(
             env.settings
         ) as ExportEnvelopeV1["settings"]),
-        commandServerAddress: settings.commandServerAddress || "",
-        commandServerEnabled: 0,
-        commandServerToken: settings.commandServerToken || "",
-        localHttpDeviceCode: settings.localHttpDeviceCode || "",
-        localHttpEnabled: settings.localHttpEnabled === 1 ? 1 : 0,
+        ...(window as any).OttPlayCore.classicInstallationState(
+            settings,
+            false
+        ),
     });
     if (typeof window.providerSetItem === "function") {
         window.providerSetItem(

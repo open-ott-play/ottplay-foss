@@ -214,6 +214,7 @@ function fixture(
     }
     w.window = w;
     vm.createContext(w);
+    require("./helpers/shared-core-runtime.cjs")(w);
     const policy = compile(
         selectedSource(
             "src/provider/index.ts",

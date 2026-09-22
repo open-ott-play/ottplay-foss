@@ -120,6 +120,7 @@ function runFixture(fixture, detector, legacy, nativeOverride) {
     let nativeCalls = 0;
     let nativeReads = 0;
     let context;
+    let core;
     const elements = new Map();
     const document = {
         body: { className: "booting", style: {} },
@@ -147,19 +148,7 @@ function runFixture(fixture, detector, legacy, nativeOverride) {
             const requestPath = new URL(tag.src).pathname;
             requests.push(requestPath);
             if (requestPath === "/js/ottplay-core.js") {
-                context.OttPlayCore = {
-                    LegacyStalkerClient: function () {},
-                    legacyGuideCacheRead: function () {},
-                    legacyGuideSelection: function () {},
-                    legacyXtreamClient: function () {},
-                    NativeGuide: function () {},
-                    parseOperatorPlaylist: function () {},
-                    parsePlaylistMedia: function () {},
-                    parseProviderPlaylist: function () {},
-                    providerArchiveUrl: function () {},
-                    StalkerClient: function () {},
-                    XtreamClient: function () {},
-                };
+                assert.equal(context.OttPlayCore, core);
             } else if (requestPath === "/dist/stbPlayer.js") {
                 bootDevice = context.ott_device;
                 vm.runInContext(detector.code, context, {
@@ -259,6 +248,9 @@ function runFixture(fixture, detector, legacy, nativeOverride) {
         });
     }
     if (nativeOverride) nativeOverride(context, noNativeCalls);
+    // Initialize the real core before removing APIs for this detector-only
+    // matrix. Full script loading with shipped polyfills is tested separately.
+    core = require("./helpers/shared-core-runtime.cjs")(context);
     if (legacy) {
         vm.runInContext(
             "Array.from = undefined; Promise = undefined; Uint8Array = undefined;" +

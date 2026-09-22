@@ -1,3 +1,11 @@
+import {
+    commandEndpointBase,
+    validCommandEnvelope,
+    validDeviceId,
+    validDeviceToken,
+    wire,
+} from "../shared/wire-contracts";
+
 /** Outbound command delivery. Independent of native HTTP listening and WebCrypto. */
 export interface CommandServerConfig {
     address: string;
@@ -68,21 +76,18 @@ export function normalizeCommandServerAddress(value: string): string {
         try {
             device = decodeURIComponent(parts[0].slice("device_id=".length));
         } catch (_error) {}
-        if (!/^[A-Za-z0-9_.:-]{1,128}$/.test(device))
+        if (!validDeviceId(device))
             throw new Error("The device ID in the address is invalid.");
         deviceQuery = "?device_id=" + encodeURIComponent(device);
     }
     var base = parsed.pathname.replace(/\/+$/, "");
-    base = base.replace(
-        /\/(?:api\/webhook\/commands|webhook\/(?:poll|notify))$/,
-        ""
-    );
+    base = commandEndpointBase(base);
     return (
         parsed.protocol +
         "//" +
         parsed.host +
         base +
-        "/api/webhook/commands" +
+        wire.commandPath +
         deviceQuery
     );
 }
@@ -182,7 +187,7 @@ export function createCommandServer(
         if (ids)
             url =
                 (queryIndex < 0 ? url : url.slice(0, queryIndex)) +
-                "/ack" +
+                wire.ackPath.slice(wire.commandPath.length) +
                 (queryIndex < 0 ? "" : url.slice(queryIndex));
         else url += (queryIndex < 0 ? "?" : "&") + "delivery=ack";
         var headers: Record<string, string> = {
@@ -216,25 +221,9 @@ export function createCommandServer(
                     return ids.indexOf(id) === -1;
                 });
             } else {
-                if (
-                    !data ||
-                    !Array.isArray(data.commands) ||
-                    data.commands.length > 256
-                ) {
+                if (!validCommandEnvelope(data)) {
                     failed();
                     return;
-                }
-                for (var i = 0; i < data.commands.length; i++) {
-                    var item = data.commands[i];
-                    if (
-                        !item ||
-                        typeof item !== "object" ||
-                        typeof item.id !== "string" ||
-                        !/^[A-Za-z0-9_-]{1,128}$/.test(item.id)
-                    ) {
-                        failed();
-                        return;
-                    }
                 }
                 var now = Date.now();
                 for (var j = 0; j < data.commands.length; j++) {
@@ -324,7 +313,7 @@ export function createCommandServer(
         }
     }
     function poll(): void {
-        if (pending.length) request("POST", pending.slice(0, 50));
+        if (pending.length) request("POST", pending.slice(0, wire.ackBatchMax));
         else request("GET");
     }
     function configure(next: CommandServerConfig): void {
@@ -360,7 +349,7 @@ export function createCommandServer(
             config.address =
                 normalizedAddress ||
                 normalizeCommandServerAddress(config.address);
-            if (!/^[A-Za-z0-9_-]{32,256}$/.test(config.token))
+            if (!validDeviceToken(config.token))
                 throw new Error(
                     "Enter the server's device access code (32–256 letters, digits, _ or -)."
                 );

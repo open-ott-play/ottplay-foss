@@ -62,6 +62,8 @@ function runtime(invoke, native = true, platform = "tauri", url) {
         }
     );
     const w = dom.window;
+    require("./helpers/shared-core-runtime.cjs")(dom.getInternalVMContext());
+    require("./helpers/operator-fixture-host.cjs")(dom.getInternalVMContext());
     w.eval(read("js/jquery-1.11.1.min.js"));
     if (native && platform === "tauri") w.__TAURI__ = {};
     if (platform === "capacitor")
@@ -397,7 +399,7 @@ async function run(platform) {
         };
         w.shserver = 1;
         w.chanels = { bbc: { rec: "1" } };
-        w.eval(functions("prov/shura/prov.js", ["val2epg", "getEPGchanel"]));
+        w.eval(functions("prov/shura/prov.js", ["getEPGchanel"]));
         const shura = await new Promise((resolve) =>
             w.getEPGchanel("bbc", (id, data) => resolve({ data, id }))
         );

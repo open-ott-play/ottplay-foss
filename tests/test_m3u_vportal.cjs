@@ -85,6 +85,7 @@ function fixture(
     const w = dom.getInternalVMContext();
     w.setTimeout = w.setInterval = () => 1;
     w.console = { error() {}, log() {}, warn() {} };
+    require("./helpers/shared-core-runtime.cjs")(w);
     vm.runInContext(clientCode, w);
     if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     const saved = new Map([
@@ -207,7 +208,6 @@ function fixture(
         return client;
     };
     if (!bundled) vm.runInContext(cancellationCode, w);
-    vm.runInContext(read("vendor/ottplay-core.js"), w);
     vm.runInContext(adapter, w);
     if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     w.duneAddSettings(0);

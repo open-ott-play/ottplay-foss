@@ -85,6 +85,7 @@ function generic(parser, input) {
             .filter((row) => [parser.name, "addChan2cat"].includes(row.name))
             .map((row) => row.text)
             .join("\n");
+    require("./operator-fixture-host.cjs")(ctx);
     vm.runInContext(code, ctx);
     ctx[parser.name](input, () => ctx.callbacks++);
     return snapshot(ctx);
@@ -180,6 +181,7 @@ function operator(profile, input) {
 function media(profile, input) {
     const ctx = context(),
         top = declarations("prov/" + profile + "/prov.js");
+    require("./operator-fixture-host.cjs")(ctx);
     ctx.mediaName = "";
     ctx.alert = (message) => ctx.errors.push(message);
     vm.runInContext(

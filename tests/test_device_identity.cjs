@@ -92,6 +92,7 @@ function fixture(options = {}) {
     const $ = () => ui;
     $.ajax = (request) => requests.push(request);
     const c = vm.createContext({
+        ...require("./load-wire.cjs")(),
         _: (message) => message,
         $,
         alert: (message) => alerts.push(message),

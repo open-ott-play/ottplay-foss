@@ -8,6 +8,12 @@
 
 import { translate as _ } from "../localization";
 import { saveSettings, settings } from "../settings";
+import {
+    type SwopSessionResponse as SessionResponse,
+    type SwopValueResponse as ValResponse,
+    validSwopClientId,
+    wire,
+} from "../shared/wire-contracts";
 import { makeQrSvg } from "../utils/qrcode";
 
 declare var $: any;
@@ -23,26 +29,12 @@ declare var strRETURN: string;
 declare var curColor: string;
 declare var showEditKey1: (_initKeys?: any) => void;
 
-const CLIENT_ID_RE = /^[A-Za-z0-9._:-]{8,128}$/;
 const POLL_MS = 2500;
 const SESSION_TIMEOUT_MS = 6e5;
 
 interface LocalSwopConfig {
     clientId?: string;
     swopBaseUrl?: string;
-}
-
-interface SessionResponse {
-    code?: string;
-    error?: string;
-    expiresIn?: number;
-    url?: string;
-}
-
-interface ValResponse {
-    error?: string;
-    status?: string;
-    value?: string;
 }
 
 /**
@@ -69,7 +61,7 @@ export function ensureDeviceClientId(preferred?: string): string {
         }
     }
     if (!id && settings.deviceUuid) id = String(settings.deviceUuid).trim();
-    if (!CLIENT_ID_RE.test(id)) {
+    if (!validSwopClientId(id)) {
         var random = w.crypto;
         if (!random || typeof random.getRandomValues !== "function") {
             random = w.msCrypto;
@@ -175,7 +167,7 @@ export function applyLocalSwopConfig(done?: () => void): void {
 function swopHeaders(clientId: string): Record<string, string> {
     return {
         "Content-Type": "application/json",
-        "X-Swop-Client-Id": clientId,
+        [wire.swopClientHeader]: clientId,
     };
 }
 
@@ -311,7 +303,7 @@ export function swopLoadValue(): void {
             },
             timeout: 10000,
             type: "GET",
-            url: base + "/val?c=" + encodeURIComponent(code),
+            url: base + wire.swopValuePath + "?c=" + encodeURIComponent(code),
         });
     }
 
@@ -404,7 +396,7 @@ export function swopLoadValue(): void {
         },
         timeout: 10000,
         type: "POST",
-        url: base + "/session",
+        url: base + wire.swopSessionPath,
     });
 }
 

@@ -30,7 +30,11 @@ if (!globalThis.window) {
     } as any;
 }
 
+import vm from "node:vm";
 import assert from "assert";
+import sharedCoreRuntime from "./helpers/shared-core-runtime.cjs";
+
+sharedCoreRuntime(vm.createContext({ window: globalThis.window }));
 
 async function getModule() {
     return await import("../src/channels/index.ts");

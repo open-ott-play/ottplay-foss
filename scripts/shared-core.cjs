@@ -54,5 +54,53 @@ function checkStaged(directory) {
 module.exports = { check, checkStaged, stage };
 if (require.main === module) {
     check();
+    for (const [file, apis, displaced] of [
+        [
+            "src/core/index.ts",
+            [
+                "classicPlaybackMode",
+                "classicPlaybackAutoMode",
+                "PlaybackRecovery",
+                "PlaybackRestart",
+            ],
+            /var _networkRetries|var _mediaRecovered|var _liveRestartUsed/,
+        ],
+        [
+            "src/channels/favorites-lists.ts",
+            [
+                "favoriteListChange",
+                "loadClassicFavoriteLists",
+                "favoriteListOrder",
+            ],
+            /favoritesLists\.order\.splice/,
+        ],
+        [
+            "prov/edem/prov.js",
+            ["OperatorPortalCatalogClient", "operatorPortalNavigate"],
+            /JSON\.stringify\(data\.items/,
+        ],
+        [
+            "src/storage/index.ts",
+            [
+                "classicPortableKey",
+                "classicPortableSnapshot",
+                "classicInstallationState",
+            ],
+            /const INSTALLATION_SETTINGS/,
+        ],
+        [
+            "src/provider/operator.ts",
+            ["OperatorPlaylistClient", "OperatorClient", "operatorVodCatalog"],
+            /function addChan2cat/,
+        ],
+    ]) {
+        const source = fs.readFileSync(path.join(root, file), "utf8");
+        for (const api of apis)
+            assert(source.includes("." + api + "("), file + " must use " + api);
+        assert(
+            !displaced.test(source),
+            "Displaced domain implementation reintroduced: " + file
+        );
+    }
     console.log("PASS shared core distribution receipt");
 }

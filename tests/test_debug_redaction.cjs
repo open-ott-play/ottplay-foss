@@ -252,6 +252,7 @@ async function testBundle() {
             return respond(url, options);
         };
         context.fetch = fetch;
+        require("./helpers/shared-core-runtime.cjs")(context);
         vm.runInContext(code, context);
         return {
             api: () => context.__ottDebug,

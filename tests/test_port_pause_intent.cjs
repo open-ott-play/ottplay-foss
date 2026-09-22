@@ -66,6 +66,7 @@ function fixture() {
     };
     w.window = w;
     vm.createContext(w);
+    require("./helpers/shared-core-runtime.cjs")(w);
     vm.runInContext(core, w);
     w.playerMode = 1;
     w.playType = 1700000000;

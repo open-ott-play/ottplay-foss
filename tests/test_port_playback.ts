@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import ts from "typescript";
+import sharedCoreRuntime from "./helpers/shared-core-runtime.cjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -129,6 +130,7 @@ function fixture() {
     };
     w.window = w;
     vm.createContext(w);
+    sharedCoreRuntime(w);
     vm.runInContext(source("core/index.ts"), w);
     vm.runInContext(
         source("ui/index.ts", ["initBackgroundIntervals", "_t2"]),
