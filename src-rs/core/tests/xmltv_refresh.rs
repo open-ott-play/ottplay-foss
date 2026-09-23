@@ -176,11 +176,12 @@ fn verify(document: &str, count: usize, test: &str) {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let directory = TemporaryDirectory(std::env::temp_dir().join(format!(
-        "ottplay-refresh-contracts-{}-{nonce}",
+    let path = std::env::temp_dir().join(format!(
+        "ottplay-refresh-contracts-{}-{test}-{nonce}",
         std::process::id()
-    )));
-    std::fs::create_dir(&directory.0).unwrap();
+    ));
+    std::fs::create_dir(&path).unwrap();
+    let directory = TemporaryDirectory(path);
     let binary = std::env::current_exe().unwrap();
     for (index, case) in cases.iter().enumerate() {
         let case_directory = directory.0.join(index.to_string());
