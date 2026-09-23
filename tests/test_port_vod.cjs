@@ -231,6 +231,7 @@ function fixture() {
                 "searchMedia",
                 "setCurrent",
             ]) +
+            sourceFunctions("src/core/index.ts", ["updateCoreVideoInfo"]) +
             sourceFunctions("src/ui/index.ts", [
                 "showMediaList1",
                 "mediaList",

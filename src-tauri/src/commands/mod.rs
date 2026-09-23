@@ -1,3 +1,4 @@
+pub mod native_hls;
 pub mod media_session;
 pub mod http;
 pub mod m3u;

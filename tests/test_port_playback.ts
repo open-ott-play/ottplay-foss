@@ -131,7 +131,7 @@ function fixture() {
     w.window = w;
     vm.createContext(w);
     sharedCoreRuntime(w);
-    vm.runInContext(source("core/index.ts"), w);
+    vm.runInContext(source("core/native-hls.ts") + source("core/index.ts"), w);
     vm.runInContext(
         source("ui/index.ts", ["initBackgroundIntervals", "_t2"]),
         w

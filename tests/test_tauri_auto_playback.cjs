@@ -5,7 +5,11 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const root = path.resolve(__dirname, "..");
-const source = ["src/core/auto-playback.ts", "src/core/index.ts"]
+const source = [
+    "src/core/auto-playback.ts",
+    "src/core/native-hls.ts",
+    "src/core/index.ts",
+]
     .map((file) =>
         ts
             .transpileModule(fs.readFileSync(path.join(root, file), "utf8"), {

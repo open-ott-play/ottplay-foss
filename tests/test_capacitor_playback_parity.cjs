@@ -17,7 +17,9 @@ function compile(source) {
         .outputText.replace(/^import .*\n/gm, "")
         .replace(/^export /gm, "");
 }
-const core = compile(read("src/core/index.ts"));
+const core = ["src/core/native-hls.ts", "src/core/index.ts"]
+    .map((file) => compile(read(file)))
+    .join("\n");
 const entry = read("src/index.ts");
 const begin = entry.indexOf("// Capacitor Mode C: native media bridges");
 const end = entry.indexOf("// Tauri Mode B: OS MediaSession", begin);

@@ -413,6 +413,7 @@ const coreControls = functions("src/core/index.ts", [
     "playCoreMedia",
     "cancelCoreSeek",
     "cancelCoreAutoPlayback",
+    "cancelCoreNativeHls",
     "destroyCoreShaka",
     "resetCoreNativeBitrate",
     "stbContinue",
@@ -425,6 +426,9 @@ for (const platform of Object.keys(nativeSources)) {
     const w = {
         _coreAutoCancel: null,
         _coreDemoMute: null,
+        _coreNativeAttempt: 0,
+        _coreNativeHls: null,
+        _coreNativeHlsCleanup: null,
         _corePendingSeek: null,
         _coreShakaTeardown: null,
         _playSession: 0,

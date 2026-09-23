@@ -6,7 +6,9 @@ const ts = require("typescript");
 const root = path.resolve(__dirname, "..");
 const core = ts
     .transpileModule(
-        fs.readFileSync(path.join(root, "src/core/index.ts"), "utf8"),
+        ["src/core/native-hls.ts", "src/core/index.ts"]
+            .map((file) => fs.readFileSync(path.join(root, file), "utf8"))
+            .join("\n"),
         {
             compilerOptions: {
                 module: ts.ModuleKind.ES2015,

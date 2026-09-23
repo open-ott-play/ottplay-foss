@@ -4,7 +4,9 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const root = path.resolve(__dirname, "..");
-const source = fs.readFileSync(path.join(root, "src/core/index.ts"), "utf8");
+const source = ["src/core/native-hls.ts", "src/core/index.ts"]
+    .map((file) => fs.readFileSync(path.join(root, file), "utf8"))
+    .join("\n");
 const core = ts
     .transpileModule(source, {
         compilerOptions: {
