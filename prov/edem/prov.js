@@ -59,106 +59,41 @@ function getChannelPicon(ch_id) {
 }
 
 function _edcdnHost() {
-    var host = (edcdn || "").trim();
-    if (!host) return "";
-    host = host.replace(/^https?:\/\//i, "").split("/")[0];
-    return host;
+    return OttPlayCore.operatorEdemHost(edcdn || "");
 }
 
 function getChannelUrl(ch_id) {
     _getParams();
-    var host = _edcdnHost();
-    if (!host) return "";
-    var url = chanels[ch_id] ? chanels[ch_id].url || "" : "";
-    if (url) {
-        return url
-            .replace("localhost", host)
-            .replace("00000000000000", edkey || "1");
-    }
-    // CDN streams are typically HTTP-only; keep http:// for playback URLs.
-    // HTTPS is reserved for template playlist / EPG JSON fetches via _scheme().
-    return (
-        "http://" +
-        host +
-        "/iptv/" +
-        (edkey || "1") +
-        "/" +
-        ch_id +
-        "/index.m3u8"
-    );
+    return OttPlayCore.operatorLiveUrl("edem", String(ch_id), chanels[ch_id], {
+        host: edcdn || "",
+        key: edkey || "",
+    });
 }
 
 function getArchiveUrl(ch_id, time, time_to) {
     _getParams();
     return (
-        getChannelUrl(ch_id) +
-        "?utc=" +
-        Math.floor(time) +
-        "&lutc=" +
-        Math.floor(Date.now() / 1000)
+        OttPlayCore.providerArchiveUrl(
+            "utc-now",
+            getChannelUrl(ch_id),
+            "",
+            "",
+            Number(time),
+            Number(time_to),
+            Date.now() / 1000,
+            browserName() === "dune",
+            0
+        ) || ""
     );
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];
 
-function addChan2cat(cat, ci) {
-    if (!(cat && ci)) return;
-    if (!cats[cat]) {
-        catsArray.push(cat);
-        cats[cat] = [];
-    }
-    cats[cat].push(ci);
-}
-
-function getAttribute(text, attribute) {
-    var a = text.split(attribute + "=");
-    if (a.length == 1 || a[1].length == 0) return "";
-    if (a[1][0] == '"') return a[1].split('"')[1] || "";
-    return a[1].split(/[ ,]+/)[0] || "";
-}
-
-function getAint(text, attribute) {
-    return parseInt(getAttribute(text, attribute), 10) || 0;
-}
-
 function getChanelsArray(callback) {
     _getParams();
 
     function loadPlaylist(url, success, cb) {
-        if (typeof launch_id == "undefined") launch_id = "#launch";
-        if (!url) {
-            cb();
-            return;
-        }
-        var cpurl = url;
-        if (typeof stbInterceptRequest === "function") {
-            stbInterceptRequest(url);
-            url +=
-                (url.indexOf("?") == -1 ? "?" : "&") +
-                "url=" +
-                encodeURIComponent(url);
-        }
-        $.ajax({
-            dataType: "text",
-            error: function () {
-                $(launch_id).append("p...");
-                $.ajax({
-                    data: { url: "@" + cpurl },
-                    dataType: "text",
-                    error: function () {
-                        alert(_("Failed to load channel list!"));
-                        cb();
-                    },
-                    method: "post",
-                    success: success,
-                    timeout: 30000,
-                    url: host + "/m3u/cp.php",
-                });
-            },
-            success: success,
-            timeout: 30000,
-            url: url,
-        });
+        operatorLoadPlaylist(url, success, cb, "quiet");
     }
 
     function aSuccess(data) {
@@ -167,95 +102,24 @@ function getChanelsArray(callback) {
             chanels = {};
             cats = {};
             catsArray = [];
-            var ccat = "";
-            var arrEXTINF = data.split("#EXTINF:"),
-                l1 = arrEXTINF[0],
-                g_utvg =
-                    getAttribute(l1, "url-tvg") ||
-                    getAttribute(l1, "x-tvg-url"),
-                gRec =
-                    l1.indexOf("catchup-days") > -1
-                        ? getAint(l1, "catchup-days") * 24
-                        : l1.indexOf("timeshift") > -1
-                          ? getAint(l1, "timeshift") * 24
-                          : l1.indexOf("tvg-rec") > -1
-                            ? getAint(l1, "tvg-rec") * 24
-                            : "0",
-                gC =
-                    getAttribute(l1, "catchup") ||
-                    getAttribute(l1, "catchup-type"),
-                gCS = getAttribute(l1, "catchup-source");
-            arrEXTINF.shift();
-            arrEXTINF.forEach(function (val) {
-                var e = val.split("\n"),
-                    cat = getAttribute(e[0], "group-title"),
-                    epg = getAttribute(e[0], "tvg-id"),
-                    tn = getAttribute(e[0], "tvg-name"),
-                    logo = getAttribute(e[0], "tvg-logo");
-                logo =
-                    logo.indexOf("//") === 0 ||
-                    logo.toLowerCase().indexOf("http") === 0
-                        ? logo
-                        : "";
-                var rec =
-                        e[0].indexOf("catchup-days") > -1
-                            ? getAint(e[0], "catchup-days") * 24
-                            : e[0].indexOf("timeshift") > -1
-                              ? getAint(e[0], "timeshift") * 24
-                              : e[0].indexOf("tvg-rec") > -1
-                                ? getAint(e[0], "tvg-rec") * 24
-                                : gRec,
-                    ca =
-                        getAttribute(e[0], "catchup") ||
-                        getAttribute(e[0], "catchup-type") ||
-                        gC,
-                    caso = getAttribute(e[0], "catchup-source") || gCS,
-                    utvg = getAttribute(e[0], "url-tvg") || g_utvg,
-                    cn = _("??? No channel name"),
-                    url = "",
-                    n = 1;
-                try {
-                    var comma = e[0].indexOf(",");
-                    cn = comma > 0 ? e[0].substr(comma + 1).trim() : cn;
-                } catch (ex) {}
-                try {
-                    url = e[1].trim();
-                } catch (ex) {}
-                while (url.indexOf("#") === 0) {
-                    if (url.indexOf("#EXTGRP:") != -1)
-                        if (!cat) cat = url.split("#EXTGRP:")[1].trim();
-                    try {
-                        url = e[++n].trim();
-                    } catch (ex) {
-                        url = "";
-                    }
-                }
-                if (cat == "") cat = ccat;
-                else ccat = cat;
-                var ci = (e[1] || url).split("/")[5];
-                addChan2cat(cat, ci);
-                if (url && cList.indexOf(ci) == -1) {
-                    cList.push(ci);
-                    chanels[ci] = {
-                        ca: ca,
-                        caso: caso,
-                        category: {
-                            class: catsArray.indexOf(cat) + 2,
-                            name: cat,
-                        },
-                        channel_name: cn,
-                        epg: epg,
-                        logo: logo,
-                        rec: rec,
-                        time: 0,
-                        time_to: 0,
-                        tn: tn,
-                        url: url,
-                        utvg: utvg,
-                    };
-                }
+            var catalog = OttPlayCore.parseOperatorPlaylist(
+                data,
+                "edem",
+                function () {
+                    return 0;
+                },
+                []
+            );
+            cats = catalog.groups;
+            catsArray = catalog.groupOrder;
+            cList = catalog.ids;
+            chanels = catalog.channels;
+            catalog.entries.forEach(function (entry) {
+                if (entry.generatedName)
+                    entry.channel.channel_name = _("??? No channel name");
             });
-            if (!edkey) {
+            if (catalog.malformed) throw new Error("Malformed playlist entry");
+            if (!OttPlayCore.operatorCredentialsValid("edem", edkey, "")) {
                 doEditData();
                 infoBox(
                     "<br>" +
@@ -286,11 +150,10 @@ function getChanelsArray(callback) {
         callback();
     }
 
-    var u =
-        _scheme() +
-        "epg.drm-play.com/edem/edem_epg_ico" +
-        (edlist ? edlist : "") +
-        ".m3u8";
+    var u = OttPlayCore.operatorProfileUrl("edem", "playlist", {
+        list: edlist,
+        scheme: _scheme(),
+    });
 
     loadPlaylist(u, aSuccess, callback);
 }
@@ -339,14 +202,6 @@ function item2descr(item, parent) {
         return val
             ? "<p><hr><b>" + _("Description") + ": </b>" + val + "</p>"
             : "";
-    }
-    if (parent) {
-        if (parent.title) item.title = parent.title + " - " + item.title;
-        if (!(item.img || item.imglr)) item.img = parent.img || parent.imglr;
-        if (!item.year) item.year = parent.year;
-        if (!item.duration) item.duration = parent.duration;
-        if (!item.agelimit) item.agelimit = parent.agelimit;
-        if (!item.description) item.description = parent.description;
     }
     return (
         '<table><center><b><span style="font-size: 140%;">' +
@@ -435,27 +290,12 @@ var parentMedia = null,
 if (typeof sPageSize == "undefined") sPageSize = 30;
 
 function createMedia(val, parent) {
-    switch (val.type) {
-        case "stream":
-            return {
-                description: item2descr(val, parent),
-                logo_30x30: val.imglr || val.img,
-                request: val.request,
-                stream_url: val.url,
-                title: val.title,
-            };
-        case "category":
-        case "multistream":
-            return {
-                description: item2descr(val, parent),
-                logo_30x30: val.imglr || val.img,
-                playlist_url: {
-                    mediaName: val.title,
-                    request: val.request,
-                },
-                title: val.title,
-            };
-    }
+    var item = OttPlayCore.operatorPortalItem(val, parent);
+    if (!item) return;
+    Object.keys(item).forEach(function (key) {
+        val[key] = item[key];
+    });
+    return OttPlayCore.operatorPortalMedia(val, item2descr(val));
 }
 
 function addMedias2(params) {
@@ -469,10 +309,8 @@ function addMedias2(params) {
             view === window._mediaLoadState
         );
     }
-    var offset = Math.floor(selIndex / params.limit) * params.limit;
-    var requestParams = {};
-    for (var key in params) requestParams[key] = params[key];
-    requestParams.offset = offset;
+    var requestParams = OttPlayCore.operatorPortalPage(params, selIndex);
+    var offset = requestParams.offset;
     $("#dialogbox")
         .html(
             '<span class="ott-spinner ott-spinner--inline" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></span> ' +
@@ -482,15 +320,16 @@ function addMedias2(params) {
     $.ajax({
         complete: function () {
             if (!isCurrent()) return;
-            while (
-                selIndex >= offset &&
-                selIndex < offset + requestParams.limit &&
-                mediaRecords[selIndex] &&
-                typeof mediaRecords[selIndex].description === "function"
-            ) {
-                mediaRecords.length = selIndex;
-                selIndex--;
-            }
+            var selected = OttPlayCore.operatorPortalSelection(
+                selIndex,
+                offset,
+                requestParams.limit,
+                mediaRecords.map(function (row) {
+                    return !!row && typeof row.description === "function";
+                })
+            );
+            if (selected !== selIndex) mediaRecords.length = selected + 1;
+            selIndex = selected;
             showPage();
             $("#dialogbox").hide();
         },
@@ -498,16 +337,19 @@ function addMedias2(params) {
         success: function (data) {
             if (!isCurrent()) return;
             try {
-                if (data !== null)
-                    if (data.type == "error") alert(data.description);
+                var catalog = new OttPlayCore.OperatorPortalCatalogClient(
+                        data,
+                        true
+                    ),
+                    row;
+                while ((row = catalog.next())) {
+                    if (row.kind === "ERROR") alert(row.value);
                     else
-                        data.items.forEach(function (val, i) {
-                            if (val.type != "next")
-                                mediaRecords[offset + i] = createMedia(
-                                    val,
-                                    data
-                                );
-                        });
+                        mediaRecords[offset + row.index] = createMedia(
+                            row.value,
+                            data
+                        );
+                }
             } catch (e) {}
         },
         type: "post",
@@ -533,10 +375,7 @@ function edem_playMedia(med) {
         av = [],
         i = 0,
         variants;
-    var params = { app: "ott-play", key: _vpkey };
-    for (var key in med.request) {
-        params[key] = med.request[key];
-    }
+    var params = OttPlayCore.operatorPortalParams(_vpkey, med.request);
     $.ajax({
         async: false,
         data: JSON.stringify(params),
@@ -555,12 +394,9 @@ function edem_playMedia(med) {
         url: _vpurl,
     });
     $("#dialogbox").hide();
-    if (variants)
-        for (var vkey in variants) {
-            av.push(vkey);
-            if (variants[vkey] == med.stream_url) z = i;
-            i++;
-        }
+    var choices = OttPlayCore.operatorPortalVariants(variants, med.stream_url);
+    av = choices.keys;
+    z = choices.selected;
     function _play() {
         closeList();
         if (imed != -1) medHistory[imed].stream_url = med.stream_url;
@@ -581,59 +417,36 @@ var _getMediaArray = function (murl, callback) {
         if (typeof callback === "function") callback();
         return;
     }
-    if (murl === "") {
-        murl = { mediaName: "Media from " + provName, request: {} };
-        _vpurl = vpurl.split("]")[1];
-        _vpkey = vpurl.split("portal::[key:")[1].split("]")[0];
-    } else if (typeof murl === "string" && murl.indexOf("search") == 0) {
-        var ss = murl.slice(murl.indexOf("=") + 1);
-        // searchMedia encodes URL query values; VPortal expects plain text in JSON.
-        try {
-            ss = decodeURIComponent(ss);
-        } catch (e) {
-            // Retain legacy queries containing a literal or malformed percent escape.
-        }
-        murl = {
-            mediaName: "[" + ss + "]",
-            request: { cmd: "search", query: ss },
-        };
-    } else if (murl.a == "filters") {
+    var navigation = OttPlayCore.operatorPortalNavigate(
+        murl,
+        typeof provName === "undefined" ? "" : provName,
+        typeof vpurl === "undefined" ? "" : vpurl,
+        _vpkey || "",
+        decodeURIComponent
+    );
+    murl = navigation.node;
+    if (navigation.endpoint !== undefined) _vpurl = navigation.endpoint;
+    _vpkey = navigation.key;
+    if (navigation.action === "FILTERS" || navigation.action === "FILTER") {
         mediaRecords = [];
-        murl.filters.forEach(function (val) {
-            mediaRecords.push({
-                description: val.title,
-                logo_30x30: "",
-                playlist_url: {
-                    a: "filter",
-                    items: val.items,
-                    mediaName: val.title,
-                },
-                title: val.title,
-            });
-        });
-        callback();
-        return;
-    } else if (murl.a == "filter") {
-        mediaRecords = [];
-        murl.items.forEach(function (val) {
-            mediaRecords.push({
-                description: val.title,
-                logo_30x30: "",
-                playlist_url: {
-                    mediaName: val.title,
-                    request: val.request,
-                },
-                title: val.title,
-            });
-        });
+        (navigation.action === "FILTERS" ? murl.filters : murl.items).forEach(
+            function (val) {
+                mediaRecords.push(
+                    OttPlayCore.operatorPortalFilter(
+                        val,
+                        navigation.action === "FILTERS"
+                    )
+                );
+            }
+        );
         callback();
         return;
     }
-    var params = { app: "ott-play", key: _vpkey };
-    for (var key in murl.request) {
-        params[key] = murl.request[key];
-    }
-    params.limit = sPageSize * 10;
+    var params = OttPlayCore.operatorPortalParams(
+        _vpkey,
+        murl.request,
+        sPageSize * 10
+    );
 
     $("#dialogbox")
         .html(
@@ -656,61 +469,54 @@ var _getMediaArray = function (murl, callback) {
             if (callback.isCurrent && !callback.isCurrent()) return;
             try {
                 mediaRecords = [];
-                if (data !== null)
-                    switch (data.type) {
-                        case "error":
-                            alert(data.description);
+                var catalog = new OttPlayCore.OperatorPortalCatalogClient(
+                        data,
+                        false
+                    ),
+                    row;
+                if (catalog.named()) mediaName = murl.mediaName;
+                while ((row = catalog.next())) {
+                    switch (row.kind) {
+                        case "ERROR":
+                            alert(row.value);
                             break;
-                        case "videoportal":
-                        case "category":
-                        case "multistream":
-                            mediaName = murl.mediaName;
-                            if (data.items)
-                                data.items.forEach(function (val) {
-                                    if (val.type != "next")
-                                        mediaRecords.push(
-                                            createMedia(val, data)
-                                        );
-                                    else
-                                        for (
-                                            var j = mediaRecords.length;
-                                            j < data.count;
-                                            j++
-                                        ) {
-                                            mediaRecords.push({
-                                                description: function () {
-                                                    return addMedias2(params);
-                                                },
-                                                logo_30x30: "",
-                                                stream_url: "",
-                                                title:
-                                                    j +
-                                                    1 +
-                                                    " " +
-                                                    _("Download! Wait ..."),
-                                            });
-                                        }
-                                });
-                            if (data.controls) {
-                                if (data.controls.search)
-                                    mediaRecords.push({
-                                        description: _("Search"),
-                                        playlist_url: "search",
-                                        search_on: 1,
-                                        title: _("Search"),
-                                    });
-                                if (data.controls.filters)
-                                    mediaRecords.push({
-                                        description: _("Filters"),
-                                        playlist_url: {
-                                            a: "filters",
-                                            filters: data.controls.filters,
-                                        },
-                                        title: _("Filters"),
-                                    });
-                            }
+                        case "MEDIA":
+                            mediaRecords.push(createMedia(row.value, data));
+                            break;
+                        case "LAZY":
+                            mediaRecords.push({
+                                description: function () {
+                                    return addMedias2(params);
+                                },
+                                logo_30x30: "",
+                                stream_url: "",
+                                title:
+                                    row.index +
+                                    1 +
+                                    " " +
+                                    _("Download! Wait ..."),
+                            });
+                            break;
+                        case "SEARCH":
+                            mediaRecords.push({
+                                description: _("Search"),
+                                playlist_url: "search",
+                                search_on: 1,
+                                title: _("Search"),
+                            });
+                            break;
+                        case "FILTERS":
+                            mediaRecords.push({
+                                description: _("Filters"),
+                                playlist_url: {
+                                    a: "filters",
+                                    filters: row.value,
+                                },
+                                title: _("Filters"),
+                            });
                             break;
                     }
+                }
                 return;
             } catch (e) {
                 alert(e);

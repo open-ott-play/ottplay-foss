@@ -16,7 +16,16 @@ const code = ts.transpileModule(source, {
 }).outputText;
 acorn.parse(code, { ecmaVersion: 5 });
 let clock = 1000000;
-const moduleContext = { console, Date: { now: () => clock }, exports: {}, URL };
+const moduleContext = {
+    console,
+    Date: { now: () => clock },
+    exports: {},
+    require(name) {
+        assert.equal(name, "../shared/wire-contracts");
+        return require("./load-wire.cjs")();
+    },
+    URL,
+};
 vm.runInNewContext(code, moduleContext);
 const {
     createCommandServer,

@@ -376,76 +376,21 @@ function getChannelUrl(e) {
     return chanels[e].url || "";
 }
 
-function getArchiveUrl(e, r, t) {
-    function i(e) {
-        return e
-            .replace(/\$\{start\}/g, Math.floor(r))
-            .replace(/\$\{end\}/g, Math.floor(t))
-            .replace(/\$\{timestamp\}/g, Math.floor(Date.now() / 1e3))
-            .replace(
-                /\$\{offset\}/g,
-                Math.floor(Date.now() / 1e3) - Math.floor(r)
-            )
-            .replace(/\$\{duration\}/g, Math.floor(t - r));
-    }
-    if (t < r) t = Date.now() / 1e3;
-    if (browserName() == "dune") t += 7200;
-    if (chanels[e].ca.indexOf("flussonic") != -1) {
-        var a = chanels[e].url,
-            n = "",
-            s = "",
-            o = "";
-        if (a.indexOf("mpegts") != -1) {
-            n = "mpegts";
-            s = "archive-{}-{}.ts";
-            o = "timeshift_abs-{}.ts";
-        } else if (a.indexOf("video.m3u8") != -1) {
-            n = "video.m3u8";
-            s = "video-{}-{}.m3u8";
-            o = "video-timeshift_abs-{}.m3u8";
-        } else if (a.indexOf("mono.m3u8") != -1) {
-            n = "mono.m3u8";
-            s = "mono-{}-{}.m3u8";
-            o = "mono-timeshift_abs-{}.m3u8";
-        } else if (a.indexOf("index.m3u8") != -1) {
-            n = "index.m3u8";
-            s = "archive-{}-{}.m3u8";
-            o = "timeshift_abs-{}.m3u8";
-        } else if (a.indexOf("index.mpd") != -1) {
-            n = "index.mpd";
-            s = "archive-{}-{}.mpd";
-            o = "timeshift_abs-{}.mpd";
-        }
-        if (n) {
-            var l = a.split(n);
-            if (r > Date.now() / 1e3 - 600)
-                return (
-                    l[0] + o.replace("{}", Math.floor(r).toString(10)) + l[1]
-                );
-            return (
-                l[0] +
-                s
-                    .replace("{}", Math.floor(r).toString(10))
-                    .replace("{}", Math.floor(t - r).toString(10)) +
-                l[1]
-            );
-        }
-    }
-    if (chanels[e].caso)
-        switch (chanels[e].ca) {
-            case "append":
-                return i(chanels[e].url + chanels[e].caso);
-            default:
-                return i(chanels[e].caso);
-        }
-    var u = chanels[e].url.indexOf("?") == -1 ? "?" : "&";
+function getArchiveUrl(ch_id, time, time_to) {
+    var channel = chanels[ch_id];
+    if (!channel) return "";
     return (
-        chanels[e].url +
-        u +
-        "utc=" +
-        Math.floor(r) +
-        "&lutc=" +
-        Math.floor(Date.now() / 1e3)
+        OttPlayCore.providerArchiveUrl(
+            "m3u",
+            channel.url || "",
+            channel.caso || "",
+            channel.ca || "",
+            Number(time),
+            Number(time_to),
+            Date.now() / 1000,
+            browserName() === "dune",
+            0
+        ) || ""
     );
 }
 
@@ -462,14 +407,7 @@ function addChan2cat(e, r) {
 
 function getChanelsArray(a) {
     function O(e, r) {
-        var t = e.split(r + "=");
-        if (t.length == 1 || t[1].length == 0) return "";
-        if (t[1][0] == '"') return t[1].split('"')[1] || "";
-        return t[1].split(/[ ,]+/)[0] || "";
-    }
-
-    function I(e, r) {
-        return Number.parseInt(O(e, r), 10) || 0;
+        return OttPlayCore.legacyPlaylistAttribute(e, r);
     }
 
     function e(e, i, a) {
@@ -577,25 +515,23 @@ function getChanelsArray(a) {
                 }
             });
         };
-        var M = "",
-            E = "",
+        var E = "",
             N = "",
             b = { foss: {}, raw: [] };
         try {
-            var t = e.split("#EXTINF:"),
-                i = t[0],
-                U =
-                    i.indexOf("catchup-days") > -1
-                        ? I(i, "catchup-days") * 24
-                        : i.indexOf("timeshift") > -1
-                          ? I(i, "timeshift") * 24
-                          : i.indexOf("tvg-rec") > -1
-                            ? I(i, "tvg-rec") * 24
-                            : Number.parseInt(
-                                  m3uArr.M3Us[m3uArr.active].rechours
-                              ),
-                L = O(i, "catchup") || O(i, "catchup-type"),
-                S = O(i, "catchup-source");
+            var catalog = OttPlayCore.parseProviderPlaylist(
+                    e,
+                    "m3u",
+                    function (url) {
+                        return murmurhash3_32_gc(url, 10);
+                    },
+                    Number.parseInt(m3uArr.M3Us[m3uArr.active].rechours)
+                ),
+                i = catalog.header;
+            cList = catalog.ids;
+            chanels = catalog.channels;
+            cats = catalog.groups;
+            catsArray = catalog.groupOrder;
             r(b, O(i, "foss-tvg"));
             if (window.Capacitor || window.__TAURI__) {
                 b.native_xmltv_urls = nativeXmltvSources(
@@ -608,132 +544,64 @@ function getChanelsArray(a) {
             }
             w(b.raw, O(i, "url-tvg"));
             w(b.raw, O(i, "x-tvg-url"));
-            t.shift();
-            t.forEach(function (e, r, t) {
-                var i = e.split("\n"),
-                    a = O(i[0], "group-title"),
-                    n = O(i[0], "tvg-id"),
-                    s = O(i[0], "tvg-name"),
-                    o = O(i[0], "tvg-shift"),
-                    l = O(i[0], "tvg-logo");
-                l =
-                    l.indexOf("//") === 0 ||
-                    l.toLowerCase().indexOf("http") === 0
-                        ? l
-                        : "";
-                var u =
-                        i[0].indexOf("catchup-days") > -1
-                            ? I(i[0], "catchup-days") * 24
-                            : i[0].indexOf("timeshift") > -1
-                              ? I(i[0], "timeshift") * 24
-                              : i[0].indexOf("tvg-rec") > -1
-                                ? I(i[0], "tvg-rec") * 24
-                                : U,
-                    c = O(i[0], "catchup") || O(i[0], "catchup-type") || L,
-                    f = O(i[0], "catchup-source") || S,
+            catalog.entries.forEach(function (entry) {
+                var i = [entry.raw],
+                    n = entry.epgId,
+                    s = entry.epgName,
+                    l = entry.logo,
                     p = [],
-                    d = _("??? No channel name"),
-                    m = 0,
-                    h = "",
-                    v = 1;
-                w(p, O(i[0], "tvg-source"), b);
-                w(p, O(i[0], "url-tvg"), b);
-                try {
-                    var r = i[0].indexOf(",");
-                    if (r > 0) {
-                        var g = i[0].substr(r + 1).trim();
-                        if (g) {
-                            d = g;
-                            m = xxHash32S(d, true);
-                        } else if (s) {
-                            d = s;
-                        } else if (n) {
-                            d = n;
-                        }
-                    }
-                } catch (i) {
-                    console.log(i);
+                    d = entry.generatedName
+                        ? _("??? No channel name")
+                        : entry.name,
+                    m = entry.titleHashInput
+                        ? xxHash32S(entry.titleHashInput, true)
+                        : 0,
+                    y = entry.id,
+                    x;
+                chanels[y].channel_name = d;
+                w(p, O(entry.raw, "tvg-source"), b);
+                w(p, O(entry.raw, "url-tvg"), b);
+                if (window.Capacitor || window.__TAURI__) {
+                    var customSources = [
+                        O(i[0], "tvg-source"),
+                        O(i[0], "url-tvg"),
+                    ]
+                        .filter(Boolean)
+                        .join(",");
+                    chanels[y].xmltv_urls = customSources
+                        ? nativeXmltvSources(
+                              customSources,
+                              b.native_xmltv_urls || [],
+                              b.foss
+                          )
+                        : (b.native_xmltv_urls || []).slice();
+                    chanels[y].epg_external = !!(
+                        b.epg_server && b.epg_server !== m3u_defaults.epg_server
+                    );
                 }
-                try {
-                    h = i[1].trim();
-                } catch (i) {}
-                while (h.indexOf("#") === 0) {
-                    if (h.indexOf("#EXTGRP:") != -1 && !a)
-                        a = h.split("#EXTGRP:")[1].trim();
-                    try {
-                        h = i[++v].trim();
-                    } catch (i) {
-                        h = "";
+                if (
+                    p.length === 1 &&
+                    n &&
+                    typeof p[0] === "string" &&
+                    p[0].charCodeAt(0) === 61
+                ) {
+                    chanels[y].epg_src = p[0];
+                    chanels[y].epg_url = xxHash32Si(n);
+                } else if (m != 0 || n || s) {
+                    x = [y, xxHash32Si(n), xxHash32Si(s), m].join("-");
+                    if (p.length !== 0) {
+                        x += "~" + p.join("-");
                     }
+                    E += x + "~" + encodeURIComponent(d) + "\n";
                 }
-                if (a == "") a = M;
-                else M = a;
-                var y = murmurhash3_32_gc(h, 10);
-                addChan2cat(a, y);
-                if (h && cList.indexOf(y) == -1) {
-                    var x;
-                    cList.push(y);
-                    chanels[y] = {
-                        ca: c,
-                        caso: f,
-                        category: { class: catsArray.indexOf(a) + 2, name: a },
-                        channel_name: d,
-                        epg: n,
-                        logo: l,
-                        rec: u,
-                        time: 0,
-                        time_to: 0,
-                        tn: s,
-                        url: h,
-                    };
-                    if (window.Capacitor || window.__TAURI__) {
-                        var customSources = [
-                            O(i[0], "tvg-source"),
-                            O(i[0], "url-tvg"),
-                        ]
-                            .filter(Boolean)
-                            .join(",");
-                        chanels[y].xmltv_urls = customSources
-                            ? nativeXmltvSources(
-                                  customSources,
-                                  b.native_xmltv_urls || [],
-                                  b.foss
-                              )
-                            : (b.native_xmltv_urls || []).slice();
-                        chanels[y].epg_external = !!(
-                            b.epg_server &&
-                            b.epg_server !== m3u_defaults.epg_server
-                        );
-                    }
-                    if (o !== "") {
-                        var A = Number.parseFloat(o);
-                        if (!isNaN(A) && A != 0)
-                            chanels[y].ts = Math.floor(A * -3600);
-                    }
-                    if (
-                        p.length === 1 &&
-                        n &&
-                        typeof p[0] === "string" &&
-                        p[0].charCodeAt(0) === 61
-                    ) {
-                        chanels[y].epg_src = p[0];
-                        chanels[y].epg_url = xxHash32Si(n);
-                    } else if (m != 0 || n || s) {
+                if (!l && (m != 0 || n || s)) {
+                    if (x === void 0) {
                         x = [y, xxHash32Si(n), xxHash32Si(s), m].join("-");
-                        if (p.length !== 0) {
+                        if (p.length !== 0 && p[0].charCodeAt(0) !== 61) {
                             x += "~" + p.join("-");
                         }
-                        E += x + "~" + encodeURIComponent(d) + "\n";
                     }
-                    if (!l && (m != 0 || n || s)) {
-                        if (x === void 0) {
-                            x = [y, xxHash32Si(n), xxHash32Si(s), m].join("-");
-                            if (p.length !== 0 && p[0].charCodeAt(0) !== 61) {
-                                x += "~" + p.join("-");
-                            }
-                        }
-                        N += x + "~" + encodeURIComponent(d) + "\n";
-                    }
+                    N += x + "~" + encodeURIComponent(d) + "\n";
                 }
             });
         } catch (e) {
@@ -1354,13 +1222,6 @@ function getMediaArrayXML(e, r) {
 }
 
 function getMediaArrayEXTM3U(e) {
-    function l(e, r) {
-        var t = e.split(r + "=");
-        if (t.length == 1 || t[1].length == 0) return "";
-        if (t[1][0] == '"') return t[1].split('"')[1] || "";
-        return t[1].split(/[ ,]+/)[0] || "";
-    }
-
     function u(e, r) {
         return (
             "<table><h2><center>" +
@@ -1377,35 +1238,14 @@ function getMediaArrayEXTM3U(e) {
     try {
         mediaName = mediaName || "?";
         mediaRecords = [];
-        var r = e.split("#EXTINF:");
-        r.shift();
-        r.forEach(function (e, r, t) {
-            var i = e.split("\n");
-            var a = l(i[0], "tvg-logo");
-            var n =
-                "??? \u041d\u0435\u0442 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u044f";
-            try {
-                n = i[0].split(",")[1].trim();
-            } catch (i) {}
-            var s = "",
-                o = 1;
-            try {
-                s = i[1].trim();
-            } catch (i) {}
-            while (s.indexOf("#") === 0) {
-                try {
-                    s = i[++o].trim();
-                } catch (i) {
-                    s = "";
-                }
-            }
-            if (s)
-                mediaRecords.push({
-                    description: u(n, a),
-                    logo_30x30: a,
-                    stream_url: s,
-                    title: n,
-                });
+        OttPlayCore.parsePlaylistMedia(e).forEach(function (entry) {
+            var name = entry.generatedName ? "??? Нет названия" : entry.name;
+            mediaRecords.push({
+                description: u(name, entry.logo),
+                logo_30x30: entry.logo,
+                stream_url: entry.url,
+                title: name,
+            });
         });
     } catch (e) {
         alert("Error M3U !!!");

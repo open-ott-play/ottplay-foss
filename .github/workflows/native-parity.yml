@@ -8,6 +8,19 @@ permissions:
   contents: read
 
 jobs:
+  shared-guide:
+    name: Shared guide / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Exercise shared guide through the actual native engine
+        run: cargo test --locked -p ottplay-core -p ottplay-server
+
   android:
     name: Android native plugins
     runs-on: ubuntu-latest
@@ -47,7 +60,7 @@ jobs:
           python3 tests/test_android_emoji_policy.py
       - name: Exercise native queue JSON and socket cleanup
         run: |
-          curl --fail --location --retry 3 https://github.com/JetBrains/kotlin/releases/download/v2.3.0/kotlin-compiler-2.3.0.zip -o "$RUNNER_TEMP/kotlin.zip"
+          curl --fail --location --retry 3 https://github.com/JetBrains/kotlin/releases/download/v2.4.20/kotlin-compiler-2.4.20.zip -o "$RUNNER_TEMP/kotlin.zip"
           unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP/ott-queue-kotlin"
           curl --fail --location --retry 3 https://repo.maven.apache.org/maven2/com/vaadin/external/google/android-json/0.0.20131108.vaadin1/android-json-0.0.20131108.vaadin1.jar -o "$RUNNER_TEMP/android-json.jar"
           export PATH="$RUNNER_TEMP/ott-queue-kotlin/kotlinc/bin:$PATH"
@@ -58,6 +71,7 @@ jobs:
           npm run test:native-dash
           python3 tests/test_native_media_lifecycle.py --platform android
           python3 tests/test_native_epg_cache.py --platform android
+          python3 tests/test_native_xmltv_records.py --platform android
 
   apple:
     name: iOS and Tauri native code
@@ -82,6 +96,7 @@ jobs:
           python3 tests/test_ios_demo_media.py
           python3 tests/test_native_media_lifecycle.py --platform ios
           python3 tests/test_native_epg_cache.py --platform ios
+          python3 tests/test_native_xmltv_records.py --platform ios
           python3 tests/test_ios_proxy.py
           python3 tests/test_xmltv_warmup_smoke.py
       - name: Test iOS command queue consent and authentication

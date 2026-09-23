@@ -1,4 +1,7 @@
 import { checkProviderUrl, selectProviderByIndex } from "../provider";
+import { type Command, validPlayerCommand } from "../shared/wire-contracts";
+
+export type { Command } from "../shared/wire-contracts";
 
 /**
  * Command handler — dispatches push commands received via webhook poll.
@@ -23,20 +26,6 @@ declare let $: any;
 declare let window: any;
 
 // ─── Command interface ─────────────────────────────────────────────────────────
-
-export interface Command {
-    channel_name?: string;
-    channel_number?: number;
-    command: string;
-    message?: string;
-    playlist?: string;
-    popup_duration?: number;
-    provider?: number;
-    provider_settings?: string;
-    random_range?: [number, number];
-    volume?: number; // 0-100, absolute volume level
-    volume_step?: number; // relative change, e.g. +5 or -5
-}
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -350,47 +339,7 @@ function exitPlayer(): void {
  * @param cmd - Command object with a "command" field.
  */
 export function handleCommand(cmd: Command): string {
-    if (!(cmd && typeof cmd.command === "string")) return "rejected";
-    function finite(value: any): boolean {
-        return typeof value === "number" && isFinite(value);
-    }
-    function integer(value: any, minimum: number): boolean {
-        return finite(value) && Math.floor(value) === value && value >= minimum;
-    }
-    if (
-        cmd.popup_duration !== undefined &&
-        (!finite(cmd.popup_duration) ||
-            cmd.popup_duration <= 0 ||
-            cmd.popup_duration > 3600)
-    )
-        return "rejected";
-    if (cmd.channel_number !== undefined && !integer(cmd.channel_number, 1))
-        return "rejected";
-    if (cmd.provider !== undefined && !integer(cmd.provider, 0))
-        return "rejected";
-    if (cmd.volume !== undefined && !finite(cmd.volume)) return "rejected";
-    if (cmd.volume_step !== undefined && !finite(cmd.volume_step))
-        return "rejected";
-    if (
-        cmd.random_range !== undefined &&
-        (!Array.isArray(cmd.random_range) ||
-            cmd.random_range.length !== 2 ||
-            !integer(cmd.random_range[0], 1) ||
-            !integer(cmd.random_range[1], 1) ||
-            cmd.random_range[0] > cmd.random_range[1])
-    )
-        return "rejected";
-    if (cmd.channel_name !== undefined && typeof cmd.channel_name !== "string")
-        return "rejected";
-    if (cmd.message !== undefined && typeof cmd.message !== "string")
-        return "rejected";
-    if (cmd.playlist !== undefined && typeof cmd.playlist !== "string")
-        return "rejected";
-    if (
-        cmd.provider_settings !== undefined &&
-        typeof cmd.provider_settings !== "string"
-    )
-        return "rejected";
+    if (!validPlayerCommand(cmd)) return "rejected";
 
     if (
         cmd.command === "channel_by_number" ||

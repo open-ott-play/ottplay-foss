@@ -432,6 +432,7 @@ function fixture(platform = "android") {
     };
     w.window = w;
     vm.createContext(w);
+    require("./helpers/shared-core-runtime.cjs")(w);
     vm.runInContext(core, w);
     w.video = media("video");
     w.videoPip = media("videopip");

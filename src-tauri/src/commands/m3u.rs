@@ -12,15 +12,15 @@ use ottplay_core::{native_xmltv, xmltv};
 
 struct NativeMatch { channel: String, xmltv_id: String, hash: String, shift: i64, logo: String }
 
-fn match_group(cache: &xmltv::XmltvCache, group: &[(String, native_xmltv::MatchChannel)]) -> Vec<NativeMatch> {
-    let index = native_xmltv::build_index(cache);
+fn match_group(cache: &xmltv::XmltvCache, group: &[(String, native_xmltv::MatchChannel)]) -> anyhow::Result<Vec<NativeMatch>> {
+    let index = native_xmltv::build_index(cache)?;
     group.iter().map(|(channel, info)| {
-        let id = native_xmltv::resolve_in_index(cache, &index, &info.tvg_id, &info.tvg_name, &info.name).unwrap_or_default();
-        let shift = xmltv::extract_time_shift(&info.name);
+        let id = native_xmltv::resolve_in_index(cache, &index, &info.tvg_id, &info.tvg_name, &info.name)?.unwrap_or_default();
+        let shift = xmltv::extract_time_shift(&info.name)?;
         let hash = ottplay_core::m3u::compute_epg_hash(&format!("{}|{id}|{shift}", info.xmltv_urls.join("|")));
         let logo = cache.channels.get(&id).map(|ch| ch.icon.clone()).filter(|logo| !logo.is_empty())
             .unwrap_or_else(|| format!("/logo/{channel}.svg?ch={}", url::form_urlencoded::byte_serialize(info.name.as_bytes()).collect::<String>()));
-        NativeMatch { channel: channel.clone(), xmltv_id: id, hash, shift, logo }
+        Ok(NativeMatch { channel: channel.clone(), xmltv_id: id, hash, shift, logo })
     }).collect()
 }
 
@@ -36,10 +36,10 @@ async fn native_matches(state: &TauriState, body: &str) -> Result<Option<Vec<Nat
         if sources.is_empty() {
             super::tauri_commands::ensure_xmltv_cache(state).await?;
             let guard = state.xmltv_cache.read().await;
-            matches.extend(match_group(guard.as_ref().ok_or("EPG cache empty")?, &group));
+            matches.extend(match_group(guard.as_ref().ok_or("EPG cache empty")?, &group).map_err(|error| error.to_string())?);
         } else {
             let cache = native_xmltv::load_sources(&sources).await.map_err(|error| error.to_string())?;
-            matches.extend(match_group(&cache, &group));
+            matches.extend(match_group(&cache, &group).map_err(|error| error.to_string())?);
         }
     }
     Ok(Some(matches))
@@ -81,7 +81,7 @@ pub async fn match_channels(
         &mut time_map,
     );
 
-    Ok(result)
+    result.map_err(|error| error.to_string())
 }
 
 /// `invoke('match_logos', {body, url})` — resolve channel logo URLs.
@@ -104,5 +104,5 @@ pub async fn match_logos(
     let cache = cache.as_ref().ok_or("EPG cache empty after ensure")?;
 
     let result = ottplay_core::m3u::match_logos_text(&body, &cache.channels);
-    Ok(result)
+    result.map_err(|error| error.to_string())
 }

@@ -39,9 +39,9 @@ function getProviderParams() {
         $("#login").val(login);
         $("#pass").val(pass);
     } catch (e) {}
-    if (login.length != 8 || pass.length != 8)
+    if (!OttPlayCore.operatorCredentialsValid("shara-tv", login, pass))
         alert("Для доступа необходимо ввести Логин и пароль!");
-    return login.length == 8 && pass.length == 8;
+    return OttPlayCore.operatorCredentialsValid("shara-tv", login, pass);
 }
 
 function setProviderParams() {
@@ -50,7 +50,7 @@ function setProviderParams() {
     providerSetItem("pass", decodeURIComponent($("#pass").val().trim()));
     changed = changed || pass != providerGetItem("pass");
     _getParams();
-    if (login.length != 8 || pass.length != 8)
+    if (!OttPlayCore.operatorCredentialsValid("shara-tv", login, pass))
         alert("Для доступа необходимо ввести Логин и пароль!");
     return changed;
 }
@@ -64,77 +64,28 @@ function getChannelUrl(ch_id) {
 }
 
 function getArchiveUrl(ch_id, time, time_to) {
-    return getChannelUrl(ch_id) + "?utc=" + Math.floor(time);
+    return (
+        OttPlayCore.providerArchiveUrl(
+            "utc",
+            getChannelUrl(ch_id),
+            "",
+            "",
+            Number(time),
+            Number(time_to),
+            Date.now() / 1000,
+            browserName() === "dune",
+            0
+        ) || ""
+    );
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];
-
-function addChan2cat(cat, ci) {
-    if (!(cat && ci)) return;
-    if (!cats[cat]) {
-        catsArray.push(cat);
-        cats[cat] = [];
-    }
-    cats[cat].push(ci);
-}
-
-function getAttribute(text, attribute) {
-    var a = text.split(attribute + "=");
-    if (a.length == 1 || a[1].length == 0) return "";
-    if (a[1][0] == '"') return a[1].split('"')[1] || "";
-    return a[1].split(/[ ,]+/)[0] || "";
-}
-
-function getAint(text, attribute) {
-    return parseInt(getAttribute(text, attribute), 10) || 0;
-}
 
 function getChanelsArray(callback) {
     _getParams();
 
     function loadPlaylist(url, success, cb) {
-        if (typeof launch_id == "undefined") launch_id = "#launch";
-        if (!url) {
-            cb();
-            return;
-        }
-        var cpurl = url;
-        if (typeof stbInterceptRequest === "function") {
-            stbInterceptRequest(url);
-            url +=
-                (url.indexOf("?") == -1 ? "?" : "&") +
-                "url=" +
-                encodeURIComponent(url);
-        }
-        $.ajax({
-            dataType: "text",
-            error: function () {
-                $(launch_id).append("p...");
-                $.ajax({
-                    data: { url: "@" + cpurl },
-                    dataType: "text",
-                    error: function (jqXHR, textStatus, errorThrown) {
-                        console.log(
-                            "channels : jqXHR:" +
-                                JSON.stringify(jqXHR) +
-                                "; textStatus: " +
-                                textStatus +
-                                ", errorThrown: " +
-                                errorThrown
-                        );
-                        alert(_("Failed to load channel list!"));
-                        cb();
-                    },
-                    method: "post",
-                    success: success,
-                    timeout: 30000,
-                    url: host + "/m3u/cp.php",
-                });
-            },
-            success: success,
-            timeout: 30000,
-            url: url,
-        });
+        operatorLoadPlaylist(url, success, cb, "classic");
     }
 
     function aSuccess(data) {
@@ -143,58 +94,26 @@ function getChanelsArray(callback) {
             chanels = {};
             cats = {};
             catsArray = [];
-            var arrEXTINF = data.split("#EXTINF:");
-            arrEXTINF.shift();
-            arrEXTINF.forEach(function (val) {
-                var e = val.split("\n"),
-                    cat = getAttribute(e[0], "group-title"),
-                    epg = getAttribute(e[0], "tvg-id"),
-                    logo = getAttribute(e[0], "tvg-logo"),
-                    rec = getAint(e[0], "catchup-days") * 24,
-                    aurl = getAttribute(e[0], "catchup-source"),
-                    cn = "??? Нет названия канала",
-                    url = "";
-                try {
-                    cn = e[0].split(",")[1].trim();
-                } catch (ex) {}
-                try {
-                    url = e[1].trim();
-                } catch (ex) {}
-                if (url.indexOf("#EXTGRP:") != -1) {
-                    try {
-                        url = e[2].trim();
-                    } catch (ex) {}
-                    if (!cat) {
-                        try {
-                            cat = e[1].split("#EXTGRP:")[1].trim();
-                        } catch (ex) {}
-                    }
-                }
-                var ci = "";
-                try {
-                    ci = url.split("/")[3] || "";
-                } catch (ex) {}
-                if (url && ci && cList.indexOf(ci) == -1) {
-                    addChan2cat(cat, ci);
-                    cList.push(ci);
-                    chanels[ci] = {
-                        aurl: aurl,
-                        category: {
-                            class: catsArray.indexOf(cat) + 2,
-                            name: cat,
-                        },
-                        ch_id: ci,
-                        channel_name: cn,
-                        epg: epg,
-                        logo: logo,
-                        rec: rec,
-                        time: 0,
-                        time_to: 0,
-                        url: url,
-                    };
-                }
+            var catalog = OttPlayCore.parseOperatorPlaylist(
+                data,
+                "shara-tv",
+                function () {
+                    return 0;
+                },
+                []
+            );
+            cats = catalog.groups;
+            catsArray = catalog.groupOrder;
+            cList = catalog.ids;
+            chanels = catalog.channels;
+            catalog.entries.forEach(function (entry) {
+                if (entry.generatedName)
+                    entry.channel.channel_name = "??? Нет названия канала";
             });
-            if (login.length != 8 || pass.length != 8) {
+            if (catalog.malformed) throw new Error("Malformed playlist entry");
+            if (
+                !OttPlayCore.operatorCredentialsValid("shara-tv", login, pass)
+            ) {
                 try {
                     popupList(popupActions.indexOf(noProvParam) + 1);
                 } catch (ex) {}
@@ -216,7 +135,7 @@ function getChanelsArray(callback) {
         callback();
     }
 
-    if (!login || !pass || login.length != 8 || pass.length != 8) {
+    if (!OttPlayCore.operatorCredentialsValid("shara-tv", login, pass)) {
         try {
             popupList(popupActions.indexOf(noProvParam) + 1);
         } catch (ex) {}
@@ -230,7 +149,10 @@ function getChanelsArray(callback) {
     }
 
     loadPlaylist(
-        "http://tvfor.pro/g/" + login + ":" + pass + "/1/playlist.m3u",
+        OttPlayCore.operatorProfileUrl("shara-tv", "playlist", {
+            login: login,
+            password: pass,
+        }),
         aSuccess,
         callback
     );

@@ -55,15 +55,22 @@ function getChannelUrl(e) {
     return chanels[e] ? chanels[e].url || "" : "";
 }
 
-function getArchiveUrl(e, r, t) {
-    if (t < r) t = Date.now() / 1e3;
-    if (!(chanels[e] && chanels[e].caso)) return "";
-    return chanels[e].caso
-        .replace(/\${start}/g, Math.floor(r))
-        .replace(/\${end}/g, Math.floor(t))
-        .replace(/\${timestamp}/g, Math.floor(Date.now() / 1e3))
-        .replace(/\${offset}/g, Math.floor(Date.now() / 1e3) - Math.floor(r))
-        .replace(/\${duration}/g, Math.floor(t - r));
+function getArchiveUrl(ch_id, time, time_to) {
+    var channel = chanels[ch_id];
+    if (!channel) return "";
+    return (
+        OttPlayCore.providerArchiveUrl(
+            "template",
+            channel.url || "",
+            channel.caso || "",
+            channel.ca || "",
+            Number(time),
+            Number(time_to),
+            Date.now() / 1000,
+            browserName() === "dune",
+            0
+        ) || ""
+    );
 }
 
 function getEPGchanel(s, e) {
@@ -77,18 +84,11 @@ function getEPGchanel(s, e) {
         e(s, null);
         return;
     }
-    var apiUrl = stalker.portal.replace(/\/+$/, "") + "/stalker_portal/api/";
-    var data = {
-        id: 1,
-        jsonrpc: "2.0",
-        method: "get_epg",
-        params: {
-            ch_id: chId,
-            from: Math.floor(Date.now() / 1e3 - 86400),
-            mac: stalker.mac,
-            to: Math.floor(Date.now() / 1e3 + 86400),
-        },
-    };
+    var client = stalkerCore();
+    var apiUrl = client.endpoint();
+    var data = client.guideRequest(chId, function () {
+        return Date.now() / 1e3;
+    });
     $.ajax({
         contentType: "application/json",
         data: JSON.stringify(data),
@@ -98,29 +98,7 @@ function getEPGchanel(s, e) {
         url: apiUrl,
     })
         .done(function (r) {
-            var o = null;
-            if (r && r.result && Array.isArray(r.result)) {
-                o = [];
-                r.result.forEach(function (epg) {
-                    var start =
-                        Number.parseInt(epg.start_timestamp) ||
-                        Number.parseInt(epg.start) ||
-                        0;
-                    var end =
-                        Number.parseInt(epg.end_timestamp) ||
-                        Number.parseInt(epg.end) ||
-                        0;
-                    if (start && end) {
-                        o.push({
-                            descr: epg.descr || epg.description || "",
-                            icon: "",
-                            name: epg.name || epg.title || "No title",
-                            time: start,
-                            time_to: end,
-                        });
-                    }
-                });
-            }
+            var o = client.guide(r);
             e(s, o);
         })
         .fail(function () {
@@ -128,21 +106,15 @@ function getEPGchanel(s, e) {
         });
 }
 
-function addChan2cat(catName, hash) {
-    if (!(catName && hash)) return;
-    if (!cats[catName]) {
-        catsArray.push(catName);
-        cats[catName] = [];
-    }
-    cats[catName].push(hash);
+function stalkerCore() {
+    return new OttPlayCore.LegacyStalkerClient(stalker.portal, stalker.mac);
 }
 
 function stalkerApiCall(method, params, callback) {
     loadStalkerParams();
-    var apiUrl = stalker.portal.replace(/\/+$/, "") + "/stalker_portal/api/";
-    if (!params) params = {};
-    if (!params.mac) params.mac = stalker.mac;
-    var data = { id: 1, jsonrpc: "2.0", method: method, params: params };
+    var client = stalkerCore();
+    var apiUrl = client.endpoint();
+    var data = client.api(method, params || {});
     $.ajax({
         contentType: "application/json",
         data: JSON.stringify(data),
@@ -172,112 +144,37 @@ function getChanelsArray(callback) {
         return;
     }
     $(launch_id).append(_("Connecting to Stalker portal..."));
-    stalkerApiCall("handshake", {}, function (r) {
-        if (!(r && r.result)) {
-            var mac = stalker.mac.replace(/:/g, "").toUpperCase();
-            stalkerApiCall("handshake", { mac: stalker.mac }, function (r2) {
-                if (!(r2 && r2.result)) {
-                    alert(_("Failed to connect to Stalker portal"));
-                    callback();
-                    return;
-                }
-                loadChannelsFromStalker(callback);
+    var client = stalkerCore();
+    function next() {
+        var request = client.request();
+        if (request === null) {
+            var catalog = client.catalog(function (name) {
+                return xxHash32S(name, true);
             });
-            return;
-        }
-        loadChannelsFromStalker(callback);
-    });
-}
-
-function loadChannelsFromStalker(callback) {
-    $(launch_id).append(_("Loading channels..."));
-    stalkerApiCall("get_channels", {}, function (r) {
-        if (!(r && r.result)) {
-            alert(_("Failed to load channels from Stalker portal"));
+            cList = catalog.ids;
+            chanels = catalog.channels;
+            cats = catalog.groups;
+            catsArray = catalog.groupOrder;
             callback();
             return;
         }
-        cList = [];
-        chanels = {};
-        cats = {};
-        catsArray = [];
-        var channels = r.result;
-        if (!Array.isArray(channels) && typeof channels === "object") {
-            var items =
-                channels.data || channels.items || channels.channels || [];
-            if (Array.isArray(items)) channels = items;
-            else {
-                var tmp = [];
-                for (var k in channels) {
-                    if (
-                        channels.hasOwnProperty(k) &&
-                        typeof channels[k] === "object" &&
-                        channels[k].name
+        if (request.method === "get_channels")
+            $(launch_id).append(_("Loading channels..."));
+        stalkerApiCall(request.method, request.params, function (response) {
+            var error = client.accept(response);
+            if (error) {
+                alert(
+                    _(
+                        error.failure === "LEGACY_CONNECT"
+                            ? "Failed to connect to Stalker portal"
+                            : "Failed to load channels from Stalker portal"
                     )
-                        tmp.push(channels[k]);
-                }
-                channels = tmp;
-            }
-        }
-        if (!Array.isArray(channels)) channels = [];
-        channels.forEach(function (ch) {
-            if (!(ch && ch.name)) return;
-            var h = ch.id ? Number(ch.id) : xxHash32S(ch.name, true);
-            var catName = ch.genre || ch.categories || ch.category || "Other";
-            if (Array.isArray(catName)) catName = catName[0] || "Other";
-            if (typeof catName !== "string") catName = "Other";
-            addChan2cat(catName, h);
-            if (cList.indexOf(h) === -1) {
-                cList.push(h);
-                var streamUrl = "";
-                if (ch.url) streamUrl = ch.url;
-                else
-                    streamUrl =
-                        stalker.portal.replace(/\/+$/, "") +
-                        "/stalker_portal/stream/" +
-                        ch.id +
-                        ".m3u8?mac=" +
-                        stalker.mac;
-                var logoUrl = ch.logo || ch.icon || ch.tv_icon || "";
-                if (
-                    logoUrl &&
-                    logoUrl.indexOf("http") !== 0 &&
-                    logoUrl.indexOf("//") === 0
-                ) {
-                    logoUrl =
-                        (stalker.portal.indexOf("https") === 0
-                            ? "https:"
-                            : "http:") + logoUrl;
-                } else if (
-                    logoUrl &&
-                    logoUrl.indexOf("http") !== 0 &&
-                    logoUrl.indexOf("/") === 0
-                ) {
-                    logoUrl = stalker.portal.replace(/\/+$/, "") + logoUrl;
-                }
-                chanels[h] = {
-                    ca: ch.archive ? "append" : "",
-                    caso: "",
-                    category: {
-                        class: catsArray.indexOf(catName) + 2,
-                        name: catName,
-                    },
-                    channel_name: ch.name,
-                    epg: String(ch.id || ch.ch_id || ""),
-                    logo: logoUrl,
-                    rec:
-                        Number.parseInt(ch.archive) ||
-                        Number.parseInt(ch.archive_duration) ||
-                        0,
-                    time: 0,
-                    time_to: 0,
-                    tn: ch.name,
-                    url: streamUrl,
-                };
-            }
+                );
+                callback();
+            } else next();
         });
-        callback();
-    });
+    }
+    next();
 }
 
 function duneAddSettings(e) {

@@ -2,18 +2,24 @@
 """Run native cache regressions with Swift and Kotlin/JVM (no mobile SDK/build).
 
 The actual plugin sources are compiled with small Capacitor/network stubs. Only
-platform imports/annotations are adapted; cache and callback code is unchanged.
+platform imports/annotations, clock, HTTP delivery and VM allocation are adapted;
+cache decisions, parser branches and callback code are unchanged.
 Requires swift, kotlinc and java on PATH. Run: python3 tests/test_native_epg_cache.py
-Use --check-mirrors-only for the shipping-source guard without native compilers.
+Use --check-sources-only for the source ownership guard without native compilers.
 """
 
 import argparse
 import base64
 import gzip
+import hashlib
+import json
+import os
 import pathlib
 import shutil
 import subprocess
 import tempfile
+from native_epg_policy_cases import methods
+from native_epg_fallback_cases import fallback_methods
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 XML = '<tv><channel id="a"><display-name>Feed A</display-name></channel></tv>'
@@ -25,17 +31,34 @@ def run(*args, cwd):
 
 
 def check_shipping_sources():
-    mirrors = (
-        ("mobile-xmltv-epg/src/ios/MobileXmltvEpg.swift", "ios/App/CapApp-SPM/Sources/CapApp-SPM/MobileXmltvEpg.swift"),
-        (
-            "mobile-xmltv-epg/src/android/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt",
-            "android/app/src/main/java/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt",
-        ),
+    receipt = json.loads((ROOT / "vendor/ottplay-core.manifest.json").read_text())
+    for name in ("ottplay-core.js", "ottplay-core.jar", "ottplay-core.LICENSE.txt"):
+        assert hashlib.sha256((ROOT / "vendor" / name).read_bytes()).hexdigest() == receipt["artifacts"][name]["sha256"], name
+    # The iOS target and JVM fixtures must use one source per adapter.
+    obsolete = (
+        "ios/App/CapApp-SPM/Sources/CapApp-SPM/MobileXmltvEpg.swift",
+        "android/app/src/main/java/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt",
     )
-    for source, shipping in mirrors:
-        if (ROOT / source).read_bytes() != (ROOT / shipping).read_bytes():
-            raise AssertionError(f"Shipping native source differs from template: {shipping}")
-    print("PASS native shipping source mirrors match templates", flush=True)
+    for duplicate in obsolete:
+        if (ROOT / duplicate).exists():
+            raise AssertionError(f"Duplicate native source reintroduced: {duplicate}")
+    for path, required in (
+        ("mobile-xmltv-epg/src/ios/MobileXmltvEpg.swift", (
+            "nativeGuideLoadStart", "nativeGuideLoadNext", "NativeGuideSourceBatch", "XmltvRecords", "nativeXmltvOrder")),
+        ("mobile-xmltv-epg/src/android/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt", (
+            "NativeSourceLoad.start", "NativeSourceLoad.next", "NativeSourceBatch(", "XmltvRecords(", "NativeRecordRules.order")),
+    ):
+        source = (ROOT / path).read_text()
+        for api in required:
+            assert api in source, f"Native load policy must use {api}: {path}"
+        assert "firstError" not in source, f"Native batch failure policy reintroduced: {path}"
+        assert "currentProgTitle" not in source and "currentProgChannel" not in source, f"Native XMLTV record reducer reintroduced: {path}"
+    project = (ROOT / "ios/App/App.xcodeproj/project.pbxproj").read_text()
+    if '../../../mobile-xmltv-epg/src/ios/MobileXmltvEpg.swift' not in project:
+        raise AssertionError("iOS must compile the canonical XMLTV adapter")
+    if project.count('E6D5F404FEDC1B000F3C39F /* MobileXmltvEpg.swift in Sources */') != 2:
+        raise AssertionError("Canonical XMLTV adapter must appear once in the iOS Sources phase")
+    print("PASS native XMLTV adapters have one source and iOS compiles it directly", flush=True)
 
 
 SWIFT_STUBS = r"""
@@ -44,24 +67,45 @@ public class CAPPlugin: NSObject {}
 public protocol CAPBridgedPlugin {}
 public struct CAPPluginMethod { init(name: String, returnType: String) {} }
 let CAPPluginReturnPromise = "promise"
+enum FixtureClock { static var now: TimeInterval = 1000000 }
+// Model a platform VM allocation failure without modifying parser/load branches.
+enum FixtureJavaScript {
+    static var remaining: Int?
+    static func context() -> JSContext? {
+        if let count = remaining {
+            if count == 0 { return nil }
+            remaining = count - 1
+        }
+        return JSContext()
+    }
+}
 class CAPPluginCall {
     let source: String
     var values: [String: Any] = [:]
     var result: [String: Any] = [:]
     var resolved = false
     var rejected = false
+    var resolveCount = 0
+    var rejectCount = 0
+    var rejection = ""
     init(_ source: String) { self.source = source }
     func getString(_ key: String) -> String? { key == "xmltv_url" ? source : values[key] as? String }
     func getArray<T>(_ key: String, _ ofType: T.Type) -> [T]? { values[key] as? [T] }
     func getInt(_ key: String) -> Int? { values[key] as? Int }
-    func resolve(_ result: [String: Any] = [:]) { resolved = true; self.result = result }
-    func reject(_ message: String) { rejected = true }
+    func resolve(_ result: [String: Any] = [:]) { resolveCount += 1; resolved = true; self.result = result }
+    func reject(_ message: String) { rejectCount += 1; rejected = true; rejection = message }
 }
 class URLSession {
     static let shared = URLSession()
     var data: Data?
     var requests = 0
     var sources: [String: Data] = [:]
+    var errors: [String: Error] = [:]
+    var deferred = false
+    var queue: [() -> Void] = []
+    var requestUrls: [String] = []
+    func releaseOne() { precondition(!queue.isEmpty); queue.removeFirst()() }
+    func reset() { data = nil; requests = 0; sources = [:]; errors = [:]; deferred = false; queue = []; requestUrls = [] }
     class Task {
         let action: () -> Void
         init(_ action: @escaping () -> Void) { self.action = action }
@@ -69,7 +113,15 @@ class URLSession {
     }
     func dataTask(with url: URL, completionHandler: @escaping (Data?, Any?, Error?) -> Void) -> Task {
         requests += 1
-        return Task { let body = self.sources[url.absoluteString] ?? self.data; completionHandler(body, nil, body == nil ? NSError(domain: "offline", code: 1) : nil) }
+        requestUrls.append(url.absoluteString)
+        return Task {
+            let action = {
+                let body = self.sources[url.absoluteString] ?? self.data
+                let error = self.errors[url.absoluteString] ?? (body == nil ? NSError(domain: "offline", code: 1) : nil)
+                completionHandler(body, nil, error)
+            }
+            if self.deferred { self.queue.append(action) } else { action() }
+        }
     }
 }
 """
@@ -148,16 +200,18 @@ SWIFT_TESTS = r"""
         let start = format.string(from: Date(timeIntervalSince1970: Double(now)))
         let stop = format.string(from: Date(timeIntervalSince1970: Double(now + 3600)))
         let fixture = "<tv><channel id=\"wanted\"><display-name>Original &amp; A</display-name><display-name>Alias</display-name><icon src=\"https://icons.test/a.png\"/></channel><channel id=\"wrong\"><display-name>Private</display-name></channel><programme channel=\"wanted\" start=\"\(start)\" stop=\"\(stop)\"><title><![CDATA[Morning & News]]></title><desc>Details</desc></programme></tv>"
-        let parsed = parseXmltv(fixture)
+        let parsed = try parseXmltv(fixture)
         assert(parsed.names["wanted"] == ["Original & A", "Alias"])
         assert(parsed.icons["wanted"] == "https://icons.test/a.png")
-        assert(resolveXmltvId(channels: parsed.channels, ch: "Private +4", hash: "wanted", names: parsed.names) == "wanted")
-        assert(resolveXmltvId(channels: parsed.channels, ch: "Renamed", hash: "", tvgName: "Alias", names: parsed.names) == "wanted")
-        let plus = buildSlice(parsed, channelId: "42", ch: "Private +4", hash: "wanted", timeShiftHours: 0, archiveHours: 168)
+        let guide = try SharedGuide()
+        let guideRows = parsed.channels.keys.sorted().flatMap { id in (parsed.names[id] ?? [parsed.channels[id]!]).map { [id, $0] } }
+        assert(try! guide.resolve(guideRows, id: "wanted", names: ["", "Private +4"]) == "wanted")
+        assert(try! guide.resolve(guideRows, id: "", names: ["Alias", "Renamed"]) == "wanted")
+        let plus = try buildSlice(parsed, channelId: "42", ch: "Private +4", hash: "wanted", timeShiftHours: 0, archiveHours: 168)
         let plusRows = plus["epg_data"] as! [[String: Any]]
         assert(plusRows[0]["time"] as! Int == now + 14400)
         assert(plusRows[0]["name"] as! String == "Morning & News")
-        let explicit = buildSlice(parsed, channelId: "42", ch: "Private +4", hash: "wanted", timeShiftHours: -2, archiveHours: 168)
+        let explicit = try buildSlice(parsed, channelId: "42", ch: "Private +4", hash: "wanted", timeShiftHours: -2, archiveHours: 168)
         assert((explicit["epg_data"] as! [[String: Any]])[0]["time"] as! Int == now - 7200)
         let sourceA = "http://custom.test/a.xml"
         let sourceB = "https://custom.test/b.xml"
@@ -195,6 +249,7 @@ SWIFT_TESTS = r"""
 KOTLIN_CAPACITOR = r"""
 package com.getcapacitor
 import java.io.File
+object FixtureClock { var now = 1000000000L }
 class Context(var cacheDir: File, var filesDir: File)
 open class Plugin { var context = Context(File("."), File(".")) }
 class PluginCall(val source: String) {
@@ -202,11 +257,14 @@ class PluginCall(val source: String) {
     var result = JSObject()
     var resolved = false
     var rejected = false
+    var resolveCount = 0
+    var rejectCount = 0
+    var rejection = ""
     fun getString(key: String): String? = if (key == "xmltv_url") source else values[key] as? String
     fun getArray(key: String): JSArray? = values[key] as? JSArray
     fun getInt(key: String): Int? = values[key] as? Int
-    fun resolve(value: JSObject = JSObject()) { resolved = true; result = value }
-    fun reject(message: String) { rejected = true }
+    fun resolve(value: JSObject = JSObject()) { resolveCount++; resolved = true; result = value }
+    fun reject(message: String) { rejectCount++; rejected = true; rejection = message }
 }
 annotation class PluginMethod
 class JSObject { val values = mutableMapOf<String, Any>(); fun put(key: String, value: Any) { values[key] = value } }
@@ -217,7 +275,17 @@ KOTLIN_HTTP = r"""
 package okhttp3
 import java.io.IOException
 import java.util.concurrent.TimeUnit
-object Fixture { var data: ByteArray? = null; var requests = 0; val sources = mutableMapOf<String, ByteArray>(); val requestUrls = mutableListOf<String>() }
+object Fixture {
+    var data: ByteArray? = null
+    var requests = 0
+    val sources = mutableMapOf<String, ByteArray>()
+    val errors = mutableMapOf<String, IOException>()
+    val requestUrls = mutableListOf<String>()
+    var deferred = false
+    val queue = mutableListOf<() -> Unit>()
+    fun releaseOne() { check(queue.isNotEmpty()); queue.removeAt(0)() }
+    fun reset() { data = null; requests = 0; sources.clear(); errors.clear(); requestUrls.clear(); deferred = false; queue.clear() }
+}
 interface Call { fun enqueue(callback: Callback) }
 interface Callback {
     fun onFailure(call: Call, e: IOException)
@@ -238,9 +306,13 @@ class OkHttpClient {
         override fun enqueue(callback: Callback) {
             Fixture.requests++
             Fixture.requestUrls.add(request.url)
-            val data = Fixture.sources[request.url] ?: Fixture.data
-            if (data == null) callback.onFailure(this, IOException("offline"))
-            else callback.onResponse(this, Response(Body(data)))
+            val action = {
+                val data = Fixture.sources[request.url] ?: Fixture.data
+                val error = Fixture.errors[request.url]
+                if (error != null || data == null) callback.onFailure(this, error ?: IOException("offline"))
+                else callback.onResponse(this, Response(Body(data)))
+            }
+            if (Fixture.deferred) Fixture.queue.add(action) else action()
         }
     }
 }
@@ -362,11 +434,11 @@ KOTLIN_TESTS = r'''
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check-mirrors-only", action="store_true")
+    parser.add_argument("--check-sources-only", "--check-mirrors-only", dest="check_sources_only", action="store_true")
     parser.add_argument("--platform", choices=["android", "ios", "all"], default="all")
     options = parser.parse_args()
     check_shipping_sources()
-    if options.check_mirrors_only:
+    if options.check_sources_only:
         return
     required = (["kotlinc", "java"] if options.platform in ["android", "all"] else []) + (
         ["swift"] if options.platform in ["ios", "all"] else []
@@ -378,22 +450,30 @@ def main():
         tmp = pathlib.Path(directory)
         if options.platform in ["ios", "all"]:
             swift = (ROOT / "mobile-xmltv-epg/src/ios/MobileXmltvEpg.swift").read_text()
+            swift = swift.replace("JSContext()", "FixtureJavaScript.context()")
             swift = swift.replace("import Capacitor", SWIFT_STUBS)
+            # Point bundle lookups at the actual vendored artifacts; execute the real bridge.
+            resource = json.dumps(str(ROOT / "vendor/ottplay-core.js"))
+            swift = swift.replace('Bundle.main.url(forResource: "ottplay-core", withExtension: "js")', f'Optional(URL(fileURLWithPath: {resource}))')
+            receipt = json.dumps(str(ROOT / "vendor/ottplay-core.manifest.json"))
+            swift = swift.replace('Bundle.main.url(forResource: "ottplay-core.manifest", withExtension: "json")', f'Optional(URL(fileURLWithPath: {receipt}))')
             swift = swift.replace("@objc(MobileXmltvEpg)", "").replace("@objc ", "")
             # Swift's assert autoclosure cannot throw; evaluate the real read first.
-            tests = SWIFT_TESTS.replace("GZIP_FIXTURE", GZIP)
+            tests = SWIFT_TESTS.replace("GZIP_FIXTURE", GZIP) + methods(GZIP)[0] + fallback_methods()[0]
             tests = tests.replace("assert(try readCache", "assert(try! readCache")
             swift = swift.replace("    // MARK: - Cache", tests + "\n    // MARK: - Cache")
-            swift += "\ntry MobileXmltvEpg().runCacheTests()\n"
+            swift += "\ntry MobileXmltvEpg().runCacheTests()\ntry MobileXmltvEpg().runPolicyTests()\ntry MobileXmltvEpg().runFallbackTests()\n"
+            swift = swift.replace("Date().timeIntervalSince1970", "FixtureClock.now")
             (tmp / "CacheTest.swift").write_text(swift)
             run("swift", "-module-cache-path", str(tmp / "swift-module-cache"), "CacheTest.swift", cwd=tmp)
 
         if options.platform in ["android", "all"]:
             kotlin = (ROOT / "mobile-xmltv-epg/src/android/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt").read_text()
             kotlin = kotlin.replace(
-                "    // MARK: - Cache", KOTLIN_TESTS.replace("GZIP_FIXTURE", GZIP) + "\n    // MARK: - Cache"
+                "    // MARK: - Cache", KOTLIN_TESTS.replace("GZIP_FIXTURE", GZIP) + methods(GZIP)[1] + fallback_methods()[1] + "\n    // MARK: - Cache"
             )
-            kotlin += "\nfun main() { MobileXmltvEpgPlugin().runCacheTests() }\n"
+            kotlin += "\nfun main() { MobileXmltvEpgPlugin().runCacheTests(); MobileXmltvEpgPlugin().runPolicyTests(); MobileXmltvEpgPlugin().runFallbackTests() }\n"
+            kotlin = kotlin.replace("System.currentTimeMillis()", "com.getcapacitor.FixtureClock.now")
             (tmp / "CacheTest.kt").write_text(kotlin)
             (tmp / "Capacitor.kt").write_text(KOTLIN_CAPACITOR)
             (tmp / "Http.kt").write_text(KOTLIN_HTTP)
@@ -411,12 +491,14 @@ def main():
                 "Annotation.kt",
                 "BuildConfig.kt",
                 "-nowarn",
+                "-classpath", str(ROOT / "vendor/ottplay-core.jar"),
+                "-jvm-target", "17",
                 "-include-runtime",
                 "-d",
                 "cache-test.jar",
                 cwd=tmp,
             )
-            run("java", "-jar", "cache-test.jar", cwd=tmp)
+            run("java", "-cp", "cache-test.jar" + os.pathsep + str(ROOT / "vendor/ottplay-core.jar"), "play.ott.foss.plugin.CacheTestKt", cwd=tmp)
 
 
 if __name__ == "__main__":

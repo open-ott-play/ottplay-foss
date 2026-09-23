@@ -773,6 +773,7 @@ function coreFixture() {
     };
     w.window = w;
     vm.createContext(w);
+    require("./helpers/shared-core-runtime.cjs")(w);
     vm.runInContext(core, w);
     attachSourceAliases(w);
     w.video = media();
@@ -930,6 +931,7 @@ for (const initiallyMuted of [false, true]) {
         () => {
             const { w, loaded } = uiFixture();
             w.console.log = () => {};
+            require("./helpers/shared-core-runtime.cjs")(w);
             vm.runInContext(core + providerLoad, w);
             attachSourceAliases(w);
             w.video = media();

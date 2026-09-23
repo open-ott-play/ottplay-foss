@@ -202,3 +202,16 @@ not download broadcast footage, music, logos or external images. The Android
 provider links to hosted output; the reviewed APK contains no demo video or
 FFmpeg executable. This describes the media's reproducible source and does not
 assign the licenses of the generation tools to the rest of the application.
+
+## Shared guide core
+
+Guide rules are compiled from the independently maintained Kotlin source in the
+unification workspace. The pinned distribution and its source receipt live in
+`vendor/ottplay-core.*`. Its Kotlin runtime notices are included in
+`vendor/ottplay-core.LICENSE.txt` and staged alongside the browser artifact.
+
+Rust hosts execute that same artifact using rquickjs 0.14.0 and its bundled
+QuickJS-NG engine. Both use the MIT license; complete upstream notices are in
+`licenses/native/rquickjs-LICENSE.txt` and `licenses/native/QuickJS-NG-LICENSE.txt`.
+The build stages these notices in `js/licenses` for web/server/native packages.
+iOS uses the system JavaScriptCore framework.

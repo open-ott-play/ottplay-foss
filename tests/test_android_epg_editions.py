@@ -7,6 +7,7 @@ Requires kotlinc and Java on PATH; no Android build, device or network is used.
 """
 
 import pathlib
+import os
 import shutil
 import tempfile
 
@@ -22,6 +23,7 @@ from test_native_epg_cache import (
 
 KOTLIN_TESTS = r'''
     fun runEditionTests() {
+        val DEFAULT_URL = "https://cdn.epg.one/epg2.xml.gz"
         val dir = java.nio.file.Files.createTempDirectory("epg-edition-test").toFile()
         context = com.getcapacitor.Context(dir, dir)
         val data = java.util.Base64.getDecoder().decode("GZIP_FIXTURE")
@@ -99,7 +101,7 @@ def main():
     for compiler in ("kotlinc", "java"):
         if not shutil.which(compiler):
             raise SystemExit(f"Required native test tool is missing: {compiler}")
-    source = (ROOT / "android/app/src/main/java/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt").read_text()
+    source = (ROOT / "mobile-xmltv-epg/src/android/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt").read_text()
     source = source.replace(
         "    // MARK: - Cache",
         KOTLIN_TESTS.replace("GZIP_FIXTURE", GZIP) + "\n    // MARK: - Cache",
@@ -117,8 +119,8 @@ def main():
                 + str(enabled).lower() + " }\n"
             )
             run("kotlinc", "EditionTest.kt", "Capacitor.kt", "Http.kt", "Annotation.kt", "BuildConfig.kt",
-                "-nowarn", "-include-runtime", "-d", "edition-test.jar", cwd=tmp)
-            run("java", "-jar", "edition-test.jar", cwd=tmp)
+                "-nowarn", "-classpath", str(ROOT / "vendor/ottplay-core.jar"), "-jvm-target", "17", "-include-runtime", "-d", "edition-test.jar", cwd=tmp)
+            run("java", "-cp", "edition-test.jar" + os.pathsep + str(ROOT / "vendor/ottplay-core.jar"), "play.ott.foss.plugin.EditionTestKt", cwd=tmp)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,10 @@
 {
   "excluded": {},
   "requiredVariants": {
+    "tests/test_native_xmltv_records.py": [
+      ["--platform", "android"],
+      ["--platform", "ios"]
+    ],
     "tests/test_native_epg_cache.py": [
       ["--platform", "android"],
       ["--platform", "ios"]

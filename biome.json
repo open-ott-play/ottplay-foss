@@ -174,7 +174,8 @@
       "!ios/**",
       "!android/**",
       "!src-tauri/**",
-      "!vendor/glib-0.18.5/.cargo_vcs_info.json"
+      "!vendor/glib-0.18.5/.cargo_vcs_info.json",
+      "!vendor/ottplay-core.js"
     ]
   },
   "formatter": {
@@ -232,5 +233,13 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["contracts/ottplay-wire-v1.json"],
+      "formatter": {
+        "enabled": false
+      }
+    }
+  ]
 }

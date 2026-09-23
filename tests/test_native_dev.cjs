@@ -68,6 +68,9 @@ async function main() {
             "package-lock.json",
             "docs/privacy-policy.md",
             "licenses/android/Cordova-NOTICE.txt",
+            "vendor/ottplay-core.js",
+            "vendor/ottplay-core.manifest.json",
+            "licenses/native/rquickjs-LICENSE.txt",
         ])
             assert.equal(
                 isNativeDevInput(root, path.join(root, file)),
@@ -87,6 +90,8 @@ async function main() {
             "prov/example/credentials.json",
             "prov/example/private.key",
             "../external.js",
+            "js/ottplay-core.js",
+            "vendor/glib-0.18.5/test.js",
         ])
             assert.equal(
                 isNativeDevInput(root, path.join(root, file)),

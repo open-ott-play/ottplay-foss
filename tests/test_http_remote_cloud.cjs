@@ -26,6 +26,7 @@ function fixture() {
         url: "https://localhost/index.html",
     });
     const w = dom.window;
+    require("./helpers/shared-core-runtime.cjs")(dom.getInternalVMContext());
     w.eval(fs.readFileSync(path.join(root, "js/jquery-1.11.1.min.js"), "utf8"));
     Object.assign(w, {
         _: (value) => value,

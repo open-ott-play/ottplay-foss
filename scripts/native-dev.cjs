@@ -37,6 +37,11 @@ const INPUT_FILES = new Set([
     "LICENSE",
     "THIRD-PARTY-NOTICES.md",
     "docs/privacy-policy.md",
+    "vendor/ottplay-core.js",
+    "vendor/ottplay-core.manifest.json",
+    "vendor/ottplay-core.LICENSE.txt",
+    "licenses/native/rquickjs-LICENSE.txt",
+    "licenses/native/QuickJS-NG-LICENSE.txt",
 ]);
 const PRIVATE_DIRECTORIES = new Set([
     "node_modules",

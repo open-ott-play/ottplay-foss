@@ -85,6 +85,7 @@ function fixture(
     const w = dom.getInternalVMContext();
     w.setTimeout = w.setInterval = () => 1;
     w.console = { error() {}, log() {}, warn() {} };
+    require("./helpers/shared-core-runtime.cjs")(w);
     vm.runInContext(clientCode, w);
     if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     const saved = new Map([

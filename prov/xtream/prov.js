@@ -60,16 +60,31 @@ function getChannelUrl(e) {
     return chanels[e] ? chanels[e].url || "" : "";
 }
 
-function getArchiveUrl(e, r, t) {
-    if (t < r) t = Date.now() / 1e3;
-    if (!(chanels[e] && chanels[e].caso)) return "";
-    var src = chanels[e].caso;
-    return src
-        .replace(/\${start}/g, Math.floor(r))
-        .replace(/\${end}/g, Math.floor(t))
-        .replace(/\${timestamp}/g, Math.floor(Date.now() / 1e3))
-        .replace(/\${offset}/g, Math.floor(Date.now() / 1e3) - Math.floor(r))
-        .replace(/\${duration}/g, Math.floor(t - r));
+function getArchiveUrl(ch_id, time, time_to) {
+    var channel = chanels[ch_id];
+    if (!channel) return "";
+    return (
+        OttPlayCore.providerArchiveUrl(
+            "template",
+            channel.url || "",
+            channel.caso || "",
+            channel.ca || "",
+            Number(time),
+            Number(time_to),
+            Date.now() / 1000,
+            browserName() === "dune",
+            0
+        ) || ""
+    );
+}
+
+function xtreamCore() {
+    return OttPlayCore.legacyXtreamClient(
+        xtream.server,
+        xtream.username,
+        xtream.password,
+        encodeURIComponent
+    );
 }
 
 function getEPGchanel(s, e) {
@@ -83,14 +98,8 @@ function getEPGchanel(s, e) {
         e(s, null);
         return;
     }
-    var url =
-        xtream.server +
-        "/player_api.php?username=" +
-        encodeURIComponent(xtream.username) +
-        "&password=" +
-        encodeURIComponent(xtream.password) +
-        "&action=get_short_epg&stream_id=" +
-        streamId;
+    var client = xtreamCore();
+    var url = client.shortEpgUrl(String(streamId));
     $.ajax({
         dataType: "json",
         timeout: 1e4,
@@ -98,37 +107,14 @@ function getEPGchanel(s, e) {
         url: url,
     })
         .done(function (r) {
-            var o = null;
-            if (r && Array.isArray(r.epg_listings)) {
-                o = [];
-                r.epg_listings.forEach(function (epg) {
-                    var start = new Date(epg.start).getTime() / 1e3;
-                    var end = new Date(epg.end).getTime() / 1e3;
-                    if (!(isNaN(start) || isNaN(end))) {
-                        o.push({
-                            descr: epg.description || "",
-                            icon: "",
-                            name: epg.title || "No title",
-                            time: start,
-                            time_to: end,
-                        });
-                    }
-                });
-            }
+            var o = client.guide(r, function (value) {
+                return new Date(value).getTime() / 1e3;
+            });
             e(s, o);
         })
         .fail(function () {
             e(s, null);
         });
-}
-
-function addChan2cat(catName, hash) {
-    if (!(catName && hash)) return;
-    if (!cats[catName]) {
-        catsArray.push(catName);
-        cats[catName] = [];
-    }
-    cats[catName].push(hash);
 }
 
 function getChanelsArray(callback) {
@@ -145,12 +131,8 @@ function getChanelsArray(callback) {
         return;
     }
     $(launch_id).append(_("Loading channels from Xtream API..."));
-    var apiUrl =
-        xtream.server +
-        "/player_api.php?username=" +
-        encodeURIComponent(xtream.username) +
-        "&password=" +
-        encodeURIComponent(xtream.password);
+    var client = xtreamCore();
+    var apiUrl = client.request();
     $.ajax({
         dataType: "json",
         timeout: 15e3,
@@ -162,49 +144,18 @@ function getChanelsArray(callback) {
             chanels = {};
             cats = {};
             catsArray = [];
-            if (!(r && r.live_streams)) {
+            if (client.accept(r)) {
                 alert(_("Failed to load channels from Xtream API"));
                 callback();
                 return;
             }
-            var catMap = {};
-            if (r.categories) {
-                r.categories.forEach(function (c) {
-                    catMap[c.category_id] = c.category_name || "Unknown";
-                });
-            }
-            r.live_streams.forEach(function (s) {
-                var h = xxHash32S(s.name, true);
-                var catName = catMap[s.category_id] || "Other";
-                addChan2cat(catName, h);
-                if (cList.indexOf(h) === -1) {
-                    cList.push(h);
-                    chanels[h] = {
-                        ca: "",
-                        caso: "",
-                        category: {
-                            class: catsArray.indexOf(catName) + 2,
-                            name: catName,
-                        },
-                        channel_name: s.name,
-                        epg: String(s.stream_id),
-                        logo: s.stream_icon || "",
-                        rec: 0,
-                        time: 0,
-                        time_to: 0,
-                        tn: s.name,
-                        url:
-                            xtream.server +
-                            "/live/" +
-                            encodeURIComponent(xtream.username) +
-                            "/" +
-                            encodeURIComponent(xtream.password) +
-                            "/" +
-                            s.stream_id +
-                            ".m3u8",
-                    };
-                }
+            var catalog = client.legacyCatalog(function (name) {
+                return xxHash32S(name, true);
             });
+            cList = catalog.ids;
+            chanels = catalog.channels;
+            cats = catalog.groups;
+            catsArray = catalog.groupOrder;
             callback();
         })
         .fail(function (e, r, t) {

@@ -15,7 +15,20 @@ import okhttp3.Response
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
-import kotlin.math.max
+import play.ott.core.NativeGuideSources
+import play.ott.core.NativeSourceFormat
+import play.ott.core.NativeSourceLoad
+import play.ott.core.NativeSourceLoadAction
+import play.ott.core.NativeSourceBatch
+import play.ott.core.NativeCacheLookup
+import play.ott.core.NativeGuideFormat
+import play.ott.core.NativeGuideNames
+import play.ott.core.NativeGuideEntry
+import play.ott.core.NativeGuideIndex
+import play.ott.core.NativeGuideWindow
+import play.ott.core.NativeRecordRules
+import play.ott.core.XmltvRecordFormat
+import play.ott.core.XmltvRecords
 
 @CapacitorPlugin(name = "MobileXmltvEpg")
 class MobileXmltvEpgPlugin : Plugin() {
@@ -34,25 +47,15 @@ class MobileXmltvEpgPlugin : Plugin() {
 
     private val cacheLock = Any()
 
-    companion object {
-        private const val TTL_SECONDS = 2 * 3600
-        private const val DEFAULT_URL = "https://cdn.epg.one/epg2.xml.gz"
-    }
-
     private val sourceLock = Any()
     private val parsedCache = mutableMapOf<String, Pair<Long, Parsed>>()
     private val pendingSources = mutableMapOf<String, MutableList<(Result<Parsed>) -> Unit>>()
 
     private fun sourceUrls(call: PluginCall): List<String> {
         val supplied = call.getArray("xmltv_urls")
-        val urls = (0 until (supplied?.length() ?: 0)).map { supplied!!.optString(it) }.filter { it.isNotBlank() }
-        if (urls.isNotEmpty()) return urls.map { it.trim() }.distinct()
-        val explicit = call.getString("xmltv_url")?.trim()?.takeIf { it.isNotEmpty() }
-        if (explicit != null) return listOf(explicit)
-        // Play fetches only sources supplied by the user or their playlist.
-        // An empty source list produces empty EPG/channels without consulting
-        // the Full edition's defaults, including any previously cached feed.
-        return if (BuildConfig.BUNDLED_EPG_DEFAULTS) listOf(DEFAULT_URL) else emptyList()
+        return NativeGuideSources.urls(
+            (0 until (supplied?.length() ?: 0)).map { supplied!!.optString(it) },
+            call.getString("xmltv_url") ?: "", BuildConfig.BUNDLED_EPG_DEFAULTS, NativeSourceFormat.ANDROID)
     }
 
     private fun loadSource(source: String, force: Boolean = false, completion: (Result<Parsed>) -> Unit) {
@@ -61,10 +64,11 @@ class MobileXmltvEpgPlugin : Plugin() {
         }
         synchronized(sourceLock) {
             val cached = parsedCache[source]
-            if (!force && cached != null && System.currentTimeMillis() / 1000 - cached.first < TTL_SECONDS) {
-                completion(Result.success(cached.second)); return
+            when (NativeGuideSources.lookupAndroid(System.currentTimeMillis() / 1000, cached?.first, force, pendingSources.containsKey(source))) {
+                NativeCacheLookup.CACHE -> { completion(Result.success(cached!!.second)); return }
+                NativeCacheLookup.JOIN -> { pendingSources[source]!!.add(completion); return }
+                NativeCacheLookup.LOAD -> Unit
             }
-            pendingSources[source]?.let { it.add(completion); return }
             pendingSources[source] = mutableListOf(completion)
         }
         fun finish(result: Result<Parsed>) {
@@ -74,36 +78,58 @@ class MobileXmltvEpgPlugin : Plugin() {
             }
             callbacks.forEach { it(result) }
         }
-        if (!force) {
-            val fresh = try { readCache(source) } catch (_: Throwable) { null }
-            val parsed = fresh?.let { runCatching { parseXmltv(it) }.getOrNull() }
-            // A readable disk entry can still be truncated or contain a non-XMLTV document.
-            if (parsed != null && parsed.channels.isNotEmpty()) { finish(Result.success(parsed)); return }
-        }
-        fun failed(error: Throwable) {
-            val memory = synchronized(sourceLock) { parsedCache[source]?.second }
-            if (memory != null) { finish(Result.success(memory)); return }
-            val stale = try { readCache(source, allowStale = true) } catch (_: Throwable) { null }
-            val parsed = stale?.let { runCatching { parseXmltv(it) }.getOrNull() }
-            finish(if (parsed != null && parsed.channels.isNotEmpty()) Result.success(parsed) else Result.failure(error))
-        }
-        try {
-            client.newCall(Request.Builder().url(source).build()).enqueue(object : Callback {
-                override fun onFailure(httpCall: Call, e: IOException) { failed(e) }
-                override fun onResponse(httpCall: Call, response: Response) {
-                    try {
-                        if (!response.isSuccessful) throw IOException("XMLTV HTTP ${response.code}")
-                        val data = response.body?.bytes() ?: throw IOException("empty XMLTV body")
-                        val xml = gunzip(data) ?: throw IOException("invalid XMLTV encoding")
-                        val parsed = parseXmltv(String(xml, Charsets.UTF_8))
-                        if (parsed.channels.isEmpty()) throw IOException("invalid or empty XMLTV")
-                        try { writeCache(data, source) } catch (_: Throwable) { }
-                        finish(Result.success(parsed))
-                    } catch (error: Throwable) { failed(error) }
-                    finally { response.close() }
+        var parsed: Parsed? = null
+        var networkData: ByteArray? = null
+        var failure: Throwable = IOException("invalid or empty XMLTV")
+        fun transition(action: NativeSourceLoadAction, succeeded: Boolean = parsed != null) =
+            NativeSourceLoad.next(action, succeeded, parsed?.channels?.size ?: 0, NativeSourceFormat.ANDROID)
+        fun dispatch(action: NativeSourceLoadAction) {
+            when (action) {
+                NativeSourceLoadAction.READ_FRESH_DISK, NativeSourceLoadAction.READ_STALE_DISK -> {
+                    parsed = runCatching {
+                        readCache(source, allowStale = action == NativeSourceLoadAction.READ_STALE_DISK)?.let { parseXmltv(it) }
+                    }.getOrNull()
+                    dispatch(transition(action))
                 }
-            })
-        } catch (error: Throwable) { failed(error) }
+                NativeSourceLoadAction.READ_MEMORY -> {
+                    parsed = synchronized(sourceLock) { parsedCache[source]?.second }
+                    dispatch(transition(action))
+                }
+                NativeSourceLoadAction.FETCH -> {
+                    parsed = null
+                    fun failed(error: Throwable) {
+                        failure = error
+                        dispatch(transition(action, false))
+                    }
+                    try {
+                        client.newCall(Request.Builder().url(source).build()).enqueue(object : Callback {
+                            override fun onFailure(httpCall: Call, e: IOException) { failed(e) }
+                            override fun onResponse(httpCall: Call, response: Response) {
+                                try {
+                                    if (!response.isSuccessful) throw IOException("XMLTV HTTP ${response.code}")
+                                    val data = response.body?.bytes() ?: throw IOException("empty XMLTV body")
+                                    val xml = gunzip(data) ?: throw IOException("invalid XMLTV encoding")
+                                    parsed = parseXmltv(String(xml, Charsets.UTF_8))
+                                    networkData = data
+                                    dispatch(transition(action))
+                                } catch (error: Throwable) { failed(error) }
+                                finally { response.close() }
+                            }
+                        })
+                    } catch (error: Throwable) { failed(error) }
+                }
+                NativeSourceLoadAction.WRITE_DISK -> {
+                    val written = runCatching { writeCache(networkData!!, source) }.isSuccess
+                    dispatch(transition(action, written))
+                }
+                NativeSourceLoadAction.USE_FRESH_DISK, NativeSourceLoadAction.USE_NETWORK,
+                NativeSourceLoadAction.USE_MEMORY, NativeSourceLoadAction.USE_STALE_DISK ->
+                    finish(Result.success(parsed!!))
+                NativeSourceLoadAction.FAIL -> finish(Result.failure(failure))
+                NativeSourceLoadAction.REPARSE_NETWORK -> error("Unexpected Android source action: $action")
+            }
+        }
+        dispatch(NativeSourceLoad.start(force))
     }
 
     // The first feed defining an ID owns that channel and its programs.
@@ -112,28 +138,31 @@ class MobileXmltvEpgPlugin : Plugin() {
         val programs = mutableMapOf<String, List<Program>>()
         val icons = mutableMapOf<String, String>()
         val names = mutableMapOf<String, List<String>>()
-        var firstError: Throwable? = null
-        fun next(index: Int) {
-            if (index == sources.size) {
-                completion(if (channels.isEmpty() && firstError != null) Result.failure(firstError!!)
+        val batch = NativeSourceBatch(sources.size)
+        val errors = mutableMapOf<Int, Throwable>()
+        fun next() {
+            val index = batch.next()
+            if (index < 0) {
+                val failure = batch.failure()
+                completion(if (failure >= 0) Result.failure(errors.getValue(failure))
                     else Result.success(Parsed(channels, programs, icons, names)))
                 return
             }
             loadSource(sources[index], force) { result ->
                 result.onSuccess { parsed ->
-                    parsed.channels.forEach { (id, name) ->
-                        if (!channels.containsKey(id)) {
-                            channels[id] = name
-                            programs[id] = parsed.programs[id] ?: emptyList()
-                            icons[id] = parsed.icons[id] ?: ""
-                            names[id] = parsed.names[id] ?: listOf(name)
-                        }
+                    NativeGuideSources.unowned(channels.keys, parsed.channels.keys.toList()).forEach { id ->
+                        val name = parsed.channels.getValue(id)
+                        channels[id] = name
+                        programs[id] = parsed.programs[id] ?: emptyList()
+                        icons[id] = parsed.icons[id] ?: ""
+                        names[id] = parsed.names[id] ?: listOf(name)
                     }
-                }.onFailure { if (firstError == null) firstError = it }
-                next(index + 1)
+                }.onFailure { errors[index] = it }
+                batch.advance(result.isSuccess, result.getOrNull()?.channels?.size ?: 0)
+                next()
             }
         }
-        next(0)
+        next()
     }
 
     @PluginMethod
@@ -179,10 +208,9 @@ class MobileXmltvEpgPlugin : Plugin() {
         if (!metaFile.exists() || !cacheFile.exists()) return@synchronized null
         val fields = metaFile.readText().split('\n', limit = 2)
         // Timestamp-only metadata predates source tracking and cannot be trusted.
-        if (fields.size != 2 || fields[1] != sourceUrl) return@synchronized null
+        if (fields.size != 2) return@synchronized null
         val fetched = fields[0].toLongOrNull() ?: return@synchronized null
-        val age = max(0L, System.currentTimeMillis() / 1000 - fetched)
-        if (!allowStale && age > TTL_SECONDS) return@synchronized null
+        if (!NativeGuideSources.diskAndroid(sourceUrl, fields[1], System.currentTimeMillis() / 1000, fetched, allowStale)) return@synchronized null
         gunzip(cacheFile.readBytes())?.let { String(it, Charsets.UTF_8) }
     }
 
@@ -223,14 +251,7 @@ class MobileXmltvEpgPlugin : Plugin() {
         val programs = mutableMapOf<String, MutableList<Program>>()
         val icons = mutableMapOf<String, String>()
         val names = mutableMapOf<String, MutableList<String>>()
-        private var currentChannelId: String? = null
-        private var currentProgChannel: String? = null
-        private var currentProgStart = 0
-        private var currentProgStop = 0
-        private var currentProgTitle = StringBuilder()
-        private var currentProgDesc = StringBuilder()
-        private var channelName = StringBuilder()
-        private var textTarget: String? = null
+        private val records = XmltvRecords(XmltvRecordFormat.ARCHIVED_ANDROID)
 
         fun parse(xml: String) {
             val factory = javax.xml.parsers.SAXParserFactory.newInstance()
@@ -240,116 +261,34 @@ class MobileXmltvEpgPlugin : Plugin() {
         }
 
         override fun startElement(uri: String?, local: String?, name: String, attrs: org.xml.sax.Attributes) {
-            when (name) {
-                "channel" -> currentChannelId = attrs.getValue("id")
-                "programme" -> {
-                    currentProgChannel = attrs.getValue("channel")
-                    currentProgStart = parseTime(attrs.getValue("start") ?: "")
-                    currentProgStop = parseTime(attrs.getValue("stop") ?: "")
-                    currentProgTitle = StringBuilder(); currentProgDesc = StringBuilder()
-                }
-                "display-name" -> if (currentChannelId != null) { channelName = StringBuilder(); textTarget = "ch" }
-                "title" -> if (currentProgChannel != null) textTarget = "title"
-                "desc" -> if (currentProgChannel != null) textTarget = "desc"
-                "icon" -> currentChannelId?.let { icons[it] = attrs.getValue("src") ?: "" }
-            }
+            records.start(name, (0 until attrs.length).associate { attrs.getQName(it) to attrs.getValue(it) })
         }
 
         override fun endElement(uri: String?, local: String?, name: String) {
-            when (name) {
-                "channel" -> { currentChannelId?.let { channels.putIfAbsent(it, it) }; currentChannelId = null; textTarget = null }
-                "display-name" -> {
-                    currentChannelId?.let { id ->
-                        val value = channelName.toString().trim()
-                        if (value.isNotEmpty()) { channels.putIfAbsent(id, value); names.getOrPut(id) { mutableListOf() }.add(value) }
-                    }
-                    textTarget = null
-                }
-                "programme" -> {
-                    currentProgChannel?.let { if (currentProgTitle.isNotBlank()) {
-                        programs.getOrPut(it) { mutableListOf() }.add(Program(currentProgStart, currentProgStop, currentProgTitle.toString(), currentProgDesc.toString()))
-                    } }
-                    currentProgChannel = null; textTarget = null
-                }
-                "title", "desc" -> textTarget = null
+            records.end(name)
+            for (row in records.drain()) when (row[0]) {
+                "channel" -> channels[row[1]] = row[2]
+                "name" -> names.getOrPut(row[1]) { mutableListOf() }.add(row[2])
+                "icon" -> icons[row[1]] = row[2]
+                "programme" -> programs.getOrPut(row[1]) { mutableListOf() }
+                    .add(Program(row[2].toInt(), row[3].toInt(), row[4], row[5]))
             }
         }
 
         override fun characters(chars: CharArray, start: Int, length: Int) {
-            when (textTarget) {
-                "ch" -> channelName.append(chars, start, length)
-                "title" -> currentProgTitle.append(chars, start, length)
-                "desc" -> currentProgDesc.append(chars, start, length)
-            }
-        }
-
-        private fun parseTime(ts: String): Int {
-            val trimmed = ts.trim()
-            if (trimmed.length < 14) return 0
-            val datePart = trimmed.substring(0, 14)
-            val tzPart = trimmed.substring(14).trim()
-            val sdf = java.text.SimpleDateFormat("yyyyMMddHHmmss")
-            sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
-            return try {
-                val date = sdf.parse(datePart) ?: return 0
-                var unix = (date.time / 1000).toInt()
-                if (tzPart.length >= 5) {
-                    val sign = if (tzPart[0] == '+') 1 else if (tzPart[0] == '-') -1 else 0
-                    if (sign != 0) {
-                        val hours = tzPart.substring(1, 3).toIntOrNull() ?: 0
-                        val mins = tzPart.substring(3, 5).toIntOrNull() ?: 0
-                        unix -= sign * (hours * 3600 + mins * 60)
-                    }
-                }
-                unix
-            } catch (_: Throwable) { 0 }
+            records.text(String(chars, start, length))
         }
     }
 
     // MARK: - Channel resolution + EPG slice
 
-    private fun matchScore(a: String, b: String): Double {
-        if (a.isEmpty() || b.isEmpty()) return 0.0
-        if (a.contains(b) || b.contains(a)) return minOf(a.length, b.length).toDouble() / maxOf(a.length, b.length)
-        val aa = a.split(" ").toSet()
-        val bb = b.split(" ").toSet()
-        val common = aa.intersect(bb).size
-        return if (common >= maxOf(2, minOf(aa.size, bb.size) / 2)) common.toDouble() / maxOf(aa.size, bb.size) else 0.0
-    }
-
     private fun resolveXmltvId(channels: Map<String, String>, ch: String?, hash: String,
         tvgName: String? = null, names: Map<String, List<String>> = emptyMap()): String {
-        if (hash.isNotEmpty() && channels.containsKey(hash)) return hash
-        val candidates = listOfNotNull(tvgName, ch).map { normalize(it) }.filter { it.isNotEmpty() }
-        val ids = channels.keys.sorted()
-        for (candidate in candidates) {
-            ids.firstOrNull { id -> (names[id] ?: listOf(channels[id]!!)).any { normalize(it) == candidate } }?.let { return it }
+        val rows = channels.keys.sorted().flatMap { id ->
+            (names[id] ?: listOf(channels[id]!!)).ifEmpty { listOf("") }.map { NativeGuideEntry(id, it) }
         }
-        var best = ""
-        var score = 0.0
-        for (candidate in candidates) for (id in ids) for (name in names[id] ?: listOf(channels[id]!!)) {
-            val value = normalize(name)
-            val next = matchScore(candidate, value)
-            if (next >= 0.4 && next > score) { best = id; score = next }
-        }
-        return best.ifEmpty { hash }
-    }
-
-    private fun regionalShift(name: String): Int {
-        val match = Regex("""([+-])\s*(\d+)\s*(?:ч|h|hours?)?""", RegexOption.IGNORE_CASE).find(name) ?: return 0
-        val hours = match.groupValues[2].toIntOrNull() ?: return 0
-        return (if (match.groupValues[1] == "-") -1 else 1) * (if (hours > 24) hours % 24 else hours)
-    }
-
-    private fun normalize(name: String): String {
-        var s = name.lowercase()
-        s = s.replace(Regex("""[+-]\s*\d+\s*(ч|h|hours?)?"""), "")
-        s = s.replace(Regex("""\([^)]*\)"""), "")
-        s = s.replace(Regex("""\s+"""), " ")
-        s = s.trim()
-        s = s.replace(Regex("""^(hd|fhd|uhd|4k)\s+"""), "")
-        s = s.replace(Regex("""\s+(hd|fhd|uhd|4k)$"""), "")
-        return s.trim()
+        return NativeGuideIndex(rows, NativeGuideFormat.ARCHIVED_ANDROID)
+            .resolve(hash, listOfNotNull(tvgName, ch)) ?: hash
     }
 
     private fun buildSlice(
@@ -364,17 +303,16 @@ class MobileXmltvEpgPlugin : Plugin() {
         val xmltvId = resolveXmltvId(parsed.channels, ch, hash, tvgName, parsed.names)
         val progs = parsed.programs[xmltvId] ?: emptyList()
         val now = (System.currentTimeMillis() / 1000).toInt()
-        val lookbackH = if (archiveHours > 0) archiveHours else 48
-        val windowStart = now - lookbackH * 3600
-        val windowEnd = now + 48 * 3600
-        val shift = (if (timeShiftHours != 0) timeShiftHours else regionalShift(ch ?: tvgName ?: "")) * 3600
+        val hours = if (timeShiftHours != 0) timeShiftHours else NativeGuideNames.regionalShift(ch ?: tvgName ?: "", NativeGuideFormat.ARCHIVED_ANDROID)
+        val window = NativeGuideWindow(now.toDouble(), archiveHours.toDouble(), hours.toDouble())
 
         val epgData = JSObject()
         val list = JSArray()
-        for (prog in progs.sortedBy { it.start }) {
-            val start = prog.start + shift
-            val stop = prog.stop + shift
-            if (stop <= windowStart || start >= windowEnd) continue
+        for (index in NativeRecordRules.order(progs.map { it.start.toDouble() }, XmltvRecordFormat.ARCHIVED_ANDROID)) {
+            val prog = progs[index]
+            val start = (prog.start + window.shift).toInt()
+            val stop = (prog.stop + window.shift).toInt()
+            if (!window.includes(prog.start.toDouble(), prog.stop.toDouble())) continue
             val entry = JSObject().apply {
                 put("time", start)
                 put("time_to", stop)

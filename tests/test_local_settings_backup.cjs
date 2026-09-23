@@ -108,6 +108,8 @@ for (const profile of ["typescript", "static-core"]) {
             URL,
         });
         c.window = c;
+        require("./helpers/shared-core-runtime.cjs")(c);
+        Object.assign(c, require("./load-wire.cjs")());
         vm.runInContext(policy + controller + cloud, c);
         c.__ottCommandServer = c.createCommandServer(
             c,

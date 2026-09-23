@@ -1,5 +1,7 @@
 import Capacitor
 import zlib
+import JavaScriptCore
+import CryptoKit
 
 @objc(MobileXmltvEpg)
 public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
@@ -19,24 +21,27 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         return docs.appendingPathComponent("epg2.meta")
     }()
     private let cacheLock = NSLock()
-    private let ttl: TimeInterval = 2 * 3600
-    private let defaultURL = "https://cdn.epg.one/epg2.xml.gz"
+    private let policyLock = NSLock()
+    private var policy: SharedGuide?
+    private func withPolicy<T>(_ action: (SharedGuide) throws -> T) throws -> T {
+        policyLock.lock()
+        defer { policyLock.unlock() }
+        if policy == nil { policy = try SharedGuide() }
+        return try action(policy!)
+    }
 
     private typealias Parsed = (channels: [String: String], programs: [String: [(start: Int, stop: Int, title: String, desc: String)]], icons: [String: String], names: [String: [String]])
     private let sourceLock = NSLock()
     private var parsedCache: [String: (fetched: TimeInterval, data: Parsed)] = [:]
     private var pendingSources: [String: [(Result<Parsed, Error>) -> Void]] = [:]
 
-    private func sourceUrls(_ call: CAPPluginCall) -> [String] {
-        let supplied = call.getArray("xmltv_urls", String.self) ?? []
-        let single = call.getString("xmltv_url") ?? ""
-        let values = supplied.isEmpty ? (single.isEmpty ? [defaultURL] : [single]) : supplied
-        var urls: [String] = []
-        for value in values {
-            let value = value.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !value.isEmpty && !urls.contains(value) { urls.append(value) }
-        }
-        return urls.isEmpty ? [defaultURL] : urls
+    private func sourceUrls(_ call: CAPPluginCall) throws -> [String] {
+        try withPolicy { try $0.sources(call.getArray("xmltv_urls", String.self) ?? [], single: call.getString("xmltv_url") ?? "") }
+    }
+
+    private func loadSources(_ call: CAPPluginCall, force: Bool = false, completion: @escaping (Result<Parsed, Error>) -> Void) {
+        do { loadSources(try sourceUrls(call), force: force, completion: completion) }
+        catch { completion(.failure(error)) }
     }
 
     private func loadSource(_ source: String, force: Bool = false, completion: @escaping (Result<Parsed, Error>) -> Void) {
@@ -45,10 +50,14 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
             return
         }
         sourceLock.lock()
-        if !force, let cached = parsedCache[source], Date().timeIntervalSince1970 - cached.fetched < ttl {
+        let action: String
+        do { action = try withPolicy { try $0.lookup(now: Date().timeIntervalSince1970, fetched: parsedCache[source]?.fetched,
+            force: force, pending: pendingSources[source] != nil) } }
+        catch { sourceLock.unlock(); completion(.failure(error)); return }
+        if action == "CACHE", let cached = parsedCache[source] {
             sourceLock.unlock(); completion(.success(cached.data)); return
         }
-        if pendingSources[source] != nil {
+        if action == "JOIN" {
             pendingSources[source]!.append(completion); sourceLock.unlock(); return
         }
         pendingSources[source] = [completion]
@@ -60,70 +69,121 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
             sourceLock.unlock()
             callbacks.forEach { $0(result) }
         }
-        if !force, let xml = try? readCache(for: url) {
-            let parsed = parseXmltv(xml)
-            // Old or interrupted disk entries may decode successfully but contain invalid XML.
-            if !parsed.channels.isEmpty { finish(.success(parsed)); return }
+        var disk: Parsed?
+        var memory: Parsed?
+        var network: (data: Data, xml: String)?
+        var parsedNetwork: Parsed?
+        var failure: Error = NSError(domain: "MobileXmltvEpg", code: -4,
+            userInfo: [NSLocalizedDescriptionKey: "invalid or empty XMLTV"])
+        func next(_ action: String, _ succeeded: Bool, _ channels: Int = 0) throws -> String {
+            try self.withPolicy { try $0.loadNext(action, succeeded: succeeded, channels: channels) }
         }
-        fetchAndCache(url) { result in
-            switch result {
-            case .success(let xml): finish(.success(self.parseXmltv(xml)))
-            case .failure(let error):
-                self.sourceLock.lock()
-                let memory = self.parsedCache[source]?.data
-                self.sourceLock.unlock()
-                if let memory = memory { finish(.success(memory)) }
-                else if let xml = try? self.readCache(for: url, allowStale: true) {
-                    let parsed = self.parseXmltv(xml)
-                    finish(parsed.channels.isEmpty ? .failure(error) : .success(parsed))
-                } else { finish(.failure(error)) }
-            }
+        func perform(_ action: String) {
+            do {
+                switch action {
+                case "READ_FRESH_DISK", "READ_STALE_DISK":
+                    let xml = try? self.readCache(for: url, allowStale: action == "READ_STALE_DISK")
+                    disk = xml.flatMap { try? self.parseXmltv($0) }
+                    perform(try next(action, disk != nil, disk?.channels.count ?? 0))
+                case "FETCH":
+                    self.fetchXmltv(url) { result in
+                        do {
+                            switch result {
+                            case .success(let response):
+                                network = response
+                                // The first parse historically maps parser failure to the invalid-XMLTV error.
+                                parsedNetwork = try? self.parseXmltv(response.xml)
+                                perform(try next(action, parsedNetwork != nil, parsedNetwork?.channels.count ?? 0))
+                            case .failure(let error):
+                                failure = error
+                                perform(try next(action, false))
+                            }
+                        } catch { finish(.failure(error)) }
+                    }
+                case "WRITE_DISK":
+                    var written = false
+                    do { try self.writeCache(network!.data, for: url); written = true }
+                    catch { failure = error }
+                    perform(try next(action, written))
+                case "REPARSE_NETWORK":
+                    do { parsedNetwork = try self.parseXmltv(network!.xml) }
+                    catch { parsedNetwork = nil; failure = error }
+                    perform(try next(action, parsedNetwork != nil, parsedNetwork?.channels.count ?? 0))
+                case "READ_MEMORY":
+                    self.sourceLock.lock()
+                    memory = self.parsedCache[source]?.data
+                    self.sourceLock.unlock()
+                    perform(try next(action, memory != nil, memory?.channels.count ?? 0))
+                case "USE_FRESH_DISK", "USE_STALE_DISK": finish(.success(disk!))
+                case "USE_NETWORK": finish(.success(parsedNetwork!))
+                case "USE_MEMORY": finish(.success(memory!))
+                case "FAIL": finish(.failure(failure))
+                default: finish(.failure(NSError(domain: "SharedGuide", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Invalid source load action"])))
+                }
+            } catch { finish(.failure(error)) }
         }
+        do { perform(try withPolicy { try $0.loadStart(force: force) }) }
+        catch { finish(.failure(error)) }
     }
 
     // Source order is significant: the first feed defining an ID owns its programs.
     private func loadSources(_ sources: [String], force: Bool = false, completion: @escaping (Result<Parsed, Error>) -> Void) {
         var merged: Parsed = ([:], [:], [:], [:])
-        var firstError: Error?
-        func next(_ index: Int) {
-            if index == sources.count {
-                if merged.channels.isEmpty, let error = firstError { completion(.failure(error)) }
-                else { completion(.success(merged)) }
-                return
-            }
-            loadSource(sources[index], force: force) { result in
-                switch result {
-                case .success(let parsed):
-                    for (id, name) in parsed.channels where merged.channels[id] == nil {
-                        merged.channels[id] = name
-                        merged.programs[id] = parsed.programs[id]
-                        merged.icons[id] = parsed.icons[id]
-                        merged.names[id] = parsed.names[id]
-                    }
-                case .failure(let error): if firstError == nil { firstError = error }
+        var errors: [Int: Error] = [:]
+        let batch: JavaScriptCore.JSValue
+        do { batch = try withPolicy { try $0.sourceBatch(sources.count) } }
+        catch { completion(.failure(error)); return }
+        func next() {
+            do {
+                let index = try self.withPolicy { try $0.batchNext(batch) }
+                if index < 0 {
+                    let failed = try self.withPolicy { try $0.batchFailure(batch) }
+                    if failed >= 0 { completion(.failure(errors[failed]!)) }
+                    else { completion(.success(merged)) }
+                    return
                 }
-                next(index + 1)
-            }
+                loadSource(sources[index], force: force) { result in
+                    do {
+                        switch result {
+                        case .success(let parsed):
+                            let ids = try self.withPolicy { try $0.unowned(Array(merged.channels.keys), incoming: Array(parsed.channels.keys)) }
+                            for id in ids {
+                                merged.channels[id] = parsed.channels[id]
+                                merged.programs[id] = parsed.programs[id]
+                                merged.icons[id] = parsed.icons[id]
+                                merged.names[id] = parsed.names[id]
+                            }
+                            try self.withPolicy { try $0.batchAdvance(batch, succeeded: true, channels: parsed.channels.count) }
+                        case .failure(let error):
+                            errors[index] = error
+                            try self.withPolicy { try $0.batchAdvance(batch, succeeded: false, channels: 0) }
+                        }
+                        next()
+                    } catch { completion(.failure(error)) }
+                }
+            } catch { completion(.failure(error)) }
         }
-        next(0)
+        next()
     }
 
     @objc func getEpg(_ call: CAPPluginCall) {
-        loadSources(sourceUrls(call)) { result in
+        loadSources(call) { result in
             switch result {
             case .success(let parsed):
-                call.resolve(self.buildSlice(parsed, channelId: call.getString("channel_id") ?? "",
+                do { call.resolve(try self.buildSlice(parsed, channelId: call.getString("channel_id") ?? "",
                     ch: call.getString("ch"), hash: call.getString("hash") ?? "",
                     timeShiftHours: call.getInt("time_shift_hours") ?? 0,
                     archiveHours: call.getInt("archive_hours") ?? 0,
-                    tvgName: call.getString("tvg_name")))
+                    tvgName: call.getString("tvg_name"))) }
+                catch { call.reject(error.localizedDescription) }
             case .failure(let error): call.reject(error.localizedDescription)
             }
         }
     }
 
     @objc func getChannels(_ call: CAPPluginCall) {
-        loadSources(sourceUrls(call)) { result in
+        loadSources(call) { result in
             switch result {
             case .success(let parsed):
                 let rows: [[String: Any]] = parsed.channels.keys.sorted().map { id in
@@ -137,7 +197,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func prefetch(_ call: CAPPluginCall) {
-        loadSources(sourceUrls(call), force: true) { result in
+        loadSources(call, force: true) { result in
             switch result {
             case .success: call.resolve()
             case .failure(let error): call.reject(error.localizedDescription)
@@ -153,9 +213,9 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         let meta = try String(contentsOf: metaURL, encoding: .utf8)
         let fields = meta.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
         // Timestamp-only metadata predates source tracking and cannot be trusted.
-        guard fields.count == 2, fields[1] == url.absoluteString,
-              let fetched = Double(fields[0]),
-              allowStale || Date().timeIntervalSince1970 - fetched < ttl else { return nil }
+        guard fields.count == 2, let fetched = Double(fields[0]),
+              try withPolicy({ try $0.disk(source: url.absoluteString, storedSource: String(fields[1]),
+                  now: Date().timeIntervalSince1970, fetched: fetched, stale: allowStale) }) else { return nil }
         let gz = try Data(contentsOf: cacheURL)
         guard let xml = gunzip(gz) else { return nil }
         return String(data: xml, encoding: .utf8)
@@ -173,7 +233,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         try meta.write(to: metaURL, atomically: true, encoding: .utf8)
     }
 
-    private func fetchAndCache(_ url: URL, completion: @escaping (Result<String, Error>) -> Void) {
+    private func fetchXmltv(_ url: URL, completion: @escaping (Result<(data: Data, xml: String), Error>) -> Void) {
         URLSession.shared.dataTask(with: url) { data, response, err in
             if let response = response as? HTTPURLResponse, !(200...299).contains(response.statusCode) {
                 completion(.failure(NSError(domain: "MobileXmltvEpg", code: response.statusCode))); return
@@ -183,20 +243,12 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                 completion(.failure(NSError(domain: "MobileXmltvEpg", code: -1, userInfo: [NSLocalizedDescriptionKey: "empty response"])))
                 return
             }
-            do {
-                guard let xml = self.gunzip(data),
-                      let xmlStr = String(data: xml, encoding: .utf8) else {
-                    completion(.failure(NSError(domain: "MobileXmltvEpg", code: -2, userInfo: [NSLocalizedDescriptionKey: "gunzip failed"])))
-                    return
-                }
-                guard !self.parseXmltv(xmlStr).channels.isEmpty else {
-                    completion(.failure(NSError(domain: "MobileXmltvEpg", code: -4, userInfo: [NSLocalizedDescriptionKey: "invalid or empty XMLTV"]))); return
-                }
-                try self.writeCache(data, for: url)
-                completion(.success(xmlStr))
-            } catch {
-                completion(.failure(error))
+            guard let xml = self.gunzip(data),
+                  let xmlStr = String(data: xml, encoding: .utf8) else {
+                completion(.failure(NSError(domain: "MobileXmltvEpg", code: -2, userInfo: [NSLocalizedDescriptionKey: "gunzip failed"])))
+                return
             }
+            completion(.success((data, xmlStr)))
         }.resume()
     }
 
@@ -245,193 +297,239 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: - XMLTV Parse
 
-    private func parseXmltv(_ xml: String) -> Parsed {
+    private func parseXmltv(_ xml: String) throws -> Parsed {
         guard let data = xml.data(using: .utf8) else { return ([:], [:], [:], [:]) }
-        let parser = XmltvParser()
-        parser.parse(data)
+        let parser = try XmltvParser(core: ())
+        try parser.parse(data)
         return (parser.channels, parser.programs, parser.icons, parser.names)
     }
 
     private class XmltvParser: NSObject, XMLParserDelegate {
+        private let guide: SharedGuide
+        private let records: JavaScriptCore.JSValue
+        private var coreError: Error?
+        private var tokens: [[String]] = []
+        private var tokenBytes = 0
+
+        init(core: Void) throws {
+            let guide = try SharedGuide()
+            self.guide = guide
+            records = try guide.xmltvRecords()
+            super.init()
+        }
         var channels: [String: String] = [:]
         var icons: [String: String] = [:]
         var names: [String: [String]] = [:]
-        private var channelName = ""
         var programs: [String: [(start: Int, stop: Int, title: String, desc: String)]] = [:]
 
-        private var currentChannelId: String?
-        private var currentProgChannel: String?
-        private var currentProgStart: Int = 0
-        private var currentProgStop: Int = 0
-        private var currentProgTitle: String = ""
-        private var currentProgDesc: String = ""
-        private var textTarget: TextTarget?
-
-        enum TextTarget { case channelName, progTitle, progDesc }
-
-        func parse(_ data: Data) {
+        func parse(_ data: Data) throws {
             let parser = XMLParser(data: data)
             parser.delegate = self
-            if !parser.parse() { channels.removeAll(); programs.removeAll() }
+            let succeeded = parser.parse()
+            if let error = coreError { throw error }
+            // Preserve completed metadata even when Foundation rejects a later XML token.
+            try flush()
+            if !succeeded { channels.removeAll(); programs.removeAll() }
+        }
+
+        private func flush() throws {
+            guard !tokens.isEmpty else { return }
+            let actions = try guide.xmltvAccept(records, tokens: tokens)
+            tokens.removeAll(keepingCapacity: true)
+            tokenBytes = 0
+            for row in actions {
+                switch row.first {
+                case "channel" where row.count == 3: channels[row[1]] = row[2]
+                case "name" where row.count == 3: names[row[1], default: []].append(row[2])
+                case "icon" where row.count == 3: icons[row[1]] = row[2]
+                case "programme" where row.count == 7:
+                    guard let start = Int(row[2]), let stop = Int(row[3]) else {
+                        throw NSError(domain: "SharedGuide", code: 1,
+                            userInfo: [NSLocalizedDescriptionKey: "Invalid shared XMLTV programme"])
+                    }
+                    programs[row[1], default: []].append((start, stop, row[4], row[5]))
+                default:
+                    throw NSError(domain: "SharedGuide", code: 1,
+                        userInfo: [NSLocalizedDescriptionKey: "Invalid shared XMLTV action"])
+                }
+            }
+        }
+
+        private func enqueue(_ row: [String], parser: XMLParser) {
+            guard coreError == nil else { return }
+            tokens.append(row)
+            tokenBytes += row.reduce(0) { $0 + $1.utf8.count }
+            if tokens.count >= 256 || tokenBytes >= 64 * 1024 {
+                do { try flush() }
+                catch { coreError = error; parser.abortParsing() }
+            }
         }
 
         func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String]) {
-            switch elementName {
-            case "channel":
-                currentChannelId = attributeDict["id"]
-            case "programme":
-                currentProgChannel = attributeDict["channel"]
-                currentProgStart = parseTime(attributeDict["start"] ?? "")
-                currentProgStop = parseTime(attributeDict["stop"] ?? "")
-                currentProgTitle = ""
-                currentProgDesc = ""
-            case "display-name" where currentChannelId != nil:
-                channelName = ""
-                textTarget = .channelName
-            case "icon" where currentChannelId != nil:
-                icons[currentChannelId!] = attributeDict["src"] ?? ""
-            case "title" where currentProgChannel != nil:
-                textTarget = .progTitle
-            case "desc" where currentProgChannel != nil:
-                textTarget = .progDesc
-            default:
-                break
+            var row = ["start", elementName]
+            for name in ["id", "channel", "start", "stop", "src"] {
+                if let value = attributeDict[name] { row.append(name); row.append(value) }
             }
+            enqueue(row, parser: parser)
         }
 
         func parser(_ parser: XMLParser, foundCharacters string: String) {
-            guard let target = textTarget else { return }
-            switch target {
-            case .channelName:
-                channelName += string
-            case .progTitle:
-                currentProgTitle += string
-            case .progDesc:
-                currentProgDesc += string
-            }
+            enqueue(["text", string], parser: parser)
         }
 
         func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
-            switch elementName {
-            case "channel":
-                if let id = currentChannelId, channels[id] == nil { channels[id] = id }
-                currentChannelId = nil
-                textTarget = nil
-            case "programme":
-                if let ch = currentProgChannel, !currentProgTitle.isEmpty {
-                    programs[ch] = (programs[ch] ?? []) + [(currentProgStart, currentProgStop, currentProgTitle, currentProgDesc)]
-                }
-                currentProgChannel = nil
-                textTarget = nil
-            case "display-name":
-                if let id = currentChannelId {
-                    let name = channelName.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !name.isEmpty { names[id, default: []].append(name); if channels[id] == nil { channels[id] = name } }
-                }
-                textTarget = nil
-            case "title", "desc": textTarget = nil
-            default:
-                break
-            }
-        }
-
-        private func parseTime(_ ts: String) -> Int {
-            let trimmed = ts.trimmingCharacters(in: .whitespaces)
-            guard trimmed.count >= 14 else { return 0 }
-            let datePart = String(trimmed.prefix(14))
-            let tzPart = String(trimmed.dropFirst(14)).trimmingCharacters(in: .whitespaces)
-
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyyMMddHHmmss"
-            formatter.timeZone = TimeZone(secondsFromGMT: 0)
-            guard let date = formatter.date(from: datePart) else { return 0 }
-            var unix = Int(date.timeIntervalSince1970)
-
-            if tzPart.count >= 5 {
-                let sign: Int = tzPart.hasPrefix("+") ? 1 : (tzPart.hasPrefix("-") ? -1 : 0)
-                if sign != 0 {
-                    let hours = Int(tzPart.dropFirst().prefix(2)) ?? 0
-                    let mins = Int(tzPart.dropFirst(3).prefix(2)) ?? 0
-                    unix -= sign * (hours * 3600 + mins * 60)
-                }
-            }
-            return unix
+            enqueue(["end", elementName], parser: parser)
         }
     }
 
     // MARK: - Channel Resolution + EPG Slice
 
-    private func matchScore(_ a: String, _ b: String) -> Double {
-        if a.isEmpty || b.isEmpty { return 0 }
-        if a.contains(b) || b.contains(a) { return Double(min(a.count, b.count)) / Double(max(a.count, b.count)) }
-        let aa = Set(a.split(whereSeparator: { $0.isWhitespace }))
-        let bb = Set(b.split(whereSeparator: { $0.isWhitespace }))
-        let common = aa.intersection(bb).count
-        return common >= max(2, min(aa.count, bb.count) / 2) ? Double(common) / Double(max(aa.count, bb.count)) : 0
-    }
-
-    private func resolveXmltvId(channels: [String: String], ch: String?, hash: String, tvgName: String? = nil, names: [String: [String]] = [:]) -> String {
-        if !hash.isEmpty && channels[hash] != nil { return hash }
-        let candidates = [tvgName ?? "", ch ?? ""].filter { !$0.isEmpty }.map { normalize($0) }
-        let ids = channels.keys.sorted()
-        for candidate in candidates where !candidate.isEmpty {
-            for id in ids where (names[id] ?? [channels[id]!]).contains(where: { normalize($0) == candidate }) { return id }
+    private func buildSlice(_ parsed: Parsed, channelId: String, ch: String?, hash: String, timeShiftHours: Int, archiveHours: Int, tvgName: String? = nil) throws -> [String: Any] {
+        let guide = try SharedGuide()
+        let rows = parsed.channels.keys.sorted().flatMap { id in
+            (parsed.names[id] ?? [parsed.channels[id]!]).map { [id, $0.precomposedStringWithCanonicalMapping] }
         }
-        var best = ""
-        var score = 0.0
-        for candidate in candidates where !candidate.isEmpty {
-            for id in ids {
-                for name in names[id] ?? [channels[id]!] {
-                    let name = normalize(name)
-                    let next = matchScore(candidate, name)
-                    if next >= 0.4 && next > score { best = id; score = next }
-                }
-            }
-        }
-        return best.isEmpty ? hash : best
-    }
-
-    private func regionalShift(_ name: String) -> Int {
-        let expression = try! NSRegularExpression(pattern: #"([+-])\s*(\d+)\s*(?:ч|h|hours?)?"#, options: .caseInsensitive)
-        let value = name as NSString
-        guard let match = expression.firstMatch(in: name, range: NSRange(location: 0, length: value.length)),
-              let hours = Int(value.substring(with: match.range(at: 2))) else { return 0 }
-        return (value.substring(with: match.range(at: 1)) == "-" ? -1 : 1) * (hours > 24 ? hours % 24 : hours)
-    }
-
-    private func normalize(_ name: String) -> String {
-        var s = name.lowercased()
-        s = s.replacingOccurrences(of: #"[+-]\s*\d+\s*(ч|h|hours?)?"#, with: "", options: .regularExpression)
-        s = s.replacingOccurrences(of: #"\([^)]*\)"#, with: "", options: .regularExpression)
-        s = s.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
-        s = s.trimmingCharacters(in: .whitespaces)
-        s = s.replacingOccurrences(of: #"^(hd|fhd|uhd|4k)\s+"#, with: "", options: .regularExpression)
-        s = s.replacingOccurrences(of: #"\s+(hd|fhd|uhd|4k)$"#, with: "", options: .regularExpression)
-        return s.trimmingCharacters(in: .whitespaces)
-    }
-
-    private func buildSlice(_ parsed: Parsed, channelId: String, ch: String?, hash: String, timeShiftHours: Int, archiveHours: Int, tvgName: String? = nil) -> [String: Any] {
-        let xmltvId = resolveXmltvId(channels: parsed.channels, ch: ch, hash: hash, tvgName: tvgName, names: parsed.names)
-        let progs = parsed.programs[xmltvId] ?? []
-        let now = Int(Date().timeIntervalSince1970)
-        let lookbackH = archiveHours > 0 ? archiveHours : 48
-        let windowStart = now - lookbackH * 3600
-        let windowEnd = now + 48 * 3600
-        let shift = (timeShiftHours != 0 ? timeShiftHours : regionalShift(ch ?? tvgName ?? "")) * 3600
-
-        let epgData: [[String: Any]] = progs.sorted { $0.start < $1.start }.compactMap { prog in
-            let start = prog.0 + shift
-            let stop = prog.1 + shift
-            guard stop > windowStart && start < windowEnd else { return nil }
-            return [
-                "time": start,
-                "time_to": stop,
-                "name": prog.2,
-                "descr": prog.3,
-                "icon": ""
-            ]
+        let xmltvId = try guide.resolve(rows, id: hash, names: [tvgName ?? "", ch ?? ""].map { $0.precomposedStringWithCanonicalMapping }) ?? hash
+        let unsorted = parsed.programs[xmltvId] ?? []
+        let progs = try guide.xmltvOrder(unsorted.map { Double($0.start) }).map { unsorted[$0] }
+        let shift = timeShiftHours != 0 ? timeShiftHours : try guide.shift(ch ?? tvgName ?? "")
+        let selection = try guide.slice(progs.map { [Double($0.start), Double($0.stop)] },
+            now: Date().timeIntervalSince1970, archive: archiveHours, shift: shift)
+        let epgData: [[String: Any]] = selection.map { row in
+            let prog = progs[Int(row[0])]
+            return ["time": Int(row[1]), "time_to": Int(row[2]), "name": prog.title,
+                    "descr": prog.desc, "icon": ""]
         }
 
         return ["epg_data": epgData]
+    }
+}
+
+/// JavaScriptCore supplies execution and Swift string primitives only.
+/// The bundled compiler output is the same artifact used by the browser and Rust.
+private final class SharedGuide {
+    private static let source: Result<String, Error> = Result {
+        guard let url = Bundle.main.url(forResource: "ottplay-core", withExtension: "js") else {
+            throw failure("Missing shared guide resource")
+        }
+        guard let manifest = Bundle.main.url(forResource: "ottplay-core.manifest", withExtension: "json"),
+              let receipt = try JSONSerialization.jsonObject(with: Data(contentsOf: manifest)) as? [String: Any],
+              let artifacts = receipt["artifacts"] as? [String: [String: Any]],
+              let expected = artifacts["ottplay-core.js"]?["sha256"] as? String else {
+            throw failure("Missing shared guide receipt")
+        }
+        let data = try Data(contentsOf: url)
+        let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        guard digest == expected, let source = String(data: data, encoding: .utf8) else {
+            throw failure("Modified shared guide resource")
+        }
+        return source
+    }
+    private let context: JSContext
+    private let core: JavaScriptCore.JSValue
+    private var functions: [String: JavaScriptCore.JSValue] = [:]
+    private var xmltvBatch: JavaScriptCore.JSValue?
+
+    private static func failure(_ message: String) -> Error {
+        NSError(domain: "SharedGuide", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
+    }
+    init() throws {
+        guard let context = JSContext() else { throw Self.failure("Cannot create shared guide context") }
+        context.evaluateScript(try Self.source.get())
+        guard context.exception == nil, let core = context.objectForKeyedSubscript("OttPlayCore"), !core.isUndefined else {
+            throw Self.failure("Cannot initialize shared guide")
+        }
+        self.context = context
+        self.core = core
+    }
+    private func checked(_ action: () -> JavaScriptCore.JSValue?) throws -> JavaScriptCore.JSValue {
+        context.exception = nil
+        guard let value = action(), context.exception == nil, !value.isUndefined else {
+            throw Self.failure("Shared guide execution failed")
+        }
+        return value
+    }
+    private func call(_ name: String, _ arguments: [Any]) throws -> JavaScriptCore.JSValue {
+        if functions[name] == nil { functions[name] = core.forProperty(name) }
+        return try checked { functions[name]?.call(withArguments: arguments) }
+    }
+    func sources(_ supplied: [String], single: String) throws -> [String] {
+        let trim: @convention(block) (String) -> String = { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let identity: @convention(block) (String) -> String = { $0.precomposedStringWithCanonicalMapping }
+        guard let values = try call("nativeGuideSources", [supplied, single, trim, identity]).toArray() as? [String] else {
+            throw Self.failure("Invalid shared guide sources")
+        }
+        return values
+    }
+    func unowned(_ existing: [String], incoming: [String]) throws -> [String] {
+        let identity: @convention(block) (String) -> String = { $0.precomposedStringWithCanonicalMapping }
+        guard let values = try call("nativeGuideUnowned", [existing, incoming, identity]).toArray() as? [String] else {
+            throw Self.failure("Invalid shared guide ownership")
+        }
+        return values
+    }
+    func lookup(now: Double, fetched: Double?, force: Bool, pending: Bool) throws -> String {
+        try call("nativeGuideLookup", [now, fetched as Any? ?? NSNull(), force, pending]).toString()
+    }
+    func disk(source: String, storedSource: String, now: Double, fetched: Double, stale: Bool) throws -> Bool {
+        try call("nativeGuideDisk", [source, storedSource, now, fetched, stale]).toBool()
+    }
+    func loadStart(force: Bool) throws -> String { try call("nativeGuideLoadStart", [force]).toString() }
+    func loadNext(_ action: String, succeeded: Bool, channels: Int) throws -> String {
+        try call("nativeGuideLoadNext", [action, succeeded, channels, "swift"]).toString()
+    }
+    func sourceBatch(_ count: Int) throws -> JavaScriptCore.JSValue {
+        try checked { core.forProperty("NativeGuideSourceBatch")?.construct(withArguments: [count]) }
+    }
+    func batchNext(_ batch: JavaScriptCore.JSValue) throws -> Int {
+        Int(try checked { batch.invokeMethod("next", withArguments: []) }.toInt32())
+    }
+    func batchAdvance(_ batch: JavaScriptCore.JSValue, succeeded: Bool, channels: Int) throws {
+        // Unit-returning JS methods produce undefined; check the VM exception explicitly.
+        context.exception = nil
+        batch.invokeMethod("advance", withArguments: [succeeded, channels])
+        if context.exception != nil { throw Self.failure("Shared guide execution failed") }
+    }
+    func batchFailure(_ batch: JavaScriptCore.JSValue) throws -> Int {
+        Int(try checked { batch.invokeMethod("failure", withArguments: []) }.toInt32())
+    }
+    func xmltvRecords() throws -> JavaScriptCore.JSValue {
+        let trim: @convention(block) (String) -> String = { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let identity: @convention(block) (String) -> String = { $0.precomposedStringWithCanonicalMapping }
+        return try checked { core.forProperty("XmltvRecords")?.construct(withArguments: ["swift", trim, identity]) }
+    }
+    func xmltvAccept(_ records: JavaScriptCore.JSValue, tokens: [[String]]) throws -> [[String]] {
+        if xmltvBatch == nil {
+            xmltvBatch = try checked { context.evaluateScript(
+                "(function (records, tokens) { return JSON.stringify(records.accept(JSON.parse(tokens))); })") }
+        }
+        // Transfer strings in bounded batches; Foundation array proxies are costly per token.
+        let encoded = String(data: try JSONSerialization.data(withJSONObject: tokens), encoding: .utf8)!
+        guard let output = try checked({ xmltvBatch?.call(withArguments: [records, encoded]) }).toString(),
+              let data = output.data(using: .utf8),
+              let result = try JSONSerialization.jsonObject(with: data) as? [[String]] else {
+            throw Self.failure("Invalid shared XMLTV records")
+        }
+        return result
+    }
+    func xmltvOrder(_ starts: [Double]) throws -> [Int] {
+        guard let result = try call("nativeXmltvOrder", [starts, "swift"]).toArray() as? [Int] else {
+            throw Self.failure("Invalid shared XMLTV order")
+        }
+        return result
+    }
+    func shift(_ input: String) throws -> Int { Int(try call("nativeGuideShift", [input, "swift"]).toInt32()) }
+    func resolve(_ rows: [[String]], id: String, names: [String]) throws -> String? {
+        let measure: @convention(block) (String) -> Int = { $0.count }
+        let precision: @convention(block) (Double) -> Double = { $0 }
+        let index = try checked { core.forProperty("NativeGuide")?.construct(withArguments: [rows, "swift", measure, precision]) }
+        let result = try checked { index.invokeMethod("resolve", withArguments: [id, names]) }
+        return result.isNull ? nil : result.toString()
+    }
+    func slice(_ times: [[Double]], now: Double, archive: Int, shift: Int) throws -> [[Double]] {
+        guard let result = try call("nativeGuideSlice", [times, now.rounded(.towardZero), archive, shift]).toArray() as? [[Double]] else {
+            throw Self.failure("Invalid shared guide slice")
+        }
+        return result
     }
 }

@@ -17,3 +17,8 @@ dependency used by legacy JVM/security test harnesses, not an application target
 The shared TypeScript Android/STB profiles and native bridge contracts are retained.
 The standalone native application owns its own UI, media stack and Android tests;
 the archived Full/Play wrapper configuration does not describe that application.
+
+The XMLTV Kotlin fixture has one maintained source at
+`mobile-xmltv-epg/src/android/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt`.
+The JVM regression harness compiles that file directly. Do not restore a copy
+under `android/app`: this tree does not build an application.

@@ -116,6 +116,7 @@ function fixture(saved = new Map()) {
     w.eval(read("js/jquery-1.11.1.min.js"));
     if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     w.$.expr.filters.visible = (element) => element.style.display !== "none";
+    require("./helpers/shared-core-runtime.cjs")(dom.getInternalVMContext());
     vm.runInContext(source, dom.getInternalVMContext(), { timeout: 10000 });
     if (!process.argv.includes("--bundle"))
         attachSourceAliases(dom.getInternalVMContext());
@@ -388,6 +389,45 @@ test("a missing channel cannot start or replace PiP", (f) => {
     assert.equal(f.pending.length, 0);
     assert.equal(f.w.pipIndex, null);
 });
+
+const capturedSelections = JSON.parse(
+    read("tests/fixtures/state/favorites-before-core.json")
+);
+for (const input of capturedSelections)
+    test("captured state: " + input.name, (f) => {
+        f.saved.set("favoritesLists", JSON.stringify(input.initial));
+        f.saved.set("favoritesArray", JSON.stringify(input.prior || []));
+        let syncs = 0;
+        f.w.bindFavoritesViewRefresh(() => {
+            syncs++;
+        });
+        f.w.loadFavoritesLists();
+        const before = { ...f.w.favoritesLists.lists };
+        let result, error;
+        try {
+            result = f.w[input.operation](...(input.args || []));
+        } catch (failure) {
+            error = { message: failure.message, name: failure.name };
+        }
+        const state = f.w.favoritesLists,
+            lists = state.lists;
+        const output = {
+            origins: Object.keys(lists).map((key) => [
+                key,
+                Object.keys(before).filter((old) => before[old] === lists[key]),
+            ]),
+            result:
+                result === undefined
+                    ? { undefined: true }
+                    : JSON.parse(JSON.stringify(result)),
+            state: JSON.parse(JSON.stringify(state)),
+        };
+        if (error) output.error = error;
+        output.syncs = syncs;
+        output.alias = f.w.favoritesArray === state.lists[state.active];
+        output.aliasType = typeof f.w.favoritesArray;
+        assert.deepEqual(output, input.expected);
+    });
 
 if (failures.length) throw new Error(failures.join("\n"));
 console.log(

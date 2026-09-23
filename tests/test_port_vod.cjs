@@ -209,6 +209,7 @@ function fixture() {
     };
     c.window = c;
     const context = vm.createContext(c);
+    c.OttPlayCore = require("./helpers/shared-core-runtime.cjs")(context);
     vm.runInContext(
         sourceFunctions("src/utils/helpers.ts", [
             "metadataText",

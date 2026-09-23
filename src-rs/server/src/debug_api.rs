@@ -599,6 +599,7 @@ mod tests {
     use axum::http::Request;
     use std::fs::{File, FileTimes};
     use std::net::SocketAddr;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use tower::Service;
 
     struct Fixture {
@@ -608,12 +609,16 @@ mod tests {
 
     impl Fixture {
         fn new(enabled: bool) -> Self {
+            static NEXT_FIXTURE: AtomicUsize = AtomicUsize::new(0);
+            let sequence = NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed);
             let suffix = SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .unwrap()
                 .as_nanos();
-            let directory =
-                std::env::temp_dir().join(format!("ott-debug-{}-{suffix}", std::process::id()));
+            let directory = std::env::temp_dir().join(format!(
+                "ott-debug-{}-{suffix}-{sequence}",
+                std::process::id()
+            ));
             std::fs::create_dir(&directory).unwrap();
             Self {
                 state: Arc::new(DebugState {

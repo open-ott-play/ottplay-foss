@@ -443,6 +443,18 @@ Stable registry tags use `X.Y.Z`. Updating `latest` is a separate explicit optio
 
 ## Build from Source
 
+Player domain rules come from the pinned Kotlin multiplatform artifact in
+`vendor/ottplay-core.js`. Guide, archive, playlist, provider, durable-state and
+playback decisions share their implementation with FOSS2 and native Android.
+Browser/TV, Swift and Rust adapters retain device APIs, codecs, networking and
+UI effects. The browser artifact keeps ES5 syntax and the audited legacy API
+bootstrap. `npm test`, `check:bundle` and `check:es5` verify the integration;
+the artifact manifest records source and output hashes.
+
+Control-server and SWOP protocol validators are generated from the versioned
+`contracts/ottplay-wire-v1.json` schema. Their checked generator receipts and
+immutable compatibility fixtures prevent consumer-specific policy copies.
+
 ```
 src/
 ├── polyfills/       # Polyfills for old STBs (String.trim, Math.imul, Array, TextEncoder, Date)

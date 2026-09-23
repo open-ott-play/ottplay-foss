@@ -153,6 +153,7 @@ async function fixturePage(browser, profile) {
         "/js/runtime-polyfills.js",
         ...(native ? ["/js/native-environment.js"] : []),
         native ? "/js/jquery.min.js" : "/js/jquery-1.11.1.min.js",
+        "/js/ottplay-core.js",
         "/dist/stbPlayer.js",
         "/fixture-render.js",
     ];
@@ -163,6 +164,7 @@ async function fixturePage(browser, profile) {
         ],
         ["/fixture-render.js", "(" + renderFixture.toString() + ")();"],
         ["/js/runtime-polyfills.js", read(stage + "js/runtime-polyfills.js")],
+        ["/js/ottplay-core.js", read(stage + "js/ottplay-core.js")],
         ["/dist/stbPlayer.js", read(stage + "dist/stbPlayer.js")],
         ["/stbPlayer/1280.css", read(stage + "stbPlayer/1280.css")],
     ]);

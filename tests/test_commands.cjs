@@ -128,6 +128,8 @@ const cmdContext = {
     },
     exports: {},
     require(name) {
+        if (name === "../shared/wire-contracts")
+            return require("./load-wire.cjs")();
         assert.equal(name, "../provider");
         return {
             checkProviderUrl: (url) =>

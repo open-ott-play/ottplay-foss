@@ -82,31 +82,33 @@ export function isOttplayTestWebView(): boolean {
 
 /** Auto handles stream formats on webOS, Tauri and the marked Android test host. */
 export function getDefaultPlayerMode(): number {
-    return typeof window !== "undefined" &&
-        ((window as any).ott_device === "lg/webos" ||
-            (window as any).__TAURI__ ||
-            (window as any).__TAURI_INTERNALS__ ||
-            isOttplayTestWebView())
-        ? 3
-        : 0;
+    if (typeof window === "undefined") return 0;
+    return (window as any).OttPlayCore.classicPlaybackDefaultMode(
+        (window as any).ott_device === "lg/webos",
+        !!((window as any).__TAURI__ || (window as any).__TAURI_INTERNALS__),
+        isOttplayTestWebView
+    );
 }
 
-/** webOS selects its engine automatically; other platforms retain manual modes. */
+/** Decode capability probes are lazy: unused engines must not be initialized. */
 export function normalizePlayerMode(mode: number): number {
-    if (
-        typeof window !== "undefined" &&
-        (window as any).ott_device === "lg/webos"
-    )
-        return 3;
-    // Imported Auto uses an available manual mode outside Auto platforms.
-    if (mode !== 3 || getDefaultPlayerMode() === 3) return mode;
-    return video &&
-        typeof video.canPlayType === "function" &&
-        !video.canPlayType("application/vnd.apple.mpegurl") &&
-        typeof Hls !== "undefined" &&
-        Hls.isSupported()
-        ? 1
-        : 0;
+    return (window as any).OttPlayCore.classicPlaybackMode(
+        mode,
+        (window as any).ott_device === "lg/webos",
+        function () {
+            return getDefaultPlayerMode() === 3;
+        },
+        function () {
+            return (
+                !video ||
+                typeof video.canPlayType !== "function" ||
+                !!video.canPlayType("application/vnd.apple.mpegurl")
+            );
+        },
+        function () {
+            return typeof Hls !== "undefined" && Hls.isSupported();
+        }
+    );
 }
 /** Available preload buffer sizes (indexes into a numeric range). */
 export var bufferSizes = [
@@ -153,11 +155,16 @@ export var strLANG = "SHIFT";
 /** Active hls.js instance for the main video!. */
 var hlsInstance: any = null;
 /** One-shot live auto-restart after fatal HLS parse/network (reset on success / new play). */
-var _liveRestartUsed = false;
-/** Guard so recursive stbPlay from live restart does not clear _liveRestartUsed. */
+var _liveRestartPolicy: any = null;
+function liveRestartPolicy(): any {
+    if (!_liveRestartPolicy)
+        _liveRestartPolicy = new window.OttPlayCore.PlaybackRestart();
+    return _liveRestartPolicy;
+}
+/** Guard so recursive stbPlay from live restart does not reset the one-shot restart policy. */
 var _inLiveRestart = false;
 /** A restart is queued — skip duplicate fatal handlers to avoid stacking black screens. */
-var _liveRestartPending = false;
+
 var _liveRestartTimer: ReturnType<typeof setTimeout> | null = null;
 /** Identifies the current user-requested playback session. */
 var _playSession = 0;
@@ -180,19 +187,18 @@ function cancelCoreAutoPlayback(modeChange?: boolean): void {
 }
 
 function coreAutoMode(url: string, media: HTMLVideoElement | null): number {
-    if (/\.mpd(?:[?#]|$)/i.test(url)) return 2;
-    // This test WebView can advertise native HLS yet reject served manifests.
-    // Prefer MSE only in this host; native apps and working TV engines keep
-    // their existing native-first behavior and saved manual choices.
-    if (/\.m3u8(?:[?#]|$)/i.test(url) && isOttplayTestWebView())
-        return typeof Hls !== "undefined" && Hls.isSupported() ? 1 : 0;
-    if (
-        /\.m3u8(?:[?#]|$)/i.test(url) &&
-        media &&
-        !media.canPlayType("application/vnd.apple.mpegurl")
-    )
-        return 1;
-    return 0;
+    return (window as any).OttPlayCore.classicPlaybackAutoMode(
+        url,
+        function () {
+            return (
+                !media || !!media.canPlayType("application/vnd.apple.mpegurl")
+            );
+        },
+        isOttplayTestWebView,
+        function () {
+            return typeof Hls !== "undefined" && Hls.isSupported();
+        }
+    );
 }
 
 function setCoreDemoMute(enabled: boolean): void {
@@ -297,7 +303,7 @@ function cancelLiveRestart(): void {
         clearTimeout(_liveRestartTimer);
         _liveRestartTimer = null;
     }
-    _liveRestartPending = false;
+    liveRestartPolicy().finish();
 }
 
 /**
@@ -887,7 +893,7 @@ export function stbPlay(url: string, position?: number): void {
     if (!_inLiveRestart) {
         _playSession++;
         cancelLiveRestart();
-        _liveRestartUsed = false;
+        liveRestartPolicy().reset();
         _coreAutoHlsUsed = false;
     }
     cancelCoreAutoPlayback();
@@ -1012,8 +1018,7 @@ function startCorePlayback(
         }
         // ponytail: seek to position at MANIFEST_PARSED — currentTime === 0 guaranteed
         var _startPos = position || 0;
-        var _mediaRecovered = false;
-        var _networkRetries = 0;
+        var recovery = new window.OttPlayCore.PlaybackRecovery(2);
         hlsInstance.loadSource(url);
         hlsInstance.attachMedia(video);
         hlsInstance.on(Hls.Events.ERROR, function (_event: any, data: any) {
@@ -1054,8 +1059,7 @@ function startCorePlayback(
                                 ")"
                         );
                     }
-                    if (!_mediaRecovered) {
-                        _mediaRecovered = true;
+                    if (recovery.media()) {
                         console.log(
                             "[HLS] trying recoverMediaError" +
                                 (data.details ? " (" + data.details + ")" : "")
@@ -1120,26 +1124,17 @@ function startCorePlayback(
                     // purged segments, proxy HTML error pages).
                     var det = String((data && data.details) || "");
                     var parseFail =
-                        det.indexOf("Parsing") !== -1 ||
-                        det.indexOf("parsing") !== -1;
-                    if (parseFail || _networkRetries >= 2) {
+                        window.OttPlayCore.playbackParsingFailure(det);
+                    if (!recovery.network(det)) {
                         // Live: one-shot destroy + same-URL reload after parse
                         // fail (e.g. proxy HTML 403). Archive: destroy only (#220).
-                        if (
-                            parseFail &&
-                            !_isArchive &&
-                            !_liveRestartUsed &&
+                        var restart = liveRestartPolicy().admit(
+                            parseFail,
+                            _isArchive,
                             (window as any).forcePlay !== false
-                        ) {
-                            // ponytail: one-shot — skip duplicate fatal handlers while restart is in flight
-                            if (_liveRestartPending) {
-                                console.log(
-                                    "[HLS] live: restart already pending, skipping duplicate fatal"
-                                );
-                                return;
-                            }
-                            _liveRestartUsed = true;
-                            _liveRestartPending = true;
+                        );
+                        if (restart === "pending") return;
+                        if (restart === "restart") {
                             console.log(
                                 "[HLS] live: restart same URL after fatal parse/network"
                             );
@@ -1164,7 +1159,7 @@ function startCorePlayback(
                             _liveRestartTimer = setTimeout(function () {
                                 if (
                                     session !== _playSession ||
-                                    !_liveRestartPending ||
+                                    !liveRestartPolicy().pending() ||
                                     (window as any).forcePlay === false
                                 )
                                     return;
@@ -1174,7 +1169,7 @@ function startCorePlayback(
                                     stbPlay(url, 0);
                                 } finally {
                                     _inLiveRestart = false;
-                                    _liveRestartPending = false;
+                                    liveRestartPolicy().finish();
                                 }
                             }, _delay);
                             return;
@@ -1185,7 +1180,6 @@ function startCorePlayback(
                         hlsInstance.destroy();
                         hlsInstance = null;
                     } else {
-                        _networkRetries++;
                         console.log("[HLS] trying startLoad");
                         hlsInstance.startLoad();
                     }
@@ -1198,8 +1192,8 @@ function startCorePlayback(
         });
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
             if (session !== _playSession || hlsInstance !== playbackHls) return;
-            _liveRestartUsed = false;
-            _liveRestartPending = false;
+            liveRestartPolicy().reset();
+            liveRestartPolicy().finish();
             if ((window as any).forcePlay !== false) {
                 playCoreMedia(video!);
             }

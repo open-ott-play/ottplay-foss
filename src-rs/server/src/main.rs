@@ -679,7 +679,7 @@ async fn tmdb_handler(
 async fn epg_handler(
     Path(hash): Path<String>,
     Query(params): Query<EpgParams>,
-) -> Json<serde_json::Value> {
+) -> Result<Json<serde_json::Value>, StatusCode> {
     // Client requests /epg/{hash}.json — strip optional .json suffix.
     let hash = hash.strip_suffix(".json").unwrap_or(&hash).to_string();
     let cache = EPG_CACHE.read().await;
@@ -688,7 +688,11 @@ async fn epg_handler(
     let channel_id = params
         .ch
         .as_ref()
-        .and_then(|ch| ottplay_core::match_channel(ch, &cache.channels).map(|(id, _score)| id))
+        .map(|ch| ottplay_core::match_channel(ch, &cache.channels))
+        .transpose()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .flatten()
+        .map(|(id, _)| id)
         .or_else(|| map.get(&hash).cloned())
         .unwrap_or_else(|| hash.clone());
     let time_shift: i64 = params
@@ -699,7 +703,7 @@ async fn epg_handler(
     let archive_hours: i64 = params.hours.map(|h| h as i64).unwrap_or(0);
     let result =
         ottplay_core::get_epg_slice(&cache, &hash, &channel_id, time_shift, archive_hours).await;
-    Json(result)
+    result.map(Json).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
 #[derive(Debug, Deserialize)]
@@ -733,7 +737,7 @@ async fn match_channels_handler(body: Bytes) -> impl IntoResponse {
         })
         .await;
         return match result {
-            Ok((text, epg_map, shift_map)) => {
+            Ok((Ok(text), epg_map, shift_map)) => {
                 {
                     let mut m = EPG_TO_XMLTV.write().await;
                     m.extend(epg_map);
@@ -754,6 +758,7 @@ async fn match_channels_handler(body: Bytes) -> impl IntoResponse {
                 )
                     .into_response()
             }
+            Ok((Err(_), _, _)) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
             Err(e) => {
                 tracing::error!("[EPG] match-channels join error: {e}");
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
@@ -777,7 +782,7 @@ async fn match_channels_handler(body: Bytes) -> impl IntoResponse {
             })
             .await;
             match result {
-                Ok((results, epg_map, shift_map)) => {
+                Ok((Ok(results), epg_map, shift_map)) => {
                     {
                         let mut m = EPG_TO_XMLTV.write().await;
                         m.extend(epg_map);
@@ -786,6 +791,7 @@ async fn match_channels_handler(body: Bytes) -> impl IntoResponse {
                     }
                     Json(serde_json::to_value(results).unwrap()).into_response()
                 }
+                Ok((Err(_), _, _)) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
                 Err(e) => {
                     tracing::error!("[EPG] match-channels join error: {e}");
                     StatusCode::INTERNAL_SERVER_ERROR.into_response()
@@ -807,7 +813,7 @@ async fn match_logos_handler(body: Bytes) -> impl IntoResponse {
         })
         .await;
         return match result {
-            Ok(text) => {
+            Ok(Ok(text)) => {
                 tracing::info!(
                     "[EPG] match-logos text: {} bytes in → {} bytes out",
                     body.len(),
@@ -822,6 +828,7 @@ async fn match_logos_handler(body: Bytes) -> impl IntoResponse {
                 )
                     .into_response()
             }
+            Ok(Err(_)) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
             Err(e) => {
                 tracing::error!("[EPG] match-logos join error: {e}");
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
@@ -836,7 +843,8 @@ async fn match_logos_handler(body: Bytes) -> impl IntoResponse {
             })
             .await;
             match result {
-                Ok(results) => Json(serde_json::to_value(results).unwrap()).into_response(),
+                Ok(Ok(results)) => Json(serde_json::to_value(results).unwrap()).into_response(),
+                Ok(Err(_)) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
                 Err(e) => {
                     tracing::error!("[EPG] match-logos join error: {e}");
                     StatusCode::INTERNAL_SERVER_ERROR.into_response()

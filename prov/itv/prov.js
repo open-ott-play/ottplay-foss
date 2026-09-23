@@ -40,7 +40,7 @@ function getProviderParams() {
     try {
         $("#itvkey").val(itvkey);
     } catch (e) {}
-    if (itvkey.length < 10 || itvkey.length > 12)
+    if (!OttPlayCore.operatorCredentialsValid("itv", itvkey, ""))
         alert(
             "Для доступа необходимо ввести ключ! (Ключ для плеера 10-12 символов)"
         );
@@ -51,7 +51,7 @@ function setProviderParams() {
     providerSetItem("key", decodeURIComponent($("#itvkey").val().trim()));
     var changed = itvkey != providerGetItem("key");
     _getParams();
-    if (itvkey.length < 10 || itvkey.length > 12)
+    if (!OttPlayCore.operatorCredentialsValid("itv", itvkey, ""))
         alert(
             "Для доступа необходимо ввести ключ! (Ключ для плеера 10-12 символов)"
         );
@@ -63,62 +63,29 @@ function getChannelPicon(ch_id) {
 }
 
 function getChannelUrl(ch_id) {
-    return (
-        "http://" +
-        chanels[ch_id].server_cdn +
-        "/" +
-        ch_id +
-        "/" +
-        ["index.m3u8", "mpegts", "video.m3u8"][itvmpeg] +
-        "?token=" +
-        chanels[ch_id].token
-    );
+    return OttPlayCore.operatorLiveUrl("itv", String(ch_id), chanels[ch_id], {
+        mode: itvmpeg,
+    });
 }
 
 function getArchiveUrl(ch_id, time, time_to) {
-    if (time_to < time) time_to = Date.now() / 1000 + 600;
-    // MPEGTS or last 10 minutes → absolute timeshift
-    if (itvmpeg == 1 || time > Date.now() / 1000 - 600)
-        return (
-            "http://" +
-            chanels[ch_id].server_cdn +
-            "/" +
-            ch_id +
-            "/" +
-            ["timeshift_abs-", "timeshift_abs/", "timeshift_abs_video-"][
-                itvmpeg
-            ] +
-            Math.floor(time) +
-            [".m3u8", "", ".m3u8"][itvmpeg] +
-            "?token=" +
-            chanels[ch_id].token
-        );
-    if (browserName() == "dune") time_to = Math.floor(time_to) + 7200;
+    var channel = chanels[ch_id];
     return (
-        "http://" +
-        chanels[ch_id].server_cdn +
-        "/" +
-        ch_id +
-        "/" +
-        ["index-", "", "video-"][itvmpeg] +
-        Math.floor(time) +
-        "-" +
-        Math.floor(time_to - time) +
-        ".m3u8?token=" +
-        chanels[ch_id].token
+        OttPlayCore.providerArchiveUrl(
+            "itv",
+            "http://" + channel.server_cdn + "/" + ch_id + "/",
+            "?token=" + channel.token,
+            "",
+            Number(time),
+            Number(time_to),
+            Date.now() / 1000,
+            browserName() === "dune",
+            Number(itvmpeg)
+        ) || ""
     );
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];
-
-function addChan2cat(cat, ci) {
-    if (!(cat && ci)) return;
-    if (!cats[cat]) {
-        catsArray.push(cat);
-        cats[cat] = [];
-    }
-    cats[cat].push(ci);
-}
 
 function getChanelsArray(callback) {
     _getParams();
@@ -127,7 +94,7 @@ function getChanelsArray(callback) {
     cats = {};
     catsArray = [];
 
-    if (itvkey.length < 10 || itvkey.length > 12) {
+    if (!OttPlayCore.operatorCredentialsValid("itv", itvkey, "")) {
         try {
             popupList(popupActions.indexOf(noProvParam) + 1);
         } catch (ex) {}
@@ -155,25 +122,16 @@ function getChanelsArray(callback) {
             alert(_("Failed to load channel list!"));
         },
         success: function (data) {
-            if (!(data && data.channels)) return;
-            data.channels.forEach(function (val) {
-                if (cList.indexOf(val.ch_id) == -1) {
-                    addChan2cat(val.cat_name, val.ch_id);
-                    cList.push(val.ch_id);
-                    chanels[val.ch_id] = {
-                        category: {
-                            class: catsArray.indexOf(val.cat_name) + 2,
-                            name: val.cat_name,
-                        },
-                        channel_name: val.channel_name,
-                        rec: val.rec_time,
-                        server_cdn: val.server_cdn,
-                        time: 0,
-                        time_to: 0,
-                        token: val.token,
-                    };
-                }
-            });
+            var reducer = new OttPlayCore.OperatorCatalogClient("itv");
+            try {
+                reducer.accept(data, []);
+            } finally {
+                var catalog = reducer.result();
+                cList = catalog.ids;
+                chanels = catalog.channels;
+                cats = catalog.groups;
+                catsArray = catalog.groupOrder;
+            }
         },
         timeout: 30000,
         url: wwwapi + "data/" + itvkey,
@@ -183,7 +141,8 @@ function getChanelsArray(callback) {
 if (typeof sNextCount == "undefined") sNextCount = -1;
 
 function _getEPGchanel(ch_id, callback, all) {
-    var d = [];
+    var guide = new OttPlayCore.OperatorGuideClient("itv"),
+        d = guide.result();
     $.ajax({
         complete: function () {
             callback(ch_id, d);
@@ -191,18 +150,19 @@ function _getEPGchanel(ch_id, callback, all) {
         dataType: "json",
         success: function (data) {
             try {
-                data.res.forEach(function (val) {
-                    d.push({
-                        descr: val.desc,
-                        name: val.title,
-                        time: val.startTime,
-                        time_to: val.stopTime,
-                    });
-                });
-            } catch (e) {}
+                guide.accept(data, "all", 0);
+            } catch (e) {
+            } finally {
+                d = guide.result();
+            }
         },
         timeout: 10000,
-        url: wwwapi + "epg/" + ch_id + (all ? "" : "/" + (sNextCount + 2)),
+        url: OttPlayCore.operatorGuideUrl(
+            "itv",
+            String(ch_id),
+            { base: wwwapi, next: sNextCount },
+            all ? "all" : "current"
+        ),
     });
 }
 

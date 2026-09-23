@@ -2,7 +2,19 @@
  * Unit tests for EPG matching and cache functions in src/channels/index.ts
  * Run: node --import=tsx tests/test-epg-matching.ts
  */
+
+import fs from "node:fs";
+import vm from "node:vm";
 import assert from "assert";
+
+const coreContext = vm.createContext({});
+vm.runInContext(
+    fs.readFileSync(
+        new URL("../vendor/ottplay-core.js", import.meta.url),
+        "utf8"
+    ),
+    coreContext
+);
 
 // Top-level regex literals for performance
 const MORNING_SHOW_REGEX = /Morning Show/;
@@ -40,6 +52,7 @@ const mockWindow: Record<string, any> = {
     infoBox: null as any,
     listArray: [] as any[],
     listChannel: 0,
+    OttPlayCore: coreContext.OttPlayCore,
     playTime: 0,
     playType: 0,
     primaryIndex: 0,

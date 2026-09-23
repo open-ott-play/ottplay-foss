@@ -66,6 +66,7 @@ function fixture() {
         { runScripts: "dangerously", url: "https://localhost/index.html" }
     );
     const w = d.window;
+    require("./helpers/shared-core-runtime.cjs")(d.getInternalVMContext());
     if (bundleAst) attachSourceAliases(w);
     w.console.warn = () => {};
     w.eval(

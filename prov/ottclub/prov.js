@@ -39,51 +39,39 @@ function getChannelPicon(ch_id) {
 }
 
 function getChannelUrl(ch_id) {
-    return "http://" + ottwww + "/stream/" + ottkey + "/" + ch_id + ".m3u8";
+    return OttPlayCore.operatorLiveUrl(
+        "ottclub",
+        String(ch_id),
+        chanels[ch_id],
+        { key: ottkey, server: ottwww }
+    );
 }
 
 function getArchiveUrl(ch_id, time, time_to) {
     return (
-        getChannelUrl(ch_id) +
-        (time_to < Date.now() / 1000 && browserName() != "dune"
-            ? "?archive=" + time + "&archive_end=" + time_to
-            : "?timeshift=" + time + "&timenow=" + Date.now() / 1000)
+        OttPlayCore.providerArchiveUrl(
+            "club",
+            getChannelUrl(ch_id),
+            "",
+            "",
+            Number(time),
+            Number(time_to),
+            Date.now() / 1000,
+            browserName() === "dune",
+            0
+        ) || ""
     );
 }
 
 $.support.cors = true;
 
-function _ottclub_addCats() {
-    if (typeof catsArray == "undefined") catsArray = [];
-    if (typeof cats == "undefined") cats = {};
-    cList.forEach(function (ch_id) {
-        var ch = chanels[ch_id];
-        if (!ch) return;
-        if (!ch.channel_name && ch.name) ch.channel_name = ch.name;
-        var cat = "";
-        if (ch.category) {
-            if (typeof ch.category === "string") cat = ch.category;
-            else if (ch.category.name) cat = ch.category.name;
-        } else if (ch.group) cat = ch.group;
-        else if (ch.group_title) cat = ch.group_title;
-        if (!cat) return;
-        if (!cats[cat]) {
-            catsArray.push(cat);
-            cats[cat] = [];
-        }
-        cats[cat].push(ch_id);
-        ch.category = {
-            class: catsArray.indexOf(cat) + 2,
-            name: cat,
-        };
-    });
-}
-
 function getChanelsArray(callback) {
     _getParams();
     $.ajax({
         complete: function () {
-            if (ottwww.length < 4 || ottkey.length < 8) {
+            if (
+                !OttPlayCore.operatorCredentialsValid("ottclub", ottkey, ottwww)
+            ) {
                 try {
                     popupList(popupActions.indexOf(noProvParam) + 1);
                 } catch (e) {}
@@ -109,22 +97,18 @@ function getChanelsArray(callback) {
         },
         success: function (data) {
             try {
-                cList = data.split('"ch_id":"');
-                cList.shift();
-                cList.forEach(function (val, i) {
-                    cList[i] = val.split('","')[0];
+                var ids = OttPlayCore.operatorClubIds(data);
+                var parsed = JSON.parse(data);
+                var reducer = new OttPlayCore.OperatorCatalogClient("ottclub");
+                reducer.accept(parsed, ids);
+                var catalog = reducer.result();
+                cList = catalog.ids;
+                chanels = catalog.channels;
+                cats = catalog.groups;
+                catsArray = catalog.groupOrder;
+                Object.keys(catalog.epg).forEach(function (id) {
+                    epg[id] = catalog.epg[id];
                 });
-                chanels = JSON.parse(data);
-                cats = {};
-                catsArray = [];
-                cList.forEach(function (ch_id) {
-                    if (!chanels[ch_id]) return;
-                    chanels[ch_id].rec = chanels[ch_id].rec ? 7 * 24 : 0;
-                    if (!chanels[ch_id].channel_name && chanels[ch_id].name)
-                        chanels[ch_id].channel_name = chanels[ch_id].name;
-                    epg[ch_id] = [chanels[ch_id]];
-                });
-                _ottclub_addCats();
             } catch (e) {
                 cList = [];
                 chanels = {};
@@ -146,17 +130,24 @@ function getChanelsArray(callback) {
 }
 
 function getEPGchanel(ch_id, callback) {
-    var d = null;
+    var guide = new OttPlayCore.OperatorGuideClient("ottclub"),
+        d = guide.result();
     $.ajax({
         complete: function () {
             callback(ch_id, d);
         },
         dataType: "json",
         success: function (data) {
-            if (data) d = data.epg_data;
+            guide.accept(data, "all", 0);
+            d = guide.result();
         },
         timeout: 30000,
-        url: "http://" + ottwww + "/api/channel/" + ch_id,
+        url: OttPlayCore.operatorGuideUrl(
+            "ottclub",
+            String(ch_id),
+            { server: ottwww },
+            "all"
+        ),
     });
 }
 

@@ -392,6 +392,7 @@ function fixture(profile) {
         ),
         w
     );
+    require("./helpers/shared-core-runtime.cjs")(w);
     return w;
 }
 

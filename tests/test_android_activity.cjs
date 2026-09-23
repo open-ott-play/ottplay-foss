@@ -108,11 +108,15 @@ try {
     );
     const pluginDir = "android/app/src/main/java/play/ott/foss";
     const plugins = [];
-    for (const relative of fs.readdirSync(path.join(root, pluginDir), {
-        recursive: true,
-    })) {
-        if (!relative.endsWith(".kt")) continue;
-        const source = read(pluginDir + "/" + relative);
+    const pluginSources = [pluginDir, "mobile-xmltv-epg/src/android"];
+    const pluginFiles = pluginSources.flatMap((directory) =>
+        fs
+            .readdirSync(path.join(root, directory), { recursive: true })
+            .filter((relative) => relative.endsWith(".kt"))
+            .map((relative) => directory + "/" + relative)
+    );
+    for (const file of pluginFiles) {
+        const source = read(file);
         if (!source.includes("@CapacitorPlugin")) continue;
         const packageName = /^package (.+)$/m.exec(source)[1];
         const className = /class (\w+)\s*:\s*Plugin/.exec(source)[1];

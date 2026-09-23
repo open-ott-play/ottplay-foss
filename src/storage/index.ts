@@ -559,31 +559,14 @@ export const stbGetAllItems = storage.dump;
 
 /** Credentials, consent and recursive snapshots belong to this installation. */
 export function isPortableSettingsKey(key: string): boolean {
-    return (
-        key !== "commandServerAddress" &&
-        key !== "commandServerToken" &&
-        key !== "commandServerEnabled" &&
-        key !== "sLocalHttpEnabled" &&
-        key !== "sLocalHttpDeviceCode" &&
-        key !== "stb_settings_backup"
-    );
+    return (window as any).OttPlayCore.classicPortableKey(key, true);
 }
 
 /** Copy ordinary settings without changing provider payload strings. */
 export function portableSettingsSnapshot(
     items: Record<string, any>
 ): Record<string, any> {
-    if (!items || typeof items !== "object" || Array.isArray(items))
-        throw new Error("Invalid settings snapshot");
-    var result: Record<string, any> = Object.create(null);
-    for (var key in items) {
-        if (
-            Object.prototype.hasOwnProperty.call(items, key) &&
-            isPortableSettingsKey(key)
-        )
-            result[key] = items[key];
-    }
-    return result;
+    return (window as any).OttPlayCore.classicPortableSnapshot(items, true);
 }
 
 /** Restore ordinary local backup data without importing remote-control authority. */
@@ -591,10 +574,11 @@ export function restoreLocalSettingsSnapshot(items: Record<string, any>): void {
     var imported = portableSettingsSnapshot(items);
     var w = window as any;
     var current = w.stbGetAllItems();
-    var address = current.commandServerAddress || "";
-    var token = current.commandServerToken || "";
-    var localEnabled = String(current.sLocalHttpEnabled) === "1" ? "1" : "0";
-    var localCode = current.sLocalHttpDeviceCode || "";
+    var retained = w.OttPlayCore.classicInstallationState(current, true);
+    var address = retained.commandServerAddress;
+    var token = retained.commandServerToken;
+    var localEnabled = retained.sLocalHttpEnabled;
+    var localCode = retained.sLocalHttpDeviceCode;
     // Cancel delivery before clearing storage. Keep this installation's own
     // credentials, but require an explicit reconnect after restoring settings.
     if (w.__ottCommandServer)

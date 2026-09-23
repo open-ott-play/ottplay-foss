@@ -46,3 +46,29 @@ Remove this override and its regression fixture when the application can
 move to a supported GTK dependency graph with the upstream fix, or a
 compatible official 0.18 security release becomes available. All release
 builds must include `vendor/`; Docker copies it before resolving Rust packages.
+
+## Shared OttPlay domain core
+
+`ottplay-core.js` and `ottplay-core.jar` are generated from the same canonical
+Kotlin Multiplatform source. `ottplay-core.manifest.json` records the source
+receipt and artifact hashes; `ottplay-core.LICENSE.txt` contains the project
+license and bundled runtime notices. Do not edit these generated files.
+
+The ES5 distribution supplies guide rules, 13 provider archive adapters, 43
+playlist adapters, three media parsers and the base player's Xtream catalog and
+short EPG. Stalker JSON-RPC sessions/catalogs/EPG and BEST LiST Xtream catalogs
+also delegate; the latter retains its M3U fallback policy in the core. Captured
+fixtures exercise 19 Stalker and 12 BEST LiST contracts. Native Swift and Rust guide bridges evaluate this identical file.
+Classic-player now/next selection, time shifts and full-schedule cache policy
+also delegate, retaining inclusive end times, one-hour miss retry and 12-hour
+response TTL. Forty-four captured scenarios preserve those contracts.
+The archived Android bridge uses the JVM artifact. Other provider sessions,
+state and playback controllers still need migration.
+
+Update from the canonical core using `scripts/distribute.cjs install-native`
+with this repository's absolute path. `node scripts/shared-core.cjs` checks the
+pinned distribution; build staging verifies and packages it after polyfills.
+
+Canonical source: [ottplay-unification/shared-core](https://github.com/open-ott-play/ottplay-unification/tree/main/shared-core).
+Access to the private migration repository is required to rebuild it; pinned
+consumer artifacts remain self-contained and carry source and artifact hashes.

@@ -33,22 +33,22 @@ pub fn match_channels(
     xmltv_ch: &Channels,
     epg_to_xmltv: &mut HashMap<String, String>,
     time_shift_by_epg: &mut HashMap<String, i64>,
-) -> Vec<MatchResult> {
-    let index = xmltv::build_match_index(xmltv_ch);
+) -> anyhow::Result<Vec<MatchResult>> {
+    let index = xmltv::build_match_index(xmltv_ch)?;
     channels
         .into_iter()
         .map(|ch| {
             if xmltv_ch.is_empty() {
-                return MatchResult {
+                return Ok(MatchResult {
                     id: ch.id,
                     epg_id: None,
                     epg_name: None,
                     score: 0.0,
-                };
+                });
             }
-            let time_shift = xmltv::extract_time_shift(&ch.name);
-            let base_name = xmltv::strip_time_shift(&ch.name);
-            match xmltv::match_in_index(&base_name, &index) {
+            let time_shift = xmltv::extract_time_shift(&ch.name)?;
+            let base_name = xmltv::strip_time_shift(&ch.name)?;
+            Ok(match xmltv::match_in_index(&base_name, &index)? {
                 Some((xmltv_id, score)) => {
                     let epg_hash = compute_epg_hash(&format!("{xmltv_id}|{time_shift}"));
                     epg_to_xmltv.insert(epg_hash.clone(), xmltv_id.clone());
@@ -69,7 +69,7 @@ pub fn match_channels(
                     epg_name: None,
                     score: 0.0,
                 },
-            }
+            })
         })
         .collect()
 }
@@ -87,16 +87,16 @@ pub struct LogoResult {
 }
 
 /// POST /m3u/match-logos
-pub fn match_logos(channels: Vec<LogoChannel>, xmltv_ch: &Channels) -> Vec<LogoResult> {
-    let index = xmltv::build_match_index(xmltv_ch);
+pub fn match_logos(channels: Vec<LogoChannel>, xmltv_ch: &Channels) -> anyhow::Result<Vec<LogoResult>> {
+    let index = xmltv::build_match_index(xmltv_ch)?;
     channels
         .into_iter()
         .map(|ch| {
             let logo_url = if xmltv_ch.is_empty() {
                 format!("/logo/{}.svg?ch={}", ch.id, urlencoding::encode(&ch.name))
             } else {
-                let base_name = xmltv::strip_time_shift(&ch.name);
-                match xmltv::match_in_index(&base_name, &index) {
+                let base_name = xmltv::strip_time_shift(&ch.name)?;
+                match xmltv::match_in_index(&base_name, &index)? {
                     Some((xmltv_id, _score)) => xmltv_ch
                         .get(&xmltv_id)
                         .and_then(|c| {
@@ -112,10 +112,10 @@ pub fn match_logos(channels: Vec<LogoChannel>, xmltv_ch: &Channels) -> Vec<LogoR
                     None => format!("/logo/{}.svg?ch={}", ch.id, urlencoding::encode(&ch.name)),
                 }
             };
-            LogoResult {
+            Ok(LogoResult {
                 id: ch.id,
                 logo_url,
-            }
+            })
         })
         .collect()
 }
@@ -201,11 +201,11 @@ pub fn match_channels_text(
     xmltv_ch: &Channels,
     epg_to_xmltv: &mut HashMap<String, String>,
     time_shift_by_epg: &mut HashMap<String, i64>,
-) -> String {
+) -> anyhow::Result<String> {
     let parts: Vec<&str> = body.split("\n\t\n").collect();
     let id_section = parts.get(2).copied().unwrap_or("");
     let mut ch_mappings: Vec<String> = Vec::new();
-    let index = xmltv::build_match_index(xmltv_ch);
+    let index = xmltv::build_match_index(xmltv_ch)?;
 
     for line in id_section.lines() {
         let Some((ch_id, name_hash, ch_name)) = parse_match_line(line) else {
@@ -213,9 +213,9 @@ pub fn match_channels_text(
         };
 
         if !xmltv_ch.is_empty() && !ch_name.is_empty() {
-            let time_shift = xmltv::extract_time_shift(&ch_name);
-            let base_name = xmltv::strip_time_shift(&ch_name);
-            if let Some((xmltv_id, _score)) = xmltv::match_in_index(&base_name, &index) {
+            let time_shift = xmltv::extract_time_shift(&ch_name)?;
+            let base_name = xmltv::strip_time_shift(&ch_name)?;
+            if let Some((xmltv_id, _score)) = xmltv::match_in_index(&base_name, &index)? {
                 let epg_hash = compute_epg_hash(&format!("{xmltv_id}|{time_shift}"));
                 epg_to_xmltv.insert(epg_hash.clone(), xmltv_id);
                 if time_shift != 0 {
@@ -234,16 +234,16 @@ pub fn match_channels_text(
         ch_mappings.push(format!("{ch_id}~local~{epg_url}"));
     }
 
-    format!("{{}}\n\t\n{}\n\t\nlocal~/", ch_mappings.join("\n"))
+    Ok(format!("{{}}\n\t\n{}\n\t\nlocal~/", ch_mappings.join("\n")))
 }
 
 /// Legacy FOSS text body for POST /m3u/match-logos.
 /// Response: `{}\n\t\n{ch_id~logo_url}`
-pub fn match_logos_text(body: &str, xmltv_ch: &Channels) -> String {
+pub fn match_logos_text(body: &str, xmltv_ch: &Channels) -> anyhow::Result<String> {
     let parts: Vec<&str> = body.split("\n\t\n").collect();
     let id_section = parts.get(2).copied().unwrap_or("");
     let mut log_mappings: Vec<String> = Vec::new();
-    let index = xmltv::build_match_index(xmltv_ch);
+    let index = xmltv::build_match_index(xmltv_ch)?;
 
     for line in id_section.lines() {
         let Some((ch_id, _name_hash, ch_name)) = parse_match_line(line) else {
@@ -253,8 +253,8 @@ pub fn match_logos_text(body: &str, xmltv_ch: &Channels) -> String {
         let logo_url = if xmltv_ch.is_empty() || ch_name.is_empty() {
             format!("/logo/{}.svg?ch={}", ch_id, urlencoding::encode(&ch_name))
         } else {
-            let base_name = xmltv::strip_time_shift(&ch_name);
-            match xmltv::match_in_index(&base_name, &index) {
+            let base_name = xmltv::strip_time_shift(&ch_name)?;
+            match xmltv::match_in_index(&base_name, &index)? {
                 Some((xmltv_id, _)) => xmltv_ch
                     .get(&xmltv_id)
                     .and_then(|c| {
@@ -273,5 +273,5 @@ pub fn match_logos_text(body: &str, xmltv_ch: &Channels) -> String {
         log_mappings.push(format!("{ch_id}~{logo_url}"));
     }
 
-    format!("{{}}\n\t\n{}", log_mappings.join("\n"))
+    Ok(format!("{{}}\n\t\n{}", log_mappings.join("\n")))
 }

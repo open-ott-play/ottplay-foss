@@ -311,8 +311,21 @@ function browser(folder, platform) {
                     ts.isFunctionDeclaration(node) && node.name?.text === name
             )
         );
-    w.loadJQ();
+    w.loadJS("/js/ottplay-core.js", () => {
+        const guide = new w.OttPlayCore.NativeGuide(
+            [
+                ["news", "News"],
+                ["film", "Films"],
+            ],
+            "web",
+            (value) => value.length,
+            (value) => value
+        );
+        assert.equal(guide.resolve("", ["News Extra", "Films"]), "film");
+        w.loadJQ();
+    });
     assert.deepEqual(loaded, [
+        "/js/ottplay-core.js",
         "/js/jquery.min.js",
         "/js/hls.min.js?v=" + w.__ottMediaRuntimeVersion,
         "/js/shaka-player.compiled.js",
@@ -571,6 +584,13 @@ async function main() {
             await smoke(folder, platform);
         }
         const tauri = path.join(temp, "tauri");
+        const core = path.join(tauri, "js/ottplay-core.js");
+        const coreBytes = fs.readFileSync(core);
+        fs.rmSync(core);
+        assert.throws(() => auditNativeRuntime(tauri), /ottplay-core/);
+        fs.writeFileSync(core, "/* wrong revision */");
+        assert.throws(() => auditNativeRuntime(tauri), /shared core/);
+        fs.writeFileSync(core, coreBytes);
         const hls = path.join(tauri, "js/hls.min.js");
         const bytes = fs.readFileSync(hls);
         fs.appendFileSync(hls, "\n/*tampered*/");

@@ -1,12 +1,10 @@
 //! XMLTV fetch + parse + fuzzy match.
 use std::collections::HashMap;
 use std::io::Read;
-use std::sync::LazyLock;
 
 use flate2::read::GzDecoder;
 use quick_xml::events::Event;
 use quick_xml::Reader;
-use regex::Regex;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
@@ -101,10 +99,7 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
     let mut channels: Channels = HashMap::new();
     let mut programs: Programs = HashMap::new();
 
-    let mut current_channel: Option<Channel> = None;
-    let mut current_programme: Option<(String, Programme)> = None;
-    let mut text_target: Option<TextTarget> = None;
-    let mut text_buffer = String::new();
+    let mut records = RecordTokens::new(native)?;
 
     let mut buf = Vec::new();
     let mut depth = 0usize;
@@ -112,194 +107,248 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
     let mut root_closed = false;
     loop {
         let event = reader.read_event_into(&mut buf);
-        if native {
-            // quick_xml can return EOF after complete channels inside an unclosed root.
-            // Such a partial download must never replace the native cache.
-            match &event {
-                Ok(Event::Start(element)) => {
-                    if depth == 0 {
+        let validation = (|| -> anyhow::Result<()> {
+            if native {
+                // quick_xml can return EOF after complete channels inside an unclosed root.
+                // Such a partial download must never replace the native cache.
+                match &event {
+                    Ok(Event::Start(element)) => {
+                        if depth == 0 {
+                            anyhow::ensure!(
+                                !root_seen && element.name().as_ref() == b"tv",
+                                "Invalid XMLTV root"
+                            );
+                            root_seen = true;
+                        }
+                        depth += 1;
+                    }
+                    Ok(Event::Empty(element)) if depth == 0 => {
                         anyhow::ensure!(
                             !root_seen && element.name().as_ref() == b"tv",
                             "Invalid XMLTV root"
                         );
                         root_seen = true;
-                    }
-                    depth += 1;
-                }
-                Ok(Event::Empty(element)) if depth == 0 => {
-                    anyhow::ensure!(
-                        !root_seen && element.name().as_ref() == b"tv",
-                        "Invalid XMLTV root"
-                    );
-                    root_seen = true;
-                    root_closed = true;
-                }
-                Ok(Event::End(element)) => {
-                    anyhow::ensure!(depth > 0, "Unexpected XMLTV closing element");
-                    depth -= 1;
-                    if depth == 0 {
-                        anyhow::ensure!(
-                            element.name().as_ref() == b"tv",
-                            "Invalid XMLTV closing root"
-                        );
                         root_closed = true;
                     }
+                    Ok(Event::End(element)) => {
+                        anyhow::ensure!(depth > 0, "Unexpected XMLTV closing element");
+                        depth -= 1;
+                        if depth == 0 {
+                            anyhow::ensure!(
+                                element.name().as_ref() == b"tv",
+                                "Invalid XMLTV closing root"
+                            );
+                            root_closed = true;
+                        }
+                    }
+                    Ok(Event::Text(text)) if depth == 0 => {
+                        anyhow::ensure!(
+                            text.decode()?.trim().is_empty(),
+                            "Text outside XMLTV root"
+                        );
+                    }
+                    Ok(Event::GeneralRef(_)) if depth == 0 => {
+                        anyhow::bail!("Entity outside XMLTV root")
+                    }
+                    Ok(Event::CData(_)) if depth == 0 => anyhow::bail!("CDATA outside XMLTV root"),
+                    Ok(Event::Eof) => anyhow::ensure!(
+                        root_seen && root_closed && depth == 0,
+                        "Incomplete XMLTV document"
+                    ),
+                    _ => {}
                 }
-                Ok(Event::Text(text)) if depth == 0 => {
-                    anyhow::ensure!(text.decode()?.trim().is_empty(), "Text outside XMLTV root");
-                }
-                Ok(Event::GeneralRef(_)) if depth == 0 => {
-                    anyhow::bail!("Entity outside XMLTV root")
-                }
-                Ok(Event::CData(_)) if depth == 0 => anyhow::bail!("CDATA outside XMLTV root"),
-                Ok(Event::Eof) => anyhow::ensure!(
-                    root_seen && root_closed && depth == 0,
-                    "Incomplete XMLTV document"
-                ),
-                _ => {}
             }
+            Ok(())
+        })();
+        if let Err(error) = validation {
+            records.flush(&mut channels, &mut programs)?;
+            return Err(error);
         }
         match event {
-            Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
-                let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
-                match name.as_str() {
-                    "channel" => {
-                        let id = attr(&e, "id").unwrap_or_default();
-                        current_channel = Some(Channel {
-                            id,
-                            name: String::new(),
-                            icon: String::new(),
-                            names: Vec::new(),
-                        });
+            Ok(Event::Start(element)) | Ok(Event::Empty(element)) => {
+                // Empty elements have always supplied only a start event here.
+                let mut row = vec![
+                    "start".into(),
+                    String::from_utf8_lossy(element.name().as_ref()).into_owned(),
+                ];
+                for key in ["id", "channel", "start", "stop", "src"] {
+                    if let Some(value) = attr(&element, key) {
+                        row.push(key.into());
+                        row.push(value);
                     }
-                    "programme" => {
-                        let channel = attr(&e, "channel").unwrap_or_default();
-                        let start = parse_xmltv_time(&attr(&e, "start").unwrap_or_default());
-                        let stop = parse_xmltv_time(&attr(&e, "stop").unwrap_or_default());
-                        current_programme = Some((
-                            channel,
-                            Programme {
-                                start,
-                                stop,
-                                title: String::new(),
-                                desc: String::new(),
-                                icon: String::new(),
-                            },
-                        ));
-                    }
-                    "display-name" if current_channel.is_some() => {
-                        text_target = Some(TextTarget::ChannelName);
-                        text_buffer.clear();
-                    }
-                    "title" if current_programme.is_some() => {
-                        text_target = Some(TextTarget::ProgTitle);
-                        text_buffer.clear();
-                    }
-                    "desc" if current_programme.is_some() => {
-                        text_target = Some(TextTarget::ProgDesc);
-                        text_buffer.clear();
-                    }
-                    "icon" => {
-                        if let Some(src) = attr(&e, "src") {
-                            if let Some(c) = current_channel.as_mut() {
-                                c.icon = src;
-                            } else if let Some((_, p)) = current_programme.as_mut() {
-                                p.icon = src;
-                            }
-                        }
-                    }
-                    _ => {}
                 }
+                records.push(row, &mut channels, &mut programs)?;
             }
-            Ok(Event::Text(t)) => {
-                if text_target.is_some() {
-                    text_buffer.push_str(&t.decode()?);
-                }
+            Ok(Event::Text(text)) => {
+                records.text(
+                    text.decode()
+                        .map(|text| text.into_owned())
+                        .map_err(Into::into),
+                    &mut channels,
+                    &mut programs,
+                )?;
             }
-            Ok(Event::CData(t)) => {
-                if text_target.is_some() {
-                    text_buffer.push_str(&t.decode()?);
-                }
+            Ok(Event::CData(text)) => {
+                records.text(
+                    text.decode()
+                        .map(|text| text.into_owned())
+                        .map_err(Into::into),
+                    &mut channels,
+                    &mut programs,
+                )?;
             }
             Ok(Event::GeneralRef(reference)) => {
-                if text_target.is_some() {
+                let decoded = (|| -> anyhow::Result<String> {
                     if let Some(character) = reference.resolve_char_ref()? {
-                        text_buffer.push(character);
-                    } else {
-                        let name = reference.decode()?;
-                        match quick_xml::escape::resolve_predefined_entity(&name) {
-                            Some(value) => text_buffer.push_str(value),
-                            None => anyhow::bail!("Unsupported XML entity: &{name};"),
-                        }
+                        return Ok(character.to_string());
                     }
-                }
+                    let name = reference.decode()?;
+                    match quick_xml::escape::resolve_predefined_entity(&name) {
+                        Some(value) => Ok(value.into()),
+                        None => anyhow::bail!("Unsupported XML entity: &{name};"),
+                    }
+                })();
+                records.text(decoded, &mut channels, &mut programs)?;
             }
-            Ok(Event::End(e)) => {
-                let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
-                match name.as_str() {
-                    "display-name" | "title" | "desc" => {
-                        if let Some(target) = text_target.take() {
-                            let value = text_buffer.trim().to_owned();
-                            match target {
-                                TextTarget::ChannelName => {
-                                    if let Some(c) = current_channel.as_mut() {
-                                        c.names.push(value.clone());
-                                        c.name = value;
-                                    }
-                                }
-                                TextTarget::ProgTitle => {
-                                    if let Some((_, p)) = current_programme.as_mut() {
-                                        p.title = value;
-                                    }
-                                }
-                                TextTarget::ProgDesc => {
-                                    if let Some((_, p)) = current_programme.as_mut() {
-                                        p.desc = value;
-                                    }
-                                }
-                            }
-                        }
-                        text_buffer.clear();
-                    }
-                    "channel" => {
-                        if let Some(mut c) = current_channel.take() {
-                            if c.name.is_empty() {
-                                c.name = c.id.clone();
-                            }
-                            channels.insert(c.id.clone(), c);
-                        }
-                    }
-                    "programme" => {
-                        if let Some((channel_id, p)) = current_programme.take() {
-                            if !p.title.is_empty() {
-                                programs.entry(channel_id).or_default().push(p);
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-                text_target = None;
-            }
+            Ok(Event::End(element)) => records.push(
+                vec![
+                    "end".into(),
+                    String::from_utf8_lossy(element.name().as_ref()).into_owned(),
+                ],
+                &mut channels,
+                &mut programs,
+            )?,
             Ok(Event::Eof) => break,
-            Err(e) => anyhow::bail!("XML parse error at {}: {e}", reader.buffer_position()),
+            Err(error) => {
+                // A prior batched decode error keeps its original precedence.
+                records.flush(&mut channels, &mut programs)?;
+                anyhow::bail!("XML parse error at {}: {error}", reader.buffer_position());
+            }
             _ => {}
         }
         buf.clear();
     }
 
+    records.flush(&mut channels, &mut programs)?;
     if native {
-        for programs in programs.values_mut() {
-            programs.sort_by_key(|program| program.start);
+        for entries in programs.values_mut() {
+            let order = records
+                .core
+                .order(entries.iter().map(|entry| entry.start as f64).collect())?;
+            anyhow::ensure!(order.len() == entries.len(), "Invalid shared XMLTV order");
+            let mut original: Vec<_> = std::mem::take(entries).into_iter().map(Some).collect();
+            for index in order {
+                entries.push(
+                    original
+                        .get_mut(index)
+                        .and_then(Option::take)
+                        .ok_or_else(|| anyhow::anyhow!("Invalid shared XMLTV order"))?,
+                );
+            }
         }
     }
     Ok((channels, programs))
 }
 
-#[derive(Copy, Clone)]
-enum TextTarget {
-    ChannelName,
-    ProgTitle,
-    ProgDesc,
+/// The bounded transport queue contains XML tokens and original decoder errors.
+/// Only the shared reducer decides whether a text token belongs to a field.
+struct RecordTokens {
+    core: crate::shared_guide::GuideRecords,
+    rows: Vec<Vec<String>>,
+    bytes: usize,
+    errors: Vec<Option<anyhow::Error>>,
+}
+
+impl RecordTokens {
+    const MAX_ROWS: usize = 256;
+    const MAX_BYTES: usize = 64 * 1024;
+
+    fn new(native: bool) -> anyhow::Result<Self> {
+        Ok(Self {
+            core: crate::shared_guide::GuideRecords::new(native)?,
+            rows: Vec::new(),
+            bytes: 0,
+            errors: Vec::new(),
+        })
+    }
+
+    fn push(
+        &mut self,
+        row: Vec<String>,
+        channels: &mut Channels,
+        programs: &mut Programs,
+    ) -> anyhow::Result<()> {
+        self.bytes += row.iter().map(String::len).sum::<usize>();
+        self.rows.push(row);
+        if self.rows.len() >= Self::MAX_ROWS || self.bytes >= Self::MAX_BYTES {
+            self.flush(channels, programs)?;
+        }
+        Ok(())
+    }
+
+    fn text(
+        &mut self,
+        value: anyhow::Result<String>,
+        channels: &mut Channels,
+        programs: &mut Programs,
+    ) -> anyhow::Result<()> {
+        let row = match value {
+            Ok(value) => vec!["text".into(), value],
+            Err(error) => {
+                let index = self.errors.len();
+                self.errors.push(Some(error));
+                vec!["text-error".into(), index.to_string()]
+            }
+        };
+        self.push(row, channels, programs)
+    }
+
+    fn flush(&mut self, channels: &mut Channels, programs: &mut Programs) -> anyhow::Result<()> {
+        if self.rows.is_empty() {
+            return Ok(());
+        }
+        let actions = self.core.accept(std::mem::take(&mut self.rows))?;
+        for action in actions {
+            match action.first().map(String::as_str) {
+                Some("replace-channel") if action.len() >= 4 => {
+                    let mut fields = action.into_iter().skip(1);
+                    let id = fields.next().expect("checked length");
+                    channels.insert(
+                        id.clone(),
+                        Channel {
+                            id,
+                            name: fields.next().expect("checked length"),
+                            icon: fields.next().expect("checked length"),
+                            names: fields.collect(),
+                        },
+                    );
+                }
+                Some("programme") if action.len() == 7 => {
+                    let mut fields = action.into_iter().skip(1);
+                    let channel = fields.next().expect("checked length");
+                    programs.entry(channel).or_default().push(Programme {
+                        start: fields.next().expect("checked length").parse::<f64>()? as i64,
+                        stop: fields.next().expect("checked length").parse::<f64>()? as i64,
+                        title: fields.next().expect("checked length"),
+                        desc: fields.next().expect("checked length"),
+                        icon: fields.next().expect("checked length"),
+                    });
+                }
+                Some("error") if action.len() == 2 => {
+                    let index: usize = action[1].parse()?;
+                    return Err(self
+                        .errors
+                        .get_mut(index)
+                        .and_then(Option::take)
+                        .ok_or_else(|| anyhow::anyhow!("Invalid shared XMLTV decoder error"))?);
+                }
+                _ => anyhow::bail!("Invalid shared XMLTV action"),
+            }
+        }
+        self.bytes = 0;
+        self.errors.clear();
+        Ok(())
+    }
 }
 
 fn attr(e: &quick_xml::events::BytesStart<'_>, key: &str) -> Option<String> {
@@ -314,155 +363,40 @@ fn attr(e: &quick_xml::events::BytesStart<'_>, key: &str) -> Option<String> {
     None
 }
 
-/// Parse XMLTV timestamp `YYYYMMDDHHMMSS ±HHMM` → Unix seconds.
-pub fn parse_xmltv_time(ts: &str) -> i64 {
-    let ts = ts.trim();
-    if ts.len() < 14 || !ts.as_bytes()[..14].iter().all(u8::is_ascii_digit) {
-        return 0;
-    }
-    let (date_part, tz_part) = if ts.len() > 14 {
-        if ts.as_bytes()[14] == b' ' {
-            (ts[..14].to_string(), ts[15..].trim().to_string())
-        } else {
-            (ts[..14].to_string(), ts[14..].trim().to_string())
-        }
-    } else {
-        (ts.to_string(), String::new())
-    };
-
-    let dt = match chrono::NaiveDateTime::parse_from_str(&date_part, "%Y%m%d%H%M%S") {
-        Ok(d) => d,
-        Err(_) => return 0,
-    };
-
-    if tz_part.len() >= 5 {
-        let bytes = tz_part.as_bytes();
-        if bytes[0] == b'+' || bytes[0] == b'-' {
-            if !bytes[1..5].iter().all(u8::is_ascii_digit) {
-                return 0;
-            }
-            let sign: i64 = if bytes[0] == b'+' { 1 } else { -1 };
-            let th: i64 = tz_part[1..3].parse().unwrap_or(0);
-            let tm: i64 = tz_part[3..5].parse().unwrap_or(0);
-            let offset = sign * (th * 3600 + tm * 60);
-            return dt.and_utc().timestamp() - offset;
-        }
-    }
-    dt.and_utc().timestamp()
+/// Parse XMLTV timestamps through the pinned shared core (seconds).
+pub fn parse_xmltv_time(ts: &str) -> anyhow::Result<i64> {
+    crate::shared_guide::text::<f64>("nativeGuideTime", ts).map(|value| value as i64)
 }
 
-// ---------------------------------------------------------------------------
-// Fuzzy matching (server.py L232-322)
-// ---------------------------------------------------------------------------
+pub use crate::shared_guide::GuideIndex as MatchIndex;
 
-static RE_TS: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"[+-]\s*\d+\s*(ч|h|hours?)?").unwrap());
-static RE_PAREN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\([^)]*\)").unwrap());
-static RE_WS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s+").unwrap());
-static RE_HD_PREF: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(hd|fhd|uhd|4k)\s+").unwrap());
-static RE_HD_SUF: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s+(hd|fhd|uhd|4k)$").unwrap());
-static RE_TS_CAP: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"([+-])\s*(\d+)\s*(ч|h|hours?)?").unwrap());
-
-/// Precomputed XMLTV lookup: exact normalized-name map + list for fuzzy scan.
-#[derive(Clone, Debug, Default)]
-pub struct MatchIndex {
-    /// (xmltv_id, display_name, normalized_name)
-    pub entries: Vec<(String, String, String)>,
-    /// normalized_name → xmltv_id (first wins)
-    pub by_norm: HashMap<String, String>,
+pub fn normalize_name(name: &str) -> anyhow::Result<String> {
+    crate::shared_guide::text("nativeGuideName", name)
 }
 
-pub fn normalize_name(name: &str) -> String {
-    let s = name.to_lowercase();
-    let s = RE_TS.replace_all(&s, "").into_owned();
-    let s = RE_PAREN.replace_all(&s, "").into_owned();
-    let s = RE_WS.replace_all(&s, " ").into_owned();
-    let s = s.trim().to_string();
-    let s = RE_HD_PREF.replace(&s, "").into_owned();
-    RE_HD_SUF.replace(&s, "").trim().to_string()
+pub fn build_match_index(channels: &Channels) -> anyhow::Result<MatchIndex> {
+    MatchIndex::new(
+        channels
+            .iter()
+            .map(|(id, c)| vec![id.clone(), c.name.clone()])
+            .collect(),
+    )
 }
 
-pub fn build_index(channels: &Channels) -> Vec<(String, String, String)> {
-    build_match_index(channels).entries
+pub fn match_in_index(name: &str, index: &MatchIndex) -> anyhow::Result<Option<(String, f32)>> {
+    index.match_name(name)
 }
 
-pub fn build_match_index(channels: &Channels) -> MatchIndex {
-    let mut entries = Vec::with_capacity(channels.len());
-    let mut by_norm = HashMap::with_capacity(channels.len());
-    for (id, c) in channels {
-        let n = normalize_name(&c.name);
-        if n.is_empty() {
-            continue;
-        }
-        by_norm.entry(n.clone()).or_insert_with(|| id.clone());
-        entries.push((id.clone(), c.name.clone(), n));
-    }
-    MatchIndex { entries, by_norm }
+pub fn match_channel(name: &str, channels: &Channels) -> anyhow::Result<Option<(String, f32)>> {
+    match_in_index(name, &build_match_index(channels)?)
 }
 
-/// Match against a prebuilt index (call once per batch, not per channel).
-pub fn match_in_index(name: &str, index: &MatchIndex) -> Option<(String, f32)> {
-    let normalized = normalize_name(name);
-    if normalized.is_empty() {
-        return None;
-    }
-    if let Some(id) = index.by_norm.get(&normalized) {
-        return Some((id.clone(), 1.0));
-    }
-    let mut best_id: Option<String> = None;
-    let mut best_score: f32 = 0.0;
-
-    for (id, _name, xmltv_norm) in &index.entries {
-        let score = if normalized.contains(xmltv_norm.as_str()) {
-            xmltv_norm.len() as f32 / normalized.len() as f32
-        } else if xmltv_norm.contains(normalized.as_str()) {
-            normalized.len() as f32 / xmltv_norm.len() as f32
-        } else {
-            let nw: std::collections::HashSet<&str> = normalized.split_whitespace().collect();
-            let xw: std::collections::HashSet<&str> = xmltv_norm.split_whitespace().collect();
-            let common: usize = nw.intersection(&xw).count();
-            if common == 0 {
-                continue;
-            }
-            let min_words = nw.len().min(xw.len());
-            if common < 2.max(min_words * 50 / 100) {
-                continue;
-            }
-            common as f32 / nw.len().max(xw.len()) as f32
-        };
-        if score > best_score {
-            best_score = score;
-            best_id = Some(id.clone());
-        }
-    }
-
-    if best_score >= 0.4 {
-        Some((best_id.unwrap(), best_score))
-    } else {
-        None
-    }
+pub fn strip_time_shift(name: &str) -> anyhow::Result<String> {
+    crate::shared_guide::text("nativeGuideStripShift", name)
 }
 
-pub fn match_channel(name: &str, channels: &Channels) -> Option<(String, f32)> {
-    let index = build_match_index(channels);
-    match_in_index(name, &index)
-}
-
-/// Strip time-shift suffix from channel name: "+4", "-2h", "+3ч".
-pub fn strip_time_shift(name: &str) -> String {
-    RE_TS.replace_all(name, "").trim().to_string()
-}
-
-/// Extract time-shift hours from channel name. Returns signed hours (e.g. +4, -3).
-pub fn extract_time_shift(name: &str) -> i64 {
-    if let Some(cap) = RE_TS_CAP.captures_iter(name).next() {
-        let sign: i64 = if &cap[1] == "+" { 1 } else { -1 };
-        let hours: i64 = cap[2].parse().unwrap_or(0);
-        let hours = if hours > 24 { hours % 24 } else { hours };
-        return sign * hours;
-    }
-    0
+pub fn extract_time_shift(name: &str) -> anyhow::Result<i64> {
+    crate::shared_guide::text::<i32>("nativeGuideShift", name).map(i64::from)
 }
 
 #[cfg(test)]
@@ -519,31 +453,31 @@ mod tests {
 
     #[test]
     fn malformed_multibyte_timestamps_do_not_panic() {
-        assert_eq!(parse_xmltv_time("2026010100000💥"), 0);
-        assert_eq!(parse_xmltv_time("20260101000000 +0💥"), 0);
+        assert_eq!(parse_xmltv_time("2026010100000💥").unwrap(), 0);
+        assert_eq!(parse_xmltv_time("20260101000000 +0💥").unwrap(), 0);
     }
 
     #[test]
     fn time_parse_utc() {
-        let t = parse_xmltv_time("20260101120000 +0000");
+        let t = parse_xmltv_time("20260101120000 +0000").unwrap();
         assert!(t > 0);
     }
 
     #[test]
     fn time_parse_positive_offset() {
-        let utc = parse_xmltv_time("20260101120000 +0000");
-        let plus3 = parse_xmltv_time("20260101120000 +0300");
+        let utc = parse_xmltv_time("20260101120000 +0000").unwrap();
+        let plus3 = parse_xmltv_time("20260101120000 +0300").unwrap();
         assert_eq!(utc - plus3, 3 * 3600, "+0300 local noon is 09:00 UTC");
-        let minus530 = parse_xmltv_time("20260101120000 -0530");
+        let minus530 = parse_xmltv_time("20260101120000 -0530").unwrap();
         assert_eq!(minus530 - utc, 5 * 3600 + 30 * 60);
     }
 
     #[test]
     fn normalize_strip_hd() {
-        assert_eq!(normalize_name("HD First"), "first");
-        assert_eq!(normalize_name("First HD"), "first");
-        assert_eq!(normalize_name("First +4h"), "first");
-        assert_eq!(normalize_name("First (Алания)"), "first");
+        assert_eq!(normalize_name("HD First").unwrap(), "first");
+        assert_eq!(normalize_name("First HD").unwrap(), "first");
+        assert_eq!(normalize_name("First +4h").unwrap(), "first");
+        assert_eq!(normalize_name("First (Алания)").unwrap(), "first");
     }
 
     #[test]
@@ -558,7 +492,7 @@ mod tests {
                 icon: String::new(),
             },
         );
-        let m = match_channel("Первый канал", &ch);
+        let m = match_channel("Первый канал", &ch).unwrap();
         assert!(m.is_some());
         assert_eq!(m.unwrap().0, "c1");
     }

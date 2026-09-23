@@ -36,6 +36,8 @@ const { configureNativeDev } = classicRequire(
 const { assembleClassic, CLASSIC_MODULES } = classicRequire(
     resolve(__dirname, "scripts/classic-bundle.cjs")
 );
+// Verify and stage the pinned compiler output before any build/dev staging.
+classicRequire(resolve(__dirname, "scripts/shared-core.cjs")).stage();
 const androidFlavor = process.env.OTTPLAY_ANDROID_FLAVOR;
 if (androidFlavor && androidFlavor !== "full" && androidFlavor !== "play") {
     throw new Error("Unknown Android distribution: " + androidFlavor);

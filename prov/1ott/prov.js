@@ -45,77 +45,28 @@ function getChannelUrl(ch_id) {
 }
 
 function getArchiveUrl(ch_id, time, time_to) {
-    return chanels[ch_id].url + "?utc=" + Math.floor(time);
+    return (
+        OttPlayCore.providerArchiveUrl(
+            "utc",
+            chanels[ch_id].url,
+            "",
+            "",
+            Number(time),
+            Number(time_to),
+            Date.now() / 1000,
+            browserName() === "dune",
+            0
+        ) || ""
+    );
 }
 
 if (typeof catsArray == "undefined") var catsArray = [];
-
-function addChan2cat(cat, ci) {
-    if (!(cat && ci)) return;
-    if (!cats[cat]) {
-        catsArray.push(cat);
-        cats[cat] = [];
-    }
-    cats[cat].push(ci);
-}
-
-function getAttribute(text, attribute) {
-    var a = text.split(attribute + "=");
-    if (a.length == 1 || a[1].length == 0) return "";
-    if (a[1][0] == '"') return a[1].split('"')[1] || "";
-    return a[1].split(/[ ,]+/)[0] || "";
-}
-
-function getAint(text, attribute) {
-    return parseInt(getAttribute(text, attribute), 10) || 0;
-}
 
 function getChanelsArray(callback) {
     _getParams();
 
     function loadPlaylist(url, success, cb) {
-        if (typeof launch_id == "undefined") launch_id = "#launch";
-        if (!url) {
-            cb();
-            return;
-        }
-        var cpurl = url;
-        if (typeof stbInterceptRequest === "function") {
-            stbInterceptRequest(url);
-            url +=
-                (url.indexOf("?") == -1 ? "?" : "&") +
-                "url=" +
-                encodeURIComponent(url);
-        }
-        $.ajax({
-            dataType: "text",
-            error: function () {
-                $(launch_id).append("p...");
-                $.ajax({
-                    data: { url: "@" + cpurl },
-                    dataType: "text",
-                    error: function (jqXHR, textStatus, errorThrown) {
-                        console.log(
-                            "channels : jqXHR:" +
-                                JSON.stringify(jqXHR) +
-                                "; textStatus: " +
-                                textStatus +
-                                ", errorThrown: " +
-                                errorThrown
-                        );
-                        alert(_("Failed to load channel list!"));
-                        cb();
-                    },
-                    method: "post",
-                    success: success,
-                    timeout: 30000,
-                    url: host + "/m3u/cp.php",
-                });
-            },
-            success: success,
-            timeout: 30000,
-            url: url,
-        });
+        operatorLoadPlaylist(url, success, cb, "classic");
     }
 
     function aSuccess(data) {
@@ -124,42 +75,24 @@ function getChanelsArray(callback) {
             chanels = {};
             cats = {};
             catsArray = [];
-            var arrEXTINF = data.split("#EXTINF:");
-            arrEXTINF.shift();
-            arrEXTINF.forEach(function (val) {
-                var e = val.split("\n"),
-                    cat = getAttribute(e[0], "group-title"),
-                    epg = getAttribute(e[0], "tvg-id"),
-                    logo = getAttribute(e[0], "tvg-logo"),
-                    rec = getAint(e[0], "catchup-days") * 24,
-                    cn = _("??? No channel name"),
-                    url = "";
-                try {
-                    cn = e[0].split(",")[1].trim();
-                } catch (ex) {}
-                try {
-                    url = e[1].trim();
-                } catch (ex) {}
-                var ci = url.split("/")[4] || epg;
-                addChan2cat(cat, ci);
-                if (url && ci && cList.indexOf(ci) == -1) {
-                    cList.push(ci);
-                    chanels[ci] = {
-                        category: {
-                            class: catsArray.indexOf(cat) + 2,
-                            name: cat,
-                        },
-                        channel_name: cn,
-                        epg: epg,
-                        logo: logo,
-                        rec: rec,
-                        time: 0,
-                        time_to: 0,
-                        url: url,
-                    };
-                }
+            var catalog = OttPlayCore.parseOperatorPlaylist(
+                data,
+                "1ott",
+                function () {
+                    return 0;
+                },
+                []
+            );
+            cats = catalog.groups;
+            catsArray = catalog.groupOrder;
+            cList = catalog.ids;
+            chanels = catalog.channels;
+            catalog.entries.forEach(function (entry) {
+                if (entry.generatedName)
+                    entry.channel.channel_name = _("??? No channel name");
             });
-            if (!__id || !__pin) {
+            if (catalog.malformed) throw new Error("Malformed playlist entry");
+            if (!OttPlayCore.operatorCredentialsValid("1ott", __id, __pin)) {
                 try {
                     popupList(popupActions.indexOf(noProvParam) + 1);
                 } catch (ex) {}
@@ -179,7 +112,7 @@ function getChanelsArray(callback) {
         callback();
     }
 
-    if (!__id || !__pin) {
+    if (!OttPlayCore.operatorCredentialsValid("1ott", __id, __pin)) {
         try {
             popupList(popupActions.indexOf(noProvParam) + 1);
         } catch (ex) {}
@@ -189,14 +122,18 @@ function getChanelsArray(callback) {
     }
 
     loadPlaylist(
-        url_srv + "/PinApi/" + __id + "/" + __pin,
+        OttPlayCore.operatorProfileUrl("1ott", "account", {
+            base: url_srv,
+            id: __id,
+            pin: __pin,
+        }),
         function (data) {
             try {
                 loadPlaylist(
-                    url_srv +
-                        "/api/" +
-                        JSON.parse(data).token +
-                        "/high/ottnav.m3u8",
+                    OttPlayCore.operatorProfileUrl("1ott", "playlist", {
+                        base: url_srv,
+                        token: JSON.parse(data).token,
+                    }),
                     aSuccess,
                     callback
                 );

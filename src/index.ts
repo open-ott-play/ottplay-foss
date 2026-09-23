@@ -2473,33 +2473,18 @@ function _playMedia(item: MediaHistoryEntry): void {
     if (mediaUrls && mediaUrls[mediaUrls.length - 1] === -1)
         mediaSelects[0] = 0;
     setCurrent(catIndex, -1);
-    var resumePos = 0;
-    var historyIdx = medHistory.findIndex(function (e: MediaHistoryEntry) {
-        return (
-            e.stream_url === item.stream_url ||
-            Boolean(
-                item.vportalSource &&
-                    item.request &&
-                    e.request &&
-                    e.vportalSource === item.vportalSource &&
-                    JSON.stringify(e.request) === JSON.stringify(item.request)
-            )
-        );
-    });
-    if (historyIdx !== -1) {
-        if (
-            historyIdx === 0 &&
-            (window as any).playType === -1e11 &&
-            medHistory[historyIdx].stream_url === streamUrl
-        )
-            return;
-        resumePos =
-            Math.floor((medHistory[historyIdx]?.current ?? 0) / 60) * 60;
-        medHistory.splice(historyIdx, 1);
-    }
+    var history = (window as any).OttPlayCore.classicHistorySelection(
+        medHistory,
+        item,
+        streamUrl,
+        (window as any).playType,
+        sMedCount
+    );
+    if (history.skip) return;
+    var resumePos = history.resume;
+    if (history.index !== -1) medHistory.splice(history.index, 1);
     medHistory.unshift(item);
-    var maxMedCount = [0, 10, 20, 30, 40, 50][sMedCount];
-    medHistory.splice(maxMedCount === undefined ? 20 : maxMedCount);
+    medHistory.splice(history.limit);
     // Persist the newly selected item too, so history survives an interrupted session.
     if ((window as any).sFavorites !== -1)
         providerSetItem("medHistory", JSON.stringify(medHistory));
