@@ -221,6 +221,7 @@ try {
         "playCoreMedia",
         "cancelCoreSeek",
         "cancelCoreAutoPlayback",
+        "cancelCoreNativeHls",
         "destroyCoreShaka",
         "resetCoreNativeBitrate",
         "stbContinue",
@@ -243,6 +244,9 @@ try {
     const w = {
         _coreAutoCancel: null,
         _coreDemoMute: null,
+        _coreNativeAttempt: 0,
+        _coreNativeHls: null,
+        _coreNativeHlsCleanup: null,
         _corePendingSeek: null,
         _coreShakaTeardown: null,
         _playSession: 0,
@@ -273,6 +277,7 @@ try {
     assert.equal(video.paused, true);
     vm.runInContext(scripts.MEDIA_STOP, w);
     assert.equal(w._playSession, 1);
+    assert.equal(w._coreNativeAttempt, 1);
     assert.equal(destroyed, 1);
     assert.equal(video.paused, true);
     console.log(

@@ -55,9 +55,26 @@ audio-only HLS and progressive MP4 in the target WebView; unit tests do not prov
 decoder support on another operating system.
 
 The video footer measures HLS bitrate from bytes and media duration of the last
-eight main-stream segments or LL-HLS parts, including any muxed audio and container
-overhead. It does not display download bandwidth or trust manifest BANDWIDTH.
-Until media samples are available, the footer shows resolution without Mbps.
+eight completed main-stream segments, including muxed audio and container
+overhead. hls.js also measures LL-HLS parts. It does not display download bandwidth
+or trust manifest BANDWIDTH. All footer refreshes use the same renderer.
+
+WKWebView does not supply a usable decoded-byte counter for native HLS. For HTTP(S)
+`.m3u8` playback, the main Tauri window therefore starts a temporary loopback relay.
+Only requests made by the player fetch upstream media; polling statistics uses
+local IPC. Playlists retain their durations and media requests are streamed to the
+native decoder. Only completed main segments enter the rolling measurement;
+audio renditions, initialization data, retries and incomplete responses do not.
+The Auto codec probe uses the same transport. Stop, channel changes, engine
+fallback and main-page navigation dispose of the old session.
+
+A transport initialization or playback error retries the original URL directly
+once, preserving pause intent and archive position. Unsupported playlist extensions
+and HTTP authentication challenges use that direct path. When no reliable media
+sample or native byte counter is available (including native LL-HLS parts alone),
+the footer shows resolution without Mbps. Run `node tests/test_stream_bitrate.cjs`
+and `cargo test --locked -p ottplay-tauri native_hls` for measurement and lifecycle
+regressions; verify native decoding and the visible footer in the target WebView.
 
 ## What is automated vs human
 

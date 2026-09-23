@@ -19,7 +19,7 @@ import {
     rememberMediaView,
     requestMediaList,
 } from "../channels";
-import { video } from "../core";
+import { updateCoreVideoInfo } from "../core";
 import { dispatchKey, keys, list_OnClick } from "../keyhandler";
 import { translate as _ } from "../localization";
 import { settings } from "../settings";
@@ -1875,9 +1875,7 @@ export function updateMediaInfo(): void {
             );
         }
     }
-    var resEl = document.getElementById("video_res");
-    if (resEl && video && video.videoWidth)
-        resEl.innerHTML = "<br/>" + video.videoWidth + "x" + video.videoHeight;
+    updateCoreVideoInfo();
     refreshAudioBadge();
 }
 

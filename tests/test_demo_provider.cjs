@@ -685,12 +685,15 @@ for (const action of ["switch", "reload"])
     });
 
 const core = ts
-    .transpileModule(read("src/core/index.ts"), {
-        compilerOptions: {
-            module: ts.ModuleKind.ES2015,
-            target: ts.ScriptTarget.ES5,
-        },
-    })
+    .transpileModule(
+        ["src/core/native-hls.ts", "src/core/index.ts"].map(read).join("\n"),
+        {
+            compilerOptions: {
+                module: ts.ModuleKind.ES2015,
+                target: ts.ScriptTarget.ES5,
+            },
+        }
+    )
     .outputText.replace(/^import .*\n/gm, "")
     .replace(/^export /gm, "");
 function media() {

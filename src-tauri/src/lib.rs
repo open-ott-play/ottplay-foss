@@ -46,6 +46,7 @@ pub fn run() {
         })
         .manage(commands::queue::QueueHttpRuntime::default())
         .manage(MediaSessionState::default())
+        .manage(commands::native_hls::NativeHlsState::default())
         .manage(PipState::default())
         .manage(TauriState {
             xmltv_cache: Arc::new(RwLock::new(None)),
@@ -63,6 +64,9 @@ pub fn run() {
             commands::tmdb::tmdb_proxy,
             commands::tauri_commands::proxy_fetch,
             commands::http::proxy_http,
+            commands::native_hls::native_hls_start,
+            commands::native_hls::native_hls_stats,
+            commands::native_hls::native_hls_stop,
             commands::tauri_commands::set_fullscreen,
             commands::tauri_commands::toggle_fullscreen,
             commands::tauri_commands::prevent_sleep,
@@ -86,6 +90,17 @@ pub fn run() {
             commands::misc::feedback_post,
             commands::stalker::stalker_portal_fetch,
         ])
+        .on_page_load(|window, payload| {
+            if window.label() == "main" && payload.event() == tauri::webview::PageLoadEvent::Started
+            {
+                let app = window.app_handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    app.state::<commands::native_hls::NativeHlsState>()
+                        .stop_all()
+                        .await;
+                });
+            }
+        })
         .setup(|app| {
             // Always build the main window here (tauri.conf windows=[]) so
             // OTTPLAY_INSTANCE / OTTPLAY_DATA_DIR can set data_directory +

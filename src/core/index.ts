@@ -28,6 +28,7 @@ import {
     restoreLocalSettingsSnapshot,
 } from "../storage/index";
 import { watchAutoNativePlayback } from "./auto-playback";
+import { createNativeHlsTransport } from "./native-hls";
 
 /** Reference to the primary <video> DOM element. */
 export var video: HTMLVideoElement | null = null;
@@ -174,6 +175,17 @@ var _corePendingSeek: (() => void) | null = null;
 var _coreAutoCancel: ((restoreNative?: boolean) => void) | null = null;
 var _coreAutoHlsUsed = false;
 var _corePlaybackMode = 0;
+var _coreNativeHls: ReturnType<typeof createNativeHlsTransport> = null;
+var _coreNativeAttempt = 0;
+var _coreNativeHlsCleanup: (() => void) | null = null;
+
+function cancelCoreNativeHls(): void {
+    _coreNativeAttempt++;
+    if (_coreNativeHls) _coreNativeHls.cancel();
+    _coreNativeHls = null;
+    if (_coreNativeHlsCleanup) _coreNativeHlsCleanup();
+    _coreNativeHlsCleanup = null;
+}
 /** Demo autoplay is temporarily muted; never persist it as the user's choice. */
 var _coreDemoMute: { media: HTMLVideoElement; muted: boolean } | null = null;
 
@@ -421,7 +433,7 @@ function createCoreHlsBitrateMeter(): {
     };
 }
 
-function updateCoreVideoInfo(): void {
+export function updateCoreVideoInfo(): void {
     if (!video || !video.videoWidth || video.error) return;
     var res = "<br/>" + video.videoWidth + "x" + video.videoHeight;
     var mbps = 0;
@@ -433,21 +445,36 @@ function updateCoreVideoInfo(): void {
     } else {
         var decoded = (video as any).webkitVideoDecodedByteCount;
         var position = video.currentTime;
-        if (typeof decoded === "number" && isFinite(decoded)) {
+        if (typeof decoded === "number" && decoded >= 0 && isFinite(decoded)) {
             if (
                 video.seeking ||
                 decoded < prevDecodedBytes ||
                 position < prevDecodedMediaTime
-            )
+            ) {
                 _coreNativeMbps = 0;
-            else if (prevDecodedBytes >= 0 && position > prevDecodedMediaTime)
+                prevDecodedBytes = decoded;
+                prevDecodedMediaTime = position;
+            } else if (prevDecodedBytes < 0) {
+                prevDecodedBytes = decoded;
+                prevDecodedMediaTime = position;
+            } else if (
+                decoded > prevDecodedBytes &&
+                position > prevDecodedMediaTime
+            ) {
                 _coreNativeMbps =
                     ((decoded - prevDecodedBytes) * 8) /
                     (position - prevDecodedMediaTime) /
                     1e6;
-            prevDecodedBytes = decoded;
-            prevDecodedMediaTime = position;
+                // Decoder counters update in batches. Keep the full media-time
+                // interval when another UI refresh observes no additional bytes.
+                prevDecodedBytes = decoded;
+                prevDecodedMediaTime = position;
+            }
             mbps = _coreNativeMbps;
+        }
+        if (_coreNativeHls) {
+            _coreNativeHls.poll();
+            if (!mbps) mbps = _coreNativeHls.mbps();
         }
     }
     // An unknown bitrate is omitted, never replaced by a network estimate.
@@ -897,6 +924,7 @@ export function stbPlay(url: string, position?: number): void {
         _coreAutoHlsUsed = false;
     }
     cancelCoreAutoPlayback();
+    cancelCoreNativeHls();
     (window as any).forcePlay = true;
     var session = _playSession;
     if (hlsInstance) {
@@ -928,6 +956,7 @@ function startCorePlayback(
     position: number | undefined,
     session: number
 ): void {
+    cancelCoreNativeHls();
     _coreHlsBitrate = null;
     resetCoreNativeBitrate();
     var auto = playerMode === 3 && getDefaultPlayerMode() === 3;
@@ -1268,55 +1297,106 @@ function startCorePlayback(
             failed(error);
         }
     } else {
-        video!.src = url;
-        if (position && position > 0) seekCoreMedia(position, session);
-        if (
-            auto &&
-            !_coreAutoHlsUsed &&
-            /\.m3u8(?:[?#]|$)/i.test(url) &&
-            typeof Hls !== "undefined" &&
-            Hls.isSupported()
-        ) {
-            var media = video!;
-            var resumePosition = function (): number | undefined {
-                // Native live and MSE timelines need not share an origin.
-                // Only archive/VOD has an intentional resume position.
-                return position || (window as any).playType
-                    ? media.currentTime || position
-                    : undefined;
-            };
-            _coreAutoCancel = watchAutoNativePlayback(media, url, Hls, {
-                active: function () {
-                    return (
-                        session === _playSession &&
-                        video === media &&
-                        playerMode === 3
-                    );
-                },
-                fallback: function () {
-                    _coreAutoCancel = null;
-                    _coreAutoHlsUsed = true;
-                    var nextPosition = resumePosition();
+        var media = video!;
+        var attempt = _coreNativeAttempt;
+        var nativeAttached = false;
+        var active = function (): boolean {
+            return (
+                session === _playSession &&
+                video === media &&
+                attempt === _coreNativeAttempt
+            );
+        };
+        var resumePosition = function (): number | undefined {
+            // Native live and MSE timelines need not share an origin.
+            return position || (window as any).playType
+                ? media.currentTime || position
+                : undefined;
+        };
+        var attachNative = function (sourceUrl: string): void {
+            if (!active()) return;
+            nativeAttached = true;
+            media.src = sourceUrl;
+            if (position && position > 0) seekCoreMedia(position, session);
+            if (sourceUrl !== url) {
+                // An unsupported relay response must not take away a stream
+                // that the platform could play directly. Retry direct once.
+                var directFallback = function (): void {
+                    if (!active()) return;
+                    position = resumePosition();
+                    cancelCoreAutoPlayback();
                     cancelCoreSeek();
-                    media.pause();
-                    media.removeAttribute("src");
-                    console.log("[Auto] native HLS incompatible, using hls.js");
-                    startCorePlayback(url, nextPosition, session);
-                },
-                restore: function () {
-                    _coreAutoCancel = null;
-                    var nextPosition = resumePosition();
-                    cancelCoreSeek();
-                    // The probe may have replaced a proxy's URL-bound session.
-                    // Renew it even for radio, while keeping the native engine.
-                    media.src = url;
-                    if (nextPosition) seekCoreMedia(nextPosition, session);
-                    if ((window as any).forcePlay !== false)
-                        playCoreMedia(media);
-                },
-            });
+                    if (_coreNativeHls) _coreNativeHls.cancel();
+                    _coreNativeHls = null;
+                    if (_coreNativeHlsCleanup) _coreNativeHlsCleanup();
+                    _coreNativeHlsCleanup = null;
+                    resetCoreNativeBitrate();
+                    attachNative(url);
+                };
+                media.addEventListener("error", directFallback);
+                _coreNativeHlsCleanup = function (): void {
+                    media.removeEventListener("error", directFallback);
+                };
+            }
+            if (
+                auto &&
+                !_coreAutoHlsUsed &&
+                /\.m3u8(?:[?#]|$)/i.test(url) &&
+                typeof Hls !== "undefined" &&
+                Hls.isSupported()
+            ) {
+                _coreAutoCancel = watchAutoNativePlayback(
+                    media,
+                    sourceUrl,
+                    Hls,
+                    {
+                        active: function () {
+                            return active() && playerMode === 3;
+                        },
+                        fallback: function () {
+                            _coreAutoCancel = null;
+                            _coreAutoHlsUsed = true;
+                            var nextPosition = resumePosition();
+                            cancelCoreSeek();
+                            media.pause();
+                            media.removeAttribute("src");
+                            console.log(
+                                "[Auto] native HLS incompatible, using hls.js"
+                            );
+                            startCorePlayback(url, nextPosition, session);
+                        },
+                        restore: function () {
+                            _coreAutoCancel = null;
+                            var nextPosition = resumePosition();
+                            cancelCoreSeek();
+                            // A codec probe may replace the upstream session.
+                            // Reload through the same transport, preserving native.
+                            media.src = sourceUrl;
+                            if (nextPosition)
+                                seekCoreMedia(nextPosition, session);
+                            if ((window as any).forcePlay !== false)
+                                playCoreMedia(media);
+                        },
+                    }
+                );
+            }
+            if ((window as any).forcePlay !== false) playCoreMedia(media);
+        };
+        // Prepare the transport before assigning src: only the player's actual
+        // requests fetch playlists/segments, never an extra statistics probe.
+        _coreNativeHls = createNativeHlsTransport(url, {
+            active: active,
+            changed: updateCoreVideoInfo,
+            failed: function (): void {
+                attachNative(url);
+            },
+            ready: attachNative,
+        });
+        if (!_coreNativeHls) attachNative(url);
+        else if (!nativeAttached) {
+            media.pause();
+            media.removeAttribute("src");
         }
-        if ((window as any).forcePlay !== false) playCoreMedia(video!);
     }
 }
 
@@ -1330,6 +1410,7 @@ export function stbStop(): void {
     cancelLiveRestart();
     cancelCoreSeek();
     cancelCoreAutoPlayback();
+    cancelCoreNativeHls();
     _coreHlsBitrate = null;
     resetCoreNativeBitrate();
     (window as any).forcePlay = false;
@@ -2016,10 +2097,7 @@ export function stbInit(): void {
         video!.addEventListener("canplay", function () {
             $("#buffering").hide();
             $("#video_res").text("");
-            if (video!.videoWidth)
-                $("#video_res").html(
-                    "<br/>" + video!.videoWidth + "x" + video!.videoHeight
-                );
+            updateCoreVideoInfo();
             if (typeof applyChannelPreference === "function") {
                 applyChannelPreference("aAspects", setAspect);
                 applyChannelPreference("aZooms", setZoom);
@@ -2059,10 +2137,7 @@ export function stbInit(): void {
             );
         });
         video!.addEventListener("resize", function () {
-            if (video!.videoWidth)
-                $("#video_res").html(
-                    "<br/>" + video!.videoWidth + "x" + video!.videoHeight
-                );
+            updateCoreVideoInfo();
         });
         // Seeks may finish between footer ticks; discard any sample spanning one.
         video!.addEventListener("seeking", resetCoreNativeBitrate);
