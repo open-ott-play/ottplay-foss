@@ -69,6 +69,6 @@ Update from the canonical core using `scripts/distribute.cjs install-native`
 with this repository's absolute path. `node scripts/shared-core.cjs` checks the
 pinned distribution; build staging verifies and packages it after polyfills.
 
-Canonical source: [ottplay-unification/shared-core](https://github.com/open-ott-play/ottplay-unification/tree/main/shared-core).
-Access to the private migration repository is required to rebuild it; pinned
+Canonical source: [ottplay-core/shared-core](https://github.com/open-ott-play/ottplay-core/tree/main/shared-core).
+Access to the private core repository is required to rebuild it; pinned
 consumer artifacts remain self-contained and carry source and artifact hashes.
