@@ -2,8 +2,19 @@
 
 The source of truth is `.release-policy.json`. `quality-gate.yml` runs the callable
 validation workflows and produces the required **CI gate** status on every PR
-and merge-queue commit. Missing, failed and skipped validation workflows fail
-the gate. Workflow and lockfile changes are included in validation.
+and merge-queue commit. Superseded PR runs are cancelled. A lightweight Change scope
+job checks the complete Git diff first. Documentation-only changes skip build and
+test workflows; the gate accepts only these explicitly justified skips. Missing,
+failed or unexpectedly skipped workflows fail the gate. Unknown files, incomplete
+history, code, workflow and lockfile changes run full validation.
+
+The optional `change_scope` policy provides exact `documentation_paths`, exact
+`required_paths` for documentation used as a build input, and
+`always_validate_workflows` for independently required checks. Documentation paths
+cannot exempt source, tests, fixtures, build configuration or dependencies.
+Manual dispatch, scheduled runs and release qualification remain full. A push
+containing only documentation stops before release preparation, version allocation,
+artifact builds or publication. This does not change the configured nightly policy.
 
 ## Local checks
 
@@ -19,6 +30,8 @@ Callable validation workflows:
 - `.github/workflows/ci.yml`
 - `.github/workflows/native-parity.yml`
 - `.github/workflows/codeql.yml`
+- `.github/workflows/dependency-review.yml`
+- `.github/workflows/container-validation.yml`
 
 The [release strategy](../RELEASING.md) defines versioning, channels, acceptance,
 ownership, hotfixes and rollback. This document is the operational runbook.
@@ -103,7 +116,6 @@ retrying. The tool refuses to overwrite them. Never rebuild an image for stable.
 - Classic emitted bundle smoke and ES5 checks are required, in addition to TypeScript checks.
 - Physical TV/STB firmware, decoders, live IPTV streams and DRM are separate acceptance checks.
 - OCI container archives are promoted without rebuild; deployment remains explicit.
-- Container builds use native AMD64/ARM64 runners and a verified offline OCI assembly step; see [container build validation](container-builds.md).
 - Tauri bundle metadata keeps the base SemVer because MSI rejects beta and RC labels; package and Cargo metadata retain the full candidate identity.
 - Production automatic updating is not configured: updater public key is a placeholder and latest.json is not generated. Manual installers are supported; unsigned iOS packages need operator signing/sideloading.
 
