@@ -78,6 +78,7 @@ function storageFixture(mode, cookiesDenied = false) {
     };
     const c = vm.createContext({ console, document, localStorage: local });
     c.window = c;
+    require("./helpers/screen-runtime.cjs")(c);
     if (mode === "access")
         Object.defineProperty(c, "localStorage", {
             get() {
@@ -214,6 +215,7 @@ const c = vm.createContext({
     },
 });
 c.window = c;
+require("./helpers/screen-runtime.cjs")(c);
 vm.runInContext(
     compile("src/utils/helpers.ts", [
         "metadataText",

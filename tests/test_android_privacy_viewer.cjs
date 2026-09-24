@@ -53,6 +53,7 @@ function fixture({
         }
     );
     const w = dom.window;
+    require("./helpers/screen-runtime.cjs")(w);
     w.eval(read("js/jquery-1.11.1.min.js"));
     const requests = [];
     const previousHandler = () => false;

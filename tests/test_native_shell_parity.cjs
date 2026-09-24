@@ -61,6 +61,7 @@ function touchFixture(platform) {
     if (platform === "capacitor") w.Capacitor = {};
     if (platform === "tauri") w.__TAURI__ = {};
     vm.createContext(w);
+    require("./helpers/screen-runtime.cjs")(w);
     vm.runInContext(touchCode, w);
     return { calls, w };
 }
@@ -217,6 +218,7 @@ for (const [innerHeight, viewportHeight, documentHeight, expected] of [
     );
     try {
         const w = dom.window;
+        require("./helpers/screen-runtime.cjs")(w);
         const calls = [];
         w.innerHeight = innerHeight;
         w.visualViewport =
@@ -388,6 +390,7 @@ for (const platform of Object.keys(nativeSources)) {
         };
         w.window = w;
         vm.createContext(w);
+        require("./helpers/screen-runtime.cjs")(w);
         vm.runInContext(
             read("stb/" + device + "/stb.js") +
                 "\n" +
@@ -454,6 +457,7 @@ for (const platform of Object.keys(nativeSources)) {
     };
     w.window = w;
     vm.createContext(w);
+    require("./helpers/screen-runtime.cjs")(w);
     vm.runInContext(coreControls, w);
     for (let i = 0; i < 2; i++)
         vm.runInContext(nativeScript(platform, "play"), w);

@@ -31,6 +31,10 @@ const CLASSIC_MODULES = [
     "build/core/native-hls.js",
     "build/core/index.js",
     "build/swop/index.js",
+    "build/ui/screen-controller.js",
+    "build/ui/input-router.js",
+    "build/ui/classic-screen-port.js",
+    "build/ui/menu-registry.js",
     "build/ui/index.js",
     "build/keyhandler/index.js",
     "build/provider/runtime.js",
@@ -109,6 +113,15 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/provider/stalker-driver.js": Object.freeze([
         "window.__ottStalkerDriver",
+    ]),
+    "build/ui/classic-screen-port.js": Object.freeze([
+        "window.__ottClassicScreenPort",
+        "window.__ottScreens",
+    ]),
+    "build/ui/input-router.js": Object.freeze(["window.__ottInputRouter"]),
+    "build/ui/menu-registry.js": Object.freeze(["window.__ottMenuRegistry"]),
+    "build/ui/screen-controller.js": Object.freeze([
+        "window.__ottScreenController",
     ]),
 });
 const fs = require("node:fs");

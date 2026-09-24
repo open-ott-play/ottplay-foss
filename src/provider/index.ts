@@ -1225,6 +1225,8 @@ export function loadProv(providerId?: string): void {
  * Edge case: Stops any active playback before loading.
  */
 export function loadChannels(): void {
+    if ((window as any).__ottClassicScreenPort)
+        (window as any).__ottClassicScreenPort.invalidate();
     if ((window as any).__ottClassicPlayback)
         (window as any).__ottClassicPlayback.cancel();
     if ((window as any).__ottChannels) (window as any).__ottChannels.reset();

@@ -181,6 +181,7 @@ function uiFixture() {
     };
     w.window = w;
     vm.createContext(w);
+    require("./helpers/screen-runtime.cjs")(w);
     require("./helpers/private-runtime.cjs")(w, "src/provider/runtime.ts");
     require("./helpers/private-runtime.cjs")(
         w,
@@ -517,6 +518,22 @@ function menuFixture(noSelProv, noProvParam, query = "") {
     return { ...f, errors };
 }
 
+test("actual source reload revokes old menu and modal ownership", () => {
+    const { w } = menuFixture(0, 0, "");
+    w.loadProv();
+    w.popupList();
+    const list = w.__ottClassicScreenPort.listOwner();
+    let callbacks = 0;
+    const stale = w.__ottClassicScreenPort.setOwnedCallback(
+        "dialog",
+        () => callbacks++
+    );
+    w.loadProv();
+    stale(w.keys.ENTER);
+    assert.equal(list.active(), false);
+    assert.equal(callbacks, 0);
+});
+
 for (const [noSel, noParams, query] of [
     [0, 0, ""],
     [1, 0, ""],
@@ -832,6 +849,7 @@ function coreFixture() {
     };
     w.window = w;
     vm.createContext(w);
+    require("./helpers/screen-runtime.cjs")(w);
     require("./helpers/shared-core-runtime.cjs")(w);
     vm.runInContext(core, w);
     attachSourceAliases(w);
