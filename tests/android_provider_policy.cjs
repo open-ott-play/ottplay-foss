@@ -742,6 +742,12 @@ function startupFixture(
         storage: { reset: () => calls.push("storage") },
         uiInit: () => calls.push("ui"),
     });
+    require("./helpers/private-runtime.cjs")(
+        dom.getInternalVMContext(),
+        "src/device/adapter.ts"
+    );
+    w.stbPlay = function () {};
+    w.__ottCoreTransport = { play: w.stbPlay };
     w.eval(code[flavor] + startup);
     attachSourceAliases(w);
     w.startPlayer();

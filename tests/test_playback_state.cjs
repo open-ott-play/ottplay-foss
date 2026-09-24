@@ -46,14 +46,18 @@ function fixture() {
         },
     };
     const c = {
-        _corePlaybackStateCleanup: null,
+        _corePipSession: 0,
+        _inLiveRestart: false,
         _playSession: 1,
         catIndex: 0,
         cats: { News: [101, 202] },
         catsArray: ["News"],
         channels: { 101: { rec: 24 }, 202: { rec: 48 } },
+        clearInterval() {},
         clearTimeout() {},
         console,
+        coreDeviceEffects: {},
+        coreMediaBackend: null,
         curList: [101, 202],
         Date,
         document: { getElementById: () => null },
@@ -77,6 +81,9 @@ function fixture() {
         providerSetItem: (key, value) => {
             values[key] = value;
         },
+        setInterval() {
+            return 1;
+        },
         setTimeout() {},
         settings: { prevCount: 2 },
         sFavorites: 0,
@@ -88,6 +95,20 @@ function fixture() {
     vm.createContext(c);
     sharedCore(c);
     c.api = c.__ottClassicPlayback;
+    c.api.importLegacy(); // Explicit retained-device ingress; snapshot itself is pure.
+    include(c, "src/core/index.ts", [
+        "getCoreMediaBackend",
+        "openCoreEngineLease",
+        "stbIsPlaying",
+    ]);
+    c.startCoreEngine = (_url, _position, observe) => {
+        c._playSession++;
+        if (observe) observe();
+    };
+    c.stopCoreEngine = () => {
+        c._playSession++;
+    };
+    c.openBackend = () => c.getCoreMediaBackend().open({ url: "fixture.mp4" });
     c.values = values;
     c.listeners = listeners;
     c.emit = (name) => [...(listeners[name] || [])].forEach((cb) => cb());
@@ -174,16 +195,12 @@ function fixture() {
 // Media-origin events are generation-bound; native finite-channel detection is reclassification.
 {
     const c = fixture();
-    include(c, "src/core/index.ts", [
-        "clearCorePlaybackStateEvents",
-        "bindCorePlaybackStateEvents",
-        "stbIsPlaying",
-    ]);
+    include(c, "src/core/index.ts", ["stbIsPlaying"]);
     include(c, "src/index.ts", ["checkMedia"]);
     c.mediaCheckTimer = null;
     c.updateMediaInfoDisplay = () => {};
     c.api.command({ channelId: 101, type: "live" });
-    c.bindCorePlaybackStateEvents(c.video, c._playSession);
+    c.openBackend();
     c.video.paused = false;
     c.video.readyState = 2;
     c.emit("playing");
@@ -212,7 +229,7 @@ function fixture() {
         type: "vod",
     });
     c._playSession++;
-    c.bindCorePlaybackStateEvents(c.video, c._playSession);
+    c.openBackend();
     c.video.currentTime = 211;
     c.video.paused = false;
     for (const name of ["playing", "timeupdate", "pause"])
@@ -257,11 +274,7 @@ function fixture() {
 // Seeking inside one archive file rebinds the retained backend without mixing its file offset with archive time.
 {
     const c = fixture();
-    include(c, "src/core/index.ts", [
-        "clearCorePlaybackStateEvents",
-        "bindCorePlaybackStateEvents",
-        "stbSetPosTime",
-    ]);
+    include(c, "src/core/index.ts", ["stbSetPosTime"]);
     c.seekCoreMedia = (position) => {
         c.video.currentTime = position;
     };
@@ -270,7 +283,7 @@ function fixture() {
         channelId: 101,
         type: "archive",
     });
-    c.bindCorePlaybackStateEvents(c.video, c._playSession);
+    c.openBackend();
     c.video.paused = false;
     c.video.readyState = 2;
     c.emit("playing");
@@ -336,18 +349,19 @@ function fixture() {
             return now;
         }
     };
-    include(c, "src/core/index.ts", [
-        "clearCorePlaybackStateEvents",
-        "bindCorePlaybackStateEvents",
-    ]);
+    include(c, "src/core/index.ts", []);
     c.api.command({ channelId: "progress.mp4", type: "vod" });
-    c.bindCorePlaybackStateEvents(c.video, c._playSession);
+    c.openBackend();
     c.video.paused = false;
     c.video.readyState = 2;
     c.emit("playing");
     now += 6000;
     c.video.currentTime = 37;
-    assert.equal(c.api.snapshot().position, 37);
+    assert.equal(
+        c.api.snapshot().position,
+        0,
+        "snapshot must not sample the backend"
+    );
     c.emit("timeupdate");
     assert.equal(JSON.parse(c.values.playbackJournal).bookmark.position, 37);
 }
@@ -393,6 +407,54 @@ for (const mutate of [
         1,
         "Equivalent slot representations retain one-shot ownership"
     );
+}
+
+// The actual core port can rebind archive seeks only within its captured source.
+{
+    const c = fixture();
+    c.api.command({
+        archiveStart: 1000,
+        channelId: 101,
+        position: 0,
+        type: "archive",
+    });
+    const handle = c.openBackend();
+    c.video.readyState = 2;
+    c.video.paused = false;
+    c.video.currentTime = 5;
+    c.emit("playing");
+    let seeks = 0;
+    c.seekCoreMedia = (position) => {
+        seeks++;
+        c.video.currentTime = position;
+    };
+    c.api.command({
+        archiveStart: 1000,
+        channelId: 101,
+        position: 20,
+        type: "archive",
+    });
+    handle.seek(25);
+    assert.equal(
+        seeks,
+        0,
+        "escaped decoder handle cannot adopt a fresh generation"
+    );
+    c.getCoreMediaBackend().seek(25);
+    assert.equal(
+        seeks,
+        1,
+        "explicit same-source file seek rebinds the decoder"
+    );
+    c.p_pref = "replacement";
+    c.api.command({
+        archiveStart: 1000,
+        channelId: 101,
+        position: 100,
+        type: "archive",
+    });
+    c.getCoreMediaBackend().seek(30);
+    assert.equal(seeks, 1, "replacement source must wait for its own decoder");
 }
 
 // Backgrounding persists actual archive/VOD semantics and respects reset suspension.

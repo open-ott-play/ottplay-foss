@@ -130,7 +130,10 @@ export function keyHandler(event: KeyboardEvent): void {
         }
         // Fall through: preventDefault below once keyCode is known.
     }
-    var keyCode = stbEventToKeyCode(event);
+    var device = (window as any).__ottDevice;
+    var keyCode = device
+        ? device.eventToKeyCode(event)
+        : stbEventToKeyCode(event);
     if (!keyCode) return;
     // Smart remotes have a combined transport key. Route it through the same
     // PLAY action as separate Play/Pause keys, including page-specific lists.

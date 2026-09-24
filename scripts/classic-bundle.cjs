@@ -26,6 +26,10 @@ const CLASSIC_MODULES = [
     "build/debug/playback-debug.js",
     "build/core/auto-playback.js",
     "build/core/native-hls.js",
+    "build/device/adapter.js",
+    "build/device/media-backend.js",
+    "build/device/media-session.js",
+    "build/device/native-pip.js",
     "build/core/index.js",
     "build/swop/index.js",
     "build/ui/index.js",
@@ -64,6 +68,14 @@ const CLASSIC_MODULES = [
 // and execute immediately at their original position in CLASSIC_MODULES.
 const CLASSIC_PRIVATE_MODULES = Object.freeze({
     "build/debug/playback-debug.js": Object.freeze(["window.__ottDebug"]),
+    "build/device/adapter.js": Object.freeze(["window.__ottDeviceAdapter"]),
+    "build/device/media-backend.js": Object.freeze([
+        "window.__ottMediaBackend",
+    ]),
+    "build/device/media-session.js": Object.freeze([
+        "window.__ottOsMediaSession",
+    ]),
+    "build/device/native-pip.js": Object.freeze(["window.__ottNativePip"]),
     "build/playback/archive.js": Object.freeze(["window.__ottArchiveSession"]),
     "build/playback/classic-adapter.js": Object.freeze([
         "window.__ottClassicPlayback",

@@ -23,10 +23,10 @@ function between(startMarker, endMarker) {
 const snippets = {
     Capacitor: between(
         "const capacitorHost = (window as any).Capacitor;",
-        "// Capacitor Mode C: full-window fullscreen."
+        "(window as any).__ottOsMediaSession.create"
     ),
     Tauri: between(
-        "// Tauri Mode B: native always-on-top PiP window",
+        "// Native PiP is a decoder port;",
         "window.setSleepTimeout = setSleepTimeout;"
     ),
 };
@@ -111,7 +111,51 @@ function fixture(platform, capacitorPlatform = "ios") {
         URL,
     };
     c.window = c;
-    vm.runInNewContext(snippets[platform], c, {
+    vm.createContext(c);
+    for (const file of ["media-backend", "native-pip"])
+        require("./helpers/private-runtime.cjs")(
+            c,
+            "src/device/" + file + ".ts"
+        );
+    const effects = {};
+    c.__ottCoreTransport = {
+        configure: (value) => Object.assign(effects, value),
+    };
+    const cssPlay = c.stbPlayPip,
+        cssStop = c.stbStopPip;
+    function cssLease(request) {
+        cssPlay(request.url);
+        return {
+            dispose: cssStop,
+            pause() {},
+            resume() {},
+            sample: () => ({
+                duration: NaN,
+                paused: false,
+                position: 0,
+                ready: 2,
+            }),
+            seek() {},
+        };
+    }
+    const backend = c.__ottMediaBackend.create({
+        clearInterval() {},
+        context: () => null,
+        emit() {},
+        open(request) {
+            if (effects.pip) {
+                cssStop();
+                return effects.pip.open(request, () => cssLease(request));
+            }
+            return cssLease(request);
+        },
+        setInterval() {
+            return 1;
+        },
+    });
+    c.stbPlayPip = (url) => backend.open({ lane: "pip", url });
+    c.stbStopPip = () => backend.stop("pip");
+    vm.runInContext(snippets[platform], c, {
         filename: `actual-${platform}-pip.js`,
     });
     return {
@@ -137,6 +181,26 @@ const settle = () => new Promise((resolve) => setImmediate(resolve));
 const tests = [];
 function test(name, run) {
     tests.push({ name, run });
+}
+
+for (const platform of ["Capacitor", "Tauri"]) {
+    test(`${platform}: reentrant failure reporting cannot start a retired CSS fallback`, async () => {
+        const f = fixture(platform);
+        f.play("old");
+        await settle();
+        f.window.console.warn = () => {
+            f.window.console.warn = () => {};
+            f.play("new");
+        };
+        f.requests[0].reject(new Error("old decoder failed"));
+        await settle();
+        assert.deepEqual(
+            f.cssPlays,
+            [],
+            "failure reporting replaced the owner before fallback"
+        );
+        assert.equal(f.requests.length, 2);
+    });
 }
 
 // Capacitor bridge operations remain serialized: an OS command cannot cancel a
@@ -393,7 +457,11 @@ test("Capacitor Android second-channel PiP never invokes Activity PiP", async ()
     await settle();
     assert.deepEqual(f.nativeCalls, []);
     assert.deepEqual(f.cssPlays, ["requested-A.m3u8", "requested-B.m3u8"]);
-    assert.equal(f.cssStops, 1);
+    assert.equal(
+        f.cssStops,
+        2,
+        "replacement and final stop each release their CSS lease"
+    );
     assert.equal(f.displays.at(-1), "stopped");
 });
 
