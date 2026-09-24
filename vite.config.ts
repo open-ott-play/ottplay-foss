@@ -36,6 +36,9 @@ const { configureNativeDev } = classicRequire(
 const { assembleClassic, CLASSIC_MODULES } = classicRequire(
     resolve(__dirname, "scripts/classic-bundle.cjs")
 );
+const { isManagedProviderScript } = classicRequire(
+    resolve(__dirname, "scripts/provider-assets.cjs")
+);
 // Verify and stage the pinned compiler output before any build/dev staging.
 classicRequire(resolve(__dirname, "scripts/shared-core.cjs")).stage();
 const androidFlavor = process.env.OTTPLAY_ANDROID_FLAVOR;
@@ -71,6 +74,7 @@ function copyRuntimeAssets(
     rmSync(destination, { force: true, recursive: true });
     cpSync(source, destination, {
         filter(path) {
+            if (isManagedProviderScript(path)) return false;
             const name = basename(path);
             if (name.startsWith(".") || privateAssetDirectories.has(name)) {
                 return false;

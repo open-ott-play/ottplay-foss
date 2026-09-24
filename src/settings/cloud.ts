@@ -210,6 +210,8 @@ export function cloudLoadSettings(): void {
                                         enabled: false,
                                         token: "",
                                     });
+                                if (w.__ottClassicPlayback)
+                                    w.__ottClassicPlayback.suspendPersistence();
                                 if (typeof w.stbClearAllItems === "function")
                                     w.stbClearAllItems();
                             } catch (e) {

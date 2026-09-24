@@ -151,6 +151,8 @@ var providerScopedStorageKeys: string[] = [
     "catIndex",
     "primaryIndex",
     "prevArr",
+    "playbackJournal",
+    "continueWatch",
     "epgTimers",
     "aAspects",
     "aZooms",
@@ -859,6 +861,10 @@ export function loadProv(providerId?: string): void {
     if ((window as any).__ottClassicPlayback)
         (window as any).__ottClassicPlayback.cancel();
     var providerRuntime = (window as any).__ottProviderRuntime.classic;
+    if ((window as any).__ottActiveProviderDriver) {
+        (window as any).__ottActiveProviderDriver.dispose();
+        (window as any).__ottActiveProviderDriver = null;
+    }
     // Legacy scripts execute into shared globals. Delay the next reset until
     // any previously requested script has finished evaluating, then run only
     // the latest selection. Session disposal is immediate, before that wait.
@@ -1039,16 +1045,14 @@ export function loadProv(providerId?: string): void {
             );
             removeOption(edit_dealer);
         }
-        providerRuntime.loadScript(
-            providerSession,
-            getScriptDOM,
-            host + "/prov/" + s + "/prov.js?" + __cv,
-            function () {
-                if ((window as any).__ottCommandChannelLoad !== commandLoad)
-                    return;
-                // Future guide/media/stream requests keep their provider ownership even when
-                // invoked later from UI callbacks. Catalog fetches have a separate
-                // reload lifetime below, so do not bind getChannelsArray here.
+        var driverRegistry = (window as any).__ottProviderDrivers;
+        var usesDriver = driverRegistry.registry.has(s);
+        function providerReady() {
+            if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
+            // Future guide/media/stream requests keep their provider ownership even when
+            // invoked later from UI callbacks. Catalog fetches have a separate
+            // reload lifetime below, so do not bind getChannelsArray here.
+            if (!usesDriver)
                 providerRuntime.bind(providerSession, [
                     "getEPGchanel",
                     "getEPGchanelCur",
@@ -1056,139 +1060,146 @@ export function loadProv(providerId?: string): void {
                     "getChannelUrl",
                     "getArchiveUrl",
                 ]);
-                try {
-                    if (typeof duneAddSettings === "function") {
-                        $(launch_id).append("<br/>Loading settings...");
-                        // Sync working arrays to window globals so the provider
-                        // script sees the current popup state (it mutates
-                        // window.popupActions/popupArray/popupDetail directly).
-                        (window as any).popupActions = popupActions;
-                        (window as any).popupArray = popupArray;
-                        (window as any).popupDetail = popupDetail;
-                        var idx =
-                            popupActions.indexOf(
-                                toggleProviderSettingsVisibility
-                            ) + 1;
-                        duneAddSettings(idx);
-                        // Sync the window globals back into the working arrays so
-                        // a provider's modifications become the new popup state.
-                        //
-                        // GUARDED ON PURPOSE. The three assignments above alias
-                        // window.popupActions/popupArray/popupDetail to the very
-                        // same array objects, and every prov/*/prov.js plugin
-                        // mutates them in place (.splice()/.push(), never
-                        // `= [...]`), so the working arrays are already current
-                        // here. The previous unguarded version did
-                        //     popupActions.length = 0;
-                        //     popupActions.push(...(window as any).popupActions);
-                        // which cleared the array and then spread that same,
-                        // now-empty array back into itself — leaving all three
-                        // arrays at length 0 and rendering the popup ("Menu")
-                        // completely blank. Only copy when a plugin genuinely
-                        // replaced the global with a different array object.
-                        syncFromWindow(popupActions, "popupActions");
-                        syncFromWindow(popupArray, "popupArray");
-                        syncFromWindow(popupDetail, "popupDetail");
-                        if (Number.parseInt(stbGetItem("noProvParam") || "0")) {
-                            var count = popupActions.indexOf(optionsList) - idx;
-                            popupArray.splice(idx, count);
-                            popupDetail.splice(idx, count);
-                            popupActions.splice(idx, count);
-                        }
-                        if (s === "demo") {
-                            // Demo has no provider settings of its own. Keep an
-                            // explicit exit in the main menu, after normal provider
-                            // settings have been filtered, without changing locks.
-                            var demoExit = popupActions.indexOf(optionsList);
-                            if (demoExit < 0) demoExit = popupActions.length;
-                            if (
-                                popupActions.indexOf(showProviderSelection) ===
-                                -1
-                            ) {
-                                popupActions.splice(
-                                    demoExit,
-                                    0,
-                                    showProviderSelection
-                                );
-                                popupArray.splice(
-                                    demoExit,
-                                    0,
-                                    _("Change provider")
-                                );
-                                popupDetail.splice(
-                                    demoExit,
-                                    0,
-                                    _("Choose provider")
-                                );
-                            }
-                            if (findOptionIndex(showProviderSelection) === -1)
-                                optionsArr.push({
-                                    action: showProviderSelection,
-                                    name: "Change provider",
-                                });
-                        }
-                        if (
-                            !isPlayDistribution() &&
-                            s !== "demo" &&
-                            Number.parseInt(stbGetItem("noSelProv") || "0") +
-                                Number.parseInt(
-                                    stbGetItem("noProvParam") || "0"
-                                ) !==
-                                2
-                        ) {
-                            const img = $("<img>");
-                            img.attr(
-                                "src",
-                                host + "/prov/" + s + "/logo.png?" + __av
-                            );
-                            img.attr("alt", " ");
-                            img.css("position", "absolute");
-                            if (launch_id !== "#dialogbox") {
-                                img.css("top", "100px");
-                                img.css("right", "100px");
-                                img.attr("width", "25%");
-                                img.css("max-height", "25%");
-                            } else {
-                                img.css("top", "6px");
-                                img.css("right", "6px");
-                                img.attr("height", "40");
-                            }
-                            img.on("error", function () {
-                                (this as HTMLImageElement).width = 0;
-                            });
-                            $(launch_id).append(img);
-                        }
-                        if (typeof getCurrentChannelEpg !== "function")
-                            getCurrentChannelEpg = epgCacheCapacity
-                                ? getChannelEpgCached
-                                : getChannelEpg;
-                        // Expose for processCurrentProgramQueue queue processing
-                        (window as any).getCachedChannelEpg =
-                            getCurrentChannelEpg;
-                        loadChannels();
-                    } else {
-                        console.error("duneAddSettings is not a function");
-                        onError();
+            try {
+                if (typeof duneAddSettings === "function") {
+                    $(launch_id).append("<br/>Loading settings...");
+                    // Sync working arrays to window globals so the provider
+                    // script sees the current popup state (it mutates
+                    // window.popupActions/popupArray/popupDetail directly).
+                    (window as any).popupActions = popupActions;
+                    (window as any).popupArray = popupArray;
+                    (window as any).popupDetail = popupDetail;
+                    var idx =
+                        popupActions.indexOf(toggleProviderSettingsVisibility) +
+                        1;
+                    duneAddSettings(idx);
+                    // Sync the window globals back into the working arrays so
+                    // a provider's modifications become the new popup state.
+                    //
+                    // GUARDED ON PURPOSE. The three assignments above alias
+                    // window.popupActions/popupArray/popupDetail to the very
+                    // same array objects, and every prov/*/prov.js plugin
+                    // mutates them in place (.splice()/.push(), never
+                    // `= [...]`), so the working arrays are already current
+                    // here. The previous unguarded version did
+                    //     popupActions.length = 0;
+                    //     popupActions.push(...(window as any).popupActions);
+                    // which cleared the array and then spread that same,
+                    // now-empty array back into itself — leaving all three
+                    // arrays at length 0 and rendering the popup ("Menu")
+                    // completely blank. Only copy when a plugin genuinely
+                    // replaced the global with a different array object.
+                    syncFromWindow(popupActions, "popupActions");
+                    syncFromWindow(popupArray, "popupArray");
+                    syncFromWindow(popupDetail, "popupDetail");
+                    if (Number.parseInt(stbGetItem("noProvParam") || "0")) {
+                        var count = popupActions.indexOf(optionsList) - idx;
+                        popupArray.splice(idx, count);
+                        popupDetail.splice(idx, count);
+                        popupActions.splice(idx, count);
                     }
-                } catch (e) {
-                    console.error(e);
-                    (window as any)._pendingProvId = "";
-                    $(launch_id).append(
-                        "<br/><br/><b>Exception:</b> name " +
-                            metadataText((e as any).name) +
-                            ", message " +
-                            metadataText((e as any).message) +
-                            ", typeof " +
-                            typeof e
-                    );
+                    if (s === "demo") {
+                        // Demo has no provider settings of its own. Keep an
+                        // explicit exit in the main menu, after normal provider
+                        // settings have been filtered, without changing locks.
+                        var demoExit = popupActions.indexOf(optionsList);
+                        if (demoExit < 0) demoExit = popupActions.length;
+                        if (
+                            popupActions.indexOf(showProviderSelection) === -1
+                        ) {
+                            popupActions.splice(
+                                demoExit,
+                                0,
+                                showProviderSelection
+                            );
+                            popupArray.splice(
+                                demoExit,
+                                0,
+                                _("Change provider")
+                            );
+                            popupDetail.splice(
+                                demoExit,
+                                0,
+                                _("Choose provider")
+                            );
+                        }
+                        if (findOptionIndex(showProviderSelection) === -1)
+                            optionsArr.push({
+                                action: showProviderSelection,
+                                name: "Change provider",
+                            });
+                    }
+                    if (
+                        !isPlayDistribution() &&
+                        s !== "demo" &&
+                        Number.parseInt(stbGetItem("noSelProv") || "0") +
+                            Number.parseInt(
+                                stbGetItem("noProvParam") || "0"
+                            ) !==
+                            2
+                    ) {
+                        const img = $("<img>");
+                        img.attr(
+                            "src",
+                            host + "/prov/" + s + "/logo.png?" + __av
+                        );
+                        img.attr("alt", " ");
+                        img.css("position", "absolute");
+                        if (launch_id !== "#dialogbox") {
+                            img.css("top", "100px");
+                            img.css("right", "100px");
+                            img.attr("width", "25%");
+                            img.css("max-height", "25%");
+                        } else {
+                            img.css("top", "6px");
+                            img.css("right", "6px");
+                            img.attr("height", "40");
+                        }
+                        img.on("error", function () {
+                            (this as HTMLImageElement).width = 0;
+                        });
+                        $(launch_id).append(img);
+                    }
+                    if (typeof getCurrentChannelEpg !== "function")
+                        getCurrentChannelEpg = epgCacheCapacity
+                            ? getChannelEpgCached
+                            : getChannelEpg;
+                    // Expose for processCurrentProgramQueue queue processing
+                    (window as any).getCachedChannelEpg = getCurrentChannelEpg;
+                    loadChannels();
+                } else {
+                    console.error("duneAddSettings is not a function");
+                    onError();
                 }
-            },
-            function (e: any) {
+            } catch (e) {
                 console.error(e);
-                onError();
+                (window as any)._pendingProvId = "";
+                $(launch_id).append(
+                    "<br/><br/><b>Exception:</b> name " +
+                        metadataText((e as any).name) +
+                        ", message " +
+                        metadataText((e as any).message) +
+                        ", typeof " +
+                        typeof e
+                );
             }
-        );
-    });
+        }
+        if (usesDriver) {
+            driverRegistry.mount(window, s, providerSession);
+            providerReady();
+        } else {
+            providerRuntime.loadScript(
+                providerSession,
+                getScriptDOM,
+                host + "/prov/" + s + "/prov.js?" + __cv,
+                providerReady,
+                function (e: any) {
+                    console.error(e);
+                    onError();
+                }
+            );
+        }
+    }, true);
 }
 
 // ─── Load channels ────────────────────────────────────────────────────────────
@@ -1210,7 +1221,9 @@ export function loadChannels(): void {
         (window as any).__ottClassicPlayback.cancel();
     var catalogSession = (
         window as any
-    ).__ottProviderRuntime.classic.beginCatalog();
+    ).__ottProviderRuntime.classic.beginCatalog(
+        !!(window as any).__ottActiveProviderDriver
+    );
     var commandLoad = {};
     (window as any).__ottCommandChannelLoad = commandLoad;
     (window as any).commandChannelsReady = false;

@@ -396,6 +396,9 @@ function fixture(profile) {
     require("./helpers/shared-core-runtime.cjs")(w, { vendorOnly: true });
     for (const api of [
         "__ottPlaybackSession",
+        "__ottPlaybackJournal",
+        "__ottProviderDrivers",
+        "__ottProviderDriverProfiles",
         "__ottClassicPlayback",
         "__ottProviderRuntime",
     ])
@@ -411,6 +414,9 @@ function fixture(profile) {
 function assertPrivateRuntime(w, profile) {
     for (const [api, method] of [
         ["__ottPlaybackSession", "create"],
+        ["__ottPlaybackJournal", "create"],
+        ["__ottProviderDrivers", "createRegistry"],
+        ["__ottProviderDrivers", "mount"],
         ["__ottClassicPlayback", "select"],
         ["__ottClassicPlayback", "shift"],
         ["__ottClassicPlayback", "cancel"],
@@ -424,7 +430,21 @@ function assertPrivateRuntime(w, profile) {
         );
     }
     assert.equal(typeof w.__ottProviderRuntime.classic.replace, "function");
+    assert(Array.isArray(w.__ottProviderDriverProfiles));
+    assert.deepEqual(
+        Array.from(w.__ottProviderDrivers.registry.ids()),
+        Array.from(w.__ottProviderDriverProfiles, (profile) => profile.id)
+    );
     for (const name of [
+        "createPlaybackJournal",
+        "createDriverRegistry",
+        "providerDriverRegistry",
+        "createDemoDriver",
+        "createXtreamDriver",
+        "createOperatorDriver",
+        "providerDriverProfiles",
+        "createDriverTransport",
+        "mountProviderDriver",
         "createPlaybackSessionController",
         "classicPlaybackController",
         "classicPlaybackRuntime",
@@ -441,6 +461,9 @@ function assertPrivateRuntime(w, profile) {
     // Also catch a renamed top-level leak after optimizer-local mangling.
     for (const implementation of [
         w.__ottPlaybackSession.create,
+        w.__ottPlaybackJournal.create,
+        w.__ottProviderDrivers.createRegistry,
+        w.__ottProviderDrivers.mount,
         w.__ottClassicPlayback.select,
         w.__ottProviderRuntime.createRegistry,
         w.__ottProviderRuntime.createClassicAdapter,
@@ -515,6 +538,19 @@ function exercisePlaybackRuntime(w, profile) {
         );
         assert.equal(stored.get("primaryIndex"), "1");
         assert.equal(JSON.parse(stored.get("continueWatch")).channelId, 2);
+        const journal = JSON.parse(stored.get("playbackJournal"));
+        assert.equal(
+            journal.version,
+            2,
+            profile + ": real setCurrent writes the canonical journal"
+        );
+        assert.equal(journal.sourceId, "artifact-fixture:");
+        assert.equal(journal.history[0].channelId, "1");
+        assert.equal(journal.history[0].kind, "live");
+        w.__ottClassicPlayback.command({ channelId: 2, type: "live" });
+        const checkpoint = JSON.parse(stored.get("playbackJournal"));
+        assert.equal(checkpoint.bookmark.channelId, "2");
+        assert.equal(checkpoint.bookmark.kind, "live");
 
         w.playType = -1e11;
         const combined = delayedShift(5, 7);
@@ -577,6 +613,205 @@ function exercisePlaybackRuntime(w, profile) {
     }
 }
 
+function exerciseProviderRuntime(profile) {
+    // A fresh full artifact realm keeps this startup test independent of both
+    // previous smoke overrides and any source-module bootstrap.
+    const w = fixture(profile);
+    vm.runInContext(bundle, w, { filename: bundlePath, timeout: 5000 });
+    assertPrivateRuntime(w, profile);
+    w.document.createTextNode = (text) => ({ nodeType: 3, textContent: text });
+    const stored = new Map([
+        ["ottplayprov", "demo"],
+        [
+            "xtreamxtream_data",
+            JSON.stringify({
+                password: "secret",
+                server: "https://account.test",
+                username: "viewer",
+            }),
+        ],
+    ]);
+    const requests = [],
+        scripts = [],
+        errors = [];
+    let completed = 0,
+        ajaxWrites = 0;
+    const ajax = (settings) => {
+        let success, failure;
+        const request = {
+            abort() {
+                this.aborts++;
+                if (failure) failure();
+            },
+            aborts: 0,
+            done(callback) {
+                success = callback;
+                return this;
+            },
+            fail(callback) {
+                failure = callback;
+                return this;
+            },
+            reject() {
+                failure();
+            },
+            resolve(value) {
+                success(value);
+            },
+            settings,
+        };
+        requests.push(request);
+        return request;
+    };
+    let currentAjax = ajax;
+    Object.defineProperty(w.$, "ajax", {
+        configurable: true,
+        get: () => currentAjax,
+        set(value) {
+            ajaxWrites++;
+            currentAjax = value;
+        },
+    });
+    Object.assign(w, {
+        _: (value) => value,
+        beginPortChannelIdMigration() {},
+        cancelMediaLoad() {},
+        cancelPortChannelIdMigration() {},
+        closeList() {},
+        console: {
+            debug() {},
+            error: (error) => errors.push(error),
+            info() {},
+            log() {},
+            warn() {},
+        },
+        finishPortChannelIdMigration() {},
+        getDefaultPlayerMode: () => 0,
+        getScriptDOM: (url) => scripts.push(url),
+        invalidateEpgCache() {},
+        normalizePlayerMode: (value) => value,
+        onChannelsLoaded: () => completed++,
+        removeOption() {},
+        restoreDemoMute() {},
+        savedPopup: {
+            popupActions: [
+                w.toggleProviderSettingsVisibility,
+                () => {},
+                w.optionsList,
+            ],
+            popupArray: ["", "", "Settings"],
+            popupDetail: ["", "", "Settings"],
+            ver: "artifact",
+        },
+        setPlayer() {},
+        setPlayerMode() {},
+        stbDelItem: (key) => stored.delete(key),
+        stbGetItem: (key) => (stored.has(key) ? stored.get(key) : null),
+        stbIsPlaying: () => false,
+        stbSetItem: (key, value) => stored.set(key, String(value)),
+        stbStopPip() {},
+    });
+    w.loadProv();
+    assert.equal(w.__ottActiveProviderDriver.id, "demo");
+    assert.equal(
+        completed,
+        1,
+        profile + ": built demo route completes channel startup"
+    );
+    assert.equal(w.commandChannelsReady, true);
+    assert.deepEqual(Array.from(w.cList), [900000001, 900000002]);
+    assert.equal(
+        w.getChannelUrl(w.cList[0]),
+        "https://liminal-sketch-vv8r.here.now/demo/pattern.mp4"
+    );
+    assert.deepEqual(scripts, []);
+    assert.equal(requests.length, 0);
+    stored.set("ottplayprov", "xtream");
+    w.loadProv("xtream");
+    assert.equal(w.__ottActiveProviderDriver.id, "xtream");
+    assert.equal(requests.length, 1);
+    assert.equal(w.commandChannelsReady, false);
+    assert.equal(
+        requests[0].settings.url,
+        "https://account.test/player_api.php?username=viewer&password=secret"
+    );
+    requests[0].resolve({
+        live_streams: [{ name: "Artifact channel", stream_id: 7 }],
+    });
+    assert.equal(completed, 2);
+    assert.equal(w.commandChannelsReady, true);
+    assert.equal(
+        w.getChannelUrl(w.cList[0]),
+        "https://account.test/live/viewer/secret/7.m3u8"
+    );
+    w.loadChannels();
+    assert.equal(requests.length, 2);
+    w.loadProv("demo");
+    assert.equal(requests[1].aborts, 1);
+    requests[1].resolve({
+        live_streams: [{ name: "Obsolete account", stream_id: 8 }],
+    });
+    assert.equal(completed, 3);
+    assert.equal(w.commandChannelsReady, true);
+    assert.deepEqual(Array.from(w.cList), [900000001, 900000002]);
+    if (w.__ottProviderDrivers.registry.has("all4you")) {
+        stored.set(
+            "all4youcfg",
+            JSON.stringify({
+                m3u: "",
+                pass: "secret",
+                server: "https://generic.test",
+                user: "account",
+            })
+        );
+        stored.set("ottplayprov", "all4you");
+        w.loadProv("all4you");
+        assert.equal(requests.length, 3);
+        requests[2].reject();
+        assert.equal(
+            requests.length,
+            4,
+            profile + ": generic API failure starts playlist fallback"
+        );
+        requests[3].reject();
+        assert.equal(requests.length, 5);
+        assert.equal(requests[4].settings.method, "post");
+        assert(requests[4].settings.url.endsWith("/m3u/cp.php"));
+        requests[4].resolve(
+            '#EXTM3U\n#EXTINF:-1 group-title="Generic",Fallback channel\nhttps://media.test/generic\n'
+        );
+        assert.equal(completed, 4);
+        assert.equal(w.getChannelUrl(w.cList[0]), "https://media.test/generic");
+        w.loadChannels();
+        w.loadProv("demo");
+        assert.equal(requests[5].aborts, 1);
+        requests[5].reject();
+        assert.equal(
+            requests.length,
+            6,
+            profile + ": retired generic failure cannot start a fallback"
+        );
+        assert.equal(completed, 5);
+        assert.deepEqual(Array.from(w.cList), [900000001, 900000002]);
+    }
+    assert.deepEqual(
+        scripts,
+        [],
+        profile + ": registered drivers never execute provider scripts"
+    );
+    assert.equal(
+        ajaxWrites,
+        0,
+        profile + ": registered drivers never patch the ajax host port"
+    );
+    assert.deepEqual(errors, []);
+    console.log(
+        "OK: actual classic bundle " +
+            profile +
+            " instance provider startup/cancellation"
+    );
+}
+
 async function main() {
     // The bundle reassigns ott_device after HTML boot has already detected it.
     // Exercise that assignment with the webOS TV 25 UA published by LG:
@@ -636,8 +871,10 @@ async function main() {
             );
         }
         assertPrivateRuntime(w, profile);
-        if (profile === "modern" || profile === "legacy")
+        if (profile === "modern" || profile === "legacy") {
             exercisePlaybackRuntime(w, profile);
+            exerciseProviderRuntime(profile);
+        }
         for (const name of [
             "startPlayer",
             "stbInit",

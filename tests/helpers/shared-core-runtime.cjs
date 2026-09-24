@@ -38,8 +38,11 @@ module.exports = function sharedCoreRuntime(context, options = {}) {
     if (!context.window) context.window = context;
     for (const file of [
         "src/playback/session.ts",
+        "src/playback/journal.ts",
         "src/playback/classic-adapter.ts",
         "src/provider/runtime.ts",
+        "src/provider/driver-profiles.ts",
+        "src/provider/drivers.ts",
     ])
         privateRuntime(context, file);
     return core;

@@ -228,6 +228,7 @@ try {
         "stbPause",
         "stbIsPlaying",
         "stbStop",
+        "clearCorePlaybackStateEvents",
     ]);
     const video = {
         pause() {
@@ -248,6 +249,7 @@ try {
         _coreNativeHls: null,
         _coreNativeHlsCleanup: null,
         _corePendingSeek: null,
+        _corePlaybackStateCleanup: null,
         _coreShakaTeardown: null,
         _playSession: 0,
         cancelLiveRestart() {},

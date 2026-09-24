@@ -205,6 +205,7 @@ function fixture(
         enterPinAndSetAccess() {
             pinRequests++;
         },
+        epgCash: 0,
         getScriptDOM: (url, callback) => {
             scripts.push(url);
             scriptCallbacks.push(callback);
@@ -218,10 +219,13 @@ function fixture(
         listCaptionElement: {},
         listDetail: {},
         listPodval: {},
+        loadChannels() {},
         loadOpt() {},
         loadSettings() {},
         location: { search },
         nofun() {},
+        noProvParam() {},
+        optIndexOf: () => -1,
         optionsArr: [],
         parentPIN: "*",
         popupActions: [],
@@ -297,6 +301,11 @@ function fixture(
     w.window = w;
     vm.createContext(w);
     require("./helpers/private-runtime.cjs")(w, "src/provider/runtime.ts");
+    require("./helpers/private-runtime.cjs")(
+        w,
+        "src/provider/driver-profiles.ts"
+    );
+    require("./helpers/private-runtime.cjs")(w, "src/provider/drivers.ts");
     vm.runInContext(code[flavor], w);
     attachSourceAliases(w);
     return {
@@ -375,9 +384,8 @@ test("Play first-run offers explicit Demo, manual generic setup and privacy", ()
     );
     f.w.listArray[0].action();
     assert.equal(f.stored.get("ottplayprov"), "demo");
-    assert.deepEqual(f.scripts, [
-        "https://player.invalid/prov/demo/prov.js?fixture",
-    ]);
+    assert.deepEqual(f.scripts, []);
+    assert.equal(f.w.__ottActiveProviderDriver.id, "demo");
     f.w.firstRun();
     f.w.listArray[1].action();
     assert.equal(f.w.listCaptionElement.innerHTML, "Choose provider");
@@ -427,9 +435,13 @@ for (const id of permitted) {
     test("Play loads permitted saved provider " + id, () => {
         const f = fixture("play", { ottplayprov: id });
         f.w.loadProv();
-        assert.deepEqual(f.scripts, [
-            "https://player.invalid/prov/" + id + "/prov.js?fixture",
-        ]);
+        if (id === "demo" || id === "xtream") {
+            assert.deepEqual(f.scripts, []);
+            assert.equal(f.w.__ottActiveProviderDriver.id, id);
+        } else
+            assert.deepEqual(f.scripts, [
+                "https://player.invalid/prov/" + id + "/prov.js?fixture",
+            ]);
     });
 }
 
@@ -461,8 +473,12 @@ test("completed provider loads omit unavailable logos but preserve Full logo and
                         optIndexOf: () => -1,
                     });
                     f.w.loadProv();
-                    assert.equal(f.scriptCallbacks.length, 1);
-                    f.scriptCallbacks[0]();
+                    if (id === "demo" || id === "xtream")
+                        assert.equal(f.scriptCallbacks.length, 0);
+                    else {
+                        assert.equal(f.scriptCallbacks.length, 1);
+                        f.scriptCallbacks[0]();
+                    }
                     assert.deepEqual(
                         f.errors,
                         [],

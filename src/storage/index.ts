@@ -291,9 +291,16 @@ export const storage: StorageAdapter = (() => {
         canUseLocalStorage = false;
     }
 
-    return canUseLocalStorage
+    var adapter = canUseLocalStorage
         ? createLocalStorageAdapter()
         : createCookieAdapter();
+    var clear = adapter.clear;
+    adapter.clear = function (): void {
+        var playback = (window as any).__ottClassicPlayback;
+        if (playback) playback.suspendPersistence();
+        clear();
+    };
+    return adapter;
 })();
 
 /**
@@ -588,6 +595,7 @@ export function restoreLocalSettingsSnapshot(items: Record<string, any>): void {
             token: token,
         });
     w.stbSetItem("commandServerEnabled", "0");
+    if (w.__ottClassicPlayback) w.__ottClassicPlayback.suspendPersistence();
     w.stbClearAllItems();
     for (var key in imported) {
         if (Object.prototype.hasOwnProperty.call(imported, key))

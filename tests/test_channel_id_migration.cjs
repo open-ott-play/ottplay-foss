@@ -187,6 +187,58 @@ assert(
     "Reload must cancel the previously scheduled provider timer"
 );
 
+put("playbackJournal", {
+    bookmark: { archiveStart: 123, channelId: "100", kind: "archive" },
+    history: [
+        { channelId: "100", kind: "live" },
+        { channelId: "100", kind: "vod" },
+    ],
+    sourceId: "classic",
+    updatedAt: 1000,
+    version: 2,
+});
+load();
+assert.equal(read("playbackJournal").bookmark.channelId, "200");
+assert.equal(read("playbackJournal").history[0].channelId, "200");
+assert.equal(
+    read("playbackJournal").history[1].channelId,
+    "100",
+    "media identities are not channel hashes"
+);
+for (const envelope of [
+    {
+        bookmark: { channelId: "100" },
+        history: [],
+        sourceId: "classic",
+        updatedAt: 1000,
+        version: 3,
+    },
+    {
+        bookmark: { channelId: "100" },
+        history: [],
+        sourceId: "other",
+        updatedAt: 1000,
+        version: 2,
+    },
+    {
+        bookmark: { channelId: "100" },
+        history: null,
+        sourceId: "classic",
+        updatedAt: 1000,
+        version: 2,
+    },
+]) {
+    put("playbackJournal", envelope);
+    const before = c.providerGetItem("playbackJournal");
+    load();
+    assert.equal(
+        c.providerGetItem("playbackJournal"),
+        before,
+        "migration retains unreadable envelopes byte-for-byte"
+    );
+}
+c.providerDelItem("playbackJournal");
+
 // A provider switch after collection must not write through stale storage functions.
 put("favoritesArray", [100]);
 const oldGet = c.providerGetItem;

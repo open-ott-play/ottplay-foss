@@ -92,6 +92,7 @@ function createClassicProviderAdapter(host: any) {
     var desired: {
         session: ProviderSession;
         start: (s: ProviderSession) => void;
+        unscoped: boolean;
     } | null = null;
     var draining = false;
 
@@ -267,9 +268,13 @@ function createClassicProviderAdapter(host: any) {
                 var pending = desired;
                 desired = null;
                 try {
-                    run(pending.session, function () {
-                        pending.start(pending.session);
-                    });
+                    if (pending.unscoped) {
+                        if (pending.session.active())
+                            pending.start(pending.session);
+                    } else
+                        run(pending.session, function () {
+                            pending.start(pending.session);
+                        });
                 } catch (error) {
                     if (!failed) firstError = error;
                     failed = true;
@@ -282,17 +287,23 @@ function createClassicProviderAdapter(host: any) {
     }
 
     return {
-        beginCatalog: function () {
+        beginCatalog: function (unscoped?: boolean) {
             var session = catalogs.activate("catalog");
             return {
                 active: session.active,
                 dispose: session.dispose,
                 guard: function (callback: any) {
-                    return scopedCallback(session, callback);
+                    return unscoped
+                        ? session.guard(callback)
+                        : scopedCallback(session, callback);
                 },
                 own: session.own,
                 run: function (callback: () => any) {
-                    return run(session, callback);
+                    return unscoped
+                        ? session.active()
+                            ? callback()
+                            : undefined
+                        : run(session, callback);
                 },
             };
         },
@@ -354,7 +365,10 @@ function createClassicProviderAdapter(host: any) {
                 });
             }
         },
-        replace: function (start: (session: ProviderSession) => void) {
+        replace: function (
+            start: (session: ProviderSession) => void,
+            unscoped?: boolean
+        ) {
             // Disposal precedes resetting shared classic data, including catalog timers.
             var replacement = ++replacementGeneration;
             catalogs.dispose();
@@ -364,7 +378,7 @@ function createClassicProviderAdapter(host: any) {
             // A cleanup may synchronously request another source. That newer
             // selection already owns the registry and must keep its queued start.
             if (!session.active()) return session;
-            desired = { session: session, start: start };
+            desired = { session: session, start: start, unscoped: !!unscoped };
             drain();
             return session;
         },

@@ -187,6 +187,7 @@ export function finishPortChannelIdMigration(
         "parentalArray",
         "prevArr",
         "continueWatch",
+        "playbackJournal",
         "epgTimers",
         "aAspects",
         "aZooms",
@@ -208,7 +209,22 @@ export function finishPortChannelIdMigration(
                     });
             } else if (key === "continueWatch")
                 migrateField(value, "channelId");
-            else if (key === "cats" || key === "favoritesLists") {
+            else if (key === "playbackJournal") {
+                if (
+                    value &&
+                    value.version === 2 &&
+                    w.__ottClassicPlayback &&
+                    w.__ottClassicPlayback.canMigrateJournal()
+                ) {
+                    if (value.bookmark && value.bookmark.kind !== "vod")
+                        migrateField(value.bookmark, "channelId");
+                    if (Array.isArray(value.history))
+                        value.history.forEach(function (entry: any) {
+                            if (entry && entry.kind !== "vod")
+                                migrateField(entry, "channelId");
+                        });
+                }
+            } else if (key === "cats" || key === "favoritesLists") {
                 var lists = key === "cats" ? value : value && value.lists;
                 if (lists && typeof lists === "object" && !Array.isArray(lists))
                     Object.keys(lists).forEach(function (name) {
@@ -650,10 +666,10 @@ export function setCurrent(
  */
 export function restoreContinueWatch(): boolean {
     try {
-        var cw: any = window.providerGetJson("continueWatch", null);
+        var cw: any = (window as any).__ottClassicPlayback.bookmark();
         if (!cw || !cw.v || !cw.mode || cw.channelId == null) return false;
         var ageMs = Date.now() - (cw.updatedAt || 0);
-        if (ageMs > 7 * 24 * 60 * 60 * 1000) return false; // stale: > 7 days
+        if (ageMs < -300000 || ageMs > 7 * 24 * 60 * 60 * 1000) return false; // stale: > 7 days
         // 1) Resume dialog = archive only (positive playType sentinel required).
         // VOD / live → return false so caller does live playback.
         if (
@@ -1728,6 +1744,7 @@ export function onChannelsLoaded(): void {
             curList = cats[catsArray[catIndex]] || [];
             if (primaryIndex < 0 || primaryIndex >= curList.length)
                 primaryIndex = 0;
+            (window as any).__ottClassicPlayback.hydrate();
             // Start playback: restore continue-watching bookmark if available.
             // If no archive/vod bookmark is offered, fall back to the normal
             // live playChannel path (live bookmarks are already encoded in
@@ -3047,6 +3064,10 @@ export function getMediaDescr(item?: MediaHistoryEntry): string {
  */
 export function playArchive(e: number): void {
     var w = window as any;
+    if (!isFinite(e) || e <= 0) {
+        console.error("[playArchive] invalid archive start", e);
+        return;
+    }
     if (w.__ottClassicPlayback) w.__ottClassicPlayback.cancel();
     var t = curProg;
     // Defensive: clear any stale ticker before stbPlay stbStop path runs.
@@ -3055,10 +3076,23 @@ export function playArchive(e: number): void {
     clearPlayTimeInterval();
     // Set archive playType before updateArchiveInfo so nested updateChannelInfo
     // sees archive mode (not live virtual timeshift) when EPG is missing.
-    playTime = 0;
-    playType = Math.floor(e);
-    w.playType = playType;
-    w.playTime = playTime;
+    if (
+        w.__ottClassicPlayback &&
+        typeof w.__ottClassicPlayback.command === "function"
+    ) {
+        w.__ottClassicPlayback.command({
+            archiveStart: e,
+            channelId: curList[primaryIndex],
+            type: "archive",
+        });
+        playType = w.playType;
+        playTime = w.playTime;
+    } else {
+        playTime = 0;
+        playType = Math.floor(e);
+        w.playType = playType;
+        w.playTime = playTime;
+    }
     updateArchiveInfo(e);
     if (w.sInfoRew) w.showChannelInfo(1);
     var r = curList[primaryIndex];
@@ -3085,10 +3119,6 @@ export function playArchive(e: number): void {
     }
     // Catchup URL templates / flussonic archive-{start}-{duration} need end > start.
     // Clock-hour near the boundary can yield duration 0 → proxy HTML → levelParsingError.
-    if (!isFinite(e) || e <= 0) {
-        console.error("[playArchive] invalid archive start", e);
-        return;
-    }
     if (!(s.time_to > e)) {
         s = {
             descr: s.descr || "",
@@ -3359,12 +3389,30 @@ export function liveStop(): void {
             }
             epgArray = r;
             setCurProg(t, e, undefined as any);
-            playType = Math.round(Date.now() / 1e3);
-            playTime = 0;
+            if (
+                (window as any).__ottClassicPlayback &&
+                typeof (window as any).__ottClassicPlayback.command ===
+                    "function"
+            )
+                (window as any).__ottClassicPlayback.command({
+                    archiveStart: Math.round(Date.now() / 1e3),
+                    channelId: t,
+                    type: "archive",
+                });
+            else {
+                playType = Math.round(Date.now() / 1e3);
+                playTime = 0;
+            }
             if (typeof window.showChannelInfo === "function")
                 window.showChannelInfo(2);
             if (typeof window.showShift === "function")
                 window.showShift(window._("Pause"));
+            if (
+                (window as any).__ottClassicPlayback &&
+                typeof (window as any).__ottClassicPlayback.command ===
+                    "function"
+            )
+                (window as any).__ottClassicPlayback.command({ type: "pause" });
             stbPause();
         })
     );

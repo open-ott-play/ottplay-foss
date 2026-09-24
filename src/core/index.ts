@@ -172,6 +172,7 @@ var _playSession = 0;
 /** The previous Shaka must release this video before another engine attaches. */
 var _coreShakaTeardown: PromiseLike<unknown> | null = null;
 var _corePendingSeek: (() => void) | null = null;
+var _corePlaybackStateCleanup: (() => void) | null = null;
 var _coreAutoCancel: ((restoreNative?: boolean) => void) | null = null;
 var _coreAutoHlsUsed = false;
 var _corePlaybackMode = 0;
@@ -893,6 +894,67 @@ export function stbEventToKeyCode(event: any): number {
     return keyCode;
 }
 
+/** Bind backend observations to the media session that installed them. */
+function clearCorePlaybackStateEvents(): void {
+    if (_corePlaybackStateCleanup) _corePlaybackStateCleanup();
+    _corePlaybackStateCleanup = null;
+}
+
+function bindCorePlaybackStateEvents(
+    media: HTMLVideoElement,
+    session: number
+): void {
+    clearCorePlaybackStateEvents();
+    var playback = (window as any).__ottClassicPlayback;
+    if (!playback || typeof playback.snapshot !== "function") return;
+    var expected = playback.snapshot();
+    if (!expected.target) return;
+    function current(): any {
+        if (session !== _playSession || media !== video) return null;
+        var state = playback.snapshot();
+        return state.generation === expected.generation &&
+            state.phase !== "stopped"
+            ? state
+            : null;
+    }
+    function position(): void {
+        var state = current();
+        if (
+            state &&
+            state.target.kind === "vod" &&
+            media.readyState >= 1 &&
+            (state.phase === "playing" || state.phase === "paused")
+        )
+            playback.command({
+                duration: media.duration,
+                generation: expected.generation,
+                position: media.currentTime,
+                type: "position",
+            });
+    }
+    function playing(): void {
+        if (!current() || media.paused || media.readyState < 2) return;
+        playback.command({ generation: expected.generation, type: "playing" });
+        position();
+    }
+    function paused(): void {
+        var state = current();
+        if (state && state.phase === "playing" && media.paused)
+            playback.command({
+                generation: expected.generation,
+                type: "pause",
+            });
+    }
+    media.addEventListener("playing", playing);
+    media.addEventListener("pause", paused);
+    media.addEventListener("timeupdate", position);
+    _corePlaybackStateCleanup = function (): void {
+        media.removeEventListener("playing", playing);
+        media.removeEventListener("pause", paused);
+        media.removeEventListener("timeupdate", position);
+    };
+}
+
 /**
  * Start playback of a given URL on the main video element.
  * Supports three engine modes: native HTML5, hls.js, and shaka-player.
@@ -915,6 +977,12 @@ export function stbEventToKeyCode(event: any): number {
  * - Automatically restores previous audio/subtitle track settings via applyChannelPreference.
  */
 export function stbPlay(url: string, position?: number): void {
+    clearCorePlaybackStateEvents();
+    if (
+        (window as any).__ottClassicPlayback &&
+        typeof (window as any).__ottClassicPlayback.command === "function"
+    )
+        (window as any).__ottClassicPlayback.command({ type: "loading" });
     setCoreDemoMute((window as any).ottplayDemoActive === true);
     if (video) video.loop = (window as any).ottplayDemoActive === true;
     if (!_inLiveRestart) {
@@ -957,6 +1025,7 @@ function startCorePlayback(
     session: number
 ): void {
     cancelCoreNativeHls();
+    if (video) bindCorePlaybackStateEvents(video, session);
     _coreHlsBitrate = null;
     resetCoreNativeBitrate();
     var auto = playerMode === 3 && getDefaultPlayerMode() === 3;
@@ -1405,8 +1474,14 @@ function startCorePlayback(
  * Side effects: Mutates video element; may free decoder resources.
  */
 export function stbStop(): void {
+    clearCorePlaybackStateEvents();
     if ((window as any).__ottClassicPlayback)
         (window as any).__ottClassicPlayback.cancel();
+    if (
+        (window as any).__ottClassicPlayback &&
+        typeof (window as any).__ottClassicPlayback.command === "function"
+    )
+        (window as any).__ottClassicPlayback.command({ type: "stop" });
     if (video) video.loop = false;
     _playSession++;
     cancelLiveRestart();
@@ -1431,6 +1506,11 @@ export function stbStop(): void {
  * Side effects: Sets video!.pause().
  */
 export function stbPause(): void {
+    if (
+        (window as any).__ottClassicPlayback &&
+        typeof (window as any).__ottClassicPlayback.command === "function"
+    )
+        (window as any).__ottClassicPlayback.command({ type: "pause" });
     (window as any).forcePlay = false;
     cancelLiveRestart();
     video!.pause();
@@ -1441,6 +1521,11 @@ export function stbPause(): void {
  */
 export function stbContinue(): void {
     if (video!.paused) {
+        if (
+            (window as any).__ottClassicPlayback &&
+            typeof (window as any).__ottClassicPlayback.command === "function"
+        )
+            (window as any).__ottClassicPlayback.command({ type: "resume" });
         (window as any).forcePlay = true;
         playCoreMedia(video!);
     } else stbPause();
@@ -1450,6 +1535,14 @@ export function stbContinue(): void {
  * @returns `true` if video is playing, `false` if paused.
  */
 export function stbIsPlaying(): boolean {
+    var playback = (window as any).__ottClassicPlayback;
+    if (
+        !video!.paused &&
+        playback &&
+        typeof playback.snapshot === "function" &&
+        playback.snapshot().phase === "loading"
+    )
+        return !!_corePlaybackStateCleanup && video!.readyState >= 2;
     return !video!.paused;
 }
 /**
@@ -1493,6 +1586,36 @@ export function stbGetPosTime(): number {
  */
 export function stbSetPosTime(v: number): void {
     seekCoreMedia(v, _playSession);
+    var playback = (window as any).__ottClassicPlayback;
+    if (playback && typeof playback.snapshot === "function") {
+        var state = playback.snapshot();
+        if (state.target && state.target.kind === "vod")
+            playback.command({
+                generation: state.generation,
+                position: v,
+                type: "position",
+            });
+        else if (
+            state.target &&
+            state.target.kind === "archive" &&
+            state.phase === "loading" &&
+            video
+        ) {
+            // A seek within one archive file starts a new domain target while
+            // retaining its backend. Rebind that backend to the new generation.
+            bindCorePlaybackStateEvents(video, _playSession);
+            if (video.paused)
+                playback.command({
+                    generation: state.generation,
+                    type: "pause",
+                });
+            else if (video.readyState >= 2)
+                playback.command({
+                    generation: state.generation,
+                    type: "playing",
+                });
+        }
+    }
     if (
         (window as any).playType < 0 &&
         typeof (window as any).updateMediaInfo === "function"

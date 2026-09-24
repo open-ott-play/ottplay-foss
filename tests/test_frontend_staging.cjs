@@ -41,6 +41,8 @@ const context = vm.createContext({
     ...fs,
     ...path,
     console: { log() {} },
+    isManagedProviderScript: require("../scripts/provider-assets.cjs")
+        .isManagedProviderScript,
     stageNativeRuntime() {},
 });
 vm.runInContext(code, context);

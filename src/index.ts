@@ -1494,8 +1494,16 @@ function checkMedia(): void {
             duration !== Number.POSITIVE_INFINITY &&
             duration < 1000000
         ) {
-            window.playTime = 0;
-            window.playType = -99999999999;
+            var playback = (window as any).__ottClassicPlayback;
+            if (playback && typeof playback.command === "function")
+                playback.command({
+                    duration: duration,
+                    type: "finite-channel",
+                });
+            else {
+                window.playTime = 0;
+                window.playType = -99999999999;
+            }
             updateMediaInfoDisplay();
         }
     }
@@ -1503,16 +1511,17 @@ function checkMedia(): void {
 
 // Unload handler
 
-/**
- * Persist the current channel position and reset playType on page unload.
- *
- * Side effects: Calls setCurrent() and sets window.playType = 0.
- * When in archive/vod mode (playType > 0 or === -1e11), the continue-watch
- * bookmark is saved with the live position cleared and archive fields kept.
- */
+/** Persist the active target without changing playback when the page is hidden. */
 function body_onUnload(): void {
-    setCurrent(catIndex, primaryIndex);
-    window.playType = 0;
+    var playback = (window as any).__ottClassicPlayback;
+    if (playback && typeof playback.snapshot === "function") {
+        var state = playback.snapshot();
+        playback.checkpoint(state, true);
+        // VOD has its own resume history. A hidden channel remains selected and
+        // must not become its own "previous channel" entry.
+        if (state.historyTarget && state.historyTarget.kind === "vod")
+            setCurrent(catIndex, -1);
+    } else setCurrent(catIndex, primaryIndex);
 }
 
 /**
@@ -2432,7 +2441,15 @@ function _playChannel(catIdx: number, chIdx: number): void {
     );
     updateChannelInfo(channelId);
     if (sInfoSwitch) showChannelInfo(settings.infoTimeout);
-    (window as any).playType = 0;
+    if (
+        (window as any).__ottClassicPlayback &&
+        typeof (window as any).__ottClassicPlayback.command === "function"
+    )
+        (window as any).__ottClassicPlayback.command({
+            channelId: channelId,
+            type: "live",
+        });
+    else (window as any).playType = 0;
     if (typeof setPlayer === "function") setPlayer();
     stbPlay(getChannelUrl(channelId));
     clearTimeout((window as any)._tmedia);
@@ -2508,9 +2525,20 @@ function _playMedia(item: MediaHistoryEntry): void {
     $("#programm_duration").text("");
     $("#programm_descr").html(getMediaDescr(item));
     if (sInfoSwitch) showChannelInfo(settings.infoTimeout);
-    (window as any).playTime = 0;
-    (window as any).playType = -1e11;
     if (sStopPlay) stbStop();
+    if (
+        (window as any).__ottClassicPlayback &&
+        typeof (window as any).__ottClassicPlayback.command === "function"
+    )
+        (window as any).__ottClassicPlayback.command({
+            channelId: streamUrl,
+            item: item,
+            type: "vod",
+        });
+    else {
+        (window as any).playTime = 0;
+        (window as any).playType = -1e11;
+    }
     stbPlay(streamUrl);
     if (resumePos)
         confirmBox(
@@ -5055,6 +5083,12 @@ window.settingsManage = function (): void {
         if (typeof w.confirmBox === "function") {
             w.confirmBox("Clear all settings?", function () {
                 try {
+                    if (
+                        w.__ottClassicPlayback &&
+                        typeof w.__ottClassicPlayback.suspendPersistence ===
+                            "function"
+                    )
+                        w.__ottClassicPlayback.suspendPersistence();
                     if (typeof w.stbClearAllItems === "function")
                         w.stbClearAllItems();
                 } catch (e) {

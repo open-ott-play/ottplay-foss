@@ -4,13 +4,48 @@
  * Remove this module when the remaining classic views consume typed state.
  */
 var classicPlaybackController: any = null;
+var classicPlaybackState: any = null;
+var classicPlaybackProjection: any = null;
 
 function classicPlaybackHost(): any {
     return window as any;
 }
 
 function classicPlaybackSource(w: any): string {
-    return String(w.p_pref || w.providerId || "classic").trim() || "classic";
+    var provider =
+        String(w.p_pref || w.providerId || "classic").trim() || "classic";
+    return provider === "m3u"
+        ? provider + ":" + classicPlaybackSlot(w)
+        : provider;
+}
+
+function classicPlaybackSlot(w: any): number {
+    var value = Number(w.m3uArr && w.m3uArr.active);
+    return isFinite(value) && value >= 0 && Math.floor(value) === value
+        ? value
+        : 0;
+}
+
+function classicPlaybackSourceConfiguration(w: any): any {
+    var slot =
+        w.p_pref === "m3u" && w.m3uArr && w.m3uArr.M3Us
+            ? w.m3uArr.M3Us[classicPlaybackSlot(w)]
+            : null;
+    return {
+        activeMedia: w.medSourceId,
+        media: slot && slot.medSourceId,
+        slot: slot,
+        url: slot && slot.www,
+    };
+}
+
+function classicPlaybackConfigurationMatches(a: any, b: any): boolean {
+    return (
+        a.slot === b.slot &&
+        a.url === b.url &&
+        a.media === b.media &&
+        a.activeMedia === b.activeMedia
+    );
 }
 
 function classicPlaybackIdentity(value: any): boolean {
@@ -25,7 +60,11 @@ function classicPlaybackChannel(w: any, category: number, index: number): any {
     return ((w.cats || {})[key] || [])[index];
 }
 
-function classicPlaybackVisit(w: any, selection = false): PlaybackVisit | null {
+/** Legacy input codec; invoked only when external scripts changed the projection. */
+function classicPlaybackDecode(
+    w: any,
+    selection = false
+): PlaybackVisit | null {
     var mode = Number(w.playType) || 0;
     if (!isFinite(mode)) mode = 0;
     var id = classicPlaybackChannel(w, w.catIndex, w.primaryIndex);
@@ -56,10 +95,215 @@ function classicPlaybackVisit(w: any, selection = false): PlaybackVisit | null {
     };
 }
 
+function classicPlaybackOwnedState(): any {
+    if (!classicPlaybackState)
+        classicPlaybackState =
+            classicPlaybackHost().__ottPlaybackSession.createState(function (
+                snapshot: PlaybackStateSnapshot
+            ): void {
+                var api = classicPlaybackHost().__ottClassicPlayback;
+                if (api && typeof api.checkpoint === "function")
+                    api.checkpoint(snapshot);
+            });
+    return classicPlaybackState;
+}
+
+function classicPlaybackProjectionValue(w: any): any {
+    return {
+        catalog: w.channels,
+        channel: classicPlaybackChannel(w, w.catIndex, w.primaryIndex),
+        configuration: classicPlaybackSourceConfiguration(w),
+        media: (w.medHistory || [])[0],
+        mode: w.playType,
+        source: classicPlaybackSource(w),
+    };
+}
+
+function classicPlaybackReconcile(): PlaybackStateSnapshot {
+    var w = classicPlaybackHost();
+    var store = classicPlaybackOwnedState();
+    var value = classicPlaybackProjectionValue(w);
+    var previous = classicPlaybackProjection;
+    if (
+        !previous ||
+        value.source !== previous.source ||
+        value.channel !== previous.channel ||
+        value.catalog !== previous.catalog ||
+        value.mode !== previous.mode ||
+        !classicPlaybackConfigurationMatches(
+            value.configuration,
+            previous.configuration
+        ) ||
+        (value.mode === -1e11 && value.media !== previous.media)
+    ) {
+        var target = classicPlaybackDecode(w);
+        store.open(
+            target,
+            classicPlaybackDecode(w, true),
+            target && target.kind === "archive" ? Number(w.playTime) || 0 : 0,
+            false
+        );
+        store.phase("playing", false);
+        classicPlaybackProjection = value;
+    }
+    var state = store.snapshot();
+    if (
+        state.target &&
+        (state.phase === "playing" || state.phase === "paused")
+    ) {
+        var position =
+            state.target.kind === "archive"
+                ? Number(w.playTime)
+                : typeof w.stbGetPosTime === "function"
+                  ? w.stbGetPosTime()
+                  : state.position;
+        var duration =
+            typeof w.stbGetLen === "function" ? w.stbGetLen() : undefined;
+        store.position(position, duration, false);
+    }
+    return store.snapshot();
+}
+
+function classicPlaybackSnapshot(): PlaybackStateSnapshot {
+    return classicPlaybackReconcile();
+}
+
+function classicPlaybackVisit(
+    _w: any,
+    selection = false
+): PlaybackVisit | null {
+    var snapshot = classicPlaybackSnapshot();
+    return selection ? snapshot.historyTarget : snapshot.target;
+}
+
+/** Semantic commands own normal playback state; old fields are output projection. */
+function classicPlaybackCommand(command: any): void {
+    var w = classicPlaybackHost();
+    var state = classicPlaybackReconcile();
+    var store = classicPlaybackOwnedState();
+    if (
+        command.generation !== undefined &&
+        command.generation !== state.generation
+    )
+        return;
+    var type = command.type;
+    if (
+        type === "live" ||
+        type === "archive" ||
+        type === "vod" ||
+        type === "finite-channel"
+    ) {
+        var id =
+            command.channelId !== undefined
+                ? command.channelId
+                : classicPlaybackChannel(w, w.catIndex, w.primaryIndex);
+        if (type === "vod")
+            id =
+                command.channelId !== undefined
+                    ? command.channelId
+                    : command.item && command.item.stream_url;
+        if (!classicPlaybackIdentity(id)) return;
+        if (
+            type === "archive" &&
+            (typeof command.archiveStart !== "number" ||
+                !isFinite(command.archiveStart) ||
+                command.archiveStart <= 0)
+        )
+            return;
+        if (
+            type === "finite-channel" &&
+            (!state.target ||
+                state.target.kind !== "live" ||
+                state.phase === "stopped")
+        )
+            return;
+        var history: PlaybackVisit = {
+            archiveStart:
+                type === "archive"
+                    ? Math.floor(command.archiveStart)
+                    : undefined,
+            channelId: String(id),
+            kind:
+                type === "archive"
+                    ? "archive"
+                    : type === "vod"
+                      ? "vod"
+                      : "live",
+            payload:
+                type === "vod"
+                    ? command.item
+                    : {
+                          c: w.catIndex,
+                          ci: id,
+                          e: w._prog100 && w._prog100.name,
+                          i: w.primaryIndex,
+                      },
+            sourceId: classicPlaybackSource(w),
+        };
+        var target: PlaybackVisit =
+            type === "finite-channel"
+                ? {
+                      channelId: "channel:" + id,
+                      kind: "vod",
+                      sourceId: history.sourceId,
+                  }
+                : history;
+        w.playType =
+            type === "archive"
+                ? history.archiveStart
+                : type === "vod"
+                  ? -1e11
+                  : type === "finite-channel"
+                    ? -99999999999
+                    : 0;
+        w.playTime =
+            typeof command.position === "number" &&
+            isFinite(command.position) &&
+            command.position >= 0
+                ? command.position
+                : 0;
+        classicPlaybackProjection = classicPlaybackProjectionValue(w);
+        if (classicPlaybackController) classicPlaybackController.cancel();
+        if (type === "finite-channel")
+            store.classify(target, history, command.duration);
+        else store.open(target, history, w.playTime);
+        return;
+    }
+    if (type === "position") {
+        if (state.phase === "stopped") return;
+        store.position(command.position, command.duration);
+        var measured = store.snapshot();
+        if (measured.target) w.playTime = measured.position;
+    } else if (
+        type === "stop" ||
+        type === "pause" ||
+        type === "resume" ||
+        type === "loading" ||
+        type === "playing"
+    ) {
+        if (type === "stop" && classicPlaybackController)
+            classicPlaybackController.cancel();
+        store.phase(
+            type === "stop"
+                ? "stopped"
+                : type === "pause"
+                  ? "paused"
+                  : type === "resume"
+                    ? "playing"
+                    : type
+        );
+    }
+    classicPlaybackProjection = classicPlaybackProjectionValue(w);
+}
+
 function classicPlaybackObservation(): PlaybackObservation {
     var w = classicPlaybackHost();
-    var target = classicPlaybackVisit(w);
-    var id = classicPlaybackChannel(w, w.catIndex, w.primaryIndex);
+    var snapshot = classicPlaybackSnapshot();
+    var target = snapshot.phase === "stopped" ? null : snapshot.target;
+    var id =
+        snapshot.historyTarget && snapshot.historyTarget.kind !== "vod"
+            ? snapshot.historyTarget.channelId
+            : classicPlaybackChannel(w, w.catIndex, w.primaryIndex);
     var channel = (w.channels || {})[id];
     var catalog = w.channels;
     var categories = w.catsArray;
@@ -69,6 +313,7 @@ function classicPlaybackObservation(): PlaybackObservation {
     var set = w.providerSetItem;
     var prefix = w.p_pref;
     var source = classicPlaybackSource(w);
+    var configuration = classicPlaybackSourceConfiguration(w);
     var media = (w.medHistory || [])[0];
     var retention = Number(channel && channel.rec) || 0;
     var now = Date.now() / 1000;
@@ -77,7 +322,7 @@ function classicPlaybackObservation(): PlaybackObservation {
             retention > 0 || (!!target && target.kind === "archive"),
         archiveEarliest:
             retention > 0 ? Math.max(0, now - retention * 3600) : undefined,
-        duration: typeof w.stbGetLen === "function" ? w.stbGetLen() : 0,
+        duration: snapshot.duration,
         isCurrent: function (): boolean {
             return (
                 catalog === w.channels &&
@@ -89,16 +334,16 @@ function classicPlaybackObservation(): PlaybackObservation {
                 set === w.providerSetItem &&
                 prefix === w.p_pref &&
                 source === classicPlaybackSource(w) &&
+                classicPlaybackConfigurationMatches(
+                    configuration,
+                    classicPlaybackSourceConfiguration(w)
+                ) &&
+                snapshot.generation === classicPlaybackSnapshot().generation &&
                 (w.playType !== -1e11 || media === (w.medHistory || [])[0])
             );
         },
         now: now,
-        position:
-            target && target.kind === "archive"
-                ? Number(w.playTime) || 0
-                : typeof w.stbGetPosTime === "function"
-                  ? w.stbGetPosTime()
-                  : 0,
+        position: snapshot.position,
         target: target,
     };
 }
@@ -125,7 +370,7 @@ function classicPlaybackRuntime(): any {
                 classicPlaybackAnnounce(intent);
             } else if (plan.action === "open-archive") {
                 if (
-                    Number(w.playType) === 0 &&
+                    classicPlaybackSnapshot().target?.kind === "live" &&
                     typeof w.timeShift === "function"
                 )
                     w.timeShift(
@@ -224,6 +469,7 @@ function classicPlaybackSelect(
         // Other negative classic modes are platform-owned files, not medHistory.
         if (
             effect.type !== "save-position" ||
+            classicPersistenceSuspended ||
             w.playType !== -1e11 ||
             !(w.medHistory || []).length
         )
@@ -237,9 +483,27 @@ function classicPlaybackSelect(
     w.catIndex = category;
     w.curList = (w.cats || {})[(w.catsArray || [])[category]] || [];
     w.primaryIndex = index;
+    var journal = classicPlaybackJournal();
+    if (classicPersistenceSuspended || (journal && !journal.read().writable))
+        return;
     w.providerSetItem("primaryIndex", String(index));
     w.providerSetItem("catIndex", String(category));
     w.providerSetItem("prevArr", JSON.stringify(w.prevArr));
+    if (journal)
+        journal.update({
+            history: result.history.map(function (
+                visit: PlaybackVisit
+            ): PlaybackJournalEntry {
+                var payload = visit.payload || {};
+                return {
+                    archiveStart: visit.archiveStart,
+                    channelId: visit.channelId,
+                    groupId: (w.catsArray || [])[payload.c],
+                    kind: visit.kind,
+                    label: payload.e,
+                };
+            }),
+        });
     try {
         // Preserve the v1 persistence contract until the versioned importer ships.
         var mode = w.playType > 0 ? "archive" : w.playType < 0 ? "vod" : "live";
@@ -261,15 +525,189 @@ function classicPlaybackSelect(
     }
 }
 
+/** Storage access belongs to the compatibility edge, never to the domain store. */
+var classicPersistenceSuspended = false;
+var classicCheckpointSignature = "";
+var classicCheckpointTime = 0;
+function classicPlaybackJournal(): any {
+    var w = classicPlaybackHost();
+    if (
+        classicPersistenceSuspended ||
+        !w.__ottPlaybackJournal ||
+        typeof w.providerGetItem !== "function" ||
+        typeof w.providerSetItem !== "function"
+    )
+        return null;
+    var get = w.providerGetItem;
+    var set = w.providerSetItem;
+    var source = classicPlaybackSource(w);
+    return w.__ottPlaybackJournal.create({
+        get: function (key: string): any {
+            return get.call(w, key);
+        },
+        isCurrent: function (): boolean {
+            return (
+                source === classicPlaybackSource(w) &&
+                get === w.providerGetItem &&
+                set === w.providerSetItem
+            );
+        },
+        now: function (): number {
+            return Date.now();
+        },
+        set: function (key: string, value: string): void {
+            set.call(w, key, value);
+        },
+        sourceId: source,
+    });
+}
+
+function classicPlaybackLocate(id: string, groupId?: string): any {
+    var w = classicPlaybackHost();
+    var groups = w.catsArray || [];
+    var preferred = groups.indexOf(groupId);
+    if (
+        preferred < 0 &&
+        typeof w.catIndex === "number" &&
+        w.catIndex >= 0 &&
+        w.catIndex < groups.length
+    )
+        preferred = w.catIndex;
+    var order: number[] = [];
+    if (preferred >= 0) order.push(preferred);
+    for (var g = 0; g < groups.length; g++) if (g !== preferred) order.push(g);
+    for (var at = 0; at < order.length; at++) {
+        var category = order[at];
+        var list = (w.cats || {})[groups[category]];
+        if (!Array.isArray(list)) continue;
+        for (var index = 0; index < list.length; index++) {
+            if (String(list[index]) === id)
+                return {
+                    category: category,
+                    id: list[index],
+                    index: index,
+                    list: list,
+                };
+        }
+    }
+    return null;
+}
+
+function classicPlaybackHydrate(): void {
+    var w = classicPlaybackHost();
+    classicPersistenceSuspended = false;
+    classicCheckpointSignature = "";
+    var journal = classicPlaybackJournal();
+    if (!journal) return;
+    var loaded = journal.read();
+    if (!loaded.writable) {
+        w.prevArr = [];
+        return;
+    }
+    var document = loaded.document;
+    w.prevArr = document.history
+        .filter(function (entry: PlaybackJournalEntry): boolean {
+            return entry.kind !== "vod";
+        })
+        .map(function (entry: PlaybackJournalEntry): any {
+            var found = classicPlaybackLocate(entry.channelId, entry.groupId);
+            var result: any = {
+                c: found ? found.category : -1,
+                ci: found ? found.id : entry.channelId,
+                e: entry.label,
+                i: found ? found.index : -1,
+            };
+            if (entry.kind === "archive") result.t = entry.archiveStart;
+            return result;
+        });
+    var bookmark = document.bookmark;
+    if (bookmark && bookmark.kind === "live") {
+        var selected = classicPlaybackLocate(
+            bookmark.channelId,
+            bookmark.groupId
+        );
+        if (selected) {
+            w.catIndex = selected.category;
+            w.primaryIndex = selected.index;
+            w.curList = selected.list;
+        }
+    }
+}
+
+function classicPlaybackBookmark(): any {
+    var journal = classicPlaybackJournal();
+    if (!journal) return null;
+    var loaded = journal.read();
+    if (!loaded.writable || !loaded.document.bookmark) return null;
+    var item = loaded.document.bookmark;
+    var found = classicPlaybackLocate(item.channelId, item.groupId);
+    if (!found) return null;
+    return {
+        catIndex: found.category,
+        channelId: found.id,
+        mode: item.kind,
+        playTime: item.position,
+        playType: item.archiveStart,
+        updatedAt: loaded.document.updatedAt,
+        v: 2,
+    };
+}
+
+function classicPlaybackCheckpoint(snapshot: any, force = false): void {
+    var w = classicPlaybackHost();
+    var target = snapshot && (snapshot.historyTarget || snapshot.target);
+    if (!target || target.sourceId !== classicPlaybackSource(w)) return;
+    var journal = classicPlaybackJournal();
+    if (!journal) return;
+    var signature = JSON.stringify([
+        target.sourceId,
+        target.channelId,
+        target.kind,
+        target.archiveStart,
+        snapshot.phase,
+    ]);
+    var now = Date.now();
+    if (
+        !force &&
+        snapshot.phase === "playing" &&
+        signature === classicCheckpointSignature &&
+        now - classicCheckpointTime < 5000
+    )
+        return;
+    var payload = target.payload || {};
+    var saved = journal.update({
+        bookmark: {
+            archiveStart: target.archiveStart,
+            channelId: target.channelId,
+            groupId: (w.catsArray || [])[payload.c],
+            kind: target.kind,
+            position: snapshot.position,
+        },
+    });
+    if (saved) {
+        classicCheckpointSignature = signature;
+        classicCheckpointTime = now;
+    }
+}
+
 (window as any).__ottClassicPlayback = {
+    bookmark: classicPlaybackBookmark,
     cancel: function (): void {
         if (classicPlaybackController) classicPlaybackController.cancel();
     },
+    canMigrateJournal: function (): boolean {
+        var journal = classicPlaybackJournal();
+        return !!journal && journal.read().writable;
+    },
+    checkpoint: classicPlaybackCheckpoint,
+    command: classicPlaybackCommand,
     guard: function (
         callback: (...args: any[]) => void
     ): (...args: any[]) => void {
         return classicPlaybackRuntime().guard(callback);
     },
+    hydrate: classicPlaybackHydrate,
+    reconcile: classicPlaybackReconcile,
     select: classicPlaybackSelect,
     shift: function (delta: number): void {
         classicPlaybackRuntime().request(
@@ -277,5 +715,11 @@ function classicPlaybackSelect(
                 ? { intent: "begin" }
                 : { intent: "offset", value: delta }
         );
+    },
+    snapshot: classicPlaybackSnapshot,
+    suspendPersistence: function (): void {
+        classicPersistenceSuspended = true;
+        classicCheckpointSignature = "";
+        if (classicPlaybackController) classicPlaybackController.cancel();
     },
 };

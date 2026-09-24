@@ -164,6 +164,110 @@ function createPlaybackSessionController(
     };
 }
 
+interface PlaybackStateSnapshot {
+    duration?: number;
+    generation: number;
+    historyTarget: PlaybackVisit | null;
+    phase: "idle" | "loading" | "playing" | "paused" | "stopped";
+    position: number;
+    target: PlaybackVisit | null;
+}
+
+/** Owned session state. Host codecs may adopt old state at an explicit boundary;
+ * normal playback commands never interpret legacy mode numbers or list positions.
+ */
+function createPlaybackState(changed: (state: PlaybackStateSnapshot) => void) {
+    var state: PlaybackStateSnapshot = {
+        generation: 0,
+        historyTarget: null,
+        phase: "idle",
+        position: 0,
+        target: null,
+    };
+    function visit(value: PlaybackVisit | null): PlaybackVisit | null {
+        return value
+            ? {
+                  archiveStart: value.archiveStart,
+                  channelId: value.channelId,
+                  kind: value.kind,
+                  payload: value.payload,
+                  sourceId: value.sourceId,
+              }
+            : null;
+    }
+    function snapshot(): PlaybackStateSnapshot {
+        return {
+            duration: state.duration,
+            generation: state.generation,
+            historyTarget: visit(state.historyTarget),
+            phase: state.phase,
+            position: state.position,
+            target: visit(state.target),
+        };
+    }
+    function position(value: number, duration?: number, notify = true): void {
+        if (
+            !state.target ||
+            typeof value !== "number" ||
+            !isFinite(value) ||
+            value < 0
+        )
+            return;
+        var nextDuration =
+            typeof duration === "number" && isFinite(duration) && duration >= 0
+                ? duration
+                : state.duration;
+        // Explicit backend reports also checkpoint a value previously sampled by
+        // compatibility observation. Durable throttling belongs to the journal.
+        state.position = value;
+        state.duration = nextDuration;
+        if (notify) changed(snapshot());
+    }
+    function open(
+        target: PlaybackVisit | null,
+        historyTarget: PlaybackVisit | null = target,
+        offset = 0,
+        notify = true
+    ): void {
+        state = {
+            generation: state.generation + 1,
+            historyTarget: visit(historyTarget),
+            phase: target ? "loading" : "idle",
+            position: 0,
+            target: visit(target),
+        };
+        position(offset, undefined, false);
+        if (notify) changed(snapshot());
+    }
+    function classify(
+        target: PlaybackVisit,
+        historyTarget: PlaybackVisit,
+        duration?: number
+    ): void {
+        if (!state.target || state.phase === "stopped") return;
+        state.target = visit(target);
+        state.historyTarget = visit(historyTarget);
+        position(state.position, duration, false);
+        changed(snapshot());
+    }
+    function phase(value: PlaybackStateSnapshot["phase"], notify = true): void {
+        if (!state.target || state.phase === value) return;
+        // A late native event after Stop cannot revive a session without loading again.
+        if (state.phase === "stopped" && value !== "loading") return;
+        state.phase = value;
+        if (value === "stopped") state.generation++;
+        if (notify) changed(snapshot());
+    }
+    return {
+        classify: classify,
+        open: open,
+        phase: phase,
+        position: position,
+        snapshot: snapshot,
+    };
+}
+
 (window as any).__ottPlaybackSession = {
     create: createPlaybackSessionController,
+    createState: createPlaybackState,
 };

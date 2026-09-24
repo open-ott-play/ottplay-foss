@@ -311,7 +311,11 @@ for (const replacement of [null, "catalog", "channel", "list"]) {
 // Stop really invalidates the private controller before touching media objects.
 {
     const c = fixture();
-    include(c, "src/core/index.ts", ["stbStop"]);
+    include(c, "src/core/index.ts", [
+        "stbStop",
+        "clearCorePlaybackStateEvents",
+    ]);
+    c._corePlaybackStateCleanup = null;
     c.video = { pause() {}, removeAttribute() {} };
     c._playSession = 0;
     c.hlsInstance = null;

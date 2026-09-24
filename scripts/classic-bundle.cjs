@@ -16,6 +16,7 @@ const CLASSIC_MODULES = [
     "build/channels/favorites-lists.js",
     "build/channels/search.js",
     "build/playback/session.js",
+    "build/playback/journal.js",
     "build/playback/classic-adapter.js",
     "build/channels/index.js",
     "build/debug/playback-debug.js",
@@ -27,6 +28,8 @@ const CLASSIC_MODULES = [
     "build/keyhandler/index.js",
     "build/provider/operator.js",
     "build/provider/runtime.js",
+    "build/provider/driver-profiles.js",
+    "build/provider/drivers.js",
     "build/provider/index.js",
     "build/commands/index.js",
     "build/app/init.js",
@@ -53,7 +56,12 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     "build/playback/classic-adapter.js": Object.freeze([
         "window.__ottClassicPlayback",
     ]),
+    "build/playback/journal.js": Object.freeze(["window.__ottPlaybackJournal"]),
     "build/playback/session.js": Object.freeze(["window.__ottPlaybackSession"]),
+    "build/provider/driver-profiles.js": Object.freeze([
+        "window.__ottProviderDriverProfiles",
+    ]),
+    "build/provider/drivers.js": Object.freeze(["window.__ottProviderDrivers"]),
     "build/provider/runtime.js": Object.freeze(["window.__ottProviderRuntime"]),
 });
 const fs = require("node:fs");

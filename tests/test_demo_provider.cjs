@@ -83,7 +83,7 @@ const providerUi =
 const providerLoad =
     (process.argv.includes("--bundle")
         ? declarations(providerSource, ["__spreadArray"])
-        : "") + declarations(providerSource, ["loadProv"]);
+        : "") + declarations(providerSource, ["loadProv", "syncFromWindow"]);
 
 function storage() {
     return new Map([
@@ -122,6 +122,7 @@ function uiFixture() {
         },
         edit_dealer() {},
         edit_dealer_remote() {},
+        epgCash: 0,
         getScriptDOM: (url, ready, failed) => {
             loaded.push(url);
             scriptCallbacks.push({ failed, ready });
@@ -133,11 +134,15 @@ function uiFixture() {
         listCaptionElement: {},
         listDetail: {},
         listPodval: {},
+        loadChannels() {},
         loadOpt() {},
         loadProv: (id) => loaded.push(id),
         loadSettings() {},
         location: { search: "" },
         nofun() {},
+        noProvParam() {},
+        optIndexOf: () => -1,
+        optionsArr: [],
         optionsList() {},
         parentPIN: "*",
         popupActions: [],
@@ -165,6 +170,11 @@ function uiFixture() {
     w.window = w;
     vm.createContext(w);
     require("./helpers/private-runtime.cjs")(w, "src/provider/runtime.ts");
+    require("./helpers/private-runtime.cjs")(
+        w,
+        "src/provider/driver-profiles.ts"
+    );
+    require("./helpers/private-runtime.cjs")(w, "src/provider/drivers.ts");
     vm.runInContext(providerUi, w);
     if (process.argv.includes("--bundle")) w.installEnglishPlayerAliases(w);
     else attachSourceAliases(w);
@@ -240,7 +250,8 @@ test("provider reload revokes channel readiness before its script completes", ()
 });
 
 test("an older provider script completion cannot start the current channel load", () => {
-    const { w } = menuFixture(0, 0);
+    const { w, saved } = menuFixture(0, 0);
+    saved.set("ottplayprov", "m3u");
     const scripts = [];
     let channelLoads = 0;
     let fallbackScreens = 0;
@@ -271,7 +282,12 @@ test("Try demo can recover from a failed URL-pinned provider", () => {
     w.location.search = "?m3u";
     w.firstRun();
     w.listKeyHandlerFn(w.keys.ENTER);
-    assert.equal(loaded[0], "https://player.invalid/prov/demo/prov.js?fixture");
+    assert.deepEqual(
+        loaded,
+        [],
+        "demo starts without executable provider scripts"
+    );
+    assert.equal(w.__ottActiveProviderDriver.id, "demo");
 });
 
 test("leaving demo stops the shell PiP once before retiring its active flag", () => {
@@ -334,23 +350,23 @@ test("saved demo survives restart of a URL-pinned player and can return to its p
     w.loadProv();
     assert.equal(
         loaded.length,
-        1,
-        "the reload waits for the previous script to settle"
+        0,
+        "demo reloads never request provider scripts"
     );
-    scriptCallbacks[0].ready();
     assert.equal(saved.get("ottplayprov"), "demo");
-    assert.deepEqual(loaded, [
-        "https://player.invalid/prov/demo/prov.js?fixture",
-        "https://player.invalid/prov/demo/prov.js?fixture",
-    ]);
+    assert.equal(w.__ottActiveProviderDriver.id, "demo");
     w.selectProvaider();
     w.selIndex = w.arrayProvaiders.indexOf("m3u");
     w.listKeyHandlerFn(w.keys.ENTER);
-    scriptCallbacks[1].ready();
     w.loadProv();
-    scriptCallbacks[2].ready();
+    assert.equal(
+        loaded.length,
+        1,
+        "classic reload is queued until the old script settles"
+    );
+    scriptCallbacks[0].ready();
     assert.equal(saved.get("ottplayprov"), "m3u");
-    assert.deepEqual(loaded.slice(2), [
+    assert.deepEqual(loaded, [
         "https://player.invalid/prov/m3u/prov.js?fixture",
         "https://player.invalid/prov/m3u/prov.js?fixture",
     ]);

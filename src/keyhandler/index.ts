@@ -250,7 +250,21 @@ export function keyHandler(event: KeyboardEvent): void {
 /** Toggle live, archive, or VOD using the mode-specific resume path. */
 function toggleMainPlayback(): void {
     var w = window as any;
-    if (!w.playType) {
+    var playback = w.__ottClassicPlayback;
+    var state =
+        playback && typeof playback.snapshot === "function"
+            ? playback.snapshot()
+            : null;
+    // Standalone provider/device scripts can still invoke the classic boundary.
+    var kind =
+        state && state.target
+            ? state.target.kind
+            : !w.playType
+              ? "live"
+              : w.playType < 0
+                ? "vod"
+                : "archive";
+    if (kind === "live") {
         if (typeof w.liveStop === "function") w.liveStop();
         return;
     }
@@ -259,17 +273,23 @@ function toggleMainPlayback(): void {
         w.forcePlay = false;
         if (typeof w.showShift === "function") w.showShift(_("Pause"));
         if (typeof w.showChannelInfo === "function") w.showChannelInfo(2);
+        if (playback && typeof playback.command === "function")
+            playback.command({ type: "pause" });
         if (typeof w.stbPause === "function") w.stbPause();
     } else {
         w.forcePlay = true;
         if (typeof w.showShift === "function") w.showShift(_("Play"));
         if (w.$i1 && typeof w.$i1.hide === "function") w.$i1.hide();
-        if (w.playType < 0 || w.fileArchive) {
+        if (kind === "vod" || w.fileArchive) {
+            if (playback && typeof playback.command === "function")
+                playback.command({ type: "resume" });
             if (typeof w.stbContinue === "function") w.stbContinue();
         } else if (typeof w.playArchive === "function") {
-            w.playArchive(
-                w.playType + (w.playTime || 0) - (w.s10resum ? 10 : 0)
-            );
+            var epoch =
+                state && state.target ? state.target.archiveStart : w.playType;
+            var position =
+                state && state.target ? state.position : w.playTime || 0;
+            w.playArchive(epoch + position - (w.s10resum ? 10 : 0));
         }
     }
 }

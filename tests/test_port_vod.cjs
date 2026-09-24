@@ -195,6 +195,8 @@ function fixture() {
         stbIsPlaying: () => false,
         stbPlay(url) {
             calls.push(["play", url]);
+            // This synchronous adapter fixture represents an already started backend.
+            c.__ottClassicPlayback.command({ type: "playing" });
         },
         stbSetItem: (key, value) => (stored[key] = value),
         stbSetPosTime(value) {

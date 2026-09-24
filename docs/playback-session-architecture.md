@@ -2,9 +2,10 @@
 
 The player now delegates playback history and seek decisions to the Kotlin
 shared core. The classic view consumes those decisions through an explicit
-compatibility adapter. This is an incremental architecture migration: provider
-scripts, view state and persisted version-1 records still use their existing
-contracts.
+compatibility adapter. Normal playback commands own a typed state store; a
+versioned journal owns channel history and the resume target. Thirty-five
+provider entrypoints use injected driver instances. Remaining providers and
+views retain an explicit compatibility boundary.
 
 ## Responsibilities
 
@@ -15,7 +16,15 @@ Archive origins are epoch seconds; media positions are elapsed seconds. A
 history kind filter is applied before truncation so VOD cannot consume a slot
 in a channel-only journal.
 
-`src/playback/session.ts` owns pending operations. It receives observation,
+`src/playback/session.ts` owns a state store (typed target, phase, position and
+generation) and pending operations. Live/archive/VOD open, pause, resume, stop
+and measured-position commands update the store; legacy mode fields are
+projected at the host edge. Browser event handlers bind to both the media
+request and state generation, and detach when replaced. A pending new source
+cannot borrow the previous decoder's position. Native finite-channel discovery
+reclassifies the same session without retiring its active event handlers.
+
+The operation controller receives observation,
 clock/timer and effect ports, and uses opaque core ownership tickets. A later
 selection or stop invalidates earlier callbacks even if the selected ID is
 reused. Offset seeks accumulate for 500 ms and are planned from the current
@@ -35,7 +44,7 @@ cannot write into the replacement. Resources are disposed in reverse order;
 cleanup failures do not prevent other resources from being released. Reentrant
 source selections retain the latest requested selection.
 
-The classic provider adapter scopes AJAX callbacks, jqXHR/deferred callbacks
+The remaining classic provider adapter scopes AJAX callbacks, jqXHR/deferred callbacks
 and function timers created while a provider call executes, including nested
 asynchronous work. Catalog fetches have their own reload lifetime. Subsequent
 guide, media and stream URL entrypoints retain the provider lifetime.
@@ -58,10 +67,58 @@ The following corrections are intentional:
 - A stopped or superseded operation cannot seek, pause or start an old stream.
 - Replacing the catalog or channel while reusing its ID invalidates callbacks.
 
-Version-1 bookmarks and extra history fields remain readable. The existing
-bookmark convention associates the selected channel with the outgoing playback
-mode; changing that convention requires a separately versioned persistence
-migration. License notices and repository history are retained.
+## Driver instances and release boundary
+
+`src/provider/drivers.ts` implements factories supplied with storage, transport,
+clock, hashing, shared-core and lifetime ports. The declarative inventory in
+`driver-profiles.ts` covers Demo, standalone Xtream and 33 API/M3U operator
+profiles, including the nested `d/maxtv` entrypoint. Each source owns its requests,
+configuration and catalog. Catalog snapshots are detached from driver state;
+failed reloads cannot republish streams from the previous account.
+
+Generic profiles retain their established storage prefixes, four credential
+fields, API/M3U fallback and empty-EPG capability. Standalone Xtream preserves
+its catalog, live/archive URL and short-guide operations; it did not expose a
+media catalog before migration. The view codec publishes the narrow callbacks
+that the current renderer still consumes. Managed loading never evaluates
+`prov.js` or temporarily patches global AJAX/timer functions.
+
+`provider-assets.cjs` derives the same 35 IDs from the declarative inventory.
+Vite and Play packaging omit their old executable scripts from browser, Tauri
+and Capacitor roots. UI metadata and logos remain. The original files stay in
+source control as provenance and compatibility test oracles; they are not
+runtime fallbacks for managed drivers. The 13 remaining entrypoints keep their
+explicit legacy path until equivalent drivers are implemented.
+
+## Version-2 playback journal
+
+`src/playback/journal.ts` owns the `playbackJournal` provider key. One envelope
+stores schema version, source identity, typed bookmark, channel history and
+bookmark timestamp. Entries use channel and group identities, not category
+indices or numeric playback sentinels. M3U storage scopes this key to the active
+playlist slot; the compatibility source identity also includes the slot.
+
+The importer reads version-1 `prevArr` and live/archive `continueWatch` without
+changing their original bytes. Canonical data takes precedence after the first
+successful envelope write. Unknown versions, corrupt envelopes and mismatched
+sources are read-only, with an empty safe view instead of reviving stale mirrors.
+Writes verify the resulting value. Channel hash migration updates eligible
+version-2 channel references but never VOD identities or unsupported envelopes.
+
+New semantic checkpoints record the mode actually entered, fixing the old
+mixed outgoing-mode/incoming-channel bookmark. That ambiguity in existing
+version-1 data cannot be reconstructed reliably. Existing media-library history
+is still an opaque legacy contract because provider-specific replay metadata
+must be retained. Old channel keys remain rollback mirrors while compatibility
+consumers exist.
+
+Playing-position writes are limited to one per five seconds; target/phase
+changes checkpoint immediately. Clearing or restoring storage suspends both
+canonical and compatibility saves until the next source hydration, preventing
+unload/stop callbacks from recreating erased history. Hiding a page saves the
+active archive/VOD target without relabeling it as live.
+
+License notices and repository history are retained.
 
 ## Verification
 
@@ -69,7 +126,11 @@ migration. License notices and repository history are retained.
 The provider suite also runs actual Xtream provider code with an unabortable
 late response. A canceled transport is therefore not assumed to be sufficient
 protection. New tests live in `test_playback_session.cjs`,
-`test_history_selection.cjs` and `test_provider_runtime.cjs`.
+`test_history_selection.cjs`, `test_playback_state.cjs`,
+`test_playback_journal.cjs`, `test_provider_runtime.cjs` and
+`test_provider_drivers.cjs`. Driver transport contracts are also checked against
+the captured generic operator cases; `test_provider_assets.cjs --bundle` audits
+the absence of retired scripts in all built roots.
 
 Run `npm run typecheck`, `npm run lint`, `npm run build` and
 `npm run check:bundle`. Full-bundle smoke loads only the vendored core before
@@ -78,11 +139,15 @@ history and delayed seeks on modern and legacy JavaScript profiles. This checks
 wiring and behavior with simulated host ports; it does not verify decoding on a
 physical TV. The build also validates ES5 grammar and native staging receipts.
 
-The first integrated build increases the classic bundle from 475,644 to 484,540
-bytes (gzip: 130,016 to 132,972). The explicit budget is now 490,000 bytes / 134,000
-gzip bytes. The separately loaded shared-core JavaScript grows from 1,201,145 to
-1,239,827 bytes. Both domain APIs and the temporary compatibility layer contribute
-to this cost; extracting modules alone does not reduce download size.
+The session-only iteration increased the classic bundle from 475,644 to 484,540
+bytes (gzip: 130,016 to 132,972). Adding owned playback state, the journal and
+35 drivers brings it to 514,070 bytes (140,915 gzip); the explicit budget is
+520,000 bytes / 143,000 gzip bytes. Packaging also removes 214,632 raw bytes of
+retired provider scripts from each Full asset root. That asset total is not a
+claim about transfer savings: the previous loader fetched provider scripts on
+demand. The separately loaded shared-core JavaScript remains at 1,239,827 bytes
+after the first iteration. Domain APIs and the temporary compatibility layer
+both contribute to the bundle cost.
 
 Core validation is `./gradlew jvmTest jsNodeTest`, followed by distribution and
 JavaScript-profile checks documented in the shared-core README. Install the
@@ -91,9 +156,12 @@ result through `scripts/distribute.cjs`; do not manually edit vendor artifacts.
 ## Remaining migration
 
 The new boundaries do not make the entire application independent of its
-classic contracts. Remaining work is to replace global provider scripts with
-explicit driver objects, move playback source-of-truth out of view globals,
-introduce versioned durable state, and give views/key handling a command API.
+classic contracts. Remaining work is to replace the 13 specialized provider
+scripts, migrate opaque media history and the rest of settings, and give all
+views/device adapters a command-and-snapshot API. The current renderer still
+uses classic linking and published globals. Explicit reconciliation accepts
+external writes from retained scripts; removing that input path requires their
+conversion, not just changing field names.
 
 The transitional provider scope does not intercept arbitrary raw UI closures,
 native Promise continuations, cached transport functions or global writes made

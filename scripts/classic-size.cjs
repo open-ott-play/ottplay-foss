@@ -5,9 +5,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { gzipSync } = require("node:zlib");
 
-// Explicit playback/provider ownership adds private controllers and the temporary
-// classic boundary. Keep a measured cap while the remaining classic host migrates.
-const BUDGET = Object.freeze({ bytes: 490000, gzipBytes: 134000 });
+// Typed state, journal and 35 instance drivers replace separately shipped scripts.
+// Their measured integrated bundle is ~514 kB / 141 kB gzip; retired provider
+// scripts remove another 214632 raw bytes from each packaged asset tree.
+const BUDGET = Object.freeze({ bytes: 520000, gzipBytes: 143000 });
 const ARTIFACTS = Object.freeze([
     "dist/stbPlayer.js",
     "src-tauri/frontend/dist/stbPlayer.js",
