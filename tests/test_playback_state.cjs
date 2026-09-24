@@ -89,6 +89,17 @@ function fixture() {
     sharedCore(c);
     c.api = c.__ottClassicPlayback;
     c.values = values;
+    c.openMedia = (item) => {
+        const media = c.__ottMedia.prepare(item, item.stream_url);
+        c.api.command({
+            channelId: media.ref.itemId,
+            item: media.item,
+            type: "vod",
+        });
+    };
+    c.mediaPosition = () =>
+        JSON.parse(values["mediaJournal.v1:" + c.__ottMedia.sourceId()])
+            .history[0].position;
     c.listeners = listeners;
     c.emit = (name) => [...(listeners[name] || [])].forEach((cb) => cb());
     return c;
@@ -151,8 +162,7 @@ function fixture() {
     const c = fixture();
     const item = { current: 0, stream_url: "new.mp4" };
     c.video.currentTime = 125.9;
-    c.medHistory = [item];
-    c.api.command({ channelId: item.stream_url, item, type: "vod" });
+    c.openMedia(item);
     assert.equal(c.api.snapshot().phase, "loading");
     assert.equal(c.api.snapshot().position, 0);
     c.api.select(0, -1);
@@ -161,12 +171,12 @@ function fixture() {
         0,
         "Unstarted departure does not persist previous source progress"
     );
-    assert.equal(JSON.parse(c.values.playbackJournal).bookmark.position, 0);
+    assert.equal(c.mediaPosition(), 0);
     c.api.command({ type: "playing" });
     c.api.select(0, -1);
     assert.equal(
-        item.current,
-        125,
+        c.mediaPosition(),
+        125.9,
         "A started backend supplies departure progress"
     );
 }
@@ -243,7 +253,7 @@ function fixture() {
     include(c, "src/ui/index.ts", ["initBackgroundIntervals", "_t2"]);
     const timers = [];
     c.setInterval = (cb) => timers.push(cb);
-    c.api.command({ channelId: "pending.mp4", type: "vod" });
+    c.openMedia({ stream_url: "pending.mp4", title: "Pending" });
     c.video.currentTime = 220;
     c.video.readyState = 4;
     c.video.paused = false;
@@ -251,7 +261,7 @@ function fixture() {
     timers[0]();
     assert.equal(c.api.snapshot().phase, "loading");
     assert.equal(c.api.snapshot().position, 0);
-    assert.equal(JSON.parse(c.values.playbackJournal).bookmark.position, 0);
+    assert.equal(c.mediaPosition(), 0);
 }
 
 // Seeking inside one archive file rebinds the retained backend without mixing its file offset with archive time.
@@ -340,7 +350,7 @@ function fixture() {
         "clearCorePlaybackStateEvents",
         "bindCorePlaybackStateEvents",
     ]);
-    c.api.command({ channelId: "progress.mp4", type: "vod" });
+    c.openMedia({ stream_url: "progress.mp4", title: "Progress" });
     c.bindCorePlaybackStateEvents(c.video, c._playSession);
     c.video.paused = false;
     c.video.readyState = 2;
@@ -349,7 +359,7 @@ function fixture() {
     c.video.currentTime = 37;
     assert.equal(c.api.snapshot().position, 37);
     c.emit("timeupdate");
-    assert.equal(JSON.parse(c.values.playbackJournal).bookmark.position, 37);
+    assert.equal(c.mediaPosition(), 37);
 }
 
 // Playlist identity is slot-scoped; private URLs/config fingerprints do not enter domain IDs.
@@ -376,6 +386,22 @@ for (const mutate of [
     mutate(c);
     callback();
     assert.equal(effects, 0);
+}
+for (const vod of [false, true]) {
+    const c = fixture();
+    c.p_pref = "m3u";
+    if (vod) c.openMedia({ id: 41, stream_url: "movie.mp4", title: "Film" });
+    else c.api.command({ channelId: 101, type: "live" });
+    let effects = 0;
+    const callback = c.api.guard(() => effects++);
+    c.m3uArr.M3Us[0].medSourceId = "replacement";
+    c.medSourceId = "replacement";
+    callback();
+    assert.equal(
+        effects,
+        vod ? 0 : 1,
+        "Media-only source change affects VOD ownership but preserves TV"
+    );
 }
 {
     const c = fixture();
@@ -413,12 +439,14 @@ for (const kind of ["archive", "vod"]) {
     include(c, "src/index.ts", ["body_onUnload"]);
     include(c, "src/channels/index.ts", ["setCurrent"]);
     const item = { stream_url: "movie.mp4" };
-    c.medHistory = kind === "vod" ? [item] : [];
-    c.api.command(
-        kind === "archive"
-            ? { archiveStart: 1700000000, channelId: 101, type: kind }
-            : { channelId: item.stream_url, item, type: kind }
-    );
+
+    if (kind === "vod") c.openMedia(item);
+    else
+        c.api.command(
+            kind === "archive"
+                ? { archiveStart: 1700000000, channelId: 101, type: kind }
+                : { channelId: item.stream_url, item, type: kind }
+        );
     c.api.command({ type: "playing" });
     c.video.currentTime = 30;
     c.api.command({ position: 30, type: "position" });
@@ -431,13 +459,16 @@ for (const kind of ["archive", "vod"]) {
         "Backgrounding does not insert the current channel into previous history"
     );
     assert.equal(
-        JSON.parse(c.values.playbackJournal).bookmark.position,
+        kind === "vod"
+            ? c.mediaPosition()
+            : JSON.parse(c.values.playbackJournal).bookmark.position,
         30,
         "Visibility forces the last position despite the periodic throttle"
     );
     assert.equal(c.api.snapshot().target.kind, kind);
     assert.equal(c.api.snapshot().position, 30);
-    assert.equal(JSON.parse(c.values.playbackJournal).bookmark.kind, kind);
+    if (kind === "archive")
+        assert.equal(JSON.parse(c.values.playbackJournal).bookmark.kind, kind);
     c.api.suspendPersistence();
     for (const key of Object.keys(c.values)) delete c.values[key];
     c.body_onUnload();

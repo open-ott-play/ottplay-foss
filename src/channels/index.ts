@@ -2745,92 +2745,23 @@ export function catRecordsList(catIdx: number): void {
 declare function showMediaList1(): void;
 
 /** Keep the last accepted view separate from globals mutated by provider callbacks. */
-export function rememberMediaView(pending = false): void {
-    var w = window as any;
-    var state: MediaLoadState = {
-        name: w.mediaName || "",
-        pending: pending,
-        provider: w.getMediaArray,
-        records: w.mediaRecords || [],
-        urls: w.mediaUrls,
-    };
-    w._mediaLoadState = state;
-}
+export function rememberMediaView(_pending = false): void {}
 
 /** Closing/reloading while fetching must not reopen a departed VOD view. */
 export function cancelMediaLoad(): void {
     var w = window as any;
-    if (w.providerMediaClient) w.providerMediaClient.cancel();
-    var state: MediaLoadState | undefined = w._mediaLoadState;
-    if (state && state.pending) {
-        w.mediaUrls = null;
-        w.mediaNames = [];
-        w.mediaSelects = [];
-        w.mediaRecords = [];
-        w.mediaRecordsPar = null;
-        w.mediaName = "";
-    }
-    rememberMediaView();
+    if (w.__ottMedia) w.__ottMedia.cancel();
+    else if (w.providerMediaClient) w.providerMediaClient.cancel();
 }
 
 /** Providers write mediaRecords/mediaName before their no-argument completion callback. */
 export function requestMediaList(target: MediaTarget): void {
-    var w = window as any;
-    var provider = w.getMediaArray;
-    if (typeof provider !== "function") return;
-    rememberMediaView(true);
-    var request: MediaLoadState = w._mediaLoadState;
-    var complete: MediaListCompletion = function () {
-        var current: MediaLoadState | undefined = w._mediaLoadState;
-        if (
-            current !== request ||
-            request.urls !== w.mediaUrls ||
-            request.provider !== w.getMediaArray
-        ) {
-            // A late response has already overwritten these legacy globals.
-            // Restore the current accepted/loading view without rendering it again.
-            if (
-                current &&
-                current.urls === w.mediaUrls &&
-                current.provider === w.getMediaArray
-            ) {
-                w.mediaRecords = current.records;
-                w.mediaName = current.name;
-            } else w.mediaRecords = [];
-            return;
-        }
-        request.pending = false;
-        showMediaList();
-    };
-    complete.isCurrent = function () {
-        return (
-            w._mediaLoadState === request &&
-            request.urls === w.mediaUrls &&
-            request.provider === w.getMediaArray
-        );
-    };
-    provider(target, complete);
+    (window as any).__ottMedia.open(target);
 }
 
 /** Return to the parent VOD folder, retaining its selected row. */
 function mediaBack(): void {
-    var w = window as any;
-    var urls: MediaTarget[] = w.mediaUrls || [];
-    if (w.mediaRecordsPar !== null) {
-        w.mediaRecords = w.mediaRecordsPar;
-        w.mediaRecordsPar = null;
-        showMediaList1();
-        return;
-    }
-    if (urls.length <= 1) {
-        if (typeof w.popupList === "function") w.popupList(w.popMedia);
-        return;
-    }
-    w.mediaSelects.shift();
-    urls.pop();
-    w.mediaNames.pop();
-    w.mediaName = w.mediaNames.pop() || "";
-    w.mediaList(urls.pop());
+    (window as any).__ottMedia.back();
 }
 
 /** Route remote buttons within VOD, including parent-folder navigation. */
@@ -2891,7 +2822,11 @@ export function mediaKeyHandler(keyCode: number): boolean {
         case keys.N8:
         case keys.TOOLS:
         case keys.GREEN:
-            if (w.sFavorites !== -1 && (w.mediaUrls || []).length > 1 && item)
+            if (
+                w.sFavorites !== -1 &&
+                w.__ottMedia.snapshot().frames.length > 1 &&
+                item
+            )
                 addToMedFavorites(item);
             return true;
         case keys.YELLOW:
@@ -2909,74 +2844,18 @@ export function mediaKeyHandler(keyCode: number): boolean {
 
 /** Add the selected movie/folder, or delete it while viewing favorites. */
 export function addToMedFavorites(item: MediaHistoryEntry): void {
-    var w = window as any;
-    if (w.sFavorites === -1) return;
-    var urls: MediaTarget[] = w.mediaUrls || [];
-    if (urls[urls.length - 1] === -2) {
-        medFavorites.splice(w.selIndex, 1);
-        w.selIndex = Math.max(0, Math.min(w.selIndex, medFavorites.length - 1));
-        w.mediaSelects[0] = w.selIndex;
-        showMediaList1();
-    } else {
-        medFavorites.push(item);
-        if (typeof w.showShift === "function")
-            w.showShift(
-                (item.title || item.name || "") + w._(" added to favorites")
-            );
-    }
-    providerSetItem("medFavorites", JSON.stringify(medFavorites));
+    (window as any).__ottMedia.favorite(item);
 }
 
 /** Select a media entry using the provider's VOD hierarchy and PIN contract. */
 export function selectMedia(index?: number): void {
     var w = window as any;
-    var selected = index === undefined ? w.selIndex : index;
-    var selectedList: MediaHistoryEntry[] = w.listArray;
-    var item: MediaHistoryEntry | undefined = selectedList[selected];
-    if (!item) return;
-    if (
-        Number(item.adult) === 1 &&
-        w.sPSchannels &&
-        w.parentPIN !== "*" &&
-        !w.parentAccess
-    ) {
-        w.enterPinAndSetAccess(function () {
-            if (w.listArray !== selectedList || selectedList[selected] !== item)
-                return;
-            selectMedia(selected);
-        });
-        return;
-    }
-    if (w.mediaRecordsPar === null) w.mediaSelects[0] = selected;
-    if (item.playlist_url) {
-        if (item.search_on) searchMedia(item);
-        else {
-            w.mediaName = item.title || item.name || "";
-            w.mediaSelects.unshift(0);
-            w.mediaList(item.playlist_url);
-        }
-    } else if (item.stream_url) {
-        w.closeList();
-        w.playMedia(item);
-    } else if (typeof w.infoMedia === "function") w.infoMedia();
+    w.__ottMedia.select(index === undefined ? w.selIndex : index);
 }
 
 /** Provider completion callback: render populated mediaRecords without refetching. */
 export function showMediaList(): void {
-    var w = window as any;
-    var records: MediaHistoryEntry[] = w.mediaRecords || [];
-    if ((w.mediaSelects || []).length === 1 && w.sFavorites !== -1) {
-        records.push({ playlist_url: "", title: "" });
-        if (w.sMedCount)
-            records.push({
-                playlist_url: -1,
-                title: w._("History of watched movies"),
-            });
-        records.push({ playlist_url: -2, title: w._("Favorites") });
-    }
-    w.mediaRecords = records;
-    w.mediaNames.push(w.mediaName || "");
-    showMediaList1();
+    (window as any).__ottMedia.show();
 }
 
 /** Descriptions may be lazy functions in legacy provider records. */
@@ -4250,34 +4129,28 @@ export function searchMedia(e: MediaHistoryEntry): void {
     if (typeof e.playlist_url !== "string") return;
     var target = e.playlist_url;
     var sourceList = w.listArray;
-    var sourceUrls = w.mediaUrls;
-    var sourceProvider = w.getMediaArray;
+    var admitted = w.__ottMedia.capture();
     w.editCaption = w._("String for search");
     var t =
         (typeof w.stbGetItem === "function" ? w.stbGetItem("medSearch") : "") ||
         "";
     w.editvar = t;
     w.setEdit = function (): void {
-        if (
-            w.listArray !== sourceList ||
-            w.mediaUrls !== sourceUrls ||
-            w.getMediaArray !== sourceProvider
-        )
-            return;
+        if (w.listArray !== sourceList || !admitted()) return;
         var inputEl = document.getElementById("editvar");
         var inputVal = (inputEl && (inputEl as HTMLInputElement).value) || "";
         var submitted = window.editvar || "";
         if (!inputVal && !submitted) return;
         t = inputVal || submitted;
         if (typeof w.stbSetItem === "function") w.stbSetItem("medSearch", t);
-        w.mediaName = e.title;
-        w.mediaSelects.unshift(0);
+
         if (typeof w.mediaList === "function") {
-            w.mediaList(
+            w.__ottMedia.open(
                 target +
                     (target.indexOf("?") === -1 ? "?" : "&") +
                     "search=" +
-                    encodeURIComponent(t)
+                    encodeURIComponent(t),
+                e.title
             );
         }
     };

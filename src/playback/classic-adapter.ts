@@ -65,15 +65,16 @@ function classicPlaybackDecode(
     if (!isFinite(mode)) mode = 0;
     var id = classicPlaybackChannel(w, w.catIndex, w.primaryIndex);
     if (mode < 0 && (!selection || mode === -1e11)) {
-        var media = mode === -1e11 ? (w.medHistory || [])[0] : null;
+        var owned = mode === -1e11 && w.__ottMedia && w.__ottMedia.current();
+        var media = owned ? owned.payload : null;
         return {
             channelId: String(
-                (media && media.stream_url) ||
+                (owned && owned.ref.itemId) ||
                     (classicPlaybackIdentity(id) ? "channel:" + id : "media")
             ),
             kind: "vod",
             payload: media,
-            sourceId: classicPlaybackSource(w),
+            sourceId: owned ? owned.ref.sourceId : classicPlaybackSource(w),
         };
     }
     if (!classicPlaybackIdentity(id)) return null;
@@ -109,7 +110,7 @@ function classicPlaybackProjectionValue(w: any): any {
         catalog: w.channels,
         channel: classicPlaybackChannel(w, w.catIndex, w.primaryIndex),
         configuration: classicPlaybackSourceConfiguration(w),
-        media: (w.medHistory || [])[0],
+        media: w.__ottMedia && w.__ottMedia.current(),
         mode: w.playType,
         source: classicPlaybackSource(w),
     };
@@ -237,7 +238,10 @@ function classicPlaybackCommand(command: any): void {
                                   : w._prog100 && w._prog100.name,
                           i: w.primaryIndex,
                       },
-            sourceId: classicPlaybackSource(w),
+            sourceId:
+                type === "vod" && w.__ottMedia
+                    ? command.sourceId || w.__ottMedia.sourceId()
+                    : classicPlaybackSource(w),
         };
         var target: PlaybackVisit =
             type === "finite-channel"
@@ -313,7 +317,7 @@ function classicPlaybackObservation(): PlaybackObservation {
     var prefix = w.p_pref;
     var source = classicPlaybackSource(w);
     var configuration = classicPlaybackSourceConfiguration(w);
-    var media = (w.medHistory || [])[0];
+    var media = w.__ottMedia && w.__ottMedia.current();
     var retention = Number(channel && channel.rec) || 0;
     var now = Date.now() / 1000;
     return {
@@ -338,7 +342,7 @@ function classicPlaybackObservation(): PlaybackObservation {
                     classicPlaybackSourceConfiguration(w)
                 ) &&
                 snapshot.generation === classicPlaybackSnapshot().generation &&
-                (w.playType !== -1e11 || media === (w.medHistory || [])[0])
+                media === (w.__ottMedia && w.__ottMedia.current())
             );
         },
         now: now,
@@ -467,17 +471,20 @@ function classicPlaybackSelect(
         return record;
     });
     result.effects.forEach(function (effect: any): void {
-        // Other negative classic modes are platform-owned files, not medHistory.
         if (
             effect.type !== "save-position" ||
             classicPersistenceSuspended ||
-            w.playType !== -1e11 ||
-            !(w.medHistory || []).length
+            !w.__ottMedia
         )
             return;
-        w.medHistory[0].current = Math.max(0, Math.floor(effect.position) || 0);
-        if (w.sFavorites !== -1)
-            w.providerSetItem("medHistory", JSON.stringify(w.medHistory));
+        w.__ottMedia.checkpoint(
+            {
+                itemId: effect.target.channelId,
+                sourceId: effect.target.sourceId,
+            },
+            effect.position,
+            true
+        );
     });
     // A departure-only call does not change the classic selection or bookmark.
     if (index === -1) return;
@@ -694,6 +701,19 @@ function classicPlaybackBookmark(): any {
 function classicPlaybackCheckpoint(snapshot: any, force = false): void {
     var w = classicPlaybackHost();
     var target = snapshot && (snapshot.historyTarget || snapshot.target);
+    if (
+        target &&
+        target.kind === "vod" &&
+        !classicPersistenceSuspended &&
+        w.__ottMedia
+    ) {
+        w.__ottMedia.checkpoint(
+            { itemId: target.channelId, sourceId: target.sourceId },
+            snapshot.position,
+            force || snapshot.phase !== "playing"
+        );
+        return;
+    }
     if (!target || target.sourceId !== classicPlaybackSource(w)) return;
     var journal = classicPlaybackJournal();
     if (!journal) return;
@@ -765,6 +785,9 @@ function classicPlaybackCheckpoint(snapshot: any, force = false): void {
         );
     },
     snapshot: classicPlaybackSnapshot,
+    sourceId: function (): string {
+        return classicPlaybackSource(classicPlaybackHost());
+    },
     suspendPersistence: function (): void {
         classicPersistenceSuspended = true;
         classicCheckpointSignature = "";

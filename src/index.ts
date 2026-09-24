@@ -2373,55 +2373,30 @@ function _playChannel(catIdx: number, chIdx: number): void {
     (window as any)._tmedia = setTimeout(checkMedia, 2000);
 }
 
-/**
- * Internal implementation of playMedia. Starts playback of a media library
- * item: updates history, resets info bar elements, sets playType to a
- * sentinel value (-1e11), and calls stbPlay() with the item's stream URL.
- * If the item has a resume position, shows a "Continue watching?" confirmation.
- *
- * @param item - Media item object with properties: stream_url, title,
- *               logo_30x30, etc.
- *
- * Side effects: Mutates medHistory (unshift, splice), writes to DOM
- * (#picon, #channel_name, #nprogramm_name, #nbegin_time, #nend_time,
- * #programm_name, #progress_div, #progress_r, #progress, #begin_time,
- * #end_time, #programm_name2, #programm_duration, #programm_descr).
- * Calls stbStop(), stbPlay(), showChannelInfo().
- *
- * Edge case: If stream_url is a function, calls it to get the URL.
- * If mediaUrls last element is -1, resets mediaSelects[0] to 0.
- */
+/** Start a resolved MediaRef and render its metadata. The owned media journal chooses resume. */
 function _playMedia(item: MediaHistoryEntry): void {
+    if (!item) return;
+    var reference = (item as any).__ottMediaRef;
+    if (
+        reference &&
+        reference.sourceId !== (window as any).__ottMedia.sourceId()
+    )
+        return;
     if ((window as any).providerMediaClient)
         (window as any).providerMediaClient.cancel();
-    if (!item) return;
     var streamUrl =
         typeof item.stream_url === "function"
             ? item.stream_url()
             : item.stream_url;
     if (typeof streamUrl !== "string" || !streamUrl) return;
-    item.stream_url = streamUrl;
     // A delayed live-channel probe must not relabel the newly selected VOD item.
     clearTimeout((window as any)._tmedia);
     clearTimeout(mediaCheckTimer);
-    if (mediaUrls && mediaUrls[mediaUrls.length - 1] === -1)
-        mediaSelects[0] = 0;
     setCurrent(catIndex, -1);
-    var history = (window as any).OttPlayCore.classicHistorySelection(
-        medHistory,
-        item,
-        streamUrl,
-        (window as any).playType,
-        settings.medCount
-    );
-    if (history.skip) return;
-    var resumePos = history.resume;
-    if (history.index !== -1) medHistory.splice(history.index, 1);
-    medHistory.unshift(item);
-    medHistory.splice(history.limit);
-    // Persist the newly selected item too, so history survives an interrupted session.
-    if ((window as any).sFavorites !== -1)
-        providerSetItem("medHistory", JSON.stringify(medHistory));
+    var media = (window as any).__ottMedia.prepare(item, streamUrl);
+    if (!media) return;
+    item = media.item;
+    var resumePos = media.resume;
     $("#picon").css(
         "background-image",
         'url("' + metadataCssUrl(item.logo_30x30) + '")'
@@ -2448,23 +2423,24 @@ function _playMedia(item: MediaHistoryEntry): void {
         typeof (window as any).__ottClassicPlayback.command === "function"
     )
         (window as any).__ottClassicPlayback.command({
-            channelId: streamUrl,
+            channelId: media.ref.itemId,
             item: item,
+            sourceId: media.ref.sourceId,
             type: "vod",
         });
-    else {
-        (window as any).playTime = 0;
-        (window as any).playType = -1e11;
-    }
     stbPlay(streamUrl);
     if (resumePos)
         confirmBox(
             _("Continue watching?") + "<br><br>" + formatSeekOffset(resumePos),
             function () {
+                var state = (window as any).__ottClassicPlayback.snapshot();
                 if (
-                    (window as any).playType === -1e11 &&
-                    medHistory[0] === item &&
-                    item.stream_url === streamUrl
+                    media.valid() &&
+                    state.phase !== "stopped" &&
+                    state.target &&
+                    state.target.kind === "vod" &&
+                    state.target.sourceId === media.ref.sourceId &&
+                    state.target.channelId === media.ref.itemId
                 )
                     stbSetPosTime(resumePos);
             }
