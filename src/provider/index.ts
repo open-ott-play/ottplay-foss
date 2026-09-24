@@ -1,3 +1,4 @@
+import { loadProviderSettings } from "../settings";
 import { metadataCssUrl, metadataHtml, metadataText } from "../utils/helpers";
 /**
  * Provider management — load, parse, and manage IPTV service providers.
@@ -1267,66 +1268,11 @@ export function loadChannels(): void {
     aAudios = providerGetJson("aAudios", {});
     aZooms = providerGetJson("aZooms", {});
     aSubs = providerGetJson("aSubs", {});
-    sShowNum = providerGetNum("sShowNum", 1);
-    sShowName = providerGetNum("sShowName", 1);
-    sShowPikon = providerGetNum("sShowPikon", 1);
-    sShowProgress = providerGetNum("sShowProgress", 1);
-    sShowProgram = providerGetNum("sShowProgram", 1);
-    sShowDescr = providerGetNum("sShowDescr", 1);
-    // Default 1 matches loadSettings/channels; Channel list settings save via
-    // providerSetItem (prefixed), while loadSettings reads unprefixed keys.
-    sShowArchive = providerGetNum("sShowArchive", 1);
-    sPreview = providerGetNum("sPreview", 0);
-    // Channel-list sShow* live in provider-prefixed storage. Boot
-    // applySettingsToWindow used unprefixed loadSettings defaults, so
-    // listFlag(window→let) ignored toggles. Sync window + typed settings.
-    var wShow = window as any;
-    wShow.sShowNum = sShowNum;
-    wShow.sShowName = sShowName;
-    wShow.sShowPikon = sShowPikon;
-    wShow.sShowProgress = sShowProgress;
-    wShow.sShowProgram = sShowProgram;
-    wShow.sShowDescr = sShowDescr;
-    wShow.sShowArchive = sShowArchive;
-    wShow.sPreview = sPreview;
-    if (wShow.settings) {
-        wShow.settings.showNumber = sShowNum;
-        wShow.settings.showName = sShowName;
-        wShow.settings.channelLogoMode = sShowPikon;
-        wShow.settings.showProgress = sShowProgress;
-        wShow.settings.showProgram = sShowProgram;
-        wShow.settings.showDescription = sShowDescr;
-        wShow.settings.showArchive = sShowArchive;
-        wShow.settings.preview = sPreview;
-    }
-    // Mirror into unprefixed stb keys so boot loadSettings does not resurrect
-    // defaults over provider-scoped Channel list settings.
-    try {
-        if (typeof wShow.stbSetItem === "function") {
-            wShow.stbSetItem("sShowNum", String(sShowNum));
-            wShow.stbSetItem("sShowName", String(sShowName));
-            wShow.stbSetItem("sShowPikon", String(sShowPikon));
-            wShow.stbSetItem("sShowProgress", String(sShowProgress));
-            wShow.stbSetItem("sShowProgram", String(sShowProgram));
-            wShow.stbSetItem("sShowDescr", String(sShowDescr));
-            wShow.stbSetItem("sShowArchive", String(sShowArchive));
-            wShow.stbSetItem("sPreview", String(sPreview));
-        }
-    } catch (_mir) {}
-    // Load provider preferences; webOS chooses its engine automatically while
-    // other platforms retain their supported manual choices.
-    sPlayers = providerGetNum("sPlayers", getDefaultPlayerMode());
-    // Imported Auto must select a playable engine, including browsers without
-    // native HLS support, as well as an available menu item on STBs.
-    // Keep stored preferences intact when normalizing for another platform.
-    sPlayers = normalizePlayerMode(sPlayers);
-    wShow.sPlayers = sPlayers;
-    if (wShow.settings) wShow.settings.players = sPlayers;
-    console.log("[loadChannels] sPlayers from storage=" + sPlayers);
-    setPlayerMode(sPlayers);
-    sNextCount = providerGetNum("sNextCount", 0);
-    sNextCountL = sNextCount + 1;
-    if (sNextCount === -1) sNextCount = 0;
+    loadProviderSettings(getDefaultPlayerMode());
+    (window as any).settings.players = normalizePlayerMode(
+        (window as any).settings.players
+    );
+    setPlayerMode((window as any).settings.players);
     if (typeof setPlayer === "function") setPlayer();
 
     $(launch_id).append("<br/>Loading channel list...");

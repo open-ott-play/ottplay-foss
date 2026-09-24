@@ -1,3 +1,4 @@
+const { settingsSource } = require("./helpers/settings-source-fixture.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -96,6 +97,9 @@ function fixture(initial = []) {
     w.eval(compatibilitySource);
     w.eval(fs.readFileSync(path.join(root, "js/jquery-1.11.1.min.js"), "utf8"));
     const storage = {
+        del(name) {
+            stored.delete(name);
+        },
         get: (name) => stored.get(name) ?? null,
         getI(name, fallback) {
             const value = Number.parseInt(stored.get(name), 10);
@@ -132,15 +136,7 @@ function fixture(initial = []) {
         storage,
         ui_state: {},
     });
-    w.eval(
-        functions("src/settings/index.ts", [
-            "defaultLeftArrowAction",
-            "defaultSettings",
-            "normalizeSeekDuration",
-            "loadSettings",
-        ])
-    );
-    w.settings = w.defaultSettings();
+    w.eval(settingsSource());
     w.eval(
         functions("src/utils/helpers.ts", [
             "metadataText",
@@ -159,10 +155,7 @@ function fixture(initial = []) {
             "editKey2",
         ])
     );
-    w.eval(
-        functions("src/settings/transfer-ui.ts", ["editSettingsText"]) +
-            functions("src/index.ts", ["applySettingsToWindow"])
-    );
+    w.eval(functions("src/settings/transfer-ui.ts", ["editSettingsText"]));
     w.eval(controllerSource);
     w.XMLHttpRequest = class {
         constructor() {

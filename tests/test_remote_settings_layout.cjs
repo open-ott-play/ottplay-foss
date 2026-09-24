@@ -1,3 +1,4 @@
+const { settingsSource } = require("./helpers/settings-source-fixture.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -46,11 +47,6 @@ Object.assign(w, {
     listCaptionElement: w.document.getElementById("listCaption"),
     listDetailElement: w.document.getElementById("listDetail"),
     listFooterElement: w.document.getElementById("listPodval"),
-    saveSettings(settings) {
-        stored.set("bulkLocal", settings.localCmdUrl);
-        stored.set("bulkSwop", settings.swopBaseUrl);
-    },
-    settings: { localCmdUrl: "", rFun: 4, swopBaseUrl: "" },
     sLocalCmdUrl:
         "https://example.invalid/" +
         "long".repeat(100) +
@@ -59,6 +55,18 @@ Object.assign(w, {
     stbSetItem: (key, value) => stored.set(key, value),
     ui_state: {},
 });
+const initialSettings = {
+    sLocalCmdUrl: w.sLocalCmdUrl,
+    sSwopBaseUrl: w.sSwopBaseUrl,
+};
+w.storage = {
+    del: (key) => stored.delete(key),
+    get: (key) => stored.get(key) ?? null,
+    set: (key, value) => stored.set(key, String(value)),
+    setI: (key, value) => stored.set(key, String(value)),
+};
+w.eval(settingsSource());
+Object.assign(w, initialSettings);
 w.eval(
     extract("src/utils/helpers.ts", [
         "metadataText",
@@ -176,8 +184,8 @@ controls = w.listFooterElement.querySelectorAll("span[onclick]");
 controls[2].click();
 submit(" https://example.invalid/new-swop/// ");
 assert.equal(w.sSwopBaseUrl, "https://example.invalid/new-swop");
-assert.equal(stored.get("bulkLocal"), w.sLocalCmdUrl);
-assert.equal(stored.get("bulkSwop"), w.sSwopBaseUrl);
+assert.equal(stored.get("sLocalCmdUrl"), w.sLocalCmdUrl);
+assert.equal(stored.get("sSwopBaseUrl"), w.sSwopBaseUrl);
 w.listFooterElement.querySelectorAll("span[onclick]")[1].click();
 assert.equal(
     editor().value,
@@ -464,7 +472,7 @@ assert.deepEqual(
 w.importSettingsUI();
 submit(envelope);
 confirmation.yes();
-assert.equal(stored.get("bulkLocal"), "http://lan/?literal=&amp;<text>");
+assert.equal(stored.get("sLocalCmdUrl"), "http://lan/?literal=&amp;<text>");
 assert.equal(stored.get("parentalArray"), "[2]");
 assert.equal(stored.get("favoritesArray"), "[3]");
 assert.equal(successes, 1);
