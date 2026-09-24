@@ -115,6 +115,7 @@ interface PortChannelIdMigration {
 /** Observe only hashes computed while this provider's channel list is loading. */
 export function beginPortChannelIdMigration(): PortChannelIdMigration {
     var w = window as any;
+    delete w.__ottLegacyChannelAliases;
     var state: PortChannelIdMigration = {
         get: w.providerGetItem,
         ids: {},
@@ -135,6 +136,7 @@ export function beginPortChannelIdMigration(): PortChannelIdMigration {
 /** Stop observing a departed provider, leaving its persisted data untouched. */
 export function cancelPortChannelIdMigration(): void {
     delete (window as any).__ottRecordPortHash;
+    delete (window as any).__ottLegacyChannelAliases;
 }
 
 /** Incremental migration: unknown IDs, existing channel IDs and ambiguous mappings stay intact. */
@@ -151,6 +153,28 @@ export function finishPortChannelIdMigration(
         typeof state.set !== "function"
     )
         return;
+    // Versioned importers consume original records and the observed hash chain.
+    // Keep this metadata readable only while the collecting source still owns it.
+    var aliases: Record<string, number | null> = Object.create(null);
+    Object.keys(state.ids).forEach(function (key) {
+        aliases[key] = state.ids[key];
+    });
+    var identity = function () {
+        return w.__ottSourceIdentity
+            ? w.__ottSourceIdentity.current(w)
+            : String(w.p_pref || "");
+    };
+    var aliasSource = identity();
+    Object.defineProperty(w, "__ottLegacyChannelAliases", {
+        configurable: true,
+        get: function () {
+            return w.providerGetItem === state.get &&
+                w.providerSetItem === state.set &&
+                aliasSource === identity()
+                ? aliases
+                : undefined;
+        },
+    });
     function owns(object: object, key: string): boolean {
         return Object.prototype.hasOwnProperty.call(object, key);
     }
@@ -182,8 +206,6 @@ export function finishPortChannelIdMigration(
         }
     }
     var keys = [
-        "favoritesArray",
-        "favoritesLists",
         "cats",
         "parentalArray",
         "prevArr",
@@ -201,8 +223,7 @@ export function finishPortChannelIdMigration(
             if (!raw) return;
             var value = JSON.parse(raw);
             var before = JSON.stringify(value);
-            if (key === "favoritesArray" || key === "parentalArray")
-                migrateArray(value);
+            if (key === "parentalArray") migrateArray(value);
             else if (key === "prevArr" || key === "epgTimers") {
                 if (Array.isArray(value))
                     value.forEach(function (entry) {
@@ -225,8 +246,8 @@ export function finishPortChannelIdMigration(
                                 migrateField(entry, "channelId");
                         });
                 }
-            } else if (key === "cats" || key === "favoritesLists") {
-                var lists = key === "cats" ? value : value && value.lists;
+            } else if (key === "cats") {
+                var lists = value;
                 if (lists && typeof lists === "object" && !Array.isArray(lists))
                     Object.keys(lists).forEach(function (name) {
                         migrateArray(lists[name]);
