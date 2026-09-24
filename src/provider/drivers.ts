@@ -612,7 +612,11 @@ function createOperatorDriver(
                             config.m3u = xtream.fallbackPlaylist(false);
                             playlist(config.m3u);
                         } else {
-                            catalog = xtream.legacyCatalog(ports.hash);
+                            catalog = ports.channelCatalog!(
+                                xtream.channelCatalog(),
+                                ports.hash,
+                                "xtream"
+                            );
                             complete();
                         }
                     },
@@ -623,10 +627,9 @@ function createOperatorDriver(
                 );
                 return;
             }
-            var session = new ports.core.OperatorClient(
+            var session = new ports.core.OperatorChannelClient(
                 config,
-                encodeURIComponent,
-                ports.hash
+                encodeURIComponent
             );
             transport.send(
                 scope,
@@ -640,11 +643,19 @@ function createOperatorDriver(
                     try {
                         session.accept(response);
                     } catch (error) {
-                        catalog = session.catalog();
+                        catalog = ports.channelCatalog!(
+                            session.channelCatalog(),
+                            ports.hash,
+                            "xtream"
+                        );
                         complete(undefined, true);
                         throw error;
                     }
-                    catalog = session.catalog();
+                    catalog = ports.channelCatalog!(
+                        session.channelCatalog(),
+                        ports.hash,
+                        "xtream"
+                    );
                     if (session.action() === "PLAYLIST") {
                         config.m3u = session.request();
                         playlist(config.m3u);
