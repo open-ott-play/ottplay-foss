@@ -687,10 +687,21 @@ for (const oldDocument of ["mirrors", "unscoped", "scoped"]) {
     });
     c.channels[50] = { itemId: "station:new", legacyChannelId: 21 };
     c.cats.News.push(50);
+    let referenceIndexes = 0;
+    const createReferences = c.__ottChannelReferences.create;
+    c.__ottChannelReferences.create = (...args) => {
+        referenceIndexes++;
+        return createReferences(...args);
+    };
     assert.equal(
         c.api.bookmark().channelId,
         21,
         "Scoped canonical records ignore old aliases"
+    );
+    assert.equal(
+        referenceIndexes,
+        0,
+        "Canonical checkpoints do not scan the channel catalog"
     );
 }
 console.log(

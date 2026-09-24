@@ -73,7 +73,7 @@ test("built driver, media session and journal stay connected through playback", 
     expect(providerScripts).toEqual([]);
 
     // Use the actual user-facing media command. The provider supplies the URL,
-    // while the engine's events must drive typed state and its canonical journal.
+    // while engine events drive typed state and the source-scoped media journal.
     await page.evaluate(() => {
         window.playMedia({
             stream_url:
@@ -100,14 +100,22 @@ test("built driver, media session and journal stay connected through playback", 
         window.dispatchEvent(new Event("beforeunload"));
     });
     const paused = await page.evaluate(() => ({
-        bookmark: JSON.parse(window.providerGetItem("playbackJournal"))
+        channelBookmark: JSON.parse(window.providerGetItem("playbackJournal"))
             .bookmark,
+        media: JSON.parse(
+            window.providerGetItem(
+                "mediaJournal.v1:" + window.__ottMedia.sourceId()
+            )
+        ).history[0],
         phase: window.__ottClassicPlayback.snapshot().phase,
         position: document.querySelector("video").currentTime,
+        ref: window.__ottMedia.current().ref,
     }));
-    expect(paused.bookmark.kind).toBe("vod");
-    expect(paused.bookmark.channelId).toContain("/demo/pattern.m3u8");
-    expect(paused.bookmark.position).toBeCloseTo(0.5, 1);
+    expect(paused.channelBookmark.kind).toBe("live");
+    expect(paused.media.itemId).toBe(paused.ref.itemId);
+    expect(paused.media.sourceId).toBe(paused.ref.sourceId);
+    expect(paused.media.payload.title).toBe("Local browser fixture");
+    expect(paused.media.position).toBeCloseTo(0.5, 1);
     expect(paused.position).toBeCloseTo(0.5, 1);
     expect(paused.phase).toBe("paused");
     await page.evaluate(() => window.stbContinue());
