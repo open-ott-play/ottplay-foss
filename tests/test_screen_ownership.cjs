@@ -134,6 +134,7 @@ function fixture() {
     );
     w.eval(
         functions("src/ui/index.ts", [
+            "_changeEdit",
             "escapeHtml",
             "infoBox",
             "confirmBox",
@@ -535,6 +536,35 @@ test("nested about screens resume the saved owner and isolate suspended input", 
     assert.equal(w.__ottScreens.current(), parent);
     parentCallback(w.keys.ENTER);
     assert.equal(parentCalls, 1);
+});
+test("saved panels are released with their parent and cursor timers with the editor", ({
+    w,
+}) => {
+    const port = w.__ottClassicScreenPort;
+    w.listKeyHandler = () => false;
+    const parent = port.commitList();
+    port.savePanel({ retained: "parent" });
+    parent.close();
+    assert.equal(port.savedPanel().retained, undefined);
+    const cleared = [];
+    const intervals = [];
+    w.cursorInterval = null;
+    w.setInterval = (callback) => {
+        intervals.push(callback);
+        return intervals.length;
+    };
+    w.clearInterval = (id) => cleared.push(id);
+    w.editvar = "text";
+    const editor = port.openEditor();
+    w._changeEdit();
+    w._changeEdit();
+    assert(cleared.includes(1), "redraw releases the previous cursor interval");
+    port.invalidate();
+    assert.equal(editor.active(), false);
+    assert(
+        cleared.includes(2),
+        "source replacement releases the latest cursor interval"
+    );
 });
 test("numeric button settings import to stable command identities without mutation", ({
     w,

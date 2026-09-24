@@ -14,7 +14,11 @@ function createClassicScreenPort(host: any) {
     var committedRows: any = null;
     var overlays: { [kind: string]: ScreenOwner | null } = {};
     var callbacks: any = {};
-    var panelStack: Array<{ owner: ScreenOwner | null; value: any }> = [];
+    var panelStack: Array<{
+        owner: ScreenOwner | null;
+        release?: (() => void) | null;
+        value: any;
+    }> = [];
     var pendingListBindings: Array<{
         callback: any;
         owner: ScreenOwner | null;
@@ -461,6 +465,7 @@ function createClassicScreenPort(host: any) {
         },
         restorePanel: function () {
             var snapshot = panelStack.pop();
+            if (snapshot && snapshot.release) snapshot.release();
             var current = screens.current();
             if (
                 current &&
@@ -478,7 +483,17 @@ function createClassicScreenPort(host: any) {
                 : {};
         },
         savePanel: function (value: any) {
-            panelStack.push({ owner: screens.current(), value: value });
+            var snapshot = {
+                owner: screens.current(),
+                release: null as (() => void) | null,
+                value: value,
+            };
+            panelStack.push(snapshot);
+            if (snapshot.owner)
+                snapshot.release = snapshot.owner.own(function () {
+                    var index = panelStack.indexOf(snapshot);
+                    if (index >= 0) panelStack.splice(index, 1);
+                });
         },
         screens: screens,
         setOwnedCallback: function (

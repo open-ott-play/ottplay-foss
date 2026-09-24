@@ -3314,15 +3314,23 @@ export function _changeEdit(): void {
             (window as any).editvar.substr(editPos)
     );
     clearInterval(cursorInterval);
+    var owner = (window as any).__ottClassicScreenPort.owner("editor");
+    if (!owner || !owner.active()) return;
+    if (owner.model.cursorCleanup) owner.model.cursorCleanup();
     var blink = true;
     var cursor = $("#cursor");
-    cursorInterval = setInterval(function () {
+    var timer = setInterval(function () {
+        if (!owner.foreground()) return;
         blink = !blink;
         cursor.css(
             "background-color",
             blink ? (window as any).curColor : "inherit"
         );
     }, 500);
+    cursorInterval = timer;
+    owner.model.cursorCleanup = owner.own(function () {
+        clearInterval(timer);
+    });
 }
 
 /**
