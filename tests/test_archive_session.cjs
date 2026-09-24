@@ -130,6 +130,7 @@ function fixture() {
     c.window = c;
     vm.createContext(c);
     sharedCore(c);
+    c.__ottClassicPlayback.importLegacy(); // Explicit startup ingress for this retained-device fixture.
     include(c, [
         "playArchive",
         "timeShift",
@@ -341,7 +342,7 @@ for (const change of [
     const c = fixture();
     c.playArchive(999050);
     c.updateArchiveInfo(999120);
-    c.playTime = 70;
+    c.__ottClassicPlayback.command({ position: 70, type: "position" });
     c.reply(0, [
         { name: "Fresh", time: 999100, time_to: 1000200 },
         { name: "Next", time: 1000200, time_to: 1001000 },
