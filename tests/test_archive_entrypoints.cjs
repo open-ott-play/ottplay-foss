@@ -153,7 +153,9 @@ const mutations = {
     "new selection": (f) => {
         f.c.selIndex = 1;
     },
-    "playing selection changed": (f) => f.c.cats.All.reverse(),
+    "playing selection changed": (f) => {
+        f.c.__ottClassicPlayback.command({ channelId: 22, type: "live" });
+    },
     "programme expired": (f) => {
         f.advance(3600);
     },
@@ -167,8 +169,9 @@ const mutations = {
         f.c.__ottClassicPlayback.command({ type: "stop" });
     },
 };
-// Compatibility projections cannot change the accepted programme or channel identity.
+// Compatibility projections and row reordering cannot change the accepted identity.
 for (const mutate of [
+    (f) => f.c.cats.All.reverse(),
     (f) => {
         f.c.listEpgArray = [];
     },
@@ -181,6 +184,11 @@ for (const mutate of [
     mutate(f);
     f.prompts[0]();
     assert.deepEqual(playbackCalls(f), [["archive", 999940]]);
+    assert.deepEqual(
+        f.calls.filter((row) => row[0] === "select"),
+        [["select", 0, f.c.cats.All.indexOf(11)]],
+        "Re-resolve the authorized channel after projection changes"
+    );
 }
 for (const [name, mutate] of Object.entries(mutations)) {
     const f = fixture(true);
