@@ -419,6 +419,7 @@ const coreControls = functions("src/core/index.ts", [
     "stbContinue",
     "stbPause",
     "stbStop",
+    "clearCorePlaybackStateEvents",
     "stbIsPlaying",
 ]);
 for (const platform of Object.keys(nativeSources)) {
@@ -430,6 +431,7 @@ for (const platform of Object.keys(nativeSources)) {
         _coreNativeHls: null,
         _coreNativeHlsCleanup: null,
         _corePendingSeek: null,
+        _corePlaybackStateCleanup: null,
         _coreShakaTeardown: null,
         _playSession: 0,
         cancelLiveRestart() {},

@@ -297,7 +297,12 @@ function fixture(platform = "android") {
         });
     }
     function media(id) {
+        const events = new Map();
         return Object.assign(element(id), {
+            addEventListener(name, callback) {
+                if (!events.has(name)) events.set(name, new Set());
+                events.get(name).add(callback);
+            },
             audioTracks: [{ enabled: true }, { enabled: false }],
             canPlayType: () => "probably",
             currentTime: 0,
@@ -305,16 +310,22 @@ function fixture(platform = "android") {
             muted: id === "videopip",
             pause() {
                 this.paused = true;
+                for (const callback of events.get("pause") || []) callback();
             },
             paused: true,
             play() {
                 this.paused = false;
                 this.playCalls++;
+                for (const callback of events.get("playing") || []) callback();
                 return Promise.resolve();
             },
             playCalls: 0,
+            readyState: 2,
             removeAttribute(name) {
                 delete this[name];
+            },
+            removeEventListener(name, callback) {
+                events.get(name)?.delete(callback);
             },
             textTracks: [
                 { kind: "subtitles", label: "English", mode: "disabled" },

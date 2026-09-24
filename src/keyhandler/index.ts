@@ -250,7 +250,21 @@ export function keyHandler(event: KeyboardEvent): void {
 /** Toggle live, archive, or VOD using the mode-specific resume path. */
 function toggleMainPlayback(): void {
     var w = window as any;
-    if (!w.playType) {
+    var playback = w.__ottClassicPlayback;
+    var state =
+        playback && typeof playback.snapshot === "function"
+            ? playback.snapshot()
+            : null;
+    // Standalone provider/device scripts can still invoke the classic boundary.
+    var kind =
+        state && state.target
+            ? state.target.kind
+            : !w.playType
+              ? "live"
+              : w.playType < 0
+                ? "vod"
+                : "archive";
+    if (kind === "live") {
         if (typeof w.liveStop === "function") w.liveStop();
         return;
     }
@@ -259,17 +273,23 @@ function toggleMainPlayback(): void {
         w.forcePlay = false;
         if (typeof w.showShift === "function") w.showShift(_("Pause"));
         if (typeof w.showChannelInfo === "function") w.showChannelInfo(2);
+        if (playback && typeof playback.command === "function")
+            playback.command({ type: "pause" });
         if (typeof w.stbPause === "function") w.stbPause();
     } else {
         w.forcePlay = true;
         if (typeof w.showShift === "function") w.showShift(_("Play"));
         if (w.$i1 && typeof w.$i1.hide === "function") w.$i1.hide();
-        if (w.playType < 0 || w.fileArchive) {
+        if (kind === "vod" || w.fileArchive) {
+            if (playback && typeof playback.command === "function")
+                playback.command({ type: "resume" });
             if (typeof w.stbContinue === "function") w.stbContinue();
         } else if (typeof w.playArchive === "function") {
-            w.playArchive(
-                w.playType + (w.playTime || 0) - (w.s10resum ? 10 : 0)
-            );
+            var epoch =
+                state && state.target ? state.target.archiveStart : w.playType;
+            var position =
+                state && state.target ? state.position : w.playTime || 0;
+            w.playArchive(epoch + position - (w.s10resum ? 10 : 0));
         }
     }
 }
@@ -1202,79 +1222,117 @@ export function minusProg(): void {
  * @returns void
  * @sideeffect Calls `window.setCurrent`, `window.getChannelEpgCached`, `window.setCurProg`,
  *             `window.playArchive`, or `window.playChannel`.
- * @analysis If the selected entry has a timestamp (.t), fetches EPG for that channel and plays archive at that time.
- *             Otherwise simply switches to the channel live. Falls back to category "All" if not found in the
- *             original category.
+ * @analysis Binds the selected identity before PIN/EPG callbacks and resolves its current list position.
+ *             Authorization and async ownership are checked before playback; removed categories are harmless.
  */
 function onPrevSelect(sel: number): void {
-    var prevArr = (window as any).prevArr || [];
-    if (!prevArr[sel]) return;
-    if (prevArr[sel].t) {
-        var chId = prevArr[sel].ci;
-        var ts = prevArr[sel].t;
-        var r = 0,
-            n = -1;
-        var catsL = (window as any).cats;
-        var catsArrayL = (window as any).catsArray;
-        r = prevArr[sel].c;
-        n =
-            catsL && catsArrayL
-                ? catsL[catsArrayL[r]].indexOf(prevArr[sel].ci)
-                : -1;
-        if (n === -1) {
-            n =
-                catsL && catsL[_("All")]
-                    ? catsL[_("All")].indexOf(prevArr[sel].ci)
-                    : -1;
-            r = catsArrayL ? catsArrayL.indexOf(_("All")) : -1;
+    var w = window as any;
+    var entry = Array.isArray(w.prevArr) ? w.prevArr[sel] : null;
+    if (!entry || typeof entry !== "object") return;
+    // Capture identity and timestamp before selection/PIN can rewrite the journal.
+    var chId = entry.ci;
+    var category = entry.c;
+    var timestamp = entry.t;
+    var archive = timestamp !== undefined;
+    if (
+        !(
+            (typeof chId === "number" && isFinite(chId)) ||
+            (typeof chId === "string" && chId.trim().length > 0)
+        )
+    )
+        return;
+    if (
+        archive &&
+        (typeof timestamp !== "number" ||
+            !isFinite(timestamp) ||
+            timestamp <= 0)
+    )
+        return;
+    var catalog = w.channels;
+    var channel = catalog && catalog[chId];
+    var playback = w.__ottClassicPlayback;
+    if (
+        !channel ||
+        !playback ||
+        typeof playback.guard !== "function" ||
+        typeof w.ifParentalAccessChId !== "function"
+    )
+        return;
+
+    function locate(): { category: number; index: number } | null {
+        var names = w.catsArray;
+        var lists = w.cats;
+        if (
+            !Array.isArray(names) ||
+            !lists ||
+            w.channels !== catalog ||
+            catalog[chId] !== channel
+        )
+            return null;
+        var order = [category, names.indexOf(_("All"))];
+        for (var i = 0; i < names.length; i++) order.push(i);
+        for (var at = 0; at < order.length; at++) {
+            var candidate = order[at];
+            if (
+                typeof candidate !== "number" ||
+                candidate < 0 ||
+                candidate % 1 ||
+                candidate >= names.length
+            )
+                continue;
+            var list = lists[names[candidate]];
+            if (!Array.isArray(list)) continue;
+            var index = list.indexOf(chId);
+            if (index !== -1) return { category: candidate, index: index };
         }
-        if (typeof (window as any).setCurrent === "function")
-            (window as any).setCurrent(r, n, true);
-        if (typeof (window as any).getChannelEpgCached === "function") {
-            (window as any).getChannelEpgCached(
-                chId,
-                (_t: any, epgData: any) => {
-                    var recent: any[] = [];
-                    if (epgData !== null && epgData.length) {
-                        var ch = (window as any).channels
-                            ? (window as any).channels[chId]
-                            : null;
-                        var chRec = ((ch && ch.rec) || 0) * 60 * 60;
-                        var cutoff = Date.now() / 1e3 - chRec;
-                        var i: number;
-                        for (i = 0; i < epgData.length; i++) {
-                            if (epgData[i].time > cutoff)
-                                recent.push(epgData[i]);
-                        }
-                        recent.sort((a: any, b: any) => a.time - b.time);
-                    }
-                    (window as any).epgArray = recent;
-                    if (typeof (window as any).setCurProg === "function")
-                        (window as any).setCurProg(chId, epgData, null);
-                    if (typeof (window as any).playArchive === "function")
-                        (window as any).playArchive(ts);
-                }
-            );
-        }
-    } else {
-        var r2: number, n2: number;
-        var catsL2 = (window as any).cats;
-        var catsArrayL2 = (window as any).catsArray;
-        r2 = prevArr[sel].c;
-        n2 =
-            catsL2 && catsArrayL2
-                ? catsL2[catsArrayL2[r2]].indexOf(prevArr[sel].ci)
-                : -1;
-        if (n2 === -1) {
-            n2 =
-                catsL2 && catsL2[_("All")]
-                    ? catsL2[_("All")].indexOf(prevArr[sel].ci)
-                    : -1;
-            r2 = catsArrayL2 ? catsArrayL2.indexOf(_("All")) : -1;
-        }
-        if (typeof (window as any).playChannel === "function")
-            (window as any).playChannel(r2, n2);
+        return null;
     }
+
+    function authorize(action: () => void): void {
+        if (!locate()) return;
+        var proceed = playback.guard(function (): void {
+            if (locate()) action();
+        });
+        if (!w.ifParentalAccessChId(chId, proceed)) proceed();
+    }
+
+    if (!locate()) return;
+    authorize(function (): void {
+        var selection = locate();
+        if (!selection) return;
+        if (!archive) {
+            if (typeof w.playChannel === "function")
+                w.playChannel(selection.category, selection.index);
+            return;
+        }
+        if (
+            typeof w.setCurrent !== "function" ||
+            typeof w.getChannelEpgCached !== "function" ||
+            typeof w.playArchive !== "function"
+        )
+            return;
+        w.setCurrent(selection.category, selection.index, true);
+        var complete = playback.guard(function (_id: any, epgData: any): void {
+            // Access may expire while EPG is loading; no archive effect precedes this gate.
+            authorize(function (): void {
+                var recent: any[] = [];
+                var cutoff =
+                    Date.now() / 1e3 - (Number(channel.rec) || 0) * 3600;
+                if (Array.isArray(epgData)) {
+                    for (var i = 0; i < epgData.length; i++) {
+                        if (epgData[i] && epgData[i].time > cutoff)
+                            recent.push(epgData[i]);
+                    }
+                    recent.sort((a: any, b: any) => a.time - b.time);
+                }
+                w.epgArray = recent;
+                if (typeof w.setCurProg === "function")
+                    w.setCurProg(chId, epgData, null);
+                w.playArchive(timestamp);
+            });
+        });
+        w.getChannelEpgCached(chId, complete);
+    });
 }
 
 /**

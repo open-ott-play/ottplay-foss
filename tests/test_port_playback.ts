@@ -149,23 +149,34 @@ function fixture() {
         ]),
         w
     );
+    const mediaEvents = new Map<string, Set<() => void>>();
     w.video = {
+        addEventListener(name: string, callback: () => void) {
+            if (!mediaEvents.has(name)) mediaEvents.set(name, new Set());
+            mediaEvents.get(name)!.add(callback);
+        },
         canPlayType() {
             return "probably";
         },
         currentTime: 0,
         pause() {
             this.paused = true;
+            for (const callback of mediaEvents.get("pause") || []) callback();
         },
         paused: true,
         play() {
             this.paused = false;
             this.playCalls++;
+            for (const callback of mediaEvents.get("playing") || []) callback();
             return Promise.resolve();
         },
         playCalls: 0,
+        readyState: 2,
         removeAttribute() {
             this.src = "";
+        },
+        removeEventListener(name: string, callback: () => void) {
+            mediaEvents.get(name)?.delete(callback);
         },
         src: "",
     };

@@ -6,6 +6,7 @@ const { parse } = require("acorn");
 const { inlineScripts } = require("./html-scripts.cjs");
 const { auditNativeRuntime } = require("./native-runtime.cjs");
 const { auditMediaRuntime } = require("./media-runtime.cjs");
+const { isManagedProviderScript } = require("./provider-assets.cjs");
 const root = path.resolve(__dirname, "..");
 auditMediaRuntime(root);
 auditMediaRuntime(path.join(root, "dist"));
@@ -53,6 +54,16 @@ function checkCopies(directory) {
         else if (name.endsWith(".js")) {
             for (const stage of ["dist"]) {
                 const target = path.join(root, stage, relative);
+                if (isManagedProviderScript(source)) {
+                    if (fs.existsSync(target))
+                        failures.push(
+                            stage +
+                                "/" +
+                                relative +
+                                ": retired provider script must not be staged"
+                        );
+                    continue;
+                }
                 if (
                     !fs.existsSync(target) ||
                     !fs.readFileSync(source).equals(fs.readFileSync(target))

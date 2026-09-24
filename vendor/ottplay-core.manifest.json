@@ -3,7 +3,7 @@
   "name": "ottplay-shared-core",
   "version": "0.1.0-dev",
   "source": {
-    "sha256": "1f6d25045ad80c3ee449f6ed2affbf051bfff73939c4db9833da7ee22e1da67f",
+    "sha256": "26362bee81a597f61cdb6d0e64a46052a49c7f1f8342267d93e785bec77df06a",
     "files": {
       "LICENSE": "ec6a17ce723ea8b4c6b08f277ab84750440a8c3e5401aaa9f4e4e9d5fd0fd72c",
       "build.gradle.kts": "e89cc0e4057ab3989c6d4048d6b2ee7b5efb023a7c96c2886d8dd62778e42a73",
@@ -52,6 +52,7 @@
       "src/commonMain/kotlin/play/ott/core/PlaybackDetection.kt": "69b2cadadb6d37e4fa368070aa0131dfe0d3d77732230298465924c671e6db9c",
       "src/commonMain/kotlin/play/ott/core/PlaybackRecovery.kt": "bb20a7d94056d9387ab87aa7e51bab0d950111ab9f7207f228f3bfe6849700b1",
       "src/commonMain/kotlin/play/ott/core/PlaybackRules.kt": "697dfabda9d0bfd29dd39890587863089634c01db1b73d9fe871ffc93656b8df",
+      "src/commonMain/kotlin/play/ott/core/PlaybackSession.kt": "fa01d78abc17c9ec379100e735dfa9705ed325824765299287254eee69dfe3ab",
       "src/commonMain/kotlin/play/ott/core/Playlist.kt": "ab2b86c27c841c4e9759592b4cc652e2413b6452303ac1d3bc6646e974d35ebb",
       "src/commonMain/kotlin/play/ott/core/ProviderPlaylist.kt": "ab1bca4f6956348d21db4c70e0f3b438f399b61b6119ea28de0fde4029dccdbd",
       "src/commonMain/kotlin/play/ott/core/ProviderValue.kt": "a1073cd8689e8244241673335f5f576991d799dffef1572d3c003b54b26c98c5",
@@ -81,6 +82,7 @@
       "src/commonTest/kotlin/play/ott/core/OperatorVodTest.kt": "0e8805a7cd93dad24c86b125a0989602f492338b1fdd8db4aad62e5af7be8e24",
       "src/commonTest/kotlin/play/ott/core/PlaybackRecoveryTest.kt": "82b4ba1dca81a44eb7cfff537ed1d0653e3a2f21da5556769c63d4fdff27478c",
       "src/commonTest/kotlin/play/ott/core/PlaybackRulesTest.kt": "5699dae4a2c02c7ddff9b78010732f4c0617c5d05a48f41e52514c2d7b256107",
+      "src/commonTest/kotlin/play/ott/core/PlaybackSessionTest.kt": "c5a2d5b7ae7baad114c27bc22426d15f4835c55b4f1037b1a453684c58bb7c6f",
       "src/commonTest/kotlin/play/ott/core/PlaylistTest.kt": "38f8a985a5a2e38669363852b1f68c24059dfc6513ce65ad4fc5389e3f036238",
       "src/commonTest/kotlin/play/ott/core/StalkerTest.kt": "06f7741c6fe0b9cb8971f4d3a944a43c43ca7c7bcd840618dfb28ebfeebba4b1",
       "src/commonTest/kotlin/play/ott/core/StreamingGuideTest.kt": "9e73c3a373a7c1f1d64037caf0147064ae21caf88edbbf9913833fdde9c98a8b",
@@ -101,6 +103,7 @@
       "src/jsMain/kotlin/OperatorExports.kt": "1213a01e5ceb31404de58e9ce4e312f7a2ba555cec41ffe8e2eebbe01a5d7969",
       "src/jsMain/kotlin/ParentalStateExports.kt": "204f16b6e4d0de02a4c3dc4c89ea249fd870c955f787b604013ec181ccc5bf23",
       "src/jsMain/kotlin/PlaybackExports.kt": "a86acbd47f699eaa6e4a8b81096d3c7c187b0f75356bb109a949166db7a4a3da",
+      "src/jsMain/kotlin/PlaybackSessionExports.kt": "8523a3c5805e79e358edcb25bc9cb078a537eb219cad8962b96d22e05cf2a47c",
       "src/jsMain/kotlin/ProviderExports.kt": "e393f37d8f7503f95464f956fc3d8f16a80be0f01b2266a0e478e482caef454f",
       "src/jsMain/kotlin/StalkerExports.kt": "8c7d1e72fba73551497c4de9798fdaa0e064a8a9f91465f749b75b88c792afb1",
       "src/jsMain/kotlin/StreamingGuideExports.kt": "a76e7f5d86db76b36e4463d6323ef9aa866d8323060efda99810c4c9e839b3fb",
@@ -116,16 +119,16 @@
   },
   "artifacts": {
     "ottplay-core.js": {
-      "sha256": "ec2b011bf6d327055b3790fdecbf288235b3812f3688c2b1f93ef68c1242c6a6",
-      "bytes": 1201145
+      "sha256": "84cdd87906119ca5acce19d04bceb808f98988a25b6e9a421ddfc4fb12f8071a",
+      "bytes": 1239827
     },
     "ottplay-core.d.ts": {
-      "sha256": "eda1ccbfed4556723bc4dc389240a5b125349b9bdaf5dc864877a29aa9bde6d8",
-      "bytes": 26068
+      "sha256": "e717de536b1cb6f729deb7e83d95e242dcedbc1303e607c09431ecc6fb7e7e71",
+      "bytes": 26737
     },
     "ottplay-core.jar": {
-      "sha256": "f77263c612a34bc526a427bd8ff98c9222caec369bd51d0684c0cc4a67d2f859",
-      "bytes": 566291
+      "sha256": "e61a50a19470a251e2250a486dbbcb5c40598c319716d9534e640cd0d81650d8",
+      "bytes": 594525
     },
     "ottplay-core.LICENSE.txt": {
       "sha256": "1e72da3623b91daad1013e577c3611ad6ed314da508b757abe9a1b27a88a14cc",

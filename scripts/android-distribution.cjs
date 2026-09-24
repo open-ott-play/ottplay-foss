@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { isManagedProviderScript } = require("./provider-assets.cjs");
 
 const PLAY_PROVIDERS = ["demo", "m3u", "stalker", "xtream"];
 
@@ -73,10 +74,11 @@ function stagePlayProviders(root, destination) {
     for (const id of PLAY_PROVIDERS) {
         const dir = path.join(destination, id);
         fs.mkdirSync(dir, { recursive: true });
-        fs.copyFileSync(
-            path.join(root, "prov", id, "prov.js"),
-            path.join(dir, "prov.js")
-        );
+        if (!isManagedProviderScript(path.join(root, "prov", id, "prov.js")))
+            fs.copyFileSync(
+                path.join(root, "prov", id, "prov.js"),
+                path.join(dir, "prov.js")
+            );
         fs.writeFileSync(path.join(dir, "about.html"), descriptions[id] + "\n");
         if (id === "demo")
             fs.writeFileSync(

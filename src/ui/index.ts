@@ -1815,13 +1815,40 @@ export function initBackgroundIntervals(): void {
         if (listTEl) listTEl.innerHTML = timeStr;
         if (listSEl) listSEl.innerHTML = secStr;
         if (permTEl) permTEl.innerHTML = timeStr;
+        var playbackHost = window as any;
         if (
-            typeof (window as any).playType !== "undefined" &&
-            (window as any).playType &&
-            typeof (window as any).stbIsPlaying === "function" &&
-            (window as any).stbIsPlaying()
+            typeof playbackHost.stbIsPlaying === "function" &&
+            playbackHost.stbIsPlaying()
         ) {
-            (window as any).playTime = ((window as any).playTime || 0) + 1;
+            var playback = playbackHost.__ottClassicPlayback;
+            if (playback && typeof playback.snapshot === "function") {
+                var state = playback.snapshot();
+                if (state.target && state.phase !== "stopped") {
+                    if (state.phase === "loading")
+                        playback.command({
+                            generation: state.generation,
+                            type: "playing",
+                        });
+                    if (state.target.kind !== "live")
+                        playback.command({
+                            duration:
+                                typeof playbackHost.stbGetLen === "function"
+                                    ? playbackHost.stbGetLen()
+                                    : undefined,
+                            generation: state.generation,
+                            position:
+                                state.target.kind === "archive"
+                                    ? state.position + 1
+                                    : typeof playbackHost.stbGetPosTime ===
+                                        "function"
+                                      ? playbackHost.stbGetPosTime()
+                                      : state.position + 1,
+                            type: "position",
+                        });
+                } else if (!state.target && playbackHost.playType)
+                    playbackHost.playTime = (playbackHost.playTime || 0) + 1;
+            } else if (playbackHost.playType)
+                playbackHost.playTime = (playbackHost.playTime || 0) + 1;
         }
         // Drive archive OSD progress bar (stbPlayer.js:1744-1746 tick).
         // Skip live mode (playType === 0) — showChannelInfo already covers it.

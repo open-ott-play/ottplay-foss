@@ -50,12 +50,13 @@ assert.throws(
     "An unrelated object property cannot satisfy a window publication"
 );
 
-// No network requests or timer callbacks are run. This checks script loading and
-// wiring against a minimal DOM, not media decoding or a full browser UI session.
+// No network requests or media decoding run. Selected controller timers are
+// driven explicitly through fake host ports after loading the complete artifact.
 const bundlePath = path.resolve(
     process.argv[2] || path.join(__dirname, "../dist/stbPlayer.js")
 );
 const bundle = fs.readFileSync(bundlePath, "utf8");
+const playDistribution = process.argv.includes("--play");
 checkBundleIdentifiers(bundle);
 const globalNames = new Set();
 function collectGlobals(node) {
@@ -78,6 +79,7 @@ function collectGlobals(node) {
     }
 }
 collectGlobals(acorn.parse(bundle, { ecmaVersion: 5 }));
+const fixtureTimers = new WeakMap();
 
 function fixture(profile) {
     const elements = new Map();
@@ -201,7 +203,9 @@ function fixture(profile) {
             },
             height: () => 720,
             html(value) {
-                return arguments.length ? this : "";
+                if (!arguments.length) return el.innerHTML;
+                el.innerHTML = value;
+                return this;
             },
             is: () => false,
             length: 1,
@@ -392,8 +396,981 @@ function fixture(profile) {
         ),
         w
     );
-    require("./helpers/shared-core-runtime.cjs")(w);
+    require("./helpers/shared-core-runtime.cjs")(w, { vendorOnly: true });
+    for (const api of [
+        "__ottPlaybackSession",
+        "__ottPlaybackJournal",
+        "__ottArchiveSession",
+        "__ottClassicArchive",
+        "__ottProviderDrivers",
+        "__ottProviderDriverProfiles",
+        "__ottStalkerDriver",
+        "__ottCatalogDrivers",
+        "__ottCatalogXml",
+        "__ottMediaCatalog",
+        "__ottPlaylistDrivers",
+        "__ottEdemDriver",
+        "__ottM3uDriver",
+        "__ottM3uSettings",
+        "__ottClassicPlayback",
+        "__ottProviderRuntime",
+    ])
+        assert.equal(
+            w[api],
+            undefined,
+            "fixture must not inject private source API " + api
+        );
+    fixtureTimers.set(w, timers);
     return w;
+}
+
+function assertPrivateRuntime(w, profile) {
+    for (const [api, method] of [
+        ["__ottPlaybackSession", "create"],
+        ["__ottPlaybackJournal", "create"],
+        ["__ottArchiveSession", "create"],
+        ["__ottClassicArchive", "open"],
+        ["__ottClassicArchive", "pauseLive"],
+        ["__ottClassicArchive", "rewind"],
+        ["__ottClassicArchive", "update"],
+        ["__ottProviderDrivers", "createRegistry"],
+        ["__ottProviderDrivers", "mount"],
+        ["__ottStalkerDriver", "create"],
+        ["__ottStalkerDriver", "mountSettings"],
+        ["__ottCatalogXml", "decode"],
+        ["__ottMediaCatalog", "create"],
+        ["__ottM3uDriver", "create"],
+        ["__ottM3uDriver", "mount"],
+        ["__ottM3uSettings", "mount"],
+        ["__ottClassicPlayback", "select"],
+        ["__ottClassicPlayback", "shift"],
+        ["__ottClassicPlayback", "cancel"],
+        ["__ottProviderRuntime", "createRegistry"],
+        ["__ottProviderRuntime", "createClassicAdapter"],
+    ]) {
+        assert.equal(
+            typeof w[api]?.[method],
+            "function",
+            profile + ": bundle initializes " + api + "." + method
+        );
+    }
+    assert.equal(typeof w.__ottProviderRuntime.classic.replace, "function");
+    if (playDistribution) {
+        assert.equal(w.__ottCatalogDrivers, undefined);
+        assert.equal(w.__ottPlaylistDrivers, undefined);
+        assert.equal(w.__ottEdemDriver, undefined);
+        assert.deepEqual(
+            Array.from(w.__ottProviderDrivers.registry.ids()).sort(),
+            ["demo", "m3u", "stalker", "xtream"]
+        );
+    } else {
+        assert.equal(w.__ottProviderDrivers.registry.ids().length, 48);
+        for (const method of ["create", "mountSettings", "reportLoad"])
+            assert.equal(typeof w.__ottCatalogDrivers[method], "function");
+        for (const api of ["__ottPlaylistDrivers", "__ottEdemDriver"])
+            for (const method of ["create", "mount", "reportLoad"])
+                assert.equal(typeof w[api][method], "function");
+    }
+    assert(Array.isArray(w.__ottProviderDriverProfiles));
+    assert.deepEqual(
+        Array.from(w.__ottProviderDrivers.registry.ids()),
+        Array.from(w.__ottProviderDriverProfiles, (profile) => profile.id)
+    );
+    for (const name of [
+        "createPlaybackJournal",
+        "createArchiveController",
+        "classicArchiveController",
+        "classicArchiveRuntime",
+        "createDriverRegistry",
+        "providerDriverRegistry",
+        "createDemoDriver",
+        "createXtreamDriver",
+        "createNamedPlaylistDriver",
+        "mountNamedProviderSettings",
+        "createStalkerProviderDriver",
+        "mountStalkerProviderSettings",
+        "createCatalogProviderDriver",
+        "mountCatalogProviderSettings",
+        "reportCatalogProviderLoad",
+        "decodeProviderCatalogXml",
+        "licensedXmlToJson",
+        "createOwnedMediaCatalog",
+        "createOwnedPlaylistDriver",
+        "mountOwnedPlaylistDriver",
+        "reportOwnedPlaylistLoad",
+        "operatorLoadPlaylist",
+        "operatorLoadVod",
+        "operatorGenericSession",
+        "operatorXmlToJson",
+        "createEdemProviderDriver",
+        "createM3uProviderDriver",
+        "mountM3uProviderSettings",
+        "namedCredentialMessage",
+        "createOperatorDriver",
+        "providerDriverProfiles",
+        "createDriverTransport",
+        "mountProviderDriver",
+        "createPlaybackSessionController",
+        "classicPlaybackController",
+        "classicPlaybackRuntime",
+        "classicPlaybackSelect",
+        "createProviderRegistry",
+        "createClassicProviderAdapter",
+    ]) {
+        assert.equal(
+            vm.runInContext("typeof " + name, w),
+            "undefined",
+            profile + ": private implementation leaked: " + name
+        );
+    }
+    // Also catch a renamed top-level leak after optimizer-local mangling.
+    for (const implementation of [
+        w.__ottPlaybackSession.create,
+        w.__ottPlaybackJournal.create,
+        w.__ottArchiveSession.create,
+        w.__ottClassicArchive.open,
+        w.__ottProviderDrivers.createRegistry,
+        w.__ottProviderDrivers.mount,
+        w.__ottClassicPlayback.select,
+        w.__ottProviderRuntime.createRegistry,
+        w.__ottProviderRuntime.createClassicAdapter,
+    ]) {
+        assert(
+            !Object.keys(w).some((key) => w[key] === implementation),
+            profile + ": private implementation exposed as bare global"
+        );
+    }
+}
+
+function exerciseArchiveRuntime(profile) {
+    const w = fixture(profile);
+    vm.runInContext(bundle, w, { filename: bundlePath });
+    const now = Math.floor(Date.now() / 1000);
+    const programme = {
+        name: "Archive fixture",
+        time: now - 1800,
+        time_to: now + 1800,
+    };
+    const opened = [];
+    const seeks = [];
+    const rendered = [];
+    const guides = [];
+    const items = new Map();
+    Object.assign(w, {
+        __ottRenderArchive: (model) => rendered.push(model.position),
+        catIndex: 0,
+        cats: { All: [1, 2] },
+        catsArray: ["All"],
+        channels: {
+            1: { channel_name: "Archive one", rec: 24 },
+            2: { channel_name: "Archive two", rec: 24 },
+        },
+        curProg: -1,
+        epgArray: [programme],
+        fileArchive: true,
+        getArchiveUrl: (id, start, end, item) => {
+            assert.equal(id, 1);
+            assert.equal(item.name, "Archive fixture");
+            assert(end > start);
+            return "https://media.invalid/archive.ts";
+        },
+        getChannelEpgCached: (id, callback) => guides.push({ callback, id }),
+        ifParentalAccessChId: () => false,
+        p_pref: "archive-artifact:",
+        playTime: 0,
+        playType: 0,
+        prevArr: [],
+        primaryIndex: 0,
+        providerGetItem: (key) => items.get(key) || null,
+        providerSetItem: (key, value) => items.set(key, value),
+        settings: { ...w.settings, prevCount: 2 },
+        sFavorites: 0,
+        sInfoRew: 0,
+        sStopPlay: 0,
+        stbGetLen: () => 3600,
+        stbGetPosTime: () => 0,
+        stbPlay: (url, offset) => {
+            opened.push({ offset, url });
+            w.__ottClassicPlayback.command({ type: "playing" });
+        },
+        stbSetPosTime: (offset) => {
+            seeks.push(offset);
+            w.__ottClassicPlayback.command({ type: "playing" });
+        },
+    });
+    w.curList = w.cats.All;
+    w.__ottClassicPlayback.command({ channelId: 1, type: "live" });
+    w.playArchive(programme.time + 10);
+    assert.equal(opened.length, 1, profile + ": actual archive opens a file");
+    assert.equal(opened[0].offset, 10);
+    w.curProg = 999;
+    w.playArchive(programme.time + 25);
+    assert.equal(
+        opened.length,
+        1,
+        profile + ": UI index cannot reopen the file"
+    );
+    assert.deepEqual(seeks, [25]);
+    const journal = JSON.parse(items.get("playbackJournal"));
+    assert.equal(journal.bookmark.kind, "archive");
+    assert.equal(journal.bookmark.archiveStart, programme.time + 25);
+
+    // A programme gap requests a guide refresh. Switching the actual selection
+    // retires that callback even if its transport cannot be aborted.
+    w.updateArchiveInfo(programme.time_to + 5);
+    assert.equal(guides.length, 1);
+    w.setCurrent(0, 1, false);
+    w.__ottClassicPlayback.command({ channelId: 2, type: "live" });
+    const published = rendered.length;
+    const selection = w.primaryIndex;
+    guides[0].callback(1, [
+        { name: "Retired programme", time: now, time_to: now + 9000 },
+    ]);
+    assert.equal(rendered.length, published);
+    assert.equal(w.primaryIndex, selection);
+    assert.equal(w.__ottClassicPlayback.snapshot().target.kind, "live");
+    w.__ottClassicPlayback.cancel();
+}
+
+function exercisePlaybackRuntime(w, profile) {
+    const timers = fixtureTimers.get(w);
+    const stored = new Map();
+    const positions = [];
+    const archives = [];
+    const overrides = {
+        _prog100: { name: "Current program" },
+        catIndex: 0,
+        cats: { All: [1, 2] },
+        catsArray: ["All"],
+        channels: {
+            1: { channel_name: "One", rec: 24 },
+            2: { channel_name: "Two", rec: 24 },
+        },
+        curList: [1, 2],
+        medHistory: [{ stream_url: "https://media.invalid/movie.mp4" }],
+        p_pref: "artifact-fixture:",
+        playArchive: (start) => archives.push(start),
+        playTime: 0,
+        playType: 0,
+        prevArr: [],
+        primaryIndex: 0,
+        providerGetItem: (key) => stored.get(key) || null,
+        providerSetItem: (key, value) => stored.set(key, value),
+        settings: { ...w.settings, prevCount: 2 },
+        sFavorites: 0,
+        showShift() {},
+        sInfoRew: 0,
+        stbGetLen: () => 120,
+        stbGetPosTime: () => 40,
+        stbSetPosTime: (position) => positions.push(position),
+    };
+    const saved = new Map(Object.keys(overrides).map((key) => [key, w[key]]));
+    function delayedShift(...deltas) {
+        const before = new Set(timers.keys());
+        deltas.forEach((delta) => w.shiftArchive(delta));
+        const pending = [...timers].filter(
+            ([id, timer]) => !before.has(id) && timer.delay === 500
+        );
+        assert.equal(
+            pending.length,
+            1,
+            profile + ": built shiftArchive owns one delayed operation"
+        );
+        return pending[0];
+    }
+    function fire([id, timer]) {
+        timers.delete(id);
+        timer.fn();
+    }
+    try {
+        for (const [key, value] of Object.entries(overrides)) w[key] = value;
+        w.curList = w.cats.All;
+        // Execute the real bundled entrypoint, codec, controller and Kotlin core.
+        w.setCurrent(0, 1, false);
+        assert.equal(w.primaryIndex, 1);
+        assert.equal(w.curList, w.cats.All);
+        assert.deepEqual(
+            Array.from(w.prevArr, (visit) => visit.ci),
+            [1]
+        );
+        assert.equal(stored.get("primaryIndex"), "1");
+        assert.equal(JSON.parse(stored.get("continueWatch")).channelId, 2);
+        const journal = JSON.parse(stored.get("playbackJournal"));
+        assert.equal(
+            journal.version,
+            2,
+            profile + ": real setCurrent writes the canonical journal"
+        );
+        assert.equal(journal.sourceId, "artifact-fixture:");
+        assert.equal(journal.history[0].channelId, "1");
+        assert.equal(journal.history[0].kind, "live");
+        w.__ottClassicPlayback.command({ channelId: 2, type: "live" });
+        const checkpoint = JSON.parse(stored.get("playbackJournal"));
+        assert.equal(checkpoint.bookmark.channelId, "2");
+        assert.equal(checkpoint.bookmark.kind, "live");
+
+        w.playType = -1e11;
+        const combined = delayedShift(5, 7);
+        assert.deepEqual(positions, [], profile + ": seek waits for debounce");
+        fire(combined);
+        assert.deepEqual(
+            positions,
+            [52],
+            profile + ": actual typed controller combines offsets"
+        );
+
+        const cancelled = delayedShift(10);
+        w.__ottClassicPlayback.cancel();
+        assert.equal(timers.has(cancelled[0]), false);
+        fire(cancelled); // A browser callback may already have entered its task queue.
+        assert.deepEqual(
+            positions,
+            [52],
+            profile + ": cancellation rejects queued callback"
+        );
+
+        const changedSelection = delayedShift(10);
+        w.setCurrent(0, 0, false);
+        fire(changedSelection);
+        assert.deepEqual(
+            positions,
+            [52],
+            profile + ": built setCurrent retires pending seek"
+        );
+        assert.equal(
+            w.medHistory[0].current,
+            40,
+            profile + ": leaving VOD persists position"
+        );
+
+        const changedCatalog = delayedShift(10);
+        w.channels = {
+            1: { channel_name: "Replacement", rec: 24 },
+            2: { channel_name: "Two", rec: 24 },
+        };
+        fire(changedCatalog);
+        assert.deepEqual(
+            positions,
+            [52],
+            profile + ": same channel ID in new catalog cannot accept old seek"
+        );
+
+        const archiveStart = Math.floor(Date.now() / 1000) - 600;
+        w.playType = archiveStart;
+        w.playTime = 30;
+        fire(delayedShift(15));
+        assert.deepEqual(
+            archives,
+            [archiveStart + 45],
+            profile + ": archive planning reaches the host effect port"
+        );
+    } finally {
+        w.__ottClassicPlayback.cancel();
+        for (const [key, value] of saved) w[key] = value;
+    }
+}
+
+function exerciseProviderRuntime(profile) {
+    // A fresh full artifact realm keeps this startup test independent of both
+    // previous smoke overrides and any source-module bootstrap.
+    const w = fixture(profile);
+    vm.runInContext(bundle, w, { filename: bundlePath, timeout: 5000 });
+    assertPrivateRuntime(w, profile);
+    w.document.createTextNode = (text) => ({ nodeType: 3, textContent: text });
+    const stored = new Map([
+        ["ottplayprov", "demo"],
+        [
+            "xtreamxtream_data",
+            JSON.stringify({
+                password: "secret",
+                server: "https://account.test",
+                username: "viewer",
+            }),
+        ],
+    ]);
+    const requests = [],
+        scripts = [],
+        errors = [];
+    let completed = 0,
+        ajaxWrites = 0;
+    const ajax = (settings) => {
+        let success, failure;
+        const request = {
+            abort() {
+                this.aborts++;
+                if (failure) failure();
+            },
+            aborts: 0,
+            done(callback) {
+                success = callback;
+                return this;
+            },
+            fail(callback) {
+                failure = callback;
+                return this;
+            },
+            reject() {
+                failure();
+            },
+            resolve(value) {
+                success(value);
+            },
+            settings,
+        };
+        requests.push(request);
+        return request;
+    };
+    let currentAjax = ajax;
+    Object.defineProperty(w.$, "ajax", {
+        configurable: true,
+        get: () => currentAjax,
+        set(value) {
+            ajaxWrites++;
+            currentAjax = value;
+        },
+    });
+    Object.assign(w, {
+        _: (value) => value,
+        beginPortChannelIdMigration() {},
+        cancelMediaLoad() {},
+        cancelPortChannelIdMigration() {},
+        closeList() {},
+        console: {
+            debug() {},
+            error: (error) => errors.push(error),
+            info() {},
+            log() {},
+            warn() {},
+        },
+        finishPortChannelIdMigration() {},
+        getDefaultPlayerMode: () => 0,
+        getScriptDOM: (url) => scripts.push(url),
+        invalidateEpgCache() {},
+        normalizePlayerMode: (value) => value,
+        onChannelsLoaded: () => completed++,
+        removeOption() {},
+        restoreDemoMute() {},
+        savedPopup: {
+            popupActions: [
+                w.toggleProviderSettingsVisibility,
+                () => {},
+                w.optionsList,
+            ],
+            popupArray: ["", "", "Settings"],
+            popupDetail: ["", "", "Settings"],
+            ver: "artifact",
+        },
+        setPlayer() {},
+        setPlayerMode() {},
+        showPage() {},
+        stbDelItem: (key) => stored.delete(key),
+        stbGetItem: (key) => (stored.has(key) ? stored.get(key) : null),
+        stbIsPlaying: () => false,
+        stbSetItem: (key, value) => stored.set(key, String(value)),
+        stbStopPip() {},
+    });
+    w.loadProv();
+    assert.equal(w.__ottActiveProviderDriver.id, "demo");
+    assert.equal(
+        completed,
+        1,
+        profile + ": built demo route completes channel startup"
+    );
+    assert.equal(w.commandChannelsReady, true);
+    assert.deepEqual(Array.from(w.cList), [900000001, 900000002]);
+    assert.equal(
+        w.getChannelUrl(w.cList[0]),
+        "https://liminal-sketch-vv8r.here.now/demo/pattern.mp4"
+    );
+    assert.deepEqual(scripts, []);
+    assert.equal(requests.length, 0);
+    stored.set("ottplayprov", "xtream");
+    w.loadProv("xtream");
+    assert.equal(w.__ottActiveProviderDriver.id, "xtream");
+    assert.equal(requests.length, 1);
+    assert.equal(w.commandChannelsReady, false);
+    assert.equal(
+        requests[0].settings.url,
+        "https://account.test/player_api.php?username=viewer&password=secret"
+    );
+    requests[0].resolve({
+        live_streams: [{ name: "Artifact channel", stream_id: 7 }],
+    });
+    assert.equal(completed, 2);
+    assert.equal(w.commandChannelsReady, true);
+    assert.equal(
+        w.getChannelUrl(w.cList[0]),
+        "https://account.test/live/viewer/secret/7.m3u8"
+    );
+    w.loadChannels();
+    assert.equal(requests.length, 2);
+    w.loadProv("demo");
+    assert.equal(requests[1].aborts, 1);
+    requests[1].resolve({
+        live_streams: [{ name: "Obsolete account", stream_id: 8 }],
+    });
+    assert.equal(completed, 3);
+    assert.equal(w.commandChannelsReady, true);
+    assert.deepEqual(Array.from(w.cList), [900000001, 900000002]);
+    if (w.__ottProviderDrivers.registry.has("all4you")) {
+        stored.set(
+            "all4youcfg",
+            JSON.stringify({
+                m3u: "",
+                pass: "secret",
+                server: "https://generic.test",
+                user: "account",
+            })
+        );
+        stored.set("ottplayprov", "all4you");
+        w.loadProv("all4you");
+        assert.equal(requests.length, 3);
+        requests[2].reject();
+        assert.equal(
+            requests.length,
+            4,
+            profile + ": generic API failure starts playlist fallback"
+        );
+        requests[3].reject();
+        assert.equal(requests.length, 5);
+        assert.equal(requests[4].settings.method, "post");
+        assert(requests[4].settings.url.endsWith("/m3u/cp.php"));
+        requests[4].resolve(
+            '#EXTM3U\n#EXTINF:-1 group-title="Generic",Fallback channel\nhttps://media.test/generic\n'
+        );
+        assert.equal(completed, 4);
+        assert.equal(w.getChannelUrl(w.cList[0]), "https://media.test/generic");
+        w.loadChannels();
+        w.loadProv("demo");
+        assert.equal(requests[5].aborts, 1);
+        requests[5].reject();
+        assert.equal(
+            requests.length,
+            6,
+            profile + ": retired generic failure cannot start a fallback"
+        );
+        assert.equal(completed, 5);
+        assert.deepEqual(Array.from(w.cList), [900000001, 900000002]);
+    }
+    if (w.__ottProviderDrivers.registry.has("1ott")) {
+        for (const [id, values] of [
+            ["1ott", { "1ottid": "account", "1ottpin": "pin" }],
+            ["only4", { o4token: "1234567890" }],
+            ["shara-tv", { shtvlogin: "12345678", shtvpass: "abcdefgh" }],
+            [
+                "tvteam",
+                { tvteamwww: "https://tv.team/pl/11/account/playlist.m3u8" },
+            ],
+            [
+                "bestlist/stalker",
+                {
+                    bestlist_stalkercfg: JSON.stringify({
+                        m3u: "https://list.test/tv.m3u",
+                        pass: "",
+                        server: "",
+                        user: "",
+                    }),
+                },
+            ],
+        ]) {
+            for (const [key, value] of Object.entries(values))
+                stored.set(key, value);
+            stored.set("ottplayprov", id);
+            const start = requests.length;
+            const before = completed;
+            w.loadProv(id);
+            assert.equal(w.__ottActiveProviderDriver.id, id);
+            if (id === "1ott") requests[start].resolve('{"token":"artifact"}');
+            requests.at(-1).reject();
+            assert.equal(
+                requests.at(-1).settings.method,
+                "post",
+                id + ": playlist proxy retry"
+            );
+            requests
+                .at(-1)
+                .resolve(
+                    '#EXTM3U\n#EXTINF:-1 tvg-id="guide" tvg-name="channel" group-title="Live",Named provider\nhttps://media.test/token/channel/index.m3u8?token=t\n'
+                );
+            assert.equal(
+                completed,
+                before + 1,
+                id + ": real artifact startup completes"
+            );
+            assert(
+                w.cList.length > 0,
+                id + ": actual parsed catalog is published"
+            );
+            assert(w.getChannelUrl(w.cList[0]), id + ": playable stream URL");
+            w.loadChannels();
+            const pending = requests.at(-1);
+            w.loadProv("demo");
+            assert.equal(pending.aborts, 1);
+            const count = requests.length;
+            pending.reject();
+            pending.resolve("stale");
+            assert.equal(requests.length, count, id + ": no stale retry");
+            assert.equal(completed, before + 2);
+            assert.deepEqual(Array.from(w.cList), [900000001, 900000002]);
+        }
+    }
+    stored.set(
+        "stalkerstalker_data",
+        JSON.stringify({
+            mac: "00:1A:2B:3C:4D:5E",
+            portal: "https://portal.test/",
+        })
+    );
+    stored.set("ottplayprov", "stalker");
+    let before = completed;
+    w.loadProv("stalker");
+    assert.equal(w.__ottActiveProviderDriver.id, "stalker");
+    assert.equal(requests.at(-1).settings.contentType, "application/json");
+    requests.at(-1).resolve({ result: {} });
+    requests.at(-1).resolve({
+        result: [
+            {
+                archive: 24,
+                id: 42,
+                logo: "/logo.png",
+                name: "Portal channel",
+                url: "https://live.test/42",
+            },
+        ],
+    });
+    assert.equal(completed, before + 1);
+    assert.equal(w.getChannelUrl(w.cList[0]), "https://live.test/42");
+    const guides = [];
+    w.getChannelEpg(42, (id, rows) => guides.push([id, rows]));
+    requests.at(-1).resolve({
+        result: [{ end: 20, name: "Programme", start: 10 }],
+    });
+    assert.equal(guides.length, 1);
+    assert.equal(guides[0][0], 42);
+    assert.equal(guides[0][1][0].name, "Programme");
+    w.loadChannels();
+    let pending = requests.at(-1);
+    const abortStalker = pending.abort.bind(pending);
+    pending.abort = () => {
+        abortStalker();
+        w.loadProv("demo");
+    };
+    w.loadProv("xtream");
+    assert.equal(
+        w.__ottActiveProviderDriver.id,
+        "demo",
+        "the newer selection made during abort owns the actual built runtime"
+    );
+    assert.equal(pending.aborts, 1);
+    let count = requests.length;
+    pending.resolve({ result: {} });
+    assert.equal(
+        requests.length,
+        count,
+        "obsolete Stalker cannot load catalog"
+    );
+    assert.equal(completed, before + 2);
+
+    for (const id of ["itv", "ottclub", "shura"]) {
+        if (!w.__ottProviderDrivers.registry.has(id)) continue;
+        const prefix = { itv: "itv", ottclub: "", shura: "sh" }[id];
+        for (const [key, value] of Object.entries({
+            key: id === "shura" ? "12345678" : "1234567890",
+            mpeg: "0",
+            ottkey: "12345678",
+            ottwww: "operator.test",
+            server: "2",
+        }))
+            stored.set(prefix + key, value);
+        stored.set("ottplayprov", id);
+        before = completed;
+        w.loadProv(id);
+        assert.equal(w.__ottActiveProviderDriver.id, id);
+        if (id === "itv")
+            requests.at(-1).resolve({
+                channels: [
+                    {
+                        cat_name: "News",
+                        ch_id: "one",
+                        channel_name: "One",
+                        rec_time: 24,
+                        server_cdn: "cdn.test",
+                        token: "t",
+                    },
+                ],
+            });
+        else if (id === "ottclub")
+            requests
+                .at(-1)
+                .resolve(
+                    '{"one":{"ch_id":"one","name":"One","category":"News","rec":true,"img":"one.png"}}'
+                );
+        else {
+            assert.equal(requests.at(-1).settings.dataType, "jsonp");
+            requests.at(-1).resolve([{ archive: 24, id: "one", name: "One" }]);
+            requests
+                .at(-1)
+                .resolve(
+                    '#EXTM3U\n#EXTINF:-1 tvg-name="one" group-title="News",One\nhttp://v.test/token/one/a.ts'
+                );
+        }
+        assert.equal(completed, before + 1, id + ": built catalog completes");
+        assert.equal(w.cList.length, 1);
+        assert(w.getChannelUrl(w.cList[0]), id + ": built live URL");
+        assert(w.__ottActiveProviderDriver.archive("one", 10, 20));
+        if (id === "ottclub") {
+            assert(w.epg.one.length > 0, "OTTCLUB publishes catalog seed EPG");
+            assert.equal(w.__ottActiveProviderDriver.guideCurrent, undefined);
+        } else {
+            const current = [];
+            w.sNextCount = 2;
+            w.getCurrentChannelEpg("one", (channel, rows) =>
+                current.push([channel, rows])
+            );
+            const request = requests.at(-1);
+            assert(
+                request.settings.url.includes(
+                    id === "itv" ? "/epg/" : "/pf.jsonp"
+                )
+            );
+            request.resolve([]);
+            assert.equal(current.length, 1);
+            assert.equal(current[0][0], "one");
+        }
+        if (id === "itv") {
+            w.popupArray = [];
+            w.popupActions = [];
+            w.popupDetail = [];
+            w.duneAddSettings(0);
+            const open = w.popupActions[2];
+            open();
+            pending = requests.at(-1);
+            assert(pending.settings.url.endsWith("/data/1234567890"));
+            const close = w.aboutKeyHandler;
+            open();
+            assert.equal(pending.aborts, 1);
+            assert.equal(
+                close(),
+                false,
+                "old panel handler cannot close replacement"
+            );
+            requests.at(-1).resolve({
+                package_info: [{ name: "Sport" }],
+                user_info: { login: "<viewer>", pay_system: 1 },
+            });
+            const html = w.$("#listAbout").html();
+            assert(html.includes("&lt;viewer&gt;"));
+            assert(html.includes("Sport"));
+            pending.resolve({ user_info: { login: "stale" } });
+            assert.equal(w.$("#listAbout").html(), html);
+            w.aboutKeyHandler();
+        }
+        w.loadChannels();
+        pending = requests.at(-1);
+        w.loadProv("demo");
+        assert.equal(pending.aborts, 1);
+        count = requests.length;
+        pending.resolve(null);
+        pending.reject();
+        assert.equal(requests.length, count, id + ": no obsolete fallback");
+        assert.equal(completed, before + 2);
+        assert.deepEqual(Array.from(w.cList), [900000001, 900000002]);
+    }
+    // The last four shipped providers also run through the artifact registry.
+    w.stb = { ...w.stb, getMacAddress: () => "00:11:22:33:44:55" };
+    for (const [id, values, playlist] of [
+        [
+            "antifriz",
+            { azkey: "12345678", azmpeg: "0" },
+            '#EXTM3U\n#EXTINF:-1 tvg-id="e" tvg-rec="2" group-title="News",One\nhttp://cdn.test/live/token/42.m3u8\n',
+        ],
+        [
+            "kb-team",
+            { kbcv_list: "0" },
+            '#EXTM3U\n#EXTINF:-1 tvg-id="e" tvg-name="Guide One" group-title="ХХХ" catchup-days="2",One\nhttps://stream.test/token/one/index.m3u8\n',
+        ],
+        [
+            "edem",
+            {
+                ededcdn: "https://cdn.test/path",
+                edkey: "12345678",
+                edlist: "0",
+                edvpurl: "portal::[key:secret]https://portal.test/api",
+            },
+            '#EXTM3U\n#EXTINF:-1 tvg-id="epg42" group-title="News",One\nhttps://localhost/00000000000000/live/42/index.m3u8\n',
+        ],
+        [
+            "m3u",
+            {
+                m3um3uArr: JSON.stringify({
+                    active: 0,
+                    M3Us: [
+                        {
+                            rechours: "48",
+                            www: "https://playlist.test/one.m3u",
+                        },
+                        {
+                            rechours: "24",
+                            www: "https://playlist.test/two.m3u",
+                        },
+                    ],
+                }),
+            },
+            '#EXTM3U\n#EXTINF:-1 tvg-id="e" group-title="News",One\nhttps://stream.test/token/one/index.m3u8\n',
+        ],
+    ]) {
+        if (!w.__ottProviderDrivers.registry.has(id)) continue;
+        for (const [key, value] of Object.entries(values))
+            stored.set(key, value);
+        stored.set("ottplayprov", id);
+        before = completed;
+        const start = requests.length;
+        w.loadProv(id);
+        assert.equal(w.__ottActiveProviderDriver.id, id);
+        assert.equal(
+            requests.length,
+            start + 1,
+            id + ": initial owned request"
+        );
+        requests[start].resolve(playlist);
+        assert.equal(
+            completed,
+            before + 1,
+            id + ": artifact startup completes once"
+        );
+        assert.equal(w.cList.length, 1);
+        const channel = w.cList[0];
+        assert(w.getChannelUrl(channel), id + ": artifact live URL");
+        const driver = w.__ottActiveProviderDriver;
+        if (id === "kb-team") {
+            const guide = requests.find(
+                (r, i) => i > start && r.settings.url.includes("gelist.php")
+            );
+            const logo = requests.find(
+                (r, i) => i > start && r.settings.url.includes("geicons.php")
+            );
+            assert(guide && logo);
+            guide.resolve({ [channel]: "guide/path" });
+            logo.resolve({ [channel]: "https://logo.test/one.png" });
+            assert.equal(w.channels[channel].logo, "https://logo.test/one.png");
+            assert.equal(
+                completed,
+                before + 1,
+                "metadata patch cannot repeat startup"
+            );
+            assert.equal(w.p_pref, "kbc0");
+        }
+        if (id === "antifriz" || id === "kb-team") {
+            w.mediaUrls = ["https://catalog.test/root.json"];
+            let mediaCalls = 0;
+            w.getMediaArray(w.mediaUrls[0], () => mediaCalls++);
+            requests
+                .at(-1)
+                .resolve(
+                    '{"playlist_name":"Films","channel":{"title":"Film","stream_url":"https://stream.test/film"}}'
+                );
+            assert.equal(mediaCalls, 1);
+            assert.equal(w.mediaRecords.length, 1);
+            assert.equal(
+                w.mediaRecords[0].stream_url,
+                "https://stream.test/film"
+            );
+        }
+        if (id === "edem") {
+            w.sPageSize = 0.2;
+            let mediaCalls = 0;
+            w.getMediaArray("", () => {
+                mediaCalls++;
+                w._mediaLoadState = { records: w.mediaRecords };
+                w.listArray = w.mediaRecords;
+            });
+            requests.at(-1).resolve({
+                count: 6,
+                items: [{ title: "One", type: "stream" }, { type: "next" }],
+                type: "category",
+            });
+            assert.equal(mediaCalls, 1);
+            const rows = w.mediaRecords;
+            assert.equal(rows.length, 6);
+            w.selIndex = 3;
+            rows[3].description();
+            assert.equal(JSON.parse(requests.at(-1).settings.data).offset, 2);
+            requests.at(-1).resolve({
+                items: [
+                    { title: "Two", type: "stream" },
+                    { title: "Three", type: "stream" },
+                ],
+            });
+            assert.strictEqual(w.mediaRecords, rows);
+            assert.strictEqual(w.listArray, rows);
+            assert.equal(rows[3].title, "Three");
+        }
+        if (id === "m3u") {
+            for (let slot = 0; slot < 2; slot++) {
+                const cfg = driver.configuration();
+                cfg.active = slot;
+                driver.saveConfiguration(cfg);
+                w.providerSetItem("playbackJournal", "slot" + slot);
+                assert.equal(
+                    stored.get("m3uplaybackJournal" + (slot || "")),
+                    "slot" + slot
+                );
+                assert.equal(w.m3uArr.active, slot);
+            }
+        }
+        w.loadChannels();
+        pending = requests.at(-1);
+        w.loadProv("demo");
+        assert.equal(
+            pending.aborts,
+            1,
+            id + ": pending request aborts on replacement"
+        );
+        count = requests.length;
+        pending.resolve(playlist);
+        pending.reject();
+        assert.equal(
+            requests.length,
+            count,
+            id + ": late result starts no request"
+        );
+        assert.equal(completed, before + 2);
+        assert.deepEqual(Array.from(w.cList), [900000001, 900000002]);
+    }
+    if (w.__ottProviderDrivers.registry.has("edem")) {
+        const translate = w._;
+        let replaced = false;
+        w._ = (value) => {
+            if (!replaced && value === "epg.one (Standard)") {
+                replaced = true;
+                w.loadProv("demo");
+            }
+            return translate(value);
+        };
+        w.loadProv("edem");
+        w._ = translate;
+        assert(replaced);
+        assert.equal(w.__ottActiveProviderDriver.id, "demo");
+        // The serialized host finishes the queued Demo selection after mount returns.
+        assert.equal(w.getMediaArray, null);
+        assert.strictEqual(w.playMedia, w._playMedia);
+    }
+    assert.deepEqual(
+        scripts,
+        [],
+        profile + ": registered drivers never execute provider scripts"
+    );
+    assert.equal(
+        ajaxWrites,
+        0,
+        profile + ": registered drivers never patch the ajax host port"
+    );
+    assert.deepEqual(errors, []);
+    console.log(
+        "OK: actual classic bundle " +
+            profile +
+            " instance provider startup/cancellation"
+    );
 }
 
 async function main() {
@@ -453,6 +1430,12 @@ async function main() {
                 profile + " bundle execution failed: " + error.message,
                 { cause: error }
             );
+        }
+        assertPrivateRuntime(w, profile);
+        if (profile === "modern" || profile === "legacy") {
+            exercisePlaybackRuntime(w, profile);
+            exerciseArchiveRuntime(profile);
+            exerciseProviderRuntime(profile);
         }
         for (const name of [
             "startPlayer",
@@ -637,7 +1620,7 @@ async function main() {
     }
 }
 main().catch((error) => {
-    console.error(error.message);
+    console.error(error.stack || error.message);
     if (error.cause)
         console.error(
             String(error.cause.stack).split("\n").slice(-8).join("\n")

@@ -1,5 +1,4 @@
 import { metadataCssUrl, metadataHtml, metadataText } from "../utils/helpers";
-import "./operator";
 /**
  * Provider management — load, parse, and manage IPTV service providers.
  * Preserves the original player's provider loading, selection, setup and
@@ -151,6 +150,8 @@ var providerScopedStorageKeys: string[] = [
     "catIndex",
     "primaryIndex",
     "prevArr",
+    "playbackJournal",
+    "continueWatch",
     "epgTimers",
     "aAspects",
     "aZooms",
@@ -830,19 +831,19 @@ declare var confirmBox: (
     onNo?: () => void
 ) => void;
 
-// ─── Load provider script ─────────────────────────────────────────────────────
+// ─── Load provider ────────────────────────────────────────────────────────────
 
 /**
- * Load a provider script dynamically from /prov/{id}/prov.js.
+ * Mount a registered provider instance or load its retained compatibility script.
  * Resets global function overrides (playChannel, channelsList, etc.) to
- * internal implementations, restores base popup state, then fetches the
- * provider's prov.js via getScriptDOM.
+ * internal implementations and restores base popup state. Unregistered providers
+ * use serialized getScriptDOM loading from /prov/{id}/prov.js.
  *
  * Flow:
  * 1. Resolve provider ID from URL query string or stb storage.
  * 2. Clear out provider callback overrides (playChannel, etc.).
  * 3. Restore savedPopup state (popupActions/Array/Detail).
- * 4. Load prov.js; on success call duneAddSettings → loadChannels.
+ * 4. Mount the instance or load its script, then call duneAddSettings → loadChannels.
  * 5. On failure call onError → firstRun().
  *
  * Side effects: DOM mutations to #launch / #dialogbox, calls stbStop() if
@@ -856,171 +857,214 @@ export function loadProv(providerId?: string): void {
     var commandLoad = {};
     (window as any).__ottCommandChannelLoad = commandLoad;
     (window as any).commandChannelsReady = false;
-    if (!isProviderAllowed((window as any)._pendingProvId || ""))
-        (window as any)._pendingProvId = "";
-    // An explicit choice made from Demo wins for this load only. The stored
-    // URL and stored provider-visibility restrictions still apply on reload.
-    var demoProviderSelection =
-        (window as any).ottplayDemoActive === true && providerId
-            ? providerId
-            : "";
-    // A provider switch retires demo playback before any asynchronous load.
-    if ((window as any).ottplayDemoActive === true) {
-        var demoMenuIndex = popupActions.indexOf(showProviderSelection);
-        if (demoMenuIndex !== -1) {
-            popupActions.splice(demoMenuIndex, 1);
-            popupArray.splice(demoMenuIndex, 1);
-            popupDetail.splice(demoMenuIndex, 1);
-        }
-        // Native PiP lives outside these DOM video elements. Use the public
-        // shell hook so its decoder/looper and pending startup are retired too.
-        (window as any).pipIndex = null;
-        if (typeof window.stbStopPip === "function") {
-            try {
-                window.stbStopPip();
-            } catch (error) {
-                console.warn("[loadProv] demo PiP stop failed:", error);
+    if ((window as any).__ottClassicPlayback)
+        (window as any).__ottClassicPlayback.cancel();
+    if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
+    var providerRuntime = (window as any).__ottProviderRuntime.classic;
+    var previousDriver = (window as any).__ottActiveProviderDriver;
+    if (previousDriver) {
+        // Abort can synchronously select another source. Detach this instance
+        // before teardown, then let the newer selection keep all published state.
+        (window as any).__ottActiveProviderDriver = null;
+        previousDriver.dispose();
+        if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
+    }
+    // Legacy scripts execute into shared globals. Delay the next reset until
+    // any previously requested script has finished evaluating, then run only
+    // the latest selection. Session disposal is immediate, before that wait.
+    providerRuntime.replace(function (providerSession: any) {
+        if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
+        if (!isProviderAllowed((window as any)._pendingProvId || ""))
+            (window as any)._pendingProvId = "";
+        // An explicit choice made from Demo wins for this load only. The stored
+        // URL and stored provider-visibility restrictions still apply on reload.
+        var demoProviderSelection =
+            (window as any).ottplayDemoActive === true && providerId
+                ? providerId
+                : "";
+        // A provider switch retires demo playback before any asynchronous load.
+        if ((window as any).ottplayDemoActive === true) {
+            var demoMenuIndex = popupActions.indexOf(showProviderSelection);
+            if (demoMenuIndex !== -1) {
+                popupActions.splice(demoMenuIndex, 1);
+                popupArray.splice(demoMenuIndex, 1);
+                popupDetail.splice(demoMenuIndex, 1);
+            }
+            // Native PiP lives outside these DOM video elements. Use the public
+            // shell hook so its decoder/looper and pending startup are retired too.
+            (window as any).pipIndex = null;
+            if (typeof window.stbStopPip === "function") {
+                try {
+                    window.stbStopPip();
+                } catch (error) {
+                    console.warn("[loadProv] demo PiP stop failed:", error);
+                }
             }
         }
-    }
-    (window as any).ottplayDemoActive = false;
-    restoreDemoMute();
-    for (var demoVideoIndex = 0; demoVideoIndex < 2; demoVideoIndex++) {
-        var demoVideo = document.getElementById(
-            demoVideoIndex ? "videopip" : "video"
-        ) as HTMLVideoElement | null;
-        if (demoVideo) demoVideo.loop = false;
-    }
-    cancelPortChannelIdMigration();
-    cancelMediaLoad();
-    if ((window as any).providerMediaClient) {
-        (window as any).providerMediaClient.dispose();
-        (window as any).providerMediaClient = null;
-    }
-    invalidateEpgCache();
-    /**
-     * Handle provider script load failure.
-     * Clears the pending provider, alerts the error (unless 'no' provider),
-     * and falls back to firstRun().
-     *
-     * Side effects: Alert dialog; DOM append to launch_id; hides the element.
-     */
-    function onError(): void {
-        if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
-        (window as any)._pendingProvId = "";
-        if (s !== "no") {
-            alert(s + ": load error!!!");
+        (window as any).ottplayDemoActive = false;
+        restoreDemoMute();
+        for (var demoVideoIndex = 0; demoVideoIndex < 2; demoVideoIndex++) {
+            var demoVideo = document.getElementById(
+                demoVideoIndex ? "videopip" : "video"
+            ) as HTMLVideoElement | null;
+            if (demoVideo) demoVideo.loop = false;
         }
-        $(launch_id)
-            .append("<br/><b>Failed to load provider script !!!</b>")
-            .hide();
-        firstRun();
-    }
+        cancelPortChannelIdMigration();
+        cancelMediaLoad();
+        if ((window as any).providerMediaClient) {
+            (window as any).providerMediaClient.dispose();
+            (window as any).providerMediaClient = null;
+        }
+        invalidateEpgCache();
+        /**
+         * Handle provider script load failure.
+         * Clears the pending provider, alerts the error (unless 'no' provider),
+         * and falls back to firstRun().
+         *
+         * Side effects: Alert dialog; DOM append to launch_id; hides the element.
+         */
+        function onError(): void {
+            if (!providerSession.active()) return;
+            if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
+            (window as any)._pendingProvId = "";
+            if (s !== "no") {
+                alert(s + ": load error!!!");
+            }
+            $(launch_id)
+                .append("<br/><b>Failed to load provider script !!!</b>")
+                .hide();
+            firstRun();
+        }
 
-    if (!$("#launch").is(":visible")) {
-        if (stbIsPlaying()) stbStop();
-        $("#dialogbox")
-            .html(
-                '<div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div>'
-            )
-            .show();
-        launch_id = "#dialogbox";
-        closeList();
-    }
+        if (!$("#launch").is(":visible")) {
+            if (stbIsPlaying()) stbStop();
+            $("#dialogbox")
+                .html(
+                    '<div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div>'
+                )
+                .show();
+            launch_id = "#dialogbox";
+            closeList();
+        }
 
-    version = savedPopup.ver;
-    getCurrentChannelEpg = null;
-    getMediaArray = null;
-    // Assign provider callback stubs (ported from original)
-    if (typeof _playChannel !== "undefined") playChannel = _playChannel;
-    if (typeof _channelsList !== "undefined") channelsList = _channelsList;
-    if (typeof _bucketsList !== "undefined") bucketsList = _bucketsList;
-    if (typeof _playMedia !== "undefined") playMedia = _playMedia;
-    if (typeof _providerGetItem !== "undefined")
-        providerGetItem = _providerGetItem;
-    if (typeof _providerHasItem !== "undefined")
-        providerHasItem = _providerHasItem;
-    if (typeof _providerHasItemValue !== "undefined")
-        providerHasItemValue = _providerHasItemValue;
-    if (typeof _providerSetItem !== "undefined")
-        providerSetItem = _providerSetItem;
-    if (typeof _providerDelItem !== "undefined")
-        providerDelItem = _providerDelItem;
+        version = savedPopup.ver;
+        getCurrentChannelEpg = null;
+        getMediaArray = null;
+        // Assign provider callback stubs (ported from original)
+        if (typeof _playChannel !== "undefined") playChannel = _playChannel;
+        if (typeof _channelsList !== "undefined") channelsList = _channelsList;
+        if (typeof _bucketsList !== "undefined") bucketsList = _bucketsList;
+        if (typeof _playMedia !== "undefined") playMedia = _playMedia;
+        if (typeof _providerGetItem !== "undefined")
+            providerGetItem = _providerGetItem;
+        if (typeof _providerHasItem !== "undefined")
+            providerHasItem = _providerHasItem;
+        if (typeof _providerHasItemValue !== "undefined")
+            providerHasItemValue = _providerHasItemValue;
+        if (typeof _providerSetItem !== "undefined")
+            providerSetItem = _providerSetItem;
+        if (typeof _providerDelItem !== "undefined")
+            providerDelItem = _providerDelItem;
 
-    // Restore base popup state (saved before any provider script ran)
-    if (savedPopup.popupActions.length) {
-        popupActions.splice(0, popupActions.length, ...savedPopup.popupActions);
-        popupArray.splice(0, popupArray.length, ...savedPopup.popupArray);
-        popupDetail.splice(0, popupDetail.length, ...savedPopup.popupDetail);
-    } else {
-        // Fallback when savedPopup was never snapshotted: reuse the single
-        // concat allocator published on window.* by src/index.ts. Do not
-        // hardcode a second 20-label table here (HS5 / prov.js depend on
-        // one shared popupActions/popupArray/popupDetail identity).
-        var wPop = window as any;
-        if (wPop.popupActions && wPop.popupActions.length) {
-            popupActions.splice(0, popupActions.length, ...wPop.popupActions);
-            popupArray.splice(0, popupArray.length, ...wPop.popupArray);
-            popupDetail.splice(0, popupDetail.length, ...wPop.popupDetail);
-        } else {
-            console.warn(
-                "[loadProv] popup fallback: window.popupActions empty; menu may be wrong"
+        // Restore base popup state (saved before any provider script ran)
+        if (savedPopup.popupActions.length) {
+            popupActions.splice(
+                0,
+                popupActions.length,
+                ...savedPopup.popupActions
             );
+            popupArray.splice(0, popupArray.length, ...savedPopup.popupArray);
+            popupDetail.splice(
+                0,
+                popupDetail.length,
+                ...savedPopup.popupDetail
+            );
+        } else {
+            // Fallback when savedPopup was never snapshotted: reuse the single
+            // concat allocator published on window.* by src/index.ts. Do not
+            // hardcode a second 20-label table here (HS5 / prov.js depend on
+            // one shared popupActions/popupArray/popupDetail identity).
+            var wPop = window as any;
+            if (wPop.popupActions && wPop.popupActions.length) {
+                popupActions.splice(
+                    0,
+                    popupActions.length,
+                    ...wPop.popupActions
+                );
+                popupArray.splice(0, popupArray.length, ...wPop.popupArray);
+                popupDetail.splice(0, popupDetail.length, ...wPop.popupDetail);
+            } else {
+                console.warn(
+                    "[loadProv] popup fallback: window.popupActions empty; menu may be wrong"
+                );
+            }
         }
-    }
 
-    var matchResult = window.location.search.match(/\?([^&]+)/);
-    // Keep an explicitly selected demo after restarting a URL-pinned player.
-    // The existing ?clear reset must still be able to clear that selection.
-    if (
-        demoProviderSelection ||
-        providerId === "demo" ||
-        (stbGetItem("ottplayprov") === "demo" &&
-            (!matchResult || matchResult[1].replace(/!/g, "") !== "clear"))
-    )
-        matchResult = null;
-    s = "";
-    if (matchResult !== null) {
-        s = matchResult[1].replace(/!/g, "");
-        if (s === "clear") {
-            stbSetItem("ottplayprov", "");
-            stbSetItem("noSelProv", "0");
-            s = "";
-        }
-        if (s.indexOf("*") > -1 && !stbGetItem("ottplayprov")) {
-            s = s.replace(/\*/g, "");
-            if (isProviderAllowed(s) && providerIds.indexOf(s) > -1) {
-                stbSetItem("ottplayprov", s);
-                stbSetItem("noSelProv", "1");
+        var matchResult = window.location.search.match(/\?([^&]+)/);
+        // Keep an explicitly selected demo after restarting a URL-pinned player.
+        // The existing ?clear reset must still be able to clear that selection.
+        if (
+            demoProviderSelection ||
+            providerId === "demo" ||
+            (stbGetItem("ottplayprov") === "demo" &&
+                (!matchResult || matchResult[1].replace(/!/g, "") !== "clear"))
+        )
+            matchResult = null;
+        s = "";
+        if (matchResult !== null) {
+            s = matchResult[1].replace(/!/g, "");
+            if (s === "clear") {
+                stbSetItem("ottplayprov", "");
+                stbSetItem("noSelProv", "0");
                 s = "";
             }
+            if (s.indexOf("*") > -1 && !stbGetItem("ottplayprov")) {
+                s = s.replace(/\*/g, "");
+                if (isProviderAllowed(s) && providerIds.indexOf(s) > -1) {
+                    stbSetItem("ottplayprov", s);
+                    stbSetItem("noSelProv", "1");
+                    s = "";
+                }
+            }
+            if (!isProviderAllowed(s) || providerIds.indexOf(s) === -1) s = "";
         }
+        if (s) removeOption(showProviderSelection);
+        else
+            s =
+                demoProviderSelection ||
+                (providerId === "demo"
+                    ? "demo"
+                    : stbGetItem("ottplayprov") || s);
         if (!isProviderAllowed(s) || providerIds.indexOf(s) === -1) s = "";
-    }
-    if (s) removeOption(showProviderSelection);
-    else
-        s =
-            demoProviderSelection ||
-            (providerId === "demo" ? "demo" : stbGetItem("ottplayprov") || s);
-    if (!isProviderAllowed(s) || providerIds.indexOf(s) === -1) s = "";
-    if (!s) {
-        s = "no";
-        onError();
-        return;
-    }
-    if (Number.parseInt(stbGetItem("noSelProv") || "0"))
-        removeOption(showProviderSelection);
-    else {
-        $(launch_id).append("<br/>");
-        $(launch_id).append(
-            document.createTextNode("Loading provider " + s + " script ...")
-        );
-        removeOption(edit_dealer);
-    }
-    getScriptDOM(
-        host + "/prov/" + s + "/prov.js?" + __cv,
-        function () {
+        if (!s) {
+            s = "no";
+            onError();
+            return;
+        }
+        if (Number.parseInt(stbGetItem("noSelProv") || "0"))
+            removeOption(showProviderSelection);
+        else {
+            $(launch_id).append("<br/>");
+            $(launch_id).append(
+                document.createTextNode("Loading provider " + s + " script ...")
+            );
+            removeOption(edit_dealer);
+        }
+        var driverRegistry = (window as any).__ottProviderDrivers;
+        var usesDriver = driverRegistry.registry.has(s);
+        function providerReady() {
             if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
+            // Future guide/media/stream requests keep their provider ownership even when
+            // invoked later from UI callbacks. Catalog fetches have a separate
+            // reload lifetime below, so do not bind getChannelsArray here.
+            if (!usesDriver)
+                providerRuntime.bind(providerSession, [
+                    "getEPGchanel",
+                    "getEPGchanelCur",
+                    "getMediaArray",
+                    "getChannelUrl",
+                    "getArchiveUrl",
+                ]);
             try {
                 if (typeof duneAddSettings === "function") {
                     $(launch_id).append("<br/>Loading settings...");
@@ -1144,12 +1188,23 @@ export function loadProv(providerId?: string): void {
                         typeof e
                 );
             }
-        },
-        function (e: any) {
-            console.error(e);
-            onError();
         }
-    );
+        if (usesDriver) {
+            driverRegistry.mount(window, s, providerSession);
+            providerReady();
+        } else {
+            providerRuntime.loadScript(
+                providerSession,
+                getScriptDOM,
+                host + "/prov/" + s + "/prov.js?" + __cv,
+                providerReady,
+                function (e: any) {
+                    console.error(e);
+                    onError();
+                }
+            );
+        }
+    }, true);
 }
 
 // ─── Load channels ────────────────────────────────────────────────────────────
@@ -1167,6 +1222,13 @@ export function loadProv(providerId?: string): void {
  * Edge case: Stops any active playback before loading.
  */
 export function loadChannels(): void {
+    if ((window as any).__ottClassicPlayback)
+        (window as any).__ottClassicPlayback.cancel();
+    var catalogSession = (
+        window as any
+    ).__ottProviderRuntime.classic.beginCatalog(
+        !!(window as any).__ottActiveProviderDriver
+    );
     var commandLoad = {};
     (window as any).__ottCommandChannelLoad = commandLoad;
     (window as any).commandChannelsReady = false;
@@ -1270,20 +1332,29 @@ export function loadChannels(): void {
     $(launch_id).append("<br/>Loading channel list...");
     // If getChannelsArray doesn't call back (e.g. empty playlist URL), hide spinners after timeout
     var _loadTimer = setTimeout(function () {
+        if (!catalogSession.active()) return;
         $("#dialogbox").hide();
         $("#buffering").hide();
         $("#launch").hide();
         if (typeof (window as any).clearBootHide === "function")
             (window as any).clearBootHide();
     }, 3000);
-    getChannelsArray(function () {
+    catalogSession.own(function () {
         clearTimeout(_loadTimer);
-        if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
-        finishPortChannelIdMigration(idMigration);
-        onChannelsLoaded();
-        // Startup callbacks may synchronously switch provider or reload channels.
-        if ((window as any).__ottCommandChannelLoad === commandLoad)
-            (window as any).commandChannelsReady = true;
+    });
+    catalogSession.run(function () {
+        getChannelsArray(
+            catalogSession.guard(function () {
+                clearTimeout(_loadTimer);
+                if ((window as any).__ottCommandChannelLoad !== commandLoad)
+                    return;
+                finishPortChannelIdMigration(idMigration);
+                onChannelsLoaded();
+                // Startup callbacks may synchronously switch provider or reload channels.
+                if ((window as any).__ottCommandChannelLoad === commandLoad)
+                    (window as any).commandChannelsReady = true;
+            })
+        );
     });
 }
 

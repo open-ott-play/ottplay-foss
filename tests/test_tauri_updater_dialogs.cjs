@@ -2,6 +2,29 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const repositoryRoot = path.resolve(__dirname, "..");
+const packageManifest = JSON.parse(
+    fs.readFileSync(path.join(repositoryRoot, "package.json"), "utf8")
+);
+const npmLock = JSON.parse(
+    fs.readFileSync(path.join(repositoryRoot, "package-lock.json"), "utf8")
+);
+const rustUpdater = fs
+    .readFileSync(path.join(repositoryRoot, "Cargo.lock"), "utf8")
+    .match(
+        /\[\[package\]\]\s+name = "tauri-plugin-updater"\s+version = "([^"]+)"/
+    );
+assert(rustUpdater, "Cargo.lock must contain the desktop updater plugin");
+const updaterPackage = "@tauri-apps/plugin-updater";
+const npmUpdater = npmLock.packages[`node_modules/${updaterPackage}`].version;
+assert.equal(packageManifest.dependencies[updaterPackage], npmUpdater);
+assert.equal(npmLock.packages[""].dependencies[updaterPackage], npmUpdater);
+assert.equal(
+    npmUpdater.split(".").slice(0, 2).join("."),
+    rustUpdater[1].split(".").slice(0, 2).join("."),
+    `Tauri updater major/minor must match for desktop builds: npm ${npmUpdater}, Rust ${rustUpdater[1]}`
+);
+console.log("Tauri updater npm/Rust release versions match");
 const ts = require(require.resolve("typescript", { paths: [process.cwd()] }));
 const source = fs.readFileSync(
     process.argv[2] || path.join(__dirname, "../src/index.ts"),

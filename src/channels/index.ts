@@ -187,6 +187,7 @@ export function finishPortChannelIdMigration(
         "parentalArray",
         "prevArr",
         "continueWatch",
+        "playbackJournal",
         "epgTimers",
         "aAspects",
         "aZooms",
@@ -208,7 +209,22 @@ export function finishPortChannelIdMigration(
                     });
             } else if (key === "continueWatch")
                 migrateField(value, "channelId");
-            else if (key === "cats" || key === "favoritesLists") {
+            else if (key === "playbackJournal") {
+                if (
+                    value &&
+                    value.version === 2 &&
+                    w.__ottClassicPlayback &&
+                    w.__ottClassicPlayback.canMigrateJournal()
+                ) {
+                    if (value.bookmark && value.bookmark.kind !== "vod")
+                        migrateField(value.bookmark, "channelId");
+                    if (Array.isArray(value.history))
+                        value.history.forEach(function (entry: any) {
+                            if (entry && entry.kind !== "vod")
+                                migrateField(entry, "channelId");
+                        });
+                }
+            } else if (key === "cats" || key === "favoritesLists") {
                 var lists = key === "cats" ? value : value && value.lists;
                 if (lists && typeof lists === "object" && !Array.isArray(lists))
                     Object.keys(lists).forEach(function (name) {
@@ -620,109 +636,17 @@ export let archivePos = 0,
     archiveEnd = 0;
 export let fileArchive = false;
 
-/* ---- Timeshift / catchup state (restored from stbPlayer.js) ---- */
-var _shiftTimer: any = null;
-var _shiftSec = 0;
-
-/**
- * Switch the current category and channel selection.
- * Updates the "previous channel" history (`prevArr`) unless the switch is
- * from a media-item playback (playType === -1e11).
- *
- * @param categoryIndex - Index into `catsArray` for the new category.
- * @param channelIndex  - Index into the category's channel list (`curList`).
- * @param isArchive     - If true, the new selection is an archive (time-shifted) playback.
- *
- * Side effects:
- * - Mutates `prevArr` (push old position, trim to configured max count).
- * - Updates `catIndex`, `curList`, `primaryIndex`.
- * - Syncs values to `window` globals for legacy code compatibility.
- * - When playType is -1e11 (media mode), saves current media position to provider history.
- */
+/** Classic view entrypoint; state/history decisions belong to the playback model. */
 export function setCurrent(
     categoryIndex: number,
     channelIndex: number,
     isArchive?: boolean
 ): void {
-    var wasArchive = playType > 0;
-    if (
-        categoryIndex !== catIndex ||
-        channelIndex !== primaryIndex ||
-        Boolean(isArchive) !== wasArchive ||
-        channelIndex === -1 ||
-        playType === -1e11
-    ) {
-        if (playType === -1e11) {
-            if (medHistory.length) {
-                medHistory[0].current = Math.max(
-                    0,
-                    Math.floor((window as any).stbGetPosTime()) || 0
-                );
-                if (sFavorites !== -1)
-                    providerSetItem("medHistory", JSON.stringify(medHistory));
-            }
-        } else {
-            try {
-                var oldCatId = cats[catsArray[catIndex]]?.[primaryIndex];
-                var newCatId = cats[catsArray[categoryIndex]]?.[channelIndex];
-                prevArr = prevArr.filter(function (prev: PreviousChannel) {
-                    var hasTime = prev.t !== undefined;
-                    return (
-                        (prev.ci !== oldCatId || hasTime !== wasArchive) &&
-                        (prev.ci !== newCatId || hasTime !== isArchive)
-                    );
-                });
-                prevArr.unshift({
-                    c: catIndex,
-                    ci: oldCatId,
-                    e: _prog100?.name,
-                    i: primaryIndex,
-                });
-                if (wasArchive && prevArr[0])
-                    prevArr[0].t = playType + playTime;
-                var prevCount = [1, 5, 10, 15, 20][settings.prevCount] || 10;
-                prevArr.splice(prevCount);
-            } catch (e) {
-                console.error(e);
-            }
-        }
-        if (channelIndex === -1) return;
-    }
-    catIndex = categoryIndex;
-    curList = cats[catsArray[catIndex]] || [];
-    primaryIndex = channelIndex;
-    // Sync to globals for backward compat with old-style code
-    window.catIndex = categoryIndex;
-    window.curList = curList;
-    window.primaryIndex = channelIndex;
-    // Persist current channel position (original stbPlayer.js saves at this point)
-    providerSetItem("primaryIndex", String(primaryIndex));
-    providerSetItem("catIndex", String(catIndex));
-    // Also save prevArr if it was updated
-    if (prevArr.length) providerSetItem("prevArr", JSON.stringify(prevArr));
-    // Continue-watching bookmark: single last-session record, mode-tagged.
-    // Live = catIndex/primaryIndex only. Archive/vod also captures playType (unix
-    // start sentinel) + playTime (offset seconds if used). Channel id is
-    // resolved from the live curList so the bookmark survives primaryIndex churn.
-    try {
-        var mode: string =
-            playType > 0 ? "archive" : playType < 0 ? "vod" : "live";
-        var cw: any = {
-            catIndex: catIndex,
-            channelId: (curList && curList[primaryIndex]) || undefined,
-            channelIndex: primaryIndex,
-            mode: mode,
-            updatedAt: Date.now(),
-            v: 1,
-        };
-        if (mode === "archive" || mode === "vod") {
-            cw.playType = playType;
-            cw.playTime = playTime;
-        }
-        providerSetItem("continueWatch", JSON.stringify(cw));
-    } catch (_e) {
-        // best-effort: never let bookmark persistence break channel switch
-    }
+    (window as any).__ottClassicPlayback.select(
+        categoryIndex,
+        channelIndex,
+        isArchive
+    );
 }
 
 /**
@@ -742,10 +666,10 @@ export function setCurrent(
  */
 export function restoreContinueWatch(): boolean {
     try {
-        var cw: any = window.providerGetJson("continueWatch", null);
+        var cw: any = (window as any).__ottClassicPlayback.bookmark();
         if (!cw || !cw.v || !cw.mode || cw.channelId == null) return false;
         var ageMs = Date.now() - (cw.updatedAt || 0);
-        if (ageMs > 7 * 24 * 60 * 60 * 1000) return false; // stale: > 7 days
+        if (ageMs < -300000 || ageMs > 7 * 24 * 60 * 60 * 1000) return false; // stale: > 7 days
         // 1) Resume dialog = archive only (positive playType sentinel required).
         // VOD / live → return false so caller does live playback.
         if (
@@ -841,15 +765,18 @@ export function restoreContinueWatch(): boolean {
             if (typeof window.playArchive === "function") {
                 window.playArchive(cw.playType);
                 if (typeof cw.playTime === "number") {
-                    setTimeout(function () {
-                        if (
-                            isCurrent() &&
-                            curList === source.list &&
-                            curList[primaryIndex] === cw.channelId &&
-                            window.playType === Math.floor(cw.playType)
-                        )
-                            window.stbSetPosTime(cw.playTime);
-                    }, 500);
+                    setTimeout(
+                        (window as any).__ottClassicPlayback.guard(function () {
+                            if (
+                                isCurrent() &&
+                                curList === source.list &&
+                                curList[primaryIndex] === cw.channelId &&
+                                window.playType === Math.floor(cw.playType)
+                            )
+                                window.stbSetPosTime(cw.playTime);
+                        }),
+                        500
+                    );
                 }
             } else {
                 playLiveFallback();
@@ -1817,6 +1744,7 @@ export function onChannelsLoaded(): void {
             curList = cats[catsArray[catIndex]] || [];
             if (primaryIndex < 0 || primaryIndex >= curList.length)
                 primaryIndex = 0;
+            (window as any).__ottClassicPlayback.hydrate();
             // Start playback: restore continue-watching bookmark if available.
             // If no archive/vod bookmark is offered, fall back to the normal
             // live playChannel path (live bookmarks are already encoded in
@@ -2125,8 +2053,11 @@ export function epgList(catIdx: number, chIdx: number, force: boolean): void {
  */
 export function selectEpg(): void {
     var w = window as any;
-    var ch: Channel = channels[epg_ch_id] || ({} as Channel);
-    var item = w.listArray[w.selIndex];
+    var channelId = epg_ch_id;
+    var ch: Channel = channels[channelId] || ({} as Channel);
+    var selectedList = w.listArray;
+    var selectedIndex = w.selIndex;
+    var item = selectedList[selectedIndex];
     if (!item) return;
 
     if (!ch.rec || item.time > Date.now() / 1000) {
@@ -2135,21 +2066,41 @@ export function selectEpg(): void {
         return;
     }
 
+    var category = w.listCatIndex;
+    var index = w.listChannel;
+    var schedule = listEpgArray;
+    var start = item.time;
+    // PIN completion belongs to this choice, not whichever row is visible later.
+    var accept = w.__ottClassicPlayback.guard(function (): void {
+        if (
+            epg_ch_id !== channelId ||
+            channels[channelId] !== ch ||
+            w.listArray !== selectedList ||
+            w.selIndex !== selectedIndex ||
+            selectedList[selectedIndex] !== item ||
+            item.time !== start ||
+            listEpgArray !== schedule ||
+            w.listCatIndex !== category ||
+            w.listChannel !== index ||
+            String(
+                ((w.cats || {})[(w.catsArray || [])[category]] || [])[index]
+            ) !== String(channelId) ||
+            !(Number(ch.rec) > 0) ||
+            start > Date.now() / 1000 ||
+            start <= Date.now() / 1000 - Number(ch.rec) * 3600
+        )
+            return;
+        if (typeof w.closeList === "function") w.closeList();
+        if (typeof setCurrent === "function") setCurrent(category, index, true);
+        window.epgArray = schedule;
+        if (typeof playArchive === "function") playArchive(start);
+    });
     if (
         typeof ifParentalAccessChId === "function" &&
-        ifParentalAccessChId(epg_ch_id, function () {
-            selectEpg();
-        })
+        ifParentalAccessChId(channelId, accept)
     )
         return;
-
-    if (typeof w.closeList === "function") w.closeList();
-    if (typeof setCurrent === "function")
-        setCurrent(w.listCatIndex, w.listChannel, true);
-
-    // Update global epgArray for playback sync
-    window.epgArray = listEpgArray;
-    if (typeof playArchive === "function") playArchive(item.time);
+    accept();
 }
 
 /**
@@ -3121,79 +3072,9 @@ export function getMediaDescr(item?: MediaHistoryEntry): string {
     return metadataHtml(text);
 }
 
-/**
- * Start archive playback at a given Unix timestamp.
- *
- * Mirrors the monolith's playArchive() in stbPlayer.js: updates OSD,
- * computes the current program (or a synthetic hour block when EPG is
- * missing), then either opens a fresh stbPlay() with the provider's
- * archive URL or seeks within the existing stream when the program
- * has not changed.
- *
- * @param e - Archive start time in seconds (Unix).
- * Side effects: Sets playTime, playType, fileArchive, archivePos;
- *               calls stbStop/stbPlay/stbSetPosTime via window globals.
- */
-export function playArchive(e: number): void {
-    var w = window as any;
-    var t = curProg;
-    // Defensive: clear any stale ticker before stbPlay stbStop path runs.
-    // stbPlay clears it too, but only on the happy path; if stbPlay throws
-    // before ticker init, this would leak.
-    clearPlayTimeInterval();
-    // Set archive playType before updateArchiveInfo so nested updateChannelInfo
-    // sees archive mode (not live virtual timeshift) when EPG is missing.
-    playTime = 0;
-    playType = Math.floor(e);
-    w.playType = playType;
-    w.playTime = playTime;
-    updateArchiveInfo(e);
-    if (w.sInfoRew) w.showChannelInfo(1);
-    var r = curList[primaryIndex];
-    // Prefer EPG program; else synthetic window from updateArchiveInfo (_prog100
-    // rolling 1h/80% when no EPG); else legacy clock-hour like stbPlayer.js.
-    var s = epgArray[curProg];
-    if (!s) {
-        if (
-            _prog100 &&
-            typeof _prog100.time === "number" &&
-            typeof _prog100.time_to === "number" &&
-            isFinite(_prog100.time) &&
-            isFinite(_prog100.time_to)
-        ) {
-            s = _prog100;
-        } else {
-            s = {
-                descr: "",
-                name: "",
-                time: Math.floor(e / 3600) * 3600,
-                time_to: (Math.floor(e / 3600) + 1) * 3600,
-            };
-        }
-    }
-    // Catchup URL templates / flussonic archive-{start}-{duration} need end > start.
-    // Clock-hour near the boundary can yield duration 0 → proxy HTML → levelParsingError.
-    if (!isFinite(e) || e <= 0) {
-        console.error("[playArchive] invalid archive start", e);
-        return;
-    }
-    if (!(s.time_to > e)) {
-        s = {
-            descr: s.descr || "",
-            name: s.name || "",
-            time: typeof s.time === "number" && isFinite(s.time) ? s.time : e,
-            time_to: e + 3600,
-        };
-    }
-    if (!fileArchive || t != curProg) {
-        if (w.sStopPlay) w.stbStop();
-        w.stbPlay(
-            w.getArchiveUrl(r, e, s.time_to, s),
-            fileArchive ? e - s.time : 0
-        );
-    } else {
-        w.stbSetPosTime(e - s.time);
-    }
+/** Decode the classic entrypoint; archive decisions belong to its controller. */
+export function playArchive(epoch: number): void {
+    (window as any).__ottClassicArchive.open(epoch);
 }
 
 /**
@@ -3213,10 +3094,29 @@ export function playArchive(e: number): void {
  * - Calls `getChannelEpgCached` if seek crossed the EPG program window.
  */
 export function updateArchiveInfo(position: number): void {
+    (window as any).__ottClassicArchive.update(position);
+}
+
+/** Render the coordinator's immutable selection; rendering never requests media or EPG. */
+function renderArchiveInfo(model: ArchiveView): void {
+    var position = model.position;
     archivePos = position;
     var w = window as any;
-    var channelId = curList[primaryIndex];
-    var prog: EPGEntry | null = null;
+    var channelId = model.context.host.id;
+    epgArray = model.rows.map(function (row): EPGEntry {
+        return row.payload;
+    });
+    curProg = model.current ? model.rows.indexOf(model.current) : -1;
+    var prog: EPGEntry = model.current
+        ? model.current.payload
+        : {
+              descr: "",
+              name: "",
+              time: model.window.start,
+              time_to: model.window.end,
+          };
+    playType = w.playType;
+    playTime = w.playTime;
 
     // Update channel header info
     var chEl = document.getElementById("channel_name");
@@ -3230,29 +3130,6 @@ export function updateArchiveInfo(position: number): void {
     }
     var chNumEl = document.getElementById("channel_number");
     if (chNumEl) chNumEl.innerHTML = "" + (primaryIndex + 1);
-
-    // Find current program in epgArray
-    var prevProg = curProg;
-    var idx = epgArray.findIndex(function (e) {
-        return e.time_to > position && e.time <= position;
-    });
-
-    if (idx !== -1) {
-        curProg = idx;
-        prog = epgArray[idx];
-    } else {
-        // No EPG: rolling 1h lookback window with playhead at ~80%
-        // (same as live virtualTimeshiftProg — avoids clock-hour "17:00" bars).
-        curProg = idx;
-        var lookback = 3600;
-        var total = lookback / 0.8;
-        prog = {
-            descr: "",
-            name: "",
-            time: position - lookback,
-            time_to: position - lookback + total,
-        };
-    }
 
     _prog100 = prog;
     w._prog100 = prog;
@@ -3348,22 +3225,12 @@ export function updateArchiveInfo(position: number): void {
         descrEl.innerHTML = "";
     }
 
-    // Next program
-    var nextProgIdx = idx + 1;
-    if (nextProgIdx <= 0) {
-        nextProgIdx = epgArray.findIndex(function (e) {
-            return e.time > position;
-        });
-    }
+    // The controller supplies the next programme independently of array indices.
+    var nextProg = model.next ? model.next.payload : null;
     var nextProgramNameElement = document.getElementById("nprogramm_name");
     var nbeginTimeEl = document.getElementById("nbegin_time");
     var nendTimeEl = document.getElementById("nend_time");
-    if (
-        nextProgIdx > -1 &&
-        nextProgIdx < epgArray.length - 1 &&
-        epgArray[nextProgIdx]
-    ) {
-        var nextProg = epgArray[nextProgIdx];
+    if (nextProg) {
         if (nextProgramNameElement)
             nextProgramNameElement.textContent = nextProg.name;
         if (nbeginTimeEl) nbeginTimeEl.textContent = time2time(nextProg.time);
@@ -3376,42 +3243,12 @@ export function updateArchiveInfo(position: number): void {
         if (nendTimeEl) nendTimeEl.textContent = "";
     }
 
-    // Trigger channel info refresh
-    if (typeof w.updateChannelInfo === "function") {
-        w.updateChannelInfo(listChannel);
-    }
-
-    // EPG re-fetch on seek-cross-boundary (stbPlayer.js:1744-1746)
-    // If curProg changed and bar is not visible, auto-show
-    if (w.sInfoChange && prevProg !== curProg && !$("#info1").is(":visible")) {
+    if (w.sInfoChange && model.changed && !$("#info1").is(":visible")) {
         w.showChannelInfo(1);
     }
-    // Re-fetch EPG if seek crossed program window boundary and we don't have
-    // enough future programs
-    if (prevProg !== curProg && typeof w.getChannelEpgCached === "function") {
-        // Check if next program is missing from epgArray
-        var needFetch = false;
-        if (nextProgIdx >= epgArray.length || !epgArray[nextProgIdx]) {
-            needFetch = true;
-        } else if (
-            nextProgIdx + 1 >= epgArray.length ||
-            !epgArray[nextProgIdx + 1]
-        ) {
-            needFetch = true;
-        }
-        if (needFetch) {
-            w.getChannelEpgCached(
-                channelId,
-                function (_chId: number, data: EPGEntry[] | null) {
-                    if (data && data.length) {
-                        epgArray = data;
-                        setCurProg(_chId, data, undefined as any);
-                    }
-                }
-            );
-        }
-    }
 }
+if (typeof window !== "undefined")
+    (window as any).__ottRenderArchive = renderArchiveInfo;
 
 /**
  * Stop archive playback and return to live TV for the current channel.
@@ -3423,32 +3260,7 @@ export function updateArchiveInfo(position: number): void {
  */
 export function liveStop(): void {
     if (!stbIsPlaying()) return;
-    var e = curList[primaryIndex];
-    if (!channels[e].rec) return;
-    getChannelEpgCached(e, function (t: number, e: any) {
-        var r: any[] = [];
-        if (e !== null && e.length) {
-            r = e
-                .filter(function (e: any) {
-                    var ch = channels[t];
-                    return ch
-                        ? e.time > Date.now() / 1e3 - (ch.rec ?? 0) * 60 * 60
-                        : false;
-                })
-                .sort(function (e: any, t: any) {
-                    return e.time - t.time;
-                });
-        }
-        epgArray = r;
-        setCurProg(t, e, undefined as any);
-        playType = Math.round(Date.now() / 1e3);
-        playTime = 0;
-        if (typeof window.showChannelInfo === "function")
-            window.showChannelInfo(2);
-        if (typeof window.showShift === "function")
-            window.showShift(window._("Pause"));
-        stbPause();
-    });
+    (window as any).__ottClassicArchive.pauseLive();
 }
 
 /**
@@ -3476,88 +3288,9 @@ function seekArchive(offset: number): void {
     w.stbSetPosTime(offset);
 }
 
-/**
- * Shift the archive playback position by a delta (positive = forward, negative = backward).
- * Accumulates the delta and debounces the actual seek to ~500 ms, matching the
- * monolith's behaviour so a stream of key presses becomes one seek.
- *
- * @param e - Delta in seconds (negative = rewind, positive = forward, -6e6 = to beginning).
- * Side effects: Mutates `_shiftSec`, `archivePos`; shows a shift OSD; debounces
- *               a call to `_shiftArchive` via a setTimeout.
- */
-export function shiftArchive(e: number): void {
-    var w = window as any;
-    if (e === -6e6) {
-        _shiftSec += e;
-        _shiftArchive();
-        return;
-    }
-    _shiftSec += e;
-    clearTimeout(_shiftTimer);
-    if (w.sInfoRew && typeof w.showChannelInfo === "function")
-        w.showChannelInfo(1);
-    if (typeof w.showShift === "function")
-        w.showShift(formatSeekOffset(_shiftSec));
-    _shiftTimer = setTimeout(_shiftArchive, 500);
-}
-
-/**
- * Apply the accumulated shift delta. Dispatches by current playType:
- *  - live (playType === 0): negative → timeShift(-delta), positive → restart live
- *  - media (playType < 0): relative stbSetPosTime, clamped
- *  - archive (playType > 0): shift playType by delta+playTime, re-playArchive
- *    if the result is still in the past, else drop to live.
- */
-function _shiftArchive(): void {
-    var w = window as any;
-    var e = _shiftSec;
-    _shiftSec = 0;
-    clearTimeout(_shiftTimer);
-    if (!e) return;
-    if (!playType) {
-        if (e < 0) {
-            if (typeof w.timeShift === "function") w.timeShift(-e);
-        } else {
-            if (typeof w.showShift === "function")
-                w.showShift((w._ && w._("Restart stream")) || "Restart stream");
-            if (typeof w.playChannel === "function")
-                w.playChannel(catIndex, primaryIndex);
-        }
-        return;
-    }
-    function announce(): void {
-        if (e === -6e6) {
-            if (typeof w.showShift === "function")
-                w.showShift((w._ && w._("To begining")) || "To beginning");
-        } else {
-            if (typeof w.showShift === "function")
-                w.showShift(formatSeekOffset(e));
-        }
-    }
-    if (playType < 0) {
-        var newPos = Math.max(
-            (typeof w.stbGetPosTime === "function" ? w.stbGetPosTime() : 0) + e,
-            0
-        );
-        var len = typeof w.stbGetLen === "function" ? w.stbGetLen() : 0;
-        if (len && newPos > len) return;
-        if (typeof w.stbSetPosTime === "function") w.stbSetPosTime(newPos);
-        announce();
-        if (w.sInfoRew && typeof w.showChannelInfo === "function")
-            w.showChannelInfo(1);
-        return;
-    }
-    playType = playType + e + playTime;
-    (w as any).playType = playType;
-    if (playType < Date.now() / 1e3) {
-        announce();
-        playArchive(playType);
-    } else {
-        if (typeof w.showShift === "function")
-            w.showShift((w._ && w._("Live")) || "Live");
-        if (typeof w.playChannel === "function")
-            w.playChannel(catIndex, primaryIndex);
-    }
+/** Decode the existing remote action at the compatibility boundary. */
+export function shiftArchive(delta: number): void {
+    (window as any).__ottClassicPlayback.shift(delta);
 }
 
 /**
@@ -3598,16 +3331,35 @@ export function shiftArchiveSelect(initialDelta: number): void {
     var i = 0;
     var t: any = null;
     var keys = w.keys || {};
+    var context = w.__ottClassicPlayback.context();
+    var finished = false;
+    var revision = 0;
+    var submit = w.__ottClassicPlayback.guard(function (): void {
+        shiftArchive(i);
+    });
+    function finish(apply: boolean): void {
+        if (finished) return;
+        finished = true;
+        revision++;
+        clearTimeout(t);
+        // A retired dialog cannot seek or hide a replacement dialog.
+        if (w.dialogBoxKeyHandler !== handler || !context.isCurrent()) return;
+        $("#dialogbox").hide();
+        if (w.tooltip) w.tooltip.style.display = "";
+        if (apply) submit();
+        else if (typeof w.infoBarHide === "function") w.infoBarHide();
+        if (w.dialogBoxKeyHandler === handler) w.dialogBoxKeyHandler = null;
+    }
     function r(delta: number): void {
+        if (finished || w.dialogBoxKeyHandler !== handler) return;
         clearTimeout(t);
         i += delta;
         var stepEl = document.getElementById("step");
         if (stepEl && typeof w.formatSeekOffset === "function")
             stepEl.innerHTML = w.formatSeekOffset(i);
+        var expected = ++revision;
         t = setTimeout(function () {
-            $("#dialogbox").hide();
-            if (w.tooltip) w.tooltip.style.display = "";
-            shiftArchive(i);
+            if (expected === revision) finish(true);
         }, 3000);
     }
     var renderButtonHint = w.renderButtonHint;
@@ -3637,8 +3389,8 @@ export function shiftArchiveSelect(initialDelta: number): void {
         .show();
     if (w.sInfoRew && typeof w.showChannelInfo === "function")
         w.showChannelInfo(1);
-    r(initialDelta);
-    w.dialogBoxKeyHandler = function (e: number): void {
+    var handler = function (e: number): void {
+        if (finished || w.dialogBoxKeyHandler !== handler) return;
         switch (e) {
             case keys.N1:
                 r(-(w.s13dur || 0));
@@ -3674,70 +3426,21 @@ export function shiftArchiveSelect(initialDelta: number): void {
                 return;
             case keys.EXIT:
             case keys.RETURN:
-                $("#dialogbox").hide();
-                if (typeof w.infoBarHide === "function") w.infoBarHide();
-                if (w.tooltip) w.tooltip.style.display = "";
-                clearTimeout(t);
+                finish(false);
                 return;
             case keys.ENTER:
-                $("#dialogbox").hide();
-                clearTimeout(t);
-                shiftArchive(i);
-                if (w.tooltip) w.tooltip.style.display = "";
+                finish(true);
                 return;
             default:
                 return;
         }
     };
+    w.dialogBoxKeyHandler = handler;
+    r(initialDelta);
 }
 
-export function timeShift(n: number): void {
-    var w = window as any;
-    var chId = curList[primaryIndex];
-    var ch = channels[chId];
-    if (!ch || !ch.rec) return;
-    if (typeof w.getChannelEpgCached !== "function") {
-        // No EPG helper — seek by delta using archivePos as the base time
-        if (n > 0) playArchive(Date.now() / 1000 - n);
-        return;
-    }
-    w.getChannelEpgCached(chId, function (_t: any, epgData: EPGEntry[] | null) {
-        var r: EPGEntry[] = [];
-        if (
-            epgData !== null &&
-            epgData !== undefined &&
-            (epgData as any).length
-        ) {
-            r = (epgData as EPGEntry[])
-                .filter(function (e) {
-                    return e.time > Date.now() / 1000 - ch!.rec! * 60 * 60;
-                })
-                .sort(function (a, b) {
-                    return a.time - b.time;
-                });
-        }
-        epgArray = r;
-        window.epgArray = r;
-        setCurProg(chId, epgData, undefined);
-        window.curProg = curProg;
-        setCurrent(catIndex, primaryIndex, true);
-        if (n) {
-            var delta = Math.round(Date.now() / 1000) - n;
-            if (typeof w.showShift === "function")
-                w.showShift(formatSeekOffset(-n));
-            playArchive(delta);
-        } else {
-            if (typeof w.showShift === "function")
-                w.showShift(
-                    (w._ && w._("Archive - begin")) || "Archive - begin"
-                );
-            var now = Date.now() / 1000;
-            var s = r.findIndex(function (e) {
-                return e.time_to >= now && e.time <= now;
-            });
-            if (s >= 0 && r[s]) playArchive(r[s].time);
-        }
-    });
+export function timeShift(offset: number): void {
+    (window as any).__ottClassicArchive.rewind(offset);
 }
 
 /**

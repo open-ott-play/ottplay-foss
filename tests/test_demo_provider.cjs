@@ -83,7 +83,7 @@ const providerUi =
 const providerLoad =
     (process.argv.includes("--bundle")
         ? declarations(providerSource, ["__spreadArray"])
-        : "") + declarations(providerSource, ["loadProv"]);
+        : "") + declarations(providerSource, ["loadProv", "syncFromWindow"]);
 
 function storage() {
     return new Map([
@@ -99,17 +99,29 @@ function storage() {
 function uiFixture() {
     const saved = storage();
     const loaded = [];
+    const scriptCallbacks = [];
     const media = [{ loop: true }, { loop: true }];
     const w = {
         _: (value) => value,
+        __av: "fixture",
         __cv: "fixture",
         $: () => ({
             append() {
                 return this;
             },
+            attr() {
+                return this;
+            },
+            css() {
+                return this;
+            },
             hide() {},
             is: () => true,
+            on() {
+                return this;
+            },
         }),
+        browserName: () => "browser",
         btnDiv: () => "",
         cancelMediaLoad() {},
         cancelPortChannelIdMigration() {},
@@ -121,7 +133,11 @@ function uiFixture() {
         },
         edit_dealer() {},
         edit_dealer_remote() {},
-        getScriptDOM: (url) => loaded.push(url),
+        epgCash: 0,
+        getScriptDOM: (url, ready, failed) => {
+            loaded.push(url);
+            scriptCallbacks.push({ failed, ready });
+        },
         host: "https://player.invalid",
         invalidateEpgCache() {},
         keys: { ENTER: 13, GREEN: 402, RED: 401, RETURN: 27, YELLOW: 403 },
@@ -129,11 +145,16 @@ function uiFixture() {
         listCaptionElement: {},
         listDetail: {},
         listPodval: {},
+        loadChannels() {},
         loadOpt() {},
         loadProv: (id) => loaded.push(id),
         loadSettings() {},
         location: { search: "" },
+        metadataText: String,
         nofun() {},
+        noProvParam() {},
+        optIndexOf: () => -1,
+        optionsArr: [],
         optionsList() {},
         parentPIN: "*",
         popupActions: [],
@@ -160,10 +181,36 @@ function uiFixture() {
     };
     w.window = w;
     vm.createContext(w);
+    require("./helpers/private-runtime.cjs")(w, "src/provider/runtime.ts");
+    require("./helpers/private-runtime.cjs")(
+        w,
+        "src/provider/driver-profiles.ts"
+    );
+    require("./helpers/private-runtime.cjs")(
+        w,
+        "src/provider/stalker-driver.ts"
+    );
+    require("./helpers/private-runtime.cjs")(
+        w,
+        "src/provider/catalog-drivers.ts"
+    );
+    for (const module of [
+        "catalog-xml",
+        "media-catalog",
+        "playlist-drivers",
+        "edem-driver",
+        "m3u-settings",
+        "m3u-driver",
+    ])
+        require("./helpers/private-runtime.cjs")(
+            w,
+            "src/provider/" + module + ".ts"
+        );
+    require("./helpers/private-runtime.cjs")(w, "src/provider/drivers.ts");
     vm.runInContext(providerUi, w);
     if (process.argv.includes("--bundle")) w.installEnglishPlayerAliases(w);
     else attachSourceAliases(w);
-    return { loaded, media, saved, w };
+    return { loaded, media, saved, scriptCallbacks, w };
 }
 
 let cases = 0;
@@ -219,7 +266,8 @@ test("provider switch clears both loop flags and retires demo before loading", (
     w.loadProv();
     assert.equal(w.ottplayDemoActive, false);
     assert(media.every((item) => item.loop === false));
-    assert.equal(loaded[0], "https://player.invalid/prov/m3u/prov.js?fixture");
+    assert.deepEqual(loaded, []);
+    assert.equal(w.__ottActiveProviderDriver.id, "m3u");
 });
 
 test("provider reload revokes channel readiness before its script completes", () => {
@@ -234,8 +282,11 @@ test("provider reload revokes channel readiness before its script completes", ()
     assert.notEqual(w.__ottCommandChannelLoad, previous);
 });
 
-test("an older provider script completion cannot start the current channel load", () => {
-    const { w } = menuFixture(0, 0);
+test("retained custom-script boundary rejects older completion (forced unregistered fixture)", () => {
+    const { w, saved } = menuFixture(0, 0);
+    saved.set("ottplayprov", "m3u");
+    // All shipped providers now use instances. Exercise only the retained extension boundary.
+    w.__ottProviderDrivers.registry.has = () => false;
     const scripts = [];
     let channelLoads = 0;
     let fallbackScreens = 0;
@@ -266,7 +317,12 @@ test("Try demo can recover from a failed URL-pinned provider", () => {
     w.location.search = "?m3u";
     w.firstRun();
     w.listKeyHandlerFn(w.keys.ENTER);
-    assert.equal(loaded[0], "https://player.invalid/prov/demo/prov.js?fixture");
+    assert.deepEqual(
+        loaded,
+        [],
+        "demo starts without executable provider scripts"
+    );
+    assert.equal(w.__ottActiveProviderDriver.id, "demo");
 });
 
 test("leaving demo stops the shell PiP once before retiring its active flag", () => {
@@ -281,7 +337,8 @@ test("leaving demo stops the shell PiP once before retiring its active flag", ()
     assert.deepEqual(stops, [true]);
     assert.equal(w.pipIndex, null);
     assert.equal(w.ottplayDemoActive, false);
-    assert.equal(loaded.length, 1);
+    assert.deepEqual(loaded, []);
+    assert.equal(w.__ottActiveProviderDriver.id, "m3u");
     w.loadProv();
     assert.deepEqual(stops, [true], "normal provider reload does not stop PiP");
 });
@@ -298,7 +355,8 @@ test("demo retirement continues when a shell PiP stop throws", () => {
     w.loadProv();
     assert.equal(w.pipIndex, null);
     assert.equal(w.ottplayDemoActive, false);
-    assert.equal(loaded.length, 1);
+    assert.deepEqual(loaded, []);
+    assert.equal(w.__ottActiveProviderDriver.id, "m3u");
 });
 
 test("provider switch retires an older demo channel-loader callback", () => {
@@ -314,9 +372,8 @@ test("provider switch retires an older demo channel-loader callback", () => {
     assert.equal(completed, 0);
     assert.equal(w.cList.length, 0);
     assert.equal(w.ottplayDemoActive, false);
-    assert.deepEqual(loaded, [
-        "https://player.invalid/prov/m3u/prov.js?fixture",
-    ]);
+    assert.deepEqual(loaded, []);
+    assert.equal(w.__ottActiveProviderDriver.id, "m3u");
 });
 
 test("saved demo survives restart of a URL-pinned player and can return to its provider", () => {
@@ -327,20 +384,21 @@ test("saved demo survives restart of a URL-pinned player and can return to its p
     w.firstRun();
     w.listKeyHandlerFn(w.keys.ENTER);
     w.loadProv();
+    assert.equal(
+        loaded.length,
+        0,
+        "demo reloads never request provider scripts"
+    );
     assert.equal(saved.get("ottplayprov"), "demo");
-    assert.deepEqual(loaded, [
-        "https://player.invalid/prov/demo/prov.js?fixture",
-        "https://player.invalid/prov/demo/prov.js?fixture",
-    ]);
+    assert.equal(w.__ottActiveProviderDriver.id, "demo");
     w.selectProvaider();
     w.selIndex = w.arrayProvaiders.indexOf("m3u");
     w.listKeyHandlerFn(w.keys.ENTER);
     w.loadProv();
+    assert.deepEqual(loaded, []);
+    assert.equal(w.__ottActiveProviderDriver.id, "m3u");
     assert.equal(saved.get("ottplayprov"), "m3u");
-    assert.deepEqual(loaded.slice(2), [
-        "https://player.invalid/prov/m3u/prov.js?fixture",
-        "https://player.invalid/prov/m3u/prov.js?fixture",
-    ]);
+    assert.deepEqual(loaded, []);
     assert.equal(saved.get("m3um3uArr"), storage().get("m3um3uArr"));
 });
 
@@ -365,9 +423,8 @@ test("URL provider keeps its existing priority over other saved providers", () =
     w.location.search = "?m3u";
     w.loadProv();
     assert.equal(saved.get("ottplayprov"), "stalker");
-    assert.deepEqual(loaded, [
-        "https://player.invalid/prov/m3u/prov.js?fixture",
-    ]);
+    assert.deepEqual(loaded, []);
+    assert.equal(w.__ottActiveProviderDriver.id, "m3u");
 });
 
 function menuFixture(noSelProv, noProvParam, query = "") {
@@ -512,9 +569,10 @@ test("explicit provider chosen from pinned Demo loads once, then normal reload o
     w.selIndex = w.arrayProvaiders.indexOf("stalker");
     w.listKeyHandlerFn(w.keys.ENTER);
     assert.equal(
-        loaded.at(-1),
-        "https://player.invalid/prov/stalker/prov.js?fixture"
+        loaded.some((url) => url.includes("/prov/stalker/prov.js")),
+        false
     );
+    assert.equal(w.__ottActiveProviderDriver.id, "stalker");
     assert.equal(saved.get("ottplayprov"), "stalker");
     assert.equal(w.ottplayDemoActive, false);
     assert.equal(w.popupActions.indexOf(w.selectProvaider), -1);
@@ -525,10 +583,8 @@ test("explicit provider chosen from pinned Demo loads once, then normal reload o
         "ordinary noProvParam restriction is retained"
     );
     w.loadProv();
-    assert.equal(
-        loaded.at(-1),
-        "https://player.invalid/prov/m3u/prov.js?fixture"
-    );
+    assert.deepEqual(loaded, []);
+    assert.equal(w.__ottActiveProviderDriver.id, "m3u");
     assert.equal(saved.get("noSelProv"), "1");
     assert.equal(saved.get("noProvParam"), "1");
     assert.equal(saved.get("m3um3uArr"), storage().get("m3um3uArr"));
@@ -948,9 +1004,8 @@ for (const initiallyMuted of [false, true]) {
             assert.equal(w.video.paused, true);
             assert.equal(w.video.muted, initiallyMuted);
             assert.equal(w.ottplayDemoActive, false);
-            assert.deepEqual(loaded, [
-                "https://player.invalid/prov/m3u/prov.js?fixture",
-            ]);
+            assert.deepEqual(loaded, []);
+            assert.equal(w.__ottActiveProviderDriver.id, "m3u");
         }
     );
 }

@@ -55,14 +55,18 @@ const code = process.argv.includes("--bundle")
           ...storage.names,
           "__spreadArray",
           "loadProv",
+          "pdsa",
           ...policyNames,
           ...aliasNames,
       ]).code
     : [
           lz.code,
           storage.code,
-          declarations("src/provider/index.ts", ["loadProv", ...policyNames])
-              .code,
+          declarations("src/provider/index.ts", [
+              "loadProv",
+              "pdsa",
+              ...policyNames,
+          ]).code,
           declarations("src/index.ts", aliasNames).code,
       ].join("\n");
 
@@ -109,6 +113,32 @@ const context = {
 };
 context.window = context;
 vm.createContext(context);
+require("./helpers/private-runtime.cjs")(context, "src/provider/runtime.ts");
+require("./helpers/private-runtime.cjs")(
+    context,
+    "src/provider/driver-profiles.ts"
+);
+require("./helpers/private-runtime.cjs")(
+    context,
+    "src/provider/stalker-driver.ts"
+);
+require("./helpers/private-runtime.cjs")(
+    context,
+    "src/provider/catalog-drivers.ts"
+);
+for (const module of [
+    "catalog-xml",
+    "media-catalog",
+    "playlist-drivers",
+    "edem-driver",
+    "m3u-settings",
+    "m3u-driver",
+])
+    require("./helpers/private-runtime.cjs")(
+        context,
+        "src/provider/" + module + ".ts"
+    );
+require("./helpers/private-runtime.cjs")(context, "src/provider/drivers.ts");
 vm.runInContext(
     ts.transpileModule(code, {
         compilerOptions: {
@@ -152,4 +182,13 @@ for (let round = 0; round < 3; round++) {
 }
 console.log(
     "PASS provider storage reset: first run + 2 reloads, all 5 helpers"
+);
+
+assert(
+    context.pdsa.includes("playbackJournal"),
+    "source reset clears typed journal"
+);
+assert(
+    context.pdsa.includes("continueWatch"),
+    "source reset clears legacy resume mirror"
 );
