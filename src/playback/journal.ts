@@ -152,6 +152,7 @@ function createPlaybackJournal(ports: PlaybackJournalPorts) {
         }
     }
     return {
+        active: ports.isCurrent,
         read: read,
         update: function (change: {
             bookmark?: PlaybackJournalEntry | null;

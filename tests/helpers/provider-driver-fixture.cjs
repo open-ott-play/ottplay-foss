@@ -77,6 +77,8 @@ function fixture(initial = {}) {
     require("./shared-core-runtime.cjs")(host, { vendorOnly: true });
     privateRuntime(host, "src/provider/runtime.ts");
     privateRuntime(host, "src/provider/driver-profiles.ts");
+    privateRuntime(host, "src/provider/channel-catalog.ts");
+    privateRuntime(host, "src/provider/source-identity.ts");
     privateRuntime(host, "src/provider/stalker-driver.ts");
     privateRuntime(host, "src/provider/catalog-drivers.ts");
     privateRuntime(host, "src/provider/catalog-xml.ts");

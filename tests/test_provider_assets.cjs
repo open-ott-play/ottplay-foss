@@ -7,6 +7,7 @@ const {
     managedProviderIds,
 } = require("../scripts/provider-assets.cjs");
 const { stagePlayProviders } = require("../scripts/android-distribution.cjs");
+const { isRetiredRuntimeScript } = require("../scripts/runtime-assets.cjs");
 const root = path.resolve(__dirname, "..");
 const ids = managedProviderIds();
 assert.equal(ids.length, 48);
@@ -52,6 +53,14 @@ for (const id of ids) {
 assert.equal(isManagedProviderScript("prov/m3u/prov.js"), true);
 assert.equal(isManagedProviderScript("prov/stalker/prov.js"), true);
 assert.equal(isManagedProviderScript("prov/unknown/prov.js"), false);
+assert.equal(isRetiredRuntimeScript("stb/core.js"), true);
+assert.equal(isRetiredRuntimeScript("C:\\runtime\\stb\\core.js"), true);
+assert.equal(isRetiredRuntimeScript("stb/pc/stb.js"), false);
+assert.equal(isRetiredRuntimeScript("js/ottplay-core.js"), false);
+assert(
+    fs.existsSync(path.join(root, "stb/core.js")),
+    "historical oracle retained"
+);
 const stage = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-driver-assets-"));
 try {
     stagePlayProviders(root, stage);
@@ -73,6 +82,10 @@ if (process.argv.includes("--bundle")) {
         assert(
             fs.existsSync(path.join(root, target)),
             "Missing built artifact: " + target
+        );
+        assert(
+            !fs.existsSync(path.join(root, target, "stb/core.js")),
+            target + " still contains retired device implementation"
         );
         for (const id of ids)
             assert(

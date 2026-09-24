@@ -31,6 +31,11 @@ interface ProviderDriverProfile {
     title: string;
 }
 interface ProviderDriverPorts {
+    channelCatalog?(
+        rows: any[],
+        hash: (value: string) => number,
+        profile: string
+    ): DriverCatalog;
     core: any;
     createLifetime(): any;
     decodeXml?(text: string, profile?: string): any;
@@ -424,9 +429,11 @@ function createXtreamDriver(
                     if (source.accept(response))
                         callback(driverCatalogSnapshot(catalog), "catalog");
                     else {
-                        // The shared core owns provider parsing and stable historical IDs.
-                        // This wire shape is converted to the retained UI only by the binding below.
-                        catalog = source.legacyCatalog(ports.hash);
+                        catalog = ports.channelCatalog!(
+                            source.channelCatalog(),
+                            ports.hash,
+                            "xtream"
+                        );
                         callback(driverCatalogSnapshot(catalog));
                     }
                 },
@@ -1396,6 +1403,9 @@ function mountProviderDriver(
     var driver = providerDriverRegistry.create(
         id,
         {
+            channelCatalog: function (rows, hash, profile) {
+                return host.__ottChannelCatalog.project(rows, hash, profile);
+            },
             core: host.OttPlayCore,
             createLifetime: host.__ottProviderRuntime.createRegistry,
             decodeXml: function (text, format) {
@@ -1723,7 +1733,16 @@ function mountProviderDriver(
                         delete channels[key];
                     });
                     Object.keys(catalog.channels).forEach(function (key) {
-                        channels[key] = catalog.channels[key];
+                        var row = catalog.channels[key];
+                        channels[key] = row;
+                        if (
+                            typeof row.legacyChannelId === "number" &&
+                            host.__ottRecordPortHash
+                        )
+                            host.__ottRecordPortHash(
+                                row.legacyChannelId,
+                                Number(key)
+                            );
                     });
                 }
                 host.channels = channels;

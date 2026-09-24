@@ -867,6 +867,8 @@ export function loadProv(providerId?: string): void {
         // Abort can synchronously select another source. Detach this instance
         // before teardown, then let the newer selection keep all published state.
         (window as any).__ottActiveProviderDriver = null;
+        if ((window as any).__ottClassicScreenPort)
+            (window as any).__ottClassicScreenPort.invalidate();
         previousDriver.dispose();
         if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
     }
@@ -1225,6 +1227,7 @@ export function loadProv(providerId?: string): void {
 export function loadChannels(): void {
     if ((window as any).__ottClassicPlayback)
         (window as any).__ottClassicPlayback.cancel();
+    if ((window as any).__ottChannels) (window as any).__ottChannels.reset();
     var catalogSession = (
         window as any
     ).__ottProviderRuntime.classic.beginCatalog(

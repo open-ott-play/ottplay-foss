@@ -191,12 +191,16 @@ function fixture({
         prevArr: [],
         primaryIndex: 1,
         providerGetItem: (key) =>
-            stored.has(key) ? JSON.stringify(stored.get(key)) : null,
+            stored.has(key)
+                ? typeof stored.get(key) === "string"
+                    ? stored.get(key)
+                    : JSON.stringify(stored.get(key))
+                : null,
         providerGetJson: (key, fallback) =>
             stored.has(key)
                 ? JSON.parse(JSON.stringify(stored.get(key)))
                 : fallback,
-        providerSetItem: (key, value) => stored.set(key, JSON.parse(value)),
+        providerSetItem: (key, value) => stored.set(key, value),
         setPlayer() {},
         setTimeout: (callback, delay) => {
             timers.push({ callback, delay });

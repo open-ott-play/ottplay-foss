@@ -5287,7 +5287,13 @@ window.addChannel2bucket = function (): void {
         w.listKeyHandlerFn = function (e: number): boolean {
             switch (e) {
                 case w.keys.ENTER:
-                    w.cats[w.listArray[w.selIndex]].push(chId);
+                    w.__ottChannels.change("member", {
+                        action: "add",
+                        channelId: chId,
+                        groupId: w.__ottChannels.group(
+                            w.catsArray.indexOf(w.listArray[w.selIndex])
+                        ),
+                    });
                     if (typeof w.saveChannelsCats === "function")
                         w.saveChannelsCats();
                     if (typeof w.showShift === "function")
@@ -5353,10 +5359,7 @@ window.parentChannel = function (): void {
     }
     var chId = w.listArray[w.selIndex];
     var pos = w.parentalArray.indexOf(chId);
-    if (pos === -1) w.parentalArray.push(chId);
-    else w.parentalArray.splice(pos, 1);
-    if (typeof w.providerSetItem === "function")
-        w.providerSetItem("parentalArray", JSON.stringify(w.parentalArray));
+    w.__ottChannels.change("lock", chId, pos === -1);
     if (typeof w.showPage === "function") w.showPage();
 };
 window.stbToggleZoom = stbToggleZoom;

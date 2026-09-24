@@ -149,6 +149,7 @@ function fixture(saved = new Map()) {
             w.curList = w.cats[w.catsArray[category]];
         },
         primaryIndex: 0,
+        providerGetItem: (key) => saved.get(key) ?? null,
         providerGetJson: (key, fallback) =>
             saved.has(key) ? JSON.parse(saved.get(key)) : fallback,
         providerSetItem: (key, value) => saved.set(key, String(value)),
@@ -188,7 +189,10 @@ function test(name, action) {
     }
 }
 const list = (value) => Array.from(value);
-const stored = (f) => JSON.parse(f.saved.get("favoritesLists"));
+const stored = (f) =>
+    JSON.parse(
+        f.saved.get("favoritesLibrary:" + f.w.__ottSourceIdentity.current(f.w))
+    ).lists;
 
 test("UI add persists once and survives reopening the provider", (f) => {
     f.w.channelsKeyHandler(f.w.keys.N3);
@@ -205,6 +209,8 @@ test("UI add persists once and survives reopening the provider", (f) => {
 test("UI move and delete persist the active favorites list", (f) => {
     [1, 2, 3].forEach((id) => f.w.addToFavorites(id));
     f.w.saveChannelsCats();
+    f.w.cList = [1, 2, 3];
+    f.w.__ottChannels.mount(f.w);
     f.w.listCatIndex = 0;
     f.w.listArray = f.w.cats.Favorites;
     f.w.channelsKeyHandler(f.w.keys.N7);
@@ -250,6 +256,7 @@ test("switch, rename and delete preserve independent lists and active view", (f)
 });
 
 test("legacy single-list migration stays mutable through the UI", (f) => {
+    f.saved.delete("favoritesLibrary:" + f.w.__ottSourceIdentity.current(f.w));
     f.saved.set("favoritesArray", JSON.stringify([2]));
     f.w.loadFavoritesLists();
     f.w.cats.Favorites = f.w.favoritesArray;
@@ -268,6 +275,7 @@ test("loading a provider in category mode preserves that provider's favorites", 
             v: 1,
         })
     );
+    f.saved.delete("favoritesLibrary:" + f.w.__ottSourceIdentity.current(f.w));
     f.w.sFavorites = 0;
     f.w.cList = [1, 2, 3];
     f.w.catsArray = [];
@@ -395,6 +403,9 @@ const capturedSelections = JSON.parse(
 );
 for (const input of capturedSelections)
     test("captured state: " + input.name, (f) => {
+        f.saved.delete(
+            "favoritesLibrary:" + f.w.__ottSourceIdentity.current(f.w)
+        );
         f.saved.set("favoritesLists", JSON.stringify(input.initial));
         f.saved.set("favoritesArray", JSON.stringify(input.prior || []));
         let syncs = 0;
