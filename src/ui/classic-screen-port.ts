@@ -442,7 +442,12 @@ function createClassicScreenPort(host: any) {
                 if (overlays[entry[0]] && !visible(entry[1])) close(entry[0]);
             });
             if (visibleList) commitList();
-            if (visible("#listEdit") && !overlays.editor) openEditor();
+            if (
+                visible("#listEdit") &&
+                !overlays.editor &&
+                typeof host.editKey === "function"
+            )
+                openEditor();
             if (visible("#listAbout") && !overlays.about)
                 setCallback(
                     "about",
