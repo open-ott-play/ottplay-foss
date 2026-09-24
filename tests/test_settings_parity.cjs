@@ -1145,11 +1145,13 @@ const indexAst = ts.createSourceFile(
 const standbyWrappers = [];
 function collectStandby(node) {
     if (
-        ts.isBinaryExpression(node) &&
-        node.left.getText(indexAst) === "window.stbToggleStandby" &&
-        ts.isFunctionExpression(node.right)
+        ts.isPropertyAssignment(node) &&
+        node.name.getText(indexAst) === "standby" &&
+        ts.isFunctionExpression(node.initializer)
     ) {
-        standbyWrappers.push(node.getText(indexAst));
+        standbyWrappers.push(
+            "coreDeviceEffects.standby = " + node.initializer.getText(indexAst)
+        );
     }
     ts.forEachChild(node, collectStandby);
 }
@@ -1165,7 +1167,7 @@ for (const profile of [
     w.document.body = { style: {} };
     w.stbStop = () => calls.push("stop");
     w.startPlayer = () => calls.push("start");
-    vm.runInContext("var _standby = false;", w);
+    vm.runInContext("var _standby = false; var coreDeviceEffects = {};", w);
     vm.runInContext(
         compile(
             selectedSource("src/core/index.ts", [

@@ -82,11 +82,15 @@ for (const profile of ["server", "tauri", "capacitor"]) {
             return { ok: true };
         },
         getVolume: async () => ({ ok: true, volume: 37 }),
+        pauseBackgroundAudio: async () => ({ ok: true }),
         preventSleep: async () => {
             nativeSleep.push("prevent");
             return { ok: true };
         },
+        resumeBackgroundAudio: async () => ({ ok: true }),
+        startBackgroundAudio: async () => ({ ok: true }),
         stopBackgroundAudio: async () => ({ ok: true }),
+        updateBackgroundAudio: async () => ({ ok: true }),
     };
     if (profile === "capacitor")
         w.Capacitor = { Plugins: { MobileNativeMedia: media } };
@@ -205,7 +209,7 @@ for (const profile of ["server", "tauri", "capacitor"]) {
     w.setPlayerMode(2);
     assert.equal(w.playerMode, 2);
 
-    // Real native wrapper bodies must use the shared standby state. A timeout
+    // Real native effects must use the shared standby state. A timeout
     // captured before POWER may run after cancellation but must never wake it.
     const playback = w.document.createElement("video");
     playback.id = "video";
@@ -217,6 +221,11 @@ for (const profile of ["server", "tauri", "capacitor"]) {
     };
     w.document.body.appendChild(playback);
     w.video = playback;
+    playback.play = () => Promise.resolve();
+    playback.load = () => {};
+    w.setPlayerMode(0);
+    w.stbPlay("https://media.example/channel.mp4");
+    pauses = 0;
     const timers = new Map();
     let timerId = 0;
     let starts = 0;

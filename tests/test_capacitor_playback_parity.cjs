@@ -138,6 +138,44 @@ function metadataFixture(platform) {
     }
     w.window = w;
     vm.createContext(w);
+    require("./helpers/private-runtime.cjs")(w, "src/device/media-backend.ts");
+    require("./helpers/private-runtime.cjs")(w, "src/device/media-session.ts");
+    const backend = w.__ottMediaBackend.create({
+        clearInterval: w.clearInterval,
+        context: () => null,
+        emit() {},
+        open(request) {
+            reads.push("play:" + request.url);
+            playing = true;
+            return {
+                dispose() {
+                    playing = false;
+                },
+                pause() {
+                    playing = false;
+                },
+                resume() {
+                    playing = true;
+                },
+                sample: () => ({
+                    duration: values.duration,
+                    paused: !playing,
+                    position: values.position,
+                    ready: 2,
+                }),
+                seek() {},
+            };
+        },
+        setInterval: w.setInterval,
+    });
+    w.__ottCoreBackend = () => backend;
+    w.__ottCoreTransport = { configure() {} };
+    require("./helpers/private-runtime.cjs")(w, "src/device/native-pip.ts");
+    w.stbPlay = (url) => backend.open({ url });
+    w.stbStop = () => backend.stop();
+    w.stbPause = () => backend.current().pause();
+    w.stbContinue = () =>
+        playing ? backend.current().pause() : backend.current().resume();
     vm.runInContext(nativeWrappers, w);
     const startName =
         platform === "tauri" ? "start_media_session" : "startBackgroundAudio";

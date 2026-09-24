@@ -403,6 +403,10 @@ function fixture(profile) {
         "__ottInputRouter",
         "__ottClassicScreenPort",
         "__ottMenuRegistry",
+        "__ottMediaBackend",
+        "__ottOsMediaSession",
+        "__ottNativePip",
+        "__ottDeviceAdapter",
         "__ottPlaybackSession",
         "__ottPlaybackJournal",
         "__ottArchiveSession",
@@ -436,6 +440,10 @@ function assertPrivateRuntime(w, profile) {
         ["__ottInputRouter", "create"],
         ["__ottClassicScreenPort", "commitList"],
         ["__ottMenuRegistry", "open"],
+        ["__ottMediaBackend", "create"],
+        ["__ottOsMediaSession", "create"],
+        ["__ottNativePip", "create"],
+        ["__ottDeviceAdapter", "create"],
         ["__ottPlaybackSession", "create"],
         ["__ottPlaybackJournal", "create"],
         ["__ottArchiveSession", "create"],
@@ -492,6 +500,10 @@ function assertPrivateRuntime(w, profile) {
         "createClassicScreenPort",
         "createScreenMenuRegistry",
         "screenMenuDefinitions",
+        "createMediaBackend",
+        "createDeviceAdapter",
+        "createOsMediaSession",
+        "createNativePipPort",
         "createPlaybackJournal",
         "createArchiveController",
         "classicArchiveController",
@@ -792,6 +804,7 @@ function exercisePlaybackRuntime(w, profile) {
             Array.from(w.prevArr, (visit) => visit.ci),
             [1]
         );
+        w.__ottClassicPlayback.command({ channelId: 2, type: "live" });
         assert.equal(stored.get("primaryIndex"), "1");
         assert.equal(JSON.parse(stored.get("continueWatch")).channelId, 2);
         const journal = JSON.parse(stored.get("playbackJournal"));

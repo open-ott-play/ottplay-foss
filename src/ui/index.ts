@@ -1699,13 +1699,13 @@ function _t2(n: number): string {
 
 /**
  * Start periodic timers:
- * 1. Every 1s — update clock displays and increment `window.playTime` when playing.
+ * 1. Every 1s — render clock displays and the backend-owned playback position.
  * 2. Every 30s — refresh channel info via `updateChannelInfo`.
  *
  * @returns void
  * @sideeffect Sets up two `setInterval` calls that run indefinitely. Updates DOM elements `current_t`,
- *             `current_s`, `list_t`, `list_s`, `permanentTime`. Increments `window.playTime`.
- * @analysis The 1s timer also handles playTime tracking for archive playback. The 30s timer keeps EPG data fresh.
+ *             `current_s`, `list_t`, `list_s`, `permanentTime`. Reads backend-owned `window.playTime`.
+ * @analysis Playback timing belongs to the backend; the 1s timer only renders it. The 30s timer keeps EPG data fresh.
  */
 export function initBackgroundIntervals(): void {
     setInterval(function () {
@@ -1722,41 +1722,6 @@ export function initBackgroundIntervals(): void {
         if (listTEl) listTEl.innerHTML = timeStr;
         if (listSEl) listSEl.innerHTML = secStr;
         if (permTEl) permTEl.innerHTML = timeStr;
-        var playbackHost = window as any;
-        if (
-            typeof playbackHost.stbIsPlaying === "function" &&
-            playbackHost.stbIsPlaying()
-        ) {
-            var playback = playbackHost.__ottClassicPlayback;
-            if (playback && typeof playback.snapshot === "function") {
-                var state = playback.snapshot();
-                if (state.target && state.phase !== "stopped") {
-                    if (state.phase === "loading")
-                        playback.command({
-                            generation: state.generation,
-                            type: "playing",
-                        });
-                    if (state.target.kind !== "live")
-                        playback.command({
-                            duration:
-                                typeof playbackHost.stbGetLen === "function"
-                                    ? playbackHost.stbGetLen()
-                                    : undefined,
-                            generation: state.generation,
-                            position:
-                                state.target.kind === "archive"
-                                    ? state.position + 1
-                                    : typeof playbackHost.stbGetPosTime ===
-                                        "function"
-                                      ? playbackHost.stbGetPosTime()
-                                      : state.position + 1,
-                            type: "position",
-                        });
-                } else if (!state.target && playbackHost.playType)
-                    playbackHost.playTime = (playbackHost.playTime || 0) + 1;
-            } else if (playbackHost.playType)
-                playbackHost.playTime = (playbackHost.playTime || 0) + 1;
-        }
         // Drive archive OSD progress bar (stbPlayer.js:1744-1746 tick).
         // Skip live mode (playType === 0) — showChannelInfo already covers it.
         var w_t = window as any;

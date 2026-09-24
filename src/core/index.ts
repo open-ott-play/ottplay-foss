@@ -172,7 +172,6 @@ var _playSession = 0;
 /** The previous Shaka must release this video before another engine attaches. */
 var _coreShakaTeardown: PromiseLike<unknown> | null = null;
 var _corePendingSeek: (() => void) | null = null;
-var _corePlaybackStateCleanup: (() => void) | null = null;
 var _coreAutoCancel: ((restoreNative?: boolean) => void) | null = null;
 var _coreAutoHlsUsed = false;
 var _corePlaybackMode = 0;
@@ -320,8 +319,7 @@ function cancelLiveRestart(): void {
 }
 
 /**
- * Compatibility hook for archive callers. The UI background interval is the
- * sole playTime clock and already stops counting while playback is paused.
+ * Compatibility hook for retained archive callers. The backend owns timing.
  */
 export function clearPlayTimeInterval(): void {
     // No per-stream timer to clear.
@@ -894,67 +892,6 @@ export function stbEventToKeyCode(event: any): number {
     return keyCode;
 }
 
-/** Bind backend observations to the media session that installed them. */
-function clearCorePlaybackStateEvents(): void {
-    if (_corePlaybackStateCleanup) _corePlaybackStateCleanup();
-    _corePlaybackStateCleanup = null;
-}
-
-function bindCorePlaybackStateEvents(
-    media: HTMLVideoElement,
-    session: number
-): void {
-    clearCorePlaybackStateEvents();
-    var playback = (window as any).__ottClassicPlayback;
-    if (!playback || typeof playback.snapshot !== "function") return;
-    var expected = playback.snapshot();
-    if (!expected.target) return;
-    function current(): any {
-        if (session !== _playSession || media !== video) return null;
-        var state = playback.snapshot();
-        return state.generation === expected.generation &&
-            state.phase !== "stopped"
-            ? state
-            : null;
-    }
-    function position(): void {
-        var state = current();
-        if (
-            state &&
-            state.target.kind === "vod" &&
-            media.readyState >= 1 &&
-            (state.phase === "playing" || state.phase === "paused")
-        )
-            playback.command({
-                duration: media.duration,
-                generation: expected.generation,
-                position: media.currentTime,
-                type: "position",
-            });
-    }
-    function playing(): void {
-        if (!current() || media.paused || media.readyState < 2) return;
-        playback.command({ generation: expected.generation, type: "playing" });
-        position();
-    }
-    function paused(): void {
-        var state = current();
-        if (state && state.phase === "playing" && media.paused)
-            playback.command({
-                generation: expected.generation,
-                type: "pause",
-            });
-    }
-    media.addEventListener("playing", playing);
-    media.addEventListener("pause", paused);
-    media.addEventListener("timeupdate", position);
-    _corePlaybackStateCleanup = function (): void {
-        media.removeEventListener("playing", playing);
-        media.removeEventListener("pause", paused);
-        media.removeEventListener("timeupdate", position);
-    };
-}
-
 /**
  * Start playback of a given URL on the main video element.
  * Supports three engine modes: native HTML5, hls.js, and shaka-player.
@@ -976,13 +913,11 @@ function bindCorePlaybackStateEvents(
  * - Calls video!.play() exactly once.
  * - Automatically restores previous audio/subtitle track settings via applyChannelPreference.
  */
-export function stbPlay(url: string, position?: number): void {
-    clearCorePlaybackStateEvents();
-    if (
-        (window as any).__ottClassicPlayback &&
-        typeof (window as any).__ottClassicPlayback.command === "function"
-    )
-        (window as any).__ottClassicPlayback.command({ type: "loading" });
+function startCoreEngine(
+    url: string,
+    position?: number,
+    observe?: () => void
+): void {
     setCoreDemoMute((window as any).ottplayDemoActive === true);
     if (video) video.loop = (window as any).ottplayDemoActive === true;
     if (!_inLiveRestart) {
@@ -1011,7 +946,9 @@ export function stbPlay(url: string, position?: number): void {
     }
     // Shaka detach is asynchronous and may otherwise clear the next engine's src.
     var start = function (): void {
-        if (session === _playSession) startCorePlayback(url, position, session);
+        if (session !== _playSession) return;
+        if (observe) observe();
+        startCorePlayback(url, position, session);
     };
     if (_coreShakaTeardown) _coreShakaTeardown.then(start, start);
     else start();
@@ -1025,7 +962,6 @@ function startCorePlayback(
     session: number
 ): void {
     cancelCoreNativeHls();
-    if (video) bindCorePlaybackStateEvents(video, session);
     _coreHlsBitrate = null;
     resetCoreNativeBitrate();
     var auto = playerMode === 3 && getDefaultPlayerMode() === 3;
@@ -1264,7 +1200,7 @@ function startCorePlayback(
                                 _liveRestartTimer = null;
                                 _inLiveRestart = true;
                                 try {
-                                    stbPlay(url, 0);
+                                    startCoreEngine(url, 0);
                                 } finally {
                                     _inLiveRestart = false;
                                     liveRestartPolicy().finish();
@@ -1473,15 +1409,7 @@ function startCorePlayback(
  * Stop playback: pause, remove the src attribute, and destroy the hls.js instance.
  * Side effects: Mutates video element; may free decoder resources.
  */
-export function stbStop(): void {
-    clearCorePlaybackStateEvents();
-    if ((window as any).__ottClassicPlayback)
-        (window as any).__ottClassicPlayback.cancel();
-    if (
-        (window as any).__ottClassicPlayback &&
-        typeof (window as any).__ottClassicPlayback.command === "function"
-    )
-        (window as any).__ottClassicPlayback.command({ type: "stop" });
+function stopCoreEngine(): void {
     if (video) video.loop = false;
     _playSession++;
     cancelLiveRestart();
@@ -1505,45 +1433,35 @@ export function stbStop(): void {
  * Pause playback.
  * Side effects: Sets video!.pause().
  */
-export function stbPause(): void {
-    if (
-        (window as any).__ottClassicPlayback &&
-        typeof (window as any).__ottClassicPlayback.command === "function"
-    )
-        (window as any).__ottClassicPlayback.command({ type: "pause" });
-    (window as any).forcePlay = false;
-    cancelLiveRestart();
-    video!.pause();
-}
-/**
- * Toggle play/pause. Resumes if paused, pauses if playing.
- * Side effects: Plays or pauses the video element.
- */
-export function stbContinue(): void {
-    if (video!.paused) {
-        if (
-            (window as any).__ottClassicPlayback &&
-            typeof (window as any).__ottClassicPlayback.command === "function"
-        )
-            (window as any).__ottClassicPlayback.command({ type: "resume" });
-        (window as any).forcePlay = true;
-        playCoreMedia(video!);
-    } else stbPause();
-}
-/**
- * Check whether the video is currently playing (not paused).
- * @returns `true` if video is playing, `false` if paused.
- */
-export function stbIsPlaying(): boolean {
+/** Device ABI delegates to the backend's current lease. */
+export function stbPlay(url: string, position?: number): void {
     var playback = (window as any).__ottClassicPlayback;
-    if (
-        !video!.paused &&
-        playback &&
-        typeof playback.snapshot === "function" &&
-        playback.snapshot().phase === "loading"
-    )
-        return !!_corePlaybackStateCleanup && video!.readyState >= 2;
-    return !video!.paused;
+    if (playback) playback.importLegacy();
+    getCoreMediaBackend().open({ position: position, url: url });
+}
+export function stbStop(): void {
+    if ((window as any).__ottClassicPlayback)
+        (window as any).__ottClassicPlayback.cancel();
+    getCoreMediaBackend().stop();
+}
+export function stbPause(): void {
+    var handle = getCoreMediaBackend().current();
+    if (handle) handle.pause();
+}
+export function stbContinue(): void {
+    var handle = getCoreMediaBackend().current();
+    if (!handle) return;
+    if (video && video.paused) handle.resume();
+    else handle.pause();
+}
+export function stbIsPlaying(): boolean {
+    var handle = getCoreMediaBackend().current();
+    return (
+        !!handle &&
+        !!video &&
+        !video.paused &&
+        (handle.snapshot().phase !== "loading" || video.readyState >= 2)
+    );
 }
 /**
  * Toggle the muted state on the video element.
@@ -1571,6 +1489,7 @@ export function stbGetVolume(): number {
  */
 export function stbSetVolume(v: number): void {
     video!.volume = v / 100;
+    if (coreDeviceEffects.volume) coreDeviceEffects.volume(v);
 }
 /**
  * Get the current playback position.
@@ -1585,43 +1504,12 @@ export function stbGetPosTime(): number {
  * Side effects: Sets video!.currentTime.
  */
 export function stbSetPosTime(v: number): void {
-    seekCoreMedia(v, _playSession);
-    var playback = (window as any).__ottClassicPlayback;
-    if (playback && typeof playback.snapshot === "function") {
-        var state = playback.snapshot();
-        if (state.target && state.target.kind === "vod")
-            playback.command({
-                generation: state.generation,
-                position: v,
-                type: "position",
-            });
-        else if (
-            state.target &&
-            state.target.kind === "archive" &&
-            state.phase === "loading" &&
-            video
-        ) {
-            // A seek within one archive file starts a new domain target while
-            // retaining its backend. Rebind that backend to the new generation.
-            bindCorePlaybackStateEvents(video, _playSession);
-            if (video.paused)
-                playback.command({
-                    generation: state.generation,
-                    type: "pause",
-                });
-            else if (video.readyState >= 2)
-                playback.command({
-                    generation: state.generation,
-                    type: "playing",
-                });
-        }
-    }
+    getCoreMediaBackend().seek(v);
     if (
         (window as any).playType < 0 &&
         typeof (window as any).updateMediaInfo === "function"
-    ) {
+    )
         (window as any).updateMediaInfo();
-    }
 }
 /**
  * Get the total duration of the loaded media.
@@ -1639,6 +1527,7 @@ export function stbGetLen(): number {
  * Side effects: Mutates #video and #vdiv element positions/sizes via jQuery.
  */
 export function stbToFullScreen(): void {
+    if (coreDeviceEffects.fullscreen) coreDeviceEffects.fullscreen(true);
     isFullscreen = true;
     // Pin #vdiv to the visible viewport edges (not height/width 100% of an
     // oversized body — same failure mode as the 1.1.28 info-band bug). Flex
@@ -1671,6 +1560,7 @@ export function stbToFullScreen(): void {
  * Side effects: Mutates #video and #vdiv CSS dimensions; sets isFullscreen to false.
  */
 export function stbSetWindow(): void {
+    if (coreDeviceEffects.fullscreen) coreDeviceEffects.fullscreen(false);
     isFullscreen = false;
     var h = window.innerHeight / 720,
         w = window.innerWidth / 1280;
@@ -1887,7 +1777,7 @@ export function stbSubtitleExists(): number {
  *
  * Side effects: Shows #videopip; attaches hls.js or native src; calls videoPip!.play().
  */
-export function stbPlayPip(url: string): void {
+function startCorePipEngine(url: string): void {
     videoPip!.loop = (window as any).ottplayDemoActive === true;
     var demoMp4 =
         (window as any).ottplayDemoActive === true &&
@@ -1946,7 +1836,7 @@ export function stbPlayPip(url: string): void {
 }
 
 /** Stop PiP, cancel its callbacks, and release the decoder and buffering OSD. */
-export function stbStopPip(): void {
+function stopCorePipEngine(): void {
     videoPip!.loop = false;
     _corePipSession++;
     if (_corePipAutoCancel) _corePipAutoCancel();
@@ -1969,6 +1859,7 @@ export function stbStopPip(): void {
  * Side effects: Positions #videopip and its compact, centered buffering indicator.
  */
 export function setPipPosition(): void {
+    if (coreDeviceEffects.pipBounds) coreDeviceEffects.pipBounds();
     // Legacy setPipPosBuf reads sPipSize / sPipPos globals — keep in sync.
     var win = window as any;
     function num(v: any, fallback: number): number {
@@ -2361,39 +2252,50 @@ function setAudioTrack(index: number): void {
  * Side effects: Shows a select-box UI; calls setAudioTrack; writes to aAudios storage.
  */
 export function stbToggleAudioTrack(): void {
-    var cur = 0,
-        tracks =
-            (hlsInstance
-                ? hlsInstance.audioTracks
-                : video && (video as any).audioTracks) || [];
-    if (!tracks.length) {
-        showSelectBox(0, [_("Not found")], function () {}, 1500);
-        return;
-    }
-    var labels: string[] = [];
-    if (hlsInstance) cur = hlsInstance.audioTrack;
-    for (var i = 0; i < tracks.length; i++) {
-        if (!hlsInstance && tracks[i].enabled) cur = i;
+    chooseCoreTrack("audio");
+}
+
+function chooseCoreTrack(kind: string): void {
+    var owner = getCoreMediaBackend().current();
+    var tracks = owner ? owner.tracks(kind) : [];
+    var labels: string[] =
+        kind === "subtitle" ? [_(tracks.length ? "Off" : "Not found")] : [];
+    var ids: number[] = kind === "subtitle" ? [0] : [];
+    var current = 0;
+    tracks.forEach(function (track: any, index: number) {
+        if (track.selected) current = labels.length;
+        ids.push(track.id);
         labels.push(
-            i +
+            index +
                 1 +
                 "/" +
                 tracks.length +
                 " (" +
-                ((tracks[i] as any).label || (tracks[i] as any).name) +
+                track.name +
                 "/" +
-                ((tracks[i] as any).language || (tracks[i] as any).lang) +
+                track.language +
                 ")"
         );
+    });
+    if (!tracks.length) {
+        showSelectBox(0, [_("Not found")], function () {}, 1500);
+        return;
     }
     showSelectBox(
-        cur,
+        current,
         labels,
-        function (v: number) {
-            if (v !== cur) {
-                setAudioTrack(v);
-                saveChannelPreference("aAudios", v);
-            }
+        function (choice: number) {
+            if (
+                !owner.active() ||
+                choice === current ||
+                ids[choice] === undefined
+            )
+                return;
+            owner.selectTrack(kind, ids[choice]);
+            saveChannelPreference(
+                kind === "audio" ? "aAudios" : "aSubs",
+                ids[choice]
+            );
         },
         -1
     );
@@ -2425,72 +2327,7 @@ function setSubtitleTrack(index: number): void {
  * Side effects: Shows a select-box UI; calls setSubtitleTrack; writes to aSubs storage.
  */
 export function stbToggleSubtitle(): void {
-    var cur = 0;
-    var labels: string[];
-    // Map picker index (1..N; 0 = Off) -> engine track index for setSubtitleTrack.
-    var indexMap: number[] = [-1];
-
-    if (hlsInstance) {
-        var hTracks = hlsInstance.subtitleTracks || [];
-        labels = [hTracks.length ? _("Off") : _("Not found")];
-        cur = hlsInstance.subtitleTrack + 1;
-        for (var hi = 0; hi < hTracks.length; hi++) {
-            indexMap.push(hi);
-            var hName =
-                (hTracks[hi] as any).name ||
-                (hTracks[hi] as any).label ||
-                "#" + (hi + 1);
-            var hLang =
-                (hTracks[hi] as any).lang ||
-                (hTracks[hi] as any).language ||
-                "?";
-            labels.push(
-                hi + 1 + "/" + hTracks.length + " (" + hName + "/" + hLang + ")"
-            );
-        }
-    } else {
-        var nTracks = (video && video.textTracks) || [];
-        var usable: { eng: number; t: any }[] = [];
-        for (var ni = 0; ni < nTracks.length; ni++) {
-            if (isUsableNativeSubtitleTrack(nTracks[ni]))
-                usable.push({ eng: ni, t: nTracks[ni] });
-        }
-        labels = [usable.length ? _("Off") : _("Not found")];
-        for (var ui = 0; ui < usable.length; ui++) {
-            indexMap.push(usable[ui].eng);
-            if ((usable[ui].t as any).mode === "showing") cur = ui + 1;
-            var nName =
-                (usable[ui].t as any).label ||
-                (usable[ui].t as any).name ||
-                "#" + (ui + 1);
-            var nLang =
-                (usable[ui].t as any).language ||
-                (usable[ui].t as any).lang ||
-                "?";
-            labels.push(
-                ui + 1 + "/" + usable.length + " (" + nName + "/" + nLang + ")"
-            );
-        }
-    }
-
-    if (labels.length < 2) {
-        // No real tracks — brief OSD, do not open a stuck picker.
-        showSelectBox(0, labels, function () {}, 1500);
-        return;
-    }
-
-    showSelectBox(
-        cur,
-        labels,
-        function (v: number) {
-            if (v === cur) return;
-            var eng = indexMap[v];
-            // setSubtitleTrack expects 0 = Off, 1..N = engine index + 1
-            setSubtitleTrack(eng < 0 ? 0 : eng + 1);
-            saveChannelPreference("aSubs", eng < 0 ? 0 : eng + 1);
-        },
-        -1
-    );
+    chooseCoreTrack("subtitle");
 }
 
 /**
@@ -2547,6 +2384,7 @@ export function stbIsStandby(): boolean {
  */
 export function stbToggleStandby(): void {
     _standby = !_standby;
+    if (coreDeviceEffects.standby) coreDeviceEffects.standby(_standby);
     if (_standby) {
         if (typeof stbStop === "function") stbStop();
         if (typeof window.closeList === "function") window.closeList();
@@ -2658,4 +2496,198 @@ export function setAutorun(): void {
 /** On DOM ready, set a pointer cursor on the body (touch/STB UI convention). */
 if (typeof document !== "undefined" && document.body) {
     document.body.style.cursor = "pointer";
+}
+
+/** Modern browser engines are ports; the backend owns the request and observations. */
+var coreMediaBackend: any = null;
+var coreDeviceEffects: any = {};
+export function getCoreMediaBackend(): any {
+    if (coreMediaBackend) return coreMediaBackend;
+    coreMediaBackend = (window as any).__ottMediaBackend.create({
+        clearInterval: function (timer: any) {
+            clearInterval(timer);
+        },
+        context: function () {
+            var playback = (window as any).__ottClassicPlayback;
+            if (!playback) return null;
+            var state = playback.snapshot();
+            var owner = playback.context();
+            return state.target
+                ? {
+                      active: owner.isCurrentBackend,
+                      generation: state.generation,
+                      kind: state.target.kind,
+                      position: state.position,
+                      sourceActive: owner.isCurrentSource,
+                  }
+                : null;
+        },
+        emit: function (
+            context: any,
+            type: string,
+            position: number,
+            duration: number
+        ) {
+            var playback = (window as any).__ottClassicPlayback;
+            if (playback)
+                playback.command({
+                    duration: duration,
+                    generation: context.generation,
+                    position: position,
+                    type: type,
+                });
+        },
+        open: openCoreEngineLease,
+        setInterval: function (callback: () => void, delay: number) {
+            return setInterval(callback, delay);
+        },
+    });
+    return coreMediaBackend;
+}
+function openCoreEngineLease(
+    request: any,
+    event: (type: string) => void,
+    cssOnly = false
+): MediaEngineLease {
+    var pip = request.lane === "pip";
+    if (pip && coreDeviceEffects.pip && !cssOnly) {
+        stopCorePipEngine();
+        return coreDeviceEffects.pip.open(request, function () {
+            return openCoreEngineLease(request, event, true);
+        });
+    }
+    var media = pip ? videoPip : video;
+    var listeners: Array<{ name: string; callback: () => void }> = [];
+    var session = pip
+        ? _corePipSession + 1
+        : _playSession + (_inLiveRestart ? 0 : 1);
+    function active() {
+        return (
+            session === (pip ? _corePipSession : _playSession) &&
+            media === (pip ? videoPip : video)
+        );
+    }
+    function observe() {
+        if (media && typeof media.addEventListener === "function")
+            [
+                "playing",
+                "pause",
+                "timeupdate",
+                "ended",
+                "loadedmetadata",
+            ].forEach(function (name) {
+                var callback = function () {
+                    if (active()) event(name);
+                };
+                listeners.push({ callback: callback, name: name });
+                media!.addEventListener(name, callback);
+            });
+    }
+    var lease: MediaEngineLease = {
+        dispose: function () {
+            listeners.forEach(function (listener) {
+                if (media && typeof media.removeEventListener === "function")
+                    media.removeEventListener(listener.name, listener.callback);
+            });
+            listeners = [];
+            if (!active()) return;
+            if (pip) stopCorePipEngine();
+            else stopCoreEngine();
+        },
+        pause: function () {
+            if (!active() || !media) return;
+            (window as any).forcePlay = false;
+            cancelLiveRestart();
+            media.pause();
+        },
+        resume: function () {
+            if (!active() || !media) return;
+            (window as any).forcePlay = true;
+            playCoreMedia(media);
+        },
+        sample: function () {
+            return {
+                duration: media ? media.duration : NaN,
+                paused: !media || media.paused,
+                position: media ? media.currentTime : 0,
+                ready: media ? media.readyState : 0,
+            };
+        },
+        seek: function (position: number) {
+            if (active() && !pip) seekCoreMedia(position, session);
+        },
+        selectTrack: function (kind: string, index: number) {
+            if (!active()) return;
+            if (kind === "audio") setAudioTrack(index);
+            else if (kind === "subtitle") setSubtitleTrack(index);
+        },
+        tracks: function (kind: string) {
+            if (!active() || !media) return [];
+            var source =
+                kind === "audio"
+                    ? hlsInstance
+                        ? hlsInstance.audioTracks
+                        : (media as any).audioTracks
+                    : hlsInstance
+                      ? hlsInstance.subtitleTracks
+                      : media.textTracks;
+            var rows: any[] = [];
+            for (var i = 0; source && i < source.length; i++) {
+                var track = source[i];
+                if (
+                    kind === "subtitle" &&
+                    !hlsInstance &&
+                    !isUsableNativeSubtitleTrack(track)
+                )
+                    continue;
+                rows.push({
+                    id: kind === "audio" ? i : i + 1,
+                    language:
+                        track.language ||
+                        track.lang ||
+                        (kind === "audio" ? undefined : "?"),
+                    name:
+                        track.label ||
+                        track.name ||
+                        (kind === "audio" ? undefined : "#" + (i + 1)),
+                    selected: hlsInstance
+                        ? (kind === "audio"
+                              ? hlsInstance.audioTrack
+                              : hlsInstance.subtitleTrack) === i
+                        : kind === "audio"
+                          ? !!track.enabled
+                          : track.mode === "showing",
+                });
+            }
+            return rows;
+        },
+    };
+    try {
+        if (pip) {
+            observe();
+            startCorePipEngine(request.url);
+        } else startCoreEngine(request.url, request.position, observe);
+    } catch (error) {
+        lease.dispose();
+        throw error;
+    }
+    return lease;
+}
+
+export function stbPlayPip(url: string): void {
+    getCoreMediaBackend().open({ lane: "pip", url: url });
+}
+export function stbStopPip(): void {
+    getCoreMediaBackend().stop("pip");
+}
+if (typeof window !== "undefined") {
+    (window as any).__ottCoreBackend = getCoreMediaBackend;
+    (window as any).__ottCoreTransport = {
+        configure: function (effects: any) {
+            Object.keys(effects).forEach(function (key) {
+                coreDeviceEffects[key] = effects[key];
+            });
+        },
+        play: stbPlay,
+    };
 }

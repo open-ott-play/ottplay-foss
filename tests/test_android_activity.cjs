@@ -228,7 +228,9 @@ try {
         "stbPause",
         "stbIsPlaying",
         "stbStop",
-        "clearCorePlaybackStateEvents",
+        "getCoreMediaBackend",
+        "openCoreEngineLease",
+        "stopCoreEngine",
     ]);
     const video = {
         pause() {
@@ -249,22 +251,34 @@ try {
         _coreNativeHls: null,
         _coreNativeHlsCleanup: null,
         _corePendingSeek: null,
-        _corePlaybackStateCleanup: null,
+        _corePipSession: 0,
         _coreShakaTeardown: null,
+        _inLiveRestart: false,
         _playSession: 0,
         cancelLiveRestart() {},
+        clearInterval() {},
         clearPlayTimeInterval() {},
         console,
+        coreDeviceEffects: {},
+        coreMediaBackend: null,
         hlsInstance: {
             destroy() {
                 destroyed++;
             },
         },
+        setInterval() {
+            return 1;
+        },
         video,
     };
     w.window = w;
     vm.createContext(w);
+    require("./helpers/private-runtime.cjs")(w, "src/device/media-backend.ts");
+    w.startCoreEngine = () => {
+        w._playSession++;
+    };
     vm.runInContext(controls, w);
+    w.getCoreMediaBackend().open({ url: "fixture.mp4" });
     for (let i = 0; i < 2; i++) {
         vm.runInContext(scripts.MEDIA_PLAY, w);
         assert.equal(video.paused, false);
@@ -278,7 +292,7 @@ try {
     vm.runInContext(scripts.MEDIA_PLAY_PAUSE, w);
     assert.equal(video.paused, true);
     vm.runInContext(scripts.MEDIA_STOP, w);
-    assert.equal(w._playSession, 1);
+    assert.equal(w._playSession, 2);
     assert.equal(w._coreNativeAttempt, 1);
     assert.equal(destroyed, 1);
     assert.equal(video.paused, true);

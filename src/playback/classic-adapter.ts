@@ -143,26 +143,37 @@ function classicPlaybackReconcile(): PlaybackStateSnapshot {
         store.phase("playing", false);
         classicPlaybackProjection = value;
     }
-    var state = store.snapshot();
-    if (
-        state.target &&
-        (state.phase === "playing" || state.phase === "paused")
-    ) {
-        var position =
-            state.target.kind === "archive"
-                ? Number(w.playTime)
-                : typeof w.stbGetPosTime === "function"
-                  ? w.stbGetPosTime()
-                  : state.position;
-        var duration =
-            typeof w.stbGetLen === "function" ? w.stbGetLen() : undefined;
-        store.position(position, duration, false);
-    }
     return store.snapshot();
 }
 
 function classicPlaybackSnapshot(): PlaybackStateSnapshot {
-    return classicPlaybackReconcile();
+    return classicPlaybackOwnedState().snapshot();
+}
+
+/** Explicit transport observation at action boundaries; snapshot stays a pure read. */
+function classicPlaybackCapture(): void {
+    var w = classicPlaybackHost();
+    var state = classicPlaybackReconcile();
+    var managed =
+        w.__ottCoreTransport && w.stbPlay === w.__ottCoreTransport.play;
+    if (managed) {
+        var handle = w.__ottCoreBackend().current();
+        if (handle) {
+            handle.sample();
+            return;
+        }
+    }
+    if (
+        state.target &&
+        state.target.kind === "vod" &&
+        (state.phase === "playing" || state.phase === "paused") &&
+        typeof w.stbGetPosTime === "function"
+    )
+        classicPlaybackOwnedState().position(
+            w.stbGetPosTime(),
+            typeof w.stbGetLen === "function" ? w.stbGetLen() : undefined,
+            false
+        );
 }
 
 function classicPlaybackVisit(
@@ -176,7 +187,7 @@ function classicPlaybackVisit(
 /** Semantic commands own normal playback state; old fields are output projection. */
 function classicPlaybackCommand(command: any): void {
     var w = classicPlaybackHost();
-    var state = classicPlaybackReconcile();
+    var state = classicPlaybackSnapshot();
     var store = classicPlaybackOwnedState();
     if (
         command.generation !== undefined &&
@@ -299,7 +310,10 @@ function classicPlaybackCommand(command: any): void {
     classicPlaybackProjection = classicPlaybackProjectionValue(w);
 }
 
-function classicPlaybackObservation(): PlaybackObservation {
+function classicPlaybackObservation(): PlaybackObservation & {
+    isCurrentSource(): boolean;
+    isCurrentBackend(): boolean;
+} {
     var w = classicPlaybackHost();
     var snapshot = classicPlaybackSnapshot();
     var target = snapshot.phase === "stopped" ? null : snapshot.target;
@@ -309,6 +323,9 @@ function classicPlaybackObservation(): PlaybackObservation {
             : classicPlaybackChannel(w, w.catIndex, w.primaryIndex);
     var channel = (w.channels || {})[id];
     var catalog = w.channels;
+    var mode = w.playType;
+    var categoryIndex = w.catIndex;
+    var selectionIndex = w.primaryIndex;
     var categories = w.catsArray;
     var lists = w.cats;
     var list = (lists || {})[(categories || [])[w.catIndex]];
@@ -320,6 +337,35 @@ function classicPlaybackObservation(): PlaybackObservation {
     var media = w.__ottMedia && w.__ottMedia.current();
     var retention = Number(channel && channel.rec) || 0;
     var now = Date.now() / 1000;
+    var playbackIdentity = snapshot.historyTarget || snapshot.target;
+    function isCurrentSource(): boolean {
+        var current = classicPlaybackSnapshot();
+        var identity = current.historyTarget || current.target;
+        return (
+            ((!playbackIdentity && !identity) ||
+                (!!playbackIdentity &&
+                    !!identity &&
+                    playbackIdentity.sourceId === identity.sourceId &&
+                    playbackIdentity.channelId === identity.channelId)) &&
+            catalog === w.channels &&
+            channel === (w.channels || {})[id] &&
+            get === w.providerGetItem &&
+            set === w.providerSetItem &&
+            prefix === w.p_pref &&
+            source === classicPlaybackSource(w) &&
+            classicPlaybackConfigurationMatches(
+                configuration,
+                classicPlaybackSourceConfiguration(w)
+            ) &&
+            media === (w.__ottMedia && w.__ottMedia.current())
+        );
+    }
+    function isCurrentBackend(): boolean {
+        return (
+            isCurrentSource() &&
+            snapshot.generation === classicPlaybackSnapshot().generation
+        );
+    }
     return {
         archiveAvailable:
             retention > 0 || (!!target && target.kind === "archive"),
@@ -328,23 +374,17 @@ function classicPlaybackObservation(): PlaybackObservation {
         duration: snapshot.duration,
         isCurrent: function (): boolean {
             return (
-                catalog === w.channels &&
+                isCurrentBackend() &&
+                categoryIndex === w.catIndex &&
+                selectionIndex === w.primaryIndex &&
                 categories === w.catsArray &&
                 lists === w.cats &&
                 list === (w.cats || {})[(w.catsArray || [])[w.catIndex]] &&
-                channel === (w.channels || {})[id] &&
-                get === w.providerGetItem &&
-                set === w.providerSetItem &&
-                prefix === w.p_pref &&
-                source === classicPlaybackSource(w) &&
-                classicPlaybackConfigurationMatches(
-                    configuration,
-                    classicPlaybackSourceConfiguration(w)
-                ) &&
-                snapshot.generation === classicPlaybackSnapshot().generation &&
-                media === (w.__ottMedia && w.__ottMedia.current())
+                mode === w.playType
             );
         },
+        isCurrentBackend: isCurrentBackend,
+        isCurrentSource: isCurrentSource,
         now: now,
         position: snapshot.position,
         target: target,
@@ -410,6 +450,7 @@ function classicPlaybackSelect(
     archive?: boolean
 ): void {
     var w = classicPlaybackHost();
+    classicPlaybackCapture();
     var observation = classicPlaybackObservation();
     var id = classicPlaybackChannel(w, category, index);
     if (w.__ottChannels && classicPlaybackIdentity(id))
@@ -764,8 +805,11 @@ function classicPlaybackCheckpoint(snapshot: any, force = false): void {
     checkpoint: classicPlaybackCheckpoint,
     command: classicPlaybackCommand,
     context: function (): any {
+        var observation = classicPlaybackObservation();
         return {
-            isCurrent: classicPlaybackObservation().isCurrent,
+            isCurrent: observation.isCurrent,
+            isCurrentBackend: observation.isCurrentBackend,
+            isCurrentSource: observation.isCurrentSource,
             sourceId: classicPlaybackSource(classicPlaybackHost()),
         };
     },
@@ -775,9 +819,11 @@ function classicPlaybackCheckpoint(snapshot: any, force = false): void {
         return classicPlaybackRuntime().guard(callback);
     },
     hydrate: classicPlaybackHydrate,
+    importLegacy: classicPlaybackReconcile,
     reconcile: classicPlaybackReconcile,
     select: classicPlaybackSelect,
     shift: function (delta: number): void {
+        classicPlaybackCapture();
         classicPlaybackRuntime().request(
             delta === -6e6
                 ? { intent: "begin" }

@@ -1683,6 +1683,58 @@ export function startPlayer(): void {
 
         uiInit();
         initBackgroundIntervals();
+        var deviceHost = window as any;
+        if (deviceHost.__ottDevice) deviceHost.__ottDevice.dispose();
+        deviceHost.__ottDevice = deviceHost.__ottDeviceAdapter.create({
+            capabilities: function () {
+                return {
+                    audio:
+                        typeof window.stbAudioTracksExists === "function" &&
+                        window.stbAudioTracksExists(),
+                    pip: typeof window.stbPlayPip === "function",
+                    subtitles:
+                        typeof window.stbSubtitleExists === "function" &&
+                        !!window.stbSubtitleExists(),
+                };
+            },
+            clearInterval: clearInterval,
+            command: function (command: any) {
+                deviceHost.__ottClassicPlayback.command(command);
+            },
+            duration: function () {
+                return typeof window.stbGetLen === "function"
+                    ? window.stbGetLen()
+                    : NaN;
+            },
+            importLegacy: function () {
+                return deviceHost.__ottClassicPlayback.importLegacy();
+            },
+            isManaged: function () {
+                return window.stbPlay === deviceHost.__ottCoreTransport.play;
+            },
+            key: function (event: any) {
+                return window.stbEventToKeyCode(event);
+            },
+            keys: function () {
+                return deviceHost.keys;
+            },
+            now: function () {
+                return Date.now();
+            },
+            playing: function () {
+                return window.stbIsPlaying();
+            },
+            position: function () {
+                return typeof window.stbGetPosTime === "function"
+                    ? window.stbGetPosTime()
+                    : NaN;
+            },
+            route: function () {
+                return deviceHost.ott_device;
+            },
+            setInterval: setInterval,
+        });
+        deviceHost.__ottDevice.start();
         (window as any).listFooter = (window as any).listFooterElement;
         if (typeof stbInit === "function" && (stbInit() as any) !== false) {
             onStbReady();
@@ -2491,34 +2543,18 @@ window.stbToggleAspectRatio = stbToggleAspectRatio;
 // set_fullscreen(false) when __ottTauriNativeFs (before exitPortal). No
 // global KeyL.
 
-// Tauri Mode B: override stbToggleStandby for best-effort sleep prevention.
-// Enter standby → allow_sleep (machine may sleep). Exit standby → prevent_sleep (keep awake).
+// Native wake locks are a configured device effect, not another transport wrapper.
 if (typeof window.__TAURI__ !== "undefined") {
-    (function () {
-        const orig = window.stbToggleStandby;
-        window.stbToggleStandby = function (): void {
-            if (typeof orig === "function") orig();
-            if (stbIsStandby()) {
-                // Entering standby: allow machine to sleep.
-                tauriInvoke<any>("allow_sleep", {})
-                    .then((r) => {
-                        if (!r?.ok) console.warn("[Tauri] allow_sleep:", r);
-                    })
-                    .catch((e: any) =>
-                        console.warn("[Tauri] allow_sleep failed:", e)
-                    );
-            } else {
-                // Exiting standby: prevent sleep while app is active.
-                tauriInvoke<any>("prevent_sleep", {})
-                    .then((r) => {
-                        if (!r?.ok) console.warn("[Tauri] prevent_sleep:", r);
-                    })
-                    .catch((e: any) =>
-                        console.warn("[Tauri] prevent_sleep failed:", e)
-                    );
-            }
-        };
-    })();
+    (window as any).__ottCoreTransport.configure({
+        standby: function (standby: boolean) {
+            tauriInvoke<any>(
+                standby ? "allow_sleep" : "prevent_sleep",
+                {}
+            ).catch(function (error: any) {
+                console.warn("[Tauri] sleep control failed:", error);
+            });
+        },
+    });
 }
 
 // Tauri Mode B: player volume only. video.volume is the app source of truth.
@@ -2619,302 +2655,105 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
     (function () {
         const cap = MobileNativeMedia;
 
-        // Capacitor Mode C: override stbToggleStandby for native idle timer control.
-        // Enter standby → allowSleep (device may sleep). Exit standby → preventSleep (keep awake).
-        const origStandby = window.stbToggleStandby;
-        window.stbToggleStandby = function (): void {
-            if (typeof origStandby === "function") origStandby();
-            if (stbIsStandby()) {
-                cap.allowSleep().catch((e: any) =>
-                    console.warn("[Capacitor] allowSleep failed:", e)
-                );
-            } else {
-                cap.preventSleep().catch((e: any) =>
-                    console.warn("[Capacitor] preventSleep failed:", e)
-                );
-            }
-        };
-
-        // Capacitor Mode C: sync OS mixer with video.volume (video remains source of truth).
-        const origGet = window.stbGetVolume;
-        const origSet = window.stbSetVolume;
-        window.stbGetVolume = origGet;
-        window.stbSetVolume = function (v: number): void {
-            origSet(v);
-            cap.setVolume({ volume: v }).catch((e: any) =>
-                console.warn("[Capacitor] setVolume failed:", e)
-            );
-        };
-
-        // OTT PiP means a second channel. Android uses the shared muted video
-        // element; Activity PiP is a separate, explicitly requested OS action.
-        // Keep iOS's URL-aware AVPlayer implementation and its web fallback.
         const capacitorHost = (window as any).Capacitor;
-        const nativeSecondChannelPip =
+        const ios =
             typeof capacitorHost.getPlatform === "function" &&
             capacitorHost.getPlatform() === "ios";
-        const origPlayPip = window.stbPlayPip;
-        const origStopPip = window.stbStopPip;
-        let pipSession = 0;
-        let pipCommands: Promise<void> | null = null;
-        function queuePip(command: () => Promise<unknown>): void {
-            const pending = (pipCommands || Promise.resolve())
-                .then(command)
-                .then(
-                    () => {},
-                    (error: unknown) => {
-                        console.warn("[Capacitor] PiP command failed:", error);
+        (window as any).__ottCoreTransport.configure({
+            fullscreen: function (fullscreen: boolean) {
+                cap.setFullscreen({ fullscreen: fullscreen }).catch(function (
+                    error: any
+                ) {
+                    console.warn("[Capacitor] fullscreen failed:", error);
+                });
+            },
+            pip: ios
+                ? (window as any).__ottNativePip.create({
+                      error: function (error: any) {
+                          console.warn("[Capacitor] PiP failed:", error);
+                      },
+                      invoke: function (action: string, args: any) {
+                          return action === "play"
+                              ? cap.playPip(args)
+                              : cap.stopPip();
+                      },
+                      ready: function () {
+                          var el = document.getElementById("videopip");
+                          if (el) el.style.display = "none";
+                      },
+                      request: function (url: string) {
+                          return {
+                              loop: (window as any).ottplayDemoActive === true,
+                              url: url,
+                          };
+                      },
+                      requireOk: true,
+                      serial: true,
+                  })
+                : null,
+            standby: function (standby: boolean) {
+                (standby ? cap.allowSleep() : cap.preventSleep()).catch(
+                    function (error: any) {
+                        console.warn(
+                            "[Capacitor] sleep control failed:",
+                            error
+                        );
                     }
                 );
-            pipCommands = pending;
-            pending.then(() => {
-                if (pipCommands === pending) pipCommands = null;
-            });
-        }
-        window.stbPlayPip = function (url: string): void {
-            if (!nativeSecondChannelPip) {
-                if (typeof origPlayPip === "function") origPlayPip(url);
-                return;
-            }
-            const session = ++pipSession;
-            if (typeof origStopPip === "function") origStopPip();
-            queuePip(() => {
-                if (session !== pipSession) return Promise.resolve();
-                const fallback = (error: unknown): void => {
-                    if (session !== pipSession) return;
-                    console.warn(
-                        "[Capacitor] playPip failed, CSS fallback:",
-                        error
-                    );
-                    if (typeof origPlayPip === "function") origPlayPip(url);
-                };
-                return Promise.resolve()
-                    .then(() =>
-                        cap.playPip({
-                            loop: (window as any).ottplayDemoActive === true,
-                            url,
-                        })
-                    )
-                    .then((res) => {
-                        if (session !== pipSession) return;
-                        if (!res || !res.ok || res.unsupported) {
-                            fallback(res);
-                            return;
-                        }
-                        const el = document.getElementById("videopip");
-                        if (el) (el as HTMLElement).style.display = "none";
-                    }, fallback);
-            });
-        };
-        window.stbStopPip = function (): void {
-            if (!nativeSecondChannelPip) {
-                if (typeof origStopPip === "function") origStopPip();
-                return;
-            }
-            ++pipSession;
-            if (typeof origStopPip === "function") origStopPip();
-            // The in-flight native play must settle before its overlay can be stopped.
-            queuePip(() => cap.stopPip());
-        };
+            },
+            volume: function (volume: number) {
+                cap.setVolume({ volume: volume }).catch(function (error: any) {
+                    console.warn("[Capacitor] volume failed:", error);
+                });
+            },
+        });
 
-        // Capacitor Mode C: full-window fullscreen.
-        const origToFull = window.stbToFullScreen;
-        const origSetWin = window.stbSetWindow;
-        window.stbToFullScreen = function (): void {
-            cap.setFullscreen({ fullscreen: true }).catch((e: any) =>
-                console.warn("[Capacitor] setFullscreen true failed:", e)
-            );
-            if (typeof origToFull === "function") origToFull();
-        };
-        window.stbSetWindow = function (): void {
-            cap.setFullscreen({ fullscreen: false }).catch((e: any) =>
-                console.warn("[Capacitor] setFullscreen false failed:", e)
-            );
-            if (typeof origSetWin === "function") origSetWin();
-        };
-
-        // Capacitor 4.5: background audio — iOS AVAudioSession.playback +
-        // Android mediaPlayback FGS. Wired to play/stop/pause/continue only
-        // on Cap path (Mode A / Tauri unchanged). Artwork + honest seek
-        // (live disables OS seek; VOD/archive when duration known).
-
-        const bgMeta = nativeMediaMetadata;
-
-        let _bgPosTimer: ReturnType<typeof setInterval> | null = null;
-        let _bgMetaTimer: ReturnType<typeof setTimeout> | null = null;
-        let _bgSession = 0;
-        const stopBgPosTimer = (): void => {
-            _bgSession++;
-            if (_bgMetaTimer != null) {
-                clearTimeout(_bgMetaTimer);
-                _bgMetaTimer = null;
-            }
-            if (_bgPosTimer != null) {
-                clearInterval(_bgPosTimer);
-                _bgPosTimer = null;
-            }
-        };
-        const startBgPosTimer = (): void => {
-            stopBgPosTimer();
-            const session = _bgSession;
-            _bgPosTimer = setInterval(() => {
-                if (session !== _bgSession || !window.stbIsPlaying()) return;
-                try {
-                    const meta = bgMeta();
-                    if (!meta.seekable) return;
-                    cap.updateBackgroundAudio(meta).catch(() => {});
-                } catch (_e) {}
-            }, 2000);
-        };
-        const origPlay = window.stbPlay;
-        const origStop = window.stbStop;
-        const origPause = window.stbPause;
-        const origContinue = window.stbContinue;
-        // All ordinary playback uses the same backend as the TS browser build.
-        // A native ExoPlayer overlay cannot implement OTT's DOM layout, state,
-        // seek, mute, track selection and second-channel contracts by itself.
-        window.stbPlay = function (url: string, position?: number): void {
-            stopBgPosTimer();
-            const session = _bgSession;
-            if (typeof origPlay === "function") origPlay(url, position);
-            const meta = bgMeta();
-            cap.startBackgroundAudio(meta).catch((e: any) =>
-                console.warn("[Capacitor] startBackgroundAudio failed:", e)
-            );
-            // Duration often arrives after manifest; refresh shortly + tick if seekable.
-            _bgMetaTimer = setTimeout(() => {
-                if (session !== _bgSession) return;
-                _bgMetaTimer = null;
-                const m = bgMeta();
-                cap.updateBackgroundAudio(m).catch(() => {});
-                if (m.seekable) startBgPosTimer();
-                else stopBgPosTimer();
-            }, 1500);
-        };
-        window.stbStop = function (): void {
-            stopBgPosTimer();
-            cap.stopBackgroundAudio().catch((e: any) =>
-                console.warn("[Capacitor] stopBackgroundAudio failed:", e)
-            );
-            if (typeof origStop === "function") origStop();
-        };
-        window.stbPause = function (): void {
-            if (typeof origPause === "function") origPause();
-            stopBgPosTimer();
-            cap.pauseBackgroundAudio().catch((e: any) =>
-                console.warn("[Capacitor] pauseBackgroundAudio failed:", e)
-            );
-        };
-        window.stbContinue = function (): void {
-            if (typeof origContinue === "function") origContinue();
-            if (window.stbIsPlaying()) {
-                const meta = bgMeta();
-                cap.resumeBackgroundAudio(meta).catch((e: any) =>
-                    console.warn("[Capacitor] resumeBackgroundAudio failed:", e)
-                );
-                if (meta.seekable) startBgPosTimer();
-            } else {
-                stopBgPosTimer();
-                cap.pauseBackgroundAudio().catch((e: any) =>
-                    console.warn("[Capacitor] pauseBackgroundAudio failed:", e)
-                );
-            }
-        };
+        (window as any).__ottOsMediaSession.create({
+            backend: (window as any).__ottCoreBackend(),
+            clearInterval: clearInterval,
+            clearTimeout: clearTimeout,
+            metadata: nativeMediaMetadata,
+            send: function (action: string, metadata: any) {
+                var method = {
+                    pause: "pauseBackgroundAudio",
+                    resume: "resumeBackgroundAudio",
+                    start: "startBackgroundAudio",
+                    stop: "stopBackgroundAudio",
+                    update: "updateBackgroundAudio",
+                }[action];
+                (cap as any)[method!](metadata).catch(function (error: any) {
+                    console.warn("[Capacitor] media session failed:", error);
+                });
+            },
+            setInterval: setInterval,
+            setTimeout: setTimeout,
+        });
     })();
 }
 
 // Tauri Mode B: OS MediaSession / MPRIS / Now Playing (souvlaki) — lock-screen style
 // transport + artwork/seek when souvlaki + duration allow. Cap path unchanged; Mode A unchanged.
 if (typeof window.__TAURI__ !== "undefined") {
-    (function () {
-        const bgMeta = nativeMediaMetadata;
-
-        let _msPosTimer: ReturnType<typeof setInterval> | null = null;
-        let _msRefreshTimer: ReturnType<typeof setTimeout> | null = null;
-        let _msSession = 0;
-        let _msPaused = true;
-        let _msActive = false;
-        const stopMsPosTimer = (): void => {
-            if (_msRefreshTimer !== null) clearTimeout(_msRefreshTimer);
-            _msRefreshTimer = null;
-            if (_msPosTimer != null) {
-                clearInterval(_msPosTimer);
-                _msPosTimer = null;
-            }
-        };
-        const startMsPosTimer = (session: number): void => {
-            stopMsPosTimer();
-            _msPosTimer = setInterval(() => {
-                if (session !== _msSession || !_msActive || _msPaused) return;
-                try {
-                    const meta = bgMeta();
-                    if (!meta.seekable) return;
-                    tauriInvoke<any>("update_media_session", meta).catch(
-                        () => {}
-                    );
-                } catch (_e) {}
-            }, 2000);
-        };
-        const origPlay = window.stbPlay;
-        const origStop = window.stbStop;
-        const origPause = window.stbPause;
-        const origContinue = window.stbContinue;
-        const origIsPlaying = window.stbIsPlaying;
-        window.stbPlay = function (url: string, position?: number): void {
-            const session = ++_msSession;
-            stopMsPosTimer();
-            _msActive = true;
-            _msPaused = false;
-            if (typeof origPlay === "function") origPlay(url, position);
-            const meta = bgMeta();
-            tauriInvoke<any>("start_media_session", meta).catch((e: any) =>
-                console.warn("[Tauri] start_media_session failed:", e)
-            );
-            _msRefreshTimer = setTimeout(() => {
-                if (session !== _msSession || !_msActive || _msPaused) return;
-                _msRefreshTimer = null;
-                const m = bgMeta();
-                tauriInvoke<any>("update_media_session", m).catch(() => {});
-                if (m.seekable) startMsPosTimer(session);
-                else stopMsPosTimer();
-            }, 1500);
-        };
-        window.stbStop = function (): void {
-            _msSession++;
-            _msActive = false;
-            _msPaused = true;
-            stopMsPosTimer();
-            tauriInvoke<any>("stop_media_session", {}).catch((e: any) =>
-                console.warn("[Tauri] stop_media_session failed:", e)
-            );
-            if (typeof origStop === "function") origStop();
-        };
-        window.stbPause = function (): void {
-            _msPaused = true;
-            if (typeof origPause === "function") origPause();
-            stopMsPosTimer();
-            tauriInvoke<any>("pause_media_session", {}).catch((e: any) =>
-                console.warn("[Tauri] pause_media_session failed:", e)
-            );
-        };
-        window.stbContinue = function (): void {
-            if (typeof origContinue === "function") origContinue();
-            _msPaused =
-                typeof origIsPlaying === "function" ? !origIsPlaying() : false;
-            if (_msPaused) {
-                stopMsPosTimer();
-                tauriInvoke<any>("pause_media_session", {}).catch((e: any) =>
-                    console.warn("[Tauri] pause_media_session failed:", e)
-                );
-                return;
-            }
-            const meta = bgMeta();
-            tauriInvoke<any>("resume_media_session", meta).catch((e: any) =>
-                console.warn("[Tauri] resume_media_session failed:", e)
-            );
-            if (_msActive && meta.seekable) startMsPosTimer(_msSession);
-        };
-    })();
+    (window as any).__ottOsMediaSession.create({
+        backend: (window as any).__ottCoreBackend(),
+        clearInterval: clearInterval,
+        clearTimeout: clearTimeout,
+        metadata: nativeMediaMetadata,
+        send: function (action: string, metadata: any) {
+            var method = {
+                pause: "pause_media_session",
+                resume: "resume_media_session",
+                start: "start_media_session",
+                stop: "stop_media_session",
+                update: "update_media_session",
+            }[action];
+            tauriInvoke<any>(method!, metadata).catch(function (error: any) {
+                console.warn("[Tauri] media session failed:", error);
+            });
+        },
+        setInterval: setInterval,
+        setTimeout: setTimeout,
+    });
 }
 
 // Tauri Mode B: frameless window — JS whole-surface drag when overlays closed.
@@ -5387,81 +5226,57 @@ window.renderButtonHint = renderButtonHint;
 window.setPipPosition = setPipPosition;
 window.getPipPosition = setPipPosition;
 
-// Tauri Mode B: native always-on-top PiP window (CSS fallback on invoke failure).
+// Native PiP is a decoder port; the backend retains the only play/stop entrypoints.
 if (typeof window.__TAURI__ !== "undefined") {
     (function () {
-        const origPlay = window.stbPlayPip;
-        const origStop = window.stbStopPip;
-        const origSetPos = window.setPipPosition;
-        // Native play waits for video to start. Stop/new play must reach Rust
-        // during buffering, where request IDs reject stale IPC and callbacks.
-        let pipSession = Date.now() * 1000;
-        function invokePip<T>(
-            command: string,
-            args: Record<string, unknown>
-        ): Promise<T> {
-            try {
-                return Promise.resolve(tauriInvoke<T>(command, args));
-            } catch (error) {
-                return Promise.reject(error);
-            }
+        function bounds(): void {
+            var w = window as any;
+            tauriInvoke<any>("set_pip_bounds", {
+                position: Number(w.sPipPos) || 0,
+                size: Number(w.sPipSize) || 0,
+            }).catch(function (error: any) {
+                console.warn("[Tauri] PiP bounds failed:", error);
+            });
         }
-        window.stbPlayPip = function (url: string): void {
-            const session = ++pipSession;
-            if (typeof origStop === "function") origStop();
-            let absoluteUrl = url;
-            try {
-                absoluteUrl = new URL(url, window.location.href).href;
-            } catch (_error) {
-                // Keep the shared player's handling for nonstandard provider URLs.
-            }
-            const fallback = (error: unknown): void => {
-                if (session !== pipSession) return;
-                console.warn("[Tauri] play_pip failed, CSS fallback:", error);
-                if (typeof origPlay === "function") origPlay(url);
-            };
-            invokePip<{ ok?: boolean; unsupported?: boolean }>("play_pip", {
-                engine:
-                    (window as any).ottplayDemoActive === true &&
-                    /\.mp4(?:[?#]|$)/i.test(absoluteUrl)
-                        ? 0
-                        : typeof playerMode === "number"
-                          ? playerMode
-                          : 0,
-                loop: (window as any).ottplayDemoActive === true,
-                requestId: session,
-                url: absoluteUrl,
-            }).then((res) => {
-                if (session !== pipSession) return;
-                if (res && (res.ok === false || res.unsupported)) {
-                    fallback(res);
-                    return;
-                }
-                const el = document.getElementById("videopip");
-                if (el) (el as HTMLElement).style.display = "none";
-                // The window exists and is playing now; earlier bounds requests
-                // may have arrived while its webview was still being created.
-                window.setPipPosition();
-            }, fallback);
-        };
-        window.stbStopPip = function (): void {
-            const session = ++pipSession;
-            if (typeof origStop === "function") origStop();
-            invokePip("stop_pip", { requestId: session }).catch(
-                (error: unknown) =>
-                    console.warn("[Tauri] stop_pip failed:", error)
-            );
-        };
-        window.setPipPosition = function (): void {
-            if (typeof origSetPos === "function") origSetPos();
-            const w = window as any;
-            const position = Number(w.sPipPos) || 0;
-            const size = Number(w.sPipSize) || 0;
-            invokePip("set_pip_bounds", { position, size }).catch((e: any) =>
-                console.warn("[Tauri] set_pip_bounds failed:", e)
-            );
-        };
-        window.getPipPosition = window.setPipPosition;
+        (window as any).__ottCoreTransport.configure({
+            pip: (window as any).__ottNativePip.create({
+                error: function (error: any) {
+                    console.warn("[Tauri] PiP failed:", error);
+                },
+                invoke: function (action: string, args: any) {
+                    return tauriInvoke<any>(
+                        action === "play" ? "play_pip" : "stop_pip",
+                        args
+                    );
+                },
+                ready: function () {
+                    var el = document.getElementById("videopip");
+                    if (el) el.style.display = "none";
+                    bounds();
+                },
+                request: function (url: string, id: number) {
+                    var absoluteUrl = url;
+                    try {
+                        absoluteUrl = new URL(url, window.location.href).href;
+                    } catch (_) {}
+                    var demo = (window as any).ottplayDemoActive === true;
+                    return {
+                        engine:
+                            demo && /\.mp4(?:[?#]|$)/i.test(absoluteUrl)
+                                ? 0
+                                : typeof playerMode === "number"
+                                  ? playerMode
+                                  : 0,
+                        loop: demo,
+                        requestId: id,
+                        url: absoluteUrl,
+                    };
+                },
+                seed: Date.now() * 1000,
+                serial: false,
+            }),
+            pipBounds: bounds,
+        });
     })();
 }
 window.setSleepTimeout = setSleepTimeout;
