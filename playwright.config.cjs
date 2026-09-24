@@ -19,6 +19,7 @@ module.exports = defineConfig({
     testMatch: [
         "device-detection.spec.cjs",
         "media-runtime.spec.cjs",
+        "playback-runtime.spec.cjs",
         "window-controls.spec.cjs",
     ],
     timeout: 30000,

@@ -8,6 +8,26 @@
     },
     { id: "xtream", kind: "xtream", prefix: "xtream", title: "Xtream Codes" },
     // OTTPLAY_FULL_ONLY_BEGIN
+    { id: "1ott", kind: "named-playlist", prefix: "1ott", title: "1OTT.NET" },
+    {
+        id: "bestlist/stalker",
+        kind: "xtream-fallback",
+        prefix: "bestlist_stalker",
+        title: "BEST LiST IPTV [Stalker]",
+    },
+    { id: "only4", kind: "named-playlist", prefix: "o4", title: "Only4.tv" },
+    {
+        id: "shara-tv",
+        kind: "named-playlist",
+        prefix: "shtv",
+        title: "shara-tv",
+    },
+    {
+        id: "tvteam",
+        kind: "named-playlist",
+        prefix: "tvteam",
+        title: "tv.team",
+    },
     { id: "all4you", kind: "operator", prefix: "all4you", title: "All4you.tv" },
     {
         id: "bestlist",

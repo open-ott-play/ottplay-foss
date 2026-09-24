@@ -9,6 +9,34 @@ const {
 const { stagePlayProviders } = require("../scripts/android-distribution.cjs");
 const root = path.resolve(__dirname, "..");
 const ids = managedProviderIds();
+assert.equal(ids.length, 40);
+for (const id of ["bestlist/stalker", "1ott", "only4", "shara-tv", "tvteam"])
+    assert(ids.includes(id), "new independent driver asset boundary: " + id);
+function compatibilityProviders(directory, prefix = "") {
+    return fs
+        .readdirSync(directory, { withFileTypes: true })
+        .flatMap((entry) => {
+            const name = prefix ? prefix + "/" + entry.name : entry.name;
+            if (entry.isDirectory())
+                return compatibilityProviders(
+                    path.join(directory, entry.name),
+                    name
+                );
+            return entry.name === "prov.js" && !ids.includes(prefix)
+                ? [prefix]
+                : [];
+        });
+}
+assert.deepEqual(compatibilityProviders(path.join(root, "prov")).sort(), [
+    "antifriz",
+    "edem",
+    "itv",
+    "kb-team",
+    "m3u",
+    "ottclub",
+    "shura",
+    "stalker",
+]);
 assert(ids.includes("demo") && ids.includes("xtream"));
 for (const id of ids) {
     assert.equal(

@@ -32,10 +32,13 @@ interface ProviderDriverPorts {
     core: any;
     createLifetime(): any;
     hash(value: string): number;
+    intercept?: (url: string) => void;
     isDune(): boolean;
+    location?(): string;
     now(): number;
     progress(message: string): void;
     relay: string;
+    replaceLocation?: (value: string) => void;
     request(
         request: DriverHttpRequest,
         done: (value: any) => void,
@@ -46,6 +49,7 @@ interface ProviderDriverPorts {
     validateUrl(value: string): boolean;
 }
 interface ProviderCredentials {
+    mode?: number;
     password: string;
     playlist?: string;
     server: string;
@@ -53,6 +57,7 @@ interface ProviderCredentials {
 }
 interface ProviderDriver {
     archive(id: string | number, start: number, end: number): string;
+    bootstrap?(): void;
     readonly capabilities: {
         archive: boolean;
         guide: boolean;
@@ -211,6 +216,7 @@ function createDriverTransport(
         done: (value: any) => void,
         fail: () => void
     ) {
+        if (!active() || !scope.active()) return;
         var settled = false;
         var release = function () {};
         var releaseOwner = function () {};
@@ -364,6 +370,7 @@ function createXtreamDriver(
         load: function (callback) {
             if (!active()) return;
             var scope = loads.activate("catalog");
+            if (!active() || !scope.active()) return;
             catalog = emptyDriverCatalog();
             var config = credentials();
             if (
@@ -492,6 +499,7 @@ function createOperatorDriver(
         load: function (callback) {
             if (!active()) return;
             var scope = loads.activate("catalog");
+            if (!active() || !scope.active()) return;
             catalog = emptyDriverCatalog();
             config = readConfiguration();
             function complete(error?: string, pending?: boolean) {
@@ -549,6 +557,37 @@ function createOperatorDriver(
                 return;
             }
             ports.progress("Loading from API...");
+            if (profile.kind === "xtream-fallback") {
+                var xtream = ports.core.legacyXtreamClient(
+                    config.server,
+                    config.user,
+                    config.pass,
+                    encodeURIComponent
+                );
+                transport.send(
+                    scope,
+                    {
+                        dataType: "json",
+                        timeout: 15000,
+                        type: "GET",
+                        url: xtream.request(),
+                    },
+                    function (response) {
+                        if (xtream.accept(response)) {
+                            config.m3u = xtream.fallbackPlaylist(false);
+                            playlist(config.m3u);
+                        } else {
+                            catalog = xtream.legacyCatalog(ports.hash);
+                            complete();
+                        }
+                    },
+                    function () {
+                        config.m3u = xtream.fallbackPlaylist(true);
+                        playlist(config.m3u);
+                    }
+                );
+                return;
+            }
             var session = new ports.core.OperatorClient(
                 config,
                 encodeURIComponent,
@@ -609,6 +648,283 @@ function createOperatorDriver(
     return driver;
 }
 
+/** Instance orchestration for account-token and named playlist protocols.
+ * Credentials, request plans, IDs and stream policies remain owned by the shared core. */
+function createNamedPlaylistDriver(
+    profile: ProviderDriverProfile,
+    ports: ProviderDriverPorts,
+    owner: DriverLifetime
+): ProviderDriver {
+    var id = profile.id;
+    var disposed = false;
+    var catalog = emptyDriverCatalog();
+    var loads = ports.createLifetime();
+    function active() {
+        return !disposed && owner.active();
+    }
+    var transport = createDriverTransport(ports, owner, active);
+    function credentials(): ProviderCredentials {
+        return {
+            mode: parseInt(ports.storage.get("ts_hls") || "0", 10) || 0,
+            password: ports.storage.get(id === "1ott" ? "pin" : "pass") || "",
+            playlist:
+                id === "tvteam"
+                    ? ports.storage.get("www") || "https://tv.team/pl/11/"
+                    : "",
+            server: "",
+            username:
+                ports.storage.get(
+                    id === "1ott" ? "id" : id === "only4" ? "token" : "login"
+                ) || "",
+        };
+    }
+    function bootstrap() {
+        if (!active() || id !== "tvteam") return;
+        var href = ports.location ? ports.location() : "";
+        var captured = ports.core.operatorCapturedTvteamPlaylist(
+            href,
+            ports.isDune()
+        );
+        if (captured) {
+            ports.storage.set("www", captured);
+            if (ports.replaceLocation)
+                ports.replaceLocation(href.split("?")[0]);
+        }
+    }
+    function valid(config: ProviderCredentials) {
+        return ports.core.operatorCredentialsValid(
+            id,
+            id === "tvteam" ? config.playlist : config.username,
+            config.password
+        );
+    }
+    var driver: ProviderDriver = {
+        archive: function (channelId, start, end) {
+            var channel = active() && catalog.channels[channelId];
+            return channel
+                ? ports.core.providerArchiveUrl(
+                      id === "only4"
+                          ? "only4"
+                          : id === "tvteam"
+                            ? "auto-utc-now"
+                            : "utc",
+                      channel.url,
+                      "",
+                      "",
+                      Number(start),
+                      Number(end),
+                      ports.now(),
+                      ports.isDune(),
+                      id === "only4" ? credentials().mode : 0
+                  ) || ""
+                : "";
+        },
+        bootstrap: bootstrap,
+        capabilities: {
+            archive: true,
+            guide: true,
+            media: false,
+            settings: true,
+        },
+        credentials: credentials,
+        dispose: function () {
+            if (disposed) return;
+            disposed = true;
+            loads.dispose();
+            transport.dispose();
+            catalog = emptyDriverCatalog();
+        },
+        guide: function (channelId, callback) {
+            if (!active()) return;
+            var channel = catalog.channels[channelId];
+            if (id !== "tvteam" && (!channel || !channel.epg)) {
+                callback(null);
+                return;
+            }
+            var path =
+                id === "1ott"
+                    ? encodeURIComponent("propg.net/epg/" + channel.epg)
+                    : id + "/epg/" + (channel && channel.epg);
+            transport.send(
+                loads.current() || owner,
+                {
+                    dataType: "json",
+                    timeout: 10000,
+                    url:
+                        id === "tvteam"
+                            ? "http://tvteam.eu/" + channelId + ".json"
+                            : "http://epg.drm-play.com/" + path + ".json",
+                },
+                function (data) {
+                    callback(data === null ? null : data.epg_data);
+                },
+                function () {
+                    callback(null);
+                }
+            );
+        },
+        id: id,
+        load: function (callback) {
+            if (!active()) return;
+            var scope = loads.activate("catalog");
+            if (!active() || !scope.active()) return;
+            catalog = emptyDriverCatalog();
+            bootstrap();
+            var config = credentials();
+            function complete(error?: string) {
+                if (active() && scope.active())
+                    callback(driverCatalogSnapshot(catalog), error);
+            }
+            if (!valid(config)) {
+                complete("named-credentials");
+                return;
+            }
+            function fetchText(url: string, receive: (value: any) => void) {
+                if (!active() || !scope.active()) return;
+                var plan = new ports.core.OperatorPlaylistClient(
+                    url,
+                    ports.relay,
+                    !!ports.intercept,
+                    "classic",
+                    encodeURIComponent
+                );
+                if (plan.interceptUrl() && ports.intercept)
+                    ports.intercept(plan.interceptUrl());
+                function advance() {
+                    if (!active() || !scope.active()) return;
+                    var request = plan.request();
+                    if (!request) {
+                        complete();
+                        return;
+                    }
+                    transport.send(
+                        scope,
+                        request,
+                        function (response) {
+                            plan.accept();
+                            receive(response);
+                        },
+                        function () {
+                            plan.reject();
+                            if (plan.request()) {
+                                if (plan.progress()) ports.progress("p...");
+                                advance();
+                            } else complete("named-network");
+                        }
+                    );
+                }
+                advance();
+            }
+            function receivePlaylist(text: any) {
+                var error: string | undefined;
+                try {
+                    var parsed = ports.core.parseOperatorPlaylist(
+                        text,
+                        id,
+                        function () {
+                            return 0;
+                        },
+                        []
+                    );
+                    catalog = parsed;
+                    parsed.entries.forEach(function (entry: any) {
+                        if (entry.generatedName)
+                            entry.channel.channel_name =
+                                id === "only4" || id === "shara-tv"
+                                    ? "??? Нет названия канала"
+                                    : ports.translate("??? No channel name");
+                    });
+                    if (parsed.malformed) error = "named-catalog";
+                } catch (_) {
+                    error = "named-catalog";
+                }
+                complete(error);
+            }
+            var parameters = {
+                base: "http://list.1ott.net",
+                id: config.username,
+                login: config.username,
+                password: config.password,
+                pin: config.password,
+                token: config.username,
+                url: config.playlist,
+            };
+            if (id === "1ott") {
+                fetchText(
+                    ports.core.operatorProfileUrl(id, "account", parameters),
+                    function (response) {
+                        var token: any;
+                        try {
+                            token = JSON.parse(response).token;
+                        } catch (_) {
+                            complete("named-catalog");
+                            return;
+                        }
+                        fetchText(
+                            ports.core.operatorProfileUrl(id, "playlist", {
+                                base: parameters.base,
+                                token: token,
+                            }),
+                            receivePlaylist
+                        );
+                    }
+                );
+            } else
+                fetchText(
+                    ports.core.operatorProfileUrl(id, "playlist", parameters),
+                    receivePlaylist
+                );
+        },
+        logo: function (channelId) {
+            return active() && catalog.channels[channelId]
+                ? catalog.channels[channelId].logo || ""
+                : "";
+        },
+        saveCredentials: function (value) {
+            if (!active()) return;
+            var previous = credentials();
+            var accountChanged =
+                id === "tvteam"
+                    ? previous.playlist !== value.playlist
+                    : previous.username !== value.username ||
+                      previous.password !== value.password;
+            if (accountChanged) {
+                loads.dispose();
+                catalog = emptyDriverCatalog();
+            }
+            if (id === "tvteam") ports.storage.set("www", value.playlist || "");
+            else {
+                ports.storage.set(
+                    id === "1ott" ? "id" : id === "only4" ? "token" : "login",
+                    value.username
+                );
+                if (id !== "only4")
+                    ports.storage.set(
+                        id === "1ott" ? "pin" : "pass",
+                        value.password
+                    );
+            }
+            if (id === "only4" && value.mode !== undefined)
+                ports.storage.set("ts_hls", String(value.mode));
+        },
+        stream: function (channelId) {
+            if (!active()) return "";
+            if (id === "only4")
+                return ports.core.operatorLiveUrl(
+                    id,
+                    String(channelId),
+                    catalog.channels[channelId],
+                    { mode: credentials().mode }
+                );
+            return catalog.channels[channelId]
+                ? catalog.channels[channelId].url || ""
+                : "";
+        },
+    };
+    owner.own(driver.dispose);
+    return driver;
+}
+
 var providerDriverProfiles: ProviderDriverProfile[] = (window as any)
     .__ottProviderDriverProfiles;
 var providerDriverRegistry = createDriverRegistry();
@@ -620,10 +936,368 @@ providerDriverProfiles.forEach(function (profile) {
             : profile.kind === "xtream"
               ? createXtreamDriver
               : function (ports, owner) {
-                    return createOperatorDriver(profile, ports, owner);
+                    return profile.kind === "named-playlist"
+                        ? createNamedPlaylistDriver(profile, ports, owner)
+                        : createOperatorDriver(profile, ports, owner);
                 }
     );
 });
+
+function namedCredentialMessage(
+    id: string,
+    value: ProviderCredentials
+): string {
+    if (id === "1ott") return "Для доступа необходимо ввести ID и PIN!";
+    if (id === "only4")
+        return "Для доступа необходимо ввести IPTV токен! (10 символов)";
+    if (id === "tvteam")
+        return "Для доступа необходимо ввести адрес плейлиста!";
+    return !value.username || !value.password
+        ? "Логин или пароль отсутсвуют!"
+        : "Для доступа необходимо ввести Логин и пароль!";
+}
+
+/** The old menu and HTML form are codecs over instance credentials, never driver state. */
+function mountNamedProviderSettings(
+    host: any,
+    profile: ProviderDriverProfile,
+    driver: ProviderDriver,
+    owner: DriverLifetime,
+    storage: DriverStorage
+): void {
+    var id = profile.id;
+    var modes = ["MPEGTS", "HLS(v)", "HLS(a)"];
+    var editorRevision = 0;
+    function close() {
+        host.popupList(
+            host.popupActions.indexOf(host.toggleProviderSettingsVisibility) + 1
+        );
+    }
+    function field(
+        fieldName: string,
+        caption: string,
+        keyboard?: any,
+        length?: number,
+        error?: string,
+        normalize?: (value: string) => string,
+        refresh?: () => void
+    ) {
+        if (!owner.active()) return;
+        var revision = ++editorRevision;
+        host.editCaption = caption;
+        host.editvar = (driver.credentials() as any)[fieldName];
+        host.setEdit = function () {
+            if (!owner.active() || editorRevision !== revision) return;
+            var value = String(host.editvar);
+            if (
+                length &&
+                value.length !== length &&
+                !(id === "only4" && !value)
+            ) {
+                host.alert(error);
+                if (id === "only4") {
+                    var release = function () {};
+                    var timer = host.setTimeout(function () {
+                        release();
+                        if (owner.active() && editorRevision === revision)
+                            host.showEditKey(keyboard);
+                    }, 0);
+                    release = owner.own(function () {
+                        host.clearTimeout(timer);
+                    });
+                } else host.showEditKey(keyboard);
+                return;
+            }
+            var next = driver.credentials();
+            (next as any)[fieldName] = normalize ? normalize(value) : value;
+            driver.saveCredentials(next);
+            editorRevision++;
+            if (refresh) refresh();
+        };
+        host.showEditKey(keyboard);
+    }
+    function editUser() {
+        field(
+            "username",
+            id === "1ott"
+                ? host._("Редактирование ID") + " " + profile.title
+                : "Редактирование логина " + profile.title,
+            id === "1ott" ? [0] : [0, 2],
+            id === "shara-tv" ? 8 : undefined,
+            "Для доступа необходимо ввести Логин (8 символов)!"
+        );
+    }
+    function editPassword() {
+        field(
+            "password",
+            id === "1ott"
+                ? host._("Редактирование PIN") + " " + profile.title
+                : "Редактирование пароля " + profile.title,
+            id === "1ott" ? [0] : [0, 2],
+            id === "shara-tv" ? 8 : undefined,
+            "Для доступа необходимо ввести Пароль (8 символов)!"
+        );
+    }
+    function editUrl() {
+        field(
+            "playlist",
+            "Редактирование адреса плейлиста tv.team",
+            undefined,
+            undefined,
+            undefined,
+            function (value) {
+                return host.OttPlayCore.operatorTvteamPlaylist(value);
+            }
+        );
+    }
+    function settingsMenu() {
+        if (!owner.active()) return;
+        var tokenProvider = id === "only4";
+        var caption = tokenProvider
+            ? "Настройки провайдера " + profile.title
+            : host._("Settings") + " " + profile.title;
+        function render() {
+            host.listArray = tokenProvider
+                ? [
+                      "IPTV токен",
+                      "Тип потоков: " + modes[driver.credentials().mode || 0],
+                      "",
+                      (host.sNoNumbersKeys ? "" : '<div class="btn">8</div> ') +
+                          host._("Load playlist"),
+                  ]
+                : [
+                      host._("ID"),
+                      host._("PIN"),
+                      "",
+                      (host.sNoNumbersKeys ? "" : '<div class="btn">8</div> ') +
+                          host._("Restart player"),
+                  ];
+            host.listDataArray = host.listArray;
+        }
+        function refresh() {
+            render();
+            host.showPage();
+        }
+        function changeMode(delta: number) {
+            var next = driver.credentials();
+            next.mode =
+                ((next.mode || 0) + delta + modes.length) % modes.length;
+            driver.saveCredentials(next);
+            refresh();
+            host.detailListAction();
+            if (!host.playType)
+                host.playChannel(host.catIndex, host.primaryIndex);
+            else if (host.playType > 0)
+                host.playArchive(host.playType + host.playTime);
+        }
+        host.selIndex = 0;
+        render();
+        host.getListItem = function (value: any) {
+            return "&nbsp;&nbsp;" + value;
+        };
+        host.detailListAction = function () {
+            var descriptions = tokenProvider
+                ? [
+                      "Ввод IPTV токена " +
+                          profile.title +
+                          host._(" (after changing, load playlist)"),
+                      "Выберите тип потоков:<br>" + modes.join(", "),
+                      "",
+                      host._("Load playlist"),
+                  ]
+                : [
+                      host._("Редактирование ID") +
+                          host._(" (after changing, restart player)"),
+                      host._("Редактирование PIN") +
+                          host._(" (after changing, restart player)"),
+                      "",
+                      host._("Restart player"),
+                  ];
+            host.listDetail.innerHTML = descriptions[host.selIndex] || "";
+            host.listFooter.innerHTML = host.renderButtonHint(
+                host.keys.RETURN,
+                host.strRETURN,
+                "Close"
+            );
+            if (tokenProvider && host.selIndex < 2)
+                host.listFooter.innerHTML += host.renderButtonHint(
+                    host.keys.ENTER,
+                    host.strENTER,
+                    "Change value"
+                );
+            if (tokenProvider && host.selIndex === 1)
+                host.listFooter.innerHTML += host.renderButtonHint(
+                    host.keys.ENTER,
+                    host.strENTER,
+                    "Change value",
+                    "&#9664;",
+                    "&#9654;"
+                );
+        };
+        host.listKeyHandler = function (key: number) {
+            if (!owner.active()) return false;
+            if (key === host.keys.RETURN) {
+                close();
+                return true;
+            }
+            if (key === host.keys.N8) {
+                if (tokenProvider) host.loadChannels();
+                else host.restart();
+                return true;
+            }
+            if (
+                tokenProvider &&
+                host.selIndex === 1 &&
+                (key === host.keys.LEFT || key === host.keys.RIGHT)
+            ) {
+                changeMode(key === host.keys.LEFT ? -1 : 1);
+                return true;
+            }
+            if (key !== host.keys.ENTER) return false;
+            if (host.selIndex === 0) {
+                if (tokenProvider)
+                    field(
+                        "username",
+                        "Редактирование IPTV токена (10 символов)",
+                        [0, 1, 2],
+                        10,
+                        namedCredentialMessage(id, driver.credentials()),
+                        undefined,
+                        refresh
+                    );
+                else editUser();
+            } else if (host.selIndex === 1) {
+                if (tokenProvider) changeMode(1);
+                else editPassword();
+            } else if (host.selIndex === 3) {
+                if (tokenProvider) host.loadChannels();
+                else host.restart();
+            }
+            return true;
+        };
+        host.listDetail.innerHTML = "";
+        host.listCaption.innerHTML = caption;
+        host.listFooter.innerHTML = host.renderButtonHint(
+            host.keys.RETURN,
+            host.strRETURN,
+            "Close"
+        );
+        host.$("#listPopUp").hide();
+        host.showPage();
+    }
+    host.duneAddSettings = function (index: number) {
+        if (!owner.active()) return;
+        if (isNaN(parseInt(storage.get("sShowArchive") || "", 10)))
+            storage.set("sShowArchive", "1");
+        if (id === "only4") {
+            if (isNaN(parseInt(storage.get("sShowPikon") || "", 10)))
+                storage.set("sShowPikon", "0");
+            if (isNaN(parseInt(storage.get("ts_hls") || "", 10)))
+                storage.set("ts_hls", "1");
+        }
+        if (
+            (id === "1ott" || id === "only4") &&
+            typeof host.delPopup === "function"
+        )
+            host.delPopup(host.restart);
+        if (id === "shara-tv") {
+            host.popupArray.splice(
+                index,
+                0,
+                profile.title + ": Логин",
+                profile.title + ": Пароль"
+            );
+            host.popupDetail.splice(
+                index,
+                0,
+                "Ввод логина " +
+                    profile.title +
+                    " (после изменения нужно перезапустить плеер)",
+                "Ввод пароля " +
+                    profile.title +
+                    " (после изменения нужно перезапустить плеер)"
+            );
+            host.popupActions.splice(index, 0, editUser, editPassword);
+        } else {
+            host.popupArray.splice(
+                index,
+                1,
+                id === "tvteam"
+                    ? "tv.team : Адрес плейлиста"
+                    : id === "only4"
+                      ? "Настройки провайдера " + profile.title
+                      : host._("Settings") + " " + profile.title
+            );
+            host.popupDetail.splice(
+                index,
+                1,
+                id === "tvteam"
+                    ? 'Ввод адреса плейлиста tv.team</b>Тип плейлиста: <b>OTTPlayer</b><br/><br/>Вы можете не вводить окончание адреса плейлиста "/playlist.m3u8" - оно будет добавлено автоматически'
+                    : ""
+            );
+            host.popupActions.splice(
+                index,
+                1,
+                id === "tvteam" ? editUrl : settingsMenu
+            );
+        }
+    };
+    if (id === "tvteam" || id === "shara-tv") {
+        host.getProviderParams = function () {
+            if (!owner.active()) return false;
+            if (driver.bootstrap) driver.bootstrap();
+            var value = driver.credentials();
+            if (id === "tvteam") {
+                host.$("#tvteamwww").val(value.playlist);
+                return value.playlist;
+            }
+            host.$("#login").val(value.username);
+            host.$("#pass").val(value.password);
+            var valid = host.OttPlayCore.operatorCredentialsValid(
+                id,
+                value.username,
+                value.password
+            );
+            if (!valid)
+                host.alert("Для доступа необходимо ввести Логин и пароль!");
+            return valid;
+        };
+        host.setProviderParams = function () {
+            if (!owner.active()) return false;
+            var value = driver.credentials();
+            var before = driver.credentials();
+            if (id === "tvteam")
+                value.playlist = decodeURIComponent(
+                    host.$("#tvteamwww").val().trim()
+                );
+            else {
+                value.username = decodeURIComponent(
+                    host.$("#login").val().trim()
+                );
+                value.password = decodeURIComponent(
+                    host.$("#pass").val().trim()
+                );
+            }
+            driver.saveCredentials(value);
+            if (
+                !host.OttPlayCore.operatorCredentialsValid(
+                    id,
+                    id === "tvteam" ? value.playlist : value.username,
+                    value.password
+                )
+            )
+                host.alert(
+                    id === "tvteam"
+                        ? namedCredentialMessage(id, value)
+                        : "Для доступа необходимо ввести Логин и пароль!"
+                );
+            return id === "tvteam"
+                ? before.playlist !== driver.credentials().playlist
+                : before.username !== value.username ||
+                      before.password !== value.password;
+        };
+    }
+}
 
 /** Retained UI/storage wire codec. No executable provider script enters this boundary. */
 function mountProviderDriver(
@@ -635,7 +1309,9 @@ function mountProviderDriver(
         return value.id === id;
     })[0];
     if (!profile) throw new Error("Unsupported provider driver: " + id);
-    var generic = profile.kind === "operator";
+    var generic =
+        profile.kind === "operator" || profile.kind === "xtream-fallback";
+    var named = profile.kind === "named-playlist";
     var store: DriverStorage = {
         get: function (key) {
             return host.stbGetItem(profile.prefix + key);
@@ -655,8 +1331,17 @@ function mountProviderDriver(
             hash: function (name) {
                 return host.xxHash32S(name, true);
             },
+            intercept:
+                typeof host.stbInterceptRequest === "function"
+                    ? function (url) {
+                          host.stbInterceptRequest(url);
+                      }
+                    : undefined,
             isDune: function () {
                 return host.browserName() === "dune";
+            },
+            location: function () {
+                return host.location ? host.location.href : "";
             },
             now: function () {
                 return Date.now() / 1000;
@@ -665,6 +1350,9 @@ function mountProviderDriver(
                 host.$(host.launch_id).append(host._(message));
             },
             relay: host.host || "",
+            replaceLocation: function (value) {
+                host.location.href = value;
+            },
             request: function (options, done, fail) {
                 var pending = host.$.ajax(options);
                 pending.done(done).fail(fail);
@@ -706,7 +1394,10 @@ function mountProviderDriver(
         });
     };
     if (id !== "demo")
-        host.parental = /XXX|Взрослые|Для взрослых|Эротика|18\+|Adults/i;
+        host.parental =
+            id === "only4"
+                ? /XXX|Взрослые|Для взрослых|Эротика|18\+|ХХХ|Adults/i
+                : /XXX|Взрослые|Для взрослых|Эротика|18\+|Adults/i;
     function label() {
         var config = driver.credentials();
         return (
@@ -822,6 +1513,7 @@ function mountProviderDriver(
         host.popupArray.splice(index, 1, label());
         host.popupDetail.splice(index, 1, host._(profile.title + " settings"));
     };
+    if (named) mountNamedProviderSettings(host, profile, driver, owner, store);
     host.getChannelsArray = function (callback: () => void) {
         if (!owner.active()) return;
         if (id === "xtream")
@@ -849,7 +1541,23 @@ function mountProviderDriver(
                 host.catsArray = catalog.groupOrder.slice();
             }
             if (pending) return;
-            if (error)
+            if (error === "named-credentials") {
+                host.popupList(
+                    host.popupActions.indexOf(
+                        host.toggleProviderSettingsVisibility
+                    ) + 1
+                );
+                host.infoBox(namedCredentialMessage(id, driver.credentials()));
+            } else if (named && error) {
+                host.alert(
+                    host._(
+                        error === "named-catalog" &&
+                            (id === "only4" || id === "shara-tv")
+                            ? "Ошибка обработки списка каналов! Проверьте правильность данных!!"
+                            : "Failed to load channel list!"
+                    )
+                );
+            } else if (error)
                 host.alert(
                     host._(
                         error === "configure"

@@ -276,6 +276,8 @@ for (const replacement of [null, "catalog", "channel", "list"]) {
     };
     c.setCurProg = () => {};
     c.curProg = 0;
+    c.getArchiveUrl = (_id, epoch) => "archive:" + epoch;
+    c.stbPlay = (url) => c.effects.push(["open", url]);
     c.timeShift(30);
     if (replacement === "catalog") c.channels = { ...c.channels };
     if (replacement === "channel") c.channels[101] = { rec: 48 };
@@ -285,7 +287,7 @@ for (const replacement of [null, "catalog", "channel", "list"]) {
     ]);
     reply(101, []);
     assert.equal(
-        c.effects.filter((row) => row[0] === "archive").length,
+        c.effects.filter((row) => row[0] === "open").length,
         replacement ? 0 : 1
     );
 }

@@ -3,7 +3,7 @@
 The player now delegates playback history and seek decisions to the Kotlin
 shared core. The classic view consumes those decisions through an explicit
 compatibility adapter. Normal playback commands own a typed state store; a
-versioned journal owns channel history and the resume target. Thirty-five
+versioned journal owns channel history and the resume target. Forty
 provider entrypoints use injected driver instances. Remaining providers and
 views retain an explicit compatibility boundary.
 
@@ -49,6 +49,26 @@ and function timers created while a provider call executes, including nested
 asynchronous work. Catalog fetches have their own reload lifetime. Subsequent
 guide, media and stream URL entrypoints retain the provider lifetime.
 
+`src/playback/archive.ts` independently owns archive requests, schedule snapshots,
+programme selection and the active media resource's bounds. Its ports receive
+decoded source/channel context and implement guide requests, authorization,
+URL resolution, device effects and rendering. The common core selects programmes
+using half-open intervals and latest-start precedence for overlaps. A file is
+reused only when its source, channel, programme identity and time bounds match;
+changing a UI row index cannot reopen it or seek into a different resource.
+
+`classic-archive.ts` is the compatibility edge. The renderer consumes a selected
+programme and timeline model; it no longer chooses transport or starts guide
+requests. Missing/last-programme refresh has its own request lifetime and retry
+interval, independent of whether the visible row changed. Source replacement,
+Stop and a newer intent retire pending guide and URL callbacks. Authorization
+and archive retention are checked again before delayed playback effects.
+
+EPG selection also binds the exact chosen row, destination and playback context
+before requesting a PIN. Manual seek dialogs bind their callback, accumulated
+delta and timer revision to the session that opened them. A queued old callback
+cannot seek a new channel or hide a replacement dialog.
+
 ## Integration and deliberate behavior changes
 
 `setCurrent` and `shiftArchive` delegate to the new boundary. Stop, source and
@@ -83,11 +103,17 @@ media catalog before migration. The view codec publishes the narrow callbacks
 that the current renderer still consumes. Managed loading never evaluates
 `prov.js` or temporarily patches global AJAX/timer functions.
 
-`provider-assets.cjs` derives the same 35 IDs from the declarative inventory.
+Five additional profiles use explicit session drivers: `1ott`, `only4`,
+`shara-tv`, `tvteam` and `bestlist/stalker`. They retain their distinct credential
+editors, playlist/authentication chains, guide and archive behavior, and Only4
+mode switching. Despite its name, `bestlist/stalker` uses an Xtream/M3U fallback
+contract; it is separate from the remaining MAC-based Stalker integration.
+
+`provider-assets.cjs` derives the same 40 IDs from the declarative inventory.
 Vite and Play packaging omit their old executable scripts from browser, Tauri
 and Capacitor roots. UI metadata and logos remain. The original files stay in
 source control as provenance and compatibility test oracles; they are not
-runtime fallbacks for managed drivers. The 13 remaining entrypoints keep their
+runtime fallbacks for managed drivers. The eight remaining entrypoints keep their
 explicit legacy path until equivalent drivers are implemented.
 
 ## Version-2 playback journal
@@ -128,7 +154,9 @@ late response. A canceled transport is therefore not assumed to be sufficient
 protection. New tests live in `test_playback_session.cjs`,
 `test_history_selection.cjs`, `test_playback_state.cjs`,
 `test_playback_journal.cjs`, `test_provider_runtime.cjs` and
-`test_provider_drivers.cjs`. Driver transport contracts are also checked against
+`test_provider_drivers.cjs`. Archive request/entrypoint tests and
+`test_named_provider_drivers.cjs` cover the next migration stage. Driver transport
+contracts are also checked against
 the captured generic operator cases; `test_provider_assets.cjs --bundle` audits
 the absence of retired scripts in all built roots.
 
@@ -139,10 +167,17 @@ history and delayed seeks on modern and legacy JavaScript profiles. This checks
 wiring and behavior with simulated host ports; it does not verify decoding on a
 physical TV. The build also validates ES5 grammar and native staging receipts.
 
+`npm run test:devices:browser` includes a full-player Chromium test that decodes
+frames from the checked-in HLS fixture and exercises the actual pause, seek,
+resume and stop APIs plus the canonical journal. Its unload event is dispatched
+synthetically; it does not establish real shutdown/restart or device-decoder
+behavior. All external media/provider requests are intercepted or blocked.
+
 The session-only iteration increased the classic bundle from 475,644 to 484,540
 bytes (gzip: 130,016 to 132,972). Adding owned playback state, the journal and
-35 drivers brings it to 514,070 bytes (140,915 gzip); the explicit budget is
-520,000 bytes / 143,000 gzip bytes. Packaging also removes 214,632 raw bytes of
+35 drivers brought it to 514,070 bytes (140,915 gzip). The archive coordinator
+and five further drivers bring the bundle to 530,635 bytes / 145,879 gzip bytes; the
+explicit budget is 535,000 bytes / 148,000 gzip bytes. Packaging removes 252,549 raw bytes of
 retired provider scripts from each Full asset root. That asset total is not a
 claim about transfer savings: the previous loader fetched provider scripts on
 demand. The separately loaded shared-core JavaScript remains at 1,239,827 bytes
@@ -156,12 +191,18 @@ result through `scripts/distribute.cjs`; do not manually edit vendor artifacts.
 ## Remaining migration
 
 The new boundaries do not make the entire application independent of its
-classic contracts. Remaining work is to replace the 13 specialized provider
+classic contracts. Remaining work is to replace the eight specialized provider
 scripts, migrate opaque media history and the rest of settings, and give all
 views/device adapters a command-and-snapshot API. The current renderer still
 uses classic linking and published globals. Explicit reconciliation accepts
 external writes from retained scripts; removing that input path requires their
 conversion, not just changing field names.
+
+The remaining provider entrypoints are `antifriz`, `edem`, `itv`, `kb-team`,
+`m3u`, `ottclub`, `shura` and `stalker`. Their remaining contracts include MAC and
+playlist-slot identity, progressive metadata, provider-specific media catalogs,
+and asynchronous media navigation. They are explicitly retained rather than
+silently dropping those capabilities.
 
 The transitional provider scope does not intercept arbitrary raw UI closures,
 native Promise continuations, cached transport functions or global writes made

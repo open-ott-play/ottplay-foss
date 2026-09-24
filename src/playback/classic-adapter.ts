@@ -235,7 +235,10 @@ function classicPlaybackCommand(command: any): void {
                     : {
                           c: w.catIndex,
                           ci: id,
-                          e: w._prog100 && w._prog100.name,
+                          e:
+                              typeof command.label === "string"
+                                  ? command.label
+                                  : w._prog100 && w._prog100.name,
                           i: w.primaryIndex,
                       },
             sourceId: classicPlaybackSource(w),
@@ -694,6 +697,8 @@ function classicPlaybackCheckpoint(snapshot: any, force = false): void {
     bookmark: classicPlaybackBookmark,
     cancel: function (): void {
         if (classicPlaybackController) classicPlaybackController.cancel();
+        var archive = classicPlaybackHost().__ottClassicArchive;
+        if (archive) archive.cancel();
     },
     canMigrateJournal: function (): boolean {
         var journal = classicPlaybackJournal();
@@ -701,6 +706,12 @@ function classicPlaybackCheckpoint(snapshot: any, force = false): void {
     },
     checkpoint: classicPlaybackCheckpoint,
     command: classicPlaybackCommand,
+    context: function (): any {
+        return {
+            isCurrent: classicPlaybackObservation().isCurrent,
+            sourceId: classicPlaybackSource(classicPlaybackHost()),
+        };
+    },
     guard: function (
         callback: (...args: any[]) => void
     ): (...args: any[]) => void {

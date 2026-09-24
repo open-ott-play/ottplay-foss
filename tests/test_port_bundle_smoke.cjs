@@ -397,6 +397,8 @@ function fixture(profile) {
     for (const api of [
         "__ottPlaybackSession",
         "__ottPlaybackJournal",
+        "__ottArchiveSession",
+        "__ottClassicArchive",
         "__ottProviderDrivers",
         "__ottProviderDriverProfiles",
         "__ottClassicPlayback",
@@ -415,6 +417,11 @@ function assertPrivateRuntime(w, profile) {
     for (const [api, method] of [
         ["__ottPlaybackSession", "create"],
         ["__ottPlaybackJournal", "create"],
+        ["__ottArchiveSession", "create"],
+        ["__ottClassicArchive", "open"],
+        ["__ottClassicArchive", "pauseLive"],
+        ["__ottClassicArchive", "rewind"],
+        ["__ottClassicArchive", "update"],
         ["__ottProviderDrivers", "createRegistry"],
         ["__ottProviderDrivers", "mount"],
         ["__ottClassicPlayback", "select"],
@@ -437,10 +444,16 @@ function assertPrivateRuntime(w, profile) {
     );
     for (const name of [
         "createPlaybackJournal",
+        "createArchiveController",
+        "classicArchiveController",
+        "classicArchiveRuntime",
         "createDriverRegistry",
         "providerDriverRegistry",
         "createDemoDriver",
         "createXtreamDriver",
+        "createNamedPlaylistDriver",
+        "mountNamedProviderSettings",
+        "namedCredentialMessage",
         "createOperatorDriver",
         "providerDriverProfiles",
         "createDriverTransport",
@@ -462,6 +475,8 @@ function assertPrivateRuntime(w, profile) {
     for (const implementation of [
         w.__ottPlaybackSession.create,
         w.__ottPlaybackJournal.create,
+        w.__ottArchiveSession.create,
+        w.__ottClassicArchive.open,
         w.__ottProviderDrivers.createRegistry,
         w.__ottProviderDrivers.mount,
         w.__ottClassicPlayback.select,
@@ -473,6 +488,96 @@ function assertPrivateRuntime(w, profile) {
             profile + ": private implementation exposed as bare global"
         );
     }
+}
+
+function exerciseArchiveRuntime(profile) {
+    const w = fixture(profile);
+    vm.runInContext(bundle, w, { filename: bundlePath });
+    const now = Math.floor(Date.now() / 1000);
+    const programme = {
+        name: "Archive fixture",
+        time: now - 1800,
+        time_to: now + 1800,
+    };
+    const opened = [];
+    const seeks = [];
+    const rendered = [];
+    const guides = [];
+    const items = new Map();
+    Object.assign(w, {
+        __ottRenderArchive: (model) => rendered.push(model.position),
+        catIndex: 0,
+        cats: { All: [1, 2] },
+        catsArray: ["All"],
+        channels: {
+            1: { channel_name: "Archive one", rec: 24 },
+            2: { channel_name: "Archive two", rec: 24 },
+        },
+        curProg: -1,
+        epgArray: [programme],
+        fileArchive: true,
+        getArchiveUrl: (id, start, end, item) => {
+            assert.equal(id, 1);
+            assert.equal(item.name, "Archive fixture");
+            assert(end > start);
+            return "https://media.invalid/archive.ts";
+        },
+        getChannelEpgCached: (id, callback) => guides.push({ callback, id }),
+        ifParentalAccessChId: () => false,
+        p_pref: "archive-artifact:",
+        playTime: 0,
+        playType: 0,
+        prevArr: [],
+        primaryIndex: 0,
+        providerGetItem: (key) => items.get(key) || null,
+        providerSetItem: (key, value) => items.set(key, value),
+        settings: { ...w.settings, prevCount: 2 },
+        sFavorites: 0,
+        sInfoRew: 0,
+        sStopPlay: 0,
+        stbGetLen: () => 3600,
+        stbGetPosTime: () => 0,
+        stbPlay: (url, offset) => {
+            opened.push({ offset, url });
+            w.__ottClassicPlayback.command({ type: "playing" });
+        },
+        stbSetPosTime: (offset) => {
+            seeks.push(offset);
+            w.__ottClassicPlayback.command({ type: "playing" });
+        },
+    });
+    w.curList = w.cats.All;
+    w.__ottClassicPlayback.command({ channelId: 1, type: "live" });
+    w.playArchive(programme.time + 10);
+    assert.equal(opened.length, 1, profile + ": actual archive opens a file");
+    assert.equal(opened[0].offset, 10);
+    w.curProg = 999;
+    w.playArchive(programme.time + 25);
+    assert.equal(
+        opened.length,
+        1,
+        profile + ": UI index cannot reopen the file"
+    );
+    assert.deepEqual(seeks, [25]);
+    const journal = JSON.parse(items.get("playbackJournal"));
+    assert.equal(journal.bookmark.kind, "archive");
+    assert.equal(journal.bookmark.archiveStart, programme.time + 25);
+
+    // A programme gap requests a guide refresh. Switching the actual selection
+    // retires that callback even if its transport cannot be aborted.
+    w.updateArchiveInfo(programme.time_to + 5);
+    assert.equal(guides.length, 1);
+    w.setCurrent(0, 1, false);
+    w.__ottClassicPlayback.command({ channelId: 2, type: "live" });
+    const published = rendered.length;
+    const selection = w.primaryIndex;
+    guides[0].callback(1, [
+        { name: "Retired programme", time: now, time_to: now + 9000 },
+    ]);
+    assert.equal(rendered.length, published);
+    assert.equal(w.primaryIndex, selection);
+    assert.equal(w.__ottClassicPlayback.snapshot().target.kind, "live");
+    w.__ottClassicPlayback.cancel();
 }
 
 function exercisePlaybackRuntime(w, profile) {
@@ -794,6 +899,68 @@ function exerciseProviderRuntime(profile) {
         assert.equal(completed, 5);
         assert.deepEqual(Array.from(w.cList), [900000001, 900000002]);
     }
+    if (w.__ottProviderDrivers.registry.has("1ott")) {
+        for (const [id, values] of [
+            ["1ott", { "1ottid": "account", "1ottpin": "pin" }],
+            ["only4", { o4token: "1234567890" }],
+            ["shara-tv", { shtvlogin: "12345678", shtvpass: "abcdefgh" }],
+            [
+                "tvteam",
+                { tvteamwww: "https://tv.team/pl/11/account/playlist.m3u8" },
+            ],
+            [
+                "bestlist/stalker",
+                {
+                    bestlist_stalkercfg: JSON.stringify({
+                        m3u: "https://list.test/tv.m3u",
+                        pass: "",
+                        server: "",
+                        user: "",
+                    }),
+                },
+            ],
+        ]) {
+            for (const [key, value] of Object.entries(values))
+                stored.set(key, value);
+            stored.set("ottplayprov", id);
+            const start = requests.length;
+            const before = completed;
+            w.loadProv(id);
+            assert.equal(w.__ottActiveProviderDriver.id, id);
+            if (id === "1ott") requests[start].resolve('{"token":"artifact"}');
+            requests.at(-1).reject();
+            assert.equal(
+                requests.at(-1).settings.method,
+                "post",
+                id + ": playlist proxy retry"
+            );
+            requests
+                .at(-1)
+                .resolve(
+                    '#EXTM3U\n#EXTINF:-1 tvg-id="guide" tvg-name="channel" group-title="Live",Named provider\nhttps://media.test/token/channel/index.m3u8?token=t\n'
+                );
+            assert.equal(
+                completed,
+                before + 1,
+                id + ": real artifact startup completes"
+            );
+            assert(
+                w.cList.length > 0,
+                id + ": actual parsed catalog is published"
+            );
+            assert(w.getChannelUrl(w.cList[0]), id + ": playable stream URL");
+            w.loadChannels();
+            const pending = requests.at(-1);
+            w.loadProv("demo");
+            assert.equal(pending.aborts, 1);
+            const count = requests.length;
+            pending.reject();
+            pending.resolve("stale");
+            assert.equal(requests.length, count, id + ": no stale retry");
+            assert.equal(completed, before + 2);
+            assert.deepEqual(Array.from(w.cList), [900000001, 900000002]);
+        }
+    }
     assert.deepEqual(
         scripts,
         [],
@@ -873,6 +1040,7 @@ async function main() {
         assertPrivateRuntime(w, profile);
         if (profile === "modern" || profile === "legacy") {
             exercisePlaybackRuntime(w, profile);
+            exerciseArchiveRuntime(profile);
             exerciseProviderRuntime(profile);
         }
         for (const name of [
