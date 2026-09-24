@@ -15,6 +15,7 @@ const CLASSIC_MODULES = [
     "build/utils/encoding.js",
     "build/utils/qrcode.js",
     "build/channels/types.js",
+    "build/channels/channel-references.js",
     "build/channels/favorites-lists.js",
     "build/channels/search.js",
     "build/provider/source-identity.js",
@@ -78,6 +79,9 @@ const CLASSIC_MODULES = [
 // legacy bare-global ABI. These modules publish their API as window properties
 // and execute immediately at their original position in CLASSIC_MODULES.
 const CLASSIC_PRIVATE_MODULES = Object.freeze({
+    "build/channels/channel-references.js": Object.freeze([
+        "window.__ottChannelReferences",
+    ]),
     "build/channels/classic-library.js": Object.freeze([
         "window.__ottChannels",
     ]),
