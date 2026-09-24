@@ -126,6 +126,18 @@ require("./helpers/private-runtime.cjs")(
     context,
     "src/provider/catalog-drivers.ts"
 );
+for (const module of [
+    "catalog-xml",
+    "media-catalog",
+    "playlist-drivers",
+    "edem-driver",
+    "m3u-settings",
+    "m3u-driver",
+])
+    require("./helpers/private-runtime.cjs")(
+        context,
+        "src/provider/" + module + ".ts"
+    );
 require("./helpers/private-runtime.cjs")(context, "src/provider/drivers.ts");
 vm.runInContext(
     ts.transpileModule(code, {

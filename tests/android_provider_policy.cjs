@@ -184,6 +184,7 @@ function fixture(
         __test: "",
         addBtn2menu() {},
         alert() {},
+        browserName: () => "browser",
         btnDiv: () => "",
         cancelMediaLoad() {},
         cancelPortChannelIdMigration() {},
@@ -313,6 +314,18 @@ function fixture(
         w,
         "src/provider/catalog-drivers.ts"
     );
+    for (const module of [
+        "catalog-xml",
+        "media-catalog",
+        "playlist-drivers",
+        "edem-driver",
+        "m3u-settings",
+        "m3u-driver",
+    ])
+        require("./helpers/private-runtime.cjs")(
+            w,
+            "src/provider/" + module + ".ts"
+        );
     require("./helpers/private-runtime.cjs")(w, "src/provider/drivers.ts");
     vm.runInContext(code[flavor], w);
     attachSourceAliases(w);
@@ -443,13 +456,8 @@ for (const id of permitted) {
     test("Play loads permitted saved provider " + id, () => {
         const f = fixture("play", { ottplayprov: id });
         f.w.loadProv();
-        if (id === "demo" || id === "xtream" || id === "stalker") {
-            assert.deepEqual(f.scripts, []);
-            assert.equal(f.w.__ottActiveProviderDriver.id, id);
-        } else
-            assert.deepEqual(f.scripts, [
-                "https://player.invalid/prov/" + id + "/prov.js?fixture",
-            ]);
+        assert.deepEqual(f.scripts, []);
+        assert.equal(f.w.__ottActiveProviderDriver.id, id);
     });
 }
 
@@ -481,12 +489,8 @@ test("completed provider loads omit unavailable logos but preserve Full logo and
                         optIndexOf: () => -1,
                     });
                     f.w.loadProv();
-                    if (id === "demo" || id === "xtream" || id === "stalker")
-                        assert.equal(f.scriptCallbacks.length, 0);
-                    else {
-                        assert.equal(f.scriptCallbacks.length, 1);
-                        f.scriptCallbacks[0]();
-                    }
+                    assert.equal(f.scriptCallbacks.length, 0);
+                    assert.equal(f.w.__ottActiveProviderDriver.id, id);
                     assert.deepEqual(
                         f.errors,
                         [],
@@ -577,9 +581,8 @@ test("URL aliases, starred activation pins and injected registry entries cannot 
 test("excluded URL cannot override a saved permitted provider", () => {
     const f = fixture("play", { ottplayprov: "m3u" }, "?edem");
     f.w.loadProv();
-    assert.deepEqual(f.scripts, [
-        "https://player.invalid/prov/m3u/prov.js?fixture",
-    ]);
+    assert.deepEqual(f.scripts, []);
+    assert.equal(f.w.__ottActiveProviderDriver.id, "m3u");
 });
 
 test("settings restored after startup still pass policy at the script boundary", () => {
@@ -626,10 +629,8 @@ test("explicit exit from Demo accepts permitted choice once, then honors origina
     assert.deepEqual(f.scripts, []);
     assert.equal(f.w.__ottActiveProviderDriver.id, "stalker");
     f.w.loadProv();
-    assert.deepEqual(f.scripts, [
-        "https://player.invalid/prov/m3u/prov.js?fixture",
-    ]);
-    f.scriptCallbacks[0]();
+    assert.deepEqual(f.scripts, []);
+    assert.equal(f.w.__ottActiveProviderDriver.id, "m3u");
     assert.equal(f.stored.get("noSelProv"), "1");
 });
 
@@ -703,10 +704,8 @@ test("Full still loads branded stored and URL-pinned providers", () => {
     assert.equal(f.w.__ottActiveProviderDriver.id, "ottclub");
     f.w.location.search = "?edem";
     f.w.loadProv();
-    assert.deepEqual(f.scripts, [
-        "https://player.invalid/prov/edem/prov.js?fixture",
-    ]);
-    f.scriptCallbacks[0]();
+    assert.deepEqual(f.scripts, []);
+    assert.equal(f.w.__ottActiveProviderDriver.id, "edem");
 });
 
 function startupFixture(

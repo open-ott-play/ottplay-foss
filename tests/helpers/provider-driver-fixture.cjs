@@ -79,6 +79,12 @@ function fixture(initial = {}) {
     privateRuntime(host, "src/provider/driver-profiles.ts");
     privateRuntime(host, "src/provider/stalker-driver.ts");
     privateRuntime(host, "src/provider/catalog-drivers.ts");
+    privateRuntime(host, "src/provider/catalog-xml.ts");
+    privateRuntime(host, "src/provider/media-catalog.ts");
+    privateRuntime(host, "src/provider/playlist-drivers.ts");
+    privateRuntime(host, "src/provider/edem-driver.ts");
+    privateRuntime(host, "src/provider/m3u-settings.ts");
+    privateRuntime(host, "src/provider/m3u-driver.ts");
     privateRuntime(host, "src/provider/drivers.ts");
     // The checked-in identity codec is shared with existing channel bookmarks.
     const encoding = fs.readFileSync(

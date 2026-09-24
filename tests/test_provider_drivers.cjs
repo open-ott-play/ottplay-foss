@@ -28,11 +28,39 @@ test("registry only resolves explicit drivers and does not accept prototype name
         Array.from(registry.ids()),
         Array.from(f.host.__ottProviderDriverProfiles, (profile) => profile.id)
     );
-    assert.equal(registry.ids().length, 44);
+    assert.equal(registry.ids().length, 48);
     assert.equal(registry.has("constructor"), false);
-    assert.equal(registry.has("m3u"), false);
+    assert.equal(registry.has("m3u"), true);
     assert.throws(() => registry.register("demo", () => {}), /Duplicate/);
-    assert.throws(() => registry.create("m3u", {}, {}), /Unsupported/);
+    assert.throws(() => registry.create("unknown", {}, {}), /Unsupported/);
+});
+
+test("factory reentry cannot publish an instance after a newer selection", () => {
+    const f = fixture(stored());
+    let entered = false;
+    f.host._ = (value) => {
+        if (!entered && value === "Demo — moving test pattern") {
+            entered = true;
+            f.mount("xtream");
+        }
+        return value;
+    };
+    const retired = f.mount("demo");
+    assert(entered);
+    assert.equal(f.host.__ottActiveProviderDriver.id, "xtream");
+    assert.equal(f.host.p_pref, "xtream");
+    assert.equal(retired.stream(900000001), "");
+    f.host.providerSetItem("marker", "new");
+    assert.equal(f.saved.get("xtreammarker"), "new");
+    assert.equal(f.saved.has("demomarker"), false);
+});
+
+test("KB retains Cyrillic adult category classification", () => {
+    const f = fixture();
+    f.mount("kb-team");
+    assert(f.host.parental.test("ХХХ"));
+    assert(f.host.parental.test("Adults"));
+    assert(!f.host.parental.test("News"));
 });
 
 for (const [index, row] of captured.cases.entries())
@@ -246,11 +274,11 @@ test("actual loadProv/loadChannels use instance paths without script evaluation 
     assert.equal(f.completed, 2);
     assert.equal(f.ajaxWrites, 0);
     assert.deepEqual(f.scripts, []);
-    // Unconverted paths remain explicitly classic and still use their real loader.
+    // The final built-in playlist source also resolves through an owned instance.
     f.saved.set("ottplayprov", "m3u");
     f.host.loadProv("m3u");
-    assert.equal(f.host.__ottActiveProviderDriver, null);
-    assert.equal(f.scripts[0].url, "https://player.test/prov/m3u/prov.js?test");
+    assert.equal(f.host.__ottActiveProviderDriver.id, "m3u");
+    assert.deepEqual(f.scripts, []);
 });
 
 test("driver-owned channels cannot be changed by classic view normalization", () => {

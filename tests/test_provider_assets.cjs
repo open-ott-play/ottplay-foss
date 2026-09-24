@@ -9,8 +9,8 @@ const {
 const { stagePlayProviders } = require("../scripts/android-distribution.cjs");
 const root = path.resolve(__dirname, "..");
 const ids = managedProviderIds();
-assert.equal(ids.length, 44);
-for (const id of ["stalker", "itv", "ottclub", "shura"])
+assert.equal(ids.length, 48);
+for (const id of ["antifriz", "edem", "kb-team", "m3u"])
     assert(ids.includes(id), "new independent driver asset boundary: " + id);
 function compatibilityProviders(directory, prefix = "") {
     return fs
@@ -27,12 +27,7 @@ function compatibilityProviders(directory, prefix = "") {
                 : [];
         });
 }
-assert.deepEqual(compatibilityProviders(path.join(root, "prov")).sort(), [
-    "antifriz",
-    "edem",
-    "kb-team",
-    "m3u",
-]);
+assert.deepEqual(compatibilityProviders(path.join(root, "prov")), []);
 assert(ids.includes("demo") && ids.includes("xtream"));
 for (const id of ids) {
     assert.equal(
@@ -54,13 +49,13 @@ for (const id of ids) {
         false
     );
 }
-assert.equal(isManagedProviderScript("prov/m3u/prov.js"), false);
+assert.equal(isManagedProviderScript("prov/m3u/prov.js"), true);
 assert.equal(isManagedProviderScript("prov/stalker/prov.js"), true);
 assert.equal(isManagedProviderScript("prov/unknown/prov.js"), false);
 const stage = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-driver-assets-"));
 try {
     stagePlayProviders(root, stage);
-    for (const id of ["demo", "xtream", "stalker"]) {
+    for (const id of ["demo", "xtream", "stalker", "m3u"]) {
         assert(
             !fs.existsSync(path.join(stage, id, "prov.js")),
             "Play does not ship retired executable " + id
@@ -70,8 +65,6 @@ try {
             "UI metadata remains available"
         );
     }
-    for (const id of ["m3u"])
-        assert(fs.existsSync(path.join(stage, id, "prov.js")));
 } finally {
     fs.rmSync(stage, { force: true, recursive: true });
 }
@@ -85,11 +78,6 @@ if (process.argv.includes("--bundle")) {
             assert(
                 !fs.existsSync(path.join(root, target, "prov", id, "prov.js")),
                 target + " still contains retired script " + id
-            );
-        for (const id of ["m3u"])
-            assert(
-                fs.existsSync(path.join(root, target, "prov", id, "prov.js")),
-                target + " missing retained compatibility driver " + id
             );
     }
 }

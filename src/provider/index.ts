@@ -1,5 +1,4 @@
 import { metadataCssUrl, metadataHtml, metadataText } from "../utils/helpers";
-import "./operator";
 /**
  * Provider management — load, parse, and manage IPTV service providers.
  * Preserves the original player's provider loading, selection, setup and

@@ -406,6 +406,12 @@ function fixture(profile) {
         "__ottProviderDriverProfiles",
         "__ottStalkerDriver",
         "__ottCatalogDrivers",
+        "__ottCatalogXml",
+        "__ottMediaCatalog",
+        "__ottPlaylistDrivers",
+        "__ottEdemDriver",
+        "__ottM3uDriver",
+        "__ottM3uSettings",
         "__ottClassicPlayback",
         "__ottProviderRuntime",
     ])
@@ -431,6 +437,11 @@ function assertPrivateRuntime(w, profile) {
         ["__ottProviderDrivers", "mount"],
         ["__ottStalkerDriver", "create"],
         ["__ottStalkerDriver", "mountSettings"],
+        ["__ottCatalogXml", "decode"],
+        ["__ottMediaCatalog", "create"],
+        ["__ottM3uDriver", "create"],
+        ["__ottM3uDriver", "mount"],
+        ["__ottM3uSettings", "mount"],
         ["__ottClassicPlayback", "select"],
         ["__ottClassicPlayback", "shift"],
         ["__ottClassicPlayback", "cancel"],
@@ -446,14 +457,19 @@ function assertPrivateRuntime(w, profile) {
     assert.equal(typeof w.__ottProviderRuntime.classic.replace, "function");
     if (playDistribution) {
         assert.equal(w.__ottCatalogDrivers, undefined);
+        assert.equal(w.__ottPlaylistDrivers, undefined);
+        assert.equal(w.__ottEdemDriver, undefined);
         assert.deepEqual(
             Array.from(w.__ottProviderDrivers.registry.ids()).sort(),
-            ["demo", "stalker", "xtream"]
+            ["demo", "m3u", "stalker", "xtream"]
         );
     } else {
-        assert.equal(w.__ottProviderDrivers.registry.ids().length, 44);
+        assert.equal(w.__ottProviderDrivers.registry.ids().length, 48);
         for (const method of ["create", "mountSettings", "reportLoad"])
             assert.equal(typeof w.__ottCatalogDrivers[method], "function");
+        for (const api of ["__ottPlaylistDrivers", "__ottEdemDriver"])
+            for (const method of ["create", "mount", "reportLoad"])
+                assert.equal(typeof w[api][method], "function");
     }
     assert(Array.isArray(w.__ottProviderDriverProfiles));
     assert.deepEqual(
@@ -476,6 +492,19 @@ function assertPrivateRuntime(w, profile) {
         "createCatalogProviderDriver",
         "mountCatalogProviderSettings",
         "reportCatalogProviderLoad",
+        "decodeProviderCatalogXml",
+        "licensedXmlToJson",
+        "createOwnedMediaCatalog",
+        "createOwnedPlaylistDriver",
+        "mountOwnedPlaylistDriver",
+        "reportOwnedPlaylistLoad",
+        "operatorLoadPlaylist",
+        "operatorLoadVod",
+        "operatorGenericSession",
+        "operatorXmlToJson",
+        "createEdemProviderDriver",
+        "createM3uProviderDriver",
+        "mountM3uProviderSettings",
         "namedCredentialMessage",
         "createOperatorDriver",
         "providerDriverProfiles",
@@ -833,6 +862,7 @@ function exerciseProviderRuntime(profile) {
         },
         setPlayer() {},
         setPlayerMode() {},
+        showPage() {},
         stbDelItem: (key) => stored.delete(key),
         stbGetItem: (key) => (stored.has(key) ? stored.get(key) : null),
         stbIsPlaying: () => false,
@@ -1146,6 +1176,185 @@ function exerciseProviderRuntime(profile) {
         assert.equal(completed, before + 2);
         assert.deepEqual(Array.from(w.cList), [900000001, 900000002]);
     }
+    // The last four shipped providers also run through the artifact registry.
+    w.stb = { ...w.stb, getMacAddress: () => "00:11:22:33:44:55" };
+    for (const [id, values, playlist] of [
+        [
+            "antifriz",
+            { azkey: "12345678", azmpeg: "0" },
+            '#EXTM3U\n#EXTINF:-1 tvg-id="e" tvg-rec="2" group-title="News",One\nhttp://cdn.test/live/token/42.m3u8\n',
+        ],
+        [
+            "kb-team",
+            { kbcv_list: "0" },
+            '#EXTM3U\n#EXTINF:-1 tvg-id="e" tvg-name="Guide One" group-title="ХХХ" catchup-days="2",One\nhttps://stream.test/token/one/index.m3u8\n',
+        ],
+        [
+            "edem",
+            {
+                ededcdn: "https://cdn.test/path",
+                edkey: "12345678",
+                edlist: "0",
+                edvpurl: "portal::[key:secret]https://portal.test/api",
+            },
+            '#EXTM3U\n#EXTINF:-1 tvg-id="epg42" group-title="News",One\nhttps://localhost/00000000000000/live/42/index.m3u8\n',
+        ],
+        [
+            "m3u",
+            {
+                m3um3uArr: JSON.stringify({
+                    active: 0,
+                    M3Us: [
+                        {
+                            rechours: "48",
+                            www: "https://playlist.test/one.m3u",
+                        },
+                        {
+                            rechours: "24",
+                            www: "https://playlist.test/two.m3u",
+                        },
+                    ],
+                }),
+            },
+            '#EXTM3U\n#EXTINF:-1 tvg-id="e" group-title="News",One\nhttps://stream.test/token/one/index.m3u8\n',
+        ],
+    ]) {
+        if (!w.__ottProviderDrivers.registry.has(id)) continue;
+        for (const [key, value] of Object.entries(values))
+            stored.set(key, value);
+        stored.set("ottplayprov", id);
+        before = completed;
+        const start = requests.length;
+        w.loadProv(id);
+        assert.equal(w.__ottActiveProviderDriver.id, id);
+        assert.equal(
+            requests.length,
+            start + 1,
+            id + ": initial owned request"
+        );
+        requests[start].resolve(playlist);
+        assert.equal(
+            completed,
+            before + 1,
+            id + ": artifact startup completes once"
+        );
+        assert.equal(w.cList.length, 1);
+        const channel = w.cList[0];
+        assert(w.getChannelUrl(channel), id + ": artifact live URL");
+        const driver = w.__ottActiveProviderDriver;
+        if (id === "kb-team") {
+            const guide = requests.find(
+                (r, i) => i > start && r.settings.url.includes("gelist.php")
+            );
+            const logo = requests.find(
+                (r, i) => i > start && r.settings.url.includes("geicons.php")
+            );
+            assert(guide && logo);
+            guide.resolve({ [channel]: "guide/path" });
+            logo.resolve({ [channel]: "https://logo.test/one.png" });
+            assert.equal(w.channels[channel].logo, "https://logo.test/one.png");
+            assert.equal(
+                completed,
+                before + 1,
+                "metadata patch cannot repeat startup"
+            );
+            assert.equal(w.p_pref, "kbc0");
+        }
+        if (id === "antifriz" || id === "kb-team") {
+            w.mediaUrls = ["https://catalog.test/root.json"];
+            let mediaCalls = 0;
+            w.getMediaArray(w.mediaUrls[0], () => mediaCalls++);
+            requests
+                .at(-1)
+                .resolve(
+                    '{"playlist_name":"Films","channel":{"title":"Film","stream_url":"https://stream.test/film"}}'
+                );
+            assert.equal(mediaCalls, 1);
+            assert.equal(w.mediaRecords.length, 1);
+            assert.equal(
+                w.mediaRecords[0].stream_url,
+                "https://stream.test/film"
+            );
+        }
+        if (id === "edem") {
+            w.sPageSize = 0.2;
+            let mediaCalls = 0;
+            w.getMediaArray("", () => {
+                mediaCalls++;
+                w._mediaLoadState = { records: w.mediaRecords };
+                w.listArray = w.mediaRecords;
+            });
+            requests.at(-1).resolve({
+                count: 6,
+                items: [{ title: "One", type: "stream" }, { type: "next" }],
+                type: "category",
+            });
+            assert.equal(mediaCalls, 1);
+            const rows = w.mediaRecords;
+            assert.equal(rows.length, 6);
+            w.selIndex = 3;
+            rows[3].description();
+            assert.equal(JSON.parse(requests.at(-1).settings.data).offset, 2);
+            requests.at(-1).resolve({
+                items: [
+                    { title: "Two", type: "stream" },
+                    { title: "Three", type: "stream" },
+                ],
+            });
+            assert.strictEqual(w.mediaRecords, rows);
+            assert.strictEqual(w.listArray, rows);
+            assert.equal(rows[3].title, "Three");
+        }
+        if (id === "m3u") {
+            for (let slot = 0; slot < 2; slot++) {
+                const cfg = driver.configuration();
+                cfg.active = slot;
+                driver.saveConfiguration(cfg);
+                w.providerSetItem("playbackJournal", "slot" + slot);
+                assert.equal(
+                    stored.get("m3uplaybackJournal" + (slot || "")),
+                    "slot" + slot
+                );
+                assert.equal(w.m3uArr.active, slot);
+            }
+        }
+        w.loadChannels();
+        pending = requests.at(-1);
+        w.loadProv("demo");
+        assert.equal(
+            pending.aborts,
+            1,
+            id + ": pending request aborts on replacement"
+        );
+        count = requests.length;
+        pending.resolve(playlist);
+        pending.reject();
+        assert.equal(
+            requests.length,
+            count,
+            id + ": late result starts no request"
+        );
+        assert.equal(completed, before + 2);
+        assert.deepEqual(Array.from(w.cList), [900000001, 900000002]);
+    }
+    if (w.__ottProviderDrivers.registry.has("edem")) {
+        const translate = w._;
+        let replaced = false;
+        w._ = (value) => {
+            if (!replaced && value === "epg.one (Standard)") {
+                replaced = true;
+                w.loadProv("demo");
+            }
+            return translate(value);
+        };
+        w.loadProv("edem");
+        w._ = translate;
+        assert(replaced);
+        assert.equal(w.__ottActiveProviderDriver.id, "demo");
+        // The serialized host finishes the queued Demo selection after mount returns.
+        assert.equal(w.getMediaArray, null);
+        assert.strictEqual(w.playMedia, w._playMedia);
+    }
     assert.deepEqual(
         scripts,
         [],
@@ -1411,7 +1620,7 @@ async function main() {
     }
 }
 main().catch((error) => {
-    console.error(error.message);
+    console.error(error.stack || error.message);
     if (error.cause)
         console.error(
             String(error.cause.stack).split("\n").slice(-8).join("\n")

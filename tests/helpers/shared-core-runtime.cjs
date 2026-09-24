@@ -46,6 +46,12 @@ module.exports = function sharedCoreRuntime(context, options = {}) {
         "src/provider/driver-profiles.ts",
         "src/provider/stalker-driver.ts",
         "src/provider/catalog-drivers.ts",
+        "src/provider/catalog-xml.ts",
+        "src/provider/media-catalog.ts",
+        "src/provider/playlist-drivers.ts",
+        "src/provider/edem-driver.ts",
+        "src/provider/m3u-settings.ts",
+        "src/provider/m3u-driver.ts",
         "src/provider/drivers.ts",
     ])
         privateRuntime(context, file);

@@ -13,7 +13,11 @@
         prefix: "stalker",
         title: "Stalker portal",
     },
+    { id: "m3u", kind: "m3u", prefix: "m3u", title: "M3U playlist" },
     // OTTPLAY_FULL_ONLY_BEGIN
+    { id: "antifriz", kind: "playlist", prefix: "az", title: "Antifriz" },
+    { id: "kb-team", kind: "playlist", prefix: "kbc", title: "KBC (Kinoboom)" },
+    { id: "edem", kind: "edem", prefix: "ed", title: "Edem.tv / iLook.tv" },
     { id: "itv", kind: "catalog", prefix: "itv", title: "1Cent.tv" },
     { id: "ottclub", kind: "catalog", prefix: "", title: "OTTCLUB" },
     { id: "shura", kind: "catalog", prefix: "sh", title: "SHURATV" },

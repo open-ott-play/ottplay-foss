@@ -506,7 +506,7 @@ test("actual host reload and replacement reject every displaced Stalker stage", 
     assert.equal(f.completed, 2);
 });
 
-test("teardown reentry keeps newer managed or legacy source selection authoritative", () => {
+test("teardown reentry keeps the newer managed source selection authoritative", () => {
     for (const newer of ["demo", "stalker", "m3u"]) {
         const f = startup();
         f.host.loadProv();
@@ -520,10 +520,7 @@ test("teardown reentry keeps newer managed or legacy source selection authoritat
         f.saved.set("ottplayprov", "xtream");
         f.host.loadProv("xtream");
         assert.equal(pending.aborts, 1);
-        assert.equal(
-            f.host.__ottActiveProviderDriver?.id ?? null,
-            newer === "m3u" ? null : newer
-        );
+        assert.equal(f.host.__ottActiveProviderDriver?.id ?? null, newer);
         const requestCount = f.requests.length;
         const command = f.host.__ottCommandChannelLoad;
         pending.resolve(catalog(7));
@@ -544,11 +541,7 @@ test("teardown reentry keeps newer managed or legacy source selection authoritat
             assert.equal(f.host.commandChannelsReady, true);
         } else {
             assert.equal(f.requests.length, 1);
-            assert.equal(f.scripts.length, 1);
-            assert.equal(
-                f.scripts[0].url,
-                "https://player.test/prov/m3u/prov.js?test"
-            );
+            assert.equal(f.scripts.length, 0);
             assert.equal(f.completed, 0);
             assert.equal(f.host.commandChannelsReady, false);
         }

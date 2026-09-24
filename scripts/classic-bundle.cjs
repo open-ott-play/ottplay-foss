@@ -28,11 +28,16 @@ const CLASSIC_MODULES = [
     "build/swop/index.js",
     "build/ui/index.js",
     "build/keyhandler/index.js",
-    "build/provider/operator.js",
     "build/provider/runtime.js",
     "build/provider/driver-profiles.js",
     "build/provider/stalker-driver.js",
     "build/provider/catalog-drivers.js",
+    "build/provider/catalog-xml.js",
+    "build/provider/media-catalog.js",
+    "build/provider/playlist-drivers.js",
+    "build/provider/edem-driver.js",
+    "build/provider/m3u-settings.js",
+    "build/provider/m3u-driver.js",
     "build/provider/drivers.js",
     "build/provider/index.js",
     "build/commands/index.js",
@@ -69,10 +74,22 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     "build/provider/catalog-drivers.js": Object.freeze([
         "window.__ottCatalogDrivers",
     ]),
+    "build/provider/catalog-xml.js": Object.freeze(["window.__ottCatalogXml"]),
     "build/provider/driver-profiles.js": Object.freeze([
         "window.__ottProviderDriverProfiles",
     ]),
     "build/provider/drivers.js": Object.freeze(["window.__ottProviderDrivers"]),
+    "build/provider/edem-driver.js": Object.freeze(["window.__ottEdemDriver"]),
+    "build/provider/m3u-driver.js": Object.freeze(["window.__ottM3uDriver"]),
+    "build/provider/m3u-settings.js": Object.freeze([
+        "window.__ottM3uSettings",
+    ]),
+    "build/provider/media-catalog.js": Object.freeze([
+        "window.__ottMediaCatalog",
+    ]),
+    "build/provider/playlist-drivers.js": Object.freeze([
+        "window.__ottPlaylistDrivers",
+    ]),
     "build/provider/runtime.js": Object.freeze(["window.__ottProviderRuntime"]),
     "build/provider/stalker-driver.js": Object.freeze([
         "window.__ottStalkerDriver",

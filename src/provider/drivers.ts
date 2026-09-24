@@ -33,11 +33,24 @@ interface ProviderDriverProfile {
 interface ProviderDriverPorts {
     core: any;
     createLifetime(): any;
+    decodeXml?(text: string, profile?: string): any;
+    deviceMac?(): string;
     guideNext(): number;
     hash(value: string): number;
     intercept?: (url: string) => void;
     isDune(): boolean;
     location?(): string;
+    m3u?: {
+        crossOrigin(): boolean;
+        hashText(value: string): number;
+        hashUrl(value: string): number;
+        native(): boolean;
+        originHost(): string;
+        readFile?: (path: string) => string;
+        scopedKeys(): string[];
+        stripHttp(value: string): string;
+    };
+    murmur?(value: string, seed: number): number;
     now(): number;
     progress(message: string): void;
     relay: string;
@@ -47,8 +60,11 @@ interface ProviderDriverPorts {
         done: (value: any) => void,
         fail: (...args: any[]) => void
     ): () => void;
+    scheme?(): string;
     storage: DriverStorage;
+    storageFor?(prefix: string): DriverStorage;
     translate(value: string): string;
+    userAgent?(): string;
     validateUrl(value: string): boolean;
 }
 interface ProviderCredentials {
@@ -82,6 +98,7 @@ interface ProviderDriver {
     ): void;
     logo(id: string | number): string;
     saveCredentials(value: ProviderCredentials): void;
+    storageKey?(key: string): string;
     stream(id: string | number): string;
     subscription?(callback: (value: any) => void): () => void;
 }
@@ -949,6 +966,7 @@ providerDriverProfiles.forEach(function (profile) {
               : function (ports, owner) {
                     var helpers = {
                         emptyCatalog: emptyDriverCatalog,
+                        media: (window as any).__ottMediaCatalog.create,
                         snapshot: driverCatalogSnapshot,
                         transport: createDriverTransport,
                     };
@@ -961,6 +979,25 @@ providerDriverProfiles.forEach(function (profile) {
                     if (profile.kind === "catalog")
                         return (window as any).__ottCatalogDrivers.create(
                             profile.id,
+                            ports,
+                            owner,
+                            helpers
+                        );
+                    if (profile.kind === "playlist")
+                        return (window as any).__ottPlaylistDrivers.create(
+                            profile.id,
+                            ports,
+                            owner,
+                            helpers
+                        );
+                    if (profile.kind === "edem")
+                        return (window as any).__ottEdemDriver.create(
+                            ports,
+                            owner,
+                            helpers
+                        );
+                    if (profile.kind === "m3u")
+                        return (window as any).__ottM3uDriver.create(
                             ports,
                             owner,
                             helpers
@@ -1342,22 +1379,52 @@ function mountProviderDriver(
         profile.kind === "operator" || profile.kind === "xtream-fallback";
     var named = profile.kind === "named-playlist";
     var catalogProtocol = profile.kind === "catalog";
-    var store: DriverStorage = {
-        get: function (key) {
-            return host.stbGetItem(profile.prefix + key);
-        },
-        remove: function (key) {
-            host.stbDelItem(profile.prefix + key);
-        },
-        set: function (key, value) {
-            host.stbSetItem(profile.prefix + key, value);
-        },
-    };
+    function storageFor(prefix: string): DriverStorage {
+        return {
+            get: function (key) {
+                return host.stbGetItem(prefix + key);
+            },
+            remove: function (key) {
+                if (owner.active()) host.stbDelItem(prefix + key);
+            },
+            set: function (key, value) {
+                if (owner.active()) host.stbSetItem(prefix + key, value);
+            },
+        };
+    }
+    var store = storageFor(profile.prefix);
     var driver = providerDriverRegistry.create(
         id,
         {
             core: host.OttPlayCore,
             createLifetime: host.__ottProviderRuntime.createRegistry,
+            decodeXml: function (text, format) {
+                return host.__ottCatalogXml.decode(host, text, format);
+            },
+            deviceMac: function () {
+                // Keep the persisted KBC fallback without modifying the device adapter.
+                if (
+                    host.AndroidInterface &&
+                    typeof host.AndroidInterface.getMac === "function" &&
+                    host.AndroidInterface.getMac() === "02:00:00:00:00:00"
+                ) {
+                    var saved = host.stbGetItem("mac");
+                    if (saved) return saved;
+                    var generated = "44:5c:e9:XX:XX:XX".replace(
+                        /X/g,
+                        function () {
+                            return "0123456789abcdef".charAt(
+                                Math.floor(Math.random() * 16)
+                            );
+                        }
+                    );
+                    if (owner.active()) host.stbSetItem("mac", generated);
+                    return generated;
+                }
+                return host.stb && typeof host.stb.getMacAddress === "function"
+                    ? String(host.stb.getMacAddress() || "")
+                    : "";
+            },
             guideNext: function () {
                 return typeof host.sNextCount === "number"
                     ? host.sNextCount
@@ -1378,6 +1445,40 @@ function mountProviderDriver(
             location: function () {
                 return host.location ? host.location.href : "";
             },
+            m3u: {
+                crossOrigin: function () {
+                    return !!(host.client_can && host.client_can.crossxhr);
+                },
+                hashText: function (value) {
+                    return host.xxHash32Si(value);
+                },
+                hashUrl: function (value) {
+                    return host.murmurhash3_32_gc(value, 10);
+                },
+                native: function () {
+                    return !!(host.Capacitor || host.__TAURI__);
+                },
+                originHost: function () {
+                    return host.location ? host.location.host : "";
+                },
+                readFile:
+                    typeof host.readFile === "function"
+                        ? function (path) {
+                              return host.readFile(path);
+                          }
+                        : undefined,
+                scopedKeys: function () {
+                    return host.providerScopedStorageKeys
+                        ? host.providerScopedStorageKeys.slice()
+                        : [];
+                },
+                stripHttp: function (value) {
+                    return host.stripHttpScheme(value);
+                },
+            },
+            murmur: function (value, seed) {
+                return host.murmurhash3_32_gc(value, seed);
+            },
             now: function () {
                 return Date.now() / 1000;
             },
@@ -1395,9 +1496,21 @@ function mountProviderDriver(
                     if (typeof pending.abort === "function") pending.abort();
                 };
             },
+            scheme: function () {
+                if (typeof host.scheme === "string" && host.scheme)
+                    return host.scheme;
+                var protocol = host.location && host.location.protocol;
+                return protocol && protocol.indexOf("http") === 0
+                    ? protocol + "//"
+                    : "https://";
+            },
             storage: store,
+            storageFor: storageFor,
             translate: function (value) {
                 return host._(value);
+            },
+            userAgent: function () {
+                return host.navigator ? host.navigator.userAgent || "" : "";
             },
             validateUrl: function (value) {
                 return host.checkProviderUrl(value);
@@ -1405,18 +1518,34 @@ function mountProviderDriver(
         },
         owner
     );
+    if (!owner.active()) {
+        driver.dispose();
+        return driver;
+    }
     host.__ottActiveProviderDriver = driver;
     host.p_pref = profile.prefix;
     host.ottplayDemoActive = id === "demo";
-    host.providerGetItem = store.get;
-    host.providerSetItem = store.set;
-    host.providerDelItem = store.remove;
+    function storageKey(key: string): string {
+        return driver.storageKey
+            ? driver.storageKey(key)
+            : profile.prefix + key;
+    }
+    function providerValue(key: string) {
+        return host.stbGetItem(storageKey(key));
+    }
+    host.providerGetItem = providerValue;
+    host.providerSetItem = function (key: string, value: string) {
+        if (owner.active()) host.stbSetItem(storageKey(key), value);
+    };
+    host.providerDelItem = function (key: string) {
+        if (owner.active()) host.stbDelItem(storageKey(key));
+    };
     host.providerHasItem = function (key: string) {
-        var value = store.get(key);
+        var value = providerValue(key);
         return value !== null && value !== undefined;
     };
     host.providerHasItemValue = function (key: string) {
-        var value = store.get(key);
+        var value = providerValue(key);
         return value !== null && value !== undefined && value !== "";
     };
     host.getMediaArray = null;
@@ -1437,7 +1566,7 @@ function mountProviderDriver(
         : null;
     if (id !== "demo")
         host.parental =
-            id === "only4"
+            id === "only4" || id === "kb-team"
                 ? /XXX|Взрослые|Для взрослых|Эротика|18\+|ХХХ|Adults/i
                 : /XXX|Взрослые|Для взрослых|Эротика|18\+|Adults/i;
     function label() {
@@ -1563,6 +1692,14 @@ function mountProviderDriver(
     if (stalkerSettings) host.duneAddSettings = stalkerSettings.mount;
     if (catalogProtocol)
         host.__ottCatalogDrivers.mountSettings(host, driver, owner, store);
+    var specialized =
+        profile.kind === "playlist"
+            ? host.__ottPlaylistDrivers
+            : profile.kind === "edem"
+              ? host.__ottEdemDriver
+              : profile.kind === "m3u"
+                ? host.__ottM3uDriver
+                : null;
     host.getChannelsArray = function (callback: () => void) {
         if (!owner.active()) return;
         if (id === "xtream")
@@ -1571,7 +1708,7 @@ function mountProviderDriver(
             );
         driver.load(function (catalog, error, pending) {
             if (!owner.active()) return;
-            if (error === "credentials") {
+            if (error === "credentials" && !specialized) {
                 if (stalkerSettings) stalkerSettings.edit();
                 else editSettings();
                 return;
@@ -1600,7 +1737,10 @@ function mountProviderDriver(
                 }
             }
             if (pending) return;
-            if (catalogProtocol) {
+            if (specialized) {
+                if (specialized.reportLoad(host, driver, error) === false)
+                    return;
+            } else if (catalogProtocol) {
                 host.__ottCatalogDrivers.reportLoad(host, driver, error);
             } else if (stalkerSettings && error) {
                 host.alert(
@@ -1640,9 +1780,10 @@ function mountProviderDriver(
                                 : "Failed to load channels from Xtream API"
                     )
                 );
-            callback();
+            if (owner.active()) callback();
         });
     };
+    if (specialized) specialized.mount(host, driver, owner, store);
     return driver;
 }
 

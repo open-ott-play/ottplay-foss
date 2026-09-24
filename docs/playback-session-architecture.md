@@ -3,9 +3,9 @@
 The player now delegates playback history and seek decisions to the Kotlin
 shared core. The classic view consumes those decisions through an explicit
 compatibility adapter. Normal playback commands own a typed state store; a
-versioned journal owns channel history and the resume target. Forty-four
-provider entrypoints use injected driver instances. Remaining providers and
-views retain an explicit compatibility boundary.
+versioned journal owns channel history and the resume target. All 48
+shipped provider entrypoints use injected driver instances. The classic views
+and external custom-script extension retain a compatibility boundary.
 
 ## Responsibilities
 
@@ -128,12 +128,37 @@ with no guide instead of throwing and leaving the caller pending. These are
 intentional fixes to the captured behavior, not changes to the saved oracles.
 Nested catalog and EPG snapshots are detached from the private driver state.
 
-`provider-assets.cjs` derives the same 44 IDs from the declarative inventory.
+`playlist-drivers.ts` supplies Antifriz and KB-Team instances, including MAC
+identity, playlist selection, archive routes and late guide/logo updates.
+Metadata patches update existing host rows without repeating startup. KB-Team
+storage remains scoped to its selected playlist. Both use `media-catalog.ts`
+for independently owned JSON/XML/M3U media requests. Cancellation retires the
+busy dialog and key handler only while that view still owns them.
+
+`edem-driver.ts` owns TV settings and portal navigation, lazy pages, filters,
+search and stream quality selection. Published media rows preserve their array
+identity while lazy pages arrive. Playback identifies portal media by an opaque
+source token and request instead of rewriting every history URL with a matching
+title. Existing request-bearing Edem history can be adopted once; its original
+portal cannot be reconstructed from old records that never stored that identity.
+
+`m3u-driver.ts` owns 15 playlist slots, archive rules, EPG matching, native XMLTV,
+local-file loading and progressive metadata. `m3u-settings.ts` projects the
+settings and media UI, retains the portal-client boundary and scopes canonical
+journal/history keys to the current slot. Changing a media source rotates its
+identity so old navigation items cannot address a new account. Metadata callbacks
+recheck ownership after renderer callbacks that may select another provider.
+
+`catalog-xml.ts` handles the XML effect without publishing old operator globals.
+The generic XML codec retains Stefan Goessner's attribution and license notice;
+it is third-party code, not an independent rewrite. The old `operator.ts`
+transport helpers are no longer included in the classic bundle.
+
+`provider-assets.cjs` derives the same 48 IDs from the declarative inventory.
 Vite and Play packaging omit their old executable scripts from browser, Tauri
 and Capacitor roots. UI metadata and logos remain. The original files stay in
 source control as provenance and compatibility test oracles; they are not
-runtime fallbacks for managed drivers. The four remaining entrypoints keep their
-explicit legacy path until equivalent drivers are implemented.
+runtime fallbacks for managed drivers. No shipped provider uses that script path.
 
 ## Version-2 playback journal
 
@@ -180,7 +205,10 @@ protection. New tests live in `test_playback_session.cjs`,
 `test_playback_journal.cjs`, `test_provider_runtime.cjs` and
 `test_provider_drivers.cjs`. Archive request/entrypoint tests and
 `test_named_provider_drivers.cjs`, `test_stalker_provider_driver.cjs` and
-`test_catalog_provider_drivers.cjs` cover the following migration stages. Driver transport
+`test_catalog_provider_drivers.cjs` cover those migration stages.
+`test_playlist_provider_drivers.cjs`, `test_edem_provider_driver.cjs`,
+`test_m3u_provider_driver.cjs` and `test_provider_catalog_xml.cjs` verify the
+final four drivers, media formats, slots and cancellation. Driver transport
 contracts are also checked against
 the captured generic operator cases; `test_provider_assets.cjs --bundle` audits
 the absence of retired scripts in all built roots.
@@ -202,8 +230,10 @@ The session-only iteration increased the classic bundle from 475,644 to 484,540
 bytes (gzip: 130,016 to 132,972). Adding owned playback state, the journal and
 35 drivers brought it to 514,070 bytes (140,915 gzip). The archive coordinator
 and five further drivers brought the bundle to 530,635 bytes / 145,879 gzip bytes.
-The Stalker and catalog-driver migration brings it to 547,911 bytes / 150,262 gzip
-bytes; the explicit budget is 555,000 bytes / 153,000 gzip bytes. Packaging removes 282,024 raw bytes of
+The Stalker and catalog-driver migration brought it to 547,911 bytes / 150,262
+gzip bytes. Completing all 48 instance drivers brings it to 598,720 bytes /
+164,996 gzip bytes; the explicit budget is 610,000 bytes / 170,000 gzip bytes.
+Packaging removes 363,623 raw bytes of
 retired provider scripts from each Full asset root. That asset total is not a
 claim about transfer savings: the previous loader fetched provider scripts on
 demand. The separately loaded shared-core JavaScript remains at 1,239,827 bytes
@@ -217,27 +247,21 @@ result through `scripts/distribute.cjs`; do not manually edit vendor artifacts.
 ## Remaining migration
 
 The new boundaries do not make the entire application independent of its
-classic contracts. Remaining work is to replace the four specialized provider
-scripts, migrate opaque media history and the rest of settings, and give all
+classic contracts. Remaining work is to migrate opaque media history and the
+rest of settings, and give all
 views/device adapters a command-and-snapshot API. The current renderer still
 uses classic linking and published globals. Explicit reconciliation accepts
 external writes from retained scripts; removing that input path requires their
 conversion, not just changing field names.
 
-The remaining provider entrypoints are `antifriz`, `edem`, `kb-team` and `m3u`.
-Their remaining contracts include playlist-slot identity, progressive metadata,
-provider-specific media catalogs,
-and asynchronous media navigation. They are explicitly retained rather than
-silently dropping those capabilities.
-
-The transitional provider scope does not intercept arbitrary raw UI closures,
+The custom-script extension scope does not intercept arbitrary raw UI closures,
 native Promise continuations, cached transport functions or global writes made
 by an external script while it evaluates. Script loading is serialized so the
 next reset occurs after the previous script finishes. If the loader never calls
 either completion callback, replacement waits; allowing the next script to
 run on a timeout alone would let late evaluation overwrite the active driver.
-Removing this limitation requires drivers that publish an isolated instance
-instead of mutating globals.
+All shipped providers now publish isolated instances and avoid this custom-script
+limitation. The extension remains for external integrations that still use it.
 
 Structural independence must be assessed against these remaining dependencies,
 not identifier changes or a target percentage of textual similarity. This work
