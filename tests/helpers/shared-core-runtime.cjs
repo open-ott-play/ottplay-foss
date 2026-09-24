@@ -5,7 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const filename = path.resolve(__dirname, "../../vendor/ottplay-core.js");
 const script = new vm.Script(fs.readFileSync(filename, "utf8"), { filename });
-module.exports = function sharedCoreRuntime(context) {
+module.exports = function sharedCoreRuntime(context, options = {}) {
     assert(
         vm.isContext(context),
         "Pass the actual context used by the host fixture"
@@ -31,5 +31,16 @@ module.exports = function sharedCoreRuntime(context) {
     const core = context["play.ott:ottplay-shared-core"];
     assert(core, "Vendor browser export is present");
     (context.window || context).OttPlayCore = core;
+    // Artifact tests must prove that the bundle supplies its private modules.
+    // Source-extraction fixtures keep their existing real-source bootstrap.
+    if (options.vendorOnly) return core;
+    const privateRuntime = require("./private-runtime.cjs");
+    if (!context.window) context.window = context;
+    for (const file of [
+        "src/playback/session.ts",
+        "src/playback/classic-adapter.ts",
+        "src/provider/runtime.ts",
+    ])
+        privateRuntime(context, file);
     return core;
 };

@@ -50,8 +50,8 @@ assert.throws(
     "An unrelated object property cannot satisfy a window publication"
 );
 
-// No network requests or timer callbacks are run. This checks script loading and
-// wiring against a minimal DOM, not media decoding or a full browser UI session.
+// No network requests or media decoding run. Selected controller timers are
+// driven explicitly through fake host ports after loading the complete artifact.
 const bundlePath = path.resolve(
     process.argv[2] || path.join(__dirname, "../dist/stbPlayer.js")
 );
@@ -78,6 +78,7 @@ function collectGlobals(node) {
     }
 }
 collectGlobals(acorn.parse(bundle, { ecmaVersion: 5 }));
+const fixtureTimers = new WeakMap();
 
 function fixture(profile) {
     const elements = new Map();
@@ -392,8 +393,188 @@ function fixture(profile) {
         ),
         w
     );
-    require("./helpers/shared-core-runtime.cjs")(w);
+    require("./helpers/shared-core-runtime.cjs")(w, { vendorOnly: true });
+    for (const api of [
+        "__ottPlaybackSession",
+        "__ottClassicPlayback",
+        "__ottProviderRuntime",
+    ])
+        assert.equal(
+            w[api],
+            undefined,
+            "fixture must not inject private source API " + api
+        );
+    fixtureTimers.set(w, timers);
     return w;
+}
+
+function assertPrivateRuntime(w, profile) {
+    for (const [api, method] of [
+        ["__ottPlaybackSession", "create"],
+        ["__ottClassicPlayback", "select"],
+        ["__ottClassicPlayback", "shift"],
+        ["__ottClassicPlayback", "cancel"],
+        ["__ottProviderRuntime", "createRegistry"],
+        ["__ottProviderRuntime", "createClassicAdapter"],
+    ]) {
+        assert.equal(
+            typeof w[api]?.[method],
+            "function",
+            profile + ": bundle initializes " + api + "." + method
+        );
+    }
+    assert.equal(typeof w.__ottProviderRuntime.classic.replace, "function");
+    for (const name of [
+        "createPlaybackSessionController",
+        "classicPlaybackController",
+        "classicPlaybackRuntime",
+        "classicPlaybackSelect",
+        "createProviderRegistry",
+        "createClassicProviderAdapter",
+    ]) {
+        assert.equal(
+            vm.runInContext("typeof " + name, w),
+            "undefined",
+            profile + ": private implementation leaked: " + name
+        );
+    }
+    // Also catch a renamed top-level leak after optimizer-local mangling.
+    for (const implementation of [
+        w.__ottPlaybackSession.create,
+        w.__ottClassicPlayback.select,
+        w.__ottProviderRuntime.createRegistry,
+        w.__ottProviderRuntime.createClassicAdapter,
+    ]) {
+        assert(
+            !Object.keys(w).some((key) => w[key] === implementation),
+            profile + ": private implementation exposed as bare global"
+        );
+    }
+}
+
+function exercisePlaybackRuntime(w, profile) {
+    const timers = fixtureTimers.get(w);
+    const stored = new Map();
+    const positions = [];
+    const archives = [];
+    const overrides = {
+        _prog100: { name: "Current program" },
+        catIndex: 0,
+        cats: { All: [1, 2] },
+        catsArray: ["All"],
+        channels: {
+            1: { channel_name: "One", rec: 24 },
+            2: { channel_name: "Two", rec: 24 },
+        },
+        curList: [1, 2],
+        medHistory: [{ stream_url: "https://media.invalid/movie.mp4" }],
+        p_pref: "artifact-fixture:",
+        playArchive: (start) => archives.push(start),
+        playTime: 0,
+        playType: 0,
+        prevArr: [],
+        primaryIndex: 0,
+        providerGetItem: (key) => stored.get(key) || null,
+        providerSetItem: (key, value) => stored.set(key, value),
+        settings: { ...w.settings, prevCount: 2 },
+        sFavorites: 0,
+        showShift() {},
+        sInfoRew: 0,
+        stbGetLen: () => 120,
+        stbGetPosTime: () => 40,
+        stbSetPosTime: (position) => positions.push(position),
+    };
+    const saved = new Map(Object.keys(overrides).map((key) => [key, w[key]]));
+    function delayedShift(...deltas) {
+        const before = new Set(timers.keys());
+        deltas.forEach((delta) => w.shiftArchive(delta));
+        const pending = [...timers].filter(
+            ([id, timer]) => !before.has(id) && timer.delay === 500
+        );
+        assert.equal(
+            pending.length,
+            1,
+            profile + ": built shiftArchive owns one delayed operation"
+        );
+        return pending[0];
+    }
+    function fire([id, timer]) {
+        timers.delete(id);
+        timer.fn();
+    }
+    try {
+        for (const [key, value] of Object.entries(overrides)) w[key] = value;
+        w.curList = w.cats.All;
+        // Execute the real bundled entrypoint, codec, controller and Kotlin core.
+        w.setCurrent(0, 1, false);
+        assert.equal(w.primaryIndex, 1);
+        assert.equal(w.curList, w.cats.All);
+        assert.deepEqual(
+            Array.from(w.prevArr, (visit) => visit.ci),
+            [1]
+        );
+        assert.equal(stored.get("primaryIndex"), "1");
+        assert.equal(JSON.parse(stored.get("continueWatch")).channelId, 2);
+
+        w.playType = -1e11;
+        const combined = delayedShift(5, 7);
+        assert.deepEqual(positions, [], profile + ": seek waits for debounce");
+        fire(combined);
+        assert.deepEqual(
+            positions,
+            [52],
+            profile + ": actual typed controller combines offsets"
+        );
+
+        const cancelled = delayedShift(10);
+        w.__ottClassicPlayback.cancel();
+        assert.equal(timers.has(cancelled[0]), false);
+        fire(cancelled); // A browser callback may already have entered its task queue.
+        assert.deepEqual(
+            positions,
+            [52],
+            profile + ": cancellation rejects queued callback"
+        );
+
+        const changedSelection = delayedShift(10);
+        w.setCurrent(0, 0, false);
+        fire(changedSelection);
+        assert.deepEqual(
+            positions,
+            [52],
+            profile + ": built setCurrent retires pending seek"
+        );
+        assert.equal(
+            w.medHistory[0].current,
+            40,
+            profile + ": leaving VOD persists position"
+        );
+
+        const changedCatalog = delayedShift(10);
+        w.channels = {
+            1: { channel_name: "Replacement", rec: 24 },
+            2: { channel_name: "Two", rec: 24 },
+        };
+        fire(changedCatalog);
+        assert.deepEqual(
+            positions,
+            [52],
+            profile + ": same channel ID in new catalog cannot accept old seek"
+        );
+
+        const archiveStart = Math.floor(Date.now() / 1000) - 600;
+        w.playType = archiveStart;
+        w.playTime = 30;
+        fire(delayedShift(15));
+        assert.deepEqual(
+            archives,
+            [archiveStart + 45],
+            profile + ": archive planning reaches the host effect port"
+        );
+    } finally {
+        w.__ottClassicPlayback.cancel();
+        for (const [key, value] of saved) w[key] = value;
+    }
 }
 
 async function main() {
@@ -454,6 +635,9 @@ async function main() {
                 { cause: error }
             );
         }
+        assertPrivateRuntime(w, profile);
+        if (profile === "modern" || profile === "legacy")
+            exercisePlaybackRuntime(w, profile);
         for (const name of [
             "startPlayer",
             "stbInit",

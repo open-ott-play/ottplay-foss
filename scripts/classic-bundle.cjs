@@ -15,6 +15,8 @@ const CLASSIC_MODULES = [
     "build/channels/types.js",
     "build/channels/favorites-lists.js",
     "build/channels/search.js",
+    "build/playback/session.js",
+    "build/playback/classic-adapter.js",
     "build/channels/index.js",
     "build/debug/playback-debug.js",
     "build/core/auto-playback.js",
@@ -24,6 +26,7 @@ const CLASSIC_MODULES = [
     "build/ui/index.js",
     "build/keyhandler/index.js",
     "build/provider/operator.js",
+    "build/provider/runtime.js",
     "build/provider/index.js",
     "build/commands/index.js",
     "build/app/init.js",
@@ -47,6 +50,11 @@ const CLASSIC_MODULES = [
 // and execute immediately at their original position in CLASSIC_MODULES.
 const CLASSIC_PRIVATE_MODULES = Object.freeze({
     "build/debug/playback-debug.js": Object.freeze(["window.__ottDebug"]),
+    "build/playback/classic-adapter.js": Object.freeze([
+        "window.__ottClassicPlayback",
+    ]),
+    "build/playback/session.js": Object.freeze(["window.__ottPlaybackSession"]),
+    "build/provider/runtime.js": Object.freeze(["window.__ottProviderRuntime"]),
 });
 const fs = require("node:fs");
 const path = require("node:path");

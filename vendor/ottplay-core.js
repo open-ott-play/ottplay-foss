@@ -364,6 +364,21 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(PlaybackTrack, 'PlaybackTrack');
   initMetadataForObject(PlaybackRules, 'PlaybackRules');
   initMetadataForClass(PlaybackRetries, 'PlaybackRetries');
+  initMetadataForClass(PlaybackKind, 'PlaybackKind', VOID, Enum);
+  initMetadataForClass(PlaybackTarget, 'PlaybackTarget');
+  initMetadataForClass(PlaybackIdentity, 'PlaybackIdentity');
+  initMetadataForClass(PlaybackVisit, 'PlaybackVisit');
+  initMetadataForClass(PlaybackPositionEffect, 'PlaybackPositionEffect', VOID, Enum);
+  initMetadataForClass(PlaybackSessionEffect, 'PlaybackSessionEffect');
+  initMetadataForClass(PlaybackSessionChange, 'PlaybackSessionChange');
+  initMetadataForObject(PlaybackSessions, 'PlaybackSessions');
+  initMetadataForClass(PlaybackSessionOwnership, 'PlaybackSessionOwnership', PlaybackSessionOwnership);
+  initMetadataForClass(PlaybackSeekIntent, 'PlaybackSeekIntent', VOID, Enum);
+  initMetadataForClass(PlaybackOvershoot, 'PlaybackOvershoot', VOID, Enum);
+  initMetadataForClass(PlaybackSeekRequest, 'PlaybackSeekRequest');
+  initMetadataForClass(PlaybackSeekAction, 'PlaybackSeekAction', VOID, Enum);
+  initMetadataForClass(PlaybackSeekPlan, 'PlaybackSeekPlan');
+  initMetadataForObject(PlaybackSeeking, 'PlaybackSeeking');
   initMetadataForClass(PlaylistFormat, 'PlaylistFormat', VOID, Enum);
   initMetadataForClass(PlaylistFailure, 'PlaylistFailure', VOID, Exception);
   initMetadataForClass(PlaylistDirective, 'PlaylistDirective');
@@ -438,6 +453,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(PlaybackRecovery_0, 'PlaybackRecovery', PlaybackRecovery_0);
   initMetadataForClass(PlaybackRestart_0, 'PlaybackRestart', PlaybackRestart_0);
   initMetadataForClass(PlaybackEngineSequence_0, 'PlaybackEngineSequence', PlaybackEngineSequence_0);
+  initMetadataForClass(PlaybackSessionOwnership_0, 'PlaybackSessionOwnership', PlaybackSessionOwnership_0);
   initMetadataForClass(StalkerClient, 'StalkerClient');
   initMetadataForClass(LegacyStalkerClient, 'LegacyStalkerClient');
   initMetadataForClass(StreamingGuideFilter, 'StreamingGuideFilter');
@@ -19169,6 +19185,691 @@ if (typeof String.prototype.startsWith === 'undefined') {
     if (static_init_called_12)
       return Unit_instance;
     static_init_called_12 = true;
+    PlaybackKind_LIVE_instance = new PlaybackKind('LIVE', 0);
+    PlaybackKind_ARCHIVE_instance = new PlaybackKind('ARCHIVE', 1);
+    PlaybackKind_VOD_instance = new PlaybackKind('VOD', 2);
+  }
+  var PlaybackKind_LIVE_instance;
+  var PlaybackKind_ARCHIVE_instance;
+  var PlaybackKind_VOD_instance;
+  function values_0() {
+    static_init_12();
+    return [PlaybackKind_LIVE_getInstance(), PlaybackKind_ARCHIVE_getInstance(), PlaybackKind_VOD_getInstance()];
+  }
+  function get_entries_0() {
+    static_init_12();
+    if ($ENTRIES_0 == null)
+      $ENTRIES_0 = enumEntries(values_0());
+    return $ENTRIES_0;
+  }
+  var $ENTRIES_0;
+  function PlaybackKind(name, ordinal) {
+    Enum.call(this, name, ordinal);
+  }
+  function PlaybackTarget(sourceId, channelId, kind, archiveStart) {
+    archiveStart = archiveStart === VOID ? null : archiveStart;
+    this.sourceId_1 = sourceId;
+    this.channelId_1 = channelId;
+    this.kind_1 = kind;
+    this.archiveStart_1 = archiveStart;
+    var tmp;
+    // Inline function 'kotlin.text.isNotBlank' call
+    var this_0 = this.sourceId_1;
+    if (!isBlank(this_0)) {
+      // Inline function 'kotlin.text.isNotBlank' call
+      var this_1 = this.channelId_1;
+      tmp = !isBlank(this_1);
+    } else {
+      tmp = false;
+    }
+    // Inline function 'kotlin.require' call
+    if (!tmp) {
+      var message = 'Playback identity is required';
+      throw IllegalArgumentException_init_$Create$_0(toString_1(message));
+    }
+    // Inline function 'kotlin.require' call
+    if (!(this.kind_1.equals(PlaybackKind_ARCHIVE_getInstance()) ? !(this.archiveStart_1 == null) && isFinite(this.archiveStart_1) && this.archiveStart_1 >= 0 : this.archiveStart_1 == null)) {
+      var message_0 = 'Only archive playback has an absolute start time';
+      throw IllegalArgumentException_init_$Create$_0(toString_1(message_0));
+    }
+  }
+  protoOf(PlaybackTarget).identity_xql9up_k$ = function () {
+    return new PlaybackIdentity(this.sourceId_1, this.channelId_1, this.kind_1);
+  };
+  protoOf(PlaybackTarget).copy_xrmji9_k$ = function (sourceId, channelId, kind, archiveStart) {
+    return new PlaybackTarget(sourceId, channelId, kind, archiveStart);
+  };
+  protoOf(PlaybackTarget).copy$default_lmmn0a_k$ = function (sourceId, channelId, kind, archiveStart, $super) {
+    sourceId = sourceId === VOID ? this.sourceId_1 : sourceId;
+    channelId = channelId === VOID ? this.channelId_1 : channelId;
+    kind = kind === VOID ? this.kind_1 : kind;
+    archiveStart = archiveStart === VOID ? this.archiveStart_1 : archiveStart;
+    return $super === VOID ? this.copy_xrmji9_k$(sourceId, channelId, kind, archiveStart) : $super.copy_xrmji9_k$.call(this, sourceId, channelId, kind, archiveStart);
+  };
+  protoOf(PlaybackTarget).toString = function () {
+    return 'PlaybackTarget(sourceId=' + this.sourceId_1 + ', channelId=' + this.channelId_1 + ', kind=' + this.kind_1.toString() + ', archiveStart=' + this.archiveStart_1 + ')';
+  };
+  protoOf(PlaybackTarget).hashCode = function () {
+    var result = getStringHashCode(this.sourceId_1);
+    result = imul(result, 31) + getStringHashCode(this.channelId_1) | 0;
+    result = imul(result, 31) + this.kind_1.hashCode() | 0;
+    result = imul(result, 31) + (this.archiveStart_1 == null ? 0 : getNumberHashCode(this.archiveStart_1)) | 0;
+    return result;
+  };
+  protoOf(PlaybackTarget).equals = function (other) {
+    if (this === other)
+      return true;
+    if (!(other instanceof PlaybackTarget))
+      return false;
+    if (!(this.sourceId_1 === other.sourceId_1))
+      return false;
+    if (!(this.channelId_1 === other.channelId_1))
+      return false;
+    if (!this.kind_1.equals(other.kind_1))
+      return false;
+    if (!equals(this.archiveStart_1, other.archiveStart_1))
+      return false;
+    return true;
+  };
+  function PlaybackIdentity(sourceId, channelId, kind) {
+    this.sourceId_1 = sourceId;
+    this.channelId_1 = channelId;
+    this.kind_1 = kind;
+  }
+  protoOf(PlaybackIdentity).toString = function () {
+    return 'PlaybackIdentity(sourceId=' + this.sourceId_1 + ', channelId=' + this.channelId_1 + ', kind=' + this.kind_1.toString() + ')';
+  };
+  protoOf(PlaybackIdentity).hashCode = function () {
+    var result = getStringHashCode(this.sourceId_1);
+    result = imul(result, 31) + getStringHashCode(this.channelId_1) | 0;
+    result = imul(result, 31) + this.kind_1.hashCode() | 0;
+    return result;
+  };
+  protoOf(PlaybackIdentity).equals = function (other) {
+    if (this === other)
+      return true;
+    if (!(other instanceof PlaybackIdentity))
+      return false;
+    if (!(this.sourceId_1 === other.sourceId_1))
+      return false;
+    if (!(this.channelId_1 === other.channelId_1))
+      return false;
+    if (!this.kind_1.equals(other.kind_1))
+      return false;
+    return true;
+  };
+  function PlaybackVisit(target, payload) {
+    this.target_1 = target;
+    this.payload_1 = payload;
+  }
+  protoOf(PlaybackVisit).copy_u0abnn_k$ = function (target, payload) {
+    return new PlaybackVisit(target, payload);
+  };
+  protoOf(PlaybackVisit).copy$default_ocnfqo_k$ = function (target, payload, $super) {
+    target = target === VOID ? this.target_1 : target;
+    payload = payload === VOID ? this.payload_1 : payload;
+    return $super === VOID ? this.copy_u0abnn_k$(target, payload) : $super.copy_u0abnn_k$.call(this, target, payload);
+  };
+  protoOf(PlaybackVisit).toString = function () {
+    return 'PlaybackVisit(target=' + this.target_1.toString() + ', payload=' + toString_0(this.payload_1) + ')';
+  };
+  protoOf(PlaybackVisit).hashCode = function () {
+    var result = this.target_1.hashCode();
+    result = imul(result, 31) + (this.payload_1 == null ? 0 : hashCode_0(this.payload_1)) | 0;
+    return result;
+  };
+  protoOf(PlaybackVisit).equals = function (other) {
+    if (this === other)
+      return true;
+    if (!(other instanceof PlaybackVisit))
+      return false;
+    if (!this.target_1.equals(other.target_1))
+      return false;
+    if (!equals(this.payload_1, other.payload_1))
+      return false;
+    return true;
+  };
+  var static_init_called_13;
+  function static_init_13() {
+    if (static_init_called_13)
+      return Unit_instance;
+    static_init_called_13 = true;
+    PlaybackPositionEffect_SAVE_POSITION_instance = new PlaybackPositionEffect('SAVE_POSITION', 0);
+    PlaybackPositionEffect_RESTORE_POSITION_instance = new PlaybackPositionEffect('RESTORE_POSITION', 1);
+  }
+  var PlaybackPositionEffect_SAVE_POSITION_instance;
+  var PlaybackPositionEffect_RESTORE_POSITION_instance;
+  function PlaybackPositionEffect(name, ordinal) {
+    Enum.call(this, name, ordinal);
+  }
+  function PlaybackSessionEffect(type, target, position) {
+    position = position === VOID ? null : position;
+    this.type_1 = type;
+    this.target_1 = target;
+    this.position_1 = position;
+  }
+  protoOf(PlaybackSessionEffect).toString = function () {
+    return 'PlaybackSessionEffect(type=' + this.type_1.toString() + ', target=' + this.target_1.toString() + ', position=' + this.position_1 + ')';
+  };
+  protoOf(PlaybackSessionEffect).hashCode = function () {
+    var result = this.type_1.hashCode();
+    result = imul(result, 31) + this.target_1.hashCode() | 0;
+    result = imul(result, 31) + (this.position_1 == null ? 0 : getNumberHashCode(this.position_1)) | 0;
+    return result;
+  };
+  protoOf(PlaybackSessionEffect).equals = function (other) {
+    if (this === other)
+      return true;
+    if (!(other instanceof PlaybackSessionEffect))
+      return false;
+    if (!this.type_1.equals(other.type_1))
+      return false;
+    if (!this.target_1.equals(other.target_1))
+      return false;
+    if (!equals(this.position_1, other.position_1))
+      return false;
+    return true;
+  };
+  function PlaybackSessionChange(current, history, effects) {
+    this.current_1 = current;
+    this.history_1 = history;
+    this.effects_1 = effects;
+  }
+  protoOf(PlaybackSessionChange).toString = function () {
+    return 'PlaybackSessionChange(current=' + toString_0(this.current_1) + ', history=' + toString_1(this.history_1) + ', effects=' + toString_1(this.effects_1) + ')';
+  };
+  protoOf(PlaybackSessionChange).hashCode = function () {
+    var result = this.current_1 == null ? 0 : this.current_1.hashCode();
+    result = imul(result, 31) + hashCode_0(this.history_1) | 0;
+    result = imul(result, 31) + hashCode_0(this.effects_1) | 0;
+    return result;
+  };
+  protoOf(PlaybackSessionChange).equals = function (other) {
+    if (this === other)
+      return true;
+    if (!(other instanceof PlaybackSessionChange))
+      return false;
+    if (!equals(this.current_1, other.current_1))
+      return false;
+    if (!equals(this.history_1, other.history_1))
+      return false;
+    if (!equals(this.effects_1, other.effects_1))
+      return false;
+    return true;
+  };
+  function PlaybackSessions() {
+    this.MAX_HISTORY_1 = 1000;
+  }
+  protoOf(PlaybackSessions).transition_h12oxl_k$ = function (current, target, history, observedPosition, limit, historyKinds) {
+    var tmp;
+    if (observedPosition == null) {
+      tmp = null;
+    } else {
+      // Inline function 'kotlin.takeIf' call
+      var tmp_0;
+      if (isFinite(observedPosition) && observedPosition >= 0) {
+        tmp_0 = observedPosition;
+      } else {
+        tmp_0 = null;
+      }
+      tmp = tmp_0;
+    }
+    var position = tmp;
+    var tmp_1;
+    if (!(current == null)) {
+      tmp_1 = !current.target_1.equals(target == null ? null : target.target_1);
+    } else {
+      tmp_1 = false;
+    }
+    var leaving = tmp_1;
+    // Inline function 'kotlin.collections.mutableListOf' call
+    var effects = ArrayList_init_$Create$();
+    if (leaving && current.target_1.kind_1.equals(PlaybackKind_VOD_getInstance()) && !(position == null)) {
+      // Inline function 'kotlin.collections.plusAssign' call
+      var element = new PlaybackSessionEffect(PlaybackPositionEffect_SAVE_POSITION_getInstance(), current, position);
+      effects.add_utx5q5_k$(element);
+    }
+    var tmp_2;
+    var tmp3_safe_receiver = target == null ? null : target.target_1;
+    if (equals(tmp3_safe_receiver == null ? null : tmp3_safe_receiver.kind_1, PlaybackKind_VOD_getInstance())) {
+      tmp_2 = !equals(current == null ? null : current.target_1, target.target_1);
+    } else {
+      tmp_2 = false;
+    }
+    if (tmp_2) {
+      // Inline function 'kotlin.collections.plusAssign' call
+      var element_0 = new PlaybackSessionEffect(PlaybackPositionEffect_RESTORE_POSITION_getInstance(), target);
+      effects.add_utx5q5_k$(element_0);
+    }
+    var tmp6_safe_receiver = target == null ? null : target.target_1;
+    var destination = tmp6_safe_receiver == null ? null : tmp6_safe_receiver.identity_xql9up_k$();
+    // Inline function 'kotlin.collections.mutableListOf' call
+    var candidates = ArrayList_init_$Create$();
+    if (!(current == null) && !current.target_1.identity_xql9up_k$().equals(destination)) {
+      var epoch = current.target_1.kind_1.equals(PlaybackKind_ARCHIVE_getInstance()) && !(position == null) ? ensureNotNull(current.target_1.archiveStart_1) + position : null;
+      // Inline function 'kotlin.collections.plusAssign' call
+      var element_1 = !(epoch == null) && isFinite(epoch) ? current.copy$default_ocnfqo_k$(current.target_1.copy$default_lmmn0a_k$(VOID, VOID, VOID, epoch)) : current;
+      candidates.add_utx5q5_k$(element_1);
+    }
+    candidates.addAll_h3ej1q_k$(history);
+    // Inline function 'kotlin.collections.mutableSetOf' call
+    var seen = LinkedHashSet_init_$Create$();
+    // Inline function 'kotlin.collections.filter' call
+    // Inline function 'kotlin.collections.filterTo' call
+    var destination_0 = ArrayList_init_$Create$();
+    var _iterator__ex2g4s = candidates.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var element_2 = _iterator__ex2g4s.next_20eer_k$();
+      if (historyKinds.contains_aljjnj_k$(element_2.target_1.kind_1) && !element_2.target_1.identity_xql9up_k$().equals(destination) && seen.add_utx5q5_k$(element_2.target_1.identity_xql9up_k$())) {
+        destination_0.add_utx5q5_k$(element_2);
+      }
+    }
+    var retained = take(destination_0, coerceIn_0(limit, 0, 1000));
+    return new PlaybackSessionChange(target, retained, effects);
+  };
+  var PlaybackSessions_instance;
+  function PlaybackSessions_getInstance() {
+    return PlaybackSessions_instance;
+  }
+  function PlaybackSessionOwnership() {
+    this.current_1 = null;
+  }
+  protoOf(PlaybackSessionOwnership).begin_1jqisp_k$ = function () {
+    // Inline function 'kotlin.also' call
+    var this_0 = new Object();
+    this.current_1 = this_0;
+    return this_0;
+  };
+  protoOf(PlaybackSessionOwnership).cancel_2l89ey_k$ = function () {
+    this.current_1 = null;
+  };
+  protoOf(PlaybackSessionOwnership).accepts_ry1lv0_k$ = function (ticket) {
+    return !(ticket == null) && ticket === this.current_1;
+  };
+  var static_init_called_14;
+  function static_init_14() {
+    if (static_init_called_14)
+      return Unit_instance;
+    static_init_called_14 = true;
+    PlaybackSeekIntent_OFFSET_instance = new PlaybackSeekIntent('OFFSET', 0);
+    PlaybackSeekIntent_ABSOLUTE_instance = new PlaybackSeekIntent('ABSOLUTE', 1);
+    PlaybackSeekIntent_BEGIN_instance = new PlaybackSeekIntent('BEGIN', 2);
+    PlaybackSeekIntent_RESTART_instance = new PlaybackSeekIntent('RESTART', 3);
+    PlaybackSeekIntent_GO_LIVE_instance = new PlaybackSeekIntent('GO_LIVE', 4);
+  }
+  var PlaybackSeekIntent_OFFSET_instance;
+  var PlaybackSeekIntent_ABSOLUTE_instance;
+  var PlaybackSeekIntent_BEGIN_instance;
+  var PlaybackSeekIntent_RESTART_instance;
+  var PlaybackSeekIntent_GO_LIVE_instance;
+  function PlaybackSeekIntent(name, ordinal) {
+    Enum.call(this, name, ordinal);
+  }
+  var static_init_called_15;
+  function static_init_15() {
+    if (static_init_called_15)
+      return Unit_instance;
+    static_init_called_15 = true;
+    PlaybackOvershoot_NOOP_instance = new PlaybackOvershoot('NOOP', 0);
+    PlaybackOvershoot_CLAMP_instance = new PlaybackOvershoot('CLAMP', 1);
+  }
+  var PlaybackOvershoot_NOOP_instance;
+  var PlaybackOvershoot_CLAMP_instance;
+  function PlaybackOvershoot(name, ordinal) {
+    Enum.call(this, name, ordinal);
+  }
+  function PlaybackSeekRequest(intent, value, position, duration, now, archiveAvailable, archiveEarliest, liveEdgeTolerance, restartAllowed, overshoot) {
+    value = value === VOID ? null : value;
+    position = position === VOID ? null : position;
+    duration = duration === VOID ? null : duration;
+    now = now === VOID ? null : now;
+    archiveAvailable = archiveAvailable === VOID ? false : archiveAvailable;
+    archiveEarliest = archiveEarliest === VOID ? null : archiveEarliest;
+    liveEdgeTolerance = liveEdgeTolerance === VOID ? 0.0 : liveEdgeTolerance;
+    restartAllowed = restartAllowed === VOID ? true : restartAllowed;
+    overshoot = overshoot === VOID ? PlaybackOvershoot_NOOP_getInstance() : overshoot;
+    this.intent_1 = intent;
+    this.value_1 = value;
+    this.position_1 = position;
+    this.duration_1 = duration;
+    this.now_1 = now;
+    this.archiveAvailable_1 = archiveAvailable;
+    this.archiveEarliest_1 = archiveEarliest;
+    this.liveEdgeTolerance_1 = liveEdgeTolerance;
+    this.restartAllowed_1 = restartAllowed;
+    this.overshoot_1 = overshoot;
+  }
+  protoOf(PlaybackSeekRequest).toString = function () {
+    return 'PlaybackSeekRequest(intent=' + this.intent_1.toString() + ', value=' + this.value_1 + ', position=' + this.position_1 + ', duration=' + this.duration_1 + ', now=' + this.now_1 + ', archiveAvailable=' + this.archiveAvailable_1 + ', archiveEarliest=' + this.archiveEarliest_1 + ', liveEdgeTolerance=' + this.liveEdgeTolerance_1 + ', restartAllowed=' + this.restartAllowed_1 + ', overshoot=' + this.overshoot_1.toString() + ')';
+  };
+  protoOf(PlaybackSeekRequest).hashCode = function () {
+    var result = this.intent_1.hashCode();
+    result = imul(result, 31) + (this.value_1 == null ? 0 : getNumberHashCode(this.value_1)) | 0;
+    result = imul(result, 31) + (this.position_1 == null ? 0 : getNumberHashCode(this.position_1)) | 0;
+    result = imul(result, 31) + (this.duration_1 == null ? 0 : getNumberHashCode(this.duration_1)) | 0;
+    result = imul(result, 31) + (this.now_1 == null ? 0 : getNumberHashCode(this.now_1)) | 0;
+    result = imul(result, 31) + getBooleanHashCode(this.archiveAvailable_1) | 0;
+    result = imul(result, 31) + (this.archiveEarliest_1 == null ? 0 : getNumberHashCode(this.archiveEarliest_1)) | 0;
+    result = imul(result, 31) + getNumberHashCode(this.liveEdgeTolerance_1) | 0;
+    result = imul(result, 31) + getBooleanHashCode(this.restartAllowed_1) | 0;
+    result = imul(result, 31) + this.overshoot_1.hashCode() | 0;
+    return result;
+  };
+  protoOf(PlaybackSeekRequest).equals = function (other) {
+    if (this === other)
+      return true;
+    if (!(other instanceof PlaybackSeekRequest))
+      return false;
+    if (!this.intent_1.equals(other.intent_1))
+      return false;
+    if (!equals(this.value_1, other.value_1))
+      return false;
+    if (!equals(this.position_1, other.position_1))
+      return false;
+    if (!equals(this.duration_1, other.duration_1))
+      return false;
+    if (!equals(this.now_1, other.now_1))
+      return false;
+    if (!(this.archiveAvailable_1 === other.archiveAvailable_1))
+      return false;
+    if (!equals(this.archiveEarliest_1, other.archiveEarliest_1))
+      return false;
+    if (!equals(this.liveEdgeTolerance_1, other.liveEdgeTolerance_1))
+      return false;
+    if (!(this.restartAllowed_1 === other.restartAllowed_1))
+      return false;
+    if (!this.overshoot_1.equals(other.overshoot_1))
+      return false;
+    return true;
+  };
+  var static_init_called_16;
+  function static_init_16() {
+    if (static_init_called_16)
+      return Unit_instance;
+    static_init_called_16 = true;
+    PlaybackSeekAction_SEEK_instance = new PlaybackSeekAction('SEEK', 0);
+    PlaybackSeekAction_OPEN_ARCHIVE_instance = new PlaybackSeekAction('OPEN_ARCHIVE', 1);
+    PlaybackSeekAction_GO_LIVE_instance = new PlaybackSeekAction('GO_LIVE', 2);
+    PlaybackSeekAction_RESTART_instance = new PlaybackSeekAction('RESTART', 3);
+    PlaybackSeekAction_NOOP_instance = new PlaybackSeekAction('NOOP', 4);
+  }
+  var PlaybackSeekAction_SEEK_instance;
+  var PlaybackSeekAction_OPEN_ARCHIVE_instance;
+  var PlaybackSeekAction_GO_LIVE_instance;
+  var PlaybackSeekAction_RESTART_instance;
+  var PlaybackSeekAction_NOOP_instance;
+  function PlaybackSeekAction(name, ordinal) {
+    Enum.call(this, name, ordinal);
+  }
+  function PlaybackSeekPlan(action, position, archiveStart) {
+    position = position === VOID ? null : position;
+    archiveStart = archiveStart === VOID ? null : archiveStart;
+    this.action_1 = action;
+    this.position_1 = position;
+    this.archiveStart_1 = archiveStart;
+  }
+  protoOf(PlaybackSeekPlan).toString = function () {
+    return 'PlaybackSeekPlan(action=' + this.action_1.toString() + ', position=' + this.position_1 + ', archiveStart=' + this.archiveStart_1 + ')';
+  };
+  protoOf(PlaybackSeekPlan).hashCode = function () {
+    var result = this.action_1.hashCode();
+    result = imul(result, 31) + (this.position_1 == null ? 0 : getNumberHashCode(this.position_1)) | 0;
+    result = imul(result, 31) + (this.archiveStart_1 == null ? 0 : getNumberHashCode(this.archiveStart_1)) | 0;
+    return result;
+  };
+  protoOf(PlaybackSeekPlan).equals = function (other) {
+    if (this === other)
+      return true;
+    if (!(other instanceof PlaybackSeekPlan))
+      return false;
+    if (!this.action_1.equals(other.action_1))
+      return false;
+    if (!equals(this.position_1, other.position_1))
+      return false;
+    if (!equals(this.archiveStart_1, other.archiveStart_1))
+      return false;
+    return true;
+  };
+  function nonnegative($this, value) {
+    var tmp;
+    if (value == null) {
+      tmp = null;
+    } else {
+      // Inline function 'kotlin.takeIf' call
+      var tmp_0;
+      if (isFinite(value) && value >= 0) {
+        tmp_0 = value;
+      } else {
+        tmp_0 = null;
+      }
+      tmp = tmp_0;
+    }
+    return tmp;
+  }
+  function PlaybackSeeking() {
+    PlaybackSeeking_instance = this;
+    this.noop_1 = new PlaybackSeekPlan(PlaybackSeekAction_NOOP_getInstance());
+  }
+  protoOf(PlaybackSeeking).plan_acqrhc_k$ = function (target, request) {
+    if (target == null)
+      return this.noop_1;
+    if (request.intent_1.equals(PlaybackSeekIntent_RESTART_getInstance()))
+      return request.restartAllowed_1 ? new PlaybackSeekPlan(PlaybackSeekAction_RESTART_getInstance()) : this.noop_1;
+    if (request.intent_1.equals(PlaybackSeekIntent_GO_LIVE_getInstance()))
+      return target.kind_1.equals(PlaybackKind_ARCHIVE_getInstance()) ? new PlaybackSeekPlan(PlaybackSeekAction_GO_LIVE_getInstance()) : this.noop_1;
+    var tmp0_safe_receiver = request.value_1;
+    var tmp;
+    if (tmp0_safe_receiver == null) {
+      tmp = null;
+    } else {
+      // Inline function 'kotlin.takeIf' call
+      var tmp_0;
+      if (isFinite(tmp0_safe_receiver)) {
+        tmp_0 = tmp0_safe_receiver;
+      } else {
+        tmp_0 = null;
+      }
+      tmp = tmp_0;
+    }
+    var value = tmp;
+    if (request.intent_1.equals(PlaybackSeekIntent_OFFSET_getInstance()) && (value == null || value === 0.0))
+      return this.noop_1;
+    if (request.intent_1.equals(PlaybackSeekIntent_ABSOLUTE_getInstance()) && value == null)
+      return this.noop_1;
+    if (target.kind_1.equals(PlaybackKind_VOD_getInstance())) {
+      var tmp_1;
+      switch (request.intent_1.ordinal_1) {
+        case 2:
+          tmp_1 = 0.0;
+          break;
+        case 1:
+          tmp_1 = ensureNotNull(value);
+          break;
+        case 0:
+          var tmp2_elvis_lhs = nonnegative(this, request.position_1);
+          var tmp_2;
+          if (tmp2_elvis_lhs == null) {
+            return this.noop_1;
+          } else {
+            tmp_2 = tmp2_elvis_lhs;
+          }
+
+          tmp_1 = tmp_2 + ensureNotNull(value);
+          break;
+        default:
+          noWhenBranchMatchedException();
+          break;
+      }
+      var requested = tmp_1;
+      if (!isFinite(requested))
+        return this.noop_1;
+      // Inline function 'kotlin.comparisons.maxOf' call
+      var position = Math.max(0.0, requested);
+      var tmp3_safe_receiver = nonnegative(this, request.duration_1);
+      var tmp_3;
+      if (tmp3_safe_receiver == null) {
+        tmp_3 = null;
+      } else {
+        // Inline function 'kotlin.takeIf' call
+        var tmp_4;
+        if (tmp3_safe_receiver > 0) {
+          tmp_4 = tmp3_safe_receiver;
+        } else {
+          tmp_4 = null;
+        }
+        tmp_3 = tmp_4;
+      }
+      var duration = tmp_3;
+      if (!(duration == null) && position > duration) {
+        if (request.overshoot_1.equals(PlaybackOvershoot_NOOP_getInstance()))
+          return this.noop_1;
+        position = duration;
+      }
+      return new PlaybackSeekPlan(PlaybackSeekAction_SEEK_getInstance(), position);
+    }
+    if (target.kind_1.equals(PlaybackKind_LIVE_getInstance()) && request.intent_1.equals(PlaybackSeekIntent_OFFSET_getInstance()) && ensureNotNull(value) > 0)
+      return request.restartAllowed_1 ? new PlaybackSeekPlan(PlaybackSeekAction_RESTART_getInstance()) : this.noop_1;
+    var tmp4_elvis_lhs = nonnegative(this, request.now_1);
+    var tmp_5;
+    if (tmp4_elvis_lhs == null) {
+      return this.noop_1;
+    } else {
+      tmp_5 = tmp4_elvis_lhs;
+    }
+    var now = tmp_5;
+    var earliest = nonnegative(this, request.archiveEarliest_1);
+    var tmp_6;
+    switch (request.intent_1.ordinal_1) {
+      case 2:
+        var tmp_7;
+        if (earliest == null) {
+          return this.noop_1;
+        } else {
+          tmp_7 = earliest;
+        }
+
+        tmp_6 = tmp_7;
+        break;
+      case 1:
+        tmp_6 = ensureNotNull(value);
+        break;
+      case 0:
+        var tmp_8;
+        if (target.kind_1.equals(PlaybackKind_LIVE_getInstance())) {
+          tmp_8 = now;
+        } else {
+          var tmp_9 = ensureNotNull(target.archiveStart_1);
+          var tmp7_elvis_lhs = nonnegative(this, request.position_1);
+          var tmp_10;
+          if (tmp7_elvis_lhs == null) {
+            return this.noop_1;
+          } else {
+            tmp_10 = tmp7_elvis_lhs;
+          }
+          tmp_8 = tmp_9 + tmp_10;
+        }
+
+        tmp_6 = tmp_8 + ensureNotNull(value);
+        break;
+      default:
+        noWhenBranchMatchedException();
+        break;
+    }
+    var requested_0 = tmp_6;
+    if (!isFinite(requested_0))
+      return this.noop_1;
+    var tmp8_elvis_lhs = nonnegative(this, request.liveEdgeTolerance_1);
+    var tolerance = tmp8_elvis_lhs == null ? 0.0 : tmp8_elvis_lhs;
+    if (requested_0 >= now - tolerance)
+      return target.kind_1.equals(PlaybackKind_ARCHIVE_getInstance()) ? new PlaybackSeekPlan(PlaybackSeekAction_GO_LIVE_getInstance()) : this.noop_1;
+    if (!request.archiveAvailable_1)
+      return this.noop_1;
+    // Inline function 'kotlin.comparisons.maxOf' call
+    var b = earliest == null ? 0.0 : earliest;
+    var epoch = Math.max(0.0, b, requested_0);
+    if (epoch >= now - tolerance)
+      return this.noop_1;
+    return new PlaybackSeekPlan(PlaybackSeekAction_OPEN_ARCHIVE_getInstance(), VOID, epoch);
+  };
+  var PlaybackSeeking_instance;
+  function PlaybackSeeking_getInstance() {
+    if (PlaybackSeeking_instance == null)
+      new PlaybackSeeking();
+    return PlaybackSeeking_instance;
+  }
+  function PlaybackKind_LIVE_getInstance() {
+    static_init_12();
+    return PlaybackKind_LIVE_instance;
+  }
+  function PlaybackKind_ARCHIVE_getInstance() {
+    static_init_12();
+    return PlaybackKind_ARCHIVE_instance;
+  }
+  function PlaybackKind_VOD_getInstance() {
+    static_init_12();
+    return PlaybackKind_VOD_instance;
+  }
+  function PlaybackPositionEffect_SAVE_POSITION_getInstance() {
+    static_init_13();
+    return PlaybackPositionEffect_SAVE_POSITION_instance;
+  }
+  function PlaybackPositionEffect_RESTORE_POSITION_getInstance() {
+    static_init_13();
+    return PlaybackPositionEffect_RESTORE_POSITION_instance;
+  }
+  function PlaybackSeekIntent_OFFSET_getInstance() {
+    static_init_14();
+    return PlaybackSeekIntent_OFFSET_instance;
+  }
+  function PlaybackSeekIntent_ABSOLUTE_getInstance() {
+    static_init_14();
+    return PlaybackSeekIntent_ABSOLUTE_instance;
+  }
+  function PlaybackSeekIntent_BEGIN_getInstance() {
+    static_init_14();
+    return PlaybackSeekIntent_BEGIN_instance;
+  }
+  function PlaybackSeekIntent_RESTART_getInstance() {
+    static_init_14();
+    return PlaybackSeekIntent_RESTART_instance;
+  }
+  function PlaybackSeekIntent_GO_LIVE_getInstance() {
+    static_init_14();
+    return PlaybackSeekIntent_GO_LIVE_instance;
+  }
+  function PlaybackOvershoot_NOOP_getInstance() {
+    static_init_15();
+    return PlaybackOvershoot_NOOP_instance;
+  }
+  function PlaybackOvershoot_CLAMP_getInstance() {
+    static_init_15();
+    return PlaybackOvershoot_CLAMP_instance;
+  }
+  function PlaybackSeekAction_SEEK_getInstance() {
+    static_init_16();
+    return PlaybackSeekAction_SEEK_instance;
+  }
+  function PlaybackSeekAction_OPEN_ARCHIVE_getInstance() {
+    static_init_16();
+    return PlaybackSeekAction_OPEN_ARCHIVE_instance;
+  }
+  function PlaybackSeekAction_GO_LIVE_getInstance() {
+    static_init_16();
+    return PlaybackSeekAction_GO_LIVE_instance;
+  }
+  function PlaybackSeekAction_RESTART_getInstance() {
+    static_init_16();
+    return PlaybackSeekAction_RESTART_instance;
+  }
+  function PlaybackSeekAction_NOOP_getInstance() {
+    static_init_16();
+    return PlaybackSeekAction_NOOP_instance;
+  }
+  var static_init_called_17;
+  function static_init_17() {
+    if (static_init_called_17)
+      return Unit_instance;
+    static_init_called_17 = true;
     PlaylistFormat_BROWSER_instance = new PlaylistFormat('BROWSER', 0);
     PlaylistFormat_ANDROID_instance = new PlaylistFormat('ANDROID', 1);
   }
@@ -20345,18 +21046,18 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return Playlist_instance;
   }
   function PlaylistFormat_BROWSER_getInstance() {
-    static_init_12();
+    static_init_17();
     return PlaylistFormat_BROWSER_instance;
   }
   function PlaylistFormat_ANDROID_getInstance() {
-    static_init_12();
+    static_init_17();
     return PlaylistFormat_ANDROID_instance;
   }
-  var static_init_called_13;
-  function static_init_13() {
-    if (static_init_called_13)
+  var static_init_called_18;
+  function static_init_18() {
+    if (static_init_called_18)
       return Unit_instance;
-    static_init_called_13 = true;
+    static_init_called_18 = true;
     ProviderPlaylistFormat_GENERIC_instance = new ProviderPlaylistFormat('GENERIC', 0);
     ProviderPlaylistFormat_M3U_instance = new ProviderPlaylistFormat('M3U', 1);
   }
@@ -20927,18 +21628,18 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return ProviderPlaylist_instance;
   }
   function ProviderPlaylistFormat_GENERIC_getInstance() {
-    static_init_13();
+    static_init_18();
     return ProviderPlaylistFormat_GENERIC_instance;
   }
   function ProviderPlaylistFormat_M3U_getInstance() {
-    static_init_13();
+    static_init_18();
     return ProviderPlaylistFormat_M3U_instance;
   }
-  var static_init_called_14;
-  function static_init_14() {
-    if (static_init_called_14)
+  var static_init_called_19;
+  function static_init_19() {
+    if (static_init_called_19)
       return Unit_instance;
-    static_init_called_14 = true;
+    static_init_called_19 = true;
     ProviderValueKind_MISSING_instance = new ProviderValueKind('MISSING', 0);
     ProviderValueKind_NULL_instance = new ProviderValueKind('NULL', 1);
     ProviderValueKind_TEXT_instance = new ProviderValueKind('TEXT', 2);
@@ -21283,31 +21984,31 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return CoreNumber_instance;
   }
   function ProviderValueKind_MISSING_getInstance() {
-    static_init_14();
+    static_init_19();
     return ProviderValueKind_MISSING_instance;
   }
   function ProviderValueKind_NULL_getInstance() {
-    static_init_14();
+    static_init_19();
     return ProviderValueKind_NULL_instance;
   }
   function ProviderValueKind_TEXT_getInstance() {
-    static_init_14();
+    static_init_19();
     return ProviderValueKind_TEXT_instance;
   }
   function ProviderValueKind_NUMBER_getInstance() {
-    static_init_14();
+    static_init_19();
     return ProviderValueKind_NUMBER_instance;
   }
   function ProviderValueKind_BOOLEAN_getInstance() {
-    static_init_14();
+    static_init_19();
     return ProviderValueKind_BOOLEAN_instance;
   }
   function ProviderValueKind_ARRAY_getInstance() {
-    static_init_14();
+    static_init_19();
     return ProviderValueKind_ARRAY_instance;
   }
   function ProviderValueKind_OBJECT_getInstance() {
-    static_init_14();
+    static_init_19();
     return ProviderValueKind_OBJECT_instance;
   }
   function current($this, node) {
@@ -21791,11 +22492,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function StalkerCatalogs_getInstance() {
     return StalkerCatalogs_instance;
   }
-  var static_init_called_15;
-  function static_init_15() {
-    if (static_init_called_15)
+  var static_init_called_20;
+  function static_init_20() {
+    if (static_init_called_20)
       return Unit_instance;
-    static_init_called_15 = true;
+    static_init_called_20 = true;
     StalkerFormat_BROWSER_instance = new StalkerFormat('BROWSER', 0);
     StalkerFormat_NATIVE_instance = new StalkerFormat('NATIVE', 1);
     StalkerFormat_RPC_instance = new StalkerFormat('RPC', 2);
@@ -22476,11 +23177,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return StalkerProtocol_instance;
   }
   function StalkerFormat_BROWSER_getInstance() {
-    static_init_15();
+    static_init_20();
     return StalkerFormat_BROWSER_instance;
   }
   function StalkerFormat_RPC_getInstance() {
-    static_init_15();
+    static_init_20();
     return StalkerFormat_RPC_instance;
   }
   function StreamingGuideIdentity(id, tvgName, name, days) {
@@ -23204,11 +23905,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return new StreamingGuideCoverage(tmp_10, tmp_11, tmp_12, tmp$ret$31);
   };
-  var static_init_called_16;
-  function static_init_16() {
-    if (static_init_called_16)
+  var static_init_called_21;
+  function static_init_21() {
+    if (static_init_called_21)
       return Unit_instance;
-    static_init_called_16 = true;
+    static_init_called_21 = true;
     XmltvRecordFormat_SWIFT_instance = new XmltvRecordFormat('SWIFT', 0);
     XmltvRecordFormat_ARCHIVED_ANDROID_instance = new XmltvRecordFormat('ARCHIVED_ANDROID', 1);
     XmltvRecordFormat_ANDROID_instance = new XmltvRecordFormat('ANDROID', 2);
@@ -24015,31 +24716,31 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return !(this.field_1 == null);
   };
   function XmltvRecordFormat_SWIFT_getInstance() {
-    static_init_16();
+    static_init_21();
     return XmltvRecordFormat_SWIFT_instance;
   }
   function XmltvRecordFormat_ARCHIVED_ANDROID_getInstance() {
-    static_init_16();
+    static_init_21();
     return XmltvRecordFormat_ARCHIVED_ANDROID_instance;
   }
   function XmltvRecordFormat_ANDROID_getInstance() {
-    static_init_16();
+    static_init_21();
     return XmltvRecordFormat_ANDROID_instance;
   }
   function XmltvRecordFormat_RUST_getInstance() {
-    static_init_16();
+    static_init_21();
     return XmltvRecordFormat_RUST_instance;
   }
   function XmltvRecordFormat_RUST_NATIVE_getInstance() {
-    static_init_16();
+    static_init_21();
     return XmltvRecordFormat_RUST_NATIVE_instance;
   }
   function XmltvRecordFormat_BROWSER_getInstance() {
-    static_init_16();
+    static_init_21();
     return XmltvRecordFormat_BROWSER_instance;
   }
   function XmltvRecordFormat_NODE_STREAMING_getInstance() {
-    static_init_16();
+    static_init_21();
     return XmltvRecordFormat_NODE_STREAMING_instance;
   }
   function XtreamItem(id, providerId, kind, name, url, group, logo, epgId, description, adult, archiveDays, archiveSource, generatedName, generatedGroup, season, episode) {
@@ -24938,11 +25639,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function XtreamCatalogs_getInstance() {
     return XtreamCatalogs_instance;
   }
-  var static_init_called_17;
-  function static_init_17() {
-    if (static_init_called_17)
+  var static_init_called_22;
+  function static_init_22() {
+    if (static_init_called_22)
       return Unit_instance;
-    static_init_called_17 = true;
+    static_init_called_22 = true;
     XtreamFormat_BROWSER_instance = new XtreamFormat('BROWSER', 0);
     XtreamFormat_ANDROID_instance = new XtreamFormat('ANDROID', 1);
     XtreamFormat_LEGACY_instance = new XtreamFormat('LEGACY', 2);
@@ -25212,15 +25913,15 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return trimEnd(this.render_1(listOf_0(['timeshift', this.source_1.username_1, this.source_1.password_1]), emptyList()), charArrayOf([_Char___init__impl__6a9atx(47)])) + '/{durationMinutes}/{startDate}/' + this.segment_1(id + '.ts');
   };
   function XtreamFormat_BROWSER_getInstance() {
-    static_init_17();
+    static_init_22();
     return XtreamFormat_BROWSER_instance;
   }
   function XtreamFormat_ANDROID_getInstance() {
-    static_init_17();
+    static_init_22();
     return XtreamFormat_ANDROID_instance;
   }
   function XtreamFormat_LEGACY_getInstance() {
-    static_init_17();
+    static_init_22();
     return XtreamFormat_LEGACY_instance;
   }
   function browserStateDefaults(security) {
@@ -28184,6 +28885,241 @@ if (typeof String.prototype.startsWith === 'undefined') {
     // Inline function 'kotlin.js.unsafeCast' call
     return String(value || '');
   }
+  function playbackSessionTransition(current, target, history, observedPosition, limit, historyKinds) {
+    historyKinds = historyKinds === VOID ? null : historyKinds;
+    // Inline function 'kotlin.js.unsafeCast' call
+    // Inline function 'kotlin.require' call
+    if (!Array.isArray(history)) {
+      var message = 'Playback history must be an array';
+      throw IllegalArgumentException_init_$Create$_0(toString_1(message));
+    }
+    var tmp;
+    if (historyKinds == null) {
+      tmp = toSet_0(get_entries_0());
+    } else {
+      // Inline function 'kotlin.js.unsafeCast' call
+      // Inline function 'kotlin.require' call
+      if (!Array.isArray(historyKinds)) {
+        var message_0 = 'Recorded playback kinds must be an array';
+        throw IllegalArgumentException_init_$Create$_0(toString_1(message_0));
+      }
+      // Inline function 'kotlin.js.unsafeCast' call
+      // Inline function 'kotlin.collections.map' call
+      // Inline function 'kotlin.collections.mapTo' call
+      var destination = ArrayList_init_$Create$_0(historyKinds.length);
+      var inductionVariable = 0;
+      var last = historyKinds.length;
+      while (inductionVariable < last) {
+        var item = historyKinds[inductionVariable];
+        inductionVariable = inductionVariable + 1 | 0;
+        var tmp_0;
+        if (item == 'live') {
+          tmp_0 = PlaybackKind_LIVE_getInstance();
+        } else if (item == 'archive') {
+          tmp_0 = PlaybackKind_ARCHIVE_getInstance();
+        } else if (item == 'vod') {
+          tmp_0 = PlaybackKind_VOD_getInstance();
+        } else {
+          // Inline function 'kotlin.error' call
+          var message_1 = 'Unknown recorded playback kind';
+          throw IllegalStateException_init_$Create$_0(toString_1(message_1));
+        }
+        var tmp$ret$9 = tmp_0;
+        destination.add_utx5q5_k$(tmp$ret$9);
+      }
+      tmp = toSet_0(destination);
+    }
+    var kinds = tmp;
+    var tmp_1 = PlaybackSessions_instance;
+    var tmp_2 = sessionVisit(current);
+    var tmp_3 = sessionVisit(target);
+    // Inline function 'kotlin.js.unsafeCast' call
+    // Inline function 'kotlin.collections.map' call
+    // Inline function 'kotlin.collections.mapTo' call
+    var destination_0 = ArrayList_init_$Create$_0(history.length);
+    var inductionVariable_0 = 0;
+    var last_0 = history.length;
+    while (inductionVariable_0 < last_0) {
+      var item_0 = history[inductionVariable_0];
+      inductionVariable_0 = inductionVariable_0 + 1 | 0;
+      var tmp0_elvis_lhs = sessionVisit(item_0);
+      var tmp_4;
+      if (tmp0_elvis_lhs == null) {
+        // Inline function 'kotlin.error' call
+        var message_2 = 'Playback history contains an empty visit';
+        throw IllegalStateException_init_$Create$_0(toString_1(message_2));
+      } else {
+        tmp_4 = tmp0_elvis_lhs;
+      }
+      var tmp$ret$14 = tmp_4;
+      destination_0.add_utx5q5_k$(tmp$ret$14);
+    }
+    var change = tmp_1.transition_h12oxl_k$(tmp_2, tmp_3, destination_0, sessionNumber(observedPosition), limit, kinds);
+    var result = {};
+    result.current = sessionVisitValue(change.current_1);
+    // Inline function 'kotlin.collections.map' call
+    var this_0 = change.history_1;
+    // Inline function 'kotlin.collections.mapTo' call
+    var destination_1 = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_0, 10));
+    var _iterator__ex2g4s = this_0.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var item_1 = _iterator__ex2g4s.next_20eer_k$();
+      var tmp$ret$18 = sessionVisitValue(item_1);
+      destination_1.add_utx5q5_k$(tmp$ret$18);
+    }
+    // Inline function 'kotlin.collections.toTypedArray' call
+    result.history = copyToArray(destination_1);
+    // Inline function 'kotlin.collections.map' call
+    var this_1 = change.effects_1;
+    // Inline function 'kotlin.collections.mapTo' call
+    var destination_2 = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_1, 10));
+    var _iterator__ex2g4s_0 = this_1.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
+      var item_2 = _iterator__ex2g4s_0.next_20eer_k$();
+      var value = {};
+      value.type = item_2.type_1.equals(PlaybackPositionEffect_SAVE_POSITION_getInstance()) ? 'save-position' : 'restore-position';
+      value.target = sessionVisitValue(item_2.target_1);
+      if (!(item_2.position_1 == null))
+        value.position = item_2.position_1;
+      destination_2.add_utx5q5_k$(value);
+    }
+    // Inline function 'kotlin.collections.toTypedArray' call
+    result.effects = copyToArray(destination_2);
+    return result;
+  }
+  function playbackSeekPlan(target, request) {
+    // Inline function 'kotlin.require' call
+    if (!(request != null)) {
+      var message = 'Playback seek request is required';
+      throw IllegalArgumentException_init_$Create$_0(toString_1(message));
+    }
+    var tmp0_subject = request.intent;
+    var tmp;
+    if (tmp0_subject == 'offset') {
+      tmp = PlaybackSeekIntent_OFFSET_getInstance();
+    } else if (tmp0_subject == 'absolute') {
+      tmp = PlaybackSeekIntent_ABSOLUTE_getInstance();
+    } else if (tmp0_subject == 'begin') {
+      tmp = PlaybackSeekIntent_BEGIN_getInstance();
+    } else if (tmp0_subject == 'restart') {
+      tmp = PlaybackSeekIntent_RESTART_getInstance();
+    } else if (tmp0_subject == 'go-live') {
+      tmp = PlaybackSeekIntent_GO_LIVE_getInstance();
+    } else {
+      // Inline function 'kotlin.error' call
+      var message_0 = 'Unknown playback seek intent';
+      throw IllegalStateException_init_$Create$_0(toString_1(message_0));
+    }
+    var intent = tmp;
+    var tmp_0 = PlaybackSeeking_getInstance();
+    var tmp_1 = target == null ? null : sessionTarget(target);
+    var tmp_2 = sessionNumber(request.value);
+    var tmp_3 = sessionNumber(request.position);
+    var tmp_4 = sessionNumber(request.duration);
+    var tmp_5 = sessionNumber(request.now);
+    var tmp_6 = request.archiveAvailable == true;
+    var tmp_7 = sessionNumber(request.archiveEarliest);
+    var tmp1_elvis_lhs = sessionNumber(request.liveEdgeTolerance);
+    var plan = tmp_0.plan_acqrhc_k$(tmp_1, new PlaybackSeekRequest(intent, tmp_2, tmp_3, tmp_4, tmp_5, tmp_6, tmp_7, tmp1_elvis_lhs == null ? 0.0 : tmp1_elvis_lhs, request.restartAllowed != false, request.overshoot == 'clamp' ? PlaybackOvershoot_CLAMP_getInstance() : PlaybackOvershoot_NOOP_getInstance()));
+    var result = {};
+    var tmp_8;
+    switch (plan.action_1.ordinal_1) {
+      case 1:
+        tmp_8 = 'open-archive';
+        break;
+      case 2:
+        tmp_8 = 'go-live';
+        break;
+      default:
+        // Inline function 'kotlin.text.lowercase' call
+
+        // Inline function 'kotlin.js.asDynamic' call
+
+        tmp_8 = plan.action_1.name_1.toLowerCase();
+        break;
+    }
+    result.action = tmp_8;
+    if (!(plan.position_1 == null))
+      result.position = plan.position_1;
+    if (!(plan.archiveStart_1 == null))
+      result.archiveStart = plan.archiveStart_1;
+    return result;
+  }
+  function PlaybackSessionOwnership_0() {
+    this.policy_1 = new PlaybackSessionOwnership();
+  }
+  protoOf(PlaybackSessionOwnership_0).begin = function () {
+    return this.policy_1.begin_1jqisp_k$();
+  };
+  protoOf(PlaybackSessionOwnership_0).cancel = function () {
+    return this.policy_1.cancel_2l89ey_k$();
+  };
+  protoOf(PlaybackSessionOwnership_0).accepts = function (ticket) {
+    // Inline function 'kotlin.js.unsafeCast' call
+    return this.policy_1.accepts_ry1lv0_k$(ticket);
+  };
+  function sessionNumber(value) {
+    var tmp;
+    if (typeof value === 'number') {
+      // Inline function 'kotlin.js.unsafeCast' call
+      tmp = value;
+    } else {
+      tmp = null;
+    }
+    return tmp;
+  }
+  function sessionTarget(value) {
+    // Inline function 'kotlin.require' call
+    if (!(value != null && typeof value.sourceId === 'string' && typeof value.channelId === 'string')) {
+      var message = 'Playback identity is required';
+      throw IllegalArgumentException_init_$Create$_0(toString_1(message));
+    }
+    var tmp0_subject = value.kind;
+    var tmp;
+    if (tmp0_subject == 'live') {
+      tmp = PlaybackKind_LIVE_getInstance();
+    } else if (tmp0_subject == 'archive') {
+      tmp = PlaybackKind_ARCHIVE_getInstance();
+    } else if (tmp0_subject == 'vod') {
+      tmp = PlaybackKind_VOD_getInstance();
+    } else {
+      // Inline function 'kotlin.error' call
+      var message_0 = 'Unknown playback kind';
+      throw IllegalStateException_init_$Create$_0(toString_1(message_0));
+    }
+    var kind = tmp;
+    // Inline function 'kotlin.js.unsafeCast' call
+    var tmp_0 = value.sourceId;
+    // Inline function 'kotlin.js.unsafeCast' call
+    var tmp$ret$4 = value.channelId;
+    return new PlaybackTarget(tmp_0, tmp$ret$4, kind, sessionNumber(value.archiveStart));
+  }
+  function sessionVisit(value) {
+    var tmp;
+    if (value == null) {
+      tmp = null;
+    } else {
+      var tmp_0 = sessionTarget(value);
+      // Inline function 'kotlin.js.unsafeCast' call
+      var tmp$ret$0 = value.payload;
+      tmp = new PlaybackVisit(tmp_0, tmp$ret$0);
+    }
+    return tmp;
+  }
+  function sessionVisitValue(visit) {
+    if (visit == null)
+      return null;
+    var result = {};
+    result.sourceId = visit.target_1.sourceId_1;
+    result.channelId = visit.target_1.channelId_1;
+    // Inline function 'kotlin.text.lowercase' call
+    // Inline function 'kotlin.js.asDynamic' call
+    result.kind = visit.target_1.kind_1.name_1.toLowerCase();
+    if (!(visit.target_1.archiveStart_1 == null))
+      result.archiveStart = visit.target_1.archiveStart_1;
+    result.payload = visit.payload_1;
+    return result;
+  }
   function wire(value) {
     var tmp;
     if (typeof value === 'undefined') {
@@ -29498,6 +30434,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   OperatorVod_instance = new OperatorVod();
   PlaybackDetectionRules_instance = new PlaybackDetectionRules();
   Companion_instance_17 = new Companion_17();
+  PlaybackSessions_instance = new PlaybackSessions();
   ProviderPlaylist_instance = new ProviderPlaylist();
   CoreNumber_instance = new CoreNumber();
   StalkerCatalogs_instance = new StalkerCatalogs();
@@ -29645,6 +30582,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
     _.playbackParsingFailure = playbackParsingFailure;
     _.playbackDeclaredFormat = playbackDeclaredFormat;
     _.playbackBodyFormat = playbackBodyFormat;
+    _.playbackSessionTransition = playbackSessionTransition;
+    _.playbackSeekPlan = playbackSeekPlan;
+    _.PlaybackSessionOwnership = PlaybackSessionOwnership_0;
     _.stalkerTextDenied = stalkerTextDenied;
     _.stalkerConfig = stalkerConfig;
     _.StalkerClient = StalkerClient;

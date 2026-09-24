@@ -1405,6 +1405,8 @@ function startCorePlayback(
  * Side effects: Mutates video element; may free decoder resources.
  */
 export function stbStop(): void {
+    if ((window as any).__ottClassicPlayback)
+        (window as any).__ottClassicPlayback.cancel();
     if (video) video.loop = false;
     _playSession++;
     cancelLiveRestart();

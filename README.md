@@ -2,6 +2,9 @@
 
 Self-contained IPTV/OTT player with a local Rust HTTP server. Runs on Smart TVs (LG WebOS, Samsung Tizen, Panasonic, Sony, etc.), set-top boxes (Infomir MAG, Dune HD, Enigma2, Android TV), and desktop browsers.
 
+See [playback sessions and provider lifetimes](docs/playback-session-architecture.md)
+for the current core/host boundary, compatibility contracts and migration limits.
+
 <!-- ci-release-process:start -->
 ## Release process
 

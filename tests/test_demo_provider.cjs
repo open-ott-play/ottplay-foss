@@ -99,6 +99,7 @@ function storage() {
 function uiFixture() {
     const saved = storage();
     const loaded = [];
+    const scriptCallbacks = [];
     const media = [{ loop: true }, { loop: true }];
     const w = {
         _: (value) => value,
@@ -121,7 +122,10 @@ function uiFixture() {
         },
         edit_dealer() {},
         edit_dealer_remote() {},
-        getScriptDOM: (url) => loaded.push(url),
+        getScriptDOM: (url, ready, failed) => {
+            loaded.push(url);
+            scriptCallbacks.push({ failed, ready });
+        },
         host: "https://player.invalid",
         invalidateEpgCache() {},
         keys: { ENTER: 13, GREEN: 402, RED: 401, RETURN: 27, YELLOW: 403 },
@@ -160,10 +164,11 @@ function uiFixture() {
     };
     w.window = w;
     vm.createContext(w);
+    require("./helpers/private-runtime.cjs")(w, "src/provider/runtime.ts");
     vm.runInContext(providerUi, w);
     if (process.argv.includes("--bundle")) w.installEnglishPlayerAliases(w);
     else attachSourceAliases(w);
-    return { loaded, media, saved, w };
+    return { loaded, media, saved, scriptCallbacks, w };
 }
 
 let cases = 0;
@@ -320,13 +325,19 @@ test("provider switch retires an older demo channel-loader callback", () => {
 });
 
 test("saved demo survives restart of a URL-pinned player and can return to its provider", () => {
-    const { w, saved, loaded } = uiFixture();
+    const { w, saved, loaded, scriptCallbacks } = uiFixture();
     vm.runInContext(providerLoad, w);
     if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     w.location.search = "?m3u";
     w.firstRun();
     w.listKeyHandlerFn(w.keys.ENTER);
     w.loadProv();
+    assert.equal(
+        loaded.length,
+        1,
+        "the reload waits for the previous script to settle"
+    );
+    scriptCallbacks[0].ready();
     assert.equal(saved.get("ottplayprov"), "demo");
     assert.deepEqual(loaded, [
         "https://player.invalid/prov/demo/prov.js?fixture",
@@ -335,7 +346,9 @@ test("saved demo survives restart of a URL-pinned player and can return to its p
     w.selectProvaider();
     w.selIndex = w.arrayProvaiders.indexOf("m3u");
     w.listKeyHandlerFn(w.keys.ENTER);
+    scriptCallbacks[1].ready();
     w.loadProv();
+    scriptCallbacks[2].ready();
     assert.equal(saved.get("ottplayprov"), "m3u");
     assert.deepEqual(loaded.slice(2), [
         "https://player.invalid/prov/m3u/prov.js?fixture",

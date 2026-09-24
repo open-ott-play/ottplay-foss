@@ -5,8 +5,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { gzipSync } = require("node:zlib");
 
-// Native HLS transport adds measured-segment telemetry and session cancellation.
-const BUDGET = Object.freeze({ bytes: 477000, gzipBytes: 131000 });
+// Explicit playback/provider ownership adds private controllers and the temporary
+// classic boundary. Keep a measured cap while the remaining classic host migrates.
+const BUDGET = Object.freeze({ bytes: 490000, gzipBytes: 134000 });
 const ARTIFACTS = Object.freeze([
     "dist/stbPlayer.js",
     "src-tauri/frontend/dist/stbPlayer.js",

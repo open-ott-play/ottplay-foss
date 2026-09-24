@@ -296,6 +296,7 @@ function fixture(
     w.$.ajax = (request) => requests.push(request);
     w.window = w;
     vm.createContext(w);
+    require("./helpers/private-runtime.cjs")(w, "src/provider/runtime.ts");
     vm.runInContext(code[flavor], w);
     attachSourceAliases(w);
     return {
@@ -605,6 +606,12 @@ test("explicit exit from Demo accepts permitted choice once, then honors origina
     );
     f.w.loadProv();
     assert.equal(
+        f.scripts.length,
+        1,
+        "replacement waits for pending provider script"
+    );
+    f.scriptCallbacks[0]();
+    assert.equal(
         f.scripts[1],
         "https://player.invalid/prov/m3u/prov.js?fixture"
     );
@@ -683,6 +690,12 @@ test("Full still loads branded stored and URL-pinned providers", () => {
     );
     f.w.location.search = "?edem";
     f.w.loadProv();
+    assert.equal(
+        f.scripts.length,
+        1,
+        "replacement waits for pending provider script"
+    );
+    f.scriptCallbacks[0]();
     assert.equal(
         f.scripts[1],
         "https://player.invalid/prov/edem/prov.js?fixture"

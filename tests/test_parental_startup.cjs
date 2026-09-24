@@ -619,6 +619,24 @@ for (const change of ["provider", "playlist", "channel"]) {
         f.close();
     }
 }
+// Stopping the same archive revokes its pending restoration without changing IDs.
+{
+    const f = fixture({ archive: true, protectedChannel: false });
+    try {
+        f.start();
+        f.w._doKey(f.w.keys.ENTER);
+        assert.deepEqual(f.archives, [1700000000]);
+        f.w.__ottClassicPlayback.cancel();
+        f.runSeek();
+        assert.deepEqual(
+            f.seeks,
+            [],
+            "stopped archive must not restore a delayed position"
+        );
+    } finally {
+        f.close();
+    }
+}
 console.log(
     `PASS parental startup (${bundle ? "classic bundle" : "source"}): visible one-shot PIN, guarded live/archive resume, cancel/wrong PIN, normal startup, and archive confirmation`
 );

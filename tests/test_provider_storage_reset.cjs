@@ -109,6 +109,7 @@ const context = {
 };
 context.window = context;
 vm.createContext(context);
+require("./helpers/private-runtime.cjs")(context, "src/provider/runtime.ts");
 vm.runInContext(
     ts.transpileModule(code, {
         compilerOptions: {

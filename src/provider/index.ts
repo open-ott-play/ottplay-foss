@@ -856,300 +856,339 @@ export function loadProv(providerId?: string): void {
     var commandLoad = {};
     (window as any).__ottCommandChannelLoad = commandLoad;
     (window as any).commandChannelsReady = false;
-    if (!isProviderAllowed((window as any)._pendingProvId || ""))
-        (window as any)._pendingProvId = "";
-    // An explicit choice made from Demo wins for this load only. The stored
-    // URL and stored provider-visibility restrictions still apply on reload.
-    var demoProviderSelection =
-        (window as any).ottplayDemoActive === true && providerId
-            ? providerId
-            : "";
-    // A provider switch retires demo playback before any asynchronous load.
-    if ((window as any).ottplayDemoActive === true) {
-        var demoMenuIndex = popupActions.indexOf(showProviderSelection);
-        if (demoMenuIndex !== -1) {
-            popupActions.splice(demoMenuIndex, 1);
-            popupArray.splice(demoMenuIndex, 1);
-            popupDetail.splice(demoMenuIndex, 1);
-        }
-        // Native PiP lives outside these DOM video elements. Use the public
-        // shell hook so its decoder/looper and pending startup are retired too.
-        (window as any).pipIndex = null;
-        if (typeof window.stbStopPip === "function") {
-            try {
-                window.stbStopPip();
-            } catch (error) {
-                console.warn("[loadProv] demo PiP stop failed:", error);
+    if ((window as any).__ottClassicPlayback)
+        (window as any).__ottClassicPlayback.cancel();
+    var providerRuntime = (window as any).__ottProviderRuntime.classic;
+    // Legacy scripts execute into shared globals. Delay the next reset until
+    // any previously requested script has finished evaluating, then run only
+    // the latest selection. Session disposal is immediate, before that wait.
+    providerRuntime.replace(function (providerSession: any) {
+        if (!isProviderAllowed((window as any)._pendingProvId || ""))
+            (window as any)._pendingProvId = "";
+        // An explicit choice made from Demo wins for this load only. The stored
+        // URL and stored provider-visibility restrictions still apply on reload.
+        var demoProviderSelection =
+            (window as any).ottplayDemoActive === true && providerId
+                ? providerId
+                : "";
+        // A provider switch retires demo playback before any asynchronous load.
+        if ((window as any).ottplayDemoActive === true) {
+            var demoMenuIndex = popupActions.indexOf(showProviderSelection);
+            if (demoMenuIndex !== -1) {
+                popupActions.splice(demoMenuIndex, 1);
+                popupArray.splice(demoMenuIndex, 1);
+                popupDetail.splice(demoMenuIndex, 1);
             }
-        }
-    }
-    (window as any).ottplayDemoActive = false;
-    restoreDemoMute();
-    for (var demoVideoIndex = 0; demoVideoIndex < 2; demoVideoIndex++) {
-        var demoVideo = document.getElementById(
-            demoVideoIndex ? "videopip" : "video"
-        ) as HTMLVideoElement | null;
-        if (demoVideo) demoVideo.loop = false;
-    }
-    cancelPortChannelIdMigration();
-    cancelMediaLoad();
-    if ((window as any).providerMediaClient) {
-        (window as any).providerMediaClient.dispose();
-        (window as any).providerMediaClient = null;
-    }
-    invalidateEpgCache();
-    /**
-     * Handle provider script load failure.
-     * Clears the pending provider, alerts the error (unless 'no' provider),
-     * and falls back to firstRun().
-     *
-     * Side effects: Alert dialog; DOM append to launch_id; hides the element.
-     */
-    function onError(): void {
-        if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
-        (window as any)._pendingProvId = "";
-        if (s !== "no") {
-            alert(s + ": load error!!!");
-        }
-        $(launch_id)
-            .append("<br/><b>Failed to load provider script !!!</b>")
-            .hide();
-        firstRun();
-    }
-
-    if (!$("#launch").is(":visible")) {
-        if (stbIsPlaying()) stbStop();
-        $("#dialogbox")
-            .html(
-                '<div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div>'
-            )
-            .show();
-        launch_id = "#dialogbox";
-        closeList();
-    }
-
-    version = savedPopup.ver;
-    getCurrentChannelEpg = null;
-    getMediaArray = null;
-    // Assign provider callback stubs (ported from original)
-    if (typeof _playChannel !== "undefined") playChannel = _playChannel;
-    if (typeof _channelsList !== "undefined") channelsList = _channelsList;
-    if (typeof _bucketsList !== "undefined") bucketsList = _bucketsList;
-    if (typeof _playMedia !== "undefined") playMedia = _playMedia;
-    if (typeof _providerGetItem !== "undefined")
-        providerGetItem = _providerGetItem;
-    if (typeof _providerHasItem !== "undefined")
-        providerHasItem = _providerHasItem;
-    if (typeof _providerHasItemValue !== "undefined")
-        providerHasItemValue = _providerHasItemValue;
-    if (typeof _providerSetItem !== "undefined")
-        providerSetItem = _providerSetItem;
-    if (typeof _providerDelItem !== "undefined")
-        providerDelItem = _providerDelItem;
-
-    // Restore base popup state (saved before any provider script ran)
-    if (savedPopup.popupActions.length) {
-        popupActions.splice(0, popupActions.length, ...savedPopup.popupActions);
-        popupArray.splice(0, popupArray.length, ...savedPopup.popupArray);
-        popupDetail.splice(0, popupDetail.length, ...savedPopup.popupDetail);
-    } else {
-        // Fallback when savedPopup was never snapshotted: reuse the single
-        // concat allocator published on window.* by src/index.ts. Do not
-        // hardcode a second 20-label table here (HS5 / prov.js depend on
-        // one shared popupActions/popupArray/popupDetail identity).
-        var wPop = window as any;
-        if (wPop.popupActions && wPop.popupActions.length) {
-            popupActions.splice(0, popupActions.length, ...wPop.popupActions);
-            popupArray.splice(0, popupArray.length, ...wPop.popupArray);
-            popupDetail.splice(0, popupDetail.length, ...wPop.popupDetail);
-        } else {
-            console.warn(
-                "[loadProv] popup fallback: window.popupActions empty; menu may be wrong"
-            );
-        }
-    }
-
-    var matchResult = window.location.search.match(/\?([^&]+)/);
-    // Keep an explicitly selected demo after restarting a URL-pinned player.
-    // The existing ?clear reset must still be able to clear that selection.
-    if (
-        demoProviderSelection ||
-        providerId === "demo" ||
-        (stbGetItem("ottplayprov") === "demo" &&
-            (!matchResult || matchResult[1].replace(/!/g, "") !== "clear"))
-    )
-        matchResult = null;
-    s = "";
-    if (matchResult !== null) {
-        s = matchResult[1].replace(/!/g, "");
-        if (s === "clear") {
-            stbSetItem("ottplayprov", "");
-            stbSetItem("noSelProv", "0");
-            s = "";
-        }
-        if (s.indexOf("*") > -1 && !stbGetItem("ottplayprov")) {
-            s = s.replace(/\*/g, "");
-            if (isProviderAllowed(s) && providerIds.indexOf(s) > -1) {
-                stbSetItem("ottplayprov", s);
-                stbSetItem("noSelProv", "1");
-                s = "";
-            }
-        }
-        if (!isProviderAllowed(s) || providerIds.indexOf(s) === -1) s = "";
-    }
-    if (s) removeOption(showProviderSelection);
-    else
-        s =
-            demoProviderSelection ||
-            (providerId === "demo" ? "demo" : stbGetItem("ottplayprov") || s);
-    if (!isProviderAllowed(s) || providerIds.indexOf(s) === -1) s = "";
-    if (!s) {
-        s = "no";
-        onError();
-        return;
-    }
-    if (Number.parseInt(stbGetItem("noSelProv") || "0"))
-        removeOption(showProviderSelection);
-    else {
-        $(launch_id).append("<br/>");
-        $(launch_id).append(
-            document.createTextNode("Loading provider " + s + " script ...")
-        );
-        removeOption(edit_dealer);
-    }
-    getScriptDOM(
-        host + "/prov/" + s + "/prov.js?" + __cv,
-        function () {
-            if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
-            try {
-                if (typeof duneAddSettings === "function") {
-                    $(launch_id).append("<br/>Loading settings...");
-                    // Sync working arrays to window globals so the provider
-                    // script sees the current popup state (it mutates
-                    // window.popupActions/popupArray/popupDetail directly).
-                    (window as any).popupActions = popupActions;
-                    (window as any).popupArray = popupArray;
-                    (window as any).popupDetail = popupDetail;
-                    var idx =
-                        popupActions.indexOf(toggleProviderSettingsVisibility) +
-                        1;
-                    duneAddSettings(idx);
-                    // Sync the window globals back into the working arrays so
-                    // a provider's modifications become the new popup state.
-                    //
-                    // GUARDED ON PURPOSE. The three assignments above alias
-                    // window.popupActions/popupArray/popupDetail to the very
-                    // same array objects, and every prov/*/prov.js plugin
-                    // mutates them in place (.splice()/.push(), never
-                    // `= [...]`), so the working arrays are already current
-                    // here. The previous unguarded version did
-                    //     popupActions.length = 0;
-                    //     popupActions.push(...(window as any).popupActions);
-                    // which cleared the array and then spread that same,
-                    // now-empty array back into itself — leaving all three
-                    // arrays at length 0 and rendering the popup ("Menu")
-                    // completely blank. Only copy when a plugin genuinely
-                    // replaced the global with a different array object.
-                    syncFromWindow(popupActions, "popupActions");
-                    syncFromWindow(popupArray, "popupArray");
-                    syncFromWindow(popupDetail, "popupDetail");
-                    if (Number.parseInt(stbGetItem("noProvParam") || "0")) {
-                        var count = popupActions.indexOf(optionsList) - idx;
-                        popupArray.splice(idx, count);
-                        popupDetail.splice(idx, count);
-                        popupActions.splice(idx, count);
-                    }
-                    if (s === "demo") {
-                        // Demo has no provider settings of its own. Keep an
-                        // explicit exit in the main menu, after normal provider
-                        // settings have been filtered, without changing locks.
-                        var demoExit = popupActions.indexOf(optionsList);
-                        if (demoExit < 0) demoExit = popupActions.length;
-                        if (
-                            popupActions.indexOf(showProviderSelection) === -1
-                        ) {
-                            popupActions.splice(
-                                demoExit,
-                                0,
-                                showProviderSelection
-                            );
-                            popupArray.splice(
-                                demoExit,
-                                0,
-                                _("Change provider")
-                            );
-                            popupDetail.splice(
-                                demoExit,
-                                0,
-                                _("Choose provider")
-                            );
-                        }
-                        if (findOptionIndex(showProviderSelection) === -1)
-                            optionsArr.push({
-                                action: showProviderSelection,
-                                name: "Change provider",
-                            });
-                    }
-                    if (
-                        !isPlayDistribution() &&
-                        s !== "demo" &&
-                        Number.parseInt(stbGetItem("noSelProv") || "0") +
-                            Number.parseInt(
-                                stbGetItem("noProvParam") || "0"
-                            ) !==
-                            2
-                    ) {
-                        const img = $("<img>");
-                        img.attr(
-                            "src",
-                            host + "/prov/" + s + "/logo.png?" + __av
-                        );
-                        img.attr("alt", " ");
-                        img.css("position", "absolute");
-                        if (launch_id !== "#dialogbox") {
-                            img.css("top", "100px");
-                            img.css("right", "100px");
-                            img.attr("width", "25%");
-                            img.css("max-height", "25%");
-                        } else {
-                            img.css("top", "6px");
-                            img.css("right", "6px");
-                            img.attr("height", "40");
-                        }
-                        img.on("error", function () {
-                            (this as HTMLImageElement).width = 0;
-                        });
-                        $(launch_id).append(img);
-                    }
-                    if (typeof getCurrentChannelEpg !== "function")
-                        getCurrentChannelEpg = epgCacheCapacity
-                            ? getChannelEpgCached
-                            : getChannelEpg;
-                    // Expose for processCurrentProgramQueue queue processing
-                    (window as any).getCachedChannelEpg = getCurrentChannelEpg;
-                    loadChannels();
-                } else {
-                    console.error("duneAddSettings is not a function");
-                    onError();
+            // Native PiP lives outside these DOM video elements. Use the public
+            // shell hook so its decoder/looper and pending startup are retired too.
+            (window as any).pipIndex = null;
+            if (typeof window.stbStopPip === "function") {
+                try {
+                    window.stbStopPip();
+                } catch (error) {
+                    console.warn("[loadProv] demo PiP stop failed:", error);
                 }
-            } catch (e) {
-                console.error(e);
-                (window as any)._pendingProvId = "";
-                $(launch_id).append(
-                    "<br/><br/><b>Exception:</b> name " +
-                        metadataText((e as any).name) +
-                        ", message " +
-                        metadataText((e as any).message) +
-                        ", typeof " +
-                        typeof e
+            }
+        }
+        (window as any).ottplayDemoActive = false;
+        restoreDemoMute();
+        for (var demoVideoIndex = 0; demoVideoIndex < 2; demoVideoIndex++) {
+            var demoVideo = document.getElementById(
+                demoVideoIndex ? "videopip" : "video"
+            ) as HTMLVideoElement | null;
+            if (demoVideo) demoVideo.loop = false;
+        }
+        cancelPortChannelIdMigration();
+        cancelMediaLoad();
+        if ((window as any).providerMediaClient) {
+            (window as any).providerMediaClient.dispose();
+            (window as any).providerMediaClient = null;
+        }
+        invalidateEpgCache();
+        /**
+         * Handle provider script load failure.
+         * Clears the pending provider, alerts the error (unless 'no' provider),
+         * and falls back to firstRun().
+         *
+         * Side effects: Alert dialog; DOM append to launch_id; hides the element.
+         */
+        function onError(): void {
+            if (!providerSession.active()) return;
+            if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
+            (window as any)._pendingProvId = "";
+            if (s !== "no") {
+                alert(s + ": load error!!!");
+            }
+            $(launch_id)
+                .append("<br/><b>Failed to load provider script !!!</b>")
+                .hide();
+            firstRun();
+        }
+
+        if (!$("#launch").is(":visible")) {
+            if (stbIsPlaying()) stbStop();
+            $("#dialogbox")
+                .html(
+                    '<div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div>'
+                )
+                .show();
+            launch_id = "#dialogbox";
+            closeList();
+        }
+
+        version = savedPopup.ver;
+        getCurrentChannelEpg = null;
+        getMediaArray = null;
+        // Assign provider callback stubs (ported from original)
+        if (typeof _playChannel !== "undefined") playChannel = _playChannel;
+        if (typeof _channelsList !== "undefined") channelsList = _channelsList;
+        if (typeof _bucketsList !== "undefined") bucketsList = _bucketsList;
+        if (typeof _playMedia !== "undefined") playMedia = _playMedia;
+        if (typeof _providerGetItem !== "undefined")
+            providerGetItem = _providerGetItem;
+        if (typeof _providerHasItem !== "undefined")
+            providerHasItem = _providerHasItem;
+        if (typeof _providerHasItemValue !== "undefined")
+            providerHasItemValue = _providerHasItemValue;
+        if (typeof _providerSetItem !== "undefined")
+            providerSetItem = _providerSetItem;
+        if (typeof _providerDelItem !== "undefined")
+            providerDelItem = _providerDelItem;
+
+        // Restore base popup state (saved before any provider script ran)
+        if (savedPopup.popupActions.length) {
+            popupActions.splice(
+                0,
+                popupActions.length,
+                ...savedPopup.popupActions
+            );
+            popupArray.splice(0, popupArray.length, ...savedPopup.popupArray);
+            popupDetail.splice(
+                0,
+                popupDetail.length,
+                ...savedPopup.popupDetail
+            );
+        } else {
+            // Fallback when savedPopup was never snapshotted: reuse the single
+            // concat allocator published on window.* by src/index.ts. Do not
+            // hardcode a second 20-label table here (HS5 / prov.js depend on
+            // one shared popupActions/popupArray/popupDetail identity).
+            var wPop = window as any;
+            if (wPop.popupActions && wPop.popupActions.length) {
+                popupActions.splice(
+                    0,
+                    popupActions.length,
+                    ...wPop.popupActions
+                );
+                popupArray.splice(0, popupArray.length, ...wPop.popupArray);
+                popupDetail.splice(0, popupDetail.length, ...wPop.popupDetail);
+            } else {
+                console.warn(
+                    "[loadProv] popup fallback: window.popupActions empty; menu may be wrong"
                 );
             }
-        },
-        function (e: any) {
-            console.error(e);
-            onError();
         }
-    );
+
+        var matchResult = window.location.search.match(/\?([^&]+)/);
+        // Keep an explicitly selected demo after restarting a URL-pinned player.
+        // The existing ?clear reset must still be able to clear that selection.
+        if (
+            demoProviderSelection ||
+            providerId === "demo" ||
+            (stbGetItem("ottplayprov") === "demo" &&
+                (!matchResult || matchResult[1].replace(/!/g, "") !== "clear"))
+        )
+            matchResult = null;
+        s = "";
+        if (matchResult !== null) {
+            s = matchResult[1].replace(/!/g, "");
+            if (s === "clear") {
+                stbSetItem("ottplayprov", "");
+                stbSetItem("noSelProv", "0");
+                s = "";
+            }
+            if (s.indexOf("*") > -1 && !stbGetItem("ottplayprov")) {
+                s = s.replace(/\*/g, "");
+                if (isProviderAllowed(s) && providerIds.indexOf(s) > -1) {
+                    stbSetItem("ottplayprov", s);
+                    stbSetItem("noSelProv", "1");
+                    s = "";
+                }
+            }
+            if (!isProviderAllowed(s) || providerIds.indexOf(s) === -1) s = "";
+        }
+        if (s) removeOption(showProviderSelection);
+        else
+            s =
+                demoProviderSelection ||
+                (providerId === "demo"
+                    ? "demo"
+                    : stbGetItem("ottplayprov") || s);
+        if (!isProviderAllowed(s) || providerIds.indexOf(s) === -1) s = "";
+        if (!s) {
+            s = "no";
+            onError();
+            return;
+        }
+        if (Number.parseInt(stbGetItem("noSelProv") || "0"))
+            removeOption(showProviderSelection);
+        else {
+            $(launch_id).append("<br/>");
+            $(launch_id).append(
+                document.createTextNode("Loading provider " + s + " script ...")
+            );
+            removeOption(edit_dealer);
+        }
+        providerRuntime.loadScript(
+            providerSession,
+            getScriptDOM,
+            host + "/prov/" + s + "/prov.js?" + __cv,
+            function () {
+                if ((window as any).__ottCommandChannelLoad !== commandLoad)
+                    return;
+                // Future guide/media/stream requests keep their provider ownership even when
+                // invoked later from UI callbacks. Catalog fetches have a separate
+                // reload lifetime below, so do not bind getChannelsArray here.
+                providerRuntime.bind(providerSession, [
+                    "getEPGchanel",
+                    "getEPGchanelCur",
+                    "getMediaArray",
+                    "getChannelUrl",
+                    "getArchiveUrl",
+                ]);
+                try {
+                    if (typeof duneAddSettings === "function") {
+                        $(launch_id).append("<br/>Loading settings...");
+                        // Sync working arrays to window globals so the provider
+                        // script sees the current popup state (it mutates
+                        // window.popupActions/popupArray/popupDetail directly).
+                        (window as any).popupActions = popupActions;
+                        (window as any).popupArray = popupArray;
+                        (window as any).popupDetail = popupDetail;
+                        var idx =
+                            popupActions.indexOf(
+                                toggleProviderSettingsVisibility
+                            ) + 1;
+                        duneAddSettings(idx);
+                        // Sync the window globals back into the working arrays so
+                        // a provider's modifications become the new popup state.
+                        //
+                        // GUARDED ON PURPOSE. The three assignments above alias
+                        // window.popupActions/popupArray/popupDetail to the very
+                        // same array objects, and every prov/*/prov.js plugin
+                        // mutates them in place (.splice()/.push(), never
+                        // `= [...]`), so the working arrays are already current
+                        // here. The previous unguarded version did
+                        //     popupActions.length = 0;
+                        //     popupActions.push(...(window as any).popupActions);
+                        // which cleared the array and then spread that same,
+                        // now-empty array back into itself — leaving all three
+                        // arrays at length 0 and rendering the popup ("Menu")
+                        // completely blank. Only copy when a plugin genuinely
+                        // replaced the global with a different array object.
+                        syncFromWindow(popupActions, "popupActions");
+                        syncFromWindow(popupArray, "popupArray");
+                        syncFromWindow(popupDetail, "popupDetail");
+                        if (Number.parseInt(stbGetItem("noProvParam") || "0")) {
+                            var count = popupActions.indexOf(optionsList) - idx;
+                            popupArray.splice(idx, count);
+                            popupDetail.splice(idx, count);
+                            popupActions.splice(idx, count);
+                        }
+                        if (s === "demo") {
+                            // Demo has no provider settings of its own. Keep an
+                            // explicit exit in the main menu, after normal provider
+                            // settings have been filtered, without changing locks.
+                            var demoExit = popupActions.indexOf(optionsList);
+                            if (demoExit < 0) demoExit = popupActions.length;
+                            if (
+                                popupActions.indexOf(showProviderSelection) ===
+                                -1
+                            ) {
+                                popupActions.splice(
+                                    demoExit,
+                                    0,
+                                    showProviderSelection
+                                );
+                                popupArray.splice(
+                                    demoExit,
+                                    0,
+                                    _("Change provider")
+                                );
+                                popupDetail.splice(
+                                    demoExit,
+                                    0,
+                                    _("Choose provider")
+                                );
+                            }
+                            if (findOptionIndex(showProviderSelection) === -1)
+                                optionsArr.push({
+                                    action: showProviderSelection,
+                                    name: "Change provider",
+                                });
+                        }
+                        if (
+                            !isPlayDistribution() &&
+                            s !== "demo" &&
+                            Number.parseInt(stbGetItem("noSelProv") || "0") +
+                                Number.parseInt(
+                                    stbGetItem("noProvParam") || "0"
+                                ) !==
+                                2
+                        ) {
+                            const img = $("<img>");
+                            img.attr(
+                                "src",
+                                host + "/prov/" + s + "/logo.png?" + __av
+                            );
+                            img.attr("alt", " ");
+                            img.css("position", "absolute");
+                            if (launch_id !== "#dialogbox") {
+                                img.css("top", "100px");
+                                img.css("right", "100px");
+                                img.attr("width", "25%");
+                                img.css("max-height", "25%");
+                            } else {
+                                img.css("top", "6px");
+                                img.css("right", "6px");
+                                img.attr("height", "40");
+                            }
+                            img.on("error", function () {
+                                (this as HTMLImageElement).width = 0;
+                            });
+                            $(launch_id).append(img);
+                        }
+                        if (typeof getCurrentChannelEpg !== "function")
+                            getCurrentChannelEpg = epgCacheCapacity
+                                ? getChannelEpgCached
+                                : getChannelEpg;
+                        // Expose for processCurrentProgramQueue queue processing
+                        (window as any).getCachedChannelEpg =
+                            getCurrentChannelEpg;
+                        loadChannels();
+                    } else {
+                        console.error("duneAddSettings is not a function");
+                        onError();
+                    }
+                } catch (e) {
+                    console.error(e);
+                    (window as any)._pendingProvId = "";
+                    $(launch_id).append(
+                        "<br/><br/><b>Exception:</b> name " +
+                            metadataText((e as any).name) +
+                            ", message " +
+                            metadataText((e as any).message) +
+                            ", typeof " +
+                            typeof e
+                    );
+                }
+            },
+            function (e: any) {
+                console.error(e);
+                onError();
+            }
+        );
+    });
 }
 
 // ─── Load channels ────────────────────────────────────────────────────────────
@@ -1167,6 +1206,11 @@ export function loadProv(providerId?: string): void {
  * Edge case: Stops any active playback before loading.
  */
 export function loadChannels(): void {
+    if ((window as any).__ottClassicPlayback)
+        (window as any).__ottClassicPlayback.cancel();
+    var catalogSession = (
+        window as any
+    ).__ottProviderRuntime.classic.beginCatalog();
     var commandLoad = {};
     (window as any).__ottCommandChannelLoad = commandLoad;
     (window as any).commandChannelsReady = false;
@@ -1270,20 +1314,29 @@ export function loadChannels(): void {
     $(launch_id).append("<br/>Loading channel list...");
     // If getChannelsArray doesn't call back (e.g. empty playlist URL), hide spinners after timeout
     var _loadTimer = setTimeout(function () {
+        if (!catalogSession.active()) return;
         $("#dialogbox").hide();
         $("#buffering").hide();
         $("#launch").hide();
         if (typeof (window as any).clearBootHide === "function")
             (window as any).clearBootHide();
     }, 3000);
-    getChannelsArray(function () {
+    catalogSession.own(function () {
         clearTimeout(_loadTimer);
-        if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
-        finishPortChannelIdMigration(idMigration);
-        onChannelsLoaded();
-        // Startup callbacks may synchronously switch provider or reload channels.
-        if ((window as any).__ottCommandChannelLoad === commandLoad)
-            (window as any).commandChannelsReady = true;
+    });
+    catalogSession.run(function () {
+        getChannelsArray(
+            catalogSession.guard(function () {
+                clearTimeout(_loadTimer);
+                if ((window as any).__ottCommandChannelLoad !== commandLoad)
+                    return;
+                finishPortChannelIdMigration(idMigration);
+                onChannelsLoaded();
+                // Startup callbacks may synchronously switch provider or reload channels.
+                if ((window as any).__ottCommandChannelLoad === commandLoad)
+                    (window as any).commandChannelsReady = true;
+            })
+        );
     });
 }
 
