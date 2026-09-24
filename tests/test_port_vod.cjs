@@ -144,6 +144,7 @@ function fixture() {
         },
         listArray: [],
         listDataArray: [],
+        listElement: element("#list_window"),
         Math,
         medFavorites: [],
         medHistory: [],

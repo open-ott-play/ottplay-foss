@@ -498,7 +498,17 @@ export function createVPortalClient(
                     if (code === keys.RETURN || code === keys.EXIT) cancel();
                     return handled;
                 };
-                w.selectBoxKeyHandler = qualityHandler;
+                var screen = w.__ottClassicScreenPort;
+                if (
+                    screen &&
+                    typeof screen.decorateOwnedCallback === "function"
+                )
+                    qualityHandler = screen.decorateOwnedCallback(
+                        "picker",
+                        picker,
+                        qualityHandler
+                    );
+                else w.selectBoxKeyHandler = qualityHandler;
             },
             current
         );
