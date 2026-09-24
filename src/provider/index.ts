@@ -457,7 +457,6 @@ declare var epg: any;
 declare var curList: string[];
 declare var epgCacheByChannel: Record<string, any>;
 declare var epgCacheChannelOrder: string[];
-declare var _crData: { catIndex: number; data: any[]; selIndex: number };
 declare var aAspects: Record<string, any>;
 declare var aAudios: Record<string, any>;
 declare var aZooms: Record<string, any>;
@@ -1267,7 +1266,6 @@ export function loadChannels(): void {
     medHistory = providerGetJson("medHistory", []);
     medFavorites = providerGetJson("medFavorites", []);
     mediaUrls = null;
-    _crData = { catIndex: -1, data: [], selIndex: 0 };
     catIndex = providerGetNum("catIndex", 0);
     aAspects = providerGetJson("aAspects", {});
     aAudios = providerGetJson("aAudios", {});

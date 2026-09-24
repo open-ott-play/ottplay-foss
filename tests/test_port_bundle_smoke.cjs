@@ -1734,27 +1734,24 @@ async function main() {
         `,
             w
         );
-        // This function comes from channels' renamed core import in the real output.
-        // A stripped import used to leave videoElement unresolved here.
-        const originalVideo = w.video;
-        const originalSetPosition = w.stbSetPosTime;
-        const originalLength = w.stbGetLen;
-        const originalPlayType = w.playType;
-        const positions = [];
-        w.video = { currentTime: 0 };
-        w.stbSetPosTime = (position) => positions.push(position);
-        w.stbGetLen = () => 120;
-        w.playType = 1700000000;
-        w.seekArchive(42);
-        assert.deepEqual(
-            positions,
-            [42],
+        // Exercise a live entrypoint whose device predicate is a renamed import.
+        // The predicate must remain bound to the replaceable classic device ABI.
+        const originalIsPlaying = w.stbIsPlaying;
+        const originalPauseLive = w.__ottClassicArchive.pauseLive;
+        let pausedLive = 0;
+        w.__ottClassicArchive.pauseLive = () => pausedLive++;
+        w.stbIsPlaying = () => false;
+        w.liveStop();
+        assert.equal(pausedLive, 0, "Stopped device must not pause live");
+        w.stbIsPlaying = () => true;
+        w.liveStop();
+        assert.equal(
+            pausedLive,
+            1,
             "Actual bundle resolves renamed mutable imports"
         );
-        w.video = originalVideo;
-        w.stbSetPosTime = originalSetPosition;
-        w.stbGetLen = originalLength;
-        w.playType = originalPlayType;
+        w.stbIsPlaying = originalIsPlaying;
+        w.__ottClassicArchive.pauseLive = originalPauseLive;
         if (profile === "legacy") {
             assert.equal(
                 typeof w.Promise,

@@ -11,11 +11,7 @@ import {
 
 import {
     clearPlayTimeInterval,
-    videoPip as pipVideoElement,
-    playerMode,
-    stbIsPlaying,
-    stbPause,
-    video as videoElement,
+    stbIsPlaying as isDevicePlaying,
 } from "../core/index";
 import { translate as _ } from "../localization";
 import { settings } from "../settings/index";
@@ -2656,14 +2652,6 @@ export function recordsList(
     loadEpgListData(0, catIdx, chIdx, epgReturn, onDataReady);
 }
 
-export function selectREC(index: number): void {
-    var w = window as any;
-    var item = w.listArray[index];
-    if (!item) return;
-    if (typeof w.closeList === "function") w.closeList();
-    if (typeof (w as any).playMedia === "function") (w as any).playMedia(item);
-}
-
 /**
  * Render the detail panel for the currently selected record item.
  * Populates #listDetail with the media description.
@@ -3052,33 +3040,8 @@ if (typeof window !== "undefined")
  * pauses the underlying video element.
  */
 export function liveStop(): void {
-    if (!stbIsPlaying()) return;
+    if (!isDevicePlaying()) return;
     (window as any).__ottClassicArchive.pauseLive();
-}
-
-/**
- * Apply a seek inside the current archive stream, clamped to [0, len-15].
- * No-op when the platform cannot set the playback position.
- * Handles live TV (playType === 0) as a clock-skip by calling timeShift.
- *
- * @param offset - Target offset in seconds from the start of the stream.
- */
-function seekArchive(offset: number): void {
-    var w = window as any;
-    if (typeof w.stbSetPosTime !== "function" || !videoElement) return;
-    // Guard for media sentinel (playType < 0) only — live (playType === 0) is allowed
-    if (playType < 0 && playType !== -99999999999) return;
-    if (playType === 0) {
-        // Clock skip on live: offset is relative seconds from now
-        var delta = offset;
-        if (typeof window.timeShift === "function") window.timeShift(-delta);
-        return;
-    }
-    var len: number =
-        typeof (w.stbGetLen as any) === "function" ? w.stbGetLen() : 0;
-    if (offset < 0) offset = 0;
-    if (len && offset > len - 15) offset = len - 15;
-    w.stbSetPosTime(offset);
 }
 
 /** Decode the existing remote action at the compatibility boundary. */
@@ -4153,160 +4116,6 @@ export function searchMedia(e: MediaHistoryEntry): void {
                 e.title
             );
         }
-    };
-    if (typeof w.showEditKey === "function") w.showEditKey();
-}
-
-/**
- * Open the records search dialog.
- * Sets `window.editCaption` and `window.editvar` from persisted `medSearch`,
- * assigns a new `window.setEdit` that filters `_crData.data` by name/descr
- * and wires a dedicated listKeyHandler for the filtered result list.
- * Finally invokes `window.showEditKey` to display the input UI.
- *
- * Side effects:
- * - Mutates `window.editCaption`, `window.editvar`, `window.setEdit`,
- *   `window.listArray`, `window.getListItemFn`, `window.detailListActionFn`,
- *   `window.listKeyHandlerFn`, `_crData.selIndex`, `window.selIndex`.
- * - Reads/writes `medSearch` via stbGetItem/stbSetItem.
- * - Updates #listCaption and #listPodval innerHTML; hides #listPopUp.
- * - Calls `window.showPage`.
- */
-export function searchRec(): void {
-    var w = window as any;
-    w.editCaption = w._("String for search");
-    var e =
-        (typeof w.stbGetItem === "function" ? w.stbGetItem("medSearch") : "") ||
-        "";
-    w.editvar = e;
-    w.setEdit = function (): void {
-        if (!(w.editvar as string).length) return;
-        e = w.editvar;
-        if (typeof w.stbSetItem === "function") w.stbSetItem("medSearch", e);
-        setTimeout(function () {
-            w.selIndex = 0;
-            var t = e.toLowerCase();
-            w.listArray = w._crData.data.filter(function (e: any) {
-                return (
-                    e.name.toLowerCase().indexOf(t) !== -1 ||
-                    e.descr.toLowerCase().indexOf(t) !== -1
-                );
-            });
-            w.getListItemFn = function (e: any, _t: number): string {
-                return "&nbsp;&nbsp;" + metadataText(e.name);
-            };
-            w.detailListActionFn = detailREC;
-            w.listKeyHandlerFn = function (key: number): boolean {
-                switch (key) {
-                    case w.keys.EXIT:
-                        if (typeof w.closeList === "function") w.closeList();
-                        return true;
-                    case w.keys.LEFT:
-                        if (w.sArrowFun != 2) return false;
-                    // falls through
-                    case w.keys.RETURN:
-                        if (typeof w.catRecordsList === "function")
-                            w.catRecordsList(w.listCatIndex);
-                        return true;
-                    case w.keys.RIGHT:
-                        if (w.sArrowFun != 2) return false;
-                    // falls through
-                    case w.keys.N2:
-                    case w.keys.INFO:
-                        if (typeof w.showProgramInfo === "function")
-                            w.showProgramInfo(w.listArray[w.selIndex].name);
-                        return true;
-                    case w.keys.RW:
-                        if (w.sRewFun != 1) return false;
-                        if (typeof w.catRecordsList === "function")
-                            w.catRecordsList(w.listCatIndex);
-                        return true;
-                    case w.keys.PREV:
-                        if (w.sPNFun != 1) return false;
-                        if (typeof w.catRecordsList === "function")
-                            w.catRecordsList(w.listCatIndex);
-                        return true;
-                    case w.keys.FF:
-                        if (w.sRewFun != 1) return false;
-                        if (typeof w.showProgramInfo === "function")
-                            w.showProgramInfo(w.listArray[w.selIndex].name);
-                        return true;
-                    case w.keys.NEXT:
-                        if (w.sPNFun != 1) return false;
-                        if (typeof w.showProgramInfo === "function")
-                            w.showProgramInfo(w.listArray[w.selIndex].name);
-                        return true;
-                    case w.keys.N0:
-                    case w.keys.YELLOW:
-                    case w.keys.TOOLS:
-                        w._crData.selIndex = w.selIndex;
-                        if (typeof w.searchRec === "function") w.searchRec();
-                        return true;
-                    case w.keys.ENTER: {
-                        var tCh = w.listArray[w.selIndex].ch_id;
-                        var r = w.listArray[w.selIndex].time;
-                        w._crData.selIndex = w._crData.data.findIndex(function (
-                            e: any
-                        ) {
-                            return e.ch_id == tCh && e.time == r;
-                        });
-                        if (typeof w.selectREC === "function") w.selectREC();
-                        return true;
-                    }
-                }
-                return false;
-            };
-            var captionEl = document.getElementById("listCaption");
-            if (captionEl)
-                captionEl.textContent =
-                    w._("Archive. Category: ") +
-                    w.catsArray[w.listCatIndex] +
-                    ". " +
-                    w._("Search") +
-                    ':"' +
-                    e +
-                    '" (' +
-                    w.listArray.length +
-                    ")";
-            var footerElement = document.getElementById("listPodval");
-            if (footerElement) {
-                footerElement.innerHTML =
-                    w.renderButtonHint(
-                        w.keys.RETURN,
-                        w.strRETURN,
-                        "Records",
-                        w.sArrowFun == 2
-                            ? w.strLEFT
-                            : w.sRewFun == 1
-                              ? w.strRW
-                              : w.sPNFun == 1
-                                ? w.strPREV
-                                : ""
-                    ) +
-                    w.renderButtonHint(
-                        w.keys.N2,
-                        w.strInfo,
-                        "Description",
-                        "2",
-                        w.sArrowFun == 2
-                            ? w.strRIGHT
-                            : w.sRewFun == 1
-                              ? w.strFF
-                              : w.sPNFun == 1
-                                ? w.strNEXT
-                                : ""
-                    ) +
-                    w.renderButtonHint(
-                        w.keys.YELLOW,
-                        "",
-                        "Search",
-                        w.strTools,
-                        "0"
-                    );
-            }
-            $("#listPopUp").hide();
-            if (typeof w.showPage === "function") w.showPage();
-        });
     };
     if (typeof w.showEditKey === "function") w.showEditKey();
 }
