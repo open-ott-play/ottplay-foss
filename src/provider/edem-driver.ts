@@ -156,6 +156,21 @@ function createEdemProviderDriver(
             portal: ports.storage.get("vpurl") || "",
         };
     }
+    function rootPortalRoute(): any {
+        var link = settings().portal;
+        var route = ports.core.operatorPortalNavigate(
+            "",
+            "Edem.tv / iLook.tv",
+            link,
+            "",
+            decodeURIComponent
+        );
+        var header = /^portal::\[key:[^\]]*\]/.exec(link);
+        // The header owns its first closing bracket; all later brackets belong
+        // to the endpoint (including IPv6 and opaque path/query parameters).
+        if (header) route.endpoint = link.slice(header[0].length);
+        return route;
+    }
     function scheme(): string {
         if (ports.scheme) return ports.scheme();
         var location = ports.location ? ports.location() : "";
@@ -391,13 +406,7 @@ function createEdemProviderDriver(
                     target.vportalSource !== mediaSource()
                 )
                     throw new Error("Retired portal node");
-                var root = ports.core.operatorPortalNavigate(
-                    "",
-                    "Edem.tv / iLook.tv",
-                    settings().portal,
-                    "",
-                    decodeURIComponent
-                );
+                var root = rootPortalRoute();
                 route =
                     target === "" || target == null
                         ? root
@@ -580,13 +589,7 @@ function createEdemProviderDriver(
                 )
                     throw new Error("Retired portal media");
                 playable.vportalSource = mediaSource();
-                route = ports.core.operatorPortalNavigate(
-                    "",
-                    "Edem.tv / iLook.tv",
-                    settings().portal,
-                    "",
-                    decodeURIComponent
-                );
+                route = rootPortalRoute();
                 if (!route.endpoint) throw new Error("Missing portal endpoint");
                 params = ports.core.operatorPortalParams(
                     route.key,
@@ -1039,7 +1042,14 @@ function mountEdemProvider(
                     return;
                 }
             } else if (field === "portal") {
-                value = value.replace("%5B", "[").replace("%5D", "]");
+                var header =
+                    /^portal::(?:\[|%5b)key:([\s\S]*?)(?:\]|%5d)/i.exec(value);
+                if (header)
+                    value =
+                        "portal::[key:" +
+                        header[1] +
+                        "]" +
+                        value.slice(header[0].length);
                 if (value && value.indexOf("portal::[key:") !== 0) {
                     host.alert(portalHint);
                     if (active() && version === editor) host.showEditKey();

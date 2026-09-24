@@ -144,8 +144,17 @@ function createM3uProviderDriver(
         });
     }
     function defaultCompanion(): string {
-        if (ports.relay && ports.relay.indexOf("ottp.eu.org") === -1)
-            return ports.relay;
+        // Relative relays have no authority. Parse absolute/protocol-relative
+        // authorities without requiring the URL constructor on legacy hosts.
+        var authority = /^(?:https?:)?\/\/([^/?#\\]*)/i.exec(
+            ports.relay.trim()
+        );
+        var address = authority
+            ? authority[1].slice(authority[1].lastIndexOf("@") + 1)
+            : "";
+        var host = /^(\[[^\]]+\]|[^:]+)(?::[0-9]+)?$/.exec(address);
+        var hostname = host ? host[1].toLowerCase().replace(/\.$/, "") : "";
+        if (ports.relay && hostname !== "ottp.eu.org") return ports.relay;
         return !ports.m3u.crossOrigin() &&
             ports.m3u.originHost() !== "ottp.eu.org"
             ? "http://" + ports.m3u.originHost()

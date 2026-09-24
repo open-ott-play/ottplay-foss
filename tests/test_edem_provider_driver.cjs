@@ -613,6 +613,54 @@ test("settings retain key/list/CDN/portal behavior, prefix and remote navigation
     );
 });
 
+test("portal header normalization preserves complete opaque endpoints in root, navigation, page and playback requests", () => {
+    for (const [header, endpoint] of [
+        [
+            "portal::%5Bkey:other%5D",
+            "https://new.test/api?filters%5B0%5D=a%2Bb&filters%5B1%5D=c",
+        ],
+        [
+            "portal::%5bkey:other%5d",
+            "https://new.test/api?filters%5b0%5D=a%2Bb&filters%5B1%5d=c",
+        ],
+        [
+            "portal::[key:other%5d",
+            "https://new.test/[path]/api?filters[0]=a%2Bb&filters[1]=c",
+        ],
+        [
+            "portal::[key:other]",
+            "http://[2001:db8::1]:8080/api?filters[]=[]&literal=%255B%2F%26",
+        ],
+    ]) {
+        const f = setup();
+        f.host.duneAddSettings(0);
+        f.host.popupActions[0]();
+        f.host.selIndex = 3;
+        f.host.listKeyHandler(f.host.keys.ENTER);
+        f.host.editvar = header + endpoint;
+        f.host.setEdit();
+        assert.equal(f.saved.get("edvpurl"), "portal::[key:other]" + endpoint);
+        assert.equal(f.errors.length, 0);
+        f.driver.mediaResolve({ request: { cmd: "play", id: 7 } }, () => {});
+        assert.equal(f.requests.at(-1).settings.url, endpoint);
+        f.requests.at(-1).reject();
+        f.host.getMediaArray("", () => {});
+        assert.equal(f.requests.at(-1).settings.url, endpoint);
+        assert.equal(JSON.parse(f.requests.at(-1).settings.data).key, "other");
+        f.requests.at(-1).resolve({
+            count: 6,
+            items: [{ title: "previous", type: "stream" }, { type: "next" }],
+            type: "category",
+        });
+        f.driver.mediaPage(3, () => {});
+        assert.equal(f.requests.at(-1).settings.url, endpoint);
+        f.requests.at(-1).resolve({ items: [], type: "category" });
+        f.driver.mediaLoad({ request: { cmd: "open", id: 8 } }, 2, () => {});
+        assert.equal(f.requests.at(-1).settings.url, endpoint);
+        assert.equal(JSON.parse(f.requests.at(-1).settings.data).cmd, "open");
+    }
+});
+
 test("settings/account teardown reentry cannot overwrite storage or replay a replacement owner", () => {
     for (const row of [0, 1, 3]) {
         const f = setup();

@@ -134,6 +134,89 @@ test("direct timeout/proxy fallback/interception/local files retain request cont
     assert(local.requests.every((r) => r.settings.type === "POST"));
 });
 
+test("matching companion uses the relay hostname and preserves custom and relative relays without URL", () => {
+    for (const [relay, crossOrigin, origin, expected] of [
+        ["https://ottp.eu.org", true, "player.test", "http://ottp.eu.org"],
+        [
+            "https://ottp.eu.org:8443/api",
+            false,
+            "player.test:8080",
+            "http://player.test:8080",
+        ],
+        ["https://OTTP.EU.ORG/api", true, "player.test", "http://ottp.eu.org"],
+        ["//ottp.eu.org/api", true, "player.test", "http://ottp.eu.org"],
+        [
+            "https://user:pass@ottp.eu.org/api",
+            true,
+            "player.test",
+            "http://ottp.eu.org",
+        ],
+        [
+            "https://relay.test/ottp.eu.org",
+            true,
+            "player.test",
+            "https://relay.test/ottp.eu.org",
+        ],
+        [
+            "https://relay.test?host=ottp.eu.org",
+            true,
+            "player.test",
+            "https://relay.test?host=ottp.eu.org",
+        ],
+        [
+            "https://ottp.eu.org.relay.test",
+            true,
+            "player.test",
+            "https://ottp.eu.org.relay.test",
+        ],
+        [
+            "https://prefix-ottp.eu.org",
+            true,
+            "player.test",
+            "https://prefix-ottp.eu.org",
+        ],
+        [
+            "https://ottp.eu.org@relay.test",
+            true,
+            "player.test",
+            "https://ottp.eu.org@relay.test",
+        ],
+        [
+            "https://private.test/companion",
+            false,
+            "player.test",
+            "https://private.test/companion",
+        ],
+        [
+            "//private.test/companion",
+            false,
+            "player.test",
+            "//private.test/companion",
+        ],
+        ["/proxy/ottp.eu.org", true, "player.test", "/proxy/ottp.eu.org"],
+        ["./ottp.eu.org", false, "player.test", "./ottp.eu.org"],
+        ["", false, "player.test:8080", "http://player.test:8080"],
+        ["", false, "ottp.eu.org", "http://ottp.eu.org"],
+    ]) {
+        const f = fixture({ crossOrigin });
+        f.host.host = relay;
+        f.host.location.host = origin;
+        f.host.URL = undefined;
+        load(f);
+        const matches = f.requests.filter((request) =>
+            /\/m3u\/match-(channels|logos)$/.test(request.settings.url)
+        );
+        assert(matches.length > 0, relay);
+        for (const request of matches)
+            assert.equal(
+                request.settings.url.split("/m3u/")[0],
+                expected,
+                relay
+            );
+        f.dom.window.close();
+    }
+});
+
 test("native XMLTV metadata carries source aliases while browser protocol stays minimal", () => {
     const text =
         '#EXTM3U url-tvg="https://xml.test/one.xml,//xml.test/two.xml" foss-tvg="alias::https://xml.test/custom.xml"\n#EXTINF:-1 tvg-id="one" tvg-source="#2,#alias" tvg-name="Native name",One\nhttps://cdn.test/live\n';
