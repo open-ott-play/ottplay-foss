@@ -37,6 +37,10 @@ module.exports = function sharedCoreRuntime(context, options = {}) {
     const privateRuntime = require("./private-runtime.cjs");
     if (!context.window) context.window = context;
     for (const file of [
+        "src/ui/screen-controller.ts",
+        "src/ui/input-router.ts",
+        "src/ui/classic-screen-port.ts",
+        "src/ui/menu-registry.ts",
         "src/playback/session.ts",
         "src/playback/journal.ts",
         "src/playback/classic-adapter.ts",

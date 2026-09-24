@@ -379,22 +379,19 @@ var numberBuffer = "";
 var numberTimeout: any = null;
 
 // List state
-var isListVisible = false;
+declare var isListVisible;
 var listSelectionIndex = 0;
-var listDataArray: any[] = [];
-var getListItemFn: Function | null = null;
-var detailListActionFn: Function | null = null;
-var listKeyHandlerFn: Function | null = null;
-var selIndex = 0;
-var listArray: any[] = [];
+declare var listDataArray: any[];
+declare var getListItemFn: Function | null;
+declare var detailListActionFn: Function | null;
+declare var listKeyHandlerFn: Function | null;
+declare var selIndex;
+declare var listArray: any[];
 
 // Edit mode
-var isEditMode = false;
-var editCaption = "";
 var editValue = "";
 
 // Select box
-var isSelectBox = false;
 
 // PiP state
 var pipIndex: number | null = null;
@@ -404,80 +401,11 @@ var pipCatIndex = 0;
 var previewChan: any = null;
 var previewTimer: any = null;
 
-// Popup menu — SOLE concat-time allocator for popupActions/Array/Detail.
-// Keep src/app/state.ts OFF MODULES while these `var`s exist (const/let there
-// would SyntaxError or silently fork a second array). ESM tests import state.ts.
-var popupActions: any[] = [
-    toggleAspectRatio,
-    toggleZoom,
-    toggleAudioTrack,
-    toggleSubtitle,
-    popPrevProg,
-    popPause,
-    popStop,
-    popShift,
-    popTogglePip,
-    popStopPip,
-    popBuckets,
-    popEpg,
-    popRecords,
-    popMedia,
-    toggleProviderSettingsVisibility,
-    noop,
-    optionsList,
-    restart,
-    exitPortal,
-    infoList,
-];
-var popupArray: string[] = (window as any).popupArray || [
-    "Toggle Aspect Ratio",
-    "Toggle Zoom Mode",
-    "Switch sound track",
-    "Switch subtitle",
-    "Return to previous channel",
-    "Pause/Play",
-    "Restart stream / Live",
-    "Rewind",
-    "Call PiP / PiP exchange",
-    "Close PiP",
-    "Category selection",
-    "Show EPG and archive for channel",
-    "Show list of channel archive records",
-    "Show Media Library",
-    "",
-    "",
-    "Settings",
-    "Restart player",
-    "Exit player",
-    "Information",
-];
-var popupDetail: any[] = (window as any).popupDetail || [
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    "Show rewind window",
-    null,
-    null,
-    null,
-    null,
-    "Show list of channel archive records without duplication",
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-];
-
-// FCC multi-fav UI: append "Favorite lists" to the popup menu
-popupActions.push(popFavLists);
-popupArray.push("Favorite lists");
-popupDetail.push(null);
+// Provider codecs retain their array ABI; the registry owns built-in identities.
+var initialMenu = (window as any).__ottMenuRegistry.defaults(window as any);
+var popupActions: any[] = initialMenu.actions;
+var popupArray: string[] = (window as any).popupArray || initialMenu.labels;
+var popupDetail: any[] = (window as any).popupDetail || initialMenu.details;
 
 var savedPopup: {
     ver: string;
@@ -5933,10 +5861,14 @@ window.pluginInfo = pluginInfo;
 window.buttonsInfo = buttonsInfo;
 window.toggleDebugHudInfo = toggleDebugHudInfo;
 window.infoList = infoList;
+// Resolve the initial host actions now that callable ports are published.
+var resolvedMenu = (window as any).__ottMenuRegistry.defaults(window as any);
+popupActions.splice.apply(
+    popupActions,
+    [0, popupActions.length].concat(resolvedMenu.actions) as any
+);
+
 window.isListVisible = isListVisible;
-window.isEditMode = isEditMode;
-window.isSelectBox = isSelectBox;
-window.editCaption = editCaption;
 window.editValue = editValue;
 window.curColor = curColor;
 window.curColorB = curColorB;

@@ -453,7 +453,7 @@ for (const route of ["manifest", "native recovery"]) {
 {
     const f = fixture();
     f.w.$ = (selector: string) => ({ is: () => selector === "#listEdit" });
-    f.w.handleEditKey = (code: number) => f.calls.push(["edit", code]);
+    f.w.editKey = (code: number) => f.calls.push(["edit", code]);
     for (const key of [{ keyCode: 13 }, { which: 27 }]) {
         f.w.keyHandler({
             ...key,

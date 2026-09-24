@@ -195,6 +195,8 @@ async function testRenamedHelpers() {
         buffering = false;
         timers[1].callback();
         assert.equal(hidden, 1);
+        require("./helpers/screen-runtime.cjs")(c);
+        c.__ottClassicScreenPort.commitList();
         c.scheduleListDetailUpdate();
         c.scheduleListDetailUpdate();
         assert.equal(c.listDetailElement.innerHTML, "");

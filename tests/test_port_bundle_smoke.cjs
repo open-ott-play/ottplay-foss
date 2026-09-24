@@ -398,6 +398,11 @@ function fixture(profile) {
     );
     require("./helpers/shared-core-runtime.cjs")(w, { vendorOnly: true });
     for (const api of [
+        "__ottScreenController",
+        "__ottScreens",
+        "__ottInputRouter",
+        "__ottClassicScreenPort",
+        "__ottMenuRegistry",
         "__ottPlaybackSession",
         "__ottPlaybackJournal",
         "__ottArchiveSession",
@@ -426,6 +431,11 @@ function fixture(profile) {
 
 function assertPrivateRuntime(w, profile) {
     for (const [api, method] of [
+        ["__ottScreenController", "create"],
+        ["__ottScreens", "open"],
+        ["__ottInputRouter", "create"],
+        ["__ottClassicScreenPort", "commitList"],
+        ["__ottMenuRegistry", "open"],
         ["__ottPlaybackSession", "create"],
         ["__ottPlaybackJournal", "create"],
         ["__ottArchiveSession", "create"],
@@ -477,6 +487,11 @@ function assertPrivateRuntime(w, profile) {
         Array.from(w.__ottProviderDriverProfiles, (profile) => profile.id)
     );
     for (const name of [
+        "createScreenController",
+        "createInputRouter",
+        "createClassicScreenPort",
+        "createScreenMenuRegistry",
+        "screenMenuDefinitions",
         "createPlaybackJournal",
         "createArchiveController",
         "classicArchiveController",
@@ -525,6 +540,8 @@ function assertPrivateRuntime(w, profile) {
     }
     // Also catch a renamed top-level leak after optimizer-local mangling.
     for (const implementation of [
+        w.__ottScreenController.create,
+        w.__ottInputRouter.create,
         w.__ottPlaybackSession.create,
         w.__ottPlaybackJournal.create,
         w.__ottArchiveSession.create,
@@ -1373,6 +1390,60 @@ function exerciseProviderRuntime(profile) {
     );
 }
 
+function exerciseScreenRuntime(profile) {
+    const w = fixture(profile);
+    vm.runInContext(bundle, w, { filename: bundlePath, timeout: 5000 });
+    const originalQuery = w.$;
+    const visible = {};
+    w.$ = function (selector) {
+        const chain = originalQuery(selector);
+        chain.is = () => !!visible[selector];
+        chain.show = function () {
+            visible[selector] = true;
+            return chain;
+        };
+        chain.hide = function () {
+            visible[selector] = false;
+            return chain;
+        };
+        return chain;
+    };
+    const actions = [];
+    w.changeSelect = (delta) => actions.push(["move", delta]);
+    w.listArray = ["a", "b"];
+    w.listDataArray = w.listArray;
+    w.listKeyHandlerFn = () => false;
+    const list = w.__ottClassicScreenPort.commitList();
+    const key = (code) =>
+        w.keyHandler({
+            keyCode: code,
+            preventDefault() {},
+            stopPropagation() {},
+        });
+    key(w.keys.DOWN);
+    assert.deepEqual(actions, [["move", 1]]);
+    let confirmed = 0;
+    w.stbIsPlaying = () => true;
+    w.confirmBox("First", () => w.confirmBox("Second", () => confirmed++));
+    const stale = w.dialogBoxKeyHandler;
+    key(w.keys.ENTER);
+    stale(w.keys.ENTER);
+    assert.equal(confirmed, 0);
+    key(w.keys.ENTER);
+    assert.equal(confirmed, 1);
+    assert.equal(list.active(), true);
+    w.__ottClassicScreenPort.invalidate();
+    assert.equal(list.active(), false);
+    stale(w.keys.ENTER);
+    assert.equal(confirmed, 1);
+    const records = w.__ottMenuRegistry.importClassic(w);
+    assert(records.some((record) => record.id === "settings.open"));
+    assert(records.some((record) => record.id === "favorites.open"));
+    console.log(
+        "OK: actual " + profile + " bundle screen/input/menu ownership"
+    );
+}
+
 async function main() {
     // The bundle reassigns ott_device after HTML boot has already detected it.
     // Exercise that assignment with the webOS TV 25 UA published by LG:
@@ -1433,6 +1504,7 @@ async function main() {
         }
         assertPrivateRuntime(w, profile);
         if (profile === "modern" || profile === "legacy") {
+            exerciseScreenRuntime(profile);
             exercisePlaybackRuntime(w, profile);
             exerciseArchiveRuntime(profile);
             exerciseProviderRuntime(profile);

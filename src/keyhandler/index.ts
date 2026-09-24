@@ -15,8 +15,6 @@ import { translate as _ } from "../localization";
 import { settings } from "../settings";
 
 declare var $: any;
-declare var listKeyHandlerFn: (key: number) => boolean;
-declare var dialogBoxKeyHandler: ((key: number) => void) | null;
 
 // Virtual keyboard state (from ui/index.ts)
 declare var _keysSymbol: { s: string; a: () => void }[];
@@ -85,9 +83,6 @@ export var keys: Record<string, number> = {
  * Mode flags
  * --------------------------------------------------------------------------- */
 
-var isEditMode = false;
-var isSelectBox = false;
-
 /* ---------------------------------------------------------------------------
  * Main key dispatch
  * --------------------------------------------------------------------------- */
@@ -138,109 +133,13 @@ export function keyHandler(event: KeyboardEvent): void {
     if (typeof (window as any).setSleepTimeout === "function")
         (window as any).setSleepTimeout();
 
-    /* dialog box (PIN pad, etc.) */
-    try {
-        if (typeof $ !== "undefined" && $("#dialogbox").is(":visible")) {
-            if (typeof (window as any).dialogBoxKeyHandler === "function")
-                (window as any).dialogBoxKeyHandler(keyCode);
-            return;
+    (window as any).__ottClassicScreenPort.dispatch(
+        keyCode,
+        event,
+        function (command: ScreenCommand) {
+            handleMainKey(command.code || 0, event);
         }
-    } catch (_) {
-        /* ignore */
-    }
-
-    /* OSD select box (audio / subtitle / aspect / zoom numprog picker).
-     * showSelectBox registers window.selectBoxKeyHandler; without this branch
-     * the overlay stays on screen and ignores arrows / Enter / Escape. */
-    if (typeof (window as any).selectBoxKeyHandler === "function") {
-        event.preventDefault();
-        event.stopPropagation();
-        if ((window as any).selectBoxKeyHandler(keyCode)) return;
-        // Keep focus while the picker is open (do not fall through to channel keys).
-        return;
-    }
-
-    /* listAbout — value selector (grid of options) */
-    try {
-        if (typeof $ !== "undefined" && $("#listAbout").is(":visible")) {
-            if (
-                typeof (window as any).aboutKeyHandler === "function" &&
-                (window as any).aboutKeyHandler(keyCode)
-            )
-                return;
-            switch (keyCode) {
-                case (window as any).keys.ENTER:
-                case (window as any).keys.EXIT:
-                case (window as any).keys.RETURN:
-                    $("#listAbout").text("").hide();
-                    (window as any).restoreListPanelState();
-                    (window as any).showPage();
-                    return;
-            }
-            return;
-        }
-    } catch (_) {
-        /* ignore */
-    }
-
-    try {
-        if (typeof $ !== "undefined" && $("#listEdit").is(":visible")) {
-            // Native #editvar focus: swallow Enter/Escape so the input does not
-            // keep the dialog open / insert a newline.
-            event.preventDefault();
-            event.stopPropagation();
-            handleEditKey(keyCode, event);
-            return;
-        }
-    } catch (_) {
-        /* ignore */
-    }
-    if (isEditMode) {
-        handleEditKey(keyCode, event);
-        return;
-    }
-    if (isSelectBox) {
-        handleSelectBoxKey(keyCode, event);
-        return;
-    }
-
-    /* Global keys: POWER, MUTE, VOL_UP, VOL_DOWN — handled before list check (matching original) */
-    switch (keyCode) {
-        case keys.POWER:
-            if (typeof (window as any).stbExit === "function")
-                (window as any).stbExit();
-            if (typeof (window as any).toggleStandby === "function")
-                (window as any).toggleStandby();
-            return;
-        case keys.MUTE:
-            if (typeof (window as any).stbToggleMute === "function")
-                (window as any).stbToggleMute();
-            return;
-        case keys.VOL_UP:
-            if (typeof (window as any).changeVolume === "function") {
-                (window as any).changeVolume(settings.volumeStep);
-                return;
-            }
-            break;
-        case keys.VOL_DOWN:
-            if (typeof (window as any).changeVolume === "function") {
-                (window as any).changeVolume(-settings.volumeStep);
-                return;
-            }
-            break;
-    }
-
-    if ((window as any).isListVisible) {
-        console.log(
-            "DBG keyHandler: list visible, keyCode=" +
-                keyCode +
-                " listKeyHandlerFn=" +
-                typeof listKeyHandlerFn
-        );
-        if (handleListKey(keyCode, event)) return;
-    }
-
-    handleMainKey(keyCode, event);
+    );
 }
 
 /* ---------------------------------------------------------------------------
@@ -309,532 +208,166 @@ function toggleMainPlayback(): void {
  *             RETURN dispatches based on settings.eFun (0-4). The PLAY/PAUSE toggle uses stbIsPlaying().
  */
 function handleMainKey(keyCode: number, event: KeyboardEvent): void {
+    var w = window as any;
+    var command: ScreenCommand = w.__ottClassicScreenPort.normalize(
+        keyCode,
+        event
+    );
     event.preventDefault();
     event.stopPropagation();
-
-    /* 0-9: channel number input and archive navigation */
-    var digit = -1;
-    for (var n = 0; n <= 9; n++) {
-        if (keyCode === keys["N" + n]) {
-            digit = n;
-            break;
-        }
+    function call(name: string, ...args: any[]) {
+        if (typeof w[name] === "function") return w[name].apply(w, args);
     }
-    if (digit !== -1) {
-        // Both archive timestamps and negative VOD sentinels use transport keys.
-        if ((window as any).playType) {
-            switch (keyCode) {
-                case keys.N1:
-                    if (typeof (window as any).shiftArchive === "function")
-                        (window as any).shiftArchive(-(window as any).s13dur);
-                    return;
-                case keys.N3:
-                    if (typeof (window as any).shiftArchive === "function")
-                        (window as any).shiftArchive((window as any).s13dur);
-                    return;
-                case keys.N4:
-                    if (typeof (window as any).shiftArchive === "function")
-                        (window as any).shiftArchive(-(window as any).s46dur);
-                    return;
-                case keys.N6:
-                    if (typeof (window as any).shiftArchive === "function")
-                        (window as any).shiftArchive((window as any).s46dur);
-                    return;
-                case keys.N7:
-                    if (typeof (window as any).shiftArchive === "function")
-                        (window as any).shiftArchive(-(window as any).s79dur);
-                    return;
-                case keys.N9:
-                    if (typeof (window as any).shiftArchive === "function")
-                        (window as any).shiftArchive((window as any).s79dur);
-                    return;
-                case keys.N2:
-                    if (typeof (window as any).keyFun === "function")
-                        (window as any).keyFun(20);
-                    return;
-                case keys.N5:
-                    if (typeof (window as any).keyFun === "function")
-                        (window as any).keyFun(21);
-                    return;
-                case keys.N8:
-                    // Map N8 to STOP (legacy stbPlayer.js:L7224-7226)
-                    if (typeof (window as any).showShift === "function")
-                        (window as any).showShift(
-                            _(
-                                (window as any).playType
-                                    ? "Live"
-                                    : "Restart stream"
-                            )
-                        );
-                    if (typeof (window as any).playChannel === "function") {
-                        (window as any).playChannel(
-                            (window as any).catIndex,
-                            (window as any).primaryIndex
-                        );
-                    }
-                    return;
-                case keys.N0:
-                    toggleMainPlayback();
-                    return;
-            }
-        } else {
-            // Live TV: N0 pauses live if no channel number is being entered.
-            if (keyCode === keys.N0 && (window as any).nProg === "") {
-                if (typeof (window as any).liveStop === "function")
-                    (window as any).liveStop();
-                return;
-            }
-        }
-        // Standard number input for channel selection
-        if (typeof (window as any).numberProg === "function") {
-            (window as any).numberProg(digit);
-        }
+    function currentChannel() {
+        call("playChannel", w.catIndex, w.primaryIndex);
+    }
+    function live() {
+        call("showShift", _(w.playType ? "Live" : "Restart stream"));
+        currentChannel();
+    }
+    function guide() {
+        call("epgList", w.catIndex, w.primaryIndex, false);
+    }
+    var digit = /^digit-([0-9])$/.exec(command.id);
+    if (digit) {
+        var value = Number(digit[1]);
+        if (w.playType) {
+            var seeks: any = {
+                1: -w.s13dur,
+                3: w.s13dur,
+                4: -w.s46dur,
+                6: w.s46dur,
+                7: -w.s79dur,
+                9: w.s79dur,
+            };
+            if (seeks[value] !== undefined) call("shiftArchive", seeks[value]);
+            else if (value === 2 || value === 5)
+                call("keyFun", value === 2 ? 20 : 21);
+            else if (value === 8) live();
+            else if (value === 0) toggleMainPlayback();
+        } else if (value === 0 && w.nProg === "") call("liveStop");
+        else call("numberProg", value);
         return;
     }
-
-    switch (keyCode) {
-        case keys.UP:
-            keyFun(settings.auFun);
-            break;
-        case keys.DOWN:
-            keyFun(settings.adFun);
-            break;
-        case keys.LEFT:
-            keyFun(settings.alFun);
-            break;
-        case keys.RIGHT:
-            keyFun(settings.arFun);
-            break;
-        case keys.ENTER:
-            if (
-                (window as any).playType &&
-                (window as any).forcePlay === false
-            ) {
-                toggleMainPlayback();
-                break;
+    var configured: any = {
+        blue: "bFun",
+        down: "adFun",
+        forward: "ffFun",
+        green: "gFun",
+        left: "alFun",
+        next: "nextFun",
+        previous: "prevFun",
+        red: "rFun",
+        rewind: "rewFun",
+        right: "arFun",
+        up: "auFun",
+        yellow: "yFun",
+    };
+    if (configured[command.id]) {
+        if (
+            !settings.noColorKeys ||
+            !/^(red|green|yellow|blue)$/.test(command.id)
+        )
+            keyFun((settings as any)[configured[command.id]]);
+        return;
+    }
+    var actions: { [id: string]: () => void } = {
+        accept: function () {
+            if (w.playType && w.forcePlay === false) toggleMainPlayback();
+            else if (w.playType === -1e11) call("mediaList", null);
+            else if (w.playType > 0 && !settings.okFun) guide();
+            else actions.channels();
+        },
+        aspect: function () {
+            call("stbToggleAspectRatio");
+        },
+        audio: function () {
+            call("stbToggleAudioTrack");
+        },
+        back: function () {
+            if (w.$i1 && w.$i1.is(":visible")) {
+                call("infoBarHide");
+                return;
             }
-            if ((window as any).playType === -1e11) {
-                if (typeof (window as any).mediaList === "function")
-                    (window as any).mediaList(null);
-                break;
-            }
-            if ((window as any).playType > 0 && !settings.okFun) {
-                if (typeof (window as any).epgList === "function")
-                    (window as any).epgList(
-                        (window as any).catIndex,
-                        (window as any).primaryIndex,
-                        false
-                    );
-                break;
-            }
-        // fall through to CH_LIST for live TV
-        case keys.CH_LIST:
-            (window as any).isListVisible = true;
-            if (typeof (window as any).channelsList === "function")
-                (window as any).channelsList(
-                    (window as any).catIndex,
-                    (window as any).primaryIndex
-                );
-            break;
-        case keys.RETURN:
-            if (
-                typeof (window as any).$i1 !== "undefined" &&
-                (window as any).$i1.is(":visible")
-            ) {
-                if (typeof (window as any).infoBarHide === "function")
-                    (window as any).infoBarHide();
-                break;
-            }
-            switch (settings.eFun) {
-                case 0:
-                    break;
-                case 1:
-                    if (typeof (window as any).exitPortal === "function")
-                        (window as any).exitPortal();
-                    break;
-                case 2:
-                    if (typeof (window as any).joyMenu === "function")
-                        (window as any).joyMenu();
-                    break;
-                case 3:
-                    if (typeof (window as any).popupList === "function")
-                        (window as any).popupList();
-                    break;
-                case 4:
-                    if (typeof (window as any).prevProg === "function")
-                        (window as any).prevProg();
-                    break;
-            }
-            break;
-        case keys.EXIT:
-            if (typeof (window as any).exitPortal === "function")
-                (window as any).exitPortal();
-            break;
-        case keys.PLAY:
-        case keys.PAUSE:
-            toggleMainPlayback();
-            break;
-        case keys.STOP:
-            // Show "Live" or "Restart stream" before switching (legacy stbPlayer.js:L7253-7254)
-            if (typeof (window as any).showShift === "function")
-                (window as any).showShift(
-                    _(
-                        String(
-                            (window as any).playType ? "Live" : "Restart stream"
-                        )
-                    )
-                );
-            if (typeof (window as any).playChannel === "function") {
-                (window as any).playChannel(
-                    (window as any).catIndex,
-                    (window as any).primaryIndex
-                );
-            }
-            break;
-        case keys.RW:
-            keyFun(settings.rewFun);
-            break;
-        case keys.FF:
-            keyFun(settings.ffFun);
-            break;
-        case keys.PREV:
-            keyFun(settings.prevFun);
-            break;
-        case keys.NEXT:
-            keyFun(settings.nextFun);
-            break;
-        case keys.MUTE:
-            if (typeof (window as any).stbToggleMute === "function")
-                (window as any).stbToggleMute();
-            break;
-        case keys.VOL_UP: {
-            var vUp =
-                (typeof (window as any).stbGetVolume === "function"
-                    ? (window as any).stbGetVolume()
-                    : 50) + settings.volumeStep;
-            if (vUp > 100) vUp = 100;
-            if (typeof (window as any).stbSetVolume === "function")
-                (window as any).stbSetVolume(vUp);
-            if (typeof (window as any).showShift === "function")
-                (window as any).showShift("Volume: " + vUp);
-            break;
-        }
-        case keys.VOL_DOWN: {
-            var vDown =
-                (typeof (window as any).stbGetVolume === "function"
-                    ? (window as any).stbGetVolume()
-                    : 50) - settings.volumeStep;
-            if (vDown < 0) vDown = 0;
-            if (typeof (window as any).stbSetVolume === "function")
-                (window as any).stbSetVolume(vDown);
-            if (typeof (window as any).showShift === "function")
-                (window as any).showShift("Volume: " + vDown);
-            break;
-        }
-        case keys.RED:
-            if (settings.noColorKeys) break;
-            keyFun(settings.rFun);
-            break;
-        case keys.GREEN:
-            if (settings.noColorKeys) break;
-            keyFun(settings.gFun);
-            break;
-        case keys.YELLOW:
-            if (settings.noColorKeys) break;
-            keyFun(settings.yFun);
-            break;
-        case keys.BLUE:
-            if (settings.noColorKeys) break;
-            keyFun(settings.bFun);
-            break;
-        case keys.POWER:
-            if (typeof (window as any).stbExit === "function")
-                (window as any).stbExit();
-            if (typeof (window as any).toggleStandby === "function")
-                (window as any).toggleStandby();
-            break;
-        case keys.INFO:
-            if (typeof (window as any).showChannelInfo === "function")
-                (window as any).showChannelInfo(settings.infoTimeout);
-            break;
-        case keys.EPG:
-            if (
-                (window as any).playType > -1 &&
-                typeof (window as any).epgList === "function"
-            ) {
-                (window as any).epgList(
-                    (window as any).catIndex,
-                    (window as any).primaryIndex,
-                    false
-                );
-            }
-            break;
-        case keys.MENU:
-        case keys.TOOLS:
-            if (typeof (window as any).popupList === "function")
-                (window as any).popupList();
-            break;
-        case keys.PIP:
-            if (typeof (window as any).togglePip === "function")
-                (window as any).togglePip();
-            break;
-        case keys.ASPECT:
-            if (typeof (window as any).stbToggleAspectRatio === "function")
-                (window as any).stbToggleAspectRatio();
-            break;
-        case keys.ZOOM:
-            if (typeof (window as any).stbToggleZoom === "function")
-                (window as any).stbToggleZoom();
-            break;
-        case keys.AUDIO:
-            if (typeof (window as any).stbToggleAudioTrack === "function")
-                (window as any).stbToggleAudioTrack();
-            break;
-        case keys.SUBTITLE:
-            // keys.SUBTITLE === 76 === Key L. stbEventToKeyCode normally
-            // consumes L for fullscreen and returns 0, so this case should
-            // not run for a plain L press. If it does reach here (host did
-            // not go through stbEventToKeyCode), toggle native FS on Tauri
-            // and document FS elsewhere — do NOT also toggle subtitles on L.
-            if (typeof (window as any).__TAURI__ !== "undefined") {
-                void stbToggleTauriNativeFullscreen();
-            } else if (isNormalScreen()) openFullscreen();
-            else closeFullscreen();
-            break;
-        case keys.SETUP:
-            (window as any).isListVisible = true;
-            if (typeof (window as any).optionsList === "function")
-                (window as any).optionsList();
-            break;
-        case keys.CH_UP:
-            if (typeof (window as any).plusProg === "function")
-                (window as any).plusProg();
-            break;
-        case keys.CH_DOWN:
-            if (typeof (window as any).minusProg === "function")
-                (window as any).minusProg();
-            break;
-        case keys.PRECH:
-            if (typeof (window as any).prevProg === "function")
-                (window as any).prevProg();
-            break;
-        case keys.LANG:
+            var exits = ["", "exitPortal", "joyMenu", "popupList", "prevProg"];
+            if (exits[settings.eFun]) call(exits[settings.eFun]);
+        },
+        "channel-down": function () {
+            call("minusProg");
+        },
+        "channel-up": function () {
+            call("plusProg");
+        },
+        channels: function () {
+            call("channelsList", w.catIndex, w.primaryIndex);
+        },
+        exit: function () {
+            call("exitPortal");
+        },
+        guide: function () {
+            if (w.playType > -1) guide();
+        },
+        info: function () {
+            call("showChannelInfo", settings.infoTimeout);
+        },
+        language: function () {
             if (!_keysSymbol[1].s) return;
             _keyP = false;
             _setLang(!_keyE);
             showEdit();
-            break;
+        },
+        menu: function () {
+            call("popupList");
+        },
+        mute: function () {
+            call("stbToggleMute");
+        },
+        pause: toggleMainPlayback,
+        "picture-in-picture": function () {
+            call("togglePip");
+        },
+        play: toggleMainPlayback,
+        power: function () {
+            call("stbExit");
+            call("toggleStandby");
+        },
+        "previous-channel": function () {
+            call("prevProg");
+        },
+        settings: function () {
+            call("optionsList");
+        },
+        stop: live,
+        subtitle: function () {
+            if (typeof w.__TAURI__ !== "undefined")
+                void stbToggleTauriNativeFullscreen();
+            else if (isNormalScreen()) openFullscreen();
+            else closeFullscreen();
+        },
+        tools: function () {
+            call("popupList");
+        },
+        "volume-down": function () {
+            volume(-1);
+        },
+        "volume-up": function () {
+            volume(1);
+        },
+        zoom: function () {
+            call("stbToggleZoom");
+        },
+    };
+    function volume(direction: number) {
+        var current =
+            typeof w.stbGetVolume === "function" ? w.stbGetVolume() : 50;
+        var value = Math.max(
+            0,
+            Math.min(100, current + direction * settings.volumeStep)
+        );
+        call("stbSetVolume", value);
+        call("showShift", "Volume: " + value);
     }
-}
-
-/* ---------------------------------------------------------------------------
- * List mode
- * --------------------------------------------------------------------------- */
-
-/**
- * Handle a key event while the channel/list overlay is visible.
- * First delegates to the page-specific `listKeyHandlerFn`, then falls back to built-in list navigation.
- *
- * @param keyCode - The numeric key code.
- * @param event - The original KeyboardEvent.
- * @returns boolean — true if the key was consumed (always true, since all keys are swallowed when list is visible).
- * @sideeffect Calls `window.changeSelect` or `window.closeList`. Prevents default and stops propagation.
- * @analysis When the list is visible, ALL keys are consumed (never fall through to main handler). ENTER is silently eaten.
- */
-function handleListKey(keyCode: number, event: KeyboardEvent): boolean {
-    event.preventDefault();
-    event.stopPropagation();
-    // sArrowFun == 1: LEFT/RIGHT control volume instead of page navigation (legacy stbPlayer.js:L7138)
-    if ((window as any).sArrowFun === 1) {
-        switch (keyCode) {
-            case keys.LEFT:
-                if (typeof (window as any).changeVolume === "function")
-                    (window as any).changeVolume(-(window as any).sVolumeStep);
-                return true;
-            case keys.RIGHT:
-                if (typeof (window as any).changeVolume === "function")
-                    (window as any).changeVolume((window as any).sVolumeStep);
-                return true;
-        }
-    }
-    // Original pattern: call page-specific handler FIRST with raw keyCode (number)
-    if (typeof listKeyHandlerFn === "function") {
-        var handled = listKeyHandlerFn(keyCode);
-        if (handled) return true;
-    }
-    // Fallback: common list key handling (matching original keyHandler inline code)
-    switch (keyCode) {
-        case keys.EXIT:
-            if (typeof (window as any).closeList === "function")
-                (window as any).closeList();
-            return true;
-        case keys.UP:
-            if (typeof (window as any).changeSelect === "function")
-                (window as any).changeSelect(-1);
-            return true;
-        case keys.DOWN:
-            if (typeof (window as any).changeSelect === "function")
-                (window as any).changeSelect(1);
-            return true;
-        case keys.LEFT:
-        case keys.RW:
-        case keys.CH_UP:
-            if (typeof (window as any).changeSelect === "function")
-                (window as any).changeSelect(
-                    -(
-                        (window as any).listPageSize ||
-                        (window as any).pageSize ||
-                        25
-                    )
-                );
-            return true;
-        case keys.RIGHT:
-        case keys.FF:
-        case keys.CH_DOWN:
-            if (typeof (window as any).changeSelect === "function")
-                (window as any).changeSelect(
-                    (window as any).listPageSize ||
-                        (window as any).pageSize ||
-                        25
-                );
-            return true;
-        case keys.PREV:
-            if ((window as any).sPNFun === 3) {
-                if (typeof (window as any).changeSelect === "function")
-                    (window as any).changeSelect(-(window as any).selIndex);
-            } else {
-                if (typeof (window as any).changeSelect === "function")
-                    (window as any).changeSelect(
-                        -(
-                            (window as any).listPageSize ||
-                            (window as any).pageSize ||
-                            25
-                        )
-                    );
-            }
-            return true;
-        case keys.NEXT:
-            if ((window as any).sPNFun === 3) {
-                if (typeof (window as any).changeSelect === "function")
-                    (window as any).changeSelect(
-                        ((window as any).listArray
-                            ? (window as any).listArray.length
-                            : 0) -
-                            (window as any).selIndex -
-                            1
-                    );
-            } else {
-                if (typeof (window as any).changeSelect === "function")
-                    (window as any).changeSelect(
-                        (window as any).listPageSize ||
-                            (window as any).pageSize ||
-                            25
-                    );
-            }
-            return true;
-        // ENTER not handled by page-specific handler is consumed silently (matches original)
-        case keys.ENTER:
-            return true;
-    }
-    // In the original, when list is visible ALL keys are consumed (never fall through to main handler)
-    return true;
-}
-
-/* ---------------------------------------------------------------------------
- * Edit mode
- * --------------------------------------------------------------------------- */
-
-/**
- * Handle a key event while an edit field is active.
- * Physical keyboard printable characters are typed directly; backspace deletes the character before the cursor.
- * Otherwise delegates to `window.editKey(keyCode)` or handles ENTER/RETURN/EXIT natively.
- *
- * @param keyCode - The numeric key code.
- * @param event - The original KeyboardEvent (provides `.key` for physical keyboard detection).
- * @returns void
- * @sideeffect Sets `isEditMode = false`, modifies `window.editvar` and `window.editPos`, calls `window._changeEdit`,
- *             `window.setEdit`, or `window.restoreListPanelState`.
- * @analysis Single printable characters (event.key.length === 1) are inserted directly, bypassing `editKey`.
- *             Backspace deletes one character before the cursor position. ENTER calls setEdit; RETURN/EXIT calls restoreListPanelState.
- */
-function handleEditKey(keyCode: number, event: KeyboardEvent): void {
-    isEditMode = false;
-    // Physical keyboard: type single printable characters directly
-    // (bypasses editKey which uses keyCodes that collide STB remote keys)
-    if (event.key && event.key.length === 1) {
-        var ev = (window as any).editvar || "";
-        var ep =
-            (window as any).editPos !== undefined
-                ? (window as any).editPos
-                : ev.length;
-        (window as any).editvar = ev.substr(0, ep) + event.key + ev.substr(ep);
-        (window as any).editPos = ep + 1;
-        if (typeof (window as any)._changeEdit === "function")
-            (window as any)._changeEdit();
-        return;
-    }
-    // Backspace on physical keyboard → delete char before cursor
-    if (event.key === "Backspace") {
-        var ev = (window as any).editvar || "";
-        var ep =
-            (window as any).editPos !== undefined
-                ? (window as any).editPos
-                : ev.length;
-        if (ep > 0) {
-            (window as any).editvar = ev.substr(0, ep - 1) + ev.substr(ep);
-            (window as any).editPos = ep - 1;
-            if (typeof (window as any)._changeEdit === "function")
-                (window as any)._changeEdit();
-        }
-        return;
-    }
-    var editFn = (window as any).editKey;
-    if (typeof editFn === "function") {
-        editFn(keyCode);
-        return;
-    }
-    if (keyCode === keys.ENTER) {
-        if (typeof (window as any).setEdit === "function")
-            (window as any).setEdit();
-    } else if (
-        (keyCode === keys.RETURN || keyCode === keys.EXIT) &&
-        typeof (window as any).restoreListPanelState === "function"
-    )
-        (window as any).restoreListPanelState();
-}
-
-/* ---------------------------------------------------------------------------
- * Select box mode
- * --------------------------------------------------------------------------- */
-
-/**
- * Handle a key event while a select-box (value picker) is visible.
- * Supports UP/DOWN for navigation and ENTER/RETURN/EXIT to dismiss.
- *
- * @param keyCode - The numeric key code.
- * @param event - The original KeyboardEvent.
- * @returns void
- * @sideeffect Calls `window.changeSelect(delta)`. Sets `isSelectBox = false` on confirm/cancel.
- * @analysis Only arrow keys and confirm/cancel keys are handled; all others are silently ignored.
- */
-function handleSelectBoxKey(keyCode: number, event: KeyboardEvent): void {
-    switch (keyCode) {
-        case keys.UP:
-            if (typeof (window as any).changeSelect === "function")
-                (window as any).changeSelect(-1);
-            break;
-        case keys.DOWN:
-            if (typeof (window as any).changeSelect === "function")
-                (window as any).changeSelect(1);
-            break;
-        case keys.ENTER:
-            isSelectBox = false;
-            break;
-        case keys.RETURN:
-        case keys.EXIT:
-            isSelectBox = false;
-            break;
-    }
+    if (actions[command.id]) actions[command.id]();
 }
 
 /* ---------------------------------------------------------------------------
@@ -878,156 +411,110 @@ export function dispatchKey(keyCode: number, event?: Event): void {
  *             Function 20 handles the "restart current program" use case with boundary checking against epgArray.
  */
 export function keyFun(fn: number): void {
-    switch (fn) {
-        case 0:
-            if ((window as any).playType > -1) {
-                (window as any).recordsList(
-                    (window as any).catIndex,
-                    (window as any).primaryIndex,
-                    false
-                );
-            }
-            return;
-        case 1:
-            if (typeof (window as any).popupList === "function")
-                (window as any).popupList();
-            return;
-        case 2:
-            if (typeof (window as any).prevProg === "function")
-                (window as any).prevProg();
-            return;
-        case 3:
-            if (typeof (window as any).shiftArchiveSelect === "function")
-                (window as any).shiftArchiveSelect(0);
-            return;
-        case 4:
-            if (typeof (window as any).showChannelInfo === "function")
-                (window as any).showChannelInfo();
-            return;
-        case 5:
-            if (typeof (window as any).toggleAspectRatio === "function")
-                (window as any).toggleAspectRatio();
-            return;
-        case 6:
-            if (typeof (window as any).toggleAudioTrack === "function")
-                (window as any).toggleAudioTrack();
-            return;
-        case 7:
-            if (typeof (window as any).togglePip === "function")
-                (window as any).togglePip();
-            return;
-        case 8:
-            (window as any).pipIndex = null;
-            if (typeof (window as any).stbStopPip === "function")
-                (window as any).stbStopPip();
-            return;
-        case 9:
-            if (typeof (window as any).bucketsList === "function")
-                (window as any).bucketsList((window as any).catIndex);
-            return;
-        case 10:
-            if (
-                (window as any).playType > -1 &&
-                typeof (window as any).epgList === "function"
-            ) {
-                (window as any).epgList(
-                    (window as any).catIndex,
-                    (window as any).primaryIndex,
-                    false
-                );
-            }
-            return;
-        case 11:
-            if (typeof (window as any).popMedia === "function")
-                (window as any).popMedia();
-            return;
-        case 12:
-            if (typeof (window as any).joyMenu === "function")
-                (window as any).joyMenu();
-            return;
-        case 13:
-            if (typeof (window as any).changeVolume === "function")
-                (window as any).changeVolume((window as any).sVolumeStep);
-            return;
-        case 14:
-            if (typeof (window as any).changeVolume === "function")
-                (window as any).changeVolume(-(window as any).sVolumeStep);
-            return;
-        case 15:
-            if ((window as any).playType) {
-                if (typeof (window as any).shiftArchiveSelect === "function")
-                    (window as any).shiftArchiveSelect(60);
-            } else if (typeof (window as any).plusProg === "function")
-                (window as any).plusProg();
-            return;
-        case 16:
-            if ((window as any).playType) {
-                if (typeof (window as any).shiftArchiveSelect === "function")
-                    (window as any).shiftArchiveSelect(0);
-            } else if (typeof (window as any).minusProg === "function")
-                (window as any).minusProg();
-            return;
-        case 17:
-            if (typeof (window as any).toggleSubtitle === "function")
-                (window as any).toggleSubtitle();
-            return;
-        case 18:
-            if (typeof (window as any).shiftArchive === "function")
-                (window as any).shiftArchive(-60);
-            return;
-        case 19:
-            if ((window as any).playType) {
-                if (typeof (window as any).shiftArchive === "function")
-                    (window as any).shiftArchive(60);
-            } else if (typeof (window as any).shiftArchiveSelect === "function")
-                (window as any).shiftArchiveSelect(-60);
-            return;
-        case 20:
-            if ((window as any).playType < 0) {
-                (window as any).shiftArchive(-6e6);
-                return;
-            }
-            if (!(window as any).playType) {
-                (window as any).timeShift(0);
-                return;
-            }
-            if (
-                (window as any).playType +
-                    (window as any).playTime -
-                    (window as any).epgArray[(window as any).curProg].time >
-                30
-            ) {
-                (window as any).playArchive(
-                    (window as any).epgArray[(window as any).curProg].time
-                );
-            } else {
-                (window as any).playArchive(
-                    (window as any).epgArray[(window as any).curProg - 1].time
-                );
-            }
-            return;
-        case 21:
-            if ((window as any).playType < 0) return;
-            if (!(window as any).playType) {
-                (window as any).shiftArchiveSelect(-60);
-                return;
-            }
-            if (
-                (window as any).epgArray[(window as any).curProg + 1].time <
-                Date.now() / 1e3
-            ) {
-                (window as any).playArchive(
-                    (window as any).epgArray[(window as any).curProg + 1].time
-                );
-            } else {
-                (window as any).showShift(_("Live"));
-                (window as any).playChannel(
-                    (window as any).catIndex,
-                    (window as any).primaryIndex
-                );
-            }
-            return;
+    var w = window as any;
+    var id = w.__ottInputRouter.binding(fn);
+    function call(name: string, ...args: any[]) {
+        if (typeof w[name] === "function") return w[name].apply(w, args);
     }
+    var actions: { [id: string]: () => void } = {
+        "archive.minute-back": function () {
+            call("shiftArchive", -60);
+        },
+        "archive.minute-forward": function () {
+            if (w.playType) call("shiftArchive", 60);
+            else call("shiftArchiveSelect", -60);
+        },
+        "archive.records": function () {
+            if (w.playType > -1)
+                call("recordsList", w.catIndex, w.primaryIndex, false);
+        },
+        "archive.seek": function () {
+            call("shiftArchiveSelect", 0);
+        },
+        "audio.track": function () {
+            call("toggleAudioTrack");
+        },
+        "channel.previous": function () {
+            call("prevProg");
+        },
+        "channels.categories": function () {
+            call("bucketsList", w.catIndex);
+        },
+        "guide.open": function () {
+            if (w.playType > -1)
+                call("epgList", w.catIndex, w.primaryIndex, false);
+        },
+        "information.channel": function () {
+            call("showChannelInfo");
+        },
+        "media.open": function () {
+            call("popMedia");
+        },
+        "menu.open": function () {
+            call("popupList");
+        },
+        "navigation.backward": function () {
+            if (w.playType) call("shiftArchiveSelect", 0);
+            else call("minusProg");
+        },
+        "navigation.forward": function () {
+            if (w.playType) call("shiftArchiveSelect", 60);
+            else call("plusProg");
+        },
+        "navigation.quick": function () {
+            call("joyMenu");
+        },
+        "pip.close": function () {
+            w.pipIndex = null;
+            call("stbStopPip");
+        },
+        "pip.toggle": function () {
+            call("togglePip");
+        },
+        "program.next": function () {
+            if (w.playType < 0) return;
+            if (!w.playType) {
+                call("shiftArchiveSelect", -60);
+                return;
+            }
+            var next = w.epgArray[w.curProg + 1];
+            if (next && next.time < Date.now() / 1e3)
+                call("playArchive", next.time);
+            else {
+                call("showShift", _("Live"));
+                call("playChannel", w.catIndex, w.primaryIndex);
+            }
+        },
+        "program.previous": function () {
+            if (w.playType < 0) {
+                call("shiftArchive", -6e6);
+                return;
+            }
+            if (!w.playType) {
+                call("timeShift", 0);
+                return;
+            }
+            var current = w.epgArray[w.curProg];
+            var target =
+                w.playType + w.playTime - current.time > 30
+                    ? current
+                    : w.epgArray[w.curProg - 1];
+            if (target) call("playArchive", target.time);
+        },
+        "subtitle.track": function () {
+            call("toggleSubtitle");
+        },
+        "video.aspect": function () {
+            call("toggleAspectRatio");
+        },
+        "volume.decrease": function () {
+            call("changeVolume", -w.sVolumeStep);
+        },
+        "volume.increase": function () {
+            call("changeVolume", w.sVolumeStep);
+        },
+    };
+    if (id && actions[id]) actions[id]();
 }
 
 // Touch handlers

@@ -45,7 +45,7 @@ const typedCore = compile("src/core/index.ts");
 const typedHandlers = compile("src/keyhandler/index.ts");
 const sourceHandlers =
     declarations(typedCore, ["stbEventToKeyCode"], "source") +
-    declarations(typedHandlers, ["keyHandler", "handleListKey"], "source");
+    declarations(typedHandlers, ["keyHandler"], "source");
 const cases = [
     { core: typedCore, handlers: sourceHandlers, name: "source" },
     {
@@ -60,7 +60,7 @@ if (process.argv.includes("--bundle")) {
         core: bundle,
         handlers: declarations(
             bundle,
-            ["stbEventToKeyCode", "keyHandler", "handleListKey"],
+            ["stbEventToKeyCode", "keyHandler"],
             "classic bundle"
         ),
         name: "classic bundle",
@@ -84,6 +84,7 @@ for (const testCase of cases) {
             runScripts: "outside-only",
         });
         const w = dom.window;
+        require("./helpers/screen-runtime.cjs")(w);
         const addEventListener = w.addEventListener;
         try {
             let selected = 5;

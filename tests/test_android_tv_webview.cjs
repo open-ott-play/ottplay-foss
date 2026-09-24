@@ -614,13 +614,12 @@ try {
         };
         player.window = player;
         vm.createContext(player);
+        require("./helpers/screen-runtime.cjs")(player);
         vm.runInContext(
             playerFunctions("src/core/index.ts", ["stbEventToKeyCode"]) +
                 playerFunctions("src/keyhandler/index.ts", [
                     "dispatchKey",
                     "keyHandler",
-                    "handleEditKey",
-                    "handleListKey",
                 ]) +
                 playerFunctions("src/ui/index.ts", ["editKey2"]) +
                 "window._doKey=dispatchKey;window.editKey=editKey2;",
