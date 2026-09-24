@@ -512,4 +512,64 @@ test("Screen replacement owns pending media while internal rendering and quality
     assert(!c.listArray.some((row) => row.title === "Stale"));
 });
 
+test("Rejected nonthrowing writes cannot publish journal changes or claim imported data", () => {
+    const c = fixture(),
+        values = {};
+    let reject = false;
+    const journal = c.__ottMediaJournal.create({
+        core: c.OttPlayCore,
+        importRows: () => [],
+        limit: () => 20,
+        read: (key) => values[key] || null,
+        sourceId: "s",
+        write: (key, value) => {
+            if (!reject) values[key] = value;
+        },
+    });
+    journal.read();
+    reject = true;
+    assert.equal(
+        journal.change("favorite", {
+            itemId: "i",
+            payload: {},
+            position: 0,
+            sourceId: "s",
+        }),
+        false
+    );
+    assert.equal(journal.read().document.favorites.length, 0);
+    const f = fixture();
+    f.stored.medHistory = JSON.stringify([
+        { stream_url: "old.mp4", title: "Old" },
+    ]);
+    f.providerSetItem = () => {};
+    f.mediaList(-1);
+    assert.equal(f.listArray.length, 0);
+    assert(
+        !Object.keys(f.stored).some(
+            (key) => key.indexOf("mediaJournalLegacyOwner") === 0
+        )
+    );
+});
+
+test("Synchronous source replacement during storage reads cannot publish the old account projections", () => {
+    const c = fixture();
+    const replacement = [{ title: "Replacement" }];
+    const get = c.providerGetItem;
+    c.providerGetItem = (key) => {
+        if (key.indexOf("mediaJournal.v1:") === 0) {
+            c.p_pref = "replacement";
+            c.medHistory = replacement;
+            c.medFavorites = replacement;
+        }
+        return get(key);
+    };
+    c.mediaList(-1);
+    assert.equal(c.medHistory, replacement);
+    assert.equal(c.medFavorites, replacement);
+    assert(
+        !Object.keys(c.stored).some((key) => key.indexOf("mediaJournal") === 0)
+    );
+});
+
 console.log(`PASS MediaLibrary/MediaJournal ${groups} scenario groups`);

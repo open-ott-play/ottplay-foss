@@ -25,6 +25,11 @@ function createMediaJournal(ports: MediaJournalPorts) {
     function detached(value: any) {
         return JSON.parse(JSON.stringify(value));
     }
+    function write(key: string, value: string) {
+        ports.write(key, value);
+        if (ports.read(key) !== value)
+            throw new Error("Media journal write was not retained");
+    }
     function valid(rows: any): boolean {
         return (
             Array.isArray(rows) &&
@@ -76,11 +81,16 @@ function createMediaJournal(ports: MediaJournalPorts) {
                     return [];
                 }
             }
-            state.history = legacy("medHistory");
-            state.favorites = legacy("medFavorites");
+            var imported = {
+                favorites: legacy("medFavorites"),
+                history: legacy("medHistory"),
+                sourceId: ports.sourceId,
+                version: 1,
+            };
             // Claim before publishing imported data; storage failure never grants a second account.
-            ports.write(ownerKey, ports.sourceId);
-            ports.write(key, JSON.stringify(state));
+            write(ownerKey, ports.sourceId);
+            write(key, JSON.stringify(imported));
+            state = imported;
         } catch (_) {
             writable = false;
         }
@@ -106,7 +116,7 @@ function createMediaJournal(ports: MediaJournalPorts) {
             };
             try {
                 var text = JSON.stringify(next);
-                ports.write(key, text);
+                write(key, text);
                 state = JSON.parse(text);
                 return true;
             } catch (_) {

@@ -31,6 +31,7 @@ function classicMediaRuntime(): any {
     var source = w.__ottSourceIdentity.media(w);
     if (
         mediaClassicInstance &&
+        mediaClassicInstance.active() &&
         mediaClassicSource === source &&
         mediaClassicProvider === w.getMediaArray
     )
@@ -63,7 +64,9 @@ function classicMediaRuntime(): any {
     function current() {
         return (
             source === w.__ottSourceIdentity.media(w) &&
-            provider === w.getMediaArray
+            provider === w.getMediaArray &&
+            get === w.providerGetItem &&
+            set === w.providerSetItem
         );
     }
     function limit() {
@@ -154,7 +157,9 @@ function classicMediaRuntime(): any {
         limit: limit,
         read: function (key: string) {
             if (!current()) throw new Error("Media source replaced");
-            return typeof get === "function" ? get.call(w, key) : null;
+            var result = typeof get === "function" ? get.call(w, key) : null;
+            if (!current()) throw new Error("Media source replaced");
+            return result;
         },
         sourceId: source,
         write: function (key: string, value: string) {
@@ -165,6 +170,7 @@ function classicMediaRuntime(): any {
     });
     function collections() {
         var document = journal.read().document;
+        if (!current()) return document;
         function project(rows: any[]) {
             return rows.map(function (row) {
                 var payload = copy(row.payload);
@@ -343,6 +349,7 @@ function classicMediaRuntime(): any {
         );
     }
     var api = {
+        active: current,
         back: function () {
             var result = library.back();
             if (!result && w.popupList) w.popupList(w.popMedia);
@@ -398,7 +405,13 @@ function classicMediaRuntime(): any {
             if (!item || w.sFavorites === -1) return;
             var frame = library.snapshot().frame;
             var removing = frame && frame.route.kind === "favorites";
-            journal.change(removing ? "unfavorite" : "favorite", entry(item));
+            if (
+                !journal.change(
+                    removing ? "unfavorite" : "favorite",
+                    entry(item)
+                )
+            )
+                return;
             collections();
             if (removing) library.replaceItems(collectionItems("favorites"));
             else if (w.showShift)
@@ -482,8 +495,10 @@ function classicMediaRuntime(): any {
             ) {
                 return row.itemId === item.ref.itemId;
             })[0];
+            if (!current()) return null;
             item.payload.stream_url = url;
             journal.change("visit", entry(item));
+            if (!current()) return null;
             collections();
             var ticket = {};
             mediaClassicPlayback = {
