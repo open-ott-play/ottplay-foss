@@ -2,7 +2,7 @@
 function projectChannelCatalog(
     rows: any[],
     legacyHash: (value: string) => number,
-    profile: string
+    _profile: string
 ) {
     var result: any = {
         channels: Object.create(null),
@@ -48,6 +48,21 @@ function projectChannelCatalog(
         }
         result.groups[row.groupName].push(id);
         result.ids.push(id);
+        var reference = row.legacyReference;
+        var legacyId: number | undefined;
+        if (reference) {
+            if (
+                reference.kind === "name-hash" &&
+                typeof reference.value === "string"
+            )
+                legacyId = legacyHash(reference.value);
+            else if (
+                reference.kind === "numeric-id" &&
+                typeof reference.value === "number" &&
+                isFinite(reference.value)
+            )
+                legacyId = reference.value;
+        }
         result.channels[id] = {
             ca: row.archiveMode || "",
             caso: "",
@@ -60,10 +75,7 @@ function projectChannelCatalog(
             epg: row.providerId,
             groupId: row.groupId,
             itemId: row.itemId,
-            legacyChannelId:
-                profile === "stalker" && raw && isFinite(Number(raw))
-                    ? Number(raw)
-                    : legacyHash(row.name),
+            legacyChannelId: legacyId,
             logo: row.logo,
             rec: row.archiveHours || 0,
             tn: row.name,

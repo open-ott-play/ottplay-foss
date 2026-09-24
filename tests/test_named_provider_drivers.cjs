@@ -246,7 +246,7 @@ test("bestlist/stalker keeps its12 API/fallback transports with provider-owned c
                 epg: String(id),
                 groupId: "xtream:category:" + stream.category_id,
                 itemId: "xtream:stream:" + id,
-                legacyChannelId: f.host.xxHash32S(name, true),
+                legacyChannelId: f.host.xxHash32S(stream.name, true),
                 logo: stream.stream_icon || "",
                 rec: 0,
                 tn: name,

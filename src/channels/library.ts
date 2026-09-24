@@ -123,7 +123,12 @@ function createChannelLibrary(
     function resolve(id: string): string {
         if (id.indexOf("unresolved:") !== 0) return id;
         var previous = id.slice(11);
-        return ids[previous] || aliases[previous] || id;
+        var current = ids[previous];
+        var alias = aliases[previous];
+        // Old storage may already contain migrated numbers; neither namespace wins a collision.
+        if (alias === null || (alias && current && alias !== current))
+            return id;
+        return alias || current || id;
     }
     function empty(): LibraryDocument {
         return {
@@ -336,7 +341,7 @@ function createChannelLibrary(
                             pref[
                                 id === "-1media"
                                     ? "media"
-                                    : ids[id] || "unresolved:" + id
+                                    : resolve("unresolved:" + id)
                             ] = old[id];
                     });
                 state!.preferences[mapping[1]] = pref;
