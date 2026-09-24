@@ -278,6 +278,49 @@ for (const fault of ["fail", "retire"]) {
         storage.get("playbackJournal"),
         JSON.stringify({ version: 3 })
     );
+    // The empty OTTCLUB prefix keeps its original keys, while the managed
+    // source acquires an explicit ID. Only this known anonymous source imports.
+    storage.clear();
+    w.p_pref = "";
+    w.__ottActiveProviderDriver = { id: "ottclub" };
+    const club = JSON.stringify({
+        bookmark: { channelId: "22", kind: "live" },
+        history: [{ channelId: "11", kind: "live", label: "Preserved" }],
+        sourceId: "classic",
+        updatedAt: 1700000000000,
+        version: 2,
+    });
+    storage.set("playbackJournal", club);
+    api.hydrate();
+    assert.equal(
+        storage.get("playbackJournal"),
+        club,
+        "Reading leaves legacy envelope bytes intact"
+    );
+    assert.equal(w.prevArr[0].ci, 11);
+    api.command({ channelId: 22, type: "live" });
+    const normalizedClub = JSON.parse(storage.get("playbackJournal"));
+    assert.equal(normalizedClub.sourceId, "ottclub");
+    assert.equal(normalizedClub.history[0].label, "Preserved");
+    w.__ottActiveProviderDriver = { id: "another" };
+    api.hydrate();
+    assert.deepEqual(
+        plain(w.prevArr),
+        [],
+        "Other unprefixed sources cannot import OTTCLUB history"
+    );
+    assert.equal(api.canMigrateJournal(), false);
+    w.__ottActiveProviderDriver = { id: "ottclub" };
+    storage.set(
+        "playbackJournal",
+        JSON.stringify({ ...normalizedClub, sourceId: "another" })
+    );
+    api.hydrate();
+    assert.equal(
+        api.canMigrateJournal(),
+        false,
+        "OTTCLUB alias accepts classic only"
+    );
 }
 
 console.log(

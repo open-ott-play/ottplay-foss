@@ -44,6 +44,8 @@ module.exports = function sharedCoreRuntime(context, options = {}) {
         "src/playback/classic-archive.ts",
         "src/provider/runtime.ts",
         "src/provider/driver-profiles.ts",
+        "src/provider/stalker-driver.ts",
+        "src/provider/catalog-drivers.ts",
         "src/provider/drivers.ts",
     ])
         privateRuntime(context, file);

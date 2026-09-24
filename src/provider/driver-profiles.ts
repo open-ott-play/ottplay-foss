@@ -7,7 +7,16 @@
         title: "Demo — moving test pattern",
     },
     { id: "xtream", kind: "xtream", prefix: "xtream", title: "Xtream Codes" },
+    {
+        id: "stalker",
+        kind: "stalker",
+        prefix: "stalker",
+        title: "Stalker portal",
+    },
     // OTTPLAY_FULL_ONLY_BEGIN
+    { id: "itv", kind: "catalog", prefix: "itv", title: "1Cent.tv" },
+    { id: "ottclub", kind: "catalog", prefix: "", title: "OTTCLUB" },
+    { id: "shura", kind: "catalog", prefix: "sh", title: "SHURATV" },
     { id: "1ott", kind: "named-playlist", prefix: "1ott", title: "1OTT.NET" },
     {
         id: "bestlist/stalker",

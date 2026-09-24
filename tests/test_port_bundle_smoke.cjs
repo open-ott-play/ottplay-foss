@@ -56,6 +56,7 @@ const bundlePath = path.resolve(
     process.argv[2] || path.join(__dirname, "../dist/stbPlayer.js")
 );
 const bundle = fs.readFileSync(bundlePath, "utf8");
+const playDistribution = process.argv.includes("--play");
 checkBundleIdentifiers(bundle);
 const globalNames = new Set();
 function collectGlobals(node) {
@@ -202,7 +203,9 @@ function fixture(profile) {
             },
             height: () => 720,
             html(value) {
-                return arguments.length ? this : "";
+                if (!arguments.length) return el.innerHTML;
+                el.innerHTML = value;
+                return this;
             },
             is: () => false,
             length: 1,
@@ -401,6 +404,8 @@ function fixture(profile) {
         "__ottClassicArchive",
         "__ottProviderDrivers",
         "__ottProviderDriverProfiles",
+        "__ottStalkerDriver",
+        "__ottCatalogDrivers",
         "__ottClassicPlayback",
         "__ottProviderRuntime",
     ])
@@ -424,6 +429,8 @@ function assertPrivateRuntime(w, profile) {
         ["__ottClassicArchive", "update"],
         ["__ottProviderDrivers", "createRegistry"],
         ["__ottProviderDrivers", "mount"],
+        ["__ottStalkerDriver", "create"],
+        ["__ottStalkerDriver", "mountSettings"],
         ["__ottClassicPlayback", "select"],
         ["__ottClassicPlayback", "shift"],
         ["__ottClassicPlayback", "cancel"],
@@ -437,6 +444,17 @@ function assertPrivateRuntime(w, profile) {
         );
     }
     assert.equal(typeof w.__ottProviderRuntime.classic.replace, "function");
+    if (playDistribution) {
+        assert.equal(w.__ottCatalogDrivers, undefined);
+        assert.deepEqual(
+            Array.from(w.__ottProviderDrivers.registry.ids()).sort(),
+            ["demo", "stalker", "xtream"]
+        );
+    } else {
+        assert.equal(w.__ottProviderDrivers.registry.ids().length, 44);
+        for (const method of ["create", "mountSettings", "reportLoad"])
+            assert.equal(typeof w.__ottCatalogDrivers[method], "function");
+    }
     assert(Array.isArray(w.__ottProviderDriverProfiles));
     assert.deepEqual(
         Array.from(w.__ottProviderDrivers.registry.ids()),
@@ -453,6 +471,11 @@ function assertPrivateRuntime(w, profile) {
         "createXtreamDriver",
         "createNamedPlaylistDriver",
         "mountNamedProviderSettings",
+        "createStalkerProviderDriver",
+        "mountStalkerProviderSettings",
+        "createCatalogProviderDriver",
+        "mountCatalogProviderSettings",
+        "reportCatalogProviderLoad",
         "namedCredentialMessage",
         "createOperatorDriver",
         "providerDriverProfiles",
@@ -960,6 +983,168 @@ function exerciseProviderRuntime(profile) {
             assert.equal(completed, before + 2);
             assert.deepEqual(Array.from(w.cList), [900000001, 900000002]);
         }
+    }
+    stored.set(
+        "stalkerstalker_data",
+        JSON.stringify({
+            mac: "00:1A:2B:3C:4D:5E",
+            portal: "https://portal.test/",
+        })
+    );
+    stored.set("ottplayprov", "stalker");
+    let before = completed;
+    w.loadProv("stalker");
+    assert.equal(w.__ottActiveProviderDriver.id, "stalker");
+    assert.equal(requests.at(-1).settings.contentType, "application/json");
+    requests.at(-1).resolve({ result: {} });
+    requests.at(-1).resolve({
+        result: [
+            {
+                archive: 24,
+                id: 42,
+                logo: "/logo.png",
+                name: "Portal channel",
+                url: "https://live.test/42",
+            },
+        ],
+    });
+    assert.equal(completed, before + 1);
+    assert.equal(w.getChannelUrl(w.cList[0]), "https://live.test/42");
+    const guides = [];
+    w.getChannelEpg(42, (id, rows) => guides.push([id, rows]));
+    requests.at(-1).resolve({
+        result: [{ end: 20, name: "Programme", start: 10 }],
+    });
+    assert.equal(guides.length, 1);
+    assert.equal(guides[0][0], 42);
+    assert.equal(guides[0][1][0].name, "Programme");
+    w.loadChannels();
+    let pending = requests.at(-1);
+    const abortStalker = pending.abort.bind(pending);
+    pending.abort = () => {
+        abortStalker();
+        w.loadProv("demo");
+    };
+    w.loadProv("xtream");
+    assert.equal(
+        w.__ottActiveProviderDriver.id,
+        "demo",
+        "the newer selection made during abort owns the actual built runtime"
+    );
+    assert.equal(pending.aborts, 1);
+    let count = requests.length;
+    pending.resolve({ result: {} });
+    assert.equal(
+        requests.length,
+        count,
+        "obsolete Stalker cannot load catalog"
+    );
+    assert.equal(completed, before + 2);
+
+    for (const id of ["itv", "ottclub", "shura"]) {
+        if (!w.__ottProviderDrivers.registry.has(id)) continue;
+        const prefix = { itv: "itv", ottclub: "", shura: "sh" }[id];
+        for (const [key, value] of Object.entries({
+            key: id === "shura" ? "12345678" : "1234567890",
+            mpeg: "0",
+            ottkey: "12345678",
+            ottwww: "operator.test",
+            server: "2",
+        }))
+            stored.set(prefix + key, value);
+        stored.set("ottplayprov", id);
+        before = completed;
+        w.loadProv(id);
+        assert.equal(w.__ottActiveProviderDriver.id, id);
+        if (id === "itv")
+            requests.at(-1).resolve({
+                channels: [
+                    {
+                        cat_name: "News",
+                        ch_id: "one",
+                        channel_name: "One",
+                        rec_time: 24,
+                        server_cdn: "cdn.test",
+                        token: "t",
+                    },
+                ],
+            });
+        else if (id === "ottclub")
+            requests
+                .at(-1)
+                .resolve(
+                    '{"one":{"ch_id":"one","name":"One","category":"News","rec":true,"img":"one.png"}}'
+                );
+        else {
+            assert.equal(requests.at(-1).settings.dataType, "jsonp");
+            requests.at(-1).resolve([{ archive: 24, id: "one", name: "One" }]);
+            requests
+                .at(-1)
+                .resolve(
+                    '#EXTM3U\n#EXTINF:-1 tvg-name="one" group-title="News",One\nhttp://v.test/token/one/a.ts'
+                );
+        }
+        assert.equal(completed, before + 1, id + ": built catalog completes");
+        assert.equal(w.cList.length, 1);
+        assert(w.getChannelUrl(w.cList[0]), id + ": built live URL");
+        assert(w.__ottActiveProviderDriver.archive("one", 10, 20));
+        if (id === "ottclub") {
+            assert(w.epg.one.length > 0, "OTTCLUB publishes catalog seed EPG");
+            assert.equal(w.__ottActiveProviderDriver.guideCurrent, undefined);
+        } else {
+            const current = [];
+            w.sNextCount = 2;
+            w.getCurrentChannelEpg("one", (channel, rows) =>
+                current.push([channel, rows])
+            );
+            const request = requests.at(-1);
+            assert(
+                request.settings.url.includes(
+                    id === "itv" ? "/epg/" : "/pf.jsonp"
+                )
+            );
+            request.resolve([]);
+            assert.equal(current.length, 1);
+            assert.equal(current[0][0], "one");
+        }
+        if (id === "itv") {
+            w.popupArray = [];
+            w.popupActions = [];
+            w.popupDetail = [];
+            w.duneAddSettings(0);
+            const open = w.popupActions[2];
+            open();
+            pending = requests.at(-1);
+            assert(pending.settings.url.endsWith("/data/1234567890"));
+            const close = w.aboutKeyHandler;
+            open();
+            assert.equal(pending.aborts, 1);
+            assert.equal(
+                close(),
+                false,
+                "old panel handler cannot close replacement"
+            );
+            requests.at(-1).resolve({
+                package_info: [{ name: "Sport" }],
+                user_info: { login: "<viewer>", pay_system: 1 },
+            });
+            const html = w.$("#listAbout").html();
+            assert(html.includes("&lt;viewer&gt;"));
+            assert(html.includes("Sport"));
+            pending.resolve({ user_info: { login: "stale" } });
+            assert.equal(w.$("#listAbout").html(), html);
+            w.aboutKeyHandler();
+        }
+        w.loadChannels();
+        pending = requests.at(-1);
+        w.loadProv("demo");
+        assert.equal(pending.aborts, 1);
+        count = requests.length;
+        pending.resolve(null);
+        pending.reject();
+        assert.equal(requests.length, count, id + ": no obsolete fallback");
+        assert.equal(completed, before + 2);
+        assert.deepEqual(Array.from(w.cList), [900000001, 900000002]);
     }
     assert.deepEqual(
         scripts,

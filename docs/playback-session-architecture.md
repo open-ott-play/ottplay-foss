@@ -3,7 +3,7 @@
 The player now delegates playback history and seek decisions to the Kotlin
 shared core. The classic view consumes those decisions through an explicit
 compatibility adapter. Normal playback commands own a typed state store; a
-versioned journal owns channel history and the resume target. Forty
+versioned journal owns channel history and the resume target. Forty-four
 provider entrypoints use injected driver instances. Remaining providers and
 views retain an explicit compatibility boundary.
 
@@ -107,13 +107,32 @@ Five additional profiles use explicit session drivers: `1ott`, `only4`,
 `shara-tv`, `tvteam` and `bestlist/stalker`. They retain their distinct credential
 editors, playlist/authentication chains, guide and archive behavior, and Only4
 mode switching. Despite its name, `bestlist/stalker` uses an Xtream/M3U fallback
-contract; it is separate from the remaining MAC-based Stalker integration.
+contract; it is separate from the MAC-based Stalker driver.
 
-`provider-assets.cjs` derives the same 40 IDs from the declarative inventory.
+`stalker-driver.ts` owns MAC/portal authentication, catalog and guide requests
+through the shared-core Stalker session. It preserves the JSON POST protocol,
+MAC editor and archive URLs without replacing global AJAX behavior.
+`catalog-drivers.ts` supplies ITV, OTTCLUB and Shura instances. Their full/current
+guide requests, JSONP phases, catalog EPG seeds and credential changes have
+explicit lifetimes. The settings codec retains ITV subscription information,
+provider-specific mode switching and replay after route-only credential edits.
+Subscription data is escaped; a closed or replaced view rejects old responses.
+Settings callbacks recheck ownership after saving before restarting or replaying.
+Source selection detaches the old driver before aborting its requests and checks
+the selection token again afterwards. A synchronous abort that selects a newer
+source cannot let the interrupted outer selection overwrite that new driver.
+
+Malformed asynchronous catalog responses now complete startup once with an
+empty catalog and a processing error. Malformed Shura guide responses complete
+with no guide instead of throwing and leaving the caller pending. These are
+intentional fixes to the captured behavior, not changes to the saved oracles.
+Nested catalog and EPG snapshots are detached from the private driver state.
+
+`provider-assets.cjs` derives the same 44 IDs from the declarative inventory.
 Vite and Play packaging omit their old executable scripts from browser, Tauri
 and Capacitor roots. UI metadata and logos remain. The original files stay in
 source control as provenance and compatibility test oracles; they are not
-runtime fallbacks for managed drivers. The eight remaining entrypoints keep their
+runtime fallbacks for managed drivers. The four remaining entrypoints keep their
 explicit legacy path until equivalent drivers are implemented.
 
 ## Version-2 playback journal
@@ -128,6 +147,11 @@ The importer reads version-1 `prevArr` and live/archive `continueWatch` without
 changing their original bytes. Canonical data takes precedence after the first
 successful envelope write. Unknown versions, corrupt envelopes and mismatched
 sources are read-only, with an empty safe view instead of reviving stale mirrors.
+OTTCLUB retains its existing empty storage prefix. Its instance now uses the
+explicit source ID `ottclub`; only that mounted driver may import its previously
+written version-2 `classic` envelope. Reading preserves the original bytes, and
+the next successful write normalizes the identity without discarding history.
+Other sources and unknown envelope versions cannot use this exception.
 Writes verify the resulting value. Channel hash migration updates eligible
 version-2 channel references but never VOD identities or unsupported envelopes.
 
@@ -155,7 +179,8 @@ protection. New tests live in `test_playback_session.cjs`,
 `test_history_selection.cjs`, `test_playback_state.cjs`,
 `test_playback_journal.cjs`, `test_provider_runtime.cjs` and
 `test_provider_drivers.cjs`. Archive request/entrypoint tests and
-`test_named_provider_drivers.cjs` cover the next migration stage. Driver transport
+`test_named_provider_drivers.cjs`, `test_stalker_provider_driver.cjs` and
+`test_catalog_provider_drivers.cjs` cover the following migration stages. Driver transport
 contracts are also checked against
 the captured generic operator cases; `test_provider_assets.cjs --bundle` audits
 the absence of retired scripts in all built roots.
@@ -176,8 +201,9 @@ behavior. All external media/provider requests are intercepted or blocked.
 The session-only iteration increased the classic bundle from 475,644 to 484,540
 bytes (gzip: 130,016 to 132,972). Adding owned playback state, the journal and
 35 drivers brought it to 514,070 bytes (140,915 gzip). The archive coordinator
-and five further drivers bring the bundle to 530,635 bytes / 145,879 gzip bytes; the
-explicit budget is 535,000 bytes / 148,000 gzip bytes. Packaging removes 252,549 raw bytes of
+and five further drivers brought the bundle to 530,635 bytes / 145,879 gzip bytes.
+The Stalker and catalog-driver migration brings it to 547,911 bytes / 150,262 gzip
+bytes; the explicit budget is 555,000 bytes / 153,000 gzip bytes. Packaging removes 282,024 raw bytes of
 retired provider scripts from each Full asset root. That asset total is not a
 claim about transfer savings: the previous loader fetched provider scripts on
 demand. The separately loaded shared-core JavaScript remains at 1,239,827 bytes
@@ -191,16 +217,16 @@ result through `scripts/distribute.cjs`; do not manually edit vendor artifacts.
 ## Remaining migration
 
 The new boundaries do not make the entire application independent of its
-classic contracts. Remaining work is to replace the eight specialized provider
+classic contracts. Remaining work is to replace the four specialized provider
 scripts, migrate opaque media history and the rest of settings, and give all
 views/device adapters a command-and-snapshot API. The current renderer still
 uses classic linking and published globals. Explicit reconciliation accepts
 external writes from retained scripts; removing that input path requires their
 conversion, not just changing field names.
 
-The remaining provider entrypoints are `antifriz`, `edem`, `itv`, `kb-team`,
-`m3u`, `ottclub`, `shura` and `stalker`. Their remaining contracts include MAC and
-playlist-slot identity, progressive metadata, provider-specific media catalogs,
+The remaining provider entrypoints are `antifriz`, `edem`, `kb-team` and `m3u`.
+Their remaining contracts include playlist-slot identity, progressive metadata,
+provider-specific media catalogs,
 and asynchronous media navigation. They are explicitly retained rather than
 silently dropping those capabilities.
 

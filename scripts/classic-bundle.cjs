@@ -31,6 +31,8 @@ const CLASSIC_MODULES = [
     "build/provider/operator.js",
     "build/provider/runtime.js",
     "build/provider/driver-profiles.js",
+    "build/provider/stalker-driver.js",
+    "build/provider/catalog-drivers.js",
     "build/provider/drivers.js",
     "build/provider/index.js",
     "build/commands/index.js",
@@ -64,11 +66,17 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/playback/journal.js": Object.freeze(["window.__ottPlaybackJournal"]),
     "build/playback/session.js": Object.freeze(["window.__ottPlaybackSession"]),
+    "build/provider/catalog-drivers.js": Object.freeze([
+        "window.__ottCatalogDrivers",
+    ]),
     "build/provider/driver-profiles.js": Object.freeze([
         "window.__ottProviderDriverProfiles",
     ]),
     "build/provider/drivers.js": Object.freeze(["window.__ottProviderDrivers"]),
     "build/provider/runtime.js": Object.freeze(["window.__ottProviderRuntime"]),
+    "build/provider/stalker-driver.js": Object.freeze([
+        "window.__ottStalkerDriver",
+    ]),
 });
 const fs = require("node:fs");
 const path = require("node:path");

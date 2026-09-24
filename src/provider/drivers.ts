@@ -10,15 +10,17 @@ interface DriverStorage {
 }
 interface DriverCatalog {
     channels: { [id: string]: any };
+    epg?: { [id: string]: any };
     groupOrder: string[];
     groups: { [name: string]: Array<string | number> };
     ids: Array<string | number>;
 }
 interface DriverHttpRequest {
+    contentType?: string;
     data?: any;
     dataType?: string;
     method?: string;
-    timeout: number;
+    timeout?: number;
     type?: string;
     url: string;
 }
@@ -31,6 +33,7 @@ interface ProviderDriverProfile {
 interface ProviderDriverPorts {
     core: any;
     createLifetime(): any;
+    guideNext(): number;
     hash(value: string): number;
     intercept?: (url: string) => void;
     isDune(): boolean;
@@ -42,7 +45,7 @@ interface ProviderDriverPorts {
     request(
         request: DriverHttpRequest,
         done: (value: any) => void,
-        fail: () => void
+        fail: (...args: any[]) => void
     ): () => void;
     storage: DriverStorage;
     translate(value: string): string;
@@ -68,6 +71,7 @@ interface ProviderDriver {
     credentials(): ProviderCredentials;
     dispose(): void;
     guide(id: string | number, callback: (value: any) => void): void;
+    guideCurrent?(id: string | number, callback: (value: any) => void): void;
     readonly id: string;
     load(
         callback: (
@@ -79,6 +83,7 @@ interface ProviderDriver {
     logo(id: string | number): string;
     saveCredentials(value: ProviderCredentials): void;
     stream(id: string | number): string;
+    subscription?(callback: (value: any) => void): () => void;
 }
 type ProviderDriverFactory = (
     ports: ProviderDriverPorts,
@@ -101,19 +106,22 @@ function driverCatalogSnapshot(catalog: DriverCatalog): DriverCatalog {
     Object.keys(catalog.groups).forEach(function (name) {
         snapshot.groups[name] = catalog.groups[name].slice();
     });
-    Object.keys(catalog.channels).forEach(function (id) {
-        var row = catalog.channels[id];
-        var copy: any = {};
-        Object.keys(row).forEach(function (key) {
-            copy[key] = row[key];
+    function detach(value: any): any {
+        if (!value || typeof value !== "object") return value;
+        if (Array.isArray(value)) return value.map(detach);
+        var result: any = {};
+        Object.keys(value).forEach(function (key) {
+            Object.defineProperty(result, key, {
+                configurable: true,
+                enumerable: true,
+                value: detach(value[key]),
+                writable: true,
+            });
         });
-        if (row.category)
-            copy.category = {
-                class: row.category.class,
-                name: row.category.name,
-            };
-        snapshot.channels[id] = copy;
-    });
+        return result;
+    }
+    snapshot.channels = detach(catalog.channels);
+    if (catalog.epg) snapshot.epg = detach(catalog.epg);
     return snapshot;
 }
 
@@ -214,7 +222,7 @@ function createDriverTransport(
         scope: DriverLifetime,
         options: DriverHttpRequest,
         done: (value: any) => void,
-        fail: () => void
+        fail: (...args: any[]) => void
     ) {
         if (!active() || !scope.active()) return;
         var settled = false;
@@ -238,7 +246,10 @@ function createDriverTransport(
                 });
             },
             function () {
-                finish(fail);
+                var args = arguments;
+                finish(function () {
+                    fail.apply(null, args as any);
+                });
             }
         );
         if (!settled) {
@@ -936,6 +947,24 @@ providerDriverProfiles.forEach(function (profile) {
             : profile.kind === "xtream"
               ? createXtreamDriver
               : function (ports, owner) {
+                    var helpers = {
+                        emptyCatalog: emptyDriverCatalog,
+                        snapshot: driverCatalogSnapshot,
+                        transport: createDriverTransport,
+                    };
+                    if (profile.kind === "stalker")
+                        return (window as any).__ottStalkerDriver.create(
+                            ports,
+                            owner,
+                            helpers
+                        );
+                    if (profile.kind === "catalog")
+                        return (window as any).__ottCatalogDrivers.create(
+                            profile.id,
+                            ports,
+                            owner,
+                            helpers
+                        );
                     return profile.kind === "named-playlist"
                         ? createNamedPlaylistDriver(profile, ports, owner)
                         : createOperatorDriver(profile, ports, owner);
@@ -1312,6 +1341,7 @@ function mountProviderDriver(
     var generic =
         profile.kind === "operator" || profile.kind === "xtream-fallback";
     var named = profile.kind === "named-playlist";
+    var catalogProtocol = profile.kind === "catalog";
     var store: DriverStorage = {
         get: function (key) {
             return host.stbGetItem(profile.prefix + key);
@@ -1328,6 +1358,11 @@ function mountProviderDriver(
         {
             core: host.OttPlayCore,
             createLifetime: host.__ottProviderRuntime.createRegistry,
+            guideNext: function () {
+                return typeof host.sNextCount === "number"
+                    ? host.sNextCount
+                    : -1;
+            },
             hash: function (name) {
                 return host.xxHash32S(name, true);
             },
@@ -1393,6 +1428,13 @@ function mountProviderDriver(
             callback(channel, guide);
         });
     };
+    host.getCurrentChannelEpg = driver.guideCurrent
+        ? function (channel: any, callback: any) {
+              driver.guideCurrent!(channel, function (guide) {
+                  callback(channel, guide);
+              });
+          }
+        : null;
     if (id !== "demo")
         host.parental =
             id === "only4"
@@ -1514,6 +1556,13 @@ function mountProviderDriver(
         host.popupDetail.splice(index, 1, host._(profile.title + " settings"));
     };
     if (named) mountNamedProviderSettings(host, profile, driver, owner, store);
+    var stalkerSettings =
+        profile.kind === "stalker"
+            ? host.__ottStalkerDriver.mountSettings(host, driver, owner)
+            : null;
+    if (stalkerSettings) host.duneAddSettings = stalkerSettings.mount;
+    if (catalogProtocol)
+        host.__ottCatalogDrivers.mountSettings(host, driver, owner, store);
     host.getChannelsArray = function (callback: () => void) {
         if (!owner.active()) return;
         if (id === "xtream")
@@ -1523,25 +1572,45 @@ function mountProviderDriver(
         driver.load(function (catalog, error, pending) {
             if (!owner.active()) return;
             if (error === "credentials") {
-                editSettings();
+                if (stalkerSettings) stalkerSettings.edit();
+                else editSettings();
                 return;
             }
             if (catalog) {
                 // Catalog replacement is confined to this explicit legacy-view codec.
                 host.cList = catalog.ids.slice();
-                var channels = host.channels || {};
-                Object.keys(channels).forEach(function (key) {
-                    delete channels[key];
-                });
-                Object.keys(catalog.channels).forEach(function (key) {
-                    channels[key] = catalog.channels[key];
-                });
+                var channels =
+                    catalog.channels === null ? null : host.channels || {};
+                if (channels) {
+                    Object.keys(channels).forEach(function (key) {
+                        delete channels[key];
+                    });
+                    Object.keys(catalog.channels).forEach(function (key) {
+                        channels[key] = catalog.channels[key];
+                    });
+                }
                 host.channels = channels;
                 host.cats = catalog.groups;
                 host.catsArray = catalog.groupOrder.slice();
+                if (catalog.epg) {
+                    if (!host.epg) host.epg = {};
+                    Object.keys(catalog.epg).forEach(function (key) {
+                        host.epg[key] = catalog.epg![key];
+                    });
+                }
             }
             if (pending) return;
-            if (error === "named-credentials") {
+            if (catalogProtocol) {
+                host.__ottCatalogDrivers.reportLoad(host, driver, error);
+            } else if (stalkerSettings && error) {
+                host.alert(
+                    host._(
+                        error === "stalker-connect"
+                            ? "Failed to connect to Stalker portal"
+                            : "Failed to load channels from Stalker portal"
+                    )
+                );
+            } else if (error === "named-credentials") {
                 host.popupList(
                     host.popupActions.indexOf(
                         host.toggleProviderSettingsVisibility

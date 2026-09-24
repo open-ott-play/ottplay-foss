@@ -13,7 +13,13 @@ function classicPlaybackHost(): any {
 
 function classicPlaybackSource(w: any): string {
     var provider =
-        String(w.p_pref || w.providerId || "classic").trim() || "classic";
+        String(
+            w.p_pref ||
+                (w.__ottActiveProviderDriver &&
+                    w.__ottActiveProviderDriver.id) ||
+                w.providerId ||
+                "classic"
+        ).trim() || "classic";
     return provider === "m3u"
         ? provider + ":" + classicPlaybackSlot(w)
         : provider;
@@ -548,6 +554,15 @@ function classicPlaybackJournal(): any {
         get: function (key: string): any {
             return get.call(w, key);
         },
+        // OTTCLUB's unprefixed store was the sole shipped provider mapped to
+        // the anonymous identity before instance drivers supplied their ID.
+        importSourceId:
+            w.p_pref === "" &&
+            source === "ottclub" &&
+            w.__ottActiveProviderDriver &&
+            w.__ottActiveProviderDriver.id === "ottclub"
+                ? "classic"
+                : undefined,
         isCurrent: function (): boolean {
             return (
                 source === classicPlaybackSource(w) &&

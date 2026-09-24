@@ -5,10 +5,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { gzipSync } = require("node:zlib");
 
-// Typed playback/archive controllers, journal and 40 instance drivers replace
-// separately shipped scripts. The integrated bundle measures ~530 kB / 146 kB
-// gzip; packaging omits 252549 raw bytes of retired provider scripts per root.
-const BUDGET = Object.freeze({ bytes: 535000, gzipBytes: 148000 });
+// Typed playback/archive controllers, journal and 44 instance drivers replace
+// separately shipped scripts. The integrated bundle measures ~548 kB / 150 kB
+// gzip; packaging omits 282024 raw bytes of retired provider scripts per root.
+const BUDGET = Object.freeze({ bytes: 555000, gzipBytes: 153000 });
 const ARTIFACTS = Object.freeze([
     "dist/stbPlayer.js",
     "src-tauri/frontend/dist/stbPlayer.js",

@@ -57,8 +57,8 @@ function fixture(initial = {}) {
                 fail = callback;
                 return this;
             },
-            reject() {
-                fail();
+            reject(...args) {
+                fail(...args);
             },
             // Intentionally uncooperative: callbacks can still arrive after abort.
             resolve(value) {
@@ -77,6 +77,8 @@ function fixture(initial = {}) {
     require("./shared-core-runtime.cjs")(host, { vendorOnly: true });
     privateRuntime(host, "src/provider/runtime.ts");
     privateRuntime(host, "src/provider/driver-profiles.ts");
+    privateRuntime(host, "src/provider/stalker-driver.ts");
+    privateRuntime(host, "src/provider/catalog-drivers.ts");
     privateRuntime(host, "src/provider/drivers.ts");
     // The checked-in identity codec is shared with existing channel bookmarks.
     const encoding = fs.readFileSync(

@@ -832,19 +832,19 @@ declare var confirmBox: (
     onNo?: () => void
 ) => void;
 
-// ─── Load provider script ─────────────────────────────────────────────────────
+// ─── Load provider ────────────────────────────────────────────────────────────
 
 /**
- * Load a provider script dynamically from /prov/{id}/prov.js.
+ * Mount a registered provider instance or load its retained compatibility script.
  * Resets global function overrides (playChannel, channelsList, etc.) to
- * internal implementations, restores base popup state, then fetches the
- * provider's prov.js via getScriptDOM.
+ * internal implementations and restores base popup state. Unregistered providers
+ * use serialized getScriptDOM loading from /prov/{id}/prov.js.
  *
  * Flow:
  * 1. Resolve provider ID from URL query string or stb storage.
  * 2. Clear out provider callback overrides (playChannel, etc.).
  * 3. Restore savedPopup state (popupActions/Array/Detail).
- * 4. Load prov.js; on success call duneAddSettings → loadChannels.
+ * 4. Mount the instance or load its script, then call duneAddSettings → loadChannels.
  * 5. On failure call onError → firstRun().
  *
  * Side effects: DOM mutations to #launch / #dialogbox, calls stbStop() if
@@ -860,15 +860,21 @@ export function loadProv(providerId?: string): void {
     (window as any).commandChannelsReady = false;
     if ((window as any).__ottClassicPlayback)
         (window as any).__ottClassicPlayback.cancel();
+    if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
     var providerRuntime = (window as any).__ottProviderRuntime.classic;
-    if ((window as any).__ottActiveProviderDriver) {
-        (window as any).__ottActiveProviderDriver.dispose();
+    var previousDriver = (window as any).__ottActiveProviderDriver;
+    if (previousDriver) {
+        // Abort can synchronously select another source. Detach this instance
+        // before teardown, then let the newer selection keep all published state.
         (window as any).__ottActiveProviderDriver = null;
+        previousDriver.dispose();
+        if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
     }
     // Legacy scripts execute into shared globals. Delay the next reset until
     // any previously requested script has finished evaluating, then run only
     // the latest selection. Session disposal is immediate, before that wait.
     providerRuntime.replace(function (providerSession: any) {
+        if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
         if (!isProviderAllowed((window as any)._pendingProvId || ""))
             (window as any)._pendingProvId = "";
         // An explicit choice made from Demo wins for this load only. The stored

@@ -305,6 +305,14 @@ function fixture(
         w,
         "src/provider/driver-profiles.ts"
     );
+    require("./helpers/private-runtime.cjs")(
+        w,
+        "src/provider/stalker-driver.ts"
+    );
+    require("./helpers/private-runtime.cjs")(
+        w,
+        "src/provider/catalog-drivers.ts"
+    );
     require("./helpers/private-runtime.cjs")(w, "src/provider/drivers.ts");
     vm.runInContext(code[flavor], w);
     attachSourceAliases(w);
@@ -435,7 +443,7 @@ for (const id of permitted) {
     test("Play loads permitted saved provider " + id, () => {
         const f = fixture("play", { ottplayprov: id });
         f.w.loadProv();
-        if (id === "demo" || id === "xtream") {
+        if (id === "demo" || id === "xtream" || id === "stalker") {
             assert.deepEqual(f.scripts, []);
             assert.equal(f.w.__ottActiveProviderDriver.id, id);
         } else
@@ -473,7 +481,7 @@ test("completed provider loads omit unavailable logos but preserve Full logo and
                         optIndexOf: () => -1,
                     });
                     f.w.loadProv();
-                    if (id === "demo" || id === "xtream")
+                    if (id === "demo" || id === "xtream" || id === "stalker")
                         assert.equal(f.scriptCallbacks.length, 0);
                     else {
                         assert.equal(f.scriptCallbacks.length, 1);
@@ -593,9 +601,8 @@ test("settings restored after startup still pass policy at the script boundary",
         "demo",
     ]);
     f.w.listKeyHandlerFn(f.w.keys.GREEN);
-    assert.deepEqual(f.scripts, [
-        "https://player.invalid/prov/stalker/prov.js?fixture",
-    ]);
+    assert.deepEqual(f.scripts, []);
+    assert.equal(f.w.__ottActiveProviderDriver.id, "stalker");
     assert.equal(f.stored.get("noSelProv"), "1");
 });
 
@@ -616,21 +623,13 @@ test("explicit exit from Demo accepts permitted choice once, then honors origina
     f.w.ottplayDemoActive = true;
     f.w.selectProvaider();
     f.w.listKeyHandlerFn(f.w.keys.GREEN);
-    assert.equal(
-        f.scripts[0],
-        "https://player.invalid/prov/stalker/prov.js?fixture"
-    );
+    assert.deepEqual(f.scripts, []);
+    assert.equal(f.w.__ottActiveProviderDriver.id, "stalker");
     f.w.loadProv();
-    assert.equal(
-        f.scripts.length,
-        1,
-        "replacement waits for pending provider script"
-    );
+    assert.deepEqual(f.scripts, [
+        "https://player.invalid/prov/m3u/prov.js?fixture",
+    ]);
     f.scriptCallbacks[0]();
-    assert.equal(
-        f.scripts[1],
-        "https://player.invalid/prov/m3u/prov.js?fixture"
-    );
     assert.equal(f.stored.get("noSelProv"), "1");
 });
 
@@ -700,22 +699,14 @@ test("Play options omit legacy dealer actions in place while retaining generic s
 test("Full still loads branded stored and URL-pinned providers", () => {
     const f = fixture("full", { ottplayprov: "ottclub" });
     f.w.loadProv();
-    assert.equal(
-        f.scripts[0],
-        "https://player.invalid/prov/ottclub/prov.js?fixture"
-    );
+    assert.deepEqual(f.scripts, []);
+    assert.equal(f.w.__ottActiveProviderDriver.id, "ottclub");
     f.w.location.search = "?edem";
     f.w.loadProv();
-    assert.equal(
-        f.scripts.length,
-        1,
-        "replacement waits for pending provider script"
-    );
+    assert.deepEqual(f.scripts, [
+        "https://player.invalid/prov/edem/prov.js?fixture",
+    ]);
     f.scriptCallbacks[0]();
-    assert.equal(
-        f.scripts[1],
-        "https://player.invalid/prov/edem/prov.js?fixture"
-    );
 });
 
 function startupFixture(

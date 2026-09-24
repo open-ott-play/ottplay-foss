@@ -28,7 +28,7 @@ test("registry only resolves explicit drivers and does not accept prototype name
         Array.from(registry.ids()),
         Array.from(f.host.__ottProviderDriverProfiles, (profile) => profile.id)
     );
-    assert.equal(registry.ids().length, 40);
+    assert.equal(registry.ids().length, 44);
     assert.equal(registry.has("constructor"), false);
     assert.equal(registry.has("m3u"), false);
     assert.throws(() => registry.register("demo", () => {}), /Duplicate/);

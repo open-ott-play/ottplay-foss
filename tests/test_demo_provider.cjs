@@ -174,6 +174,14 @@ function uiFixture() {
         w,
         "src/provider/driver-profiles.ts"
     );
+    require("./helpers/private-runtime.cjs")(
+        w,
+        "src/provider/stalker-driver.ts"
+    );
+    require("./helpers/private-runtime.cjs")(
+        w,
+        "src/provider/catalog-drivers.ts"
+    );
     require("./helpers/private-runtime.cjs")(w, "src/provider/drivers.ts");
     vm.runInContext(providerUi, w);
     if (process.argv.includes("--bundle")) w.installEnglishPlayerAliases(w);
@@ -541,9 +549,10 @@ test("explicit provider chosen from pinned Demo loads once, then normal reload o
     w.selIndex = w.arrayProvaiders.indexOf("stalker");
     w.listKeyHandlerFn(w.keys.ENTER);
     assert.equal(
-        loaded.at(-1),
-        "https://player.invalid/prov/stalker/prov.js?fixture"
+        loaded.some((url) => url.includes("/prov/stalker/prov.js")),
+        false
     );
+    assert.equal(w.__ottActiveProviderDriver.id, "stalker");
     assert.equal(saved.get("ottplayprov"), "stalker");
     assert.equal(w.ottplayDemoActive, false);
     assert.equal(w.popupActions.indexOf(w.selectProvaider), -1);

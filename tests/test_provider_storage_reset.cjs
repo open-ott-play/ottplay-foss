@@ -118,6 +118,14 @@ require("./helpers/private-runtime.cjs")(
     context,
     "src/provider/driver-profiles.ts"
 );
+require("./helpers/private-runtime.cjs")(
+    context,
+    "src/provider/stalker-driver.ts"
+);
+require("./helpers/private-runtime.cjs")(
+    context,
+    "src/provider/catalog-drivers.ts"
+);
 require("./helpers/private-runtime.cjs")(context, "src/provider/drivers.ts");
 vm.runInContext(
     ts.transpileModule(code, {

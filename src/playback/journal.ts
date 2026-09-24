@@ -1,6 +1,8 @@
 /** Versioned playback persistence. No UI, classic globals or media effects. */
 interface PlaybackJournalPorts {
     get(key: string): string | null | undefined;
+    /** Explicit identity migration within the same already selected storage namespace. */
+    importSourceId?: string;
     isCurrent(): boolean;
     now(): number;
     set(key: string, value: string): void;
@@ -128,7 +130,9 @@ function createPlaybackJournal(ports: PlaybackJournalPorts) {
             if (
                 !value ||
                 value.version !== 2 ||
-                value.sourceId !== ports.sourceId ||
+                (value.sourceId !== ports.sourceId &&
+                    (!ports.importSourceId ||
+                        value.sourceId !== ports.importSourceId)) ||
                 !Array.isArray(value.history) ||
                 !finite(value.updatedAt)
             )
