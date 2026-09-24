@@ -587,13 +587,15 @@ function classicPlaybackImportJournalValue(key: string, raw: any): any {
     if (!raw || !w.__ottChannelReferences) return raw;
     try {
         var value = JSON.parse(raw);
-        var codec = w.__ottChannelReferences.create(
-            w.channels || {},
-            w.__ottLegacyChannelAliases
-        );
+        var codec: any = null;
         function reference(id: any): any {
             if (typeof id !== "string" && typeof id !== "number") return id;
             if (String(id).indexOf("channel-ref:") === 0) return id;
+            if (!codec)
+                codec = w.__ottChannelReferences.create(
+                    w.channels || {},
+                    w.__ottLegacyChannelAliases
+                );
             return "channel-ref:" + JSON.stringify(codec.resolve(id, "raw"));
         }
         if (key === "playbackJournal") {
