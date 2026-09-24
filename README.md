@@ -915,3 +915,8 @@ See [docs/local-build-scripts.md](docs/local-build-scripts.md).
 ## Privacy
 
 Read the [privacy policy](docs/privacy-policy.md) for information about local settings, configured services and your choices. Privacy and support contact: [alvit.work@gmail.com](mailto:alvit.work@gmail.com).
+
+## Demo video editing
+
+Use the local [video-use workflow](docs/demo-video.md) to prepare and edit
+demonstration recordings. The helper keeps all generated media outside Git.
