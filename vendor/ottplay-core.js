@@ -335,6 +335,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(OperatorGroups, 'OperatorGroups', OperatorGroups);
   initMetadataForCompanion(Companion_14);
   initMetadataForClass(OperatorCatalogs, 'OperatorCatalogs');
+  initMetadataForClass(OperatorChannelSession, 'OperatorChannelSession');
   initMetadataForClass(Request, 'Request', Request);
   initMetadataForClass(OperatorRequestLifetime, 'OperatorRequestLifetime', OperatorRequestLifetime);
   initMetadataForCompanion(Companion_15);
@@ -450,6 +451,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(NativeGuideSourceBatch, 'NativeGuideSourceBatch');
   initMetadataForClass(OperatorCatalogClient, 'OperatorCatalogClient');
   initMetadataForClass(OperatorPlaylistClient, 'OperatorPlaylistClient');
+  initMetadataForClass(OperatorChannelClient, 'OperatorChannelClient');
   initMetadataForClass(OperatorClient, 'OperatorClient');
   initMetadataForClass(OperatorPortalCatalogClient, 'OperatorPortalCatalogClient');
   initMetadataForClass(OperatorRequestClient, 'OperatorRequestClient', OperatorRequestClient);
@@ -16834,6 +16836,54 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return tmp.obj_60q8ki_k$(mapOf_0([tmp_0, tmp_1, to('groups', tmp_2.obj_60q8ki_k$(destination)), to('groupOrder', Companion_getInstance_18().array_vqz2lg_k$(toList_0(this.groups_1.order_1))), to('epg', Companion_getInstance_18().obj_60q8ki_k$(this.guide_1))]));
   };
+  function append($this, input, target, collection, row) {
+    if (!input.get_isArray_z8qxd2_k$())
+      throw new OperatorCatalogFailure(collection);
+    // Inline function 'kotlin.collections.forEach' call
+    var _iterator__ex2g4s = input.elements_1.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var element = _iterator__ex2g4s.next_20eer_k$();
+      if (!element.get_present_3zxuem_k$())
+        throw new OperatorCatalogFailure(row, element.kind_1.equals(ProviderValueKind_NULL_getInstance()));
+      target.add_utx5q5_k$(element);
+    }
+  }
+  function OperatorChannelSession(base, addresses) {
+    this.base_1 = base;
+    this.addresses_1 = addresses;
+    this.action_1 = OperatorSourceAction_API_getInstance();
+    this.networkFailure_1 = false;
+    var tmp = this;
+    // Inline function 'kotlin.collections.mutableListOf' call
+    tmp.categories_1 = ArrayList_init_$Create$();
+    var tmp_0 = this;
+    // Inline function 'kotlin.collections.mutableListOf' call
+    tmp_0.streams_1 = ArrayList_init_$Create$();
+  }
+  protoOf(OperatorChannelSession).action_nj6rwq_k$ = function () {
+    return this.action_1;
+  };
+  protoOf(OperatorChannelSession).request_i4ci33_k$ = function () {
+    return this.action_1.equals(OperatorSourceAction_PLAYLIST_getInstance()) ? this.addresses_1.legacyPlaylist_76ezs6_k$(this.base_1, this.networkFailure_1) : this.addresses_1.api_hsene1_k$(new XtreamRequest(''));
+  };
+  protoOf(OperatorChannelSession).reject_691psf_k$ = function () {
+    this.networkFailure_1 = true;
+    this.action_1 = OperatorSourceAction_PLAYLIST_getInstance();
+  };
+  protoOf(OperatorChannelSession).accept_wd2l5t_k$ = function (response) {
+    if (!response.truthy_eb26j6_k$() || !response.get_6bo4tg_k$('live_streams').truthy_eb26j6_k$()) {
+      this.action_1 = OperatorSourceAction_PLAYLIST_getInstance();
+      return Unit_instance;
+    }
+    var groups = response.get_6bo4tg_k$('categories');
+    if (groups.truthy_eb26j6_k$()) {
+      append(this, groups, this.categories_1, 'CATEGORIES', 'CATEGORY_ROW');
+    }
+    append(this, response.get_6bo4tg_k$('live_streams'), this.streams_1, 'STREAMS', 'STREAM_ROW');
+  };
+  protoOf(OperatorChannelSession).catalog_96uo7t_k$ = function () {
+    return ChannelCatalog_instance.xtream_8xzyc2_k$(mapOf_0([to('get_live_categories', Companion_getInstance_18().array_vqz2lg_k$(this.categories_1)), to('get_live_streams', Companion_getInstance_18().array_vqz2lg_k$(this.streams_1))]), this.addresses_1);
+  };
   function Request(settled, attached, aborted) {
     settled = settled === VOID ? false : settled;
     attached = attached === VOID ? false : attached;
@@ -29105,6 +29155,61 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return result;
   };
+  function OperatorChannelClient$addresses$lambda$lambda($encode) {
+    return function (it) {
+      return $encode(it);
+    };
+  }
+  function OperatorChannelClient$addresses$lambda$lambda_0($encode) {
+    return function (it) {
+      return $encode(it.first_1) + '=' + $encode(it.second_1);
+    };
+  }
+  function OperatorChannelClient$addresses$lambda(this$0, $encode) {
+    return function (path, query) {
+      var tmp = this$0.base_1 + '/';
+      var tmp_0 = tmp + joinToString_0(path, '/', VOID, VOID, VOID, VOID, OperatorChannelClient$addresses$lambda$lambda($encode));
+      var tmp_1;
+      if (query.isEmpty_y1axqb_k$()) {
+        tmp_1 = '';
+      } else {
+        tmp_1 = joinToString_0(query, '&', '?', VOID, VOID, VOID, OperatorChannelClient$addresses$lambda$lambda_0($encode));
+      }
+      return tmp_0 + tmp_1;
+    };
+  }
+  function OperatorChannelClient(config, encode) {
+    this.input_1 = wire(config);
+    this.base_1 = this.input_1.get_6bo4tg_k$('server').string_er2cq7_k$();
+    this.source_1 = new XtreamSource('operator', this.input_1.get_6bo4tg_k$('user').string_er2cq7_k$(), this.input_1.get_6bo4tg_k$('pass').string_er2cq7_k$());
+    var tmp = this;
+    tmp.addresses_1 = new XtreamAddresses(this.source_1, OperatorChannelClient$addresses$lambda(this, encode), encode);
+    this.session_1 = new OperatorChannelSession(this.base_1, this.addresses_1);
+  }
+  protoOf(OperatorChannelClient).action = function () {
+    return this.session_1.action_nj6rwq_k$().name_1;
+  };
+  protoOf(OperatorChannelClient).request = function () {
+    return this.session_1.request_i4ci33_k$();
+  };
+  protoOf(OperatorChannelClient).reject = function () {
+    return this.session_1.reject_691psf_k$();
+  };
+  protoOf(OperatorChannelClient).accept = function (value) {
+    try {
+      this.session_1.accept_wd2l5t_k$(wire(value));
+    } catch ($p) {
+      if ($p instanceof OperatorCatalogFailure) {
+        var error = $p;
+        operatorError(error);
+      } else {
+        throw $p;
+      }
+    }
+  };
+  protoOf(OperatorChannelClient).channelCatalog = function () {
+    return channelCatalogRows(this.session_1.catalog_96uo7t_k$());
+  };
   function OperatorClient$addresses$lambda$lambda($encode) {
     return function (it) {
       return $encode(it);
@@ -31421,6 +31526,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     _.operatorClubIds = operatorClubIds;
     _.OperatorCatalogClient = OperatorCatalogClient;
     _.OperatorPlaylistClient = OperatorPlaylistClient;
+    _.OperatorChannelClient = OperatorChannelClient;
     _.OperatorClient = OperatorClient;
     _.operatorPortalNavigate = operatorPortalNavigate;
     _.operatorPortalParams = operatorPortalParams;
