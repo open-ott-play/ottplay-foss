@@ -388,6 +388,39 @@ test("immediate picker reentry cannot overwrite newer markup or timer", ({
     assert.doesNotMatch(w.channelNumberElement.innerHTML, /old-a/);
     assert.equal(jobs.length, 0);
 });
+test("explicit picker decoration preserves its owner, input dispatch and stale guards", ({
+    w,
+    key,
+}) => {
+    const port = w.__ottClassicScreenPort,
+        parent = port.commitList(),
+        chosen = [];
+    let cleanup = 0,
+        calls = 0;
+    parent.own(() => cleanup++);
+    w.showSelectBox(0, ["HD", "SD"], (value) => chosen.push(value), -1, true);
+    const original = w.selectBoxKeyHandler,
+        owner = port.owner("picker");
+    const decorated = port.decorateOwnedCallback("picker", original, (code) => {
+        calls++;
+        return original(code);
+    });
+    assert.equal(port.owner("picker"), owner);
+    assert.equal(cleanup, 0);
+    assert.equal(
+        port.decorateOwnedCallback("picker", original, () => {}),
+        null
+    );
+    key(40);
+    key(13);
+    assert.deepEqual(chosen, [1]);
+    assert.equal(calls, 2);
+    assert(parent.active());
+    w.showSelectBox(0, ["new", "other"], () => {}, -1, true);
+    decorated(13);
+    assert.equal(calls, 2);
+    assert.deepEqual(chosen, [1]);
+});
 test("color picker old callback cannot commit to a new settings draft", ({
     w,
 }) => {
