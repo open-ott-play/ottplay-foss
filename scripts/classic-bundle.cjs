@@ -15,6 +15,7 @@ const CLASSIC_MODULES = [
     "build/utils/encoding.js",
     "build/utils/qrcode.js",
     "build/channels/types.js",
+    "build/channels/channel-references.js",
     "build/channels/favorites-lists.js",
     "build/channels/search.js",
     "build/provider/source-identity.js",
@@ -84,6 +85,9 @@ const CLASSIC_MODULES = [
 // legacy bare-global ABI. These modules publish their API as window properties
 // and execute immediately at their original position in CLASSIC_MODULES.
 const CLASSIC_PRIVATE_MODULES = Object.freeze({
+    "build/channels/channel-references.js": Object.freeze([
+        "window.__ottChannelReferences",
+    ]),
     "build/channels/classic-library.js": Object.freeze([
         "window.__ottChannels",
     ]),
@@ -97,9 +101,6 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
         "window.__ottOsMediaSession",
     ]),
     "build/device/native-pip.js": Object.freeze(["window.__ottNativePip"]),
-    "build/media/classic-adapter.js": Object.freeze(["window.__ottMedia"]),
-    "build/media/journal.js": Object.freeze(["window.__ottMediaJournal"]),
-    "build/media/library.js": Object.freeze(["window.__ottMediaLibrary"]),
     "build/guide/classic-reminders.js": Object.freeze([
         "window.__ottClassicReminders",
     ]),
@@ -112,6 +113,9 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     "build/guide/reminders.js": Object.freeze(["window.__ottReminderService"]),
     "build/guide/screen.js": Object.freeze(["window.__ottGuideScreen"]),
     "build/guide/service.js": Object.freeze(["window.__ottGuideService"]),
+    "build/media/classic-adapter.js": Object.freeze(["window.__ottMedia"]),
+    "build/media/journal.js": Object.freeze(["window.__ottMediaJournal"]),
+    "build/media/library.js": Object.freeze(["window.__ottMediaLibrary"]),
     "build/playback/archive.js": Object.freeze(["window.__ottArchiveSession"]),
     "build/playback/classic-adapter.js": Object.freeze([
         "window.__ottClassicPlayback",
