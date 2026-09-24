@@ -580,6 +580,45 @@ function classicPlaybackSelect(
 var classicPersistenceSuspended = false;
 var classicCheckpointSignature = "";
 var classicCheckpointTime = 0;
+// References imported from numeric/hash mirrors retain their origin. A collision
+// is persisted unresolved instead of silently selecting a different station.
+function classicPlaybackImportJournalValue(key: string, raw: any): any {
+    var w = classicPlaybackHost();
+    if (!raw || !w.__ottChannelReferences) return raw;
+    try {
+        var value = JSON.parse(raw);
+        var codec = w.__ottChannelReferences.create(
+            w.channels || {},
+            w.__ottLegacyChannelAliases
+        );
+        function reference(id: any): any {
+            if (typeof id !== "string" && typeof id !== "number") return id;
+            if (String(id).indexOf("channel-ref:") === 0) return id;
+            return "channel-ref:" + JSON.stringify(codec.resolve(id, "raw"));
+        }
+        if (key === "playbackJournal") {
+            if (!value || value.version !== 2 || value.channelReferences === 1)
+                return raw;
+            if (value.bookmark && value.bookmark.kind !== "vod")
+                value.bookmark.channelId = reference(value.bookmark.channelId);
+            if (Array.isArray(value.history))
+                value.history.forEach(function (row: any): void {
+                    if (row && row.kind !== "vod")
+                        row.channelId = reference(row.channelId);
+                });
+        } else if (key === "prevArr" && Array.isArray(value)) {
+            value.forEach(function (row: any): void {
+                if (row) row.ci = reference(row.ci);
+            });
+        } else if (key === "continueWatch" && value && value.mode !== "vod") {
+            value.channelId = reference(value.channelId);
+        } else return raw;
+        return JSON.stringify(value);
+    } catch (_) {
+        return raw;
+    }
+}
+
 function classicPlaybackJournal(): any {
     var w = classicPlaybackHost();
     if (
@@ -619,14 +658,22 @@ function classicPlaybackJournal(): any {
             read("playbackJournalSource") === source;
     } catch (_) {}
     return w.__ottPlaybackJournal.create({
+        channelReferences: 1,
         get: function (key: string): any {
             if (key === "playbackJournal") {
                 var value = read(storageKey);
+                if (storageKey === "playbackJournal")
+                    return classicPlaybackImportJournalValue(key, value);
                 return value == null && allowLegacy
-                    ? read("playbackJournal")
+                    ? classicPlaybackImportJournalValue(
+                          key,
+                          read("playbackJournal")
+                      )
                     : value;
             }
-            return allowLegacy ? read(key) : null;
+            return allowLegacy
+                ? classicPlaybackImportJournalValue(key, read(key))
+                : null;
         },
         importSourceId: allowLegacy
             ? legacy === "ottclub" && w.p_pref === ""
@@ -647,6 +694,22 @@ function classicPlaybackJournal(): any {
 
 function classicPlaybackLocate(id: string, groupId?: string): any {
     var w = classicPlaybackHost();
+    if (id.indexOf("channel-ref:") === 0) {
+        try {
+            var ref = JSON.parse(id.slice("channel-ref:".length));
+            var codec = w.__ottChannelReferences.create(
+                w.channels || {},
+                w.__ottLegacyChannelAliases
+            );
+            if (!ref.itemId && !ref.ambiguous && ref.legacyId !== undefined)
+                ref = codec.resolve(ref.legacyId, ref.origin);
+            var projected = codec.project(ref);
+            if (projected === null) return null;
+            id = String(projected);
+        } catch (_) {
+            return null;
+        }
+    }
     var groups = w.catsArray || [];
     var preferred = w.__ottChannels ? w.__ottChannels.index(groupId) : -1;
     if (preferred < 0) preferred = groups.indexOf(groupId);

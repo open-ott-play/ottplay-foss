@@ -1,5 +1,7 @@
 /** Versioned playback persistence. No UI, classic globals or media effects. */
 interface PlaybackJournalPorts {
+    /** Numeric entries now come from canonical commands; raw references carry an explicit origin. */
+    channelReferences?: 1;
     get(key: string): string | null | undefined;
     /** Explicit identity migration within the same already selected storage namespace. */
     importSourceId?: string;
@@ -20,6 +22,7 @@ interface PlaybackJournalEntry {
 
 interface PlaybackJournalDocument {
     bookmark: PlaybackJournalEntry | null;
+    channelReferences?: 1;
     history: PlaybackJournalEntry[];
     sourceId: string;
     updatedAt: number;
@@ -173,6 +176,8 @@ function createPlaybackJournal(ports: PlaybackJournalPorts) {
             try {
                 // One envelope write commits both data and migration version.
                 if (!ports.isCurrent()) return false;
+                if (ports.channelReferences === 1)
+                    document.channelReferences = 1;
                 var serialized = JSON.stringify(document);
                 ports.set(key, serialized);
                 return ports.isCurrent() && ports.get(key) === serialized;

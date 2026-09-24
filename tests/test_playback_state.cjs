@@ -602,3 +602,92 @@ for (const kind of ["archive", "vod"]) {
 console.log(
     "PASS: owned playback state, media-event lifetime, M3U scope, loading position, and visibility persistence"
 );
+
+// Old numeric/hash history cannot silently bind to another current provider ID.
+for (const oldDocument of [false, true]) {
+    const c = fixture();
+    c.__ottActiveProviderDriver = {
+        credentials: () => ({
+            server: "https://account.invalid",
+            username: "one",
+        }),
+        id: "source",
+    };
+    c.channels = {
+        7: { itemId: "station:other" },
+        21: { itemId: "station:wanted", legacyChannelId: 7 },
+        30: { itemId: "station:safe", legacyChannelId: 9 },
+    };
+    c.cats = { News: [7, 21, 30] };
+    c.curList = c.cats.News;
+    const history = [
+        { channelId: "7", kind: "live" },
+        { archiveStart: 100, channelId: "9", kind: "archive" },
+        { channelId: "40", kind: "live" },
+    ];
+    if (oldDocument)
+        c.values.playbackJournal = JSON.stringify({
+            bookmark: history[0],
+            history,
+            sourceId: "source",
+            updatedAt: 10,
+            version: 2,
+        });
+    else {
+        c.values.prevArr = JSON.stringify([
+            { c: 0, ci: 7 },
+            { c: 0, ci: 9, t: 100 },
+            { c: 0, ci: 40 },
+        ]);
+        c.values.continueWatch = JSON.stringify({
+            channelId: 7,
+            mode: "live",
+            v: 1,
+        });
+    }
+    c.api.hydrate();
+    assert.equal(
+        c.api.bookmark(),
+        null,
+        "A colliding raw bookmark never opens the other channel"
+    );
+    assert.equal(c.prevArr[0].i, -1);
+    assert(c.prevArr[0].ci.includes('"ambiguous":true'));
+    assert.equal(c.prevArr[1].ci, 30, "Unique old alias resolves");
+    assert.equal(c.prevArr[2].i, -1, "Missing legacy reference is retained");
+    c.api.command({ channelId: 21, type: "live" });
+    const key = "playbackJournal:" + c.__ottSourceIdentity.current(c);
+    const saved = JSON.parse(c.values[key]);
+    assert.equal(saved.channelReferences, 1);
+    assert(saved.history[0].channelId.includes('"ambiguous":true'));
+    c.channels[40] = { itemId: "station:returning" };
+    c.cats.News.push(40);
+    c.api.hydrate();
+    assert.equal(
+        c.prevArr[2].ci,
+        40,
+        "An absent unambiguous channel can return"
+    );
+    // Even after the competing station disappears, known ambiguity is retained.
+    delete c.channels[7];
+    c.cats.News.shift();
+    c.api.hydrate();
+    assert.equal(c.prevArr[0].i, -1);
+    c.values[key] = JSON.stringify({
+        bookmark: { channelId: "21", kind: "live" },
+        history: [],
+        sourceId: c.__ottSourceIdentity.current(c),
+        updatedAt: 20,
+        version: 2,
+    });
+    c.channels[50] = { itemId: "station:new", legacyChannelId: 21 };
+    c.cats.News.push(50);
+    assert.equal(
+        c.api.bookmark().channelId,
+        21,
+        "Scoped canonical records ignore old aliases"
+    );
+}
+console.log(
+    "PASS conservative journal imports: collision, absent/returning and scoped canonical IDs"
+);
