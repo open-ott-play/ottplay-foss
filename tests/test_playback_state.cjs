@@ -604,7 +604,7 @@ console.log(
 );
 
 // Old numeric/hash history cannot silently bind to another current provider ID.
-for (const oldDocument of [false, true]) {
+for (const oldDocument of ["mirrors", "unscoped", "scoped"]) {
     const c = fixture();
     c.__ottActiveProviderDriver = {
         credentials: () => ({
@@ -625,14 +625,19 @@ for (const oldDocument of [false, true]) {
         { archiveStart: 100, channelId: "9", kind: "archive" },
         { channelId: "40", kind: "live" },
     ];
-    if (oldDocument)
-        c.values.playbackJournal = JSON.stringify({
-            bookmark: history[0],
-            history,
-            sourceId: "source",
-            updatedAt: 10,
-            version: 2,
-        });
+    const key = "playbackJournal:" + c.__ottSourceIdentity.current(c);
+    if (oldDocument !== "mirrors")
+        c.values[oldDocument === "scoped" ? key : "playbackJournal"] =
+            JSON.stringify({
+                bookmark: history[0],
+                history,
+                sourceId:
+                    oldDocument === "scoped"
+                        ? c.__ottSourceIdentity.current(c)
+                        : "source",
+                updatedAt: 10,
+                version: 2,
+            });
     else {
         c.values.prevArr = JSON.stringify([
             { c: 0, ci: 7 },
@@ -656,7 +661,6 @@ for (const oldDocument of [false, true]) {
     assert.equal(c.prevArr[1].ci, 30, "Unique old alias resolves");
     assert.equal(c.prevArr[2].i, -1, "Missing legacy reference is retained");
     c.api.command({ channelId: 21, type: "live" });
-    const key = "playbackJournal:" + c.__ottSourceIdentity.current(c);
     const saved = JSON.parse(c.values[key]);
     assert.equal(saved.channelReferences, 1);
     assert(saved.history[0].channelId.includes('"ambiguous":true'));
@@ -675,6 +679,7 @@ for (const oldDocument of [false, true]) {
     assert.equal(c.prevArr[0].i, -1);
     c.values[key] = JSON.stringify({
         bookmark: { channelId: "21", kind: "live" },
+        channelReferences: 1,
         history: [],
         sourceId: c.__ottSourceIdentity.current(c),
         updatedAt: 20,

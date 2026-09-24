@@ -662,14 +662,13 @@ function classicPlaybackJournal(): any {
         get: function (key: string): any {
             if (key === "playbackJournal") {
                 var value = read(storageKey);
-                if (storageKey === "playbackJournal")
-                    return classicPlaybackImportJournalValue(key, value);
-                return value == null && allowLegacy
-                    ? classicPlaybackImportJournalValue(
-                          key,
-                          read("playbackJournal")
-                      )
-                    : value;
+                if (
+                    value == null &&
+                    allowLegacy &&
+                    storageKey !== "playbackJournal"
+                )
+                    value = read("playbackJournal");
+                return classicPlaybackImportJournalValue(key, value);
             }
             return allowLegacy
                 ? classicPlaybackImportJournalValue(key, read(key))
