@@ -25,6 +25,12 @@ const CLASSIC_MODULES = [
     "build/playback/classic-archive.js",
     "build/channels/library.js",
     "build/channels/classic-library.js",
+    "build/guide/service.js",
+    "build/guide/reminders.js",
+    "build/guide/screen.js",
+    "build/guide/classic-service.js",
+    "build/guide/classic-screen.js",
+    "build/guide/classic-reminders.js",
     "build/channels/index.js",
     "build/debug/playback-debug.js",
     "build/core/auto-playback.js",
@@ -72,6 +78,18 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/channels/library.js": Object.freeze(["window.__ottChannelLibrary"]),
     "build/debug/playback-debug.js": Object.freeze(["window.__ottDebug"]),
+    "build/guide/classic-reminders.js": Object.freeze([
+        "window.__ottClassicReminders",
+    ]),
+    "build/guide/classic-screen.js": Object.freeze([
+        "window.__ottClassicGuideScreen",
+    ]),
+    "build/guide/classic-service.js": Object.freeze([
+        "window.__ottClassicGuide",
+    ]),
+    "build/guide/reminders.js": Object.freeze(["window.__ottReminderService"]),
+    "build/guide/screen.js": Object.freeze(["window.__ottGuideScreen"]),
+    "build/guide/service.js": Object.freeze(["window.__ottGuideService"]),
     "build/playback/archive.js": Object.freeze(["window.__ottArchiveSession"]),
     "build/playback/classic-adapter.js": Object.freeze([
         "window.__ottClassicPlayback",

@@ -62,6 +62,8 @@ const c = {
     normalizePlayerMode: (mode) => mode,
     onChanelsLoaded() {
         c.loadFavoritesLists();
+        c.cats = { All: c.cList };
+        c.catsArray = ["All"];
         c.loadEpgTimers();
     },
     setPlayerMode() {},
@@ -98,6 +100,7 @@ vm.runInContext(
 vm.runInContext(settingsSource(), c);
 c.settings.epgRemindMinutes = 0;
 attachSourceAliases(c);
+require("./helpers/guide-runtime-fixture.cjs").install(c);
 c.setProviderPrefix("current:");
 const put = (key, value) => c.providerSetItem(key, JSON.stringify(value));
 const read = (key) => JSON.parse(c.providerGetItem(key));
@@ -178,7 +181,7 @@ assert.equal(
 );
 assert.equal(saved.get("foreign:favoritesArray"), "[100]");
 assert.equal(saved.get("epgTimers"), foreignTimers);
-const oldTimer = c.epgTimers[0].ti;
+const oldTimer = nextTimer - 1;
 writes.length = 0;
 load();
 assert(

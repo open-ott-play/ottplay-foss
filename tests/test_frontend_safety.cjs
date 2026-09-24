@@ -309,15 +309,18 @@ test("EPG list titles are escaped without losing current-programme highlighting"
             epg_ch_id: "fixture",
             formatEpgTime: () => "12:00",
         });
-        w.eval(func("src/channels/index.ts", "itemEPG"));
-        w.document.getElementById("listIn").innerHTML = w.itemEPG(
-            {
-                name: hostile,
-                time: Date.now() / 1000 - 2,
-                time_to: Date.now() / 1000 + 30,
-            },
-            0
+        w.eval(
+            fs.readFileSync(path.join(root, "vendor/ottplay-core.js"), "utf8")
         );
+        const programme = {
+            name: hostile,
+            programmeId: "guide-row",
+            time: Date.now() / 1000 - 2,
+            time_to: Date.now() / 1000 + 30,
+        };
+        w.listEpgArray = [programme];
+        w.eval(func("src/channels/index.ts", "itemEPG"));
+        w.document.getElementById("listIn").innerHTML = w.itemEPG(programme, 0);
         assert.equal(
             w.document.querySelectorAll("#listIn img,#listIn script").length,
             0

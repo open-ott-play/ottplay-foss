@@ -679,7 +679,9 @@ function mountOwnedPlaylistDriver(
             });
             var id = (host.curList || [])[host.primaryIndex];
             if (id !== undefined && host.channels && host.channels[id]) {
-                if (kind === "guide") host.channels[id].time_request = 0;
+                if (kind === "guide")
+                    if (host.__ottClassicGuide)
+                        host.__ottClassicGuide.invalidateChannel(Number(id));
                 if (typeof host.updateChannelInfo === "function")
                     host.updateChannelInfo(id);
             }

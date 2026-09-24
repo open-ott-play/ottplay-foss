@@ -256,7 +256,8 @@ function mountM3uProviderSettings(
                     row.time_request > now &&
                     driver.currentGuideUrl(id)
                 ) {
-                    row.time_request = 0;
+                    if (host.__ottClassicGuide)
+                        host.__ottClassicGuide.invalidateChannel(Number(id));
                     if (
                         id !== selected &&
                         typeof host.getCurProgData === "function" &&
@@ -268,7 +269,8 @@ function mountM3uProviderSettings(
         }
         if (currentPatch() && selected !== undefined && channels[selected]) {
             if (event.type === "guide" && driver.currentGuideUrl(selected))
-                channels[selected].time_request = 0;
+                if (host.__ottClassicGuide)
+                    host.__ottClassicGuide.invalidateChannel(Number(selected));
             if (typeof host.updateChannelInfo === "function")
                 host.updateChannelInfo(selected);
         }

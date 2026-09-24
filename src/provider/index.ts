@@ -455,8 +455,6 @@ declare var cList: string[];
 declare var channels: Record<string, any>;
 declare var epg: any;
 declare var curList: string[];
-declare var epgCacheByChannel: Record<string, any>;
-declare var epgCacheChannelOrder: string[];
 declare var _crData: { catIndex: number; data: any[]; selIndex: number };
 declare var aAspects: Record<string, any>;
 declare var aAudios: Record<string, any>;
@@ -1172,7 +1170,7 @@ export function loadProv(providerId?: string): void {
                         getCurrentChannelEpg = epgCacheCapacity
                             ? getChannelEpgCached
                             : getChannelEpg;
-                    // Expose for processCurrentProgramQueue queue processing
+                    // Retained current-guide transport ABI; owned display requests use GuideService.
                     (window as any).getCachedChannelEpg = getCurrentChannelEpg;
                     loadChannels();
                 } else {
