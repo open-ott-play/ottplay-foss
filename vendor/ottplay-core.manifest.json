@@ -3,7 +3,7 @@
   "name": "ottplay-shared-core",
   "version": "0.1.0-dev",
   "source": {
-    "sha256": "5e2ac5163606a8ed42eebffb66eca75c4c9bcb350b24ef86b1eab56b363e5972",
+    "sha256": "07cb7d2d20d56a6f701f414972f072f7053470143a74037ba2c987ae08f0877b",
     "files": {
       "LICENSE": "ec6a17ce723ea8b4c6b08f277ab84750440a8c3e5401aaa9f4e4e9d5fd0fd72c",
       "build.gradle.kts": "e89cc0e4057ab3989c6d4048d6b2ee7b5efb023a7c96c2886d8dd62778e42a73",
@@ -31,6 +31,7 @@
       "src/commonMain/kotlin/play/ott/core/GuideNames.kt": "4fb05f86b86d4ea2b34b8c31697fef307e790c7757c1fa3af7e20178b5f7a390",
       "src/commonMain/kotlin/play/ott/core/GuideSchedule.kt": "f66476d52e5eed2ba6f3de1412ff5c4e5244e530f4af73bc27367ee3a48509f9",
       "src/commonMain/kotlin/play/ott/core/GuideTime.kt": "ad5b3458c584f207f535f1db064e76cbdeeb52f8bb1006cc0c205edfb061008a",
+      "src/commonMain/kotlin/play/ott/core/GuideTimeline.kt": "c93b0014bda0543d688b32cc869d37e27886fa305faad6121e6409e79831355e",
       "src/commonMain/kotlin/play/ott/core/LegacySettingsImport.kt": "cf6f33b9e8f2bffdc7ef963e20ae51afdc1560d625659d3c2a1df1172c813e7d",
       "src/commonMain/kotlin/play/ott/core/LegacyStalker.kt": "2a509fc6fa4c2519f4e87fd8dfdb02a60a8a4896d8ae19f7fa7af6c0b4f6206f",
       "src/commonMain/kotlin/play/ott/core/LegacyXtream.kt": "cdca55f654a2234721584e82b59284e6f77a3c970c96d713897f9c331e3fe40d",
@@ -73,6 +74,7 @@
       "src/commonTest/kotlin/play/ott/core/DurableStateTest.kt": "9ea461de3713b257b6d445d49b39ad6f61ebf131b67a235af26da10e087619b5",
       "src/commonTest/kotlin/play/ott/core/GuideFeedTest.kt": "1261aec4db22bc2e7f7d8a60e0aac89c9f4354eca7f873c178978e34c0752299",
       "src/commonTest/kotlin/play/ott/core/GuideTest.kt": "369936429caf00934f15d58d26642d02ca7ef13832a5d70d2b90095e36d90b4f",
+      "src/commonTest/kotlin/play/ott/core/GuideTimelineTest.kt": "58c0dae1dbe677adca9880d3cb73ffae4c5020526475f804fc2ed0777cd14172",
       "src/commonTest/kotlin/play/ott/core/MediaStateTest.kt": "9a578f9b897f5ae8d22aa59fe7c4381fd109d7d4f5d02e5520b69c1d7e612aa2",
       "src/commonTest/kotlin/play/ott/core/NativeGuideRefreshTest.kt": "3d205acedec384365cc71278dacc817961b2c1790a8c39d528eb328f4c59ee8c",
       "src/commonTest/kotlin/play/ott/core/NativeGuideTest.kt": "531642ad0620ff1986ea8946d975cfa642a5d61226509e6ca2aa75b469b18800",
@@ -103,6 +105,7 @@
       "src/jsMain/kotlin/DurableSelectionExports.kt": "2e3ceb5cbf7a014aef4829d6dc3d901de9b65ebd59f22c7f714b0f83389a6c3c",
       "src/jsMain/kotlin/Exports.kt": "8cba52393b445812eabdc0f831b4b8270ddc2b69065410df15e73a8862b9b528",
       "src/jsMain/kotlin/GuideExports.kt": "8c891e93cbbd0cc9a8140d36b5955ec3b0bd6c29bed7d947a12d78c9264c3ec2",
+      "src/jsMain/kotlin/GuideTimelineExports.kt": "430336eb395fea6f82dee4c01f95cfa83d7aac5594b300d2eed1318d71c96937",
       "src/jsMain/kotlin/LegacySettingsImportExports.kt": "18130c52ef58687bb824ee912431b8c586d64b160b2394db76c4673f02e01577",
       "src/jsMain/kotlin/LibraryStateExports.kt": "fbbc52e17e48035ee706a98b774fbe627b404d201826c05d41878c474d946891",
       "src/jsMain/kotlin/MediaStateExports.kt": "6e823e7f6155ba14ec4665519edaab7725f957fbb953ddf398b8dfa63ccd55d0",
@@ -127,16 +130,16 @@
   },
   "artifacts": {
     "ottplay-core.js": {
-      "sha256": "83e265eea50147bbeb315685800c7ea355f2ebb71ddc0bbac5ad4d7090416778",
-      "bytes": 1281075
+      "sha256": "d1edd571ec263c743e3dc4788d5951333deb412a85f874eb480f62c76ee19045",
+      "bytes": 1293317
     },
     "ottplay-core.d.ts": {
-      "sha256": "68e42feff3d3f2ac16b71b7d1b13dde671da9c0368e5a45c8d4af5a3d227e724",
-      "bytes": 27531
+      "sha256": "795b29b4b8b59cb633a37f4dc1cd6bf8f6680ab3dda49848b9883d4e93129cdd",
+      "bytes": 27746
     },
     "ottplay-core.jar": {
-      "sha256": "f35fa6469fcda82352a150f91254e35a941644c77a534c22db50d43ffe0925bd",
-      "bytes": 618165
+      "sha256": "b73c0bd0658c29d64fbd261957f2560a82d088ce80f742f84da463aa2d9f758e",
+      "bytes": 629145
     },
     "ottplay-core.LICENSE.txt": {
       "sha256": "1e72da3623b91daad1013e577c3611ad6ed314da508b757abe9a1b27a88a14cc",

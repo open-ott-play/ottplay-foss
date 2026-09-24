@@ -212,6 +212,8 @@ export function cloudLoadSettings(): void {
                                     });
                                 if (w.__ottClassicPlayback)
                                     w.__ottClassicPlayback.suspendPersistence();
+                                if (w.__ottClassicGuide)
+                                    w.__ottClassicGuide.invalidate(false);
                                 if (typeof w.stbClearAllItems === "function")
                                     w.stbClearAllItems();
                             } catch (e) {

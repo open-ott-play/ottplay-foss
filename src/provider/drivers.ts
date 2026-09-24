@@ -1760,9 +1760,8 @@ function mountProviderDriver(
                 host.cats = catalog.groups;
                 host.catsArray = catalog.groupOrder.slice();
                 if (catalog.epg) {
-                    if (!host.epg) host.epg = {};
                     Object.keys(catalog.epg).forEach(function (key) {
-                        host.epg[key] = catalog.epg![key];
+                        host.__ottClassicGuide.seed(key, catalog.epg![key]);
                     });
                 }
             }

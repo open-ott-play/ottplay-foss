@@ -72,7 +72,6 @@ import {
     channels,
     channelsList,
     curList,
-    currentProgramRequestQueue,
     deleteFavoritesList,
     detailEPG,
     enterPinAndSetAccess,
@@ -88,6 +87,7 @@ import {
     epgreturn,
     epgTimezoneHours,
     favoritesArray,
+    fetchChannelGuide,
     fileArchive,
     getActiveFavoritesListName,
     getChannelEpgCached,
@@ -116,11 +116,12 @@ import {
     prevArr,
     prevChannel,
     primaryIndex,
-    processCurrentProgramQueue,
+    publishGuideReminders,
     recordsList,
     removeFromFavorites,
     renameFavoritesList,
     renderEpgFooter,
+    renderGuideView,
     saveChannelsCats,
     selectEpg,
     setActiveFavoritesList,
@@ -4799,6 +4800,8 @@ window.settingsManage = function (): void {
                             "function"
                     )
                         w.__ottClassicPlayback.suspendPersistence();
+                    if (w.__ottClassicGuide)
+                        w.__ottClassicGuide.invalidate(false);
                     if (typeof w.stbClearAllItems === "function")
                         w.stbClearAllItems();
                 } catch (e) {
@@ -5185,8 +5188,8 @@ window.checkMedia = checkMedia;
 window.setCurrent = setCurrent;
 window.setCurProg = setCurProg;
 window.getCurProgData = getCurProgData;
-window.processCurrentProgramQueue = processCurrentProgramQueue;
-window.currentProgramRequestQueue = currentProgramRequestQueue;
+
+(window as any).fetchChannelGuide = fetchChannelGuide;
 window.getChannelEpgCached = getChannelEpgCached;
 window.nextChannel = nextChannel;
 window.prevChannel = prevChannel;
@@ -5205,6 +5208,8 @@ window.listFavoritesLists = listFavoritesLists;
 window.epgList = epgList;
 window.epgListAlpha = epgListAlpha;
 window.loadEpgListData = loadEpgListData;
+(window as any).renderGuideView = renderGuideView;
+(window as any).publishGuideReminders = publishGuideReminders;
 window.epgKeyHandler = epgKeyHandler;
 window.renderEpgFooter = renderEpgFooter;
 window.detailEPG = detailEPG;

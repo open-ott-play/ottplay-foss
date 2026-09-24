@@ -13,6 +13,16 @@ function fixture(initial = {}) {
     let reloads = 0;
     const host = {
         _: (value) => value,
+        // Explicit publication port; GuideService itself is covered by guide integration.
+        __ottClassicGuide: {
+            invalidateChannel(id) {
+                calls.push(["guide-invalidated", id]);
+            },
+            seed(id, rows) {
+                if (!host.epg) host.epg = {};
+                host.epg[id] = JSON.parse(JSON.stringify(rows));
+            },
+        },
         alert: (message) => errors.push(message),
         browserName: () => "browser",
         btnDiv: () => "",

@@ -1227,11 +1227,20 @@ function exerciseProviderRuntime(profile) {
                 ],
             });
         else if (id === "ottclub")
-            requests
-                .at(-1)
-                .resolve(
-                    '{"one":{"ch_id":"one","name":"One","category":"News","rec":true,"img":"one.png"}}'
-                );
+            requests.at(-1).resolve(
+                JSON.stringify({
+                    one: {
+                        category: "News",
+                        ch_id: "one",
+                        channel_name: "One",
+                        img: "one.png",
+                        name: "Provider programme",
+                        rec: true,
+                        time: Date.now() / 1000 - 60,
+                        time_to: Date.now() / 1000 + 3600,
+                    },
+                })
+            );
         else {
             assert.equal(requests.at(-1).settings.dataType, "jsonp");
             requests.at(-1).resolve([{ archive: 24, id: "one", name: "One" }]);
@@ -1246,7 +1255,16 @@ function exerciseProviderRuntime(profile) {
         assert(w.getChannelUrl(w.cList[0]), id + ": built live URL");
         assert(w.__ottActiveProviderDriver.archive("one", 10, 20));
         if (id === "ottclub") {
-            assert(w.epg.one.length > 0, "OTTCLUB publishes catalog seed EPG");
+            assert.equal(
+                w.channels.one.name,
+                "Provider programme",
+                "OTTCLUB seed publishes the owned current programme"
+            );
+            assert.equal(
+                w.__ottClassicGuide.peek("one"),
+                null,
+                "Disabled cache does not retain a separate raw catalog schedule"
+            );
             assert.equal(w.__ottActiveProviderDriver.guideCurrent, undefined);
         } else {
             const current = [];

@@ -11,7 +11,6 @@ import {
 
 import {
     cancelMediaLoad,
-    currentProgramRequestQueue,
     getCurProgData,
     ifParentalAccessChId,
     type MediaHistoryEntry,
@@ -809,10 +808,9 @@ export function showPage(): void {
     } catch (_vis) {}
     $infoBar.hide();
     $("#permanentTime").hide();
-    // Gold showPage clears the EPG queue before re-rendering rows so each
-    // visible channel re-queues getCurProgData → updateChannelListRow (now/next).
+    // Retire the previous visible-row subscriptions before mounting this page.
     try {
-        currentProgramRequestQueue.length = 0;
+        (window as any).__ottClassicGuide.cancelConsumers();
     } catch (_q) {}
 
     if (listInElement) listInElement.innerHTML = "";
@@ -1184,6 +1182,8 @@ export function setSelect(index: number): void {
  */
 export function closeList(restorePip = true): void {
     (window as any).__ottClassicScreenPort.closeList();
+    if ((window as any).__ottClassicGuideScreen)
+        (window as any).__ottClassicGuideScreen.close();
     cancelMediaLoad();
     isListVisible = false;
     try {
