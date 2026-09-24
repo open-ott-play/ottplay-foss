@@ -37,11 +37,15 @@ module.exports = function sharedCoreRuntime(context, options = {}) {
     const privateRuntime = require("./private-runtime.cjs");
     if (!context.window) context.window = context;
     for (const file of [
+        "src/provider/source-identity.ts",
         "src/playback/session.ts",
         "src/playback/journal.ts",
         "src/playback/classic-adapter.ts",
         "src/playback/archive.ts",
         "src/playback/classic-archive.ts",
+        "src/media/library.ts",
+        "src/media/journal.ts",
+        "src/media/classic-adapter.ts",
         "src/provider/runtime.ts",
         "src/provider/driver-profiles.ts",
         "src/provider/stalker-driver.ts",

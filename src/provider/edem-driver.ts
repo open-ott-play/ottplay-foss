@@ -768,7 +768,13 @@ function mountEdemProvider(
         hideDialog();
         driver.mediaCancel();
     }
-    var client = { cancel: cancel, dispose: cancel };
+    var client = {
+        cancel: cancel,
+        dispose: cancel,
+        resolve: function (item: any, done: any) {
+            play(item, done);
+        },
+    };
     host.providerMediaClient = client;
     owner.own(function () {
         cancel();
@@ -809,7 +815,12 @@ function mountEdemProvider(
     function report(error?: string) {
         if (error) host.alert(host._("VPortal request failed"));
     }
-    function project(rows: any[], token: number, accepted?: any[]): any[] {
+    function project(
+        rows: any[],
+        token: number,
+        accepted?: any[],
+        publish?: any
+    ): any[] {
         var projected = accepted || [];
         projected.length = rows.length;
         rows.forEach(function (row, index) {
@@ -820,7 +831,7 @@ function mountEdemProvider(
                 if (
                     !active() ||
                     revision !== token ||
-                    host.mediaRecords !== projected
+                    (!publish && host.mediaRecords !== projected)
                 )
                     return "";
                 var selected = host.selIndex,
@@ -832,7 +843,7 @@ function mountEdemProvider(
                 driver.mediaPage(selected, function (result) {
                     if (
                         !current(token, view) ||
-                        host.mediaRecords !== projected
+                        (!publish && host.mediaRecords !== projected)
                     )
                         return;
                     pageIndex = null;
@@ -840,10 +851,14 @@ function mountEdemProvider(
                     report(result.error);
                     if (
                         !current(token, view) ||
-                        host.mediaRecords !== projected
+                        (!publish && host.mediaRecords !== projected)
                     )
                         return;
-                    project(result.records, token, projected);
+                    project(result.records, token, projected, publish);
+                    if (publish) {
+                        publish(projected, undefined, result.selected);
+                        return;
+                    }
                     if (result.selected !== undefined)
                         host.selIndex = result.selected;
                     host.showPage();
@@ -874,7 +889,12 @@ function mountEdemProvider(
                 (callback.isCurrent && !callback.isCurrent())
             )
                 return;
-            host.mediaRecords = project(result.records, token);
+            host.mediaRecords = project(
+                result.records,
+                token,
+                undefined,
+                callback.publish
+            );
             if (result.name !== undefined) host.mediaName = result.name;
             callback();
         });
@@ -883,7 +903,7 @@ function mountEdemProvider(
         var enabled = driver.settings().portal;
         if (active()) host.getMediaArray = enabled ? loadMedia : null;
     }
-    function play(item: any) {
+    function play(item: any, resolved?: (item: any) => void) {
         if (!active()) return;
         var token = revision + 1;
         cancel();
@@ -912,6 +932,10 @@ function mountEdemProvider(
                 var playable = edemDetached(result.item);
                 playable.stream_url = url;
                 hideDialog();
+                if (resolved) {
+                    resolved(playable);
+                    return;
+                }
                 host.closeList();
                 // Closing the renderer intentionally cancels this completed operation.
                 if (active()) host._playMedia(playable);

@@ -1418,7 +1418,8 @@ export function showSelectBox(
     s: number,
     n: string[],
     i: (val: number) => void,
-    a?: number
+    a?: number,
+    preserveParent = false
 ): void {
     clearTimeout((window as any).numTimeout);
     if (n.length === 0) return;
@@ -1464,7 +1465,9 @@ export function showSelectBox(
                 (window as any).selectBoxKeyHandler = null;
             }, a);
     }
-    closeList();
+    // Quality selection belongs to the pending media operation. ScreenController
+    // supplies the corresponding parent-suspension lifecycle at the UI boundary.
+    if (!preserveParent) closeList();
     if (a === -1) {
         a = 0;
         r(s);
@@ -3946,13 +3949,18 @@ declare function mediaKeyHandler(keyCode: number): boolean;
  *             `window.detailListActionFn`, `window.listKeyHandlerFn`; updates
  *             #listCaption / #listPodval; calls `window.showPage`.
  */
-function showMediaList1(): void {
+function showMediaList1(view?: any): void {
     var w = window as any;
-    rememberMediaView();
-    var data: MediaHistoryEntry[] = w.mediaRecords || [];
+    view = view || w.__ottMedia.snapshot();
+    var frame = view.frame;
+    var data: MediaHistoryEntry[] = frame
+        ? frame.items.map(function (entry: any) {
+              return entry.payload;
+          })
+        : [];
     w.selIndex = Math.max(
         0,
-        Math.min((w.mediaSelects || [])[0] || 0, data.length - 1)
+        Math.min(frame ? frame.selected : 0, data.length - 1)
     );
     w.listArray = data;
     w.listDataArray = data;
@@ -3974,6 +3982,7 @@ function showMediaList1(): void {
         );
     };
     w.detailListActionFn = function () {
+        w.__ottMedia.highlight(w.selIndex, view.revision);
         var detailEl = document.getElementById("listDetail");
         var item = data[w.selIndex];
         if (!detailEl) return;
@@ -4009,7 +4018,7 @@ function showMediaList1(): void {
     var detailEl = document.getElementById("listDetail");
     if (detailEl) detailEl.innerHTML = "";
     var footerElement = document.getElementById("listPodval");
-    var urls: MediaTarget[] = w.mediaUrls || [];
+    var depth = view.frames.length;
     if (footerElement) {
         footerElement.innerHTML =
             w.renderButtonHint(
@@ -4032,11 +4041,11 @@ function showMediaList1(): void {
                             : ""
                   )) +
             w.renderButtonHint(w.keys.N2, w.strInfo, "Description", "2") +
-            (data.length && w.sFavorites !== -1 && urls.length > 1
+            (data.length && w.sFavorites !== -1 && depth > 1
                 ? w.renderButtonHint(
                       w.keys.GREEN,
                       "",
-                      urls[urls.length - 1] === -2
+                      frame && frame.route.kind === "favorites"
                           ? "Delete"
                           : "Add to favorites",
                       w.strTools,
@@ -4048,68 +4057,12 @@ function showMediaList1(): void {
     if (typeof w.showPage === "function") w.showPage();
 }
 
+if (typeof window !== "undefined")
+    (window as any).__ottRenderMedia = showMediaList1;
+
 /** Navigate legacy provider VOD URLs, fXML submenus and local history/favorites. */
 export function mediaList(target: MediaTarget | null): void {
-    var w = window as any;
-    if (w.mediaUrls && w.mediaUrls.length && target === w.mediaUrls[0]) {
-        w.mediaName = w._("Media Library");
-        w.mediaUrls = [];
-        w.mediaNames = [];
-        w.mediaSelects = [w.mediaSelects.pop() || 0];
-    }
-    if (target === null) {
-        if (w.mediaUrls === null || w.mediaUrls === undefined) {
-            w.mediaName = w._("Media Library");
-            target = "";
-            w.mediaUrls = [];
-            w.mediaNames = [];
-            w.mediaSelects = [0];
-            w.mediaRecordsPar = null;
-        } else {
-            showMediaList1();
-            return;
-        }
-    }
-    if (typeof target === "string") {
-        if (target === "submenu") {
-            w.mediaSelects.shift();
-            var item: MediaHistoryEntry | undefined =
-                w.mediaRecords[w.selIndex];
-            var submenu = item && item.submenu;
-            if (!submenu || !submenu.length) {
-                infoBox("Error: Bad fXML Submenu!");
-                return;
-            }
-            w.mediaRecordsPar = w.mediaRecords;
-            w.mediaRecords = submenu;
-            var names = w.mediaNames;
-            var title = item!.title || item!.playlist_name;
-            if (title) w.mediaNames = [title];
-            var parentSelection = w.mediaSelects[0];
-            w.mediaSelects[0] = 0;
-            showMediaList1();
-            w.mediaSelects[0] = parentSelection;
-            w.mediaNames = names;
-            return;
-        }
-        if (target.indexOf("cmd:info") === 0 || target.indexOf("alert") === 0) {
-            w.mediaSelects.shift();
-            var match = /(?:cmd:info|alert)\(([^)]+)\)/.exec(target);
-            infoBox(match ? match[1] : target);
-            return;
-        }
-    }
-    if (!w.mediaUrls) w.mediaUrls = [];
-    w.mediaUrls.push(target);
-    w.mediaRecords = [];
-    w.mediaRecordsPar = null;
-    if (target === -1 || target === -2) {
-        w.mediaRecords = target === -1 ? w.medHistory : w.medFavorites;
-        showMediaList();
-    } else if (typeof w.getMediaArray === "function") {
-        // Providers populate mediaRecords and call the completion callback with no arguments.
-        requestMediaList(target);
-    }
+    (window as any).__ottMedia.open(target);
 }
 
 /* ---------------------------------------------------------------------------

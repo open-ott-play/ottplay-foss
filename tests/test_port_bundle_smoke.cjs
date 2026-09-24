@@ -542,6 +542,88 @@ function assertPrivateRuntime(w, profile) {
     }
 }
 
+function exerciseMediaRuntime(profile) {
+    const w = fixture(profile);
+    vm.runInContext(bundle, w, { filename: bundlePath });
+    const stored = new Map(),
+        played = [],
+        rendered = [];
+    let position = 0,
+        request;
+    Object.assign(w, {
+        __ottRenderMedia: (view) => rendered.push(view),
+        catIndex: 0,
+        cats: { All: [1] },
+        catsArray: ["All"],
+        channels: { 1: { channel_name: "Live" } },
+        closeList: () => w.cancelMediaLoad(),
+        confirmBox: (_message, accept) => {
+            w.confirmMedia = accept;
+        },
+        curList: [1],
+        getMediaArray: (_route, done) => {
+            request = done;
+        },
+        p_pref: "media-artifact",
+        playTime: 0,
+        playType: 0,
+        prevArr: [],
+        primaryIndex: 0,
+        providerGetItem: (key) => stored.get(key) || null,
+        providerSetItem: (key, value) => stored.set(key, value),
+        sFavorites: 0,
+        sInfoSwitch: 0,
+        sMedCount: 2,
+        sStopPlay: 0,
+        stbGetLen: () => 600,
+        stbGetPosTime: () => position,
+        stbPlay: (url) => {
+            played.push(url);
+            w.__ottClassicPlayback.command({ type: "playing" });
+        },
+        stbSetPosTime: (value) => {
+            position = value;
+        },
+    });
+    w.mediaList(null);
+    w.mediaRecords = [
+        { id: 41, stream_url: "expired.mp4", title: "Movie" },
+        { playlist_url: "folder", title: "Folder" },
+    ];
+    request();
+    assert.equal(rendered.at(-1).frame.items[0].ref.itemId, "provider:41");
+    w.selectMedia(0);
+    assert.deepEqual(played, ["expired.mp4"]);
+    position = 125.9;
+    w.setCurrent(0, -1);
+    w.__ottClassicPlayback.command({ type: "stop" });
+    w.mediaList(-1);
+    w.selectMedia(0);
+    w.mediaRecords = [
+        { id: 41, stream_url: "renewed.mp4", title: "New title" },
+    ];
+    request();
+    assert.equal(played.at(-1), "renewed.mp4");
+    w.confirmMedia();
+    assert.equal(position, 120);
+    const journal = JSON.parse(stored.get("mediaJournal.v1:media-artifact"));
+    assert.equal(journal.history.length, 1);
+    assert.equal(journal.history[0].itemId, "provider:41");
+    w.mediaList("pending");
+    const abandoned = request;
+    const count = rendered.length;
+    w.cancelMediaLoad();
+    w.mediaRecords = [{ id: 99, stream_url: "wrong.mp4", title: "Stale" }];
+    abandoned();
+    assert.equal(rendered.length, count);
+    assert.equal(played.length, 2);
+    console.log(
+        "OK: actual media library/journal " +
+            profile +
+            " stable resume and stale cancellation"
+    );
+}
+
 function exerciseArchiveRuntime(profile) {
     const w = fixture(profile);
     vm.runInContext(bundle, w, { filename: bundlePath });
@@ -709,7 +791,21 @@ function exercisePlaybackRuntime(w, profile) {
         assert.equal(checkpoint.bookmark.channelId, "2");
         assert.equal(checkpoint.bookmark.kind, "live");
 
-        w.playType = -1e11;
+        const media = w.__ottMedia.prepare(
+            {
+                id: "movie",
+                stream_url: "https://media.invalid/movie.mp4",
+                title: "Movie",
+            },
+            "https://media.invalid/movie.mp4"
+        );
+        w.__ottClassicPlayback.command({
+            channelId: media.ref.itemId,
+            item: media.item,
+            sourceId: media.ref.sourceId,
+            type: "vod",
+        });
+        w.__ottClassicPlayback.command({ type: "playing" });
         const combined = delayedShift(5, 7);
         assert.deepEqual(positions, [], profile + ": seek waits for debounce");
         fire(combined);
@@ -738,7 +834,8 @@ function exercisePlaybackRuntime(w, profile) {
             profile + ": built setCurrent retires pending seek"
         );
         assert.equal(
-            w.medHistory[0].current,
+            JSON.parse(stored.get("mediaJournal.v1:" + media.ref.sourceId))
+                .history[0].position,
             40,
             profile + ": leaving VOD persists position"
         );
@@ -1435,6 +1532,7 @@ async function main() {
         if (profile === "modern" || profile === "legacy") {
             exercisePlaybackRuntime(w, profile);
             exerciseArchiveRuntime(profile);
+            exerciseMediaRuntime(profile);
             exerciseProviderRuntime(profile);
         }
         for (const name of [
