@@ -333,6 +333,37 @@ test("write reentry cannot restore old references or refresh the old source", (f
     f.w.saveFavoritesLists();
     assert.deepEqual(f.read().lists.lists.Main, [{ itemId: "stream:B" }]);
 });
+test("failed legacy reads cannot claim or shadow recoverable favorites", (f) => {
+    f.raw("favoritesLists", blob([100, 200]));
+    f.onRead((key) => {
+        if (key === "favoritesLists") throw Error("temporary storage failure");
+    });
+    f.load();
+    assert.deepEqual(f.view(), []);
+    assert.equal(f.w.saveFavoritesLists(), false);
+    assert.deepEqual(f.events, []);
+    assert.equal(f.saved.has("a:favoritesLibrarySource"), false);
+    assert.equal(f.saved.has("a:favoritesLibrary:a"), false);
+    f.onRead(null);
+    f.load();
+    assert.deepEqual(f.view(), [10, 20]);
+    assert.deepEqual(f.read().lists.lists.Main, [
+        { itemId: "stream:A" },
+        { itemId: "stream:B" },
+    ]);
+});
+test("reloading migrated ambiguous and missing references makes no redundant storage writes", (f) => {
+    f.w.channels[100] = { itemId: "other" };
+    f.raw("favoritesLists", blob([100, 200, 999]));
+    f.load();
+    const before = f.events.length,
+        text = f.saved.get("a:favoritesLibrary:a");
+    f.load();
+    f.load();
+    f.w.saveFavoritesLists();
+    assert.equal(f.events.length, before);
+    assert.equal(f.saved.get("a:favoritesLibrary:a"), text);
+});
 test("future or malformed envelopes remain untouched and unwritable", (f) => {
     for (const value of [
         { lists: blob([10]), sourceId: "a", version: 99 },

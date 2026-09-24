@@ -124,14 +124,16 @@ function restoreFavoriteReference(
         (typeof value.legacyId === "number" ||
             typeof value.legacyId === "string") &&
         (value.origin === "raw" || value.origin === "canonical")
-    )
-        return value.ambiguous
-            ? {
-                  ambiguous: true,
-                  legacyId: value.legacyId,
-                  origin: value.origin,
-              }
-            : index.resolve(value.legacyId, value.origin);
+    ) {
+        if (!value.ambiguous)
+            return index.resolve(value.legacyId, value.origin);
+        var unresolved: ChannelReference = {
+            legacyId: value.legacyId,
+            origin: value.origin,
+        };
+        unresolved.ambiguous = true;
+        return unresolved;
+    }
     return { ambiguous: true, legacyId: String(value), origin: "raw" };
 }
 function favoriteReferenceRecord(
@@ -340,9 +342,7 @@ export function loadFavoritesLists(): void {
             var claim = get.call(w, "favoritesLibrarySource");
             writable = true;
             if (!claim || claim === source) {
-                try {
-                    raw = w.providerGetJson("favoritesLists", null);
-                } catch (_) {}
+                raw = w.providerGetJson("favoritesLists", null);
                 if (
                     !(
                         raw &&
