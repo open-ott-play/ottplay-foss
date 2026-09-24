@@ -128,7 +128,7 @@ function fixture(saved = new Map()) {
         catIndex: 1,
         cats: { All: [1, 2, 3], Second: [10, 20] },
         catsArray: ["Favorites", "All", "Second"],
-        channels: { 1: {}, 2: {}, 3: {}, 10: {}, 20: {} },
+        channels: { 1: {}, 2: {}, 3: {}, 8: {}, 9: {}, 10: {}, 20: {} },
         curList: [1, 2, 3],
         enterPinAndSetAccess: (callback) => pending.push(callback),
         getChannelUrl: (id) => "https://fixture.invalid/channel/" + id,
@@ -189,6 +189,7 @@ function test(name, action) {
     }
 }
 const list = (value) => Array.from(value);
+const references = (...ids) => ids.map((id) => ({ itemId: "channel:" + id }));
 const stored = (f) =>
     JSON.parse(
         f.saved.get("favoritesLibrary:" + f.w.__ottSourceIdentity.current(f.w))
@@ -197,7 +198,7 @@ const stored = (f) =>
 test("UI add persists once and survives reopening the provider", (f) => {
     f.w.channelsKeyHandler(f.w.keys.N3);
     f.w.channelsKeyHandler(f.w.keys.N3);
-    assert.deepEqual(stored(f).lists.Favorites, [1]);
+    assert.deepEqual(stored(f).lists.Favorites, references(1));
     const reopened = fixture(f.saved);
     try {
         assert.deepEqual(list(reopened.w.favoritesArray), [1]);
@@ -214,9 +215,9 @@ test("UI move and delete persist the active favorites list", (f) => {
     f.w.listCatIndex = 0;
     f.w.listArray = f.w.cats.Favorites;
     f.w.channelsKeyHandler(f.w.keys.N7);
-    assert.deepEqual(stored(f).lists.Favorites, [2, 1, 3]);
+    assert.deepEqual(stored(f).lists.Favorites, references(2, 1, 3));
     f.w.channelsKeyHandler(f.w.keys.N8);
-    assert.deepEqual(stored(f).lists.Favorites, [2, 3]);
+    assert.deepEqual(stored(f).lists.Favorites, references(2, 3));
     f.w.loadFavoritesLists();
     assert.deepEqual(list(f.w.favoritesArray), [2, 3]);
 });
@@ -230,7 +231,7 @@ test("public add/remove helpers share the legacy arrays without duplicate mutati
     assert.deepEqual(list(f.w.cats.Favorites), [2]);
     assert.equal(f.w.favoritesArray, f.w.favoritesLists.lists.Favorites);
     assert.equal(f.w.cats.Favorites, f.w.favoritesArray);
-    assert.deepEqual(stored(f).lists.Favorites, [2]);
+    assert.deepEqual(stored(f).lists.Favorites, references(2));
 });
 
 test("switch, rename and delete preserve independent lists and active view", (f) => {
@@ -247,7 +248,7 @@ test("switch, rename and delete preserve independent lists and active view", (f)
     f.w.renameFavoritesList("Favorites", "Renamed");
     f.w.saveChannelsCats();
     assert.equal(stored(f).active, "Renamed");
-    assert.deepEqual(stored(f).lists["Second list"], [2, 3]);
+    assert.deepEqual(stored(f).lists["Second list"], references(2, 3));
     f.w.deleteFavoritesList("Renamed");
     f.w.saveChannelsCats();
     assert.equal(stored(f).active, "Second list");
@@ -261,7 +262,7 @@ test("legacy single-list migration stays mutable through the UI", (f) => {
     f.w.loadFavoritesLists();
     f.w.cats.Favorites = f.w.favoritesArray;
     f.w.channelsKeyHandler(f.w.keys.N3);
-    assert.deepEqual(stored(f).lists.Favorites, [2, 1]);
+    assert.deepEqual(stored(f).lists.Favorites, references(2, 1));
 });
 
 test("loading a provider in category mode preserves that provider's favorites", (f) => {
@@ -283,7 +284,7 @@ test("loading a provider in category mode preserves that provider's favorites", 
     f.w.onChanelsLoaded();
     f.w.saveChannelsCats();
     assert.equal(stored(f).active, "Other provider");
-    assert.deepEqual(stored(f).lists["Other provider"], [2]);
+    assert.deepEqual(stored(f).lists["Other provider"], references(2));
 });
 
 for (const key of ["PIP", "STOP", "N5"])
