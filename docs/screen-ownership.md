@@ -34,12 +34,17 @@ that every UI renderer or provider settings form has been rewritten.
 - `invalidate()` revokes the stack on provider replacement or catalog reload.
 - `savePanel()/restorePanel()` preserve nested renderer chrome and owner context.
 - `setOwnedCallback(kind, fn)` publishes a guarded modal callback.
+- `decorateOwnedCallback(kind, expected, wrapper)` updates an existing modal
+  callback without replacing its owner. It returns a foreground-guarded callback,
+  or `null` when the expected callback has already been replaced.
 
 Settings drafts should attach cancellation after `showPage()`; a nested editor
 must not cancel its parent draft. Media page work may attach to the list owner,
 while its provider/domain lifetime remains separate. A VPortal quality picker
 uses the optional fifth `showSelectBox` argument `preserveParent=true`; it hides
 and suspends the media list instead of cancelling the resolution request.
+Provider picker wrappers use `decorateOwnedCallback`: assigning a replacement
+global callback would retire the picker that owns its completion closure.
 
 ## Menu records
 
