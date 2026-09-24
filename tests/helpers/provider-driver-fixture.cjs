@@ -231,6 +231,16 @@ function integrationFixture(id, initial = {}) {
             return id;
         },
     });
+    w.storage = {
+        del: (key) => f.saved.delete(key),
+        get: (key) => f.saved.get(key) ?? null,
+        set: (key, value) => f.saved.set(key, String(value)),
+        setI: (key, value) => f.saved.set(key, String(value)),
+    };
+    vm.runInContext(
+        require("./settings-source-fixture.cjs").settingsSource(),
+        w
+    );
     const file = path.join(__dirname, "../../src/provider/index.ts");
     const source = ts.createSourceFile(
         file,

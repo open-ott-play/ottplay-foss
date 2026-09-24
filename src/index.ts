@@ -1,4 +1,5 @@
 import { popupActionId } from "./compatibility/legacy-names";
+import { createSettingsEditor } from "./settings/editor";
 import {
     editSettingsText,
     exportSettingsUI,
@@ -129,11 +130,6 @@ import {
     setParentAccess,
     shiftArchive,
     shiftArchiveSelect,
-    sInfoSwitch,
-    sMedCount,
-    sPlayers,
-    sRWfun,
-    sStopPlay,
     timeShift,
     updateArchiveInfo,
 } from "./channels";
@@ -148,9 +144,11 @@ import {
 // Settings
 import {
     applyTimezoneSetting,
+    beginSettingsDraft,
     defaultSettings,
     exportSettings,
     importSettings,
+    installSettingsFacade,
     loadSettings,
     normalizeSeekDuration,
     type PlayerSettings,
@@ -367,7 +365,7 @@ var deviceType = "";
 var epgDomain = "";
 
 // Parental PIN
-var parentPIN = "1234";
+declare var parentPIN: string;
 
 // Hide menus list
 var hideMenus: string[] = [];
@@ -1020,7 +1018,6 @@ function initUIReferences(): void {
  * when settings.noSmall is set.
  */
 function setFontSize(): void {
-    pullSettingsFromWindow();
     pageSize = settings.pageSize;
     var $i1El = $i1 && typeof $i1.css === "function" ? $i1 : null;
     var e = window.innerHeight / 720;
@@ -1254,7 +1251,6 @@ function setFontSize(): void {
  * #listDetail, #listPopUp via jQuery.
  */
 function setListPos(): void {
-    pullSettingsFromWindow();
     var e = window.innerWidth / 1280;
     var t = window.innerHeight / 720;
     var r = settings.listPosition ? 0 : 522 * e;
@@ -1280,7 +1276,6 @@ function setListPos(): void {
  * osdOpacity, listPosition.
  */
 function setColor(): void {
-    pullSettingsFromWindow();
     $("body").css("color", bodyColor);
     // sSHLcolSel -> curColorB (selection background), H,S at lightness 50
     var selCv = settings.highlightColorSel.split(",");
@@ -1374,13 +1369,11 @@ function stbSetOsdOpacity(val: number): void {
  * showEditKey2 (and persists sEditor=1). On STB, routes from settings.editor
  * / window.sEditor like original stbPlayer.js.
  *
- * Side effects: pullSettingsFromWindow(); may stbSetItem("sEditor"); assigns
  * window.editKey and window.showEditKey.
  */
 function setEditor(): void {
     // Match setListPos/setColor: settings may have been updated via window.s*
     // (first-run / STB settings) while the channels module binding stays at 0.
-    pullSettingsFromWindow();
     var w = window as any;
     var isPc =
         typeof w.__TAURI__ !== "undefined" ||
@@ -1388,10 +1381,7 @@ function setEditor(): void {
     // Cap Mode B mobile: system keyboard via showEditKey2 (same as desktop).
     // Do not treat generic ott_device=android STB builds as Cap.
     var isCap = typeof w.Capacitor !== "undefined";
-    // channels exports `var sEditor = 0`, which becomes window.sEditor in the
-    // concat bundle. pullSettingsFromWindow can then clobber settings.editor
-    // back to 0 even when localStorage has sEditor=1. Re-read storage on PC/Cap
-    // and always prefer the native input line for those shells.
+    // Native shells support only the system input line.
     if (isPc || isCap) {
         // Desktop/Cap: native input only (OSK remains for non-Cap STB via sEditor=0).
         var raw =
@@ -1399,7 +1389,7 @@ function setEditor(): void {
         settings.editor = 1;
         w.sEditor = 1;
         if (typeof w.stbSetItem === "function" && String(raw) !== "1") {
-            w.stbSetItem("sEditor", "1");
+            saveSettings({ editor: 1 });
         }
     }
     if (settings.editor && typeof w.showEditKey2 === "function") {
@@ -1418,7 +1408,6 @@ function setEditor(): void {
  * Side effects: DOM mutations via setPipPosition().
  */
 function setPipPosBuf(): void {
-    pullSettingsFromWindow();
     setPipPosition();
 }
 
@@ -1794,7 +1783,7 @@ export function startPlayer(): void {
  * - Loading the language file and then launching the provider / options
  * - Preparing TMDb if available
  *
- * Side effects: Extensive — calls loadSettings(), applySettingsToWindow(),
+ * Side effects: Extensive — calls loadSettings(), installSettingsFacade(),
  * setTimezone(), setFontSize(), setListPos(), setColor(), setEditor(),
  * setPipPosBuf(), setSleepTimeout(); loads language JS; calls loadProv()
  * or optionsList().
@@ -1811,7 +1800,7 @@ function onStbReady(): void {
         // Load all settings
         loadSettings();
         // Sync PlayerSettings → window.* for settings submenu compatibility
-        applySettingsToWindow(settings);
+        installSettingsFacade(window as any);
         (window as any).__ottLocalHttpRemote.init();
         (window as any).__ottCommandServer.configure({
             address: settings.commandServerAddress,
@@ -2430,7 +2419,7 @@ function _playChannel(catIdx: number, chIdx: number): void {
         console.log("[playChannel] blocked by parental");
         return;
     }
-    if (sStopPlay) stbStop();
+    if (settings.stopPlay) stbStop();
     setCurrent(catIdx, chIdx);
     var channelId = curList[primaryIndex];
     console.log(
@@ -2440,7 +2429,7 @@ function _playChannel(catIdx: number, chIdx: number): void {
             getChannelUrl(channelId)
     );
     updateChannelInfo(channelId);
-    if (sInfoSwitch) showChannelInfo(settings.infoTimeout);
+    if (settings.infoSwitch) showChannelInfo(settings.infoTimeout);
     if (
         (window as any).__ottClassicPlayback &&
         typeof (window as any).__ottClassicPlayback.command === "function"
@@ -2495,7 +2484,7 @@ function _playMedia(item: MediaHistoryEntry): void {
         item,
         streamUrl,
         (window as any).playType,
-        sMedCount
+        settings.medCount
     );
     if (history.skip) return;
     var resumePos = history.resume;
@@ -2524,8 +2513,8 @@ function _playMedia(item: MediaHistoryEntry): void {
     $("#programm_name2").text("");
     $("#programm_duration").text("");
     $("#programm_descr").html(getMediaDescr(item));
-    if (sInfoSwitch) showChannelInfo(settings.infoTimeout);
-    if (sStopPlay) stbStop();
+    if (settings.infoSwitch) showChannelInfo(settings.infoTimeout);
+    if (settings.stopPlay) stbStop();
     if (
         (window as any).__ottClassicPlayback &&
         typeof (window as any).__ottClassicPlayback.command === "function"
@@ -4017,8 +4006,7 @@ window._setSetup = function (
  * Checks parental PIN (sPSoptions), renders a list with save callback,
  * and persists changes to storage on save.
  *
- * Inner function saveSettings() iterates the list and writes sEditor,
- * sPlayers, sBufSize to stb or provider storage as appropriate.
+ * A source-bound draft commits stable setting IDs to the appropriate scope.
  *
  * Side effects: Calls setEditor(), stbSetBuffer(), showShift(), closeList();
  * writes to stb storage.
@@ -4036,24 +4024,7 @@ window.stbOptions = function (): void {
      * re-apply them. Then re-open the stbOptions screen.
      */
     function saveSettings(): void {
-        var i = -1;
-        if (w.sEditor !== w.listArray[++i].val) {
-            w.sEditor = w.listArray[i].val;
-            w.stbSetItem("sEditor", w.listArray[i].val.toString());
-        }
-        if (showPlayerChoice && w.sPlayers !== w.listArray[++i].val) {
-            w.sPlayers = w.listArray[i].val;
-            w.providerSetItem("sPlayers", w.listArray[i].val.toString());
-            pullSettingsFromWindow();
-            if (typeof w.setPlayerMode === "function")
-                w.setPlayerMode(w.sPlayers);
-        }
-        if (w.sBufSize !== w.listArray[++i].val) {
-            w.sBufSize = w.listArray[i].val;
-            w.stbSetItem("sBufSize", w.listArray[i].val.toString());
-        }
-        if (typeof w.setEditor === "function") w.setEditor();
-        if (typeof w.stbSetBuffer === "function") w.stbSetBuffer();
+        if (!editor.save()) return;
         if (typeof w.showShift === "function")
             w.showShift(w._("Settings saved") || "Settings saved");
         if (typeof w.closeList === "function") w.closeList();
@@ -4063,6 +4034,7 @@ window.stbOptions = function (): void {
     setListArrays(w, [
         {
             name: w._("Editor") || "Editor",
+            settingId: "editor",
             val: w.sEditor,
             values: [w._("built-in") || "built-in", w._("native") || "native"],
         },
@@ -4070,11 +4042,13 @@ window.stbOptions = function (): void {
             name:
                 w._("Type of player for streaming") ||
                 "Type of player for streaming",
+            settingId: "players",
             val: w.sPlayers,
             values: w.playerModeNames,
         },
         {
             name: w._("Buffer Size, s") || "Buffer Size, s",
+            settingId: "bufSize",
             val: w.sBufSize,
             values: w.bufferSizes,
         },
@@ -4089,62 +4063,31 @@ window.stbOptions = function (): void {
             values: saveSettings,
         },
     ]);
-    if (!showPlayerChoice) w.listArray.splice(1, 1);
+    if (!showPlayerChoice)
+        setListArrays(
+            w,
+            w.listArray.filter(function (row: any) {
+                return row.settingId !== "players";
+            })
+        );
+    var editor = createSettingsEditor(w, w.listArray);
     var captionEl = document.getElementById("listCaption");
     if (captionEl) captionEl.innerHTML = w._("Settings STB") || "Settings STB";
     if (typeof w._setSetup === "function") {
         w._setSetup(saveSettings, function () {
+            editor.cancel();
             w.stbOptions();
         });
     }
+    editor.attach();
 };
 delete (window as any).addAoptions;
 
-/**
- * Helper used by settings save functions: if the current window[key] value
- * differs from listArray[pos].val, update window[key] and persist it.
- *
- * @param pos - Index in the current listArray of settings items.
- * @param key - The window property name to save (e.g. 'sStopPlay').
- * @param useStb - If true, use stbSetItem; otherwise use providerSetItem.
- *
- * Side effects: Updates window[key]; writes to stb/provider storage.
- */
 /** Dual-write listArray + listDataArray to window. Used by settings screens. */
 function setListArrays(w: any, data: any[]): void {
     w.listArray = data;
     w.listDataArray = data;
 }
-window.saveIfChanged = function (
-    pos: number,
-    key: string,
-    useStb: boolean
-): void {
-    var w = window as any;
-    if (useStb === undefined) useStb = false;
-    if (w[key] === w.listArray[pos].val) {
-        pullSettingsFromWindow();
-        return;
-    }
-    w[key] = w.listArray[pos].val;
-    // Keep typed settings in sync (Interface / Channel list / … menus).
-    pullSettingsFromWindow();
-    if (useStb && typeof w.stbSetItem === "function") w.stbSetItem(key, w[key]);
-    else if (typeof w.providerSetItem === "function") {
-        w.providerSetItem(key, w[key]);
-        // Channel list sShow*/sPreview are provider-prefixed; also mirror to
-        // unprefixed stb so a later loadSettings does not resurrect defaults.
-        if (
-            /^(sShowNum|sShowPikon|sShowName|sShowProgram|sShowProgress|sShowArchive|sShowDescr|sPreview)$/.test(
-                key
-            ) &&
-            typeof w.stbSetItem === "function"
-        ) {
-            w.stbSetItem(key, w[key]);
-        }
-    }
-};
-
 // ─── Settings UI functions (ported from original stbPlayer.js) ──────────────
 
 /**
@@ -4155,7 +4098,7 @@ window.saveIfChanged = function (
  * resume-after-pause behaviour, previous channels count, media history,
  * editor type, player type, and buffer size.
  *
- * Inner function save() iterates the list and persists each setting.
+ * Save commits the draft; cancelling discards it without persistence or effects.
  *
  * Side effects: Calls setTimezone(), setFontSize(), setListPos(),
  * setColor(), setEditor(), setPipPosBuf(), setPlayer(), setAutorun(),
@@ -4172,61 +4115,7 @@ window.settingsInterface = function (): void {
      * settings based on capability. Calls all apply-functions after saving.
      */
     function save(): void {
-        var i = 0;
-        w.saveIfChanged(i++, "sStopPlay", true);
-        if (typeof w.stbPlayPip === "function") {
-            w.saveIfChanged(i++, "sPipSize", true);
-            w.saveIfChanged(i++, "sPipPos", true);
-        }
-        w.saveIfChanged(i++, "sFont", true);
-        w.saveIfChanged(i++, "sTimezone", true);
-        w.saveIfChanged(i++, "sSleepTimeout", true);
-        if (typeof w.stbSetOsdOpacity === "function")
-            w.saveIfChanged(i++, "sOsdOpacity", true);
-        if (
-            typeof w.stbGetVolume === "function" &&
-            w.sVolumeStep !== w.listArray[i++].val + 3
-        ) {
-            w.sVolumeStep = w.listArray[i - 1].val + 3;
-            w.stbSetItem("sVolumeStep", w.sVolumeStep.toString());
-        }
-        i++;
-        if (w.sSHLcolor !== w.eSHLcolor) {
-            w.sSHLcolor = w.eSHLcolor;
-            w.stbSetItem("sSHLcolor", w.sSHLcolor);
-        }
-        i++;
-        if (w.sSHLcolSel !== w.eSHLcolSel) {
-            w.sSHLcolSel = w.eSHLcolSel;
-            w.stbSetItem("sSHLcolSel", w.sSHLcolSel);
-        }
-        i++;
-        if (w.sSHLcolorB !== w.eSHLcolorB) {
-            w.sSHLcolorB = w.eSHLcolorB;
-            w.stbSetItem("sSHLcolorB", w.sSHLcolorB);
-        }
-        w.saveIfChanged(i++, "sPermanentTime", true);
-        w.saveIfChanged(i++, "sGrapI", true);
-        w.saveIfChanged(i++, "s10resum", true);
-        w.saveIfChanged(i++, "sPrevCount", true);
-        if (typeof w.getMediaArray === "function")
-            w.saveIfChanged(i++, "sMedCount", true);
-        if (typeof w.showEditKey2 === "function")
-            w.saveIfChanged(i++, "sEditor", true);
-        if (showPlayerChoice) w.saveIfChanged(i++, "sPlayers");
-        if (typeof w.stbSetBuffer === "function")
-            w.saveIfChanged(i++, "sBufSize", true);
-        if (typeof w.setTimezone === "function") w.setTimezone();
-        if (typeof w.setFontSize === "function") w.setFontSize();
-        if (typeof w.setListPos === "function") w.setListPos();
-        if (typeof w.setColor === "function") w.setColor();
-        if (typeof w.setEditor === "function") w.setEditor();
-        if (typeof w.setPipPosBuf === "function") w.setPipPosBuf();
-        if (typeof w.setPlayerMode === "function") w.setPlayerMode(w.sPlayers);
-        if (typeof w.setPlayer === "function") w.setPlayer();
-        if (typeof w.setSleepTimeout === "function") w.setSleepTimeout();
-        if (typeof w.setAutorun === "function") w.setAutorun();
-        if (typeof w.stbSetBuffer === "function") w.stbSetBuffer();
+        if (!editor.save()) return;
         if (typeof w.showShift === "function")
             w.showShift(w._("Settings saved") || "Settings saved");
         if (typeof w.closeList === "function") w.closeList();
@@ -4240,11 +4129,13 @@ window.settingsInterface = function (): void {
             name:
                 w._("Black screen while switching the channel") ||
                 "Black screen while switching the channel",
+            settingId: "stopPlay",
             val: w.sStopPlay,
             values: noyes,
         },
         {
             name: w._("PiP window size") || "PiP window size",
+            settingId: "pipSize",
             val: w.sPipSize,
             values: [
                 w._("small") || "small",
@@ -4254,6 +4145,7 @@ window.settingsInterface = function (): void {
         },
         {
             name: w._("PiP window position") || "PiP window position",
+            settingId: "pipPosition",
             val: w.sPipPos,
             values: [
                 w._("top-right") || "top-right",
@@ -4264,6 +4156,7 @@ window.settingsInterface = function (): void {
         },
         {
             name: w._("Font type") || "Font type",
+            settingId: "fontSize",
             val: w.sFont,
             values: w.__ottNativeFontOptions || [
                 '<span style="font-family:Helvetica, Arial, sans-serif;">' +
@@ -4277,9 +4170,15 @@ window.settingsInterface = function (): void {
                 '<span style="font-family:PTSansNarrow;">PTSansNarrow</span>',
             ],
         },
-        { name: w._("Timezone") || "Timezone", val: w.sTimezone, values: tz },
+        {
+            name: w._("Timezone") || "Timezone",
+            settingId: "timezone",
+            val: w.sTimezone,
+            values: tz,
+        },
         {
             name: w._("Sleep timer") || "Sleep timer",
+            settingId: "sleepTimeout",
             val: w.sSleepTimeout,
             values: [
                 w._("off") || "off",
@@ -4291,6 +4190,7 @@ window.settingsInterface = function (): void {
         },
         {
             name: w._("Interface transparency") || "Interface transparency",
+            settingId: "osdOpacity",
             val: w.sOsdOpacity,
             values: [
                 "100%",
@@ -4308,12 +4208,15 @@ window.settingsInterface = function (): void {
         },
         {
             name: w._("Volume step, %") || "Volume step, %",
+            settingId: "volumeStep",
+            settingOffset: 3,
             val: w.sVolumeStep - 3,
             values: [3, 4, 5, 6, 7, 8, 9, 10],
         },
         {
             cur: w._("select") || "select",
             name: w._("Color spectrum") || "Color spectrum",
+            settingId: "highlightColor",
             val: w.sSHLcolor,
             values: w.colorDialog,
         },
@@ -4322,18 +4225,21 @@ window.settingsInterface = function (): void {
             name:
                 w._("Background color of selected item") ||
                 "Background color of selected item",
+            settingId: "highlightColorSel",
             val: w.sSHLcolSel,
             values: w.selColorDialog,
         },
         {
             cur: w._("select") || "select",
             name: w._("Background color") || "Background color",
+            settingId: "highlightColorB",
             val: w.sSHLcolorB,
             values: w.backColorDialog,
         },
         {
             name:
                 w._("Permanent clock on screen") || "Permanent clock on screen",
+            settingId: "permanentTime",
             val: w.sPermanentTime,
             values: [
                 w._("no") || "no",
@@ -4343,6 +4249,7 @@ window.settingsInterface = function (): void {
         },
         {
             name: w._("Graphical indication") || "Graphical indication",
+            settingId: "useGraphicalIndicators",
             val: w.sGrapI,
             values: noyes,
         },
@@ -4350,6 +4257,7 @@ window.settingsInterface = function (): void {
             name:
                 w._("Position shift -10 seconds after pause") ||
                 "Position shift -10 seconds after pause",
+            settingId: "resumeWithTenSecondRewind",
             val: w.s10resum,
             values: noyes,
         },
@@ -4357,16 +4265,19 @@ window.settingsInterface = function (): void {
             name:
                 w._("Remember previous channels") ||
                 "Remember previous channels",
+            settingId: "prevCount",
             val: w.sPrevCount,
             values: [1, 5, 10, 15, 20],
         },
         {
             name: w._("History in Media Library") || "History in Media Library",
+            settingId: "medCount",
             val: w.sMedCount,
             values: [w._("no") || "no", 10, 20, 30, 40, 50],
         },
         {
             name: w._("Editor") || "Editor",
+            settingId: "editor",
             val: w.sEditor,
             values: [w._("built-in") || "built-in", w._("native") || "native"],
         },
@@ -4374,11 +4285,13 @@ window.settingsInterface = function (): void {
             name:
                 w._("Type of player for streaming") ||
                 "Type of player for streaming",
+            settingId: "players",
             val: w.sPlayers,
             values: w.playerModeNames,
         },
         {
             name: w._("Buffer Size, s") || "Buffer Size, s",
+            settingId: "bufSize",
             val: w.sBufSize,
             values: w.bufferSizes,
         },
@@ -4393,26 +4306,40 @@ window.settingsInterface = function (): void {
             values: save,
         },
     ]);
-    if (typeof w.stbSetBuffer === "function" && w.stbBufferSizes)
-        w.listArray[18].values = w.stbBufferSizes;
-    if (typeof w.stbPlayers !== "undefined" && Array.isArray(w.stbPlayers))
-        w.listArray[17].values = w.stbPlayers;
-    if (!showPlayerChoice) w.listArray.splice(17, 1);
-    if (typeof w.showEditKey2 !== "function") w.listArray.splice(16, 1);
-    if (typeof w.getMediaArray !== "function") w.listArray.splice(15, 1);
-    if (typeof w.stbGetVolume !== "function") w.listArray.splice(7, 1);
-    if (typeof w.stbSetOsdOpacity !== "function") w.listArray.splice(6, 1);
-    if (typeof w.stbPlayPip !== "function") w.listArray.splice(1, 2);
-    w.eSHLcolor = w.sSHLcolor;
-    w.eSHLcolorB = w.sSHLcolorB;
-    w.eSHLcolSel = w.sSHLcolSel;
+    setListArrays(
+        w,
+        w.listArray.filter(function (row: any): boolean {
+            if (row.settingId === "players") {
+                if (Array.isArray(w.stbPlayers)) row.values = w.stbPlayers;
+                return showPlayerChoice;
+            }
+            if (row.settingId === "bufSize") {
+                if (w.stbBufferSizes) row.values = w.stbBufferSizes;
+                return typeof w.stbSetBuffer === "function";
+            }
+            if (row.settingId === "editor")
+                return typeof w.showEditKey2 === "function";
+            if (row.settingId === "medCount")
+                return typeof w.getMediaArray === "function";
+            if (row.settingId === "volumeStep")
+                return typeof w.stbGetVolume === "function";
+            if (row.settingId === "osdOpacity")
+                return typeof w.stbSetOsdOpacity === "function";
+            if (row.settingId === "pipSize" || row.settingId === "pipPosition")
+                return typeof w.stbPlayPip === "function";
+            return true;
+        })
+    );
+    var editor = createSettingsEditor(w, w.listArray);
     var capEl = document.getElementById("listCaption");
     if (capEl)
         capEl.innerHTML = w._("Interface settings") || "Interface settings";
     if (typeof w._setSetup === "function")
         w._setSetup(save, function () {
+            editor.cancel();
             w.optionsList(w.settingsInterface);
         });
+    editor.attach();
 };
 
 /**
@@ -4429,16 +4356,7 @@ window.settingsInfobar = function (): void {
 
     /** Persist infobar settings (timeout, slide, switch, change, rewind, thumbnails). */
     function save(): void {
-        var i = 0;
-        if (w.sInfoTimeout !== w.listArray[i++].val + 3) {
-            w.sInfoTimeout = w.listArray[i - 1].val + 3;
-            w.stbSetItem("sInfoTimeout", w.sInfoTimeout.toString());
-        }
-        w.saveIfChanged(i++, "sInfoSlide", true);
-        w.saveIfChanged(i++, "sInfoSwitch", true);
-        w.saveIfChanged(i++, "sInfoChange", true);
-        w.saveIfChanged(i++, "sInfoRew", true);
-        w.saveIfChanged(i++, "sThumbnail", true);
+        if (!editor.save()) return;
         if (typeof w.showShift === "function")
             w.showShift(w._("Settings saved") || "Settings saved");
         if (typeof w.closeList === "function") w.closeList();
@@ -4450,16 +4368,20 @@ window.settingsInfobar = function (): void {
             name:
                 w._("Infobar display timeout, s") ||
                 "Infobar display timeout, s",
+            settingId: "infoTimeout",
+            settingOffset: 3,
             val: w.sInfoTimeout - 3,
             values: [3, 4, 5, 6, 7, 8, 9, 10],
         },
         {
             name: w._('"Sliding" infobar') || '"Sliding" infobar',
+            settingId: "infoSlide",
             val: w.sInfoSlide,
             values: noyes,
         },
         {
             name: w._("Show when switching") || "Show when switching",
+            settingId: "infoSwitch",
             val: w.sInfoSwitch,
             values: noyes,
         },
@@ -4467,16 +4389,19 @@ window.settingsInfobar = function (): void {
             name:
                 w._("Show when changing program") ||
                 "Show when changing program",
+            settingId: "infoChange",
             val: w.sInfoChange,
             values: noyes,
         },
         {
             name: w._("Show when rewind") || "Show when rewind",
+            settingId: "infoRew",
             val: w.sInfoRew,
             values: noyes,
         },
         {
             name: w._("Show thumbnails") || "Show thumbnails",
+            settingId: "thumbnail",
             val: w.sThumbnail,
             values: noyes,
         },
@@ -4491,12 +4416,15 @@ window.settingsInfobar = function (): void {
             values: save,
         },
     ]);
+    var editor = createSettingsEditor(w, w.listArray);
     var capEl = document.getElementById("listCaption");
     if (capEl) capEl.innerHTML = w._("Infobar settings") || "Infobar settings";
     if (typeof w._setSetup === "function")
         w._setSetup(save, function () {
+            editor.cancel();
             w.optionsList(w.settingsInfobar);
         });
+    editor.attach();
 };
 
 /**
@@ -4515,18 +4443,7 @@ window.settingsLists = function (): void {
 
     /** Persist list settings (noSmall, pageSize, fontShift, listPos, showScroll) and re-apply. */
     function save(): void {
-        var i = 0;
-        w.saveIfChanged(i++, "sNoSmall", true);
-        if (w.sPageSize !== w.listArray[i++].val + 10) {
-            w.sPageSize = w.listArray[i - 1].val + 10;
-            w.stbSetItem("sPageSize", w.sPageSize.toString());
-        }
-        w.saveIfChanged(i++, "sFontShift", true);
-        w.saveIfChanged(i++, "sListPos", true);
-        w.saveIfChanged(i++, "sShowScroll", true);
-        if (typeof w.setFontSize === "function") w.setFontSize();
-        if (typeof w.setListPos === "function") w.setListPos();
-        if (typeof w.setColor === "function") w.setColor();
+        if (!editor.save()) return;
         if (typeof w.showShift === "function")
             w.showShift(w._("Settings saved") || "Settings saved");
         if (typeof w.closeList === "function") w.closeList();
@@ -4538,11 +4455,14 @@ window.settingsLists = function (): void {
             name:
                 w._("Not reduce video when showing the list (bugfix)") ||
                 "Not reduce video when showing the list (bugfix)",
+            settingId: "noSmall",
             val: w.sNoSmall,
             values: noyes,
         },
         {
             name: w._("Number of rows in lists") || "Number of rows in lists",
+            settingId: "pageSize",
+            settingOffset: 10,
             val: w.sPageSize - 10,
             values: [
                 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
@@ -4553,6 +4473,7 @@ window.settingsLists = function (): void {
             name:
                 w._("Distance between lines in lists") ||
                 "Distance between lines in lists",
+            settingId: "fontShift",
             val: w.sFontShift,
             values: [
                 "0",
@@ -4590,11 +4511,13 @@ window.settingsLists = function (): void {
         },
         {
             name: w._("List location") || "List location",
+            settingId: "listPosition",
             val: w.sListPos,
             values: [w._("right") || "right", w._("left") || "left"],
         },
         {
             name: w._("Show scrollbar in list") || "Show scrollbar in list",
+            settingId: "showScroll",
             val: w.sShowScroll,
             values: noyes,
         },
@@ -4609,12 +4532,15 @@ window.settingsLists = function (): void {
             values: save,
         },
     ]);
+    var editor = createSettingsEditor(w, w.listArray);
     var capEl = document.getElementById("listCaption");
     if (capEl) capEl.innerHTML = w._("Lists settings") || "Lists settings";
     if (typeof w._setSetup === "function")
         w._setSetup(save, function () {
+            editor.cancel();
             w.optionsList(w.settingsLists);
         });
+    editor.attach();
 };
 
 /**
@@ -4632,23 +4558,7 @@ window.settingsChannels = function (): void {
 
     /** Persist channel list display settings (showNum, showPikon, showName, etc.). */
     function save(): void {
-        var i = 0;
-        w.saveIfChanged(i++, "sShowNum");
-        w.saveIfChanged(i++, "sShowPikon");
-        w.saveIfChanged(i++, "sShowName");
-        w.saveIfChanged(i++, "sShowProgram");
-        w.saveIfChanged(i++, "sShowProgress");
-        w.saveIfChanged(i++, "sShowArchive");
-        w.saveIfChanged(i++, "sShowDescr");
-        w.saveIfChanged(i++, "sPreview");
-        if (w.sNextCountL !== w.listArray[i++].val) {
-            w.sNextCountL = w.listArray[i - 1].val;
-            w.sNextCount = w.sNextCountL ? w.sNextCountL - 1 : 0;
-            w.providerSetItem("sNextCount", (w.sNextCountL - 1).toString());
-            if (typeof w.stbSetItem === "function")
-                w.stbSetItem("sNextCount", (w.sNextCountL - 1).toString());
-        }
-        w.saveIfChanged(i++, "sFavorites", true);
+        if (!editor.save()) return;
         if (typeof w.showShift === "function")
             w.showShift(w._("Settings saved") || "Settings saved");
         if (typeof w.closeList === "function") w.closeList();
@@ -4660,6 +4570,7 @@ window.settingsChannels = function (): void {
             name:
                 w._("Show channel number in list") ||
                 "Show channel number in list",
+            settingId: "showNumber",
             val: w.sShowNum,
             values: noyes,
         },
@@ -4667,17 +4578,20 @@ window.settingsChannels = function (): void {
             name:
                 w._("Show picons in channel list") ||
                 "Show picons in channel list",
+            settingId: "channelLogoMode",
             val: w.sShowPikon,
             values: [w._("no") || "no", "1x1", "3x4"],
         },
         {
             name:
                 w._("Show channel name in list") || "Show channel name in list",
+            settingId: "showName",
             val: w.sShowName,
             values: noyes,
         },
         {
             name: w._("Show program name") || "Show program name",
+            settingId: "showProgram",
             val: w.sShowProgram,
             values: noyes,
         },
@@ -4685,6 +4599,7 @@ window.settingsChannels = function (): void {
             name:
                 w._("Show progress in channel list") ||
                 "Show progress in channel list",
+            settingId: "showProgress",
             val: w.sShowProgress,
             values: noyes,
         },
@@ -4692,16 +4607,19 @@ window.settingsChannels = function (): void {
             name:
                 w._("Show archive availability in list") ||
                 "Show archive availability in list",
+            settingId: "showArchive",
             val: w.sShowArchive,
             values: noyes,
         },
         {
             name: w._("Show description") || "Show description",
+            settingId: "showDescription",
             val: w.sShowDescr,
             values: noyes,
         },
         {
             name: w._("Preview in channel list") || "Preview in channel list",
+            settingId: "preview",
             val: w.sPreview,
             values: [
                 w._("no") || "no",
@@ -4713,6 +4631,7 @@ window.settingsChannels = function (): void {
             name:
                 w._("Number of next TV programs in channel list") ||
                 "Number of next TV programs in channel list",
+            settingId: "nextCountList",
             val: w.sNextCountL,
             values: [w._("no") || "no", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
         },
@@ -4720,6 +4639,7 @@ window.settingsChannels = function (): void {
             name:
                 w._("Channel list editing style") ||
                 "Channel list editing style",
+            settingId: "favorites",
             val: w.sFavorites !== -1 ? w.sFavorites : w.noop || [],
             values:
                 w.sFavorites !== -1
@@ -4742,14 +4662,17 @@ window.settingsChannels = function (): void {
             values: save,
         },
     ]);
+    var editor = createSettingsEditor(w, w.listArray);
     var capEl = document.getElementById("listCaption");
     if (capEl)
         capEl.innerHTML =
             w._("Channel list settings") || "Channel list settings";
     if (typeof w._setSetup === "function")
         w._setSetup(save, function () {
+            editor.cancel();
             w.optionsList(w.settingsChannels);
         });
+    editor.attach();
 };
 
 /**
@@ -4767,45 +4690,7 @@ window.settingsButtons = function (): void {
 
     /** Persist button mapping settings (arrow fun, rewind fun, colour buttons, seek steps). */
     function save(): void {
-        var i = 0;
-        w.saveIfChanged(i++, "sArrowFun", true);
-        if (w.keys.RW) w.saveIfChanged(i++, "sRewFun", true);
-        if (w.keys.PREV) w.saveIfChanged(i++, "sPNFun", true);
-        w.saveIfChanged(i++, "sALfun", true);
-        w.saveIfChanged(i++, "sARfun", true);
-        w.saveIfChanged(i++, "sAUfun", true);
-        w.saveIfChanged(i++, "sADfun", true);
-        if (w.keys.RW) w.saveIfChanged(i++, "sRWfun", true);
-        if (w.keys.RW) w.saveIfChanged(i++, "sFFfun", true);
-        if (w.keys.PREV) w.saveIfChanged(i++, "sPREVfun", true);
-        if (w.keys.PREV) w.saveIfChanged(i++, "sNEXTfun", true);
-        if (!w.sNoColorKeys) {
-            w.saveIfChanged(i++, "sRfun", true);
-            w.saveIfChanged(i++, "sGfun", true);
-            w.saveIfChanged(i++, "sYfun", true);
-            w.saveIfChanged(i++, "sBfun", true);
-        }
-        w.saveIfChanged(i++, "sEfun", true);
-        w.saveIfChanged(i++, "sOkfun", true);
-        if (!w.sNoNumbersKeys) {
-            w.listArray[i].val = normalizeSeekDuration(
-                d[w.listArray[i].val],
-                15
-            );
-            w.saveIfChanged(i++, "s13dur", true);
-            w.listArray[i].val = normalizeSeekDuration(
-                d[w.listArray[i].val],
-                180
-            );
-            w.saveIfChanged(i++, "s46dur", true);
-            w.listArray[i].val = normalizeSeekDuration(
-                d[w.listArray[i].val],
-                600
-            );
-            w.saveIfChanged(i++, "s79dur", true);
-        }
-        w.saveIfChanged(i++, "sNoColorKeys", true);
-        w.saveIfChanged(i++, "sNoNumbersKeys", true);
+        if (!editor.save()) return;
         if (typeof w.showShift === "function")
             w.showShift(w._("Settings saved") || "Settings saved");
         if (typeof w.closeList === "function") w.closeList();
@@ -4876,11 +4761,13 @@ window.settingsButtons = function (): void {
                 a + (w.strLEFT || "L") + o,
                 a + (w.strRIGHT || "R") + o
             ),
+            settingId: "arrowFun",
             val: w.sArrowFun,
             values: c,
         },
         {
             name: w._(r, a + (w.strRW || "RW") + o, a + (w.strFF || "FF") + o),
+            settingId: "rewFun",
             val: w.sRewFun,
             values: [w._("paging") || "paging", "dune-php", "neutrino"],
         },
@@ -4890,6 +4777,7 @@ window.settingsButtons = function (): void {
                 a + (w.strPREV || "PREV") + o,
                 a + (w.strNEXT || "NEXT") + o
             ),
+            settingId: "pnFun",
             val: w.sPNFun,
             values: [
                 w._("paging") || "paging",
@@ -4898,28 +4786,81 @@ window.settingsButtons = function (): void {
                 w._("begin/end") || "begin/end",
             ],
         },
-        { name: w._(s, a + (w.strLEFT || "L") + o), val: w.sALfun, values: u },
-        { name: w._(s, a + (w.strRIGHT || "R") + o), val: w.sARfun, values: u },
-        { name: w._(s, a + (w.strUP || "U") + o), val: w.sAUfun, values: u },
-        { name: w._(s, a + (w.strDOWN || "D") + o), val: w.sADfun, values: u },
-        { name: w._(s, a + (w.strRW || "RW") + o), val: w.sRWfun, values: u },
-        { name: w._(s, a + (w.strFF || "FF") + o), val: w.sFFfun, values: u },
+        {
+            name: w._(s, a + (w.strLEFT || "L") + o),
+            settingId: "alFun",
+            val: w.sALfun,
+            values: u,
+        },
+        {
+            name: w._(s, a + (w.strRIGHT || "R") + o),
+            settingId: "arFun",
+            val: w.sARfun,
+            values: u,
+        },
+        {
+            name: w._(s, a + (w.strUP || "U") + o),
+            settingId: "auFun",
+            val: w.sAUfun,
+            values: u,
+        },
+        {
+            name: w._(s, a + (w.strDOWN || "D") + o),
+            settingId: "adFun",
+            val: w.sADfun,
+            values: u,
+        },
+        {
+            name: w._(s, a + (w.strRW || "RW") + o),
+            settingId: "rwFun",
+            val: w.sRWfun,
+            values: u,
+        },
+        {
+            name: w._(s, a + (w.strFF || "FF") + o),
+            settingId: "ffFun",
+            val: w.sFFfun,
+            values: u,
+        },
         {
             name: w._(s, a + (w.strPREV || "PREV") + o),
+            settingId: "prevFun",
             val: w.sPREVfun,
             values: u,
         },
         {
             name: w._(s, a + (w.strNEXT || "NEXT") + o),
+            settingId: "nextFun",
             val: w.sNEXTfun,
             values: u,
         },
-        { name: w._(s, ia + " red" + l), val: w.sRfun, values: u },
-        { name: w._(s, ia + " green" + l), val: w.sGfun, values: u },
-        { name: w._(s, ia + " yellow" + l), val: w.sYfun, values: u },
-        { name: w._(s, ia + " blue" + l), val: w.sBfun, values: u },
+        {
+            name: w._(s, ia + " red" + l),
+            settingId: "rFun",
+            val: w.sRfun,
+            values: u,
+        },
+        {
+            name: w._(s, ia + " green" + l),
+            settingId: "gFun",
+            val: w.sGfun,
+            values: u,
+        },
+        {
+            name: w._(s, ia + " yellow" + l),
+            settingId: "yFun",
+            val: w.sYfun,
+            values: u,
+        },
+        {
+            name: w._(s, ia + " blue" + l),
+            settingId: "bFun",
+            val: w.sBfun,
+            values: u,
+        },
         {
             name: w._(s, a + (w.strRETURN || "RET") + o),
+            settingId: "eFun",
             val: w.sEfun,
             values: [
                 w._("Nothing") || "Nothing",
@@ -4934,21 +4875,28 @@ window.settingsButtons = function (): void {
                 "Button function %1 when viewing archive",
                 a + (w.strENTER || "ENTER") + o
             ),
+            settingId: "okFun",
             val: w.sOkfun,
             values: [w._("EPG") || "EPG", w._("Channels") || "Channels"],
         },
         {
             name: w._(n, a + 1 + o, a + 3 + o),
+            settingId: "seek13Duration",
+            settingValues: d,
             val: d.indexOf(normalizeSeekDuration(w.s13dur, 15)),
             values: p,
         },
         {
             name: w._(n, a + 4 + o, a + 6 + o),
+            settingId: "seek46Duration",
+            settingValues: d,
             val: d.indexOf(normalizeSeekDuration(w.s46dur, 180)),
             values: p,
         },
         {
             name: w._(n, a + 7 + o, a + 9 + o),
+            settingId: "seek79Duration",
+            settingValues: d,
             val: d.indexOf(normalizeSeekDuration(w.s79dur, 600)),
             values: p,
         },
@@ -4956,6 +4904,7 @@ window.settingsButtons = function (): void {
             name:
                 w._("Remote (color buttons N/A)") ||
                 "Remote (color buttons N/A)",
+            settingId: "noColorKeys",
             val: w.sNoColorKeys,
             values: noyes,
         },
@@ -4963,6 +4912,7 @@ window.settingsButtons = function (): void {
             name:
                 w._("Remote (number buttons N/A)") ||
                 "Remote (number buttons N/A)",
+            settingId: "noNumbersKeys",
             val: w.sNoNumbersKeys,
             values: noyes,
         },
@@ -4974,18 +4924,41 @@ window.settingsButtons = function (): void {
             values: save,
         },
     ];
-    if (w.sNoNumbersKeys) w.listArray.splice(17, 3);
-    if (w.sNoColorKeys) w.listArray.splice(11, 4);
-    if (!w.keys.PREV) w.listArray.splice(9, 2);
-    if (!w.keys.RW) w.listArray.splice(7, 2);
-    if (!w.keys.PREV) w.listArray.splice(2, 1);
-    if (!w.keys.RW) w.listArray.splice(1, 1);
+    setListArrays(
+        w,
+        w.listArray.filter(function (row: any): boolean {
+            var id = row.settingId;
+            if (
+                w.sNoNumbersKeys &&
+                ["seek13Duration", "seek46Duration", "seek79Duration"].indexOf(
+                    id
+                ) !== -1
+            )
+                return false;
+            if (
+                w.sNoColorKeys &&
+                ["rFun", "gFun", "yFun", "bFun"].indexOf(id) !== -1
+            )
+                return false;
+            if (
+                !w.keys.PREV &&
+                ["prevFun", "nextFun", "pnFun"].indexOf(id) !== -1
+            )
+                return false;
+            if (!w.keys.RW && ["rwFun", "ffFun", "rewFun"].indexOf(id) !== -1)
+                return false;
+            return true;
+        })
+    );
+    var editor = createSettingsEditor(w, w.listArray);
     var capEl = document.getElementById("listCaption");
     if (capEl) capEl.innerHTML = w._("Buttons settings") || "Buttons settings";
     if (typeof w._setSetup === "function")
         w._setSetup(save, function () {
+            editor.cancel();
             w.optionsList(w.settingsButtons);
         });
+    editor.attach();
 };
 
 /**
@@ -5002,18 +4975,7 @@ window.settingsMenu = function (): void {
 
     /** Build the sHideMenus array from toggled list items and persist it. */
     function save(): void {
-        w.sHideMenus = [];
-        for (
-            var i = 0;
-            i < w.popupActions.indexOf(w.toggleProviderSettingsVisibility);
-            i++
-        ) {
-            if (w.listArray[i].val)
-                w.sHideMenus.push(popupActionId(w.popupActions[i]));
-        }
-        if (typeof w.stbSetItem === "function")
-            w.stbSetItem("sHideMenus", w.sHideMenus.join(","));
-        pullSettingsFromWindow();
+        if (!editor.save()) return;
         if (typeof w.showShift === "function")
             w.showShift(w._("Settings saved") || "Settings saved");
         w.optionsList(w.settingsMenu);
@@ -5027,6 +4989,8 @@ window.settingsMenu = function (): void {
     ) {
         w.listArray.push({
             name: w._(w.popupArray[i]),
+            optionId: popupActionId(w.popupActions[i]),
+            settingId: "hideMenus",
             val:
                 (w.sHideMenus || []).indexOf(
                     popupActionId(w.popupActions[i])
@@ -5046,13 +5010,16 @@ window.settingsMenu = function (): void {
         val: 0,
         values: save,
     });
+    var editor = createSettingsEditor(w, w.listArray);
     var capEl = document.getElementById("listCaption");
     if (capEl)
         capEl.innerHTML = w._("Select menu items") || "Select menu items";
     if (typeof w._setSetup === "function")
         w._setSetup(save, function () {
+            editor.cancel();
             w.optionsList(w.settingsMenu);
         });
+    editor.attach();
 };
 
 // Legacy device/provider API; implementation belongs to the settings module.
@@ -5511,7 +5478,6 @@ window.updateArchiveInfo = updateArchiveInfo;
 window.initBackgroundIntervals = initBackgroundIntervals;
 window.renderButtonHint = renderButtonHint;
 window.setPipPosition = setPipPosition;
-window.pullSettingsFromWindow = pullSettingsFromWindow;
 window.getPipPosition = setPipPosition;
 
 // Tauri Mode B: native always-on-top PiP window (CSS fallback on invoke failure).
@@ -6047,13 +6013,15 @@ window.showPopup = showPopup;
         return { httpEnabled: enabled, port: 0, running: enabled };
     },
     function (enabled: boolean, code: string): void {
-        var w = window as any;
-        w.sLocalHttpEnabled = settings.localHttpEnabled = enabled ? 1 : 0;
-        w.sLocalHttpDeviceCode = settings.localHttpDeviceCode = code;
-        // Write disabled first, so interrupted writes cannot grant consent.
-        stbSetItem("sLocalHttpEnabled", "0");
-        stbSetItem("sLocalHttpDeviceCode", code);
-        if (enabled) stbSetItem("sLocalHttpEnabled", "1");
+        // Consent is revoked durably before credentials can be changed.
+        if (
+            !saveSettings({ localHttpEnabled: 0 }) ||
+            !saveSettings({
+                localHttpDeviceCode: code,
+                localHttpEnabled: enabled ? 1 : 0,
+            })
+        )
+            throw new Error("HTTP remote settings could not be saved");
     }
 );
 
@@ -6075,13 +6043,15 @@ window.showPopup = showPopup;
               : undefined
     ),
     function (config: any): void {
-        settings.commandServerAddress = config.address;
-        settings.commandServerToken = config.token;
-        settings.commandServerEnabled = config.enabled ? 1 : 0;
-        stbSetItem("commandServerEnabled", "0");
-        stbSetItem("commandServerAddress", config.address);
-        stbSetItem("commandServerToken", config.token);
-        if (config.enabled) stbSetItem("commandServerEnabled", "1");
+        if (
+            !saveSettings({ commandServerEnabled: 0 }) ||
+            !saveSettings({
+                commandServerAddress: config.address,
+                commandServerEnabled: config.enabled ? 1 : 0,
+                commandServerToken: config.token,
+            })
+        )
+            throw new Error("Command server settings could not be saved");
     },
     handleCommand
 );
@@ -6216,221 +6186,6 @@ if (
         };
         _capPollStart();
     }
-}
-
-/* ---------------------------------------------------------------------------
- * Sync PlayerSettings → window.* for settings submenu compatibility
- * --------------------------------------------------------------------------- */
-/**
- * Synchronise the typed PlayerSettings object onto window.* globals.
- * This is required because the settings submenu system (stbOptions,
- * settingsInterface, etc.) reads/writes values from window.* properties
- * rather than the typed settings object.
- *
- * @param s - The current PlayerSettings instance.
- *
- * Side effects: Assigns ~50 window properties (sNoSmall, sStopPlay,
- * sPipSize, sFont, sArrowFun, … and many others).
- */
-function applySettingsToWindow(s: PlayerSettings): void {
-    window.sNoSmall = s.noSmall;
-    window.sStopPlay = s.stopPlay;
-    window.sPipSize = s.pipSize;
-    window.sPipPos = s.pipPosition;
-    window.sPageSize = s.pageSize;
-    window.sFontShift = s.fontShift;
-    window.sFont = s.fontSize;
-    window.sArrowFun = s.arrowFun;
-    window.sRewFun = s.rewFun;
-    window.sPNFun = s.pnFun;
-    window.sRfun = s.rFun;
-    window.sGfun = s.gFun;
-    window.sYfun = s.yFun;
-    window.sBfun = s.bFun;
-    window.sALfun = s.alFun;
-    window.sARfun = s.arFun;
-    window.sAUfun = s.auFun;
-    window.sADfun = s.adFun;
-    window.sRWfun = s.rwFun;
-    window.sFFfun = s.ffFun;
-    window.sPREVfun = s.prevFun;
-    window.sNEXTfun = s.nextFun;
-    window.sEfun = s.eFun;
-    window.sOkfun = s.okFun;
-    window.s13dur = s.seek13Duration;
-    window.s46dur = s.seek46Duration;
-    window.s79dur = s.seek79Duration;
-    window.sNoColorKeys = s.noColorKeys;
-    window.sNoNumbersKeys = s.noNumbersKeys;
-    window.sTimezone = s.timezone;
-    window.sSleepTimeout = s.sleepTimeout;
-    window.sVolumeStep = s.volumeStep;
-    window.sInfoTimeout = s.infoTimeout;
-    window.sInfoSlide = s.infoSlide;
-    window.sInfoSwitch = s.infoSwitch;
-    window.sInfoChange = s.infoChange;
-    window.sInfoRew = s.infoRew;
-    window.sThumbnail = s.thumbnail;
-    window.sOsdOpacity = s.osdOpacity;
-    window.sListPos = s.listPosition;
-    window.sEditor = s.editor;
-    // Channel list display flags are provider-scoped (OTT: loadChannels via
-    // providerGetNum). Do not clobber window.sShow* / sPreview / sNextCount*
-    // here with unprefixed loadSettings defaults — that made listFlag ignore
-    // toggles saved through providerSetItem. loadChannels mirrors them after
-    // the playlist loads; Lists settings still owns sShowScroll below.
-    window.sShowScroll = s.showScroll;
-    window.sHideMenus = s.hideMenus.slice();
-    window.sFavorites = s.favorites;
-    window.sPermanentTime = s.permanentTime;
-    window.s10resum = s.resumeWithTenSecondRewind;
-    window.sPrevCount = s.prevCount;
-    window.sMedCount = s.medCount;
-    window.sPSchannels = s.psChannels;
-    window.sPSoptions = s.psOptions;
-    window.sPSprovs = s.requirePinForProviderSelection;
-    window.sHDMIsupport = s.hdmiSupport;
-    window.sAutorun = s.autorun;
-    window.sPlayers = s.players;
-    window.sBufSize = s.bufSize;
-    window.sGrapI = s.useGraphicalIndicators;
-    window.parentPIN = s.parentPin;
-    window.sSHLcolSel = s.highlightColorSel;
-    window.sSHLcolor = s.highlightColor;
-    window.sSHLcolorB = s.highlightColorB;
-    window.sLocalCmdUrl = s.localCmdUrl;
-    window.sLocalHttpEnabled = s.localHttpEnabled;
-    window.sLocalHttpDeviceCode = s.localHttpDeviceCode;
-    window.sSwopBaseUrl = s.swopBaseUrl;
-}
-
-/**
- * Reverse of applySettingsToWindow: after Menu→Settings saveIfChanged writes
- * window.s*, pull those values into the typed `settings` object so apply
- * helpers (setFontSize / setPipPosBuf / …) do not keep load-time defaults.
- */
-function pullSettingsFromWindow(): void {
-    var w = window as any;
-    var s = settings;
-    if (w.sLocalHttpEnabled !== undefined)
-        s.localHttpEnabled = Number(w.sLocalHttpEnabled) === 1 ? 1 : 0;
-    if (typeof w.sLocalHttpDeviceCode === "string")
-        s.localHttpDeviceCode = w.sLocalHttpDeviceCode;
-    function num(v: any, fallback: number): number {
-        var n = typeof v === "number" ? v : parseInt(v, 10);
-        return isNaN(n) ? fallback : n;
-    }
-    if (w.sArrowFun !== undefined) s.arrowFun = num(w.sArrowFun, s.arrowFun);
-    if (w.sRewFun !== undefined) s.rewFun = num(w.sRewFun, s.rewFun);
-    if (w.sPNFun !== undefined) s.pnFun = num(w.sPNFun, s.pnFun);
-    if (w.sRfun !== undefined) s.rFun = num(w.sRfun, s.rFun);
-    if (w.sGfun !== undefined) s.gFun = num(w.sGfun, s.gFun);
-    if (w.sYfun !== undefined) s.yFun = num(w.sYfun, s.yFun);
-    if (w.sBfun !== undefined) s.bFun = num(w.sBfun, s.bFun);
-    if (w.sALfun !== undefined) s.alFun = num(w.sALfun, s.alFun);
-    if (w.sARfun !== undefined) s.arFun = num(w.sARfun, s.arFun);
-    if (w.sAUfun !== undefined) s.auFun = num(w.sAUfun, s.auFun);
-    if (w.sADfun !== undefined) s.adFun = num(w.sADfun, s.adFun);
-    if (w.sRWfun !== undefined) s.rwFun = num(w.sRWfun, s.rwFun);
-    if (w.sFFfun !== undefined) s.ffFun = num(w.sFFfun, s.ffFun);
-    if (w.sPREVfun !== undefined) s.prevFun = num(w.sPREVfun, s.prevFun);
-    if (w.sNEXTfun !== undefined) s.nextFun = num(w.sNEXTfun, s.nextFun);
-    if (w.sEfun !== undefined) s.eFun = num(w.sEfun, s.eFun);
-    if (w.sOkfun !== undefined) s.okFun = num(w.sOkfun, s.okFun);
-    if (w.s13dur !== undefined)
-        s.seek13Duration = num(w.s13dur, s.seek13Duration);
-    if (w.s46dur !== undefined)
-        s.seek46Duration = num(w.s46dur, s.seek46Duration);
-    if (w.s79dur !== undefined)
-        s.seek79Duration = num(w.s79dur, s.seek79Duration);
-    if (w.sNoColorKeys !== undefined)
-        s.noColorKeys = num(w.sNoColorKeys, s.noColorKeys);
-    if (w.sNoNumbersKeys !== undefined)
-        s.noNumbersKeys = num(w.sNoNumbersKeys, s.noNumbersKeys);
-    if (w.sPSchannels !== undefined)
-        s.psChannels = num(w.sPSchannels, s.psChannels);
-    if (w.sPSoptions !== undefined)
-        s.psOptions = num(w.sPSoptions, s.psOptions);
-    if (w.sPSprovs !== undefined)
-        s.requirePinForProviderSelection = num(
-            w.sPSprovs,
-            s.requirePinForProviderSelection
-        );
-    if (w.sHDMIsupport !== undefined)
-        s.hdmiSupport = num(w.sHDMIsupport, s.hdmiSupport);
-    if (typeof w.parentPIN === "string") s.parentPin = w.parentPIN;
-    if (typeof w.sLocalCmdUrl === "string") s.localCmdUrl = w.sLocalCmdUrl;
-    if (typeof w.sSwopBaseUrl === "string") s.swopBaseUrl = w.sSwopBaseUrl;
-    if (Array.isArray(w.sHideMenus)) s.hideMenus = w.sHideMenus.slice();
-    if (w.sNoSmall !== undefined) s.noSmall = num(w.sNoSmall, s.noSmall);
-    if (w.sStopPlay !== undefined) s.stopPlay = num(w.sStopPlay, s.stopPlay);
-    if (w.sPipSize !== undefined) s.pipSize = num(w.sPipSize, s.pipSize);
-    if (w.sPipPos !== undefined) s.pipPosition = num(w.sPipPos, s.pipPosition);
-    if (w.sPageSize !== undefined) s.pageSize = num(w.sPageSize, s.pageSize);
-    if (w.sFontShift !== undefined)
-        s.fontShift = num(w.sFontShift, s.fontShift);
-    if (w.sFont !== undefined) s.fontSize = num(w.sFont, s.fontSize);
-    if (w.sTimezone !== undefined) s.timezone = num(w.sTimezone, s.timezone);
-    if (w.sSleepTimeout !== undefined)
-        s.sleepTimeout = num(w.sSleepTimeout, s.sleepTimeout);
-    if (w.sVolumeStep !== undefined)
-        s.volumeStep = num(w.sVolumeStep, s.volumeStep);
-    if (w.sInfoTimeout !== undefined)
-        s.infoTimeout = num(w.sInfoTimeout, s.infoTimeout);
-    if (w.sOsdOpacity !== undefined)
-        s.osdOpacity = num(w.sOsdOpacity, s.osdOpacity);
-    if (w.sListPos !== undefined)
-        s.listPosition = num(w.sListPos, s.listPosition);
-    if (w.sEditor !== undefined) s.editor = num(w.sEditor, s.editor);
-    if (w.sPermanentTime !== undefined)
-        s.permanentTime = num(w.sPermanentTime, s.permanentTime);
-    if (w.sGrapI !== undefined)
-        s.useGraphicalIndicators = num(w.sGrapI, s.useGraphicalIndicators);
-    if (w.s10resum !== undefined)
-        s.resumeWithTenSecondRewind = num(
-            w.s10resum,
-            s.resumeWithTenSecondRewind
-        );
-    if (w.sPrevCount !== undefined)
-        s.prevCount = num(w.sPrevCount, s.prevCount);
-    if (w.sMedCount !== undefined) s.medCount = num(w.sMedCount, s.medCount);
-    if (w.sPlayers !== undefined) s.players = num(w.sPlayers, s.players);
-    if (w.sBufSize !== undefined) s.bufSize = num(w.sBufSize, s.bufSize);
-    if (w.sAutorun !== undefined) s.autorun = num(w.sAutorun, s.autorun);
-    if (typeof w.sSHLcolor === "string") s.highlightColor = w.sSHLcolor;
-    if (typeof w.sSHLcolSel === "string") s.highlightColorSel = w.sSHLcolSel;
-    if (typeof w.sSHLcolorB === "string") s.highlightColorB = w.sSHLcolorB;
-    if (w.sShowNum !== undefined) s.showNumber = num(w.sShowNum, s.showNumber);
-    if (w.sShowPikon !== undefined)
-        s.channelLogoMode = num(w.sShowPikon, s.channelLogoMode);
-    if (w.sShowName !== undefined) s.showName = num(w.sShowName, s.showName);
-    if (w.sShowProgress !== undefined)
-        s.showProgress = num(w.sShowProgress, s.showProgress);
-    if (w.sShowArchive !== undefined)
-        s.showArchive = num(w.sShowArchive, s.showArchive);
-    if (w.sShowScroll !== undefined)
-        s.showScroll = num(w.sShowScroll, s.showScroll);
-    if (w.sShowDescr !== undefined)
-        s.showDescription = num(w.sShowDescr, s.showDescription);
-    if (w.sShowProgram !== undefined)
-        s.showProgram = num(w.sShowProgram, s.showProgram);
-    if (w.sPreview !== undefined) s.preview = num(w.sPreview, s.preview);
-    if (w.sNextCount !== undefined)
-        s.nextCount = num(w.sNextCount, s.nextCount);
-    if (w.sNextCountL !== undefined)
-        s.nextCountList = num(w.sNextCountL, s.nextCountList);
-    if (w.sFavorites !== undefined)
-        s.favorites = num(w.sFavorites, s.favorites);
-    if (w.sInfoSlide !== undefined)
-        s.infoSlide = num(w.sInfoSlide, s.infoSlide);
-    if (w.sInfoSwitch !== undefined)
-        s.infoSwitch = num(w.sInfoSwitch, s.infoSwitch);
-    if (w.sInfoChange !== undefined)
-        s.infoChange = num(w.sInfoChange, s.infoChange);
-    if (w.sInfoRew !== undefined) s.infoRew = num(w.sInfoRew, s.infoRew);
-    if (w.sThumbnail !== undefined)
-        s.thumbnail = num(w.sThumbnail, s.thumbnail);
-    if (w.sNoSmall !== undefined) s.noSmall = num(w.sNoSmall, s.noSmall);
 }
 
 /**
@@ -6761,6 +6516,7 @@ window.settingsCommands = function (): void {
     }
 
     function editServer(secret: boolean): void {
+        var draft = beginSettingsDraft();
         $("#listAbout").hide();
         editSettingsText(
             w._(
@@ -6772,11 +6528,19 @@ window.settingsCommands = function (): void {
                 ? settings.commandServerToken
                 : settings.commandServerAddress,
             function (value): void {
+                if (closed || !draft.active()) return;
+                if (
+                    !draft.set(
+                        secret ? "commandServerToken" : "commandServerAddress",
+                        value.trim()
+                    )
+                )
+                    return;
                 var address = String(
-                    (secret ? settings.commandServerAddress : value) || ""
+                    draft.get("commandServerAddress") || ""
                 ).trim();
                 var token = String(
-                    (secret ? value : settings.commandServerToken) || ""
+                    draft.get("commandServerToken") || ""
                 ).trim();
                 // Equivalent edits preserve a deliberate disconnect and an active request.
                 try {
@@ -6798,9 +6562,13 @@ window.settingsCommands = function (): void {
                         enabled: !!address && !!token,
                         token: token,
                     });
+                draft.cancel();
                 render();
             },
-            render,
+            function (saved) {
+                if (!saved) draft.cancel();
+                if (!closed) render();
+            },
             secret
         );
     }
@@ -6846,17 +6614,15 @@ window.settingsCommands = function (): void {
             ? "Swop base URL (empty disables remote text entry)"
             : "Local command URL (empty disables local command polling)";
         var value = (swop ? w.sSwopBaseUrl : w.sLocalCmdUrl) || "";
-        function save(value: string): void {
-            value = value.trim();
-            if (swop) w.sSwopBaseUrl = value.replace(/\/+$/, "");
-            else w.sLocalCmdUrl = value;
-            if (typeof w.stbSetItem === "function")
-                w.stbSetItem(
-                    swop ? "sSwopBaseUrl" : "sLocalCmdUrl",
-                    swop ? w.sSwopBaseUrl : value
-                );
-            pullSettingsFromWindow();
-            if (swop) saveSettings(settings);
+        var draft = beginSettingsDraft();
+        function save(value: string): boolean {
+            if (closed || !draft.active()) return false;
+            var normalized = swop
+                ? value.trim().replace(/\/+$/, "")
+                : value.trim();
+            if (!draft.set(swop ? "swopBaseUrl" : "localCmdUrl", normalized))
+                return false;
+            return draft.commit();
         }
         // listAbout has priority in the key router, so hide it while editing.
         // The editor owns the single-level CPD buffer; our parent is kept locally.
@@ -6865,10 +6631,12 @@ window.settingsCommands = function (): void {
             title,
             value,
             function (edited) {
-                save(edited);
-                render();
+                if (save(edited)) render();
             },
-            render
+            function (saved) {
+                if (!saved) draft.cancel();
+                if (!closed) render();
+            }
         );
     }
 

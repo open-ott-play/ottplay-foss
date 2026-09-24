@@ -1,3 +1,4 @@
+import { createSettingsEditor } from "../settings/editor";
 import {
     hasTmdbService,
     metadataCssUrl,
@@ -372,80 +373,85 @@ export const persistedKeys: string[] = [
     "continueWatch",
 ];
 
-/* ---- All exported settings variables (mapped from stored preferences) ---- */
-export let sNoSmall = 0,
-    sStopPlay = 0,
-    sPipSize = 0,
-    sPipPos = 0,
-    sPageSize = 25;
-export let sFontShift = 4,
-    sFont = 1,
-    sArrowFun = 0,
-    sRewFun = 0,
-    sPNFun = 0;
-export let sRfun = 10,
-    sGfun = 0,
-    sYfun = 1,
-    sBfun = 9;
-export let sALfun = 0,
-    sARfun = 0,
-    sAUfun = 0,
-    sADfun = 0;
-export let sRWfun = 0,
-    sFFfun = 0,
-    sPREVfun = 0,
-    sNEXTfun = 0;
-export let sEfun = 0,
-    sOkfun = 0;
-export let s13dur = 0,
-    s46dur = 0,
-    s79dur = 0;
-export let sNoColorKeys = 0,
-    sNoNumbersKeys = 0;
-export let sTimezone = 0,
-    sSleepTimeout = 0,
-    sVolumeStep = 5;
-export let sInfoTimeout = 5,
-    sInfoSlide = 1,
-    sInfoSwitch = 1,
-    sInfoChange = 1,
-    sInfoRew = 1;
-export let sThumbnail = 1,
-    sOsdOpacity = 7,
-    sListPos = 0;
-export let sSHLcolSel = "240,25",
-    eSHLcolSel = "",
-    sSHLcolor = "50,85",
-    eSHLcolor = "",
-    sSHLcolorB = "255,0",
-    eSHLcolorB = "";
-export let sEditor = 0,
-    sShowNum = 1,
-    sShowPikon = 1,
-    sShowName = 1,
-    sShowProgress = 1;
-export let sShowArchive = 1,
-    sShowScroll = 1,
-    sShowDescr = 1,
-    sShowProgram = 1,
-    sPreview = 0;
-export let sNextCount = 0,
-    sNextCountL = 1,
-    sFavorites = 0,
-    sPermanentTime = 0,
-    s10resum = 1;
-export let sPrevCount = 2,
-    sMedCount = 2;
-export let sPSchannels = 1,
-    sPSoptions = 0,
-    sPSprovs = 0,
-    sHDMIsupport = 0,
-    sAutorun = 0;
-export let sPlayers = 0,
-    sBufSize = 0,
-    sGrapI = 0;
-export let parentPIN = "1234",
-    sHideMenus: string[] = [];
+/* Compatibility names are accessor views owned by SettingsStore. */
+declare var sNoSmall: number;
+declare var sStopPlay: number;
+declare var sPipSize: number;
+declare var sPipPos: number;
+declare var sPageSize: number;
+declare var sFontShift: number;
+declare var sFont: number;
+declare var sArrowFun: number;
+declare var sRewFun: number;
+declare var sPNFun: number;
+declare var sRfun: number;
+declare var sGfun: number;
+declare var sYfun: number;
+declare var sBfun: number;
+declare var sALfun: number;
+declare var sARfun: number;
+declare var sAUfun: number;
+declare var sADfun: number;
+declare var sRWfun: number;
+declare var sFFfun: number;
+declare var sPREVfun: number;
+declare var sNEXTfun: number;
+declare var sEfun: number;
+declare var sOkfun: number;
+declare var s13dur: number;
+declare var s46dur: number;
+declare var s79dur: number;
+declare var sNoColorKeys: number;
+declare var sNoNumbersKeys: number;
+declare var sTimezone: number;
+declare var sSleepTimeout: number;
+declare var sEpgRemindMinutes: number;
+declare var sVolumeStep: number;
+declare var sInfoTimeout: number;
+declare var sInfoSlide: number;
+declare var sInfoSwitch: number;
+declare var sInfoChange: number;
+declare var sInfoRew: number;
+declare var sThumbnail: number;
+declare var sOsdOpacity: number;
+declare var sListPos: number;
+declare var sEditor: number;
+declare var sShowNum: number;
+declare var sShowPikon: number;
+declare var sShowName: number;
+declare var sShowProgress: number;
+declare var sShowArchive: number;
+declare var sShowScroll: number;
+declare var sShowDescr: number;
+declare var sShowProgram: number;
+declare var sPreview: number;
+declare var sNextCountL: number;
+declare var sFavorites: number;
+declare var sPermanentTime: number;
+declare var s10resum: number;
+declare var sPrevCount: number;
+declare var sMedCount: number;
+declare var sPSchannels: number;
+declare var sPSoptions: number;
+declare var sPSprovs: number;
+declare var sHDMIsupport: number;
+declare var sAutorun: number;
+declare var sPlayers: number;
+declare var sBufSize: number;
+declare var sGrapI: number;
+declare var parentPIN: string;
+declare var sHideMenus: string[];
+declare var sSHLcolSel: string;
+declare var sSHLcolor: string;
+declare var sSHLcolorB: string;
+declare var commandServerAddress: string;
+declare var commandServerToken: string;
+declare var sLocalCmdUrl: string;
+declare var sLocalHttpEnabled: number;
+declare var sLocalHttpDeviceCode: string;
+declare var sSwopBaseUrl: string;
+declare var sDeviceUuid: string;
+declare var commandServerEnabled: number;
 
 /* ---- Per-channel aspect/audio/subtitle/zoom records ---- */
 export let aAspects: Record<string, number> = {};
@@ -5107,75 +5113,53 @@ export function parentControlSetup(): void {
      * - On PIN change, may show PIN entry dialogs.
      */
     function saveSettings(): void {
-        function doSave(): void {
-            if (typeof window.stbSetItem === "function")
-                window.stbSetItem("parentPIN", window.parentPIN);
-            var idx = 1;
-            if (typeof window.saveIfChanged === "function")
-                window.saveIfChanged(idx++, "sPSchannels", true);
-            if (typeof window.saveIfChanged === "function")
-                window.saveIfChanged(idx++, "sPSoptions", true);
+        if (!editor.active()) return;
+        function finish(pin: string): void {
+            var enabling = editor.get("parentPin") === "*" && pin !== "*";
             if (
-                typeof window.findOptionIndex === "function" &&
-                typeof window.showProviderSelection !== "undefined" &&
-                window.findOptionIndex(window.showProviderSelection) !== -1 &&
-                typeof window.saveIfChanged === "function"
+                !editor.active() ||
+                !editor.set("parentPin", pin) ||
+                !editor.save()
             )
-                window.saveIfChanged(idx++, "sPSprovs", true);
+                return;
+            if (enabling) setParentAccess(true, function () {});
             if (typeof window.showShift === "function")
-                window.showShift(
-                    window._("Settings saved") || "Settings saved"
-                );
+                window.showShift(window._("Settings saved"));
             if (typeof window.closeList === "function") window.closeList();
             if (typeof window.optionsList === "function")
                 window.optionsList(parentControlSetup);
         }
-
-        var enabled = window.parentPIN !== "*" ? 1 : 0;
+        var pin = editor.get("parentPin");
         if (
-            enabled !==
-            (window.listArray && window.listArray[0]
-                ? window.listArray[0].val
-                : null)
+            !rows.filter(function (row: any) {
+                return row.editorAction === "parentalEnabled";
+            })[0].val
         ) {
-            if (window.parentPIN !== "*") {
-                window.parentPIN = "*";
-                doSave();
-            } else {
-                enterPinCode(
-                    window._("Set parental code") || "Set parental code",
-                    function (pin: string) {
-                        if (!pin) return;
-                        var newPin = pin;
-                        enterPinCode(
-                            window._("Repeat parental code") ||
-                                "Repeat parental code",
-                            function (repeat: string) {
-                                if (!repeat) return;
-                                if (repeat !== newPin) {
-                                    if (typeof window.showShift === "function")
-                                        window.showShift(
-                                            window._(
-                                                "Wrong parental code !!!"
-                                            ) || "Wrong parental code !!!"
-                                        );
-                                } else {
-                                    window.parentPIN = pin;
-                                    setParentAccess(true, doSave);
-                                }
-                            }
-                        );
-                    }
-                );
-            }
-        } else {
-            doSave();
+            finish("*");
+            return;
         }
+        if (pin !== "*") {
+            finish(pin);
+            return;
+        }
+        enterPinCode(window._("Set parental code"), function (first: string) {
+            if (!editor.active() || !first) return;
+            enterPinCode(
+                window._("Repeat parental code"),
+                function (repeat: string) {
+                    if (!editor.active() || !repeat) return;
+                    if (repeat === first) finish(first);
+                    else if (typeof window.showShift === "function")
+                        window.showShift(window._("Wrong parental code !!!"));
+                }
+            );
+        });
     }
 
     var yesNo = [window._("no") || "no", window._("yes") || "yes"];
     window.listArray = [
         {
+            editorAction: "parentalEnabled",
             name: window._("Parental control") || "Parental control",
             val: window.parentPIN !== "*" ? 1 : 0,
             values: yesNo,
@@ -5183,11 +5167,13 @@ export function parentControlSetup(): void {
         {
             name:
                 window._("Protect Adult Channels") || "Protect Adult Channels",
+            settingId: "psChannels",
             val: window.sPSchannels,
             values: yesNo,
         },
         {
             name: window._("Protect Settings") || "Protect Settings",
+            settingId: "psOptions",
             val: window.sPSoptions,
             values: yesNo,
         },
@@ -5195,6 +5181,7 @@ export function parentControlSetup(): void {
             name:
                 window._("Protect Change Provider") ||
                 "Protect Change Provider",
+            settingId: "requirePinForProviderSelection",
             val: window.sPSprovs,
             values: yesNo,
         },
@@ -5216,14 +5203,18 @@ export function parentControlSetup(): void {
     ) {
         window.listArray.splice(3, 1);
     }
+    var rows = window.listArray;
+    var editor = createSettingsEditor(window, rows);
     var captionEl = document.getElementById("listCaption");
     if (captionEl)
         captionEl.innerHTML =
             window._("Parental control") || "Parental control";
     if (typeof window._setSetup === "function") {
         window._setSetup(saveSettings, function () {
+            editor.cancel();
             if (typeof window.optionsList === "function")
                 window.optionsList(parentControlSetup);
         });
     }
+    editor.attach();
 }

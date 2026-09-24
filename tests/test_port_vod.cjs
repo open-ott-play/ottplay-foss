@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
+const { settingsSource } = require("./helpers/settings-source-fixture.cjs");
 const root = path.resolve(__dirname, "..");
 
 function sourceFunctions(file, names) {
@@ -211,6 +212,19 @@ function fixture() {
     };
     c.window = c;
     const context = vm.createContext(c);
+    const initialPreferences = Object.fromEntries(
+        Object.entries(c).filter(
+            ([key]) => /^s[A-Z]/.test(key) || key === "parentPIN"
+        )
+    );
+    c.storage = {
+        del: (key) => delete stored[key],
+        get: (key) => stored[key] ?? null,
+        set: (key, value) => (stored[key] = String(value)),
+        setI: (key, value) => (stored[key] = String(value)),
+    };
+    vm.runInContext(settingsSource(), context);
+    Object.assign(c, initialPreferences);
     c.OttPlayCore = require("./helpers/shared-core-runtime.cjs")(context);
     vm.runInContext(
         sourceFunctions("src/utils/helpers.ts", [

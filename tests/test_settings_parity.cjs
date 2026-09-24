@@ -60,6 +60,7 @@ function fixture(
 ) {
     const stored = new Map();
     const storage = {
+        del: (key) => stored.delete(key),
         get: (key) => stored.get(key) ?? null,
         getI(key, fallback) {
             const value = Number.parseInt(stored.get(key), 10);
@@ -138,6 +139,7 @@ function fixture(
             function toggleProviderSettingsVisibility() {},
         ],
         popupArray: ["Channels", "EPG", "Provider"],
+        providerDelItem: (key) => storage.del("provider:" + key),
         providerGetItem: (key) => storage.get("provider:" + key),
         providerGetJson: () => [],
         providerHasItemValue(key) {
@@ -246,7 +248,19 @@ function fixture(
 
     vm.runInContext(
         compile(
+            fs.readFileSync(path.join(root, "src/settings/store.ts"), "utf8")
+        ),
+        w
+    );
+    vm.runInContext(
+        compile(
             fs.readFileSync(path.join(root, "src/settings/index.ts"), "utf8")
+        ),
+        w
+    );
+    vm.runInContext(
+        compile(
+            fs.readFileSync(path.join(root, "src/settings/editor.ts"), "utf8")
         ),
         w
     );
@@ -254,12 +268,8 @@ function fixture(
         compile(
             selectedSource(
                 "src/index.ts",
-                [
-                    "setListArrays",
-                    "applySettingsToWindow",
-                    "pullSettingsFromWindow",
-                ],
-                ["_setSetup", "saveIfChanged", ...menus]
+                ["setListArrays"],
+                ["_setSetup", ...menus]
             )
         ),
         w
@@ -300,7 +310,7 @@ function fixture(
         w
     );
     vm.runInContext(
-        "window.settings = settings; applySettingsToWindow(settings);",
+        "window.settings = settings; installSettingsFacade(window);",
         w
     );
     // Channel flags are normally initialized from provider storage by loadChannels.
@@ -357,7 +367,7 @@ for (const device of [
                 13,
                 "Right stays unchanged"
             );
-            vm.runInContext("applySettingsToWindow(loadSettings());", w);
+            vm.runInContext("loadSettings();", w);
             assert.equal(typed().alFun, expected, "Absent stored Left mapping");
             assert.equal(w.sALfun, expected, "Legacy global matches settings");
             assert.equal(
@@ -368,7 +378,7 @@ for (const device of [
 
             for (const invalid of ["", "NaN", "invalid"]) {
                 stored.set("sALfun", invalid);
-                vm.runInContext("applySettingsToWindow(loadSettings());", w);
+                vm.runInContext("loadSettings();", w);
                 assert.equal(
                     typed().alFun,
                     expected,
@@ -382,7 +392,7 @@ for (const device of [
             }
             for (const explicit of [0, 1, 4, 14, 19]) {
                 stored.set("sALfun", String(explicit));
-                vm.runInContext("applySettingsToWindow(loadSettings());", w);
+                vm.runInContext("loadSettings();", w);
                 assert.equal(
                     typed().alFun,
                     explicit,
@@ -403,7 +413,7 @@ for (const device of [
                 assert.equal(stored.get("sALfun"), String(explicit));
             }
             stored.clear();
-            vm.runInContext("applySettingsToWindow(loadSettings());", w);
+            vm.runInContext("loadSettings();", w);
             assert.equal(
                 typed().alFun,
                 expected,
@@ -429,7 +439,7 @@ for (const device of ["lg/webos", "lg/netcast"]) {
     );
     w.ott_device = device;
     try {
-        vm.runInContext("applySettingsToWindow(loadSettings());", w);
+        vm.runInContext("loadSettings();", w);
         assert.equal(
             typed().alFun,
             1,
@@ -449,7 +459,11 @@ for (const device of ["lg/webos", "lg/netcast"]) {
 assert.equal(leftDefaultFailures.length, 0, leftDefaultFailures.join("\n"));
 const noWindowSettings = vm.createContext({});
 vm.runInContext(
-    compile(fs.readFileSync(path.join(root, "src/settings/index.ts"), "utf8")),
+    compile(
+        fs.readFileSync(path.join(root, "src/settings/store.ts"), "utf8") +
+            "\n" +
+            fs.readFileSync(path.join(root, "src/settings/index.ts"), "utf8")
+    ),
     noWindowSettings
 );
 assert.equal(
@@ -929,7 +943,7 @@ for (const profile of [
     w.listArray[0].val = 1;
     save(w);
     assert.deepEqual(Array.from(typed().hideMenus), ["channels"]);
-    vm.runInContext("applySettingsToWindow(loadSettings());", w);
+    vm.runInContext("loadSettings();", w);
     assert.deepEqual(
         Array.from(w.sHideMenus),
         ["channels"],
@@ -1019,7 +1033,7 @@ for (const profile of [
     assert.equal(typed().commandServerAddress, "http://private-server:8081");
     stored.set("sLocalHttpEnabled", "0");
     stored.set("sLocalHttpDeviceCode", "");
-    vm.runInContext("applySettingsToWindow(loadSettings());", w);
+    vm.runInContext("loadSettings();", w);
     w.importSettings(
         JSON.stringify({
             ...exported,
@@ -1044,7 +1058,7 @@ for (const bad of [-1, 1, 2, 7, 999, Number.NaN]) {
     const { w, stored } = fixture();
     for (const key of ["s13dur", "s46dur", "s79dur"])
         stored.set(key, String(bad));
-    vm.runInContext("applySettingsToWindow(loadSettings());", w);
+    vm.runInContext("loadSettings();", w);
     assert.deepEqual([w.s13dur, w.s46dur, w.s79dur], [15, 180, 600]);
     // The menu also protects against invalid values introduced by an old adapter.
     Object.assign(w, { s13dur: bad, s46dur: bad, s79dur: bad });
@@ -1068,6 +1082,55 @@ assert.ok(limited.listArray.some((row) => row.name === "Export settings"));
 assert.ok(!limited.listArray.some((row) => row.name === "Clear settings"));
 console.log(
     "OK: Settings submenu population, save/cancel, duration/engine application and persistence across four platform profiles"
+);
+
+// Editing identity follows stable IDs after capabilities filter or reorder rows.
+{
+    const f = fixture("server", true),
+        w = f.w;
+    w.settingsInterface();
+    const timezone = w.listArray.find((row) => row.settingId === "timezone");
+    const font = w.listArray.find((row) => row.settingId === "fontSize");
+    timezone.val = 2;
+    font.val = 3;
+    w.listArray.reverse();
+    save(w);
+    assert.equal(f.stored.get("sTimezone"), "2");
+    assert.equal(f.stored.get("sFont"), "3");
+    assert.equal(
+        f.stored.has("sPipSize"),
+        false,
+        "hidden controls are never written"
+    );
+    w.settingsLists();
+    w.listArray.find((row) => row.settingId === "pageSize").val = 17;
+    w.providerId = "replacement";
+    save(w);
+    assert.equal(
+        f.stored.has("sPageSize"),
+        false,
+        "source replacement revokes a settings draft"
+    );
+}
+{
+    const f = fixture(),
+        w = f.w;
+    w.parentPIN = "*";
+    w.parentControlSetup();
+    w.listArray[0].val = 1;
+    const pins = [];
+    w.enterPinCode = (_message, callback) => pins.push(callback);
+    save(w);
+    assert.equal(pins.length, 1);
+    assert.equal(f.stored.size, 0);
+    w.listKeyHandlerFn(w.keys.RETURN);
+    pins[0]("9876");
+    assert.equal(pins.length, 1, "cancel revokes the nested PIN continuation");
+    assert.equal(f.stored.size, 0);
+    assert.equal(w.parentPIN, "*");
+}
+console.log(
+    "OK: actual filtered/reordered settings rows and cancelled PIN/source continuations"
 );
 
 // Execute actual shared standby functions and both native wrapper bodies. Only

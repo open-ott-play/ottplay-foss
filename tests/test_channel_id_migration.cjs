@@ -8,6 +8,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
+const { settingsSource } = require("./helpers/settings-source-fixture.cjs");
 const root = path.join(__dirname, "..");
 function source(file, names) {
     names = sourceNames(file, names);
@@ -94,6 +95,8 @@ vm.runInContext(
     ).outputText,
     c
 );
+vm.runInContext(settingsSource(), c);
+c.settings.epgRemindMinutes = 0;
 attachSourceAliases(c);
 c.setProviderPrefix("current:");
 const put = (key, value) => c.providerSetItem(key, JSON.stringify(value));

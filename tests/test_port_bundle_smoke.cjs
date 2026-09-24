@@ -1277,7 +1277,7 @@ function exerciseProviderRuntime(profile) {
             );
         }
         if (id === "edem") {
-            w.sPageSize = 0.2;
+            w.sPageSize = 10;
             let mediaCalls = 0;
             w.getMediaArray("", () => {
                 mediaCalls++;
@@ -1285,16 +1285,16 @@ function exerciseProviderRuntime(profile) {
                 w.listArray = w.mediaRecords;
             });
             requests.at(-1).resolve({
-                count: 6,
+                count: 106,
                 items: [{ title: "One", type: "stream" }, { type: "next" }],
                 type: "category",
             });
             assert.equal(mediaCalls, 1);
             const rows = w.mediaRecords;
-            assert.equal(rows.length, 6);
-            w.selIndex = 3;
-            rows[3].description();
-            assert.equal(JSON.parse(requests.at(-1).settings.data).offset, 2);
+            assert.equal(rows.length, 106);
+            w.selIndex = 101;
+            rows[101].description();
+            assert.equal(JSON.parse(requests.at(-1).settings.data).offset, 100);
             requests.at(-1).resolve({
                 items: [
                     { title: "Two", type: "stream" },
@@ -1303,7 +1303,7 @@ function exerciseProviderRuntime(profile) {
             });
             assert.strictEqual(w.mediaRecords, rows);
             assert.strictEqual(w.listArray, rows);
-            assert.equal(rows[3].title, "Three");
+            assert.equal(rows[101].title, "Three");
         }
         if (id === "m3u") {
             for (let slot = 0; slot < 2; slot++) {

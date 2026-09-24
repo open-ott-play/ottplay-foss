@@ -3,13 +3,18 @@ import {
     writeLegacySettingsFields,
 } from "../compatibility/legacy-names";
 /**
- * Player settings — all ~100 configuration parameters.
+ * Player preferences and their persistent compatibility keys.
  *
  * Loaded from persistent storage on startup (see `loadSettings`) and
  * persisted on change (see `saveSettings`). The `PlayerSettings` interface
  * defines every tunable parameter exposed to the user via the settings UI.
  */
 import { storage } from "../storage/index";
+import {
+    createSettingsStore,
+    type SettingDefinition,
+    type SettingsDraft,
+} from "./store";
 
 // The polyfill preserves this getter so "system" also restores native DST rules.
 const systemTimezoneOffset =
@@ -83,7 +88,7 @@ export function applyTimezoneSetting(index: number): number {
  * @property showScroll        - Show scrollbar (0/1).
  * @property showDescription   - Show programme description (0/1).
  * @property showProgram       - Show programme title (0/1).
- * @property preview           - Enable preview window (0/1).
+ * @property preview           - Preview window mode (0/1/2).
  * @property nextCount         - Number of next programmes to show.
  * @property nextCountList     - Number of next programmes in list view.
  * @property favorites         - Enable favourites filtering (0/1).
@@ -286,241 +291,507 @@ export function defaultSettings(): PlayerSettings {
     };
 }
 
-export let settings: PlayerSettings = defaultSettings();
-
-/** Restore valid duration values after older menu saves persisted selector indices. */
+/** Restore only supported seek durations from old backups. */
 export function normalizeSeekDuration(value: number, fallback: number): number {
-    const durations = [
+    return [
         5, 10, 15, 20, 30, 60, 120, 180, 240, 300, 600, 900, 1200, 1800, 3600,
-    ];
-    return durations.indexOf(value) >= 0 ? value : fallback;
+    ].indexOf(value) >= 0
+        ? value
+        : fallback;
 }
-
-/**
- * Load all settings from persistent storage into the module-level
- * `settings` object.
- *
- * @returns The populated `PlayerSettings` object (also available as the
- *          module-level `settings` export).
- *
- * @remarks
- * Each property is read via `storage.getI()` (integer) or `storage.get()`
- * (string/array) with its respective fallback default. After calling this
- * function, the shared `settings` variable is up-to-date.
- *
- * @sideEffects
- * Mutates the module-level `settings` variable.
- */
-export function loadSettings(): PlayerSettings {
-    const s = storage;
-    settings = {
-        adFun: s.getI("sADfun", 16),
-        alFun: s.getI("sALfun", defaultLeftArrowAction()),
-        arFun: s.getI("sARfun", 13),
-        arrowFun: s.getI("sArrowFun", 0),
-        auFun: s.getI("sAUfun", 15),
-        autorun: s.getI("sAutorun", 0),
-        bFun: s.getI("sBfun", 9),
-        bufSize: s.getI("sBufSize", 0),
-        channelLogoMode: s.getI("sShowPikon", 1),
-        commandServerAddress: s.get("commandServerAddress") || "",
-        commandServerEnabled: s.get("commandServerEnabled") === "1" ? 1 : 0,
-        commandServerToken: s.get("commandServerToken") || "",
-        deviceUuid: s.get("sDeviceUuid") || "",
-        editor: (() => {
-            const raw = storage.get("sEditor");
-            const parsed = raw !== null ? parseInt(raw, 10) : NaN;
-            const w = typeof window !== "undefined" ? (window as any) : null;
-            const dev = (w && w.ott_device) || "";
-            const isPc =
-                /^(pc|pc2|tauri|desktop|nodejs)$/.test(dev) ||
-                !!(w && w.__TAURI__);
-            const isCap = !!(w && w.Capacitor);
-            const forceNative = isPc || isCap;
-
-            if (forceNative && !storage.get("sEditorPcNativeMigrated")) {
-                if (isNaN(parsed) || parsed === 0) {
-                    storage.setI("sEditor", 1);
-                    storage.set("sEditorPcNativeMigrated", "1");
-                    return 1;
+const settingDefaults = defaultSettings();
+function defineSetting(
+    id: string,
+    key: string,
+    scope: "application" | "provider",
+    effects: string[],
+    rules: any
+): SettingDefinition {
+    var fallback = (settingDefaults as any)[id];
+    return {
+        decode: rules.list
+            ? function (raw) {
+                  return raw.split(",").filter(function (x) {
+                      return x !== "";
+                  });
+              }
+            : rules.nextCount
+              ? function (raw) {
+                    return Number(raw) + 1;
                 }
-                storage.set("sEditorPcNativeMigrated", "1");
-                return parsed;
+              : undefined,
+        defaultValue: fallback,
+        effects: effects,
+        encode: rules.list
+            ? function (value) {
+                  return value.join(",");
+              }
+            : rules.nextCount
+              ? function (value) {
+                    return String(value - 1);
+                }
+              : undefined,
+        id: id,
+        key: key,
+        scope: scope,
+        validate: function (value): boolean {
+            if (rules.list)
+                return (
+                    Array.isArray(value) &&
+                    value.every(function (item) {
+                        return typeof item === "string";
+                    })
+                );
+            if (rules.pin)
+                return (
+                    typeof value === "string" &&
+                    (value === "*" || /^\d{4}$/.test(value))
+                );
+            if (rules.color) {
+                if (
+                    typeof value !== "string" ||
+                    !/^\d{1,3},\d{1,3}$/.test(value)
+                )
+                    return false;
+                var pair = value.split(",").map(Number);
+                return pair[0] <= 360 && pair[1] <= 100;
             }
-
-            if (!isNaN(parsed)) return parsed;
-            return forceNative ? 1 : 0;
-        })(),
-        eFun: s.getI("sEfun", 0),
-        epgRemindMinutes: s.getI("sEpgRemindMinutes", 5),
-        favorites: s.getI("sFavorites", 0),
-        ffFun: s.getI("sFFfun", 19),
-        fontShift: s.getI("sFontShift", 4),
-        fontSize: s.getI("sFont", 4),
-        gFun: s.getI("sGfun", 0),
-        hdmiSupport: s.getI("sHDMIsupport", 0),
-        hideMenus: (s.get("sHideMenus") || "").split(",").filter(function (
-            x: string
-        ) {
-            return x !== "";
-        }),
-        highlightColor: s.get("sSHLcolor") || "50,85",
-        highlightColorB: s.get("sSHLcolorB") || "255,0",
-        highlightColorSel: s.get("sSHLcolSel") || "240,25",
-        infoChange: s.getI("sInfoChange", 1),
-        infoRew: s.getI("sInfoRew", 1),
-        infoSlide: s.getI("sInfoSlide", 1),
-        infoSwitch: s.getI("sInfoSwitch", 1),
-        infoTimeout: s.getI("sInfoTimeout", 5),
-        listPosition: s.getI("sListPos", 0),
-        localCmdUrl: s.get("sLocalCmdUrl") || "",
-        localHttpDeviceCode: s.get("sLocalHttpDeviceCode") || "",
-        localHttpEnabled: s.get("sLocalHttpEnabled") === "1" ? 1 : 0,
-        medCount: s.getI("sMedCount", 2),
-        nextCount: s.getI("sNextCount", 0),
-        nextCountList: s.getI("sNextCountL", 1),
-        nextFun: s.getI("sNEXTfun", 21),
-        noColorKeys: s.getI("sNoColorKeys", 0),
-        noNumbersKeys: s.getI("sNoNumbersKeys", 0),
-        noSmall: s.getI("sNoSmall", 0),
-        okFun: s.getI("sOkfun", 0),
-        osdOpacity: s.getI("sOsdOpacity", 7),
-        pageSize: s.getI("sPageSize", 25),
-        parentPin: s.get("parentPIN") || "1234",
-        permanentTime: s.getI("sPermanentTime", 0),
-        pipPosition: s.getI("sPipPos", 0),
-        pipSize: s.getI("sPipSize", 0),
-        players: s.getI("sPlayers", 0),
-        pnFun: s.getI("sPNFun", 0),
-        prevCount: s.getI("sPrevCount", 2),
-        prevFun: s.getI("sPREVfun", 20),
-        preview: s.getI("sPreview", 0),
-        psChannels: s.getI("sPSchannels", 1),
-        psOptions: s.getI("sPSoptions", 0),
-        requirePinForProviderSelection: s.getI("sPSprovs", 0),
-        resumeWithTenSecondRewind: s.getI("s10resum", 1),
-        rewFun: s.getI("sRewFun", 0),
-        rFun: s.getI("sRfun", 10),
-        rwFun: s.getI("sRWfun", 18),
-        seek13Duration: normalizeSeekDuration(s.getI("s13dur", 15), 15),
-        seek46Duration: normalizeSeekDuration(s.getI("s46dur", 180), 180),
-        seek79Duration: normalizeSeekDuration(s.getI("s79dur", 600), 600),
-        showArchive: s.getI("sShowArchive", 1),
-        showDescription: s.getI("sShowDescr", 1),
-        showName: s.getI("sShowName", 1),
-        showNumber: s.getI("sShowNum", 1),
-        showProgram: s.getI("sShowProgram", 1),
-        showProgress: s.getI("sShowProgress", 1),
-        showScroll: s.getI("sShowScroll", 1),
-        sleepTimeout: s.getI("sSleepTimeout", 0),
-        stopPlay: s.getI("sStopPlay", 0),
-        swopBaseUrl: s.get("sSwopBaseUrl") || "",
-        thumbnail: s.getI("sThumbnail", 1),
-        timezone: s.getI("sTimezone", 0),
-        useGraphicalIndicators: s.getI("sGrapI", 0),
-        volumeStep: s.getI("sVolumeStep", 5),
-        yFun: s.getI("sYfun", 1),
+            if (typeof fallback === "string") return typeof value === "string";
+            if (
+                typeof value !== "number" ||
+                !isFinite(value) ||
+                Math.floor(value) !== value
+            )
+                return false;
+            if (rules.durations)
+                return normalizeSeekDuration(value, NaN) === value;
+            return rules.range
+                ? value >= rules.range[0] && value <= rules.range[1]
+                : value >= 0;
+        },
     };
+}
+export const settingsSchema: SettingDefinition[] = [
+    defineSetting("noSmall", "sNoSmall", "application", ["setListPos"], {
+        range: [0, 1],
+    }),
+    defineSetting("stopPlay", "sStopPlay", "application", [], {
+        range: [0, 1],
+    }),
+    defineSetting("pipSize", "sPipSize", "application", ["setPipPosBuf"], {
+        range: [0, 2],
+    }),
+    defineSetting("pipPosition", "sPipPos", "application", ["setPipPosBuf"], {
+        range: [0, 3],
+    }),
+    defineSetting(
+        "pageSize",
+        "sPageSize",
+        "application",
+        ["setFontSize", "setListPos"],
+        { range: [10, 30] }
+    ),
+    defineSetting(
+        "fontShift",
+        "sFontShift",
+        "application",
+        ["setFontSize", "setListPos"],
+        { range: [0, 30] }
+    ),
+    defineSetting(
+        "fontSize",
+        "sFont",
+        "application",
+        ["setFontSize", "setListPos"],
+        {
+            range: [0, 6],
+        }
+    ),
+    defineSetting("arrowFun", "sArrowFun", "application", [], {
+        range: [0, 3],
+    }),
+    defineSetting("rewFun", "sRewFun", "application", [], { range: [0, 3] }),
+    defineSetting("pnFun", "sPNFun", "application", [], { range: [0, 3] }),
+    defineSetting("rFun", "sRfun", "application", [], { range: [0, 64] }),
+    defineSetting("gFun", "sGfun", "application", [], { range: [0, 64] }),
+    defineSetting("yFun", "sYfun", "application", [], { range: [0, 64] }),
+    defineSetting("bFun", "sBfun", "application", [], { range: [0, 64] }),
+    defineSetting("alFun", "sALfun", "application", [], { range: [0, 64] }),
+    defineSetting("arFun", "sARfun", "application", [], { range: [0, 64] }),
+    defineSetting("auFun", "sAUfun", "application", [], { range: [0, 64] }),
+    defineSetting("adFun", "sADfun", "application", [], { range: [0, 64] }),
+    defineSetting("rwFun", "sRWfun", "application", [], { range: [0, 64] }),
+    defineSetting("ffFun", "sFFfun", "application", [], { range: [0, 64] }),
+    defineSetting("prevFun", "sPREVfun", "application", [], { range: [0, 64] }),
+    defineSetting("nextFun", "sNEXTfun", "application", [], { range: [0, 64] }),
+    defineSetting("eFun", "sEfun", "application", [], { range: [0, 4] }),
+    defineSetting("okFun", "sOkfun", "application", [], { range: [0, 1] }),
+    defineSetting("seek13Duration", "s13dur", "application", [], {
+        durations: true,
+    }),
+    defineSetting("seek46Duration", "s46dur", "application", [], {
+        durations: true,
+    }),
+    defineSetting("seek79Duration", "s79dur", "application", [], {
+        durations: true,
+    }),
+    defineSetting("noColorKeys", "sNoColorKeys", "application", [], {
+        range: [0, 1],
+    }),
+    defineSetting("noNumbersKeys", "sNoNumbersKeys", "application", [], {
+        range: [0, 1],
+    }),
+    defineSetting("timezone", "sTimezone", "application", ["setTimezone"], {
+        range: [0, 25],
+    }),
+    defineSetting(
+        "sleepTimeout",
+        "sSleepTimeout",
+        "application",
+        ["setSleepTimeout"],
+        { range: [0, 4] }
+    ),
+    defineSetting("epgRemindMinutes", "sEpgRemindMinutes", "application", [], {
+        range: [0, 120],
+    }),
+    defineSetting("volumeStep", "sVolumeStep", "application", [], {
+        range: [3, 10],
+    }),
+    defineSetting("infoTimeout", "sInfoTimeout", "application", [], {
+        range: [3, 20],
+    }),
+    defineSetting("infoSlide", "sInfoSlide", "application", [], {
+        range: [0, 1],
+    }),
+    defineSetting("infoSwitch", "sInfoSwitch", "application", [], {
+        range: [0, 1],
+    }),
+    defineSetting("infoChange", "sInfoChange", "application", [], {
+        range: [0, 1],
+    }),
+    defineSetting("infoRew", "sInfoRew", "application", [], { range: [0, 1] }),
+    defineSetting("thumbnail", "sThumbnail", "application", [], {
+        range: [0, 1],
+    }),
+    defineSetting("osdOpacity", "sOsdOpacity", "application", ["setColor"], {
+        range: [0, 10],
+    }),
+    defineSetting("listPosition", "sListPos", "application", ["setListPos"], {
+        range: [0, 1],
+    }),
+    defineSetting("editor", "sEditor", "application", ["setEditor"], {
+        range: [0, 1],
+    }),
+    defineSetting("showNumber", "sShowNum", "provider", [], { range: [0, 1] }),
+    defineSetting("channelLogoMode", "sShowPikon", "provider", [], {
+        range: [0, 2],
+    }),
+    defineSetting("showName", "sShowName", "provider", [], { range: [0, 1] }),
+    defineSetting("showProgress", "sShowProgress", "provider", [], {
+        range: [0, 1],
+    }),
+    defineSetting("showArchive", "sShowArchive", "provider", [], {
+        range: [0, 1],
+    }),
+    defineSetting("showScroll", "sShowScroll", "application", [], {
+        range: [0, 1],
+    }),
+    defineSetting("showDescription", "sShowDescr", "provider", [], {
+        range: [0, 1],
+    }),
+    defineSetting("showProgram", "sShowProgram", "provider", [], {
+        range: [0, 1],
+    }),
+    defineSetting("preview", "sPreview", "provider", [], { range: [0, 2] }),
+    defineSetting("nextCountList", "sNextCount", "provider", [], {
+        nextCount: true,
+        range: [0, 20],
+    }),
+    defineSetting("favorites", "sFavorites", "application", [], {
+        range: [-1, 1],
+    }),
+    defineSetting("permanentTime", "sPermanentTime", "application", [], {
+        range: [0, 2],
+    }),
+    defineSetting("resumeWithTenSecondRewind", "s10resum", "application", [], {
+        range: [0, 1],
+    }),
+    defineSetting("prevCount", "sPrevCount", "application", [], {
+        range: [0, 4],
+    }),
+    defineSetting("medCount", "sMedCount", "application", [], {
+        range: [0, 5],
+    }),
+    defineSetting("psChannels", "sPSchannels", "application", [], {
+        range: [0, 1],
+    }),
+    defineSetting("psOptions", "sPSoptions", "application", [], {
+        range: [0, 1],
+    }),
+    defineSetting(
+        "requirePinForProviderSelection",
+        "sPSprovs",
+        "application",
+        [],
+        {
+            range: [0, 1],
+        }
+    ),
+    defineSetting("hdmiSupport", "sHDMIsupport", "application", [], {
+        range: [0, 1],
+    }),
+    defineSetting("autorun", "sAutorun", "application", ["setAutorun"], {
+        range: [0, 1],
+    }),
+    defineSetting(
+        "players",
+        "sPlayers",
+        "provider",
+        ["setPlayerMode", "setPlayer"],
+        {
+            range: [0, 3],
+        }
+    ),
+    defineSetting("bufSize", "sBufSize", "application", ["stbSetBuffer"], {
+        range: [0, 3600],
+    }),
+    defineSetting(
+        "useGraphicalIndicators",
+        "sGrapI",
+        "application",
+        ["setColor"],
+        {
+            range: [0, 1],
+        }
+    ),
+    defineSetting("parentPin", "parentPIN", "application", [], { pin: true }),
+    defineSetting("hideMenus", "sHideMenus", "application", [], { list: true }),
+    defineSetting(
+        "highlightColorSel",
+        "sSHLcolSel",
+        "application",
+        ["setColor"],
+        {
+            color: true,
+        }
+    ),
+    defineSetting("highlightColor", "sSHLcolor", "application", ["setColor"], {
+        color: true,
+    }),
+    defineSetting(
+        "highlightColorB",
+        "sSHLcolorB",
+        "application",
+        ["setColor"],
+        {
+            color: true,
+        }
+    ),
+    defineSetting(
+        "commandServerAddress",
+        "commandServerAddress",
+        "application",
+        [],
+        {}
+    ),
+    defineSetting(
+        "commandServerToken",
+        "commandServerToken",
+        "application",
+        [],
+        {}
+    ),
+    defineSetting("localCmdUrl", "sLocalCmdUrl", "application", [], {}),
+    defineSetting(
+        "localHttpDeviceCode",
+        "sLocalHttpDeviceCode",
+        "application",
+        [],
+        {}
+    ),
+    defineSetting("swopBaseUrl", "sSwopBaseUrl", "application", [], {}),
+    defineSetting("deviceUuid", "sDeviceUuid", "application", [], {}),
+    defineSetting("localHttpEnabled", "sLocalHttpEnabled", "application", [], {
+        range: [0, 1],
+    }),
+    defineSetting(
+        "commandServerEnabled",
+        "commandServerEnabled",
+        "application",
+        [],
+        {
+            range: [0, 1],
+        }
+    ),
+];
+function settingsSource(): string {
+    var w = typeof window === "undefined" ? {} : (window as any);
+    var driver = w.__ottActiveProviderDriver;
+    return driver && typeof driver.storageKey === "function"
+        ? driver.id + ":" + driver.storageKey("sPlayers")
+        : String(w.p_pref || w.providerId || "classic");
+}
+export const settingsStore = createSettingsStore(settingsSchema, {
+    context: settingsSource,
+    effect: function (name) {
+        var w = window as any;
+        if (typeof w[name] === "function") {
+            if (name === "setPlayerMode") w[name](settings.players);
+            else w[name]();
+        }
+    },
+    storage: function (entry) {
+        var w = window as any;
+        var driver = w.__ottActiveProviderDriver;
+        if (
+            entry.scope === "provider" &&
+            driver &&
+            typeof driver.storageKey === "function"
+        ) {
+            var key = driver.storageKey(entry.key);
+            return {
+                read: function () {
+                    return storage.get(key);
+                },
+                remove: function () {
+                    storage.del(key);
+                },
+                write: function (v) {
+                    storage.set(key, v);
+                },
+            };
+        }
+        if (
+            entry.scope === "provider" &&
+            typeof w.providerGetItem === "function"
+        ) {
+            var read = w.providerGetItem,
+                write = w.providerSetItem,
+                remove = w.providerDelItem;
+            return {
+                read: function () {
+                    return read(entry.key);
+                },
+                remove: function () {
+                    if (remove) remove(entry.key);
+                    else write(entry.key, "");
+                },
+                write: function (v) {
+                    write(entry.key, v);
+                },
+            };
+        }
+        return {
+            read: function () {
+                return storage.get(entry.key);
+            },
+            remove: function () {
+                storage.del(entry.key);
+            },
+            write: function (v) {
+                storage.set(entry.key, v);
+            },
+        };
+    },
+});
+/** Typed and legacy views both forward to the same authoritative store. */
+export const settings = {} as PlayerSettings;
+settingsSchema.forEach(function (entry) {
+    Object.defineProperty(settings, entry.id, {
+        enumerable: true,
+        get: function () {
+            return settingsStore.get(entry.id);
+        },
+        set: function (value) {
+            settingsStore.observe(entry.id, value);
+        },
+    });
+});
+Object.defineProperty(settings, "nextCount", {
+    enumerable: true,
+    get: function () {
+        return Math.max(0, settings.nextCountList - 1);
+    },
+    set: function (value) {
+        settings.nextCountList = Number(value) + 1;
+    },
+});
+export function installSettingsFacade(target: Record<string, any>): void {
+    settingsSchema.forEach(function (entry) {
+        var key = entry.id === "nextCountList" ? "sNextCountL" : entry.key;
+        Object.defineProperty(target, key, {
+            configurable: true,
+            enumerable: true,
+            get: function () {
+                return settingsStore.get(entry.id);
+            },
+            set: function (value) {
+                settingsStore.observe(entry.id, value);
+            },
+        });
+    });
+    Object.defineProperty(target, "sNextCount", {
+        configurable: true,
+        enumerable: true,
+        get: function () {
+            return settings.nextCount;
+        },
+        set: function (value) {
+            settings.nextCount = value;
+        },
+    });
+    target.settings = settings;
+}
+export function loadSettings(): PlayerSettings {
+    settingsSchema.forEach(function (entry) {
+        if (entry.id === "alFun") entry.defaultValue = defaultLeftArrowAction();
+    });
+    settingsStore.reload();
+    var w = window as any;
+    var nativeEditor =
+        !!w.__TAURI__ ||
+        !!w.Capacitor ||
+        /^(pc|pc2|tauri|desktop|nodejs)$/.test(String(w.ott_device || ""));
+    if (nativeEditor && !storage.get("sEditorPcNativeMigrated")) {
+        settings.editor = 1;
+        try {
+            storage.setI("sEditor", 1);
+            storage.set("sEditorPcNativeMigrated", "1");
+        } catch (_error) {}
+    }
+    installSettingsFacade(w);
     return settings;
 }
-
-/**
- * Persist the given settings object to storage.
- *
- * @param s - A `PlayerSettings` instance whose values will be written.
- *
- * @remarks
- * Each property is written via `storage.setI()` (for integers) or
- * `storage.set()` (for strings / serialised arrays). This function
- * does NOT update the module-level `settings` variable — callers
- * typically modify `settings` then pass it here.
- *
- * @sideEffects
- * Writes every property to the underlying storage adapter.
- */
-export function saveSettings(s: PlayerSettings): void {
-    const store = storage;
-    store.setI("sNoSmall", s.noSmall);
-    store.setI("sStopPlay", s.stopPlay);
-    store.setI("sPipSize", s.pipSize);
-    store.setI("sPipPos", s.pipPosition);
-    store.setI("sPageSize", s.pageSize);
-    store.setI("sFontShift", s.fontShift);
-    store.setI("sFont", s.fontSize);
-    store.setI("sArrowFun", s.arrowFun);
-    store.setI("sRewFun", s.rewFun);
-    store.setI("sPNFun", s.pnFun);
-    store.setI("sRfun", s.rFun);
-    store.setI("sGfun", s.gFun);
-    store.setI("sYfun", s.yFun);
-    store.setI("sBfun", s.bFun);
-    store.setI("sALfun", s.alFun);
-    store.setI("sARfun", s.arFun);
-    store.setI("sAUfun", s.auFun);
-    store.setI("sADfun", s.adFun);
-    store.setI("sRWfun", s.rwFun);
-    store.setI("sFFfun", s.ffFun);
-    store.setI("sPREVfun", s.prevFun);
-    store.setI("sNEXTfun", s.nextFun);
-    store.setI("sEfun", s.eFun);
-    store.setI("sOkfun", s.okFun);
-    store.setI("s13dur", s.seek13Duration);
-    store.setI("s46dur", s.seek46Duration);
-    store.setI("s79dur", s.seek79Duration);
-    store.setI("sNoColorKeys", s.noColorKeys);
-    store.setI("sNoNumbersKeys", s.noNumbersKeys);
-    store.setI("sTimezone", s.timezone);
-    store.setI("sSleepTimeout", s.sleepTimeout);
-    store.setI("sEpgRemindMinutes", s.epgRemindMinutes);
-    store.setI("sVolumeStep", s.volumeStep);
-    store.setI("sInfoTimeout", s.infoTimeout);
-    store.setI("sInfoSlide", s.infoSlide);
-    store.setI("sInfoSwitch", s.infoSwitch);
-    store.setI("sInfoChange", s.infoChange);
-    store.setI("sInfoRew", s.infoRew);
-    store.setI("sThumbnail", s.thumbnail);
-    store.setI("sOsdOpacity", s.osdOpacity);
-    store.setI("sListPos", s.listPosition);
-    store.setI("sEditor", s.editor);
-    store.setI("sShowNum", s.showNumber);
-    store.setI("sShowPikon", s.channelLogoMode);
-    store.setI("sShowName", s.showName);
-    store.setI("sShowProgress", s.showProgress);
-    store.setI("sShowArchive", s.showArchive);
-    store.setI("sShowScroll", s.showScroll);
-    store.setI("sShowDescr", s.showDescription);
-    store.setI("sShowProgram", s.showProgram);
-    store.setI("sPreview", s.preview);
-    store.setI("sNextCount", s.nextCount);
-    store.setI("sNextCountL", s.nextCountList);
-    store.setI("sFavorites", s.favorites);
-    store.setI("sPermanentTime", s.permanentTime);
-    store.setI("s10resum", s.resumeWithTenSecondRewind);
-    store.setI("sPrevCount", s.prevCount);
-    store.setI("sMedCount", s.medCount);
-    store.setI("sPSchannels", s.psChannels);
-    store.setI("sPSoptions", s.psOptions);
-    store.setI("sPSprovs", s.requirePinForProviderSelection);
-    store.setI("sHDMIsupport", s.hdmiSupport);
-    store.setI("sAutorun", s.autorun);
-    store.setI("sPlayers", s.players);
-    store.setI("sBufSize", s.bufSize);
-    store.setI("sGrapI", s.useGraphicalIndicators);
-    store.set("parentPIN", s.parentPin);
-    store.set("sHideMenus", s.hideMenus.join(","));
-    store.set("sSHLcolSel", s.highlightColorSel);
-    store.set("sSHLcolor", s.highlightColor);
-    store.set("sSHLcolorB", s.highlightColorB);
-    store.set("commandServerEnabled", "0");
-    store.set("commandServerAddress", s.commandServerAddress);
-    store.set("commandServerToken", s.commandServerToken);
-    if (s.commandServerEnabled === 1) store.set("commandServerEnabled", "1");
-    store.set("sLocalCmdUrl", s.localCmdUrl);
-    store.setI("sLocalHttpEnabled", s.localHttpEnabled === 1 ? 1 : 0);
-    store.set("sLocalHttpDeviceCode", s.localHttpDeviceCode);
-    store.set("sSwopBaseUrl", s.swopBaseUrl);
-    store.set("sDeviceUuid", s.deviceUuid);
+/** Refresh only this provider's settings; application preferences stay intact. */
+export function loadProviderSettings(playerDefault: number): void {
+    settingsStore.reload("provider");
+    var w = window as any;
+    if (
+        typeof w.providerGetItem === "function" &&
+        w.providerGetItem("sPlayers") === null
+    )
+        settings.players = playerDefault;
 }
+export function saveSettings(input: Partial<PlayerSettings>): boolean {
+    var draft = settingsStore.begin(true);
+    var valid = true;
+    settingsSchema.forEach(function (entry) {
+        if (
+            Object.prototype.hasOwnProperty.call(input, entry.id) &&
+            !draft.set(entry.id, (input as any)[entry.id])
+        )
+            valid = false;
+    });
+    if (!valid) {
+        draft.cancel();
+        return false;
+    }
+    return draft.commit();
+}
+export function beginSettingsDraft(): SettingsDraft {
+    return settingsStore.begin();
+}
+if (typeof window !== "undefined") installSettingsFacade(window as any);
 
 /**
  * Export envelope version 1.
@@ -550,9 +821,6 @@ export interface ExportEnvelopeV1 {
  * (same keys used by channels/index.ts saveChannelsCats).
  */
 export function exportSettings(): string {
-    if (typeof window.pullSettingsFromWindow === "function") {
-        window.pullSettingsFromWindow();
-    }
     // Consent and credentials belong to this installation, never a backup.
     const exportedSettings = (
         window as any
@@ -598,25 +866,30 @@ export function importSettings(
         if (onConfirm) onConfirm(false);
         return;
     }
-
+    var request = beginSettingsDraft();
+    var settled = false;
+    function complete(accept: boolean): void {
+        if (settled) return;
+        settled = true;
+        var applied =
+            accept && request.active() && applyImport(env, request.active);
+        request.cancel();
+        if (onConfirm) onConfirm(applied);
+    }
     if (typeof window.confirmBox === "function") {
         window.confirmBox(
             "Overwrite current settings?",
             function () {
-                applyImport(env);
-                if (onConfirm) onConfirm(true);
+                complete(true);
             },
             function () {
-                if (onConfirm) onConfirm(false);
+                complete(false);
             }
         );
-    } else {
-        applyImport(env);
-        if (onConfirm) onConfirm(true);
-    }
+    } else complete(true);
 }
 
-function applyImport(env: ExportEnvelopeV1): void {
+function applyImport(env: ExportEnvelopeV1, admitted: () => boolean): boolean {
     var remote = (window as any).__ottCommandServer;
     if (remote)
         remote.configure({
@@ -624,9 +897,10 @@ function applyImport(env: ExportEnvelopeV1): void {
             enabled: false,
             token: settings.commandServerToken,
         });
+    if (!admitted()) return false;
     // Ignore even explicitly injected credentials/consent in imported JSON.
     // Importing ordinary preferences preserves this installation's own consent.
-    saveSettings({
+    var saved = saveSettings({
         ...(readLegacySettingsFields(
             env.settings
         ) as ExportEnvelopeV1["settings"]),
@@ -635,16 +909,24 @@ function applyImport(env: ExportEnvelopeV1): void {
             false
         ),
     });
+    if (!saved) {
+        if (typeof window.showShift === "function")
+            window.showShift("Settings could not be saved");
+        return false;
+    }
+    if (!admitted()) return false;
     if (typeof window.providerSetItem === "function") {
         window.providerSetItem(
             "parentalArray",
             JSON.stringify(env.parentalArray || [])
         );
+        if (!admitted()) return false;
         window.providerSetItem(
             "favoritesArray",
             JSON.stringify(env.favoritesArray || [])
         );
     }
+    if (!admitted()) return false;
     loadSettings();
     if (typeof window.showShift === "function") {
         window.showShift("Settings imported");
@@ -652,4 +934,5 @@ function applyImport(env: ExportEnvelopeV1): void {
     // Restart so live window.s* globals and channels module
     // favoritesArray/parentalArray pick up the new data.
     if (typeof window.restart === "function") window.restart();
+    return true;
 }

@@ -115,13 +115,13 @@ export function editSettingsText(
     caption: string,
     value: string,
     onSave: (value: string) => void,
-    onClose?: () => void,
+    onClose?: (saved: boolean) => void,
     secret?: boolean
 ): void {
     var w = window as any;
     if (typeof w.showEditKey2 !== "function") {
         var result = prompt(caption + ":", secret ? "" : value);
-        if (onClose) onClose();
+        if (onClose) onClose(result !== null);
         if (result !== null) onSave(result);
         return;
     }
@@ -137,7 +137,7 @@ export function editSettingsText(
         w.restoreListPanelState = restore;
         w.setEdit = previousSetEdit;
         restore();
-        if (onClose) onClose();
+        if (onClose) onClose(savedValue !== undefined);
         // Import opens a confirmation dialog: do not let editor teardown close it.
         if (savedValue !== undefined) onSave(savedValue);
     };
