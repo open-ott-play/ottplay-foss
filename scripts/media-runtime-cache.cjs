@@ -73,3 +73,17 @@ async function ensureMediaRuntime(
 }
 
 module.exports = { ensureMediaRuntime };
+if (require.main === module) {
+    ensureMediaRuntime()
+        .then(({ rebuilt }) => {
+            console.log(
+                rebuilt
+                    ? "Media runtime rebuilt and verified"
+                    : "Media runtime inputs and assets verified"
+            );
+        })
+        .catch((error) => {
+            console.error(error);
+            process.exitCode = 1;
+        });
+}
