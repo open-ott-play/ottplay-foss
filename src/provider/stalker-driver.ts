@@ -163,7 +163,11 @@ function createStalkerProviderDriver(
                 if (!scope.active() || !matches(config)) return;
                 var request = source.request();
                 if (!request) {
-                    var parsed = source.catalog(ports.hash);
+                    var parsed = ports.channelCatalog!(
+                        source.channelCatalog(),
+                        ports.hash,
+                        "stalker"
+                    );
                     if (!scope.active() || !matches(config)) return;
                     catalog = parsed;
                     loaded = config;

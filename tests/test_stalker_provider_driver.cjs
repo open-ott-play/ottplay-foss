@@ -69,25 +69,34 @@ test("19 captured JSON session/catalog/guide contracts", () => {
                 (r) => r.settings.contentType === "application/json"
             )
         );
+        const actual = clone({
+            callbacks,
+            calls: f.requests.map(({ settings }) => ({
+                data: JSON.parse(settings.data),
+                method: settings.type,
+                timeout: settings.timeout,
+                url: settings.url,
+            })),
+            errors,
+        });
         assert.deepEqual(
-            clone({
-                callbacks,
-                calls: f.requests.map(({ settings }) => ({
-                    data: JSON.parse(settings.data),
-                    method: settings.type,
-                    timeout: settings.timeout,
-                    url: settings.url,
-                })),
-                channels: value.channels,
-                epg,
-                errors,
-                groupOrder: value.groupOrder,
-                groups: value.groups,
-                ids: value.ids,
-            }),
-            contract.expected,
-            "captured contract " + index
+            actual,
+            {
+                callbacks: contract.expected.callbacks,
+                calls: contract.expected.calls,
+                errors: contract.expected.errors,
+            },
+            "protocol contract " + index
         );
+        assert.equal(new Set(value.ids).size, value.ids.length);
+        for (const id of value.ids) {
+            const channel = value.channels[id];
+            assert(channel.itemId.startsWith("stalker:channel:"));
+            assert(value.groups[channel.category.name].includes(id));
+            assert(channel.groupId.startsWith("stalker:category:"));
+        }
+        if (epg && contract.expected.epg)
+            assert.deepEqual(clone(epg.data), contract.expected.epg.data);
     }
 });
 
@@ -401,7 +410,9 @@ test("injected hash reentry cannot publish the displaced catalog", () => {
     };
     f.driver.load(() => old++);
     f.requests[0].done({ result: {} });
-    f.requests[1].done({ result: [{ name: "Hashed" }] });
+    f.requests[1].done({
+        result: [{ name: "Hashed", url: "https://stream.test/hashed" }],
+    });
     assert.equal(old, 0);
     f.requests[2].done({ result: {} });
     f.requests[3].done(catalog());

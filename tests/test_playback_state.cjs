@@ -363,22 +363,34 @@ for (const mutate of [
     (c) => {
         c.m3uArr.M3Us[0].www = "https://replacement.invalid/";
     },
-    (c) => {
-        c.m3uArr.M3Us[0].medSourceId = "replacement";
-    },
-    (c) => {
-        c.medSourceId = "replacement";
-    },
 ]) {
     const c = fixture();
     c.p_pref = "m3u";
     c.api.command({ channelId: 101, type: "live" });
-    assert.equal(c.api.snapshot().target.sourceId, "m3u:0");
+    assert.equal(
+        c.api.snapshot().target.sourceId,
+        c.__ottSourceIdentity.current(c)
+    );
     let effects = 0;
     const callback = c.api.guard(() => effects++);
     mutate(c);
     callback();
     assert.equal(effects, 0);
+}
+{
+    const c = fixture();
+    c.p_pref = "m3u";
+    c.api.command({ channelId: 101, type: "live" });
+    let effects = 0;
+    const callback = c.api.guard(() => effects++);
+    c.m3uArr.M3Us[0].medSourceId = "replacement";
+    c.medSourceId = "replacement";
+    callback();
+    assert.equal(
+        effects,
+        1,
+        "media portal changes preserve live channel ownership"
+    );
 }
 {
     const c = fixture();

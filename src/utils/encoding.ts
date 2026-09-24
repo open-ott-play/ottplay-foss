@@ -63,37 +63,9 @@ export function stringToLatin1Bytes(input: string): number[] {
     return bytes;
 }
 
-/**
- * Strip the `http://` or `https://` scheme prefix from a URL string.
- *
- * @param input - A URL that may start with `http://` or `https://`.
- * @returns The URL without its scheme prefix, or the original string if the
- *          scheme does not match `http://` or `https://`.
- *
- * @remarks
- * Uses character-code arithmetic for fast detection without regex. Compares
- * a hash of the first three characters (after scheme indicator) against the
- * expected value for "http" / "https". This is a performance optimisation
- * for STB environments where string operations are slow.
- */
+/** URL namespace codec. Case sensitivity preserves existing XMLTV and playlist keys. */
 export function stripHttpScheme(input: string): string {
-    if (input.charCodeAt(3) === 0x70) {
-        var hash =
-            input.charCodeAt(0) +
-            (input.charCodeAt(1) << 8) +
-            (input.charCodeAt(1) << 16);
-        if (hash === 0x747468) {
-            var offset = input.charCodeAt(4) === 0x73 ? 8 : 7;
-            hash =
-                input.charCodeAt(offset - 3) +
-                (input.charCodeAt(offset - 2) << 8) +
-                (input.charCodeAt(offset - 1) << 16);
-            if (hash === 0x2f2f3a) {
-                return input.slice(offset);
-            }
-        }
-    }
-    return input;
+    return input.replace(/^https?:\/\//, "");
 }
 
 /**

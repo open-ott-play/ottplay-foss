@@ -255,6 +255,8 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(BrowserGuideRefreshState, 'BrowserGuideRefreshState');
   initMetadataForClass(BrowserGuideRefreshChange, 'BrowserGuideRefreshChange');
   initMetadataForClass(BrowserGuideRefresh, 'BrowserGuideRefresh', BrowserGuideRefresh);
+  initMetadataForClass(CatalogChannel, 'CatalogChannel');
+  initMetadataForObject(ChannelCatalog, 'ChannelCatalog');
   initMetadataForClass(ChannelIdentity, 'ChannelIdentity');
   initMetadataForClass(ChannelMovementFormat, 'ChannelMovementFormat', VOID, Enum);
   initMetadataForObject(ChannelMovement, 'ChannelMovement');
@@ -306,6 +308,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForObject(LegacyXtream, 'LegacyXtream');
   initMetadataForClass(sam$kotlin_Comparator$0_4, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
   initMetadataForObject(LibraryState, 'LibraryState');
+  initMetadataForClass(MediaRef, 'MediaRef');
+  initMetadataForClass(MediaRecord, 'MediaRecord');
+  initMetadataForClass(MediaCollection, 'MediaCollection');
+  initMetadataForClass(MediaMutation, 'MediaMutation', VOID, Enum);
+  initMetadataForObject(MediaState, 'MediaState');
   initMetadataForClass(NativeGuideFormat, 'NativeGuideFormat', VOID, Enum);
   initMetadataForClass(Shift, 'Shift');
   initMetadataForObject(NativeGuideNames, 'NativeGuideNames');
@@ -976,6 +983,12 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return -1;
   }
+  function plus_0(_this__u8e3s4, element) {
+    var result = ArrayList_init_$Create$_0(_this__u8e3s4.get_size_woubt6_k$() + 1 | 0);
+    result.addAll_h3ej1q_k$(_this__u8e3s4);
+    result.add_utx5q5_k$(element);
+    return result;
+  }
   function dropLast(_this__u8e3s4, n) {
     // Inline function 'kotlin.require' call
     if (!(n >= 0)) {
@@ -1092,9 +1105,6 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function coerceAtMost_0(_this__u8e3s4, maximumValue) {
     return _this__u8e3s4 > maximumValue ? maximumValue : _this__u8e3s4;
   }
-  function coerceAtLeast_0(_this__u8e3s4, minimumValue) {
-    return _this__u8e3s4 < minimumValue ? minimumValue : _this__u8e3s4;
-  }
   function coerceIn_0(_this__u8e3s4, minimumValue, maximumValue) {
     if (minimumValue > maximumValue)
       throw IllegalArgumentException_init_$Create$_0('Cannot coerce value to an empty range: maximum ' + maximumValue + ' is less than minimum ' + minimumValue + '.');
@@ -1103,6 +1113,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
     if (_this__u8e3s4 > maximumValue)
       return maximumValue;
     return _this__u8e3s4;
+  }
+  function coerceAtLeast_0(_this__u8e3s4, minimumValue) {
+    return _this__u8e3s4 < minimumValue ? minimumValue : _this__u8e3s4;
   }
   function asIterable(_this__u8e3s4) {
     // Inline function 'kotlin.collections.Iterable' call
@@ -1128,7 +1141,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   protoOf(asIterable$$inlined$Iterable$1).iterator_jk1svi_k$ = function () {
     return this.$this_asIterable_1.iterator_jk1svi_k$();
   };
-  function plus_0(_this__u8e3s4, elements) {
+  function plus_1(_this__u8e3s4, elements) {
     var tmp0_safe_receiver = collectionSizeOrNull(elements);
     var tmp;
     if (tmp0_safe_receiver == null) {
@@ -5750,7 +5763,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return optimizeReadOnlyMap(toMap_1(_this__u8e3s4, LinkedHashMap_init_$Create$()));
   }
-  function plus_1(_this__u8e3s4, pair) {
+  function plus_2(_this__u8e3s4, pair) {
     var tmp;
     if (_this__u8e3s4.isEmpty_y1axqb_k$()) {
       tmp = mapOf(pair);
@@ -5762,7 +5775,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return tmp;
   }
-  function plus_2(_this__u8e3s4, map) {
+  function plus_3(_this__u8e3s4, map) {
     // Inline function 'kotlin.apply' call
     var this_0 = LinkedHashMap_init_$Create$_1(_this__u8e3s4);
     this_0.putAll_wgg6cj_k$(map);
@@ -6662,6 +6675,10 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return destination;
   }
+  function startsWith_1(_this__u8e3s4, char, ignoreCase) {
+    ignoreCase = ignoreCase === VOID ? false : ignoreCase;
+    return charSequenceLength(_this__u8e3s4) > 0 && equals_1(charSequenceGet(_this__u8e3s4, 0), char, ignoreCase);
+  }
   function substringAfterLast(_this__u8e3s4, delimiter, missingDelimiterValue) {
     missingDelimiterValue = missingDelimiterValue === VOID ? _this__u8e3s4 : missingDelimiterValue;
     var index = lastIndexOf(_this__u8e3s4, delimiter);
@@ -6671,10 +6688,6 @@ if (typeof String.prototype.startsWith === 'undefined') {
     missingDelimiterValue = missingDelimiterValue === VOID ? _this__u8e3s4 : missingDelimiterValue;
     var index = lastIndexOf(_this__u8e3s4, delimiter);
     return index === -1 ? missingDelimiterValue : substring(_this__u8e3s4, 0, index);
-  }
-  function startsWith_1(_this__u8e3s4, char, ignoreCase) {
-    ignoreCase = ignoreCase === VOID ? false : ignoreCase;
-    return charSequenceLength(_this__u8e3s4) > 0 && equals_1(charSequenceGet(_this__u8e3s4, 0), char, ignoreCase);
   }
   function substringBefore_0(_this__u8e3s4, delimiter, missingDelimiterValue) {
     missingDelimiterValue = missingDelimiterValue === VOID ? _this__u8e3s4 : missingDelimiterValue;
@@ -9283,7 +9296,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
             }
           }
           // Inline function 'kotlin.collections.set' call
-          var value_2 = tmp_7.obj_60q8ki_k$(plus_1(security.properties_1, to('protectedIds', array(tmp_8, destination_4))));
+          var value_2 = tmp_7.obj_60q8ki_k$(plus_2(security.properties_1, to('protectedIds', array(tmp_8, destination_4))));
           result.put_4fpzoq_k$(tmp2_0, value_2);
         }
       }
@@ -9293,7 +9306,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   protoOf(BrowserDurableState).export_l86fia_k$ = function (state, includeCredentials) {
     if (includeCredentials)
       return state;
-    return Companion_getInstance_18().obj_60q8ki_k$(plus_2(state.properties_1, mapOf_0([to('sources', array(this)), to('activeSourceId', text(this, '')), to('lastChannel', Companion_getInstance_18().nil_1), to('previousChannel', Companion_getInstance_18().nil_1), to('playbackPreferences', array(this)), to('channelReferences', array(this)), to('settings', Companion_getInstance_18().obj_60q8ki_k$(plus_2(state.get_6bo4tg_k$('settings').properties_1, mapOf_0([to('epgUrl', text(this, '')), to('epgUrls', array(this))]))))])));
+    return Companion_getInstance_18().obj_60q8ki_k$(plus_3(state.properties_1, mapOf_0([to('sources', array(this)), to('activeSourceId', text(this, '')), to('lastChannel', Companion_getInstance_18().nil_1), to('previousChannel', Companion_getInstance_18().nil_1), to('playbackPreferences', array(this)), to('channelReferences', array(this)), to('settings', Companion_getInstance_18().obj_60q8ki_k$(plus_3(state.get_6bo4tg_k$('settings').properties_1, mapOf_0([to('epgUrl', text(this, '')), to('epgUrls', array(this))]))))])));
   };
   protoOf(BrowserDurableState).recordHistory_2j8757_k$ = function (history, id, name, time) {
     var tmp = listOf(obj(this, [to('id', text(this, id)), to('name', name), to('time', number_0(this, time))]));
@@ -9648,6 +9661,374 @@ if (typeof String.prototype.startsWith === 'undefined') {
       this.generation_1 = this.generation_1 + 1;
     }
   };
+  function CatalogChannel(itemId, providerId, name, groupId, groupName, logo, url, archiveHours, archiveMode) {
+    archiveHours = archiveHours === VOID ? 0.0 : archiveHours;
+    archiveMode = archiveMode === VOID ? '' : archiveMode;
+    this.itemId_1 = itemId;
+    this.providerId_1 = providerId;
+    this.name_1 = name;
+    this.groupId_1 = groupId;
+    this.groupName_1 = groupName;
+    this.logo_1 = logo;
+    this.url_1 = url;
+    this.archiveHours_1 = archiveHours;
+    this.archiveMode_1 = archiveMode;
+  }
+  protoOf(CatalogChannel).toString = function () {
+    return 'CatalogChannel(itemId=' + this.itemId_1 + ', providerId=' + this.providerId_1 + ', name=' + this.name_1 + ', groupId=' + this.groupId_1 + ', groupName=' + this.groupName_1 + ', logo=' + this.logo_1 + ', url=' + this.url_1 + ', archiveHours=' + this.archiveHours_1 + ', archiveMode=' + this.archiveMode_1 + ')';
+  };
+  protoOf(CatalogChannel).hashCode = function () {
+    var result = getStringHashCode(this.itemId_1);
+    result = imul(result, 31) + getStringHashCode(this.providerId_1) | 0;
+    result = imul(result, 31) + getStringHashCode(this.name_1) | 0;
+    result = imul(result, 31) + getStringHashCode(this.groupId_1) | 0;
+    result = imul(result, 31) + getStringHashCode(this.groupName_1) | 0;
+    result = imul(result, 31) + getStringHashCode(this.logo_1) | 0;
+    result = imul(result, 31) + getStringHashCode(this.url_1) | 0;
+    result = imul(result, 31) + getNumberHashCode(this.archiveHours_1) | 0;
+    result = imul(result, 31) + getStringHashCode(this.archiveMode_1) | 0;
+    return result;
+  };
+  protoOf(CatalogChannel).equals = function (other) {
+    if (this === other)
+      return true;
+    if (!(other instanceof CatalogChannel))
+      return false;
+    if (!(this.itemId_1 === other.itemId_1))
+      return false;
+    if (!(this.providerId_1 === other.providerId_1))
+      return false;
+    if (!(this.name_1 === other.name_1))
+      return false;
+    if (!(this.groupId_1 === other.groupId_1))
+      return false;
+    if (!(this.groupName_1 === other.groupName_1))
+      return false;
+    if (!(this.logo_1 === other.logo_1))
+      return false;
+    if (!(this.url_1 === other.url_1))
+      return false;
+    if (!equals(this.archiveHours_1, other.archiveHours_1))
+      return false;
+    if (!(this.archiveMode_1 === other.archiveMode_1))
+      return false;
+    return true;
+  };
+  function ChannelCatalog() {
+  }
+  protoOf(ChannelCatalog).xtream_8xzyc2_k$ = function (data, addresses) {
+    // Inline function 'kotlin.collections.linkedMapOf' call
+    var groups = LinkedHashMap_init_$Create$();
+    var tmp0_safe_receiver = data.get_wei43m_k$('get_live_categories');
+    // Inline function 'kotlin.collections.orEmpty' call
+    var tmp0_elvis_lhs = tmp0_safe_receiver == null ? null : tmp0_safe_receiver.elements_1;
+    // Inline function 'kotlin.collections.forEach' call
+    var _iterator__ex2g4s = (tmp0_elvis_lhs == null ? emptyList() : tmp0_elvis_lhs).iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var element = _iterator__ex2g4s.next_20eer_k$();
+      var id = element.get_6bo4tg_k$('category_id').string_er2cq7_k$();
+      // Inline function 'kotlin.takeIf' call
+      var this_0 = element.get_6bo4tg_k$('category_name');
+      var tmp;
+      if (this_0.truthy_eb26j6_k$()) {
+        tmp = this_0;
+      } else {
+        tmp = null;
+      }
+      var tmp0_safe_receiver_0 = tmp;
+      var tmp1_elvis_lhs = tmp0_safe_receiver_0 == null ? null : tmp0_safe_receiver_0.string_er2cq7_k$();
+      // Inline function 'kotlin.collections.set' call
+      var value = tmp1_elvis_lhs == null ? 'Unknown' : tmp1_elvis_lhs;
+      groups.put_4fpzoq_k$(id, value);
+    }
+    // Inline function 'kotlin.collections.mutableSetOf' call
+    var seen = LinkedHashSet_init_$Create$();
+    var tmp1_safe_receiver = data.get_wei43m_k$('get_live_streams');
+    // Inline function 'kotlin.collections.orEmpty' call
+    var tmp0_elvis_lhs_0 = tmp1_safe_receiver == null ? null : tmp1_safe_receiver.elements_1;
+    // Inline function 'kotlin.collections.mapNotNull' call
+    var tmp0 = tmp0_elvis_lhs_0 == null ? emptyList() : tmp0_elvis_lhs_0;
+    // Inline function 'kotlin.collections.mapNotNullTo' call
+    var destination = ArrayList_init_$Create$();
+    // Inline function 'kotlin.collections.forEach' call
+    var _iterator__ex2g4s_0 = tmp0.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
+      var element_0 = _iterator__ex2g4s_0.next_20eer_k$();
+      var tmp$ret$13;
+      $l$block: {
+        // Inline function 'kotlin.takeIf' call
+        var this_1 = element_0.get_6bo4tg_k$('stream_id');
+        var tmp_0;
+        if (this_1.get_present_3zxuem_k$() && !this_1.kind_1.equals(ProviderValueKind_NULL_getInstance())) {
+          tmp_0 = this_1;
+        } else {
+          tmp_0 = null;
+        }
+        var tmp0_safe_receiver_1 = tmp_0;
+        var providerId = tmp0_safe_receiver_1 == null ? null : tmp0_safe_receiver_1.string_er2cq7_k$();
+        var tmp_1;
+        // Inline function 'kotlin.text.isNullOrBlank' call
+        if (providerId == null || isBlank(providerId)) {
+          tmp_1 = true;
+        } else {
+          tmp_1 = !seen.add_utx5q5_k$(providerId);
+        }
+        if (tmp_1) {
+          tmp$ret$13 = null;
+          break $l$block;
+        }
+        var categoryId = element_0.get_6bo4tg_k$('category_id').string_er2cq7_k$();
+        var tmp_2 = 'xtream:stream:' + providerId;
+        // Inline function 'kotlin.takeIf' call
+        var this_2 = element_0.get_6bo4tg_k$('name');
+        var tmp_3;
+        if (this_2.truthy_eb26j6_k$()) {
+          tmp_3 = this_2;
+        } else {
+          tmp_3 = null;
+        }
+        var tmp1_safe_receiver_0 = tmp_3;
+        var tmp2_elvis_lhs = tmp1_safe_receiver_0 == null ? null : tmp1_safe_receiver_0.string_er2cq7_k$();
+        var tmp_4 = tmp2_elvis_lhs == null ? providerId : tmp2_elvis_lhs;
+        var tmp_5 = 'xtream:category:' + categoryId;
+        var tmp3_elvis_lhs = groups.get_wei43m_k$(categoryId);
+        var tmp_6 = tmp3_elvis_lhs == null ? 'Other' : tmp3_elvis_lhs;
+        // Inline function 'kotlin.takeIf' call
+        var this_3 = element_0.get_6bo4tg_k$('stream_icon');
+        var tmp_7;
+        if (this_3.truthy_eb26j6_k$()) {
+          tmp_7 = this_3;
+        } else {
+          tmp_7 = null;
+        }
+        var tmp4_safe_receiver = tmp_7;
+        var tmp5_elvis_lhs = tmp4_safe_receiver == null ? null : tmp4_safe_receiver.string_er2cq7_k$();
+        tmp$ret$13 = new CatalogChannel(tmp_2, providerId, tmp_4, tmp_5, tmp_6, tmp5_elvis_lhs == null ? '' : tmp5_elvis_lhs, addresses.legacyStream_4sx44x_k$(providerId));
+      }
+      var tmp0_safe_receiver_2 = tmp$ret$13;
+      if (tmp0_safe_receiver_2 == null)
+        null;
+      else {
+        // Inline function 'kotlin.let' call
+        destination.add_utx5q5_k$(tmp0_safe_receiver_2);
+      }
+    }
+    return destination;
+  };
+  protoOf(ChannelCatalog).stalker_nzia3v_k$ = function (value, portal, mac) {
+    var rows = value;
+    if (rows.get_isObject_xg6v9u_k$()) {
+      var tmp0 = listOf_0([rows.get_6bo4tg_k$('data'), rows.get_6bo4tg_k$('items'), rows.get_6bo4tg_k$('channels')]);
+      var tmp$ret$0;
+      $l$block: {
+        // Inline function 'kotlin.collections.firstOrNull' call
+        var _iterator__ex2g4s = tmp0.iterator_jk1svi_k$();
+        while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+          var element = _iterator__ex2g4s.next_20eer_k$();
+          if (element.get_isArray_z8qxd2_k$()) {
+            tmp$ret$0 = element;
+            break $l$block;
+          }
+        }
+        tmp$ret$0 = null;
+      }
+      var tmp0_elvis_lhs = tmp$ret$0;
+      var tmp;
+      if (tmp0_elvis_lhs == null) {
+        var tmp_0 = Companion_getInstance_18();
+        // Inline function 'kotlin.collections.filter' call
+        var tmp0_0 = rows.properties_1.get_values_ksazhn_k$();
+        // Inline function 'kotlin.collections.filterTo' call
+        var destination = ArrayList_init_$Create$();
+        var _iterator__ex2g4s_0 = tmp0_0.iterator_jk1svi_k$();
+        while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
+          var element_0 = _iterator__ex2g4s_0.next_20eer_k$();
+          if (element_0.get_isObject_xg6v9u_k$() && element_0.get_6bo4tg_k$('name').truthy_eb26j6_k$()) {
+            destination.add_utx5q5_k$(element_0);
+          }
+        }
+        tmp = tmp_0.array_vqz2lg_k$(destination);
+      } else {
+        tmp = tmp0_elvis_lhs;
+      }
+      rows = tmp;
+    }
+    // Inline function 'kotlin.collections.mutableSetOf' call
+    var seen = LinkedHashSet_init_$Create$();
+    // Inline function 'kotlin.collections.mapNotNull' call
+    var tmp0_1 = rows.elements_1;
+    // Inline function 'kotlin.collections.mapNotNullTo' call
+    var destination_0 = ArrayList_init_$Create$();
+    // Inline function 'kotlin.collections.forEach' call
+    var _iterator__ex2g4s_1 = tmp0_1.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_1.hasNext_bitz1p_k$()) {
+      var element_1 = _iterator__ex2g4s_1.next_20eer_k$();
+      var tmp$ret$10;
+      $l$block_2: {
+        var tmp0_2 = listOf_0([element_1.get_6bo4tg_k$('id'), element_1.get_6bo4tg_k$('ch_id')]);
+        var tmp$ret$11;
+        $l$block_0: {
+          // Inline function 'kotlin.collections.firstOrNull' call
+          var _iterator__ex2g4s_2 = tmp0_2.iterator_jk1svi_k$();
+          while (_iterator__ex2g4s_2.hasNext_bitz1p_k$()) {
+            var element_2 = _iterator__ex2g4s_2.next_20eer_k$();
+            if (element_2.truthy_eb26j6_k$()) {
+              tmp$ret$11 = element_2;
+              break $l$block_0;
+            }
+          }
+          tmp$ret$11 = null;
+        }
+        var tmp0_safe_receiver = tmp$ret$11;
+        var providerId = tmp0_safe_receiver == null ? null : tmp0_safe_receiver.string_er2cq7_k$();
+        // Inline function 'kotlin.takeIf' call
+        var this_0 = element_1.get_6bo4tg_k$('url');
+        var tmp_1;
+        if (this_0.truthy_eb26j6_k$()) {
+          tmp_1 = this_0;
+        } else {
+          tmp_1 = null;
+        }
+        var tmp1_safe_receiver = tmp_1;
+        var rawUrl = tmp1_safe_receiver == null ? null : tmp1_safe_receiver.string_er2cq7_k$();
+        var tmp3_elvis_lhs = providerId == null ? rawUrl : providerId;
+        var tmp_2;
+        if (tmp3_elvis_lhs == null) {
+          tmp$ret$10 = null;
+          break $l$block_2;
+        } else {
+          tmp_2 = tmp3_elvis_lhs;
+        }
+        var identity = tmp_2;
+        if (!seen.add_utx5q5_k$(identity)) {
+          tmp$ret$10 = null;
+          break $l$block_2;
+        }
+        var tmp0_3 = listOf_0([element_1.get_6bo4tg_k$('genre'), element_1.get_6bo4tg_k$('categories'), element_1.get_6bo4tg_k$('category')]);
+        var tmp$ret$15;
+        $l$block_3: {
+          // Inline function 'kotlin.collections.firstOrNull' call
+          var _iterator__ex2g4s_3 = tmp0_3.iterator_jk1svi_k$();
+          while (_iterator__ex2g4s_3.hasNext_bitz1p_k$()) {
+            var element_3 = _iterator__ex2g4s_3.next_20eer_k$();
+            if (element_3.truthy_eb26j6_k$()) {
+              tmp$ret$15 = element_3;
+              break $l$block_3;
+            }
+          }
+          tmp$ret$15 = null;
+        }
+        var category = tmp$ret$15;
+        var tmp4_safe_receiver = category;
+        if ((tmp4_safe_receiver == null ? null : tmp4_safe_receiver.get_isArray_z8qxd2_k$()) === true)
+          category = firstOrNull(category.elements_1);
+        var tmp5_safe_receiver = category;
+        var tmp_3;
+        if (tmp5_safe_receiver == null) {
+          tmp_3 = null;
+        } else {
+          // Inline function 'kotlin.takeIf' call
+          var tmp_4;
+          if (tmp5_safe_receiver.kind_1.equals(ProviderValueKind_TEXT_getInstance())) {
+            tmp_4 = tmp5_safe_receiver;
+          } else {
+            tmp_4 = null;
+          }
+          tmp_3 = tmp_4;
+        }
+        var tmp6_safe_receiver = tmp_3;
+        var tmp7_elvis_lhs = tmp6_safe_receiver == null ? null : tmp6_safe_receiver.string_er2cq7_k$();
+        var group = tmp7_elvis_lhs == null ? 'Other' : tmp7_elvis_lhs;
+        var tmp0_4 = listOf_0([element_1.get_6bo4tg_k$('genre_id'), element_1.get_6bo4tg_k$('category_id')]);
+        var tmp$ret$19;
+        $l$block_4: {
+          // Inline function 'kotlin.collections.firstOrNull' call
+          var _iterator__ex2g4s_4 = tmp0_4.iterator_jk1svi_k$();
+          while (_iterator__ex2g4s_4.hasNext_bitz1p_k$()) {
+            var element_4 = _iterator__ex2g4s_4.next_20eer_k$();
+            if (element_4.truthy_eb26j6_k$()) {
+              tmp$ret$19 = element_4;
+              break $l$block_4;
+            }
+          }
+          tmp$ret$19 = null;
+        }
+        var tmp8_safe_receiver = tmp$ret$19;
+        var tmp9_elvis_lhs = tmp8_safe_receiver == null ? null : tmp8_safe_receiver.string_er2cq7_k$();
+        var groupId = tmp9_elvis_lhs == null ? group : tmp9_elvis_lhs;
+        var tmp0_5 = listOf_0([element_1.get_6bo4tg_k$('logo'), element_1.get_6bo4tg_k$('icon'), element_1.get_6bo4tg_k$('tv_icon')]);
+        var tmp$ret$21;
+        $l$block_5: {
+          // Inline function 'kotlin.collections.firstOrNull' call
+          var _iterator__ex2g4s_5 = tmp0_5.iterator_jk1svi_k$();
+          while (_iterator__ex2g4s_5.hasNext_bitz1p_k$()) {
+            var element_5 = _iterator__ex2g4s_5.next_20eer_k$();
+            if (element_5.truthy_eb26j6_k$()) {
+              tmp$ret$21 = element_5;
+              break $l$block_5;
+            }
+          }
+          tmp$ret$21 = null;
+        }
+        var tmp10_safe_receiver = tmp$ret$21;
+        var tmp11_elvis_lhs = tmp10_safe_receiver == null ? null : tmp10_safe_receiver.string_er2cq7_k$();
+        var rawLogo = tmp11_elvis_lhs == null ? '' : tmp11_elvis_lhs;
+        var logo = startsWith(rawLogo, '//') ? (startsWith(portal, 'https') ? 'https:' : 'http:') + rawLogo : startsWith_1(rawLogo, _Char___init__impl__6a9atx(47)) ? trimEnd(portal, charArrayOf([_Char___init__impl__6a9atx(47)])) + rawLogo : rawLogo;
+        // Inline function 'kotlin.collections.map' call
+        var this_1 = listOf_0([element_1.get_6bo4tg_k$('archive'), element_1.get_6bo4tg_k$('archive_duration')]);
+        // Inline function 'kotlin.collections.mapTo' call
+        var destination_1 = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_1, 10));
+        var _iterator__ex2g4s_6 = this_1.iterator_jk1svi_k$();
+        while (_iterator__ex2g4s_6.hasNext_bitz1p_k$()) {
+          var item = _iterator__ex2g4s_6.next_20eer_k$();
+          var tmp$ret$25 = ProviderPlaylist_instance.integer_6sycuc_k$(item.string_er2cq7_k$());
+          destination_1.add_utx5q5_k$(tmp$ret$25);
+        }
+        var tmp$ret$26;
+        $l$block_6: {
+          // Inline function 'kotlin.collections.firstOrNull' call
+          var _iterator__ex2g4s_7 = destination_1.iterator_jk1svi_k$();
+          while (_iterator__ex2g4s_7.hasNext_bitz1p_k$()) {
+            var element_6 = _iterator__ex2g4s_7.next_20eer_k$();
+            if (isFinite(element_6) && element_6 > 0) {
+              tmp$ret$26 = element_6;
+              break $l$block_6;
+            }
+          }
+          tmp$ret$26 = null;
+        }
+        var tmp12_elvis_lhs = tmp$ret$26;
+        var hours = tmp12_elvis_lhs == null ? 0.0 : tmp12_elvis_lhs;
+        var tmp_5 = 'stalker:channel:' + identity;
+        var tmp_6 = providerId == null ? '' : providerId;
+        // Inline function 'kotlin.takeIf' call
+        var this_2 = element_1.get_6bo4tg_k$('name');
+        var tmp_7;
+        if (this_2.truthy_eb26j6_k$()) {
+          tmp_7 = this_2;
+        } else {
+          tmp_7 = null;
+        }
+        var tmp14_safe_receiver = tmp_7;
+        var tmp15_elvis_lhs = tmp14_safe_receiver == null ? null : tmp14_safe_receiver.string_er2cq7_k$();
+        var tmp_8 = tmp15_elvis_lhs == null ? identity : tmp15_elvis_lhs;
+        var tmp_9 = 'stalker:category:' + groupId;
+        tmp$ret$10 = new CatalogChannel(tmp_5, tmp_6, tmp_8, tmp_9, group, logo, rawUrl == null ? trimEnd(portal, charArrayOf([_Char___init__impl__6a9atx(47)])) + '/stalker_portal/stream/' + providerId + '.m3u8?mac=' + mac : rawUrl, hours, element_1.get_6bo4tg_k$('archive').truthy_eb26j6_k$() ? 'append' : '');
+      }
+      var tmp0_safe_receiver_0 = tmp$ret$10;
+      if (tmp0_safe_receiver_0 == null)
+        null;
+      else {
+        // Inline function 'kotlin.let' call
+        destination_0.add_utx5q5_k$(tmp0_safe_receiver_0);
+      }
+    }
+    return destination_0;
+  };
+  var ChannelCatalog_instance;
+  function ChannelCatalog_getInstance() {
+    return ChannelCatalog_instance;
+  }
   function str($this, value) {
     return Companion_getInstance_18().text_yxj031_k$(value);
   }
@@ -9772,7 +10153,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     result.put_4fpzoq_k$(tmp2, value);
     var tmp2_0 = 'security';
     // Inline function 'kotlin.collections.set' call
-    var value_0 = obj_0($this, plus_1(state.get_6bo4tg_k$('security').properties_1, to('protectedIds', move$ids($this, mapping, state.get_6bo4tg_k$('security').get_6bo4tg_k$('protectedIds')))));
+    var value_0 = obj_0($this, plus_2(state.get_6bo4tg_k$('security').properties_1, to('protectedIds', move$ids($this, mapping, state.get_6bo4tg_k$('security').get_6bo4tg_k$('protectedIds')))));
     result.put_4fpzoq_k$(tmp2_0, value_0);
     // Inline function 'kotlin.collections.forEach' call
     var _iterator__ex2g4s_0 = listOf_0(['channelOverrides', 'bookmarks', 'favoriteItems']).iterator_jk1svi_k$();
@@ -9868,7 +10249,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         var tmp$ret$35 = move$mapped(mapping, $this, item);
         destination_1.add_utx5q5_k$(tmp$ret$35);
       }
-      var tmp$ret$31 = obj_0($this, plus_1(value_6.properties_1, to('parents', array_0($this, destination_1))));
+      var tmp$ret$31 = obj_0($this, plus_2(value_6.properties_1, to('parents', array_0($this, destination_1))));
       destination_0.put_4fpzoq_k$(tmp_2, tmp$ret$31);
     }
     // Inline function 'kotlin.collections.set' call
@@ -9881,7 +10262,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     var _iterator__ex2g4s_5 = this_4.iterator_jk1svi_k$();
     while (_iterator__ex2g4s_5.hasNext_bitz1p_k$()) {
       var item_0 = _iterator__ex2g4s_5.next_20eer_k$();
-      var tmp$ret$39 = obj_0($this, plus_1(item_0.properties_1, to('id', move$mapped(mapping, $this, item_0.get_6bo4tg_k$('id')))));
+      var tmp$ret$39 = obj_0($this, plus_2(item_0.properties_1, to('id', move$mapped(mapping, $this, item_0.get_6bo4tg_k$('id')))));
       destination_2.add_utx5q5_k$(tmp$ret$39);
     }
     // Inline function 'kotlin.collections.distinctBy' call
@@ -9907,7 +10288,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     while (_iterator__ex2g4s_7.hasNext_bitz1p_k$()) {
       var item_1 = _iterator__ex2g4s_7.next_20eer_k$();
       var channel = move$mapped(mapping, $this, item_1.get_6bo4tg_k$('channelId'));
-      var tmp$ret$45 = obj_0($this, plus_2(item_1.properties_1, mapOf_0([to('channelId', channel), to('id', str($this, channel.string_er2cq7_k$() + '@' + item_1.get_6bo4tg_k$('start').string_er2cq7_k$()))])));
+      var tmp$ret$45 = obj_0($this, plus_3(item_1.properties_1, mapOf_0([to('channelId', channel), to('id', str($this, channel.string_er2cq7_k$() + '@' + item_1.get_6bo4tg_k$('start').string_er2cq7_k$()))])));
       destination_3.add_utx5q5_k$(tmp$ret$45);
     }
     // Inline function 'kotlin.collections.distinctBy' call
@@ -9940,7 +10321,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     var _iterator__ex2g4s_9 = this_6.iterator_jk1svi_k$();
     while (_iterator__ex2g4s_9.hasNext_bitz1p_k$()) {
       var item_2 = _iterator__ex2g4s_9.next_20eer_k$();
-      var tmp$ret$53 = obj_0($this, plus_1(item_2.properties_1, to('reference', move$reference(mapping, $this, rows, item_2.get_6bo4tg_k$('reference')))));
+      var tmp$ret$53 = obj_0($this, plus_2(item_2.properties_1, to('reference', move$reference(mapping, $this, rows, item_2.get_6bo4tg_k$('reference')))));
       destination_4.add_utx5q5_k$(tmp$ret$53);
     }
     // Inline function 'kotlin.collections.distinctBy' call
@@ -10181,7 +10562,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     var _iterator__ex2g4s_0 = rows.iterator_jk1svi_k$();
     while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
       var item = _iterator__ex2g4s_0.next_20eer_k$();
-      var tmp$ret$9 = obj_0(this$0, plus_1(item.properties_1, to('kind', str(this$0, 'live'))));
+      var tmp$ret$9 = obj_0(this$0, plus_2(item.properties_1, to('kind', str(this$0, 'live'))));
       destination_0.add_utx5q5_k$(tmp$ret$9);
     }
     var selected = this$0.restoration_1.restore_ow6o1u_k$(destination_0, ref);
@@ -10619,7 +11000,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       destination_5.put_4fpzoq_k$(tmp_10, tmp$ret$69);
     }
     var report = obj_0(this, linkedMapOf([tmp_9, to('aliases', obj_0(this, destination_5)), to('blocked', array_0(this, blocked)), to('unresolved', new ProviderValue(ProviderValueKind_NUMBER_getInstance(), unresolved.toString()))]));
-    return to(obj_0(this, plus_1(moved.properties_1, to('channelReferences', remembered))), report);
+    return to(obj_0(this, plus_2(moved.properties_1, to('channelReferences', remembered))), report);
   };
   protoOf(ChannelIdentity).permission_fqcrgw_k$ = function (report, id, protected_0) {
     var tmp;
@@ -13770,7 +14151,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         }
         browser$warn(warnings, 'The old JSON export contains no provider source credentials. Add your source separately.');
         browser$warn(warnings, 'Only preferences with an exact new equivalent were migrated; old key bindings and device-specific options were omitted.');
-        proposed = obj_1(this, plus_1(fields._v, to('settings', obj_1(this, settings._v))));
+        proposed = obj_1(this, plus_2(fields._v, to('settings', obj_1(this, settings._v))));
       } else {
         // Inline function 'kotlin.collections.contains' call
         // Inline function 'kotlin.collections.containsKey' call
@@ -13831,7 +14212,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
           }
         }
         browser$warn(warnings, 'Unknown legacy storage keys, local-server access settings and device credentials were omitted.');
-        proposed = validate(obj_1(this, plus_2(fields._v, mapOf_0([to('sources', array_1(this, sources)), to('settings', obj_1(this, settings._v))]))));
+        proposed = validate(obj_1(this, plus_3(fields._v, mapOf_0([to('sources', array_1(this, sources)), to('settings', obj_1(this, settings._v))]))));
       }
     }
     var tmp;
@@ -14561,7 +14942,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         tmp_5 = null;
       }
       var tmp2_elvis_lhs = tmp_5;
-      var tmp$ret$2 = obj_2(tmp, plus_2(item.properties_1, mapOf_0([tmp_1, tmp_3, tmp_4, to('order', tmp2_elvis_lhs == null ? number_1(LibraryState_instance, index_0) : tmp2_elvis_lhs), to('originalIndex', number_1(LibraryState_instance, index_0))])));
+      var tmp$ret$2 = obj_2(tmp, plus_3(item.properties_1, mapOf_0([tmp_1, tmp_3, tmp_4, to('order', tmp2_elvis_lhs == null ? number_1(LibraryState_instance, index_0) : tmp2_elvis_lhs), to('originalIndex', number_1(LibraryState_instance, index_0))])));
       destination.add_utx5q5_k$(tmp$ret$2);
     }
     // Inline function 'kotlin.collections.filter' call
@@ -14677,11 +15058,372 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function LibraryState_getInstance() {
     return LibraryState_instance;
   }
+  function MediaRef(sourceId, itemId) {
+    this.sourceId_1 = sourceId;
+    this.itemId_1 = itemId;
+    var tmp;
+    // Inline function 'kotlin.text.isNotBlank' call
+    var this_0 = this.sourceId_1;
+    if (!isBlank(this_0)) {
+      // Inline function 'kotlin.text.isNotBlank' call
+      var this_1 = this.itemId_1;
+      tmp = !isBlank(this_1);
+    } else {
+      tmp = false;
+    }
+    // Inline function 'kotlin.require' call
+    if (!tmp) {
+      var message = 'Media identity is required';
+      throw IllegalArgumentException_init_$Create$_0(toString_1(message));
+    }
+  }
+  protoOf(MediaRef).toString = function () {
+    return 'MediaRef(sourceId=' + this.sourceId_1 + ', itemId=' + this.itemId_1 + ')';
+  };
+  protoOf(MediaRef).hashCode = function () {
+    var result = getStringHashCode(this.sourceId_1);
+    result = imul(result, 31) + getStringHashCode(this.itemId_1) | 0;
+    return result;
+  };
+  protoOf(MediaRef).equals = function (other) {
+    if (this === other)
+      return true;
+    if (!(other instanceof MediaRef))
+      return false;
+    if (!(this.sourceId_1 === other.sourceId_1))
+      return false;
+    if (!(this.itemId_1 === other.itemId_1))
+      return false;
+    return true;
+  };
+  function MediaRecord(ref, payload, position) {
+    position = position === VOID ? 0.0 : position;
+    this.ref_1 = ref;
+    this.payload_1 = payload;
+    this.position_1 = position;
+  }
+  protoOf(MediaRecord).copy_44h7gk_k$ = function (ref, payload, position) {
+    return new MediaRecord(ref, payload, position);
+  };
+  protoOf(MediaRecord).copy$default_f82qcn_k$ = function (ref, payload, position, $super) {
+    ref = ref === VOID ? this.ref_1 : ref;
+    payload = payload === VOID ? this.payload_1 : payload;
+    position = position === VOID ? this.position_1 : position;
+    return $super === VOID ? this.copy_44h7gk_k$(ref, payload, position) : $super.copy_44h7gk_k$.call(this, ref, payload, position);
+  };
+  protoOf(MediaRecord).toString = function () {
+    return 'MediaRecord(ref=' + this.ref_1.toString() + ', payload=' + toString_0(this.payload_1) + ', position=' + this.position_1 + ')';
+  };
+  protoOf(MediaRecord).hashCode = function () {
+    var result = this.ref_1.hashCode();
+    result = imul(result, 31) + (this.payload_1 == null ? 0 : hashCode_0(this.payload_1)) | 0;
+    result = imul(result, 31) + getNumberHashCode(this.position_1) | 0;
+    return result;
+  };
+  protoOf(MediaRecord).equals = function (other) {
+    if (this === other)
+      return true;
+    if (!(other instanceof MediaRecord))
+      return false;
+    if (!this.ref_1.equals(other.ref_1))
+      return false;
+    if (!equals(this.payload_1, other.payload_1))
+      return false;
+    if (!equals(this.position_1, other.position_1))
+      return false;
+    return true;
+  };
+  function MediaCollection(history, favorites) {
+    this.history_1 = history;
+    this.favorites_1 = favorites;
+  }
+  protoOf(MediaCollection).toString = function () {
+    return 'MediaCollection(history=' + toString_1(this.history_1) + ', favorites=' + toString_1(this.favorites_1) + ')';
+  };
+  protoOf(MediaCollection).hashCode = function () {
+    var result = hashCode_0(this.history_1);
+    result = imul(result, 31) + hashCode_0(this.favorites_1) | 0;
+    return result;
+  };
+  protoOf(MediaCollection).equals = function (other) {
+    if (this === other)
+      return true;
+    if (!(other instanceof MediaCollection))
+      return false;
+    if (!equals(this.history_1, other.history_1))
+      return false;
+    if (!equals(this.favorites_1, other.favorites_1))
+      return false;
+    return true;
+  };
   var static_init_called_4;
   function static_init_4() {
     if (static_init_called_4)
       return Unit_instance;
     static_init_called_4 = true;
+    MediaMutation_VISIT_instance = new MediaMutation('VISIT', 0);
+    MediaMutation_POSITION_instance = new MediaMutation('POSITION', 1);
+    MediaMutation_FAVORITE_instance = new MediaMutation('FAVORITE', 2);
+    MediaMutation_UNFAVORITE_instance = new MediaMutation('UNFAVORITE', 3);
+    MediaMutation_REMOVE_HISTORY_instance = new MediaMutation('REMOVE_HISTORY', 4);
+  }
+  var MediaMutation_VISIT_instance;
+  var MediaMutation_POSITION_instance;
+  var MediaMutation_FAVORITE_instance;
+  var MediaMutation_UNFAVORITE_instance;
+  var MediaMutation_REMOVE_HISTORY_instance;
+  function MediaMutation(name, ordinal) {
+    Enum.call(this, name, ordinal);
+  }
+  function change$clean(source, rows) {
+    // Inline function 'kotlin.collections.filter' call
+    // Inline function 'kotlin.collections.filterTo' call
+    var destination = ArrayList_init_$Create$();
+    var _iterator__ex2g4s = rows.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var element = _iterator__ex2g4s.next_20eer_k$();
+      if (element.ref_1.sourceId_1 === source) {
+        destination.add_utx5q5_k$(element);
+      }
+    }
+    // Inline function 'kotlin.collections.distinctBy' call
+    var set = HashSet_init_$Create$();
+    var list = ArrayList_init_$Create$();
+    var _iterator__ex2g4s_0 = destination.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
+      var e = _iterator__ex2g4s_0.next_20eer_k$();
+      var key = e.ref_1;
+      if (set.add_utx5q5_k$(key)) {
+        list.add_utx5q5_k$(e);
+      }
+    }
+    return take(list, 1000);
+  }
+  function MediaState() {
+    this.MAX_ENTRIES_1 = 1000;
+  }
+  protoOf(MediaState).resume_6t8llf_k$ = function (position, quantum) {
+    if (!isFinite(position) || position < 0)
+      return 0.0;
+    // Inline function 'kotlin.require' call
+    if (!(isFinite(quantum) && quantum > 0)) {
+      var message = 'Resume quantum must be positive';
+      throw IllegalArgumentException_init_$Create$_0(toString_1(message));
+    }
+    // Inline function 'kotlin.math.floor' call
+    var x = position / quantum;
+    return Math.floor(x) * quantum;
+  };
+  protoOf(MediaState).change_6bwqow_k$ = function (state, operation, entry, limit) {
+    var source = entry.ref_1.sourceId_1;
+    var history = change$clean(source, state.history_1);
+    var favorites = change$clean(source, state.favorites_1);
+    var tmp0 = history;
+    var tmp$ret$0;
+    $l$block: {
+      // Inline function 'kotlin.collections.firstOrNull' call
+      var _iterator__ex2g4s = tmp0.iterator_jk1svi_k$();
+      while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+        var element = _iterator__ex2g4s.next_20eer_k$();
+        if (element.ref_1.equals(entry.ref_1)) {
+          tmp$ret$0 = element;
+          break $l$block;
+        }
+      }
+      tmp$ret$0 = null;
+    }
+    var tmp0_elvis_lhs = tmp$ret$0;
+    var tmp;
+    if (tmp0_elvis_lhs == null) {
+      var tmp0_0 = favorites;
+      var tmp$ret$2;
+      $l$block_0: {
+        // Inline function 'kotlin.collections.firstOrNull' call
+        var _iterator__ex2g4s_0 = tmp0_0.iterator_jk1svi_k$();
+        while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
+          var element_0 = _iterator__ex2g4s_0.next_20eer_k$();
+          if (element_0.ref_1.equals(entry.ref_1)) {
+            tmp$ret$2 = element_0;
+            break $l$block_0;
+          }
+        }
+        tmp$ret$2 = null;
+      }
+      tmp = tmp$ret$2;
+    } else {
+      tmp = tmp0_elvis_lhs;
+    }
+    var previous = tmp;
+    // Inline function 'kotlin.takeIf' call
+    var this_0 = entry.position_1;
+    var tmp_0;
+    if (isFinite(this_0) && this_0 >= 0) {
+      tmp_0 = this_0;
+    } else {
+      tmp_0 = null;
+    }
+    var tmp1_elvis_lhs = tmp_0;
+    var tmp_1;
+    if (tmp1_elvis_lhs == null) {
+      tmp_1 = previous == null ? null : previous.position_1;
+    } else {
+      tmp_1 = tmp1_elvis_lhs;
+    }
+    var tmp3_elvis_lhs = tmp_1;
+    var sampled = tmp3_elvis_lhs == null ? 0.0 : tmp3_elvis_lhs;
+    switch (operation.ordinal_1) {
+      case 0:
+        var tmp6_elvis_lhs = previous == null ? null : previous.position_1;
+        var next = entry.copy$default_f82qcn_k$(VOID, VOID, tmp6_elvis_lhs == null ? 0.0 : tmp6_elvis_lhs);
+        var tmp_2 = listOf(next);
+        // Inline function 'kotlin.collections.filterNot' call
+
+        var tmp0_1 = history;
+        // Inline function 'kotlin.collections.filterNotTo' call
+
+        var destination = ArrayList_init_$Create$();
+        var _iterator__ex2g4s_1 = tmp0_1.iterator_jk1svi_k$();
+        while (_iterator__ex2g4s_1.hasNext_bitz1p_k$()) {
+          var element_1 = _iterator__ex2g4s_1.next_20eer_k$();
+          if (!element_1.ref_1.equals(entry.ref_1)) {
+            destination.add_utx5q5_k$(element_1);
+          }
+        }
+
+        history = plus(tmp_2, destination);
+        // Inline function 'kotlin.collections.map' call
+
+        var this_1 = favorites;
+        // Inline function 'kotlin.collections.mapTo' call
+
+        var destination_0 = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_1, 10));
+        var _iterator__ex2g4s_2 = this_1.iterator_jk1svi_k$();
+        while (_iterator__ex2g4s_2.hasNext_bitz1p_k$()) {
+          var item = _iterator__ex2g4s_2.next_20eer_k$();
+          var tmp$ret$11 = item.ref_1.equals(entry.ref_1) ? next : item;
+          destination_0.add_utx5q5_k$(tmp$ret$11);
+        }
+
+        favorites = destination_0;
+        break;
+      case 1:
+        // Inline function 'kotlin.collections.map' call
+
+        var this_2 = history;
+        // Inline function 'kotlin.collections.mapTo' call
+
+        var destination_1 = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_2, 10));
+        var _iterator__ex2g4s_3 = this_2.iterator_jk1svi_k$();
+        while (_iterator__ex2g4s_3.hasNext_bitz1p_k$()) {
+          var item_0 = _iterator__ex2g4s_3.next_20eer_k$();
+          var tmp$ret$14 = item_0.ref_1.equals(entry.ref_1) ? item_0.copy$default_f82qcn_k$(VOID, VOID, sampled) : item_0;
+          destination_1.add_utx5q5_k$(tmp$ret$14);
+        }
+
+        history = destination_1;
+        // Inline function 'kotlin.collections.map' call
+
+        var this_3 = favorites;
+        // Inline function 'kotlin.collections.mapTo' call
+
+        var destination_2 = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_3, 10));
+        var _iterator__ex2g4s_4 = this_3.iterator_jk1svi_k$();
+        while (_iterator__ex2g4s_4.hasNext_bitz1p_k$()) {
+          var item_1 = _iterator__ex2g4s_4.next_20eer_k$();
+          var tmp$ret$17 = item_1.ref_1.equals(entry.ref_1) ? item_1.copy$default_f82qcn_k$(VOID, VOID, sampled) : item_1;
+          destination_2.add_utx5q5_k$(tmp$ret$17);
+        }
+
+        favorites = destination_2;
+        break;
+      case 2:
+        // Inline function 'kotlin.collections.filterNot' call
+
+        var tmp0_2 = favorites;
+        // Inline function 'kotlin.collections.filterNotTo' call
+
+        var destination_3 = ArrayList_init_$Create$();
+        var _iterator__ex2g4s_5 = tmp0_2.iterator_jk1svi_k$();
+        while (_iterator__ex2g4s_5.hasNext_bitz1p_k$()) {
+          var element_2 = _iterator__ex2g4s_5.next_20eer_k$();
+          if (!element_2.ref_1.equals(entry.ref_1)) {
+            destination_3.add_utx5q5_k$(element_2);
+          }
+        }
+
+        var tmp_3 = destination_3;
+        var tmp8_elvis_lhs = previous == null ? null : previous.position_1;
+        favorites = plus_0(tmp_3, entry.copy$default_f82qcn_k$(VOID, VOID, tmp8_elvis_lhs == null ? sampled : tmp8_elvis_lhs));
+        break;
+      case 3:
+        // Inline function 'kotlin.collections.filterNot' call
+
+        var tmp0_3 = favorites;
+        // Inline function 'kotlin.collections.filterNotTo' call
+
+        var destination_4 = ArrayList_init_$Create$();
+        var _iterator__ex2g4s_6 = tmp0_3.iterator_jk1svi_k$();
+        while (_iterator__ex2g4s_6.hasNext_bitz1p_k$()) {
+          var element_3 = _iterator__ex2g4s_6.next_20eer_k$();
+          if (!element_3.ref_1.equals(entry.ref_1)) {
+            destination_4.add_utx5q5_k$(element_3);
+          }
+        }
+
+        favorites = destination_4;
+        break;
+      case 4:
+        // Inline function 'kotlin.collections.filterNot' call
+
+        var tmp0_4 = history;
+        // Inline function 'kotlin.collections.filterNotTo' call
+
+        var destination_5 = ArrayList_init_$Create$();
+        var _iterator__ex2g4s_7 = tmp0_4.iterator_jk1svi_k$();
+        while (_iterator__ex2g4s_7.hasNext_bitz1p_k$()) {
+          var element_4 = _iterator__ex2g4s_7.next_20eer_k$();
+          if (!element_4.ref_1.equals(entry.ref_1)) {
+            destination_5.add_utx5q5_k$(element_4);
+          }
+        }
+
+        history = destination_5;
+        break;
+      default:
+        noWhenBranchMatchedException();
+        break;
+    }
+    return new MediaCollection(take(history, coerceIn_0(limit, 0, 1000)), take(favorites, 1000));
+  };
+  var MediaState_instance;
+  function MediaState_getInstance() {
+    return MediaState_instance;
+  }
+  function MediaMutation_VISIT_getInstance() {
+    static_init_4();
+    return MediaMutation_VISIT_instance;
+  }
+  function MediaMutation_POSITION_getInstance() {
+    static_init_4();
+    return MediaMutation_POSITION_instance;
+  }
+  function MediaMutation_FAVORITE_getInstance() {
+    static_init_4();
+    return MediaMutation_FAVORITE_instance;
+  }
+  function MediaMutation_UNFAVORITE_getInstance() {
+    static_init_4();
+    return MediaMutation_UNFAVORITE_instance;
+  }
+  function MediaMutation_REMOVE_HISTORY_getInstance() {
+    static_init_4();
+    return MediaMutation_REMOVE_HISTORY_instance;
+  }
+  var static_init_called_5;
+  function static_init_5() {
+    if (static_init_called_5)
+      return Unit_instance;
+    static_init_called_5 = true;
     NativeGuideFormat_RUST_instance = new NativeGuideFormat('RUST', 0);
     NativeGuideFormat_SWIFT_instance = new NativeGuideFormat('SWIFT', 1);
     NativeGuideFormat_ARCHIVED_ANDROID_instance = new NativeGuideFormat('ARCHIVED_ANDROID', 2);
@@ -14692,11 +15434,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   var NativeGuideFormat_ARCHIVED_ANDROID_instance;
   var NativeGuideFormat_WEB_instance;
   function values() {
-    static_init_4();
+    static_init_5();
     return [NativeGuideFormat_RUST_getInstance(), NativeGuideFormat_SWIFT_getInstance(), NativeGuideFormat_ARCHIVED_ANDROID_getInstance(), NativeGuideFormat_WEB_getInstance()];
   }
   function get_entries() {
-    static_init_4();
+    static_init_5();
     if ($ENTRIES == null)
       $ENTRIES = enumEntries(values());
     return $ENTRIES;
@@ -15197,26 +15939,26 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return stop + this.shift_1 > this.from_1 && start + this.shift_1 < this.until_1;
   };
   function NativeGuideFormat_RUST_getInstance() {
-    static_init_4();
+    static_init_5();
     return NativeGuideFormat_RUST_instance;
   }
   function NativeGuideFormat_SWIFT_getInstance() {
-    static_init_4();
+    static_init_5();
     return NativeGuideFormat_SWIFT_instance;
   }
   function NativeGuideFormat_ARCHIVED_ANDROID_getInstance() {
-    static_init_4();
+    static_init_5();
     return NativeGuideFormat_ARCHIVED_ANDROID_instance;
   }
   function NativeGuideFormat_WEB_getInstance() {
-    static_init_4();
+    static_init_5();
     return NativeGuideFormat_WEB_instance;
   }
-  var static_init_called_5;
-  function static_init_5() {
-    if (static_init_called_5)
+  var static_init_called_6;
+  function static_init_6() {
+    if (static_init_called_6)
       return Unit_instance;
-    static_init_called_5 = true;
+    static_init_called_6 = true;
     NativeGuideRefreshFormat_ANDROID_instance = new NativeGuideRefreshFormat('ANDROID', 0);
     NativeGuideRefreshFormat_RUST_SERVER_instance = new NativeGuideRefreshFormat('RUST_SERVER', 1);
   }
@@ -15225,11 +15967,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function NativeGuideRefreshFormat(name, ordinal) {
     Enum.call(this, name, ordinal);
   }
-  var static_init_called_6;
-  function static_init_6() {
-    if (static_init_called_6)
+  var static_init_called_7;
+  function static_init_7() {
+    if (static_init_called_7)
       return Unit_instance;
-    static_init_called_6 = true;
+    static_init_called_7 = true;
     NativeGuideRefreshAction_FETCH_instance = new NativeGuideRefreshAction('FETCH', 0);
     NativeGuideRefreshAction_VALIDATE_SOURCE_instance = new NativeGuideRefreshAction('VALIDATE_SOURCE', 1);
     NativeGuideRefreshAction_OPEN_DATABASE_instance = new NativeGuideRefreshAction('OPEN_DATABASE', 2);
@@ -15349,46 +16091,46 @@ if (typeof String.prototype.startsWith === 'undefined') {
     tmp.pending_1 = tmp_0;
   };
   function NativeGuideRefreshFormat_ANDROID_getInstance() {
-    static_init_5();
+    static_init_6();
     return NativeGuideRefreshFormat_ANDROID_instance;
   }
   function NativeGuideRefreshFormat_RUST_SERVER_getInstance() {
-    static_init_5();
+    static_init_6();
     return NativeGuideRefreshFormat_RUST_SERVER_instance;
   }
   function NativeGuideRefreshAction_FETCH_getInstance() {
-    static_init_6();
+    static_init_7();
     return NativeGuideRefreshAction_FETCH_instance;
   }
   function NativeGuideRefreshAction_VALIDATE_SOURCE_getInstance() {
-    static_init_6();
+    static_init_7();
     return NativeGuideRefreshAction_VALIDATE_SOURCE_instance;
   }
   function NativeGuideRefreshAction_OPEN_DATABASE_getInstance() {
-    static_init_6();
+    static_init_7();
     return NativeGuideRefreshAction_OPEN_DATABASE_instance;
   }
   function NativeGuideRefreshAction_WRITE_DATABASE_getInstance() {
-    static_init_6();
+    static_init_7();
     return NativeGuideRefreshAction_WRITE_DATABASE_instance;
   }
   function NativeGuideRefreshAction_REPLACE_getInstance() {
-    static_init_6();
+    static_init_7();
     return NativeGuideRefreshAction_REPLACE_instance;
   }
   function NativeGuideRefreshAction_SKIP_getInstance() {
-    static_init_6();
+    static_init_7();
     return NativeGuideRefreshAction_SKIP_instance;
   }
   function NativeGuideRefreshAction_FAIL_getInstance() {
-    static_init_6();
+    static_init_7();
     return NativeGuideRefreshAction_FAIL_instance;
   }
-  var static_init_called_7;
-  function static_init_7() {
-    if (static_init_called_7)
+  var static_init_called_8;
+  function static_init_8() {
+    if (static_init_called_8)
       return Unit_instance;
-    static_init_called_7 = true;
+    static_init_called_8 = true;
     NativeSourceFormat_SWIFT_instance = new NativeSourceFormat('SWIFT', 0);
     NativeSourceFormat_ANDROID_instance = new NativeSourceFormat('ANDROID', 1);
     NativeSourceFormat_ANDROID_RAW_instance = new NativeSourceFormat('ANDROID_RAW', 2);
@@ -15399,11 +16141,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function NativeSourceFormat(name, ordinal) {
     Enum.call(this, name, ordinal);
   }
-  var static_init_called_8;
-  function static_init_8() {
-    if (static_init_called_8)
+  var static_init_called_9;
+  function static_init_9() {
+    if (static_init_called_9)
       return Unit_instance;
-    static_init_called_8 = true;
+    static_init_called_9 = true;
     NativeCacheLookup_CACHE_instance = new NativeCacheLookup('CACHE', 0);
     NativeCacheLookup_JOIN_instance = new NativeCacheLookup('JOIN', 1);
     NativeCacheLookup_LOAD_instance = new NativeCacheLookup('LOAD', 2);
@@ -15414,11 +16156,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function NativeCacheLookup(name, ordinal) {
     Enum.call(this, name, ordinal);
   }
-  var static_init_called_9;
-  function static_init_9() {
-    if (static_init_called_9)
+  var static_init_called_10;
+  function static_init_10() {
+    if (static_init_called_10)
       return Unit_instance;
-    static_init_called_9 = true;
+    static_init_called_10 = true;
     NativeCacheRefresh_STALE_instance = new NativeCacheRefresh('STALE', 0);
     NativeCacheRefresh_REPLACE_instance = new NativeCacheRefresh('REPLACE', 1);
     NativeCacheRefresh_FAIL_instance = new NativeCacheRefresh('FAIL', 2);
@@ -15581,46 +16323,46 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return NativeGuideSources_instance;
   }
   function NativeSourceFormat_SWIFT_getInstance() {
-    static_init_7();
+    static_init_8();
     return NativeSourceFormat_SWIFT_instance;
   }
   function NativeSourceFormat_ANDROID_getInstance() {
-    static_init_7();
+    static_init_8();
     return NativeSourceFormat_ANDROID_instance;
   }
   function NativeSourceFormat_ANDROID_RAW_getInstance() {
-    static_init_7();
+    static_init_8();
     return NativeSourceFormat_ANDROID_RAW_instance;
   }
   function NativeCacheLookup_CACHE_getInstance() {
-    static_init_8();
+    static_init_9();
     return NativeCacheLookup_CACHE_instance;
   }
   function NativeCacheLookup_JOIN_getInstance() {
-    static_init_8();
+    static_init_9();
     return NativeCacheLookup_JOIN_instance;
   }
   function NativeCacheLookup_LOAD_getInstance() {
-    static_init_8();
+    static_init_9();
     return NativeCacheLookup_LOAD_instance;
   }
   function NativeCacheRefresh_STALE_getInstance() {
-    static_init_9();
+    static_init_10();
     return NativeCacheRefresh_STALE_instance;
   }
   function NativeCacheRefresh_REPLACE_getInstance() {
-    static_init_9();
+    static_init_10();
     return NativeCacheRefresh_REPLACE_instance;
   }
   function NativeCacheRefresh_FAIL_getInstance() {
-    static_init_9();
+    static_init_10();
     return NativeCacheRefresh_FAIL_instance;
   }
-  var static_init_called_10;
-  function static_init_10() {
-    if (static_init_called_10)
+  var static_init_called_11;
+  function static_init_11() {
+    if (static_init_called_11)
       return Unit_instance;
-    static_init_called_10 = true;
+    static_init_called_11 = true;
     NativeSourceLoadAction_READ_FRESH_DISK_instance = new NativeSourceLoadAction('READ_FRESH_DISK', 0);
     NativeSourceLoadAction_FETCH_instance = new NativeSourceLoadAction('FETCH', 1);
     NativeSourceLoadAction_WRITE_DISK_instance = new NativeSourceLoadAction('WRITE_DISK', 2);
@@ -15645,7 +16387,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   var NativeSourceLoadAction_USE_STALE_DISK_instance;
   var NativeSourceLoadAction_FAIL_instance;
   function valueOf(value) {
-    static_init_10();
+    static_init_11();
     switch (value) {
       case 'READ_FRESH_DISK':
         return NativeSourceLoadAction_READ_FRESH_DISK_getInstance();
@@ -15768,47 +16510,47 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return this.populated_1 ? -1 : this.firstFailure_1;
   };
   function NativeSourceLoadAction_READ_FRESH_DISK_getInstance() {
-    static_init_10();
+    static_init_11();
     return NativeSourceLoadAction_READ_FRESH_DISK_instance;
   }
   function NativeSourceLoadAction_FETCH_getInstance() {
-    static_init_10();
+    static_init_11();
     return NativeSourceLoadAction_FETCH_instance;
   }
   function NativeSourceLoadAction_WRITE_DISK_getInstance() {
-    static_init_10();
+    static_init_11();
     return NativeSourceLoadAction_WRITE_DISK_instance;
   }
   function NativeSourceLoadAction_REPARSE_NETWORK_getInstance() {
-    static_init_10();
+    static_init_11();
     return NativeSourceLoadAction_REPARSE_NETWORK_instance;
   }
   function NativeSourceLoadAction_READ_MEMORY_getInstance() {
-    static_init_10();
+    static_init_11();
     return NativeSourceLoadAction_READ_MEMORY_instance;
   }
   function NativeSourceLoadAction_READ_STALE_DISK_getInstance() {
-    static_init_10();
+    static_init_11();
     return NativeSourceLoadAction_READ_STALE_DISK_instance;
   }
   function NativeSourceLoadAction_USE_FRESH_DISK_getInstance() {
-    static_init_10();
+    static_init_11();
     return NativeSourceLoadAction_USE_FRESH_DISK_instance;
   }
   function NativeSourceLoadAction_USE_NETWORK_getInstance() {
-    static_init_10();
+    static_init_11();
     return NativeSourceLoadAction_USE_NETWORK_instance;
   }
   function NativeSourceLoadAction_USE_MEMORY_getInstance() {
-    static_init_10();
+    static_init_11();
     return NativeSourceLoadAction_USE_MEMORY_instance;
   }
   function NativeSourceLoadAction_USE_STALE_DISK_getInstance() {
-    static_init_10();
+    static_init_11();
     return NativeSourceLoadAction_USE_STALE_DISK_instance;
   }
   function NativeSourceLoadAction_FAIL_getInstance() {
-    static_init_10();
+    static_init_11();
     return NativeSourceLoadAction_FAIL_instance;
   }
   function operatorSameValue(a, b) {
@@ -17677,11 +18419,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
     this.code_1 = code;
     this.isNull_1 = isNull;
   }
-  var static_init_called_11;
-  function static_init_11() {
-    if (static_init_called_11)
+  var static_init_called_12;
+  function static_init_12() {
+    if (static_init_called_12)
       return Unit_instance;
-    static_init_called_11 = true;
+    static_init_called_12 = true;
     OperatorSourceAction_API_instance = new OperatorSourceAction('API', 0);
     OperatorSourceAction_PLAYLIST_instance = new OperatorSourceAction('PLAYLIST', 1);
     OperatorSourceAction_CONFIGURE_instance = new OperatorSourceAction('CONFIGURE', 2);
@@ -17752,15 +18494,15 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return this.catalog_1.catalog_96uo7t_k$();
   };
   function OperatorSourceAction_API_getInstance() {
-    static_init_11();
+    static_init_12();
     return OperatorSourceAction_API_instance;
   }
   function OperatorSourceAction_PLAYLIST_getInstance() {
-    static_init_11();
+    static_init_12();
     return OperatorSourceAction_PLAYLIST_instance;
   }
   function OperatorSourceAction_CONFIGURE_getInstance() {
-    static_init_11();
+    static_init_12();
     return OperatorSourceAction_CONFIGURE_instance;
   }
   function OperatorSourceFailure(code) {
@@ -19180,11 +19922,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
     this.attempts_1 = this.attempts_1 + 1 | 0;
     return true;
   };
-  var static_init_called_12;
-  function static_init_12() {
-    if (static_init_called_12)
+  var static_init_called_13;
+  function static_init_13() {
+    if (static_init_called_13)
       return Unit_instance;
-    static_init_called_12 = true;
+    static_init_called_13 = true;
     PlaybackKind_LIVE_instance = new PlaybackKind('LIVE', 0);
     PlaybackKind_ARCHIVE_instance = new PlaybackKind('ARCHIVE', 1);
     PlaybackKind_VOD_instance = new PlaybackKind('VOD', 2);
@@ -19193,11 +19935,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   var PlaybackKind_ARCHIVE_instance;
   var PlaybackKind_VOD_instance;
   function values_0() {
-    static_init_12();
+    static_init_13();
     return [PlaybackKind_LIVE_getInstance(), PlaybackKind_ARCHIVE_getInstance(), PlaybackKind_VOD_getInstance()];
   }
   function get_entries_0() {
-    static_init_12();
+    static_init_13();
     if ($ENTRIES_0 == null)
       $ENTRIES_0 = enumEntries(values_0());
     return $ENTRIES_0;
@@ -19329,11 +20071,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
       return false;
     return true;
   };
-  var static_init_called_13;
-  function static_init_13() {
-    if (static_init_called_13)
+  var static_init_called_14;
+  function static_init_14() {
+    if (static_init_called_14)
       return Unit_instance;
-    static_init_called_13 = true;
+    static_init_called_14 = true;
     PlaybackPositionEffect_SAVE_POSITION_instance = new PlaybackPositionEffect('SAVE_POSITION', 0);
     PlaybackPositionEffect_RESTORE_POSITION_instance = new PlaybackPositionEffect('RESTORE_POSITION', 1);
   }
@@ -19486,11 +20228,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   protoOf(PlaybackSessionOwnership).accepts_ry1lv0_k$ = function (ticket) {
     return !(ticket == null) && ticket === this.current_1;
   };
-  var static_init_called_14;
-  function static_init_14() {
-    if (static_init_called_14)
+  var static_init_called_15;
+  function static_init_15() {
+    if (static_init_called_15)
       return Unit_instance;
-    static_init_called_14 = true;
+    static_init_called_15 = true;
     PlaybackSeekIntent_OFFSET_instance = new PlaybackSeekIntent('OFFSET', 0);
     PlaybackSeekIntent_ABSOLUTE_instance = new PlaybackSeekIntent('ABSOLUTE', 1);
     PlaybackSeekIntent_BEGIN_instance = new PlaybackSeekIntent('BEGIN', 2);
@@ -19505,11 +20247,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function PlaybackSeekIntent(name, ordinal) {
     Enum.call(this, name, ordinal);
   }
-  var static_init_called_15;
-  function static_init_15() {
-    if (static_init_called_15)
+  var static_init_called_16;
+  function static_init_16() {
+    if (static_init_called_16)
       return Unit_instance;
-    static_init_called_15 = true;
+    static_init_called_16 = true;
     PlaybackOvershoot_NOOP_instance = new PlaybackOvershoot('NOOP', 0);
     PlaybackOvershoot_CLAMP_instance = new PlaybackOvershoot('CLAMP', 1);
   }
@@ -19582,11 +20324,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
       return false;
     return true;
   };
-  var static_init_called_16;
-  function static_init_16() {
-    if (static_init_called_16)
+  var static_init_called_17;
+  function static_init_17() {
+    if (static_init_called_17)
       return Unit_instance;
-    static_init_called_16 = true;
+    static_init_called_17 = true;
     PlaybackSeekAction_SEEK_instance = new PlaybackSeekAction('SEEK', 0);
     PlaybackSeekAction_OPEN_ARCHIVE_instance = new PlaybackSeekAction('OPEN_ARCHIVE', 1);
     PlaybackSeekAction_GO_LIVE_instance = new PlaybackSeekAction('GO_LIVE', 2);
@@ -19798,78 +20540,78 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return PlaybackSeeking_instance;
   }
   function PlaybackKind_LIVE_getInstance() {
-    static_init_12();
+    static_init_13();
     return PlaybackKind_LIVE_instance;
   }
   function PlaybackKind_ARCHIVE_getInstance() {
-    static_init_12();
+    static_init_13();
     return PlaybackKind_ARCHIVE_instance;
   }
   function PlaybackKind_VOD_getInstance() {
-    static_init_12();
+    static_init_13();
     return PlaybackKind_VOD_instance;
   }
   function PlaybackPositionEffect_SAVE_POSITION_getInstance() {
-    static_init_13();
+    static_init_14();
     return PlaybackPositionEffect_SAVE_POSITION_instance;
   }
   function PlaybackPositionEffect_RESTORE_POSITION_getInstance() {
-    static_init_13();
+    static_init_14();
     return PlaybackPositionEffect_RESTORE_POSITION_instance;
   }
   function PlaybackSeekIntent_OFFSET_getInstance() {
-    static_init_14();
+    static_init_15();
     return PlaybackSeekIntent_OFFSET_instance;
   }
   function PlaybackSeekIntent_ABSOLUTE_getInstance() {
-    static_init_14();
+    static_init_15();
     return PlaybackSeekIntent_ABSOLUTE_instance;
   }
   function PlaybackSeekIntent_BEGIN_getInstance() {
-    static_init_14();
+    static_init_15();
     return PlaybackSeekIntent_BEGIN_instance;
   }
   function PlaybackSeekIntent_RESTART_getInstance() {
-    static_init_14();
+    static_init_15();
     return PlaybackSeekIntent_RESTART_instance;
   }
   function PlaybackSeekIntent_GO_LIVE_getInstance() {
-    static_init_14();
+    static_init_15();
     return PlaybackSeekIntent_GO_LIVE_instance;
   }
   function PlaybackOvershoot_NOOP_getInstance() {
-    static_init_15();
+    static_init_16();
     return PlaybackOvershoot_NOOP_instance;
   }
   function PlaybackOvershoot_CLAMP_getInstance() {
-    static_init_15();
+    static_init_16();
     return PlaybackOvershoot_CLAMP_instance;
   }
   function PlaybackSeekAction_SEEK_getInstance() {
-    static_init_16();
+    static_init_17();
     return PlaybackSeekAction_SEEK_instance;
   }
   function PlaybackSeekAction_OPEN_ARCHIVE_getInstance() {
-    static_init_16();
+    static_init_17();
     return PlaybackSeekAction_OPEN_ARCHIVE_instance;
   }
   function PlaybackSeekAction_GO_LIVE_getInstance() {
-    static_init_16();
+    static_init_17();
     return PlaybackSeekAction_GO_LIVE_instance;
   }
   function PlaybackSeekAction_RESTART_getInstance() {
-    static_init_16();
+    static_init_17();
     return PlaybackSeekAction_RESTART_instance;
   }
   function PlaybackSeekAction_NOOP_getInstance() {
-    static_init_16();
+    static_init_17();
     return PlaybackSeekAction_NOOP_instance;
   }
-  var static_init_called_17;
-  function static_init_17() {
-    if (static_init_called_17)
+  var static_init_called_18;
+  function static_init_18() {
+    if (static_init_called_18)
       return Unit_instance;
-    static_init_called_17 = true;
+    static_init_called_18 = true;
     PlaylistFormat_BROWSER_instance = new PlaylistFormat('BROWSER', 0);
     PlaylistFormat_ANDROID_instance = new PlaylistFormat('ANDROID', 1);
   }
@@ -20170,7 +20912,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       }
       return new PlaylistArchive(type, tmp_6, days, number_5($this, archive$value(attrs, defaults, 'catchup-correction')));
     }
-    var all = plus_2(defaults, attrs);
+    var all = plus_3(defaults, attrs);
     var tmp0_1 = $this.archiveKeys_1;
     var tmp$ret$19;
     $l$block_1: {
@@ -20734,7 +21476,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
             tmp_10 = false;
           }
           if (tmp_10) {
-            attrs._v = plus_1(attrs._v, to('group-title', value));
+            attrs._v = plus_2(attrs._v, to('group-title', value));
           }
         }
       } else if (browser && equals_0(line, '#EXT-X-PLAYLIST-TYPE:VOD', true) && pending._v) {
@@ -21046,18 +21788,18 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return Playlist_instance;
   }
   function PlaylistFormat_BROWSER_getInstance() {
-    static_init_17();
+    static_init_18();
     return PlaylistFormat_BROWSER_instance;
   }
   function PlaylistFormat_ANDROID_getInstance() {
-    static_init_17();
+    static_init_18();
     return PlaylistFormat_ANDROID_instance;
   }
-  var static_init_called_18;
-  function static_init_18() {
-    if (static_init_called_18)
+  var static_init_called_19;
+  function static_init_19() {
+    if (static_init_called_19)
       return Unit_instance;
-    static_init_called_18 = true;
+    static_init_called_19 = true;
     ProviderPlaylistFormat_GENERIC_instance = new ProviderPlaylistFormat('GENERIC', 0);
     ProviderPlaylistFormat_M3U_instance = new ProviderPlaylistFormat('M3U', 1);
   }
@@ -21628,18 +22370,18 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return ProviderPlaylist_instance;
   }
   function ProviderPlaylistFormat_GENERIC_getInstance() {
-    static_init_18();
+    static_init_19();
     return ProviderPlaylistFormat_GENERIC_instance;
   }
   function ProviderPlaylistFormat_M3U_getInstance() {
-    static_init_18();
+    static_init_19();
     return ProviderPlaylistFormat_M3U_instance;
   }
-  var static_init_called_19;
-  function static_init_19() {
-    if (static_init_called_19)
+  var static_init_called_20;
+  function static_init_20() {
+    if (static_init_called_20)
       return Unit_instance;
-    static_init_called_19 = true;
+    static_init_called_20 = true;
     ProviderValueKind_MISSING_instance = new ProviderValueKind('MISSING', 0);
     ProviderValueKind_NULL_instance = new ProviderValueKind('NULL', 1);
     ProviderValueKind_TEXT_instance = new ProviderValueKind('TEXT', 2);
@@ -21984,31 +22726,31 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return CoreNumber_instance;
   }
   function ProviderValueKind_MISSING_getInstance() {
-    static_init_19();
+    static_init_20();
     return ProviderValueKind_MISSING_instance;
   }
   function ProviderValueKind_NULL_getInstance() {
-    static_init_19();
+    static_init_20();
     return ProviderValueKind_NULL_instance;
   }
   function ProviderValueKind_TEXT_getInstance() {
-    static_init_19();
+    static_init_20();
     return ProviderValueKind_TEXT_instance;
   }
   function ProviderValueKind_NUMBER_getInstance() {
-    static_init_19();
+    static_init_20();
     return ProviderValueKind_NUMBER_instance;
   }
   function ProviderValueKind_BOOLEAN_getInstance() {
-    static_init_19();
+    static_init_20();
     return ProviderValueKind_BOOLEAN_instance;
   }
   function ProviderValueKind_ARRAY_getInstance() {
-    static_init_19();
+    static_init_20();
     return ProviderValueKind_ARRAY_instance;
   }
   function ProviderValueKind_OBJECT_getInstance() {
-    static_init_19();
+    static_init_20();
     return ProviderValueKind_OBJECT_instance;
   }
   function current($this, node) {
@@ -22492,11 +23234,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function StalkerCatalogs_getInstance() {
     return StalkerCatalogs_instance;
   }
-  var static_init_called_20;
-  function static_init_20() {
-    if (static_init_called_20)
+  var static_init_called_21;
+  function static_init_21() {
+    if (static_init_called_21)
       return Unit_instance;
-    static_init_called_20 = true;
+    static_init_called_21 = true;
     StalkerFormat_BROWSER_instance = new StalkerFormat('BROWSER', 0);
     StalkerFormat_NATIVE_instance = new StalkerFormat('NATIVE', 1);
     StalkerFormat_RPC_instance = new StalkerFormat('RPC', 2);
@@ -23177,11 +23919,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return StalkerProtocol_instance;
   }
   function StalkerFormat_BROWSER_getInstance() {
-    static_init_20();
+    static_init_21();
     return StalkerFormat_BROWSER_instance;
   }
   function StalkerFormat_RPC_getInstance() {
-    static_init_20();
+    static_init_21();
     return StalkerFormat_RPC_instance;
   }
   function StreamingGuideIdentity(id, tvgName, name, days) {
@@ -23784,7 +24526,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       }
     }
     var size = 512.0;
-    var _iterator__ex2g4s_2 = distinct(plus_0(this.metadata_1.get_keys_wop4xp_k$(), selected.get_keys_wop4xp_k$())).iterator_jk1svi_k$();
+    var _iterator__ex2g4s_2 = distinct(plus_1(this.metadata_1.get_keys_wop4xp_k$(), selected.get_keys_wop4xp_k$())).iterator_jk1svi_k$();
     while (_iterator__ex2g4s_2.hasNext_bitz1p_k$()) {
       var id_0 = _iterator__ex2g4s_2.next_20eer_k$();
       var tmp1_elvis_lhs = this.metadata_1.get_wei43m_k$(id_0);
@@ -23905,11 +24647,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return new StreamingGuideCoverage(tmp_10, tmp_11, tmp_12, tmp$ret$31);
   };
-  var static_init_called_21;
-  function static_init_21() {
-    if (static_init_called_21)
+  var static_init_called_22;
+  function static_init_22() {
+    if (static_init_called_22)
       return Unit_instance;
-    static_init_called_21 = true;
+    static_init_called_22 = true;
     XmltvRecordFormat_SWIFT_instance = new XmltvRecordFormat('SWIFT', 0);
     XmltvRecordFormat_ARCHIVED_ANDROID_instance = new XmltvRecordFormat('ARCHIVED_ANDROID', 1);
     XmltvRecordFormat_ANDROID_instance = new XmltvRecordFormat('ANDROID', 2);
@@ -24716,31 +25458,31 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return !(this.field_1 == null);
   };
   function XmltvRecordFormat_SWIFT_getInstance() {
-    static_init_21();
+    static_init_22();
     return XmltvRecordFormat_SWIFT_instance;
   }
   function XmltvRecordFormat_ARCHIVED_ANDROID_getInstance() {
-    static_init_21();
+    static_init_22();
     return XmltvRecordFormat_ARCHIVED_ANDROID_instance;
   }
   function XmltvRecordFormat_ANDROID_getInstance() {
-    static_init_21();
+    static_init_22();
     return XmltvRecordFormat_ANDROID_instance;
   }
   function XmltvRecordFormat_RUST_getInstance() {
-    static_init_21();
+    static_init_22();
     return XmltvRecordFormat_RUST_instance;
   }
   function XmltvRecordFormat_RUST_NATIVE_getInstance() {
-    static_init_21();
+    static_init_22();
     return XmltvRecordFormat_RUST_NATIVE_instance;
   }
   function XmltvRecordFormat_BROWSER_getInstance() {
-    static_init_21();
+    static_init_22();
     return XmltvRecordFormat_BROWSER_instance;
   }
   function XmltvRecordFormat_NODE_STREAMING_getInstance() {
-    static_init_21();
+    static_init_22();
     return XmltvRecordFormat_NODE_STREAMING_instance;
   }
   function XtreamItem(id, providerId, kind, name, url, group, logo, epgId, description, adult, archiveDays, archiveSource, generatedName, generatedGroup, season, episode) {
@@ -25639,11 +26381,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function XtreamCatalogs_getInstance() {
     return XtreamCatalogs_instance;
   }
-  var static_init_called_22;
-  function static_init_22() {
-    if (static_init_called_22)
+  var static_init_called_23;
+  function static_init_23() {
+    if (static_init_called_23)
       return Unit_instance;
-    static_init_called_22 = true;
+    static_init_called_23 = true;
     XtreamFormat_BROWSER_instance = new XtreamFormat('BROWSER', 0);
     XtreamFormat_ANDROID_instance = new XtreamFormat('ANDROID', 1);
     XtreamFormat_LEGACY_instance = new XtreamFormat('LEGACY', 2);
@@ -25913,15 +26655,15 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return trimEnd(this.render_1(listOf_0(['timeshift', this.source_1.username_1, this.source_1.password_1]), emptyList()), charArrayOf([_Char___init__impl__6a9atx(47)])) + '/{durationMinutes}/{startDate}/' + this.segment_1(id + '.ts');
   };
   function XtreamFormat_BROWSER_getInstance() {
-    static_init_22();
+    static_init_23();
     return XtreamFormat_BROWSER_instance;
   }
   function XtreamFormat_ANDROID_getInstance() {
-    static_init_22();
+    static_init_23();
     return XtreamFormat_ANDROID_instance;
   }
   function XtreamFormat_LEGACY_getInstance() {
-    static_init_22();
+    static_init_23();
     return XtreamFormat_LEGACY_instance;
   }
   function browserStateDefaults(security) {
@@ -26107,6 +26849,28 @@ if (typeof String.prototype.startsWith === 'undefined') {
     result.merge = value.merge_1;
     result.notify = value.notify_1;
     return result;
+  }
+  function channelCatalogRows(rows) {
+    // Inline function 'kotlin.collections.map' call
+    // Inline function 'kotlin.collections.mapTo' call
+    var destination = ArrayList_init_$Create$_0(collectionSizeOrDefault(rows, 10));
+    var _iterator__ex2g4s = rows.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var item = _iterator__ex2g4s.next_20eer_k$();
+      var row = {};
+      row.itemId = item.itemId_1;
+      row.providerId = item.providerId_1;
+      row.name = item.name_1;
+      row.groupId = item.groupId_1;
+      row.groupName = item.groupName_1;
+      row.logo = item.logo_1;
+      row.url = item.url_1;
+      row.archiveHours = item.archiveHours_1;
+      row.archiveMode = item.archiveMode_1;
+      destination.add_utx5q5_k$(row);
+    }
+    // Inline function 'kotlin.collections.toTypedArray' call
+    return copyToArray(destination);
   }
   function channelReference(channel, source) {
     var owner = source || channel.sourceId;
@@ -27999,6 +28763,115 @@ if (typeof String.prototype.startsWith === 'undefined') {
     // Inline function 'kotlin.js.unsafeCast' call
     return String(raw);
   }
+  function mediaResumePosition(position, quantum) {
+    quantum = quantum === VOID ? 1.0 : quantum;
+    return MediaState_instance.resume_6t8llf_k$(position, quantum);
+  }
+  function mediaCollectionChange(history, favorites, operation, entry, limit) {
+    var tmp;
+    switch (operation) {
+      case 'visit':
+        tmp = MediaMutation_VISIT_getInstance();
+        break;
+      case 'position':
+        tmp = MediaMutation_POSITION_getInstance();
+        break;
+      case 'favorite':
+        tmp = MediaMutation_FAVORITE_getInstance();
+        break;
+      case 'unfavorite':
+        tmp = MediaMutation_UNFAVORITE_getInstance();
+        break;
+      case 'remove-history':
+        tmp = MediaMutation_REMOVE_HISTORY_getInstance();
+        break;
+      default:
+        // Inline function 'kotlin.error' call
+
+        var message = 'Unknown media mutation';
+        throw IllegalStateException_init_$Create$_0(toString_1(message));
+    }
+    var action = tmp;
+    var changed = MediaState_instance.change_6bwqow_k$(new MediaCollection(mediaRecords(history), mediaRecords(favorites)), action, mediaRecord(entry), limit);
+    var result = {};
+    // Inline function 'kotlin.collections.map' call
+    var this_0 = changed.history_1;
+    // Inline function 'kotlin.collections.mapTo' call
+    var destination = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_0, 10));
+    var _iterator__ex2g4s = this_0.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var item = _iterator__ex2g4s.next_20eer_k$();
+      var tmp$ret$3 = mediaRecordValue(item);
+      destination.add_utx5q5_k$(tmp$ret$3);
+    }
+    // Inline function 'kotlin.collections.toTypedArray' call
+    result.history = copyToArray(destination);
+    // Inline function 'kotlin.collections.map' call
+    var this_1 = changed.favorites_1;
+    // Inline function 'kotlin.collections.mapTo' call
+    var destination_0 = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_1, 10));
+    var _iterator__ex2g4s_0 = this_1.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
+      var item_0 = _iterator__ex2g4s_0.next_20eer_k$();
+      var tmp$ret$7 = mediaRecordValue(item_0);
+      destination_0.add_utx5q5_k$(tmp$ret$7);
+    }
+    // Inline function 'kotlin.collections.toTypedArray' call
+    result.favorites = copyToArray(destination_0);
+    return result;
+  }
+  function mediaRecord(value) {
+    // Inline function 'kotlin.require' call
+    if (!(value != null && typeof value.sourceId === 'string' && typeof value.itemId === 'string')) {
+      var message = 'Media identity is required';
+      throw IllegalArgumentException_init_$Create$_0(toString_1(message));
+    }
+    var tmp;
+    if (typeof value.position === 'number') {
+      // Inline function 'kotlin.js.unsafeCast' call
+      tmp = value.position;
+    } else {
+      tmp = 0.0;
+    }
+    var position = tmp;
+    // Inline function 'kotlin.js.unsafeCast' call
+    var tmp_0 = value.sourceId;
+    // Inline function 'kotlin.js.unsafeCast' call
+    var tmp$ret$4 = value.itemId;
+    var tmp_1 = new MediaRef(tmp_0, tmp$ret$4);
+    // Inline function 'kotlin.js.unsafeCast' call
+    var tmp$ret$5 = value.payload;
+    return new MediaRecord(tmp_1, tmp$ret$5, position);
+  }
+  function mediaRecords(value) {
+    // Inline function 'kotlin.js.unsafeCast' call
+    // Inline function 'kotlin.require' call
+    if (!Array.isArray(value)) {
+      var message = 'Media collection must be an array';
+      throw IllegalArgumentException_init_$Create$_0(toString_1(message));
+    }
+    // Inline function 'kotlin.js.unsafeCast' call
+    // Inline function 'kotlin.collections.map' call
+    // Inline function 'kotlin.collections.mapTo' call
+    var destination = ArrayList_init_$Create$_0(value.length);
+    var inductionVariable = 0;
+    var last = value.length;
+    while (inductionVariable < last) {
+      var item = value[inductionVariable];
+      inductionVariable = inductionVariable + 1 | 0;
+      var tmp$ret$6 = mediaRecord(item);
+      destination.add_utx5q5_k$(tmp$ret$6);
+    }
+    return destination;
+  }
+  function mediaRecordValue(value) {
+    var result = {};
+    result.sourceId = value.ref_1.sourceId_1;
+    result.itemId = value.ref_1.itemId_1;
+    result.position = value.position_1;
+    result.payload = value.payload_1;
+    return result;
+  }
   function NativeGuideRefresh_0(count, format) {
     this.refresh_1 = new NativeGuideRefresh(count, refreshFormat(format));
   }
@@ -29536,7 +30409,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
     };
   }
   function LegacyStalkerClient(portal, mac) {
-    this.core_1 = new LegacyStalker(portal, mac);
+    this.portal_1 = portal;
+    this.mac_1 = mac;
+    this.core_1 = new LegacyStalker(this.portal_1, this.mac_1);
   }
   protoOf(LegacyStalkerClient).endpoint = function () {
     return this.core_1.get_endpoint_30bvdu_k$();
@@ -29571,6 +30446,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
       tmp = tmp_0;
     }
     return tmp;
+  };
+  protoOf(LegacyStalkerClient).channelCatalog = function () {
+    return channelCatalogRows(ChannelCatalog_instance.stalker_nzia3v_k$(this.core_1.channels_1, this.portal_1, this.mac_1));
   };
   protoOf(LegacyStalkerClient).catalog = function (hash) {
     var catalog = this.core_1.catalog_rtev1h_k$(LegacyStalkerClient$catalog$lambda(hash));
@@ -30208,6 +31086,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
     var tmp_0 = wire(data);
     return legacyGuide(tmp.guide_5n5fuv_k$(tmp_0, XtreamClient$guide$lambda(clock)));
   };
+  protoOf(XtreamClient).channelCatalog = function () {
+    return channelCatalogRows(ChannelCatalog_instance.xtream_8xzyc2_k$(this.session_1.data_1, this.addresses_1));
+  };
   protoOf(XtreamClient).legacyCatalog = function (hash) {
     var tmp = LegacyXtream_instance;
     var catalog = tmp.catalog_i7n7y4_k$(this.session_1.data_1, this.addresses_1, XtreamClient$legacyCatalog$lambda(hash));
@@ -30406,6 +31287,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   Companion_instance_10 = new Companion_10();
   State_instance = new State();
   UNINITIALIZED_VALUE_instance = new UNINITIALIZED_VALUE();
+  ChannelCatalog_instance = new ChannelCatalog();
   ChannelMovement_instance = new ChannelMovement();
   DurableSelections_instance = new DurableSelections();
   FavoriteLists_instance = new FavoriteLists();
@@ -30419,6 +31301,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   LegacySettingsImport_instance = new LegacySettingsImport();
   LegacyXtream_instance = new LegacyXtream();
   LibraryState_instance = new LibraryState();
+  MediaState_instance = new MediaState();
   NativeGuideNames_instance = new NativeGuideNames();
   Companion_instance_13 = new Companion_13();
   NativeGuideSources_instance = new NativeGuideSources();
@@ -30512,6 +31395,8 @@ if (typeof String.prototype.startsWith === 'undefined') {
     _.libraryPreferenceIndex = libraryPreferenceIndex;
     _.libraryPreferenceEntry = libraryPreferenceEntry;
     _.librarySavePreference = librarySavePreference;
+    _.mediaResumePosition = mediaResumePosition;
+    _.mediaCollectionChange = mediaCollectionChange;
     _.NativeGuideRefresh = NativeGuideRefresh_0;
     _.nativeGuideRefreshInterval = nativeGuideRefreshInterval;
     _.nativeGuideSources = nativeGuideSources;

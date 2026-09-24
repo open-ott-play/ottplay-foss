@@ -8,6 +8,7 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 module.exports = function fixture(options = {}) {
     const host = context();
     privateRuntime(host, "src/provider/runtime.ts");
+    privateRuntime(host, "src/provider/channel-catalog.ts");
     privateRuntime(host, "src/provider/stalker-driver.ts");
     const names = [
         "emptyDriverCatalog",
@@ -40,6 +41,7 @@ module.exports = function fixture(options = {}) {
     const registry = host.__ottProviderRuntime.createRegistry();
     const owner = registry.activate("stalker");
     const ports = {
+        channelCatalog: host.__ottChannelCatalog.project,
         core: host.OttPlayCore,
         createLifetime: host.__ottProviderRuntime.createRegistry,
         hash: (name) => host.xxHash32S(name, true),
@@ -78,7 +80,8 @@ module.exports = function fixture(options = {}) {
                 const source = new host.OttPlayCore.LegacyStalkerClient(
                     ...args
                 );
-                source.catalog = () => clone(options.catalog);
+                source.channelCatalog = () => [];
+                ports.channelCatalog = () => clone(options.catalog);
                 return source;
             },
         };

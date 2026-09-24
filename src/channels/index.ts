@@ -33,6 +33,7 @@ import {
     listFavoritesLists,
     loadFavoritesLists,
     renameFavoritesList,
+    saveFavoritesLists,
     setActiveFavoritesList,
     syncFavoritesArrayFromActive,
 } from "./favorites-lists";
@@ -164,10 +165,16 @@ export function finishPortChannelIdMigration(
         if (typeof id !== "number" && typeof id !== "string") return id;
         var key = String(id);
         if (!/^\d+$/.test(key) || owns(channels, key)) return id;
-        var target = state.ids[key];
-        if (typeof target !== "number" || !owns(channels, String(target)))
-            return id;
-        return typeof id === "string" ? String(target) : target;
+        var seen: Record<string, boolean> = {};
+        while (!seen[key]) {
+            seen[key] = true;
+            var target = state.ids[key];
+            if (typeof target !== "number") return id;
+            if (owns(channels, String(target)))
+                return typeof id === "string" ? String(target) : target;
+            key = String(target);
+        }
+        return id;
     }
     function migrateArray(value: unknown): void {
         if (Array.isArray(value))
@@ -1182,11 +1189,8 @@ export function saveChannelsCats(): void {
     if (typeof providerSetItem === "function") {
         // `favoritesArray` mirrors the active list (back-compat alias).
         syncFavoritesArrayFromActive();
-        providerSetItem("catsArray", JSON.stringify(catsArray));
-        providerSetItem("cats", JSON.stringify(cats));
-        providerSetItem("favoritesArray", JSON.stringify(favoritesArray));
-        providerSetItem("favoritesLists", JSON.stringify(favoritesLists));
-        providerSetItem("parentalArray", JSON.stringify(parentalArray));
+        saveFavoritesLists();
+        (window as any).__ottChannels.refresh();
     }
 }
 
@@ -1631,125 +1635,29 @@ export function onChannelsLoaded(): void {
                 typeof window.stbSetItem === "function"
             ) {
                 window.stbSetItem("ottplayprov", window._pendingProvId);
-                if (typeof window.stbSetItem === "function") {
-                    var id = window._pendingProvId;
-                    var arr = window.providerIds;
-                    var recentCount = 3;
-                    if (arr && arr.indexOf(id) > recentCount - 1) {
-                        var recentProviders: any[] = [];
-                        try {
-                            recentProviders = JSON.parse(
-                                window.stbGetItem("ottplayprovs") || "[]"
-                            );
-                        } catch (_) {}
-                        var rIdx: number = recentProviders.indexOf(id);
-                        if (rIdx !== -1) recentProviders.splice(rIdx, 1);
-                        recentProviders.push(id);
-                        window.stbSetItem(
-                            "ottplayprovs",
-                            JSON.stringify(recentProviders)
+                var id = window._pendingProvId;
+                var arr = window.providerIds;
+                var recentCount = 3;
+                if (arr && arr.indexOf(id) > recentCount - 1) {
+                    var recentProviders: any[] = [];
+                    try {
+                        recentProviders = JSON.parse(
+                            window.stbGetItem("ottplayprovs") || "[]"
                         );
-                    }
+                    } catch (_) {}
+                    var rIdx: number = recentProviders.indexOf(id);
+                    if (rIdx !== -1) recentProviders.splice(rIdx, 1);
+                    recentProviders.push(id);
+                    window.stbSetItem(
+                        "ottplayprovs",
+                        JSON.stringify(recentProviders)
+                    );
                 }
+
                 window._pendingProvId = "";
             }
             loadFavoritesLists();
-            if (!sFavorites) {
-                catsArray = window.providerGetJson("catsArray", []);
-                cats =
-                    Array.isArray(catsArray) && catsArray.length > 0
-                        ? window.providerGetJson("cats", {})
-                        : {};
-            }
-            // Virtual categories are re-added below. saveChannelsCats persists
-            // them, so reloading without stripping yields duplicate "All"
-            // (localized names for the All category can stack).
-            var allLabel = window._("All");
-            var favLabel = window._("Favorites");
-            var virtualNames: Record<string, boolean> = {};
-            virtualNames[allLabel] = true;
-            virtualNames[favLabel] = true;
-            virtualNames["All"] = true;
-            virtualNames["Favorites"] = true;
-            virtualNames["Все"] = true;
-            virtualNames["Усе"] = true;
-            catsArray = (catsArray || []).filter(function (name: string) {
-                if (virtualNames[name]) {
-                    try {
-                        delete cats[name];
-                    } catch (_d) {}
-                    return false;
-                }
-                return true;
-            });
-            if (!catsArray.length && cList.length) {
-                cList.forEach(function (chId: number) {
-                    var ch = window.channels[chId];
-                    if (ch && ch.category) {
-                        if (!cats[ch.category.name]) {
-                            catsArray.push(ch.category.name);
-                            cats[ch.category.name] = [];
-                        }
-                        cats[ch.category.name].push(chId);
-                    }
-                });
-            }
-            // Merge playlist group-titles missing from cached cats (stale
-            // storage / Mode A embed vs companion) so localized category
-            // names match the live playlist.
-            if (cList.length) {
-                cList.forEach(function (chId: number) {
-                    var ch = window.channels[chId];
-                    if (!ch || !ch.category || !ch.category.name) return;
-                    var name = ch.category.name;
-                    if (virtualNames[name]) return;
-                    if (!cats[name]) {
-                        catsArray.push(name);
-                        cats[name] = [];
-                    }
-                    if (cats[name].indexOf(chId) === -1) {
-                        cats[name].push(chId);
-                    }
-                });
-            }
-            parentalArray = window.providerGetJson("parentalArray", []);
-            if (
-                !parentalArray.length &&
-                typeof window.parental !== "undefined"
-            ) {
-                cList.forEach(function (chId: number) {
-                    var ch = window.channels[chId];
-                    if (
-                        ch &&
-                        ch.category &&
-                        ch.category.name &&
-                        window.parental.test(ch.category.name)
-                    ) {
-                        parentalArray.push(chId);
-                    }
-                });
-            }
-            catsArray.unshift(allLabel);
-            cats[allLabel] = cList.slice();
-            if (sFavorites) {
-                catsArray.unshift(favLabel);
-                cats[favLabel] = favoritesArray;
-                // First list-name hint is encoded in window so settings UI can
-                // surface it without importing the full lists blob.
-                (window as any).activeFavList = favoritesLists.active;
-            }
-            // Sync module cats/catsArray/curList to globals (used by _channelsList, old code)
-            window.catsArray = catsArray;
-            window.cats = cats;
-            window.curList = curList;
-            window.catIndex = catIndex;
-            window.primaryIndex = primaryIndex;
-            // Clamp catIndex and primaryIndex to valid ranges
-            if (catIndex < 0 || catIndex >= catsArray.length)
-                catIndex = sFavorites ? 1 : 0;
-            curList = cats[catsArray[catIndex]] || [];
-            if (primaryIndex < 0 || primaryIndex >= curList.length)
-                primaryIndex = 0;
+            (window as any).__ottChannels.mount(window);
             (window as any).__ottClassicPlayback.hydrate();
             // Start playback: restore continue-watching bookmark if available.
             // If no archive/vod bookmark is offered, fall back to the normal
@@ -3598,9 +3506,7 @@ export function bucketsKeyHandler(keyCode: number): boolean {
                 var name = prompt(w._("Enter category name"));
                 if (name && name.trim()) {
                     name = name.trim();
-                    catsArray.push(name);
-                    cats[name] = [];
-                    saveChannelsCats();
+                    if (!w.__ottChannels.change("create", name)) return true;
                     w.listArray = catsArray;
                     w.listDataArray = catsArray;
                     w.selIndex = catsArray.length - 1;
@@ -3614,11 +3520,14 @@ export function bucketsKeyHandler(keyCode: number): boolean {
                 var newName = prompt(w._("Enter new category name"), oldName);
                 if (newName && newName.trim() && newName.trim() !== oldName) {
                     newName = newName.trim();
-                    cats[newName] = cats[oldName];
-                    delete cats[oldName];
-                    catsArray[w.selIndex] = newName;
-                    if (w.catIndex === oldName) w.catIndex = newName;
-                    saveChannelsCats();
+                    if (
+                        !w.__ottChannels.change(
+                            "rename",
+                            w.__ottChannels.group(w.selIndex),
+                            newName
+                        )
+                    )
+                        return true;
                     w.listArray = catsArray;
                     w.listDataArray = catsArray;
                     if (typeof w.showPage === "function") w.showPage();
@@ -3634,9 +3543,14 @@ export function bucketsKeyHandler(keyCode: number): boolean {
                 );
                 if (copyName && copyName.trim()) {
                     copyName = copyName.trim();
-                    catsArray.push(copyName);
-                    cats[copyName] = (cats[srcName] || []).slice();
-                    saveChannelsCats();
+                    if (
+                        !w.__ottChannels.change(
+                            "create",
+                            copyName,
+                            w.__ottChannels.group(w.selIndex)
+                        )
+                    )
+                        return true;
                     w.listArray = catsArray;
                     w.listDataArray = catsArray;
                     w.selIndex = catsArray.length - 1;
@@ -3655,8 +3569,13 @@ export function bucketsKeyHandler(keyCode: number): boolean {
                     delName &&
                     confirm(w._("Delete category") + ' "' + delName + '"?')
                 ) {
-                    delete cats[delName];
-                    catsArray.splice(w.selIndex, 1);
+                    if (
+                        !w.__ottChannels.change(
+                            "remove",
+                            w.__ottChannels.group(w.selIndex)
+                        )
+                    )
+                        return true;
                     if (w.selIndex >= catsArray.length)
                         w.selIndex = catsArray.length - 1;
                     saveChannelsCats();
@@ -4540,93 +4459,49 @@ export function sortChannels(mode: number): void {
  * @param arrayName - The name of the array being accessed (used for media-mode logic).
  * @returns String key for the current channel, or null if unavailable.
  */
-function _ch_id(arrayName: string): string | null {
+function channelPreferenceTarget(arrayName: string): number | null | undefined {
     if (playType < 0)
         return arrayName === "aAspects" || arrayName === "aZooms"
-            ? "-1media"
-            : null;
-    return String(curList[primaryIndex]);
+            ? null
+            : undefined;
+    return curList[primaryIndex];
 }
 
-/**
- * Get a saved per-channel value from a named global array (e.g. `aAspects`, `aAudios`).
- *
- * @param arrayName - The name of the global array variable (e.g. `"aAspects"`).
- * @returns The stored numeric value, or 0 when unset (contain for aAspects,
- *   matching OTT companion — never invent cover).
- */
 export function getChannelPreference(arrayName: string): number {
-    if (typeof arrayName !== "string") return 0;
-    var chId = _ch_id(arrayName);
-    if (chId == null) return 0;
-    var arr = (window as any)[arrayName];
-    if (arr && typeof arr[chId] !== "undefined") return arr[chId];
-    return 0;
+    var target = channelPreferenceTarget(arrayName);
+    if (target === undefined) return 0;
+    var value = (window as any).__ottChannels.preference(arrayName, target);
+    return value === undefined ? 0 : value;
 }
 
-/**
- * Look up the current channel's saved value in a named array and pass it
- * to the callback. For `aAspects` / `aZooms`, defaults to 0 (contain / 100%)
- * when missing — same as OTT companion. Explicit saved cover (1) is kept.
- *
- * @param arrayName - Name of the global array (e.g. `"aAspects"`).
- * @param callback  - Receives the numeric value found (or default).
- *
- * Side effects: None (the callback may have side effects).
- */
 export function applyChannelPreference(
     arrayName: string,
-    callback: (val: number) => void
+    callback: (value: number) => void
 ): void {
-    if (typeof arrayName !== "string" || typeof callback !== "function") return;
-    var chId = _ch_id(arrayName);
-    if (chId == null) return;
-    var arr = (window as any)[arrayName];
-    var val =
-        typeof arr !== "undefined" && arr !== null ? arr[chId] : undefined;
-    if (typeof val === "undefined") {
-        if (arrayName === "aAspects" || arrayName === "aZooms") val = 0;
-        else return;
-    }
+    if (typeof callback !== "function") return;
+    var target = channelPreferenceTarget(arrayName);
+    if (target === undefined) return;
+    var value = (window as any).__ottChannels.preference(arrayName, target);
+    if (
+        value === undefined &&
+        arrayName !== "aAspects" &&
+        arrayName !== "aZooms"
+    )
+        return;
     try {
-        callback(val);
-    } catch (e) {
-        console.error(e);
+        callback(value === undefined ? 0 : value);
+    } catch (error) {
+        console.error(error);
     }
 }
 
-/**
- * Save a per-channel value into a named global array and persist to provider storage.
- * If value is `undefined` or `null`, removes the entry.
- * Persists asynchronously via `providerSetItem` after a `setTimeout(0)`.
- *
- * @param arrayName - Name of the global array (e.g. `"aAspects"`).
- * @param val       - The value to store, or null/undefined to delete.
- *
- * Side effects: Writes to provider storage; mutates the global array object.
- */
 export function saveChannelPreference(
     arrayName: string,
-    val: number | undefined | null
+    value: number | undefined | null
 ): void {
-    if (typeof arrayName !== "string") return;
-    var obj = (window as any)[arrayName];
-    if (typeof obj !== "object" || obj === null) {
-        obj = {};
-        (window as any)[arrayName] = obj;
-    }
-    var chId = _ch_id(arrayName);
-    if (chId == null) return;
-    if (val === undefined || val === null) {
-        if (typeof obj[chId] === "undefined") return;
-        delete obj[chId];
-    } else {
-        if (val === obj[chId]) return;
-        obj[chId] = val;
-    }
-    setTimeout(function () {
-        providerSetItem(arrayName, JSON.stringify(obj));
-    });
+    var target = channelPreferenceTarget(arrayName);
+    if (target !== undefined)
+        (window as any).__ottChannels.setPreference(arrayName, target, value);
 }
 
 /* ---------------------------------------------------------------------------
@@ -4847,49 +4722,67 @@ export function channelsKeyHandler(keyCode: number): boolean {
  * - Calls `window.showPage`, `window.changeSelect`, `window.saveChannelsCats`.
  */
 function moveChannel(delta: number): void {
-    var listArray = window.listArray;
-    var selIndex = window.selIndex;
-    if (!listArray || selIndex === undefined) return;
-
-    if (selIndex + delta < 0) {
-        listArray.push(listArray[selIndex]);
-        listArray.shift();
-    } else if (selIndex + delta > listArray.length - 1) {
-        listArray.unshift(listArray[selIndex]);
-        listArray.pop();
-    } else {
-        var tmp = listArray[selIndex];
-        listArray[selIndex] = listArray[selIndex + delta];
-        listArray[selIndex + delta] = tmp;
-    }
-    if (typeof window.showPage === "function") window.showPage();
-    if (typeof window.changeSelect === "function") window.changeSelect(delta);
-    if (typeof window.saveChannelsCats === "function")
-        window.saveChannelsCats();
+    var w = window as any;
+    var selected = w.listArray && w.listArray[w.selIndex];
+    var categories = w.listArray === catsArray;
+    var groupId = w.__ottChannels.group(
+        categories ? w.selIndex : w.listCatIndex
+    );
+    if (!groupId || selected === undefined) return;
+    if (groupId === "system:favorites" && !categories) {
+        var list = activeFavoritesList();
+        var at = list.indexOf(selected);
+        if (at < 0 || !list.length) return;
+        list.splice(at, 1);
+        list.splice(
+            (at + delta + list.length + 1) % (list.length + 1),
+            0,
+            selected
+        );
+        saveChannelsCats();
+    } else if (
+        !w.__ottChannels.change(
+            categories ? "move" : "member",
+            categories
+                ? groupId
+                : {
+                      action: "move",
+                      channelId: selected,
+                      delta: delta,
+                      groupId: groupId,
+                  },
+            delta
+        )
+    )
+        return;
+    w.listArray = categories
+        ? catsArray
+        : cats[catsArray[w.listCatIndex]] || [];
+    w.listDataArray = w.listArray;
+    w.selIndex = w.listArray.indexOf(selected);
+    if (typeof w.showPage === "function") w.showPage();
 }
 
-/**
- * Delete the currently selected channel from the list.
- *
- * Side effects:
- * - Mutates `window.listArray` via `splice`.
- * - Calls `window.changeSelect(-1)` if the deleted item was last.
- * - Calls `window.showPage` and `window.saveChannelsCats`.
- */
 function deleteChannel(): void {
-    var listArray = window.listArray;
-    var selIndex = window.selIndex;
-    if (!listArray || selIndex === undefined) return;
-    listArray.splice(selIndex, 1);
-    if (
-        selIndex === listArray.length &&
-        typeof window.changeSelect === "function"
-    ) {
-        window.changeSelect(-1);
-    }
-    if (typeof window.showPage === "function") window.showPage();
-    if (typeof window.saveChannelsCats === "function")
-        window.saveChannelsCats();
+    var w = window as any;
+    var selected = w.listArray && w.listArray[w.selIndex];
+    var groupId = w.__ottChannels.group(w.listCatIndex);
+    if (!groupId || selected === undefined) return;
+    if (groupId === "system:favorites") {
+        removeFromFavorites(selected);
+        saveChannelsCats();
+    } else if (
+        !w.__ottChannels.change("member", {
+            action: "remove",
+            channelId: selected,
+            groupId: groupId,
+        })
+    )
+        return;
+    w.listArray = cats[catsArray[w.listCatIndex]] || [];
+    w.listDataArray = w.listArray;
+    w.selIndex = Math.max(0, Math.min(w.selIndex, w.listArray.length - 1));
+    if (typeof w.showPage === "function") w.showPage();
 }
 
 /* ---------------------------------------------------------------------------

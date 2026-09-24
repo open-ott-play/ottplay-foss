@@ -36,8 +36,8 @@ const { configureNativeDev } = classicRequire(
 const { assembleClassic, CLASSIC_MODULES } = classicRequire(
     resolve(__dirname, "scripts/classic-bundle.cjs")
 );
-const { isManagedProviderScript } = classicRequire(
-    resolve(__dirname, "scripts/provider-assets.cjs")
+const { isRetiredRuntimeScript } = classicRequire(
+    resolve(__dirname, "scripts/runtime-assets.cjs")
 );
 // Verify and stage the pinned compiler output before any build/dev staging.
 classicRequire(resolve(__dirname, "scripts/shared-core.cjs")).stage();
@@ -74,7 +74,7 @@ function copyRuntimeAssets(
     rmSync(destination, { force: true, recursive: true });
     cpSync(source, destination, {
         filter(path) {
-            if (isManagedProviderScript(path)) return false;
+            if (isRetiredRuntimeScript(path)) return false;
             const name = basename(path);
             if (name.startsWith(".") || privateAssetDirectories.has(name)) {
                 return false;

@@ -17,11 +17,14 @@ const CLASSIC_MODULES = [
     "build/channels/types.js",
     "build/channels/favorites-lists.js",
     "build/channels/search.js",
+    "build/provider/source-identity.js",
     "build/playback/session.js",
     "build/playback/journal.js",
     "build/playback/classic-adapter.js",
     "build/playback/archive.js",
     "build/playback/classic-archive.js",
+    "build/channels/library.js",
+    "build/channels/classic-library.js",
     "build/channels/index.js",
     "build/debug/playback-debug.js",
     "build/core/auto-playback.js",
@@ -32,6 +35,7 @@ const CLASSIC_MODULES = [
     "build/keyhandler/index.js",
     "build/provider/runtime.js",
     "build/provider/driver-profiles.js",
+    "build/provider/channel-catalog.js",
     "build/provider/stalker-driver.js",
     "build/provider/catalog-drivers.js",
     "build/provider/catalog-xml.js",
@@ -63,6 +67,10 @@ const CLASSIC_MODULES = [
 // legacy bare-global ABI. These modules publish their API as window properties
 // and execute immediately at their original position in CLASSIC_MODULES.
 const CLASSIC_PRIVATE_MODULES = Object.freeze({
+    "build/channels/classic-library.js": Object.freeze([
+        "window.__ottChannels",
+    ]),
+    "build/channels/library.js": Object.freeze(["window.__ottChannelLibrary"]),
     "build/debug/playback-debug.js": Object.freeze(["window.__ottDebug"]),
     "build/playback/archive.js": Object.freeze(["window.__ottArchiveSession"]),
     "build/playback/classic-adapter.js": Object.freeze([
@@ -77,6 +85,9 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
         "window.__ottCatalogDrivers",
     ]),
     "build/provider/catalog-xml.js": Object.freeze(["window.__ottCatalogXml"]),
+    "build/provider/channel-catalog.js": Object.freeze([
+        "window.__ottChannelCatalog",
+    ]),
     "build/provider/driver-profiles.js": Object.freeze([
         "window.__ottProviderDriverProfiles",
     ]),
@@ -93,6 +104,9 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
         "window.__ottPlaylistDrivers",
     ]),
     "build/provider/runtime.js": Object.freeze(["window.__ottProviderRuntime"]),
+    "build/provider/source-identity.js": Object.freeze([
+        "window.__ottSourceIdentity",
+    ]),
     "build/provider/stalker-driver.js": Object.freeze([
         "window.__ottStalkerDriver",
     ]),

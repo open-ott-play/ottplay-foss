@@ -90,25 +90,112 @@ export function deleteFavoritesList(name: string): boolean {
 }
 
 /** Load `favoritesLists` from storage; migrate from prior single-array shape. */
-export function loadFavoritesLists(): void {
-    if (
-        typeof window === "undefined" ||
-        typeof (window as any).providerGetJson !== "function"
-    )
-        return;
-    var raw: any = null;
+var favoritesSource = "";
+var favoritesWritable = false;
+var favoritesGeneration = 0;
+
+function currentFavoritesSource(): string {
+    return (window as any).__ottSourceIdentity.current(window);
+}
+
+export function saveFavoritesLists(): boolean {
+    var w = window as any;
+    if (!favoritesWritable || favoritesSource !== currentFavoritesSource())
+        return false;
+    var source = favoritesSource,
+        generation = favoritesGeneration;
+    var get = w.providerGetItem,
+        set = w.providerSetItem;
+    function current(): boolean {
+        return (
+            generation === favoritesGeneration &&
+            source === currentFavoritesSource() &&
+            get === w.providerGetItem &&
+            set === w.providerSetItem
+        );
+    }
     try {
-        raw = (window as any).providerGetJson("favoritesLists", null);
-    } catch (_) {}
-    // The old single-array read is only performed when this is not a v1 envelope.
-    var prior =
-        raw && raw.v === 1 && raw.lists && typeof raw.lists === "object"
-            ? []
-            : (window as any).providerGetJson("favoritesArray", []) || [];
-    favoritesLists = (window as any).OttPlayCore.loadClassicFavoriteLists(
-        raw,
-        prior
-    );
+        var text = JSON.stringify({
+            lists: favoritesLists,
+            sourceId: source,
+            version: 1,
+        });
+        var key = "favoritesLibrary:" + source;
+        var prior = get.call(w, key);
+        if (!current()) return false;
+        if (prior !== text) set.call(w, key, text);
+        if (!current() || get.call(w, key) !== text || !current()) return false;
+        var claim = get.call(w, "favoritesLibrarySource");
+        if (!current()) return false;
+        if (!claim) set.call(w, "favoritesLibrarySource", source);
+        return current();
+    } catch (_) {
+        return false;
+    }
+}
+
+export function loadFavoritesLists(): void {
+    var w = window as any;
+    if (typeof w.providerGetJson !== "function") return;
+    var source = currentFavoritesSource(),
+        generation = ++favoritesGeneration;
+    var get = w.providerGetItem,
+        set = w.providerSetItem;
+    function current(): boolean {
+        return (
+            generation === favoritesGeneration &&
+            source === currentFavoritesSource() &&
+            get === w.providerGetItem &&
+            set === w.providerSetItem
+        );
+    }
+    var writable = false;
+    var raw: any = null;
+    var prior: any[] = [];
+    var scoped: any;
+    try {
+        scoped = get.call(w, "favoritesLibrary:" + source);
+        if (scoped) {
+            try {
+                var envelope = JSON.parse(scoped);
+                if (
+                    envelope &&
+                    envelope.version === 1 &&
+                    envelope.sourceId === source &&
+                    envelope.lists &&
+                    envelope.lists.v === 1
+                ) {
+                    raw = envelope.lists;
+                    writable = true;
+                }
+            } catch (_) {}
+        } else {
+            var claim = get.call(w, "favoritesLibrarySource");
+            writable = true;
+            if (!claim || claim === source) {
+                try {
+                    raw = w.providerGetJson("favoritesLists", null);
+                } catch (_) {}
+                if (
+                    !(
+                        raw &&
+                        raw.v === 1 &&
+                        raw.lists &&
+                        typeof raw.lists === "object"
+                    )
+                )
+                    prior = w.providerGetJson("favoritesArray", []) || [];
+            }
+        }
+    } catch (_) {
+        writable = false;
+    }
+    var loaded = w.OttPlayCore.loadClassicFavoriteLists(raw, prior);
+    if (!current()) return;
+    favoritesSource = source;
+    favoritesWritable = writable;
+    favoritesLists = loaded;
+    saveFavoritesLists();
     syncFavoritesArrayFromActive();
 }
 

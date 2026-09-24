@@ -12,17 +12,7 @@ function classicPlaybackHost(): any {
 }
 
 function classicPlaybackSource(w: any): string {
-    var provider =
-        String(
-            w.p_pref ||
-                (w.__ottActiveProviderDriver &&
-                    w.__ottActiveProviderDriver.id) ||
-                w.providerId ||
-                "classic"
-        ).trim() || "classic";
-    return provider === "m3u"
-        ? provider + ":" + classicPlaybackSlot(w)
-        : provider;
+    return w.__ottSourceIdentity.current(w);
 }
 
 function classicPlaybackSlot(w: any): number {
@@ -38,8 +28,8 @@ function classicPlaybackSourceConfiguration(w: any): any {
             ? w.m3uArr.M3Us[classicPlaybackSlot(w)]
             : null;
     return {
-        activeMedia: w.medSourceId,
-        media: slot && slot.medSourceId,
+        activeMedia: w.playType === -1e11 ? w.medSourceId : null,
+        media: w.playType === -1e11 && slot ? slot.medSourceId : null,
         slot: slot,
         url: slot && slot.www,
     };
@@ -418,6 +408,8 @@ function classicPlaybackSelect(
     var w = classicPlaybackHost();
     var observation = classicPlaybackObservation();
     var id = classicPlaybackChannel(w, category, index);
+    if (w.__ottChannels && classicPlaybackIdentity(id))
+        w.__ottChannels.select(category, id);
     var next: PlaybackVisit | null =
         index === -1 || !classicPlaybackIdentity(id)
             ? null
@@ -507,7 +499,9 @@ function classicPlaybackSelect(
                 return {
                     archiveStart: visit.archiveStart,
                     channelId: visit.channelId,
-                    groupId: (w.catsArray || [])[payload.c],
+                    groupId:
+                        (w.__ottChannels && w.__ottChannels.group(payload.c)) ||
+                        (w.catsArray || [])[payload.c],
                     kind: visit.kind,
                     label: payload.e,
                 };
@@ -550,19 +544,33 @@ function classicPlaybackJournal(): any {
     var get = w.providerGetItem;
     var set = w.providerSetItem;
     var source = classicPlaybackSource(w);
+    var legacy = w.__ottSourceIdentity.legacy(w);
+    var storageKey =
+        source === legacy ? "playbackJournal" : "playbackJournal:" + source;
+    var claim = get.call(w, "playbackJournalSource");
+    var allowLegacy = !claim || claim === source;
+    if (!claim) {
+        try {
+            set.call(w, "playbackJournalSource", source);
+        } catch (_) {
+            allowLegacy = false;
+        }
+    }
     return w.__ottPlaybackJournal.create({
         get: function (key: string): any {
-            return get.call(w, key);
+            if (key === "playbackJournal") {
+                var current = get.call(w, storageKey);
+                return current == null && allowLegacy
+                    ? get.call(w, "playbackJournal")
+                    : current;
+            }
+            return allowLegacy ? get.call(w, key) : null;
         },
-        // OTTCLUB's unprefixed store was the sole shipped provider mapped to
-        // the anonymous identity before instance drivers supplied their ID.
-        importSourceId:
-            w.p_pref === "" &&
-            source === "ottclub" &&
-            w.__ottActiveProviderDriver &&
-            w.__ottActiveProviderDriver.id === "ottclub"
+        importSourceId: allowLegacy
+            ? legacy === "ottclub" && w.p_pref === ""
                 ? "classic"
-                : undefined,
+                : legacy
+            : undefined,
         isCurrent: function (): boolean {
             return (
                 source === classicPlaybackSource(w) &&
@@ -574,7 +582,7 @@ function classicPlaybackJournal(): any {
             return Date.now();
         },
         set: function (key: string, value: string): void {
-            set.call(w, key, value);
+            set.call(w, key === "playbackJournal" ? storageKey : key, value);
         },
         sourceId: source,
     });
@@ -583,7 +591,8 @@ function classicPlaybackJournal(): any {
 function classicPlaybackLocate(id: string, groupId?: string): any {
     var w = classicPlaybackHost();
     var groups = w.catsArray || [];
-    var preferred = groups.indexOf(groupId);
+    var preferred = w.__ottChannels ? w.__ottChannels.index(groupId) : -1;
+    if (preferred < 0) preferred = groups.indexOf(groupId);
     if (
         preferred < 0 &&
         typeof w.catIndex === "number" &&
@@ -697,7 +706,9 @@ function classicPlaybackCheckpoint(snapshot: any, force = false): void {
         bookmark: {
             archiveStart: target.archiveStart,
             channelId: target.channelId,
-            groupId: (w.catsArray || [])[payload.c],
+            groupId:
+                (w.__ottChannels && w.__ottChannels.group(payload.c)) ||
+                (w.catsArray || [])[payload.c],
             kind: target.kind,
             position: snapshot.position,
         },

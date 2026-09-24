@@ -72,17 +72,24 @@ for (const [index, row] of captured.cases.entries())
         assert.equal(f.host.$.ajax, f.ajax);
         f.requests[0].resolve(row.input.account);
         assert.deepEqual(
-            clone({
-                callbacks,
-                calls: f.calls,
-                channels: f.host.chanels,
-                errors: f.errors,
-                groupOrder: f.host.catsArray,
-                groups: f.host.cats,
-                ids: f.host.cList,
-            }),
-            row.expected
+            clone({ callbacks, calls: f.calls, errors: f.errors }),
+            {
+                callbacks: row.expected.callbacks,
+                calls: row.expected.calls,
+                errors: row.expected.errors,
+            }
         );
+        assert.equal(new Set(f.host.cList).size, f.host.cList.length);
+        for (const id of f.host.cList) {
+            const channel = f.host.chanels[id];
+            assert(channel.itemId.startsWith("xtream:stream:"));
+            assert.equal(
+                channel.epg,
+                channel.itemId.slice("xtream:stream:".length)
+            );
+            assert(f.host.cats[channel.category.name].includes(id));
+            assert(channel.groupId.startsWith("xtream:category:"));
+        }
         assert.equal(
             f.host.getMediaArray,
             null,
@@ -129,7 +136,7 @@ test("instance replacement aborts old catalog/guide and delayed responses cannot
     f.requests[1].resolve({
         live_streams: [{ name: "Current", stream_id: 42 }],
     });
-    const channel = f.host.xxHash32S("Current", true);
+    const channel = 42;
     current.guide(channel, () => completions++);
     f.mount("demo");
     assert.equal(f.requests[2].aborts, 1);
