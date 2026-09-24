@@ -392,48 +392,83 @@ test("Actual Edem lazy-page codec publishes detached updates without global-arra
 });
 
 test("Actual VPortal quality resolver retains parent ownership and starts only selected quality", () => {
-    const c = fixture(),
-        requests = [];
-    vm.runInContext(
-        sourceFunctions("src/plugins/vportal.ts", [
-            "parseVPortalLink",
-            "createVPortalClient",
-        ]),
-        c
-    );
-    c.$.ajax = (options) => {
-        const request = { abort() {}, options };
-        requests.push(request);
-        return request;
-    };
-    c.closeList = () => c.cancelMediaLoad();
-    c.providerMediaClient = c.createVPortalClient(
-        "portal::[key:fixture]https://portal.test/api"
-    );
-    c.getMediaArray = c.providerMediaClient.load;
-    const reply = (index, data) => {
-        requests[index].options.success(data);
-        requests[index].options.complete();
-    };
-    c.mediaList(null);
-    reply(0, {
-        items: [
-            { request: { cmd: "play", id: 42 }, title: "Film", type: "stream" },
-        ],
-        type: "category",
-    });
-    c.selectMedia(0);
-    reply(1, {
-        url: "https://low",
-        variants: { high: "https://high", low: "https://low" },
-    });
-    assert.equal(c.calls.filter((call) => call[0] === "play").length, 0);
-    c.selectBoxKeyHandler(c.keys.LEFT);
-    c.selectBoxKeyHandler(c.keys.ENTER);
-    assert(
-        c.calls.some((call) => call[0] === "play" && call[1] === "https://high")
-    );
-    assert.equal(c.documentState().history.length, 1);
+    for (const action of ["accept", "back", "replace"]) {
+        const c = fixture(),
+            requests = [];
+        vm.runInContext(
+            sourceFunctions("src/plugins/vportal.ts", [
+                "parseVPortalLink",
+                "createVPortalClient",
+            ]),
+            c
+        );
+        c.$.ajax = (options) => {
+            const request = { abort() {}, options };
+            requests.push(request);
+            return request;
+        };
+        c.closeList = () => {
+            c.__ottClassicScreenPort.closeList();
+            c.cancelMediaLoad();
+        };
+        c.showPage = () => c.__ottClassicScreenPort.commitList();
+        c.providerMediaClient = c.createVPortalClient(
+            "portal::[key:fixture]https://portal.test/api"
+        );
+        c.getMediaArray = c.providerMediaClient.load;
+        const reply = (index, data) => {
+            requests[index].options.success(data);
+            requests[index].options.complete();
+        };
+        c.mediaList(null);
+        reply(0, {
+            items: [
+                {
+                    request: { cmd: "play", id: 42 },
+                    title: "Film",
+                    type: "stream",
+                },
+            ],
+            type: "category",
+        });
+        const parent = c.__ottClassicScreenPort.listOwner();
+        c.selectMedia(0);
+        reply(1, {
+            url: "https://low",
+            variants: { high: "https://high", low: "https://low" },
+        });
+        assert.equal(c.calls.filter((call) => call[0] === "play").length, 0);
+        assert(parent.active());
+        const saved = c.selectBoxKeyHandler;
+        if (action === "back") {
+            saved(c.keys.RETURN);
+            saved(c.keys.ENTER);
+            assert(parent.active());
+            assert.equal(
+                c.calls.filter((call) => call[0] === "play").length,
+                0
+            );
+        } else if (action === "replace") {
+            c.listArray = [{ title: "Other screen" }];
+            c.listDataArray = c.listArray;
+            c.showPage();
+            saved(c.keys.ENTER);
+            assert(!parent.active());
+            assert.equal(
+                c.calls.filter((call) => call[0] === "play").length,
+                0
+            );
+        } else {
+            saved(c.keys.LEFT);
+            saved(c.keys.ENTER);
+            assert(
+                c.calls.some(
+                    (call) => call[0] === "play" && call[1] === "https://high"
+                )
+            );
+            assert.equal(c.documentState().history.length, 1);
+        }
+    }
 });
 
 test("Disabled persistence can be re-enabled without poisoning the journal and retired resume prompts cannot seek", () => {

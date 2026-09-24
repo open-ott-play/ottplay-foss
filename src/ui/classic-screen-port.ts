@@ -184,7 +184,7 @@ function createClassicScreenPort(host: any) {
             return null;
         }
         var next = openOverlay(kind, function (command, owner) {
-            var result = callback(command.code);
+            var result = owner.model.callback(command.code);
             if (!owner.foreground()) return;
             if (
                 kind === "about" &&
@@ -398,6 +398,27 @@ function createClassicScreenPort(host: any) {
         close: close,
         closeList: closeList,
         commitList: commitList,
+        decorateOwnedCallback: function (
+            kind: string,
+            expected: any,
+            wrapper: (...args: any[]) => any
+        ) {
+            var owner = overlays[kind];
+            if (
+                !owner ||
+                !owner.active() ||
+                callbacks[kind] !== expected ||
+                typeof wrapper !== "function"
+            )
+                return null;
+            var guarded = function () {
+                if (owner!.foreground())
+                    return wrapper.apply(null, arguments as any);
+            };
+            callbacks[kind] = guarded;
+            owner.model.callback = guarded;
+            return guarded;
+        },
         dispatch: function (
             code: number,
             event: any,
