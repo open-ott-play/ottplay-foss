@@ -144,6 +144,7 @@ function fixture() {
         },
         listArray: [],
         listDataArray: [],
+        listElement: element("#list_window"),
         Math,
         medFavorites: [],
         medHistory: [],
@@ -164,6 +165,7 @@ function fixture() {
         },
         prevArr: [],
         primaryIndex: 0,
+        providerGetItem: (key) => stored[key] ?? null,
         providerSetItem: (key, value) => (stored[key] = value),
         refreshAudioBadge() {},
         renderButtonHint: (key, icon, text) => text,
@@ -259,6 +261,7 @@ function fixture() {
             sourceFunctions("src/index.ts", ["_playMedia"]),
         context
     );
+    c.__ottRenderMedia = c.showMediaList1;
     c.playMedia = c._playMedia;
     const catalogs = {
         "": [
@@ -277,6 +280,7 @@ function fixture() {
         ],
         "catalog.xml": [{ stream_url: "nested.mp4", title: "Nested movie" }],
     };
+    c.catalogs = catalogs;
     c.getMediaArray = function (url, done) {
         assert.equal(
             typeof url,
@@ -292,409 +296,230 @@ function fixture() {
         c.mediaRecords = (catalogs[url] || []).map((item) => ({ ...item }));
         done(); // Real providers mutate mediaRecords and do not pass an array to the callback.
     };
+    c.documentState = () =>
+        JSON.parse(
+            stored["mediaJournal.v1:" + c.__ottMedia.sourceId()] || "null"
+        );
     return c;
 }
 
-// First open -> provider callback -> nested folder -> Back -> local history/favorites.
-{
-    const c = fixture();
-    c.mediaList(null);
-    assert.deepEqual(Array.from(c.mediaUrls), [""]);
-    assert.equal(c.listArray[1].title, "Folder");
-    assert(c.listArray.some((item) => item.playlist_url === -1));
-    assert(c.listArray.some((item) => item.playlist_url === -2));
-    assert.strictEqual(c.listDataArray, c.listArray);
-    c.selectMedia(1);
-    assert.equal(c.listArray[0].title, "Nested movie");
-    c.mediaKeyHandler(c.keys.GREEN);
-    assert.equal(JSON.parse(c.stored.medFavorites)[0].stream_url, "nested.mp4");
-    c.mediaKeyHandler(c.keys.RETURN);
-    assert.equal(
-        c.selIndex,
-        1,
-        "Returning to parent restores its selected row"
-    );
-    c.medHistory.push({
-        current: 125,
-        stream_url: "watched.mp4",
-        title: "Watched",
-    });
-    let fetched = c.calls.filter((call) => call[0] === "fetch").length;
-    c.selectMedia(c.listArray.findIndex((item) => item.playlist_url === -1));
-    assert.strictEqual(c.listArray, c.medHistory);
-    assert.equal(c.calls.filter((call) => call[0] === "fetch").length, fetched);
-    c.mediaKeyHandler(c.keys.RETURN);
-    fetched = c.calls.filter((call) => call[0] === "fetch").length;
-    c.selectMedia(c.listArray.findIndex((item) => item.playlist_url === -2));
-    assert.strictEqual(c.listArray, c.medFavorites);
-    c.mediaKeyHandler(c.keys.GREEN);
-    assert.equal(c.listArray.length, 0);
-    assert.equal(c.selIndex, 0);
-    assert.equal(c.stored.medFavorites, "[]");
-    assert.equal(c.calls.filter((call) => call[0] === "fetch").length, fetched);
-    c.mediaKeyHandler(c.keys.RETURN); // Empty list still supports Back.
-    assert.equal(c.listArray[1].title, "Folder");
-    c.selIndex = 3;
-    c.selectMedia();
-    assert.equal(c.listArray[0].title, "Submovie");
-    c.mediaKeyHandler(c.keys.RETURN);
-    assert.equal(c.listArray[3].title, "Submenu");
-    assert.equal(c.selIndex, 3);
-}
+module.exports = { fixture, sourceFunctions };
 
-// Search accepts special characters; adult playback waits until PIN access is granted.
-{
-    const c = fixture();
-    c.mediaList(null);
-    c.selectMedia(2);
-    assert.equal(c.calls.at(-1)[0], "edit");
-    c.editvar = "a & b";
-    c.setEdit();
-    assert(
-        c.calls.some(
-            (call) =>
-                call[0] === "fetch" &&
-                call[1] === "search.xml?sort=name&search=a%20%26%20b"
-        )
-    );
-    c.listArray = [{ adult: "1", stream_url: "locked.mp4", title: "Locked" }];
-    c.selectMedia(0);
-    assert.equal(c.calls.at(-1)[0], "pin");
-    assert(!c.calls.some((call) => call[0] === "play"));
-    c.parentAccess = true;
-    c.unlock();
-    assert(
-        c.calls.some((call) => call[0] === "play" && call[1] === "locked.mp4")
-    );
-    assert.equal(
-        c.getMediaDescr({ description: () => "Lazy description" }),
-        "Lazy description"
-    );
-}
-
-// The real M3U provider mutates global records before calling done: reject stale completions.
-{
-    const c = fixture();
-    const pending = [];
-    c.host = "";
-    c.$.ajax = (request) => pending.push(request);
-    vm.runInContext(
-        sourceFunctions("prov/m3u/prov.js", ["getMediaArrayXML"]) +
-            sourceFunctions("src/ui/index.ts", ["closeList"]),
-        c
-    );
-    c.listElement = null;
-    c.getMediaArray = (url, done) =>
-        c.getMediaArrayXML(url || "root.json", done);
-    function complete(index, title, rows) {
-        pending[index].success(JSON.stringify({ channels: rows, title }));
-        pending[index].complete();
+if (require.main === module) {
+    // Root, folder, owned Back, local favorites/history, inline submenu.
+    {
+        const c = fixture();
+        c.mediaList(null);
+        assert.equal(c.listArray[1].title, "Folder");
+        assert(c.listArray.some((item) => item.__ottMediaRoute === "history"));
+        c.selectMedia(1);
+        assert.equal(c.listArray[0].title, "Nested movie");
+        c.mediaKeyHandler(c.keys.GREEN);
+        assert.equal(
+            c.documentState().favorites[0].payload.stream_url,
+            "nested.mp4"
+        );
+        const fetched = c.calls.filter((call) => call[0] === "fetch").length;
+        c.mediaKeyHandler(c.keys.RETURN);
+        assert.equal(c.selIndex, 1);
+        assert.equal(
+            c.calls.filter((call) => call[0] === "fetch").length,
+            fetched,
+            "Back restores owned parent without another request"
+        );
+        c.selectMedia(
+            c.listArray.findIndex(
+                (item) => item.__ottMediaRoute === "favorites"
+            )
+        );
+        assert.equal(c.listArray[0].title, "Nested movie");
+        c.mediaKeyHandler(c.keys.GREEN);
+        assert.equal(c.listArray.length, 0);
+        assert.equal(c.documentState().favorites.length, 0);
+        c.mediaKeyHandler(c.keys.RETURN);
+        c.selIndex = 3;
+        c.selectMedia();
+        assert.equal(c.listArray[0].title, "Submovie");
+        c.mediaKeyHandler(c.keys.RETURN);
+        assert.equal(c.selIndex, 3);
     }
-    const folders = [{ playlist_url: "folder.json", title: "Folder" }];
-    c.mediaList(null);
-    complete(0, "Root", folders);
-    c.selectMedia(0);
-    c.mediaKeyHandler(c.keys.RETURN); // Back reloads the root while the child is pending.
-    complete(2, "New root", folders);
-    const renderCount = c.calls.filter((call) => call[0] === "render").length;
-    complete(1, "Stale folder", [{ stream_url: "old.mp4", title: "Old" }]);
-    assert.equal(c.listArray[0].title, "Folder");
-    assert.strictEqual(c.mediaRecords, c.listArray);
-    assert.equal(c.mediaName, "New root");
-    assert.equal(
-        c.calls.filter((call) => call[0] === "render").length,
-        renderCount
-    );
-
-    c.selectMedia(0);
-    c.closeList();
-    complete(3, "Closed folder", [
-        { stream_url: "closed.mp4", title: "Closed" },
-    ]);
-    assert.equal(c.isListVisible, false);
-    assert.equal(
-        c.mediaUrls,
-        null,
-        "Reopening a cancelled load must restart from a valid root"
-    );
-    assert.equal(c.mediaRecords.length, 0);
-    assert.equal(
-        c.calls.filter((call) => call[0] === "render").length,
-        renderCount
-    );
-
-    c.mediaList(null);
-    c.cancelMediaLoad(); // loadProv cancels before replacing the provider globals.
-    c.getMediaArray = (_target, done) => {
-        c.mediaRecords = [{ stream_url: "new.mp4", title: "New provider" }];
-        done();
-    };
-    c.mediaList(null);
-    complete(4, "Old provider", [
-        { stream_url: "wrong.mp4", title: "Wrong provider" },
-    ]);
-    assert.equal(c.listArray[0].title, "New provider");
-    assert.strictEqual(c.mediaRecords, c.listArray);
-}
-
-// A PIN result is valid only for the item/list that requested it.
-{
-    const c = fixture();
-    c.listArray = [{ adult: 1, stream_url: "locked.mp4", title: "Locked" }];
-    c.selectMedia(0);
-    c.listArray = [{ stream_url: "other.mp4", title: "Other" }];
-    c.parentAccess = true;
-    c.unlock();
-    assert(!c.calls.some((call) => call[0] === "play"));
-}
-
-// Third-party providers without isCurrent still get a guarded legacy completion callback.
-{
-    const c = fixture();
-    const pending = [];
-    c.getMediaArray = (_url, done) =>
-        pending.push((title) => {
+    // Search and PIN are captured intents; replacing navigation revokes old approvals.
+    {
+        const c = fixture();
+        c.catalogs[""] = [
+            { adult: 1, id: 9, stream_url: "locked.mp4", title: "Locked" },
+            {
+                playlist_url: "search.xml?sort=name",
+                search_on: 1,
+                title: "Search",
+            },
+        ];
+        c.mediaList(null);
+        c.selectMedia(1);
+        c.editvar = "a & b";
+        c.setEdit();
+        assert(
+            c.calls.some(
+                (call) =>
+                    call[0] === "fetch" &&
+                    call[1] === "search.xml?sort=name&search=a%20%26%20b"
+            )
+        );
+        c.mediaKeyHandler(c.keys.RETURN);
+        c.selectMedia(0);
+        assert.equal(typeof c.unlock, "function");
+        const obsolete = c.unlock;
+        c.mediaList("catalog.xml");
+        c.parentAccess = true;
+        obsolete();
+        assert(!c.calls.some((call) => call[0] === "play"));
+        c.mediaKeyHandler(c.keys.RETURN);
+        c.selectMedia(0);
+        assert(
+            c.calls.some(
+                (call) => call[0] === "play" && call[1] === "locked.mp4"
+            )
+        );
+        assert.equal(
+            c.getMediaDescr({ description: () => "Lazy description" }),
+            "Lazy description"
+        );
+    }
+    // Late providers may mutate their globals, but cannot replace an accepted parent/view.
+    {
+        const c = fixture(),
+            pending = [];
+        c.getMediaArray = (route, done) => pending.push({ done, route });
+        const complete = (index, title, records) => {
             c.mediaName = title;
-            c.mediaRecords = [{ stream_url: title + ".mp4", title }];
+            c.mediaRecords = records;
+            pending[index].done();
+        };
+        c.mediaList(null);
+        complete(0, "Root", [{ playlist_url: "folder", title: "Folder" }]);
+        c.selectMedia(0);
+        c.mediaKeyHandler(c.keys.RETURN);
+        const renders = c.calls.filter((call) => call[0] === "render").length;
+        complete(1, "Late child", [{ stream_url: "stale", title: "Stale" }]);
+        assert.equal(c.listArray[0].title, "Folder");
+        assert.equal(c.mediaName, "Root");
+        assert.equal(
+            c.calls.filter((call) => call[0] === "render").length,
+            renders
+        );
+        c.selectMedia(0);
+        c.cancelMediaLoad();
+        complete(2, "Closed", [{ stream_url: "closed", title: "Closed" }]);
+        assert.equal(c.listArray[0].title, "Folder");
+        c.getMediaArray = (_route, done) => {
+            c.mediaRecords = [
+                { id: 2, stream_url: "new", title: "New provider" },
+            ];
             done();
+        };
+        c.mediaList(null);
+        complete(2, "Old provider", [{ stream_url: "old", title: "Old" }]);
+        assert.equal(c.listArray[0].title, "New provider");
+    }
+    // Search from a disposed source must not query a replacement provider.
+    {
+        const c = fixture();
+        c.mediaList(null);
+        c.selectMedia(2);
+        let fetched = false;
+        c.getMediaArray = () => {
+            fetched = true;
+        };
+        c.editvar = "movie";
+        c.setEdit();
+        assert.equal(fetched, false);
+    }
+    // Actual _playMedia consumer uses owned identity and stored positions, never mutable history[0].
+    {
+        const c = fixture();
+        const first = { id: 1, stream_url: "first.mp4", title: "First" };
+        c._playMedia(first);
+        c.setCurrent(0, -1);
+        assert.equal(c.documentState().history[0].position, 125.9);
+        c._playMedia({ id: 2, stream_url: "second.mp4", title: "Second" });
+        c._playMedia({ ...first, stream_url: "renewed.mp4" });
+        assert.equal(typeof c.confirm, "function");
+        const oldConfirm = c.confirm;
+        c.confirm();
+        assert.deepEqual(c.calls.at(-1), ["seek", 120]);
+        c.medHistory.unshift({
+            current: 999,
+            stream_url: "injected.mp4",
+            title: "Injected",
         });
-    c.mediaList(null);
-    c.mediaUrls = null;
-    c.mediaList(null);
-    pending[1]("New");
-    pending[0]("Old");
-    assert.equal(c.listArray[0].title, "New");
-    assert.strictEqual(c.mediaRecords, c.listArray);
-    assert.equal(c.mediaName, "New");
-}
-
-// Edem page responses keep their own offsets and cannot modify another page/view.
-{
-    const c = fixture();
-    c.host = "";
-    c._vpurl = "https://example.invalid/vportal";
-    const pending = [];
-    c.$.ajax = (request) => pending.push(request);
-    vm.runInContext(
-        sourceFunctions("prov/edem/prov.js", [
-            "addMedias2",
-            "createMedia",
-            "item2descr",
-        ]),
-        c
-    );
-    c.mediaRecords = Array.from({ length: 6 }, () => ({
-        description: () => "Loading",
-    }));
-    c.listArray = c.mediaRecords;
-    c.rememberMediaView();
-    const params = { limit: 2 };
-    c.selIndex = 0;
-    c.addMedias2(params);
-    c.selIndex = 2;
-    c.addMedias2(params);
-    assert.equal(JSON.parse(pending[0].data).offset, 0);
-    assert.equal(JSON.parse(pending[1].data).offset, 2);
-    pending[0].success({
-        items: [{ title: "First page", type: "stream", url: "first.mp4" }],
-    });
-    pending[0].complete();
-    assert.equal(
-        c.mediaRecords.length,
-        6,
-        "A different pending page must not be truncated"
-    );
-    pending[1].success({
-        items: [{ title: "Second page", type: "stream", url: "second.mp4" }],
-    });
-    pending[1].complete();
-    assert.equal(c.mediaRecords[0].title, "First page");
-    assert.equal(c.mediaRecords[2].title, "Second page");
-    c.selIndex = 4;
-    c.addMedias2(params);
-    c.cancelMediaLoad();
-    const renders = c.calls.filter((call) => call[0] === "render").length;
-    pending[2].success({
-        items: [{ title: "Closed page", type: "stream", url: "closed.mp4" }],
-    });
-    pending[2].complete();
-    assert.equal(c.mediaRecords[4].title, undefined);
-    assert.equal(
-        c.calls.filter((call) => call[0] === "render").length,
-        renders
-    );
-}
-
-// Submitting an old provider's search dialog must not send its URL to a new provider.
-{
-    const c = fixture();
-    c.mediaList(null);
-    c.selectMedia(2);
-    let fetched = false;
-    c.getMediaArray = () => {
-        fetched = true;
-    };
-    c.editvar = "movie";
-    const selections = Array.from(c.mediaSelects);
-    c.setEdit();
-    assert.equal(fetched, false);
-    assert.deepEqual(Array.from(c.mediaSelects), selections);
-}
-
-// Resolve lazy stream URLs before matching/persisting history; stale resume prompts cannot seek a new movie.
-{
-    const c = fixture();
-    c.medHistory = [
-        { current: 125, stream_url: "resume.mp4", title: "Resume" },
-    ];
-    let resolves = 0;
-    c._playMedia({
-        stream_url: () => {
-            resolves++;
-            return "resume.mp4";
-        },
-        title: "Lazy",
-    });
-    assert.equal(resolves, 1);
-    assert.equal(c.medHistory.length, 1);
-    assert.equal(JSON.parse(c.stored.medHistory)[0].stream_url, "resume.mp4");
-    assert.equal(typeof c.confirm, "function");
-    const previousConfirmation = c.confirm;
-    c._playMedia({ stream_url: "other.mp4", title: "Other" });
-    previousConfirmation();
-    assert(!c.calls.some((call) => call[0] === "seek"));
-}
-
-// A VPortal quality/signed-URL refresh keeps resume history and actually switches streams.
-{
-    const c = fixture();
-    const old = {
-        current: 125,
-        request: { cmd: "play", id: 42 },
-        stream_url: "https://video.invalid/old.mp4",
-        title: "Film",
-        vportalSource: "source-a",
-    };
-    c.medHistory = [old];
-    c.playType = -1e11;
-    c._playMedia({
-        ...old,
-        stream_url: "https://video.invalid/quality-hd.mp4",
-    });
-    assert(
-        c.calls.some(
-            (call) => call[0] === "play" && call[1].endsWith("quality-hd.mp4")
-        )
-    );
-    assert.equal(c.medHistory.length, 1);
-    assert.equal(old.stream_url, "https://video.invalid/old.mp4");
-    c.confirm();
-    assert.deepEqual(c.calls.at(-1), ["seek", 120]);
-    const plays = c.calls.filter((call) => call[0] === "play").length;
-    c._playMedia({ ...c.medHistory[0] });
-    assert.equal(c.calls.filter((call) => call[0] === "play").length, plays);
-    c._playMedia({
-        ...old,
-        stream_url: "https://video.invalid/another.mp4",
-        vportalSource: "source-b",
-    });
-    assert.equal(
-        c.medHistory.length,
-        2,
-        "Different portal sources must not share a resume identity"
+        assert.equal(
+            c.__ottClassicPlayback.snapshot().target.channelId,
+            "provider:1"
+        );
+        c._playMedia({ id: 3, stream_url: "other.mp4", title: "Other" });
+        oldConfirm();
+        assert.equal(c.calls.filter((call) => call[0] === "seek").length, 1);
+        c.sMedCount = 0;
+        c._playMedia({
+            id: 4,
+            stream_url: "fourth.mp4",
+            title: "Disabled history",
+        });
+        assert.equal(c.documentState().history.length, 0);
+        c.updateMediaInfo();
+        assert.equal(c.elements["#begin_time"].textContent, "2");
+        assert.equal(c.elements["#end_time"].textContent, "+8");
+        c.initBackgroundIntervals();
+        c.elements["#begin_time"].textContent = "";
+        c.timers.at(-2)();
+        assert.equal(c.elements["#begin_time"].textContent, "2");
+        assert.equal(first.stream_url, "first.mp4");
+    }
+    // Legacy history imports once and resume uses provider item identity across URL rotation.
+    {
+        const c = fixture();
+        c.stored.medHistory = JSON.stringify([
+            { current: 125, id: 7, stream_url: "expired.mp4", title: "Film" },
+        ]);
+        c._playMedia({ id: 7, stream_url: () => "fresh.mp4", title: "Film" });
+        c.confirm();
+        assert.deepEqual(c.calls.at(-1), ["seek", 120]);
+        assert.equal(c.documentState().history.length, 1);
+        assert.equal(
+            c.documentState().history[0].payload.stream_url,
+            "fresh.mp4"
+        );
+        assert.equal(
+            JSON.parse(c.stored.medHistory)[0].stream_url,
+            "expired.mp4",
+            "Importer never rewrites old storage"
+        );
+    }
+    // Selector input remains compatible with mouse row codes and remote extremes.
+    {
+        const c = fixture(),
+            selected = [];
+        c.showSelectBox(
+            0,
+            ["First", "Second", "Third"],
+            (index) => selected.push(index),
+            -1
+        );
+        c.selectBoxKeyHandler(-99);
+        c.selectBoxKeyHandler(c.keys.ENTER);
+        assert.deepEqual(selected, [1]);
+        c.showSelectBox(
+            0,
+            ["First", "Second", "Third"],
+            (index) => selected.push(index),
+            -1
+        );
+        c.selectBoxKeyHandler(c.keys.RIGHT);
+        c.selectBoxKeyHandler(c.keys.ENTER);
+        assert.deepEqual(selected, [1, 2]);
+        assert.equal(c.selectBoxKeyHandler, null);
+    }
+    console.log(
+        "PASS active VOD navigation, favorites, search/PIN, stale callbacks, identity/resume, progress and input"
     );
 }
-
-// Edem lazy descriptions fetch pages: one Info action must trigger only one request.
-{
-    const c = fixture();
-    c.saveListPanelState = () => {};
-    c.listCaptionElement = null;
-    c.listFooterElement = null;
-    c.host = "";
-    c._vpurl = "https://example.invalid/vportal";
-    let requests = 0;
-    c.$.ajax = () => requests++;
-    vm.runInContext(
-        sourceFunctions("prov/edem/prov.js", ["addMedias2"]) +
-            sourceFunctions("src/ui/index.ts", ["infoMedia"]),
-        c
-    );
-    c.listArray = [
-        {
-            description: () => c.addMedias2({ limit: 300 }),
-            title: "Loading movie",
-        },
-    ];
-    c.infoMedia();
-    assert.equal(
-        requests,
-        1,
-        "Info must evaluate the provider description once"
-    );
-    assert.equal(
-        c.elements["#listAbout"].innerHTML,
-        '<div id="_prd">Download! Wait ...</div>'
-    );
-}
-
-// Adapter position persists on leaving VOD, enables resume, and history=0 remains disabled.
-{
-    const c = fixture();
-    c.mediaUrls = [""];
-    c._playMedia({ stream_url: "first.mp4", title: "First" });
-    c.setCurrent(0, -1);
-    assert.equal(JSON.parse(c.stored.medHistory)[0].current, 125);
-    c._playMedia({ stream_url: "second.mp4", title: "Second" });
-    c._playMedia({ stream_url: "first.mp4", title: "First" });
-    assert.equal(typeof c.confirm, "function");
-    c.confirm();
-    assert.deepEqual(c.calls.at(-1), ["seek", 120]);
-    c.sMedCount = 0;
-    c._playMedia({ stream_url: "third.mp4", title: "No history" });
-    assert.equal(c.medHistory.length, 0);
-    assert.equal(c.stored.medHistory, "[]");
-    c.updateMediaInfo();
-    assert.equal(c.elements["#begin_time"].textContent, "2");
-    assert.equal(c.elements["#end_time"].textContent, "+8");
-    assert.equal(
-        c.elements["#progress"].style.width,
-        (125.9 / 600) * 100 + "%"
-    );
-    c.initBackgroundIntervals();
-    c.elements["#begin_time"].textContent = "";
-    c.timers.at(-2)();
-    assert.equal(
-        c.elements["#begin_time"].textContent,
-        "2",
-        "The 1s timer refreshes VOD progress"
-    );
-}
-
-// The second row dispatches -99, which must select it; left/right retain legacy extremes.
-{
-    const c = fixture();
-    const selected = [];
-    c.showSelectBox(
-        0,
-        ["First", "Second", "Third"],
-        (index) => selected.push(index),
-        -1
-    );
-    c.selectBoxKeyHandler(-99);
-    c.selectBoxKeyHandler(c.keys.ENTER);
-    assert.deepEqual(selected, [1]);
-    c.showSelectBox(
-        0,
-        ["First", "Second", "Third"],
-        (index) => selected.push(index),
-        -1
-    );
-    c.selectBoxKeyHandler(c.keys.RIGHT);
-    c.selectBoxKeyHandler(c.keys.ENTER);
-    assert.deepEqual(selected, [1, 2]);
-    assert.equal(c.selectBoxKeyHandler, null);
-}
-console.log(
-    "OK: VOD provider flow, navigation, favorites/history, search/PIN, resume/progress and selector input"
-);

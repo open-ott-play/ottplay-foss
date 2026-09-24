@@ -62,6 +62,8 @@ const c = {
     normalizePlayerMode: (mode) => mode,
     onChanelsLoaded() {
         c.loadFavoritesLists();
+        c.cats = { All: c.cList };
+        c.catsArray = ["All"];
         c.loadEpgTimers();
     },
     setPlayerMode() {},
@@ -98,6 +100,7 @@ vm.runInContext(
 vm.runInContext(settingsSource(), c);
 c.settings.epgRemindMinutes = 0;
 attachSourceAliases(c);
+require("./helpers/guide-runtime-fixture.cjs").install(c);
 c.setProviderPrefix("current:");
 const put = (key, value) => c.providerSetItem(key, JSON.stringify(value));
 const read = (key) => JSON.parse(c.providerGetItem(key));
@@ -153,14 +156,32 @@ function load() {
     assert.equal(c.__ottRecordPortHash, undefined);
 }
 load();
-assert.deepEqual(read("favoritesArray"), expected);
+assert.deepEqual(
+    read("favoritesArray"),
+    ids,
+    "Raw favorites remain rollback bytes"
+);
 assert.deepEqual(
     Array.from(c.favoritesArray),
-    expected,
-    "Favorites must load the migrated IDs, not stale storage"
+    [200, 201],
+    "Only uniquely resolved stable favorites are projected"
 );
-assert.deepEqual(read("favoritesLists").lists.Main, expected);
-assert(read("favoritesLists").lists.Large.every((id) => id === 200));
+assert.deepEqual(read("favoritesLists").lists.Main, ids);
+assert(read("favoritesLists").lists.Large.every((id) => id === 100));
+const favoriteEnvelope = read(
+    "favoritesLibrary:" + c.__ottSourceIdentity.current(c)
+);
+assert.equal(favoriteEnvelope.version, 2);
+assert.deepEqual(favoriteEnvelope.lists.lists.Main.slice(0, 2), [
+    { itemId: "channel:200" },
+    { itemId: "channel:201" },
+]);
+assert.equal(favoriteEnvelope.lists.lists.Main[2].ambiguous, true);
+assert.equal(favoriteEnvelope.lists.lists.Main[3].ambiguous, true);
+assert.deepEqual(
+    favoriteEnvelope.lists.lists.Main.slice(4).map((ref) => ref.legacyId),
+    [103, 999]
+);
 assert.equal(read("favoritesLists").extra, "keep");
 assert.deepEqual(read("cats").Custom, expected);
 assert.deepEqual(read("parentalArray"), expected);
@@ -178,7 +199,7 @@ assert.equal(
 );
 assert.equal(saved.get("foreign:favoritesArray"), "[100]");
 assert.equal(saved.get("epgTimers"), foreignTimers);
-const oldTimer = c.epgTimers[0].ti;
+const oldTimer = nextTimer - 1;
 writes.length = 0;
 load();
 assert(

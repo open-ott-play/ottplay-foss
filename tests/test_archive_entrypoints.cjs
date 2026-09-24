@@ -102,6 +102,15 @@ function fixture(pin = false) {
     vm.createContext(c);
     includeCore(c);
     vm.runInContext(code, c, { filename: sourcePath });
+    require("./helpers/guide-runtime-fixture.cjs").install(c);
+    c.getChannelEpg = (id, callback) => callback(id, [row]);
+    c.metadataText = (value) => String(value || "");
+    c.showPage = () => {};
+    c.infoBox = () => {};
+    c.epgList(0, 0, false);
+    timers[0].callback();
+    timers.length = 0;
+    calls.length = 0;
     c.__ottClassicPlayback.command({ channelId: 11, type: "live" });
     c.__ottClassicPlayback.command({ type: "playing" });
     return {
@@ -135,14 +144,8 @@ const mutations = {
     "channel revoked": (f) => {
         f.c.channels[11].rec = 0;
     },
-    "destination moved": (f) => {
-        f.c.cats.All.reverse();
-    },
     "explicit cancel": (f) => {
         f.c.__ottClassicPlayback.cancel();
-    },
-    "guide replaced": (f) => {
-        f.c.listEpgArray = [];
     },
     "new row": (f) => {
         f.c.listArray = [{ time: 999930 }];
@@ -150,11 +153,11 @@ const mutations = {
     "new selection": (f) => {
         f.c.selIndex = 1;
     },
+    "playing selection changed": (f) => {
+        f.c.__ottClassicPlayback.command({ channelId: 22, type: "live" });
+    },
     "programme expired": (f) => {
         f.advance(3600);
-    },
-    "row edited in place": (f) => {
-        f.c.listArray[0].time--;
     },
     "same-ID catalog replacement": (f) => {
         f.c.channels = { 11: { rec: 1 } };
@@ -166,6 +169,27 @@ const mutations = {
         f.c.__ottClassicPlayback.command({ type: "stop" });
     },
 };
+// Compatibility projections and row reordering cannot change the accepted identity.
+for (const mutate of [
+    (f) => f.c.cats.All.reverse(),
+    (f) => {
+        f.c.listEpgArray = [];
+    },
+    (f) => {
+        f.c.listArray[0].time--;
+    },
+]) {
+    const f = fixture(true);
+    f.c.selectEpg();
+    mutate(f);
+    f.prompts[0]();
+    assert.deepEqual(playbackCalls(f), [["archive", 999940]]);
+    assert.deepEqual(
+        f.calls.filter((row) => row[0] === "select"),
+        [["select", 0, f.c.cats.All.indexOf(11)]],
+        "Re-resolve the authorized channel after projection changes"
+    );
+}
 for (const [name, mutate] of Object.entries(mutations)) {
     const f = fixture(true);
     f.c.selectEpg();

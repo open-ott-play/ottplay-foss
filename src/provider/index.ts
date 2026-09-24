@@ -455,9 +455,6 @@ declare var cList: string[];
 declare var channels: Record<string, any>;
 declare var epg: any;
 declare var curList: string[];
-declare var epgCacheByChannel: Record<string, any>;
-declare var epgCacheChannelOrder: string[];
-declare var _crData: { catIndex: number; data: any[]; selIndex: number };
 declare var aAspects: Record<string, any>;
 declare var aAudios: Record<string, any>;
 declare var aZooms: Record<string, any>;
@@ -1172,7 +1169,7 @@ export function loadProv(providerId?: string): void {
                         getCurrentChannelEpg = epgCacheCapacity
                             ? getChannelEpgCached
                             : getChannelEpg;
-                    // Expose for processCurrentProgramQueue queue processing
+                    // Retained current-guide transport ABI; owned display requests use GuideService.
                     (window as any).getCachedChannelEpg = getCurrentChannelEpg;
                     loadChannels();
                 } else {
@@ -1225,6 +1222,8 @@ export function loadProv(providerId?: string): void {
  * Edge case: Stops any active playback before loading.
  */
 export function loadChannels(): void {
+    if ((window as any).__ottClassicScreenPort)
+        (window as any).__ottClassicScreenPort.invalidate();
     if ((window as any).__ottClassicPlayback)
         (window as any).__ottClassicPlayback.cancel();
     if ((window as any).__ottChannels) (window as any).__ottChannels.reset();
@@ -1265,7 +1264,6 @@ export function loadChannels(): void {
     medHistory = providerGetJson("medHistory", []);
     medFavorites = providerGetJson("medFavorites", []);
     mediaUrls = null;
-    _crData = { catIndex: -1, data: [], selIndex: 0 };
     catIndex = providerGetNum("catIndex", 0);
     aAspects = providerGetJson("aAspects", {});
     aAudios = providerGetJson("aAudios", {});

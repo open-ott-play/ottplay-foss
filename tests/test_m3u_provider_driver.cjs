@@ -243,6 +243,11 @@ test("late matching patches owned route/logo only, refreshes missing EPG and ret
     const f = fixture({ crossOrigin: false }),
         { driver } = load(f);
     const ids = f.host.cList;
+    f.host.__ottClassicGuide = {
+        invalidateChannel(id) {
+            f.events.push(["invalidate-guide", id]);
+        },
+    };
     f.host.curList = ids.slice();
     f.host.primaryIndex = 0;
     for (const id of ids)
@@ -259,7 +264,11 @@ test("late matching patches owned route/logo only, refreshes missing EPG and ret
             ids.map((id, i) => id + "~s~c" + i).join("\n") +
             "\n\t\ns~http://epg.ottp.eu.org/"
     );
-    assert.equal(f.host.channels[ids[1]].time_request, 0);
+    assert(
+        f.events.some(
+            (entry) => entry[0] === "invalidate-guide" && entry[1] === ids[1]
+        )
+    );
     assert(f.events.some((e) => e[0] === "refresh" && e[1] === ids[1]));
     assert.equal(f.host.channels[ids[0]].name, "Old programme");
     assert.equal(f.host.channels[ids[0]].time, 10);

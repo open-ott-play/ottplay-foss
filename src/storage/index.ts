@@ -298,6 +298,8 @@ export const storage: StorageAdapter = (() => {
     adapter.clear = function (): void {
         var playback = (window as any).__ottClassicPlayback;
         if (playback) playback.suspendPersistence();
+        var guide = (window as any).__ottClassicGuide;
+        if (guide) guide.invalidate(false);
         clear();
     };
     return adapter;
@@ -596,6 +598,7 @@ export function restoreLocalSettingsSnapshot(items: Record<string, any>): void {
         });
     w.stbSetItem("commandServerEnabled", "0");
     if (w.__ottClassicPlayback) w.__ottClassicPlayback.suspendPersistence();
+    if (w.__ottClassicGuide) w.__ottClassicGuide.invalidate(false);
     w.stbClearAllItems();
     for (var key in imported) {
         if (Object.prototype.hasOwnProperty.call(imported, key))

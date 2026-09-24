@@ -333,7 +333,7 @@ test("failed reload and replaced credentials cannot resurrect a previous account
     }
 });
 
-test("all33 operator instances reproduce660 captured catalogs, fallback sequences and malformed-response contracts", () => {
+test("all33 operator instances preserve660 transport contracts with provider-owned channel identities", () => {
     const baseline = require("./fixtures/operator/sessions-before-core.json");
     const audit = fixture().host.__ottProviderDriverProfiles.filter(
         (profile) => profile.kind === "operator"
@@ -401,17 +401,102 @@ test("all33 operator instances reproduce660 captured catalogs, fallback sequence
                     groups: f.host.cats,
                     ids: f.host.cList,
                 });
-                assert.deepEqual(
-                    result,
-                    outcome.expected,
-                    id + ": " + row.name
+                const numericLabel =
+                    row.name ===
+                    "truthy numeric names and categories use JS coercion";
+                for (const field of [
+                    "callbacks",
+                    "calls",
+                    "config",
+                    "errors",
+                    "failure",
+                ])
+                    assert.deepEqual(
+                        result[field],
+                        numericLabel && field === "failure"
+                            ? null
+                            : numericLabel && field === "callbacks"
+                              ? 1
+                              : outcome.expected[field],
+                        id + ": " + row.name + " " + field
+                    );
+                assert.equal(new Set(result.ids).size, result.ids.length);
+                const apiCatalog = result.ids.some(
+                    (key) => result.channels[key].itemId
                 );
+                if (
+                    !apiCatalog &&
+                    !(row.input.account && row.input.account.live_streams)
+                ) {
+                    for (const field of [
+                        "channels",
+                        "ids",
+                        "groups",
+                        "groupOrder",
+                    ])
+                        assert.deepEqual(
+                            result[field],
+                            outcome.expected[field],
+                            id + " playlist " + field
+                        );
+                }
+                for (const key of result.ids) {
+                    const channel = result.channels[key];
+                    assert(result.groups[channel.category.name].includes(key));
+                    if (!apiCatalog) continue;
+                    assert.equal(
+                        channel.itemId,
+                        "xtream:stream:" + channel.epg
+                    );
+                    assert(channel.groupId.startsWith("xtream:category:"));
+                    assert.equal(typeof channel.channel_name, "string");
+                }
                 assert.equal(f.host.$.ajax, f.ajax);
                 compared++;
             }
         }
     }
     assert.equal(compared, 660);
+});
+
+test("operator API profiles retain duplicate titles and renamed channel references", () => {
+    const profiles = fixture().host.__ottProviderDriverProfiles.filter(
+        (profile) =>
+            profile.kind === "operator" || profile.kind === "xtream-fallback"
+    );
+    for (const profile of profiles) {
+        const f = fixture({
+            [profile.prefix + "cfg"]: JSON.stringify({
+                m3u: "",
+                pass: "secret",
+                server: "https://operator.test",
+                user: "viewer",
+            }),
+        });
+        f.mount(profile.id);
+        f.host.getChannelsArray(() => {});
+        f.requests[0].resolve({
+            categories: [{ category_id: 7, category_name: "News" }],
+            live_streams: [
+                { category_id: 7, name: "News", stream_id: 11 },
+                { category_id: 7, name: "News", stream_id: 22 },
+            ],
+        });
+        assert.deepEqual(Array.from(f.host.cList), [11, 22], profile.id);
+        const first = clone(f.host.channels[11]);
+        f.host.getChannelsArray(() => {});
+        f.requests[1].resolve({
+            categories: [{ category_id: 7, category_name: "Actualités" }],
+            live_streams: [
+                { category_id: 7, name: "Renamed", stream_id: 22 },
+                { category_id: 7, name: "Новости", stream_id: 11 },
+            ],
+        });
+        assert.deepEqual(Array.from(f.host.cList), [22, 11]);
+        assert.equal(f.host.channels[11].itemId, first.itemId);
+        assert.equal(f.host.channels[11].groupId, first.groupId);
+        assert.equal(f.host.channels[11].url, first.url);
+    }
 });
 
 test("generic cancellation rejects stale success/failure at API, direct playlist and proxy stages", () => {

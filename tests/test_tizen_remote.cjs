@@ -45,7 +45,6 @@ let handlers =
     source("src/core/index.ts", ["stbEventToKeyCode"]) +
     source("src/keyhandler/index.ts", [
         "keyHandler",
-        "handleListKey",
         "handleMainKey",
         "toggleMainPlayback",
     ]) +
@@ -92,7 +91,6 @@ if (useBundle) {
     }
     for (const name of [
         "keyHandler",
-        "handleListKey",
         "handleMainKey",
         "toggleMainPlayback",
         "selectLang",
@@ -220,6 +218,7 @@ function fixture(code, nativeMode = "working") {
     }
     w.window = w;
     vm.createContext(w);
+    require("./helpers/screen-runtime.cjs")(w);
     vm.runInContext(handlers, w);
     if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     vm.runInContext(code, w);

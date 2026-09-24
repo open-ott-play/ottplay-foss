@@ -15,6 +15,7 @@ const CLASSIC_MODULES = [
     "build/utils/encoding.js",
     "build/utils/qrcode.js",
     "build/channels/types.js",
+    "build/channels/channel-references.js",
     "build/channels/favorites-lists.js",
     "build/channels/search.js",
     "build/provider/source-identity.js",
@@ -25,12 +26,29 @@ const CLASSIC_MODULES = [
     "build/playback/classic-archive.js",
     "build/channels/library.js",
     "build/channels/classic-library.js",
+    "build/media/library.js",
+    "build/media/journal.js",
+    "build/media/classic-adapter.js",
+    "build/guide/service.js",
+    "build/guide/reminders.js",
+    "build/guide/screen.js",
+    "build/guide/classic-service.js",
+    "build/guide/classic-screen.js",
+    "build/guide/classic-reminders.js",
     "build/channels/index.js",
     "build/debug/playback-debug.js",
     "build/core/auto-playback.js",
     "build/core/native-hls.js",
+    "build/device/adapter.js",
+    "build/device/media-backend.js",
+    "build/device/media-session.js",
+    "build/device/native-pip.js",
     "build/core/index.js",
     "build/swop/index.js",
+    "build/ui/screen-controller.js",
+    "build/ui/input-router.js",
+    "build/ui/classic-screen-port.js",
+    "build/ui/menu-registry.js",
     "build/ui/index.js",
     "build/keyhandler/index.js",
     "build/provider/runtime.js",
@@ -67,11 +85,37 @@ const CLASSIC_MODULES = [
 // legacy bare-global ABI. These modules publish their API as window properties
 // and execute immediately at their original position in CLASSIC_MODULES.
 const CLASSIC_PRIVATE_MODULES = Object.freeze({
+    "build/channels/channel-references.js": Object.freeze([
+        "window.__ottChannelReferences",
+    ]),
     "build/channels/classic-library.js": Object.freeze([
         "window.__ottChannels",
     ]),
     "build/channels/library.js": Object.freeze(["window.__ottChannelLibrary"]),
     "build/debug/playback-debug.js": Object.freeze(["window.__ottDebug"]),
+    "build/device/adapter.js": Object.freeze(["window.__ottDeviceAdapter"]),
+    "build/device/media-backend.js": Object.freeze([
+        "window.__ottMediaBackend",
+    ]),
+    "build/device/media-session.js": Object.freeze([
+        "window.__ottOsMediaSession",
+    ]),
+    "build/device/native-pip.js": Object.freeze(["window.__ottNativePip"]),
+    "build/guide/classic-reminders.js": Object.freeze([
+        "window.__ottClassicReminders",
+    ]),
+    "build/guide/classic-screen.js": Object.freeze([
+        "window.__ottClassicGuideScreen",
+    ]),
+    "build/guide/classic-service.js": Object.freeze([
+        "window.__ottClassicGuide",
+    ]),
+    "build/guide/reminders.js": Object.freeze(["window.__ottReminderService"]),
+    "build/guide/screen.js": Object.freeze(["window.__ottGuideScreen"]),
+    "build/guide/service.js": Object.freeze(["window.__ottGuideService"]),
+    "build/media/classic-adapter.js": Object.freeze(["window.__ottMedia"]),
+    "build/media/journal.js": Object.freeze(["window.__ottMediaJournal"]),
+    "build/media/library.js": Object.freeze(["window.__ottMediaLibrary"]),
     "build/playback/archive.js": Object.freeze(["window.__ottArchiveSession"]),
     "build/playback/classic-adapter.js": Object.freeze([
         "window.__ottClassicPlayback",
@@ -109,6 +153,15 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/provider/stalker-driver.js": Object.freeze([
         "window.__ottStalkerDriver",
+    ]),
+    "build/ui/classic-screen-port.js": Object.freeze([
+        "window.__ottClassicScreenPort",
+        "window.__ottScreens",
+    ]),
+    "build/ui/input-router.js": Object.freeze(["window.__ottInputRouter"]),
+    "build/ui/menu-registry.js": Object.freeze(["window.__ottMenuRegistry"]),
+    "build/ui/screen-controller.js": Object.freeze([
+        "window.__ottScreenController",
     ]),
 });
 const fs = require("node:fs");

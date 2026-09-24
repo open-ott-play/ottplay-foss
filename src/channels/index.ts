@@ -9,14 +9,7 @@ import {
  * Channel management — data structures, navigation, favorites, parental control.
  */
 
-import {
-    clearPlayTimeInterval,
-    videoPip as pipVideoElement,
-    playerMode,
-    stbIsPlaying,
-    stbPause,
-    video as videoElement,
-} from "../core/index";
+import { clearPlayTimeInterval, stbIsPlaying } from "../core/index";
 import { translate as _ } from "../localization";
 import { settings } from "../settings/index";
 import { providerSetItem, storage } from "../storage/index";
@@ -122,6 +115,7 @@ interface PortChannelIdMigration {
 /** Observe only hashes computed while this provider's channel list is loading. */
 export function beginPortChannelIdMigration(): PortChannelIdMigration {
     var w = window as any;
+    delete w.__ottLegacyChannelAliases;
     var state: PortChannelIdMigration = {
         get: w.providerGetItem,
         ids: {},
@@ -142,6 +136,7 @@ export function beginPortChannelIdMigration(): PortChannelIdMigration {
 /** Stop observing a departed provider, leaving its persisted data untouched. */
 export function cancelPortChannelIdMigration(): void {
     delete (window as any).__ottRecordPortHash;
+    delete (window as any).__ottLegacyChannelAliases;
 }
 
 /** Incremental migration: unknown IDs, existing channel IDs and ambiguous mappings stay intact. */
@@ -158,6 +153,28 @@ export function finishPortChannelIdMigration(
         typeof state.set !== "function"
     )
         return;
+    // Versioned importers consume original records and the observed hash chain.
+    // Keep this metadata readable only while the collecting source still owns it.
+    var aliases: Record<string, number | null> = Object.create(null);
+    Object.keys(state.ids).forEach(function (key) {
+        aliases[key] = state.ids[key];
+    });
+    var identity = function () {
+        return w.__ottSourceIdentity
+            ? w.__ottSourceIdentity.current(w)
+            : String(w.p_pref || "");
+    };
+    var aliasSource = identity();
+    Object.defineProperty(w, "__ottLegacyChannelAliases", {
+        configurable: true,
+        get: function () {
+            return w.providerGetItem === state.get &&
+                w.providerSetItem === state.set &&
+                aliasSource === identity()
+                ? aliases
+                : undefined;
+        },
+    });
     function owns(object: object, key: string): boolean {
         return Object.prototype.hasOwnProperty.call(object, key);
     }
@@ -189,8 +206,6 @@ export function finishPortChannelIdMigration(
         }
     }
     var keys = [
-        "favoritesArray",
-        "favoritesLists",
         "cats",
         "parentalArray",
         "prevArr",
@@ -208,8 +223,7 @@ export function finishPortChannelIdMigration(
             if (!raw) return;
             var value = JSON.parse(raw);
             var before = JSON.stringify(value);
-            if (key === "favoritesArray" || key === "parentalArray")
-                migrateArray(value);
+            if (key === "parentalArray") migrateArray(value);
             else if (key === "prevArr" || key === "epgTimers") {
                 if (Array.isArray(value))
                     value.forEach(function (entry) {
@@ -232,8 +246,8 @@ export function finishPortChannelIdMigration(
                                 migrateField(entry, "channelId");
                         });
                 }
-            } else if (key === "cats" || key === "favoritesLists") {
-                var lists = key === "cats" ? value : value && value.lists;
+            } else if (key === "cats") {
+                var lists = value;
                 if (lists && typeof lists === "object" && !Array.isArray(lists))
                     Object.keys(lists).forEach(function (name) {
                         migrateArray(lists[name]);
@@ -486,151 +500,22 @@ export let playType = 0,
 export let _prog100: any = null,
     _tmedia: any = null;
 export let epgCacheCapacity = 0;
-export let epgCacheByChannel: Record<number, EPGEntry[]> = {};
-export let epgCacheChannelOrder: number[] = [];
-let epgCacheFetchedAt: Record<number, number> = {};
-let epgCacheGeneration = 0;
-type EpgCallback = (chId: number, programs: EPGEntry[] | null) => void;
-let epgPending: Record<
-    number,
-    {
-        generation: number;
-        channel: Channel | undefined;
-        callbacks: EpgCallback[];
-    }
-> = {};
 
 /** Clear full schedules and reject responses from the previous provider/refresh. */
 export function invalidateEpgCache(refetchPending = false): void {
-    var waiting = epgPending;
     var w = window as any;
-    var refreshView =
-        refetchPending &&
-        w.isListVisible &&
-        (w.listKeyHandlerFn === epgKeyHandler ||
-            w.listKeyHandler === epgKeyHandler);
-    epgCacheGeneration++;
-    epgPending = {};
-    epgCacheFetchedAt = {};
-    for (var key in epg) delete epg[key];
-    for (var key in epgCacheByChannel) delete epgCacheByChannel[key];
-    epgCacheChannelOrder.length = 0;
-    currentProgramRequestQueue.length = 0;
-    // Backend warm-up invalidates schedules, not the menu's selected channel.
-    // Its in-flight callback renders rows but does not reassign epg_ch_id.
-    if (!refetchPending) epg_ch_id = null;
+    w.__ottClassicGuide.invalidate(refetchPending);
     curEpgData = null;
-    for (var key in channels) {
-        var ch = channels[key];
-        if (!ch) continue;
-        ch.time_request = 0;
-        ch.time_to = 0;
-        ch.nextpr = null;
-    }
-    // Backend warm-up can race an EPG menu request. Keep its consumer alive
-    // by issuing a fresh request; provider reloads deliberately drop consumers.
-    if (refetchPending) {
-        for (var key in waiting) {
-            var request = waiting[key];
-            if (request.channel !== channels[key]) continue;
-            request.callbacks.forEach(function (notify) {
-                getChannelEpgCached(Number(key), notify);
-            });
-        }
-        // A completed visible menu has no pending consumer to reissue.
-        // Reopen its current view so fresh rows and archive/timer actions agree.
-        if (refreshView) {
-            var channelIndex = w.listChannel & 65535;
-            if (epgListMode === 0)
-                recordsList(w.listCatIndex, channelIndex, w.epgreturn);
-            else if (epgListMode === 2)
-                epgListAlpha(w.listCatIndex, channelIndex, w.epgreturn);
-            else epgList(w.listCatIndex, channelIndex, w.epgreturn);
-        }
-    }
+    if (!refetchPending) epg_ch_id = null;
+    else if (w.__ottClassicGuideScreen) w.__ottClassicGuideScreen.refresh();
 }
 
-function epgCacheLimit(): number {
-    var configured =
-        typeof window !== "undefined" &&
-        typeof (window as any).epgCacheCapacity !== "undefined"
-            ? Number((window as any).epgCacheCapacity)
-            : epgCacheCapacity;
-    return (window as any).OttPlayCore.legacyGuideCacheCapacity(configured);
-}
-
-function readEpgCache(channelId: number): EPGEntry[] | null {
-    var data = epg[channelId];
-    var core = (window as any).OttPlayCore;
-    var state = core.legacyGuideCacheRead(
-        data,
-        epgCacheFetchedAt[channelId],
-        epgCacheLimit(),
-        function () {
-            return Date.now();
-        }
-    );
-    if (state === 0) return null;
-    if (state < 0) {
-        delete epg[channelId];
-        delete epgCacheByChannel[channelId];
-        delete epgCacheFetchedAt[channelId];
-        core.legacyGuideCacheOrder(epgCacheChannelOrder, channelId, null, true);
-        return null;
-    }
-    core.legacyGuideCacheOrder(epgCacheChannelOrder, channelId, null, false);
-    return data;
-}
-
-/** Only complete provider/native responses belong in the full-schedule cache. */
-function cacheFetchedEpg(channelId: number, data: EPGEntry[] | null): void {
-    var limit = epgCacheLimit();
-    if (!limit || !data || !data.length) return;
-    epg[channelId] = data;
-    epgCacheByChannel[channelId] = data;
-    epgCacheFetchedAt[channelId] = Date.now();
-    (window as any).OttPlayCore.legacyGuideCacheOrder(
-        epgCacheChannelOrder,
-        channelId,
-        limit,
-        false
-    ).forEach(function (id: number) {
-        delete epg[id];
-        delete epgCacheByChannel[id];
-        delete epgCacheFetchedAt[id];
-    });
-}
-export let currentProgramRequestQueue: Array<{
-    ch_id: number;
-    callback: (chId: number) => void;
-}> = [];
 export let epgListMode = 0,
     epgreturn = false,
     listChannel = 0,
     listEpgArray: EPGEntry[] = [],
     epg_ch_id: any = null;
 
-/**
- * Process the EPG request queue. Pops the next entry and fetches EPG data
- * through the shared cache, then continues until the queue is empty.
- * Preserves the legacy EPG request queue behavior.
- */
-export function processCurrentProgramQueue(): void {
-    if (currentProgramRequestQueue.length === 0) return;
-    var entry = currentProgramRequestQueue.shift();
-    var chId = entry!.ch_id;
-    // Always use getChannelEpgCached (same path as EPG menu). With epgCacheCapacity=0,
-    // gold wires getCachedChannelEpg → getChannelEpg; Mode B must share the
-    // Cached path so list/footer see programmes already loaded for the browser.
-    // (The sync helper getCachedChannelEpg(id) ignores callbacks — never use it.)
-    getChannelEpgCached(chId, function (id: any, epgData: EPGEntry[] | null) {
-        // Legacy: setCurProg(e, t, r.callback) — callback receives channel id.
-        setCurProg(id, epgData, entry!.callback);
-        // Defer next queue item so a sync getChannelEpg(null) cannot nest forever
-        // before setCurProg has a chance to set time_request.
-        setTimeout(processCurrentProgramQueue, 0);
-    });
-}
 export let curEpgData: EPGEntry[] | null = null;
 export let epgArray: EPGEntry[] = [],
     curProg = -1;
@@ -1274,9 +1159,17 @@ export function epgArchiveHours(ch: any): number {
 /** Apply tvg-shift (ch.ts seconds) to EPG entries in-place — Mode A parity. */
 export function applyChannelTvgShift(
     ch: any,
-    epgData: EPGEntry[] | null
+    rows: EPGEntry[] | null
 ): EPGEntry[] | null {
-    return (window as any).OttPlayCore.legacyGuideShift(epgData, ch && ch.ts);
+    var shift = Number(ch && ch.ts) || 0;
+    if (!Array.isArray(rows)) return null;
+    return rows.map(function (row) {
+        return {
+            ...row,
+            time: Number(row.time) + shift,
+            time_to: Number(row.time_to) + shift,
+        };
+    });
 }
 
 /** Only the built-in M3U companion uses native XMLTV. Other providers own EPG. */
@@ -1308,157 +1201,155 @@ export function channelXmltvUrls(ch: Channel | undefined): string[] {
     });
 }
 
-export function getChannelEpgCached(
+/** Provider/native transport port. Ownership and caching live in GuideService. */
+export function fetchChannelGuide(
     channelId: number,
-    callback: (chId: number, programs: EPGEntry[] | null) => void
-): void {
-    var cached = readEpgCache(channelId);
-    if (cached) {
-        callback(channelId, cached);
-        return;
+    callback: (id: number, rows: EPGEntry[] | null) => void
+): () => void {
+    var active = true,
+        cancel: any = null;
+    function finish(id: number, rows: EPGEntry[] | null): void {
+        if (!active) return;
+        active = false;
+        callback(id, rows);
     }
-    var existing = epgPending[channelId];
-    if (existing && existing.channel === channels[channelId]) {
-        existing.callbacks.push(callback);
-        return;
-    }
-    var request = {
-        callbacks: [callback],
-        channel: channels[channelId],
-        generation: epgCacheGeneration,
-    };
-    epgPending[channelId] = request;
-    function finish(_id: number, programs: EPGEntry[] | null): void {
-        // A late response must not populate the new provider or trigger its UI.
-        if (
-            epgPending[channelId] !== request ||
-            request.generation !== epgCacheGeneration ||
-            request.channel !== channels[channelId]
-        )
-            return;
-        delete epgPending[channelId];
-        var data = Array.isArray(programs) && programs.length ? programs : null;
-        cacheFetchedEpg(channelId, data);
-        request.callbacks.forEach(function (notify) {
-            notify(channelId, data);
-        });
-    }
-    try {
-        // Mode B (Capacitor mobile): use native XMLTV EPG plugin.
-        if (
-            typeof (window as any).Capacitor !== "undefined" &&
-            usesNativeXmltv(channels[channelId])
-        ) {
-            var ch = channels[channelId];
-            // Native XMLTV resolves raw tvg-id/name; epg_url is a companion hash.
-            var hash = ch && ch.epg != null ? String(ch.epg) : "";
-            var timeShiftHours = epgTimezoneHours(ch);
-            var archiveHours = epgArchiveHours(ch);
-            var xmltvUrls = channelXmltvUrls(ch);
-            (window as any).Capacitor.Plugins.MobileXmltvEpg.getEpg({
-                archive_hours: archiveHours,
-                ch: ch?.channel_name || ch?.name || "",
-                channel_id: String(channelId),
-                hash: hash,
-                time_shift_hours: timeShiftHours,
-                tvg_name: (ch && ch.tn) || "",
-                xmltv_url: xmltvUrls[0] || "",
-                xmltv_urls: xmltvUrls,
-            })
-                .then(function (result: any) {
-                    // Accept both raw EPG array and {epg_data: [...]} (same as Tauri).
-                    var epgData = Array.isArray(result)
-                        ? result
-                        : result && Array.isArray(result.epg_data)
-                          ? result.epg_data
-                          : null;
-                    epgData = applyChannelTvgShift(ch, epgData);
-                    // Never cache [] — empty is truthy in JS and would permanently
-                    // skip re-fetch after a cold-XMLTV miss (Mode B warm race).
-                    if (epgData && epgData.length > 0) {
-                        finish(channelId, epgData);
-                    } else {
-                        finish(channelId, null);
-                    }
+    function dispatch(): void {
+        try {
+            // Mode B (Capacitor mobile): use native XMLTV EPG plugin.
+            if (
+                typeof (window as any).Capacitor !== "undefined" &&
+                usesNativeXmltv(channels[channelId])
+            ) {
+                var ch = channels[channelId];
+                // Native XMLTV resolves raw tvg-id/name; epg_url is a companion hash.
+                var hash = ch && ch.epg != null ? String(ch.epg) : "";
+                var timeShiftHours = epgTimezoneHours(ch);
+                var archiveHours = epgArchiveHours(ch);
+                var xmltvUrls = channelXmltvUrls(ch);
+                (window as any).Capacitor.Plugins.MobileXmltvEpg.getEpg({
+                    archive_hours: archiveHours,
+                    ch: ch?.channel_name || ch?.name || "",
+                    channel_id: String(channelId),
+                    hash: hash,
+                    time_shift_hours: timeShiftHours,
+                    tvg_name: (ch && ch.tn) || "",
+                    xmltv_url: xmltvUrls[0] || "",
+                    xmltv_urls: xmltvUrls,
                 })
-                .catch(function (_err: any) {
-                    finish(channelId, null);
-                });
-            return;
-        }
-        // Mode B (Tauri desktop): in-process Rust EPG via invoke() (not HTTP).
-        // Pass playlist channel name + epg_url hash so resolve_xmltv_id can match
-        // (numeric channelId alone almost never equals an XMLTV id).
-        if (
-            typeof (window as any).__TAURI__ !== "undefined" &&
-            usesNativeXmltv(channels[channelId])
-        ) {
-            var ch = channels[channelId];
-            var channelName = (ch && (ch.channel_name || ch.name)) || "";
-            var hash =
-                ch && (ch as any).epg_url != null
-                    ? String((ch as any).epg_url)
-                    : "";
-            var timeShiftHours = epgTimezoneHours(ch);
-            var archiveHours = epgArchiveHours(ch);
-            var coreApi = (window as any).__TAURI__.core;
-            var invokeFn =
-                coreApi && typeof coreApi.invoke === "function"
-                    ? function (cmd: string, args: any) {
-                          return coreApi.invoke(cmd, args);
-                      }
-                    : typeof (window as any).__TAURI__.invoke === "function"
-                      ? function (cmd: string, args: any) {
-                            return (window as any).__TAURI__.invoke(cmd, args);
+                    .then(function (result: any) {
+                        // Accept both raw EPG array and {epg_data: [...]} (same as Tauri).
+                        var epgData = Array.isArray(result)
+                            ? result
+                            : result && Array.isArray(result.epg_data)
+                              ? result.epg_data
+                              : null;
+                        epgData = applyChannelTvgShift(ch, epgData);
+                        // Never cache [] — empty is truthy in JS and would permanently
+                        // skip re-fetch after a cold-XMLTV miss (Mode B warm race).
+                        if (epgData && epgData.length > 0) {
+                            finish(channelId, epgData);
+                        } else {
+                            finish(channelId, null);
                         }
-                      : null;
-            if (!invokeFn) {
-                finish(channelId, null);
+                    })
+                    .catch(function (_err: any) {
+                        finish(channelId, null);
+                    });
                 return;
             }
-            // Tauri 2 command args are camelCase (channel_id → channelId).
-            // timeShiftHours = timezone only (0 → Rust uses time_shift_by_epg).
-            // archiveHours = configured catchup/history depth (channel.rec).
-            invokeFn("get_epg", {
-                archiveHours: archiveHours,
-                ch: channelName,
-                channelId: String(channelId),
-                hash: hash,
-                timeShiftHours: timeShiftHours,
-                tvgId: ch && ch.epg != null ? String(ch.epg) : "",
-                tvgName: (ch && ch.tn) || "",
-                xmltvUrls: channelXmltvUrls(ch),
-            })
-                .then(function (result: any) {
-                    // Accept both raw EPG array and {epg_data: [...]} wrapper.
-                    var epgData = Array.isArray(result)
-                        ? result
-                        : result && Array.isArray(result.epg_data)
-                          ? result.epg_data
+            // Mode B (Tauri desktop): in-process Rust EPG via invoke() (not HTTP).
+            // Pass playlist channel name + epg_url hash so resolve_xmltv_id can match
+            // (numeric channelId alone almost never equals an XMLTV id).
+            if (
+                typeof (window as any).__TAURI__ !== "undefined" &&
+                usesNativeXmltv(channels[channelId])
+            ) {
+                var ch = channels[channelId];
+                var channelName = (ch && (ch.channel_name || ch.name)) || "";
+                var hash =
+                    ch && (ch as any).epg_url != null
+                        ? String((ch as any).epg_url)
+                        : "";
+                var timeShiftHours = epgTimezoneHours(ch);
+                var archiveHours = epgArchiveHours(ch);
+                var coreApi = (window as any).__TAURI__.core;
+                var invokeFn =
+                    coreApi && typeof coreApi.invoke === "function"
+                        ? function (cmd: string, args: any) {
+                              return coreApi.invoke(cmd, args);
+                          }
+                        : typeof (window as any).__TAURI__.invoke === "function"
+                          ? function (cmd: string, args: any) {
+                                return (window as any).__TAURI__.invoke(
+                                    cmd,
+                                    args
+                                );
+                            }
                           : null;
-                    epgData = applyChannelTvgShift(ch, epgData);
-                    // Never cache [] — see Capacitor branch (cold XMLTV miss).
-                    if (epgData && epgData.length > 0) {
-                        finish(channelId, epgData);
-                    } else {
-                        finish(channelId, null);
-                    }
-                })
-                .catch(function (_err: any) {
+                if (!invokeFn) {
                     finish(channelId, null);
-                });
-            return;
-        }
-        // Fall through to provider fetch (Mode A / browser / STB)
-        var w = window as any;
-        if (typeof w.getChannelEpg === "function") {
-            w.getChannelEpg(channelId, finish);
-        } else {
+                    return;
+                }
+                // Tauri 2 command args are camelCase (channel_id → channelId).
+                // timeShiftHours = timezone only (0 → Rust uses time_shift_by_epg).
+                // archiveHours = configured catchup/history depth (channel.rec).
+                invokeFn("get_epg", {
+                    archiveHours: archiveHours,
+                    ch: channelName,
+                    channelId: String(channelId),
+                    hash: hash,
+                    timeShiftHours: timeShiftHours,
+                    tvgId: ch && ch.epg != null ? String(ch.epg) : "",
+                    tvgName: (ch && ch.tn) || "",
+                    xmltvUrls: channelXmltvUrls(ch),
+                })
+                    .then(function (result: any) {
+                        // Accept both raw EPG array and {epg_data: [...]} wrapper.
+                        var epgData = Array.isArray(result)
+                            ? result
+                            : result && Array.isArray(result.epg_data)
+                              ? result.epg_data
+                              : null;
+                        epgData = applyChannelTvgShift(ch, epgData);
+                        // Never cache [] — see Capacitor branch (cold XMLTV miss).
+                        if (epgData && epgData.length > 0) {
+                            finish(channelId, epgData);
+                        } else {
+                            finish(channelId, null);
+                        }
+                    })
+                    .catch(function (_err: any) {
+                        finish(channelId, null);
+                    });
+                return;
+            }
+            // Fall through to provider fetch (Mode A / browser / STB)
+            var w = window as any;
+            if (typeof w.getChannelEpg === "function") {
+                var result = w.getChannelEpg(channelId, finish);
+                if (typeof result === "function") cancel = result;
+            } else {
+                finish(channelId, null);
+            }
+        } catch (_err) {
             finish(channelId, null);
         }
-    } catch (_err) {
-        finish(channelId, null);
     }
+    dispatch();
+    return function () {
+        active = false;
+        if (cancel) {
+            var stop = cancel;
+            cancel = null;
+            stop();
+        }
+    };
+}
+export function getChannelEpgCached(
+    channelId: number,
+    callback: (id: number, rows: EPGEntry[] | null) => void
+): () => void {
+    return (window as any).__ottClassicGuide.request(channelId, callback);
 }
 
 /**
@@ -1469,18 +1360,18 @@ export function getChannelEpgCached(
  * @returns The EPGEntry[] or null if not cached.
  */
 export function getCachedChannelEpg(channelId: number): EPGEntry[] | null {
-    return readEpgCache(channelId);
+    return (window as any).__ottClassicGuide.peek(channelId);
 }
 
 /**
- * Retrieve EPG data from the secondary EPG cache (`epgCacheByChannel`).
- * This is a separate cache from `epg` (used for older fetched data).
+ * Read a detached schedule from the shared GuideService cache.
+ * The historical secondary-cache entrypoint uses the same owner.
  *
  * @param channelId - Channel ID.
  * @returns The EPGEntry[] or null.
  */
 export function getEpgFromCache(channelId: number): EPGEntry[] | null {
-    return readEpgCache(channelId);
+    return (window as any).__ottClassicGuide.peek(channelId);
 }
 
 /**
@@ -1493,51 +1384,9 @@ export function getEpgFromCache(channelId: number): EPGEntry[] | null {
  */
 export function getCurProgData(
     channelId: number,
-    callback: (chId: number) => void
+    callback: (id: number) => void
 ): boolean {
-    // Legacy stbPlayer.js getCurProgData — uses channels[], nextpr advance, then queue.
-    // Do NOT sync-invoke updateChannelInfo from a cache hit: that re-enters this
-    // function on the same stack when setCurProg cannot stick time_to / time_request.
-    var ch = (window as any).channels
-        ? (window as any).channels[channelId]
-        : window.channels
-          ? window.channels[channelId]
-          : undefined;
-    if (!ch) return false;
-    var now = Date.now() / 1000;
-    if (ch.time_to && ch.time_to >= now) return true;
-    if (ch.time_request && ch.time_request > now) {
-        // Miss lock: re-evaluate cached programmes against wall clock so a
-        // prior "no current" (wrong timezone / programme gap) does not keep
-        // list/footer blank for an hour while the EPG menu still has data.
-        var cachedLock = readEpgCache(channelId);
-        if (cachedLock && cachedLock.length) {
-            var refreshWithoutCallback =
-                typeof (window as any).noop === "function"
-                    ? (window as any).noop
-                    : function () {};
-            setCurProg(channelId, cachedLock, refreshWithoutCallback);
-            if (ch.time_to && ch.time_to >= now) return true;
-        }
-        return false;
-    }
-    var found = false;
-    if (ch.nextpr) {
-        var noop =
-            typeof (window as any).noop === "function"
-                ? (window as any).noop
-                : function () {};
-        setCurProg(channelId, ch.nextpr, noop);
-        ch.time_request = 0;
-    }
-    if (ch.time_to && ch.time_to >= now) found = true;
-    currentProgramRequestQueue.push({ callback: callback, ch_id: channelId });
-    // Defer queue drain past showPage's innerHTML. Sync cache hits used to
-    // call updateChannelListRow before #pn* nodes existed, so only the playing
-    // channel (time_to already set → baked into row HTML) showed EPG.
-    if (currentProgramRequestQueue.length < 2)
-        setTimeout(processCurrentProgramQueue, 0);
-    return found;
+    return (window as any).__ottClassicGuide.current(channelId, callback);
 }
 
 /**
@@ -1552,53 +1401,16 @@ export function getCurProgData(
  */
 export function setCurProg(
     channelId: number,
-    epgData: EPGEntry[] | null,
-    callback?: ((chId: number) => void) | (() => void)
+    rows: EPGEntry[] | null,
+    callback?: ((id: number) => void) | (() => void)
 ): void {
-    // Legacy always updates channels[id] even when epgData is null/empty, and sets
-    // time_request=now+3600 on miss so updateChannelInfo → getCurProgData cannot
-    // re-queue forever (sync getChannelEpg(null) path).
-    var safeChannelId = Number(channelId);
-    if (!Number.isFinite(safeChannelId) || !Number.isInteger(safeChannelId))
+    if (
+        !isFinite(Number(channelId)) ||
+        Math.floor(Number(channelId)) !== Number(channelId)
+    )
         return;
-    var hasData = Array.isArray(epgData) && epgData.length > 0;
-    var nextCount =
-        typeof (window as any).sNextCount === "number"
-            ? (window as any).sNextCount
-            : 0;
-    var selection = (window as any).OttPlayCore.legacyGuideSelection(
-        hasData ? epgData : [],
-        Date.now() / 1000,
-        nextCount
-    );
-    var ch = (window as any).channels
-        ? (window as any).channels[safeChannelId]
-        : window.channels
-          ? window.channels[safeChannelId]
-          : undefined;
-    if (ch) {
-        if (!selection.current) {
-            ch.name = "";
-            ch.time = 0;
-            ch.time_to = 0;
-            ch.descr = "";
-            ch.nextpr = null;
-            ch.time_request = selection.retryAt;
-            if (hasData) ch.outdated = true;
-        } else {
-            var cur = selection.current;
-            ch.name = cur.name;
-            ch.time = cur.time;
-            ch.time_to = cur.time_to;
-            ch.descr = cur.descr || "";
-            ch.time_request = 0;
-            if (cur.icon !== undefined) ch.icon = cur.icon;
-            ch.nextpr = selection.following;
-            if (ch.nextpr.length === 0) ch.nextpr = null;
-            if (typeof ch.outdated !== "undefined") delete ch.outdated;
-        }
-    }
-    if (callback) (callback as (chId: number) => void)(safeChannelId);
+    (window as any).__ottClassicGuide.publish(Number(channelId), rows);
+    if (callback) callback(Number(channelId));
 }
 
 /**
@@ -1759,7 +1571,15 @@ export function itemEPG(item: EPGEntry, index: number): string {
         w.listArray[w.selIndex] == w.curList[w.primaryIndex]
             ? w.playType + w.playTime
             : Math.floor(Date.now() / 1000);
-    var isCurrent = item.time <= now && item.time_to > now;
+    var selected = w.OttPlayCore.guideScheduleSelection(
+        (listEpgArray || []).map(function (row: any) {
+            return { end: row.time_to, row: row, start: row.time };
+        }),
+        now,
+        0
+    ).current;
+    var isCurrent =
+        !!selected && selected.row.programmeId === (item as any).programmeId;
 
     if (isCurrent) {
         name =
@@ -1813,144 +1633,88 @@ export function itemEPG(item: EPGEntry, index: number): string {
  */
 export function loadEpgListData(
     mode: number,
-    catIdx: number,
-    chIdx: number,
-    epgReturn: any,
-    callback: (chId: any) => void
+    category: number,
+    index: number,
+    returnToList: any,
+    callback: (id: any) => void
 ): void {
     var w = window as any;
-    // Preserve the legacy category-selection lookup: the cache receives the
-    // internal channel ID from the selected category, not its provider ch_id.
-    epgListMode = mode;
-    w.epgListMode = mode;
-    epgreturn = epgReturn;
-    w.epgreturn = epgReturn;
-    w.listCatIndex = catIdx;
-    w.listChannel = chIdx;
-
-    var catList =
-        cats[catsArray[catIdx]] || w.cats[w.catsArray[catIdx]] || curList || [];
-    var a = catList[chIdx];
-    if (mode === 0 && !(channels[a] && channels[a].rec)) return;
-    if (epg_ch_id && epg_ch_id == a && curEpgData !== null) {
-        callback(a);
-        return;
-    }
-    epg_ch_id = a;
-    w.epg_ch_id = a;
-
-    if (typeof w.getChannelEpgCached !== "function") {
-        epgListMode = 0;
-        return;
-    }
-    if (mode) {
-        $("#listPopUp")
-            .html(
-                '<div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div>'
-            )
-            .show();
-    }
-    w.getChannelEpgCached(a, function (id: any, data: EPGEntry[]) {
-        // Legacy does not clear epgListMode here — it is the list mode
-        // (by-time / alpha / records) used by renderEpgFooter + RED / setEpgTimer.
-        if (!data) {
-            epgListMode = 0;
-            curEpgData = null;
-            $("#listPopUp").hide();
-            w.listChannel |= 65536;
-            if (typeof w.infoBox === "function")
-                w.infoBox(w._("Channel has no EPG"));
-            return;
+    w.__ottClassicGuideScreen.open(
+        mode,
+        category,
+        index,
+        !!returnToList,
+        undefined,
+        function () {
+            if (callback) callback(w.epg_ch_id);
         }
-        curEpgData = data;
-        if (callback) callback(id);
-        if (typeof (w as any).setCurProg === "function")
-            (w as any).setCurProg(id, data, null);
-    });
+    );
 }
 
-/**
- * Check whether the currently selected channel has no EPG (empty guard).
- * Mirrors stbPlayer.js:6559-6565.
- *
- * @param catIdx - Current category index (`listCatIndex`).
- * @param chIdx  - Current channel index within the category (`listChannel`).
- * @returns `true` if the channel has no EPG (and an infoBox was shown), `false` otherwise.
- */
-export function showMissingEpgNotice(catIdx: number, chIdx?: number): boolean {
-    var w = window as any;
-    if (
-        (w.listChannel & 65536) === 65536 &&
-        (w.listChannel & 65535) === chIdx &&
-        w.listCatIndex === catIdx
-    ) {
-        if (typeof w.infoBox === "function")
-            w.infoBox(w._("Channel has no EPG"));
-        return true;
-    }
-    return false;
+/** Retained renderer: model filtering, selection and lifetimes belong to GuideScreen. */
+export function renderGuideView(
+    mode: number,
+    channelId: number,
+    model: any,
+    returnToList: boolean,
+    position: [number, number]
+): void {
+    var w = window as any,
+        codec = w.__ottClassicGuide,
+        ch = (w.channels || {})[channelId] || {};
+    epgListMode = w.epgListMode = mode;
+    epgreturn = w.epgreturn = returnToList;
+    epg_ch_id = w.epg_ch_id = channelId;
+    w.listCatIndex = position[0];
+    w.listChannel = position[1];
+    curEpgData = w.curEpgData = codec.encodeRows(model.schedule);
+    listEpgArray = w.listEpgArray = curEpgData || [];
+    var rows = codec.encodeRows(model.rows) || [];
+    w.listArray = w.listDataArray = rows;
+    w.selIndex = Math.max(
+        0,
+        rows.findIndex(function (row: any) {
+            return row.programmeId === model.selectedId;
+        })
+    );
+    w.getListItem = w.getListItemFn =
+        mode === 0
+            ? function (row: any) {
+                  return "&nbsp;&nbsp;" + metadataText(row.name);
+              }
+            : itemEPG;
+    w.detailListAction = w.detailListActionFn = function () {
+        detailEPG(channelId);
+    };
+    w.listKeyHandler = w.listKeyHandlerFn = epgKeyHandler;
+    var caption = document.getElementById("listCaption");
+    if (caption)
+        caption.innerHTML = metadataText(
+            w._(
+                mode === 0 ? "Archive. Channel: " : "EPG and archive. Channel: "
+            ) + (ch.channel_name || "")
+        );
+    renderEpgFooter();
+    $("#listPopUp").hide();
+    if (!rows.length && w.infoBox) w.infoBox(w._("Channel has no EPG"));
+    if (w.showPage) w.showPage();
+}
+export function publishGuideReminders(rows: any[]): void {
+    epgTimers = rows;
+    (window as any).epgTimers = rows;
 }
 
-export function epgList(catIdx: number, chIdx: number, force: boolean): void {
-    var w = window as any;
-    epgreturn = force || false;
-    w.epgreturn = epgreturn;
-
-    if (showMissingEpgNotice(catIdx, chIdx)) return;
-
-    function onDataReady(channelId: any) {
-        var epgData: EPGEntry[] = [];
-        var ch = (channels[channelId] || {}) as Channel;
-        if (curEpgData && curEpgData.length) {
-            var now = Math.floor(Date.now() / 1000);
-            epgData = curEpgData
-                .filter(function (e) {
-                    return ch.rec
-                        ? e.time > now - ch.rec * 3600
-                        : e.time_to > now - 7200;
-                })
-                .sort(function (a, b) {
-                    return a.time - b.time;
-                });
-        }
-
-        var nowTs =
-            w.playType > 0 &&
-            channelId == (w.curList && w.curList[w.primaryIndex])
-                ? w.playType + w.playTime
-                : Math.floor(Date.now() / 1000);
-        w.selIndex = epgData.findIndex(function (e) {
-            return e.time_to >= nowTs && e.time <= nowTs;
-        });
-        if (w.selIndex === -1) w.selIndex = 0;
-
-        // listDataArray must be replaced too — showPage prefers it over
-        // listArray, and popupList leaves Menu rows there.
-        w.listArray = epgData;
-        w.listDataArray = epgData;
-        listEpgArray = epgData;
-        w.getListItem = itemEPG;
-        w.getListItemFn = itemEPG;
-        w.detailListAction = function () {
-            if (typeof window.detailEPG === "function")
-                window.detailEPG(channelId);
-        };
-        w.detailListActionFn = w.detailListAction;
-        w.listKeyHandler = epgKeyHandler;
-        w.listKeyHandlerFn = epgKeyHandler;
-
-        var captionEl = document.getElementById("listCaption");
-        if (captionEl)
-            captionEl.innerHTML = metadataText(
-                w._("EPG and archive. Channel: ") + (ch.channel_name || "")
-            );
-
-        if (typeof renderEpgFooter === "function") renderEpgFooter();
-        $("#listPopUp").hide();
-        if (typeof w.showPage === "function") w.showPage();
-    }
-
-    loadEpgListData(1, catIdx, chIdx, force || false, onDataReady);
+export function epgList(
+    category: number,
+    index: number,
+    returnToList: boolean
+): void {
+    (window as any).__ottClassicGuideScreen.open(
+        1,
+        category,
+        index,
+        !!returnToList
+    );
 }
 
 /**
@@ -1966,55 +1730,7 @@ export function epgList(catIdx: number, chIdx: number, force: boolean): void {
  * - Sets `window.epgArray`.
  */
 export function selectEpg(): void {
-    var w = window as any;
-    var channelId = epg_ch_id;
-    var ch: Channel = channels[channelId] || ({} as Channel);
-    var selectedList = w.listArray;
-    var selectedIndex = w.selIndex;
-    var item = selectedList[selectedIndex];
-    if (!item) return;
-
-    if (!ch.rec || item.time > Date.now() / 1000) {
-        if (typeof w.showProgramInfo === "function")
-            w.showProgramInfo(item.name);
-        return;
-    }
-
-    var category = w.listCatIndex;
-    var index = w.listChannel;
-    var schedule = listEpgArray;
-    var start = item.time;
-    // PIN completion belongs to this choice, not whichever row is visible later.
-    var accept = w.__ottClassicPlayback.guard(function (): void {
-        if (
-            epg_ch_id !== channelId ||
-            channels[channelId] !== ch ||
-            w.listArray !== selectedList ||
-            w.selIndex !== selectedIndex ||
-            selectedList[selectedIndex] !== item ||
-            item.time !== start ||
-            listEpgArray !== schedule ||
-            w.listCatIndex !== category ||
-            w.listChannel !== index ||
-            String(
-                ((w.cats || {})[(w.catsArray || [])[category]] || [])[index]
-            ) !== String(channelId) ||
-            !(Number(ch.rec) > 0) ||
-            start > Date.now() / 1000 ||
-            start <= Date.now() / 1000 - Number(ch.rec) * 3600
-        )
-            return;
-        if (typeof w.closeList === "function") w.closeList();
-        if (typeof setCurrent === "function") setCurrent(category, index, true);
-        window.epgArray = schedule;
-        if (typeof playArchive === "function") playArchive(start);
-    });
-    if (
-        typeof ifParentalAccessChId === "function" &&
-        ifParentalAccessChId(channelId, accept)
-    )
-        return;
-    accept();
+    (window as any).__ottClassicGuideScreen.select();
 }
 
 /**
@@ -2296,99 +2012,7 @@ export function renderEpgHTML(epgData: EPGEntry[]): string {
  * Stores the timeout ID on `timer.ti`.
  */
 export function startEpgTimer(timer: any): void {
-    var w = window as any;
-    if (!timer || typeof timer !== "object") return;
-    clearTimeout(timer.ti);
-    clearTimeout(timer.ri);
-    delete timer.ti;
-    delete timer.ri;
-    var channel = Object.prototype.hasOwnProperty.call(channels, timer.ci)
-        ? channels[timer.ci]
-        : null;
-    if (!channel || !isFinite(+timer.t)) return;
-    var delay = timer.t * 1000 - Date.now();
-    if (delay < 0) delay = 0;
-
-    // A provider reload replaces channel objects. A timer reload/removal clears
-    // its handle, also invalidating an already open confirmation dialog.
-    var timerId: ReturnType<typeof setTimeout>;
-    function isCurrent(): boolean {
-        return timer.ti === timerId && channels[timer.ci] === channel;
-    }
-    function currentPosition(): [number, number] | null {
-        var category = cats[catsArray[timer.c]];
-        if (category && category[timer.i] == timer.ci)
-            return [timer.c, timer.i];
-        for (var c = 0; c < catsArray.length; c++) {
-            category = cats[catsArray[c]];
-            if (!category) continue;
-            for (var i = 0; i < category.length; i++)
-                if (category[i] == timer.ci) return [c, i];
-        }
-        return null;
-    }
-
-    var leadMs = (settings.epgRemindMinutes || 0) * 60 * 1000;
-    if (leadMs > 0) {
-        var remindAt = timer.t * 1000 - leadMs;
-        var delayRemind = remindAt - Date.now();
-        if (delayRemind < 0 && timer.t * 1000 - Date.now() > 0) delayRemind = 0;
-        timer.ri = setTimeout(
-            function () {
-                if (!isCurrent()) return;
-                if (typeof w.showShift === "function") {
-                    var minutesLeft = Math.max(
-                        0,
-                        Math.ceil((timer.t * 1000 - Date.now()) / 60000)
-                    );
-                    var ch = channels[timer.ci]
-                        ? channels[timer.ci].channel_name
-                        : "";
-                    w.showShift(
-                        w._(
-                            "Reminder: %1 — %2 in %3 min",
-                            ch,
-                            timer.n || "",
-                            minutesLeft
-                        )
-                    );
-                }
-            },
-            delayRemind > 0 ? delayRemind : 0
-        );
-    }
-
-    timerId = timer.ti = setTimeout(function () {
-        if (!isCurrent() || !currentPosition()) return;
-        var msg =
-            w._("Timer: switch to channel?") +
-            "<br/><br/>" +
-            (channels[timer.ci] ? channels[timer.ci].channel_name : "") +
-            '<div style="color:' +
-            (w.curColor || "#fff") +
-            ';">' +
-            timer.n +
-            "</div>" +
-            formatEpgTime(timer.t) +
-            " - " +
-            formatEpgTime(timer.te) +
-            " (" +
-            Math.round((timer.te - timer.t) / 60) +
-            " " +
-            w._("min") +
-            ")";
-
-        if (typeof w.confirmBox === "function") {
-            w.confirmBox(msg, function () {
-                if (!isCurrent()) return;
-                var position = currentPosition();
-                if (!position) return;
-                if (typeof w.closeList === "function") w.closeList();
-                if (typeof w.playChannel === "function")
-                    w.playChannel(position[0], position[1]);
-            });
-        }
-    }, delay);
+    (window as any).__ottClassicReminders.importRecord(timer);
 }
 
 /**
@@ -2397,48 +2021,7 @@ export function startEpgTimer(timer: any): void {
  * Saved data is not rewritten: missing channels may return on a later load.
  */
 export function loadEpgTimers(): void {
-    var w = window as any;
-    var previousTimers = Array.isArray(epgTimers) ? epgTimers : [];
-    epgTimers = [];
-    previousTimers.forEach(function (timer) {
-        if (!timer || typeof timer !== "object") return;
-        clearTimeout(timer.ti);
-        clearTimeout(timer.ri);
-        delete timer.ti;
-        delete timer.ri;
-    });
-    try {
-        var data =
-            typeof w.providerGetItem === "function"
-                ? w.providerGetItem("epgTimers")
-                : null;
-        if (data == null && typeof w.stbGetItem === "function")
-            data = w.stbGetItem("epgTimers");
-        if (data) {
-            var parsed = JSON.parse(data);
-            if (!Array.isArray(parsed)) return;
-            var now = Date.now() / 1000;
-            epgTimers = parsed.filter(function (t) {
-                return (
-                    t &&
-                    typeof t === "object" &&
-                    (typeof t.ci === "number" || typeof t.ci === "string") &&
-                    (typeof t.t === "number" || typeof t.t === "string") &&
-                    isFinite(+t.t) &&
-                    +t.t > now
-                );
-            });
-            epgTimers.forEach(function (timer) {
-                // Legacy saves included runtime handles. They belong to the
-                // previous page instance and must never cancel current work.
-                delete timer.ti;
-                delete timer.ri;
-                startEpgTimer(timer);
-            });
-        }
-    } catch (e) {
-        console.error("loadEpgTimers error:", e);
-    }
+    (window as any).__ottClassicReminders.load();
 }
 
 /**
@@ -2455,52 +2038,7 @@ export function loadEpgTimers(): void {
  * - Persists updated timers to STB storage (`stbSetItem`).
  */
 export function setEpgTimer(_channelId?: any, _time?: number): void {
-    var w = window as any;
-    // Legacy stbPlayer.js:3735-3760 — uses list selection + epgListMode mode
-    var item = w.listArray[w.selIndex];
-    if (!w.epgListMode || !item || item.time < Date.now() / 1000) return;
-
-    var idx = epgTimers.findIndex(function (t) {
-        return t.ci == w.epg_ch_id && t.t == item.time;
-    });
-    var msg = idx === -1 ? "Set timer?" : "Remove timer?";
-
-    if (typeof w.confirmBox !== "function") return;
-    w.confirmBox(w._(msg), function () {
-        if (idx === -1) {
-            var timer = {
-                c: w.listCatIndex,
-                ci: w.epg_ch_id,
-                i: w.listChannel,
-                n: item.name,
-                t: item.time,
-                te: item.time_to,
-            };
-            startEpgTimer(timer);
-            epgTimers.push(timer);
-        } else {
-            clearTimeout(epgTimers[idx].ti);
-            clearTimeout(epgTimers[idx].ri);
-            delete epgTimers[idx].ti;
-            delete epgTimers[idx].ri;
-            epgTimers.splice(idx, 1);
-        }
-        if (typeof w.showPage === "function") w.showPage();
-        var cleanTimers = epgTimers.map(function (t) {
-            return {
-                c: t.c,
-                ci: t.ci,
-                i: t.i,
-                n: t.n,
-                t: t.t,
-                te: t.te,
-            };
-        });
-        if (typeof w.providerSetItem === "function")
-            w.providerSetItem("epgTimers", JSON.stringify(cleanTimers));
-        else if (typeof w.stbSetItem === "function")
-            w.stbSetItem("epgTimers", JSON.stringify(cleanTimers));
-    });
+    (window as any).__ottClassicReminders.toggle();
 }
 
 /**
@@ -2514,74 +2052,17 @@ export function setEpgTimer(_channelId?: any, _time?: number): void {
  * Side effects: Same as loadEpgListData + sets listArray/listDataArray/listKeyHandler.
  */
 export function epgListAlpha(
-    catIdx: number | EPGEntry[],
-    chIdx?: number,
-    force?: boolean
+    category: number | EPGEntry[],
+    index?: number,
+    returnToList?: boolean
 ): void {
-    // Legacy stbPlayer.js:6602-6638 — alphabetical EPG list
-    if (typeof catIdx !== "number") return;
-    var w = window as any;
-    if (showMissingEpgNotice(catIdx, chIdx)) return;
-
-    function onDataReady(channelId: any): void {
-        var byTime: EPGEntry[] = [];
-        var byName: EPGEntry[] = [];
-        var ch = (channels[channelId] || {}) as Channel;
-        if (curEpgData !== null && curEpgData.length) {
-            byTime = curEpgData
-                .filter(function (e) {
-                    return ch.rec
-                        ? e.time > Date.now() / 1000 - ch.rec * 3600
-                        : e.time_to > Date.now() / 1000 - 7200;
-                })
-                .sort(function (a, b) {
-                    return a.time - b.time;
-                });
-            byName = curEpgData
-                .filter(function (e) {
-                    return ch.rec
-                        ? e.time > Date.now() / 1000 - ch.rec * 3600
-                        : e.time_to > Date.now() / 1000;
-                })
-                .sort(function (a, b) {
-                    return a.name < b.name
-                        ? -1
-                        : a.name > b.name
-                          ? 1
-                          : a.time - b.time;
-                });
-        }
-        var nowTs =
-            w.playType > 0 &&
-            channelId == (w.curList && w.curList[w.primaryIndex])
-                ? w.playType + w.playTime
-                : Math.floor(Date.now() / 1000);
-        w.selIndex = byName.findIndex(function (e) {
-            return e.time_to >= nowTs && e.time <= nowTs;
-        });
-        if (w.selIndex === -1) w.selIndex = 0;
-        w.listArray = byName;
-        w.listDataArray = byName;
-        listEpgArray = byTime;
-        w.getListItem = itemEPG;
-        w.getListItemFn = itemEPG;
-        w.detailListAction = function () {
-            if (typeof window.detailEPG === "function")
-                window.detailEPG(channelId);
-        };
-        w.detailListActionFn = w.detailListAction;
-        w.listKeyHandler = epgKeyHandler;
-        w.listKeyHandlerFn = epgKeyHandler;
-        var captionEl = document.getElementById("listCaption");
-        if (captionEl)
-            captionEl.innerHTML = metadataText(
-                w._("EPG and archive. Channel: ") + (ch.channel_name || "")
-            );
-        if (typeof renderEpgFooter === "function") renderEpgFooter();
-        $("#listPopUp").hide();
-        if (typeof w.showPage === "function") w.showPage();
-    }
-    loadEpgListData(2, catIdx, chIdx as number, force || false, onDataReady);
+    if (typeof category === "number")
+        (window as any).__ottClassicGuideScreen.open(
+            2,
+            category,
+            index,
+            !!returnToList
+        );
 }
 
 /**
@@ -2591,77 +2072,16 @@ export function epgListAlpha(
  * @returns Concatenated HTML string, or empty string if records is empty/null.
  */
 export function recordsList(
-    catIdx: number,
-    chIdx: number,
-    epgReturn: boolean
+    category: number,
+    index: number,
+    returnToList: boolean
 ): void {
-    var w = window as any;
-    // Legacy stbPlayer.js:6641-6656 recordsList(e, t, r)
-    if (showMissingEpgNotice(catIdx, chIdx)) return;
-
-    function onDataReady(channelId: any): void {
-        var e: EPGEntry[] = [];
-        var r: EPGEntry[] = [];
-        var ch = (channels[channelId] || {}) as Channel;
-        if (curEpgData !== null && curEpgData.length) {
-            var recHours = ch.rec || 0;
-            e = curEpgData
-                .filter(function (entry) {
-                    return entry.time > Date.now() / 1000 - recHours * 3600;
-                })
-                .sort(function (a, b) {
-                    return a.time - b.time;
-                });
-            var seen: string[] = [];
-            var sorted = curEpgData.slice().sort(function (a, b) {
-                return b.time - a.time;
-            });
-            r = sorted
-                .filter(function (entry) {
-                    if (entry.time < Date.now() / 1000 - recHours * 3600)
-                        return false;
-                    if (entry.time_to * 1000 > Date.now()) return false;
-                    if (seen.indexOf(entry.name) !== -1) return false;
-                    seen.push(entry.name);
-                    return true;
-                })
-                .sort(function (a, b) {
-                    return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
-                });
-        }
-        w.selIndex = 0;
-        w.listArray = r;
-        w.listDataArray = r;
-        listEpgArray = e;
-        var itemRec = function (item: any, _idx: number) {
-            return "&nbsp;&nbsp;" + metadataText(item && item.name);
-        };
-        w.getListItem = itemRec;
-        w.getListItemFn = itemRec;
-        w.detailListAction = function () {
-            if (typeof w.detailEPG === "function") w.detailEPG(channelId);
-        };
-        w.detailListActionFn = w.detailListAction;
-        w.listKeyHandler = epgKeyHandler;
-        w.listKeyHandlerFn = epgKeyHandler;
-        var captionEl = document.getElementById("listCaption");
-        if (captionEl)
-            captionEl.innerHTML = metadataText(
-                w._("Archive. Channel: ") + (ch.channel_name || "")
-            );
-        if (typeof renderEpgFooter === "function") renderEpgFooter();
-        $("#listPopUp").hide();
-        if (typeof w.showPage === "function") w.showPage();
-    }
-    loadEpgListData(0, catIdx, chIdx, epgReturn, onDataReady);
-}
-
-export function selectREC(index: number): void {
-    var w = window as any;
-    var item = w.listArray[index];
-    if (!item) return;
-    if (typeof w.closeList === "function") w.closeList();
-    if (typeof (w as any).playMedia === "function") (w as any).playMedia(item);
+    (window as any).__ottClassicGuideScreen.open(
+        0,
+        category,
+        index,
+        !!returnToList
+    );
 }
 
 /**
@@ -2745,92 +2165,23 @@ export function catRecordsList(catIdx: number): void {
 declare function showMediaList1(): void;
 
 /** Keep the last accepted view separate from globals mutated by provider callbacks. */
-export function rememberMediaView(pending = false): void {
-    var w = window as any;
-    var state: MediaLoadState = {
-        name: w.mediaName || "",
-        pending: pending,
-        provider: w.getMediaArray,
-        records: w.mediaRecords || [],
-        urls: w.mediaUrls,
-    };
-    w._mediaLoadState = state;
-}
+export function rememberMediaView(_pending = false): void {}
 
 /** Closing/reloading while fetching must not reopen a departed VOD view. */
 export function cancelMediaLoad(): void {
     var w = window as any;
-    if (w.providerMediaClient) w.providerMediaClient.cancel();
-    var state: MediaLoadState | undefined = w._mediaLoadState;
-    if (state && state.pending) {
-        w.mediaUrls = null;
-        w.mediaNames = [];
-        w.mediaSelects = [];
-        w.mediaRecords = [];
-        w.mediaRecordsPar = null;
-        w.mediaName = "";
-    }
-    rememberMediaView();
+    if (w.__ottMedia) w.__ottMedia.cancel();
+    else if (w.providerMediaClient) w.providerMediaClient.cancel();
 }
 
 /** Providers write mediaRecords/mediaName before their no-argument completion callback. */
 export function requestMediaList(target: MediaTarget): void {
-    var w = window as any;
-    var provider = w.getMediaArray;
-    if (typeof provider !== "function") return;
-    rememberMediaView(true);
-    var request: MediaLoadState = w._mediaLoadState;
-    var complete: MediaListCompletion = function () {
-        var current: MediaLoadState | undefined = w._mediaLoadState;
-        if (
-            current !== request ||
-            request.urls !== w.mediaUrls ||
-            request.provider !== w.getMediaArray
-        ) {
-            // A late response has already overwritten these legacy globals.
-            // Restore the current accepted/loading view without rendering it again.
-            if (
-                current &&
-                current.urls === w.mediaUrls &&
-                current.provider === w.getMediaArray
-            ) {
-                w.mediaRecords = current.records;
-                w.mediaName = current.name;
-            } else w.mediaRecords = [];
-            return;
-        }
-        request.pending = false;
-        showMediaList();
-    };
-    complete.isCurrent = function () {
-        return (
-            w._mediaLoadState === request &&
-            request.urls === w.mediaUrls &&
-            request.provider === w.getMediaArray
-        );
-    };
-    provider(target, complete);
+    (window as any).__ottMedia.open(target);
 }
 
 /** Return to the parent VOD folder, retaining its selected row. */
 function mediaBack(): void {
-    var w = window as any;
-    var urls: MediaTarget[] = w.mediaUrls || [];
-    if (w.mediaRecordsPar !== null) {
-        w.mediaRecords = w.mediaRecordsPar;
-        w.mediaRecordsPar = null;
-        showMediaList1();
-        return;
-    }
-    if (urls.length <= 1) {
-        if (typeof w.popupList === "function") w.popupList(w.popMedia);
-        return;
-    }
-    w.mediaSelects.shift();
-    urls.pop();
-    w.mediaNames.pop();
-    w.mediaName = w.mediaNames.pop() || "";
-    w.mediaList(urls.pop());
+    (window as any).__ottMedia.back();
 }
 
 /** Route remote buttons within VOD, including parent-folder navigation. */
@@ -2891,7 +2242,11 @@ export function mediaKeyHandler(keyCode: number): boolean {
         case keys.N8:
         case keys.TOOLS:
         case keys.GREEN:
-            if (w.sFavorites !== -1 && (w.mediaUrls || []).length > 1 && item)
+            if (
+                w.sFavorites !== -1 &&
+                w.__ottMedia.snapshot().frames.length > 1 &&
+                item
+            )
                 addToMedFavorites(item);
             return true;
         case keys.YELLOW:
@@ -2909,74 +2264,18 @@ export function mediaKeyHandler(keyCode: number): boolean {
 
 /** Add the selected movie/folder, or delete it while viewing favorites. */
 export function addToMedFavorites(item: MediaHistoryEntry): void {
-    var w = window as any;
-    if (w.sFavorites === -1) return;
-    var urls: MediaTarget[] = w.mediaUrls || [];
-    if (urls[urls.length - 1] === -2) {
-        medFavorites.splice(w.selIndex, 1);
-        w.selIndex = Math.max(0, Math.min(w.selIndex, medFavorites.length - 1));
-        w.mediaSelects[0] = w.selIndex;
-        showMediaList1();
-    } else {
-        medFavorites.push(item);
-        if (typeof w.showShift === "function")
-            w.showShift(
-                (item.title || item.name || "") + w._(" added to favorites")
-            );
-    }
-    providerSetItem("medFavorites", JSON.stringify(medFavorites));
+    (window as any).__ottMedia.favorite(item);
 }
 
 /** Select a media entry using the provider's VOD hierarchy and PIN contract. */
 export function selectMedia(index?: number): void {
     var w = window as any;
-    var selected = index === undefined ? w.selIndex : index;
-    var selectedList: MediaHistoryEntry[] = w.listArray;
-    var item: MediaHistoryEntry | undefined = selectedList[selected];
-    if (!item) return;
-    if (
-        Number(item.adult) === 1 &&
-        w.sPSchannels &&
-        w.parentPIN !== "*" &&
-        !w.parentAccess
-    ) {
-        w.enterPinAndSetAccess(function () {
-            if (w.listArray !== selectedList || selectedList[selected] !== item)
-                return;
-            selectMedia(selected);
-        });
-        return;
-    }
-    if (w.mediaRecordsPar === null) w.mediaSelects[0] = selected;
-    if (item.playlist_url) {
-        if (item.search_on) searchMedia(item);
-        else {
-            w.mediaName = item.title || item.name || "";
-            w.mediaSelects.unshift(0);
-            w.mediaList(item.playlist_url);
-        }
-    } else if (item.stream_url) {
-        w.closeList();
-        w.playMedia(item);
-    } else if (typeof w.infoMedia === "function") w.infoMedia();
+    w.__ottMedia.select(index === undefined ? w.selIndex : index);
 }
 
 /** Provider completion callback: render populated mediaRecords without refetching. */
 export function showMediaList(): void {
-    var w = window as any;
-    var records: MediaHistoryEntry[] = w.mediaRecords || [];
-    if ((w.mediaSelects || []).length === 1 && w.sFavorites !== -1) {
-        records.push({ playlist_url: "", title: "" });
-        if (w.sMedCount)
-            records.push({
-                playlist_url: -1,
-                title: w._("History of watched movies"),
-            });
-        records.push({ playlist_url: -2, title: w._("Favorites") });
-    }
-    w.mediaRecords = records;
-    w.mediaNames.push(w.mediaName || "");
-    showMediaList1();
+    (window as any).__ottMedia.show();
 }
 
 /** Descriptions may be lazy functions in legacy provider records. */
@@ -3175,31 +2474,6 @@ if (typeof window !== "undefined")
 export function liveStop(): void {
     if (!stbIsPlaying()) return;
     (window as any).__ottClassicArchive.pauseLive();
-}
-
-/**
- * Apply a seek inside the current archive stream, clamped to [0, len-15].
- * No-op when the platform cannot set the playback position.
- * Handles live TV (playType === 0) as a clock-skip by calling timeShift.
- *
- * @param offset - Target offset in seconds from the start of the stream.
- */
-function seekArchive(offset: number): void {
-    var w = window as any;
-    if (typeof w.stbSetPosTime !== "function" || !videoElement) return;
-    // Guard for media sentinel (playType < 0) only — live (playType === 0) is allowed
-    if (playType < 0 && playType !== -99999999999) return;
-    if (playType === 0) {
-        // Clock skip on live: offset is relative seconds from now
-        var delta = offset;
-        if (typeof window.timeShift === "function") window.timeShift(-delta);
-        return;
-    }
-    var len: number =
-        typeof (w.stbGetLen as any) === "function" ? w.stbGetLen() : 0;
-    if (offset < 0) offset = 0;
-    if (len && offset > len - 15) offset = len - 15;
-    w.stbSetPosTime(offset);
 }
 
 /** Decode the existing remote action at the compatibility boundary. */
@@ -3706,38 +2980,24 @@ export function bucketsKeyHandler(keyCode: number): boolean {
  */
 export function searchEpgByTitle(): void {
     var w = window as any;
+    var source = w.__ottClassicGuide.source();
     $("#listPopUp").hide();
 
     function runSearch(query: string): void {
+        if (source !== w.__ottClassicGuide.source()) return;
         var q = (query || "").toLowerCase();
         if (!q) {
             if (typeof w.showShift === "function")
                 w.showShift(w._("Not found"));
             return;
         }
-        var results: any[] = [];
-        var chIds = Object.keys(epg);
-        for (var i = 0; i < chIds.length; i++) {
-            var chId = Number(chIds[i]);
-            var progs = epg[chId];
-            if (!progs || !progs.length) continue;
-            for (var j = 0; j < progs.length; j++) {
-                var p = progs[j];
-                if (p && p.name && p.name.toLowerCase().indexOf(q) !== -1) {
-                    var ch = channels[chId] || ({} as Channel);
-                    results.push({
-                        ch_id: chId,
-                        ch_name: ch.channel_name || ch.name || "",
-                        name: p.name,
-                        rec: ch.rec || 0,
-                        time: p.time,
-                        time_to: p.time_to,
-                    });
-                }
-            }
-        }
-        results.sort(function (a, b) {
-            return a.time - b.time;
+        var results: any[] = w.__ottClassicGuide.search(q).map(function (
+            item: any
+        ) {
+            var ch = channels[item.ch_id] || {};
+            item.ch_name = ch.channel_name || "";
+            item.rec = ch.rec || 0;
+            return item;
         });
 
         if (!results.length) {
@@ -3772,44 +3032,20 @@ export function searchEpgByTitle(): void {
         }
 
         function openForChannel(item: any): void {
-            // Find the (catIndex, primaryIndex) of item.ch_id across catsArray
-            var catIdx = -1;
-            var primaryIndex = -1;
-            for (var ci = 0; ci < catsArray.length; ci++) {
-                var list = cats[catsArray[ci]] || [];
-                var pi = list.indexOf(item.ch_id);
-                if (pi !== -1) {
-                    catIdx = ci;
-                    primaryIndex = pi;
-                    break;
+            if (item.sourceId !== w.__ottClassicGuide.source()) return;
+            var ref = w.__ottClassicGuide.reference(item.ch_id),
+                position = w.__ottClassicGuideScreen.position(item.ch_id);
+            if (!ref || ref.channelId !== item.channelId || !position) return;
+            w.__ottClassicGuideScreen.open(
+                1,
+                position[0],
+                position[1],
+                false,
+                item.programmeId,
+                function () {
+                    selectEpg();
                 }
-            }
-            if (catIdx === -1) return;
-            if (typeof setCurrent === "function")
-                setCurrent(catIdx, primaryIndex, true);
-            epg_ch_id = item.ch_id;
-            w.epg_ch_id = item.ch_id;
-            if (typeof epgList === "function")
-                epgList(catIdx, primaryIndex, false);
-            setTimeout(function () {
-                var idx = -1;
-                var arr = (w.listArray as any[]) || [];
-                for (var k = 0; k < arr.length; k++) {
-                    if (
-                        arr[k] &&
-                        arr[k].time === item.time &&
-                        arr[k].name === item.name
-                    ) {
-                        idx = k;
-                        break;
-                    }
-                }
-                if (idx !== -1) {
-                    w.selIndex = idx;
-                    if (typeof w.showPage === "function") w.showPage();
-                    if (typeof selectEpg === "function") selectEpg();
-                }
-            }, 50);
+            );
         }
 
         w.listArray = results;
@@ -4250,190 +3486,30 @@ export function searchMedia(e: MediaHistoryEntry): void {
     if (typeof e.playlist_url !== "string") return;
     var target = e.playlist_url;
     var sourceList = w.listArray;
-    var sourceUrls = w.mediaUrls;
-    var sourceProvider = w.getMediaArray;
+    var admitted = w.__ottMedia.capture();
     w.editCaption = w._("String for search");
     var t =
         (typeof w.stbGetItem === "function" ? w.stbGetItem("medSearch") : "") ||
         "";
     w.editvar = t;
     w.setEdit = function (): void {
-        if (
-            w.listArray !== sourceList ||
-            w.mediaUrls !== sourceUrls ||
-            w.getMediaArray !== sourceProvider
-        )
-            return;
+        if (w.listArray !== sourceList || !admitted()) return;
         var inputEl = document.getElementById("editvar");
         var inputVal = (inputEl && (inputEl as HTMLInputElement).value) || "";
         var submitted = window.editvar || "";
         if (!inputVal && !submitted) return;
         t = inputVal || submitted;
         if (typeof w.stbSetItem === "function") w.stbSetItem("medSearch", t);
-        w.mediaName = e.title;
-        w.mediaSelects.unshift(0);
+
         if (typeof w.mediaList === "function") {
-            w.mediaList(
+            w.__ottMedia.open(
                 target +
                     (target.indexOf("?") === -1 ? "?" : "&") +
                     "search=" +
-                    encodeURIComponent(t)
+                    encodeURIComponent(t),
+                e.title
             );
         }
-    };
-    if (typeof w.showEditKey === "function") w.showEditKey();
-}
-
-/**
- * Open the records search dialog.
- * Sets `window.editCaption` and `window.editvar` from persisted `medSearch`,
- * assigns a new `window.setEdit` that filters `_crData.data` by name/descr
- * and wires a dedicated listKeyHandler for the filtered result list.
- * Finally invokes `window.showEditKey` to display the input UI.
- *
- * Side effects:
- * - Mutates `window.editCaption`, `window.editvar`, `window.setEdit`,
- *   `window.listArray`, `window.getListItemFn`, `window.detailListActionFn`,
- *   `window.listKeyHandlerFn`, `_crData.selIndex`, `window.selIndex`.
- * - Reads/writes `medSearch` via stbGetItem/stbSetItem.
- * - Updates #listCaption and #listPodval innerHTML; hides #listPopUp.
- * - Calls `window.showPage`.
- */
-export function searchRec(): void {
-    var w = window as any;
-    w.editCaption = w._("String for search");
-    var e =
-        (typeof w.stbGetItem === "function" ? w.stbGetItem("medSearch") : "") ||
-        "";
-    w.editvar = e;
-    w.setEdit = function (): void {
-        if (!(w.editvar as string).length) return;
-        e = w.editvar;
-        if (typeof w.stbSetItem === "function") w.stbSetItem("medSearch", e);
-        setTimeout(function () {
-            w.selIndex = 0;
-            var t = e.toLowerCase();
-            w.listArray = w._crData.data.filter(function (e: any) {
-                return (
-                    e.name.toLowerCase().indexOf(t) !== -1 ||
-                    e.descr.toLowerCase().indexOf(t) !== -1
-                );
-            });
-            w.getListItemFn = function (e: any, _t: number): string {
-                return "&nbsp;&nbsp;" + metadataText(e.name);
-            };
-            w.detailListActionFn = detailREC;
-            w.listKeyHandlerFn = function (key: number): boolean {
-                switch (key) {
-                    case w.keys.EXIT:
-                        if (typeof w.closeList === "function") w.closeList();
-                        return true;
-                    case w.keys.LEFT:
-                        if (w.sArrowFun != 2) return false;
-                    // falls through
-                    case w.keys.RETURN:
-                        if (typeof w.catRecordsList === "function")
-                            w.catRecordsList(w.listCatIndex);
-                        return true;
-                    case w.keys.RIGHT:
-                        if (w.sArrowFun != 2) return false;
-                    // falls through
-                    case w.keys.N2:
-                    case w.keys.INFO:
-                        if (typeof w.showProgramInfo === "function")
-                            w.showProgramInfo(w.listArray[w.selIndex].name);
-                        return true;
-                    case w.keys.RW:
-                        if (w.sRewFun != 1) return false;
-                        if (typeof w.catRecordsList === "function")
-                            w.catRecordsList(w.listCatIndex);
-                        return true;
-                    case w.keys.PREV:
-                        if (w.sPNFun != 1) return false;
-                        if (typeof w.catRecordsList === "function")
-                            w.catRecordsList(w.listCatIndex);
-                        return true;
-                    case w.keys.FF:
-                        if (w.sRewFun != 1) return false;
-                        if (typeof w.showProgramInfo === "function")
-                            w.showProgramInfo(w.listArray[w.selIndex].name);
-                        return true;
-                    case w.keys.NEXT:
-                        if (w.sPNFun != 1) return false;
-                        if (typeof w.showProgramInfo === "function")
-                            w.showProgramInfo(w.listArray[w.selIndex].name);
-                        return true;
-                    case w.keys.N0:
-                    case w.keys.YELLOW:
-                    case w.keys.TOOLS:
-                        w._crData.selIndex = w.selIndex;
-                        if (typeof w.searchRec === "function") w.searchRec();
-                        return true;
-                    case w.keys.ENTER: {
-                        var tCh = w.listArray[w.selIndex].ch_id;
-                        var r = w.listArray[w.selIndex].time;
-                        w._crData.selIndex = w._crData.data.findIndex(function (
-                            e: any
-                        ) {
-                            return e.ch_id == tCh && e.time == r;
-                        });
-                        if (typeof w.selectREC === "function") w.selectREC();
-                        return true;
-                    }
-                }
-                return false;
-            };
-            var captionEl = document.getElementById("listCaption");
-            if (captionEl)
-                captionEl.textContent =
-                    w._("Archive. Category: ") +
-                    w.catsArray[w.listCatIndex] +
-                    ". " +
-                    w._("Search") +
-                    ':"' +
-                    e +
-                    '" (' +
-                    w.listArray.length +
-                    ")";
-            var footerElement = document.getElementById("listPodval");
-            if (footerElement) {
-                footerElement.innerHTML =
-                    w.renderButtonHint(
-                        w.keys.RETURN,
-                        w.strRETURN,
-                        "Records",
-                        w.sArrowFun == 2
-                            ? w.strLEFT
-                            : w.sRewFun == 1
-                              ? w.strRW
-                              : w.sPNFun == 1
-                                ? w.strPREV
-                                : ""
-                    ) +
-                    w.renderButtonHint(
-                        w.keys.N2,
-                        w.strInfo,
-                        "Description",
-                        "2",
-                        w.sArrowFun == 2
-                            ? w.strRIGHT
-                            : w.sRewFun == 1
-                              ? w.strFF
-                              : w.sPNFun == 1
-                                ? w.strNEXT
-                                : ""
-                    ) +
-                    w.renderButtonHint(
-                        w.keys.YELLOW,
-                        "",
-                        "Search",
-                        w.strTools,
-                        "0"
-                    );
-            }
-            $("#listPopUp").hide();
-            if (typeof w.showPage === "function") w.showPage();
-        });
     };
     if (typeof w.showEditKey === "function") w.showEditKey();
 }

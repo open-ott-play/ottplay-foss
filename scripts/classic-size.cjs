@@ -5,10 +5,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { gzipSync } = require("node:zlib");
 
-// Typed playback/archive controllers, journal and 48 instance drivers replace
-// separately shipped scripts. The integrated bundle measures ~600 kB / 166 kB
-// gzip; packaging omits 363623 raw bytes of retired provider scripts per root.
-const BUDGET = Object.freeze({ bytes: 610000, gzipBytes: 170000 });
+// The six owned-runtime stages plus collision-safe saved-data imports measure
+// about 644 kB / 182 kB gzip in Full. Keep less than 1.5% headroom per metric.
+// See docs/runtime-ownership-migration.md; ES5 and ABI optimizer guards are unchanged.
+const BUDGET = Object.freeze({ bytes: 650000, gzipBytes: 184000 });
 const ARTIFACTS = Object.freeze([
     "dist/stbPlayer.js",
     "src-tauri/frontend/dist/stbPlayer.js",

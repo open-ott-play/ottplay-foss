@@ -52,7 +52,7 @@ const channelFunctions = functions("src/channels/index.ts", [
     "epgTimezoneHours",
     "epgArchiveHours",
     "applyChannelTvgShift",
-    "getChannelEpgCached",
+    "fetchChannelGuide",
 ]);
 
 for (const platform of ["browser", "tauri", "capacitor"]) {
@@ -106,9 +106,7 @@ for (const platform of ["browser", "tauri", "capacitor"]) {
         });
         vm.runInContext(channelFunctions, ctx);
         const result: any = await new Promise((resolve) =>
-            ctx.getChannelEpgCached(42, (_id: number, rows: any) =>
-                resolve(rows)
-            )
+            ctx.fetchChannelGuide(42, (_id: number, rows: any) => resolve(rows))
         );
         const useNative = platform !== "browser" && provider === "m3u";
         assert.equal(

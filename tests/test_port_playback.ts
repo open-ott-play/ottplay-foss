@@ -67,6 +67,9 @@ function fixture() {
         $i1: chain,
         applyChannelPreference() {},
         catIndex: 1,
+        cats: { source: [101, 202, 303] },
+        catsArray: ["unused", "source"],
+        channels: { 303: { rec: 24 } },
         clearInterval(n: number) {
             intervals.delete(n);
         },
@@ -219,12 +222,18 @@ function fixture() {
     f.w.initBackgroundIntervals();
     f.w.playType = 1700000000;
     f.w.stbPlay("archive.m3u8");
+    f.w.video.currentTime = 1;
     f.tick();
-    assert.equal(f.w.playTime, 1, "archive time must advance once per second");
+    assert.equal(
+        f.w.playTime,
+        1,
+        "archive time follows the backend media timeline"
+    );
     f.w.stbPause();
     f.tick();
     assert.equal(f.w.playTime, 1, "paused archive must not advance");
     f.w.stbPlay("other-archive.m3u8");
+    f.w.video.currentTime = 2;
     f.tick();
     assert.equal(
         f.w.playTime,
@@ -365,6 +374,9 @@ for (const action of ["switch", "stop"]) {
     assert.deepEqual(f.calls.at(-1), ["playArchive", 1700000120]);
     f.calls.length = 0;
     f.w.fileArchive = true;
+    f.w.stbPlay("file-archive.m3u8");
+    f.w.stbPause();
+    f.w.video.playCalls = 0;
     f.key(f.w.keys.PLAY);
     assert.equal(
         f.w.video.playCalls,
@@ -453,7 +465,7 @@ for (const route of ["manifest", "native recovery"]) {
 {
     const f = fixture();
     f.w.$ = (selector: string) => ({ is: () => selector === "#listEdit" });
-    f.w.handleEditKey = (code: number) => f.calls.push(["edit", code]);
+    f.w.editKey = (code: number) => f.calls.push(["edit", code]);
     for (const key of [{ keyCode: 13 }, { which: 27 }]) {
         f.w.keyHandler({
             ...key,

@@ -6,7 +6,7 @@ const fs = require("node:fs"),
 const root = path.resolve(__dirname, "../..");
 exports.run = function (
     input,
-    sourceFile = path.join(root, "src/channels/index.ts")
+    sourceFile = path.join(root, "tests/fixtures/guide/retired-adapter.ts")
 ) {
     const text = fs.readFileSync(sourceFile, "utf8"),
         ast = ts.createSourceFile(

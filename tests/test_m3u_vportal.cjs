@@ -370,7 +370,10 @@ test("invalid HTML editor submissions reopen after editor teardown with their ty
         const events = [];
         const timers = [];
         w.setTimeout = (callback) => timers.push(callback);
-        w.showEditKey = () => events.push(["open", w.editvar]);
+        w.showEditKey = () => {
+            w.__ottClassicScreenPort.openEditor();
+            events.push(["open", w.editvar]);
+        };
         w.restoreCPD = () => events.push(["restore"]);
         w.doEditListData(0);
         w.selIndex = index;
@@ -383,11 +386,15 @@ test("invalid HTML editor submissions reopen after editor teardown with their ty
             val: () => typed,
         });
         w.editKey2(w.keys.ENTER);
-        assert.deepEqual(events, [["hide", "#listEdit"], ["restore"]]);
+        assert.deepEqual(events, [
+            ["hide", "#listEdit"], // owner disposal hides the retired input
+            ["hide", "#listEdit"], // retained editor renderer teardown
+            ["restore"],
+        ]);
         assert.equal(saved.get("m3um3uArr"), before);
         assert.equal(timers.length, 1);
         timers.shift()();
-        assert.deepEqual(events[2], ["open", typed]);
+        assert.deepEqual(events[3], ["open", typed]);
     }
 });
 

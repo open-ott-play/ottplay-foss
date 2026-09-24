@@ -61,6 +61,7 @@ function touchFixture(platform) {
     if (platform === "capacitor") w.Capacitor = {};
     if (platform === "tauri") w.__TAURI__ = {};
     vm.createContext(w);
+    require("./helpers/screen-runtime.cjs")(w);
     vm.runInContext(touchCode, w);
     return { calls, w };
 }
@@ -217,6 +218,7 @@ for (const [innerHeight, viewportHeight, documentHeight, expected] of [
     );
     try {
         const w = dom.window;
+        require("./helpers/screen-runtime.cjs")(w);
         const calls = [];
         w.innerHeight = innerHeight;
         w.visualViewport =
@@ -388,6 +390,7 @@ for (const platform of Object.keys(nativeSources)) {
         };
         w.window = w;
         vm.createContext(w);
+        require("./helpers/screen-runtime.cjs")(w);
         vm.runInContext(
             read("stb/" + device + "/stb.js") +
                 "\n" +
@@ -419,7 +422,9 @@ const coreControls = functions("src/core/index.ts", [
     "stbContinue",
     "stbPause",
     "stbStop",
-    "clearCorePlaybackStateEvents",
+    "getCoreMediaBackend",
+    "openCoreEngineLease",
+    "stopCoreEngine",
     "stbIsPlaying",
 ]);
 for (const platform of Object.keys(nativeSources)) {
@@ -431,15 +436,22 @@ for (const platform of Object.keys(nativeSources)) {
         _coreNativeHls: null,
         _coreNativeHlsCleanup: null,
         _corePendingSeek: null,
-        _corePlaybackStateCleanup: null,
+        _corePipSession: 0,
         _coreShakaTeardown: null,
+        _inLiveRestart: false,
         _playSession: 0,
         cancelLiveRestart() {},
+        clearInterval() {},
         clearPlayTimeInterval() {},
+        coreDeviceEffects: {},
+        coreMediaBackend: null,
         hlsInstance: {
             destroy() {
                 destroyed++;
             },
+        },
+        setInterval() {
+            return 1;
         },
         video: {
             pause() {
@@ -454,7 +466,13 @@ for (const platform of Object.keys(nativeSources)) {
     };
     w.window = w;
     vm.createContext(w);
+    require("./helpers/screen-runtime.cjs")(w);
+    require("./helpers/private-runtime.cjs")(w, "src/device/media-backend.ts");
+    w.startCoreEngine = () => {
+        w._playSession++;
+    };
     vm.runInContext(coreControls, w);
+    w.getCoreMediaBackend().open({ url: "fixture.mp4" });
     for (let i = 0; i < 2; i++)
         vm.runInContext(nativeScript(platform, "play"), w);
     assert.equal(w.video.paused, false, platform + " repeated explicit Play");
@@ -464,7 +482,7 @@ for (const platform of Object.keys(nativeSources)) {
     assert.equal(w.forcePlay, false);
     vm.runInContext(nativeScript(platform, "stop"), w);
     assert.equal(destroyed, 1, platform + " Stop tears down HLS");
-    assert.equal(w._playSession, 1);
+    assert.equal(w._playSession, 2);
 }
 
 // Run the shipped dedicated PiP document, including the pre-play mute assertion,

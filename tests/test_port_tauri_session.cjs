@@ -4,8 +4,8 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const source = fs.readFileSync(path.join(__dirname, "../src/index.ts"), "utf8");
-const begin = source.indexOf("        let _msPosTimer:");
-const end = source.indexOf("    })();\n}", begin);
+const begin = source.indexOf("// Tauri Mode B: OS MediaSession");
+const end = source.indexOf("// Tauri Mode B: frameless window", begin);
 assert.ok(
     begin > 0 && end > begin,
     "actual Tauri media-session wrapper exists"
@@ -19,12 +19,7 @@ function fixture() {
     let nextTimer = 0,
         playing = false;
     const w = {
-        bgMeta: () => ({
-            durationSec: 300,
-            positionSec: 30,
-            seekable: true,
-            title: "Movie",
-        }),
+        __TAURI__: {},
         clearInterval(id) {
             timers.delete(id);
         },
@@ -32,6 +27,12 @@ function fixture() {
             timers.delete(id);
         },
         console: { warn() {} },
+        nativeMediaMetadata: () => ({
+            durationSec: 300,
+            positionSec: 30,
+            seekable: true,
+            title: "Movie",
+        }),
         setInterval(fn) {
             const id = ++nextTimer;
             timers.set(id, fn);
@@ -64,6 +65,44 @@ function fixture() {
     };
     w.window = w;
     vm.createContext(w);
+    for (const file of ["media-backend", "media-session"])
+        require("./helpers/private-runtime.cjs")(
+            w,
+            "src/device/" + file + ".ts"
+        );
+    const backend = w.__ottMediaBackend.create({
+        clearInterval: w.clearInterval,
+        context: () => null,
+        emit() {},
+        open() {
+            playing = true;
+            return {
+                dispose() {
+                    playing = false;
+                },
+                pause() {
+                    playing = false;
+                },
+                resume() {
+                    playing = true;
+                },
+                sample: () => ({
+                    duration: 300,
+                    paused: !playing,
+                    position: 30,
+                    ready: 2,
+                }),
+                seek() {},
+            };
+        },
+        setInterval: w.setInterval,
+    });
+    w.__ottCoreBackend = () => backend;
+    w.stbPlay = (url) => backend.open({ url });
+    w.stbStop = () => backend.stop();
+    w.stbPause = () => backend.current().pause();
+    w.stbContinue = () =>
+        playing ? backend.current().pause() : backend.current().resume();
     vm.runInContext(code, w);
     return { calls, timers, w };
 }

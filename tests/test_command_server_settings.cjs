@@ -87,6 +87,7 @@ function fixture(initial = []) {
         { runScripts: "dangerously", url: "http://player.invalid/" }
     );
     const w = dom.window;
+    require("./helpers/screen-runtime.cjs")(w);
     Object.assign(w, require("./load-wire.cjs")());
     const stored = new Map(initial);
     const writes = [];

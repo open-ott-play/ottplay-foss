@@ -65,15 +65,16 @@ function classicPlaybackDecode(
     if (!isFinite(mode)) mode = 0;
     var id = classicPlaybackChannel(w, w.catIndex, w.primaryIndex);
     if (mode < 0 && (!selection || mode === -1e11)) {
-        var media = mode === -1e11 ? (w.medHistory || [])[0] : null;
+        var owned = mode === -1e11 && w.__ottMedia && w.__ottMedia.current();
+        var media = owned ? owned.payload : null;
         return {
             channelId: String(
-                (media && media.stream_url) ||
+                (owned && owned.ref.itemId) ||
                     (classicPlaybackIdentity(id) ? "channel:" + id : "media")
             ),
             kind: "vod",
             payload: media,
-            sourceId: classicPlaybackSource(w),
+            sourceId: owned ? owned.ref.sourceId : classicPlaybackSource(w),
         };
     }
     if (!classicPlaybackIdentity(id)) return null;
@@ -109,7 +110,7 @@ function classicPlaybackProjectionValue(w: any): any {
         catalog: w.channels,
         channel: classicPlaybackChannel(w, w.catIndex, w.primaryIndex),
         configuration: classicPlaybackSourceConfiguration(w),
-        media: (w.medHistory || [])[0],
+        media: w.__ottMedia && w.__ottMedia.current(),
         mode: w.playType,
         source: classicPlaybackSource(w),
     };
@@ -142,26 +143,37 @@ function classicPlaybackReconcile(): PlaybackStateSnapshot {
         store.phase("playing", false);
         classicPlaybackProjection = value;
     }
-    var state = store.snapshot();
-    if (
-        state.target &&
-        (state.phase === "playing" || state.phase === "paused")
-    ) {
-        var position =
-            state.target.kind === "archive"
-                ? Number(w.playTime)
-                : typeof w.stbGetPosTime === "function"
-                  ? w.stbGetPosTime()
-                  : state.position;
-        var duration =
-            typeof w.stbGetLen === "function" ? w.stbGetLen() : undefined;
-        store.position(position, duration, false);
-    }
     return store.snapshot();
 }
 
 function classicPlaybackSnapshot(): PlaybackStateSnapshot {
-    return classicPlaybackReconcile();
+    return classicPlaybackOwnedState().snapshot();
+}
+
+/** Explicit transport observation at action boundaries; snapshot stays a pure read. */
+function classicPlaybackCapture(): void {
+    var w = classicPlaybackHost();
+    var state = classicPlaybackReconcile();
+    var managed =
+        w.__ottCoreTransport && w.stbPlay === w.__ottCoreTransport.play;
+    if (managed) {
+        var handle = w.__ottCoreBackend().current();
+        if (handle) {
+            handle.sample();
+            return;
+        }
+    }
+    if (
+        state.target &&
+        state.target.kind === "vod" &&
+        (state.phase === "playing" || state.phase === "paused") &&
+        typeof w.stbGetPosTime === "function"
+    )
+        classicPlaybackOwnedState().position(
+            w.stbGetPosTime(),
+            typeof w.stbGetLen === "function" ? w.stbGetLen() : undefined,
+            false
+        );
 }
 
 function classicPlaybackVisit(
@@ -175,7 +187,7 @@ function classicPlaybackVisit(
 /** Semantic commands own normal playback state; old fields are output projection. */
 function classicPlaybackCommand(command: any): void {
     var w = classicPlaybackHost();
-    var state = classicPlaybackReconcile();
+    var state = classicPlaybackSnapshot();
     var store = classicPlaybackOwnedState();
     if (
         command.generation !== undefined &&
@@ -237,7 +249,10 @@ function classicPlaybackCommand(command: any): void {
                                   : w._prog100 && w._prog100.name,
                           i: w.primaryIndex,
                       },
-            sourceId: classicPlaybackSource(w),
+            sourceId:
+                type === "vod" && w.__ottMedia
+                    ? command.sourceId || w.__ottMedia.sourceId()
+                    : classicPlaybackSource(w),
         };
         var target: PlaybackVisit =
             type === "finite-channel"
@@ -295,7 +310,10 @@ function classicPlaybackCommand(command: any): void {
     classicPlaybackProjection = classicPlaybackProjectionValue(w);
 }
 
-function classicPlaybackObservation(): PlaybackObservation {
+function classicPlaybackObservation(): PlaybackObservation & {
+    isCurrentSource(): boolean;
+    isCurrentBackend(): boolean;
+} {
     var w = classicPlaybackHost();
     var snapshot = classicPlaybackSnapshot();
     var target = snapshot.phase === "stopped" ? null : snapshot.target;
@@ -305,6 +323,9 @@ function classicPlaybackObservation(): PlaybackObservation {
             : classicPlaybackChannel(w, w.catIndex, w.primaryIndex);
     var channel = (w.channels || {})[id];
     var catalog = w.channels;
+    var mode = w.playType;
+    var categoryIndex = w.catIndex;
+    var selectionIndex = w.primaryIndex;
     var categories = w.catsArray;
     var lists = w.cats;
     var list = (lists || {})[(categories || [])[w.catIndex]];
@@ -313,9 +334,38 @@ function classicPlaybackObservation(): PlaybackObservation {
     var prefix = w.p_pref;
     var source = classicPlaybackSource(w);
     var configuration = classicPlaybackSourceConfiguration(w);
-    var media = (w.medHistory || [])[0];
+    var media = w.__ottMedia && w.__ottMedia.current();
     var retention = Number(channel && channel.rec) || 0;
     var now = Date.now() / 1000;
+    var playbackIdentity = snapshot.historyTarget || snapshot.target;
+    function isCurrentSource(): boolean {
+        var current = classicPlaybackSnapshot();
+        var identity = current.historyTarget || current.target;
+        return (
+            ((!playbackIdentity && !identity) ||
+                (!!playbackIdentity &&
+                    !!identity &&
+                    playbackIdentity.sourceId === identity.sourceId &&
+                    playbackIdentity.channelId === identity.channelId)) &&
+            catalog === w.channels &&
+            channel === (w.channels || {})[id] &&
+            get === w.providerGetItem &&
+            set === w.providerSetItem &&
+            prefix === w.p_pref &&
+            source === classicPlaybackSource(w) &&
+            classicPlaybackConfigurationMatches(
+                configuration,
+                classicPlaybackSourceConfiguration(w)
+            ) &&
+            media === (w.__ottMedia && w.__ottMedia.current())
+        );
+    }
+    function isCurrentBackend(): boolean {
+        return (
+            isCurrentSource() &&
+            snapshot.generation === classicPlaybackSnapshot().generation
+        );
+    }
     return {
         archiveAvailable:
             retention > 0 || (!!target && target.kind === "archive"),
@@ -324,23 +374,17 @@ function classicPlaybackObservation(): PlaybackObservation {
         duration: snapshot.duration,
         isCurrent: function (): boolean {
             return (
-                catalog === w.channels &&
+                isCurrentBackend() &&
+                categoryIndex === w.catIndex &&
+                selectionIndex === w.primaryIndex &&
                 categories === w.catsArray &&
                 lists === w.cats &&
                 list === (w.cats || {})[(w.catsArray || [])[w.catIndex]] &&
-                channel === (w.channels || {})[id] &&
-                get === w.providerGetItem &&
-                set === w.providerSetItem &&
-                prefix === w.p_pref &&
-                source === classicPlaybackSource(w) &&
-                classicPlaybackConfigurationMatches(
-                    configuration,
-                    classicPlaybackSourceConfiguration(w)
-                ) &&
-                snapshot.generation === classicPlaybackSnapshot().generation &&
-                (w.playType !== -1e11 || media === (w.medHistory || [])[0])
+                mode === w.playType
             );
         },
+        isCurrentBackend: isCurrentBackend,
+        isCurrentSource: isCurrentSource,
         now: now,
         position: snapshot.position,
         target: target,
@@ -406,6 +450,7 @@ function classicPlaybackSelect(
     archive?: boolean
 ): void {
     var w = classicPlaybackHost();
+    classicPlaybackCapture();
     var observation = classicPlaybackObservation();
     var id = classicPlaybackChannel(w, category, index);
     if (w.__ottChannels && classicPlaybackIdentity(id))
@@ -467,17 +512,20 @@ function classicPlaybackSelect(
         return record;
     });
     result.effects.forEach(function (effect: any): void {
-        // Other negative classic modes are platform-owned files, not medHistory.
         if (
             effect.type !== "save-position" ||
             classicPersistenceSuspended ||
-            w.playType !== -1e11 ||
-            !(w.medHistory || []).length
+            !w.__ottMedia
         )
             return;
-        w.medHistory[0].current = Math.max(0, Math.floor(effect.position) || 0);
-        if (w.sFavorites !== -1)
-            w.providerSetItem("medHistory", JSON.stringify(w.medHistory));
+        w.__ottMedia.checkpoint(
+            {
+                itemId: effect.target.channelId,
+                sourceId: effect.target.sourceId,
+            },
+            effect.position,
+            true
+        );
     });
     // A departure-only call does not change the classic selection or bookmark.
     if (index === -1) return;
@@ -532,6 +580,47 @@ function classicPlaybackSelect(
 var classicPersistenceSuspended = false;
 var classicCheckpointSignature = "";
 var classicCheckpointTime = 0;
+// References imported from numeric/hash mirrors retain their origin. A collision
+// is persisted unresolved instead of silently selecting a different station.
+function classicPlaybackImportJournalValue(key: string, raw: any): any {
+    var w = classicPlaybackHost();
+    if (!raw || !w.__ottChannelReferences) return raw;
+    try {
+        var value = JSON.parse(raw);
+        var codec: any = null;
+        function reference(id: any): any {
+            if (typeof id !== "string" && typeof id !== "number") return id;
+            if (String(id).indexOf("channel-ref:") === 0) return id;
+            if (!codec)
+                codec = w.__ottChannelReferences.create(
+                    w.channels || {},
+                    w.__ottLegacyChannelAliases
+                );
+            return "channel-ref:" + JSON.stringify(codec.resolve(id, "raw"));
+        }
+        if (key === "playbackJournal") {
+            if (!value || value.version !== 2 || value.channelReferences === 1)
+                return raw;
+            if (value.bookmark && value.bookmark.kind !== "vod")
+                value.bookmark.channelId = reference(value.bookmark.channelId);
+            if (Array.isArray(value.history))
+                value.history.forEach(function (row: any): void {
+                    if (row && row.kind !== "vod")
+                        row.channelId = reference(row.channelId);
+                });
+        } else if (key === "prevArr" && Array.isArray(value)) {
+            value.forEach(function (row: any): void {
+                if (row) row.ci = reference(row.ci);
+            });
+        } else if (key === "continueWatch" && value && value.mode !== "vod") {
+            value.channelId = reference(value.channelId);
+        } else return raw;
+        return JSON.stringify(value);
+    } catch (_) {
+        return raw;
+    }
+}
+
 function classicPlaybackJournal(): any {
     var w = classicPlaybackHost();
     if (
@@ -571,14 +660,21 @@ function classicPlaybackJournal(): any {
             read("playbackJournalSource") === source;
     } catch (_) {}
     return w.__ottPlaybackJournal.create({
+        channelReferences: 1,
         get: function (key: string): any {
             if (key === "playbackJournal") {
                 var value = read(storageKey);
-                return value == null && allowLegacy
-                    ? read("playbackJournal")
-                    : value;
+                if (
+                    value == null &&
+                    allowLegacy &&
+                    storageKey !== "playbackJournal"
+                )
+                    value = read("playbackJournal");
+                return classicPlaybackImportJournalValue(key, value);
             }
-            return allowLegacy ? read(key) : null;
+            return allowLegacy
+                ? classicPlaybackImportJournalValue(key, read(key))
+                : null;
         },
         importSourceId: allowLegacy
             ? legacy === "ottclub" && w.p_pref === ""
@@ -599,6 +695,22 @@ function classicPlaybackJournal(): any {
 
 function classicPlaybackLocate(id: string, groupId?: string): any {
     var w = classicPlaybackHost();
+    if (id.indexOf("channel-ref:") === 0) {
+        try {
+            var ref = JSON.parse(id.slice("channel-ref:".length));
+            var codec = w.__ottChannelReferences.create(
+                w.channels || {},
+                w.__ottLegacyChannelAliases
+            );
+            if (!ref.itemId && !ref.ambiguous && ref.legacyId !== undefined)
+                ref = codec.resolve(ref.legacyId, ref.origin);
+            var projected = codec.project(ref);
+            if (projected === null) return null;
+            id = String(projected);
+        } catch (_) {
+            return null;
+        }
+    }
     var groups = w.catsArray || [];
     var preferred = w.__ottChannels ? w.__ottChannels.index(groupId) : -1;
     if (preferred < 0) preferred = groups.indexOf(groupId);
@@ -694,6 +806,19 @@ function classicPlaybackBookmark(): any {
 function classicPlaybackCheckpoint(snapshot: any, force = false): void {
     var w = classicPlaybackHost();
     var target = snapshot && (snapshot.historyTarget || snapshot.target);
+    if (
+        target &&
+        target.kind === "vod" &&
+        !classicPersistenceSuspended &&
+        w.__ottMedia
+    ) {
+        w.__ottMedia.checkpoint(
+            { itemId: target.channelId, sourceId: target.sourceId },
+            snapshot.position,
+            force || snapshot.phase !== "playing"
+        );
+        return;
+    }
     if (!target || target.sourceId !== classicPlaybackSource(w)) return;
     var journal = classicPlaybackJournal();
     if (!journal) return;
@@ -744,8 +869,11 @@ function classicPlaybackCheckpoint(snapshot: any, force = false): void {
     checkpoint: classicPlaybackCheckpoint,
     command: classicPlaybackCommand,
     context: function (): any {
+        var observation = classicPlaybackObservation();
         return {
-            isCurrent: classicPlaybackObservation().isCurrent,
+            isCurrent: observation.isCurrent,
+            isCurrentBackend: observation.isCurrentBackend,
+            isCurrentSource: observation.isCurrentSource,
             sourceId: classicPlaybackSource(classicPlaybackHost()),
         };
     },
@@ -755,9 +883,11 @@ function classicPlaybackCheckpoint(snapshot: any, force = false): void {
         return classicPlaybackRuntime().guard(callback);
     },
     hydrate: classicPlaybackHydrate,
+    importLegacy: classicPlaybackReconcile,
     reconcile: classicPlaybackReconcile,
     select: classicPlaybackSelect,
     shift: function (delta: number): void {
+        classicPlaybackCapture();
         classicPlaybackRuntime().request(
             delta === -6e6
                 ? { intent: "begin" }
@@ -765,6 +895,9 @@ function classicPlaybackCheckpoint(snapshot: any, force = false): void {
         );
     },
     snapshot: classicPlaybackSnapshot,
+    sourceId: function (): string {
+        return classicPlaybackSource(classicPlaybackHost());
+    },
     suspendPersistence: function (): void {
         classicPersistenceSuspended = true;
         classicCheckpointSignature = "";

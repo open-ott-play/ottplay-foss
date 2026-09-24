@@ -42,6 +42,7 @@ export interface VPortalClient {
     dispose(): void;
     load(target: any, callback: VPortalCompletion): void;
     play(item: any): void;
+    resolve(item: any, done: (item: any) => void): void;
 }
 
 /** The provider owns this instance, so replacing its settings invalidates all work. */
@@ -401,7 +402,7 @@ export function createVPortalClient(
         );
     }
 
-    function play(item: any): void {
+    function play(item: any, resolved?: (item: any) => void): void {
         cancel();
         if (!item || !isCurrent(revision)) return;
         if (
@@ -423,7 +424,8 @@ export function createVPortalClient(
             // its previous URL with the newly resolved URL before updating it.
             var playable = copyRequest(item);
             playable.stream_url = url;
-            w._playMedia(playable);
+            if (resolved) resolved(playable);
+            else w._playMedia(playable);
         }
         if (!item.request || typeof item.request !== "object") {
             start(item.stream_url);
@@ -473,7 +475,8 @@ export function createVPortalClient(
                         if (index >= 0 && index < names.length)
                             start(variants[names[index]]);
                     },
-                    -1
+                    -1,
+                    !!resolved
                 );
                 // showSelectBox closes the old list, which deliberately cancels pending work.
                 token = revision;
@@ -495,7 +498,17 @@ export function createVPortalClient(
                     if (code === keys.RETURN || code === keys.EXIT) cancel();
                     return handled;
                 };
-                w.selectBoxKeyHandler = qualityHandler;
+                var screen = w.__ottClassicScreenPort;
+                if (
+                    screen &&
+                    typeof screen.decorateOwnedCallback === "function"
+                )
+                    qualityHandler = screen.decorateOwnedCallback(
+                        "picker",
+                        picker,
+                        qualityHandler
+                    );
+                else w.selectBoxKeyHandler = qualityHandler;
             },
             current
         );
@@ -509,6 +522,9 @@ export function createVPortalClient(
         },
         load: load,
         play: play,
+        resolve: function (item: any, done: (item: any) => void) {
+            play(item, done);
+        },
     };
 }
 

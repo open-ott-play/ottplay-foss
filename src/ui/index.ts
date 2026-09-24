@@ -11,7 +11,6 @@ import {
 
 import {
     cancelMediaLoad,
-    currentProgramRequestQueue,
     getCurProgData,
     ifParentalAccessChId,
     type MediaHistoryEntry,
@@ -65,103 +64,13 @@ var listFooterElement: HTMLElement | null = null;
 var listDetailElement: HTMLElement | null = null;
 var channelNumberElement: HTMLElement | null = null;
 
-// State
-var listDataArray: any[] = [];
-var getListItemFn: ((item: any, idx: number) => string) | null = null;
-var detailListActionFn: (() => void) | null = null;
-var listKeyHandlerFn: ((key: any) => boolean) | null = null;
-// Forward old-style global names (set by provider scripts) to new-style module variables
-function makeRedefinable(
-    name: string,
-    get: () => any,
-    set: (v: any) => void
-): void {
-    try {
-        Object.defineProperty(window, name, {
-            configurable: true,
-            enumerable: true,
-            get,
-            set,
-        });
-    } catch (_) {
-        // HMR / re-eval: property already exists as non-configurable.
-        // Put a plain accessor object on window so reads/writes route to our get/set.
-        // Skipping second defineProperty — would throw if plain accessor is non-configurable.
-        (window as any)[name] = {
-            get value() {
-                return get();
-            },
-            set value(v) {
-                set(v);
-            },
-        };
-    }
-}
-makeRedefinable(
-    "listKeyHandler",
-    () => listKeyHandlerFn,
-    (v) => {
-        listKeyHandlerFn = v;
-    }
-);
-makeRedefinable(
-    "listKeyHandlerFn",
-    () => listKeyHandlerFn,
-    (v) => {
-        listKeyHandlerFn = v;
-    }
-);
-Object.defineProperty(window, "getListItem", {
-    configurable: true,
-    enumerable: true,
-    get: function (): any {
-        return getListItemFn;
-    },
-    set: function (v: any) {
-        getListItemFn = v;
-    },
-});
-Object.defineProperty(window, "detailListAction", {
-    configurable: true,
-    enumerable: true,
-    get: function (): any {
-        return detailListActionFn;
-    },
-    set: function (v: any) {
-        detailListActionFn = v;
-    },
-});
-// Bridge aliases used by channels/provider (epgList sets getListItemFn /
-// listDataArray on window). Without these, showPage keeps rendering the
-// previous Menu from module-local listDataArray after EPG/archive opens.
-makeRedefinable(
-    "listDataArray",
-    () => listDataArray,
-    (v) => {
-        listDataArray = v || [];
-    }
-);
-makeRedefinable(
-    "getListItemFn",
-    () => getListItemFn,
-    (v) => {
-        getListItemFn = v;
-    }
-);
-makeRedefinable(
-    "detailListActionFn",
-    () => detailListActionFn,
-    (v) => {
-        detailListActionFn = v;
-    }
-);
-makeRedefinable(
-    "aboutKeyHandler",
-    () => aboutKeyHandler,
-    (v) => {
-        aboutKeyHandler = v;
-    }
-);
+// List models and callbacks are owned by the screen port. The declarations
+// retain the classic renderer ABI without allocating another copy of state.
+(window as any).listKeyHandler = null;
+declare var listDataArray: any[];
+declare var getListItemFn: ((item: any, idx: number) => string) | null;
+declare var detailListActionFn: (() => void) | null;
+declare var listKeyHandlerFn: ((key: any) => boolean) | null;
 var itemWidth = 735;
 declare var curColor: string;
 declare var curColorB: string;
@@ -171,7 +80,7 @@ if (typeof (window as any).editvar === "undefined")
     (window as any).editvar = "";
 if (typeof (window as any).editCaption === "undefined")
     (window as any).editCaption = "";
-var editPos = 0;
+declare var editPos: number;
 var cursorInterval: any = null;
 var _keyCur = 0;
 var _keyP = false;
@@ -256,11 +165,14 @@ var _keysSymbol: any[] = [
     { a: function () {}, s: "" },
     {
         a: function () {
-            clearInterval(cursorInterval);
-            (window as any).restoreListPanelState();
-            $("#listEdit").hide();
-            if (typeof (window as any).setEdit === "function")
-                (window as any).setEdit();
+            (window as any).__ottClassicScreenPort.finishEditor(
+                true,
+                function () {
+                    clearInterval(cursorInterval);
+                    $("#listEdit").hide();
+                    (window as any).restoreListPanelState();
+                }
+            );
         },
         s: "Ok",
     },
@@ -270,13 +182,12 @@ var _keyE = true;
 
 // Select/value state
 var _curVal = 0;
-var aboutKeyHandler: ((key: number) => boolean) | null = null;
+declare var aboutKeyHandler: ((key: number) => boolean) | null;
 
 // Volume
 var volumeTimeout: any = null;
 
 // UI state for save/restore
-var ui_state: any = {};
 
 // String constants for button hints
 export var strUP = '<span class="fontello">&#xe80b;</span>';
@@ -889,16 +800,17 @@ export function showChannelInfo(timeoutSec: number): void {
  *             The scrollbar shows the current page position as a colored bar.
  */
 export function showPage(): void {
+    var screenOwner = (window as any).__ottClassicScreenPort.commitList();
+    if (!screenOwner.active()) return;
     isListVisible = true;
     try {
         (window as any).isListVisible = true;
     } catch (_vis) {}
     $infoBar.hide();
     $("#permanentTime").hide();
-    // Gold showPage clears the EPG queue before re-rendering rows so each
-    // visible channel re-queues getCurProgData → updateChannelListRow (now/next).
+    // Retire the previous visible-row subscriptions before mounting this page.
     try {
-        currentProgramRequestQueue.length = 0;
+        (window as any).__ottClassicGuide.cancelConsumers();
     } catch (_q) {}
 
     if (listInElement) listInElement.innerHTML = "";
@@ -926,7 +838,7 @@ export function showPage(): void {
             (window as any).__ottListFitRetry = true;
             requestAnimationFrame(function () {
                 (window as any).__ottListFitRetry = false;
-                showPage();
+                if (screenOwner.active()) showPage();
             });
         }
     } catch (_early) {}
@@ -1269,6 +1181,9 @@ export function setSelect(index: number): void {
  * @analysis Errors during DOM manipulation are silently caught and logged.
  */
 export function closeList(restorePip = true): void {
+    (window as any).__ottClassicScreenPort.closeList();
+    if ((window as any).__ottClassicGuideScreen)
+        (window as any).__ottClassicGuideScreen.close();
     cancelMediaLoad();
     isListVisible = false;
     try {
@@ -1351,10 +1266,13 @@ export function infoBox(message: string): void {
                 renderButtonHint(keys.ENTER, strENTER, "Ok")
         )
         .show();
-    (window as any).dialogBoxKeyHandler = function (_e: number): void {
-        $("#dialogbox").hide();
-        (window as any).dialogBoxKeyHandler = null;
-    };
+    (window as any).__ottClassicScreenPort.setOwnedCallback(
+        "dialog",
+        function (_e: number): void {
+            $("#dialogbox").hide();
+            (window as any).dialogBoxKeyHandler = null;
+        }
+    );
 }
 
 function escapeHtml(text: string): string {
@@ -1395,129 +1313,118 @@ export function confirmBox(
                 "</center>"
         )
         .show();
-    w.dialogBoxKeyHandler = function (e: number): void {
-        $("#dialogbox").hide();
-        w.dialogBoxKeyHandler = null;
-        if (e === keys.ENTER) {
-            if (onYes) onYes();
-        } else {
-            // Esc/RETURN must not leave video frozen (stbPause / overlay).
-            if (
-                wasPlaying &&
-                typeof w.stbContinue === "function" &&
-                typeof w.stbIsPlaying === "function" &&
-                !w.stbIsPlaying()
-            )
-                w.stbContinue();
-            if (typeof onNo === "function") onNo();
+    (window as any).__ottClassicScreenPort.setOwnedCallback(
+        "dialog",
+        function (e: number): void {
+            $("#dialogbox").hide();
+            w.dialogBoxKeyHandler = null;
+            if (e === keys.ENTER) {
+                if (onYes) onYes();
+            } else {
+                // Esc/RETURN must not leave video frozen (stbPause / overlay).
+                if (
+                    wasPlaying &&
+                    typeof w.stbContinue === "function" &&
+                    typeof w.stbIsPlaying === "function" &&
+                    !w.stbIsPlaying()
+                )
+                    w.stbContinue();
+                if (typeof onNo === "function") onNo();
+            }
         }
-    };
+    );
 }
 
 export function showSelectBox(
-    s: number,
-    n: string[],
-    i: (val: number) => void,
-    a?: number
+    selected: number,
+    labels: string[],
+    choose: (value: number) => void,
+    timeout?: number,
+    preserveParent = false
 ): void {
-    clearTimeout((window as any).numTimeout);
-    if (n.length === 0) return;
-    if (n.length === 1) {
-        showShift(n[0]);
+    var w = window as any;
+    clearTimeout(w.numTimeout);
+    if (!labels.length) return;
+    if (labels.length === 1) {
+        showShift(labels[0]);
         return;
     }
-    if (typeof a === "undefined") a = 3000;
-
-    /**
-     * Internal: re-render the select box with a new selection index, update highlighting, and invoke the callback.
-     *
-     * @param e - New selection index (may wrap).
-     * @returns void
-     * @sideeffect Updates `channelNumberElement.innerHTML`. Sets timeout for auto-hide when `a` is truthy.
-     */
-    function r(e: number) {
-        if (e === n.length) s = 0;
-        else if (e < 0) s = n.length - 1;
-        else s = e;
-        if (a) i(s);
+    var delay = timeout === undefined ? 3000 : timeout;
+    var immediate = !!delay && delay !== -1;
+    var commitOnTimeout = delay === 0;
+    var focus = selected;
+    var owner: ScreenOwner;
+    var timer: any = null;
+    if (preserveParent) {
+        $("#list_osd").hide();
+        $("#list_window").hide();
+        if (listElement) listElement.style.display = "none";
+    } else closeList();
+    var port = w.__ottClassicScreenPort;
+    function finish(commit: boolean) {
+        if (!owner || !owner.foreground()) return;
+        port.close("picker");
+        if (channelNumberElement) channelNumberElement.style.display = "none";
+        if (preserveParent && port.listOwner() && port.listOwner().active())
+            showPage();
+        if (commit) choose(focus);
+    }
+    function render(value: number) {
+        if (!owner.active()) return;
+        focus = (value + labels.length) % labels.length;
+        owner.model.focus = focus;
+        if (immediate) choose(focus);
+        if (!owner.active()) return;
         var html = "";
-        n.forEach(function (val, t) {
+        labels.forEach(function (label, index) {
             html +=
                 '<div style="' +
-                (t === s
-                    ? "color:" +
-                      (window as any).curColor +
-                      ";background-color:" +
-                      (window as any).curColorB
+                (index === focus
+                    ? "color:" + w.curColor + ";background-color:" + w.curColorB
                     : "") +
                 '" onclick="_doKey(' +
-                (-100 + t) +
+                (-100 + index) +
                 ');">&nbsp;&nbsp;' +
-                metadataHtml(val) +
+                metadataHtml(label) +
                 "&nbsp;&nbsp;</div>";
         });
-        if (channelNumberElement) channelNumberElement.innerHTML = html;
-        if (a)
-            (window as any).numTimeout = setTimeout(function () {
-                if (channelNumberElement)
-                    channelNumberElement.style.display = "none";
-                (window as any).selectBoxKeyHandler = null;
-            }, a);
-    }
-    closeList();
-    if (a === -1) {
-        a = 0;
-        r(s);
-    } else if (a) {
-        r(s + 1);
-    } else {
-        r(s);
-        (window as any).numTimeout = setTimeout(function () {
-            i(s);
-            if (channelNumberElement)
-                channelNumberElement.style.display = "none";
-            (window as any).selectBoxKeyHandler = null;
-        }, 2000);
-    }
-    if (channelNumberElement) channelNumberElement.style.display = "";
-    (window as any).selectBoxKeyHandler = function (e: number): boolean {
-        clearTimeout((window as any).numTimeout);
-        switch (e) {
-            case keys.ENTER:
-                if (!a) i(s);
-            // falls through
-            case keys.RETURN:
-            case keys.EXIT:
-                if (channelNumberElement)
-                    channelNumberElement.style.display = "none";
-                (window as any).selectBoxKeyHandler = null;
-                return true;
-            case keys.UP:
-                r(s - 1);
-                return true;
-            case keys.DOWN:
-                r(s + 1);
-                return true;
-            case keys.LEFT:
-                r(0);
-                return true;
-            case keys.RIGHT:
-                r(n.length - 1);
-                return true;
-            default: {
-                // Rows dispatch -100 + index; -99 is the second row.
-                var clickIdx = e + 100;
-                if (clickIdx < 0 || clickIdx >= n.length) return false;
-                if (clickIdx === s) {
-                    if (!a) i(s);
-                    if (channelNumberElement)
-                        channelNumberElement.style.display = "none";
-                    (window as any).selectBoxKeyHandler = null;
-                } else r(clickIdx);
-                return true;
-            }
+        if (channelNumberElement) {
+            channelNumberElement.innerHTML = html;
+            channelNumberElement.style.display = "";
         }
-    };
+        clearTimeout(timer);
+        if (delay > 0 || commitOnTimeout)
+            timer = setTimeout(
+                owner.guard(function () {
+                    finish(commitOnTimeout);
+                }),
+                delay > 0 ? delay : 2000
+            );
+        w.numTimeout = timer;
+    }
+    var pickerInput = port.setOwnedCallback(
+        "picker",
+        function (code: number): boolean {
+            clearTimeout(timer);
+            if (code === keys.ENTER) finish(!immediate);
+            else if (code === keys.RETURN || code === keys.EXIT) finish(false);
+            else if (code === keys.UP) render(focus - 1);
+            else if (code === keys.DOWN) render(focus + 1);
+            else if (code === keys.LEFT) render(0);
+            else if (code === keys.RIGHT) render(labels.length - 1);
+            else if (code + 100 >= 0 && code + 100 < labels.length) {
+                if (code + 100 === focus) finish(!immediate);
+                else render(code + 100);
+            }
+            return true;
+        }
+    );
+    owner = pickerInput.owner;
+    if (!owner || !owner.active()) return;
+    owner.own(function () {
+        clearTimeout(timer);
+    });
+    render(immediate ? selected + 1 : selected);
 }
 
 /**
@@ -1792,13 +1699,13 @@ function _t2(n: number): string {
 
 /**
  * Start periodic timers:
- * 1. Every 1s — update clock displays and increment `window.playTime` when playing.
+ * 1. Every 1s — render clock displays and the backend-owned playback position.
  * 2. Every 30s — refresh channel info via `updateChannelInfo`.
  *
  * @returns void
  * @sideeffect Sets up two `setInterval` calls that run indefinitely. Updates DOM elements `current_t`,
- *             `current_s`, `list_t`, `list_s`, `permanentTime`. Increments `window.playTime`.
- * @analysis The 1s timer also handles playTime tracking for archive playback. The 30s timer keeps EPG data fresh.
+ *             `current_s`, `list_t`, `list_s`, `permanentTime`. Reads backend-owned `window.playTime`.
+ * @analysis Playback timing belongs to the backend; the 1s timer only renders it. The 30s timer keeps EPG data fresh.
  */
 export function initBackgroundIntervals(): void {
     setInterval(function () {
@@ -1815,41 +1722,6 @@ export function initBackgroundIntervals(): void {
         if (listTEl) listTEl.innerHTML = timeStr;
         if (listSEl) listSEl.innerHTML = secStr;
         if (permTEl) permTEl.innerHTML = timeStr;
-        var playbackHost = window as any;
-        if (
-            typeof playbackHost.stbIsPlaying === "function" &&
-            playbackHost.stbIsPlaying()
-        ) {
-            var playback = playbackHost.__ottClassicPlayback;
-            if (playback && typeof playback.snapshot === "function") {
-                var state = playback.snapshot();
-                if (state.target && state.phase !== "stopped") {
-                    if (state.phase === "loading")
-                        playback.command({
-                            generation: state.generation,
-                            type: "playing",
-                        });
-                    if (state.target.kind !== "live")
-                        playback.command({
-                            duration:
-                                typeof playbackHost.stbGetLen === "function"
-                                    ? playbackHost.stbGetLen()
-                                    : undefined,
-                            generation: state.generation,
-                            position:
-                                state.target.kind === "archive"
-                                    ? state.position + 1
-                                    : typeof playbackHost.stbGetPosTime ===
-                                        "function"
-                                      ? playbackHost.stbGetPosTime()
-                                      : state.position + 1,
-                            type: "position",
-                        });
-                } else if (!state.target && playbackHost.playType)
-                    playbackHost.playTime = (playbackHost.playTime || 0) + 1;
-            } else if (playbackHost.playType)
-                playbackHost.playTime = (playbackHost.playTime || 0) + 1;
-        }
         // Drive archive OSD progress bar (stbPlayer.js:1744-1746 tick).
         // Skip live mode (playType === 0) — showChannelInfo already covers it.
         var w_t = window as any;
@@ -1930,9 +1802,11 @@ export function refreshAudioBadge(): void {
  *             Clears the innerHTML of all three elements.
  */
 export function saveListPanelState(): void {
-    ui_state.lc = listCaptionElement ? listCaptionElement.innerHTML : "";
-    ui_state.lp = listFooterElement ? listFooterElement.innerHTML : "";
-    ui_state.ld = listDetailElement ? listDetailElement.innerHTML : "";
+    (window as any).__ottClassicScreenPort.savePanel({
+        lc: listCaptionElement ? listCaptionElement.innerHTML : "",
+        ld: listDetailElement ? listDetailElement.innerHTML : "",
+        lp: listFooterElement ? listFooterElement.innerHTML : "",
+    });
     if (listCaptionElement) listCaptionElement.innerHTML = "";
     if (listFooterElement) listFooterElement.innerHTML = "";
     if (listDetailElement) listDetailElement.innerHTML = "";
@@ -1946,10 +1820,11 @@ export function saveListPanelState(): void {
  *             Resets `ui_state` to an empty object.
  */
 export function restoreListPanelState(): void {
+    var ui_state = (window as any).__ottClassicScreenPort.restorePanel();
+    if (!ui_state) return;
     if (listCaptionElement) listCaptionElement.innerHTML = ui_state.lc || "";
     if (listFooterElement) listFooterElement.innerHTML = ui_state.lp || "";
     if (listDetailElement) listDetailElement.innerHTML = ui_state.ld || "";
-    ui_state = {};
 }
 
 /**
@@ -2032,10 +1907,20 @@ var detailTimer: any = null;
 function scheduleListDetailUpdate(): void {
     clearTimeout(detailTimer);
     if (listDetailElement) listDetailElement.innerHTML = "";
-    detailTimer = setTimeout(function () {
-        clearTimeout(detailTimer);
-        if (detailListActionFn) detailListActionFn();
-    }, 200);
+    var owner = (window as any).__ottClassicScreenPort.listOwner();
+    if (!owner) return;
+    var detail = detailListActionFn;
+    var release = owner.own(function () {
+        clearTimeout(timer);
+    });
+    var timer = setTimeout(
+        owner.guard(function () {
+            release();
+            if (owner.foreground() && detail) detail();
+        }),
+        200
+    );
+    detailTimer = timer;
 }
 
 /* ---------------------------------------------------------------------------
@@ -2179,54 +2064,59 @@ export function showProgramInfo(title: string): void {
                 : "");
     }
     // Legacy stbPlayer.js:2251-2282 — TMDb keys search; any other key closes.
-    aboutKeyHandler = function (e: number): boolean {
-        if (title) {
-            switch (e) {
-                case keys.RIGHT:
-                    if ((window as any).sArrowFun !== 2) break;
-                // fallthrough
-                case keys.N2:
-                case keys.INFO:
-                    if (
-                        hasTmdbService() &&
-                        (window as any).TMDb &&
-                        typeof (window as any).TMDb.search === "function"
-                    )
-                        (window as any).TMDb.search(title);
-                    return true;
-                case keys.FF:
-                    if ((window as any).sRewFun !== 1) break;
-                    if (
-                        hasTmdbService() &&
-                        (window as any).TMDb &&
-                        typeof (window as any).TMDb.search === "function"
-                    )
-                        (window as any).TMDb.search(title);
-                    return true;
-                case keys.NEXT:
-                    if ((window as any).sPNFun !== 1) break;
-                    if (
-                        hasTmdbService() &&
-                        (window as any).TMDb &&
-                        typeof (window as any).TMDb.search === "function"
-                    )
-                        (window as any).TMDb.search(title);
-                    return true;
+    (window as any).__ottClassicScreenPort.setOwnedCallback(
+        "about",
+        function (e: number): boolean {
+            if (title) {
+                switch (e) {
+                    case keys.RIGHT:
+                        if ((window as any).sArrowFun !== 2) break;
+                    // fallthrough
+                    case keys.N2:
+                    case keys.INFO:
+                        if (
+                            hasTmdbService() &&
+                            (window as any).TMDb &&
+                            typeof (window as any).TMDb.search === "function"
+                        )
+                            (window as any).TMDb.search(title);
+                        return true;
+                    case keys.FF:
+                        if ((window as any).sRewFun !== 1) break;
+                        if (
+                            hasTmdbService() &&
+                            (window as any).TMDb &&
+                            typeof (window as any).TMDb.search === "function"
+                        )
+                            (window as any).TMDb.search(title);
+                        return true;
+                    case keys.NEXT:
+                        if ((window as any).sPNFun !== 1) break;
+                        if (
+                            hasTmdbService() &&
+                            (window as any).TMDb &&
+                            typeof (window as any).TMDb.search === "function"
+                        )
+                            (window as any).TMDb.search(title);
+                        return true;
+                }
             }
+            restoreListPanelState();
+            $("#listAbout").hide().text("");
+            $("#_prd").css("margin-top", 0);
+            if ((window as any).detailTimer)
+                clearTimeout((window as any).detailTimer);
+            aboutKeyHandler = null;
+            return true;
         }
-        restoreListPanelState();
-        $("#listAbout").hide().text("");
-        $("#_prd").css("margin-top", 0);
-        if ((window as any).detailTimer)
-            clearTimeout((window as any).detailTimer);
-        aboutKeyHandler = null;
-        return true;
-    };
+    );
     // Show the saved detail HTML (program description) in the about overlay.
     $("#listAbout")
         .html(
             '<div style="font-size:larger;">' +
-                String(ui_state.ld || "").replace(/\|/g, "<br/>") +
+                String(
+                    (window as any).__ottClassicScreenPort.savedPanel().ld || ""
+                ).replace(/\|/g, "<br/>") +
                 "</div>"
         )
         .show();
@@ -2267,28 +2157,31 @@ export function infoMedia(): void {
                 ? renderButtonHint(keys.N2, strInfo, "TMDb", "2", extra)
                 : "");
     }
-    aboutKeyHandler = function (e: number): boolean {
-        if (t) {
-            switch (e) {
-                case keys.RIGHT:
-                    if ((window as any).sArrowFun !== 2) break;
-                // fallthrough
-                case keys.N2:
-                case keys.INFO:
-                    if (
-                        hasTmdbService() &&
-                        (window as any).TMDb &&
-                        typeof (window as any).TMDb.search === "function"
-                    )
-                        (window as any).TMDb.search(t);
-                    return true;
+    (window as any).__ottClassicScreenPort.setOwnedCallback(
+        "about",
+        function (e: number): boolean {
+            if (t) {
+                switch (e) {
+                    case keys.RIGHT:
+                        if ((window as any).sArrowFun !== 2) break;
+                    // fallthrough
+                    case keys.N2:
+                    case keys.INFO:
+                        if (
+                            hasTmdbService() &&
+                            (window as any).TMDb &&
+                            typeof (window as any).TMDb.search === "function"
+                        )
+                            (window as any).TMDb.search(t);
+                        return true;
+                }
             }
+            restoreListPanelState();
+            $("#listAbout").hide().text("");
+            aboutKeyHandler = null;
+            return true;
         }
-        restoreListPanelState();
-        $("#listAbout").hide().text("");
-        aboutKeyHandler = null;
-        return true;
-    };
+    );
     $("#listAbout")
         .html('<div id="_prd">' + description + "</div>")
         .show();
@@ -2333,25 +2226,27 @@ export function infoList(e?: string): void {
         if (item)
             listDetailElement!.innerHTML = _(item.desc || item.name || "");
     };
-    listKeyHandlerFn = function (key: number): boolean {
-        switch (key) {
-            case keys.RETURN:
-                closeList();
-                return true;
-            case keys.ENTER: {
-                var arr = (window as any).infoArr || [];
-                if (arr[selIndex] && arr[selIndex].action)
-                    arr[selIndex].action();
-                return true;
+    listKeyHandlerFn = (window as any).__ottClassicScreenPort.ownListHandler(
+        function (key: number): boolean {
+            switch (key) {
+                case keys.RETURN:
+                    closeList();
+                    return true;
+                case keys.ENTER: {
+                    var arr = (window as any).infoArr || [];
+                    if (arr[selIndex] && arr[selIndex].action)
+                        arr[selIndex].action();
+                    return true;
+                }
+                case keys.N2:
+                case keys.INFO:
+                    if (typeof (window as any).pluginInfo === "function")
+                        (window as any).pluginInfo();
+                    return true;
             }
-            case keys.N2:
-            case keys.INFO:
-                if (typeof (window as any).pluginInfo === "function")
-                    (window as any).pluginInfo();
-                return true;
+            return false;
         }
-        return false;
-    };
+    );
     // Sync listArray and window variables for consistency with legacy
     listArray = listDataArray;
     (window as any).listDataArray = listDataArray;
@@ -2385,349 +2280,45 @@ export function infoList(e?: string): void {
  *             PIN-check items (toggleProviderSettingsVisibility) toggle `window.providerSettingsUnlockCount`.
  */
 export function popupList(i?: any): void {
-    // Hide any loading spinner before showing menu
+    var w = window as any;
     $("#dialogbox").hide();
     $("#buffering").hide();
+    w.__ottClassicScreenPort.close("dialog");
     if ($("#listAbout").is(":visible")) {
         $("#listAbout").hide();
         restoreListPanelState();
     }
-
-    var popupActions: any[] = (window as any).popupActions || [];
-    // Legacy popupList(i) never executes i — it only pre-selects
-    // (stbPlayer.js:5557 / 5605: if (i == t || i == e) selIndex = u).
-
-    var a = 0,
-        o = 0; // for PIN check
-
-    /**
-     * Split a label string on "/" and return either the left or right part based on a condition.
-     * Used for toggling labels (e.g., "Play/Pause").
-     *
-     * @param e - The label string containing "/" as a separator.
-     * @param t - If true, return the right part (after "/"); if false, return the left part (before "/").
-     * @returns string — The chosen segment, trimmed.
-     */
-    function splitSlash(e: string, t: boolean): string {
-        try {
-            e = e.split("/")[t ? 1 : 0].trim();
-        } catch (ex) {
-            console.error(ex);
-        }
-        return e;
-    }
-
-    if (typeof i === "undefined") i = 0;
-    selIndex = 0;
-    listArray = [];
-    listDataArray = [];
-    // Sync listArray and window variables for consistency with legacy
-    (window as any).listDataArray = listDataArray;
-    (window as any).listArray = listArray;
-
-    var c: any = false;
-    try {
-        c = curList[primaryIndex];
-    } catch (e) {
-        console.error(e);
-    }
-
-    var u = -1; // counter for added elements
-    var playType: number = (window as any).playType || 0;
-    var channels: any = (window as any).channels || {};
-    var popStop: any = (window as any).popStop;
-    var popPause: any = (window as any).popPause;
-    var popTogglePip: any = (window as any).popTogglePip;
-    var toggleAudioTrack: any = (window as any).toggleAudioTrack;
-    var toggleSubtitle: any = (window as any).toggleSubtitle;
-    var toggleZoom: any = (window as any).toggleZoom;
-    var toggleAspectRatio: any = (window as any).toggleAspectRatio;
-    var popShift: any = (window as any).popShift;
-    var popRecords: any = (window as any).popRecords;
-    var popStopPip: any = (window as any).popStopPip;
-    var popMedia: any = (window as any).popMedia;
-    var popPrevProg: any = (window as any).popPrevProg;
-    var restart: any = (window as any).restart;
-    var optionsList: any = (window as any).optionsList;
-    var exitPortal: any = (window as any).exitPortal;
-    var infoList: any = (window as any).infoList;
-    var toggleProviderSettingsVisibility: any = (window as any)
-        .toggleProviderSettingsVisibility;
-    var popBuckets: any = (window as any).popBuckets;
-    var popEpg: any = (window as any).popEpg;
-
-    var sHideMenus: string[] = (window as any).sHideMenus || [];
-    var popupActions: any[] = (window as any).popupActions || [];
-    var popupArray: string[] = (window as any).popupArray || [];
-    var popupDetail: any[] = (window as any).popupDetail || [];
-
-    popupActions.forEach(function (action: any, t: number) {
-        if (!action) return;
-        if (sHideMenus.indexOf(popupActionId(popupActions[t])) !== -1) return;
-        var r = popupArray[t] ? popupArray[t] : "";
-
-        try {
-            switch (action) {
-                case toggleAudioTrack:
-                    if (
-                        !c ||
-                        typeof (window as any).stbAudioTracksExists !==
-                            "function" ||
-                        !(window as any).stbAudioTracksExists()
-                    )
-                        return;
-                    break;
-                case toggleSubtitle:
-                    if (
-                        !c ||
-                        typeof (window as any).stbSubtitleExists !==
-                            "function" ||
-                        !(window as any).stbSubtitleExists()
-                    )
-                        return;
-                    break;
-                case popPause:
-                    r = splitSlash(
-                        r,
-                        !(window as any).stbIsPlaying
-                            ? false
-                            : (window as any).stbIsPlaying()
-                    );
-                case popShift:
-                case popRecords:
-                    if (playType < 0 || !c || !channels[c] || channels[c].rec)
-                        break;
-                    return;
-                case popTogglePip:
-                    r = splitSlash(r, (window as any).pipIndex != null);
-                    break;
-                case popStopPip:
-                    if ((window as any).pipIndex == null) return;
-                    break;
-                case popStop:
-                    // Match product getPart12(n, playType): live (0) →
-                    // "Restart stream"; archive/media (truthy) → "Live".
-                    r = splitSlash(r, !!playType);
-                    break;
-                case popMedia:
-                    if (typeof (window as any).getMediaArray !== "function")
-                        return;
-                    break;
-                // popPrevProg: product always lists it (no playType filter).
-            }
-        } catch (e) {
-            console.error(e);
-        }
-
-        var s = popupDetail[t] || r;
-        u++;
-        if (i == t || i == action) selIndex = u;
-
-        // Add number buttons
-        var n = "";
-        if (!sNoNumbersKeys) {
-            switch (action) {
-                case toggleAudioTrack:
-                    n = "1";
-                    break;
-                case infoList:
-                    n = "2";
-                    break;
-                case popPrevProg:
-                    n = "3";
-                    break;
-                case popShift:
-                    n = "4";
-                    break;
-                case popTogglePip:
-                    n = "5";
-                    break;
-                case popStopPip:
-                    n = "6";
-                    break;
-                case popStop:
-                    n = "7";
-                    break;
-                case restart:
-                    n = "8";
-                    break;
-                case optionsList:
-                    n = "9";
-                    break;
-                case exitPortal:
-                    n = "0";
-                    break;
-            }
-            if (n) r = '<div class="btn">' + n + "</div> " + r;
-        }
-
-        // Add color buttons
-        if (!sNoColorKeys) {
-            n = "";
-            switch (action) {
-                case popBuckets:
-                    n = "blue";
-                    break;
-                case popEpg:
-                    n = "red";
-                    break;
-                case popRecords:
-                    n = "green";
-                    break;
-                case popMedia:
-                    n = "yellow";
-                    break;
-            }
-            if (n) r = '<div class="btn ' + n + '">&nbsp;</div> ' + r;
-        }
-
-        // Button labels
-        n = "";
-        switch (action) {
-            case infoList:
-                n = strInfo || "Info";
-                break;
-            case popPrevProg:
-                n = strPRECH || "Prev";
-                break;
-            case popTogglePip:
-                n = strPip || "PiP";
-                break;
-            case toggleAudioTrack:
-                n = strAudio || "Audio";
-                break;
-            case toggleSubtitle:
-                n = strSubt || "Subt";
-                break;
-            case toggleZoom:
-                n = strZoom || "Zoom";
-                break;
-            case toggleAspectRatio:
-                n = strAspect || "Aspect";
-                break;
-            case optionsList:
-                n = strTools || "Tools";
-                break;
-            case popPause:
-                n = strPlayPause || "Play";
-                break;
-            case popStop:
-                n = strSTOP || "Stop";
-                break;
-        }
-        if (n) r = '<div class="btn">' + n + "</div> " + r;
-
-        // Push to array as OBJECT (not string!)
-        listArray.push({ action: action, desc: s, name: r });
-
-        if (action == toggleProviderSettingsVisibility)
-            a = listArray.length - 1;
-        if (action == optionsList) o = listArray.length;
-    });
-
-    getListItemFn = function (item: any, _idx: number) {
-        return "&nbsp;&nbsp;" + (item.name || "");
+    var menu = w.__ottMenuRegistry.open(w, i);
+    listArray = menu.rows;
+    listDataArray = menu.rows;
+    selIndex = menu.focus;
+    getListItemFn = function (item: any) {
+        return "&nbsp;&nbsp;" + item.name;
     };
-
     detailListActionFn = function () {
         var item = listArray[selIndex];
-        if (item && listDetailElement) {
-            listDetailElement.innerHTML = item.desc || "";
-        }
-        if (item && item.action == toggleProviderSettingsVisibility) {
-            (window as any).providerSettingsUnlockCount = 0;
-        }
+        if (item && listDetailElement) listDetailElement.innerHTML = item.desc;
+        if (item && item.id === "provider.unlock")
+            w.providerSettingsUnlockCount = 0;
     };
-
-    listKeyHandlerFn = function (key: any): boolean {
-        switch (typeof key === "number" ? key : key.keyCode) {
-            case keys.RETURN:
+    listKeyHandlerFn = (window as any).__ottClassicScreenPort.ownListHandler(
+        function (key: any): boolean {
+            var code = typeof key === "number" ? key : key.keyCode;
+            if (code === keys.RETURN) {
                 closeList();
                 return true;
-            case keys.ENTER: {
-                var item = listArray[selIndex];
-                if (item && item.action && typeof item.action === "function") {
-                    item.action();
-                }
+            }
+            if (code === keys.ENTER) {
+                var row = listArray[selIndex];
+                if (row) menu.invoke(row.id);
                 return true;
             }
-            case keys.ZOOM:
-                if (typeof (window as any).toggleZoom === "function")
-                    (window as any).toggleZoom();
-                return true;
-            case keys.ASPECT:
-                if (typeof (window as any).toggleAspectRatio === "function")
-                    (window as any).toggleAspectRatio();
-                return true;
-            case keys.N0:
-                if (typeof exitPortal === "function") exitPortal();
-                return true;
-            case keys.N1:
-            case keys.AUDIO:
-                if (typeof (window as any).toggleAudioTrack === "function")
-                    (window as any).toggleAudioTrack();
-                return true;
-            case keys.N2:
-                if (typeof (window as any).infoList === "function")
-                    (window as any).infoList();
-                return true;
-            case keys.N3:
-                if (typeof (window as any).popPrevProg === "function")
-                    (window as any).popPrevProg();
-                return true;
-            case keys.N4:
-                if (typeof (window as any).popShift === "function")
-                    (window as any).popShift();
-                return true;
-            case keys.N5:
-                if (typeof (window as any).popTogglePip === "function")
-                    (window as any).popTogglePip();
-                return true;
-            case keys.N6:
-                if (typeof (window as any).popStopPip === "function")
-                    (window as any).popStopPip();
-                return true;
-            case keys.N7:
-                if (typeof (window as any).popStop === "function")
-                    (window as any).popStop();
-                return true;
-            case keys.N8:
-                if (typeof restart === "function") restart();
-                return true;
-            case keys.N9:
-            case keys.TOOLS:
-                if (typeof optionsList === "function") optionsList();
-                return true;
-            case keys.SUBTITLE:
-                if (typeof (window as any).toggleSubtitle === "function")
-                    (window as any).toggleSubtitle();
-                return true;
-            case keys.EPG:
-            case keys.RED:
-                if (typeof (window as any).epgList === "function")
-                    (window as any).epgList(
-                        (window as any).catIndex,
-                        (window as any).primaryIndex,
-                        false
-                    );
-                return true;
-            case keys.GREEN:
-                if (typeof (window as any).recordsList === "function")
-                    (window as any).recordsList(
-                        (window as any).catIndex,
-                        (window as any).primaryIndex,
-                        false
-                    );
-                return true;
-            case keys.BLUE:
-            case keys.PREV:
-                if (typeof (window as any).bucketsList === "function")
-                    (window as any).bucketsList((window as any).catIndex);
-                return true;
+            var command = menu.command(code);
+            if (!command) return false;
+            menu.invoke(command);
+            return true;
         }
-        return false;
-    };
-
+    );
     if (listCaptionElement) listCaptionElement.innerHTML = _("Menu");
     if (listFooterElement)
         listFooterElement.innerHTML = renderButtonHint(
@@ -2735,16 +2326,9 @@ export function popupList(i?: any): void {
             strRETURN,
             "Close"
         );
-
-    // Sync listArray and listDataArray so showPage() and changeSelect() can read them
-    listDataArray = listArray;
-    (window as any).listArray = listArray;
-    (window as any).listDataArray = listArray;
-
-    // Explicitly show list_window before showPage
     $("#list_window").show();
-    if (typeof (window as any).stbSetWindow === "function")
-        (window as any).stbSetWindow();
+    if (typeof w.stbSetWindow === "function") w.stbSetWindow();
+    w.__ottClassicScreenPort.commitList();
     showPage();
 }
 
@@ -3135,50 +2719,53 @@ export function colorDialog(): void {
                 "</div>"
         )
         .show();
-    aboutKeyHandler = function (e: number): boolean {
-        switch (e) {
-            case keys.UP:
-                n = Math.min(n + 5, 100);
-                break;
-            case keys.DOWN:
-                n = Math.max(n - 5, 0);
-                break;
-            case keys.RIGHT:
-                s += 10;
-                if (s > 360) s = 0;
-                break;
-            case keys.LEFT:
-                s -= 10;
-                if (s < 0) s = 360;
-                break;
-            case keys.YELLOW:
-                s = 50;
-                n = 85;
-                break;
-            case keys.GREEN:
-                s = 90;
-                n = 85;
-                break;
-            case keys.BLUE:
-                s = 180;
-                n = 85;
-                break;
-            case keys.ENTER:
-                (window as any).eSHLcolor = s + "," + n;
-            case keys.RETURN:
-                $("#listAbout").text("").hide();
-                restoreListPanelState();
-                return true;
-            default:
-                return false;
+    (window as any).__ottClassicScreenPort.setOwnedCallback(
+        "about",
+        function (e: number): boolean {
+            switch (e) {
+                case keys.UP:
+                    n = Math.min(n + 5, 100);
+                    break;
+                case keys.DOWN:
+                    n = Math.max(n - 5, 0);
+                    break;
+                case keys.RIGHT:
+                    s += 10;
+                    if (s > 360) s = 0;
+                    break;
+                case keys.LEFT:
+                    s -= 10;
+                    if (s < 0) s = 360;
+                    break;
+                case keys.YELLOW:
+                    s = 50;
+                    n = 85;
+                    break;
+                case keys.GREEN:
+                    s = 90;
+                    n = 85;
+                    break;
+                case keys.BLUE:
+                    s = 180;
+                    n = 85;
+                    break;
+                case keys.ENTER:
+                    (window as any).eSHLcolor = s + "," + n;
+                case keys.RETURN:
+                    $("#listAbout").text("").hide();
+                    restoreListPanelState();
+                    return true;
+                default:
+                    return false;
+            }
+            var rgb = hsvToRgb(s, n, 100);
+            $("#step").css(
+                "color",
+                "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
+            );
+            return true;
         }
-        var rgb = hsvToRgb(s, n, 100);
-        $("#step").css(
-            "color",
-            "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
-        );
-        return true;
-    };
+    );
     var rgb0 = hsvToRgb(s, n, 100);
     $("#step").css(
         "color",
@@ -3219,50 +2806,53 @@ export function selColorDialog(): void {
                 '">&nbsp;1234567890&nbsp;</span>&nbsp;</div>'
         )
         .show();
-    aboutKeyHandler = function (e: number): boolean {
-        switch (e) {
-            case keys.UP:
-                n = Math.min(n + 5, 100);
-                break;
-            case keys.DOWN:
-                n = Math.max(n - 5, 0);
-                break;
-            case keys.RIGHT:
-                s += 10;
-                if (s > 360) s = 0;
-                break;
-            case keys.LEFT:
-                s -= 10;
-                if (s < 0) s = 360;
-                break;
-            case keys.YELLOW:
-                s = 50;
-                n = 85;
-                break;
-            case keys.GREEN:
-                s = 90;
-                n = 85;
-                break;
-            case keys.BLUE:
-                s = 180;
-                n = 85;
-                break;
-            case keys.ENTER:
-                (window as any).eSHLcolSel = s + "," + n;
-            case keys.RETURN:
-                $("#listAbout").text("").hide();
-                restoreListPanelState();
-                return true;
-            default:
-                return false;
+    (window as any).__ottClassicScreenPort.setOwnedCallback(
+        "about",
+        function (e: number): boolean {
+            switch (e) {
+                case keys.UP:
+                    n = Math.min(n + 5, 100);
+                    break;
+                case keys.DOWN:
+                    n = Math.max(n - 5, 0);
+                    break;
+                case keys.RIGHT:
+                    s += 10;
+                    if (s > 360) s = 0;
+                    break;
+                case keys.LEFT:
+                    s -= 10;
+                    if (s < 0) s = 360;
+                    break;
+                case keys.YELLOW:
+                    s = 50;
+                    n = 85;
+                    break;
+                case keys.GREEN:
+                    s = 90;
+                    n = 85;
+                    break;
+                case keys.BLUE:
+                    s = 180;
+                    n = 85;
+                    break;
+                case keys.ENTER:
+                    (window as any).eSHLcolSel = s + "," + n;
+                case keys.RETURN:
+                    $("#listAbout").text("").hide();
+                    restoreListPanelState();
+                    return true;
+                default:
+                    return false;
+            }
+            var rgb = hsvToRgb(s, n, 50);
+            $("#step").css(
+                "background-color",
+                "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
+            );
+            return true;
         }
-        var rgb = hsvToRgb(s, n, 50);
-        $("#step").css(
-            "background-color",
-            "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
-        );
-        return true;
-    };
+    );
     var rgb0 = hsvToRgb(s, n, 50);
     $("#step").css(
         "background-color",
@@ -3302,50 +2892,53 @@ export function backColorDialog(): void {
                 '">&nbsp;1234567890&nbsp;</span>&nbsp;</div>'
         )
         .show();
-    aboutKeyHandler = function (e: number): boolean {
-        switch (e) {
-            case keys.UP:
-                n = Math.min(n + 5, 100);
-                break;
-            case keys.DOWN:
-                n = Math.max(n - 5, 0);
-                break;
-            case keys.RIGHT:
-                s += 10;
-                if (s > 360) s = 0;
-                break;
-            case keys.LEFT:
-                s -= 10;
-                if (s < 0) s = 360;
-                break;
-            case keys.YELLOW:
-                s = 50;
-                n = 85;
-                break;
-            case keys.GREEN:
-                s = 90;
-                n = 85;
-                break;
-            case keys.BLUE:
-                s = 180;
-                n = 85;
-                break;
-            case keys.ENTER:
-                (window as any).eSHLcolorB = s + "," + n;
-            case keys.RETURN:
-                $("#listAbout").text("").hide();
-                restoreListPanelState();
-                return true;
-            default:
-                return false;
+    (window as any).__ottClassicScreenPort.setOwnedCallback(
+        "about",
+        function (e: number): boolean {
+            switch (e) {
+                case keys.UP:
+                    n = Math.min(n + 5, 100);
+                    break;
+                case keys.DOWN:
+                    n = Math.max(n - 5, 0);
+                    break;
+                case keys.RIGHT:
+                    s += 10;
+                    if (s > 360) s = 0;
+                    break;
+                case keys.LEFT:
+                    s -= 10;
+                    if (s < 0) s = 360;
+                    break;
+                case keys.YELLOW:
+                    s = 50;
+                    n = 85;
+                    break;
+                case keys.GREEN:
+                    s = 90;
+                    n = 85;
+                    break;
+                case keys.BLUE:
+                    s = 180;
+                    n = 85;
+                    break;
+                case keys.ENTER:
+                    (window as any).eSHLcolorB = s + "," + n;
+                case keys.RETURN:
+                    $("#listAbout").text("").hide();
+                    restoreListPanelState();
+                    return true;
+                default:
+                    return false;
+            }
+            var rgb = hsvToRgb(s, n, 100);
+            $("#step").css(
+                "background-color",
+                "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
+            );
+            return true;
         }
-        var rgb = hsvToRgb(s, n, 100);
-        $("#step").css(
-            "background-color",
-            "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
-        );
-        return true;
-    };
+    );
     var rgb0 = hsvToRgb(s, n, 100);
     $("#step").css(
         "background-color",
@@ -3403,35 +2996,40 @@ export function joyMenu(): void {
                 renderButtonHint(keys.RETURN, strRETURN, "Close")
         )
         .show();
-    dialogBoxKeyHandler = function (e: number): void {
-        $("#dialogbox").hide();
-        switch (e) {
-            case keys.ENTER:
-                if (typeof (window as any)._doKey === "function")
-                    (window as any)._doKey((window as any).keys.PLAY);
-                return;
-            case keys.UP:
-                if (typeof (window as any).shiftArchiveSelect === "function")
-                    (window as any).shiftArchiveSelect(0);
-                return;
-            case keys.DOWN:
-                (window as any).playType
-                    ? typeof (window as any)._doKey === "function" &&
-                      (window as any)._doKey((window as any).keys.STOP)
-                    : typeof (window as any).prevProg === "function" &&
-                      (window as any).prevProg();
-                return;
-            case keys.RIGHT:
-                if (typeof (window as any).toggleAudioTrack === "function")
-                    (window as any).toggleAudioTrack();
-                return;
-            case keys.LEFT:
-                if (typeof popupList === "function") popupList();
-                return;
-            case keys.RETURN:
-                return;
+    (window as any).__ottClassicScreenPort.setOwnedCallback(
+        "dialog",
+        function (e: number): void {
+            $("#dialogbox").hide();
+            switch (e) {
+                case keys.ENTER:
+                    if (typeof (window as any)._doKey === "function")
+                        (window as any)._doKey((window as any).keys.PLAY);
+                    return;
+                case keys.UP:
+                    if (
+                        typeof (window as any).shiftArchiveSelect === "function"
+                    )
+                        (window as any).shiftArchiveSelect(0);
+                    return;
+                case keys.DOWN:
+                    (window as any).playType
+                        ? typeof (window as any)._doKey === "function" &&
+                          (window as any)._doKey((window as any).keys.STOP)
+                        : typeof (window as any).prevProg === "function" &&
+                          (window as any).prevProg();
+                    return;
+                case keys.RIGHT:
+                    if (typeof (window as any).toggleAudioTrack === "function")
+                        (window as any).toggleAudioTrack();
+                    return;
+                case keys.LEFT:
+                    if (typeof popupList === "function") popupList();
+                    return;
+                case keys.RETURN:
+                    return;
+            }
         }
-    };
+    );
 }
 
 /* ---------------------------------------------------------------------------
@@ -3559,6 +3157,8 @@ export function showEditKey1(_initKeys: any, secret?: boolean): void {
         return;
     }
     saveListPanelState();
+    var editorOwner = (window as any).__ottClassicScreenPort.openEditor();
+    if (!editorOwner.active()) return;
     // Legacy stbPlayer.js:3993 uses == "_eng" (not ===)
     if (_ottplaylang() == "_eng") _keyE = true;
     _keysSymbol[1].s = _showLangKey()
@@ -3679,15 +3279,23 @@ export function _changeEdit(): void {
             (window as any).editvar.substr(editPos)
     );
     clearInterval(cursorInterval);
+    var owner = (window as any).__ottClassicScreenPort.owner("editor");
+    if (!owner || !owner.active()) return;
+    if (owner.model.cursorCleanup) owner.model.cursorCleanup();
     var blink = true;
     var cursor = $("#cursor");
-    cursorInterval = setInterval(function () {
+    var timer = setInterval(function () {
+        if (!owner.foreground()) return;
         blink = !blink;
         cursor.css(
             "background-color",
             blink ? (window as any).curColor : "inherit"
         );
     }, 500);
+    cursorInterval = timer;
+    owner.model.cursorCleanup = owner.own(function () {
+        clearInterval(timer);
+    });
 }
 
 /**
@@ -3833,24 +3441,16 @@ export function editKey1(e: number): void {
  *             and calls `window.restoreListPanelState()` (same teardown as RETURN/EXIT).
  */
 export function editKey2(code: number): void {
-    switch (code) {
-        case (window as any).keys.ENTER:
-            (window as any).editvar = ($("#editvar").val() as string) || "";
-            if (typeof (window as any).setEdit === "function")
-                (window as any).setEdit();
-            // Same teardown as EXIT/RETURN so #listEdit closes after save;
-            // jQuery .hide() triggers uiInit hide handler which clears __ottEditKey2Handler.
-            $("#listEdit").hide();
-            if (typeof (window as any).restoreListPanelState === "function")
-                (window as any).restoreListPanelState();
-            break;
-        case (window as any).keys.EXIT:
-        case (window as any).keys.RETURN:
-            $("#listEdit").hide();
-            if (typeof (window as any).restoreListPanelState === "function")
-                (window as any).restoreListPanelState();
-            break;
-    }
+    var w = window as any;
+    if (code !== w.keys.ENTER && code !== w.keys.EXIT && code !== w.keys.RETURN)
+        return;
+    if (code === w.keys.ENTER)
+        w.editvar = ($("#editvar").val() as string) || "";
+    w.__ottClassicScreenPort.finishEditor(code === w.keys.ENTER, function () {
+        $("#listEdit").hide();
+        if (typeof w.restoreListPanelState === "function")
+            w.restoreListPanelState();
+    });
 }
 
 /**
@@ -3865,6 +3465,8 @@ export function editKey2(code: number): void {
 export function showEditKey2(_initKeys?: number[], secret?: boolean): void {
     if (typeof (window as any).saveListPanelState === "function")
         (window as any).saveListPanelState();
+    var editorOwner = (window as any).__ottClassicScreenPort.openEditor();
+    if (!editorOwner.active()) return;
     var caption = (window as any).editCaption || "";
     var val = (window as any).editvar || "";
     var keys = (window as any).keys || {};
@@ -3906,7 +3508,8 @@ export function showEditKey2(_initKeys?: number[], secret?: boolean): void {
         if (typeof prev === "function") {
             editEl.removeEventListener("keydown", prev);
         }
-        var onKeyDown = function (ev: KeyboardEvent): void {
+        var onKeyDown = editorOwner.guard(function (ev: KeyboardEvent): void {
+            if (!editorOwner.foreground()) return;
             if (ev.isComposing || ev.keyCode === 229) {
                 // Keep IME default handling, but do not let the window key router save.
                 ev.stopPropagation();
@@ -3921,7 +3524,10 @@ export function showEditKey2(_initKeys?: number[], secret?: boolean): void {
                 ev.stopPropagation();
                 editKey2(keys.EXIT || 27);
             }
-        };
+        });
+        editorOwner.own(function () {
+            editEl!.removeEventListener("keydown", onKeyDown);
+        });
         (editEl as any).__ottEditKey2Handler = onKeyDown;
         editEl.addEventListener("keydown", onKeyDown);
         editEl.focus();
@@ -3946,13 +3552,18 @@ declare function mediaKeyHandler(keyCode: number): boolean;
  *             `window.detailListActionFn`, `window.listKeyHandlerFn`; updates
  *             #listCaption / #listPodval; calls `window.showPage`.
  */
-function showMediaList1(): void {
+function showMediaList1(view?: any): void {
     var w = window as any;
-    rememberMediaView();
-    var data: MediaHistoryEntry[] = w.mediaRecords || [];
+    view = view || w.__ottMedia.snapshot();
+    var frame = view.frame;
+    var data: MediaHistoryEntry[] = frame
+        ? frame.items.map(function (entry: any) {
+              return entry.payload;
+          })
+        : [];
     w.selIndex = Math.max(
         0,
-        Math.min((w.mediaSelects || [])[0] || 0, data.length - 1)
+        Math.min(frame ? frame.selected : 0, data.length - 1)
     );
     w.listArray = data;
     w.listDataArray = data;
@@ -3974,6 +3585,7 @@ function showMediaList1(): void {
         );
     };
     w.detailListActionFn = function () {
+        w.__ottMedia.highlight(w.selIndex, view.revision);
         var detailEl = document.getElementById("listDetail");
         var item = data[w.selIndex];
         if (!detailEl) return;
@@ -4009,7 +3621,7 @@ function showMediaList1(): void {
     var detailEl = document.getElementById("listDetail");
     if (detailEl) detailEl.innerHTML = "";
     var footerElement = document.getElementById("listPodval");
-    var urls: MediaTarget[] = w.mediaUrls || [];
+    var depth = view.frames.length;
     if (footerElement) {
         footerElement.innerHTML =
             w.renderButtonHint(
@@ -4032,11 +3644,11 @@ function showMediaList1(): void {
                             : ""
                   )) +
             w.renderButtonHint(w.keys.N2, w.strInfo, "Description", "2") +
-            (data.length && w.sFavorites !== -1 && urls.length > 1
+            (data.length && w.sFavorites !== -1 && depth > 1
                 ? w.renderButtonHint(
                       w.keys.GREEN,
                       "",
-                      urls[urls.length - 1] === -2
+                      frame && frame.route.kind === "favorites"
                           ? "Delete"
                           : "Add to favorites",
                       w.strTools,
@@ -4048,68 +3660,12 @@ function showMediaList1(): void {
     if (typeof w.showPage === "function") w.showPage();
 }
 
+if (typeof window !== "undefined")
+    (window as any).__ottRenderMedia = showMediaList1;
+
 /** Navigate legacy provider VOD URLs, fXML submenus and local history/favorites. */
 export function mediaList(target: MediaTarget | null): void {
-    var w = window as any;
-    if (w.mediaUrls && w.mediaUrls.length && target === w.mediaUrls[0]) {
-        w.mediaName = w._("Media Library");
-        w.mediaUrls = [];
-        w.mediaNames = [];
-        w.mediaSelects = [w.mediaSelects.pop() || 0];
-    }
-    if (target === null) {
-        if (w.mediaUrls === null || w.mediaUrls === undefined) {
-            w.mediaName = w._("Media Library");
-            target = "";
-            w.mediaUrls = [];
-            w.mediaNames = [];
-            w.mediaSelects = [0];
-            w.mediaRecordsPar = null;
-        } else {
-            showMediaList1();
-            return;
-        }
-    }
-    if (typeof target === "string") {
-        if (target === "submenu") {
-            w.mediaSelects.shift();
-            var item: MediaHistoryEntry | undefined =
-                w.mediaRecords[w.selIndex];
-            var submenu = item && item.submenu;
-            if (!submenu || !submenu.length) {
-                infoBox("Error: Bad fXML Submenu!");
-                return;
-            }
-            w.mediaRecordsPar = w.mediaRecords;
-            w.mediaRecords = submenu;
-            var names = w.mediaNames;
-            var title = item!.title || item!.playlist_name;
-            if (title) w.mediaNames = [title];
-            var parentSelection = w.mediaSelects[0];
-            w.mediaSelects[0] = 0;
-            showMediaList1();
-            w.mediaSelects[0] = parentSelection;
-            w.mediaNames = names;
-            return;
-        }
-        if (target.indexOf("cmd:info") === 0 || target.indexOf("alert") === 0) {
-            w.mediaSelects.shift();
-            var match = /(?:cmd:info|alert)\(([^)]+)\)/.exec(target);
-            infoBox(match ? match[1] : target);
-            return;
-        }
-    }
-    if (!w.mediaUrls) w.mediaUrls = [];
-    w.mediaUrls.push(target);
-    w.mediaRecords = [];
-    w.mediaRecordsPar = null;
-    if (target === -1 || target === -2) {
-        w.mediaRecords = target === -1 ? w.medHistory : w.medFavorites;
-        showMediaList();
-    } else if (typeof w.getMediaArray === "function") {
-        // Providers populate mediaRecords and call the completion callback with no arguments.
-        requestMediaList(target);
-    }
+    (window as any).__ottMedia.open(target);
 }
 
 /* ---------------------------------------------------------------------------
@@ -4233,51 +3789,54 @@ export function selectValue(t: any): void {
         if (listDetailElement) listDetailElement.innerHTML = r[_curVal];
     }
 
-    aboutKeyHandler = function (e: number): boolean {
-        switch (e) {
-            case keys.UP:
-                move(
-                    _curVal >= n
-                        ? -n
-                        : r.length -
-                              (r.length % n) +
-                              (_curVal + 1 > r.length % n ? -n : 0)
-                );
-                return true;
-            case keys.DOWN:
-                move(_curVal < r.length - n ? n : -_curVal + (_curVal % n));
-                return true;
-            case keys.LEFT:
-                move(
-                    _curVal % n > 0
-                        ? -1
-                        : _curVal + n - 1 > r.length - 1
-                          ? r.length - _curVal - 1
-                          : n - 1
-                );
-                return true;
-            case keys.RIGHT:
-                move(
-                    _curVal % n < n - 1
-                        ? _curVal + 1 == r.length
-                            ? -_curVal % n
-                            : 1
-                        : -n + 1
-                );
-                return true;
-            case keys.ENTER:
-                t.val = t.values.indexOf(r[_curVal]);
-            /* fall through */
-            case keys.RETURN:
-            case keys.EXIT:
-                $("#listAbout").text("").hide();
-                restoreListPanelState();
-                showPage();
-                return true;
-            default:
-                return false;
+    (window as any).__ottClassicScreenPort.setOwnedCallback(
+        "about",
+        function (e: number): boolean {
+            switch (e) {
+                case keys.UP:
+                    move(
+                        _curVal >= n
+                            ? -n
+                            : r.length -
+                                  (r.length % n) +
+                                  (_curVal + 1 > r.length % n ? -n : 0)
+                    );
+                    return true;
+                case keys.DOWN:
+                    move(_curVal < r.length - n ? n : -_curVal + (_curVal % n));
+                    return true;
+                case keys.LEFT:
+                    move(
+                        _curVal % n > 0
+                            ? -1
+                            : _curVal + n - 1 > r.length - 1
+                              ? r.length - _curVal - 1
+                              : n - 1
+                    );
+                    return true;
+                case keys.RIGHT:
+                    move(
+                        _curVal % n < n - 1
+                            ? _curVal + 1 == r.length
+                                ? -_curVal % n
+                                : 1
+                            : -n + 1
+                    );
+                    return true;
+                case keys.ENTER:
+                    t.val = t.values.indexOf(r[_curVal]);
+                /* fall through */
+                case keys.RETURN:
+                case keys.EXIT:
+                    $("#listAbout").text("").hide();
+                    restoreListPanelState();
+                    showPage();
+                    return true;
+                default:
+                    return false;
+            }
         }
-    };
+    );
 }
 
 /* ---------------------------------------------------------------------------

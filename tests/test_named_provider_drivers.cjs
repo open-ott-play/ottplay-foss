@@ -190,7 +190,7 @@ test("92 captured named playlist catalogs including empty and malformed partial 
     assert.equal(count, 92);
 });
 
-test("bestlist/stalker keeps its12 distinct Xtream API and fallback catalogs", () => {
+test("bestlist/stalker keeps its12 API/fallback transports with provider-owned channel IDs", () => {
     for (const row of require("./fixtures/stalker/bestlist-xtream.json")
         .cases) {
         const f = fixture({
@@ -210,11 +210,98 @@ test("bestlist/stalker keeps its12 distinct Xtream API and fallback catalogs", (
         const calls = f.requests.map((r, index) =>
             index ? { m3u: r.settings.url } : { url: r.settings.url }
         );
+        assert.deepEqual(calls, row.expected.calls);
+        assert.equal(callbacks, row.expected.callbacks);
+        assert.deepEqual(f.errors, []);
+        const streams = row.input.account && row.input.account.live_streams;
+        if (!streams || !streams.length) {
+            const { calls: _calls, ...emptyCatalog } = row.expected;
+            assert.deepEqual(catalogSnapshot(f, callbacks), emptyCatalog);
+            continue;
+        }
+        // These captures deliberately contain duplicate/empty display names.
+        // Both provider streams must survive, even when the old name-hash
+        // catalog collapsed them. Group classes now index provider groups;
+        // the old +2 belonged to the separately owned All/Favorites UI rows.
+        const ids = streams.length === 1 ? [1] : [1, 2, 3];
+        const groupNames =
+            streams.length === 1 ? ["Other"] : ["News", "Unknown", "Other"];
+        assert.deepEqual(clone(f.host.cList), ids);
+        assert.deepEqual(clone(f.host.catsArray), groupNames);
         assert.deepEqual(
-            { ...catalogSnapshot(f, callbacks), calls },
-            row.expected
+            clone(f.host.cats),
+            streams.length === 1
+                ? { Other: [1] }
+                : { News: [1], Other: [3], Unknown: [2] }
         );
+        for (const [index, id] of ids.entries()) {
+            const stream = streams[index];
+            const name = stream.name || String(id);
+            assert.deepEqual(clone(f.host.channels[id]), {
+                ca: "",
+                caso: "",
+                category: { class: index, name: groupNames[index] },
+                ch_id: id,
+                channel_name: name,
+                epg: String(id),
+                groupId: "xtream:category:" + stream.category_id,
+                itemId: "xtream:stream:" + id,
+                legacyChannelId: f.host.xxHash32S(stream.name, true),
+                logo: stream.stream_icon || "",
+                rec: 0,
+                tn: name,
+                url: "https://xc.test/live/a%2Fb/x%3F%26/" + id + ".m3u8",
+            });
+        }
     }
+});
+
+test("bestlist stream identity survives renaming, reordering and duplicate display names", () => {
+    const f = fixture({
+        bestlist_stalkercfg: JSON.stringify({
+            m3u: "",
+            pass: "x?&",
+            server: "https://xc.test",
+            user: "a/b",
+        }),
+    });
+    f.mount("bestlist/stalker");
+    let callbacks = 0;
+    function load(streams) {
+        f.host.getChannelsArray(() => callbacks++);
+        f.requests.at(-1).resolve({ live_streams: streams });
+    }
+    load([
+        { name: "Same", stream_id: 10 },
+        { name: "Same", stream_id: 20 },
+    ]);
+    const first = clone(f.host.channels);
+    assert.deepEqual(clone(f.host.cList), [10, 20]);
+    assert.notEqual(first[10].itemId, first[20].itemId);
+    load([
+        { name: "Renamed", stream_id: 20 },
+        { name: "Renamed", stream_id: 10 },
+        { name: "Repeated provider row", stream_id: 20 },
+        { name: "Missing provider ID" },
+    ]);
+    assert.equal(callbacks, 2);
+    assert.equal(
+        f.requests.length,
+        2,
+        "valid catalog does not trigger M3U fallback"
+    );
+    assert.deepEqual(clone(f.host.cList), [20, 10]);
+    assert.deepEqual(clone(f.host.cats), { Other: [20, 10] });
+    for (const id of [10, 20]) {
+        const channel = f.host.channels[id];
+        assert.equal(channel.ch_id, id);
+        assert.equal(channel.itemId, first[id].itemId);
+        assert.equal(channel.url, first[id].url);
+        assert.equal(channel.epg, first[id].epg);
+        assert.equal(channel.channel_name, "Renamed");
+        assert.equal(channel.category.class, 0);
+    }
+    assert.deepEqual(f.errors, []);
 });
 
 test("bestlist real direct/proxy path preserves generic14 playlist contracts", () => {

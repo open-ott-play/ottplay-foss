@@ -343,10 +343,23 @@ test("Shaka owns load position, respects late pause and releases before the next
     w.stbPlay("b.mp4");
     assert.equal(shakas[0].destroyCalls, 1);
     assert.notEqual(w.video.src, "b.mp4", "await asynchronous Shaka detach");
+    assert.equal(
+        w.video.listeners.playing.length,
+        0,
+        "replacement must not observe the retiring decoder"
+    );
+    const pending = w.__ottCoreBackend().current();
+    assert.equal(pending.snapshot().phase, "loading");
     w.stbPlay("c.mp4");
     shakas[0].destroyed.resolve();
     await tick();
     assert.equal(w.video.src, "c.mp4");
+    assert.equal(
+        w.video.listeners.playing.length,
+        1,
+        "only the attached replacement owns observations"
+    );
+    assert.equal(pending.active(), false);
     assert.equal(w.video.playCalls, 2);
 });
 test("Shaka late load/rejection cannot resurrect stopped playback", async () => {

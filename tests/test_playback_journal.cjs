@@ -4,7 +4,7 @@ const loadPrivate = require("./helpers/private-runtime.cjs");
 const sharedCore = require("./helpers/shared-core-runtime.cjs");
 const plain = (v) => JSON.parse(JSON.stringify(v));
 
-function fixture(initial = {}) {
+function fixture(initial = {}, options = {}) {
     const values = new Map(
         Object.entries(initial).map(([k, v]) => [k, JSON.stringify(v)])
     );
@@ -16,6 +16,7 @@ function fixture(initial = {}) {
     vm.createContext(w);
     loadPrivate(w, "src/playback/journal.ts");
     const journal = w.__ottPlaybackJournal.create({
+        channelReferences: options.channelReferences,
         get: (key) => values.get(key),
         isCurrent: () => active,
         now: () => 1700000100000,
@@ -326,3 +327,22 @@ for (const fault of ["fail", "retire"]) {
 console.log(
     "PASS playback journal: versioned envelope, legacy import, rollback, isolation, canonical restore and reset lifetime"
 );
+
+// The reference marker is committed inside the envelope/readback transaction.
+{
+    const f = fixture({}, { channelReferences: 1 });
+    assert.equal(
+        f.journal.update({ bookmark: { channelId: "7", kind: "live" } }),
+        true
+    );
+    assert.equal(
+        JSON.parse(f.values.get("playbackJournal")).channelReferences,
+        1
+    );
+    f.fail();
+    assert.equal(
+        f.journal.update({ bookmark: { channelId: "8", kind: "live" } }),
+        false
+    );
+    assert.equal(f.journal.read().document.bookmark.channelId, "7");
+}

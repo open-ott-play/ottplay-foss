@@ -5,7 +5,9 @@ const vm = require("node:vm");
 const ts = require("typescript");
 const root = path.resolve(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src/index.ts"), "utf8");
-const begin = source.indexOf("        let _bgPosTimer:");
+const begin = source.indexOf(
+    "        (window as any).__ottOsMediaSession.create"
+);
 const end = source.indexOf("    })();\n}", begin);
 assert.ok(begin > 0 && end > begin, "actual Capacitor playback wrapper exists");
 const code = ts.transpileModule(source.slice(begin, end), {
@@ -126,12 +128,6 @@ function fixture(legacyProxy = false) {
     let webPlaying = false;
     let webPosition = 0;
     const w = {
-        bgMeta: () => ({
-            durationSec: 300,
-            positionSec: 10,
-            seekable: true,
-            title: "Movie",
-        }),
         cap,
         clearInterval(id) {
             timers.delete(id);
@@ -142,6 +138,12 @@ function fixture(legacyProxy = false) {
         console: { warn() {} },
         DashExoPlayer: dashBridge,
         forcePlay: true,
+        nativeMediaMetadata: () => ({
+            durationSec: 300,
+            positionSec: 10,
+            seekable: true,
+            title: "Movie",
+        }),
         setInterval(fn) {
             const id = ++timerId;
             timers.set(id, fn);
@@ -190,6 +192,45 @@ function fixture(legacyProxy = false) {
         position: w.stbGetPosTime,
         seek: w.stbSetPosTime,
     };
+    for (const file of ["media-backend", "media-session"])
+        require("./helpers/private-runtime.cjs")(
+            w,
+            "src/device/" + file + ".ts"
+        );
+    const engine = {
+        pause: w.stbPause,
+        play: w.stbPlay,
+        resume: w.stbContinue,
+        seek: w.stbSetPosTime,
+        stop: w.stbStop,
+    };
+    const backend = w.__ottMediaBackend.create({
+        clearInterval: w.clearInterval,
+        context: () => null,
+        emit() {},
+        open(request) {
+            engine.play(request.url, request.position);
+            return {
+                dispose: engine.stop,
+                pause: engine.pause,
+                resume: engine.resume,
+                sample: () => ({
+                    duration: 999,
+                    paused: !webPlaying,
+                    position: webPosition,
+                    ready: 2,
+                }),
+                seek: engine.seek,
+            };
+        },
+        setInterval: w.setInterval,
+    });
+    w.__ottCoreBackend = () => backend;
+    w.stbPlay = (url, position) => backend.open({ position, url });
+    w.stbStop = () => backend.stop();
+    w.stbPause = () => backend.current().pause();
+    w.stbContinue = () =>
+        webPlaying ? backend.current().pause() : backend.current().resume();
     vm.runInContext(code, w);
     return {
         calls,
@@ -245,7 +286,10 @@ test("stop immediately stops the TS engine and invalidates delayed metadata", as
     assert.equal(calls.length, stoppedCount);
     assert.equal(timers.size, 0);
     assert.deepEqual(supports, []);
-    assert.equal(calls.at(-1)[0], "webStop");
+    assert.deepEqual(
+        calls.slice(-2).map((call) => call[0]),
+        ["webStop", "stopBackgroundAudio"]
+    );
 });
 test("new streams reject metadata from the previous playback session", () => {
     const { w, calls, timers } = fixture();

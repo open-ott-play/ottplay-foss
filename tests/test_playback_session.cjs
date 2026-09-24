@@ -136,15 +136,27 @@ function include(c, file, names) {
     const c = fixture();
     c.settings.prevCount = 0; // One previous channel.
     c.prevArr = [{ c: 0, ci: 303, i: 2 }];
-    c.medHistory = [{ current: 0, stream_url: "movie.mp4" }];
-    c.playType = -1e11;
+    const media = c.__ottMedia.prepare(
+        { id: "movie", stream_url: "movie.mp4", title: "Movie" },
+        "movie.mp4"
+    );
+    c.__ottClassicPlayback.command({
+        channelId: media.ref.itemId,
+        item: media.item,
+        type: "vod",
+    });
+    c.__ottClassicPlayback.command({ type: "playing" });
     c.__ottClassicPlayback.select(0, -1);
     assert.deepEqual(
         plain(c.prevArr).map((row) => row.ci),
         [303]
     );
-    assert.equal(c.medHistory[0].current, 125);
-    assert.equal(JSON.parse(c.stored.medHistory)[0].current, 125);
+    assert.equal(c.medHistory[0].current, 125.9);
+    assert.equal(
+        JSON.parse(c.stored["mediaJournal.v1:" + media.ref.sourceId]).history[0]
+            .position,
+        125.9
+    );
     assert.equal(c.stored.primaryIndex, undefined);
     assert.equal(c.stored.continueWatch, undefined);
     c.sFavorites = -1;
@@ -313,11 +325,8 @@ for (const replacement of [null, "catalog", "channel", "list"]) {
 // Stop really invalidates the private controller before touching media objects.
 {
     const c = fixture();
-    include(c, "src/core/index.ts", [
-        "stbStop",
-        "clearCorePlaybackStateEvents",
-    ]);
-    c._corePlaybackStateCleanup = null;
+    include(c, "src/core/index.ts", ["stbStop"]);
+    c.getCoreMediaBackend = () => ({ stop() {} });
     c.video = { pause() {}, removeAttribute() {} };
     c._playSession = 0;
     c.hlsInstance = null;

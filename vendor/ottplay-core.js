@@ -297,6 +297,15 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(GuideTimeFormat, 'GuideTimeFormat', VOID, Enum);
   initMetadataForClass(NativeGuideClock, 'NativeGuideClock');
   initMetadataForObject(GuideTime, 'GuideTime');
+  initMetadataForCompanion(Companion_13);
+  initMetadataForClass(ProgrammeId, 'ProgrammeId');
+  initMetadataForClass(GuideTimelineSelection, 'GuideTimelineSelection');
+  initMetadataForClass(sam$kotlin_Comparator$0_4, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
+  initMetadataForObject(GuideTimeline, 'GuideTimeline');
+  initMetadataForClass(LegacyChannelReference, 'LegacyChannelReference');
+  initMetadataForClass(Label, 'Label', VOID, LegacyChannelReference);
+  initMetadataForClass(NumericId, 'NumericId', VOID, LegacyChannelReference);
+  initMetadataForCompanion(Companion_14);
   initMetadataForObject(LegacySettingsImport, 'LegacySettingsImport');
   initMetadataForClass(LegacyStalkerEntry, 'LegacyStalkerEntry');
   initMetadataForClass(LegacyStalkerCatalog, 'LegacyStalkerCatalog');
@@ -306,7 +315,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(LegacyXtreamCatalogBuilder, 'LegacyXtreamCatalogBuilder');
   initMetadataForClass(LegacyXtreamProgramme, 'LegacyXtreamProgramme');
   initMetadataForObject(LegacyXtream, 'LegacyXtream');
-  initMetadataForClass(sam$kotlin_Comparator$0_4, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
+  initMetadataForClass(sam$kotlin_Comparator$0_5, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
   initMetadataForObject(LibraryState, 'LibraryState');
   initMetadataForClass(MediaRef, 'MediaRef');
   initMetadataForClass(MediaRecord, 'MediaRecord');
@@ -323,7 +332,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(NativeGuideWindow, 'NativeGuideWindow');
   initMetadataForClass(NativeGuideRefreshFormat, 'NativeGuideRefreshFormat', VOID, Enum);
   initMetadataForClass(NativeGuideRefreshAction, 'NativeGuideRefreshAction', VOID, Enum);
-  initMetadataForCompanion(Companion_13);
+  initMetadataForCompanion(Companion_15);
   initMetadataForClass(NativeGuideRefresh, 'NativeGuideRefresh');
   initMetadataForClass(NativeSourceFormat, 'NativeSourceFormat', VOID, Enum);
   initMetadataForClass(NativeCacheLookup, 'NativeCacheLookup', VOID, Enum);
@@ -333,11 +342,12 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForObject(NativeSourceLoad, 'NativeSourceLoad');
   initMetadataForClass(NativeSourceBatch, 'NativeSourceBatch');
   initMetadataForClass(OperatorGroups, 'OperatorGroups', OperatorGroups);
-  initMetadataForCompanion(Companion_14);
+  initMetadataForCompanion(Companion_16);
   initMetadataForClass(OperatorCatalogs, 'OperatorCatalogs');
+  initMetadataForClass(OperatorChannelSession, 'OperatorChannelSession');
   initMetadataForClass(Request, 'Request', Request);
   initMetadataForClass(OperatorRequestLifetime, 'OperatorRequestLifetime', OperatorRequestLifetime);
-  initMetadataForCompanion(Companion_15);
+  initMetadataForCompanion(Companion_17);
   initMetadataForClass(OperatorLifetime, 'OperatorLifetime', OperatorLifetime);
   initMetadataForObject(OperatorMedia, 'OperatorMedia');
   initMetadataForClass(OperatorGuide, 'OperatorGuide');
@@ -352,7 +362,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForObject(OperatorProfiles, 'OperatorProfiles');
   initMetadataForClass(OperatorCatalogFailure, 'OperatorCatalogFailure', VOID, Exception);
   initMetadataForClass(OperatorSourceAction, 'OperatorSourceAction', VOID, Enum);
-  initMetadataForCompanion(Companion_16);
+  initMetadataForCompanion(Companion_18);
   initMetadataForClass(OperatorSession, 'OperatorSession');
   initMetadataForClass(OperatorSourceFailure, 'OperatorSourceFailure', VOID, Exception);
   initMetadataForObject(OperatorSources, 'OperatorSources');
@@ -362,7 +372,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(ParentalSession, 'ParentalSession', ParentalSession);
   initMetadataForClass(PlaybackDetection, 'PlaybackDetection');
   initMetadataForObject(PlaybackDetectionRules, 'PlaybackDetectionRules');
-  initMetadataForCompanion(Companion_17);
+  initMetadataForCompanion(Companion_19);
   initMetadataForClass(PlaybackRecovery, 'PlaybackRecovery', PlaybackRecovery);
   initMetadataForClass(PlaybackRestart, 'PlaybackRestart', PlaybackRestart);
   initMetadataForClass(PlaybackEngineSequence, 'PlaybackEngineSequence', PlaybackEngineSequence);
@@ -398,7 +408,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(ProviderPlaylistResult, 'ProviderPlaylistResult');
   initMetadataForObject(ProviderPlaylist, 'ProviderPlaylist');
   initMetadataForClass(ProviderValueKind, 'ProviderValueKind', VOID, Enum);
-  initMetadataForCompanion(Companion_18);
+  initMetadataForCompanion(Companion_20);
   initMetadataForClass(ProviderValue, 'ProviderValue');
   initMetadataForObject(CoreNumber, 'CoreNumber');
   initMetadataForClass(StalkerBrowserSession, 'StalkerBrowserSession');
@@ -415,13 +425,13 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(StreamingGuideIdentity, 'StreamingGuideIdentity');
   initMetadataForClass(StreamingGuideCoverage, 'StreamingGuideCoverage');
   initMetadataForClass(Entry_0, 'Entry');
-  initMetadataForCompanion(Companion_19);
-  initMetadataForClass(sam$kotlin_Comparator$0_5, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
+  initMetadataForCompanion(Companion_21);
+  initMetadataForClass(sam$kotlin_Comparator$0_6, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
   initMetadataForClass(StreamingGuide, 'StreamingGuide');
   initMetadataForClass(XmltvRecordFormat, 'XmltvRecordFormat', VOID, Enum);
   initMetadataForClass(XmltvWebRecord, 'XmltvWebRecord');
   initMetadataForClass(XmltvRecordError, 'XmltvRecordError', VOID, RuntimeException);
-  initMetadataForClass(sam$kotlin_Comparator$0_6, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
+  initMetadataForClass(sam$kotlin_Comparator$0_7, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
   initMetadataForObject(NativeRecordRules, 'NativeRecordRules');
   initMetadataForClass(Time, 'Time');
   initMetadataForClass(XmltvRecords, 'XmltvRecords');
@@ -429,15 +439,15 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(XtreamCatalog, 'XtreamCatalog');
   initMetadataForClass(XtreamSeries, 'XtreamSeries');
   initMetadataForClass(XtreamSeriesParent, 'XtreamSeriesParent');
-  initMetadataForClass(sam$kotlin_Comparator$0_7, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
   initMetadataForClass(sam$kotlin_Comparator$0_8, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
+  initMetadataForClass(sam$kotlin_Comparator$0_9, 'sam$kotlin_Comparator$0', VOID, VOID, [Comparator, FunctionAdapter]);
   initMetadataForObject(XtreamCatalogs, 'XtreamCatalogs');
   initMetadataForClass(XtreamFormat, 'XtreamFormat', VOID, Enum);
   initMetadataForClass(XtreamFailure, 'XtreamFailure', VOID, Exception);
   initMetadataForClass(XtreamRequest, 'XtreamRequest');
   initMetadataForClass(XtreamSession, 'XtreamSession');
   initMetadataForClass(XtreamSource, 'XtreamSource');
-  initMetadataForCompanion(Companion_20);
+  initMetadataForCompanion(Companion_22);
   initMetadataForClass(XtreamAddresses, 'XtreamAddresses');
   initMetadataForClass(BrowserGuideRefresh_0, 'BrowserGuideRefresh', BrowserGuideRefresh_0);
   initMetadataForClass(ScheduleSelection, 'ScheduleSelection');
@@ -450,6 +460,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   initMetadataForClass(NativeGuideSourceBatch, 'NativeGuideSourceBatch');
   initMetadataForClass(OperatorCatalogClient, 'OperatorCatalogClient');
   initMetadataForClass(OperatorPlaylistClient, 'OperatorPlaylistClient');
+  initMetadataForClass(OperatorChannelClient, 'OperatorChannelClient');
   initMetadataForClass(OperatorClient, 'OperatorClient');
   initMetadataForClass(OperatorPortalCatalogClient, 'OperatorPortalCatalogClient');
   initMetadataForClass(OperatorRequestClient, 'OperatorRequestClient', OperatorRequestClient);
@@ -1415,6 +1426,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return highIndex;
   }
   var highIndex;
+  function doubleToRawBits(value) {
+    _init_properties_bitUtils_kt__nfcg4k();
+    get_bufFloat64()[0] = value;
+    return new Long(get_bufInt32()[get_lowIndex()], get_bufInt32()[get_highIndex()]);
+  }
   function getNumberHashCode(obj) {
     _init_properties_bitUtils_kt__nfcg4k();
     // Inline function 'kotlin.js.jsBitwiseOr' call
@@ -2615,6 +2631,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
   }
   function isFinite(_this__u8e3s4) {
     return !isInfinite(_this__u8e3s4) && !isNaN_0(_this__u8e3s4);
+  }
+  function toBits(_this__u8e3s4) {
+    return doubleToRawBits(isNaN_0(_this__u8e3s4) ? NaN : _this__u8e3s4);
   }
   function isInfinite(_this__u8e3s4) {
     return _this__u8e3s4 === Infinity || _this__u8e3s4 === -Infinity;
@@ -4726,6 +4745,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function isWhitespace(_this__u8e3s4) {
     return isWhitespaceImpl(_this__u8e3s4);
   }
+  function toString_2(_this__u8e3s4, radix) {
+    return toStringImpl(_this__u8e3s4, checkRadix(radix));
+  }
   function checkRadix(radix) {
     if (!(2 <= radix ? radix <= 36 : false)) {
       throw IllegalArgumentException_init_$Create$_0('radix ' + radix + ' was not in valid range 2..36');
@@ -5266,10 +5288,10 @@ if (typeof String.prototype.startsWith === 'undefined') {
   protoOf(AbstractMap$values$1$iterator$1).next_20eer_k$ = function () {
     return this.$entryIterator_1.next_20eer_k$().get_value_j01efc_k$();
   };
-  function toString_2($this, entry) {
-    return toString_3($this, entry.get_key_18j28a_k$()) + '=' + toString_3($this, entry.get_value_j01efc_k$());
+  function toString_3($this, entry) {
+    return toString_4($this, entry.get_key_18j28a_k$()) + '=' + toString_4($this, entry.get_value_j01efc_k$());
   }
-  function toString_3($this, o) {
+  function toString_4($this, o) {
     return o === $this ? '(this Map)' : toString_0(o);
   }
   function implFindEntry($this, key) {
@@ -5316,7 +5338,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   };
   function AbstractMap$toString$lambda(this$0) {
     return function (it) {
-      return toString_2(this$0, it);
+      return toString_3(this$0, it);
     };
   }
   function AbstractMap$values$1(this$0) {
@@ -8358,7 +8380,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     captureStack(this, DurableStateFailure);
   }
   function text($this, v) {
-    return Companion_getInstance_18().text_yxj031_k$(v);
+    return Companion_getInstance_20().text_yxj031_k$(v);
   }
   function number_0($this, v) {
     return new ProviderValue(ProviderValueKind_NUMBER_getInstance(), toString_1(v));
@@ -8367,11 +8389,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return new ProviderValue(ProviderValueKind_BOOLEAN_getInstance(), v.toString());
   }
   function obj($this, fields) {
-    return Companion_getInstance_18().obj_60q8ki_k$(linkedMapOf(fields.slice()));
+    return Companion_getInstance_20().obj_60q8ki_k$(linkedMapOf(fields.slice()));
   }
   function array($this, v) {
     v = v === VOID ? emptyList() : v;
-    return Companion_getInstance_18().array_vqz2lg_k$(v);
+    return Companion_getInstance_20().array_vqz2lg_k$(v);
   }
   function isText($this, v) {
     return v.kind_1.equals(ProviderValueKind_TEXT_getInstance());
@@ -8528,7 +8550,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         }
       }
     }
-    return Companion_getInstance_18().obj_60q8ki_k$(output);
+    return Companion_getInstance_20().obj_60q8ki_k$(output);
   }
   function validate$track($stringify, input) {
     if (!input.get_isObject_xg6v9u_k$())
@@ -8604,7 +8626,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       tmp$ret$4 = false;
     }
     if (tmp$ret$4) {
-      tmp_2 = Companion_getInstance_18().obj_60q8ki_k$(output);
+      tmp_2 = Companion_getInstance_20().obj_60q8ki_k$(output);
     } else {
       tmp_2 = null;
     }
@@ -8654,7 +8676,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return tmp;
   };
   protoOf(BrowserDurableState).defaults_hnhmjf_k$ = function (security) {
-    return obj(this, [to('schema', number_0(this, 1)), to('sources', array(this)), to('activeSourceId', text(this, '')), to('lastChannel', Companion_getInstance_18().nil_1), to('previousChannel', Companion_getInstance_18().nil_1), to('playbackPreferences', array(this)), to('channelReferences', array(this)), to('favorites', obj(this, [to('default', array(this))])), to('activeFavorites', text(this, 'default')), to('history', array(this)), to('bookmarks', obj(this, [])), to('channelOverrides', obj(this, [])), to('favoriteItems', obj(this, [])), to('reminders', array(this)), to('security', security), to('settings', obj(this, [to('language', text(this, 'en')), to('interfaceVersion', number_0(this, 2)), to('startupVersion', number_0(this, 1)), to('fontFamily', text(this, 'RobotoCondensed')), to('playerEngine', text(this, 'auto')), to('streamFormat', text(this, 'auto')), to('fontScale', number_0(this, 1)), to('volume', number_0(this, 0.8)), to('muted', bool(this, false)), to('epgUrl', text(this, '')), to('epgUrls', array(this)), to('restore', bool(this, true)), to('accent', text(this, 'amber')), to('aspect', text(this, 'auto')), to('zoom', number_0(this, 1)), to('relay', bool(this, false))]))]);
+    return obj(this, [to('schema', number_0(this, 1)), to('sources', array(this)), to('activeSourceId', text(this, '')), to('lastChannel', Companion_getInstance_20().nil_1), to('previousChannel', Companion_getInstance_20().nil_1), to('playbackPreferences', array(this)), to('channelReferences', array(this)), to('favorites', obj(this, [to('default', array(this))])), to('activeFavorites', text(this, 'default')), to('history', array(this)), to('bookmarks', obj(this, [])), to('channelOverrides', obj(this, [])), to('favoriteItems', obj(this, [])), to('reminders', array(this)), to('security', security), to('settings', obj(this, [to('language', text(this, 'en')), to('interfaceVersion', number_0(this, 2)), to('startupVersion', number_0(this, 1)), to('fontFamily', text(this, 'RobotoCondensed')), to('playerEngine', text(this, 'auto')), to('streamFormat', text(this, 'auto')), to('fontScale', number_0(this, 1)), to('volume', number_0(this, 0.8)), to('muted', bool(this, false)), to('epgUrl', text(this, '')), to('epgUrls', array(this)), to('restore', bool(this, true)), to('accent', text(this, 'amber')), to('aspect', text(this, 'auto')), to('zoom', number_0(this, 1)), to('relay', bool(this, false))]))]);
   };
   protoOf(BrowserDurableState).validate_lxkvci_k$ = function (value, securityDefault, securityValidate, decode, stringify) {
     if (!value.truthy_eb26j6_k$() || !strictNumber(this, value.get_6bo4tg_k$('schema'), 1.0) || !value.get_6bo4tg_k$('sources').get_isArray_z8qxd2_k$()) {
@@ -8742,7 +8764,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
           var value_3 = element_0.get_6bo4tg_k$('stream');
           output.put_4fpzoq_k$('stream', value_3);
         }
-        tmp$ret$12 = Companion_getInstance_18().obj_60q8ki_k$(output);
+        tmp$ret$12 = Companion_getInstance_20().obj_60q8ki_k$(output);
       }
       var tmp0_safe_receiver_0 = tmp$ret$12;
       if (tmp0_safe_receiver_0 == null)
@@ -8758,12 +8780,12 @@ if (typeof String.prototype.startsWith === 'undefined') {
     var tmp2_1 = 'lastChannel';
     var tmp2_elvis_lhs = validate$reference(seen, decode, value.get_6bo4tg_k$('lastChannel'));
     // Inline function 'kotlin.collections.set' call
-    var value_5 = tmp2_elvis_lhs == null ? Companion_getInstance_18().nil_1 : tmp2_elvis_lhs;
+    var value_5 = tmp2_elvis_lhs == null ? Companion_getInstance_20().nil_1 : tmp2_elvis_lhs;
     result.put_4fpzoq_k$(tmp2_1, value_5);
     var tmp2_2 = 'previousChannel';
     var tmp3_elvis_lhs = validate$reference(seen, decode, value.get_6bo4tg_k$('previousChannel'));
     // Inline function 'kotlin.collections.set' call
-    var value_6 = tmp3_elvis_lhs == null ? Companion_getInstance_18().nil_1 : tmp3_elvis_lhs;
+    var value_6 = tmp3_elvis_lhs == null ? Companion_getInstance_20().nil_1 : tmp3_elvis_lhs;
     result.put_4fpzoq_k$(tmp2_2, value_6);
     // Inline function 'kotlin.collections.mutableSetOf' call
     var preferenceIds = LinkedHashSet_init_$Create$();
@@ -8805,7 +8827,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
           var value_8 = element_1.get_6bo4tg_k$('zoom');
           output_0.put_4fpzoq_k$('zoom', value_8);
         }
-        tmp$ret$25 = Companion_getInstance_18().obj_60q8ki_k$(output_0);
+        tmp$ret$25 = Companion_getInstance_20().obj_60q8ki_k$(output_0);
       }
       var tmp0_safe_receiver_1 = tmp$ret$25;
       if (tmp0_safe_receiver_1 == null)
@@ -8855,7 +8877,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     var tmp2_4 = 'favorites';
     // Inline function 'kotlin.collections.set' call
-    var value_11 = Companion_getInstance_18().obj_60q8ki_k$(favorites);
+    var value_11 = Companion_getInstance_20().obj_60q8ki_k$(favorites);
     result.put_4fpzoq_k$(tmp2_4, value_11);
     var tmp2_5 = 'activeFavorites';
     // Inline function 'kotlin.collections.set' call
@@ -8886,7 +8908,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     var value_13 = array(this, destination_4);
     result.put_4fpzoq_k$('history', value_13);
     var tmp2_6 = 'bookmarks';
-    var tmp_2 = Companion_getInstance_18();
+    var tmp_2 = Companion_getInstance_20();
     // Inline function 'kotlin.collections.filter' call
     var tmp0_3 = properties(this, value.get_6bo4tg_k$('bookmarks'));
     // Inline function 'kotlin.collections.filterTo' call
@@ -8913,7 +8935,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       result.put_4fpzoq_k$(tmp2_7, value_15);
     }
     var tmp2_8 = 'channelOverrides';
-    var tmp_3 = Companion_getInstance_18();
+    var tmp_3 = Companion_getInstance_20();
     // Inline function 'kotlin.collections.mapNotNull' call
     var tmp0_4 = take(properties(this, value.get_6bo4tg_k$('channelOverrides')).get_entries_p20ztl_k$(), 50000);
     // Inline function 'kotlin.collections.mapNotNullTo' call
@@ -8948,7 +8970,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
           var value_17 = number_0(BrowserDurableState_getInstance(), coerceIn(entry.get_6bo4tg_k$('order').number_h3u0fr_k$(), 0.0, 50000.0));
           row.put_4fpzoq_k$('order', value_17);
         }
-        tmp$ret$64 = to(id_0, Companion_getInstance_18().obj_60q8ki_k$(row));
+        tmp$ret$64 = to(id_0, Companion_getInstance_20().obj_60q8ki_k$(row));
       }
       var tmp0_safe_receiver_2 = tmp$ret$64;
       if (tmp0_safe_receiver_2 == null)
@@ -8962,7 +8984,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     var value_18 = tmp_3.obj_60q8ki_k$(toMap(destination_6));
     result.put_4fpzoq_k$(tmp2_8, value_18);
     var tmp2_9 = 'favoriteItems';
-    var tmp_4 = Companion_getInstance_18();
+    var tmp_4 = Companion_getInstance_20();
     // Inline function 'kotlin.collections.mapNotNull' call
     var tmp0_5 = take(properties(this, value.get_6bo4tg_k$('favoriteItems')).get_entries_p20ztl_k$(), 10000);
     // Inline function 'kotlin.collections.mapNotNullTo' call
@@ -9106,9 +9128,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
     normalized.put_4fpzoq_k$('epgUrl', value_27);
     var tmp2_12 = 'settings';
     // Inline function 'kotlin.collections.set' call
-    var value_28 = Companion_getInstance_18().obj_60q8ki_k$(normalized);
+    var value_28 = Companion_getInstance_20().obj_60q8ki_k$(normalized);
     result.put_4fpzoq_k$(tmp2_12, value_28);
-    return Companion_getInstance_18().obj_60q8ki_k$(result);
+    return Companion_getInstance_20().obj_60q8ki_k$(result);
   };
   protoOf(BrowserDurableState).removeSources_cvlf8t_k$ = function (previous, next, encode) {
     var result = LinkedHashMap_init_$Create$_1(next.properties_1);
@@ -9187,10 +9209,10 @@ if (typeof String.prototype.startsWith === 'undefined') {
           }
         }
         var tmp0_elvis_lhs = result.get_wei43m_k$('favorites');
-        var favorites = tmp0_elvis_lhs == null ? Companion_getInstance_18().missing_1 : tmp0_elvis_lhs;
+        var favorites = tmp0_elvis_lhs == null ? Companion_getInstance_20().missing_1 : tmp0_elvis_lhs;
         if (favorites.get_isObject_xg6v9u_k$() || favorites.get_isArray_z8qxd2_k$()) {
           var tmp2 = 'favorites';
-          var tmp_1 = Companion_getInstance_18();
+          var tmp_1 = Companion_getInstance_20();
           // Inline function 'kotlin.collections.mapValues' call
           var this_0 = properties(BrowserDurableState_getInstance(), favorites);
           // Inline function 'kotlin.collections.mapValuesTo' call
@@ -9232,9 +9254,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
         while (_iterator__ex2g4s_6.hasNext_bitz1p_k$()) {
           var element_5 = _iterator__ex2g4s_6.next_20eer_k$();
           var tmp0_elvis_lhs_0 = result.get_wei43m_k$(element_5);
-          var current = tmp0_elvis_lhs_0 == null ? Companion_getInstance_18().missing_1 : tmp0_elvis_lhs_0;
+          var current = tmp0_elvis_lhs_0 == null ? Companion_getInstance_20().missing_1 : tmp0_elvis_lhs_0;
           if (current.get_isObject_xg6v9u_k$()) {
-            var tmp_5 = Companion_getInstance_18();
+            var tmp_5 = Companion_getInstance_20();
             // Inline function 'kotlin.collections.filterKeys' call
             var this_1 = current.properties_1;
             var result_0 = LinkedHashMap_init_$Create$();
@@ -9259,7 +9281,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
           var field = element_6.component1_7eebsc_k$();
           var id_0 = element_6.component2_7eebsb_k$();
           var tmp0_elvis_lhs_1 = result.get_wei43m_k$(field);
-          var current_0 = tmp0_elvis_lhs_1 == null ? Companion_getInstance_18().missing_1 : tmp0_elvis_lhs_1;
+          var current_0 = tmp0_elvis_lhs_1 == null ? Companion_getInstance_20().missing_1 : tmp0_elvis_lhs_1;
           if (current_0.get_isArray_z8qxd2_k$()) {
             var tmp_6 = BrowserDurableState_getInstance();
             // Inline function 'kotlin.collections.filter' call
@@ -9279,10 +9301,10 @@ if (typeof String.prototype.startsWith === 'undefined') {
           }
         }
         var tmp1_elvis_lhs = result.get_wei43m_k$('security');
-        var security = tmp1_elvis_lhs == null ? Companion_getInstance_18().missing_1 : tmp1_elvis_lhs;
+        var security = tmp1_elvis_lhs == null ? Companion_getInstance_20().missing_1 : tmp1_elvis_lhs;
         if (security.get_6bo4tg_k$('protectedIds').get_isArray_z8qxd2_k$()) {
           var tmp2_0 = 'security';
-          var tmp_7 = Companion_getInstance_18();
+          var tmp_7 = Companion_getInstance_20();
           var tmp_8 = BrowserDurableState_getInstance();
           // Inline function 'kotlin.collections.filter' call
           var tmp0_3 = security.get_6bo4tg_k$('protectedIds').elements_1;
@@ -9301,12 +9323,12 @@ if (typeof String.prototype.startsWith === 'undefined') {
         }
       }
     }
-    return Companion_getInstance_18().obj_60q8ki_k$(result);
+    return Companion_getInstance_20().obj_60q8ki_k$(result);
   };
   protoOf(BrowserDurableState).export_l86fia_k$ = function (state, includeCredentials) {
     if (includeCredentials)
       return state;
-    return Companion_getInstance_18().obj_60q8ki_k$(plus_3(state.properties_1, mapOf_0([to('sources', array(this)), to('activeSourceId', text(this, '')), to('lastChannel', Companion_getInstance_18().nil_1), to('previousChannel', Companion_getInstance_18().nil_1), to('playbackPreferences', array(this)), to('channelReferences', array(this)), to('settings', Companion_getInstance_18().obj_60q8ki_k$(plus_3(state.get_6bo4tg_k$('settings').properties_1, mapOf_0([to('epgUrl', text(this, '')), to('epgUrls', array(this))]))))])));
+    return Companion_getInstance_20().obj_60q8ki_k$(plus_3(state.properties_1, mapOf_0([to('sources', array(this)), to('activeSourceId', text(this, '')), to('lastChannel', Companion_getInstance_20().nil_1), to('previousChannel', Companion_getInstance_20().nil_1), to('playbackPreferences', array(this)), to('channelReferences', array(this)), to('settings', Companion_getInstance_20().obj_60q8ki_k$(plus_3(state.get_6bo4tg_k$('settings').properties_1, mapOf_0([to('epgUrl', text(this, '')), to('epgUrls', array(this))]))))])));
   };
   protoOf(BrowserDurableState).recordHistory_2j8757_k$ = function (history, id, name, time) {
     var tmp = listOf(obj(this, [to('id', text(this, id)), to('name', name), to('time', number_0(this, time))]));
@@ -9661,9 +9683,10 @@ if (typeof String.prototype.startsWith === 'undefined') {
       this.generation_1 = this.generation_1 + 1;
     }
   };
-  function CatalogChannel(itemId, providerId, name, groupId, groupName, logo, url, archiveHours, archiveMode) {
+  function CatalogChannel(itemId, providerId, name, groupId, groupName, logo, url, archiveHours, archiveMode, legacyReference) {
     archiveHours = archiveHours === VOID ? 0.0 : archiveHours;
     archiveMode = archiveMode === VOID ? '' : archiveMode;
+    legacyReference = legacyReference === VOID ? null : legacyReference;
     this.itemId_1 = itemId;
     this.providerId_1 = providerId;
     this.name_1 = name;
@@ -9673,9 +9696,10 @@ if (typeof String.prototype.startsWith === 'undefined') {
     this.url_1 = url;
     this.archiveHours_1 = archiveHours;
     this.archiveMode_1 = archiveMode;
+    this.legacyReference_1 = legacyReference;
   }
   protoOf(CatalogChannel).toString = function () {
-    return 'CatalogChannel(itemId=' + this.itemId_1 + ', providerId=' + this.providerId_1 + ', name=' + this.name_1 + ', groupId=' + this.groupId_1 + ', groupName=' + this.groupName_1 + ', logo=' + this.logo_1 + ', url=' + this.url_1 + ', archiveHours=' + this.archiveHours_1 + ', archiveMode=' + this.archiveMode_1 + ')';
+    return 'CatalogChannel(itemId=' + this.itemId_1 + ', providerId=' + this.providerId_1 + ', name=' + this.name_1 + ', groupId=' + this.groupId_1 + ', groupName=' + this.groupName_1 + ', logo=' + this.logo_1 + ', url=' + this.url_1 + ', archiveHours=' + this.archiveHours_1 + ', archiveMode=' + this.archiveMode_1 + ', legacyReference=' + toString_0(this.legacyReference_1) + ')';
   };
   protoOf(CatalogChannel).hashCode = function () {
     var result = getStringHashCode(this.itemId_1);
@@ -9687,6 +9711,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     result = imul(result, 31) + getStringHashCode(this.url_1) | 0;
     result = imul(result, 31) + getNumberHashCode(this.archiveHours_1) | 0;
     result = imul(result, 31) + getStringHashCode(this.archiveMode_1) | 0;
+    result = imul(result, 31) + (this.legacyReference_1 == null ? 0 : hashCode_0(this.legacyReference_1)) | 0;
     return result;
   };
   protoOf(CatalogChannel).equals = function (other) {
@@ -9711,6 +9736,8 @@ if (typeof String.prototype.startsWith === 'undefined') {
     if (!equals(this.archiveHours_1, other.archiveHours_1))
       return false;
     if (!(this.archiveMode_1 === other.archiveMode_1))
+      return false;
+    if (!equals(this.legacyReference_1, other.legacyReference_1))
       return false;
     return true;
   };
@@ -9803,7 +9830,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         }
         var tmp4_safe_receiver = tmp_7;
         var tmp5_elvis_lhs = tmp4_safe_receiver == null ? null : tmp4_safe_receiver.string_er2cq7_k$();
-        tmp$ret$13 = new CatalogChannel(tmp_2, providerId, tmp_4, tmp_5, tmp_6, tmp5_elvis_lhs == null ? '' : tmp5_elvis_lhs, addresses.legacyStream_4sx44x_k$(providerId));
+        tmp$ret$13 = new CatalogChannel(tmp_2, providerId, tmp_4, tmp_5, tmp_6, tmp5_elvis_lhs == null ? '' : tmp5_elvis_lhs, addresses.legacyStream_4sx44x_k$(providerId), VOID, VOID, Companion_instance_14.xtream_o2scec_k$(element_0));
       }
       var tmp0_safe_receiver_2 = tmp$ret$13;
       if (tmp0_safe_receiver_2 == null)
@@ -9835,7 +9862,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       var tmp0_elvis_lhs = tmp$ret$0;
       var tmp;
       if (tmp0_elvis_lhs == null) {
-        var tmp_0 = Companion_getInstance_18();
+        var tmp_0 = Companion_getInstance_20();
         // Inline function 'kotlin.collections.filter' call
         var tmp0_0 = rows.properties_1.get_values_ksazhn_k$();
         // Inline function 'kotlin.collections.filterTo' call
@@ -10013,7 +10040,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         var tmp15_elvis_lhs = tmp14_safe_receiver == null ? null : tmp14_safe_receiver.string_er2cq7_k$();
         var tmp_8 = tmp15_elvis_lhs == null ? identity : tmp15_elvis_lhs;
         var tmp_9 = 'stalker:category:' + groupId;
-        tmp$ret$10 = new CatalogChannel(tmp_5, tmp_6, tmp_8, tmp_9, group, logo, rawUrl == null ? trimEnd(portal, charArrayOf([_Char___init__impl__6a9atx(47)])) + '/stalker_portal/stream/' + providerId + '.m3u8?mac=' + mac : rawUrl, hours, element_1.get_6bo4tg_k$('archive').truthy_eb26j6_k$() ? 'append' : '');
+        tmp$ret$10 = new CatalogChannel(tmp_5, tmp_6, tmp_8, tmp_9, group, logo, rawUrl == null ? trimEnd(portal, charArrayOf([_Char___init__impl__6a9atx(47)])) + '/stalker_portal/stream/' + providerId + '.m3u8?mac=' + mac : rawUrl, hours, element_1.get_6bo4tg_k$('archive').truthy_eb26j6_k$() ? 'append' : '', Companion_instance_14.stalker_erfk5x_k$(element_1));
       }
       var tmp0_safe_receiver_0 = tmp$ret$10;
       if (tmp0_safe_receiver_0 == null)
@@ -10030,13 +10057,13 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return ChannelCatalog_instance;
   }
   function str($this, value) {
-    return Companion_getInstance_18().text_yxj031_k$(value);
+    return Companion_getInstance_20().text_yxj031_k$(value);
   }
   function array_0($this, value) {
-    return Companion_getInstance_18().array_vqz2lg_k$(value);
+    return Companion_getInstance_20().array_vqz2lg_k$(value);
   }
   function obj_0($this, value) {
-    return Companion_getInstance_18().obj_60q8ki_k$(value);
+    return Companion_getInstance_20().obj_60q8ki_k$(value);
   }
   function id($this, value) {
     return value.get_6bo4tg_k$('id').string_er2cq7_k$();
@@ -11073,7 +11100,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return ChannelMovementFormat_NATIVE_instance;
   }
   function str_0($this, value) {
-    return Companion_getInstance_18().text_yxj031_k$(value);
+    return Companion_getInstance_20().text_yxj031_k$(value);
   }
   function hex($this, value) {
     var tmp;
@@ -11155,7 +11182,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         }
       }
       var keys = sorted(destination_0);
-      if (!(this$0.text_o0e3rq_k$(item.get_6bo4tg_k$('tvgId')) === tvg) || !(this$0.legacy_eqdi6m_k$(Companion_getInstance_18().obj_60q8ki_k$(mapOf_0([to('sourceId', $ref.get_6bo4tg_k$('sourceId')), to('id', item.get_6bo4tg_k$('id'))]))) === tvg) || !equals(keys, fields))
+      if (!(this$0.text_o0e3rq_k$(item.get_6bo4tg_k$('tvgId')) === tvg) || !(this$0.legacy_eqdi6m_k$(Companion_getInstance_20().obj_60q8ki_k$(mapOf_0([to('sourceId', $ref.get_6bo4tg_k$('sourceId')), to('id', item.get_6bo4tg_k$('id'))]))) === tvg) || !equals(keys, fields))
         return -1;
       var tmp$ret$9;
       $l$block_0: {
@@ -11266,7 +11293,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         result.put_4fpzoq_k$(element, value);
       }
     }
-    return Companion_getInstance_18().obj_60q8ki_k$(result);
+    return Companion_getInstance_20().obj_60q8ki_k$(result);
   };
   protoOf(ChannelRestoration).variant_33my8l_k$ = function (value) {
     var parts = split_0(substringAfterLast(value, _Char___init__impl__6a9atx(58)), charArrayOf([_Char___init__impl__6a9atx(45)]));
@@ -11492,7 +11519,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       tmp = null;
     }
     var tmp0_elvis_lhs = tmp;
-    return tmp0_elvis_lhs == null ? Companion_getInstance_18().text_yxj031_k$('') : tmp0_elvis_lhs;
+    return tmp0_elvis_lhs == null ? Companion_getInstance_20().text_yxj031_k$('') : tmp0_elvis_lhs;
   }
   function installation$n(v) {
     return new ProviderValue(ProviderValueKind_NUMBER_getInstance(), v.toString());
@@ -11509,7 +11536,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   };
   protoOf(ClassicDurableState).installation_qp30qg_k$ = function (current, storage) {
     var enabled = storage ? current.get_6bo4tg_k$('sLocalHttpEnabled').string_er2cq7_k$() === '1' : current.get_6bo4tg_k$('localHttpEnabled').kind_1.equals(ProviderValueKind_NUMBER_getInstance()) && current.get_6bo4tg_k$('localHttpEnabled').number_h3u0fr_k$() === 1.0;
-    return Companion_getInstance_18().obj_60q8ki_k$(linkedMapOf([to('commandServerAddress', installation$field(current, 'commandServerAddress')), to('commandServerToken', installation$field(current, 'commandServerToken')), to('commandServerEnabled', storage ? Companion_getInstance_18().text_yxj031_k$('0') : installation$n(0)), to(storage ? 'sLocalHttpEnabled' : 'localHttpEnabled', storage ? Companion_getInstance_18().text_yxj031_k$(enabled ? '1' : '0') : installation$n(enabled ? 1 : 0)), to(storage ? 'sLocalHttpDeviceCode' : 'localHttpDeviceCode', installation$field(current, storage ? 'sLocalHttpDeviceCode' : 'localHttpDeviceCode'))]));
+    return Companion_getInstance_20().obj_60q8ki_k$(linkedMapOf([to('commandServerAddress', installation$field(current, 'commandServerAddress')), to('commandServerToken', installation$field(current, 'commandServerToken')), to('commandServerEnabled', storage ? Companion_getInstance_20().text_yxj031_k$('0') : installation$n(0)), to(storage ? 'sLocalHttpEnabled' : 'localHttpEnabled', storage ? Companion_getInstance_20().text_yxj031_k$(enabled ? '1' : '0') : installation$n(enabled ? 1 : 0)), to(storage ? 'sLocalHttpDeviceCode' : 'localHttpDeviceCode', installation$field(current, storage ? 'sLocalHttpDeviceCode' : 'localHttpDeviceCode'))]));
   };
   protoOf(ClassicDurableState).parentalPrompt_o53g4_k$ = function (enabled, pinDisabled, granted) {
     return enabled && !pinDisabled && !granted;
@@ -13911,14 +13938,360 @@ if (typeof String.prototype.startsWith === 'undefined') {
     static_init_3();
     return GuideTimeFormat_ANDROID_instance;
   }
+  function Companion_13() {
+  }
+  protoOf(Companion_13).of_t43k8m_k$ = function (sourceId, channelId, providerId, start) {
+    var tmp;
+    if (providerId == null) {
+      tmp = null;
+    } else {
+      // Inline function 'kotlin.takeIf' call
+      var tmp_0;
+      // Inline function 'kotlin.text.isNotBlank' call
+      if (!isBlank(providerId)) {
+        tmp_0 = providerId;
+      } else {
+        tmp_0 = null;
+      }
+      tmp = tmp_0;
+    }
+    var tmp1_safe_receiver = tmp;
+    var tmp_1;
+    if (tmp1_safe_receiver == null) {
+      tmp_1 = null;
+    } else {
+      // Inline function 'kotlin.let' call
+      tmp_1 = 'provider:' + tmp1_safe_receiver;
+    }
+    var tmp2_elvis_lhs = tmp_1;
+    var tmp_2;
+    if (tmp2_elvis_lhs == null) {
+      // Inline function 'kotlin.run' call
+      // Inline function 'kotlin.require' call
+      if (!isFinite(start)) {
+        var message = 'A programme without a provider ID requires a finite start';
+        throw IllegalArgumentException_init_$Create$_0(toString_1(message));
+      }
+      tmp_2 = 'start:' + toString_2(toBits(start === 0.0 ? 0.0 : start), 16);
+    } else {
+      tmp_2 = tmp2_elvis_lhs;
+    }
+    var item = tmp_2;
+    return new ProgrammeId(sourceId, channelId, item);
+  };
+  var Companion_instance_13;
+  function Companion_getInstance_13() {
+    return Companion_instance_13;
+  }
+  function ProgrammeId$key$lambda(it) {
+    return '' + it.length + ':' + it;
+  }
+  function ProgrammeId(sourceId, channelId, itemId) {
+    this.sourceId_1 = sourceId;
+    this.channelId_1 = channelId;
+    this.itemId_1 = itemId;
+    var tmp;
+    var tmp_0;
+    // Inline function 'kotlin.text.isNotBlank' call
+    var this_0 = this.sourceId_1;
+    if (!isBlank(this_0)) {
+      // Inline function 'kotlin.text.isNotBlank' call
+      var this_1 = this.channelId_1;
+      tmp_0 = !isBlank(this_1);
+    } else {
+      tmp_0 = false;
+    }
+    if (tmp_0) {
+      // Inline function 'kotlin.text.isNotBlank' call
+      var this_2 = this.itemId_1;
+      tmp = !isBlank(this_2);
+    } else {
+      tmp = false;
+    }
+    // Inline function 'kotlin.require' call
+    // Inline function 'kotlin.require' call
+    if (!tmp) {
+      var message = 'Failed requirement.';
+      throw IllegalArgumentException_init_$Create$_0(toString_1(message));
+    }
+  }
+  protoOf(ProgrammeId).key_29un_k$ = function () {
+    var tmp = listOf_0([this.sourceId_1, this.channelId_1, this.itemId_1]);
+    return 'programme:' + joinToString_0(tmp, '', VOID, VOID, VOID, VOID, ProgrammeId$key$lambda);
+  };
+  protoOf(ProgrammeId).toString = function () {
+    return 'ProgrammeId(sourceId=' + this.sourceId_1 + ', channelId=' + this.channelId_1 + ', itemId=' + this.itemId_1 + ')';
+  };
+  protoOf(ProgrammeId).hashCode = function () {
+    var result = getStringHashCode(this.sourceId_1);
+    result = imul(result, 31) + getStringHashCode(this.channelId_1) | 0;
+    result = imul(result, 31) + getStringHashCode(this.itemId_1) | 0;
+    return result;
+  };
+  protoOf(ProgrammeId).equals = function (other) {
+    if (this === other)
+      return true;
+    if (!(other instanceof ProgrammeId))
+      return false;
+    if (!(this.sourceId_1 === other.sourceId_1))
+      return false;
+    if (!(this.channelId_1 === other.channelId_1))
+      return false;
+    if (!(this.itemId_1 === other.itemId_1))
+      return false;
+    return true;
+  };
+  function GuideTimelineSelection(current, following, retryAt) {
+    this.current_1 = current;
+    this.following_1 = following;
+    this.retryAt_1 = retryAt;
+  }
+  protoOf(GuideTimelineSelection).toString = function () {
+    return 'GuideTimelineSelection(current=' + this.current_1 + ', following=' + toString_1(this.following_1) + ', retryAt=' + this.retryAt_1 + ')';
+  };
+  protoOf(GuideTimelineSelection).hashCode = function () {
+    var result = this.current_1;
+    result = imul(result, 31) + hashCode_0(this.following_1) | 0;
+    result = imul(result, 31) + getNumberHashCode(this.retryAt_1) | 0;
+    return result;
+  };
+  protoOf(GuideTimelineSelection).equals = function (other) {
+    if (this === other)
+      return true;
+    if (!(other instanceof GuideTimelineSelection))
+      return false;
+    if (!(this.current_1 === other.current_1))
+      return false;
+    if (!equals(this.following_1, other.following_1))
+      return false;
+    if (!equals(this.retryAt_1, other.retryAt_1))
+      return false;
+    return true;
+  };
+  function sam$kotlin_Comparator$0_4(function_0) {
+    this.function_1 = function_0;
+  }
+  protoOf(sam$kotlin_Comparator$0_4).compare_bczr_k$ = function (a, b) {
+    return this.function_1(a, b);
+  };
+  protoOf(sam$kotlin_Comparator$0_4).compare = function (a, b) {
+    return this.compare_bczr_k$(a, b);
+  };
+  protoOf(sam$kotlin_Comparator$0_4).getFunctionDelegate_jtodtf_k$ = function () {
+    return this.function_1;
+  };
+  protoOf(sam$kotlin_Comparator$0_4).equals = function (other) {
+    var tmp;
+    if (!(other == null) ? isInterface(other, Comparator) : false) {
+      var tmp_0;
+      if (!(other == null) ? isInterface(other, FunctionAdapter) : false) {
+        tmp_0 = equals(this.getFunctionDelegate_jtodtf_k$(), other.getFunctionDelegate_jtodtf_k$());
+      } else {
+        tmp_0 = false;
+      }
+      tmp = tmp_0;
+    } else {
+      tmp = false;
+    }
+    return tmp;
+  };
+  protoOf(sam$kotlin_Comparator$0_4).hashCode = function () {
+    return hashCode_0(this.getFunctionDelegate_jtodtf_k$());
+  };
+  function GuideTimeline$select$lambda($start) {
+    return function (a, b) {
+      // Inline function 'kotlin.comparisons.compareValuesBy' call
+      var tmp = $start(a);
+      var tmp$ret$2 = $start(b);
+      return compareValues(tmp, tmp$ret$2);
+    };
+  }
+  function GuideTimeline$select$lambda_0($this) {
+    return function (a, b) {
+      var previousCompare = $this.compare(a, b);
+      var tmp;
+      if (!(previousCompare === 0)) {
+        tmp = previousCompare;
+      } else {
+        // Inline function 'kotlin.comparisons.compareValuesBy' call
+        var tmp_0 = a;
+        tmp = compareValues(tmp_0, b);
+      }
+      return tmp;
+    };
+  }
+  function GuideTimeline() {
+  }
+  protoOf(GuideTimeline).select_q0a6x2_k$ = function (count, start, end, now, nextCount) {
+    if (!isFinite(now))
+      return new GuideTimelineSelection(-1, emptyList(), 0.0);
+    var window_0 = GuideSchedule_instance.select$default_3zhu62_k$(count, start, end, now);
+    var tmp;
+    if (isNaN_0(nextCount) || nextCount <= 0) {
+      tmp = 0;
+    } else {
+      // Inline function 'kotlin.math.floor' call
+      var tmp$ret$0 = Math.floor(nextCount);
+      tmp = numberToInt(coerceAtMost_0(tmp$ret$0, 1000.0));
+    }
+    var limit = tmp;
+    // Inline function 'kotlin.collections.filter' call
+    var tmp0 = until(0, count);
+    // Inline function 'kotlin.collections.filterTo' call
+    var destination = ArrayList_init_$Create$();
+    var inductionVariable = tmp0.first_1;
+    var last = tmp0.last_1;
+    if (inductionVariable <= last)
+      do {
+        var element = inductionVariable;
+        inductionVariable = inductionVariable + 1 | 0;
+        var it = element;
+        if (isFinite(start(it)) && isFinite(end(it)) && end(it) > start(it) && start(it) > now) {
+          destination.add_utx5q5_k$(element);
+        }
+      }
+       while (!(element === last));
+    var tmp_0 = destination;
+    // Inline function 'kotlin.comparisons.compareBy' call
+    var tmp_1 = GuideTimeline$select$lambda(start);
+    // Inline function 'kotlin.comparisons.thenBy' call
+    var this_0 = new sam$kotlin_Comparator$0_4(tmp_1);
+    var tmp_2 = GuideTimeline$select$lambda_0(this_0);
+    var tmp$ret$5 = new sam$kotlin_Comparator$0_4(tmp_2);
+    var following = take(sortedWith(tmp_0, tmp$ret$5), limit);
+    var retry = now + 3600;
+    if (window_0.current_1 >= 0) {
+      var tmp0_0 = retry;
+      // Inline function 'kotlin.comparisons.minOf' call
+      var b = end(window_0.current_1);
+      retry = Math.min(tmp0_0, b);
+    }
+    if (window_0.next_1 >= 0) {
+      var tmp0_1 = retry;
+      // Inline function 'kotlin.comparisons.minOf' call
+      var b_0 = start(window_0.next_1);
+      retry = Math.min(tmp0_1, b_0);
+    }
+    return new GuideTimelineSelection(window_0.current_1, following, retry);
+  };
+  var GuideTimeline_instance;
+  function GuideTimeline_getInstance() {
+    return GuideTimeline_instance;
+  }
+  function Label(value) {
+    LegacyChannelReference.call(this);
+    this.value_1 = value;
+  }
+  protoOf(Label).toString = function () {
+    return 'Label(value=' + this.value_1 + ')';
+  };
+  protoOf(Label).hashCode = function () {
+    return getStringHashCode(this.value_1);
+  };
+  protoOf(Label).equals = function (other) {
+    if (this === other)
+      return true;
+    if (!(other instanceof Label))
+      return false;
+    if (!(this.value_1 === other.value_1))
+      return false;
+    return true;
+  };
+  function NumericId(value) {
+    LegacyChannelReference.call(this);
+    this.value_1 = value;
+  }
+  protoOf(NumericId).toString = function () {
+    return 'NumericId(value=' + this.value_1 + ')';
+  };
+  protoOf(NumericId).hashCode = function () {
+    return getNumberHashCode(this.value_1);
+  };
+  protoOf(NumericId).equals = function (other) {
+    if (this === other)
+      return true;
+    if (!(other instanceof NumericId))
+      return false;
+    if (!equals(this.value_1, other.value_1))
+      return false;
+    return true;
+  };
+  function Companion_14() {
+  }
+  protoOf(Companion_14).xtream_o2scec_k$ = function (row) {
+    // Inline function 'kotlin.takeIf' call
+    var this_0 = row.get_6bo4tg_k$('name');
+    var tmp;
+    if (this_0.kind_1.equals(ProviderValueKind_TEXT_getInstance())) {
+      tmp = this_0;
+    } else {
+      tmp = null;
+    }
+    var tmp0_safe_receiver = tmp;
+    var tmp_0;
+    if (tmp0_safe_receiver == null) {
+      tmp_0 = null;
+    } else {
+      // Inline function 'kotlin.let' call
+      tmp_0 = new Label(tmp0_safe_receiver.scalar_1);
+    }
+    return tmp_0;
+  };
+  protoOf(Companion_14).stalker_erfk5x_k$ = function (row) {
+    var name = row.get_6bo4tg_k$('name');
+    if (!name.truthy_eb26j6_k$())
+      return null;
+    var id = row.get_6bo4tg_k$('id');
+    if (id.truthy_eb26j6_k$()) {
+      // Inline function 'kotlin.takeIf' call
+      var this_0 = id.number_h3u0fr_k$();
+      var tmp;
+      if (isFinite(this_0)) {
+        tmp = this_0;
+      } else {
+        tmp = null;
+      }
+      var tmp0_safe_receiver = tmp;
+      var tmp_0;
+      if (tmp0_safe_receiver == null) {
+        tmp_0 = null;
+      } else {
+        // Inline function 'kotlin.let' call
+        tmp_0 = new NumericId(tmp0_safe_receiver);
+      }
+      return tmp_0;
+    }
+    // Inline function 'kotlin.takeIf' call
+    var tmp_1;
+    if (name.kind_1.equals(ProviderValueKind_TEXT_getInstance())) {
+      tmp_1 = name;
+    } else {
+      tmp_1 = null;
+    }
+    var tmp1_safe_receiver = tmp_1;
+    var tmp_2;
+    if (tmp1_safe_receiver == null) {
+      tmp_2 = null;
+    } else {
+      // Inline function 'kotlin.let' call
+      tmp_2 = new Label(tmp1_safe_receiver.scalar_1);
+    }
+    return tmp_2;
+  };
+  var Companion_instance_14;
+  function Companion_getInstance_14() {
+    return Companion_instance_14;
+  }
+  function LegacyChannelReference() {
+  }
   function text_1($this, value) {
-    return Companion_getInstance_18().text_yxj031_k$(value);
+    return Companion_getInstance_20().text_yxj031_k$(value);
   }
   function obj_1($this, value) {
-    return Companion_getInstance_18().obj_60q8ki_k$(value);
+    return Companion_getInstance_20().obj_60q8ki_k$(value);
   }
   function array_1($this, value) {
-    return Companion_getInstance_18().array_vqz2lg_k$(value);
+    return Companion_getInstance_20().array_vqz2lg_k$(value);
   }
   function fail_0($this, message) {
     throw new DurableStateFailure(message);
@@ -13978,7 +14351,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function browser$embedded($parse, warnings, value, label) {
     if (value.kind_1.equals(ProviderValueKind_TEXT_getInstance()) && startsWith(value.scalar_1, '\x01LZ\x01')) {
       browser$warn(warnings, 'Compressed legacy ' + label + ' was skipped; export it as JSON in the old player first.');
-      return Companion_getInstance_18().nil_1;
+      return Companion_getInstance_20().nil_1;
     }
     return value.kind_1.equals(ProviderValueKind_TEXT_getInstance()) ? $parse(value.scalar_1) : value;
   }
@@ -14377,7 +14750,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     this.mac_1 = mac;
     this.stage_1 = 0;
     this.attempts_1 = 0;
-    this.channels_1 = Companion_getInstance_18().missing_1;
+    this.channels_1 = Companion_getInstance_20().missing_1;
   }
   protoOf(LegacyStalker).get_endpoint_30bvdu_k$ = function () {
     return trimEnd(this.portal_1, charArrayOf([_Char___init__impl__6a9atx(47)])) + '/stalker_portal/api/';
@@ -14411,12 +14784,12 @@ if (typeof String.prototype.startsWith === 'undefined') {
   protoOf(LegacyStalker).catalog_rtev1h_k$ = function (hash) {
     var rows = this.channels_1;
     if (rows.get_isObject_xg6v9u_k$()) {
-      var selected = firstTruthy([rows.get_6bo4tg_k$('data'), rows.get_6bo4tg_k$('items'), rows.get_6bo4tg_k$('channels'), Companion_getInstance_18().array$default_yx37t8_k$()]);
+      var selected = firstTruthy([rows.get_6bo4tg_k$('data'), rows.get_6bo4tg_k$('items'), rows.get_6bo4tg_k$('channels'), Companion_getInstance_20().array$default_yx37t8_k$()]);
       var tmp;
       if (selected.get_isArray_z8qxd2_k$()) {
         tmp = selected;
       } else {
-        var tmp_0 = Companion_getInstance_18();
+        var tmp_0 = Companion_getInstance_20();
         // Inline function 'kotlin.collections.filter' call
         var tmp0 = rows.properties_1.get_values_ksazhn_k$();
         // Inline function 'kotlin.collections.filterTo' call
@@ -14444,10 +14817,10 @@ if (typeof String.prototype.startsWith === 'undefined') {
       if (!row.truthy_eb26j6_k$() || !row.get_6bo4tg_k$('name').truthy_eb26j6_k$())
         continue $l$loop_0;
       var id = row.get_6bo4tg_k$('id').truthy_eb26j6_k$() ? row.get_6bo4tg_k$('id').number_h3u0fr_k$() : hash(row.get_6bo4tg_k$('name'));
-      var category = firstTruthy([row.get_6bo4tg_k$('genre'), row.get_6bo4tg_k$('categories'), row.get_6bo4tg_k$('category'), Companion_getInstance_18().text_yxj031_k$('Other')]);
+      var category = firstTruthy([row.get_6bo4tg_k$('genre'), row.get_6bo4tg_k$('categories'), row.get_6bo4tg_k$('category'), Companion_getInstance_20().text_yxj031_k$('Other')]);
       if (category.get_isArray_z8qxd2_k$()) {
         var tmp0_elvis_lhs = firstOrNull(category.elements_1);
-        category = firstTruthy([tmp0_elvis_lhs == null ? Companion_getInstance_18().missing_1 : tmp0_elvis_lhs, Companion_getInstance_18().text_yxj031_k$('Other')]);
+        category = firstTruthy([tmp0_elvis_lhs == null ? Companion_getInstance_20().missing_1 : tmp0_elvis_lhs, Companion_getInstance_20().text_yxj031_k$('Other')]);
       }
       var group = category.kind_1.equals(ProviderValueKind_TEXT_getInstance()) ? category.scalar_1 : 'Other';
       var tmp_1;
@@ -14479,13 +14852,13 @@ if (typeof String.prototype.startsWith === 'undefined') {
       }
       if (!isNaN_0(id) && !seen.add_utx5q5_k$(id))
         continue $l$loop_0;
-      var url = row.get_6bo4tg_k$('url').truthy_eb26j6_k$() ? row.get_6bo4tg_k$('url') : Companion_getInstance_18().text_yxj031_k$(trimEnd(this.portal_1, charArrayOf([_Char___init__impl__6a9atx(47)])) + '/stalker_portal/stream/' + row.get_6bo4tg_k$('id').string_er2cq7_k$() + '.m3u8?mac=' + this.mac_1);
-      var logo = firstTruthy([row.get_6bo4tg_k$('logo'), row.get_6bo4tg_k$('icon'), row.get_6bo4tg_k$('tv_icon'), Companion_getInstance_18().text_yxj031_k$('')]);
+      var url = row.get_6bo4tg_k$('url').truthy_eb26j6_k$() ? row.get_6bo4tg_k$('url') : Companion_getInstance_20().text_yxj031_k$(trimEnd(this.portal_1, charArrayOf([_Char___init__impl__6a9atx(47)])) + '/stalker_portal/stream/' + row.get_6bo4tg_k$('id').string_er2cq7_k$() + '.m3u8?mac=' + this.mac_1);
+      var logo = firstTruthy([row.get_6bo4tg_k$('logo'), row.get_6bo4tg_k$('icon'), row.get_6bo4tg_k$('tv_icon'), Companion_getInstance_20().text_yxj031_k$('')]);
       if (logo.kind_1.equals(ProviderValueKind_TEXT_getInstance()) && !startsWith(logo.scalar_1, 'http')) {
         if (startsWith(logo.scalar_1, '//'))
-          logo = Companion_getInstance_18().text_yxj031_k$((startsWith(this.portal_1, 'https') ? 'https:' : 'http:') + logo.scalar_1);
+          logo = Companion_getInstance_20().text_yxj031_k$((startsWith(this.portal_1, 'https') ? 'https:' : 'http:') + logo.scalar_1);
         else if (startsWith_1(logo.scalar_1, _Char___init__impl__6a9atx(47)))
-          logo = Companion_getInstance_18().text_yxj031_k$(trimEnd(this.portal_1, charArrayOf([_Char___init__impl__6a9atx(47)])) + logo.scalar_1);
+          logo = Companion_getInstance_20().text_yxj031_k$(trimEnd(this.portal_1, charArrayOf([_Char___init__impl__6a9atx(47)])) + logo.scalar_1);
       }
       // Inline function 'kotlin.takeIf' call
       var this_0 = integer_0(this, row.get_6bo4tg_k$('archive'));
@@ -14497,7 +14870,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       }
       var tmp1_elvis_lhs = tmp_4;
       var archive = tmp1_elvis_lhs == null ? integer_0(this, row.get_6bo4tg_k$('archive_duration')) : tmp1_elvis_lhs;
-      entries.add_utx5q5_k$(new LegacyStalkerEntry(id, row.get_6bo4tg_k$('name'), firstTruthy([row.get_6bo4tg_k$('id'), row.get_6bo4tg_k$('ch_id'), Companion_getInstance_18().text_yxj031_k$('')]).string_er2cq7_k$(), group, indexOf_1(groups.get_keys_wop4xp_k$(), group) + 2 | 0, logo, url, row.get_6bo4tg_k$('archive').truthy_eb26j6_k$() ? 'append' : '', archive));
+      entries.add_utx5q5_k$(new LegacyStalkerEntry(id, row.get_6bo4tg_k$('name'), firstTruthy([row.get_6bo4tg_k$('id'), row.get_6bo4tg_k$('ch_id'), Companion_getInstance_20().text_yxj031_k$('')]).string_er2cq7_k$(), group, indexOf_1(groups.get_keys_wop4xp_k$(), group) + 2 | 0, logo, url, row.get_6bo4tg_k$('archive').truthy_eb26j6_k$() ? 'append' : '', archive));
     }
     return new LegacyStalkerCatalog(entries, groups);
   };
@@ -14508,7 +14881,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     var x = clock() - 86400;
     var tmp$ret$0 = Math.floor(x);
     var tmp_1 = to('from', new ProviderValue(tmp_0, numberToLong(tmp$ret$0).toString()));
-    var tmp_2 = to('mac', Companion_getInstance_18().text_yxj031_k$(this.mac_1));
+    var tmp_2 = to('mac', Companion_getInstance_20().text_yxj031_k$(this.mac_1));
     var tmp_3 = ProviderValueKind_NUMBER_getInstance();
     // Inline function 'kotlin.math.floor' call
     var x_0 = clock() + 86400;
@@ -14547,7 +14920,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       }
       var tmp1_elvis_lhs = tmp_0;
       var end = tmp1_elvis_lhs == null ? integer_0(this, element.get_6bo4tg_k$('end')) : tmp1_elvis_lhs;
-      var tmp0_safe_receiver = start === 0.0 || end === 0.0 ? null : new LegacyXtreamProgramme(firstTruthy([element.get_6bo4tg_k$('name'), element.get_6bo4tg_k$('title'), Companion_getInstance_18().text_yxj031_k$('No title')]), firstTruthy([element.get_6bo4tg_k$('descr'), element.get_6bo4tg_k$('description'), Companion_getInstance_18().text_yxj031_k$('')]), start, end);
+      var tmp0_safe_receiver = start === 0.0 || end === 0.0 ? null : new LegacyXtreamProgramme(firstTruthy([element.get_6bo4tg_k$('name'), element.get_6bo4tg_k$('title'), Companion_getInstance_20().text_yxj031_k$('No title')]), firstTruthy([element.get_6bo4tg_k$('descr'), element.get_6bo4tg_k$('description'), Companion_getInstance_20().text_yxj031_k$('')]), start, end);
       if (tmp0_safe_receiver == null)
         null;
       else {
@@ -14558,7 +14931,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return destination;
   };
   function LegacyXtreamEntry(id, name, providerId, category, group, logo, url, groupValue) {
-    groupValue = groupValue === VOID ? Companion_getInstance_18().text_yxj031_k$(group) : groupValue;
+    groupValue = groupValue === VOID ? Companion_getInstance_20().text_yxj031_k$(group) : groupValue;
     this.id_1 = id;
     this.name_1 = name;
     this.providerId_1 = providerId;
@@ -14608,7 +14981,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function LegacyXtreamCatalog(entries, groups, groupOrder, groupValues) {
     var tmp;
     if (groupValues === VOID) {
-      var tmp2_map_this = Companion_getInstance_18();
+      var tmp2_map_this = Companion_getInstance_20();
       // Inline function 'kotlin.collections.map' call
       // Inline function 'kotlin.collections.mapTo' call
       var destination = ArrayList_init_$Create$_0(collectionSizeOrDefault(groupOrder, 10));
@@ -14669,11 +15042,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
   protoOf(LegacyXtreamCatalogBuilder).category_8zndxz_k$ = function (row) {
     if (this.strictOperator_1 && !row.get_present_3zxuem_k$())
       throw new OperatorCatalogFailure('CATEGORY_ROW', row.kind_1.equals(ProviderValueKind_NULL_getInstance()));
-    var value = row.get_6bo4tg_k$('category_name').truthy_eb26j6_k$() ? row.get_6bo4tg_k$('category_name') : Companion_getInstance_18().text_yxj031_k$('Unknown');
+    var value = row.get_6bo4tg_k$('category_name').truthy_eb26j6_k$() ? row.get_6bo4tg_k$('category_name') : Companion_getInstance_20().text_yxj031_k$('Unknown');
     var tmp0 = this.categories_1;
     var tmp2 = row.get_6bo4tg_k$('category_id').string_er2cq7_k$();
     // Inline function 'kotlin.collections.set' call
-    var value_0 = this.strictOperator_1 ? value : Companion_getInstance_18().text_yxj031_k$(value.string_er2cq7_k$());
+    var value_0 = this.strictOperator_1 ? value : Companion_getInstance_20().text_yxj031_k$(value.string_er2cq7_k$());
     tmp0.put_4fpzoq_k$(tmp2, value_0);
   };
   protoOf(LegacyXtreamCatalogBuilder).stream_ebndax_k$ = function (row) {
@@ -14696,7 +15069,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       tmp = tmp_0;
     }
     var tmp1_elvis_lhs = tmp;
-    var groupValue = tmp1_elvis_lhs == null ? Companion_getInstance_18().text_yxj031_k$('Other') : tmp1_elvis_lhs;
+    var groupValue = tmp1_elvis_lhs == null ? Companion_getInstance_20().text_yxj031_k$('Other') : tmp1_elvis_lhs;
     var group = groupValue.string_er2cq7_k$();
     this.groups_1.add_m2hfz_k$(groupValue, new ProviderValue(ProviderValueKind_NUMBER_getInstance(), id.toString()));
     // Inline function 'kotlin.collections.contains' call
@@ -14708,7 +15081,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     var stream = row.get_6bo4tg_k$('stream_id').string_er2cq7_k$();
     var tmp0 = this.entries_1;
     // Inline function 'kotlin.collections.set' call
-    var value = new LegacyXtreamEntry(id, name, stream, category, group, row.get_6bo4tg_k$('stream_icon').truthy_eb26j6_k$() ? row.get_6bo4tg_k$('stream_icon') : Companion_getInstance_18().text_yxj031_k$(''), this.addresses_1.legacyStream_4sx44x_k$(stream), groupValue);
+    var value = new LegacyXtreamEntry(id, name, stream, category, group, row.get_6bo4tg_k$('stream_icon').truthy_eb26j6_k$() ? row.get_6bo4tg_k$('stream_icon') : Companion_getInstance_20().text_yxj031_k$(''), this.addresses_1.legacyStream_4sx44x_k$(stream), groupValue);
     tmp0.put_4fpzoq_k$(id, value);
   };
   protoOf(LegacyXtreamCatalogBuilder).catalog_96uo7t_k$ = function () {
@@ -14782,7 +15155,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       var element = _iterator__ex2g4s.next_20eer_k$();
       var start = clock(element.get_6bo4tg_k$('start'));
       var end = clock(element.get_6bo4tg_k$('end'));
-      var tmp0_safe_receiver = isNaN_0(start) || isNaN_0(end) ? null : new LegacyXtreamProgramme(element.get_6bo4tg_k$('title').truthy_eb26j6_k$() ? element.get_6bo4tg_k$('title') : Companion_getInstance_18().text_yxj031_k$('No title'), element.get_6bo4tg_k$('description').truthy_eb26j6_k$() ? element.get_6bo4tg_k$('description') : Companion_getInstance_18().text_yxj031_k$(''), start, end);
+      var tmp0_safe_receiver = isNaN_0(start) || isNaN_0(end) ? null : new LegacyXtreamProgramme(element.get_6bo4tg_k$('title').truthy_eb26j6_k$() ? element.get_6bo4tg_k$('title') : Companion_getInstance_20().text_yxj031_k$('No title'), element.get_6bo4tg_k$('description').truthy_eb26j6_k$() ? element.get_6bo4tg_k$('description') : Companion_getInstance_20().text_yxj031_k$(''), start, end);
       if (tmp0_safe_receiver == null)
         null;
       else {
@@ -14819,7 +15192,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return LegacyXtream_instance;
   }
   function text_2($this, value) {
-    return Companion_getInstance_18().text_yxj031_k$(value);
+    return Companion_getInstance_20().text_yxj031_k$(value);
   }
   function number_1($this, value) {
     return new ProviderValue(ProviderValueKind_NUMBER_getInstance(), toString_1(value));
@@ -14828,27 +15201,27 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return new ProviderValue(ProviderValueKind_BOOLEAN_getInstance(), value.toString());
   }
   function obj_2($this, value) {
-    return Companion_getInstance_18().obj_60q8ki_k$(value);
+    return Companion_getInstance_20().obj_60q8ki_k$(value);
   }
   function array_2($this, value) {
-    return Companion_getInstance_18().array_vqz2lg_k$(value);
+    return Companion_getInstance_20().array_vqz2lg_k$(value);
   }
   function strictTrue_0($this, value) {
     return value.kind_1.equals(ProviderValueKind_BOOLEAN_getInstance()) && value.scalar_1 === 'true';
   }
-  function sam$kotlin_Comparator$0_4(function_0) {
+  function sam$kotlin_Comparator$0_5(function_0) {
     this.function_1 = function_0;
   }
-  protoOf(sam$kotlin_Comparator$0_4).compare_bczr_k$ = function (a, b) {
+  protoOf(sam$kotlin_Comparator$0_5).compare_bczr_k$ = function (a, b) {
     return this.function_1(a, b);
   };
-  protoOf(sam$kotlin_Comparator$0_4).compare = function (a, b) {
+  protoOf(sam$kotlin_Comparator$0_5).compare = function (a, b) {
     return this.compare_bczr_k$(a, b);
   };
-  protoOf(sam$kotlin_Comparator$0_4).getFunctionDelegate_jtodtf_k$ = function () {
+  protoOf(sam$kotlin_Comparator$0_5).getFunctionDelegate_jtodtf_k$ = function () {
     return this.function_1;
   };
-  protoOf(sam$kotlin_Comparator$0_4).equals = function (other) {
+  protoOf(sam$kotlin_Comparator$0_5).equals = function (other) {
     var tmp;
     if (!(other == null) ? isInterface(other, Comparator) : false) {
       var tmp_0;
@@ -14863,7 +15236,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return tmp;
   };
-  protoOf(sam$kotlin_Comparator$0_4).hashCode = function () {
+  protoOf(sam$kotlin_Comparator$0_5).hashCode = function () {
     return hashCode_0(this.getFunctionDelegate_jtodtf_k$());
   };
   function edit$field($stringify, $values, key) {
@@ -14957,7 +15330,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     var tmp_6 = destination_0;
     var tmp_7 = LibraryState$decorated$lambda;
-    return sortedWith(tmp_6, new sam$kotlin_Comparator$0_4(tmp_7));
+    return sortedWith(tmp_6, new sam$kotlin_Comparator$0_5(tmp_7));
   };
   protoOf(LibraryState).reminderId_hdd4ur_k$ = function (channel, start) {
     return channel + '@' + start;
@@ -15990,9 +16363,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function NativeGuideRefreshAction(name, ordinal) {
     Enum.call(this, name, ordinal);
   }
-  function Companion_13() {
+  function Companion_15() {
   }
-  protoOf(Companion_13).intervalSeconds_k0yvnh_k$ = function (format) {
+  protoOf(Companion_15).intervalSeconds_k0yvnh_k$ = function (format) {
     // Inline function 'kotlin.require' call
     // Inline function 'kotlin.require' call
     if (!format.equals(NativeGuideRefreshFormat_RUST_SERVER_getInstance())) {
@@ -16001,9 +16374,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return 7200;
   };
-  var Companion_instance_13;
-  function Companion_getInstance_13() {
-    return Companion_instance_13;
+  var Companion_instance_15;
+  function Companion_getInstance_15() {
+    return Companion_instance_15;
   }
   function NativeGuideRefresh(count, format) {
     this.count_1 = count;
@@ -16584,7 +16957,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     tmp.add_utx5q5_k$(id);
   };
   protoOf(OperatorGroups).category_rmnji1_k$ = function (group) {
-    var tmp = Companion_getInstance_18();
+    var tmp = Companion_getInstance_20();
     var tmp_0 = ProviderValueKind_NUMBER_getInstance();
     var tmp0 = this.order_1;
     var tmp$ret$0;
@@ -16607,9 +16980,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function number_2($this, value) {
     return new ProviderValue(ProviderValueKind_NUMBER_getInstance(), value.toString());
   }
-  function Companion_14() {
+  function Companion_16() {
   }
-  protoOf(Companion_14).clubIds_tvgjc8_k$ = function (text) {
+  protoOf(Companion_16).clubIds_tvgjc8_k$ = function (text) {
     // Inline function 'kotlin.collections.map' call
     var this_0 = drop(split(text, ['"ch_id":"']), 1);
     // Inline function 'kotlin.collections.mapTo' call
@@ -16622,7 +16995,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return destination;
   };
-  protoOf(Companion_14).validCredentials_y5vvl2_k$ = function (profile, key, address) {
+  protoOf(Companion_16).validCredentials_y5vvl2_k$ = function (profile, key, address) {
     var tmp;
     switch (profile) {
       case 'itv':
@@ -16640,16 +17013,16 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return tmp;
   };
-  var Companion_instance_14;
-  function Companion_getInstance_14() {
-    return Companion_instance_14;
+  var Companion_instance_16;
+  function Companion_getInstance_16() {
+    return Companion_instance_16;
   }
   function OperatorCatalogs(profile) {
     this.profile_1 = profile;
     var tmp = this;
     // Inline function 'kotlin.collections.mutableListOf' call
     tmp.ids_1 = ArrayList_init_$Create$();
-    this.channels_1 = Companion_getInstance_18().obj$default_qhtcrc_k$();
+    this.channels_1 = Companion_getInstance_20().obj$default_qhtcrc_k$();
     this.groups_1 = new OperatorGroups();
     var tmp_0 = this;
     // Inline function 'kotlin.collections.linkedMapOf' call
@@ -16669,7 +17042,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         throw new OperatorCatalogFailure('ITV_CHANNELS');
       // Inline function 'kotlin.collections.linkedMapOf' call
       var result = LinkedHashMap_init_$Create$();
-      this.channels_1 = Companion_getInstance_18().obj_60q8ki_k$(result);
+      this.channels_1 = Companion_getInstance_20().obj_60q8ki_k$(result);
       var _iterator__ex2g4s = data.get_6bo4tg_k$('channels').elements_1.iterator_jk1svi_k$();
       $l$loop: while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
         var row = _iterator__ex2g4s.next_20eer_k$();
@@ -16707,7 +17080,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         this.ids_1.add_utx5q5_k$(id);
         var tmp2 = id.string_er2cq7_k$();
         // Inline function 'kotlin.collections.set' call
-        var value = Companion_getInstance_18().obj_60q8ki_k$(mapOf_0([to('category', this.groups_1.category_rmnji1_k$(group)), to('channel_name', row.get_6bo4tg_k$('channel_name')), to('rec', row.get_6bo4tg_k$('rec_time')), to('server_cdn', row.get_6bo4tg_k$('server_cdn')), to('time', number_2(Companion_instance_14, 0)), to('time_to', number_2(Companion_instance_14, 0)), to('token', row.get_6bo4tg_k$('token'))]));
+        var value = Companion_getInstance_20().obj_60q8ki_k$(mapOf_0([to('category', this.groups_1.category_rmnji1_k$(group)), to('channel_name', row.get_6bo4tg_k$('channel_name')), to('rec', row.get_6bo4tg_k$('rec_time')), to('server_cdn', row.get_6bo4tg_k$('server_cdn')), to('time', number_2(Companion_instance_16, 0)), to('time_to', number_2(Companion_instance_16, 0)), to('token', row.get_6bo4tg_k$('token'))]));
         result.put_4fpzoq_k$(tmp2, value);
       }
     } else if (this.profile_1 === 'shura') {
@@ -16717,7 +17090,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         throw new OperatorCatalogFailure('SHURA_CHANNELS');
       // Inline function 'kotlin.collections.linkedMapOf' call
       var result_0 = LinkedHashMap_init_$Create$();
-      this.channels_1 = Companion_getInstance_18().obj_60q8ki_k$(result_0);
+      this.channels_1 = Companion_getInstance_20().obj_60q8ki_k$(result_0);
       var _iterator__ex2g4s_1 = data.elements_1.iterator_jk1svi_k$();
       while (_iterator__ex2g4s_1.hasNext_bitz1p_k$()) {
         var row_0 = _iterator__ex2g4s_1.next_20eer_k$();
@@ -16727,11 +17100,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
         this.ids_1.add_utx5q5_k$(id_0);
         var tmp2_0 = id_0.string_er2cq7_k$();
         // Inline function 'kotlin.collections.set' call
-        var value_0 = Companion_getInstance_18().obj_60q8ki_k$(mapOf_0([to('category', Companion_getInstance_18().obj_60q8ki_k$(mapOf(to('class', number_2(Companion_instance_14, 0))))), to('channel_name', row_0.get_6bo4tg_k$('name')), to('rec', row_0.get_6bo4tg_k$('archive')), to('time', number_2(Companion_instance_14, 0)), to('time_to', number_2(Companion_instance_14, 0))]));
+        var value_0 = Companion_getInstance_20().obj_60q8ki_k$(mapOf_0([to('category', Companion_getInstance_20().obj_60q8ki_k$(mapOf(to('class', number_2(Companion_instance_16, 0))))), to('channel_name', row_0.get_6bo4tg_k$('name')), to('rec', row_0.get_6bo4tg_k$('archive')), to('time', number_2(Companion_instance_16, 0)), to('time_to', number_2(Companion_instance_16, 0))]));
         result_0.put_4fpzoq_k$(tmp2_0, value_0);
       }
     } else {
-      var tmp2_map_this = Companion_getInstance_18();
+      var tmp2_map_this = Companion_getInstance_20();
       // Inline function 'kotlin.collections.map' call
       // Inline function 'kotlin.collections.mapTo' call
       var destination = ArrayList_init_$Create$_0(collectionSizeOrDefault(sourceIds, 10));
@@ -16743,7 +17116,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       }
       this.ids_1.addAll_h3ej1q_k$(destination);
       var result_1 = toMutableMap(data.properties_1);
-      this.channels_1 = data.get_isObject_xg6v9u_k$() ? Companion_getInstance_18().obj_60q8ki_k$(result_1) : data;
+      this.channels_1 = data.get_isObject_xg6v9u_k$() ? Companion_getInstance_20().obj_60q8ki_k$(result_1) : data;
       var _iterator__ex2g4s_3 = sourceIds.iterator_jk1svi_k$();
       $l$loop_2: while (_iterator__ex2g4s_3.hasNext_bitz1p_k$()) {
         var id_1 = _iterator__ex2g4s_3.next_20eer_k$();
@@ -16760,13 +17133,13 @@ if (typeof String.prototype.startsWith === 'undefined') {
         if (!original.get_isObject_xg6v9u_k$()) {
           var tmp0_0 = this.guide_1;
           // Inline function 'kotlin.collections.set' call
-          var value_1 = Companion_getInstance_18().array_vqz2lg_k$(listOf(original));
+          var value_1 = Companion_getInstance_20().array_vqz2lg_k$(listOf(original));
           tmp0_0.put_4fpzoq_k$(id_1, value_1);
           continue $l$loop_2;
         }
         var row_1 = toMutableMap(original.properties_1);
         // Inline function 'kotlin.collections.set' call
-        var value_2 = number_2(Companion_instance_14, original.get_6bo4tg_k$('rec').truthy_eb26j6_k$() ? 168 : 0);
+        var value_2 = number_2(Companion_instance_16, original.get_6bo4tg_k$('rec').truthy_eb26j6_k$() ? 168 : 0);
         row_1.put_4fpzoq_k$('rec', value_2);
         if (!original.get_6bo4tg_k$('channel_name').truthy_eb26j6_k$() && original.get_6bo4tg_k$('name').truthy_eb26j6_k$()) {
           var tmp2_1 = 'channel_name';
@@ -16775,11 +17148,11 @@ if (typeof String.prototype.startsWith === 'undefined') {
           row_1.put_4fpzoq_k$(tmp2_1, value_3);
         }
         // Inline function 'kotlin.collections.set' call
-        var value_4 = Companion_getInstance_18().obj_60q8ki_k$(row_1);
+        var value_4 = Companion_getInstance_20().obj_60q8ki_k$(row_1);
         result_1.put_4fpzoq_k$(id_1, value_4);
         var tmp0_1 = this.guide_1;
         // Inline function 'kotlin.collections.set' call
-        var value_5 = Companion_getInstance_18().array_vqz2lg_k$(listOf(getValue(result_1, id_1)));
+        var value_5 = Companion_getInstance_20().array_vqz2lg_k$(listOf(getValue(result_1, id_1)));
         tmp0_1.put_4fpzoq_k$(id_1, value_5);
       }
       var _iterator__ex2g4s_4 = sourceIds.iterator_jk1svi_k$();
@@ -16799,27 +17172,27 @@ if (typeof String.prototype.startsWith === 'undefined') {
         var group_0 = category.truthy_eb26j6_k$() ? category.kind_1.equals(ProviderValueKind_TEXT_getInstance()) ? category : category.get_6bo4tg_k$('name') : original_0.get_6bo4tg_k$('group').truthy_eb26j6_k$() ? original_0.get_6bo4tg_k$('group') : original_0.get_6bo4tg_k$('group_title');
         if (!group_0.truthy_eb26j6_k$())
           continue $l$loop_5;
-        this.groups_1.add_m2hfz_k$(group_0, Companion_getInstance_18().text_yxj031_k$(id_2));
+        this.groups_1.add_m2hfz_k$(group_0, Companion_getInstance_20().text_yxj031_k$(id_2));
         var row_2 = toMutableMap(original_0.properties_1);
         var tmp2_2 = 'category';
         // Inline function 'kotlin.collections.set' call
         var value_6 = this.groups_1.category_rmnji1_k$(group_0);
         row_2.put_4fpzoq_k$(tmp2_2, value_6);
         // Inline function 'kotlin.collections.set' call
-        var value_7 = Companion_getInstance_18().obj_60q8ki_k$(row_2);
+        var value_7 = Companion_getInstance_20().obj_60q8ki_k$(row_2);
         result_1.put_4fpzoq_k$(id_2, value_7);
         var tmp0_2 = this.guide_1;
         // Inline function 'kotlin.collections.set' call
-        var value_8 = Companion_getInstance_18().array_vqz2lg_k$(listOf(getValue(result_1, id_2)));
+        var value_8 = Companion_getInstance_20().array_vqz2lg_k$(listOf(getValue(result_1, id_2)));
         tmp0_2.put_4fpzoq_k$(id_2, value_8);
       }
     }
   };
   protoOf(OperatorCatalogs).result_fgc06b_k$ = function () {
-    var tmp = Companion_getInstance_18();
-    var tmp_0 = to('ids', Companion_getInstance_18().array_vqz2lg_k$(toList_0(this.ids_1)));
+    var tmp = Companion_getInstance_20();
+    var tmp_0 = to('ids', Companion_getInstance_20().array_vqz2lg_k$(toList_0(this.ids_1)));
     var tmp_1 = to('channels', this.channels_1);
-    var tmp_2 = Companion_getInstance_18();
+    var tmp_2 = Companion_getInstance_20();
     // Inline function 'kotlin.collections.mapValues' call
     var this_0 = this.groups_1.members_1;
     // Inline function 'kotlin.collections.mapValuesTo' call
@@ -16829,10 +17202,58 @@ if (typeof String.prototype.startsWith === 'undefined') {
     while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
       var element = _iterator__ex2g4s.next_20eer_k$();
       var tmp_3 = element.get_key_18j28a_k$();
-      var tmp$ret$4 = Companion_getInstance_18().array_vqz2lg_k$(toList_0(element.get_value_j01efc_k$()));
+      var tmp$ret$4 = Companion_getInstance_20().array_vqz2lg_k$(toList_0(element.get_value_j01efc_k$()));
       destination.put_4fpzoq_k$(tmp_3, tmp$ret$4);
     }
-    return tmp.obj_60q8ki_k$(mapOf_0([tmp_0, tmp_1, to('groups', tmp_2.obj_60q8ki_k$(destination)), to('groupOrder', Companion_getInstance_18().array_vqz2lg_k$(toList_0(this.groups_1.order_1))), to('epg', Companion_getInstance_18().obj_60q8ki_k$(this.guide_1))]));
+    return tmp.obj_60q8ki_k$(mapOf_0([tmp_0, tmp_1, to('groups', tmp_2.obj_60q8ki_k$(destination)), to('groupOrder', Companion_getInstance_20().array_vqz2lg_k$(toList_0(this.groups_1.order_1))), to('epg', Companion_getInstance_20().obj_60q8ki_k$(this.guide_1))]));
+  };
+  function append($this, input, target, collection, row) {
+    if (!input.get_isArray_z8qxd2_k$())
+      throw new OperatorCatalogFailure(collection);
+    // Inline function 'kotlin.collections.forEach' call
+    var _iterator__ex2g4s = input.elements_1.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var element = _iterator__ex2g4s.next_20eer_k$();
+      if (!element.get_present_3zxuem_k$())
+        throw new OperatorCatalogFailure(row, element.kind_1.equals(ProviderValueKind_NULL_getInstance()));
+      target.add_utx5q5_k$(element);
+    }
+  }
+  function OperatorChannelSession(base, addresses) {
+    this.base_1 = base;
+    this.addresses_1 = addresses;
+    this.action_1 = OperatorSourceAction_API_getInstance();
+    this.networkFailure_1 = false;
+    var tmp = this;
+    // Inline function 'kotlin.collections.mutableListOf' call
+    tmp.categories_1 = ArrayList_init_$Create$();
+    var tmp_0 = this;
+    // Inline function 'kotlin.collections.mutableListOf' call
+    tmp_0.streams_1 = ArrayList_init_$Create$();
+  }
+  protoOf(OperatorChannelSession).action_nj6rwq_k$ = function () {
+    return this.action_1;
+  };
+  protoOf(OperatorChannelSession).request_i4ci33_k$ = function () {
+    return this.action_1.equals(OperatorSourceAction_PLAYLIST_getInstance()) ? this.addresses_1.legacyPlaylist_76ezs6_k$(this.base_1, this.networkFailure_1) : this.addresses_1.api_hsene1_k$(new XtreamRequest(''));
+  };
+  protoOf(OperatorChannelSession).reject_691psf_k$ = function () {
+    this.networkFailure_1 = true;
+    this.action_1 = OperatorSourceAction_PLAYLIST_getInstance();
+  };
+  protoOf(OperatorChannelSession).accept_wd2l5t_k$ = function (response) {
+    if (!response.truthy_eb26j6_k$() || !response.get_6bo4tg_k$('live_streams').truthy_eb26j6_k$()) {
+      this.action_1 = OperatorSourceAction_PLAYLIST_getInstance();
+      return Unit_instance;
+    }
+    var groups = response.get_6bo4tg_k$('categories');
+    if (groups.truthy_eb26j6_k$()) {
+      append(this, groups, this.categories_1, 'CATEGORIES', 'CATEGORY_ROW');
+    }
+    append(this, response.get_6bo4tg_k$('live_streams'), this.streams_1, 'STREAMS', 'STREAM_ROW');
+  };
+  protoOf(OperatorChannelSession).catalog_96uo7t_k$ = function () {
+    return ChannelCatalog_instance.xtream_8xzyc2_k$(mapOf_0([to('get_live_categories', Companion_getInstance_20().array_vqz2lg_k$(this.categories_1)), to('get_live_streams', Companion_getInstance_20().array_vqz2lg_k$(this.streams_1))]), this.addresses_1);
   };
   function Request(settled, attached, aborted) {
     settled = settled === VOID ? false : settled;
@@ -16930,9 +17351,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function key($this, api, id) {
     return api + '\n' + id;
   }
-  function Companion_15() {
+  function Companion_17() {
   }
-  protoOf(Companion_15).libraryIndices_mui3km_k$ = function (kinds) {
+  protoOf(Companion_17).libraryIndices_mui3km_k$ = function (kinds) {
     // Inline function 'kotlin.collections.filter' call
     var tmp0 = get_indices(kinds);
     // Inline function 'kotlin.collections.filterTo' call
@@ -16951,12 +17372,12 @@ if (typeof String.prototype.startsWith === 'undefined') {
        while (!(element === last));
     return destination;
   };
-  protoOf(Companion_15).seriesSection_om2lke_k$ = function (folderType, seasonNumber) {
+  protoOf(Companion_17).seriesSection_om2lke_k$ = function (folderType, seasonNumber) {
     return folderType === 'season' ? '$' + seasonNumber : null;
   };
-  var Companion_instance_15;
-  function Companion_getInstance_15() {
-    return Companion_instance_15;
+  var Companion_instance_17;
+  function Companion_getInstance_17() {
+    return Companion_instance_17;
   }
   function OperatorLifetime() {
     var tmp = this;
@@ -17212,7 +17633,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       tmp_0 = 'all';
     }
     tmp.phase_1 = tmp_0;
-    this.value_1 = this.profile_1 === 'itv' ? Companion_getInstance_18().array$default_yx37t8_k$() : Companion_getInstance_18().nil_1;
+    this.value_1 = this.profile_1 === 'itv' ? Companion_getInstance_20().array$default_yx37t8_k$() : Companion_getInstance_20().nil_1;
     var tmp_1 = this;
     // Inline function 'kotlin.collections.mutableListOf' call
     tmp_1.rows_1 = ArrayList_init_$Create$();
@@ -17241,8 +17662,8 @@ if (typeof String.prototype.startsWith === 'undefined') {
         var entry = _iterator__ex2g4s.next_20eer_k$();
         if (!entry.get_present_3zxuem_k$())
           throw new OperatorCatalogFailure('GUIDE_ITV_ROW', entry.kind_1.equals(ProviderValueKind_NULL_getInstance()));
-        this.rows_1.add_utx5q5_k$(Companion_getInstance_18().obj_60q8ki_k$(linkedMapOf([to('descr', entry.get_6bo4tg_k$('desc')), to('name', entry.get_6bo4tg_k$('title')), to('time', entry.get_6bo4tg_k$('startTime')), to('time_to', entry.get_6bo4tg_k$('stopTime'))])));
-        this.value_1 = Companion_getInstance_18().array_vqz2lg_k$(toList_0(this.rows_1));
+        this.rows_1.add_utx5q5_k$(Companion_getInstance_20().obj_60q8ki_k$(linkedMapOf([to('descr', entry.get_6bo4tg_k$('desc')), to('name', entry.get_6bo4tg_k$('title')), to('time', entry.get_6bo4tg_k$('startTime')), to('time_to', entry.get_6bo4tg_k$('stopTime'))])));
+        this.value_1 = Companion_getInstance_20().array_vqz2lg_k$(toList_0(this.rows_1));
       }
       return Unit_instance;
     }
@@ -17258,7 +17679,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       var tmp = this;
       // Inline function 'kotlin.collections.mutableListOf' call
       tmp.rows_1 = ArrayList_init_$Create$();
-      this.value_1 = Companion_getInstance_18().array$default_yx37t8_k$();
+      this.value_1 = Companion_getInstance_20().array$default_yx37t8_k$();
     }
     if (!data.get_isArray_z8qxd2_k$())
       throw new OperatorCatalogFailure('GUIDE_SHURA_ARRAY');
@@ -17270,13 +17691,13 @@ if (typeof String.prototype.startsWith === 'undefined') {
         throw new OperatorCatalogFailure('GUIDE_SHURA_ROW', entry_0.kind_1.equals(ProviderValueKind_NULL_getInstance()));
       var from = entry_0.get_6bo4tg_k$('start_time');
       var duration = entry_0.get_6bo4tg_k$('duration');
-      var end = from.kind_1.equals(ProviderValueKind_TEXT_getInstance()) || duration.kind_1.equals(ProviderValueKind_TEXT_getInstance()) ? Companion_getInstance_18().text_yxj031_k$(from.string_er2cq7_k$() + duration.string_er2cq7_k$()) : new ProviderValue(ProviderValueKind_NUMBER_getInstance(), (from.number_h3u0fr_k$() + duration.number_h3u0fr_k$()).toString());
-      var row = Companion_getInstance_18().obj_60q8ki_k$(linkedMapOf([to('descr', entry_0.get_6bo4tg_k$('text')), to('duration', duration), to('name', entry_0.get_6bo4tg_k$('name')), to('time', from), to('time_to', end)]));
+      var end = from.kind_1.equals(ProviderValueKind_TEXT_getInstance()) || duration.kind_1.equals(ProviderValueKind_TEXT_getInstance()) ? Companion_getInstance_20().text_yxj031_k$(from.string_er2cq7_k$() + duration.string_er2cq7_k$()) : new ProviderValue(ProviderValueKind_NUMBER_getInstance(), (from.number_h3u0fr_k$() + duration.number_h3u0fr_k$()).toString());
+      var row = Companion_getInstance_20().obj_60q8ki_k$(linkedMapOf([to('descr', entry_0.get_6bo4tg_k$('text')), to('duration', duration), to('name', entry_0.get_6bo4tg_k$('name')), to('time', from), to('time_to', end)]));
       if (phase === 'archive') {
         this.rows_1.add_dl6gt3_k$(0, row);
       } else
         this.rows_1.add_utx5q5_k$(row);
-      this.value_1 = Companion_getInstance_18().array_vqz2lg_k$(toList_0(this.rows_1));
+      this.value_1 = Companion_getInstance_20().array_vqz2lg_k$(toList_0(this.rows_1));
     }
   };
   function OperatorEntry(id, name, generatedName, url, group, category, logo, epgId, epgName, hours, fallbackHours, mode, archive, feed, drm, server, token) {
@@ -17982,13 +18403,13 @@ if (typeof String.prototype.startsWith === 'undefined') {
     this.stage_1 = 2;
   };
   function text_3($this, value) {
-    return Companion_getInstance_18().text_yxj031_k$(value);
+    return Companion_getInstance_20().text_yxj031_k$(value);
   }
   function number_3($this, value) {
     return new ProviderValue(ProviderValueKind_NUMBER_getInstance(), value.toString());
   }
   function fields($this, values) {
-    return Companion_getInstance_18().obj_60q8ki_k$(linkedMapOf(values.slice()));
+    return Companion_getInstance_20().obj_60q8ki_k$(linkedMapOf(values.slice()));
   }
   function OperatorPortal() {
   }
@@ -17999,7 +18420,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       // Inline function 'kotlin.collections.set' call
       result.put_4fpzoq_k$('limit', limit);
     }
-    return Companion_getInstance_18().obj_60q8ki_k$(result);
+    return Companion_getInstance_20().obj_60q8ki_k$(result);
   };
   protoOf(OperatorPortal).page_2f2vni_k$ = function (params, selected) {
     var result = toMutableMap(params.properties_1);
@@ -18009,10 +18430,10 @@ if (typeof String.prototype.startsWith === 'undefined') {
     // Inline function 'kotlin.collections.set' call
     var value = number_3(this, tmp$ret$0 * params.get_6bo4tg_k$('limit').number_h3u0fr_k$());
     result.put_4fpzoq_k$('offset', value);
-    return Companion_getInstance_18().obj_60q8ki_k$(result);
+    return Companion_getInstance_20().obj_60q8ki_k$(result);
   };
   protoOf(OperatorPortal).navigate_ur3p1p_k$ = function (input, provider, portal, key, decode) {
-    var endpoint = Companion_getInstance_18().missing_1;
+    var endpoint = Companion_getInstance_20().missing_1;
     var access = text_3(this, key);
     var tmp;
     var tmp_0;
@@ -18033,7 +18454,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         tmp_1 = text_3(this, tmp0_safe_receiver);
       }
       var tmp1_elvis_lhs = tmp_1;
-      endpoint = tmp1_elvis_lhs == null ? Companion_getInstance_18().missing_1 : tmp1_elvis_lhs;
+      endpoint = tmp1_elvis_lhs == null ? Companion_getInstance_20().missing_1 : tmp1_elvis_lhs;
       var tmp2_elvis_lhs = getOrNull_0(split(portal, ['portal::[key:']), 1);
       var tmp_2;
       if (tmp2_elvis_lhs == null) {
@@ -18091,7 +18512,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     if (!value.get_present_3zxuem_k$())
       throw new OperatorCatalogFailure('PORTAL_TYPE', value.kind_1.equals(ProviderValueKind_NULL_getInstance()));
     if (!listOf_0(['stream', 'category', 'multistream']).contains_aljjnj_k$(value.get_6bo4tg_k$('type').string_er2cq7_k$()))
-      return Companion_getInstance_18().missing_1;
+      return Companion_getInstance_20().missing_1;
     var result = toMutableMap(value.properties_1);
     if (parent.truthy_eb26j6_k$()) {
       if (parent.get_6bo4tg_k$('title').truthy_eb26j6_k$()) {
@@ -18114,7 +18535,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         }
       }
     }
-    return Companion_getInstance_18().obj_60q8ki_k$(result);
+    return Companion_getInstance_20().obj_60q8ki_k$(result);
   };
   protoOf(OperatorPortal).media_4ph5tz_k$ = function (value, description) {
     var result = linkedMapOf([to('description', text_3(this, description)), to('logo_30x30', value.get_6bo4tg_k$('imglr').truthy_eb26j6_k$() ? value.get_6bo4tg_k$('imglr') : value.get_6bo4tg_k$('img'))]);
@@ -18135,7 +18556,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     // Inline function 'kotlin.collections.set' call
     var value_3 = value.get_6bo4tg_k$('title');
     result.put_4fpzoq_k$('title', value_3);
-    return Companion_getInstance_18().obj_60q8ki_k$(result);
+    return Companion_getInstance_20().obj_60q8ki_k$(result);
   };
   protoOf(OperatorPortal).variants_mp7geq_k$ = function (variants, url) {
     var keys = toList_0(variants.properties_1.get_keys_wop4xp_k$());
@@ -18151,7 +18572,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       if (operatorSameValue(variants.get_6bo4tg_k$(item), url))
         selected = index_0;
     }
-    var tmp = Companion_getInstance_18();
+    var tmp = Companion_getInstance_20();
     // Inline function 'kotlin.collections.map' call
     // Inline function 'kotlin.collections.mapTo' call
     var destination = ArrayList_init_$Create$_0(collectionSizeOrDefault(keys, 10));
@@ -18175,9 +18596,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return OperatorPortal_instance;
   }
   function next$result(this$0, kind, value, index) {
-    value = value === VOID ? Companion_getInstance_18().missing_1 : value;
+    value = value === VOID ? Companion_getInstance_20().missing_1 : value;
     index = index === VOID ? this$0.emitted_1 : index;
-    return Companion_getInstance_18().obj_60q8ki_k$(linkedMapOf([to('kind', Companion_getInstance_18().text_yxj031_k$(kind)), to('value', value), to('index', new ProviderValue(ProviderValueKind_NUMBER_getInstance(), index.toString()))]));
+    return Companion_getInstance_20().obj_60q8ki_k$(linkedMapOf([to('kind', Companion_getInstance_20().text_yxj031_k$(kind)), to('value', value), to('index', new ProviderValue(ProviderValueKind_NUMBER_getInstance(), index.toString()))]));
   }
   function OperatorPortalCatalog(data, page) {
     page = page === VOID ? false : page;
@@ -18194,14 +18615,14 @@ if (typeof String.prototype.startsWith === 'undefined') {
   };
   protoOf(OperatorPortalCatalog).next_20eer_k$ = function () {
     if (this.ended_1 || !this.data_1.get_present_3zxuem_k$())
-      return Companion_getInstance_18().missing_1;
+      return Companion_getInstance_20().missing_1;
     if (this.data_1.get_6bo4tg_k$('type').string_er2cq7_k$() === 'error') {
       this.ended_1 = true;
       return next$result(this, 'ERROR', this.data_1.get_6bo4tg_k$('description'));
     }
     if (!this.page_1 && !this.named_1q9mbd_k$()) {
       this.ended_1 = true;
-      return Companion_getInstance_18().missing_1;
+      return Companion_getInstance_20().missing_1;
     }
     var items = this.data_1.get_6bo4tg_k$('items');
     if ((this.page_1 || items.truthy_eb26j6_k$()) && !items.get_isArray_z8qxd2_k$())
@@ -18243,7 +18664,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       }
     }
     this.ended_1 = true;
-    return Companion_getInstance_18().missing_1;
+    return Companion_getInstance_20().missing_1;
   };
   function OperatorProfiles() {
   }
@@ -18283,7 +18704,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         tmp = charSequenceLength(first) > 0;
         break;
       default:
-        tmp = Companion_instance_14.validCredentials_y5vvl2_k$(profile, first, second);
+        tmp = Companion_instance_16.validCredentials_y5vvl2_k$(profile, first, second);
         break;
     }
     return tmp;
@@ -18434,14 +18855,14 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function OperatorSourceAction(name, ordinal) {
     Enum.call(this, name, ordinal);
   }
-  function Companion_16() {
+  function Companion_18() {
   }
-  protoOf(Companion_16).source_jc3e7w_k$ = function (config) {
+  protoOf(Companion_18).source_jc3e7w_k$ = function (config) {
     return config.get_6bo4tg_k$('server').truthy_eb26j6_k$() && config.get_6bo4tg_k$('user').truthy_eb26j6_k$() && config.get_6bo4tg_k$('pass').truthy_eb26j6_k$() ? OperatorSourceAction_API_getInstance() : config.get_6bo4tg_k$('m3u').truthy_eb26j6_k$() ? OperatorSourceAction_PLAYLIST_getInstance() : OperatorSourceAction_CONFIGURE_getInstance();
   };
-  var Companion_instance_16;
-  function Companion_getInstance_16() {
-    return Companion_instance_16;
+  var Companion_instance_18;
+  function Companion_getInstance_18() {
+    return Companion_instance_18;
   }
   function OperatorSession(base, addresses, hash) {
     this.base_1 = base;
@@ -18511,7 +18932,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     this.code_1 = code;
   }
   function browser$text(value) {
-    return Companion_getInstance_18().text_yxj031_k$(value);
+    return Companion_getInstance_20().text_yxj031_k$(value);
   }
   function browser$nullish(value) {
     return value.get_present_3zxuem_k$() ? value.string_er2cq7_k$() : '';
@@ -18574,7 +18995,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     // Inline function 'kotlin.text.isNotEmpty' call
     if (charSequenceLength(failure) > 0)
       throw new OperatorSourceFailure(failure);
-    var tmp = Companion_getInstance_18();
+    var tmp = Companion_getInstance_20();
     var tmp_0 = to('id', browser$text(source.get_6bo4tg_k$('id').string_er2cq7_k$()));
     var tmp_1 = to('type', browser$text(type));
     var tmp_2 = to('url', browser$text(checkedUrl));
@@ -18605,7 +19026,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       tmp_8 = this_1;
     }
     var tmp$ret$9 = tmp_8;
-    return tmp.obj_60q8ki_k$(linkedMapOf([tmp_0, tmp_1, tmp_2, tmp_3, tmp_4, tmp_5, tmp_7, to('language', browser$text(tmp$ret$9)), to('output', browser$text(source.get_6bo4tg_k$('output').kind_1.equals(ProviderValueKind_TEXT_getInstance()) && source.get_6bo4tg_k$('output').scalar_1 === 'ts' ? 'ts' : 'm3u8')), to('profile', source.get_6bo4tg_k$('profile').truthy_eb26j6_k$() ? source.get_6bo4tg_k$('profile') : Companion_getInstance_18().obj$default_qhtcrc_k$())]));
+    return tmp.obj_60q8ki_k$(linkedMapOf([tmp_0, tmp_1, tmp_2, tmp_3, tmp_4, tmp_5, tmp_7, to('language', browser$text(tmp$ret$9)), to('output', browser$text(source.get_6bo4tg_k$('output').kind_1.equals(ProviderValueKind_TEXT_getInstance()) && source.get_6bo4tg_k$('output').scalar_1 === 'ts' ? 'ts' : 'm3u8')), to('profile', source.get_6bo4tg_k$('profile').truthy_eb26j6_k$() ? source.get_6bo4tg_k$('profile') : Companion_getInstance_20().obj$default_qhtcrc_k$())]));
   };
   protoOf(OperatorSources).relationship_pvf2yq_k$ = function (mode, kind, sourceId, entryKind, entrySourceId) {
     var tmp;
@@ -18701,7 +19122,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       tmp$ret$0 = null;
     }
     var tmp0_elvis_lhs = tmp$ret$0;
-    var name = tmp0_elvis_lhs == null ? Companion_getInstance_18().text_yxj031_k$('?') : tmp0_elvis_lhs;
+    var name = tmp0_elvis_lhs == null ? Companion_getInstance_20().text_yxj031_k$('?') : tmp0_elvis_lhs;
     var channels = data.get_6bo4tg_k$('channel').truthy_eb26j6_k$() ? data.get_6bo4tg_k$('channel') : data.get_6bo4tg_k$('channels');
     var tmp;
     if (!channels.truthy_eb26j6_k$()) {
@@ -18714,9 +19135,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     var records = tmp;
     if (data.get_6bo4tg_k$('next_page_url').truthy_eb26j6_k$()) {
-      records.add_utx5q5_k$(Companion_getInstance_18().obj_60q8ki_k$(mapOf_0([to('description', Companion_getInstance_18().text_yxj031_k$('...')), to('logo_30x30', Companion_getInstance_18().text_yxj031_k$('')), to('playlist_url', data.get_6bo4tg_k$('next_page_url')), to('title', Companion_getInstance_18().text_yxj031_k$('...'))])));
+      records.add_utx5q5_k$(Companion_getInstance_20().obj_60q8ki_k$(mapOf_0([to('description', Companion_getInstance_20().text_yxj031_k$('...')), to('logo_30x30', Companion_getInstance_20().text_yxj031_k$('')), to('playlist_url', data.get_6bo4tg_k$('next_page_url')), to('title', Companion_getInstance_20().text_yxj031_k$('...'))])));
     }
-    return Companion_getInstance_18().obj_60q8ki_k$(mapOf_0([to('name', name), to('records', Companion_getInstance_18().array_vqz2lg_k$(records))]));
+    return Companion_getInstance_20().obj_60q8ki_k$(mapOf_0([to('name', name), to('records', Companion_getInstance_20().array_vqz2lg_k$(records))]));
   };
   var OperatorVod_instance;
   function OperatorVod_getInstance() {
@@ -18729,7 +19150,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return new ProviderValue(ProviderValueKind_BOOLEAN_getInstance(), v.toString());
   }
   function t($this, v) {
-    return Companion_getInstance_18().text_yxj031_k$(v);
+    return Companion_getInstance_20().text_yxj031_k$(v);
   }
   function text_4($this, v) {
     return v.kind_1.equals(ProviderValueKind_TEXT_getInstance());
@@ -18752,14 +19173,14 @@ if (typeof String.prototype.startsWith === 'undefined') {
     this.playback_1 = listOf_0(['playback', 'play', 'archive', 'vod', 'history', 'bookmark', 'preview', 'pip']);
   }
   protoOf(ParentalState).defaults_anl6c2_k$ = function () {
-    var tmp = Companion_getInstance_18();
+    var tmp = Companion_getInstance_20();
     var tmp_0 = to('schema', n(this, 1));
     var tmp_1 = to('enabled', b(this, false));
     var tmp_2 = to('salt', t(this, ''));
     var tmp_3 = to('hash', t(this, ''));
     var tmp_4 = to('iterations', n(this, 2048));
-    var tmp_5 = to('protectedIds', Companion_getInstance_18().array$default_yx37t8_k$());
-    var tmp_6 = Companion_getInstance_18();
+    var tmp_5 = to('protectedIds', Companion_getInstance_20().array$default_yx37t8_k$());
+    var tmp_6 = Companion_getInstance_20();
     // Inline function 'kotlin.collections.associateWith' call
     var this_0 = this.scopes_1;
     var result = LinkedHashMap_init_$Create$_0(coerceAtLeast(mapCapacity(collectionSizeOrDefault(this_0, 10)), 16));
@@ -18775,7 +19196,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   protoOf(ParentalState).validate_xvdoyn_k$ = function (value) {
     var result = LinkedHashMap_init_$Create$_1(this.defaults_anl6c2_k$().properties_1);
     if (!value.get_present_3zxuem_k$())
-      return Companion_getInstance_18().obj_60q8ki_k$(result);
+      return Companion_getInstance_20().obj_60q8ki_k$(result);
     if (!value.get_isObject_xg6v9u_k$() || !number_4(this, value.get_6bo4tg_k$('schema')) || !(value.get_6bo4tg_k$('schema').number_h3u0fr_k$() === 1.0) || !value.get_6bo4tg_k$('enabled').kind_1.equals(ProviderValueKind_BOOLEAN_getInstance())) {
       fail_1(this, 'Unsupported parental-control format');
     }
@@ -18873,7 +19294,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     // Inline function 'kotlin.collections.mutableSetOf' call
     var seen = LinkedHashSet_init_$Create$();
     var tmp2 = 'protectedIds';
-    var tmp_4 = Companion_getInstance_18();
+    var tmp_4 = Companion_getInstance_20();
     // Inline function 'kotlin.collections.filter' call
     var tmp0_1 = ids.elements_1;
     // Inline function 'kotlin.collections.filterTo' call
@@ -18909,7 +19330,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     if (!scope.kind_1.equals(ProviderValueKind_MISSING_getInstance()) && !scope.get_isObject_xg6v9u_k$()) {
       fail_1(this, 'Invalid protection scopes');
     }
-    var tmp_7 = Companion_getInstance_18();
+    var tmp_7 = Companion_getInstance_20();
     // Inline function 'kotlin.collections.associateWith' call
     var this_1 = this.scopes_1;
     var result_0 = LinkedHashMap_init_$Create$_0(coerceAtLeast(mapCapacity(collectionSizeOrDefault(this_1, 10)), 16));
@@ -18962,7 +19383,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     // Inline function 'kotlin.collections.set' call
     var value_6 = n(this, finite_0(this, blocked) ? coerceAtLeast_0(blocked.number_h3u0fr_k$(), 0.0) : 0.0);
     result.put_4fpzoq_k$(tmp2_2, value_6);
-    return Companion_getInstance_18().obj_60q8ki_k$(result);
+    return Companion_getInstance_20().obj_60q8ki_k$(result);
   };
   protoOf(ParentalState).validPin_3pl5pa_k$ = function (value) {
     var tmp;
@@ -19356,14 +19777,14 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function PlaybackDetectionRules_getInstance() {
     return PlaybackDetectionRules_instance;
   }
-  function Companion_17() {
+  function Companion_19() {
   }
-  protoOf(Companion_17).parsingFailure_x1ey68_k$ = function (details) {
+  protoOf(Companion_19).parsingFailure_x1ey68_k$ = function (details) {
     return contains_1(details, 'Parsing') || contains_1(details, 'parsing');
   };
-  var Companion_instance_17;
-  function Companion_getInstance_17() {
-    return Companion_instance_17;
+  var Companion_instance_19;
+  function Companion_getInstance_19() {
+    return Companion_instance_19;
   }
   function PlaybackRecovery(networkLimit) {
     networkLimit = networkLimit === VOID ? 2 : networkLimit;
@@ -19382,7 +19803,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return true;
   };
   protoOf(PlaybackRecovery).network_aoeiz0_k$ = function (details) {
-    if (Companion_instance_17.parsingFailure_x1ey68_k$(details) || this.networkAttempts_1 >= this.networkLimit_1)
+    if (Companion_instance_19.parsingFailure_x1ey68_k$(details) || this.networkAttempts_1 >= this.networkLimit_1)
       return false;
     this.networkAttempts_1 = this.networkAttempts_1 + 1 | 0;
     return true;
@@ -22400,39 +22821,39 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function ProviderValueKind(name, ordinal) {
     Enum.call(this, name, ordinal);
   }
-  function Companion_18() {
-    Companion_instance_18 = this;
+  function Companion_20() {
+    Companion_instance_20 = this;
     this.missing_1 = new ProviderValue(ProviderValueKind_MISSING_getInstance());
     this.nil_1 = new ProviderValue(ProviderValueKind_NULL_getInstance());
   }
-  protoOf(Companion_18).text_yxj031_k$ = function (value) {
+  protoOf(Companion_20).text_yxj031_k$ = function (value) {
     return new ProviderValue(ProviderValueKind_TEXT_getInstance(), value);
   };
-  protoOf(Companion_18).array_vqz2lg_k$ = function (values) {
+  protoOf(Companion_20).array_vqz2lg_k$ = function (values) {
     return new ProviderValue(ProviderValueKind_ARRAY_getInstance(), VOID, values);
   };
-  protoOf(Companion_18).array$default_yx37t8_k$ = function (values, $super) {
+  protoOf(Companion_20).array$default_yx37t8_k$ = function (values, $super) {
     values = values === VOID ? emptyList() : values;
     return $super === VOID ? this.array_vqz2lg_k$(values) : $super.array_vqz2lg_k$.call(this, values);
   };
-  protoOf(Companion_18).obj_60q8ki_k$ = function (values) {
+  protoOf(Companion_20).obj_60q8ki_k$ = function (values) {
     return new ProviderValue(ProviderValueKind_OBJECT_getInstance(), VOID, VOID, values);
   };
-  protoOf(Companion_18).obj$default_qhtcrc_k$ = function (values, $super) {
+  protoOf(Companion_20).obj$default_qhtcrc_k$ = function (values, $super) {
     values = values === VOID ? emptyMap() : values;
     return $super === VOID ? this.obj_60q8ki_k$(values) : $super.obj_60q8ki_k$.call(this, values);
   };
-  var Companion_instance_18;
-  function Companion_getInstance_18() {
-    if (Companion_instance_18 == null)
-      new Companion_18();
-    return Companion_instance_18;
+  var Companion_instance_20;
+  function Companion_getInstance_20() {
+    if (Companion_instance_20 == null)
+      new Companion_20();
+    return Companion_instance_20;
   }
   function ProviderValue$string$lambda(it) {
     return it.get_present_3zxuem_k$() ? it.string_er2cq7_k$() : '';
   }
   function ProviderValue(kind, scalar, elements, properties) {
-    Companion_getInstance_18();
+    Companion_getInstance_20();
     scalar = scalar === VOID ? '' : scalar;
     elements = elements === VOID ? emptyList() : elements;
     properties = properties === VOID ? emptyMap() : properties;
@@ -22443,7 +22864,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   }
   protoOf(ProviderValue).get_6bo4tg_k$ = function (key) {
     var tmp0_elvis_lhs = this.properties_1.get_wei43m_k$(key);
-    return tmp0_elvis_lhs == null ? Companion_getInstance_18().missing_1 : tmp0_elvis_lhs;
+    return tmp0_elvis_lhs == null ? Companion_getInstance_20().missing_1 : tmp0_elvis_lhs;
   };
   protoOf(ProviderValue).get_isArray_z8qxd2_k$ = function () {
     return this.kind_1.equals(ProviderValueKind_ARRAY_getInstance());
@@ -22846,7 +23267,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
           tmp_0 = this_0;
         }
         var tmp$ret$2 = tmp_0;
-        items.add_utx5q5_k$(new StalkerItem(tmp, id, tmp$ret$2, 'folder', 'Movies', VOID, VOID, VOID, row.get_6bo4tg_k$('censored').flag_1vf58_k$(), VOID, 'portal-category', VOID, VOID, VOID, Companion_getInstance_18().text_yxj031_k$(id)));
+        items.add_utx5q5_k$(new StalkerItem(tmp, id, tmp$ret$2, 'folder', 'Movies', VOID, VOID, VOID, row.get_6bo4tg_k$('censored').flag_1vf58_k$(), VOID, 'portal-category', VOID, VOID, VOID, Companion_getInstance_20().text_yxj031_k$(id)));
       }
     }
     return new StalkerResult(items);
@@ -22892,7 +23313,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
           return this.pages_1.request_wolyya_k$('itv', stalkerValues([to('genre', '*')]));
       }
     }
-    var filters = linkedMapOf([to('category', firstTruthy([this.node_1.get_6bo4tg_k$('categoryId'), Companion_getInstance_18().text_yxj031_k$('*')])), to('genre', Companion_getInstance_18().text_yxj031_k$('*'))]);
+    var filters = linkedMapOf([to('category', firstTruthy([this.node_1.get_6bo4tg_k$('categoryId'), Companion_getInstance_20().text_yxj031_k$('*')])), to('genre', Companion_getInstance_20().text_yxj031_k$('*'))]);
     var folder = this.node_1.get_6bo4tg_k$('folderType').string_er2cq7_k$();
     if (listOf_0(['portal-movie', 'portal-season', 'portal-episode']).contains_aljjnj_k$(folder)) {
       var tmp2 = 'movie_id';
@@ -22944,7 +23365,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
           default:
             this.pages_1.accept_wd2l5t_k$(data);
             if (this.pages_1.done_1)
-              this.result_1 = this.session_1.items_vp090i_k$(this.pages_1.get_rows_wott7m_k$(), 'live', Companion_getInstance_18().missing_1, this.groups_1, true);
+              this.result_1 = this.session_1.items_vp090i_k$(this.pages_1.get_rows_wott7m_k$(), 'live', Companion_getInstance_20().missing_1, this.groups_1, true);
             break;
         }
 
@@ -23146,13 +23567,13 @@ if (typeof String.prototype.startsWith === 'undefined') {
     if (kind === 'vod')
       if (row.get_6bo4tg_k$('is_season').flag_1vf58_k$()) {
         folder = 'portal-season';
-        season = Companion_getInstance_18().text_yxj031_k$(id);
+        season = Companion_getInstance_20().text_yxj031_k$(id);
       } else if (row.get_6bo4tg_k$('is_episode').flag_1vf58_k$()) {
         folder = 'portal-episode';
-        episode = Companion_getInstance_18().text_yxj031_k$(id);
+        episode = Companion_getInstance_20().text_yxj031_k$(id);
       } else if (row.get_6bo4tg_k$('is_series').flag_1vf58_k$() || row.get_6bo4tg_k$('has_files').positive_cd8261_k$() > 0) {
         folder = 'portal-movie';
-        movie = Companion_getInstance_18().text_yxj031_k$(id);
+        movie = Companion_getInstance_20().text_yxj031_k$(id);
       }
     var command = row.get_6bo4tg_k$('cmd').trimmed_hix7di_k$();
     var tmp;
@@ -23314,12 +23735,12 @@ if (typeof String.prototype.startsWith === 'undefined') {
     adult = adult === VOID ? false : adult;
     url = url === VOID ? '' : url;
     folder = folder === VOID ? '' : folder;
-    movie = movie === VOID ? Companion_getInstance_18().missing_1 : movie;
-    season = season === VOID ? Companion_getInstance_18().missing_1 : season;
-    episode = episode === VOID ? Companion_getInstance_18().missing_1 : episode;
-    category = category === VOID ? Companion_getInstance_18().missing_1 : category;
+    movie = movie === VOID ? Companion_getInstance_20().missing_1 : movie;
+    season = season === VOID ? Companion_getInstance_20().missing_1 : season;
+    episode = episode === VOID ? Companion_getInstance_20().missing_1 : episode;
+    category = category === VOID ? Companion_getInstance_20().missing_1 : category;
     command = command === VOID ? '' : command;
-    series = series === VOID ? Companion_getInstance_18().missing_1 : series;
+    series = series === VOID ? Companion_getInstance_20().missing_1 : series;
     generatedName = generatedName === VOID ? false : generatedName;
     generatedGroup = generatedGroup === VOID ? false : generatedGroup;
     this.id_1 = id;
@@ -23450,7 +23871,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     while (inductionVariable < last) {
       var item = pairs[inductionVariable];
       inductionVariable = inductionVariable + 1 | 0;
-      var tmp$ret$2 = to(item.first_1, Companion_getInstance_18().text_yxj031_k$(item.second_1));
+      var tmp$ret$2 = to(item.first_1, Companion_getInstance_20().text_yxj031_k$(item.second_1));
       destination.add_utx5q5_k$(tmp$ret$2);
     }
     // Inline function 'kotlin.collections.toTypedArray' call
@@ -23475,7 +23896,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     var tmp0_elvis_lhs = tmp$ret$0;
     var tmp1_elvis_lhs = tmp0_elvis_lhs == null ? lastOrNull(values) : tmp0_elvis_lhs;
-    return tmp1_elvis_lhs == null ? Companion_getInstance_18().missing_1 : tmp1_elvis_lhs;
+    return tmp1_elvis_lhs == null ? Companion_getInstance_20().missing_1 : tmp1_elvis_lhs;
   }
   function StalkerProtocol() {
   }
@@ -23660,7 +24081,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return data_0;
   };
   protoOf(StalkerProtocol).token_yq7enx_k$ = function (data, format) {
-    var token = format.equals(StalkerFormat_BROWSER_getInstance()) ? firstTruthy([data.get_6bo4tg_k$('token'), Companion_getInstance_18().text_yxj031_k$('')]).string_er2cq7_k$() : data.get_6bo4tg_k$('token').primitive_uceazd_k$();
+    var token = format.equals(StalkerFormat_BROWSER_getInstance()) ? firstTruthy([data.get_6bo4tg_k$('token'), Companion_getInstance_20().text_yxj031_k$('')]).string_er2cq7_k$() : data.get_6bo4tg_k$('token').primitive_uceazd_k$();
     if (format.equals(StalkerFormat_BROWSER_getInstance())) {
       var plain = trimEnd(token, charArrayOf([_Char___init__impl__6a9atx(61)]));
       var padding = token.length - plain.length | 0;
@@ -23711,7 +24132,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         var key = _iterator__ex2g4s.next_20eer_k$();
         if (profile.get_6bo4tg_k$(key).get_present_3zxuem_k$()) {
           // Inline function 'kotlin.collections.set' call
-          var value = Companion_getInstance_18().text_yxj031_k$(profile.get_6bo4tg_k$(key).string_er2cq7_k$());
+          var value = Companion_getInstance_20().text_yxj031_k$(profile.get_6bo4tg_k$(key).string_er2cq7_k$());
           values.put_4fpzoq_k$(key, value);
         }
       }
@@ -23807,13 +24228,13 @@ if (typeof String.prototype.startsWith === 'undefined') {
     var tmp0_elvis_lhs = values.get_wei43m_k$('mac');
     var tmp;
     if (tmp0_elvis_lhs == null) {
-      tmp = Companion_getInstance_18().missing_1;
+      tmp = Companion_getInstance_20().missing_1;
     } else {
       tmp = tmp0_elvis_lhs;
     }
     if (!tmp.truthy_eb26j6_k$()) {
       // Inline function 'kotlin.collections.set' call
-      var value = Companion_getInstance_18().text_yxj031_k$(mac);
+      var value = Companion_getInstance_20().text_yxj031_k$(mac);
       values.put_4fpzoq_k$('mac', value);
     }
     // Inline function 'kotlin.collections.linkedMapOf' call
@@ -23824,18 +24245,18 @@ if (typeof String.prototype.startsWith === 'undefined') {
       body.put_4fpzoq_k$('id', value_0);
     }
     // Inline function 'kotlin.collections.set' call
-    var value_1 = Companion_getInstance_18().text_yxj031_k$('2.0');
+    var value_1 = Companion_getInstance_20().text_yxj031_k$('2.0');
     body.put_4fpzoq_k$('jsonrpc', value_1);
     // Inline function 'kotlin.collections.set' call
     var value_2 = new ProviderValue(ProviderValueKind_NUMBER_getInstance(), '1');
     body.put_4fpzoq_k$('id', value_2);
     // Inline function 'kotlin.collections.set' call
-    var value_3 = Companion_getInstance_18().text_yxj031_k$(method);
+    var value_3 = Companion_getInstance_20().text_yxj031_k$(method);
     body.put_4fpzoq_k$('method', value_3);
     // Inline function 'kotlin.collections.set' call
-    var value_4 = Companion_getInstance_18().obj_60q8ki_k$(values);
+    var value_4 = Companion_getInstance_20().obj_60q8ki_k$(values);
     body.put_4fpzoq_k$('params', value_4);
-    return Companion_getInstance_18().obj_60q8ki_k$(body);
+    return Companion_getInstance_20().obj_60q8ki_k$(body);
   };
   protoOf(StalkerProtocol).linkRequest_tlix8n_k$ = function (command, kind, series, format) {
     return new StalkerRequest(kind === 'live' ? 'itv' : 'vod', 'create_link', stalkerValues([to('cmd', command), to('series', series.truthy_eb26j6_k$() ? series.string_er2cq7_k$() : '0'), to('forced_storage', format.equals(StalkerFormat_BROWSER_getInstance()) ? 'undefined' : '0'), to('disable_ad', '0'), to('download', '0')]));
@@ -24021,9 +24442,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return tmp;
   }
-  function Companion_19() {
+  function Companion_21() {
   }
-  protoOf(Companion_19).identities_h380h1_k$ = function (rows) {
+  protoOf(Companion_21).identities_h380h1_k$ = function (rows) {
     // Inline function 'kotlin.collections.linkedMapOf' call
     var result = LinkedHashMap_init_$Create$();
     var _iterator__ex2g4s = rows.iterator_jk1svi_k$();
@@ -24066,23 +24487,23 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return toList_0(result.get_values_ksazhn_k$());
   };
-  var Companion_instance_19;
-  function Companion_getInstance_19() {
-    return Companion_instance_19;
+  var Companion_instance_21;
+  function Companion_getInstance_21() {
+    return Companion_instance_21;
   }
-  function sam$kotlin_Comparator$0_5(function_0) {
+  function sam$kotlin_Comparator$0_6(function_0) {
     this.function_1 = function_0;
   }
-  protoOf(sam$kotlin_Comparator$0_5).compare_bczr_k$ = function (a, b) {
+  protoOf(sam$kotlin_Comparator$0_6).compare_bczr_k$ = function (a, b) {
     return this.function_1(a, b);
   };
-  protoOf(sam$kotlin_Comparator$0_5).compare = function (a, b) {
+  protoOf(sam$kotlin_Comparator$0_6).compare = function (a, b) {
     return this.compare_bczr_k$(a, b);
   };
-  protoOf(sam$kotlin_Comparator$0_5).getFunctionDelegate_jtodtf_k$ = function () {
+  protoOf(sam$kotlin_Comparator$0_6).getFunctionDelegate_jtodtf_k$ = function () {
     return this.function_1;
   };
-  protoOf(sam$kotlin_Comparator$0_5).equals = function (other) {
+  protoOf(sam$kotlin_Comparator$0_6).equals = function (other) {
     var tmp;
     if (!(other == null) ? isInterface(other, Comparator) : false) {
       var tmp_0;
@@ -24097,7 +24518,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return tmp;
   };
-  protoOf(sam$kotlin_Comparator$0_5).hashCode = function () {
+  protoOf(sam$kotlin_Comparator$0_6).hashCode = function () {
     return hashCode_0(this.getFunctionDelegate_jtodtf_k$());
   };
   function StreamingGuide$programme$lambda(this$0) {
@@ -24414,7 +24835,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       this.nextEntries_1.put_4fpzoq_k$(id, item);
       // Inline function 'kotlin.comparisons.compareBy' call
       var tmp_1 = StreamingGuide$programme$lambda(this);
-      var tmp$ret$9 = new sam$kotlin_Comparator$0_5(tmp_1);
+      var tmp$ret$9 = new sam$kotlin_Comparator$0_6(tmp_1);
       sortWith_0(entries, tmp$ret$9);
     }
     var score = priority(this, item);
@@ -24753,19 +25174,19 @@ if (typeof String.prototype.startsWith === 'undefined') {
     captureStack(this, XmltvRecordError);
     this.code_1 = code;
   }
-  function sam$kotlin_Comparator$0_6(function_0) {
+  function sam$kotlin_Comparator$0_7(function_0) {
     this.function_1 = function_0;
   }
-  protoOf(sam$kotlin_Comparator$0_6).compare_bczr_k$ = function (a, b) {
+  protoOf(sam$kotlin_Comparator$0_7).compare_bczr_k$ = function (a, b) {
     return this.function_1(a, b);
   };
-  protoOf(sam$kotlin_Comparator$0_6).compare = function (a, b) {
+  protoOf(sam$kotlin_Comparator$0_7).compare = function (a, b) {
     return this.compare_bczr_k$(a, b);
   };
-  protoOf(sam$kotlin_Comparator$0_6).getFunctionDelegate_jtodtf_k$ = function () {
+  protoOf(sam$kotlin_Comparator$0_7).getFunctionDelegate_jtodtf_k$ = function () {
     return this.function_1;
   };
-  protoOf(sam$kotlin_Comparator$0_6).equals = function (other) {
+  protoOf(sam$kotlin_Comparator$0_7).equals = function (other) {
     var tmp;
     if (!(other == null) ? isInterface(other, Comparator) : false) {
       var tmp_0;
@@ -24780,7 +25201,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     return tmp;
   };
-  protoOf(sam$kotlin_Comparator$0_6).hashCode = function () {
+  protoOf(sam$kotlin_Comparator$0_7).hashCode = function () {
     return hashCode_0(this.getFunctionDelegate_jtodtf_k$());
   };
   function NativeRecordRules$order$lambda($starts) {
@@ -24802,7 +25223,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
       var this_0 = get_indices(starts);
       // Inline function 'kotlin.comparisons.compareBy' call
       var tmp_0 = NativeRecordRules$order$lambda(starts);
-      var tmp$ret$1 = new sam$kotlin_Comparator$0_6(tmp_0);
+      var tmp$ret$1 = new sam$kotlin_Comparator$0_7(tmp_0);
       tmp = sortedWith(this_0, tmp$ret$1);
     }
     return tmp;
@@ -25693,36 +26114,6 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function identity($this, format, source, kind, id, component, hash) {
     return format.equals(XtreamFormat_BROWSER_getInstance()) ? component(CoreText_getInstance().trim$default_yjecrm_k$(source.id_1)) + (':xtream:' + kind + ':' + id) : hash(listOf_0([source.id_1, kind, id]));
   }
-  function sam$kotlin_Comparator$0_7(function_0) {
-    this.function_1 = function_0;
-  }
-  protoOf(sam$kotlin_Comparator$0_7).compare_bczr_k$ = function (a, b) {
-    return this.function_1(a, b);
-  };
-  protoOf(sam$kotlin_Comparator$0_7).compare = function (a, b) {
-    return this.compare_bczr_k$(a, b);
-  };
-  protoOf(sam$kotlin_Comparator$0_7).getFunctionDelegate_jtodtf_k$ = function () {
-    return this.function_1;
-  };
-  protoOf(sam$kotlin_Comparator$0_7).equals = function (other) {
-    var tmp;
-    if (!(other == null) ? isInterface(other, Comparator) : false) {
-      var tmp_0;
-      if (!(other == null) ? isInterface(other, FunctionAdapter) : false) {
-        tmp_0 = equals(this.getFunctionDelegate_jtodtf_k$(), other.getFunctionDelegate_jtodtf_k$());
-      } else {
-        tmp_0 = false;
-      }
-      tmp = tmp_0;
-    } else {
-      tmp = false;
-    }
-    return tmp;
-  };
-  protoOf(sam$kotlin_Comparator$0_7).hashCode = function () {
-    return hashCode_0(this.getFunctionDelegate_jtodtf_k$());
-  };
   function sam$kotlin_Comparator$0_8(function_0) {
     this.function_1 = function_0;
   }
@@ -25751,6 +26142,36 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return tmp;
   };
   protoOf(sam$kotlin_Comparator$0_8).hashCode = function () {
+    return hashCode_0(this.getFunctionDelegate_jtodtf_k$());
+  };
+  function sam$kotlin_Comparator$0_9(function_0) {
+    this.function_1 = function_0;
+  }
+  protoOf(sam$kotlin_Comparator$0_9).compare_bczr_k$ = function (a, b) {
+    return this.function_1(a, b);
+  };
+  protoOf(sam$kotlin_Comparator$0_9).compare = function (a, b) {
+    return this.compare_bczr_k$(a, b);
+  };
+  protoOf(sam$kotlin_Comparator$0_9).getFunctionDelegate_jtodtf_k$ = function () {
+    return this.function_1;
+  };
+  protoOf(sam$kotlin_Comparator$0_9).equals = function (other) {
+    var tmp;
+    if (!(other == null) ? isInterface(other, Comparator) : false) {
+      var tmp_0;
+      if (!(other == null) ? isInterface(other, FunctionAdapter) : false) {
+        tmp_0 = equals(this.getFunctionDelegate_jtodtf_k$(), other.getFunctionDelegate_jtodtf_k$());
+      } else {
+        tmp_0 = false;
+      }
+      tmp = tmp_0;
+    } else {
+      tmp = false;
+    }
+    return tmp;
+  };
+  protoOf(sam$kotlin_Comparator$0_9).hashCode = function () {
     return hashCode_0(this.getFunctionDelegate_jtodtf_k$());
   };
   function XtreamCatalogs$seasons$lambda(a, b) {
@@ -25839,7 +26260,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     // Inline function 'kotlin.collections.sortedBy' call
     // Inline function 'kotlin.comparisons.compareBy' call
     var tmp_1 = XtreamCatalogs$seasons$lambda;
-    var tmp$ret$11 = new sam$kotlin_Comparator$0_7(tmp_1);
+    var tmp$ret$11 = new sam$kotlin_Comparator$0_8(tmp_1);
     return sortedWith(destination_0, tmp$ret$11);
   };
   protoOf(XtreamCatalogs).catalog_uygjsh_k$ = function (data, format, source, addresses, resolve, component, hash, kinds, deduplicate) {
@@ -26105,7 +26526,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         var _unary__edvuaz = index;
         index = _unary__edvuaz + 1 | 0;
         var index_0 = checkIndexOverflow(_unary__edvuaz);
-        var tmp$ret$5 = to(index_0.toString(), item.truthy_eb26j6_k$() && !item.get_isArray_z8qxd2_k$() ? Companion_getInstance_18().array_vqz2lg_k$(listOf(item)) : item);
+        var tmp$ret$5 = to(index_0.toString(), item.truthy_eb26j6_k$() && !item.get_isArray_z8qxd2_k$() ? Companion_getInstance_20().array_vqz2lg_k$(listOf(item)) : item);
         destination.add_utx5q5_k$(tmp$ret$5);
       }
       tmp = destination;
@@ -26164,9 +26585,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
         var id = tmp_0;
         var tmp_2;
         if (browser) {
-          tmp_2 = row.get_6bo4tg_k$('season').get_present_3zxuem_k$() ? row.get_6bo4tg_k$('season') : Companion_getInstance_18().text_yxj031_k$(seasonKey);
+          tmp_2 = row.get_6bo4tg_k$('season').get_present_3zxuem_k$() ? row.get_6bo4tg_k$('season') : Companion_getInstance_20().text_yxj031_k$(seasonKey);
         } else {
-          var tmp_3 = Companion_getInstance_18();
+          var tmp_3 = Companion_getInstance_20();
           var tmp0_safe_receiver = toIntOrNull(row.get_6bo4tg_k$('season').primitive_uceazd_k$());
           var tmp1_elvis_lhs = tmp0_safe_receiver == null ? null : tmp0_safe_receiver.toString();
           var tmp_4;
@@ -26348,7 +26769,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         // Inline function 'kotlin.collections.sortedBy' call
         // Inline function 'kotlin.comparisons.compareBy' call
         var tmp_28 = XtreamCatalogs$episodes$lambda;
-        var tmp$ret$43 = new sam$kotlin_Comparator$0_8(tmp_28);
+        var tmp$ret$43 = new sam$kotlin_Comparator$0_9(tmp_28);
         var list_0 = sortedWith(element_2, tmp$ret$43);
         addAll(destination_2, list_0);
       }
@@ -26369,9 +26790,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
       // Inline function 'kotlin.comparisons.compareBy' call
       var tmp_30 = XtreamCatalogs$episodes$lambda_0;
       // Inline function 'kotlin.comparisons.thenBy' call
-      var this_7 = new sam$kotlin_Comparator$0_8(tmp_30);
+      var this_7 = new sam$kotlin_Comparator$0_9(tmp_30);
       var tmp_31 = XtreamCatalogs$episodes$lambda_1(this_7);
-      var tmp$ret$47 = new sam$kotlin_Comparator$0_8(tmp_31);
+      var tmp$ret$47 = new sam$kotlin_Comparator$0_9(tmp_31);
       tmp_26 = sortedWith(tmp_29, tmp$ret$47);
     }
     var items = tmp_26;
@@ -26459,7 +26880,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     var tmp_1 = this;
     // Inline function 'kotlin.collections.mutableListOf' call
     tmp_1.notices_1 = ArrayList_init_$Create$();
-    this.account_1 = Companion_getInstance_18().missing_1;
+    this.account_1 = Companion_getInstance_20().missing_1;
   }
   protoOf(XtreamSession).get_request_jdwg4m_k$ = function () {
     return this.finished_1 ? null : new XtreamRequest(this.stage_1 < 0 ? '' : _get_order__d67t8d(this).get_c1px32_k$(this.stage_1));
@@ -26526,7 +26947,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
           var tmp2_0 = 'get_live_categories';
           // Inline function 'kotlin.collections.set' call
 
-          var value_0 = response.get_6bo4tg_k$('categories').get_isArray_z8qxd2_k$() ? response.get_6bo4tg_k$('categories') : Companion_getInstance_18().array$default_yx37t8_k$();
+          var value_0 = response.get_6bo4tg_k$('categories').get_isArray_z8qxd2_k$() ? response.get_6bo4tg_k$('categories') : Companion_getInstance_20().array$default_yx37t8_k$();
           tmp0_0.put_4fpzoq_k$(tmp2_0, value_0);
           this.finished_1 = true;
           return Unit_instance;
@@ -26543,7 +26964,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
         var tmp0_2 = this.data_1;
         var tmp2_2 = 'get_live_categories';
         // Inline function 'kotlin.collections.set' call
-        var value_2 = response.get_6bo4tg_k$('categories').get_isArray_z8qxd2_k$() ? response.get_6bo4tg_k$('categories') : Companion_getInstance_18().array$default_yx37t8_k$();
+        var value_2 = response.get_6bo4tg_k$('categories').get_isArray_z8qxd2_k$() ? response.get_6bo4tg_k$('categories') : Companion_getInstance_20().array$default_yx37t8_k$();
         tmp0_2.put_4fpzoq_k$(tmp2_2, value_2);
         this.onSection_1('live', this.data_1);
         this.stage_1 = 2;
@@ -26597,9 +27018,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function credentials($this) {
     return listOf_0([to('username', $this.source_1.username_1), to('password', $this.source_1.password_1)]);
   }
-  function Companion_20() {
+  function Companion_22() {
   }
-  protoOf(Companion_20).browserBase_s0uj0h_k$ = function (value) {
+  protoOf(Companion_22).browserBase_s0uj0h_k$ = function (value) {
     var clean = substringBefore(substringBefore(value, _Char___init__impl__6a9atx(63)), _Char___init__impl__6a9atx(35));
     var candidate = removeSuffix(clean, '/');
     // Inline function 'kotlin.text.lowercase' call
@@ -26607,9 +27028,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
     var last = substringAfterLast(candidate, _Char___init__impl__6a9atx(47)).toLowerCase();
     return trimEnd(listOf_0(['player_api.php', 'get.php', 'xmltv.php']).contains_aljjnj_k$(last) ? substringBeforeLast(candidate, _Char___init__impl__6a9atx(47)) : clean, charArrayOf([_Char___init__impl__6a9atx(47)]));
   };
-  var Companion_instance_20;
-  function Companion_getInstance_20() {
-    return Companion_instance_20;
+  var Companion_instance_22;
+  function Companion_getInstance_22() {
+    return Companion_instance_22;
   }
   function XtreamAddresses(source, render, segment) {
     this.source_1 = source;
@@ -26867,6 +27288,25 @@ if (typeof String.prototype.startsWith === 'undefined') {
       row.url = item.url_1;
       row.archiveHours = item.archiveHours_1;
       row.archiveMode = item.archiveMode_1;
+      var tmp0_safe_receiver = item.legacyReference_1;
+      if (tmp0_safe_receiver == null)
+        null;
+      else {
+        // Inline function 'kotlin.let' call
+        var legacy = {};
+        if (tmp0_safe_receiver instanceof Label) {
+          legacy.kind = 'name-hash';
+          legacy.value = tmp0_safe_receiver.value_1;
+        } else {
+          if (tmp0_safe_receiver instanceof NumericId) {
+            legacy.kind = 'numeric-id';
+            legacy.value = tmp0_safe_receiver.value_1;
+          } else {
+            noWhenBranchMatchedException();
+          }
+        }
+        row.legacyReference = legacy;
+      }
       destination.add_utx5q5_k$(row);
     }
     // Inline function 'kotlin.collections.toTypedArray' call
@@ -28638,6 +29078,96 @@ if (typeof String.prototype.startsWith === 'undefined') {
       return wire($values[it].time_to).number_h3u0fr_k$();
     };
   }
+  function guideProgrammeId(sourceId, channelId, providerId, start) {
+    var tmp;
+    switch (typeof providerId) {
+      case 'string':
+        // Inline function 'kotlin.js.unsafeCast' call
+
+        tmp = providerId;
+        break;
+      case 'number':
+        // Inline function 'kotlin.js.unsafeCast' call
+
+        // Inline function 'kotlin.takeIf' call
+
+        var tmp_0;
+        if (isFinite(providerId)) {
+          tmp_0 = providerId;
+        } else {
+          tmp_0 = null;
+        }
+
+        var tmp_1;
+        if (tmp_0 == null) {
+          tmp_1 = null;
+        } else {
+          // Inline function 'kotlin.let' call
+          // Inline function 'kotlin.js.unsafeCast' call
+          tmp_1 = String(providerId);
+        }
+
+        tmp = tmp_1;
+        break;
+      default:
+        tmp = null;
+        break;
+    }
+    var id = tmp;
+    return Companion_instance_13.of_t43k8m_k$(sourceId, channelId, id, start).key_29un_k$();
+  }
+  function guideScheduleSelection(rows, now, nextCount) {
+    // Inline function 'kotlin.js.unsafeCast' call
+    // Inline function 'kotlin.require' call
+    if (!Array.isArray(rows)) {
+      var message = 'Guide rows must be an array';
+      throw IllegalArgumentException_init_$Create$_0(toString_1(message));
+    }
+    // Inline function 'kotlin.js.unsafeCast' call
+    var values = rows;
+    var tmp = GuideTimeline_instance;
+    var tmp_0 = values.length;
+    var tmp_1 = guideScheduleSelection$lambda(values);
+    var selection = tmp.select_q0a6x2_k$(tmp_0, tmp_1, guideScheduleSelection$lambda_0(values), now, nextCount);
+    var result = {};
+    result.current = selection.current_1 < 0 ? null : values[selection.current_1];
+    // Inline function 'kotlin.collections.map' call
+    var this_0 = selection.following_1;
+    // Inline function 'kotlin.collections.mapTo' call
+    var destination = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_0, 10));
+    var _iterator__ex2g4s = this_0.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var item = _iterator__ex2g4s.next_20eer_k$();
+      var tmp$ret$6 = values[item];
+      destination.add_utx5q5_k$(tmp$ret$6);
+    }
+    // Inline function 'kotlin.collections.toTypedArray' call
+    result.following = copyToArray(destination);
+    result.retryAt = selection.retryAt_1;
+    return result;
+  }
+  function guideScheduleSelection$field(values, index, name) {
+    var row = values[index];
+    var value = row == null ? null : row[name];
+    var tmp;
+    if (typeof value === 'number') {
+      // Inline function 'kotlin.js.unsafeCast' call
+      tmp = value;
+    } else {
+      tmp = NaN;
+    }
+    return tmp;
+  }
+  function guideScheduleSelection$lambda($values) {
+    return function (it) {
+      return guideScheduleSelection$field($values, it, 'start');
+    };
+  }
+  function guideScheduleSelection$lambda_0($values) {
+    return function (it) {
+      return guideScheduleSelection$field($values, it, 'end');
+    };
+  }
   function previewLegacySettings(incoming, xml, defaults, validate, parse, http) {
     var tmp;
     try {
@@ -28902,7 +29432,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   };
   function nativeGuideRefreshInterval(format) {
     format = format === VOID ? 'rust-server' : format;
-    return Companion_instance_13.intervalSeconds_k0yvnh_k$(refreshFormat(format));
+    return Companion_instance_15.intervalSeconds_k0yvnh_k$(refreshFormat(format));
   }
   function refreshFormat(format) {
     var tmp;
@@ -29007,7 +29537,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return it;
   }
   function operatorSourceAction(config) {
-    return Companion_instance_16.source_jc3e7w_k$(wire(config)).name_1;
+    return Companion_instance_18.source_jc3e7w_k$(wire(config)).name_1;
   }
   function operatorCredentialsValid(profile, key, address) {
     return OperatorProfiles_instance.valid_nauhfm_k$(profile, key, address);
@@ -29039,7 +29569,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
   }
   function operatorClubIds(text) {
     // Inline function 'kotlin.collections.toTypedArray' call
-    var this_0 = Companion_instance_14.clubIds_tvgjc8_k$(text);
+    var this_0 = Companion_instance_16.clubIds_tvgjc8_k$(text);
     return copyToArray(this_0);
   }
   function OperatorCatalogClient(profile) {
@@ -29104,6 +29634,61 @@ if (typeof String.prototype.startsWith === 'undefined') {
       result.data.url = tmp1_safe_receiver;
     }
     return result;
+  };
+  function OperatorChannelClient$addresses$lambda$lambda($encode) {
+    return function (it) {
+      return $encode(it);
+    };
+  }
+  function OperatorChannelClient$addresses$lambda$lambda_0($encode) {
+    return function (it) {
+      return $encode(it.first_1) + '=' + $encode(it.second_1);
+    };
+  }
+  function OperatorChannelClient$addresses$lambda(this$0, $encode) {
+    return function (path, query) {
+      var tmp = this$0.base_1 + '/';
+      var tmp_0 = tmp + joinToString_0(path, '/', VOID, VOID, VOID, VOID, OperatorChannelClient$addresses$lambda$lambda($encode));
+      var tmp_1;
+      if (query.isEmpty_y1axqb_k$()) {
+        tmp_1 = '';
+      } else {
+        tmp_1 = joinToString_0(query, '&', '?', VOID, VOID, VOID, OperatorChannelClient$addresses$lambda$lambda_0($encode));
+      }
+      return tmp_0 + tmp_1;
+    };
+  }
+  function OperatorChannelClient(config, encode) {
+    this.input_1 = wire(config);
+    this.base_1 = this.input_1.get_6bo4tg_k$('server').string_er2cq7_k$();
+    this.source_1 = new XtreamSource('operator', this.input_1.get_6bo4tg_k$('user').string_er2cq7_k$(), this.input_1.get_6bo4tg_k$('pass').string_er2cq7_k$());
+    var tmp = this;
+    tmp.addresses_1 = new XtreamAddresses(this.source_1, OperatorChannelClient$addresses$lambda(this, encode), encode);
+    this.session_1 = new OperatorChannelSession(this.base_1, this.addresses_1);
+  }
+  protoOf(OperatorChannelClient).action = function () {
+    return this.session_1.action_nj6rwq_k$().name_1;
+  };
+  protoOf(OperatorChannelClient).request = function () {
+    return this.session_1.request_i4ci33_k$();
+  };
+  protoOf(OperatorChannelClient).reject = function () {
+    return this.session_1.reject_691psf_k$();
+  };
+  protoOf(OperatorChannelClient).accept = function (value) {
+    try {
+      this.session_1.accept_wd2l5t_k$(wire(value));
+    } catch ($p) {
+      if ($p instanceof OperatorCatalogFailure) {
+        var error = $p;
+        operatorError(error);
+      } else {
+        throw $p;
+      }
+    }
+  };
+  protoOf(OperatorChannelClient).channelCatalog = function () {
+    return channelCatalogRows(this.session_1.catalog_96uo7t_k$());
   };
   function OperatorClient$addresses$lambda$lambda($encode) {
     return function (it) {
@@ -29333,7 +29918,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     }
     var catalog = tmp;
     var rows = catalog.channels;
-    var tmp_0 = Companion_instance_15;
+    var tmp_0 = Companion_instance_17;
     // Inline function 'kotlin.collections.map' call
     // Inline function 'kotlin.collections.mapTo' call
     var destination = ArrayList_init_$Create$_0(rows.length);
@@ -29359,7 +29944,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return copyToArray(destination_0);
   };
   protoOf(OperatorLifetimeClient).seriesResult = function (value, folderType, seasonNumber) {
-    var section = Companion_instance_15.seriesSection_om2lke_k$(folderType, seasonNumber);
+    var section = Companion_instance_17.seriesSection_om2lke_k$(folderType, seasonNumber);
     var tmp;
     if (section == null) {
       tmp = value.folders;
@@ -29742,7 +30327,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return this.policy_1.fallbacks_1;
   };
   function playbackParsingFailure(details) {
-    return Companion_instance_17.parsingFailure_x1ey68_k$(details);
+    return Companion_instance_19.parsingFailure_x1ey68_k$(details);
   }
   function playbackDeclaredFormat(mime, format, type, hint, url) {
     var value = PlaybackDetectionRules_instance.declared_wnbfcw_k$(mime, format, type, hint, url);
@@ -29996,13 +30581,13 @@ if (typeof String.prototype.startsWith === 'undefined') {
   function wire(value) {
     var tmp;
     if (typeof value === 'undefined') {
-      tmp = Companion_getInstance_18().missing_1;
+      tmp = Companion_getInstance_20().missing_1;
     } else {
       if (value == null) {
-        tmp = Companion_getInstance_18().nil_1;
+        tmp = Companion_getInstance_20().nil_1;
       } else {
         if (typeof value === 'string') {
-          var tmp_0 = Companion_getInstance_18();
+          var tmp_0 = Companion_getInstance_20();
           // Inline function 'kotlin.js.unsafeCast' call
           tmp = tmp_0.text_yxj031_k$(value);
         } else {
@@ -30020,7 +30605,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
             } else {
               // Inline function 'kotlin.js.unsafeCast' call
               if (Array.isArray(value)) {
-                var tmp_3 = Companion_getInstance_18();
+                var tmp_3 = Companion_getInstance_20();
                 // Inline function 'kotlin.js.unsafeCast' call
                 var tmp$ret$4 = value.length;
                 // Inline function 'kotlin.collections.map' call
@@ -30040,7 +30625,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
                    while (!(item === last));
                 tmp = tmp_3.array_vqz2lg_k$(destination);
               } else {
-                var tmp_4 = Companion_getInstance_18();
+                var tmp_4 = Companion_getInstance_20();
                 // Inline function 'kotlin.js.unsafeCast' call
                 // Inline function 'kotlin.collections.associateWith' call
                 var this_1 = Object.keys(value);
@@ -30498,7 +31083,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return legacyGuide(this.core_1.guide_lhn7f_k$(wire(response)));
   };
   function streamingGuideIdentities(rows) {
-    var tmp = Companion_instance_19;
+    var tmp = Companion_instance_21;
     // Inline function 'kotlin.js.unsafeCast' call
     // Inline function 'kotlin.collections.map' call
     // Inline function 'kotlin.collections.mapTo' call
@@ -30893,7 +31478,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     return tmp;
   }
   function xtreamBase(value) {
-    return Companion_instance_20.browserBase_s0uj0h_k$(value);
+    return Companion_instance_22.browserBase_s0uj0h_k$(value);
   }
   function item_0($this, entry) {
     var result = {};
@@ -31298,34 +31883,37 @@ if (typeof String.prototype.startsWith === 'undefined') {
   Companion_instance_12 = new Companion_12();
   GuideNames_instance = new GuideNames();
   GuideSchedule_instance = new GuideSchedule();
+  Companion_instance_13 = new Companion_13();
+  GuideTimeline_instance = new GuideTimeline();
+  Companion_instance_14 = new Companion_14();
   LegacySettingsImport_instance = new LegacySettingsImport();
   LegacyXtream_instance = new LegacyXtream();
   LibraryState_instance = new LibraryState();
   MediaState_instance = new MediaState();
   NativeGuideNames_instance = new NativeGuideNames();
-  Companion_instance_13 = new Companion_13();
+  Companion_instance_15 = new Companion_15();
   NativeGuideSources_instance = new NativeGuideSources();
   NativeSourceLoad_instance = new NativeSourceLoad();
-  Companion_instance_14 = new Companion_14();
-  Companion_instance_15 = new Companion_15();
+  Companion_instance_16 = new Companion_16();
+  Companion_instance_17 = new Companion_17();
   OperatorMedia_instance = new OperatorMedia();
   OperatorPlaylist_instance = new OperatorPlaylist();
   OperatorPortal_instance = new OperatorPortal();
   OperatorProfiles_instance = new OperatorProfiles();
-  Companion_instance_16 = new Companion_16();
+  Companion_instance_18 = new Companion_18();
   OperatorSources_instance = new OperatorSources();
   OperatorVod_instance = new OperatorVod();
   PlaybackDetectionRules_instance = new PlaybackDetectionRules();
-  Companion_instance_17 = new Companion_17();
+  Companion_instance_19 = new Companion_19();
   PlaybackSessions_instance = new PlaybackSessions();
   ProviderPlaylist_instance = new ProviderPlaylist();
   CoreNumber_instance = new CoreNumber();
   StalkerCatalogs_instance = new StalkerCatalogs();
   StalkerProtocol_instance = new StalkerProtocol();
-  Companion_instance_19 = new Companion_19();
+  Companion_instance_21 = new Companion_21();
   NativeRecordRules_instance = new NativeRecordRules();
   XtreamCatalogs_instance = new XtreamCatalogs();
-  Companion_instance_20 = new Companion_20();
+  Companion_instance_22 = new Companion_22();
   //endregion
   //region block: exports
   function $jsExportAll$(_) {
@@ -31387,6 +31975,8 @@ if (typeof String.prototype.startsWith === 'undefined') {
     _.legacyGuideCacheCapacity = legacyGuideCacheCapacity;
     _.legacyGuideCacheRead = legacyGuideCacheRead;
     _.legacyGuideCacheOrder = legacyGuideCacheOrder;
+    _.guideProgrammeId = guideProgrammeId;
+    _.guideScheduleSelection = guideScheduleSelection;
     _.previewLegacySettings = previewLegacySettings;
     _.libraryEdit = libraryEdit;
     _.libraryDecorate = libraryDecorate;
@@ -31421,6 +32011,7 @@ if (typeof String.prototype.startsWith === 'undefined') {
     _.operatorClubIds = operatorClubIds;
     _.OperatorCatalogClient = OperatorCatalogClient;
     _.OperatorPlaylistClient = OperatorPlaylistClient;
+    _.OperatorChannelClient = OperatorChannelClient;
     _.OperatorClient = OperatorClient;
     _.operatorPortalNavigate = operatorPortalNavigate;
     _.operatorPortalParams = operatorPortalParams;

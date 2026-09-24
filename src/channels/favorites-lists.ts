@@ -93,6 +93,137 @@ export function deleteFavoritesList(name: string): boolean {
 var favoritesSource = "";
 var favoritesWritable = false;
 var favoritesGeneration = 0;
+var favoritesOwner: (() => boolean) | null = null;
+interface FavoriteReferenceList {
+    bindings: Record<string, ChannelReference>;
+    references: ChannelReference[];
+    view: number[];
+}
+var favoritesReferences: FavoriteReferenceList[] = [];
+
+function favoritesReferenceIndex(): any {
+    var w = window as any;
+    return w.__ottChannelReferences.create(
+        w.channels,
+        w.__ottLegacyChannelAliases
+    );
+}
+function favoriteReferenceKey(reference: ChannelReference): string {
+    return JSON.stringify(reference);
+}
+function restoreFavoriteReference(
+    value: any,
+    origin: "raw" | "canonical" | "reference",
+    index: any
+): ChannelReference {
+    if (origin !== "reference") return index.resolve(value, origin);
+    if (value && typeof value.itemId === "string")
+        return { itemId: value.itemId };
+    if (
+        value &&
+        (typeof value.legacyId === "number" ||
+            typeof value.legacyId === "string") &&
+        (value.origin === "raw" || value.origin === "canonical")
+    ) {
+        if (!value.ambiguous)
+            return index.resolve(value.legacyId, value.origin);
+        var unresolved: ChannelReference = {
+            legacyId: value.legacyId,
+            origin: value.origin,
+        };
+        unresolved.ambiguous = true;
+        return unresolved;
+    }
+    return { ambiguous: true, legacyId: String(value), origin: "raw" };
+}
+function favoriteReferenceRecord(
+    view: number[],
+    references: ChannelReference[],
+    index: any,
+    prior?: FavoriteReferenceList
+): FavoriteReferenceList {
+    var bindings: Record<string, ChannelReference> = Object.create(null);
+    references.forEach(function (reference) {
+        var id = index.project(reference);
+        if (id !== null) bindings[String(id)] = reference;
+    });
+    if (prior)
+        view.forEach(function (id) {
+            var original = prior.bindings[String(id)];
+            if (original && references.indexOf(original) >= 0)
+                bindings[String(id)] = original;
+        });
+    return { bindings: bindings, references: references, view: view };
+}
+/** Preserve invisible references at their next retained neighbour while visible rows can reorder. */
+function mergeFavoriteReferences(
+    view: number[],
+    prior: FavoriteReferenceList | undefined,
+    index: any
+): ChannelReference[] {
+    var selected = view.map(function (id) {
+        return (
+            (prior && prior.bindings[String(id)]) ||
+            index.resolve(id, "canonical")
+        );
+    });
+    var keys = selected.map(favoriteReferenceKey);
+    var before: Record<string, ChannelReference[]> = Object.create(null);
+    var pending: ChannelReference[] = [];
+    if (prior)
+        prior.references.forEach(function (reference) {
+            var key = favoriteReferenceKey(reference);
+            if (keys.indexOf(key) >= 0) {
+                if (pending.length) {
+                    before[key] = (before[key] || []).concat(pending);
+                    pending = [];
+                }
+            } else if (index.project(reference) === null)
+                pending.push(reference);
+        });
+    var result: ChannelReference[] = [];
+    selected.forEach(function (reference) {
+        var key = favoriteReferenceKey(reference);
+        if (before[key]) {
+            result = result.concat(before[key]);
+            delete before[key];
+        }
+        result.push(reference);
+    });
+    return result.concat(pending);
+}
+
+function isFavoriteReferenceBlob(value: any): boolean {
+    if (
+        !value ||
+        !value.lists ||
+        typeof value.lists !== "object" ||
+        Array.isArray(value.lists)
+    )
+        return false;
+    return Object.keys(value.lists).every(function (name) {
+        var references = value.lists[name];
+        return (
+            Array.isArray(references) &&
+            references.every(function (reference) {
+                if (!reference || typeof reference !== "object") return false;
+                if (
+                    typeof reference.itemId === "string" &&
+                    reference.itemId.length > 0
+                )
+                    return true;
+                return (
+                    (typeof reference.legacyId === "number" ||
+                        typeof reference.legacyId === "string") &&
+                    (reference.origin === "raw" ||
+                        reference.origin === "canonical") &&
+                    (reference.ambiguous === undefined ||
+                        typeof reference.ambiguous === "boolean")
+                );
+            })
+        );
+    });
+}
 
 function currentFavoritesSource(): string {
     return (window as any).__ottSourceIdentity.current(window);
@@ -100,7 +231,7 @@ function currentFavoritesSource(): string {
 
 export function saveFavoritesLists(): boolean {
     var w = window as any;
-    if (!favoritesWritable || favoritesSource !== currentFavoritesSource())
+    if (!favoritesWritable || !favoritesOwner || !favoritesOwner())
         return false;
     var source = favoritesSource,
         generation = favoritesGeneration;
@@ -110,15 +241,39 @@ export function saveFavoritesLists(): boolean {
         return (
             generation === favoritesGeneration &&
             source === currentFavoritesSource() &&
+            generation === favoritesGeneration &&
             get === w.providerGetItem &&
-            set === w.providerSetItem
+            set === w.providerSetItem &&
+            !!favoritesOwner &&
+            favoritesOwner()
         );
     }
     try {
+        var index = favoritesReferenceIndex();
+        if (!current()) return false;
+        var lists: Record<string, ChannelReference[]> = Object.create(null);
+        var records: FavoriteReferenceList[] = [];
+        Object.keys(favoritesLists.lists).forEach(function (name) {
+            var view = favoritesLists.lists[name];
+            var prior: FavoriteReferenceList | undefined;
+            favoritesReferences.forEach(function (record) {
+                if (record.view === view) prior = record;
+            });
+            var references = mergeFavoriteReferences(view, prior, index);
+            lists[name] = references;
+            records.push(
+                favoriteReferenceRecord(view, references, index, prior)
+            );
+        });
         var text = JSON.stringify({
-            lists: favoritesLists,
+            lists: {
+                active: favoritesLists.active,
+                lists: lists,
+                order: favoritesLists.order.slice(),
+                v: 1,
+            },
             sourceId: source,
-            version: 1,
+            version: 2,
         });
         var key = "favoritesLibrary:" + source;
         var prior = get.call(w, key);
@@ -136,7 +291,8 @@ export function saveFavoritesLists(): boolean {
         }
         if (prior !== text) set.call(w, key, text);
         if (!current() || get.call(w, key) !== text || !current()) return false;
-        return current();
+        favoritesReferences = records;
+        return true;
     } catch (_) {
         return false;
     }
@@ -145,14 +301,15 @@ export function saveFavoritesLists(): boolean {
 export function loadFavoritesLists(): void {
     var w = window as any;
     if (typeof w.providerGetJson !== "function") return;
-    var source = currentFavoritesSource(),
-        generation = ++favoritesGeneration;
+    var generation = ++favoritesGeneration;
+    var source = currentFavoritesSource();
     var get = w.providerGetItem,
         set = w.providerSetItem;
     function current(): boolean {
         return (
             generation === favoritesGeneration &&
             source === currentFavoritesSource() &&
+            generation === favoritesGeneration &&
             get === w.providerGetItem &&
             set === w.providerSetItem
         );
@@ -161,6 +318,7 @@ export function loadFavoritesLists(): void {
     var raw: any = null;
     var prior: any[] = [];
     var scoped: any;
+    var origin: "raw" | "canonical" | "reference" = "raw";
     try {
         scoped = get.call(w, "favoritesLibrary:" + source);
         if (scoped) {
@@ -168,12 +326,15 @@ export function loadFavoritesLists(): void {
                 var envelope = JSON.parse(scoped);
                 if (
                     envelope &&
-                    envelope.version === 1 &&
+                    (envelope.version === 1 || envelope.version === 2) &&
                     envelope.sourceId === source &&
                     envelope.lists &&
-                    envelope.lists.v === 1
+                    envelope.lists.v === 1 &&
+                    (envelope.version !== 2 ||
+                        isFavoriteReferenceBlob(envelope.lists))
                 ) {
                     raw = envelope.lists;
+                    origin = envelope.version === 2 ? "reference" : "canonical";
                     writable = true;
                 }
             } catch (_) {}
@@ -181,9 +342,7 @@ export function loadFavoritesLists(): void {
             var claim = get.call(w, "favoritesLibrarySource");
             writable = true;
             if (!claim || claim === source) {
-                try {
-                    raw = w.providerGetJson("favoritesLists", null);
-                } catch (_) {}
+                raw = w.providerGetJson("favoritesLists", null);
                 if (
                     !(
                         raw &&
@@ -198,13 +357,30 @@ export function loadFavoritesLists(): void {
     } catch (_) {
         writable = false;
     }
+    if (!current()) return;
     var loaded = w.OttPlayCore.loadClassicFavoriteLists(raw, prior);
+    var index = favoritesReferenceIndex();
+    var records: FavoriteReferenceList[] = [];
+    Object.keys(loaded.lists).forEach(function (name) {
+        var references = loaded.lists[name].map(function (value: any) {
+            return restoreFavoriteReference(value, origin, index);
+        });
+        var view: number[] = [];
+        references.forEach(function (reference: ChannelReference) {
+            var id = index.project(reference);
+            if (id !== null) view.push(id);
+        });
+        loaded.lists[name] = view;
+        records.push(favoriteReferenceRecord(view, references, index));
+    });
     if (!current()) return;
     favoritesSource = source;
     favoritesWritable = writable;
+    favoritesOwner = current;
     favoritesLists = loaded;
+    favoritesReferences = records;
     saveFavoritesLists();
-    syncFavoritesArrayFromActive();
+    if (current()) syncFavoritesArrayFromActive();
 }
 
 function applyFavoriteListChange(

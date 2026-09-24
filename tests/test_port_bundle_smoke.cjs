@@ -398,6 +398,15 @@ function fixture(profile) {
     );
     require("./helpers/shared-core-runtime.cjs")(w, { vendorOnly: true });
     for (const api of [
+        "__ottScreenController",
+        "__ottScreens",
+        "__ottInputRouter",
+        "__ottClassicScreenPort",
+        "__ottMenuRegistry",
+        "__ottMediaBackend",
+        "__ottOsMediaSession",
+        "__ottNativePip",
+        "__ottDeviceAdapter",
         "__ottPlaybackSession",
         "__ottPlaybackJournal",
         "__ottArchiveSession",
@@ -426,6 +435,15 @@ function fixture(profile) {
 
 function assertPrivateRuntime(w, profile) {
     for (const [api, method] of [
+        ["__ottScreenController", "create"],
+        ["__ottScreens", "open"],
+        ["__ottInputRouter", "create"],
+        ["__ottClassicScreenPort", "commitList"],
+        ["__ottMenuRegistry", "open"],
+        ["__ottMediaBackend", "create"],
+        ["__ottOsMediaSession", "create"],
+        ["__ottNativePip", "create"],
+        ["__ottDeviceAdapter", "create"],
         ["__ottPlaybackSession", "create"],
         ["__ottPlaybackJournal", "create"],
         ["__ottArchiveSession", "create"],
@@ -477,6 +495,15 @@ function assertPrivateRuntime(w, profile) {
         Array.from(w.__ottProviderDriverProfiles, (profile) => profile.id)
     );
     for (const name of [
+        "createScreenController",
+        "createInputRouter",
+        "createClassicScreenPort",
+        "createScreenMenuRegistry",
+        "screenMenuDefinitions",
+        "createMediaBackend",
+        "createDeviceAdapter",
+        "createOsMediaSession",
+        "createNativePipPort",
         "createPlaybackJournal",
         "createArchiveController",
         "classicArchiveController",
@@ -525,6 +552,8 @@ function assertPrivateRuntime(w, profile) {
     }
     // Also catch a renamed top-level leak after optimizer-local mangling.
     for (const implementation of [
+        w.__ottScreenController.create,
+        w.__ottInputRouter.create,
         w.__ottPlaybackSession.create,
         w.__ottPlaybackJournal.create,
         w.__ottArchiveSession.create,
@@ -540,6 +569,88 @@ function assertPrivateRuntime(w, profile) {
             profile + ": private implementation exposed as bare global"
         );
     }
+}
+
+function exerciseMediaRuntime(profile) {
+    const w = fixture(profile);
+    vm.runInContext(bundle, w, { filename: bundlePath });
+    const stored = new Map(),
+        played = [],
+        rendered = [];
+    let position = 0,
+        request;
+    Object.assign(w, {
+        __ottRenderMedia: (view) => rendered.push(view),
+        catIndex: 0,
+        cats: { All: [1] },
+        catsArray: ["All"],
+        channels: { 1: { channel_name: "Live" } },
+        closeList: () => w.cancelMediaLoad(),
+        confirmBox: (_message, accept) => {
+            w.confirmMedia = accept;
+        },
+        curList: [1],
+        getMediaArray: (_route, done) => {
+            request = done;
+        },
+        p_pref: "media-artifact",
+        playTime: 0,
+        playType: 0,
+        prevArr: [],
+        primaryIndex: 0,
+        providerGetItem: (key) => stored.get(key) || null,
+        providerSetItem: (key, value) => stored.set(key, value),
+        sFavorites: 0,
+        sInfoSwitch: 0,
+        sMedCount: 2,
+        sStopPlay: 0,
+        stbGetLen: () => 600,
+        stbGetPosTime: () => position,
+        stbPlay: (url) => {
+            played.push(url);
+            w.__ottClassicPlayback.command({ type: "playing" });
+        },
+        stbSetPosTime: (value) => {
+            position = value;
+        },
+    });
+    w.mediaList(null);
+    w.mediaRecords = [
+        { id: 41, stream_url: "expired.mp4", title: "Movie" },
+        { playlist_url: "folder", title: "Folder" },
+    ];
+    request();
+    assert.equal(rendered.at(-1).frame.items[0].ref.itemId, "provider:41");
+    w.selectMedia(0);
+    assert.deepEqual(played, ["expired.mp4"]);
+    position = 125.9;
+    w.setCurrent(0, -1);
+    w.__ottClassicPlayback.command({ type: "stop" });
+    w.mediaList(-1);
+    w.selectMedia(0);
+    w.mediaRecords = [
+        { id: 41, stream_url: "renewed.mp4", title: "New title" },
+    ];
+    request();
+    assert.equal(played.at(-1), "renewed.mp4");
+    w.confirmMedia();
+    assert.equal(position, 120);
+    const journal = JSON.parse(stored.get("mediaJournal.v1:media-artifact"));
+    assert.equal(journal.history.length, 1);
+    assert.equal(journal.history[0].itemId, "provider:41");
+    w.mediaList("pending");
+    const abandoned = request;
+    const count = rendered.length;
+    w.cancelMediaLoad();
+    w.mediaRecords = [{ id: 99, stream_url: "wrong.mp4", title: "Stale" }];
+    abandoned();
+    assert.equal(rendered.length, count);
+    assert.equal(played.length, 2);
+    console.log(
+        "OK: actual media library/journal " +
+            profile +
+            " stable resume and stale cancellation"
+    );
 }
 
 function exerciseArchiveRuntime(profile) {
@@ -693,6 +804,7 @@ function exercisePlaybackRuntime(w, profile) {
             Array.from(w.prevArr, (visit) => visit.ci),
             [1]
         );
+        w.__ottClassicPlayback.command({ channelId: 2, type: "live" });
         assert.equal(stored.get("primaryIndex"), "1");
         assert.equal(JSON.parse(stored.get("continueWatch")).channelId, 2);
         const journal = JSON.parse(stored.get("playbackJournal"));
@@ -709,7 +821,21 @@ function exercisePlaybackRuntime(w, profile) {
         assert.equal(checkpoint.bookmark.channelId, "2");
         assert.equal(checkpoint.bookmark.kind, "live");
 
-        w.playType = -1e11;
+        const media = w.__ottMedia.prepare(
+            {
+                id: "movie",
+                stream_url: "https://media.invalid/movie.mp4",
+                title: "Movie",
+            },
+            "https://media.invalid/movie.mp4"
+        );
+        w.__ottClassicPlayback.command({
+            channelId: media.ref.itemId,
+            item: media.item,
+            sourceId: media.ref.sourceId,
+            type: "vod",
+        });
+        w.__ottClassicPlayback.command({ type: "playing" });
         const combined = delayedShift(5, 7);
         assert.deepEqual(positions, [], profile + ": seek waits for debounce");
         fire(combined);
@@ -738,7 +864,8 @@ function exercisePlaybackRuntime(w, profile) {
             profile + ": built setCurrent retires pending seek"
         );
         assert.equal(
-            w.medHistory[0].current,
+            JSON.parse(stored.get("mediaJournal.v1:" + media.ref.sourceId))
+                .history[0].position,
             40,
             profile + ": leaving VOD persists position"
         );
@@ -1100,11 +1227,20 @@ function exerciseProviderRuntime(profile) {
                 ],
             });
         else if (id === "ottclub")
-            requests
-                .at(-1)
-                .resolve(
-                    '{"one":{"ch_id":"one","name":"One","category":"News","rec":true,"img":"one.png"}}'
-                );
+            requests.at(-1).resolve(
+                JSON.stringify({
+                    one: {
+                        category: "News",
+                        ch_id: "one",
+                        channel_name: "One",
+                        img: "one.png",
+                        name: "Provider programme",
+                        rec: true,
+                        time: Date.now() / 1000 - 60,
+                        time_to: Date.now() / 1000 + 3600,
+                    },
+                })
+            );
         else {
             assert.equal(requests.at(-1).settings.dataType, "jsonp");
             requests.at(-1).resolve([{ archive: 24, id: "one", name: "One" }]);
@@ -1119,7 +1255,16 @@ function exerciseProviderRuntime(profile) {
         assert(w.getChannelUrl(w.cList[0]), id + ": built live URL");
         assert(w.__ottActiveProviderDriver.archive("one", 10, 20));
         if (id === "ottclub") {
-            assert(w.epg.one.length > 0, "OTTCLUB publishes catalog seed EPG");
+            assert.equal(
+                w.channels.one.name,
+                "Provider programme",
+                "OTTCLUB seed publishes the owned current programme"
+            );
+            assert.equal(
+                w.__ottClassicGuide.peek("one"),
+                null,
+                "Disabled cache does not retain a separate raw catalog schedule"
+            );
             assert.equal(w.__ottActiveProviderDriver.guideCurrent, undefined);
         } else {
             const current = [];
@@ -1373,6 +1518,60 @@ function exerciseProviderRuntime(profile) {
     );
 }
 
+function exerciseScreenRuntime(profile) {
+    const w = fixture(profile);
+    vm.runInContext(bundle, w, { filename: bundlePath, timeout: 5000 });
+    const originalQuery = w.$;
+    const visible = {};
+    w.$ = function (selector) {
+        const chain = originalQuery(selector);
+        chain.is = () => !!visible[selector];
+        chain.show = function () {
+            visible[selector] = true;
+            return chain;
+        };
+        chain.hide = function () {
+            visible[selector] = false;
+            return chain;
+        };
+        return chain;
+    };
+    const actions = [];
+    w.changeSelect = (delta) => actions.push(["move", delta]);
+    w.listArray = ["a", "b"];
+    w.listDataArray = w.listArray;
+    w.listKeyHandlerFn = () => false;
+    const list = w.__ottClassicScreenPort.commitList();
+    const key = (code) =>
+        w.keyHandler({
+            keyCode: code,
+            preventDefault() {},
+            stopPropagation() {},
+        });
+    key(w.keys.DOWN);
+    assert.deepEqual(actions, [["move", 1]]);
+    let confirmed = 0;
+    w.stbIsPlaying = () => true;
+    w.confirmBox("First", () => w.confirmBox("Second", () => confirmed++));
+    const stale = w.dialogBoxKeyHandler;
+    key(w.keys.ENTER);
+    stale(w.keys.ENTER);
+    assert.equal(confirmed, 0);
+    key(w.keys.ENTER);
+    assert.equal(confirmed, 1);
+    assert.equal(list.active(), true);
+    w.__ottClassicScreenPort.invalidate();
+    assert.equal(list.active(), false);
+    stale(w.keys.ENTER);
+    assert.equal(confirmed, 1);
+    const records = w.__ottMenuRegistry.importClassic(w);
+    assert(records.some((record) => record.id === "settings.open"));
+    assert(records.some((record) => record.id === "favorites.open"));
+    console.log(
+        "OK: actual " + profile + " bundle screen/input/menu ownership"
+    );
+}
+
 async function main() {
     // The bundle reassigns ott_device after HTML boot has already detected it.
     // Exercise that assignment with the webOS TV 25 UA published by LG:
@@ -1433,8 +1632,10 @@ async function main() {
         }
         assertPrivateRuntime(w, profile);
         if (profile === "modern" || profile === "legacy") {
+            exerciseScreenRuntime(profile);
             exercisePlaybackRuntime(w, profile);
             exerciseArchiveRuntime(profile);
+            exerciseMediaRuntime(profile);
             exerciseProviderRuntime(profile);
         }
         for (const name of [
@@ -1564,27 +1765,24 @@ async function main() {
         `,
             w
         );
-        // This function comes from channels' renamed core import in the real output.
-        // A stripped import used to leave videoElement unresolved here.
-        const originalVideo = w.video;
-        const originalSetPosition = w.stbSetPosTime;
-        const originalLength = w.stbGetLen;
-        const originalPlayType = w.playType;
-        const positions = [];
-        w.video = { currentTime: 0 };
-        w.stbSetPosTime = (position) => positions.push(position);
-        w.stbGetLen = () => 120;
-        w.playType = 1700000000;
-        w.seekArchive(42);
-        assert.deepEqual(
-            positions,
-            [42],
-            "Actual bundle resolves renamed mutable imports"
+        // Exercise the live entrypoint through the replaceable device predicate.
+        // The predicate must remain bound to the replaceable classic device ABI.
+        const originalIsPlaying = w.stbIsPlaying;
+        const originalPauseLive = w.__ottClassicArchive.pauseLive;
+        let pausedLive = 0;
+        w.__ottClassicArchive.pauseLive = () => pausedLive++;
+        w.stbIsPlaying = () => false;
+        w.liveStop();
+        assert.equal(pausedLive, 0, "Stopped device must not pause live");
+        w.stbIsPlaying = () => true;
+        w.liveStop();
+        assert.equal(
+            pausedLive,
+            1,
+            "Actual bundle uses the current device predicate"
         );
-        w.video = originalVideo;
-        w.stbSetPosTime = originalSetPosition;
-        w.stbGetLen = originalLength;
-        w.playType = originalPlayType;
+        w.stbIsPlaying = originalIsPlaying;
+        w.__ottClassicArchive.pauseLive = originalPauseLive;
         if (profile === "legacy") {
             assert.equal(
                 typeof w.Promise,

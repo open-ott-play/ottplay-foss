@@ -111,6 +111,10 @@ function favoritesFixture() {
     ]);
     const host = {
         _: (s) => s,
+        channels: {
+            11: { itemId: "channel:11" },
+            22: { itemId: "channel:22" },
+        },
         providerGetItem(key) {
             const value = saved.get(source + ":" + key) ?? null;
             if (hook && key === "favoritesLibrary:a") {
@@ -149,7 +153,7 @@ function assertB(f) {
     assert.deepEqual(Array.from(f.host.favoritesArray), [22]);
     assert.deepEqual(
         JSON.parse(f.saved.get("b:favoritesLibrary:b")).lists.lists.Main,
-        [22]
+        [{ itemId: "channel:22" }]
     );
 }
 check("reentrant favorites load cannot erase the replacement source", () => {
