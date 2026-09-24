@@ -1734,7 +1734,7 @@ async function main() {
         `,
             w
         );
-        // Exercise a live entrypoint whose device predicate is a renamed import.
+        // Exercise the live entrypoint through the replaceable device predicate.
         // The predicate must remain bound to the replaceable classic device ABI.
         const originalIsPlaying = w.stbIsPlaying;
         const originalPauseLive = w.__ottClassicArchive.pauseLive;
@@ -1748,7 +1748,7 @@ async function main() {
         assert.equal(
             pausedLive,
             1,
-            "Actual bundle resolves renamed mutable imports"
+            "Actual bundle uses the current device predicate"
         );
         w.stbIsPlaying = originalIsPlaying;
         w.__ottClassicArchive.pauseLive = originalPauseLive;

@@ -9,10 +9,7 @@ import {
  * Channel management — data structures, navigation, favorites, parental control.
  */
 
-import {
-    clearPlayTimeInterval,
-    stbIsPlaying as isDevicePlaying,
-} from "../core/index";
+import { clearPlayTimeInterval, stbIsPlaying } from "../core/index";
 import { translate as _ } from "../localization";
 import { settings } from "../settings/index";
 import { providerSetItem, storage } from "../storage/index";
@@ -3040,7 +3037,7 @@ if (typeof window !== "undefined")
  * pauses the underlying video element.
  */
 export function liveStop(): void {
-    if (!isDevicePlaying()) return;
+    if (!stbIsPlaying()) return;
     (window as any).__ottClassicArchive.pauseLive();
 }
 
