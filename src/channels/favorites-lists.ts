@@ -123,11 +123,19 @@ export function saveFavoritesLists(): boolean {
         var key = "favoritesLibrary:" + source;
         var prior = get.call(w, key);
         if (!current()) return false;
-        if (prior !== text) set.call(w, key, text);
-        if (!current() || get.call(w, key) !== text || !current()) return false;
         var claim = get.call(w, "favoritesLibrarySource");
         if (!current()) return false;
-        if (!claim) set.call(w, "favoritesLibrarySource", source);
+        if (!claim) {
+            set.call(w, "favoritesLibrarySource", source);
+            if (
+                !current() ||
+                get.call(w, "favoritesLibrarySource") !== source ||
+                !current()
+            )
+                return false;
+        }
+        if (prior !== text) set.call(w, key, text);
+        if (!current() || get.call(w, key) !== text || !current()) return false;
         return current();
     } catch (_) {
         return false;

@@ -41,8 +41,8 @@ const context = vm.createContext({
     ...fs,
     ...path,
     console: { log() {} },
-    isManagedProviderScript: require("../scripts/provider-assets.cjs")
-        .isManagedProviderScript,
+    isRetiredRuntimeScript: require("../scripts/runtime-assets.cjs")
+        .isRetiredRuntimeScript,
     stageNativeRuntime() {},
 });
 vm.runInContext(code, context);
@@ -67,6 +67,7 @@ try {
     write("src/demo/logs/private.json");
     for (const name of [
         "src/stb/lg/webos.js",
+        "src/stb/core.js",
         "src/stb/tizen/config.json",
         "src/stb/logs/pre_tool_use.json",
         "src/stb/lg/.private/file.json",
@@ -160,6 +161,7 @@ try {
         "Remote demo media must not enter native bundles"
     );
     for (const name of [
+        "stb/core.js",
         "stb/logs",
         "stb/lg/.private",
         "stb/lg/node_modules",

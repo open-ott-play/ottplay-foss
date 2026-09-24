@@ -401,11 +401,23 @@ function createChannelLibrary(
         change(draft);
         var text = JSON.stringify(draft);
         try {
-            if (ports.get(key) !== text) ports.set(key, text);
-            if (!ports.current() || ports.get(key) !== text) return false;
-            // Claim only after the source-specific document is safely persisted.
-            if (!ports.get("channelLibrarySource"))
+            var prior = ports.get(key);
+            if (!ports.current()) return false;
+            var claim = ports.get("channelLibrarySource");
+            if (!ports.current()) return false;
+            // Reserve the one-time import before saving its source document.
+            if (!claim) {
                 ports.set("channelLibrarySource", ports.sourceId);
+                if (
+                    !ports.current() ||
+                    ports.get("channelLibrarySource") !== ports.sourceId ||
+                    !ports.current()
+                )
+                    return false;
+            }
+            if (prior !== text) ports.set(key, text);
+            if (!ports.current() || ports.get(key) !== text || !ports.current())
+                return false;
             state = draft;
             return true;
         } catch (_) {

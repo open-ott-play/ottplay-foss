@@ -547,41 +547,50 @@ function classicPlaybackJournal(): any {
     var legacy = w.__ottSourceIdentity.legacy(w);
     var storageKey =
         source === legacy ? "playbackJournal" : "playbackJournal:" + source;
-    var claim = get.call(w, "playbackJournalSource");
-    var allowLegacy = !claim || claim === source;
-    if (!claim) {
-        try {
-            set.call(w, "playbackJournalSource", source);
-        } catch (_) {
-            allowLegacy = false;
-        }
+    function current(): boolean {
+        return (
+            source === classicPlaybackSource(w) &&
+            get === w.providerGetItem &&
+            set === w.providerSetItem
+        );
     }
+    function read(key: string): any {
+        if (!current()) throw new Error("Playback source replaced");
+        var value = get.call(w, key);
+        if (!current()) throw new Error("Playback source replaced");
+        return value;
+    }
+    var allowLegacy = false;
+    try {
+        var claim = read("playbackJournalSource");
+        if (!claim) {
+            set.call(w, "playbackJournalSource", source);
+        }
+        allowLegacy =
+            (!claim || claim === source) &&
+            read("playbackJournalSource") === source;
+    } catch (_) {}
     return w.__ottPlaybackJournal.create({
         get: function (key: string): any {
             if (key === "playbackJournal") {
-                var current = get.call(w, storageKey);
-                return current == null && allowLegacy
-                    ? get.call(w, "playbackJournal")
-                    : current;
+                var value = read(storageKey);
+                return value == null && allowLegacy
+                    ? read("playbackJournal")
+                    : value;
             }
-            return allowLegacy ? get.call(w, key) : null;
+            return allowLegacy ? read(key) : null;
         },
         importSourceId: allowLegacy
             ? legacy === "ottclub" && w.p_pref === ""
                 ? "classic"
                 : legacy
             : undefined,
-        isCurrent: function (): boolean {
-            return (
-                source === classicPlaybackSource(w) &&
-                get === w.providerGetItem &&
-                set === w.providerSetItem
-            );
-        },
+        isCurrent: current,
         now: function (): number {
             return Date.now();
         },
         set: function (key: string, value: string): void {
+            if (!current()) throw new Error("Playback source replaced");
             set.call(w, key === "playbackJournal" ? storageKey : key, value);
         },
         sourceId: source,
@@ -627,6 +636,7 @@ function classicPlaybackHydrate(): void {
     var journal = classicPlaybackJournal();
     if (!journal) return;
     var loaded = journal.read();
+    if (!journal.active()) return;
     if (!loaded.writable) {
         w.prevArr = [];
         return;
@@ -665,7 +675,8 @@ function classicPlaybackBookmark(): any {
     var journal = classicPlaybackJournal();
     if (!journal) return null;
     var loaded = journal.read();
-    if (!loaded.writable || !loaded.document.bookmark) return null;
+    if (!journal.active() || !loaded.writable || !loaded.document.bookmark)
+        return null;
     var item = loaded.document.bookmark;
     var found = classicPlaybackLocate(item.channelId, item.groupId);
     if (!found) return null;

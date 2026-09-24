@@ -252,6 +252,42 @@ const inaccessible = create(
 );
 assert.equal(inaccessible.snapshot().all.length, 3);
 assert.equal(inaccessible.select("genre:7", 11), false);
+{
+    let active = true;
+    let interrupt = false;
+    const writes = [];
+    const guarded = create(
+        {
+            current: () => active,
+            get: () => {
+                if (interrupt) active = false;
+                return null;
+            },
+            set: (key) => writes.push(key),
+            sourceId: "old",
+        },
+        rows
+    );
+    interrupt = true;
+    assert.equal(guarded.lock(12, true), false);
+    assert.deepEqual(
+        writes,
+        [],
+        "replacement during storage read cannot write to the new source"
+    );
+}
+saved.clear();
+saved.set("parentalArray", "[90]");
+saved.set("aAudios", '{"90":2}');
+a = library([rows[0]]);
+assert(a.persist());
+a = library([rows[0], { ...rows[1], legacyId: 90 }]);
+assert.deepEqual(plain(a.snapshot().locks), [12]);
+assert.equal(
+    a.preference("audio", 12),
+    2,
+    "a returning old numeric alias resolves to its provider item ID"
+);
 const sourceId = context.window.__ottSourceIdentity;
 const host = {
     __ottActiveProviderDriver: {
@@ -281,6 +317,12 @@ host.__ottActiveProviderDriver.credentials = () => ({
     username: "b",
 });
 assert.notEqual(sourceId.current(host), first);
+const television = sourceId.current(host);
+host.__ottActiveProviderDriver.mediaSource = () => "portal-one";
+const media = sourceId.media(host);
+host.__ottActiveProviderDriver.mediaSource = () => "portal-two";
+assert.equal(sourceId.current(host), television);
+assert.notEqual(sourceId.media(host), media);
 for (let slot = 0; slot < 15; slot++) {
     const h = {
         m3uArr: {
