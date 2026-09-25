@@ -12,6 +12,22 @@ const manifestPath = "js/media-runtime.json";
 const bootstrapTag =
     /(<script src="(?:\.\/|\/)js\/runtime-polyfills\.js)(?:\?v=[a-f0-9]+)?("[^>]*><\/script>)/;
 
+function workerBootstrap(version) {
+    // Classic importScripts is synchronous and resolves against the worker's
+    // own URL. Do not require URL, Promise or any other not-yet-patched API.
+    // A stale/blocked runtime must fail before upstream registers its handler.
+    return (
+        "/*! OTT-play ES5 worker bootstrap; shared runtime and licenses in js/. */\n" +
+        "importScripts(" +
+        JSON.stringify("./runtime-polyfills.js?v=" + version) +
+        ");\n" +
+        "if (self.__ottRuntimePolyfillsReady !== true || self.__ottMediaRuntimeVersion !== " +
+        JSON.stringify(version) +
+        ') { throw new Error("OTT-play worker runtime mismatch"); }\n' +
+        "/* Upstream hls.js worker follows unchanged. */\n"
+    );
+}
+
 function stampBootstrap(file, version) {
     const html = fs.readFileSync(file, "utf8");
     assert(
@@ -127,8 +143,7 @@ async function buildMediaRuntime() {
     const runtime = header + minified.code + "\n";
     const hls = read("node_modules/hls.js/dist/hls.min.js");
     const worker =
-        runtime +
-        "\n/* Upstream hls.js worker; compatibility bootstrap prepended. */\n" +
+        workerBootstrap(runtimeVersion) +
         read("node_modules/hls.js/dist/hls.worker.js").toString();
     const outputs = {
         "hls.min.js": hls,
@@ -205,20 +220,14 @@ function auditMediaRuntime(directory = root) {
         sha(read("node_modules/hls.js/dist/hls.min.js")),
         "Modified upstream hls.js"
     );
-    const runtime = fs.readFileSync(
-        path.join(directory, "js/runtime-polyfills.js")
-    );
     const worker = Buffer.concat([
-        runtime,
-        Buffer.from(
-            "\n/* Upstream hls.js worker; compatibility bootstrap prepended. */\n"
-        ),
+        Buffer.from(workerBootstrap(manifest.runtimeVersion)),
         read("node_modules/hls.js/dist/hls.worker.js"),
     ]);
     assert.equal(
         manifest.assets["hls.worker.js"],
         sha(worker),
-        "Worker must include the same polyfills before upstream code"
+        "Worker must synchronously import and verify the exact runtime before unchanged upstream code"
     );
     for (const name of ["core-js", "hls.js"])
         assert(

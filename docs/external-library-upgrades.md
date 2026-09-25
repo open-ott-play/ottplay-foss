@@ -9,8 +9,9 @@ version at runtime.
 
 - Every profile uses the exact npm-locked hls.js **1.7.3** UMD distribution.
   `js/hls.min.js` is upstream's unchanged `dist/hls.min.js`. Its standalone
-  worker is upstream's `dist/hls.worker.js` with the shared compatibility
-  prelude prepended; it never relies on polyfills installed in `window`.
+  worker is upstream's `dist/hls.worker.js` with a small ES5 loader prepended.
+  The loader synchronously imports the sibling compatibility runtime and
+  checks its version/readiness; it never relies on polyfills in `window`.
 - `js/runtime-polyfills.js` is generated from exact core-js **3.50.0**
   `stable` modules and `src/polyfills/runtime.ts`. Core-js owns standard
   JavaScript compatibility, including Promise, collections, iterators,
@@ -36,9 +37,11 @@ The generator fingerprints the lockfile, installed build-tool versions and
 runtime sources into a deterministic `runtimeVersion`. It stamps that version
 into both source HTML bootstrap URLs; hls.js and Worker URLs use the same value
 published by the bootstrap. Native staging preserves the version when rewriting
-paths. This prevents an upgrade from reusing the former unversioned legacy HLS
-asset or mixing a cached worker with a newer page runtime. Publish the generated
-assets and matching HTML together, including when serving the source tree.
+paths. Distinct versions use separate cache keys; the worker additionally rejects
+an imported runtime that lacks its expected version or ready marker. Publish
+the generated assets and matching HTML together, including when serving the
+source tree. A versioned query does not make an old response immutable on a
+server that always serves current bytes for that path.
 
 ## Load order and separate JavaScript environments
 
@@ -48,12 +51,47 @@ the compatibility layer must use ES5 built-ins and guarded host APIs only.
 Failure to load the layer must stop dependent initialization with a useful
 boot error; proceeding with partially initialized libraries hides the cause.
 
-HLS is configured with the packaged `js/hls.worker.js` path. Each worker starts
-with its own copy of the same compatibility layer followed by the upstream
-worker. Window built-ins and prototypes are not shared with workers. A worker
+HLS is configured with the packaged `js/hls.worker.js` path. Each worker calls
+`importScripts("./runtime-polyfills.js?v=<literal-build-version>")` before the
+unchanged upstream code. The synchronous classic-worker import resolves against
+the worker's own URL, including on nested paths. It installs the full runtime
+in that worker's realm; window built-ins and prototypes are not shared. A worker
 must not require `window`, `document`, a CDN, or a provider endpoint to install
 its polyfills. Worker creation failure must remain an observable upstream HLS
 fallback to main-thread transmuxing, rather than changing library versions.
+
+Keep both files in the same directory in web, native and PiP packages. Moving
+only the worker into a Blob URL or a different directory breaks this sibling
+contract. Do not construct the import with `new URL` before its polyfill runs.
+The generated guard requires the ready marker to be exactly `true` and the
+runtime version to match. Import, execution and guard errors propagate before
+upstream registers its message listener.
+
+Cache reuse can save a second transfer of the runtime, but does not remove its
+execution or installed objects in the worker. On a cold worker-only load the
+runtime needs another response; loading may be slower. Starting another HTTP
+worker offline requires both exact versioned resources to be cached and reusable.
+This does not establish persistent whole-application offline restart. Native
+packages retain both files locally and do not need a provider or CDN request.
+An uncached web origin has no new offline capability.
+
+The 2026-09-25 local fixture recorded one runtime HTTP request across the page
+and two new workers in Chromium 153.0.8010.12. WebKit 26.6 recorded two: its first
+worker fetched another response, then the second worker reused it. Therefore
+page-to-worker cache reuse is not a cross-engine promise. The browser test pins
+these observed counts separately; `no-store` responses are fetched again for
+each fresh worker realm. With the current guarded loader, the worker shrank
+from 345,461 to 118,574 bytes (gzip level 9: 122,529 to 40,976 on Node 26.8.2 /
+zlib 1.2.12). The full runtime remains 227,162 bytes. Package savings are
+independent of whether the HTTP cache supplies that runtime to a worker.
+
+Worker permissions alone do not authorize its imported script. When a worker
+response carries CSP, its effective script policy must allow the same-origin
+runtime import. Keep existing application restrictions; do not add broad
+permissions to make a failing test pass. Missing/stale runtime, denied CSP and
+wrong JavaScript MIME must fail visibly. Test actual worker `init` and
+`transmuxComplete` messages: successful playback alone can conceal HLS's
+main-thread recovery.
 
 The core-js language layer and web shims must remain idempotent. Runtime shim
 entry points in the application bundle may also be used by isolated tests or
@@ -116,8 +154,15 @@ lacks MSE; polyfills must not manufacture a positive capability result.
    installed Playwright Chromium runtime. The media test serves a checked-in
    synthetic H.264/AAC MPEG-TS fixture over loopback and verifies decoded
    640 x 360 video with advancing position, both with and without a worker.
-   It also removes APIs inside a real worker before the shipped prelude runs.
-   No live provider or public media endpoint is required.
+   It also removes APIs inside a real worker before the shipped loader runs,
+   checks nested sibling paths and worker-response CSP, and exercises missing,
+   stale and wrong-MIME imports. Cache tests use real HTTP request counts without
+   Playwright routing (which disables its browser HTTP cache), including a
+   new worker in an existing offline browser context and uncached-resource
+   failures. A deliberately missing worker runtime must also produce an
+   observable nonfatal HLS error and successful main-thread playback; healthy
+   worker cases still forbid this recovery. No live provider or public media
+   endpoint is required.
 7. Validate the release on representative physical devices before claiming
    those devices are supported. Record device model, firmware/browser version,
    selected playback adapter, MSE/codec support, worker behavior, and the media

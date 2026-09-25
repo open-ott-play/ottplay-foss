@@ -17,8 +17,12 @@ The compiler lowers syntax, not browser APIs. A blocking local
 `js/runtime-polyfills.js` runs before third-party scripts, native environment
 setup and the application. It combines pinned `core-js/stable` with worker-safe
 web API shims. The application bundle retains its timezone customization.
-The same compatibility prelude precedes the upstream HLS worker in
-`js/hls.worker.js`; page globals are never assumed to exist in a Worker.
+The HLS worker synchronously imports the same sibling runtime file with its
+literal build version, then checks readiness and that version before upstream
+HLS starts. This removes the second bundled copy, not the worker's own runtime
+initialization: page globals are never assumed to exist in a Worker. Keep
+`hls.worker.js` and `runtime-polyfills.js` together; the loader uses ES5 syntax
+and requires no URL constructor or Promise before compatibility is installed.
 Native media calls and input events must support older implementations
 where `video.play()` returns nothing and `event.key` / `new MouseEvent` are absent.
 

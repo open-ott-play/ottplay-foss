@@ -114,6 +114,13 @@ the worker prelude. Missing or stale assets trigger regeneration and another
 full audit. `npm run build:media` always rebuilds explicitly. No timestamp or
 process-local cache can bypass validation.
 
+The HLS worker contains a synchronous, versioned sibling-runtime import and an
+exact readiness/version guard followed by unchanged upstream worker bytes.
+The auditor reconstructs that complete sequence; changing an asset and its
+manifest hash together cannot authorize another import or a removed guard.
+The loader recipe lives in the already-fingerprinted builder. Both runtime and
+worker remain staged together, with their licenses, in every web/native root.
+
 Each final classic bundle is limited to 654,000 UTF-8 bytes and 187,200 bytes
 compressed with gzip level 9. Both limits apply independently to server, Tauri
 and Capacitor artifacts. Native transformations are measured after staging.

@@ -11,6 +11,8 @@ const read = (name) => fs.readFileSync(path.join(root, name), "utf8");
 const polyfills = read("js/runtime-polyfills.js");
 const hls = read("js/hls.min.js");
 const worker = read("js/hls.worker.js");
+const { runtimeVersion } = JSON.parse(read("js/media-runtime.json"));
+const workerRuntimeUrl = "./runtime-polyfills.js?v=" + runtimeVersion;
 const hlsVersion = require("../package.json").dependencies["hls.js"];
 
 const stripModernApis = `
@@ -67,9 +69,14 @@ const stripModernApis = `
     queueMicrotask = undefined;
 `;
 
-function environment({ legacy = true, workerScope = false } = {}) {
+function environment({
+    legacy = true,
+    workerScope = false,
+    workerRuntime = polyfills,
+} = {}) {
     const listeners = {};
     const messages = [];
+    const imports = [];
     const context = vm.createContext({
         addEventListener(name, listener) {
             (listeners[name] ||= []).push(listener);
@@ -99,8 +106,17 @@ function environment({ legacy = true, workerScope = false } = {}) {
     context.self = context;
     if (!workerScope) context.window = context;
     else {
-        context.importScripts = function () {
-            assert.fail("The packaged worker must be self-contained");
+        context.importScripts = function (url) {
+            imports.push(url);
+            assert.equal(url, workerRuntimeUrl);
+            assert.equal(arguments.length, 1);
+            assert.equal(
+                (listeners.message || []).length,
+                0,
+                "Runtime import must finish before upstream initialization"
+            );
+            if (typeof workerRuntime === "function") workerRuntime();
+            else run(workerRuntime, context, url);
         };
         context.postMessage = function (message) {
             messages.push(message);
@@ -112,6 +128,7 @@ function environment({ legacy = true, workerScope = false } = {}) {
         dispatch(data) {
             for (const listener of listeners.message || []) listener({ data });
         },
+        imports,
         listeners,
         messages,
     };
@@ -359,6 +376,68 @@ function checkWorkerTransmux(workerEnv, config) {
     assert(audio.endPTS > audio.startPTS);
 }
 
+function checkWorkerBootstrapFailures() {
+    const expectedVersion =
+        "self.__ottMediaRuntimeVersion = " +
+        JSON.stringify(runtimeVersion) +
+        ";";
+    const failures = [
+        ["empty runtime", ""],
+        ["missing ready marker", expectedVersion],
+        [
+            "false ready marker",
+            expectedVersion + "self.__ottRuntimePolyfillsReady = false;",
+        ],
+        [
+            "non-boolean ready marker",
+            expectedVersion + "self.__ottRuntimePolyfillsReady = 1;",
+        ],
+        ["missing version", "self.__ottRuntimePolyfillsReady = true;"],
+        [
+            "stale runtime version",
+            'self.__ottRuntimePolyfillsReady = true; self.__ottMediaRuntimeVersion = "old";',
+        ],
+    ];
+    for (const [name, workerRuntime] of failures) {
+        const env = environment({ workerRuntime, workerScope: true });
+        assert.throws(
+            () => run(worker, env.context, name),
+            /OTT-play worker runtime mismatch/,
+            name
+        );
+        assert.deepEqual(env.imports, [workerRuntimeUrl], name);
+        assert.deepEqual(env.messages, [], name + " must not report init");
+        assert.equal((env.listeners.message || []).length, 0, name);
+    }
+    // Fetch/CSP/MIME and imported-script execution errors propagate unchanged;
+    // none may continue into an apparently working unpolyfilled upstream worker.
+    const unavailable = new Error("unavailable runtime");
+    for (const [name, workerRuntime, validate] of [
+        [
+            "unavailable runtime",
+            () => {
+                throw unavailable;
+            },
+            (error) => error === unavailable,
+        ],
+        [
+            "runtime execution error after ready markers",
+            expectedVersion +
+                'self.__ottRuntimePolyfillsReady = true; throw new Error("fixture runtime execution failed");',
+            /fixture runtime execution failed/,
+        ],
+    ]) {
+        const env = environment({
+            workerRuntime,
+            workerScope: true,
+        });
+        assert.throws(() => run(worker, env.context, name), validate);
+        assert.deepEqual(env.imports, [workerRuntimeUrl]);
+        assert.deepEqual(env.messages, []);
+        assert.equal((env.listeners.message || []).length, 0);
+    }
+}
+
 async function main() {
     for (const [name, code] of [
         ["runtime-polyfills.js", polyfills],
@@ -383,11 +462,21 @@ async function main() {
     await checkPromise(mainEnv.context);
     checkHls(mainEnv.context);
 
-    // A fresh worker never inherits window's patched built-ins. Running only
-    // the shipped worker proves its own polyfill prefix is complete and early.
+    checkWorkerBootstrapFailures();
+    // A fresh worker never inherits window's patched built-ins. Its synchronous
+    // import must install the complete runtime before untouched upstream code.
     const workerEnv = environment({ workerScope: true });
     assert.equal(run("typeof Promise", workerEnv.context), "undefined");
     run(worker, workerEnv.context, "hls.worker.js (legacy worker)");
+    assert.deepEqual(workerEnv.imports, [workerRuntimeUrl]);
+    assert.equal(workerEnv.context.__ottRuntimePolyfillsReady, true);
+    assert.equal(workerEnv.context.__ottMediaRuntimeVersion, runtimeVersion);
+    for (const file of ["index.html", "src-tauri/pip/pip.html"])
+        assert(
+            read(file).includes(
+                "js/runtime-polyfills.js?v=" + runtimeVersion + '"'
+            )
+        );
     checkStandardApis(workerEnv.context);
     checkWebApis(workerEnv.context);
     await checkPromise(workerEnv.context);
