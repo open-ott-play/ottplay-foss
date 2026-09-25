@@ -276,6 +276,85 @@ for (const change of ["source", "pin", "policy", "storage"])
             assert.equal(f.w.dialogBoxKeyHandler, null);
         }
     );
+for (const field of [
+    "parentPin",
+    "psChannels",
+    "psOptions",
+    "requirePinForProviderSelection",
+])
+    ui(
+        "actual SettingsStore " +
+            field +
+            " ABA retires its challenge and grant",
+        (f) => {
+            f.w.eval(
+                compile(
+                    fs.readFileSync(
+                        path.join(root, "src/settings/store.ts"),
+                        "utf8"
+                    )
+                )
+            );
+            const defaults = {
+                fontSize: 1,
+                parentPin: "2468",
+                psChannels: 1,
+                psOptions: 1,
+                requirePinForProviderSelection: 1,
+            };
+            const store = f.w.createSettingsStore(
+                Object.entries(defaults).map(([id, value]) => ({
+                    defaultValue: value,
+                    effects: [],
+                    id,
+                    key: id,
+                    scope: "application",
+                    validate: () => true,
+                })),
+                {
+                    context: () => "one",
+                    effect() {},
+                    storage: () => ({
+                        read: () => null,
+                        remove() {},
+                        write() {},
+                    }),
+                }
+            );
+            f.w.settingsStore = store;
+            f.w.setParentAccess(true, () => {});
+            f.request();
+            store.observe(field, field === "parentPin" ? "9999" : 0);
+            store.observe(field, defaults[field]);
+            f.answer();
+            assert.equal(f.w.parentAccess, false);
+            assert.deepEqual(f.events, []);
+            f.request();
+            store.observe("fontSize", 3);
+            f.answer();
+            assert.equal(
+                f.w.parentAccess,
+                true,
+                "unrelated settings do not revoke the challenge"
+            );
+            assert.deepEqual(f.events, ["accepted"]);
+        }
+    );
+ui(
+    "canonical SettingsStore policy controls gates and revokes changed grants",
+    (f) => {
+        f.w.settings = {
+            psChannels: 1,
+            psOptions: 1,
+            requirePinForProviderSelection: 1,
+        };
+        f.w.setParentAccess(true, () => {});
+        f.w.settings.psChannels = 0;
+        assert.equal(f.w.__ottParental.needs("channels"), false);
+        assert.equal(f.w.parentAccess, false);
+        assert.equal(f.w.__ottParental.needs("settings"), true);
+    }
+);
 ui(
     "PIN config and source changes revoke an existing grant without waiting for timeout",
     (f) => {

@@ -130,7 +130,6 @@ function fixture(
         optionsList() {
             calls.push("options");
         },
-        parentAccess: true,
         playerMode: 0,
         playerModeNames: ["html5", "hls.js", "shaka"],
         popupActions: [
@@ -325,7 +324,11 @@ function fixture(
         sShowProgram: 1,
         sShowProgress: 1,
     });
+    // The test grant belongs to the fully initialized SettingsStore/PIN policy.
+    w.parentAccess = true;
+    const accessTimer = [...timers.keys()][0];
     return {
+        accessTimer,
         calls,
         stored,
         timers,
@@ -891,7 +894,7 @@ for (const profile of [
     assert.equal(parental.stored.get("sPSchannels"), "0");
     assert.equal(parental.stored.get("sPSoptions"), "1");
     assert.equal(parental.typed().requirePinForProviderSelection, 1);
-    const { w, stored, typed, timers } = fixture(profile);
+    const { w, stored, typed, timers, accessTimer } = fixture(profile);
     assert.equal(
         typed().localHttpEnabled,
         0,
@@ -935,7 +938,7 @@ for (const profile of [
     assert.equal(w.playerMode, 2, "actual engine mode changes");
     assert.equal(stored.get("provider:sPlayers"), "2");
     assert.equal(
-        [...timers.values()][0].ms,
+        [...timers.entries()].filter(([id]) => id !== accessTimer)[0][1].ms,
         1800000,
         "save immediately rearms 30-minute timer"
     );
@@ -1066,16 +1069,21 @@ for (const bad of [-1, 1, 2, 7, 999, Number.NaN]) {
     save(w);
     assert.deepEqual([w.s13dur, w.s46dur, w.s79dur], [15, 180, 600]);
 }
-const { w, timers, calls } = fixture();
+const { w, timers, calls, accessTimer } = fixture();
+// Authorization expiry is independent of inactivity, including the 60-minute case.
+const inactivity = () =>
+    [...timers.entries()]
+        .filter(([id]) => id !== accessTimer)
+        .map(([, job]) => job);
 for (const [index, minutes] of [0, 30, 60, 120, 180].entries()) {
     vm.runInContext(`settings.sleepTimeout = ${index}; setSleepTimeout();`, w);
-    assert.equal(timers.size, minutes ? 1 : 0);
-    if (minutes) assert.equal([...timers.values()][0].ms, minutes * 60000);
+    assert.equal(inactivity().length, minutes ? 1 : 0);
+    if (minutes) assert.equal(inactivity()[0].ms, minutes * 60000);
 }
-[...timers.values()][0].callback();
+inactivity()[0].callback();
 assert.equal(calls.filter((call) => call === "standby").length, 1);
 vm.runInContext("settings.sleepTimeout = 0; setSleepTimeout();", w);
-assert.equal(timers.size, 0, "disable cancels pending timer");
+assert.equal(inactivity().length, 0, "disable cancels pending timer");
 const limited = fixture("server", true).w;
 limited.settingsManage();
 assert.ok(limited.listArray.some((row) => row.name === "Export settings"));
@@ -1163,7 +1171,11 @@ for (const profile of [
     "capacitor-android",
     "capacitor-ios",
 ]) {
-    const { w, timers, calls } = fixture(profile);
+    const { w, timers, calls, accessTimer } = fixture(profile);
+    const inactivity = () =>
+        [...timers.entries()]
+            .filter(([id]) => id !== accessTimer)
+            .map(([, job]) => job);
     w.document.body = { style: {} };
     w.stbStop = () => calls.push("stop");
     w.startPlayer = () => calls.push("start");
@@ -1207,10 +1219,14 @@ for (const profile of [
         platformToggle();
     };
     vm.runInContext("settings.sleepTimeout = 1; setSleepTimeout();", w);
-    const oldCallback = [...timers.values()][0].callback;
+    const oldCallback = inactivity()[0].callback;
     w.stbToggleStandby();
     assert.equal(w.stbIsStandby(), true);
-    assert.equal(timers.size, 0, "manual standby cancels inactivity timer");
+    assert.equal(
+        inactivity().length,
+        0,
+        "manual standby cancels inactivity timer"
+    );
     oldCallback();
     assert.equal(
         w.stbIsStandby(),
@@ -1220,8 +1236,8 @@ for (const profile of [
     assert.equal(calls.filter((call) => call === "start").length, 0);
     w.stbToggleStandby();
     assert.equal(w.stbIsStandby(), false);
-    assert.equal(timers.size, 1, "waking rearms inactivity timer");
-    [...timers.values()][0].callback();
+    assert.equal(inactivity().length, 1, "waking rearms inactivity timer");
+    inactivity()[0].callback();
     assert.equal(w.stbIsStandby(), true);
     assert.equal(dispatches, 3, "timeout honors the current platform override");
     if (profile !== "server")

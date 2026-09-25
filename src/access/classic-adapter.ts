@@ -19,7 +19,7 @@ function createClassicAccess(host: any) {
                 : kind === "settings"
                   ? "psOptions"
                   : "psChannels";
-        return host[field] === undefined && host.settings
+        return host.settings && host.settings[setting] !== undefined
             ? host.settings[setting]
             : host[field];
     }
@@ -30,6 +30,15 @@ function createClassicAccess(host: any) {
             policy("channels"),
             policy("settings"),
             policy("providers"),
+            host.settingsStore &&
+            typeof host.settingsStore.version === "function"
+                ? host.settingsStore.version([
+                      "parentPin",
+                      "psChannels",
+                      "psOptions",
+                      "requirePinForProviderSelection",
+                  ])
+                : "",
         ]);
         if (
             !context ||
