@@ -6,7 +6,8 @@ import { metadataCssUrl, metadataHtml, metadataText } from "../utils/helpers";
  * channel-fetch callback contracts.
  *
  * This module handles:
- * - Dynamic loading of provider scripts (prov.js)
+ * - Mounting registered provider drivers with owned request lifetimes
+ * - Full-only dealer extensions via serialized provider scripts (prov.js)
  * - Provider selection UI (list of known IPTV providers)
  * - Channel list rendering and interaction
  * - Popup menu state for the OSD action menu
@@ -820,8 +821,9 @@ declare var confirmBox: (
 /**
  * Mount a registered provider instance or load its retained compatibility script.
  * Resets global function overrides (playChannel, channelsList, etc.) to
- * internal implementations and restores base popup state. Unregistered providers
- * use serialized getScriptDOM loading from /prov/{id}/prov.js.
+ * internal implementations and restores base popup state. Full dealer extensions
+ * outside the built-in inventory can load /prov/{id}/prov.js. A missing built-in
+ * driver fails closed, since its historical script is excluded from packages.
  *
  * Flow:
  * 1. Resolve provider ID from URL query string or stb storage.
@@ -1040,8 +1042,23 @@ export function loadProv(providerId?: string): void {
         }
         var driverRegistry = (window as any).__ottProviderDrivers;
         var usesDriver = driverRegistry.registry.has(s);
+        // Built-in scripts are not shipped. Only Full dealer-added selections
+        // outside the managed inventory may use the compatibility loader.
+        if (
+            !usesDriver &&
+            (isPlayDistribution() ||
+                (window as any).__ottProviderDriverProfiles.some(function (
+                    profile: any
+                ) {
+                    return profile.id === s;
+                }))
+        ) {
+            onError();
+            return;
+        }
         function providerReady() {
             if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
+            // OTTPLAY_FULL_ONLY_BEGIN
             // Future guide/media/stream requests keep their provider ownership even when
             // invoked later from UI callbacks. Catalog fetches have a separate
             // reload lifetime below, so do not bind getChannelsArray here.
@@ -1053,6 +1070,7 @@ export function loadProv(providerId?: string): void {
                     "getChannelUrl",
                     "getArchiveUrl",
                 ]);
+            // OTTPLAY_FULL_ONLY_END
             try {
                 if (typeof duneAddSettings === "function") {
                     $(launch_id).append("<br/>Loading settings...");
@@ -1181,6 +1199,7 @@ export function loadProv(providerId?: string): void {
             driverRegistry.mount(window, s, providerSession);
             providerReady();
         } else {
+            // OTTPLAY_FULL_ONLY_BEGIN
             providerRuntime.loadScript(
                 providerSession,
                 getScriptDOM,
@@ -1191,6 +1210,7 @@ export function loadProv(providerId?: string): void {
                     onError();
                 }
             );
+            // OTTPLAY_FULL_ONLY_END
         }
     }, true);
 }

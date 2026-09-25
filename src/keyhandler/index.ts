@@ -167,7 +167,7 @@ function toggleMainPlayback(): void {
                 ? "vod"
                 : "archive";
     if (kind === "live") {
-        if (typeof w.liveStop === "function") w.liveStop();
+        if (typeof w.pauseLivePlayback === "function") w.pauseLivePlayback();
         return;
     }
     if (typeof w.stbIsPlaying !== "function") return;

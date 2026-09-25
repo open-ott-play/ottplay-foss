@@ -79,6 +79,10 @@ function fixture() {
 }
 
 function include(c, file, names) {
+    names = require("./helpers/english-source-fixture.cjs").sourceNames(
+        file,
+        names
+    );
     const ast = ts.createSourceFile(
         file,
         fs.readFileSync(path.join(root, file), "utf8"),

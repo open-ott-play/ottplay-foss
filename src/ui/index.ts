@@ -533,8 +533,8 @@ export function uiInit(): void {
         }
         if (r2 < Date.now() / 1e3) {
             if (!w.playType) {
-                if (typeof w.timeShift === "function")
-                    w.timeShift(Math.round(Date.now() / 1e3 - r2));
+                if (typeof w.replayFromLiveOffset === "function")
+                    w.replayFromLiveOffset(Math.round(Date.now() / 1e3 - r2));
                 return;
             }
             if (typeof w.showShift === "function")
@@ -603,8 +603,8 @@ export function uiInit(): void {
         }
         if (r2 < Date.now() / 1e3) {
             if (!w.playType) {
-                if (typeof w.timeShift === "function")
-                    w.timeShift(Math.round(Date.now() / 1e3 - r2));
+                if (typeof w.replayFromLiveOffset === "function")
+                    w.replayFromLiveOffset(Math.round(Date.now() / 1e3 - r2));
                 return;
             }
             if (typeof w.showShift === "function")
@@ -2407,12 +2407,12 @@ export function popPrevProg(): void {
  * Shortcut: close the list and open the timeshift/archive selector at offset 0.
  *
  * @returns void
- * @sideeffect Calls `closeList()` then `window.shiftArchiveSelect(0)`.
+ * @sideeffect Calls `closeList()` then `window.showPlaybackSeekDialog(0)`.
  */
 export function popShift(): void {
     closeList();
-    if (typeof (window as any).shiftArchiveSelect === "function")
-        (window as any).shiftArchiveSelect(0);
+    if (typeof (window as any).showPlaybackSeekDialog === "function")
+        (window as any).showPlaybackSeekDialog(0);
 }
 
 /**
@@ -3007,9 +3007,10 @@ export function joyMenu(): void {
                     return;
                 case keys.UP:
                     if (
-                        typeof (window as any).shiftArchiveSelect === "function"
+                        typeof (window as any).showPlaybackSeekDialog ===
+                        "function"
                     )
-                        (window as any).shiftArchiveSelect(0);
+                        (window as any).showPlaybackSeekDialog(0);
                     return;
                 case keys.DOWN:
                     (window as any).playType

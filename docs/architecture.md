@@ -112,7 +112,13 @@ save storage. Retained hardware adapters have an explicit compatibility sampler.
 Archive requests use owned programme identity and time bounds, not `curProg` or
 another UI index. File-relative reuse requires the same source, channel,
 programme and bounds. Retention and authorization are checked again before
-delayed playback. Guide intervals are `[start, end)`; the greatest start wins
+delayed playback. Guide request, retained full-schedule cache and subscribed
+now/next projection are separate operations; a request may invoke its callback
+synchronously on a cache hit and its return value is cancellation.
+See [guide contracts](guide-architecture.md#request-cache-and-projection-are-different-operations)
+before using a historical `get*` name as a pure lookup.
+
+Guide intervals are `[start, end)`; the greatest start wins
 an overlap, and equal starts retain input order. These rules come from the
 common core, not a renderer's search loop.
 
@@ -217,12 +223,24 @@ their old `prov.js` files and `stb/core.js` from delivered roots. They remain
 source-controlled historical oracles, not runtime fallbacks. Metadata/logos and
 device adapters have separate staging rules.
 
-The external custom-script path in `provider/runtime.ts` still exists. It
-serializes script evaluation and scopes supported AJAX/deferred/timer calls.
-It cannot undo code already evaluated, arbitrary global writes, saved raw
-closures or native Promise continuations. A loader that never reports success
-or failure leaves replacement waiting; a timeout alone cannot prove that old
-JavaScript will never run. Managed providers do not use this path.
+The **Full** distribution also supports an explicit dealer extension that can
+add a provider ID and load its external script. Therefore the 48 managed profiles
+are the built-in inventory, not a proof that every possible Full source is managed.
+The custom-script path in `provider/runtime.ts` serializes evaluation and scopes
+supported AJAX/deferred/timer calls. Managed providers do not use it. The **Play**
+policy admits only its four managed profiles and excludes the dealer extension,
+so its compiler removes this script loader/interception code while retaining the
+provider and catalog lifetime registry used by those drivers. A built-in profile
+whose registry/factory is missing fails startup; it cannot fall back to an excluded
+historical `prov.js`. Only a Full extension ID outside the built-in inventory can
+use the compatibility script loader.
+
+The Full extension cannot undo code already evaluated, arbitrary global writes,
+saved raw closures or native Promise continuations. A loader that never reports
+success or failure leaves replacement waiting; a timeout alone cannot prove that
+old JavaScript will never run. `test:android:policy` covers the Full dealer flow as
+well as rejection in Play; output checks must prove the implementation is absent
+from Play without erasing the supported Full behavior.
 
 ## Public compatibility ABI versus internal code
 
@@ -240,6 +258,12 @@ implementations when an English declaration is absent.
 
 Names describe the effect while the emitted interface stays compatible:
 
+- `pauseLivePlayback` → `liveStop` enters a paused archive target at current
+  broadcast time; `replayFromLiveOffset` → `timeShift` opens archive relative to
+  live time (zero means programme start). `showPlaybackSeekDialog` →
+  `shiftArchiveSelect` collects an offset for live/archive/VOD playback. See
+  [commands and clocks](playback-session-architecture.md#commands-observations-and-clocks)
+  for request/observation and seconds-versus-epoch contracts.
 - `observeCurrentProgramme` → `getCurProgData` reports current-programme cache
   availability and owns an asynchronous guide subscription; it is not a pure
   getter and a true return does not imply an immediate callback.

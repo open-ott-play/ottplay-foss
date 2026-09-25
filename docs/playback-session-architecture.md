@@ -47,10 +47,12 @@ cannot write into the replacement. Resources are disposed in reverse order;
 cleanup failures do not prevent other resources from being released. Reentrant
 source selections retain the latest requested selection.
 
-The remaining classic provider adapter scopes AJAX callbacks, jqXHR/deferred callbacks
-and function timers created while a provider call executes, including nested
-asynchronous work. Catalog fetches have their own reload lifetime. Subsequent
-guide, media and stream URL entrypoints retain the provider lifetime.
+The Full distribution's external dealer-script adapter scopes AJAX callbacks,
+jqXHR/deferred callbacks and function timers created while a provider call executes,
+including nested asynchronous work. Catalog fetches have their own reload lifetime.
+Subsequent guide, media and stream URL entrypoints retain the provider lifetime.
+Play permits only its managed profiles and excludes that script adapter's loader
+and interception code; its ordinary provider/catalog lifetime registry remains.
 
 `src/playback/archive.ts` independently owns archive requests, schedule snapshots,
 programme selection and the active media resource's bounds. Its ports receive
@@ -71,6 +73,93 @@ EPG selection also binds the exact chosen row, destination and playback context
 before requesting a PIN. Manual seek dialogs bind their callback, accumulated
 delta and timer revision to the session that opened them. A queued old callback
 cannot seek a new channel or hide a replacement dialog.
+
+## Commands, observations and clocks
+
+A playback command expresses an intended transition; a decoder observation reports
+what the current media resource has actually done. `snapshot()` reads the accepted
+state. It neither queries a decoder nor turns elapsed wall time into measured media
+progress. Managed engines publish their position through the backend lease;
+retained device engines use the explicit compatibility sampler described in
+[Media backend](media-backend.md). Buffering, a paused decoder and an open dialog
+must not advance managed playback merely because the UI redraws.
+
+Keep three kinds of time separate:
+
+- **Broadcast time:** epoch seconds identify the archived programme and requested
+  broadcast instant. Archive retention is rechecked against a fresh wall clock
+  before a delayed action can open or seek a resource.
+- **Media position:** elapsed seconds within the accepted playback target.
+  File-relative archive URLs use the selected programme bounds; their decoder
+  position is not itself a broadcast timestamp. The backend calibrates observations
+  to the current archive origin before publishing them.
+- **Interaction delay:** the seek controller accumulates offset requests for
+  500 ms. The manual dialog separately waits three idle seconds or Enter before
+  submitting its accumulated offset. These timers schedule commands; they are not
+  playback clocks. Cancelled/replaced timers must still reject late execution.
+
+The source entrypoints in `channels/index.ts` describe these effects explicitly:
+
+- `pauseLivePlayback()` retains the classic `liveStop` ABI. It requires a playing
+  decoder and an archive-capable channel, obtains a guide under the selected
+  context, then enters a paused archive target at the accepted current broadcast
+  time. It pauses the existing decoder without opening a new stream. It is not
+  Stop and does not return archive playback to live.
+- `replayFromLiveOffset(seconds)` retains `timeShift`. Positive seconds replay
+  `now - seconds`; zero selects the airing programme's start. Here `now` is sampled
+  after guide completion, not at the initial button press. Zero with no airing
+  programme is a no-op. It is not a signed seek within the existing decoder.
+- `showPlaybackSeekDialog(initialDelta)` retains `shiftArchiveSelect`. It accepts
+  live channels with archive capability and existing archive/VOD playback. A
+  signed accumulated delta is submitted to `shiftArchive`, whose typed planner
+  chooses the mode-specific operation. Closing or replacing the owning context
+  prevents its handler/timer from seeking or hiding a newer dialog.
+
+The classic names, function arity and replacement behavior remain part of the
+compatibility boundary. `legacy-names.ts` emits the established declarations and
+installs live English aliases; it does not add a second implementation. Dynamic
+remote dispatch strings still use the stable classic names.
+
+### A delayed replay request
+
+Opening a new archive resource follows this path:
+
+```mermaid
+sequenceDiagram
+    participant Input as Remote or view
+    participant Archive as Archive coordinator
+    participant Guide as Guide service
+    participant Access as Parental access
+    participant Driver as Provider URL resolver
+    participant Decoder as Current decoder
+    Input->>Archive: replayFromLiveOffset(seconds)
+    Archive->>Archive: capture source, channel and generation
+    Archive->>Access: require access
+    Access-->>Archive: allowed (possibly later)
+    Archive->>Guide: request schedule
+    Guide-->>Archive: detached schedule (possibly cached)
+    Archive->>Archive: recheck generation and source; select broadcast time
+    Archive->>Access: recheck permission
+    Archive->>Driver: resolve archive URL
+    Driver-->>Archive: URL (possibly later)
+    Archive->>Archive: recheck source, target and current retention
+    Archive->>Access: recheck permission
+    Archive->>Decoder: open accepted resource
+```
+
+Every delayed stage can be superseded. A source/account replacement, Stop, a
+new intent or a replaced selection rejects the old continuation even when the
+provider returns the same numeric channel ID. URL resolution is not permission to
+play later without another check. Reusing a file also requires the same source,
+channel, programme identity and time bounds; a changed list index is insufficient.
+Guide cancellation and generation guards complement each other: a provider/native
+operation may be impossible to abort, and an already queued callback can still run.
+
+Tests in `test_archive_session.cjs` exercise the real pause/replay entrypoints,
+missing programmes, duplicate guide completion, expired authorization and source
+replacement. `test_archive_entrypoints.cjs` exercises dialog replacement and stale
+timers. English-name and full-bundle suites verify the emitted aliases, rather
+than injecting differently named source functions into the built artifact.
 
 ## Integration and deliberate behavior changes
 
@@ -260,14 +349,16 @@ scripts; removing that input path requires converting its callers, not just
 changing field names. Older sizes and staged migration descriptions above are
 historical; the executable current size gate is `scripts/classic-size.cjs`.
 
-The custom-script extension scope does not intercept arbitrary raw UI closures,
-native Promise continuations, cached transport functions or global writes made
+The Full distribution's custom-script extension scope does not intercept arbitrary
+raw UI closures, native Promise continuations, cached transport functions or global writes made
 by an external script while it evaluates. Script loading is serialized so the
 next reset occurs after the previous script finishes. If the loader never calls
 either completion callback, replacement waits; allowing the next script to
 run on a timeout alone would let late evaluation overwrite the active driver.
-All shipped providers now publish isolated instances and avoid this custom-script
-limitation. The extension remains for external integrations that still use it.
+All 48 built-in provider profiles publish isolated instances and avoid this
+custom-script limitation. The Full dealer extension can still add external script
+providers. Play excludes both that entrypoint and its scoped script runtime; its
+four managed profiles retain the same source/catalog cancellation behavior.
 
 Structural independence must be assessed against these remaining dependencies,
 not identifier changes or a target percentage of textual similarity. This work

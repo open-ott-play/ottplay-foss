@@ -173,3 +173,43 @@ Compared with main `770ff3d`, Node 22.23.3 produces server JS of 653,275 raw /
 607,664 / 173,528 (15,087 / 4,034 fewer). Gzip uses level 9; separately loaded
 libraries and shared core are unchanged. The 654,000 / 186,750 size ceilings and
 ES5 optimizer protections were not increased or relaxed.
+
+## Semantic entrypoints and distribution-specific reachability
+
+The next audit distinguishes built-in managed providers from Full's explicit
+external dealer extension. The existing dealer integration test proves that a
+script can append a provider ID and use the scoped loader; no normal menu profile
+needs it, but it is not globally dead. Play's closed four-profile policy excludes
+that entrypoint, so the scoped script loader/AJAX/timer interception is removed
+from Play output while provider/catalog lifetime cancellation remains. Full keeps
+its tested extension contract. A missing built-in factory now fails startup rather
+than fetching an excluded old script; only Full extension IDs outside the managed
+inventory can use the fallback. Retained provider scripts remain immutable oracles.
+
+The unused `matchNativeXmltvChannel` convenience wrapper was removed after checking
+provider, device, native bridge, linker and sibling Android/shared-core consumers.
+It had no caller or published compatibility binding. Native M3U matching still
+uses `createNativeXmltvMatcher`, retained per source group, through
+`matchCapacitorM3u`; `test-native-epg-parity.ts` verifies that integration. An exported
+declaration alone is not evidence of runtime reachability, just as an absent
+TypeScript import alone is not evidence of dead code in a classic global ABI.
+
+Source names now describe the archive operation: `pauseLivePlayback`,
+`replayFromLiveOffset` and `showPlaybackSeekDialog`. The classic bindings remain
+`liveStop`, `timeShift` and `shiftArchiveSelect`, including arity and late device
+replacement through live aliases. No new playback algorithm or second state owner
+is introduced. Tests exercise actual source operations and optimized declarations.
+The [playback command/clock contract](playback-session-architecture.md#commands-observations-and-clocks)
+and [guide request/cache contract](guide-architecture.md#request-cache-and-projection-are-different-operations)
+record the non-obvious semantics rather than leaving misleading getter/stop names
+as the architecture. Size gates and optimizer protections remain unchanged.
+
+Rebuilt against `3e138aa` with the same lockfile, version, Node 22.23.3 and gzip
+level 9, final Full server JavaScript is 653,542 raw / 186,482 gzip bytes
+(+267 / +101). The final Tauri and Capacitor copies are 653,500 / 186,557
+(+267 / +111). Play after native staging is 590,052 / 168,706, down from
+592,577 / 169,494 (2,525 raw / 788 gzip bytes removed). All remain within the
+unchanged 654,000 / 186,750 ceilings. The delivered JavaScript inventories and
+hashes outside `stbPlayer.js` are unchanged in all four outputs; no removed code
+was shifted into another downloaded script. Duplicate packaging copies are not
+counted as separate startup transfers.

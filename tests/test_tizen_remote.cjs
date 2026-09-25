@@ -62,14 +62,15 @@ if (useBundle) {
         if (selected.has(name)) return;
         const declarations = ast.body.filter(
             (node) =>
-                node.type === "FunctionDeclaration" && node.id.name === name
+                (node.type === "FunctionDeclaration" &&
+                    node.id.name === name) ||
+                (node.type === "VariableDeclaration" &&
+                    node.declarations.some((item) => item.id.name === name))
         );
         assert.equal(
             declarations.length,
             1,
-            "The classic bundle must expose one production " +
-                name +
-                " function"
+            "The classic bundle must expose one production " + name + " binding"
         );
         const declaration = declarations[0];
         selected.set(name, bundle.slice(declaration.start, declaration.end));
@@ -87,7 +88,7 @@ if (useBundle) {
                 else if (value && typeof value === "object") visit(value);
             }
         }
-        visit(declaration.body);
+        visit(declaration.body || declaration);
     }
     for (const name of [
         "keyHandler",
@@ -96,6 +97,8 @@ if (useBundle) {
         "selectLang",
         "firstRun",
         "stbEventToKeyCode",
+        "legacyPlayerBindings",
+        "installEnglishPlayerAliases",
     ])
         includeDeclaration(name);
     handlers = Array.from(selected.values()).join("\n");
@@ -220,7 +223,11 @@ function fixture(code, nativeMode = "working") {
     vm.createContext(w);
     require("./helpers/screen-runtime.cjs")(w);
     vm.runInContext(handlers, w);
-    if (!process.argv.includes("--bundle")) attachSourceAliases(w);
+    if (useBundle) {
+        // Extracted production handlers depend on the production bootstrap's
+        // live alias map. Load it from this artifact, never from source fixtures.
+        w.installEnglishPlayerAliases(w);
+    } else attachSourceAliases(w);
     vm.runInContext(code, w);
     if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     function key(keyCode) {
@@ -296,6 +303,11 @@ for (const [name, code] of Object.entries(adapters)) {
     assert.equal(f.calls.at(-1), "menu", "Tools opens the main menu");
 
     f.w.liveStop = () => f.calls.push("live-toggle");
+    assert.equal(
+        f.w.pauseLivePlayback,
+        f.w.liveStop,
+        "A late device replacement is visible through the production alias"
+    );
     f.key(10252);
     assert.equal(f.calls.at(-1), "live-toggle");
     let playing = true;
