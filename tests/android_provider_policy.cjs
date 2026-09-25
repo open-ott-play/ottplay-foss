@@ -90,6 +90,21 @@ const diagnosticCompiled = ts.transpileModule(
     }
 ).outputText;
 const diagnosticProfiles = {};
+const privateModules = [
+    "runtime",
+    "driver-profiles",
+    "channel-catalog",
+    "stalker-driver",
+    "catalog-drivers",
+    "catalog-xml",
+    "media-catalog",
+    "playlist-drivers",
+    "edem-driver",
+    "m3u-settings",
+    "m3u-driver",
+    "drivers",
+];
+const privateProfiles = {};
 
 function distribution(flavor) {
     const folder = fs.mkdtempSync(
@@ -99,12 +114,38 @@ function distribution(flavor) {
         const provider = path.join(folder, "build/provider/index.js");
         fs.mkdirSync(path.dirname(provider), { recursive: true });
         fs.writeFileSync(provider, compiled);
+        for (const name of privateModules) {
+            fs.writeFileSync(
+                path.join(folder, "build/provider/" + name + ".js"),
+                ts.transpileModule(
+                    fs.readFileSync(
+                        path.join(root, "src/provider/" + name + ".ts"),
+                        "utf8"
+                    ),
+                    {
+                        compilerOptions: {
+                            module: ts.ModuleKind.ES2015,
+                            removeComments: false,
+                            target: ts.ScriptTarget.ES5,
+                        },
+                    }
+                ).outputText
+            );
+        }
         const startup = path.join(folder, "build/index.js");
         fs.writeFileSync(startup, startupCompiled);
         const diagnostic = path.join(folder, "build/core/index.js");
         fs.mkdirSync(path.dirname(diagnostic), { recursive: true });
         fs.writeFileSync(diagnostic, diagnosticCompiled);
         prepareDistributionModules(folder, flavor);
+        privateProfiles[flavor] = privateModules.map((name) => {
+            const code = fs.readFileSync(
+                path.join(folder, "build/provider/" + name + ".js"),
+                "utf8"
+            );
+            acorn.parse(code, { ecmaVersion: 5 });
+            return { code, name };
+        });
         startupProfiles[flavor] = fs.readFileSync(startup, "utf8");
         diagnosticProfiles[flavor] = fs.readFileSync(diagnostic, "utf8");
         return fs.readFileSync(provider, "utf8");
@@ -302,32 +343,11 @@ function fixture(
     w.window = w;
     vm.createContext(w);
     require("./helpers/access-runtime.cjs")(w);
-    require("./helpers/private-runtime.cjs")(w, "src/provider/runtime.ts");
-    require("./helpers/private-runtime.cjs")(
-        w,
-        "src/provider/driver-profiles.ts"
-    );
-    require("./helpers/private-runtime.cjs")(
-        w,
-        "src/provider/stalker-driver.ts"
-    );
-    require("./helpers/private-runtime.cjs")(
-        w,
-        "src/provider/catalog-drivers.ts"
-    );
-    for (const module of [
-        "catalog-xml",
-        "media-catalog",
-        "playlist-drivers",
-        "edem-driver",
-        "m3u-settings",
-        "m3u-driver",
-    ])
-        require("./helpers/private-runtime.cjs")(
-            w,
-            "src/provider/" + module + ".ts"
-        );
-    require("./helpers/private-runtime.cjs")(w, "src/provider/drivers.ts");
+    // No untransformed Full implementation may silently satisfy a Play path.
+    for (const module of privateProfiles[flavor])
+        vm.runInContext("(function(){\n" + module.code + "\n})();", w, {
+            filename: flavor + "/provider/" + module.name + ".js",
+        });
     vm.runInContext(code[flavor], w);
     attachSourceAliases(w);
     return {
@@ -355,6 +375,48 @@ function test(name, run) {
 const permitted = ["m3u", "stalker", "xtream", "demo"];
 const fullIds = Array.from(fixture("full").w.arrayProvaiders).filter(Boolean);
 const excluded = fullIds.filter((id) => !permitted.includes(id));
+
+test("transformed Play executes only its four driver families without Full implementations", () => {
+    const full = fixture("full").w;
+    const play = fixture().w;
+    assert.deepEqual(
+        Array.from(full.__ottProviderDrivers.registry.ids()).sort(),
+        fullIds.slice().sort()
+    );
+    assert.deepEqual(
+        Array.from(play.__ottProviderDrivers.registry.ids()).sort(),
+        permitted.slice().sort()
+    );
+    for (const api of [
+        "__ottCatalogDrivers",
+        "__ottPlaylistDrivers",
+        "__ottEdemDriver",
+    ]) {
+        assert.equal(typeof full[api], "object", api + " retained in Full");
+        assert.equal(play[api], undefined, api + " absent in Play");
+    }
+    const fullOnly = [
+        "createOperatorDriver",
+        "createNamedPlaylistDriver",
+        "namedCredentialMessage",
+        "mountNamedProviderSettings",
+    ];
+    for (const flavor of ["full", "play"]) {
+        const drivers = privateProfiles[flavor].find(
+            (module) => module.name === "drivers"
+        );
+        const ast = acorn.parse(drivers.code, { ecmaVersion: 5 });
+        const functions = ast.body
+            .filter((node) => node.type === "FunctionDeclaration")
+            .map((node) => node.id.name);
+        for (const name of fullOnly)
+            assert.equal(
+                functions.includes(name),
+                flavor === "full",
+                flavor + ": " + name
+            );
+    }
+});
 
 test("actual build transform removes every branded provider ID and label", () => {
     const full = fixture("full");
@@ -681,6 +743,43 @@ test("Full local and remote activation implementations remain callable", () => {
     f.w.edit_dealer_remote();
     assert.equal(f.requests.length, 1);
     assert.equal(f.requests[0].data.c, "get_var");
+});
+
+test("Full dealer extensions retain scoped script startup beyond the built-in registry", () => {
+    const f = fixture("full");
+    let loaded = 0;
+    f.w.loadChannels = () => loaded++;
+    f.w.edit_dealer();
+    f.w.editvar = "custom:opaque-code";
+    f.w.setEdit();
+    // Model the external dealer's public ABI; no downloaded script is evaluated.
+    f.w.doDealer = (value) => {
+        assert.equal(value, "custom:opaque-code");
+        f.w.arrayProvaiders.push("custom/dealer");
+        f.stored.set("ottplayprov", "custom/dealer");
+        f.w.loadProv();
+    };
+    f.scriptCallbacks[0]();
+    assert.deepEqual(f.scripts, [
+        "https://player.invalid/d/custom.js?fixture",
+        "https://player.invalid/prov/custom/dealer/prov.js?fixture",
+    ]);
+    assert.equal(f.w.__ottProviderDrivers.registry.has("custom/dealer"), false);
+    f.w.duneAddSettings = () => {};
+    f.w.getChannelUrl = () => "https://media.invalid/custom.m3u8";
+    f.scriptCallbacks[1]();
+    assert.equal(loaded, 1);
+    assert.deepEqual(f.errors, []);
+    const retiredUrl = f.w.getChannelUrl;
+    assert.equal(retiredUrl(), "https://media.invalid/custom.m3u8");
+    f.w.loadProv("demo");
+    assert.equal(f.w.__ottActiveProviderDriver.id, "demo");
+    assert.equal(loaded, 2);
+    assert.equal(
+        retiredUrl(),
+        undefined,
+        "replacement retires the script owner"
+    );
 });
 
 test("Play options omit legacy dealer actions in place while retaining generic setup", () => {
