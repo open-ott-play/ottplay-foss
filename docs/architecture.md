@@ -238,6 +238,17 @@ source names to retained bindings and settings/action IDs. For example,
 artifact must resolve its actual declarations/publications, not inject source
 implementations when an English declaration is absent.
 
+Names describe the effect while the emitted interface stays compatible:
+
+- `observeCurrentProgramme` → `getCurProgData` reports current-programme cache
+  availability and owns an asynchronous guide subscription; it is not a pure
+  getter and a true return does not imply an immediate callback.
+- `publishChannelProgrammeRows` → `setCurProg` updates the now/next projection.
+  It does not replace the full-schedule cache owned by the guide service.
+- `moveSelectedChannelOrCategory` → `moveChannel` retains the global entrypoint
+  for group or membership ordering. `removeSelectedChannelFromCategory` →
+  `deleteChannel` removes category membership, not the shared catalog channel.
+
 The `__ott*` APIs in `CLASSIC_PRIVATE_MODULES` are explicit internal integration
 boundaries. Their implementation bindings are local to immediate scopes; the
 publication itself is still observable and its callers must be audited.
