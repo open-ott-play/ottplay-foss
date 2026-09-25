@@ -337,8 +337,15 @@ the core distribution checker verifies the complete consumer artifact set.
 
 ## Proving code is dead
 
-A failed text search or an unused TypeScript export is only a lead. Before
-removing a runtime binding or excluding a module:
+A failed text search or an unused TypeScript export is only a lead.
+
+Use symbol references against the classic manifest and mapped aliases to find
+candidates, then follow escaped functions: returned driver methods, registry
+factories, stored callbacks and `window` publications are call paths even without
+a direct local call. Check every shipped provider profile and device route;
+retained oracle files alone do not establish runtime reachability or savings.
+
+Before removing a runtime binding or excluding a module:
 
 1. Check HTML boot, device routes, bare globals, `window` aliases, native/plugin
    entrypoints, event registrations, indirect property access, generated wire
