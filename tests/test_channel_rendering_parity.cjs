@@ -216,6 +216,39 @@ for (const profile of ["server", "tauri", "capacitor"]) {
         w.document.getElementById("it0").textContent,
         /News|Current bulletin/
     );
+    // List/data legacy properties remain the same live ScreenPort projection.
+    // Populated data rows win; an empty data projection falls back to items.
+    w.listArray = ["Unused item projection"];
+    w.listDataArray = Array.from({ length: 26 }, (_, index) => "Data " + index);
+    w.getListItemFn = (item) => item;
+    w.detailListActionFn = null;
+    w.listKeyHandlerFn = () => false;
+    w.selIndex = 0;
+    w.settings.showScroll = 1;
+    w.showPage();
+    assert.equal(w.document.getElementById("it0").textContent, "Data 0");
+    assert.equal(w.document.querySelectorAll("#listIn .item").length, 25);
+    assert.ok(w.document.querySelector("#listIn .list-scroll"));
+    w.sShowScroll = 0;
+    w.showPage();
+    assert.equal(w.document.querySelector("#listIn .list-scroll"), null);
+    w.sShowScroll = "1";
+    assert.equal(w.settings.showScroll, 0, "the store rejects invalid types");
+    w.sShowScroll = 1;
+    w.showPage();
+    assert.ok(w.document.querySelector("#listIn .list-scroll"));
+    w.listDataArray = [];
+    w.listArray = ["Fallback item projection"];
+    w.showPage();
+    assert.equal(
+        w.document.getElementById("it0").textContent,
+        "Fallback item projection"
+    );
+    assert.equal(w.document.querySelector("#listIn .list-scroll"), null);
+    w.listArray = [];
+    w.showPage();
+    assert.equal(w.document.querySelectorAll("#listIn .item").length, 0);
+    assert.equal(w.document.querySelector("#listIn .list-scroll"), null);
     // Exercise new Settings functions through the linked, emitted global ABI.
     w.optionsList = () => {};
     w.showShift = () => {};

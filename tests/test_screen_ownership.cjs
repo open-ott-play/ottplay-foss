@@ -147,6 +147,7 @@ function fixture() {
             "scheduleListDetailUpdate",
             "popupList",
             "hsvToRgb",
+            "bindColorDialogInput",
             "colorDialog",
             "selColorDialog",
             "backColorDialog",
@@ -431,6 +432,171 @@ test("color picker old callback cannot commit to a new settings draft", ({
     w.eSHLcolor = "90,90";
     old(13);
     assert.equal(w.eSHLcolor, "90,90");
+});
+const colorCases = require("./fixtures/ui/color-dialogs-before-shared.json");
+function colorSetting(name) {
+    return name === "colorDialog"
+        ? "eSHLcolor"
+        : name === "selColorDialog"
+          ? "eSHLcolSel"
+          : "eSHLcolorB";
+}
+function colorSnapshot(w, setting) {
+    return {
+        caption: w.listCaptionElement.innerHTML,
+        detail: w.listDetailElement.innerHTML,
+        focus: w.selIndex,
+        preview: w.document.getElementById("step")?.style.cssText ?? null,
+        value: w[setting] ?? null,
+        visible: w.$("#listAbout").is(":visible"),
+    };
+}
+for (const scenario of colorCases.records) {
+    test(
+        "captured color input " +
+            scenario.name +
+            " " +
+            scenario.initial +
+            " " +
+            scenario.keys.join("/"),
+        ({ w }) => {
+            const setting = colorSetting(scenario.name);
+            if (scenario.initial !== null) w[setting] = scenario.initial;
+            if (scenario.keyCodes) Object.assign(w.keys, scenario.keyCodes);
+            w.listArray = ["first", "second"];
+            w.listDataArray = w.listArray;
+            w.listKeyHandler = () => false;
+            w.selIndex = 1;
+            w.__ottClassicScreenPort.commitList();
+            assert.equal(w[scenario.name].length, 0, "public dialog arity");
+            w[scenario.name]();
+            const states = [colorSnapshot(w, setting)];
+            for (const keyName of scenario.keys) {
+                const handled = w.aboutKeyHandler(w.keys[keyName]);
+                states.push({ handled, ...colorSnapshot(w, setting) });
+            }
+            assert.deepEqual(states, scenario.states);
+        }
+    );
+}
+function clickColorControl(w, element) {
+    assert(element, "rendered mouse control exists");
+    // JSDOM outside-only does not execute inline handlers automatically.
+    w.Function("event", element.getAttribute("onclick")).call(element, {
+        stopPropagation() {},
+    });
+}
+for (const name of ["colorDialog", "selColorDialog", "backColorDialog"]) {
+    test("color remote/mouse save and parent focus " + name, ({ w, key }) => {
+        const setting = colorSetting(name),
+            writes = [];
+        let saved = "20,30";
+        Object.defineProperty(w, setting, {
+            configurable: true,
+            get: () => saved,
+            set: (value) => {
+                saved = value;
+                writes.push(value);
+            },
+        });
+        w.listArray = ["first", "second"];
+        w.listDataArray = w.listArray;
+        w.selIndex = 1;
+        const listKeys = [];
+        w.listKeyHandler = (code) => {
+            listKeys.push(code);
+            return true;
+        };
+        const parent = w.__ottClassicScreenPort.commitList();
+        w._doKey = key;
+        w[name]();
+        key(w.keys.RIGHT);
+        key(w.keys.UP);
+        assert.deepEqual(writes, [], "preview does not commit");
+        assert.deepEqual(listKeys, [], "overlay suspends parent input");
+        assert.equal(w.selIndex, 1);
+        clickColorControl(
+            w,
+            w.listFooterElement.querySelector('[aria-label="Set"]')
+        );
+        assert.deepEqual(
+            writes,
+            ["30,35"],
+            "commit invokes original setting setter once"
+        );
+        assert.equal(w.listCaptionElement.innerHTML, "Parent");
+        assert.equal(w.listFooterElement.innerHTML, "Footer");
+        assert.equal(w.listDetailElement.innerHTML, "Detail");
+        assert.equal(w.$("#listAbout").is(":visible"), false);
+        assert(parent.active());
+        assert.equal(w.selIndex, 1);
+        key(w.keys.ENTER);
+        assert.deepEqual(
+            listKeys,
+            [w.keys.ENTER],
+            "parent receives input again"
+        );
+        w[name]();
+        key(w.keys.BLUE);
+        clickColorControl(
+            w,
+            w.listFooterElement.querySelector('[aria-label="Close"]')
+        );
+        assert.deepEqual(writes, ["30,35"], "mouse cancel discards preview");
+    });
+    test(
+        "retired color input cannot overwrite replacement " + name,
+        ({ w }) => {
+            const setting = colorSetting(name);
+            w[setting] = "20,30";
+            w[name]();
+            const retired = w.aboutKeyHandler;
+            w.__ottClassicScreenPort.invalidate();
+            w[name]();
+            const preview = w.document.getElementById("step").style.cssText;
+            retired(w.keys.BLUE);
+            retired(w.keys.ENTER);
+            assert.equal(w[setting], "20,30");
+            assert.equal(
+                w.document.getElementById("step").style.cssText,
+                preview
+            );
+            assert.equal(w.$("#listAbout").is(":visible"), true);
+        }
+    );
+}
+test("foreground mouse arrows and color presets dispatch the same owned input", ({
+    w,
+    key,
+}) => {
+    w.eSHLcolor = "20,30";
+    w._doKey = key;
+    w.colorDialog();
+    for (const name of ["RIGHT", "UP"]) {
+        clickColorControl(
+            w,
+            w.document.querySelector(
+                '#listAbout [onclick="_doKey(keys.' + name + ');"]'
+            )
+        );
+    }
+    assert.equal(
+        w.document.getElementById("step").style.color,
+        "rgb(255, 210, 166)"
+    );
+    clickColorControl(
+        w,
+        w.document.querySelector('#listAbout [aria-label="Green"]')
+    );
+    assert.equal(
+        w.document.getElementById("step").style.color,
+        "rgb(147, 255, 38)"
+    );
+    clickColorControl(
+        w,
+        w.listFooterElement.querySelector('[aria-label="Set"]')
+    );
+    assert.equal(w.eSHLcolor, "90,85");
 });
 test("menu IDs survive labels, host function names and legacy hide imports", ({
     w,

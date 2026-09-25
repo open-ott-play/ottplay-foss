@@ -10,6 +10,55 @@ function test(name, run) {
     console.log("PASS " + name);
 }
 
+test("Scalar navigation reads and highlights never copy a catalog", () => {
+    require("./helpers/media-read-cost.cjs").assertMediaReadContract(fixture());
+});
+
+test("Facade highlight and screen release read revision without detached snapshots", () => {
+    const c = fixture();
+    const counts = require("./helpers/media-read-cost.cjs").trackMediaSnapshots(
+        c
+    );
+    c.showPage = () => c.__ottClassicScreenPort.commitList();
+    c.catalogs[""] = Array.from({ length: 1000 }, (_, id) => ({
+        id,
+        stream_url: id + ".mp4",
+        title: "Movie " + id,
+    }));
+    c.mediaList(null);
+    const revision = c.__ottMedia.snapshot().revision;
+    const original = c.__ottMedia.capture();
+    counts.reset();
+    c.__ottMedia.highlight(999, revision);
+    assert.equal(counts.snapshots, 0);
+    assert.equal(
+        counts.selects,
+        0,
+        "highlight does not request a detached item"
+    );
+    assert.equal(original(), false);
+    const selected = c.__ottMedia.snapshot();
+    assert.equal(selected.frame.selected, 999);
+    c.__ottMedia.highlight(1, revision - 1);
+    assert.equal(c.__ottMedia.snapshot().frame.selected, 999);
+    counts.reset();
+    c.__ottMedia.favorite(selected.frame.items[999].payload);
+    assert.equal(
+        counts.snapshots,
+        1,
+        "favorite captures its navigation context once"
+    );
+    assert.equal(c.documentState().favorites[0].itemId, "provider:999");
+    counts.reset();
+    c.__ottClassicScreenPort.listOwner().close();
+    assert.equal(
+        counts.snapshots,
+        0,
+        "screen cleanup compares only scalar revision"
+    );
+    assert.notEqual(c.__ottMedia.snapshot().revision, revision);
+});
+
 test("Owned frames restore selection and ignore poisoned UI projections", () => {
     const c = fixture();
     c.mediaList(null);
@@ -348,6 +397,25 @@ test("Copying metadata never executes prototype setters or shares nested data", 
         true
     );
     assert.deepEqual(plain(detached.__proto__), { polluted: true });
+});
+
+test("Metadata copies isolate sibling references and cut only ancestor cycles", () => {
+    const c = fixture();
+    const shared = { value: 1 };
+    const source = { array: [shared], first: shared, second: shared };
+    source.self = source;
+    shared.parent = source;
+    const seen = Object.freeze([]);
+    const copy = c.__ottMediaLibrary.copy(source, seen);
+    assert.equal(copy.self, undefined);
+    assert.equal(copy.first.parent, undefined);
+    assert.equal(copy.second.value, 1);
+    assert.notEqual(copy.first, copy.second);
+    assert.notEqual(copy.first, copy.array[0]);
+    copy.first.value = 2;
+    assert.equal(copy.second.value, 1);
+    assert.equal(shared.value, 1);
+    assert.equal(seen.length, 0);
 });
 
 test("Actual Edem lazy-page codec publishes detached updates without global-array ownership", () => {

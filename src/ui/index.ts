@@ -465,7 +465,6 @@ export function uiInit(): void {
     // Progress bar drag-to-seek — press on progress bar and drag to seek, release to seek
     var $progressDiv = $("#progress_div");
     var seekInProgress = false;
-    var seekStartX = 0;
 
     $progressDiv.mousedown(function (e: any) {
         if (!e) e = event;
@@ -474,148 +473,85 @@ export function uiInit(): void {
             return;
         }
         seekInProgress = true;
-        seekStartX = e.clientX;
     });
 
+    function seekProgress(e: any, eventName: string): void {
+        if (!e) e = event;
+        if (e.clientX === undefined) {
+            console.error(
+                "$progress_div[" + eventName + "] evt.clientX not exist"
+            );
+            return;
+        }
+        e.stopPropagation();
+        var w = window as any;
+        if (
+            !(
+                w.playType ||
+                (w.channels &&
+                    w.curList &&
+                    w.channels[w.curList[w.primaryIndex]] &&
+                    w.channels[w.curList[w.primaryIndex]].rec)
+            )
+        )
+            return;
+        var t =
+            (e.clientX - $progressDiv.position().left) / $progressDiv.width();
+        if (w.playType < 0) {
+            var r = Math.max(Math.round(t * w.stbGetLen()), 0);
+            var hr = Math.floor(r / 3600);
+            var mn = Math.floor((r % 3600) / 60);
+            var sc = r % 60;
+            if (typeof w.showShift === "function")
+                w.showShift(
+                    ">> " +
+                        (hr ? hr + ":" : "") +
+                        _t2(mn) +
+                        ":" +
+                        _t2(sc) +
+                        " <<"
+                );
+            if (typeof w.stbSetPosTime === "function") w.stbSetPosTime(r);
+            return;
+        }
+        if (
+            w._prog100 &&
+            w._prog100.time_to != null &&
+            w._prog100.time != null
+        ) {
+            var r2 = Math.round(
+                t * (w._prog100.time_to - w._prog100.time) + w._prog100.time
+            );
+        } else {
+            // No EPG — map click onto virtual 1h/80% timeshift window (live)
+            // or hourless elapsed window (archive).
+            var virt = virtualTimeshiftProg();
+            w._prog100 = virt;
+            var r2 = Math.round(t * (virt.time_to - virt.time) + virt.time);
+        }
+        if (r2 < Date.now() / 1e3) {
+            if (!w.playType) {
+                if (typeof w.replayFromLiveOffset === "function")
+                    w.replayFromLiveOffset(Math.round(Date.now() / 1e3 - r2));
+                return;
+            }
+            if (typeof w.showShift === "function")
+                w.showShift(">> " + formatClockTime(r2) + " <<");
+            if (typeof w.playArchive === "function") w.playArchive(r2);
+        } else {
+            if (typeof w.showShift === "function")
+                w.showShift(w._(w.playType ? "Live" : "Restart stream"));
+            if (typeof w.playChannel === "function")
+                w.playChannel(w.catIndex, w.primaryIndex);
+        }
+    }
     $progressDiv.mouseup(function (e: any) {
         if (!seekInProgress) return;
         seekInProgress = false;
-        if (!e) e = event;
-        if (e.clientX === undefined) {
-            console.error("$progress_div[mouseup] evt.clientX not exist");
-            return;
-        }
-        e.stopPropagation();
-        var w = window as any;
-        if (
-            !(
-                w.playType ||
-                (w.channels &&
-                    w.curList &&
-                    w.channels[w.curList[w.primaryIndex]] &&
-                    w.channels[w.curList[w.primaryIndex]].rec)
-            )
-        )
-            return;
-        var t =
-            (e.clientX - $progressDiv.position().left) / $progressDiv.width();
-        if (w.playType < 0) {
-            var r = Math.max(Math.round(t * w.stbGetLen()), 0);
-            var hr = Math.floor(r / 3600);
-            var mn = Math.floor((r % 3600) / 60);
-            var sc = r % 60;
-            if (typeof w.showShift === "function")
-                w.showShift(
-                    ">> " +
-                        (hr ? hr + ":" : "") +
-                        _t2(mn) +
-                        ":" +
-                        _t2(sc) +
-                        " <<"
-                );
-            if (typeof w.stbSetPosTime === "function") w.stbSetPosTime(r);
-            return;
-        }
-        if (
-            w._prog100 &&
-            w._prog100.time_to != null &&
-            w._prog100.time != null
-        ) {
-            var r2 = Math.round(
-                t * (w._prog100.time_to - w._prog100.time) + w._prog100.time
-            );
-        } else {
-            // No EPG — map click onto virtual 1h/80% timeshift window (live)
-            // or hourless elapsed window (archive).
-            var virt = virtualTimeshiftProg();
-            w._prog100 = virt;
-            var r2 = Math.round(t * (virt.time_to - virt.time) + virt.time);
-        }
-        if (r2 < Date.now() / 1e3) {
-            if (!w.playType) {
-                if (typeof w.replayFromLiveOffset === "function")
-                    w.replayFromLiveOffset(Math.round(Date.now() / 1e3 - r2));
-                return;
-            }
-            if (typeof w.showShift === "function")
-                w.showShift(">> " + formatClockTime(r2) + " <<");
-            if (typeof w.playArchive === "function") w.playArchive(r2);
-        } else {
-            if (typeof w.showShift === "function")
-                w.showShift(w._(w.playType ? "Live" : "Restart stream"));
-            if (typeof w.playChannel === "function")
-                w.playChannel(w.catIndex, w.primaryIndex);
-        }
+        seekProgress(e, "mouseup");
     });
-
-    // Progress bar click — seek (for press-and-release at same position)
     $progressDiv.click(function (e: any) {
-        if (!e) e = event;
-        if (e.clientX === undefined) {
-            console.error("$progress_div[click] evt.clientX not exist");
-            return;
-        }
-        e.stopPropagation();
-        var w = window as any;
-        if (
-            !(
-                w.playType ||
-                (w.channels &&
-                    w.curList &&
-                    w.channels[w.curList[w.primaryIndex]] &&
-                    w.channels[w.curList[w.primaryIndex]].rec)
-            )
-        )
-            return;
-        var t =
-            (e.clientX - $progressDiv.position().left) / $progressDiv.width();
-        if (w.playType < 0) {
-            var r = Math.max(Math.round(t * w.stbGetLen()), 0);
-            var hr = Math.floor(r / 3600);
-            var mn = Math.floor((r % 3600) / 60);
-            var sc = r % 60;
-            if (typeof w.showShift === "function")
-                w.showShift(
-                    ">> " +
-                        (hr ? hr + ":" : "") +
-                        _t2(mn) +
-                        ":" +
-                        _t2(sc) +
-                        " <<"
-                );
-            if (typeof w.stbSetPosTime === "function") w.stbSetPosTime(r);
-            return;
-        }
-        if (
-            w._prog100 &&
-            w._prog100.time_to != null &&
-            w._prog100.time != null
-        ) {
-            var r2 = Math.round(
-                t * (w._prog100.time_to - w._prog100.time) + w._prog100.time
-            );
-        } else {
-            // No EPG — map click onto virtual 1h/80% timeshift window (live)
-            // or hourless elapsed window (archive).
-            var virt = virtualTimeshiftProg();
-            w._prog100 = virt;
-            var r2 = Math.round(t * (virt.time_to - virt.time) + virt.time);
-        }
-        if (r2 < Date.now() / 1e3) {
-            if (!w.playType) {
-                if (typeof w.replayFromLiveOffset === "function")
-                    w.replayFromLiveOffset(Math.round(Date.now() / 1e3 - r2));
-                return;
-            }
-            if (typeof w.showShift === "function")
-                w.showShift(">> " + formatClockTime(r2) + " <<");
-            if (typeof w.playArchive === "function") w.playArchive(r2);
-        } else {
-            if (typeof w.showShift === "function")
-                w.showShift(w._(w.playType ? "Live" : "Restart stream"));
-            if (typeof w.playChannel === "function")
-                w.playChannel(w.catIndex, w.primaryIndex);
-        }
+        seekProgress(e, "click");
     });
 
     // Progress bar mousemove — show tooltip
@@ -662,16 +598,6 @@ export function uiInit(): void {
                 frac * (w._prog100.time_to - w._prog100.time) + w._prog100.time
             );
             $tooltipSpan.text(formatClockTime(r2));
-        } else if (
-            w._prog100 &&
-            w._prog100.time != null &&
-            w._prog100.time_to != null
-        ) {
-            // Synthetic hour block — position = frac of the hour + hour start
-            var r3 = Math.round(
-                frac * (w._prog100.time_to - w._prog100.time) + w._prog100.time
-            );
-            $tooltipSpan.text(formatClockTime(r3));
         } else {
             // No EPG data — show playback position based on playTime (seconds elapsed)
             var elapsed = w.playType > 0 ? (w.playTime ?? 0) : 0;
@@ -842,16 +768,13 @@ export function showPage(): void {
             });
         }
     } catch (_early) {}
+    // Both classic spellings project the same ScreenPort arrays.
     var dataArr =
-        (listDataArray && listDataArray.length ? listDataArray : null) ||
-        ((window as any).listDataArray && (window as any).listDataArray.length
-            ? (window as any).listDataArray
-            : null) ||
-        (listArray && listArray.length ? listArray : null) ||
-        ((window as any).listArray && (window as any).listArray.length
-            ? (window as any).listArray
-            : null) ||
-        [];
+        listDataArray && listDataArray.length
+            ? listDataArray
+            : listArray && listArray.length
+              ? listArray
+              : [];
     // Always honor List settings pageSize (OTT). Cursor stays on-screen via
     // paging in changeSelect — never by shrinking pageSize.
     var pageSz = Math.max(1, settings.pageSize | 0 || 25);
@@ -862,18 +785,7 @@ export function showPage(): void {
     (window as any).__ottListRowH = itemHeight;
     var html = "";
     // OTT showPage: scrollbar only when sShowScroll (Lists settings) is on.
-    var showScroll = 1;
-    try {
-        var wScroll = window as any;
-        var sv = wScroll.sShowScroll;
-        if (sv === undefined || sv === null || sv === "")
-            sv =
-                settings && settings.showScroll !== undefined
-                    ? settings.showScroll
-                    : 1;
-        var sn = typeof sv === "number" ? sv : parseInt(String(sv), 10);
-        if (!isNaN(sn)) showScroll = sn;
-    } catch (_sc) {}
+    var showScroll = settings.showScroll;
     var scrollWidth = 0;
     var totalPages = 1;
     var currentPage = 0;
@@ -2668,6 +2580,67 @@ export function hsvToRgb(h: number, s: number, v: number): number[] {
     return [Math.round(r * 255), Math.round(g2 * 255), Math.round(b * 255)];
 }
 
+/** Share HSV input while each public dialog owns its layout and setting. */
+function bindColorDialogInput(
+    hue: number,
+    saturation: number,
+    value: number,
+    cssProperty: string,
+    settingKey: string
+): void {
+    function preview(): void {
+        var rgb = hsvToRgb(hue, saturation, value);
+        $("#step").css(
+            cssProperty,
+            "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
+        );
+    }
+    (window as any).__ottClassicScreenPort.setOwnedCallback(
+        "about",
+        function (key: number): boolean {
+            switch (key) {
+                case keys.UP:
+                    saturation = Math.min(saturation + 5, 100);
+                    break;
+                case keys.DOWN:
+                    saturation = Math.max(saturation - 5, 0);
+                    break;
+                case keys.RIGHT:
+                    hue += 10;
+                    if (hue > 360) hue = 0;
+                    break;
+                case keys.LEFT:
+                    hue -= 10;
+                    if (hue < 0) hue = 360;
+                    break;
+                case keys.YELLOW:
+                    hue = 50;
+                    saturation = 85;
+                    break;
+                case keys.GREEN:
+                    hue = 90;
+                    saturation = 85;
+                    break;
+                case keys.BLUE:
+                    hue = 180;
+                    saturation = 85;
+                    break;
+                case keys.ENTER:
+                    (window as any)[settingKey] = hue + "," + saturation;
+                case keys.RETURN:
+                    $("#listAbout").text("").hide();
+                    restoreListPanelState();
+                    return true;
+                default:
+                    return false;
+            }
+            preview();
+            return true;
+        }
+    );
+    preview();
+}
+
 /**
  * Open the foreground color picker dialog (HSV selector).
  * The user adjusts hue (LEFT/RIGHT) and saturation (UP/DOWN) with presets via color keys.
@@ -2719,58 +2692,7 @@ export function colorDialog(): void {
                 "</div>"
         )
         .show();
-    (window as any).__ottClassicScreenPort.setOwnedCallback(
-        "about",
-        function (e: number): boolean {
-            switch (e) {
-                case keys.UP:
-                    n = Math.min(n + 5, 100);
-                    break;
-                case keys.DOWN:
-                    n = Math.max(n - 5, 0);
-                    break;
-                case keys.RIGHT:
-                    s += 10;
-                    if (s > 360) s = 0;
-                    break;
-                case keys.LEFT:
-                    s -= 10;
-                    if (s < 0) s = 360;
-                    break;
-                case keys.YELLOW:
-                    s = 50;
-                    n = 85;
-                    break;
-                case keys.GREEN:
-                    s = 90;
-                    n = 85;
-                    break;
-                case keys.BLUE:
-                    s = 180;
-                    n = 85;
-                    break;
-                case keys.ENTER:
-                    (window as any).eSHLcolor = s + "," + n;
-                case keys.RETURN:
-                    $("#listAbout").text("").hide();
-                    restoreListPanelState();
-                    return true;
-                default:
-                    return false;
-            }
-            var rgb = hsvToRgb(s, n, 100);
-            $("#step").css(
-                "color",
-                "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
-            );
-            return true;
-        }
-    );
-    var rgb0 = hsvToRgb(s, n, 100);
-    $("#step").css(
-        "color",
-        "rgb(" + rgb0[0] + "," + rgb0[1] + "," + rgb0[2] + ")"
-    );
+    bindColorDialogInput(s, n, 100, "color", "eSHLcolor");
 }
 
 /**
@@ -2806,58 +2728,7 @@ export function selColorDialog(): void {
                 '">&nbsp;1234567890&nbsp;</span>&nbsp;</div>'
         )
         .show();
-    (window as any).__ottClassicScreenPort.setOwnedCallback(
-        "about",
-        function (e: number): boolean {
-            switch (e) {
-                case keys.UP:
-                    n = Math.min(n + 5, 100);
-                    break;
-                case keys.DOWN:
-                    n = Math.max(n - 5, 0);
-                    break;
-                case keys.RIGHT:
-                    s += 10;
-                    if (s > 360) s = 0;
-                    break;
-                case keys.LEFT:
-                    s -= 10;
-                    if (s < 0) s = 360;
-                    break;
-                case keys.YELLOW:
-                    s = 50;
-                    n = 85;
-                    break;
-                case keys.GREEN:
-                    s = 90;
-                    n = 85;
-                    break;
-                case keys.BLUE:
-                    s = 180;
-                    n = 85;
-                    break;
-                case keys.ENTER:
-                    (window as any).eSHLcolSel = s + "," + n;
-                case keys.RETURN:
-                    $("#listAbout").text("").hide();
-                    restoreListPanelState();
-                    return true;
-                default:
-                    return false;
-            }
-            var rgb = hsvToRgb(s, n, 50);
-            $("#step").css(
-                "background-color",
-                "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
-            );
-            return true;
-        }
-    );
-    var rgb0 = hsvToRgb(s, n, 50);
-    $("#step").css(
-        "background-color",
-        "rgb(" + rgb0[0] + "," + rgb0[1] + "," + rgb0[2] + ")"
-    );
+    bindColorDialogInput(s, n, 50, "background-color", "eSHLcolSel");
 }
 
 /**
@@ -2892,58 +2763,7 @@ export function backColorDialog(): void {
                 '">&nbsp;1234567890&nbsp;</span>&nbsp;</div>'
         )
         .show();
-    (window as any).__ottClassicScreenPort.setOwnedCallback(
-        "about",
-        function (e: number): boolean {
-            switch (e) {
-                case keys.UP:
-                    n = Math.min(n + 5, 100);
-                    break;
-                case keys.DOWN:
-                    n = Math.max(n - 5, 0);
-                    break;
-                case keys.RIGHT:
-                    s += 10;
-                    if (s > 360) s = 0;
-                    break;
-                case keys.LEFT:
-                    s -= 10;
-                    if (s < 0) s = 360;
-                    break;
-                case keys.YELLOW:
-                    s = 50;
-                    n = 85;
-                    break;
-                case keys.GREEN:
-                    s = 90;
-                    n = 85;
-                    break;
-                case keys.BLUE:
-                    s = 180;
-                    n = 85;
-                    break;
-                case keys.ENTER:
-                    (window as any).eSHLcolorB = s + "," + n;
-                case keys.RETURN:
-                    $("#listAbout").text("").hide();
-                    restoreListPanelState();
-                    return true;
-                default:
-                    return false;
-            }
-            var rgb = hsvToRgb(s, n, 100);
-            $("#step").css(
-                "background-color",
-                "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
-            );
-            return true;
-        }
-    );
-    var rgb0 = hsvToRgb(s, n, 100);
-    $("#step").css(
-        "background-color",
-        "rgb(" + rgb0[0] + "," + rgb0[1] + "," + rgb0[2] + ")"
-    );
+    bindColorDialogInput(s, n, 100, "background-color", "eSHLcolorB");
 }
 
 /* ---------------------------------------------------------------------------

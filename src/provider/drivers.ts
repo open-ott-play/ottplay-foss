@@ -36,6 +36,11 @@ interface ProviderDriverPorts {
         hash: (value: string) => number,
         profile: string
     ): DriverCatalog;
+    commit(
+        writes: any[],
+        current: () => boolean,
+        rollbackAllowed: () => boolean
+    ): boolean;
     core: any;
     createLifetime(): any;
     decodeXml?(text: string, profile?: string): any;
@@ -102,7 +107,7 @@ interface ProviderDriver {
         ) => void
     ): void;
     logo(id: string | number): string;
-    saveCredentials(value: ProviderCredentials): void;
+    saveCredentials(value: ProviderCredentials): boolean | void;
     storageKey?(key: string): string;
     stream(id: string | number): string;
     subscription?(callback: (value: any) => void): () => void;
@@ -301,6 +306,68 @@ function createDriverTransport(
     };
 }
 
+var credentialBusy = false;
+var credentialPending: (() => void) | null = null;
+
+/** Serialize credential writes against reentrant loads, preserving the latest intent. */
+function createCredentialOperations(
+    ports: ProviderDriverPorts,
+    active: () => boolean
+) {
+    var revision = 0;
+    return {
+        run: function (
+            action: (current: () => boolean) => any,
+            saving?: boolean
+        ): any {
+            var operation = ++revision;
+            var result: any = false;
+            function current() {
+                return active() && operation === revision;
+            }
+            if (credentialBusy) {
+                credentialPending = saving
+                    ? null
+                    : function () {
+                          if (current()) action(current);
+                      };
+                return false;
+            }
+            if (!saving) return current() ? action(current) : false;
+            credentialBusy = true;
+            try {
+                if (current()) result = action(current);
+            } catch (error) {
+                credentialPending = null;
+                throw error;
+            } finally {
+                credentialBusy = false;
+            }
+            var next = credentialPending;
+            credentialPending = null;
+            if (next) next();
+            return result;
+        },
+        write: function (
+            values: { [key: string]: string },
+            current: () => boolean
+        ): boolean {
+            var writes = Object.keys(values).map(function (key) {
+                return {
+                    after: values[key],
+                    before: ports.storage.get(key),
+                    key: key,
+                };
+            });
+            return (
+                ports.commit(writes, current, function () {
+                    return credentialBusy;
+                }) && current()
+            );
+        },
+    };
+}
+
 function createXtreamDriver(
     ports: ProviderDriverPorts,
     owner: DriverLifetime
@@ -311,6 +378,7 @@ function createXtreamDriver(
     function active() {
         return !disposed && owner.active();
     }
+    var operations = createCredentialOperations(ports, active);
     var transport = createDriverTransport(ports, owner, active);
     function credentials(): ProviderCredentials {
         var value: any;
@@ -366,8 +434,11 @@ function createXtreamDriver(
         },
         guide: function (id, callback) {
             if (!active()) return;
+            var scope = loads.current() || owner;
+            var requestedCatalog = catalog;
             var config = credentials();
-            var channel = catalog.channels[id];
+            if (!scope.active() || requestedCatalog !== catalog) return;
+            var channel = requestedCatalog.channels[id];
             if (
                 !config.server ||
                 !config.username ||
@@ -380,7 +451,7 @@ function createXtreamDriver(
             }
             var source = client(config);
             transport.send(
-                loads.current() || owner,
+                scope,
                 {
                     dataType: "json",
                     timeout: 10000,
@@ -401,46 +472,52 @@ function createXtreamDriver(
         },
         id: "xtream",
         load: function (callback) {
-            if (!active()) return;
-            var scope = loads.activate("catalog");
-            if (!active() || !scope.active()) return;
-            catalog = emptyDriverCatalog();
-            var config = credentials();
-            if (
-                !config.server ||
-                !config.username ||
-                !config.password ||
-                !ports.validateUrl(config.server)
-            ) {
-                callback(null, "credentials");
-                return;
-            }
-            var source = client(config);
-            transport.send(
-                scope,
-                {
-                    dataType: "json",
-                    timeout: 15000,
-                    type: "GET",
-                    url: source.request(),
-                },
-                function (response) {
-                    catalog = emptyDriverCatalog();
-                    if (source.accept(response))
-                        callback(driverCatalogSnapshot(catalog), "catalog");
-                    else {
-                        catalog = ports.channelCatalog!(
-                            source.channelCatalog(),
-                            ports.hash,
-                            "xtream"
-                        );
-                        callback(driverCatalogSnapshot(catalog));
-                    }
-                },
-                function () {
-                    callback(driverCatalogSnapshot(catalog), "network");
+            return operations.run(function (current) {
+                if (!active()) return;
+                var scope = loads.activate("catalog");
+
+                if (!current() || !scope.active()) return;
+                catalog = emptyDriverCatalog();
+                var config = credentials();
+                if (!current()) return;
+                if (
+                    !config.server ||
+                    !config.username ||
+                    !config.password ||
+                    !ports.validateUrl(config.server)
+                ) {
+                    callback(null, "credentials");
+                    return;
                 }
-            );
+                var source = client(config);
+                transport.send(
+                    scope,
+                    {
+                        dataType: "json",
+                        timeout: 15000,
+                        type: "GET",
+                        url: source.request(),
+                    },
+                    function (response) {
+                        var error = source.accept(response)
+                            ? "catalog"
+                            : undefined;
+                        var next = error
+                            ? emptyDriverCatalog()
+                            : ports.channelCatalog!(
+                                  source.channelCatalog(),
+                                  ports.hash,
+                                  "xtream"
+                              );
+                        if (!scope.active()) return;
+                        catalog = next;
+                        callback(driverCatalogSnapshot(catalog), error);
+                    },
+                    function () {
+                        callback(driverCatalogSnapshot(catalog), "network");
+                    }
+                );
+            });
         },
         logo: function (id) {
             return active() && catalog.channels[id]
@@ -448,18 +525,23 @@ function createXtreamDriver(
                 : "";
         },
         saveCredentials: function (value) {
-            if (!active()) return;
-            loads.dispose();
-            catalog = emptyDriverCatalog();
-            ports.storage.set(
-                "xtream_data",
-                JSON.stringify({
-                    data: null,
-                    password: value.password,
-                    server: value.server,
-                    username: value.username,
-                })
-            );
+            return operations.run(function (current) {
+                if (!active()) return;
+                loads.dispose();
+                if (!current()) return false;
+                catalog = emptyDriverCatalog();
+                return operations.write(
+                    {
+                        xtream_data: JSON.stringify({
+                            data: null,
+                            password: value.password,
+                            server: value.server,
+                            username: value.username,
+                        }),
+                    },
+                    current
+                );
+            }, true);
         },
         stream: function (id) {
             return active() && catalog.channels[id]
@@ -484,6 +566,7 @@ function createOperatorDriver(
     function active() {
         return !disposed && owner.active();
     }
+    var operations = createCredentialOperations(ports, active);
     var transport = createDriverTransport(ports, owner, active);
     function readConfiguration(): any {
         var value: any;
@@ -533,71 +616,118 @@ function createOperatorDriver(
         },
         id: profile.id,
         load: function (callback) {
-            if (!active()) return;
-            var scope = loads.activate("catalog");
-            if (!active() || !scope.active()) return;
-            catalog = emptyDriverCatalog();
-            config = readConfiguration();
-            function complete(error?: string, pending?: boolean) {
-                if (active() && scope.active())
-                    callback(driverCatalogSnapshot(catalog), error, pending);
-            }
-            function playlist(url: string) {
-                ports.progress("Loading M3U...");
-                var plan = new ports.core.OperatorPlaylistClient(
-                    url,
-                    ports.relay,
-                    false,
-                    "generic",
-                    encodeURIComponent
-                );
-                function next() {
-                    if (!active() || !scope.active()) return;
-                    var request = plan.request();
-                    if (!request) {
-                        complete();
-                        return;
+            return operations.run(function (current) {
+                if (!active()) return;
+                var scope = loads.activate("catalog");
+
+                if (!current() || !scope.active()) return;
+                catalog = emptyDriverCatalog();
+                var loadedConfig = readConfiguration();
+                if (!current()) return;
+                config = loadedConfig;
+                function complete(error?: string, pending?: boolean) {
+                    if (active() && scope.active())
+                        callback(
+                            driverCatalogSnapshot(catalog),
+                            error,
+                            pending
+                        );
+                }
+                function playlist(url: string) {
+                    ports.progress("Loading M3U...");
+                    if (!scope.active() || !current()) return;
+                    var plan = new ports.core.OperatorPlaylistClient(
+                        url,
+                        ports.relay,
+                        false,
+                        "generic",
+                        encodeURIComponent
+                    );
+                    function next() {
+                        if (!active() || !scope.active()) return;
+                        var request = plan.request();
+                        if (!request) {
+                            complete();
+                            return;
+                        }
+                        transport.send(
+                            scope,
+                            request,
+                            function (data) {
+                                plan.accept();
+                                var next = emptyDriverCatalog();
+                                try {
+                                    next = ports.core.parseProviderPlaylist(
+                                        data,
+                                        "generic",
+                                        ports.hash,
+                                        0
+                                    );
+                                } catch (_) {}
+                                if (!scope.active()) return;
+                                catalog = next;
+                                complete();
+                            },
+                            function () {
+                                plan.reject();
+                                if (plan.request()) next();
+                                else complete("playlist");
+                            }
+                        );
                     }
+                    next();
+                }
+                var action = ports.core.operatorSourceAction(loadedConfig);
+                if (action === "PLAYLIST") {
+                    playlist(loadedConfig.m3u);
+                    return;
+                }
+                if (action !== "API") {
+                    complete("configure");
+                    return;
+                }
+                ports.progress("Loading from API...");
+                if (!scope.active() || !current()) return;
+                if (profile.kind === "xtream-fallback") {
+                    var xtream = ports.core.legacyXtreamClient(
+                        loadedConfig.server,
+                        loadedConfig.user,
+                        loadedConfig.pass,
+                        encodeURIComponent
+                    );
                     transport.send(
                         scope,
-                        request,
-                        function (data) {
-                            plan.accept();
-                            catalog = emptyDriverCatalog();
-                            try {
-                                catalog = ports.core.parseProviderPlaylist(
-                                    data,
-                                    "generic",
+                        {
+                            dataType: "json",
+                            timeout: 15000,
+                            type: "GET",
+                            url: xtream.request(),
+                        },
+                        function (response) {
+                            if (xtream.accept(response)) {
+                                loadedConfig.m3u =
+                                    xtream.fallbackPlaylist(false);
+                                playlist(loadedConfig.m3u);
+                            } else {
+                                var next = ports.channelCatalog!(
+                                    xtream.channelCatalog(),
                                     ports.hash,
-                                    0
+                                    "xtream"
                                 );
-                            } catch (_) {}
-                            complete();
+                                if (!scope.active()) return;
+                                catalog = next;
+                                complete();
+                            }
                         },
                         function () {
-                            plan.reject();
-                            if (plan.request()) next();
-                            else complete("playlist");
+                            loadedConfig.m3u = xtream.fallbackPlaylist(true);
+                            playlist(loadedConfig.m3u);
                         }
                     );
+                    return;
                 }
-                next();
-            }
-            var action = ports.core.operatorSourceAction(config);
-            if (action === "PLAYLIST") {
-                playlist(config.m3u);
-                return;
-            }
-            if (action !== "API") {
-                complete("configure");
-                return;
-            }
-            ports.progress("Loading from API...");
-            if (profile.kind === "xtream-fallback") {
-                var xtream = ports.core.legacyXtreamClient(
-                    config.server,
-                    config.user,
-                    config.pass,
+                var session = new ports.core.OperatorChannelClient(
+                    loadedConfig,
                     encodeURIComponent
                 );
                 transport.send(
@@ -606,68 +736,40 @@ function createOperatorDriver(
                         dataType: "json",
                         timeout: 15000,
                         type: "GET",
-                        url: xtream.request(),
+                        url: session.request(),
                     },
                     function (response) {
-                        if (xtream.accept(response)) {
-                            config.m3u = xtream.fallbackPlaylist(false);
-                            playlist(config.m3u);
-                        } else {
-                            catalog = ports.channelCatalog!(
-                                xtream.channelCatalog(),
+                        try {
+                            session.accept(response);
+                        } catch (error) {
+                            var next = ports.channelCatalog!(
+                                session.channelCatalog(),
                                 ports.hash,
                                 "xtream"
                             );
-                            complete();
+                            if (scope.active()) catalog = next;
+                            complete(undefined, true);
+                            throw error;
                         }
-                    },
-                    function () {
-                        config.m3u = xtream.fallbackPlaylist(true);
-                        playlist(config.m3u);
-                    }
-                );
-                return;
-            }
-            var session = new ports.core.OperatorChannelClient(
-                config,
-                encodeURIComponent
-            );
-            transport.send(
-                scope,
-                {
-                    dataType: "json",
-                    timeout: 15000,
-                    type: "GET",
-                    url: session.request(),
-                },
-                function (response) {
-                    try {
-                        session.accept(response);
-                    } catch (error) {
-                        catalog = ports.channelCatalog!(
+                        var next = ports.channelCatalog!(
                             session.channelCatalog(),
                             ports.hash,
                             "xtream"
                         );
-                        complete(undefined, true);
-                        throw error;
+                        if (!scope.active()) return;
+                        catalog = next;
+                        if (session.action() === "PLAYLIST") {
+                            loadedConfig.m3u = session.request();
+                            playlist(loadedConfig.m3u);
+                        } else complete();
+                    },
+                    function () {
+                        session.reject();
+                        loadedConfig.m3u = session.request();
+                        playlist(loadedConfig.m3u);
                     }
-                    catalog = ports.channelCatalog!(
-                        session.channelCatalog(),
-                        ports.hash,
-                        "xtream"
-                    );
-                    if (session.action() === "PLAYLIST") {
-                        config.m3u = session.request();
-                        playlist(config.m3u);
-                    } else complete();
-                },
-                function () {
-                    session.reject();
-                    config.m3u = session.request();
-                    playlist(config.m3u);
-                }
-            );
+                );
+            });
         },
         logo: function (id) {
             return active() && catalog.channels[id]
@@ -675,15 +777,23 @@ function createOperatorDriver(
                 : "";
         },
         saveCredentials: function (value) {
-            if (!active()) return;
-            loads.dispose();
-            catalog = emptyDriverCatalog();
-            config = readConfiguration();
-            config.server = value.server;
-            config.user = value.username;
-            config.pass = value.password;
-            config.m3u = value.playlist || "";
-            ports.storage.set("cfg", JSON.stringify(config));
+            return operations.run(function (current) {
+                if (!active()) return;
+                loads.dispose();
+                if (!current()) return false;
+                catalog = emptyDriverCatalog();
+                var next = readConfiguration();
+                next.server = value.server;
+                next.user = value.username;
+                next.pass = value.password;
+                next.m3u = value.playlist || "";
+                var committed = operations.write(
+                    { cfg: JSON.stringify(next) },
+                    current
+                );
+                if (committed) config = next;
+                return committed;
+            }, true);
         },
         stream: function (id) {
             return active() && catalog.channels[id]
@@ -709,6 +819,7 @@ function createNamedPlaylistDriver(
     function active() {
         return !disposed && owner.active();
     }
+    var operations = createCredentialOperations(ports, active);
     var transport = createDriverTransport(ports, owner, active);
     function credentials(): ProviderCredentials {
         return {
@@ -812,115 +923,130 @@ function createNamedPlaylistDriver(
         },
         id: id,
         load: function (callback) {
-            if (!active()) return;
-            var scope = loads.activate("catalog");
-            if (!active() || !scope.active()) return;
-            catalog = emptyDriverCatalog();
-            bootstrap();
-            var config = credentials();
-            function complete(error?: string) {
-                if (active() && scope.active())
-                    callback(driverCatalogSnapshot(catalog), error);
-            }
-            if (!valid(config)) {
-                complete("named-credentials");
-                return;
-            }
-            function fetchText(url: string, receive: (value: any) => void) {
-                if (!active() || !scope.active()) return;
-                var plan = new ports.core.OperatorPlaylistClient(
-                    url,
-                    ports.relay,
-                    !!ports.intercept,
-                    "classic",
-                    encodeURIComponent
-                );
-                if (plan.interceptUrl() && ports.intercept)
-                    ports.intercept(plan.interceptUrl());
-                function advance() {
+            return operations.run(function (current) {
+                if (!active()) return;
+                var scope = loads.activate("catalog");
+
+                if (!current() || !scope.active()) return;
+                catalog = emptyDriverCatalog();
+                bootstrap();
+                var config = credentials();
+                if (!current()) return;
+                function complete(error?: string) {
+                    if (active() && scope.active())
+                        callback(driverCatalogSnapshot(catalog), error);
+                }
+                if (!valid(config)) {
+                    complete("named-credentials");
+                    return;
+                }
+                function fetchText(url: string, receive: (value: any) => void) {
                     if (!active() || !scope.active()) return;
-                    var request = plan.request();
-                    if (!request) {
-                        complete();
-                        return;
-                    }
-                    transport.send(
-                        scope,
-                        request,
-                        function (response) {
-                            plan.accept();
-                            receive(response);
-                        },
-                        function () {
-                            plan.reject();
-                            if (plan.request()) {
-                                if (plan.progress()) ports.progress("p...");
-                                advance();
-                            } else complete("named-network");
-                        }
+                    var plan = new ports.core.OperatorPlaylistClient(
+                        url,
+                        ports.relay,
+                        !!ports.intercept,
+                        "classic",
+                        encodeURIComponent
                     );
-                }
-                advance();
-            }
-            function receivePlaylist(text: any) {
-                var error: string | undefined;
-                try {
-                    var parsed = ports.core.parseOperatorPlaylist(
-                        text,
-                        id,
-                        function () {
-                            return 0;
-                        },
-                        []
-                    );
-                    catalog = parsed;
-                    parsed.entries.forEach(function (entry: any) {
-                        if (entry.generatedName)
-                            entry.channel.channel_name =
-                                id === "only4" || id === "shara-tv"
-                                    ? "??? Нет названия канала"
-                                    : ports.translate("??? No channel name");
-                    });
-                    if (parsed.malformed) error = "named-catalog";
-                } catch (_) {
-                    error = "named-catalog";
-                }
-                complete(error);
-            }
-            var parameters = {
-                base: "http://list.1ott.net",
-                id: config.username,
-                login: config.username,
-                password: config.password,
-                pin: config.password,
-                token: config.username,
-                url: config.playlist,
-            };
-            if (id === "1ott") {
-                fetchText(
-                    ports.core.operatorProfileUrl(id, "account", parameters),
-                    function (response) {
-                        var token: any;
-                        try {
-                            token = JSON.parse(response).token;
-                        } catch (_) {
-                            complete("named-catalog");
+                    if (plan.interceptUrl() && ports.intercept)
+                        ports.intercept(plan.interceptUrl());
+                    function advance() {
+                        if (!active() || !scope.active()) return;
+                        var request = plan.request();
+                        if (!request) {
+                            complete();
                             return;
                         }
-                        fetchText(
-                            ports.core.operatorProfileUrl(id, "playlist", {
-                                base: parameters.base,
-                                token: token,
-                            }),
-                            receivePlaylist
+                        transport.send(
+                            scope,
+                            request,
+                            function (response) {
+                                plan.accept();
+                                receive(response);
+                            },
+                            function () {
+                                plan.reject();
+                                if (plan.request()) {
+                                    if (plan.progress()) ports.progress("p...");
+                                    advance();
+                                } else complete("named-network");
+                            }
                         );
                     }
-                );
-            } else
-                fetchText(
-                    ports.core.operatorProfileUrl(id, "playlist", parameters),
-                    receivePlaylist
-                );
+                    advance();
+                }
+                function receivePlaylist(text: any) {
+                    var error: string | undefined;
+                    try {
+                        var parsed = ports.core.parseOperatorPlaylist(
+                            text,
+                            id,
+                            function () {
+                                return 0;
+                            },
+                            []
+                        );
+                        parsed.entries.forEach(function (entry: any) {
+                            if (entry.generatedName)
+                                entry.channel.channel_name =
+                                    id === "only4" || id === "shara-tv"
+                                        ? "??? Нет названия канала"
+                                        : ports.translate(
+                                              "??? No channel name"
+                                          );
+                        });
+                        if (!scope.active()) return;
+                        catalog = parsed;
+                        if (parsed.malformed) error = "named-catalog";
+                    } catch (_) {
+                        error = "named-catalog";
+                    }
+                    complete(error);
+                }
+                var parameters = {
+                    base: "http://list.1ott.net",
+                    id: config.username,
+                    login: config.username,
+                    password: config.password,
+                    pin: config.password,
+                    token: config.username,
+                    url: config.playlist,
+                };
+                if (id === "1ott") {
+                    fetchText(
+                        ports.core.operatorProfileUrl(
+                            id,
+                            "account",
+                            parameters
+                        ),
+                        function (response) {
+                            var token: any;
+                            try {
+                                token = JSON.parse(response).token;
+                            } catch (_) {
+                                complete("named-catalog");
+                                return;
+                            }
+                            fetchText(
+                                ports.core.operatorProfileUrl(id, "playlist", {
+                                    base: parameters.base,
+                                    token: token,
+                                }),
+                                receivePlaylist
+                            );
+                        }
+                    );
+                } else
+                    fetchText(
+                        ports.core.operatorProfileUrl(
+                            id,
+                            "playlist",
+                            parameters
+                        ),
+                        receivePlaylist
+                    );
+            });
         },
         logo: function (channelId) {
             return active() && catalog.channels[channelId]
@@ -928,31 +1054,37 @@ function createNamedPlaylistDriver(
                 : "";
         },
         saveCredentials: function (value) {
-            if (!active()) return;
-            var previous = credentials();
-            var accountChanged =
-                id === "tvteam"
-                    ? previous.playlist !== value.playlist
-                    : previous.username !== value.username ||
-                      previous.password !== value.password;
-            if (accountChanged) {
-                loads.dispose();
-                catalog = emptyDriverCatalog();
-            }
-            if (id === "tvteam") ports.storage.set("www", value.playlist || "");
-            else {
-                ports.storage.set(
-                    id === "1ott" ? "id" : id === "only4" ? "token" : "login",
-                    value.username
-                );
-                if (id !== "only4")
-                    ports.storage.set(
-                        id === "1ott" ? "pin" : "pass",
-                        value.password
-                    );
-            }
-            if (id === "only4" && value.mode !== undefined)
-                ports.storage.set("ts_hls", String(value.mode));
+            return operations.run(function (current) {
+                if (!active()) return;
+                var previous = credentials();
+                var accountChanged =
+                    id === "tvteam"
+                        ? previous.playlist !== value.playlist
+                        : previous.username !== value.username ||
+                          previous.password !== value.password;
+                if (!current()) return false;
+                if (accountChanged) {
+                    loads.dispose();
+                    if (!current()) return false;
+                    catalog = emptyDriverCatalog();
+                }
+                var writes: { [key: string]: string } = {};
+                if (id === "tvteam") writes.www = value.playlist || "";
+                else {
+                    writes[
+                        id === "1ott"
+                            ? "id"
+                            : id === "only4"
+                              ? "token"
+                              : "login"
+                    ] = value.username;
+                    if (id !== "only4")
+                        writes[id === "1ott" ? "pin" : "pass"] = value.password;
+                }
+                if (id === "only4" && value.mode !== undefined)
+                    writes.ts_hls = String(value.mode);
+                return operations.write(writes, current);
+            }, true);
         },
         stream: function (channelId) {
             if (!active()) return "";
@@ -1065,7 +1197,10 @@ function mountNamedProviderSettings(
     var id = profile.id;
     var modes = ["MPEGTS", "HLS(v)", "HLS(a)"];
     var editorRevision = 0;
+    var menuRevision = 0;
     function close() {
+        menuRevision++;
+        editorRevision++;
         host.popupList(
             host.popupActions.indexOf(host.toggleProviderSettingsVisibility) + 1
         );
@@ -1092,6 +1227,7 @@ function mountNamedProviderSettings(
                 !(id === "only4" && !value)
             ) {
                 host.alert(error);
+                if (!owner.active() || editorRevision !== revision) return;
                 if (id === "only4") {
                     var release = function () {};
                     var timer = host.setTimeout(function () {
@@ -1107,7 +1243,12 @@ function mountNamedProviderSettings(
             }
             var next = driver.credentials();
             (next as any)[fieldName] = normalize ? normalize(value) : value;
-            driver.saveCredentials(next);
+            if (
+                driver.saveCredentials(next) === false ||
+                !owner.active() ||
+                editorRevision !== revision
+            )
+                return;
             editorRevision++;
             if (refresh) refresh();
         };
@@ -1149,6 +1290,11 @@ function mountNamedProviderSettings(
     }
     function settingsMenu() {
         if (!owner.active()) return;
+        var menu = ++menuRevision;
+        editorRevision++;
+        function currentMenu() {
+            return owner.active() && menu === menuRevision;
+        }
         var tokenProvider = id === "only4";
         var caption = tokenProvider
             ? "Настройки провайдера " + profile.title
@@ -1172,16 +1318,20 @@ function mountNamedProviderSettings(
             host.listDataArray = host.listArray;
         }
         function refresh() {
+            if (!currentMenu()) return;
             render();
-            host.showPage();
+            if (currentMenu()) host.showPage();
         }
         function changeMode(delta: number) {
             var next = driver.credentials();
             next.mode =
                 ((next.mode || 0) + delta + modes.length) % modes.length;
-            driver.saveCredentials(next);
+            if (driver.saveCredentials(next) === false || !currentMenu())
+                return;
             refresh();
+            if (!currentMenu()) return;
             host.detailListAction();
+            if (!currentMenu()) return;
             if (!host.playType)
                 host.playChannel(host.catIndex, host.primaryIndex);
             else if (host.playType > 0)
@@ -1232,7 +1382,7 @@ function mountNamedProviderSettings(
                 );
         };
         host.listKeyHandler = function (key: number) {
-            if (!owner.active()) return false;
+            if (!currentMenu()) return false;
             if (key === host.keys.RETURN) {
                 close();
                 return true;
@@ -1375,7 +1525,8 @@ function mountNamedProviderSettings(
                     host.$("#pass").val().trim()
                 );
             }
-            driver.saveCredentials(value);
+            if (driver.saveCredentials(value) === false || !owner.active())
+                return false;
             if (
                 !host.OttPlayCore.operatorCredentialsValid(
                     id,
@@ -1433,6 +1584,42 @@ function mountProviderDriver(
         {
             channelCatalog: function (rows, hash, profile) {
                 return host.__ottChannelCatalog.project(rows, hash, profile);
+            },
+            commit: function (writes, current, rollbackAllowed) {
+                var read = host.stbGetItem,
+                    writeValue = host.stbSetItem,
+                    remove = host.stbDelItem;
+                var batch = writes.map(function (write) {
+                    var key = profile.prefix + write.key;
+                    return {
+                        after: write.after,
+                        before: write.before,
+                        storage: {
+                            read: function () {
+                                return read.call(host, key);
+                            },
+                            remove: function () {
+                                remove.call(host, key);
+                            },
+                            write: function (value: string) {
+                                writeValue.call(host, key, value);
+                            },
+                        },
+                    };
+                });
+                try {
+                    host.commitSettingsWrites(batch, current, rollbackAllowed);
+                } catch (error) {
+                    if (
+                        current() ||
+                        batch.some(function (write) {
+                            return write.storage.read() !== write.before;
+                        })
+                    )
+                        throw error;
+                    return false;
+                }
+                return true;
             },
             core: host.OttPlayCore,
             createLifetime: host.__ottProviderRuntime.createRegistry,
@@ -1624,11 +1811,25 @@ function mountProviderDriver(
     }
     function updateLabel() {
         var index = host.popupActions.indexOf(editSettings);
-        if (index !== -1) host.popupArray[index] = label();
+        var revision = editorRevision;
+        var text = label();
+        if (
+            owner.active() &&
+            revision === editorRevision &&
+            host.popupActions[index] === editSettings
+        )
+            host.popupArray[index] = text;
     }
+    var editorRevision = 0;
     function editSettings() {
         if (!owner.active()) return;
+        var editor = ++editorRevision;
         var draft = driver.credentials();
+        function currentEditor() {
+            return owner.active() && editor === editorRevision;
+        }
+        if (!currentEditor()) return;
+        var fieldRevision = 0;
         var fields = generic
             ? ["server", "username", "password", "playlist"]
             : ["server", "username", "password"];
@@ -1674,8 +1875,9 @@ function mountProviderDriver(
             );
         };
         host.listKeyHandler = function (key: number) {
-            if (!owner.active()) return false;
+            if (!currentEditor()) return false;
             if (key === host.keys.RETURN) {
+                editorRevision++;
                 host.popupList(
                     host.popupActions.indexOf(
                         host.toggleProviderSettingsVisibility
@@ -1686,10 +1888,12 @@ function mountProviderDriver(
             if (key !== host.keys.ENTER) return false;
             var selected = host.selIndex;
             if (selected < fields.length) {
+                var field = ++fieldRevision;
                 host.editCaption = host._(prompts[selected]);
                 host.editvar = (draft as any)[fields[selected]];
                 host.setEdit = function () {
-                    if (!owner.active()) return;
+                    if (!currentEditor() || field !== fieldRevision) return;
+                    fieldRevision++;
                     (draft as any)[fields[selected]] = String(
                         host.editvar
                     ).trim();
@@ -1698,9 +1902,10 @@ function mountProviderDriver(
                 };
                 host.showEditKey(host.keys.ENTER, selected === 2);
             } else if (selected === saveIndex) {
-                driver.saveCredentials(draft);
+                if (driver.saveCredentials(draft) === false || !currentEditor())
+                    return true;
                 updateLabel();
-                host.loadChannels();
+                if (currentEditor()) host.loadChannels();
             }
             return true;
         };

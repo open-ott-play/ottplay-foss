@@ -601,6 +601,209 @@ test("all34 four-field profiles retain cfg namespace, editor, empty guide and me
     }
 });
 
+test("credential save rejects retired editor effects after transport abort switches provider", () => {
+    for (const id of ["xtream", "all4you", "bestlist/stalker"]) {
+        const key =
+            id === "xtream"
+                ? "xtreamxtream_data"
+                : id.replace("/", "_") + "cfg";
+        const original =
+            id === "xtream"
+                ? config
+                : {
+                      m3u: "",
+                      pass: config.password,
+                      server: config.server,
+                      user: config.username,
+                  };
+        const f = fixture({ [key]: JSON.stringify(original) });
+        const d = f.mount(id);
+        f.host.duneAddSettings(0);
+        f.host.popupActions[0]();
+        d.load(() => assert.fail("retired catalog callback"));
+        const request = f.requests[0];
+        const abort = request.abort;
+        request.abort = function () {
+            f.mount("demo");
+            abort.call(this);
+        };
+        f.host.selIndex = id === "xtream" ? 4 : 5;
+        f.host.listKeyHandler(f.host.keys.ENTER);
+        assert.equal(f.host.__ottActiveProviderDriver.id, "demo");
+        assert.equal(f.reloads, 0);
+        assert.deepEqual(JSON.parse(f.saved.get(key)), original);
+        request.resolve({ live_streams: [{ name: "Retired", stream_id: 42 }] });
+        assert.equal(d.stream(42), "");
+    }
+});
+
+test("same-instance abort loads observe one complete credential revision", () => {
+    for (const id of ["xtream", "all4you", "bestlist/stalker"]) {
+        const key =
+            id === "xtream"
+                ? "xtreamxtream_data"
+                : id.replace("/", "_") + "cfg";
+        const original =
+            id === "xtream"
+                ? config
+                : {
+                      m3u: "",
+                      pass: config.password,
+                      server: config.server,
+                      user: config.username,
+                  };
+        const f = fixture({ [key]: JSON.stringify(original) });
+        const d = f.mount(id);
+        d.load(() => assert.fail("cancelled load"));
+        const request = f.requests[0],
+            abort = request.abort;
+        request.abort = function () {
+            d.load(() => {});
+            abort.call(this);
+        };
+        assert.equal(
+            d.saveCredentials({
+                password: "new-secret",
+                server: "https://new.test",
+                username: "new",
+            }),
+            false
+        );
+        assert.equal(f.requests.length, 2);
+        assert(f.requests[1].settings.url.includes("xc.test"));
+        assert.deepEqual(JSON.parse(f.saved.get(key)), original);
+        f.requests[1].resolve({
+            live_streams: [{ name: "Current", stream_id: 42 }],
+        });
+        assert(d.stream(42).includes("xc.test"));
+        assert.equal(d.credentials().server, config.server);
+    }
+});
+
+test("projection and playlist decoding reentry cannot publish the previous account", () => {
+    for (const id of ["xtream", "all4you", "bestlist/stalker"]) {
+        const key =
+            id === "xtream"
+                ? "xtreamxtream_data"
+                : id.replace("/", "_") + "cfg";
+        const f = fixture({
+            [key]: JSON.stringify(
+                id === "xtream"
+                    ? config
+                    : {
+                          m3u: "",
+                          pass: config.password,
+                          server: config.server,
+                          user: config.username,
+                      }
+            ),
+        });
+        const d = f.mount(id);
+        let completed = 0;
+        d.load(() => completed++);
+        const project = f.host.__ottChannelCatalog.project;
+        f.host.__ottChannelCatalog.project = (...args) => {
+            const value = project(...args);
+            d.saveCredentials({
+                password: "new-secret",
+                server: "https://new.test",
+                username: "new",
+            });
+            return value;
+        };
+        f.requests[0].resolve({
+            live_streams: [{ name: "Retired", stream_id: 42 }],
+        });
+        assert.equal(completed, 0);
+        assert.equal(d.stream(42), "");
+        assert.equal(d.credentials().username, "new");
+    }
+    const f = fixture({
+        all4youcfg: JSON.stringify({ m3u: "https://list.test/old.m3u" }),
+    });
+    const d = f.mount("all4you");
+    let completed = 0;
+    const parse = f.host.OttPlayCore.parseProviderPlaylist;
+    let decoded = 0;
+    f.host.OttPlayCore.parseProviderPlaylist = (...args) => {
+        const value = parse(...args);
+        decoded++;
+        d.saveCredentials({
+            password: "",
+            playlist: "https://list.test/new.m3u",
+            server: "",
+            username: "",
+        });
+        return value;
+    };
+    d.load(() => completed++);
+    f.requests[0].resolve("#EXTM3U\n#EXTINF:-1,Old\nhttps://stream.test/old\n");
+    assert.equal(decoded, 1);
+    assert.equal(completed, 0);
+    assert.equal(d.stream(42), "");
+});
+
+test("recursive editor save is cancelled synchronously and the visible draft remains retryable", () => {
+    const f = fixture(stored()),
+        d = f.mount("xtream"),
+        w = f.host;
+    w.duneAddSettings(0);
+    const edit = w.popupActions[0];
+    edit();
+    let entered = false;
+    const set = w.stbSetItem;
+    w.stbSetItem = (key, value) => {
+        set(key, value);
+        if (!entered && key === "xtreamxtream_data") {
+            entered = true;
+            edit();
+            w.selIndex = 1;
+            w.listKeyHandler(w.keys.ENTER);
+            w.editvar = "inner";
+            w.setEdit();
+            w.selIndex = 4;
+            w.listKeyHandler(w.keys.ENTER);
+        }
+    };
+    w.selIndex = 4;
+    w.listKeyHandler(w.keys.ENTER);
+    assert(entered);
+    assert.equal(d.credentials().username, config.username);
+    assert.equal(f.reloads, 0);
+    w.listKeyHandler(w.keys.ENTER);
+    assert.equal(d.credentials().username, "inner");
+    assert.equal(f.reloads, 1);
+});
+
+test("guide credential reads retire completion on source, account and catalog replacement", () => {
+    for (const change of ["source", "save", "load"]) {
+        const f = fixture(stored()),
+            d = f.mount("xtream");
+        d.load(() => {});
+        f.requests[0].resolve({
+            live_streams: [{ name: "Channel", stream_id: 42 }],
+        });
+        const read = f.host.stbGetItem;
+        let entered = false,
+            completed = 0;
+        f.host.stbGetItem = (key) => {
+            const value = read(key);
+            if (!entered && key === "xtreamxtream_data") {
+                entered = true;
+                if (change === "source") f.mount("demo");
+                else if (change === "save")
+                    d.saveCredentials({ ...config, username: "new" });
+                else d.load(() => {});
+            }
+            return value;
+        };
+        d.guide(42, () => completed++);
+        assert(entered);
+        assert.equal(completed, 0);
+        assert.equal(f.requests.length, change === "load" ? 2 : 1);
+    }
+});
+
 console.log(
     "PASS typed provider instances: " +
         assertions +

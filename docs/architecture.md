@@ -190,6 +190,15 @@ ownership. Playback operation `guard()` cancels the previous pending operation
 and allocates a new ticket. Read the relevant implementation before sharing a
 lifetime helper between these modules.
 
+Ownership checks should read scalar state, while exported views remain detached.
+For example, the media library exposes `revision()` and `highlight(index)` for
+screen cleanup and navigation without copying a catalog; `select(index)` and
+`snapshot()` retain their copying contracts. A revision checks operation lifetime,
+not selection identity: `capture()` additionally observes the selected row.
+The [media contract](media-library.md) documents this distinction and tests it
+with observable payload reads in source and emitted bundles. Avoid turning an
+allocation optimization into a shared mutable snapshot or a second state owner.
+
 ## Provider contract and release boundary
 
 [driver-profiles.ts](../src/provider/driver-profiles.ts) is the single managed
@@ -207,6 +216,15 @@ Transport returns cancellation; family code owns request/reload scopes and
 rejects obsolete completions. Accepted catalog results are detached; failed
 reloads must not expose old stream addresses. Unsupported/missing routes return
 their declared empty result rather than looking up a different channel.
+
+The shared Xtream, operator and named-playlist factories serialize credential
+writes against reentrant catalog loads, including replacement instances. A load
+requested during a write waits for commit or verified rollback; an incomplete
+rollback cancels deferred work and reports failure. A recursive credential save
+returns `false` and is cancelled, not silently committed later. These factories
+reuse `commitSettingsWrites` through the storage codec, and recheck catalog scope
+after decoding before publication. This is guarded synchronous coordination, not
+an atomic-storage guarantee or an asynchronous save API.
 
 The host mount is a compatibility codec. It publishes `getChannelsArray`,
 `getChannelUrl`, guide/archive callbacks and scoped storage accessors. Family
@@ -272,6 +290,11 @@ Names describe the effect while the emitted interface stays compatible:
 - `moveSelectedChannelOrCategory` → `moveChannel` retains the global entrypoint
   for group or membership ordering. `removeSelectedChannelFromCategory` →
   `deleteChannel` removes category membership, not the shared catalog channel.
+- `importGuideReminder` → `startEpgTimer` imports into the reminder owner; it
+  does not attach a timeout handle to the caller's record.
+- `openSelectedChannelRecordings` → `catRecordsList` resolves a channel position
+  in the current list before requesting its provider recordings. The argument
+  is not a category identifier.
 
 The `__ott*` APIs in `CLASSIC_PRIVATE_MODULES` are explicit internal integration
 boundaries. Their implementation bindings are local to immediate scopes; the
@@ -318,7 +341,7 @@ There are two independent distribution decisions:
   Menu restrictions alone are not proof that excluded code/assets are absent.
 
 [classic-size.cjs](../scripts/classic-size.cjs) is the executable size contract:
-654,000 raw bytes and 186,750 gzip-level-9 bytes for each final classic artifact.
+654,000 raw bytes and 187,200 gzip-level-9 bytes for each final classic artifact.
 It excludes separately loaded media libraries and shared core. The build report
 at `build/reports/classic-bundle.json` records modules, optimizer options,
 interfaces, hashes and actual sizes. Older measurements in migration documents
@@ -338,8 +361,15 @@ the core distribution checker verifies the complete consumer artifact set.
 
 ## Proving code is dead
 
-A failed text search or an unused TypeScript export is only a lead. Before
-removing a runtime binding or excluding a module:
+A failed text search or an unused TypeScript export is only a lead.
+
+Use symbol references against the classic manifest and mapped aliases to find
+candidates, then follow escaped functions: returned driver methods, registry
+factories, stored callbacks and `window` publications are call paths even without
+a direct local call. Check every shipped provider profile and device route;
+retained oracle files alone do not establish runtime reachability or savings.
+
+Before removing a runtime binding or excluding a module:
 
 1. Check HTML boot, device routes, bare globals, `window` aliases, native/plugin
    entrypoints, event registrations, indirect property access, generated wire

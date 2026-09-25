@@ -213,3 +213,49 @@ unchanged 654,000 / 186,750 ceilings. The delivered JavaScript inventories and
 hashes outside `stbPlayer.js` are unchanged in all four outputs; no removed code
 was shifted into another downloaded script. Duplicate packaging copies are not
 counted as separate startup transfers.
+
+## Media reads, UI consolidation and credential admission
+
+Media highlighting and screen cleanup now read a scalar library revision.
+Highlighting no longer copies a complete catalog or returns a discarded detached
+item. A 1,000-record regression checks zero metadata reads for revision/highlight,
+while `select()` and `snapshot()` still publish detached data. Favorite actions
+capture their frame once, and recursive metadata copying creates one ancestor
+array per object rather than per property. This measures avoided work, not
+elapsed time or decoder performance on physical devices.
+
+Menu rendering samples playback status at most once when needed and avoids
+allocating capability/key arrays for each row or key event. List pagination reads
+the existing screen/settings owners directly and preserves data-array precedence
+and live compatibility writes. Three color dialogs share their input handler;
+progress click and drag release share seek logic. The unused private `seekStartX`
+value and an unreachable duplicate EPG-tooltip branch were removed. Click and
+mouseup remain separate events, including their existing combined behavior.
+Provider reachability review did not justify deleting additional runtime
+functions or retained device/provider globals.
+
+The credential fixes reject old editor effects after abort reentry, defer loads
+during multi-key writes, verify rollback before releasing those loads and recheck
+ownership after catalog decoding and guide credential reads. A recursive Save
+returns cancellation and never commits later behind the editor. Independent
+regressions reproduce mixed-account requests and stale publication on the
+preceding implementation. Full-artifact smoke exercises six credential scenarios
+in Full and four in Play; editor retry behavior has separate source coverage.
+
+Source names `importGuideReminder`, `openSelectedChannelRecordings` and
+`serializeMediaIdentity` describe their actual effects. The first two retain
+their historical global names, arity and live aliases; the serializer is private.
+Architecture and media documentation distinguish scalar reads from detached
+publication, describe credential admission and explain callback/profile-aware
+dead-code analysis.
+
+Against main `067f546`, Node 22.23.3 produces final server JS of 652,848 raw /
+187,048 gzip bytes: 694 raw bytes fewer and 566 gzip bytes more (0.30%). Tauri and
+Capacitor produce 652,806 / 187,116: 694 fewer raw and 559 more gzip bytes (0.30%).
+The final staged Play frontend is 588,660 / 168,946: 1,392 fewer raw and 240 more
+gzip bytes (0.14%). Its intermediate build output is not the native delivery size.
+Gzip uses level 9 with the same Node/zlib versions for both revisions. The raw
+ceiling remains 654,000; the gzip ceiling increases explicitly from 186,750 to
+187,200 bytes to cover credential checks after the UI savings. Optimizer settings,
+ES5 grammar, public ABI protections and separate vendor/shared-core assets are
+unchanged. These are final-artifact sizes, not source-line estimates.

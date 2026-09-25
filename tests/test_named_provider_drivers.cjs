@@ -823,4 +823,137 @@ test("Only4 invalid token editor reopens after keyboard close and retires its ti
     assert.equal(f.edits.length, before + 1);
 });
 
+test("multi-key credential writes exclude same-instance and replacement readers until rollback", () => {
+    for (const replace of [false, true]) {
+        const f = namedFixture("1ott"),
+            d = f.mount("1ott");
+        let entered = false,
+            next = d;
+        const set = f.host.stbSetItem;
+        f.host.stbSetItem = (key, value) => {
+            set(key, value);
+            if (!entered && key === "1ottid" && value === "new-user") {
+                entered = true;
+                if (replace) next = f.mount("1ott");
+                next.load(() => {});
+                assert.equal(
+                    f.requests.length,
+                    0,
+                    "reader waits for the complete batch"
+                );
+            }
+        };
+        assert.equal(
+            d.saveCredentials({
+                password: "new-pin",
+                server: "",
+                username: "new-user",
+            }),
+            false
+        );
+        assert.equal(f.requests.length, 1);
+        assert(f.requests[0].settings.url.includes("/fixture-id/fixture-pin"));
+        assert.equal(next.credentials().username, "fixture-id");
+        assert.equal(next.credentials().password, "fixture-pin");
+        assert.equal(d.load.length, 1);
+        assert.equal(d.saveCredentials.length, 1);
+    }
+});
+
+test("failed rollback is observable and never starts a queued mixed-account request", () => {
+    const f = namedFixture("1ott"),
+        d = f.mount("1ott");
+    let entered = false;
+    const set = f.host.stbSetItem;
+    f.host.stbSetItem = (key, value) => {
+        if (entered && key === "1ottid" && value === "fixture-id")
+            throw Error("rollback rejected");
+        set(key, value);
+        if (!entered && key === "1ottid") {
+            entered = true;
+            d.load(() => {});
+        }
+    };
+    assert.throws(() =>
+        d.saveCredentials({
+            password: "new-pin",
+            server: "",
+            username: "new-user",
+        })
+    );
+    assert.equal(f.requests.length, 0);
+});
+
+test("credential reads and rejected writes cannot partially commit a named account", () => {
+    for (const mode of ["read", "reject", "throw"]) {
+        const f = namedFixture("1ott"),
+            d = f.mount("1ott");
+        let entered = false;
+        const get = f.host.stbGetItem,
+            set = f.host.stbSetItem;
+        if (mode === "read")
+            f.host.stbGetItem = (key) => {
+                const value = get(key);
+                if (!entered && key === "1ottpin") {
+                    entered = true;
+                    d.load(() => {});
+                }
+                return value;
+            };
+        else
+            f.host.stbSetItem = (key, value) => {
+                if (key === "1ottpin" && value === "new-pin") {
+                    if (mode === "throw") throw Error("write unavailable");
+                    return;
+                }
+                set(key, value);
+            };
+        const save = () =>
+            d.saveCredentials({
+                password: "new-pin",
+                server: "",
+                username: "new-user",
+            });
+        if (mode === "read") assert.equal(save(), false);
+        else assert.throws(save);
+        assert.equal(f.saved.get("1ottid"), "fixture-id");
+        assert.equal(f.saved.get("1ottpin"), "fixture-pin");
+        if (mode === "read") assert.equal(f.requests.length, 1);
+        else assert.equal(f.requests.length, 0);
+    }
+});
+
+test("Only4 mode changes preserve the active catalog request and named decode reentry is revoked", () => {
+    const f = namedFixture("only4"),
+        d = f.mount("only4");
+    let completed = 0;
+    d.load(() => completed++);
+    assert.equal(d.saveCredentials({ ...d.credentials(), mode: 2 }), true);
+    f.requests[0].resolve(playlist);
+    assert.equal(completed, 1);
+    assert(d.stream(123));
+    assert.equal(d.credentials().mode, 2);
+    const n = namedFixture("tvteam"),
+        nd = n.mount("tvteam");
+    let oldCompleted = 0;
+    nd.load(() => oldCompleted++);
+    const parse = n.host.OttPlayCore.parseOperatorPlaylist;
+    let decoded = 0;
+    n.host.OttPlayCore.parseOperatorPlaylist = (...args) => {
+        const result = parse(...args);
+        decoded++;
+        nd.saveCredentials({
+            ...nd.credentials(),
+            playlist: "https://tv.team/pl/11/new/playlist.m3u8",
+        });
+        return result;
+    };
+    n.requests[0].resolve(
+        "#EXTM3U\n#EXTINF:-1,\nhttps://stream.test/123/index.m3u8\n"
+    );
+    assert.equal(decoded, 1);
+    assert.equal(oldCompleted, 0);
+    assert.equal(nd.stream(123), "");
+});
+
 console.log("PASS independent named providers: " + groups + " groups");

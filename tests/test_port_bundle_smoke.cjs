@@ -4,6 +4,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const acorn = require("acorn");
 const { assertQrSvg } = require("./helpers/qr-svg.cjs");
+const assertMenuRuntime = require("./helpers/menu-runtime.cjs");
 const {
     checkBundleIdentifiers,
 } = require("../scripts/check-bundle-identifiers.cjs");
@@ -933,6 +934,12 @@ function exerciseLibraryBackupRuntime(profile) {
 function exerciseMediaRuntime(profile) {
     const w = fixture(profile);
     vm.runInContext(bundle, w, { filename: bundlePath });
+    const {
+        assertMediaReadContract,
+        trackMediaSnapshots,
+    } = require("./helpers/media-read-cost.cjs");
+    assertMediaReadContract(w);
+    const mediaReads = trackMediaSnapshots(w);
     const stored = new Map(),
         played = [],
         rendered = [];
@@ -980,6 +987,12 @@ function exerciseMediaRuntime(profile) {
     ];
     request();
     assert.equal(rendered.at(-1).frame.items[0].ref.itemId, "provider:41");
+    const mediaRevision = w.__ottMedia.snapshot().revision;
+    mediaReads.reset();
+    w.__ottMedia.highlight(1, mediaRevision);
+    assert.equal(mediaReads.snapshots, 0);
+    assert.equal(mediaReads.selects, 0);
+    assert.equal(w.__ottMedia.snapshot().frame.selected, 1);
     w.selectMedia(0);
     assert.deepEqual(played, ["expired.mp4"]);
     position = 125.9;
@@ -1954,6 +1967,11 @@ function exerciseProviderRuntime(profile) {
         assert.equal(scripts.length, 2);
         assert.deepEqual(errors, []);
     }
+    require("./helpers/credential-reentry.cjs").assertCredentialReentry(
+        w,
+        stored,
+        requests
+    );
     console.log(
         "OK: actual classic bundle " +
             profile +
@@ -1964,6 +1982,7 @@ function exerciseProviderRuntime(profile) {
 function exerciseScreenRuntime(profile) {
     const w = fixture(profile);
     vm.runInContext(bundle, w, { filename: bundlePath, timeout: 5000 });
+    assertMenuRuntime(w.__ottMenuRegistry);
     const originalQuery = w.$;
     const visible = {};
     w.$ = function (selector) {
