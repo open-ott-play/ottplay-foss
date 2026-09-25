@@ -1866,6 +1866,11 @@ function exerciseProviderRuntime(profile) {
         profile + ": registered drivers never patch the ajax host port"
     );
     assert.deepEqual(errors, []);
+    require("./helpers/credential-reentry.cjs").assertCredentialReentry(
+        w,
+        stored,
+        requests
+    );
     console.log(
         "OK: actual classic bundle " +
             profile +
