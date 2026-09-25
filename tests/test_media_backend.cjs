@@ -1,5 +1,8 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const vm = require("node:vm");
+const ts = require("typescript");
 const load = require("./helpers/private-runtime.cjs");
 function fixture() {
     const context = vm.createContext({ console });
@@ -366,6 +369,90 @@ test("legacy device clock is explicit, elapsed-time based and does not mutate ke
     descriptor.keys.ENTER = 0;
     assert.equal(keys.ENTER, 13);
     assert.equal(device.eventToKeyCode({ code: 13 }), 13);
+});
+test("actual legacy device wiring preserves Window timer receivers and disposes its sampler", (f) => {
+    const entry = ts.createSourceFile(
+        "index.ts",
+        fs.readFileSync(path.join(__dirname, "../src/index.ts"), "utf8"),
+        ts.ScriptTarget.Latest,
+        true
+    );
+    const initializers = [];
+    function visit(node) {
+        if (
+            ts.isBinaryExpression(node) &&
+            node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+            ts.isPropertyAccessExpression(node.left) &&
+            node.left.name.text === "__ottDevice" &&
+            ts.isCallExpression(node.right)
+        )
+            initializers.push(node);
+        ts.forEachChild(node, visit);
+    }
+    visit(entry);
+    assert.equal(initializers.length, 1, "exercise the actual startup wiring");
+    const wiring = ts.transpileModule(
+        "var deviceHost = window;\n" + initializers[0].getText(entry) + ";",
+        { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+    ).outputText;
+    // These functions live in the browser realm: a copied timer called as a
+    // ports method must fail just as it does in receiver-checking WebKit.
+    vm.runInContext(
+        `
+        var timerJobs = {}, timerCalls = [], timerSerial = 0, deviceCommands = [];
+        window.setInterval = function (callback, delay) {
+            if (this !== window) throw new TypeError("setInterval requires Window");
+            var id = ++timerSerial;
+            timerJobs[id] = callback;
+            timerCalls.push(["setInterval", id, delay]);
+            return id;
+        };
+        window.clearInterval = function (id) {
+            if (this !== window) throw new TypeError("clearInterval requires Window");
+            delete timerJobs[id];
+            timerCalls.push(["clearInterval", id]);
+        };
+        window.__ottCoreTransport = { play: function () {} };
+        window.stbPlay = function () {};
+        window.stbIsPlaying = function () { return true; };
+        window.stbGetLen = function () { return 120; };
+        window.stbGetPosTime = function () { return 0; };
+        window.__ottClassicPlayback = {
+            command: function (value) { deviceCommands.push(value); },
+            importLegacy: function () {
+                return { generation: 1, phase: "playing", position: 3,
+                    target: { kind: "archive" } };
+            }
+        };
+        ` + wiring,
+        f.context
+    );
+    const w = f.context;
+    const device = w.__ottDevice;
+    device.start();
+    device.start();
+    assert.deepEqual(JSON.parse(JSON.stringify(w.timerCalls)), [
+        ["setInterval", 1, 1000],
+    ]);
+    w.timerJobs[1]();
+    assert.deepEqual(JSON.parse(JSON.stringify(w.deviceCommands)), [
+        { duration: 120, generation: 1, position: 3, type: "position" },
+        { generation: 1, type: "playing" },
+    ]);
+    device.dispose();
+    device.dispose();
+    assert.equal(Object.keys(w.timerJobs).length, 0);
+    assert.deepEqual(JSON.parse(JSON.stringify(w.timerCalls)), [
+        ["setInterval", 1, 1000],
+        ["clearInterval", 1],
+    ]);
+    w.stbPlay = w.__ottCoreTransport.play;
+    device.start();
+    assert.equal(
+        w.timerCalls.length,
+        2,
+        "managed playback needs no legacy timer"
+    );
 });
 console.log(
     "PASS media backend: " + passed + " ES5 lease/observer/device scenarios"

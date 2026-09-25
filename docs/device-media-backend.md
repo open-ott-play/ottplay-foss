@@ -16,6 +16,13 @@ native standby, volume, fullscreen and PiP effects explicitly. `__ottNativePip`
 owns asynchronous platform request IDs, serialized iOS operations and guarded
 CSS fallback; main and PiP lifetimes are separate.
 
+Native media-session timer ports call the corresponding `window` methods through
+wrappers. Passing browser timer functions directly as port methods changes their
+receiver and throws in WKWebView. During startup that error can trigger the
+first-channel fallback after the saved channel was correctly restored. The native
+session regression tests enforce the Window receiver for all four timer methods
+in both Tauri and Capacitor wiring.
+
 Playback snapshots are pure reads. Managed decoders publish measured media
 position through semantic playback commands. Archive position uses an origin
 calibrated to the decoder time, so buffering and idle timers cannot advance it.
