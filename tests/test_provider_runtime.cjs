@@ -4,6 +4,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
+const {
+    transformDistribution,
+} = require("../scripts/android-distribution.cjs");
 const code = ts.transpileModule(
     fs.readFileSync(path.join(__dirname, "../src/provider/runtime.ts"), "utf8"),
     {
@@ -14,7 +17,7 @@ const code = ts.transpileModule(
     }
 ).outputText;
 
-function fixture() {
+function fixture(flavor = "full") {
     const requests = [];
     const timers = new Map();
     let nextTimer = 0;
@@ -102,7 +105,12 @@ function fixture() {
     });
     const context = { window: host };
     vm.createContext(context);
-    vm.runInContext("(function () {\n" + code + "\n}).call(this);", context);
+    vm.runInContext(
+        "(function () {\n" +
+            transformDistribution(code, flavor).code +
+            "\n}).call(this);",
+        context
+    );
     assert.equal(
         vm.runInContext("typeof createProviderRegistry", context),
         "undefined"
@@ -115,6 +123,137 @@ function fixture() {
         requests,
         timers,
     };
+}
+
+// Managed paths have the same lifetime behavior in Full and in the stripped Play
+// runtime. Their transports already own cancellation; host APIs stay untouched
+// even while a request or startup callback is executing.
+for (const flavor of ["full", "play"]) {
+    const f = fixture(flavor);
+    const adapter = f.adapter;
+    assert.equal(
+        typeof adapter.bind,
+        flavor === "full" ? "function" : "undefined"
+    );
+    assert.equal(
+        typeof adapter.loadScript,
+        flavor === "full" ? "function" : "undefined"
+    );
+    const originalTimer = f.host.setTimeout;
+    let oldCatalog;
+    let request;
+    let mutations = 0;
+    let cleaned = 0;
+    adapter.replace((provider) => {
+        provider.own(() => cleaned++);
+        oldCatalog = adapter.beginCatalog(true);
+        oldCatalog.run(() => {
+            assert.equal(f.host.$.ajax, f.ajax, flavor);
+            assert.equal(f.host.setTimeout, originalTimer, flavor);
+            request = f.host.$.ajax({
+                error: oldCatalog.guard(() => mutations++),
+                success: oldCatalog.guard(() => mutations++),
+            });
+            oldCatalog.own(() => request.abort());
+            const timer = f.host.setTimeout(
+                oldCatalog.guard(() => mutations++)
+            );
+            oldCatalog.own(() => f.host.clearTimeout(timer));
+        });
+    }, true);
+    adapter.replace(() => {
+        assert.equal(
+            request.aborted,
+            1,
+            "retire requests before resetting the next view"
+        );
+        assert.equal(f.timers.size, 0, "retire catalog timers before startup");
+        assert.equal(cleaned, 1, "retire the provider before startup");
+    }, true);
+    request.resolve("late");
+    oldCatalog.run(() => mutations++);
+    assert.equal(mutations, 0, flavor + " rejects abort and late callbacks");
+    assert.equal(f.host.$.ajax, f.ajax);
+    assert.equal(f.host.setTimeout, originalTimer);
+
+    const catalog = adapter.beginCatalog(true);
+    const receiver = { prefix: "value:" };
+    const guarded = catalog.guard(function (value) {
+        return this.prefix + value;
+    });
+    assert.equal(guarded.call(receiver, "current"), "value:current");
+    const nextCatalog = adapter.beginCatalog(true);
+    assert.equal(guarded.call(receiver, "stale"), undefined);
+    assert.equal(
+        nextCatalog.run(() => "current"),
+        "current"
+    );
+    adapter.dispose();
+    assert.equal(
+        nextCatalog.run(() => "retired"),
+        undefined
+    );
+}
+
+// Cleanup can choose a newer source before the requested replacement starts.
+for (const flavor of ["full", "play"]) {
+    for (const cleanupOwner of ["provider", "catalog"]) {
+        const f = fixture(flavor);
+        const events = [];
+        let newest;
+        f.adapter.replace((session) => {
+            events.push("A");
+            const owner =
+                cleanupOwner === "provider"
+                    ? session
+                    : f.adapter.beginCatalog(true);
+            owner.own(() =>
+                f.adapter.replace((current) => {
+                    newest = current;
+                    events.push("C");
+                }, true)
+            );
+        }, true);
+        f.adapter.replace(() => events.push("B"), true);
+        assert.deepEqual(events, ["A", "C"], flavor + ": " + cleanupOwner);
+        assert.equal(newest.active(), true);
+        f.adapter.dispose();
+        assert.equal(newest.active(), false);
+    }
+}
+
+// Even without script evaluation, a managed start may synchronously request
+// replacements. Run only the latest after the retired callback finishes and
+// propagate its error after that replacement is initialized.
+for (const flavor of ["full", "play"]) {
+    const f = fixture(flavor);
+    const events = [];
+    let newest;
+    assert.throws(
+        () =>
+            f.adapter.replace((old) => {
+                events.push("A-start");
+                f.adapter.replace(() => events.push("B"), true);
+                f.adapter.replace((current) => {
+                    newest = current;
+                    events.push("C");
+                }, true);
+                assert.equal(old.active(), false);
+                events.push("A-end");
+                throw new Error("retired managed startup failed");
+            }, true),
+        /retired managed startup failed/
+    );
+    assert.deepEqual(events, ["A-start", "A-end", "C"], flavor);
+    assert.equal(newest.active(), true);
+    f.adapter.replace(() => events.push("D"), true);
+    assert.deepEqual(events, ["A-start", "A-end", "C", "D"]);
+
+    f.adapter.replace(() => {
+        f.adapter.replace(() => events.push("cancelled"), true);
+        f.adapter.dispose();
+    }, true);
+    assert.equal(events.includes("cancelled"), false);
 }
 
 // Pure registry: immediate invalidation, idempotent cleanup and reentrant replacement.
@@ -446,5 +585,5 @@ for (const cleanupOwner of ["provider", "catalog"]) {
 }
 
 console.log(
-    "PASS provider runtime: ownership, cancellation, deferred callbacks, script serialization and reentrancy"
+    "PASS provider runtime: Full/Play managed lifetimes, Full extension ownership, cancellation and reentrancy"
 );

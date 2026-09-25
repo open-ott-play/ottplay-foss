@@ -174,6 +174,46 @@ Compared with main `770ff3d`, Node 22.23.3 produces server JS of 653,275 raw /
 libraries and shared core are unchanged. The 654,000 / 186,750 size ceilings and
 ES5 optimizer protections were not increased or relaxed.
 
+## Semantic entrypoints and distribution-specific reachability
+
+The next audit distinguishes built-in managed providers from Full's explicit
+external dealer extension. The existing dealer integration test proves that a
+script can append a provider ID and use the scoped loader; no normal menu profile
+needs it, but it is not globally dead. Play's closed four-profile policy excludes
+that entrypoint, so the scoped script loader/AJAX/timer interception is removed
+from Play output while provider/catalog lifetime cancellation remains. Full keeps
+its tested extension contract. A missing built-in factory now fails startup rather
+than fetching an excluded old script; only Full extension IDs outside the managed
+inventory can use the fallback. Retained provider scripts remain immutable oracles.
+
+The unused `matchNativeXmltvChannel` convenience wrapper was removed after checking
+provider, device, native bridge, linker and sibling Android/shared-core consumers.
+It had no caller or published compatibility binding. Native M3U matching still
+uses `createNativeXmltvMatcher`, retained per source group, through
+`matchCapacitorM3u`; `test-native-epg-parity.ts` verifies that integration. An exported
+declaration alone is not evidence of runtime reachability, just as an absent
+TypeScript import alone is not evidence of dead code in a classic global ABI.
+
+Source names now describe the archive operation: `pauseLivePlayback`,
+`replayFromLiveOffset` and `showPlaybackSeekDialog`. The classic bindings remain
+`liveStop`, `timeShift` and `shiftArchiveSelect`, including arity and late device
+replacement through live aliases. No new playback algorithm or second state owner
+is introduced. Tests exercise actual source operations and optimized declarations.
+The [playback command/clock contract](playback-session-architecture.md#commands-observations-and-clocks)
+and [guide request/cache contract](guide-architecture.md#request-cache-and-projection-are-different-operations)
+record the non-obvious semantics rather than leaving misleading getter/stop names
+as the architecture. Size gates and optimizer protections remain unchanged.
+
+Rebuilt against `3e138aa` with the same lockfile, version, Node 22.23.3 and gzip
+level 9, final Full server JavaScript is 653,542 raw / 186,482 gzip bytes
+(+267 / +101). The final Tauri and Capacitor copies are 653,500 / 186,557
+(+267 / +111). Play after native staging is 590,052 / 168,706, down from
+592,577 / 169,494 (2,525 raw / 788 gzip bytes removed). All remain within the
+unchanged 654,000 / 186,750 ceilings. The delivered JavaScript inventories and
+hashes outside `stbPlayer.js` are unchanged in all four outputs; no removed code
+was shifted into another downloaded script. Duplicate packaging copies are not
+counted as separate startup transfers.
+
 ## Media reads, UI consolidation and credential admission
 
 Media highlighting and screen cleanup now read a scalar library revision.
@@ -209,13 +249,13 @@ Architecture and media documentation distinguish scalar reads from detached
 publication, describe credential admission and explain callback/profile-aware
 dead-code analysis.
 
-Against main `3e138aa`, Node 22.23.3 produces final server JS of 652,603 raw /
-186,927 gzip bytes: 672 raw bytes fewer and 546 gzip bytes more (0.29%). Tauri and
-Capacitor produce 652,561 / 186,999: 672 fewer raw and 553 more gzip bytes (0.30%).
-The final staged Play frontend is 591,207 / 169,708: 1,370 fewer raw and 214 more
-gzip bytes (0.13%). Its intermediate build output is not the native delivery size.
+Against main `067f546`, Node 22.23.3 produces final server JS of 652,848 raw /
+187,048 gzip bytes: 694 raw bytes fewer and 566 gzip bytes more (0.30%). Tauri and
+Capacitor produce 652,806 / 187,116: 694 fewer raw and 559 more gzip bytes (0.30%).
+The final staged Play frontend is 588,660 / 168,946: 1,392 fewer raw and 240 more
+gzip bytes (0.14%). Its intermediate build output is not the native delivery size.
 Gzip uses level 9 with the same Node/zlib versions for both revisions. The raw
 ceiling remains 654,000; the gzip ceiling increases explicitly from 186,750 to
-187,100 bytes to cover credential checks after the UI savings. Optimizer settings,
+187,200 bytes to cover credential checks after the UI savings. Optimizer settings,
 ES5 grammar, public ABI protections and separate vendor/shared-core assets are
 unchanged. These are final-artifact sizes, not source-line estimates.

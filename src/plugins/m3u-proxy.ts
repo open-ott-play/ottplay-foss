@@ -83,15 +83,6 @@ function createNativeXmltvMatcher(
     };
 }
 
-export function matchNativeXmltvChannel(
-    entries: NativeXmltvChannel[],
-    id: string,
-    tvgName: string,
-    name: string
-): NativeXmltvChannel | undefined {
-    return createNativeXmltvMatcher(entries)(id, tvgName, name);
-}
-
 function nativeLogoFallback(name: string): string {
     var letter = (name.trim().charAt(0) || "?").replace(/[<>&"']/g, "?");
     return (

@@ -4,8 +4,10 @@ const path = require("node:path");
 const ts = require("typescript");
 const acorn = require("acorn");
 const { JSDOM } = require("jsdom");
+const { classicName } = require("./helpers/english-source-fixture.cjs");
 const root = path.resolve(__dirname, "..");
 const bundle = process.argv[2];
+const runtimeName = (name) => (bundle ? classicName(name) : name);
 const source = fs.readFileSync(
     bundle || path.join(root, "src/ui/index.ts"),
     "utf8"
@@ -21,8 +23,8 @@ const names = [
     "usesLgPointerInput",
     "virtualTimeshiftProg",
     "_t2",
-    bundle ? "pos2text" : "formatClockTime",
-];
+    "formatClockTime",
+].map(runtimeName);
 const functions = ast.statements.filter(
     (n) => ts.isFunctionDeclaration(n) && names.includes(n.name.text)
 );
@@ -62,14 +64,15 @@ function fixture(options = {}) {
         playTime: 95,
         playType: -1e11,
         primaryIndex: 0,
+        replayFromLiveOffset: (delta) => calls.push(["rewind", delta]),
         showShift: (text) => calls.push(["message", text]),
         stbGetLen: () => 3700,
         stbSetPosTime: (at) => calls.push(["seek", at]),
-        timeShift: (delta) => calls.push(["rewind", delta]),
         ...options,
     });
-    // The optimized classic artifact lowers the historical channel map alias.
-    w.chanels = w.channels;
+    // Source uses canonical ports; optimized artifacts retain the provider ABI.
+    for (const name of ["channels", "replayFromLiveOffset"])
+        w[runtimeName(name)] = w[name];
     w.Date.now = () => 1800000;
     w.console.error = (text) => calls.push(["error", text]);
     w.eval(code);
@@ -93,7 +96,7 @@ function fixture(options = {}) {
     }
     return {
         calls,
-        clock: (at) => (w.formatClockTime || w.pos2text)(at),
+        clock: (at) => w[runtimeName("formatClockTime")](at),
         close: () => w.close(),
         send,
         w,

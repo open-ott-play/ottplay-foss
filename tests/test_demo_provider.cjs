@@ -284,20 +284,30 @@ test("provider reload revokes channel readiness before its script completes", ()
     assert.notEqual(w.__ottCommandChannelLoad, previous);
 });
 
-test("retained custom-script boundary rejects older completion (forced unregistered fixture)", () => {
+test("retained Full dealer extension rejects older script completion", () => {
     const { w, saved } = menuFixture(0, 0);
-    saved.set("ottplayprov", "m3u");
-    // All shipped providers now use instances. Exercise only the retained extension boundary.
-    w.__ottProviderDrivers.registry.has = () => false;
+    // A dealer may append a Full extension outside the managed inventory.
+    // Built-in providers always require their registered driver.
+    w.arrayProvaiders.push("custom/dealer");
+    saved.set("ottplayprov", "custom/dealer");
+    assert.equal(w.__ottProviderDrivers.registry.has("custom/dealer"), false);
     const scripts = [];
     let channelLoads = 0;
     let fallbackScreens = 0;
     w.loadChannels = () => channelLoads++;
     w.firstRun = () => fallbackScreens++;
-    w.getScriptDOM = (_url, ready, failed) => scripts.push({ failed, ready });
+    w.getScriptDOM = (url, ready, failed) =>
+        scripts.push({ failed, ready, url });
     w.loadProv();
     w.loadProv();
+    assert.equal(scripts.length, 1, "replacement waits for the older script");
+    assert.equal(
+        scripts[0].url,
+        "https://player.invalid/prov/custom/dealer/prov.js?fixture"
+    );
     scripts[0].ready();
+    assert.equal(scripts.length, 2);
+    assert.equal(scripts[1].url, scripts[0].url);
     assert.equal(channelLoads, 0);
     scripts[0].failed(new Error("Retired provider"));
     assert.equal(
@@ -306,7 +316,7 @@ test("retained custom-script boundary rejects older completion (forced unregiste
         "stale error cannot replace the current setup"
     );
     assert.equal(w.commandChannelsReady, false);
-    // Supply the current provider's actual hook through its checked-in adapter.
+    // Reuse the checked-in historical adapter to publish real extension hooks.
     vm.runInContext(adapter, w);
     scripts[1].ready();
     assert.equal(channelLoads, 1);

@@ -123,6 +123,7 @@ import {
     renameFavoritesList,
     renderEpgFooter,
     renderGuideView,
+    replayFromLiveOffset,
     saveChannelsCats,
     selectEpg,
     setActiveFavoritesList,
@@ -130,8 +131,7 @@ import {
     setEpgTimer,
     setParentAccess,
     shiftArchive,
-    shiftArchiveSelect,
-    timeShift,
+    showPlaybackSeekDialog,
     updateArchiveInfo,
 } from "./channels";
 // Localization
@@ -5238,8 +5238,8 @@ window.body_onUnload = body_onUnload;
 window.playArchive = playArchive;
 window.fileArchive = fileArchive;
 window.shiftArchive = shiftArchive;
-window.shiftArchiveSelect = shiftArchiveSelect;
-window.timeShift = timeShift;
+window.showPlaybackSeekDialog = showPlaybackSeekDialog;
+window.replayFromLiveOffset = replayFromLiveOffset;
 window.checkMedia = checkMedia;
 window.setCurrent = setCurrent;
 window.publishChannelProgrammeRows = publishChannelProgrammeRows;

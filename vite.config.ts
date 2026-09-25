@@ -137,8 +137,8 @@ function autoPlaybackScript(srcRoot: string): string {
 // Vite still writes Mode A artifacts to dist/ (stbPlayer.js + index.html);
 // Tauri serves the *contents* of frontendDist as "/", so we nest
 // dist/stbPlayer.js inside the stage dir instead of pointing at ../dist.
-// Capacitor webDir "dist" gets the same nested path via dist/dist/stbPlayer.js
-// (written in generateBundle) so Cap keeps the identical boot URL contract.
+// Capacitor's separate dist-mobile stage preserves /dist/stbPlayer.js too;
+// its contents are served from the web root, like the Tauri stage.
 function stageTauriFrontend(
     srcRoot: string,
     distDir: string,
@@ -322,7 +322,7 @@ export default defineConfig(({ mode }) => ({
                     );
                 }
 
-                // Step 2: concatenate with stripModule
+                // Step 2: link the ordered modules and their checked classic ABI.
                 console.log("Step 2: concatenate...");
                 const outDir = androidFlavor
                     ? resolve(androidOutput!)
@@ -386,9 +386,9 @@ export default defineConfig(({ mode }) => ({
                     cpSync(join(__dirname, "favicon.ico"), favicon);
                 }
 
-                // Cap webDir is "dist" (contents served as "/"). Boot still
-                // loads host+"/dist/stbPlayer.js" (Mode A / Tauri contract), so
-                // nest a copy at dist/dist/stbPlayer.js for Capacitor.
+                // Native roots retain the /dist/stbPlayer.js bootstrap URL.
+                // Prepare the nested copy before staging Capacitor separately
+                // into dist-mobile and applying its native transformations.
                 mkdirSync(join(outDir, "dist"), { recursive: true });
                 cpSync(outPath, join(outDir, "dist", "stbPlayer.js"));
                 console.log("Nested Cap contract: dist/dist/stbPlayer.js");

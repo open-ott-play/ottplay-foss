@@ -11,7 +11,7 @@ const source = ts.createSourceFile(
     ts.ScriptTarget.Latest,
     true
 );
-const names = ["selectEpg", "shiftArchiveSelect"];
+const names = ["selectEpg", "showPlaybackSeekDialog"];
 const functions = source.statements.filter(
     (node) => ts.isFunctionDeclaration(node) && names.includes(node.name?.text)
 );
@@ -203,7 +203,7 @@ for (const [name, mutate] of Object.entries(mutations)) {
 }
 {
     const f = fixture();
-    f.c.shiftArchiveSelect(10);
+    f.c.showPlaybackSeekDialog(10);
     const first = f.timers[0];
     f.c.dialogBoxKeyHandler(f.c.keys.UP);
     const last = f.timers.at(-1);
@@ -228,7 +228,7 @@ for (const action of [
     "replacement dialog",
 ]) {
     const f = fixture();
-    f.c.shiftArchiveSelect(10);
+    f.c.showPlaybackSeekDialog(10);
     const delayed = f.timers[0];
     if (action === "enter") f.c.dialogBoxKeyHandler(f.c.keys.ENTER);
     if (action === "return") f.c.dialogBoxKeyHandler(f.c.keys.RETURN);
@@ -253,9 +253,9 @@ for (const action of [
 }
 {
     const f = fixture();
-    f.c.shiftArchiveSelect(10);
+    f.c.showPlaybackSeekDialog(10);
     const old = f.timers[0];
-    f.c.shiftArchiveSelect(20);
+    f.c.showPlaybackSeekDialog(20);
     old.callback();
     assert.deepEqual(f.calls, [], "Old dialog cannot hide the replacement");
     f.timers.at(-1).callback();

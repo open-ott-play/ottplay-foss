@@ -258,7 +258,6 @@ matcher.window.OttPlayCore = matcher.OttPlayCore;
 vm.runInContext(
     functions("src/plugins/m3u-proxy.ts", [
         "createNativeXmltvMatcher",
-        "matchNativeXmltvChannel",
         "nativeLogoFallback",
         "matchCapacitorM3u",
     ]),

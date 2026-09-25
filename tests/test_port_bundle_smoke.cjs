@@ -482,6 +482,12 @@ function assertPrivateRuntime(w, profile) {
         );
     }
     assert.equal(typeof w.__ottProviderRuntime.classic.replace, "function");
+    for (const method of ["bind", "loadScript"])
+        assert.equal(
+            typeof w.__ottProviderRuntime.classic[method],
+            playDistribution ? "undefined" : "function",
+            profile + ": external script capability follows the distribution"
+        );
     if (playDistribution) {
         assert.equal(w.__ottCatalogDrivers, undefined);
         assert.equal(w.__ottPlaylistDrivers, undefined);
@@ -502,6 +508,17 @@ function assertPrivateRuntime(w, profile) {
     assert.deepEqual(
         Array.from(w.__ottProviderDrivers.registry.ids()),
         Array.from(w.__ottProviderDriverProfiles, (profile) => profile.id)
+    );
+    const selectableProviders = Array.from(w.providerIds).filter(Boolean);
+    assert.equal(
+        new Set(selectableProviders).size,
+        selectableProviders.length,
+        profile + ": selectable provider IDs are unique"
+    );
+    assert.deepEqual(
+        selectableProviders.slice().sort(),
+        Array.from(w.__ottProviderDrivers.registry.ids()).sort(),
+        profile + ": every selectable provider has exactly one managed driver"
     );
     for (const name of [
         "startCloudSettings",
@@ -1272,6 +1289,7 @@ function exerciseProviderRuntime(profile) {
     ]);
     const requests = [],
         scripts = [],
+        scriptCallbacks = [],
         errors = [];
     let completed = 0,
         ajaxWrites = 0;
@@ -1326,7 +1344,10 @@ function exerciseProviderRuntime(profile) {
         },
         finishPortChannelIdMigration() {},
         getDefaultPlayerMode: () => 0,
-        getScriptDOM: (url) => scripts.push(url),
+        getScriptDOM(url, callback) {
+            scripts.push(url);
+            scriptCallbacks.push(callback);
+        },
         invalidateEpgCache() {},
         normalizePlayerMode: (value) => value,
         onChannelsLoaded: () => completed++,
@@ -1866,6 +1887,86 @@ function exerciseProviderRuntime(profile) {
         profile + ": registered drivers never patch the ajax host port"
     );
     assert.deepEqual(errors, []);
+    w.listCaptionElement = w.document.getElementById("listCaption");
+    w.listDetail = w.document.getElementById("listDetail");
+    w.listFooter = w.document.getElementById("listFooter");
+    const requestCount = requests.length;
+    for (const selection of ["stored", "url"]) {
+        stored.set(
+            "ottplayprov",
+            selection === "stored" ? "unknown/provider" : ""
+        );
+        w.location.search = selection === "url" ? "?unknown/provider" : "";
+        w.loadProv();
+        assert.equal(w.listCaptionElement.innerHTML, "First Run Setup");
+        assert.equal(w.__ottActiveProviderDriver, null);
+        assert.deepEqual(
+            scripts,
+            [],
+            profile + ": unknown ID never loads a script"
+        );
+        assert.equal(
+            requests.length,
+            requestCount,
+            profile + ": unknown ID never makes a request"
+        );
+    }
+    w.location.search = "";
+    const driverRegistry = w.__ottProviderDrivers.registry;
+    const hasDriver = driverRegistry.has;
+    const alerts = [];
+    w.alert = (message) => alerts.push(message);
+    driverRegistry.has = (id) => (id === "demo" ? false : hasDriver(id));
+    try {
+        w.loadProv("demo");
+        assert.deepEqual(alerts, ["demo: load error!!!"]);
+        assert.equal(w.listCaptionElement.innerHTML, "First Run Setup");
+        assert.equal(w.__ottActiveProviderDriver, null);
+        assert.deepEqual(
+            scripts,
+            [],
+            profile + ": missing managed driver never loads its retired script"
+        );
+        assert.equal(requests.length, requestCount);
+    } finally {
+        driverRegistry.has = hasDriver;
+    }
+    if (!playDistribution) {
+        let customLoads = 0;
+        w.loadChannels = () => customLoads++;
+        w.showEditKey = () => {};
+        w.edit_dealer();
+        w.editvar = "custom:artifact-code";
+        w.setEdit();
+        w.doDealer = (value) => {
+            assert.equal(value, "custom:artifact-code");
+            w.providerIds.push("custom/dealer");
+            stored.set("ottplayprov", "custom/dealer");
+            w.loadProv();
+        };
+        scriptCallbacks[0]();
+        assert.equal(scripts.length, 2);
+        assert(scripts[0].includes("/d/custom.js?"));
+        assert(scripts[1].includes("/prov/custom/dealer/prov.js?"));
+        assert.equal(driverRegistry.has("custom/dealer"), false);
+        w.duneAddSettings = () => {};
+        w.getChannelUrl = () => "https://media.test/custom.m3u8";
+        scriptCallbacks[1]();
+        assert.equal(customLoads, 1);
+        const retiredUrl = w.getChannelUrl;
+        assert.equal(retiredUrl(), "https://media.test/custom.m3u8");
+        w.loadProv("demo");
+        assert.equal(customLoads, 2);
+        assert.equal(w.__ottActiveProviderDriver.id, "demo");
+        assert.equal(
+            retiredUrl(),
+            undefined,
+            profile +
+                ": replacing a custom provider retires its script callbacks"
+        );
+        assert.equal(scripts.length, 2);
+        assert.deepEqual(errors, []);
+    }
     require("./helpers/credential-reentry.cjs").assertCredentialReentry(
         w,
         stored,
@@ -2098,6 +2199,45 @@ async function main() {
                 w[pair[1]],
                 profile + ": shared naming alias " + pair[0]
             );
+        }
+        for (const [canonical, legacy, arity] of [
+            ["pauseLivePlayback", "liveStop", 0],
+            ["replayFromLiveOffset", "timeShift", 1],
+            ["showPlaybackSeekDialog", "shiftArchiveSelect", 1],
+        ]) {
+            const original = w[legacy];
+            assert.equal(typeof original, "function");
+            assert.equal(w[canonical], original, profile + ": " + canonical);
+            assert.equal(
+                original.name,
+                legacy,
+                profile + ": retained callback name"
+            );
+            assert.equal(
+                original.length,
+                arity,
+                profile + ": retained callback arity"
+            );
+            try {
+                const providerOverride = function () {};
+                w[legacy] = providerOverride;
+                assert.equal(
+                    w[canonical],
+                    providerOverride,
+                    profile + ": canonical alias observes provider replacement"
+                );
+                const canonicalOverride = function () {};
+                w[canonical] = canonicalOverride;
+                assert.equal(
+                    vm.runInContext(legacy, w),
+                    canonicalOverride,
+                    profile +
+                        ": canonical assignment updates the bare legacy binding"
+                );
+            } finally {
+                w[legacy] = original;
+            }
+            assert.equal(w[canonical], original);
         }
         const originalProvider = w.getChannelsArray;
         vm.runInContext(

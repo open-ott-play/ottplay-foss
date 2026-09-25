@@ -6,6 +6,10 @@ const ts = require("typescript");
 const sharedCore = require("./helpers/shared-core-runtime.cjs");
 const root = path.resolve(__dirname, "..");
 function include(c, names) {
+    names = require("./helpers/english-source-fixture.cjs").sourceNames(
+        "src/channels/index.ts",
+        names
+    );
     const file = "src/channels/index.ts";
     const ast = ts.createSourceFile(
         file,

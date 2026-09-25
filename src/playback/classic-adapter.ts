@@ -414,9 +414,9 @@ function classicPlaybackRuntime(): any {
             } else if (plan.action === "open-archive") {
                 if (
                     classicPlaybackSnapshot().target?.kind === "live" &&
-                    typeof w.timeShift === "function"
+                    typeof w.replayFromLiveOffset === "function"
                 )
-                    w.timeShift(
+                    w.replayFromLiveOffset(
                         Math.max(0, Date.now() / 1000 - plan.archiveStart)
                     );
                 else {

@@ -110,6 +110,9 @@ async function testRenamedHelpers() {
         ["findOptionIndex", "optIndexOf"],
         ["removeOption", "delOption"],
         ["prependMenuButtonHint", "addBtn2menu"],
+        ["pauseLivePlayback", "liveStop"],
+        ["replayFromLiveOffset", "timeShift"],
+        ["showPlaybackSeekDialog", "shiftArchiveSelect"],
         ["observeCurrentProgramme", "getCurProgData"],
         ["publishChannelProgrammeRows", "setCurProg"],
         ["moveSelectedChannelOrCategory", "moveChannel"],
@@ -122,6 +125,9 @@ async function testRenamedHelpers() {
         compile(
             "var optionsArr=[], listArray=[], infoTimeout=null, detailTimer=null, _fbBuffer=[], _fbTimer=null;\n" +
                 sourceDefinitions("src/channels/index.ts", [
+                    "pauseLivePlayback",
+                    "replayFromLiveOffset",
+                    "showPlaybackSeekDialog",
                     "observeCurrentProgramme",
                     "publishChannelProgrammeRows",
                     "moveSelectedChannelOrCategory",
@@ -184,6 +190,45 @@ async function testRenamedHelpers() {
                 canonical + " retains its classic identity"
             );
         }
+        for (const [canonical, legacy, arity] of [
+            ["pauseLivePlayback", "liveStop", 0],
+            ["replayFromLiveOffset", "timeShift", 1],
+            ["showPlaybackSeekDialog", "shiftArchiveSelect", 1],
+        ]) {
+            const original = c[legacy];
+            assert.equal(original.name, legacy);
+            assert.equal(original.length, arity);
+            const replacement = () => {};
+            c[legacy] = replacement;
+            assert.equal(
+                c[canonical],
+                replacement,
+                "Late device replacement stays live"
+            );
+            c[canonical] = original;
+            assert.equal(
+                c[legacy],
+                original,
+                "Canonical assignment preserves one binding"
+            );
+        }
+        const archiveCalls = [];
+        c.__ottClassicArchive = {
+            pauseLive: () => archiveCalls.push(["pause"]),
+            rewind: (offset) => archiveCalls.push(["replay", offset]),
+        };
+        c.stbIsPlaying = () => false;
+        c.pauseLivePlayback();
+        assert.deepEqual(archiveCalls, [], "A stopped decoder is not paused");
+        c.stbIsPlaying = () => true;
+        c.pauseLivePlayback();
+        c.replayFromLiveOffset(30);
+        c.timeShift(0);
+        assert.deepEqual(archiveCalls, [
+            ["pause"],
+            ["replay", 30],
+            ["replay", 0],
+        ]);
         // These entrypoints describe effects, not data getters or catalog deletion.
         // Test their emitted identity/arity as well as the guide delegation.
         assert.equal(c.observeCurrentProgramme.name, "getCurProgData");

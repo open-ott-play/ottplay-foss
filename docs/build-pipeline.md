@@ -114,12 +114,18 @@ the worker prelude. Missing or stale assets trigger regeneration and another
 full audit. `npm run build:media` always rebuilds explicitly. No timestamp or
 process-local cache can bypass validation.
 
-Each final classic bundle is limited to 654,000 UTF-8 bytes and 187,100 bytes
+Each final classic bundle is limited to 654,000 UTF-8 bytes and 187,200 bytes
 compressed with gzip level 9. Both limits apply independently to server, Tauri
 and Capacitor artifacts. Native transformations are measured after staging.
 `npm run check:size` reads the actual artifacts; it does not trust a prior report.
 These budgets cover `stbPlayer.js`, not external media libraries or the complete
 application download. Raise a budget only with a reviewed feature/size tradeoff.
+
+### Historical feature measurements
+
+The following measurements record earlier integration steps, not current build
+ceilings. The active limits are the 654,000 raw / 186,750 gzip bytes stated above
+and enforced by `scripts/classic-size.cjs`.
 
 The command-server connection and compatibility boundary measured 466,901 raw
 bytes / 126,699 gzip bytes against the prior 445,756 / 120,643 baseline with the
@@ -127,18 +133,33 @@ same optimizer and version substitution: +6,056 gzip bytes (5.02%). This include
 the outbound transport, retry/acknowledgement state, settings UI, command fixes,
 and live provider aliases. Direct unshadowed global reads save 167 gzip bytes
 without changing compression options or shadowed-binding behavior. The raw
-ceiling remains unchanged; the gzip ceiling allows this measured feature growth.
+ceiling was unchanged at that step; its gzip allowance covered the measured growth.
 
-The shared-domain integration measures 473,261 raw / 129,329 gzip bytes after
+The shared-domain integration measured 473,261 raw / 129,329 gzip bytes after
 version substitution. Rebuilding baseline `b3c8cc0` with the same Terser 5.51.2
 options and version produces 466,922 raw / 126,848 gzip bytes: +6,339 raw bytes
 (1.36%) and +2,481 gzip bytes (1.96%). The integration adds the common operator
 transport adapter and generated wire validators to the classic bundle while
-removing more than 5,000 duplicated lines from separately loaded provider scripts. The resulting ceilings are
-475,000 raw / 130,000 gzip bytes; all three staged artifacts remain independently
-checked. The separate shared-core script is pinned and checked by its artifact
-receipt and ES5 runtime checks, and is not included in these bundle measurements.
+removing more than 5,000 duplicated lines from separately loaded provider scripts.
+Its historical ceilings were 475,000 raw / 130,000 gzip bytes. Current checks still
+measure all three staged artifacts independently. The separate shared-core script
+is pinned and checked by its artifact receipt and ES5 runtime checks, and is not
+included in these bundle measurements.
 
+### Reproducing a comparison
+
+Rebuild the base and candidate with the same Node/zlib version, lockfile,
+optimizer settings and application version. Compare raw bytes and gzip level 9
+for each final server, Tauri and Capacitor bundle. Measure Play separately after
+its distribution filter and native staging; a pre-staging result is not the
+shipped artifact.
+
+Record the other delivered JavaScript paths and content hashes as well. Moving
+code to a shared-core, vendor or separately loaded file does not reduce the total
+delivery merely because `stbPlayer.js` becomes smaller. Duplicate nested paths
+in a staging tree are packaging contracts, not evidence that a page downloads
+the same script twice. Keep startup-transfer claims separate from per-file and
+package-size comparisons.
 
 `build/reports/classic-bundle.json` records module order, optimizer version/options,
 public bindings, private-module interfaces, source/output hashes and final artifact sizes. CI publishes it
