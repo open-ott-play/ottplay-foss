@@ -1,292 +1,347 @@
-import { isPortableSettingsKey } from "../storage/index";
-/**
- * Cloud settings helpers — upload/download settings via the
- * host_ott/swop/a.php service (STB firmware only).
- *
- * Moved from src/index.ts as a leaf module (Phase B).
- *
- * Edge case: Returns early if host_ott / host_ott_proto are not set
- * (non-STB environment).
- */
+import { metadataText } from "../utils/helpers";
+import { commitSettingsWrites, SettingsWrite } from "./store";
 
-/**
- * Upload current settings to the cloud service (host_ott/swop/a.php).
- * Serialises all stb storage items as XML properties, POSTs them,
- * and displays a QR code + code for download on another device.
- *
- * Inner function cleanup() clears the 10-minute timeout and hides the
- * overlay.
- *
- * Side effects: AJAX POST; DOM mutations to #listAbout; sets
- * window.aboutKeyHandler.
- */
-export function cloudSendSettings(): void {
-    var w: any = window as any;
-    if (
-        (w.Capacitor || w.__TAURI__) &&
-        typeof w.exportSettingsUI === "function"
-    ) {
-        w.exportSettingsUI();
-        return;
-    }
-    /**
-     * Cancel the cloud send operation and hide the about overlay.
-     * Called on success, error, user cancel, or 10-minute timeout.
-     */
-    function cleanup(): void {
-        clearTimeout(timer);
-        if (typeof jQuery !== "undefined") jQuery("#listAbout").hide();
-    }
-    var timer = setTimeout(cleanup, 600000);
-    if (
-        typeof w.host_ott === "undefined" ||
-        typeof w.host_ott_proto === "undefined"
-    ) {
-        if (typeof jQuery !== "undefined") {
-            jQuery("#listAbout")
-                .html(
-                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>Cloud save/load requires STB firmware (host_ott not set)</div>'
-                )
-                .show();
+/** One transfer owns its requests, timers and about screen. */
+var cloudSettingsTransfer = (function () {
+    var cloudSettingsIntent = 0;
+    var cancelCloudSettings: (() => void) | null = null;
+    function startCloudSettings(receive: boolean): void {
+        var w = window as any;
+        var intent = ++cloudSettingsIntent;
+        if (cancelCloudSettings) cancelCloudSettings();
+        if (intent !== cloudSettingsIntent) return;
+        var closed = false,
+            requestId = 0,
+            request: any = null,
+            deadline: any,
+            pollTimer: any,
+            owner: any = null;
+        var port = w.__ottClassicScreenPort;
+        var host = w.host_ott,
+            protocol = w.host_ott_proto;
+        var source = w.__ottSourceIdentity.current(w),
+            committing = false;
+        var driver = w.__ottActiveProviderDriver;
+        var providerRead = w.providerGetItem,
+            providerWrite = w.providerSetItem;
+        function selection(): string {
+            return JSON.stringify([
+                w.__ottSourceIdentity.legacy(w),
+                w.m3uArr && w.m3uArr.M3Us && w.m3uArr.M3Us[w.m3uArr.active],
+            ]);
         }
-        return;
-    }
-    if (typeof jQuery !== "undefined") {
-        jQuery("#listAbout")
-            .html(
-                '<div style="text-align:center;font-size:larger;"><br/><br/>' +
-                    (w._("Send settings") || "Send settings") +
-                    "...</div>"
-            )
-            .show();
-    }
-    w.aboutKeyHandler = function (e: number): boolean {
-        if (e === w.keys.RETURN || e === w.keys.EXIT) cleanup();
-        return true;
-    };
-    var xml =
-        '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">\n<properties>\n<comment>OTT-Play Preferences</comment>';
-    var items =
-        typeof w.stbGetAllItems === "function" ? w.stbGetAllItems() : {};
-    for (var prop in items) {
-        if (
-            Object.prototype.hasOwnProperty.call(items, prop) &&
-            isPortableSettingsKey(prop)
-        )
-            xml += '\n<entry key="' + prop + '">' + items[prop] + "</entry>";
-    }
-    xml += "\n</properties>";
-    if (typeof jQuery !== "undefined") {
-        jQuery.ajax({
-            cache: false,
-            data: { c: "send", d: xml },
-            error: function (jqXHR: any) {
-                jQuery("#listAbout").html(
-                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
-                        jqXHR.responseText +
-                        "</div>"
-                );
-            },
-            success: function (data: any) {
-                cleanup();
-                jQuery("#listAbout").html(
-                    '<div style="text-align:center;font-size:larger;"><br/>' +
-                        (w._("Settings sended!") || "Settings sended!") +
-                        "<br/><br/>" +
-                        (w._("For download settings file open") ||
-                            "For download settings file open") +
-                        '<br/><span style="font-size:larger;color:' +
-                        w.curColor +
-                        '">' +
-                        w.host_ott +
-                        "/swop</span> " +
-                        (w._("and enter code") || "and enter code") +
-                        ' <span style="font-size:larger;color:' +
-                        w.curColor +
-                        '">' +
-                        data.code +
-                        "</span><br/><br/>" +
-                        (w._("or scan") || "or scan") +
-                        ':<br/><br/><div><img src="https://chart.googleapis.com/chart?cht=qr&chs=300x300&chld=|1&chl=https://' +
-                        w.host_ott +
-                        "/swop/?" +
-                        data.code +
-                        '" style="height:30%;"/></div></div>'
-                );
-            },
-            timeout: 10000,
-            type: "POST",
-            url: w.host_ott_proto + w.host_ott + "/swop/a.php",
-        });
-    }
-}
-
-/**
- * Download settings from the cloud service by polling for a user-entered
- * code. Displays a QR code, polls the server every 5-10s, and when the
- * settings XML arrives, clears all current items and restores the received
- * values.
- *
- * Inner functions:
- * - cleanup(): Cancels polling and hides overlay.
- * - poll(): AJAX GET to check if code has been submitted.
- *
- * Side effects: AJAX POST/GET; DOM mutations to #listAbout; calls
- * stbClearAllItems() and stbSetItem() for each restored entry; calls
- * restart() on success.
- *
- * Edge case: Validates that the received XML contains the expected
- * "<comment>OTT-Play Preferences</comment>" marker.
- */
-export function cloudLoadSettings(): void {
-    var w: any = window as any;
-    var cancelled = false;
-    var code: string;
-    /**
-     * Cancel the cloud load operation and hide the about overlay.
-     * Sets cancelled flag to stop polling.
-     */
-    function cleanup(): void {
-        clearTimeout(timer);
-        cancelled = true;
-        if (typeof jQuery !== "undefined") jQuery("#listAbout").hide();
-    }
-    var timer = setTimeout(cleanup, 600000);
-    if (
-        typeof w.host_ott === "undefined" ||
-        typeof w.host_ott_proto === "undefined"
-    ) {
-        if (typeof jQuery !== "undefined") {
-            jQuery("#listAbout")
-                .html(
-                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>Cloud save/load requires STB firmware (host_ott not set)</div>'
-                )
-                .show();
+        var selected = selection();
+        var read = w.stbGetItem,
+            write = w.stbSetItem,
+            remove = w.stbDelItem,
+            dump = w.stbGetAllItems;
+        function sameSource(): boolean {
+            return (
+                (committing || source === w.__ottSourceIdentity.current(w)) &&
+                driver === w.__ottActiveProviderDriver &&
+                selected === selection() &&
+                providerRead === w.providerGetItem &&
+                providerWrite === w.providerSetItem &&
+                read === w.stbGetItem &&
+                write === w.stbSetItem &&
+                remove === w.stbDelItem &&
+                dump === w.stbGetAllItems
+            );
         }
-        return;
-    }
-    /**
-     * Poll the cloud server for the submitted settings code.
-     * On 'forbidden' status, retries after 5s. On 'success', validates
-     * the XML format and restores all settings.
-     *
-     * Side effects: AJAX POST; may call stbClearAllItems(), stbSetItem()
-     * for each restored entry, and restart() on completion.
-     */
-    function poll(): void {
-        if (cancelled) return;
-        if (typeof jQuery !== "undefined") {
-            jQuery.ajax({
-                cache: false,
-                data: { c: "get", d: code },
-                error: function (jqXHR: any) {
-                    if (typeof jQuery !== "undefined")
-                        jQuery("#listAbout").html(
-                            '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
-                                jqXHR.responseText +
-                                "</div>"
-                        );
-                },
-                success: function (data: any) {
-                    if (cancelled) return;
-                    if (data.status === "forbidden") setTimeout(poll, 5000);
-                    else if (data.status === "success") {
-                        var xml = data.data;
-                        if (
-                            xml.indexOf(
-                                "<comment>OTT-Play Preferences</comment>"
-                            ) !== -1
-                        ) {
-                            if (typeof jQuery !== "undefined")
-                                jQuery("#listAbout").html(
-                                    '<div style="text-align:center;font-size:200%;"><br/><br/>OTT-Play Preferences received!<br/>Restart player...</div>'
-                                );
-                            var entries = xml.split('<entry key="');
-                            entries.shift();
-                            try {
-                                if (w.__ottCommandServer)
-                                    w.__ottCommandServer.configure({
-                                        address: "",
-                                        enabled: false,
-                                        token: "",
-                                    });
-                                if (w.__ottClassicPlayback)
-                                    w.__ottClassicPlayback.suspendPersistence();
-                                if (w.__ottClassicGuide)
-                                    w.__ottClassicGuide.invalidate(false);
-                                if (typeof w.stbClearAllItems === "function")
-                                    w.stbClearAllItems();
-                            } catch (e) {
-                                console.error(e);
-                            }
-                            entries.forEach(function (entry: string) {
-                                var parts = entry
-                                    .split("</entry>")[0]
-                                    .split('">');
-                                if (
-                                    isPortableSettingsKey(parts[0]) &&
-                                    typeof w.stbSetItem === "function"
-                                )
-                                    w.stbSetItem(parts[0], parts[1]);
-                            });
-                            if (typeof w.restart === "function") w.restart();
-                        } else {
-                            if (typeof jQuery !== "undefined")
-                                jQuery("#listAbout").html(
-                                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>File not OTT-Play Preferences!!!</div>'
-                                );
-                        }
+        function cancel(): void {
+            if (closed) return;
+            closed = true;
+            requestId++;
+            clearTimeout(deadline);
+            clearTimeout(pollTimer);
+            var pending = request;
+            request = null;
+            if (cancelCloudSettings === cancel) cancelCloudSettings = null;
+            try {
+                if (pending && pending.abort) pending.abort();
+            } catch (_error) {}
+            if (owner && port.owner("about") === owner) port.close("about");
+            else if (w.aboutKeyHandler === keyHandler) {
+                w.aboutKeyHandler = null;
+                if (typeof jQuery !== "undefined") jQuery("#listAbout").hide();
+            }
+        }
+        function active(): boolean {
+            if (closed) return false;
+            if (
+                intent !== cloudSettingsIntent ||
+                cancelCloudSettings !== cancel ||
+                w.aboutKeyHandler !== keyHandler ||
+                !sameSource() ||
+                host !== w.host_ott ||
+                protocol !== w.host_ott_proto ||
+                (owner
+                    ? !owner.active() || port.owner("about") !== owner
+                    : w.aboutKeyHandler !== keyHandler)
+            ) {
+                cancel();
+                return false;
+            }
+            return true;
+        }
+        function keyHandler(code: number): boolean {
+            if (code === w.keys.RETURN || code === w.keys.EXIT) cancel();
+            return true;
+        }
+        function text(value: any): string {
+            return metadataText(value);
+        }
+        function label(value: string): string {
+            return text(w._ ? w._(value) || value : value);
+        }
+        function show(html: string): void {
+            if (active() && typeof jQuery !== "undefined")
+                jQuery("#listAbout")
+                    .html(
+                        '<div style="text-align:center;font-size:larger;"><br/><br/>' +
+                            html +
+                            "</div>"
+                    )
+                    .show();
+        }
+        function fail(message: any): void {
+            show("ERROR:<br/>" + text(message || "Cloud transfer failed"));
+        }
+        function send(
+            command: string,
+            data: string | undefined,
+            success: (value: any) => void
+        ): void {
+            if (!active() || typeof jQuery === "undefined") return;
+            var id = ++requestId,
+                finished = false;
+            function complete(value: any, error: boolean): void {
+                if (finished || id !== requestId || !active()) return;
+                finished = true;
+                request = null;
+                if (error) fail(value && value.responseText);
+                else {
+                    try {
+                        success(value);
+                    } catch (_error) {
+                        fail("Invalid cloud settings response");
                     }
-                },
-                timeout: 10000,
-                type: "POST",
-                url: w.host_ott_proto + w.host_ott + "/swop/a.php",
+                }
+            }
+            try {
+                var pending = jQuery.ajax({
+                    cache: false,
+                    data:
+                        data === undefined
+                            ? { c: command }
+                            : { c: command, d: data },
+                    error: function (error: any) {
+                        complete(error, true);
+                    },
+                    success: function (value: any) {
+                        complete(value, false);
+                    },
+                    timeout: 10000,
+                    type: "POST",
+                    url: protocol + host + "/swop/a.php",
+                });
+                if (!finished && active() && id === requestId)
+                    request = pending;
+                else if (!finished && pending && pending.abort) pending.abort();
+            } catch (_error) {
+                complete(null, true);
+            }
+        }
+        function codeScreen(data: any): string {
+            if (
+                !data ||
+                (typeof data.code !== "string" &&
+                    typeof data.code !== "number") ||
+                !String(data.code)
+            )
+                throw new Error("Missing transfer code");
+            var code = String(data.code);
+            show(
+                label(receive ? "Request sended!" : "Settings sended!") +
+                    "<br/><br/>" +
+                    label(
+                        receive
+                            ? "For upload settings file open"
+                            : "For download settings file open"
+                    ) +
+                    '<br/><span style="font-size:larger;color:' +
+                    text(w.curColor) +
+                    '">' +
+                    text(host) +
+                    "/swop</span> " +
+                    label("and enter code") +
+                    ' <span style="font-size:larger;color:' +
+                    text(w.curColor) +
+                    '">' +
+                    text(code) +
+                    "</span><br/><br/>" +
+                    label("or scan") +
+                    ':<br/><br/><div><img src="https://chart.googleapis.com/chart?cht=qr&amp;chs=300x300&amp;chld=|1&amp;chl=' +
+                    text(
+                        encodeURIComponent(protocol + host + "/swop/?" + code)
+                    ) +
+                    '" style="height:30%;"/></div>'
+            );
+            return code;
+        }
+        function restore(xml: string): void {
+            var imported = w.__ottCloudSettingsCodec.read(xml);
+            if (!active()) return;
+            if (
+                typeof read !== "function" ||
+                typeof write !== "function" ||
+                typeof remove !== "function" ||
+                typeof dump !== "function"
+            )
+                throw new Error("Storage unavailable");
+            var before = dump.call(w);
+            if (!before || typeof before !== "object" || Array.isArray(before))
+                throw new Error("Invalid storage");
+            var keys = Object.keys(before);
+            Object.keys(imported).forEach(function (key) {
+                if (keys.indexOf(key) === -1) keys.push(key);
+            });
+            var writes: SettingsWrite[] = keys
+                .map(function (key) {
+                    var previous = Object.prototype.hasOwnProperty.call(
+                        before,
+                        key
+                    )
+                        ? before[key]
+                        : null;
+                    if (previous !== null && typeof previous !== "string")
+                        throw new Error("Invalid storage");
+                    return {
+                        after: Object.prototype.hasOwnProperty.call(
+                            imported,
+                            key
+                        )
+                            ? imported[key]
+                            : null,
+                        before: previous,
+                        storage: {
+                            read: function () {
+                                return read.call(w, key);
+                            },
+                            remove: function () {
+                                remove.call(w, key);
+                            },
+                            write: function (value: string) {
+                                write.call(w, key, value);
+                            },
+                        },
+                    };
+                })
+                .filter(function (entry) {
+                    return entry.before !== entry.after;
+                });
+            if (!active()) return;
+            // Credentials may themselves be stored in the bytes being replaced.
+            // During this synchronous batch, selection/driver/ports still own it.
+            committing = true;
+            try {
+                commitSettingsWrites(writes, active, function () {
+                    return intent === cloudSettingsIntent && sameSource();
+                });
+                source = w.__ottSourceIdentity.current(w);
+            } catch (_error) {
+                if (sameSource()) source = w.__ottSourceIdentity.current(w);
+                committing = false;
+                fail("Settings could not be saved");
+                return;
+            }
+            committing = false;
+            if (!active()) return;
+            // Authority is local: never adopt remote credentials or listener consent.
+            if (w.__ottCommandServer)
+                w.__ottCommandServer.configure({
+                    address: "",
+                    enabled: false,
+                    token: "",
+                });
+            if (!active()) return;
+            if (w.__ottClassicPlayback)
+                w.__ottClassicPlayback.suspendPersistence();
+            if (!active()) return;
+            if (w.__ottClassicGuide) w.__ottClassicGuide.invalidate(false);
+            if (!active()) return;
+            show("OTT-Play Preferences received!<br/>Restart player...");
+            if (active() && w.restart) w.restart();
+        }
+        function poll(code: string): void {
+            send("get", code, function (data) {
+                if (data && data.status === "forbidden")
+                    pollTimer = setTimeout(function () {
+                        poll(code);
+                    }, 5000);
+                else if (data && data.status === "success") restore(data.data);
+                else fail("Invalid cloud settings response");
             });
         }
+        cancelCloudSettings = cancel;
+        w.aboutKeyHandler = keyHandler;
+        if (w.aboutKeyHandler !== keyHandler) {
+            cancel();
+            return;
+        }
+        if (port) {
+            owner = port.owner("about");
+            if (owner) owner.own(cancel);
+        }
+        if (!active()) return;
+        deadline = setTimeout(cancel, 600000);
+        if (!host || !protocol) {
+            fail("Cloud save/load requires STB firmware (host_ott not set)");
+            return;
+        }
+        show(label(receive ? "Load settings" : "Send settings") + "...");
+        if (receive)
+            send("get_code", undefined, function (data) {
+                var code = codeScreen(data);
+                if (active())
+                    pollTimer = setTimeout(function () {
+                        poll(code);
+                    }, 10000);
+            });
+        else {
+            try {
+                send(
+                    "send",
+                    w.__ottCloudSettingsCodec.write(dump.call(w)),
+                    codeScreen
+                );
+            } catch (_error) {
+                fail("Settings could not be exported");
+            }
+        }
     }
 
-    if (typeof jQuery !== "undefined") {
-        jQuery.ajax({
-            cache: false,
-            data: { c: "get_code" },
-            error: function (jqXHR: any) {
-                jQuery("#listAbout").html(
-                    '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
-                        jqXHR.responseText +
-                        "</div>"
-                );
-            },
-            success: function (data: any) {
-                code = data.code;
-                jQuery("#listAbout").html(
-                    '<div style="text-align:center;font-size:larger;"><br/>' +
-                        (w._("Request sended!") || "Request sended!") +
-                        "<br/><br/>" +
-                        (w._("For upload settings file open") ||
-                            "For upload settings file open") +
-                        '<br/><span style="font-size:larger;color:' +
-                        w.curColor +
-                        '">' +
-                        w.host_ott +
-                        "/swop</span> " +
-                        (w._("and enter code") || "and enter code") +
-                        ' <span style="font-size:larger;color:' +
-                        w.curColor +
-                        '">' +
-                        code +
-                        "</span><br/><br/>" +
-                        (w._("or scan") || "or scan") +
-                        ':<br/><br/><div><img src="https://chart.googleapis.com/chart?cht=qr&chs=300x300&chld=|1&chl=https://' +
-                        w.host_ott +
-                        "/swop/?" +
-                        code +
-                        '" style="height:30%;"/></div></div>'
-                );
-                setTimeout(poll, 10000);
-            },
-            timeout: 10000,
-            type: "POST",
-            url: w.host_ott_proto + w.host_ott + "/swop/a.php",
-        });
+    /** Retained device ABI; native shells export a local portable JSON document. */
+    function cloudSendSettings(): void {
+        var w = window as any;
+        if (
+            (w.Capacitor || w.__TAURI__) &&
+            typeof w.exportSettingsUI === "function"
+        ) {
+            var intent = ++cloudSettingsIntent;
+            if (cancelCloudSettings) cancelCloudSettings();
+            if (intent === cloudSettingsIntent) w.exportSettingsUI();
+        } else startCloudSettings(false);
     }
+    function cloudLoadSettings(): void {
+        startCloudSettings(true);
+    }
+
+    return { load: cloudLoadSettings, send: cloudSendSettings };
+})();
+export function cloudSendSettings(): void {
+    cloudSettingsTransfer.send();
+}
+export function cloudLoadSettings(): void {
+    cloudSettingsTransfer.load();
 }

@@ -7,25 +7,221 @@ const { settingsSource } = require("./helpers/settings-source-fixture.cjs");
 const { compatibilitySource } = require("./helpers/english-source-fixture.cjs");
 const root = path.resolve(__dirname, "..");
 const domain = { exports: {} };
-vm.runInNewContext(
-    ts.transpileModule(
-        fs.readFileSync(path.join(root, "src/settings/store.ts"), "utf8"),
-        {
-            compilerOptions: {
-                module: ts.ModuleKind.CommonJS,
-                target: ts.ScriptTarget.ES5,
-            },
-        }
-    ).outputText,
-    domain
-);
+const domainCode = ts.transpileModule(
+    fs.readFileSync(path.join(root, "src/settings/store.ts"), "utf8"),
+    {
+        compilerOptions: {
+            module: ts.ModuleKind.CommonJS,
+            target: ts.ScriptTarget.ES5,
+        },
+    }
+).outputText;
+require("acorn").parse(domainCode, { ecmaVersion: 5 });
+vm.runInNewContext(domainCode, domain);
 const create = domain.exports.createSettingsStore;
+const commitWrites = domain.exports.commitSettingsWrites;
 let passed = 0;
 function check(name, run) {
     run();
     passed++;
     console.log("OK: " + name);
 }
+function batchFixture(initial, changes) {
+    const data = new Map(Object.entries(initial)),
+        events = [];
+    const f = { current: true, rollback: true };
+    const writes = Object.entries(changes).map(([key, after]) => ({
+        after,
+        before: data.get(key) ?? null,
+        storage: {
+            read() {
+                const value = data.get(key) ?? null;
+                events.push(["read", key, value]);
+                if (f.onRead) f.onRead(key, value);
+                return value;
+            },
+            remove() {
+                events.push(["remove", key]);
+                if (f.reject !== key) data.delete(key);
+                if (f.onWrite) f.onWrite(key, null);
+            },
+            write(value) {
+                events.push(["write", key, value]);
+                if (f.reject !== key) data.set(key, value);
+                if (f.onWrite) f.onWrite(key, value);
+            },
+        },
+    }));
+    return Object.assign(f, {
+        commit: () =>
+            commitWrites(
+                writes,
+                () => f.current,
+                () => f.rollback
+            ),
+        data,
+        events,
+        mutations: () => events.filter((event) => event[0] !== "read"),
+        writes,
+    });
+}
+check(
+    "raw batch writes, deletes and inserts exact bytes before returning",
+    () => {
+        const f = batchFixture(
+            { old: "old", retained: "before" },
+            {
+                inserted: "",
+                old: null,
+                retained: "after",
+            }
+        );
+        assert.equal(f.commit(), undefined);
+        assert.deepEqual(Object.fromEntries(f.data), {
+            inserted: "",
+            retained: "after",
+        });
+        assert.equal(f.events.filter((event) => event[0] === "read").length, 9);
+    }
+);
+check(
+    "batch preflight rejects any conflicting key before the first mutation",
+    () => {
+        const f = batchFixture({ a: "A", b: "B" }, { a: "a", b: "b" });
+        f.data.set("b", "external");
+        assert.throws(f.commit, /state changed/);
+        assert.deepEqual(f.mutations(), []);
+        assert.equal(f.data.get("a"), "A");
+    }
+);
+check("batch rechecks each before value after earlier writes", () => {
+    const f = batchFixture({ a: "A", b: "B" }, { a: "a", b: "b" });
+    f.onWrite = (key, value) => {
+        if (key === "a" && value === "a") f.data.set("b", "external");
+    };
+    assert.throws(f.commit, /state changed/);
+    assert.deepEqual(Object.fromEntries(f.data), { a: "A", b: "external" });
+    assert.deepEqual(f.mutations(), [
+        ["write", "a", "a"],
+        ["write", "a", "A"],
+    ]);
+});
+check("read reentry during preflight or per-key admission cannot write", () => {
+    for (const at of [1, 2]) {
+        const f = batchFixture({ a: "A" }, { a: "a" });
+        let reads = 0;
+        f.onRead = () => {
+            if (++reads === at) f.current = false;
+        };
+        assert.throws(f.commit, /source changed/);
+        assert.deepEqual(f.mutations(), []);
+    }
+});
+check(
+    "silent write or delete rejection restores only the attempted prefix",
+    () => {
+        for (const after of [null, "b"]) {
+            const f = batchFixture(
+                { a: "A", b: "B", c: "same" },
+                { a: null, b: after, c: "same" }
+            );
+            f.reject = "b";
+            assert.throws(f.commit, /storage rejected/);
+            assert.deepEqual(Object.fromEntries(f.data), {
+                a: "A",
+                b: "B",
+                c: "same",
+            });
+            assert.equal(
+                f.mutations().some((event) => event[1] === "c"),
+                false
+            );
+        }
+    }
+);
+check(
+    "a throwing mutation that changed storage is included in rollback",
+    () => {
+        const f = batchFixture({ a: "A" }, { a: null });
+        const failure = Error("remove failed after applying");
+        f.onWrite = (_key, value) => {
+            if (value === null) throw failure;
+        };
+        assert.throws(f.commit, (error) => error === failure);
+        assert.equal(f.data.get("a"), "A");
+    }
+);
+check(
+    "batch readback reentry rejects publication and rolls back captured keys only",
+    () => {
+        const f = batchFixture({ a: "A", b: "B" }, { a: "a", b: "b" });
+        f.onRead = (key, value) => {
+            if (key === "a" && value === "a") f.current = false;
+        };
+        assert.throws(f.commit, /source changed/);
+        assert.deepEqual(Object.fromEntries(f.data), { a: "A", b: "B" });
+        assert.equal(
+            f.mutations().some((event) => event[1] === "b"),
+            false
+        );
+    }
+);
+check(
+    "rollback preserves external bytes and stops when ownership is revoked",
+    () => {
+        for (const action of ["replace", "revoke", "read-revoke"]) {
+            const f = batchFixture({ a: "A", b: "B" }, { a: "a", b: "b" });
+            f.onWrite = (key) => {
+                if (key !== "b") return;
+                if (action === "replace") f.data.set("a", "newer");
+                if (action === "revoke") f.rollback = false;
+                if (action === "read-revoke")
+                    f.onRead = () => {
+                        f.rollback = false;
+                    };
+                throw Error("stop");
+            };
+            assert.throws(f.commit, /stop/);
+            assert.equal(f.data.get("a"), action === "replace" ? "newer" : "a");
+            if (action !== "replace") assert.equal(f.mutations().length, 2);
+        }
+    }
+);
+check("batch preserves original failure even if rollback throws", () => {
+    const f = batchFixture({ a: "A" }, { a: "a" });
+    const failure = Error("forward");
+    f.onWrite = (_key, value) => {
+        throw value === "a" ? failure : Error("rollback");
+    };
+    assert.throws(f.commit, (error) => error === failure);
+});
+check("batch captures the write plan before invoking storage callbacks", () => {
+    const f = batchFixture({ a: "A", b: "B" }, { a: "a", b: "b" });
+    f.onRead = () => {
+        f.writes[1].after = "injected";
+    };
+    f.commit();
+    assert.equal(f.data.get("b"), "b");
+});
+check("empty batches still require a current owner", () => {
+    assert.equal(
+        commitWrites(
+            [],
+            () => true,
+            () => true
+        ),
+        undefined
+    );
+    assert.throws(
+        () =>
+            commitWrites(
+                [],
+                () => false,
+                () => true
+            ),
+        /source changed/
+    );
+});
 function fixture() {
     const data = new Map(),
         writes = [],
@@ -237,6 +433,36 @@ check("storage reentry cannot commit into a replacement source", () => {
     assert.equal(f.data.size, 0);
     assert.equal(f.store.get("logo"), 1);
 });
+check(
+    "draft raw deletions join the same rollback and publication boundary",
+    () => {
+        const f = fixture();
+        f.data.set("raw-document", "original");
+        f.fail("one:logo-old");
+        const draft = f.store.begin();
+        draft.set("logo", 2);
+        const writes = [
+            {
+                after: null,
+                before: "original",
+                storage: {
+                    read: () => f.data.get("raw-document") ?? null,
+                    remove: () => f.data.delete("raw-document"),
+                    write: (value) => f.data.set("raw-document", value),
+                },
+            },
+        ];
+        assert.equal(draft.commit(writes), false);
+        assert.equal(f.data.get("raw-document"), "original");
+        assert.equal(f.store.get("logo"), 1);
+        assert.equal(f.effects.length, 0);
+        f.fail(null);
+        assert.equal(draft.commit(writes), true);
+        assert.equal(f.data.has("raw-document"), false);
+        assert.equal(f.store.get("logo"), 2);
+        assert.equal(f.effects.length, 1);
+    }
+);
 check(
     "provider reload retains application preferences and rejects malformed persisted values",
     () => {

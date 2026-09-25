@@ -398,6 +398,7 @@ function fixture(profile) {
     );
     require("./helpers/shared-core-runtime.cjs")(w, { vendorOnly: true });
     for (const api of [
+        "__ottCloudSettingsCodec",
         "__ottAccessSession",
         "__ottParental",
         "__ottScreenController",
@@ -437,6 +438,8 @@ function fixture(profile) {
 
 function assertPrivateRuntime(w, profile) {
     for (const [api, method] of [
+        ["__ottCloudSettingsCodec", "read"],
+        ["__ottCloudSettingsCodec", "write"],
         ["__ottAccessSession", "create"],
         ["__ottParental", "request"],
         ["__ottScreenController", "create"],
@@ -499,6 +502,13 @@ function assertPrivateRuntime(w, profile) {
         Array.from(w.__ottProviderDriverProfiles, (profile) => profile.id)
     );
     for (const name of [
+        "startCloudSettings",
+        "cloudSettingsIntent",
+        "cancelCloudSettings",
+        "readCloudSettings",
+        "writeCloudSettings",
+        "cloudCodecEncode",
+        "cloudCodecDecode",
         "createAccessSession",
         "createClassicAccess",
         "createPinEntry",
@@ -559,6 +569,8 @@ function assertPrivateRuntime(w, profile) {
     }
     // Also catch a renamed top-level leak after optimizer-local mangling.
     for (const implementation of [
+        w.__ottCloudSettingsCodec.read,
+        w.__ottCloudSettingsCodec.write,
         w.__ottScreenController.create,
         w.__ottInputRouter.create,
         w.__ottPlaybackSession.create,
@@ -576,6 +588,212 @@ function assertPrivateRuntime(w, profile) {
             profile + ": private implementation exposed as bare global"
         );
     }
+}
+
+function exerciseCloudRuntime(profile) {
+    function cloudFixture() {
+        const w = fixture(profile);
+        vm.runInContext(bundle, w, { filename: bundlePath });
+        const stored = new Map([
+                ["ordinary", "before"],
+                ["obsolete", "remove"],
+            ]),
+            requests = [],
+            writes = [],
+            timers = fixtureTimers.get(w);
+        timers.clear();
+        let restarted = 0,
+            reject = null;
+        Object.assign(w, {
+            host_ott: "cloud.invalid",
+            host_ott_proto: "https://",
+            p_pref: "cloud-artifact",
+            restart: () => restarted++,
+            stbClearAllItems() {
+                throw Error("Restore must use checked per-key writes");
+            },
+            stbDelItem(key) {
+                writes.push([key, null]);
+                if (key !== reject) stored.delete(key);
+            },
+            stbGetAllItems: () => Object.fromEntries(stored),
+            stbGetItem: (key) => stored.get(key) ?? null,
+            stbSetItem(key, value) {
+                writes.push([key, value]);
+                if (key !== reject) stored.set(key, value);
+            },
+        });
+        w.jQuery.ajax = (options) => {
+            const request = {
+                abort() {
+                    this.aborts++;
+                    options.error({ responseText: "aborted" });
+                },
+                aborts: 0,
+                options,
+            };
+            requests.push(request);
+            return request;
+        };
+        function tick(delay) {
+            const job = [...timers].find(([, value]) => value.delay === delay);
+            assert(job, profile + ": cloud timer " + delay);
+            timers.delete(job[0]);
+            job[1].fn();
+        }
+        return {
+            html: () => w.document.getElementById("listAbout").innerHTML,
+            load() {
+                w.cloudLoadSettings();
+                assert.equal(requests.at(-1).options.data.c, "get_code");
+                requests.at(-1).options.success({ code: "artifact-code" });
+                tick(10000);
+                assert.equal(requests.at(-1).options.data.c, "get");
+                assert.equal(requests.at(-1).options.data.d, "artifact-code");
+                return requests.at(-1);
+            },
+            reject(key) {
+                reject = key;
+            },
+            requests,
+            restarts: () => restarted,
+            stored,
+            tick,
+            timers,
+            w,
+            writes,
+        };
+    }
+    const f = cloudFixture(),
+        w = f.w;
+    assert.equal(typeof w.cloudSendSettings, "function");
+    assert.equal(typeof w.cloudLoadSettings, "function");
+    const text =
+        '  "Quoted" <&> </entry> Программа 🎬\r\n' + "repeat ".repeat(100);
+    const compressed = "\x01LZ\x01" + w.compress(text);
+    const expected = {
+        compressed,
+        control: "\0\x01\t\r\n\ud800\udfff\ufffe\uffff",
+        empty: "",
+        'key "<&\x01': "value '&<>\r\n",
+        ordinary: text,
+    };
+    f.stored.clear();
+    for (const [key, value] of Object.entries(expected))
+        f.stored.set(key, value);
+    f.stored.set("commandServerToken", "must-not-export");
+    w.cloudSendSettings();
+    const sent = f.requests[0];
+    assert.equal(sent.options.url, "https://cloud.invalid/swop/a.php");
+    assert.equal(sent.options.data.c, "send");
+    const xml = sent.options.data.d;
+    assert.equal(xml.includes("must-not-export"), false);
+    assert.deepEqual(
+        Object.assign({}, w.__ottCloudSettingsCodec.read(xml)),
+        expected
+    );
+    sent.options.success({ code: '<b onclick="bad">&' });
+    assert.equal(f.html().includes('<b onclick="bad">'), false);
+    assert(
+        f.html().includes("&lt;b"),
+        "cloud code is escaped in actual renderer"
+    );
+    f.stored.clear();
+    f.stored.set("ordinary", "before");
+    f.stored.set("obsolete", "remove");
+    f.stored.set("commandServerToken", "old-authority");
+    const incoming = f.load();
+    incoming.options.success({ data: xml, status: "success" });
+    incoming.options.success({ data: xml, status: "success" });
+    assert.deepEqual(Object.fromEntries(f.stored), expected);
+    assert.equal(w.decompress(f.stored.get("compressed").slice(4)), text);
+    assert.equal(f.restarts(), 1, "actual restore completes only once");
+    assert(
+        f.writes.some(([key, value]) => key === "obsolete" && value === null)
+    );
+    assert(
+        f.writes.some(
+            ([key, value]) => key === "commandServerToken" && value === null
+        )
+    );
+    w.aboutKeyHandler(w.keys.RETURN);
+
+    for (const rejected of ["ordinary", "obsolete"]) {
+        const f = cloudFixture(),
+            before = Object.fromEntries(f.stored);
+        f.reject(rejected);
+        const pending = f.load();
+        pending.options.success({
+            data: f.w.__ottCloudSettingsCodec.write({
+                added: "new",
+                ordinary: "after",
+            }),
+            status: "success",
+        });
+        assert.deepEqual(
+            Object.fromEntries(f.stored),
+            before,
+            "actual bundle rolls back rejected " + rejected
+        );
+        assert.equal(f.restarts(), 0);
+        assert(f.html().includes("could not be saved"));
+        f.w.aboutKeyHandler(f.w.keys.RETURN);
+    }
+    for (const stage of ["get_code", "poll"])
+        for (const cause of ["back", "source", "screen"]) {
+            const f = cloudFixture(),
+                before = Object.fromEntries(f.stored);
+            if (stage === "poll") f.load();
+            else f.w.cloudLoadSettings();
+            const pending = f.requests.at(-1);
+            if (cause === "back") f.w.aboutKeyHandler(f.w.keys.RETURN);
+            if (cause === "source") f.w.p_pref = "cloud-replacement";
+            if (cause === "screen") f.w.__ottClassicScreenPort.invalidate();
+            const shown = f.html(),
+                requestCount = f.requests.length;
+            pending.options.success(
+                stage === "get_code"
+                    ? { code: "late" }
+                    : {
+                          data: f.w.__ottCloudSettingsCodec.write({
+                              injected: "late",
+                          }),
+                          status: "success",
+                      }
+            );
+            pending.options.error({ responseText: "late error" });
+            assert.equal(
+                f.html(),
+                shown,
+                stage + ": retired " + cause + " view unchanged"
+            );
+            assert.deepEqual(Object.fromEntries(f.stored), before);
+            assert.equal(f.writes.length, 0);
+            assert.equal(f.restarts(), 0);
+            assert.equal(f.requests.length, requestCount);
+            assert.equal(f.timers.size, 0);
+            assert.equal(pending.aborts, 1);
+        }
+    const retired = cloudFixture();
+    retired.w.cloudLoadSettings();
+    retired.requests[0].options.success({ code: "old" });
+    const latePoll = [...retired.timers.values()].find(
+        (job) => job.delay === 10000
+    ).fn;
+    retired.w.aboutKeyHandler(retired.w.keys.RETURN);
+    retired.w.cloudSendSettings();
+    latePoll();
+    assert.equal(
+        retired.requests.length,
+        2,
+        "escaped timer cannot revive a retired poll"
+    );
+    retired.w.aboutKeyHandler(retired.w.keys.RETURN);
+    console.log(
+        "OK: actual " +
+            profile +
+            " bundle cloud XML/raw restore, rollback and retired requests"
+    );
 }
 
 function exerciseAccessRuntime(profile) {
@@ -1755,6 +1973,7 @@ async function main() {
         }
         assertPrivateRuntime(w, profile);
         if (profile === "modern" || profile === "legacy") {
+            exerciseCloudRuntime(profile);
             exerciseAccessRuntime(profile);
             exerciseLibraryBackupRuntime(profile);
             exerciseScreenRuntime(profile);

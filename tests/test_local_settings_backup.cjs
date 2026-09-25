@@ -1,3 +1,4 @@
+const { cloudSource } = require("./helpers/cloud-source-fixture.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -37,7 +38,7 @@ const controller = functions("src/plugins/command-server.ts", [
     "normalizeCommandServerAddress",
     "createCommandServer",
 ]);
-const cloud = functions("src/settings/cloud.ts", ["cloudSendSettings"]);
+const cloud = cloudSource();
 const ownToken = "a".repeat(48);
 const copiedToken = "b".repeat(48);
 const providerPayload = JSON.stringify({

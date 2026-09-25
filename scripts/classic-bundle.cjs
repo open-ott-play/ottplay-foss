@@ -6,6 +6,7 @@ const CLASSIC_MODULES = [
     "build/utils/lzstring.js",
     "build/storage/index.js",
     "build/localization/index.js",
+    "build/settings/cloud-codec.js",
     "build/settings/cloud.js",
     "build/settings/library-backup.js",
     "build/settings/store.js",
@@ -157,6 +158,9 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/provider/stalker-driver.js": Object.freeze([
         "window.__ottStalkerDriver",
+    ]),
+    "build/settings/cloud-codec.js": Object.freeze([
+        "window.__ottCloudSettingsCodec",
     ]),
     "build/settings/library-backup.js": Object.freeze([
         "window.__ottLibraryBackup",
