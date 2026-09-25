@@ -471,6 +471,7 @@ function createXtreamDriver(
     return driver;
 }
 
+// OTTPLAY_FULL_ONLY_BEGIN
 function createOperatorDriver(
     profile: ProviderDriverProfile,
     ports: ProviderDriverPorts,
@@ -971,6 +972,8 @@ function createNamedPlaylistDriver(
     return driver;
 }
 
+// OTTPLAY_FULL_ONLY_END
+
 var providerDriverProfiles: ProviderDriverProfile[] = (window as any)
     .__ottProviderDriverProfiles;
 var providerDriverRegistry = createDriverRegistry();
@@ -994,6 +997,13 @@ providerDriverProfiles.forEach(function (profile) {
                             owner,
                             helpers
                         );
+                    if (profile.kind === "m3u")
+                        return (window as any).__ottM3uDriver.create(
+                            ports,
+                            owner,
+                            helpers
+                        );
+                    // OTTPLAY_FULL_ONLY_BEGIN
                     if (profile.kind === "catalog")
                         return (window as any).__ottCatalogDrivers.create(
                             profile.id,
@@ -1014,19 +1024,22 @@ providerDriverProfiles.forEach(function (profile) {
                             owner,
                             helpers
                         );
-                    if (profile.kind === "m3u")
-                        return (window as any).__ottM3uDriver.create(
-                            ports,
-                            owner,
-                            helpers
-                        );
-                    return profile.kind === "named-playlist"
-                        ? createNamedPlaylistDriver(profile, ports, owner)
-                        : createOperatorDriver(profile, ports, owner);
+                    if (profile.kind === "named-playlist")
+                        return createNamedPlaylistDriver(profile, ports, owner);
+                    if (
+                        profile.kind === "operator" ||
+                        profile.kind === "xtream-fallback"
+                    )
+                        return createOperatorDriver(profile, ports, owner);
+                    // OTTPLAY_FULL_ONLY_END
+                    throw new Error(
+                        "Unsupported provider kind: " + profile.kind
+                    );
                 }
     );
 });
 
+// OTTPLAY_FULL_ONLY_BEGIN
 function namedCredentialMessage(
     id: string,
     value: ProviderCredentials
@@ -1383,6 +1396,8 @@ function mountNamedProviderSettings(
     }
 }
 
+// OTTPLAY_FULL_ONLY_END
+
 /** Retained UI/storage wire codec. No executable provider script enters this boundary. */
 function mountProviderDriver(
     host: any,
@@ -1393,10 +1408,12 @@ function mountProviderDriver(
         return value.id === id;
     })[0];
     if (!profile) throw new Error("Unsupported provider driver: " + id);
-    var generic =
-        profile.kind === "operator" || profile.kind === "xtream-fallback";
+    var generic = false;
+    // OTTPLAY_FULL_ONLY_BEGIN
+    generic = profile.kind === "operator" || profile.kind === "xtream-fallback";
     var named = profile.kind === "named-playlist";
     var catalogProtocol = profile.kind === "catalog";
+    // OTTPLAY_FULL_ONLY_END
     function storageFor(prefix: string): DriverStorage {
         return {
             get: function (key) {
@@ -1705,22 +1722,21 @@ function mountProviderDriver(
         host.popupArray.splice(index, 1, label());
         host.popupDetail.splice(index, 1, host._(profile.title + " settings"));
     };
+    // OTTPLAY_FULL_ONLY_BEGIN
     if (named) mountNamedProviderSettings(host, profile, driver, owner, store);
+    // OTTPLAY_FULL_ONLY_END
     var stalkerSettings =
         profile.kind === "stalker"
             ? host.__ottStalkerDriver.mountSettings(host, driver, owner)
             : null;
     if (stalkerSettings) host.duneAddSettings = stalkerSettings.mount;
+    var specialized = profile.kind === "m3u" ? host.__ottM3uDriver : null;
+    // OTTPLAY_FULL_ONLY_BEGIN
     if (catalogProtocol)
         host.__ottCatalogDrivers.mountSettings(host, driver, owner, store);
-    var specialized =
-        profile.kind === "playlist"
-            ? host.__ottPlaylistDrivers
-            : profile.kind === "edem"
-              ? host.__ottEdemDriver
-              : profile.kind === "m3u"
-                ? host.__ottM3uDriver
-                : null;
+    if (profile.kind === "playlist") specialized = host.__ottPlaylistDrivers;
+    if (profile.kind === "edem") specialized = host.__ottEdemDriver;
+    // OTTPLAY_FULL_ONLY_END
     host.getChannelsArray = function (callback: () => void) {
         if (!owner.active()) return;
         if (id === "xtream")
@@ -1769,9 +1785,13 @@ function mountProviderDriver(
             if (specialized) {
                 if (specialized.reportLoad(host, driver, error) === false)
                     return;
-            } else if (catalogProtocol) {
+            }
+            // OTTPLAY_FULL_ONLY_BEGIN
+            else if (catalogProtocol) {
                 host.__ottCatalogDrivers.reportLoad(host, driver, error);
-            } else if (stalkerSettings && error) {
+            }
+            // OTTPLAY_FULL_ONLY_END
+            else if (stalkerSettings && error) {
                 host.alert(
                     host._(
                         error === "stalker-connect"
@@ -1779,7 +1799,9 @@ function mountProviderDriver(
                             : "Failed to load channels from Stalker portal"
                     )
                 );
-            } else if (error === "named-credentials") {
+            }
+            // OTTPLAY_FULL_ONLY_BEGIN
+            else if (error === "named-credentials") {
                 host.popupList(
                     host.popupActions.indexOf(
                         host.toggleProviderSettingsVisibility
@@ -1795,7 +1817,9 @@ function mountProviderDriver(
                             : "Failed to load channel list!"
                     )
                 );
-            } else if (error)
+            }
+            // OTTPLAY_FULL_ONLY_END
+            else if (error)
                 host.alert(
                     host._(
                         error === "configure"

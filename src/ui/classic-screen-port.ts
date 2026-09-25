@@ -449,10 +449,6 @@ function createClassicScreenPort(host: any) {
             return router.fromKey(code, event);
         },
         finishEditor: finishEditor,
-        guard: function (kind: string, callback: (...args: any[]) => any) {
-            var owner = kind === "list" ? listOwner : overlays[kind];
-            return owner ? owner.guard(callback) : function () {};
-        },
         invalidate: invalidate,
         listOwner: function () {
             return listOwner;

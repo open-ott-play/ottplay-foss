@@ -2,8 +2,10 @@
 
 Self-contained IPTV/OTT player with a local Rust HTTP server. Runs on Smart TVs (LG WebOS, Samsung Tizen, Panasonic, Sony, etc.), set-top boxes (Infomir MAG, Dune HD, Enigma2, Android TV), and desktop browsers.
 
-See [playback sessions and provider lifetimes](docs/playback-session-architecture.md)
-for the current core/host boundary, compatibility contracts and migration limits.
+Start with the [architecture and contributor guide](docs/architecture.md) for
+runtime layers, ownership, provider extension recipes and verification. See
+[playback sessions and provider lifetimes](docs/playback-session-architecture.md)
+for the core/host boundary and compatibility contracts.
 
 <!-- ci-release-process:start -->
 ## Release process
@@ -84,8 +86,7 @@ the browser and legacy STB builds retain their existing vendor assets.
 
 The native Android application, including all APK/AAB creation, signing and release
 workflows, has moved to [open-ott-play/ottplay-android](https://github.com/open-ott-play/ottplay-android).
-It is currently a **private preview requiring repository access**, not a public
-Android download. This repository no longer builds or publishes Android packages.
+The repository is public and has a separate release workflow. This repository no longer builds or publishes Android packages.
 Its Android browser/STB profiles and TypeScript bridge compatibility remain supported.
 The old Kotlin/manifest files under `android/` are [archived test fixtures](android/README.md).
 
@@ -115,7 +116,7 @@ Tauri desktop smoke: [desktop checklist](docs/mode-b-tauri-smoke.md).
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | Various distributions |
 | **iOS** | `.ipa` via AltStore / TestFlight / Xcode | Sideload only — not on App Store yet |
-| **Android** | Separate [native application](https://github.com/open-ott-play/ottplay-android) | Private preview; repository access required |
+| **Android** | Separate [native application](https://github.com/open-ott-play/ottplay-android) | Public repository; separate release workflow |
 
 Supported installers are attached to qualified GitHub releases: [https://github.com/open-ott-play/ottplay-foss/releases/latest](https://github.com/open-ott-play/ottplay-foss/releases/latest)
 
@@ -251,7 +252,7 @@ If a TestFlight beta is available:
 
 Build and installation instructions belong to the separate
 [ottplay-android repository](https://github.com/open-ott-play/ottplay-android), which
-is currently a private preview. Access is required. Historical APKs in older
+is public and has its own release workflow. Historical APKs in older
 `ottplay-foss` releases are retired Capacitor builds, not the new native application.
 No old release assets are deleted or replaced by this extraction.
 

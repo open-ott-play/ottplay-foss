@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const acorn = require("acorn");
+const { assertQrSvg } = require("./helpers/qr-svg.cjs");
 const {
     checkBundleIdentifiers,
 } = require("../scripts/check-bundle-identifiers.cjs");
@@ -1973,6 +1974,10 @@ async function main() {
         }
         assertPrivateRuntime(w, profile);
         if (profile === "modern" || profile === "legacy") {
+            assertQrSvg(
+                w,
+                "https://ott.example/invite?name=Телевизор&token=abc-123"
+            );
             exerciseCloudRuntime(profile);
             exerciseAccessRuntime(profile);
             exerciseLibraryBackupRuntime(profile);

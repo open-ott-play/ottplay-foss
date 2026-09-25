@@ -112,7 +112,9 @@ for (const profile of ["server", "tauri", "capacitor"]) {
         w.eval(read(stage + "/js/native-environment.js"));
         w.eval(read(stage + "/js/jquery.min.js"));
     }
-    require("./helpers/shared-core-runtime.cjs")(dom.getInternalVMContext());
+    require("./helpers/shared-core-runtime.cjs")(dom.getInternalVMContext(), {
+        vendorOnly: true,
+    });
     vm.runInContext(read(bundles[profile]), dom.getInternalVMContext(), {
         timeout: 10000,
     });
@@ -120,6 +122,28 @@ for (const profile of ["server", "tauri", "capacitor"]) {
     style.textContent = read(styles[profile]);
     w.document.head.appendChild(style);
     w.uiInit();
+    function renderWithoutSettingsWrites(cat, channel) {
+        const store = w.settingsStore;
+        const observe = store.observe;
+        const attempts = [];
+        const before = JSON.stringify(w.settings);
+        store.observe = function (id, value) {
+            attempts.push(id);
+            return observe(id, value);
+        };
+        try {
+            w._channelsList(cat, channel);
+            w.detailProg();
+        } finally {
+            store.observe = observe;
+        }
+        assert.deepEqual(
+            attempts,
+            [],
+            profile + ": list/detail rendering never copies preferences back"
+        );
+        assert.equal(JSON.stringify(w.settings), before);
+    }
     vm.runInContext(
         `
         listDetail = document.getElementById('listDetail'); listPodval = document.getElementById('listPodval');
@@ -137,11 +161,12 @@ for (const profile of ["server", "tauri", "capacitor"]) {
         sSHLcolor = '120,100'; sSHLcolSel = '240,100'; sSHLcolorB = '255,0';
         window.sSHLcolor = sSHLcolor; window.sSHLcolSel = sSHLcolSel;
         window.sSHLcolorB = sSHLcolorB;
-        setColor(); _channelsList(0, 0);
+        setColor();
     `,
         dom.getInternalVMContext(),
         { timeout: 10000 }
     );
+    renderWithoutSettingsWrites(0, 0);
     const row = w.document.getElementById("it0");
     assert.ok(row, profile + ": provider populated visible channel row");
     assert.match(row.textContent, /News.*Current bulletin/);
@@ -165,7 +190,8 @@ for (const profile of ["server", "tauri", "capacitor"]) {
         "rgb(170, 0, 0)"
     );
     if (profile === "capacitor") assert.equal(w.MobileNativeMedia, media);
-    w.eval("window.sSHLcolor = '0,100'; setColor(); _channelsList(0, 1);");
+    w.eval("window.sSHLcolor = '0,100'; setColor();");
+    renderWithoutSettingsWrites(0, 1);
     assert.equal(
         w.document.getElementById("pntwo").style.color,
         "rgb(255, 0, 0)"
@@ -176,8 +202,9 @@ for (const profile of ["server", "tauri", "capacitor"]) {
         "rgb(0, 0, 128)"
     );
     w.eval(
-        "window.sShowName = window.sShowPikon = window.sShowProgram = window.sShowProgress = window.sShowArchive = 0; _channelsList(0, 0);"
+        "window.sShowName = window.sShowPikon = window.sShowProgram = window.sShowProgress = window.sShowArchive = 0;"
     );
+    renderWithoutSettingsWrites(0, 0);
     assert.equal(w.document.querySelector("#listIn .img"), null);
     assert.equal(
         w.document.querySelector("#listIn .ott-channel-archive"),

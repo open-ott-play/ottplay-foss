@@ -11,10 +11,10 @@ import {
 
 import {
     cancelMediaLoad,
-    getCurProgData,
     ifParentalAccessChId,
     type MediaHistoryEntry,
     type MediaTarget,
+    observeCurrentProgramme,
     rememberMediaView,
     requestMediaList,
 } from "../channels";
@@ -1526,9 +1526,9 @@ export function updateChannelInfo(channelId: number): void {
     if (nbeginTimeEl) nbeginTimeEl.textContent = "";
     if (nendTimeEl) nendTimeEl.textContent = "";
 
-    // EPG data — legacy stbPlayer.js:1258-1281 uses getCurProgData return,
+    // EPG data — legacy stbPlayer.js:1258-1281 uses observeCurrentProgramme return,
     // then always writes +remaining minutes and next-program duration.
-    var hasProg = getCurProgData(channelId, updateChannelInfo);
+    var hasProg = observeCurrentProgramme(channelId, updateChannelInfo);
     if (hasProg && t && t.time_to) {
         // Has current EPG program
         if (programNameEl) programNameEl.textContent = t.name;
@@ -1648,7 +1648,7 @@ export function updateChannelInfo(channelId: number): void {
     }
     // Auto-show on programme change when enabled, but never flash an empty
     // #info1: require channel name and/or current programme, and defer while
-    // getCurProgData still has an EPG fetch pending (callback re-enters here).
+    // observeCurrentProgramme still has an EPG fetch pending (callback re-enters here).
     try {
         var w = window as any;
         var nowGate = Date.now() / 1000;

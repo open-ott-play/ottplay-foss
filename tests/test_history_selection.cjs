@@ -92,6 +92,7 @@ function fixture() {
     };
     c.window = c;
     vm.createContext(c);
+    require("./helpers/english-source-fixture.cjs").attachSourceAliases(c);
     sharedCore(c);
     include(c, "src/channels/index.ts", [
         "setCurrent",

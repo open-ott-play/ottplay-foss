@@ -225,7 +225,7 @@ declare var getChannelEpgCached: (
     cb: (id: string, data: any[]) => void
 ) => void;
 declare var epgCacheCapacity: number;
-declare var getCurProgData: (
+declare var observeCurrentProgramme: (
     chId: string,
     cb: (chId: string) => void
 ) => boolean;
@@ -240,7 +240,7 @@ declare var channelsKeyHandler: (key: number) => boolean;
  * @param chId - The channel ID to update.
  *
  * Side effects: DOM mutations to #pn{chId}, #pr{chId}.
- * Called as the EPG callback from getCurProgData.
+ * Called as the EPG callback from observeCurrentProgramme.
  */
 function updateChannelListRow(chId: string): void {
     var ch = channels[chId as any];
@@ -277,23 +277,9 @@ function detailProg(): void {
     var e = channels[listArray[selIndex]];
     if (e === undefined) return;
     var wdet = window as any;
-    // Prefer window flags (Channel list settings → saveIfChanged) over stale lets.
-    function readDetailSetting(
-        name: string,
-        localVal: any,
-        fallback: number
-    ): number {
-        var v = wdet[name];
-        if (v === undefined || v === null || v === "") v = localVal;
-        var n = typeof v === "number" ? v : parseInt(String(v), 10);
-        return isNaN(n) ? fallback : n;
-    }
-    var showDescr = readDetailSetting("sShowDescr", sShowDescr, 1);
-    var nextCountL = readDetailSetting("sNextCountL", sNextCountL, 1);
-    var previewMode = readDetailSetting("sPreview", sPreview, 0);
-    sShowDescr = showDescr;
-    sNextCountL = nextCountL;
-    sPreview = previewMode;
+    var showDescr = wdet.settings.showDescription;
+    var nextCountL = wdet.settings.nextCountList;
+    var previewMode = wdet.settings.preview;
     var accent =
         (typeof curColor === "string" && curColor) || wdet.curColor || "gold";
     if (e.time_to && e.time_to >= Date.now() / 1e3) {
@@ -1896,57 +1882,16 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     listArray = cats[catsArray[listCatIndex]] || [];
     var wk = getViewportWidthScale();
     var wglob = window as any;
-    // window.s* (settings / saveIfChanged) can diverge from concat-scope lets
-    // after Menu→Channel list settings; prefer window, then let, default on.
-    function readListSetting(
-        name: string,
-        localVal: any,
-        fallback: number
-    ): number {
-        var v = wglob[name];
-        if (v === undefined || v === null || v === "") v = localVal;
-        var n = typeof v === "number" ? v : parseInt(String(v), 10);
-        return isNaN(n) ? fallback : n;
-    }
-    var showNum = readListSetting("sShowNum", sShowNum, 1);
-    var showName = readListSetting("sShowName", sShowName, 1);
-    var channelLogoMode = readListSetting("sShowPikon", sShowPikon, 1);
-    var showProgress = readListSetting("sShowProgress", sShowProgress, 1);
-    var showProgram = readListSetting("sShowProgram", sShowProgram, 1);
-    var showArchive = readListSetting("sShowArchive", sShowArchive, 1);
-    var showDescr = readListSetting("sShowDescr", sShowDescr, 1);
-    var showPreview = readListSetting("sPreview", sPreview, 0);
-    var nextCountL = readListSetting("sNextCountL", sNextCountL, 1);
-    // Keep lets + window aligned for subsequent renders / settings screens.
-    sShowNum = showNum;
-    sShowName = showName;
-    sShowPikon = channelLogoMode;
-    sShowProgress = showProgress;
-    sShowProgram = showProgram;
-    sShowArchive = showArchive;
-    sShowDescr = showDescr;
-    sPreview = showPreview;
-    sNextCountL = nextCountL;
-    wglob.sShowNum = showNum;
-    wglob.sShowName = showName;
-    wglob.sShowPikon = channelLogoMode;
-    wglob.sShowProgress = showProgress;
-    wglob.sShowProgram = showProgram;
-    wglob.sShowArchive = showArchive;
-    wglob.sShowDescr = showDescr;
-    wglob.sPreview = showPreview;
-    wglob.sNextCountL = nextCountL;
-    if (wglob.settings) {
-        wglob.settings.showNumber = showNum;
-        wglob.settings.showName = showName;
-        wglob.settings.channelLogoMode = channelLogoMode;
-        wglob.settings.showProgress = showProgress;
-        wglob.settings.showProgram = showProgram;
-        wglob.settings.showArchive = showArchive;
-        wglob.settings.showDescription = showDescr;
-        wglob.settings.preview = showPreview;
-        wglob.settings.nextCountList = nextCountL;
-    }
+    // Both typed settings and legacy s* properties read the same SettingsStore.
+    // Rendering reads that state; normalization and updates belong to the store.
+    var state = wglob.settings;
+    var showNum = state.showNumber;
+    var showName = state.showName;
+    var channelLogoMode = state.channelLogoMode;
+    var showProgress = state.showProgress;
+    var showProgram = state.showProgram;
+    var showArchive = state.showArchive;
+    var showPreview = state.preview;
     // Honor settings.pageSize. Companion sizes picon/progress from the
     // 90-chrome font formula (setFontSize); showPage row boxes use 130 /
     // live #listIn via listRowHeight — do not mix those bases.
@@ -2004,7 +1949,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
         // scoped DOM pass below work under Tauri's nonced style policy.
         // Queue EPG fill for every visible row (OTT). Re-read ch after call:
         // deferred processCurrentProgramQueue may not have run yet; time_to hit returns true.
-        getCurProgData(chId, updateChannelListRow);
+        observeCurrentProgramme(chId, updateChannelListRow);
         var nowSec = Date.now() / 1e3;
         var progName =
             ch.time_to && ch.time_to >= nowSec && ch.name

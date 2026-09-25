@@ -260,10 +260,13 @@ function mountM3uProviderSettings(
                         host.__ottClassicGuide.invalidateChannel(Number(id));
                     if (
                         id !== selected &&
-                        typeof host.getCurProgData === "function" &&
+                        typeof host.observeCurrentProgramme === "function" &&
                         typeof host.updateChannelListRow === "function"
                     )
-                        host.getCurProgData(id, host.updateChannelListRow);
+                        host.observeCurrentProgramme(
+                            id,
+                            host.updateChannelListRow
+                        );
                 }
             });
         }

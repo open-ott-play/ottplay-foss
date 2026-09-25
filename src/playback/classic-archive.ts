@@ -157,8 +157,11 @@ function classicArchiveRuntime(): any {
                 return row.payload;
             });
             w.curProg = model.current ? model.rows.indexOf(model.current) : -1;
-            if (typeof w.setCurProg === "function")
-                w.setCurProg(model.context.host.id, w.epgArray);
+            if (typeof w.publishChannelProgrammeRows === "function")
+                w.publishChannelProgrammeRows(
+                    model.context.host.id,
+                    w.epgArray
+                );
             if (typeof w.__ottRenderArchive === "function")
                 w.__ottRenderArchive(model);
             classicArchivePublished = w.epgArray;

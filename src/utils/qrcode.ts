@@ -1131,12 +1131,26 @@ export function makeQrSvg(text: string, sizePx?: number): string {
     var parts: string[] = [];
     var y = 0;
     for (; y < n; y++) {
+        var start = -1;
         var x = 0;
-        for (; x < n; x++) {
-            if (qr.getModule(x, y)) {
+        // The extra column closes a dark run reaching the right edge.
+        for (; x <= n; x++) {
+            if (x < n && qr.getModule(x, y)) {
+                if (start < 0) start = x;
+            } else if (start >= 0) {
+                var width = x - start;
                 parts.push(
-                    "M" + (x + border) + "," + (y + border) + "h1v1h-1z"
+                    "M" +
+                        (start + border) +
+                        "," +
+                        (y + border) +
+                        "h" +
+                        width +
+                        "v1h-" +
+                        width +
+                        "z"
                 );
+                start = -1;
             }
         }
     }

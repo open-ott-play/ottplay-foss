@@ -92,7 +92,6 @@ import {
     getActiveFavoritesListName,
     getChannelEpgCached,
     getChannelUrl,
-    getCurProgData,
     getMediaDescr,
     handleNumberInput,
     ifParentalAccessChId,
@@ -107,6 +106,7 @@ import {
     mediaSelects,
     mediaUrls,
     nextChannel,
+    observeCurrentProgramme,
     parentalArray,
     parentControlSetup,
     playArchive,
@@ -116,6 +116,7 @@ import {
     prevArr,
     prevChannel,
     primaryIndex,
+    publishChannelProgrammeRows,
     publishGuideReminders,
     recordsList,
     removeFromFavorites,
@@ -125,7 +126,6 @@ import {
     saveChannelsCats,
     selectEpg,
     setActiveFavoritesList,
-    setCurProg,
     setCurrent,
     setEpgTimer,
     setParentAccess,
@@ -2311,7 +2311,7 @@ function setupTauriEpgCacheReady(): void {
             try {
                 console.log("[Tauri] epg-cache-ready — refilling EPG");
                 invalidateEpgCache(true);
-                // Visible channel list: re-queue getCurProgData via showPage.
+                // Visible channel list: re-queue observeCurrentProgramme via showPage.
                 if (
                     (window as any).isListVisible &&
                     typeof (window as any).showPage === "function"
@@ -5242,8 +5242,8 @@ window.shiftArchiveSelect = shiftArchiveSelect;
 window.timeShift = timeShift;
 window.checkMedia = checkMedia;
 window.setCurrent = setCurrent;
-window.setCurProg = setCurProg;
-window.getCurProgData = getCurProgData;
+window.publishChannelProgrammeRows = publishChannelProgrammeRows;
+window.observeCurrentProgramme = observeCurrentProgramme;
 
 (window as any).fetchChannelGuide = fetchChannelGuide;
 window.getChannelEpgCached = getChannelEpgCached;
