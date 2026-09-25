@@ -4,11 +4,11 @@ var mediaClassicSource = "";
 var mediaClassicProvider: any = null;
 var mediaClassicPlayback: any = null;
 
-function mediaCanonical(value: any): string {
+function serializeMediaIdentity(value: any): string {
     if (value === null || typeof value !== "object")
         return JSON.stringify(value);
     if (Array.isArray(value))
-        return "[" + value.map(mediaCanonical).join(",") + "]";
+        return "[" + value.map(serializeMediaIdentity).join(",") + "]";
     return (
         "{" +
         Object.keys(value)
@@ -19,7 +19,11 @@ function mediaCanonical(value: any): string {
                 );
             })
             .map(function (key) {
-                return JSON.stringify(key) + ":" + mediaCanonical(value[key]);
+                return (
+                    JSON.stringify(key) +
+                    ":" +
+                    serializeMediaIdentity(value[key])
+                );
             })
             .join(",") +
         "}"
@@ -55,10 +59,9 @@ function classicMediaRuntime(): any {
         var screen = w.__ottClassicScreenPort;
         var owner = screen && screen.listOwner();
         if (!owner) return;
-        var revision = library.snapshot().revision;
+        var revision = library.revision();
         owner.own(function () {
-            if (!rendering && revision === library.snapshot().revision)
-                api.cancel();
+            if (!rendering && revision === library.revision()) api.cancel();
         });
     }
     function current() {
@@ -112,14 +115,18 @@ function classicMediaRuntime(): any {
                 )
                     id = "provider:" + String(explicit);
                 else if (row.request)
-                    id = "request:" + mediaCanonical(row.request);
+                    id = "request:" + serializeMediaIdentity(row.request);
                 else {
                     var occurrence = titles[title] || 0;
                     titles[title] = occurrence + 1;
                     // Providers without IDs get a catalog-local identity, never a signed stream URL.
                     id =
                         "catalog:" +
-                        mediaCanonical([route.target || "", title, occurrence]);
+                        serializeMediaIdentity([
+                            route.target || "",
+                            title,
+                            occurrence,
+                        ]);
                 }
                 var identity = { itemId: id, sourceId: source };
                 payload.__ottMediaRef = identity;
@@ -396,14 +403,12 @@ function classicMediaRuntime(): any {
             }
         },
         favorite: function (payload: any) {
+            var frame = library.snapshot().frame;
             var item = describe(
                 [payload],
-                library.snapshot().frame
-                    ? library.snapshot().frame.route
-                    : { kind: "catalog", target: "", title: "" }
+                frame ? frame.route : { kind: "catalog", target: "", title: "" }
             )[0];
             if (!item || w.sFavorites === -1) return;
-            var frame = library.snapshot().frame;
             var removing = frame && frame.route.kind === "favorites";
             if (
                 !journal.change(
@@ -418,8 +423,8 @@ function classicMediaRuntime(): any {
                 w.showShift(item.title + w._(" added to favorites"));
         },
         highlight: function (index: number, revision: number) {
-            if (current() && library.snapshot().revision === revision)
-                library.select(index);
+            if (current() && library.revision() === revision)
+                library.highlight(index);
         },
         open: function (target: any, title?: string) {
             var view = library.snapshot();
@@ -459,8 +464,8 @@ function classicMediaRuntime(): any {
                 target === null ||
                 !view.frame ||
                 (view.frames[0].route.kind === "catalog" &&
-                    mediaCanonical(view.frames[0].route.target) ===
-                        mediaCanonical(target));
+                    serializeMediaIdentity(view.frames[0].route.target) ===
+                        serializeMediaIdentity(target));
             library.open(
                 {
                     kind: "catalog",

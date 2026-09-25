@@ -917,6 +917,12 @@ function exerciseLibraryBackupRuntime(profile) {
 function exerciseMediaRuntime(profile) {
     const w = fixture(profile);
     vm.runInContext(bundle, w, { filename: bundlePath });
+    const {
+        assertMediaReadContract,
+        trackMediaSnapshots,
+    } = require("./helpers/media-read-cost.cjs");
+    assertMediaReadContract(w);
+    const mediaReads = trackMediaSnapshots(w);
     const stored = new Map(),
         played = [],
         rendered = [];
@@ -964,6 +970,12 @@ function exerciseMediaRuntime(profile) {
     ];
     request();
     assert.equal(rendered.at(-1).frame.items[0].ref.itemId, "provider:41");
+    const mediaRevision = w.__ottMedia.snapshot().revision;
+    mediaReads.reset();
+    w.__ottMedia.highlight(1, mediaRevision);
+    assert.equal(mediaReads.snapshots, 0);
+    assert.equal(mediaReads.selects, 0);
+    assert.equal(w.__ottMedia.snapshot().frame.selected, 1);
     w.selectMedia(0);
     assert.deepEqual(played, ["expired.mp4"]);
     position = 125.9;

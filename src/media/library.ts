@@ -72,6 +72,12 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
     function render() {
         ports.render(snapshot());
     }
+    function selectItem(index: number): MediaLibraryItem | null {
+        var frame = frames[frames.length - 1];
+        if (!frame || !frame.items[index]) return null;
+        frame.selected = index;
+        return frame.items[index];
+    }
     function open(route: MediaRoute, reset = false) {
         var token = cancel();
         if (token !== revision) return;
@@ -152,6 +158,10 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
             var token = cancel();
             if (pending && token === revision) frames.pop();
         },
+        // Highlight changes owned selection without publishing item data.
+        highlight: function (index: number) {
+            selectItem(index);
+        },
         open: open,
         replaceItems: function (items: MediaLibraryItem[]) {
             if (!frames.length) return;
@@ -180,11 +190,11 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
                 else if (!settled) cleanup = abort;
             }
         },
+        revision: function () {
+            return revision;
+        },
         select: function (index: number): MediaLibraryItem | null {
-            var frame = frames[frames.length - 1];
-            if (!frame || !frame.items[index]) return null;
-            frame.selected = index;
-            return mediaLibraryCopy(frame.items[index]);
+            return mediaLibraryCopy(selectItem(index));
         },
         show: render,
         snapshot: snapshot,
