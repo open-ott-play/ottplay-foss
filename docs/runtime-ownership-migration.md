@@ -8,6 +8,10 @@ command paths; historical attribution and retained test oracles are unchanged.
   screen lifetimes, focus, semantic input and callback cancellation. Provider
   menus enter through the compatibility port. A quality picker temporarily
   suspends its media parent and retires with that parent.
+- `AccessSession` owns source- and policy-bound parental grants, deadlines and
+  cancellable PIN requests. Per-field settings epochs reject PIN/protection
+  changes even when the old value is restored; stale timers cannot revoke a
+  renewed grant. The classic keypad and device/provider hooks remain adapters.
 - `SettingsStore` owns settings, validation and editor drafts. Compatibility
   properties remain projections for device scripts and menus.
 - `ChannelLibrary` owns stable channel IDs, groups, ordering and preferences.
@@ -48,6 +52,12 @@ Source claims, storage readback and generation guards prevent an account switch,
 reentrant callback or rejected write from publishing another source's data.
 Unknown and malformed envelopes remain read-only.
 
+Portable settings JSON v2 exports full stable library documents instead of
+reading frozen legacy arrays. V1 restore conservatively translates raw channel
+references into canonical libraries. Settings and library writes share readback
+and guarded rollback of only attempted keys; source replacement also retires
+post-commit callbacks. See [settings-store.md](settings-store.md).
+
 ## Compatibility and verification
 
 TypeScript still targets ES5. The classic optimizer retains its ES5/IE8/WebKit
@@ -64,14 +74,16 @@ physical-device beta pass before making a device compatibility guarantee.
 
 ## Artifact size budget
 
-The combined Full artifact measures 643,739 UTF-8 bytes / 181,565 bytes gzip
-(level 9), including all six owners and conservative favorites/journal imports.
-The former 610,000/170,000 limit described the previous runtime. This migration
-sets a bounded 650,000/184,000 limit: about 1.0% raw and 1.3% gzip headroom above
-the measured Full result. Size checking still runs for server, staged Tauri and
-Capacitor artifacts and rejects missing, stale or oversized outputs. It is not
-replaced by a diagnostic-build exception. Play is measured and checked separately.
+The combined Full artifact measures 649,659 UTF-8 bytes / 183,620 bytes gzip
+(level 9); staged Tauri and Capacitor copies measure 649,617 / 183,694. The
+650,000 / 184,000 limits introduced with the six-owner migration are unchanged.
+Size checking covers server and staged native artifacts and rejects missing,
+stale or oversized outputs. Play is measured and checked separately.
 
-The increase pays for explicit lifetime ownership, source-scoped persistence,
-rollback-safe migration and compatibility ports. It is not an optimization claim;
-physical old-device startup and memory behavior require the beta hardware pass.
+To retain this budget, Tauri fullscreen shares native completion and fallback
+code. Unused TypeScript-only filters, presentation helpers, language loader and
+user-agent utilities remain in optional ESM modules outside classic delivery;
+the active search, guide, translation and native transport paths remain in the
+player. No historical device ABI or optimizer safety guard was removed.
+
+These size checks are not a physical-device startup or memory measurement.
