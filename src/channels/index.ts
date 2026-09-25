@@ -359,28 +359,6 @@ export let strFF = '<span class="fontello">&#xe802;</span>';
 export let strPREV = '<span class="fontello">&#xe806;</span>';
 export let strNEXT = '<span class="fontello">&#xe805;</span>';
 
-/** List of module state keys that should be persisted via the provider storage API. */
-export const persistedKeys: string[] = [
-    "catsArray",
-    "cats",
-    "favoritesArray",
-    "favoritesLists",
-    "parentalArray",
-    "catIndex",
-    "primaryIndex",
-    "prevArr",
-    "epgTimers",
-    "aAspects",
-    "aZooms",
-    "aAudios",
-    "aSubs",
-    "sSortAbc",
-    "sPlayers",
-    "medHistory",
-    "medFavorites",
-    "continueWatch",
-];
-
 /* Compatibility names are accessor views owned by SettingsStore. */
 declare var sNoSmall: number;
 declare var sStopPlay: number;
@@ -1952,30 +1930,6 @@ export function detailEPG(channelId: number): void {
     if (typeof w.scrollUp === "function") w.scrollUp("_prd", t, 5000);
     if (item.time > Date.now() / 1000) $("#bTimer").show();
     else $("#bTimer").hide();
-}
-
-/**
- * Render an array of EPG entries into a complete HTML string for use in
- * legacy view containers. Shows time range and optional description for each entry.
- *
- * @param epgData - Array of EPG entries to render.
- * @returns Concatenated HTML string (empty if input is null/empty).
- */
-export function renderEpgHTML(epgData: EPGEntry[]): string {
-    var html = "";
-    if (!(epgData && epgData.length)) return html;
-    epgData.forEach(function (entry: EPGEntry) {
-        html +=
-            '<div class="epg-entry"><span class="epg-time">' +
-            formatEpgTime(entry.time) +
-            '</span> <span class="epg-name">' +
-            entry.name +
-            "</span>";
-        if (entry.descr)
-            html += '<div class="epg-descr">' + entry.descr + "</div>";
-        html += "</div>";
-    });
-    return html;
 }
 
 /**

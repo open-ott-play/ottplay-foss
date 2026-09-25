@@ -36,10 +36,10 @@ const functionNames = [
     "selectEpg",
     "searchEpgByTitle",
 ];
-const source = fs.readFileSync(
-    path.join(root, "src/channels/index.ts"),
-    "utf8"
-);
+const source =
+    fs.readFileSync(path.join(root, "src/channels/index.ts"), "utf8") +
+    "\n" +
+    fs.readFileSync(path.join(root, "src/channels/render-helpers.ts"), "utf8");
 const ast = ts.createSourceFile(
     "channels.ts",
     source,

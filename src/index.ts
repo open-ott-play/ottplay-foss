@@ -135,13 +135,7 @@ import {
     updateArchiveInfo,
 } from "./channels";
 // Localization
-import {
-    _,
-    loadLanguage,
-    translate,
-    translations,
-    useGraphicIcons,
-} from "./localization";
+import { _, translate, translations, useGraphicIcons } from "./localization";
 // Settings
 import {
     applyTimezoneSetting,
