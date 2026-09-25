@@ -169,7 +169,7 @@ and their license remain intact.
 
 Compared with main `770ff3d`, Node 22.23.3 produces server JS of 653,275 raw /
 186,381 gzip bytes (630 / 120 fewer); Tauri and Capacitor produce 653,233 /
-186,446 (630 / 126 fewer). Play produces 592,619 / 169,423, down from
-607,664 / 173,882 (15,045 / 4,459 fewer). Gzip uses level 9; separately loaded
+186,446 (630 / 126 fewer). The final staged Play frontend produces 592,577 / 169,494, down from
+607,664 / 173,528 (15,087 / 4,034 fewer). Gzip uses level 9; separately loaded
 libraries and shared core are unchanged. The 654,000 / 186,750 size ceilings and
 ES5 optimizer protections were not increased or relaxed.
