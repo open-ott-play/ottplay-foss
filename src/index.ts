@@ -1692,7 +1692,9 @@ export function startPlayer(): void {
                         !!window.stbSubtitleExists(),
                 };
             },
-            clearInterval: clearInterval,
+            clearInterval: function (id: number) {
+                window.clearInterval(id);
+            },
             command: function (command: any) {
                 deviceHost.__ottClassicPlayback.command(command);
             },
@@ -1727,7 +1729,9 @@ export function startPlayer(): void {
             route: function () {
                 return deviceHost.ott_device;
             },
-            setInterval: setInterval,
+            setInterval: function (callback: () => void, delay: number) {
+                return window.setInterval(callback, delay);
+            },
         });
         deviceHost.__ottDevice.start();
         (window as any).listFooter = (window as any).listFooterElement;
@@ -2709,10 +2713,15 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
             },
         });
 
+        // WKWebView timers require Window as their receiver, not the ports object.
         (window as any).__ottOsMediaSession.create({
             backend: (window as any).__ottCoreBackend(),
-            clearInterval: clearInterval,
-            clearTimeout: clearTimeout,
+            clearInterval: function (id: number) {
+                window.clearInterval(id);
+            },
+            clearTimeout: function (id: number) {
+                window.clearTimeout(id);
+            },
             metadata: nativeMediaMetadata,
             send: function (action: string, metadata: any) {
                 var method = {
@@ -2726,8 +2735,12 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                     console.warn("[Capacitor] media session failed:", error);
                 });
             },
-            setInterval: setInterval,
-            setTimeout: setTimeout,
+            setInterval: function (callback: () => void, delay: number) {
+                return window.setInterval(callback, delay);
+            },
+            setTimeout: function (callback: () => void, delay: number) {
+                return window.setTimeout(callback, delay);
+            },
         });
     })();
 }
@@ -2737,8 +2750,12 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
 if (typeof window.__TAURI__ !== "undefined") {
     (window as any).__ottOsMediaSession.create({
         backend: (window as any).__ottCoreBackend(),
-        clearInterval: clearInterval,
-        clearTimeout: clearTimeout,
+        clearInterval: function (id: number) {
+            window.clearInterval(id);
+        },
+        clearTimeout: function (id: number) {
+            window.clearTimeout(id);
+        },
         metadata: nativeMediaMetadata,
         send: function (action: string, metadata: any) {
             var method = {
@@ -2752,8 +2769,12 @@ if (typeof window.__TAURI__ !== "undefined") {
                 console.warn("[Tauri] media session failed:", error);
             });
         },
-        setInterval: setInterval,
-        setTimeout: setTimeout,
+        setInterval: function (callback: () => void, delay: number) {
+            return window.setInterval(callback, delay);
+        },
+        setTimeout: function (callback: () => void, delay: number) {
+            return window.setTimeout(callback, delay);
+        },
     });
 }
 
