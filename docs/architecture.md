@@ -248,6 +248,11 @@ Names describe the effect while the emitted interface stays compatible:
 - `moveSelectedChannelOrCategory` → `moveChannel` retains the global entrypoint
   for group or membership ordering. `removeSelectedChannelFromCategory` →
   `deleteChannel` removes category membership, not the shared catalog channel.
+- `importGuideReminder` → `startEpgTimer` imports into the reminder owner; it
+  does not attach a timeout handle to the caller's record.
+- `openSelectedChannelRecordings` → `catRecordsList` resolves a channel position
+  in the current list before requesting its provider recordings. The argument
+  is not a category identifier.
 
 The `__ott*` APIs in `CLASSIC_PRIVATE_MODULES` are explicit internal integration
 boundaries. Their implementation bindings are local to immediate scopes; the

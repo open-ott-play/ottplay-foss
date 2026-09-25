@@ -1935,18 +1935,17 @@ export function detailEPG(channelId: number): void {
 }
 
 /**
- * Start a one-shot timer that will prompt the user to switch to a channel
- * when a future program begins.
+ * Import a legacy programme reminder into the source-scoped reminder owner.
  *
  * @param timer - Timer object with properties:
  *   `t` (start Unix seconds), `te` (end), `ci` (channel ID),
  *   `c` (category index), `i` (channel index), `n` (program name).
  *
- * Side effects: Calls `setTimeout`. When the timer fires, shows a confirm box
- * and on confirmation calls `window.closeList` and `window.playChannel`.
- * Stores the timeout ID on `timer.ti`.
+ * The owner resolves stable channel/programme identities, persists accepted
+ * records and schedules their prompts. It does not reuse or store a timer
+ * handle on the supplied legacy record.
  */
-export function startEpgTimer(timer: any): void {
+export function importGuideReminder(timer: any): void {
     (window as any).__ottClassicReminders.importRecord(timer);
 }
 
@@ -2032,10 +2031,10 @@ export function detailREC(): void {
 }
 
 /**
- * Open the records (archive) list for a specific category/channel.
+ * Open provider recordings for the channel at the supplied current-list index.
  * Fetches media array from the provider and renders it as a selectable list.
  *
- * @param catIdx - Index of the category (or channel) within `curList`.
+ * @param channelIndex - Channel position within `curList`, not a category ID.
  *
  * Side effects:
  * - Calls `window.getMediaArray` (provider API).
@@ -2043,7 +2042,7 @@ export function detailREC(): void {
  * - Shows/hides #listPopUp, updates #listCaption / #listPodval.
  * - Calls `window.showPage`.
  */
-export function catRecordsList(catIdx: number): void {
+export function openSelectedChannelRecordings(channelIndex: number): void {
     var w = window as any;
     if (typeof w.closeList === "function") w.closeList();
 
@@ -2053,7 +2052,7 @@ export function catRecordsList(catIdx: number): void {
         return;
     }
 
-    var chId = curList[catIdx];
+    var chId = curList[channelIndex];
     var ch = channels[chId] || ({} as Channel);
     var providerChId = ch.ch_id;
 
@@ -2859,8 +2858,8 @@ export function bucketsKeyHandler(keyCode: number): boolean {
         case keys.PLAY:
         case keys.PAUSE:
         case keys.PRECH:
-            if (typeof w.catRecordsList === "function") {
-                w.catRecordsList(w.selIndex);
+            if (typeof w.openSelectedChannelRecordings === "function") {
+                w.openSelectedChannelRecordings(w.selIndex);
             }
             return true;
 

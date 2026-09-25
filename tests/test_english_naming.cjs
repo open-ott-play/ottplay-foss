@@ -114,6 +114,8 @@ async function testRenamedHelpers() {
         ["publishChannelProgrammeRows", "setCurProg"],
         ["moveSelectedChannelOrCategory", "moveChannel"],
         ["removeSelectedChannelFromCategory", "deleteChannel"],
+        ["importGuideReminder", "startEpgTimer"],
+        ["openSelectedChannelRecordings", "catRecordsList"],
     ];
     write(
         "renamed-helpers.js",
@@ -124,6 +126,8 @@ async function testRenamedHelpers() {
                     "publishChannelProgrammeRows",
                     "moveSelectedChannelOrCategory",
                     "removeSelectedChannelFromCategory",
+                    "importGuideReminder",
+                    "openSelectedChannelRecordings",
                 ]) +
                 "\n" +
                 sourceDefinitions("src/utils/helpers.ts", [
@@ -190,6 +194,37 @@ async function testRenamedHelpers() {
         assert.equal(c.moveSelectedChannelOrCategory.length, 1);
         assert.equal(c.removeSelectedChannelFromCategory.name, "deleteChannel");
         assert.equal(c.removeSelectedChannelFromCategory.length, 0);
+        assert.equal(c.importGuideReminder.name, "startEpgTimer");
+        assert.equal(c.importGuideReminder.length, 1);
+        assert.equal(c.openSelectedChannelRecordings.name, "catRecordsList");
+        assert.equal(c.openSelectedChannelRecordings.length, 1);
+        const reminder = { ci: 7, n: "News", t: 100, te: 200, ti: 999 };
+        let imported;
+        c.__ottClassicReminders = {
+            importRecord(record) {
+                imported = record;
+            },
+        };
+        c.startEpgTimer(reminder);
+        assert.equal(imported, reminder);
+        assert.equal(reminder.ti, 999, "Legacy input is handed to its owner");
+        const recordings = [];
+        c.curList = [7];
+        c.chanels = { 7: { ch_id: "provider-7" } };
+        c.closeList = () => recordings.push("close");
+        c.getMediaArray = (done, id) => {
+            recordings.push([id, typeof done]);
+        };
+        c.catRecordsList(0);
+        assert.deepEqual(recordings, ["close", ["provider-7", "function"]]);
+        for (const [canonical, legacy] of pairs.slice(-2)) {
+            const implementation = c[legacy];
+            const external = function externalProviderCallback() {};
+            c[legacy] = external;
+            assert.equal(c[canonical], external);
+            c[canonical] = implementation;
+            assert.equal(c[legacy], implementation);
+        }
         const guideCalls = [];
         const subscriber = () => {};
         const rows = [{ end: 2, start: 1, title: "News" }];

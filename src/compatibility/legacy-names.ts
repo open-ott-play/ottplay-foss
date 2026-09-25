@@ -15,6 +15,8 @@ export const legacyPlayerBindings: Array<[string, string]> = [
     ["publishChannelProgrammeRows", "setCurProg"],
     ["moveSelectedChannelOrCategory", "moveChannel"],
     ["removeSelectedChannelFromCategory", "deleteChannel"],
+    ["importGuideReminder", "startEpgTimer"],
+    ["openSelectedChannelRecordings", "catRecordsList"],
     ["getChannelEpg", "getEPGchanel"],
     ["getCurrentChannelEpg", "getEPGchanelCur"],
     ["getChannelEpgCached", "getEPGchanelCached"],
