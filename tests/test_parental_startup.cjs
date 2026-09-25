@@ -179,7 +179,6 @@ function fixture({
         loadFavoritesLists() {},
         medHistory: [],
         p_pref: "test-provider",
-        parentAccess: authorized,
         // Synthetic fixture secret only; no persisted/user settings are accessed.
         parentPIN: "2468",
         playArchive: (time) => {
@@ -243,6 +242,8 @@ function fixture({
             );
         }
     }
+    // Grant only after the fixture has installed its complete source/configuration.
+    w.parentAccess = authorized;
     w.playChannel = w._playChannel;
     w._doKey = w.dispatchKey;
     const start = () => {

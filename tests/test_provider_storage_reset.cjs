@@ -113,6 +113,7 @@ const context = {
 };
 context.window = context;
 vm.createContext(context);
+require("./helpers/access-runtime.cjs")(context);
 require("./helpers/private-runtime.cjs")(context, "src/provider/runtime.ts");
 require("./helpers/private-runtime.cjs")(
     context,

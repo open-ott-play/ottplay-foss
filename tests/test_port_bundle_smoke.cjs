@@ -398,6 +398,8 @@ function fixture(profile) {
     );
     require("./helpers/shared-core-runtime.cjs")(w, { vendorOnly: true });
     for (const api of [
+        "__ottAccessSession",
+        "__ottParental",
         "__ottScreenController",
         "__ottScreens",
         "__ottInputRouter",
@@ -435,6 +437,8 @@ function fixture(profile) {
 
 function assertPrivateRuntime(w, profile) {
     for (const [api, method] of [
+        ["__ottAccessSession", "create"],
+        ["__ottParental", "request"],
         ["__ottScreenController", "create"],
         ["__ottScreens", "open"],
         ["__ottInputRouter", "create"],
@@ -495,6 +499,9 @@ function assertPrivateRuntime(w, profile) {
         Array.from(w.__ottProviderDriverProfiles, (profile) => profile.id)
     );
     for (const name of [
+        "createAccessSession",
+        "createClassicAccess",
+        "createPinEntry",
         "createScreenController",
         "createInputRouter",
         "createClassicScreenPort",
@@ -569,6 +576,46 @@ function assertPrivateRuntime(w, profile) {
             profile + ": private implementation exposed as bare global"
         );
     }
+}
+
+function exerciseAccessRuntime(profile) {
+    const w = fixture(profile);
+    vm.runInContext(bundle, w, { filename: bundlePath });
+    w.p_pref = "access-a";
+    w.parentPIN = "2468";
+    w.sPSchannels = 1;
+    let accepted = 0;
+    w.setParentAccess(true, () => accepted++);
+    const oldExpiry = [...fixtureTimers.get(w).values()].find(
+        (job) => job.delay === 3600000
+    );
+    assert(oldExpiry, "actual grant schedules hourly expiry");
+    w.setParentAccess(true, () => accepted++);
+    oldExpiry.fn();
+    assert.equal(
+        w.parentAccess,
+        true,
+        "old artifact timer cannot revoke renewed grant"
+    );
+    assert.equal(accepted, 2);
+    w.parentAccess = false;
+    w.enterPinAndSetAccess(() => accepted++);
+    const entry = w.dialogBoxKeyHandler;
+    for (const digit of "2468") entry(w.keys["N" + digit]);
+    assert.equal(accepted, 3);
+    assert.equal(w.parentAccess, true);
+    w.parentAccess = false;
+    w.enterPinAndSetAccess(() => accepted++);
+    const retired = w.dialogBoxKeyHandler;
+    w.p_pref = "access-b";
+    for (const digit of "2468") retired(w.keys["N" + digit]);
+    assert.equal(accepted, 3, "retired source cannot receive the PIN replay");
+    assert.equal(w.parentAccess, false);
+    console.log(
+        "OK: actual " +
+            profile +
+            " bundle PIN owner, renewal and source retirement"
+    );
 }
 
 function exerciseMediaRuntime(profile) {
@@ -1632,6 +1679,7 @@ async function main() {
         }
         assertPrivateRuntime(w, profile);
         if (profile === "modern" || profile === "legacy") {
+            exerciseAccessRuntime(profile);
             exerciseScreenRuntime(profile);
             exercisePlaybackRuntime(w, profile);
             exerciseArchiveRuntime(profile);

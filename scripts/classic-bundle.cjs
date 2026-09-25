@@ -20,6 +20,8 @@ const CLASSIC_MODULES = [
     "build/channels/favorites-lists.js",
     "build/channels/search.js",
     "build/provider/source-identity.js",
+    "build/access/session.js",
+    "build/access/classic-adapter.js",
     "build/playback/session.js",
     "build/playback/journal.js",
     "build/playback/classic-adapter.js",
@@ -86,6 +88,8 @@ const CLASSIC_MODULES = [
 // legacy bare-global ABI. These modules publish their API as window properties
 // and execute immediately at their original position in CLASSIC_MODULES.
 const CLASSIC_PRIVATE_MODULES = Object.freeze({
+    "build/access/classic-adapter.js": Object.freeze(["window.__ottParental"]),
+    "build/access/session.js": Object.freeze(["window.__ottAccessSession"]),
     "build/channels/channel-references.js": Object.freeze([
         "window.__ottChannelReferences",
     ]),
