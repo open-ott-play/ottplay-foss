@@ -19,10 +19,15 @@ export interface SettingsPorts {
     effect(name: string): void;
     storage(definition: SettingDefinition): SettingStorage;
 }
+export interface SettingsWrite {
+    after: string;
+    before: string | null;
+    storage: SettingStorage;
+}
 export interface SettingsDraft {
     active(): boolean;
     cancel(): void;
-    commit(): boolean;
+    commit(writes?: SettingsWrite[], admitted?: () => boolean): boolean;
     error(): string;
     get(id: string): any;
     set(id: string, value: any): boolean;
@@ -115,8 +120,16 @@ export function createSettingsStore(
                 open = false;
                 pending = {};
             },
-            commit: function () {
-                if (!active()) {
+            commit: function (
+                additional = [],
+                admitted = function () {
+                    return true;
+                }
+            ) {
+                function current(): boolean {
+                    return active() && admitted();
+                }
+                if (!current()) {
                     message = "Settings source changed";
                     return false;
                 }
@@ -131,12 +144,13 @@ export function createSettingsStore(
                     message = "Settings changed while editing";
                     return false;
                 }
-                var writes: Array<{
-                    storage: SettingStorage;
-                    before: string | null;
-                    after: string;
-                }> = [];
+                var writes: SettingsWrite[] = [];
                 try {
+                    additional.forEach(function (write) {
+                        if (write.storage.read() !== write.before)
+                            throw new Error("Backup state changed");
+                    });
+                    writes = additional.slice();
                     changes.forEach(function (id) {
                         var entry = definitions[id],
                             storage = ports.storage(entry);
@@ -149,17 +163,18 @@ export function createSettingsStore(
                         });
                     });
                     for (var i = 0; i < writes.length; i++) {
-                        if (!active())
+                        if (!current())
                             throw new Error("Settings source changed");
                         writes[i].storage.write(writes[i].after);
                         if (writes[i].storage.read() !== writes[i].after)
                             throw new Error("Settings storage rejected write");
                     }
-                    if (!active()) throw new Error("Settings source changed");
+                    if (!current()) throw new Error("Settings source changed");
                 } catch (error) {
                     // Roll back only the captured keys. Do not touch a newer external write.
                     for (var j = writes.length - 1; j >= 0; j--) {
                         try {
+                            if (!admitted()) break;
                             if (writes[j].storage.read() !== writes[j].after)
                                 continue;
                             if (writes[j].before === null)
@@ -184,7 +199,11 @@ export function createSettingsStore(
                     });
                 });
                 effects.forEach(function (name) {
-                    if (generation !== revision || source !== ports.context())
+                    if (
+                        generation !== revision ||
+                        source !== ports.context() ||
+                        !admitted()
+                    )
                         return;
                     try {
                         ports.effect(name);

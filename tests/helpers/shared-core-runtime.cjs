@@ -37,6 +37,7 @@ module.exports = function sharedCoreRuntime(context, options = {}) {
     const privateRuntime = require("./private-runtime.cjs");
     if (!context.window) context.window = context;
     for (const file of [
+        "src/settings/library-backup.ts",
         "src/provider/source-identity.ts",
         "src/channels/channel-references.ts",
         "src/channels/library.ts",

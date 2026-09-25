@@ -197,7 +197,7 @@ async function testClosedBackup(complete) {
     w.eval(code);
     w.exportSettingsUI();
     assert.deepEqual(downloads, [
-        ["ottplay-settings-v1.json", "blob:backup-fixture"],
+        ["ottplay-settings-v2.json", "blob:backup-fixture"],
     ]);
     assert.deepEqual(revoked, ["blob:backup-fixture"]);
     assert.deepEqual(notices, ["Settings download requested"]);
