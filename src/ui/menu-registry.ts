@@ -91,6 +91,28 @@ var screenMenuDefinitions: Array<
     ["favorites.open", "popFavLists", "Favorite lists"],
 ];
 function createScreenMenuRegistry() {
+    var bindings: Array<[string, string]> = [
+        ["ZOOM", "video.zoom"],
+        ["ASPECT", "video.aspect"],
+        ["N0", "app.exit"],
+        ["N1", "audio.track"],
+        ["AUDIO", "audio.track"],
+        ["N2", "information.open"],
+        ["N3", "channel.previous"],
+        ["N4", "archive.seek"],
+        ["N5", "pip.toggle"],
+        ["N6", "pip.close"],
+        ["N7", "playback.live"],
+        ["N8", "app.restart"],
+        ["N9", "settings.open"],
+        ["TOOLS", "settings.open"],
+        ["SUBTITLE", "subtitle.track"],
+        ["EPG", "guide.open"],
+        ["RED", "guide.open"],
+        ["GREEN", "archive.records"],
+        ["BLUE", "channels.categories"],
+        ["PREV", "channels.categories"],
+    ];
     function defaults(host: any) {
         return {
             actions: screenMenuDefinitions.map(function (record) {
@@ -104,6 +126,10 @@ function createScreenMenuRegistry() {
             }),
         };
     }
+    var legacyNames: any = {
+        "provider.settings": "nofun",
+        "provider.unlock": "noProvParam",
+    };
     function importClassic(host: any): ScreenMenuRecord[] {
         // Existing provider codecs are an explicit input codec, never menu policy.
         var records: ScreenMenuRecord[] = [];
@@ -119,10 +145,7 @@ function createScreenMenuRegistry() {
                 return true;
             });
             var title = String((host.popupArray || [])[index] || "");
-            var legacyNames: any = {
-                "provider.settings": "nofun",
-                "provider.unlock": "noProvParam",
-            };
+
             var legacyId = host.popupActionId
                 ? host.popupActionId(action)
                 : definition
@@ -147,35 +170,32 @@ function createScreenMenuRegistry() {
     function available(record: ScreenMenuRecord, host: any): boolean {
         var channelId = (host.curList || [])[host.primaryIndex];
         var channel = (host.channels || {})[channelId];
-        var predicate: any = {
-            "archive.records": archive,
-            "archive.seek": archive,
-            "audio.track": function () {
+        switch (record.id) {
+            case "archive.records":
+            case "archive.seek":
+            case "playback.toggle":
                 return (
-                    !!channelId &&
+                    host.playType < 0 || !channelId || !channel || !!channel.rec
+                );
+            case "audio.track":
+                return !!(
+                    channelId &&
                     host.stbAudioTracksExists &&
                     host.stbAudioTracksExists()
                 );
-            },
-            "media.open": function () {
-                return typeof host.getMediaArray === "function";
-            },
-            "pip.close": function () {
-                return host.pipIndex != null;
-            },
-            "playback.toggle": archive,
-            "subtitle.track": function () {
-                return (
-                    !!channelId &&
+            case "subtitle.track":
+                return !!(
+                    channelId &&
                     host.stbSubtitleExists &&
                     host.stbSubtitleExists()
                 );
-            },
-        };
-        function archive() {
-            return host.playType < 0 || !channelId || !channel || !!channel.rec;
+            case "media.open":
+                return typeof host.getMediaArray === "function";
+            case "pip.close":
+                return host.pipIndex != null;
+            default:
+                return true;
         }
-        return !predicate[record.id] || !!predicate[record.id]();
     }
     function open(host: any, selected: any) {
         var records = importClassic(host);
@@ -197,15 +217,16 @@ function createScreenMenuRegistry() {
                 )
                     focus = index;
                 var name = record.title;
-                var toggles: any = {
-                    "pip.toggle": host.pipIndex != null,
-                    "playback.live": !!host.playType,
-                    "playback.toggle": !!(
-                        host.stbIsPlaying && host.stbIsPlaying()
-                    ),
-                };
-                if (toggles[record.id] !== undefined && name.indexOf("/") >= 0)
-                    name = name.split("/")[toggles[record.id] ? 1 : 0].trim();
+                var toggled =
+                    record.id === "pip.toggle"
+                        ? host.pipIndex != null
+                        : record.id === "playback.live"
+                          ? !!host.playType
+                          : record.id === "playback.toggle"
+                            ? !!(host.stbIsPlaying && host.stbIsPlaying())
+                            : undefined;
+                if (toggled !== undefined && name.indexOf("/") >= 0)
+                    name = name.split("/")[toggled ? 1 : 0].trim();
                 if (!host.sNoNumbersKeys && record.number)
                     name =
                         '<div class="btn">' + record.number + "</div> " + name;
@@ -227,28 +248,7 @@ function createScreenMenuRegistry() {
         return {
             command: function (code: number) {
                 var keys = host.keys;
-                var bindings: Array<[string, string]> = [
-                    ["ZOOM", "video.zoom"],
-                    ["ASPECT", "video.aspect"],
-                    ["N0", "app.exit"],
-                    ["N1", "audio.track"],
-                    ["AUDIO", "audio.track"],
-                    ["N2", "information.open"],
-                    ["N3", "channel.previous"],
-                    ["N4", "archive.seek"],
-                    ["N5", "pip.toggle"],
-                    ["N6", "pip.close"],
-                    ["N7", "playback.live"],
-                    ["N8", "app.restart"],
-                    ["N9", "settings.open"],
-                    ["TOOLS", "settings.open"],
-                    ["SUBTITLE", "subtitle.track"],
-                    ["EPG", "guide.open"],
-                    ["RED", "guide.open"],
-                    ["GREEN", "archive.records"],
-                    ["BLUE", "channels.categories"],
-                    ["PREV", "channels.categories"],
-                ];
+
                 for (var i = 0; i < bindings.length; i++)
                     if (keys[bindings[i][0]] && code === keys[bindings[i][0]])
                         return bindings[i][1];
@@ -256,10 +256,11 @@ function createScreenMenuRegistry() {
             },
             focus: focus,
             invoke: function (id: string) {
-                var record = records.filter(function (entry) {
-                    return entry.id === id;
-                })[0];
-                if (record) record.action();
+                for (var i = 0; i < records.length; i++)
+                    if (records[i].id === id) {
+                        records[i].action();
+                        return;
+                    }
             },
             records: records,
             rows: rows,

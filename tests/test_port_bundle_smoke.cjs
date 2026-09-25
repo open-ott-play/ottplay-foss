@@ -4,6 +4,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const acorn = require("acorn");
 const { assertQrSvg } = require("./helpers/qr-svg.cjs");
+const assertMenuRuntime = require("./helpers/menu-runtime.cjs");
 const {
     checkBundleIdentifiers,
 } = require("../scripts/check-bundle-identifiers.cjs");
@@ -1863,6 +1864,7 @@ function exerciseProviderRuntime(profile) {
 function exerciseScreenRuntime(profile) {
     const w = fixture(profile);
     vm.runInContext(bundle, w, { filename: bundlePath, timeout: 5000 });
+    assertMenuRuntime(w.__ottMenuRegistry);
     const originalQuery = w.$;
     const visible = {};
     w.$ = function (selector) {

@@ -842,16 +842,13 @@ export function showPage(): void {
             });
         }
     } catch (_early) {}
+    // Both classic spellings project the same ScreenPort arrays.
     var dataArr =
-        (listDataArray && listDataArray.length ? listDataArray : null) ||
-        ((window as any).listDataArray && (window as any).listDataArray.length
-            ? (window as any).listDataArray
-            : null) ||
-        (listArray && listArray.length ? listArray : null) ||
-        ((window as any).listArray && (window as any).listArray.length
-            ? (window as any).listArray
-            : null) ||
-        [];
+        listDataArray && listDataArray.length
+            ? listDataArray
+            : listArray && listArray.length
+              ? listArray
+              : [];
     // Always honor List settings pageSize (OTT). Cursor stays on-screen via
     // paging in changeSelect — never by shrinking pageSize.
     var pageSz = Math.max(1, settings.pageSize | 0 || 25);
@@ -862,18 +859,7 @@ export function showPage(): void {
     (window as any).__ottListRowH = itemHeight;
     var html = "";
     // OTT showPage: scrollbar only when sShowScroll (Lists settings) is on.
-    var showScroll = 1;
-    try {
-        var wScroll = window as any;
-        var sv = wScroll.sShowScroll;
-        if (sv === undefined || sv === null || sv === "")
-            sv =
-                settings && settings.showScroll !== undefined
-                    ? settings.showScroll
-                    : 1;
-        var sn = typeof sv === "number" ? sv : parseInt(String(sv), 10);
-        if (!isNaN(sn)) showScroll = sn;
-    } catch (_sc) {}
+    var showScroll = settings.showScroll;
     var scrollWidth = 0;
     var totalPages = 1;
     var currentPage = 0;
