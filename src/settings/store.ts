@@ -41,6 +41,7 @@ export function createSettingsStore(
     var definitions: Record<string, SettingDefinition> = Object.create(null);
     var values: Record<string, any> = Object.create(null);
     var revision = 0;
+    var versions: Record<string, number> = Object.create(null);
     var context = ports.context();
     function copy(value: any): any {
         return Array.isArray(value) ? value.slice() : value;
@@ -57,10 +58,14 @@ export function createSettingsStore(
     function get(id: string): any {
         return copy(values[id]);
     }
+    function publish(id: string, value: any): void {
+        if (!equal(values[id], value)) versions[id] = (versions[id] || 0) + 1;
+        values[id] = copy(value);
+    }
     function observe(id: string, value: any): boolean {
         var entry = definitions[id];
         if (!entry || !entry.validate(value)) return false;
-        values[id] = copy(value);
+        publish(id, value);
         return true;
     }
     function reload(scope?: "application" | "provider"): void {
@@ -90,7 +95,7 @@ export function createSettingsStore(
         });
         if (generation !== revision || source !== ports.context()) return;
         Object.keys(loaded).forEach(function (id) {
-            values[id] = loaded[id];
+            publish(id, loaded[id]);
         });
     }
     function begin(persistCurrent = false): SettingsDraft {
@@ -193,7 +198,7 @@ export function createSettingsStore(
                 open = false;
                 var effects: string[] = [];
                 changes.forEach(function (id) {
-                    values[id] = copy(pending[id]);
+                    publish(id, pending[id]);
                     definitions[id].effects.forEach(function (name) {
                         if (effects.indexOf(name) === -1) effects.push(name);
                     });
@@ -243,5 +248,12 @@ export function createSettingsStore(
         observe: observe,
         reload: reload,
         schema: schema.slice(),
+        version: function (ids: string[]): string {
+            return ids
+                .map(function (id) {
+                    return versions[id] || 0;
+                })
+                .join(":");
+        },
     };
 }

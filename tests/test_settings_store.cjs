@@ -98,6 +98,38 @@ function fixture() {
         writes,
     };
 }
+check(
+    "field versions detect ABA changes without exposing values or unrelated edits",
+    () => {
+        const f = fixture(),
+            ids = ["logo"];
+        const initial = f.store.version(ids);
+        f.store.observe("logo", 2);
+        f.store.observe("logo", 1);
+        const returned = f.store.version(ids);
+        assert.notEqual(returned, initial);
+        f.store.observe("logo", 1);
+        f.store.observe("logo", -1);
+        f.store.observe("layout", 3);
+        assert.equal(f.store.version(ids), returned);
+        f.data.set("one:logo-old", "2");
+        f.store.reload();
+        const loaded = f.store.version(ids);
+        assert.notEqual(loaded, returned);
+        f.store.reload();
+        assert.equal(f.store.version(ids), loaded);
+        const failed = f.store.begin();
+        failed.set("logo", 1);
+        f.fail("one:logo-old");
+        assert.equal(failed.commit(), false);
+        assert.equal(f.store.version(ids), loaded);
+        f.fail(null);
+        const accepted = f.store.begin();
+        accepted.set("logo", 1);
+        assert.equal(accepted.commit(), true);
+        assert.notEqual(f.store.version(ids), loaded);
+    }
+);
 check("draft cancel has no state/storage/effect changes", () => {
     const f = fixture(),
         d = f.store.begin();
