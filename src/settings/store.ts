@@ -150,6 +150,7 @@ export function createSettingsStore(
                     return false;
                 }
                 var writes: SettingsWrite[] = [];
+                var attempted = 0;
                 try {
                     additional.forEach(function (write) {
                         if (write.storage.read() !== write.before)
@@ -170,6 +171,7 @@ export function createSettingsStore(
                     for (var i = 0; i < writes.length; i++) {
                         if (!current())
                             throw new Error("Settings source changed");
+                        attempted = i + 1;
                         writes[i].storage.write(writes[i].after);
                         if (writes[i].storage.read() !== writes[i].after)
                             throw new Error("Settings storage rejected write");
@@ -177,7 +179,7 @@ export function createSettingsStore(
                     if (!current()) throw new Error("Settings source changed");
                 } catch (error) {
                     // Roll back only the captured keys. Do not touch a newer external write.
-                    for (var j = writes.length - 1; j >= 0; j--) {
+                    for (var j = attempted - 1; j >= 0; j--) {
                         try {
                             if (!admitted()) break;
                             if (writes[j].storage.read() !== writes[j].after)

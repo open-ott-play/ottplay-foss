@@ -1001,15 +1001,20 @@ function applyImport(
     }
     if (!admitted()) return false;
     if (w.__ottChannels) w.__ottChannels.reset();
+    if (!admitted()) return false;
     if (w.__ottFavoritesLibrary) w.__ottFavoritesLibrary.reset();
+    if (!admitted()) return false;
     if (w.__ottCommandServer)
         w.__ottCommandServer.configure({
             address: settings.commandServerAddress,
             enabled: false,
             token: settings.commandServerToken,
         });
+    if (!admitted()) return false;
     loadSettings();
+    if (!admitted()) return false;
     if (w.showShift) w.showShift("Settings imported");
+    if (!admitted()) return false;
     if (w.restart) w.restart();
     return true;
 }

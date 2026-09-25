@@ -330,4 +330,61 @@ check(
         assert.equal(f.restarts(), 0);
     }
 );
+check(
+    "post-commit effects cannot restart a replacement account or report success",
+    () => {
+        for (const boundary of [
+            "channels",
+            "favorites",
+            "remote",
+            "reload",
+            "notice",
+        ]) {
+            const f = fixture();
+            f.mount();
+            const e = f.export();
+            const replace = () => {
+                f.w.m3uArr.M3Us[0].www = "https://replacement.invalid/list";
+            };
+            if (boundary === "channels") f.w.__ottChannels.reset = replace;
+            if (boundary === "favorites")
+                f.w.__ottFavoritesLibrary.reset = replace;
+            if (boundary === "remote")
+                f.w.__ottCommandServer = { configure: replace };
+            if (boundary === "reload") f.w.loadSettings = replace;
+            if (boundary === "notice") f.w.showShift = replace;
+            f.import(e);
+            assert.equal(f.accept(), false, boundary);
+            assert.equal(f.restarts(), 0, boundary);
+        }
+    }
+);
+check(
+    "rollback cannot revert an independent write to an unattempted key",
+    () => {
+        const f = fixture();
+        f.mount();
+        const e = f.export();
+        e.tv.channels.locks = ["stream:B"];
+        e.tv.favorites.lists.lists[e.tv.favorites.lists.active] = [
+            { itemId: "stream:B" },
+        ];
+        const independent = JSON.stringify(e.tv.favorites),
+            before = f.data.get(f.channelKey);
+        f.hook((key) => {
+            if (key === f.channelKey) {
+                f.hook(null);
+                f.data.set(f.favoriteKey, independent);
+                throw new Error(
+                    "write failed after another owner updated favorites"
+                );
+            }
+        });
+        f.import(e);
+        assert.equal(f.accept(), false);
+        assert.equal(f.data.get(f.channelKey), before);
+        assert.equal(f.data.get(f.favoriteKey), independent);
+        assert.equal(f.restarts(), 0);
+    }
+);
 console.log("OK: " + count + " settings/library backup integration groups");
