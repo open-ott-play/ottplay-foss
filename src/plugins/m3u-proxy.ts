@@ -22,8 +22,6 @@ export interface M3UProxyPlugin {
     }): Promise<{ body: string }>;
 }
 
-export { resolveUA, UA_PRESETS } from "./m3u-ua";
-
 class M3UProxyWeb {
     proxyFetch(_opts: {
         url: string;

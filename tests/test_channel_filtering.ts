@@ -42,16 +42,14 @@ async function getModule() {
 
 async function runTests() {
     const ch = await getModule();
-    const { setSearchText } = await import("../src/channels/search.ts");
     const {
+        setSearchText,
         getFilteredHistory,
         getFilteredChannelList,
         searchHistoryChannel,
-        medHistory,
-        curList,
-        channels,
         historySearchText,
-    } = ch;
+    } = await import("../src/channels/search.ts");
+    const { medHistory, curList, channels } = ch;
 
     // Classic bundles share these bindings; expose the same state to ESM leaf helpers.
     Object.assign(globalThis, { channels, curList, medHistory });

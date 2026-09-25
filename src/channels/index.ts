@@ -30,14 +30,6 @@ import {
     setActiveFavoritesList,
     syncFavoritesArrayFromActive,
 } from "./favorites-lists";
-import {
-    getFilteredChannelList,
-    getFilteredHistory,
-    historySearchText,
-    searchHistoryChannel,
-    searchText,
-    setSearchText,
-} from "./search";
 
 export type { FavoritesListsBlob };
 export {
@@ -46,13 +38,8 @@ export {
     favoritesArray,
     favoritesLists,
     getActiveFavoritesListName,
-    getFilteredChannelList,
-    getFilteredHistory,
-    historySearchText,
     listFavoritesLists,
     renameFavoritesList,
-    searchHistoryChannel,
-    searchText,
     setActiveFavoritesList,
 };
 
@@ -526,7 +513,7 @@ export let mediaNames: string[] = [],
 export let mediaRecords: MediaHistoryEntry[] = [];
 export let mediaRecordsPar: MediaHistoryEntry[] | null = null;
 export let mediaName = "";
-/* searchText + historySearchText: src/channels/search.ts (Phase D filter leaf). */
+
 export let searchInput = "",
     searchTimeout: any = null;
 export let archivePos = 0,
@@ -3471,7 +3458,6 @@ export function showActionsDialog(): void {
  * Caller: selectMedia() in stbPlayer.js — invoked only when
  * `e.search_on` is truthy.
  */
-/* searchHistoryChannel / getFilteredHistory / getFilteredChannelList: ./search.ts */
 
 export function searchMedia(e: MediaHistoryEntry): void {
     var w = window as any;
