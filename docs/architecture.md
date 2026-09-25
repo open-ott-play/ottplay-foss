@@ -211,6 +211,15 @@ rejects obsolete completions. Accepted catalog results are detached; failed
 reloads must not expose old stream addresses. Unsupported/missing routes return
 their declared empty result rather than looking up a different channel.
 
+The shared Xtream, operator and named-playlist factories serialize credential
+writes against reentrant catalog loads, including replacement instances. A load
+requested during a write waits for commit or verified rollback; an incomplete
+rollback cancels deferred work and reports failure. A recursive credential save
+returns `false` and is cancelled, not silently committed later. These factories
+reuse `commitSettingsWrites` through the storage codec, and recheck catalog scope
+after decoding before publication. This is guarded synchronous coordination, not
+an atomic-storage guarantee or an asynchronous save API.
+
 The host mount is a compatibility codec. It publishes `getChannelsArray`,
 `getChannelUrl`, guide/archive callbacks and scoped storage accessors. Family
 codecs also expose media/settings behavior: do not assume that one capability
