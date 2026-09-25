@@ -4,8 +4,12 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const privateRuntime = require("./private-runtime.cjs");
+const {
+    sourceNames,
+    attachSourceAliases,
+} = require("./english-source-fixture.cjs");
 const root = path.resolve(__dirname, "../..");
-const functionNames = [
+const functionNames = sourceNames("src/channels/index.ts", [
     "usesNativeXmltv",
     "channelXmltvUrls",
     "epgTimezoneHours",
@@ -35,7 +39,7 @@ const functionNames = [
     "epgKeyHandler",
     "selectEpg",
     "searchEpgByTitle",
-];
+]);
 const source =
     fs.readFileSync(path.join(root, "src/channels/index.ts"), "utf8") +
     "\n" +
@@ -254,6 +258,7 @@ module.exports = function guideFixture(options = {}) {
     ])
         privateRuntime(host, "src/guide/" + name + ".ts");
     vm.runInContext(code, host);
+    attachSourceAliases(host);
     function tick(next = seconds) {
         let count = 0;
         while (true) {
@@ -326,4 +331,5 @@ module.exports.install = function (host) {
     ])
         privateRuntime(host, "src/guide/" + name + ".ts");
     vm.runInContext(code, host);
+    attachSourceAliases(host);
 };

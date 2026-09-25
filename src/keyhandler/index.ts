@@ -710,7 +710,7 @@ export function minusProg(): void {
  *
  * @param sel - Selected index into the `prevArr` array.
  * @returns void
- * @sideeffect Calls `window.setCurrent`, `window.getChannelEpgCached`, `window.setCurProg`,
+ * @sideeffect Calls `window.setCurrent`, `window.getChannelEpgCached`, `window.publishChannelProgrammeRows`,
  *             `window.playArchive`, or `window.playChannel`.
  * @analysis Binds the selected identity before PIN/EPG callbacks and resolves its current list position.
  *             Authorization and async ownership are checked before playback; removed categories are harmless.
@@ -816,8 +816,8 @@ function onPrevSelect(sel: number): void {
                     recent.sort((a: any, b: any) => a.time - b.time);
                 }
                 w.epgArray = recent;
-                if (typeof w.setCurProg === "function")
-                    w.setCurProg(chId, epgData, null);
+                if (typeof w.publishChannelProgrammeRows === "function")
+                    w.publishChannelProgrammeRows(chId, epgData, null);
                 w.playArchive(timestamp);
             });
         });

@@ -129,6 +129,7 @@ function fixture() {
     };
     c.window = c;
     vm.createContext(c);
+    require("./helpers/english-source-fixture.cjs").attachSourceAliases(c);
     sharedCore(c);
     c.__ottClassicPlayback.importLegacy(); // Explicit startup ingress for this retained-device fixture.
     include(c, [

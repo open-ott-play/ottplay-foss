@@ -110,11 +110,22 @@ async function testRenamedHelpers() {
         ["findOptionIndex", "optIndexOf"],
         ["removeOption", "delOption"],
         ["prependMenuButtonHint", "addBtn2menu"],
+        ["observeCurrentProgramme", "getCurProgData"],
+        ["publishChannelProgrammeRows", "setCurProg"],
+        ["moveSelectedChannelOrCategory", "moveChannel"],
+        ["removeSelectedChannelFromCategory", "deleteChannel"],
     ];
     write(
         "renamed-helpers.js",
         compile(
             "var optionsArr=[], listArray=[], infoTimeout=null, detailTimer=null, _fbBuffer=[], _fbTimer=null;\n" +
+                sourceDefinitions("src/channels/index.ts", [
+                    "observeCurrentProgramme",
+                    "publishChannelProgrammeRows",
+                    "moveSelectedChannelOrCategory",
+                    "removeSelectedChannelFromCategory",
+                ]) +
+                "\n" +
                 sourceDefinitions("src/utils/helpers.ts", [
                     "sendClientFeedback",
                     "queueFeedbackPost",
@@ -169,6 +180,38 @@ async function testRenamedHelpers() {
                 canonical + " retains its classic identity"
             );
         }
+        // These entrypoints describe effects, not data getters or catalog deletion.
+        // Test their emitted identity/arity as well as the guide delegation.
+        assert.equal(c.observeCurrentProgramme.name, "getCurProgData");
+        assert.equal(c.observeCurrentProgramme.length, 2);
+        assert.equal(c.publishChannelProgrammeRows.name, "setCurProg");
+        assert.equal(c.publishChannelProgrammeRows.length, 3);
+        assert.equal(c.moveSelectedChannelOrCategory.name, "moveChannel");
+        assert.equal(c.moveSelectedChannelOrCategory.length, 1);
+        assert.equal(c.removeSelectedChannelFromCategory.name, "deleteChannel");
+        assert.equal(c.removeSelectedChannelFromCategory.length, 0);
+        const guideCalls = [];
+        const subscriber = () => {};
+        const rows = [{ end: 2, start: 1, title: "News" }];
+        c.__ottClassicGuide = {
+            current(id, callback) {
+                guideCalls.push(["observe", id, callback]);
+                return false;
+            },
+            publish(id, programmes) {
+                guideCalls.push(["publish", id, programmes]);
+            },
+        };
+        assert.equal(c.observeCurrentProgramme(7, subscriber), false);
+        c.publishChannelProgrammeRows("7", rows, (id) =>
+            guideCalls.push(["callback", id])
+        );
+        c.setCurProg("invalid", rows, () => assert.fail("Invalid ID callback"));
+        assert.deepEqual(guideCalls, [
+            ["observe", 7, subscriber],
+            ["publish", 7, rows],
+            ["callback", 7],
+        ]);
         c.sendClientFeedback("first");
         c.FeedbPOST("second");
         c.queueFeedbackPost({ message: "third" }, "/custom-report");

@@ -1332,14 +1332,16 @@ export function getEpgFromCache(channelId: number): EPGEntry[] | null {
 }
 
 /**
- * Check if cached EPG contains a program currently airing for the given channel.
- * If found, invokes the callback with the channel ID.
+ * Observe now/next updates and report whether a current programme is available.
+ * The guide service owns one consumer per channel in the active source/catalog;
+ * repeated calls retain that consumer until its reference is retired.
  *
- * @param channelId - Channel ID to check.
- * @param callback  - Invoked with `channelId` if current program is found.
- * @returns `true` if a current program was found (and callback was called), `false` otherwise.
+ * @param channelId - Channel ID to observe.
+ * @param callback - Queued after projection changes, with the channel ID.
+ * @returns Whether the current snapshot contains a programme airing now.
+ * The callback is asynchronous and is not implied by a true return value.
  */
-export function getCurProgData(
+export function observeCurrentProgramme(
     channelId: number,
     callback: (id: number) => void
 ): boolean {
@@ -1351,12 +1353,12 @@ export function getCurProgData(
  * Full-schedule caching belongs to getChannelEpgCached, never this UI helper.
  *
  * @param channelId - Channel ID to associate the data with.
- * @param epgData   - Programs used to update the current channel display.
- * @param callback  - Optional function called after storing.
+ * @param rows      - Programmes used to update the current channel display.
+ * @param callback  - Optional function called after publishing.
  *
  * Side effects: Updates channel now/next fields and invokes the callback.
  */
-export function setCurProg(
+export function publishChannelProgrammeRows(
     channelId: number,
     rows: EPGEntry[] | null,
     callback?: ((id: number) => void) | (() => void)
@@ -1586,7 +1588,7 @@ export function itemEPG(item: EPGEntry, index: number): string {
  * - Mutates `epgListMode` flag (prevents concurrent EPG fetches).
  * - Sets `epg_ch_id`, `curEpgData`.
  * - Shows/hides #listPopUp spinner.
- * - Calls `window.getChannelEpgCached` (provider API) and `window.setCurProg` on success.
+ * - Calls `window.getChannelEpgCached` (provider API) and `window.publishChannelProgrammeRows` on success.
  */
 export function loadEpgListData(
     mode: number,
@@ -2693,7 +2695,7 @@ export function bucketsList(catIdx: number, _channelIdx?: number): void {
  * @param keyCode - The pressed key code.
  * @returns `true` if handled, `false` to bubble up.
  *
- * Side effects: Delegates to moveChannel, saveChannelsCats, showPage, etc.
+ * Side effects: Delegates to moveSelectedChannelOrCategory, saveChannelsCats, showPage, etc.
  */
 export function bucketsKeyHandler(keyCode: number): boolean {
     var w = window as any;
@@ -2704,10 +2706,10 @@ export function bucketsKeyHandler(keyCode: number): boolean {
     if ($("#listPopUp").is(":visible")) {
         switch (keyCode) {
             case keys.N1:
-                moveChannel(-1);
+                moveSelectedChannelOrCategory(-1);
                 return true;
             case keys.N7:
-                moveChannel(1);
+                moveSelectedChannelOrCategory(1);
                 return true;
             case keys.N3: {
                 var name = prompt(w._("Enter category name"));
@@ -3130,15 +3132,20 @@ export function showActionsDialog(): void {
                     w.addChannel2bucket();
                 return true;
             case w.keys.UP:
-                if (typeof w.moveChannel === "function") w.moveChannel(-1);
+                if (typeof w.moveSelectedChannelOrCategory === "function")
+                    w.moveSelectedChannelOrCategory(-1);
                 return true;
             case w.keys.DOWN:
-                if (typeof w.moveChannel === "function") w.moveChannel(1);
+                if (typeof w.moveSelectedChannelOrCategory === "function")
+                    w.moveSelectedChannelOrCategory(1);
                 return true;
             case w.keys.LEFT:
                 if (t) {
-                    if (typeof w.deleteChannel === "function")
-                        w.deleteChannel();
+                    if (
+                        typeof w.removeSelectedChannelFromCategory ===
+                        "function"
+                    )
+                        w.removeSelectedChannelFromCategory();
                 } else {
                     $(dialog!).hide();
                     if (typeof w.sortChannelsAction === "function")
@@ -3291,7 +3298,7 @@ export function saveChannelPreference(
  * @returns `true` if handled, `false` to bubble up.
  *
  * Side effects: Delegates to playChannel, stbPlayPip, epgList, bucketsList,
- * showActionsDialog, showProgramInfo, moveChannel, deleteChannel, etc.
+ * showActionsDialog, showProgramInfo, moveSelectedChannelOrCategory, removeSelectedChannelFromCategory, etc.
  */
 export function channelsKeyHandler(keyCode: number): boolean {
     var keys = window.keys;
@@ -3443,13 +3450,13 @@ export function channelsKeyHandler(keyCode: number): boolean {
     if ($("#listPopUp").is(":visible")) {
         switch (keyCode) {
             case keys.N1:
-                moveChannel(-1);
+                moveSelectedChannelOrCategory(-1);
                 return true;
             case keys.N7:
-                moveChannel(1);
+                moveSelectedChannelOrCategory(1);
                 return true;
             case keys.N8:
-                deleteChannel();
+                removeSelectedChannelFromCategory();
                 return true;
             case keys.N3:
                 if (typeof window.addChannel2bucket === "function") {
@@ -3484,16 +3491,16 @@ export function channelsKeyHandler(keyCode: number): boolean {
 }
 
 /**
- * Move the currently selected channel up or down in the list by the given delta.
- * Handles wraparound: if moving past the top, the item goes to the bottom (and vice versa).
+ * Reorder the selected category or channel membership with wraparound.
+ * Favorites use the active favorites list; other edits go through ChannelsService.
  *
  * @param delta - +1 (move down / later position), -1 (move up / earlier position).
  *
  * Side effects:
- * - Mutates `window.listArray` in-place.
- * - Calls `window.showPage`, `window.changeSelect`, `window.saveChannelsCats`.
+ * - Persists the reordered category, membership or active favorites list.
+ * - Refreshes projected rows while keeping the moved item selected.
  */
-function moveChannel(delta: number): void {
+function moveSelectedChannelOrCategory(delta: number): void {
     var w = window as any;
     var selected = w.listArray && w.listArray[w.selIndex];
     var categories = w.listArray === catsArray;
@@ -3535,7 +3542,8 @@ function moveChannel(delta: number): void {
     if (typeof w.showPage === "function") w.showPage();
 }
 
-function deleteChannel(): void {
+/** Remove membership from the selected category; keep the channel in the catalog. */
+function removeSelectedChannelFromCategory(): void {
     var w = window as any;
     var selected = w.listArray && w.listArray[w.selIndex];
     var groupId = w.__ottChannels.group(w.listCatIndex);

@@ -62,6 +62,7 @@ function fixture() {
     };
     c.window = c;
     vm.createContext(c);
+    require("./helpers/english-source-fixture.cjs").attachSourceAliases(c);
     sharedCore(c);
     c.effects = effects;
     c.stored = stored;
