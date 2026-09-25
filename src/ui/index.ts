@@ -465,7 +465,6 @@ export function uiInit(): void {
     // Progress bar drag-to-seek — press on progress bar and drag to seek, release to seek
     var $progressDiv = $("#progress_div");
     var seekInProgress = false;
-    var seekStartX = 0;
 
     $progressDiv.mousedown(function (e: any) {
         if (!e) e = event;
@@ -474,148 +473,85 @@ export function uiInit(): void {
             return;
         }
         seekInProgress = true;
-        seekStartX = e.clientX;
     });
 
+    function seekProgress(e: any, eventName: string): void {
+        if (!e) e = event;
+        if (e.clientX === undefined) {
+            console.error(
+                "$progress_div[" + eventName + "] evt.clientX not exist"
+            );
+            return;
+        }
+        e.stopPropagation();
+        var w = window as any;
+        if (
+            !(
+                w.playType ||
+                (w.channels &&
+                    w.curList &&
+                    w.channels[w.curList[w.primaryIndex]] &&
+                    w.channels[w.curList[w.primaryIndex]].rec)
+            )
+        )
+            return;
+        var t =
+            (e.clientX - $progressDiv.position().left) / $progressDiv.width();
+        if (w.playType < 0) {
+            var r = Math.max(Math.round(t * w.stbGetLen()), 0);
+            var hr = Math.floor(r / 3600);
+            var mn = Math.floor((r % 3600) / 60);
+            var sc = r % 60;
+            if (typeof w.showShift === "function")
+                w.showShift(
+                    ">> " +
+                        (hr ? hr + ":" : "") +
+                        _t2(mn) +
+                        ":" +
+                        _t2(sc) +
+                        " <<"
+                );
+            if (typeof w.stbSetPosTime === "function") w.stbSetPosTime(r);
+            return;
+        }
+        if (
+            w._prog100 &&
+            w._prog100.time_to != null &&
+            w._prog100.time != null
+        ) {
+            var r2 = Math.round(
+                t * (w._prog100.time_to - w._prog100.time) + w._prog100.time
+            );
+        } else {
+            // No EPG — map click onto virtual 1h/80% timeshift window (live)
+            // or hourless elapsed window (archive).
+            var virt = virtualTimeshiftProg();
+            w._prog100 = virt;
+            var r2 = Math.round(t * (virt.time_to - virt.time) + virt.time);
+        }
+        if (r2 < Date.now() / 1e3) {
+            if (!w.playType) {
+                if (typeof w.timeShift === "function")
+                    w.timeShift(Math.round(Date.now() / 1e3 - r2));
+                return;
+            }
+            if (typeof w.showShift === "function")
+                w.showShift(">> " + formatClockTime(r2) + " <<");
+            if (typeof w.playArchive === "function") w.playArchive(r2);
+        } else {
+            if (typeof w.showShift === "function")
+                w.showShift(w._(w.playType ? "Live" : "Restart stream"));
+            if (typeof w.playChannel === "function")
+                w.playChannel(w.catIndex, w.primaryIndex);
+        }
+    }
     $progressDiv.mouseup(function (e: any) {
         if (!seekInProgress) return;
         seekInProgress = false;
-        if (!e) e = event;
-        if (e.clientX === undefined) {
-            console.error("$progress_div[mouseup] evt.clientX not exist");
-            return;
-        }
-        e.stopPropagation();
-        var w = window as any;
-        if (
-            !(
-                w.playType ||
-                (w.channels &&
-                    w.curList &&
-                    w.channels[w.curList[w.primaryIndex]] &&
-                    w.channels[w.curList[w.primaryIndex]].rec)
-            )
-        )
-            return;
-        var t =
-            (e.clientX - $progressDiv.position().left) / $progressDiv.width();
-        if (w.playType < 0) {
-            var r = Math.max(Math.round(t * w.stbGetLen()), 0);
-            var hr = Math.floor(r / 3600);
-            var mn = Math.floor((r % 3600) / 60);
-            var sc = r % 60;
-            if (typeof w.showShift === "function")
-                w.showShift(
-                    ">> " +
-                        (hr ? hr + ":" : "") +
-                        _t2(mn) +
-                        ":" +
-                        _t2(sc) +
-                        " <<"
-                );
-            if (typeof w.stbSetPosTime === "function") w.stbSetPosTime(r);
-            return;
-        }
-        if (
-            w._prog100 &&
-            w._prog100.time_to != null &&
-            w._prog100.time != null
-        ) {
-            var r2 = Math.round(
-                t * (w._prog100.time_to - w._prog100.time) + w._prog100.time
-            );
-        } else {
-            // No EPG — map click onto virtual 1h/80% timeshift window (live)
-            // or hourless elapsed window (archive).
-            var virt = virtualTimeshiftProg();
-            w._prog100 = virt;
-            var r2 = Math.round(t * (virt.time_to - virt.time) + virt.time);
-        }
-        if (r2 < Date.now() / 1e3) {
-            if (!w.playType) {
-                if (typeof w.timeShift === "function")
-                    w.timeShift(Math.round(Date.now() / 1e3 - r2));
-                return;
-            }
-            if (typeof w.showShift === "function")
-                w.showShift(">> " + formatClockTime(r2) + " <<");
-            if (typeof w.playArchive === "function") w.playArchive(r2);
-        } else {
-            if (typeof w.showShift === "function")
-                w.showShift(w._(w.playType ? "Live" : "Restart stream"));
-            if (typeof w.playChannel === "function")
-                w.playChannel(w.catIndex, w.primaryIndex);
-        }
+        seekProgress(e, "mouseup");
     });
-
-    // Progress bar click — seek (for press-and-release at same position)
     $progressDiv.click(function (e: any) {
-        if (!e) e = event;
-        if (e.clientX === undefined) {
-            console.error("$progress_div[click] evt.clientX not exist");
-            return;
-        }
-        e.stopPropagation();
-        var w = window as any;
-        if (
-            !(
-                w.playType ||
-                (w.channels &&
-                    w.curList &&
-                    w.channels[w.curList[w.primaryIndex]] &&
-                    w.channels[w.curList[w.primaryIndex]].rec)
-            )
-        )
-            return;
-        var t =
-            (e.clientX - $progressDiv.position().left) / $progressDiv.width();
-        if (w.playType < 0) {
-            var r = Math.max(Math.round(t * w.stbGetLen()), 0);
-            var hr = Math.floor(r / 3600);
-            var mn = Math.floor((r % 3600) / 60);
-            var sc = r % 60;
-            if (typeof w.showShift === "function")
-                w.showShift(
-                    ">> " +
-                        (hr ? hr + ":" : "") +
-                        _t2(mn) +
-                        ":" +
-                        _t2(sc) +
-                        " <<"
-                );
-            if (typeof w.stbSetPosTime === "function") w.stbSetPosTime(r);
-            return;
-        }
-        if (
-            w._prog100 &&
-            w._prog100.time_to != null &&
-            w._prog100.time != null
-        ) {
-            var r2 = Math.round(
-                t * (w._prog100.time_to - w._prog100.time) + w._prog100.time
-            );
-        } else {
-            // No EPG — map click onto virtual 1h/80% timeshift window (live)
-            // or hourless elapsed window (archive).
-            var virt = virtualTimeshiftProg();
-            w._prog100 = virt;
-            var r2 = Math.round(t * (virt.time_to - virt.time) + virt.time);
-        }
-        if (r2 < Date.now() / 1e3) {
-            if (!w.playType) {
-                if (typeof w.timeShift === "function")
-                    w.timeShift(Math.round(Date.now() / 1e3 - r2));
-                return;
-            }
-            if (typeof w.showShift === "function")
-                w.showShift(">> " + formatClockTime(r2) + " <<");
-            if (typeof w.playArchive === "function") w.playArchive(r2);
-        } else {
-            if (typeof w.showShift === "function")
-                w.showShift(w._(w.playType ? "Live" : "Restart stream"));
-            if (typeof w.playChannel === "function")
-                w.playChannel(w.catIndex, w.primaryIndex);
-        }
+        seekProgress(e, "click");
     });
 
     // Progress bar mousemove — show tooltip
@@ -662,16 +598,6 @@ export function uiInit(): void {
                 frac * (w._prog100.time_to - w._prog100.time) + w._prog100.time
             );
             $tooltipSpan.text(formatClockTime(r2));
-        } else if (
-            w._prog100 &&
-            w._prog100.time != null &&
-            w._prog100.time_to != null
-        ) {
-            // Synthetic hour block — position = frac of the hour + hour start
-            var r3 = Math.round(
-                frac * (w._prog100.time_to - w._prog100.time) + w._prog100.time
-            );
-            $tooltipSpan.text(formatClockTime(r3));
         } else {
             // No EPG data — show playback position based on playTime (seconds elapsed)
             var elapsed = w.playType > 0 ? (w.playTime ?? 0) : 0;
