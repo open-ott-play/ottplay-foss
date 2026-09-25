@@ -103,6 +103,21 @@ def main():
             command = [str(python), str(root / "helpers/render.py"), str(edl), "-o", str(output)]
             if not args.final:
                 command.append("--preview")
+            # Browser screencasts are silent. Avoid a futile loudness pass and
+            # preserve normalization for recordings that actually contain audio.
+            has_audio = False
+            for source in data["sources"].values():
+                media = Path(source)
+                if not media.is_absolute():
+                    media = edl.parent / media
+                probe = subprocess.run(
+                    ["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index",
+                     "-of", "json", str(media.resolve(strict=True))],
+                    check=True, capture_output=True, text=True,
+                )
+                has_audio |= bool(json.loads(probe.stdout).get("streams"))
+            if not has_audio:
+                command.append("--no-loudnorm")
             subprocess.run(command, check=True, cwd=root)
             subprocess.run(
                 ["ffprobe", "-v", "error", "-show_entries", "format=duration,size", "-of", "json", str(output)],

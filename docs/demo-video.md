@@ -2,33 +2,52 @@
 
 The local editing integration uses
 [browser-use/video-use](https://github.com/browser-use/video-use/tree/9575612f066aa517354790a645fd90f9f95a743b),
-installed as the Codex `video-use` skill. It is available on the next Codex turn.
+installed as the Codex `video-use` skill.
 The player runtime and published player bundle do not include this editing tool.
 
-## Record a useful scenario
+## Record and render the real interface
 
-Use the public demo provider and a clean profile. Suggested short recordings:
+The automated scenario opens first-run setup, selects **Try demo**, plays the
+HLS channel, opens the channel list and returns to playback. It waits for decoded
+video frames, so an empty player cannot count as a successful recording. The demo
+provider has no programme guide data; this recording does not demonstrate EPG.
 
-- First launch → Try demo → switch a channel → return to the guide.
-- Find a programme in EPG → open programme details → return to playback.
-- Open Remote control settings and explain the connection using dummy values.
+HTTP requests are fulfilled from the local build and the checked-in synthetic
+HLS fixture. All other requests and all WebSockets are blocked. No public media
+server, account, provider URL or existing browser profile is used.
 
-Store recordings under `.local-artifacts/demo-video/`, which is ignored by Git.
-Never put real provider URLs, access codes or account settings into a public demo.
+From the repository root:
 
 ```sh
+npm ci
+npx playwright install chromium
+npm run build
+node scripts/record-demo.cjs --output .local-artifacts/demo-video/walkthrough
 python3 scripts/demo_video.py doctor
-python3 scripts/demo_video.py prepare .local-artifacts/demo-video/screen.mp4
-# Ask the video-use skill to edit this recording for the selected scenario.
-# Review .local-artifacts/demo-video/edit/edl.json before rendering.
-python3 scripts/demo_video.py render .local-artifacts/demo-video/edit/edl.json
-python3 scripts/demo_video.py render .local-artifacts/demo-video/edit/edl.json --final
+python3 scripts/demo_video.py prepare .local-artifacts/demo-video/walkthrough/screen.webm
+# The initial edit/edl.json preserves the whole recording without cuts.
+python3 scripts/demo_video.py render .local-artifacts/demo-video/walkthrough/edit/edl.json
+python3 scripts/demo_video.py render .local-artifacts/demo-video/walkthrough/edit/edl.json --final
 ```
+
+Choose a new output directory for every run; the recorder refuses to overwrite
+an existing directory. Omitting `--output` creates a timestamped directory under
+`.local-artifacts/demo-video/`. This directory is ignored by Git. The recorder
+requires the repository's Playwright development dependency and its Chromium
+browser. `PLAYWRIGHT_CHROMIUM_EXECUTABLE` optionally selects a local Chromium.
+
+Each successful run produces a silent 1280×720 `screen.webm`, checkpoint PNGs and
+`recording.json` with the scenario, isolation settings and approximate checkpoint
+times. UI assertions or browser script errors fail the command. A failed run can
+leave partial footage for debugging and must not be treated as a completed demo.
+The continuous recording includes short pauses for reading each screen.
 
 Preparation creates a full-length cut list and session notes without modifying
 the source. All outputs remain in the source folder's `edit/` directory. Existing
 outputs require `--overwrite`; preparation never replaces an existing session.
-Rendering is local. Nothing is published or added to a release automatically.
+Rendering is local. Silent recordings skip audio loudness normalization. Nothing
+is published or added to a release automatically. For further editing, review the
+cut list and verify the rendered footage before sharing.
 
 Speech transcription is optional and needs `ELEVENLABS_API_KEY` in the environment
 or the skill's private `.env` file. It sends audio to ElevenLabs and can incur
