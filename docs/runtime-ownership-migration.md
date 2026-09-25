@@ -141,3 +141,35 @@ and DOM projection on Node/jsdom, not network transfer or physical-device startu
 The active search and XML paths have source and optimized-artifact regression
 coverage. Further operator-dialect consolidation and physical old-device
 measurements remain separate follow-ups.
+
+## Provider delivery and render follow-up
+
+The provider audit matched all 48 nonempty Full menu IDs to registered profiles.
+Play admits only Demo, M3U, Stalker and Xtream. Its build now removes the operator
+and named-playlist implementations and the Full-only factory, settings and error
+branches. Full retains all profiles and the scoped external dealer-script path.
+Retained `prov.js` oracles were already excluded from delivery and were not
+counted as new runtime savings. The unused private `ClassicScreenPort.guard`
+forwarder was removed; active screen-owner guards and cancellation remain.
+
+List and detail rendering now read the validated SettingsStore directly. They no
+longer parse and write the same preferences back through bare globals, `window`
+and typed settings. Artifact tests use the shipped store and assert zero setting
+observation writes while rendering, including after legacy property updates.
+Guide observation/publication and category membership edits have semantic source
+names with retained classic aliases; see [the ABI contract](architecture.md#public-compatibility-abi-versus-internal-code).
+
+QR SVG output combines horizontal dark runs without changing the encoder, payload,
+correction level, dimensions or border. Differential tests compare every rendered
+cell and exercise the optimized legacy/modern artifacts. A 33-by-33 invitation
+matrix uses 282 rectangles instead of 563 and 4,083 SVG bytes instead of 7,896;
+a 173-by-173 sample drops from 219,176 to 114,431 SVG bytes. These are generated
+SVG savings, not a claim about device decoding speed. Public QR encoder methods
+and their license remain intact.
+
+Compared with main `770ff3d`, Node 22.23.3 produces server JS of 653,275 raw /
+186,381 gzip bytes (630 / 120 fewer); Tauri and Capacitor produce 653,233 /
+186,446 (630 / 126 fewer). Play produces 592,619 / 169,423, down from
+607,664 / 173,882 (15,045 / 4,459 fewer). Gzip uses level 9; separately loaded
+libraries and shared core are unchanged. The 654,000 / 186,750 size ceilings and
+ES5 optimizer protections were not increased or relaxed.
