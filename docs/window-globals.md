@@ -1,5 +1,12 @@
 # Window globals inventory (`src/index.ts`)
 
+This is a historical inventory; its line numbers and original total are not a
+current generated API list. For current ownership and compatibility rules, see
+[Player architecture](architecture.md). Verify names against
+`src/compatibility/legacy-names.ts`, actual window publications and the emitted
+bundle before adding or removing an API. Settings now use store-backed accessors;
+the former `pullSettingsFromWindow` copy operation has been removed.
+
 HS5 / MAG plugins (`prov.js`, device `stb/*.js`) are classic scripts. They read and write the player surface as bare identifiers and as `window.*` (for example `popupActions.splice`, `listKeyHandler = …`, `chanels`). That surface is published today by **inline** `window.NAME =` / `(window as any).NAME =` assignments in `src/index.ts` (and a few concat modules).
 
 **Runtime policy:** keep those inline assigns until an `exposeGlobals()` refactor is proven safe on Dune HS5 / real `prov.js`. Do **not** move assignments into a helper in this hygiene pass — bundling/order surprises can drop or rename identifiers that plugins still need.
@@ -162,7 +169,6 @@ This file is an inventory only. CI enforces a small must-keep identifier snapsho
 | `initBackgroundIntervals` | 3383 |
 | `btnDiv` | 3384 |
 | `setPipPosition` | 3385 |
-| `pullSettingsFromWindow` | 3386 |
 | `getPipPosition` | 3387 |
 | `setSleepTimeout` | 3388 |
 | `setEditor` | 5074 |
@@ -365,4 +371,4 @@ published values and live list-key-handler alias used by providers.
 | `optionsList` | settings / options UI entry used from keyhandler and boot paths |
 | `listKeyHandler` | providers assign bare listKeyHandler; preserve the live public accessor |
 | `chanels` | legacy misspelling alias (window.chanels = channels); old plugins/HTML |
-**Unique names assigned in `src/index.ts`:** 335
+**Original inventory snapshot:** 335 unique names assigned in `src/index.ts`.

@@ -34,8 +34,11 @@ history restoration after a catalog removes the previous selection.
 `src/playback/classic-adapter.ts` translates the classic host into that model.
 This is the only new playback module that interprets numeric mode sentinels,
 positional history records or storage keys. The host context check also binds
-catalog/channel/list objects and storage accessors: replacing a source with the
-same identifiers must not revive old effects. Native finite channel media and
+catalog/channel/list objects and storage accessors for transient UI operations:
+replacing a source with the same identifiers must not revive old effects.
+Decoder validity uses a separate source/target guard, so a group reorder does
+not stop the playing channel; see [Media backend](media-backend.md).
+Native finite channel media and
 medHistory VOD are different legacy cases and retain their different histories.
 
 `src/provider/runtime.ts` owns provider and catalog generations independently.
@@ -182,10 +185,11 @@ version-2 channel references but never VOD identities or unsupported envelopes.
 
 New semantic checkpoints record the mode actually entered, fixing the old
 mixed outgoing-mode/incoming-channel bookmark. That ambiguity in existing
-version-1 data cannot be reconstructed reliably. Existing media-library history
-is still an opaque legacy contract because provider-specific replay metadata
-must be retained. Old channel keys remain rollback mirrors while compatibility
-consumers exist.
+version-1 data cannot be reconstructed reliably. Media history now has its own
+source-scoped [MediaJournal and origin-aware resolver](media-library.md).
+Imported old records retain their provider-specific replay metadata; missing
+origin identity cannot be reconstructed from an old URL alone. Old channel keys
+remain rollback mirrors while compatibility consumers exist.
 
 Playing-position writes are limited to one per five seconds; target/phase
 changes checkpoint immediately. Clearing or restoring storage suspends both
@@ -247,12 +251,14 @@ result through `scripts/distribute.cjs`; do not manually edit vendor artifacts.
 ## Remaining migration
 
 The new boundaries do not make the entire application independent of its
-classic contracts. Remaining work is to migrate opaque media history and the
-rest of settings, and give all
-views/device adapters a command-and-snapshot API. The current renderer still
-uses classic linking and published globals. Explicit reconciliation accepts
-external writes from retained scripts; removing that input path requires their
-conversion, not just changing field names.
+classic contracts. Settings/drafts, media history/navigation, channel libraries,
+guide/reminders and decoder lifetimes now have owners described in
+[Player architecture](architecture.md). The remaining compatibility surface
+includes classic renderers, provider UI codecs, retained hardware engines and
+published globals. Explicit reconciliation accepts external writes from retained
+scripts; removing that input path requires converting its callers, not just
+changing field names. Older sizes and staged migration descriptions above are
+historical; the executable current size gate is `scripts/classic-size.cjs`.
 
 The custom-script extension scope does not intercept arbitrary raw UI closures,
 native Promise continuations, cached transport functions or global writes made

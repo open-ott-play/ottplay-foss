@@ -1,5 +1,9 @@
 # Runtime ownership migration
 
+For the current module map, lifetime contracts, extension recipes and test gates,
+start with [Player architecture](architecture.md). This page records migration
+decisions and measurements; older iteration sizes are historical baselines.
+
 The player now separates screen, settings, channel, media, guide and decoder state
 from the classic renderer. This is a replacement of active state owners and
 command paths; historical attribution and retained test oracles are unchanged.
