@@ -260,6 +260,20 @@ bookmark timestamp. Entries use channel and group identities, not category
 indices or numeric playback sentinels. M3U storage scopes this key to the active
 playlist slot; the compatibility source identity also includes the slot.
 
+M3U bookmarks and channel history also retain an optional `channelHint` with
+the station's guide ID, name and provider group. Some playlists rotate signed
+stream URLs on every load, which changes their numeric URL hashes. Restoration
+first uses the exact channel reference; if it has disappeared, a unique guide
+ID can recover the station. Duplicate or missing guide IDs require an exact
+name/group match. Duplicate metadata can be narrowed by an optional `routeId`,
+a hash of the stream address without its query or fragment. Unresolved matches
+never select a channel by its old
+position. This lookup is scoped to the same M3U source and works for both live
+and archive bookmarks. It stores no stream URL or token, leaves provider IDs
+and library/favorites formats unchanged, and accepts existing journal entries
+without a hint. Older entries cannot recover an already changed URL hash until
+a new playback checkpoint records station metadata.
+
 The importer reads version-1 `prevArr` and live/archive `continueWatch` without
 changing their original bytes. Canonical data takes precedence after the first
 successful envelope write. Unknown versions, corrupt envelopes and mismatched

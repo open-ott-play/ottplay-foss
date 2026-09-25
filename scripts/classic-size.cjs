@@ -8,8 +8,9 @@ const { gzipSync } = require("node:zlib");
 // Cloud transfer and source/catalog-owned search add checked state transitions.
 // Search/XML ownership added 750 gzip bytes. Credential admission and verified
 // rollback add 450 more; UI/media cleanup keeps the raw ceiling unchanged.
+// Rotating-URL channel recovery needs 1 KB of raw headroom; gzip is unchanged.
 // ES5/ABI protections and final-artifact checks remain enforced.
-const BUDGET = Object.freeze({ bytes: 654000, gzipBytes: 187200 });
+const BUDGET = Object.freeze({ bytes: 655000, gzipBytes: 187200 });
 const ARTIFACTS = Object.freeze([
     "dist/stbPlayer.js",
     "src-tauri/frontend/dist/stbPlayer.js",

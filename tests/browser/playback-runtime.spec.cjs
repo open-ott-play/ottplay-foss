@@ -6,6 +6,141 @@ const { test, expect } = require("@playwright/test");
 
 const mediaRoot = path.resolve(__dirname, "../fixtures/media-runtime");
 
+for (const [guideIds, names] of [
+    [
+        ["one", "two", "three"],
+        ["One", "Two", "Three"],
+    ],
+    [
+        ["same", "same", "same"],
+        ["One", "Two", "Three"],
+    ],
+    [
+        ["", "", ""],
+        ["One", "Two", "Three"],
+    ],
+    [
+        ["same", "same", "same"],
+        ["Same", "Same", "Same"],
+    ],
+]) {
+    test(
+        "M3U restart restores station after URL rotation: " +
+            JSON.stringify([guideIds, names]),
+        async ({ page, context, baseURL }) => {
+            const origin = new URL(baseURL).origin;
+            let revision = 0;
+            const errors = [];
+            page.on("pageerror", (error) => errors.push(error.message));
+            await context.route("**/*", async (route) => {
+                const url = new URL(route.request().url());
+                if (url.href.includes("fixture-channels.m3u")) {
+                    const order = revision ? [2, 0, 1] : [0, 1, 2];
+                    return route.fulfill({
+                        body:
+                            "#EXTM3U\n" +
+                            order
+                                .map(
+                                    (index) =>
+                                        '#EXTINF:-1 tvg-id="' +
+                                        guideIds[index] +
+                                        '" group-title="News",' +
+                                        names[index] +
+                                        "\nhttps://media.test/" +
+                                        index +
+                                        "/index.m3u8?token=" +
+                                        revision +
+                                        "\n"
+                                )
+                                .join(""),
+                        contentType: "text/plain",
+                        headers: { "Access-Control-Allow-Origin": "*" },
+                    });
+                }
+                if (url.hostname === "media.test") {
+                    const segment = url.pathname.endsWith(".ts");
+                    return route.fulfill({
+                        body: fs.readFileSync(
+                            path.join(
+                                mediaRoot,
+                                segment ? "segment00.ts" : "index.m3u8"
+                            )
+                        ),
+                        contentType: segment
+                            ? "video/mp2t"
+                            : "application/vnd.apple.mpegurl",
+                        headers: { "Access-Control-Allow-Origin": "*" },
+                    });
+                }
+                return url.origin === origin
+                    ? route.continue()
+                    : route.abort("blockedbyclient");
+            });
+            await context.routeWebSocket("**/*", (socket) => socket.close());
+            await context.addInitScript(() => {
+                if (localStorage.getItem("ottplayprov")) return;
+                localStorage.setItem("ottplaylang", "_eng");
+                localStorage.setItem("ottplayprov", "m3u");
+                localStorage.setItem(
+                    "m3um3uArr",
+                    JSON.stringify({
+                        active: 0,
+                        M3Us: [
+                            {
+                                www: "https://playlist.test/fixture-channels.m3u",
+                            },
+                        ],
+                    })
+                );
+            });
+            await page.goto("/f/pc/");
+            await page.waitForFunction(() => window.curList?.length === 3);
+            await page.evaluate(() =>
+                window.playChannel(window.catsArray.indexOf("News"), 1)
+            );
+            const before = await page.evaluate(
+                () => window.curList[window.primaryIndex]
+            );
+            await expect
+                .poll(() =>
+                    page.evaluate(
+                        () => window.__ottClassicPlayback.snapshot().phase
+                    )
+                )
+                .toBe("playing");
+            revision++;
+            // A new document reloads the playlist and reconstructs all private stores.
+            await page.reload();
+            await page.waitForFunction(() => window.curList?.length === 3);
+            const after = await page.evaluate(() => {
+                const id = window.curList[window.primaryIndex];
+                return {
+                    group: window.catsArray[window.catIndex],
+                    id,
+                    index: window.primaryIndex,
+                    name: window.channels[id].channel_name,
+                    route: new URL(window.channels[id].url).pathname,
+                };
+            });
+            expect(after.id).not.toBe(before);
+            expect(after).toMatchObject({
+                group: "News",
+                index: 2,
+                name: names[1],
+                route: "/1/index.m3u8",
+            });
+            await expect
+                .poll(() =>
+                    page.evaluate(
+                        () => window.__ottClassicPlayback.snapshot().phase
+                    )
+                )
+                .toBe("playing");
+            expect(errors).toEqual([]);
+        }
+    );
+}
+
 test("built driver, media session and journal stay connected through playback", async ({
     page,
     context,
