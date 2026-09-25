@@ -81,7 +81,12 @@ The cloud transfer rewrite adds about 3.5 KB raw / 1.5 KB gzip for strict,
 lossless raw-string decoding, cancellation and verified storage replacement.
 The size limits change from 650,000 to 654,000 raw bytes and from 184,500 to
 186,000 gzip bytes. This is an explicit allowance for new behavior, not a
-compressor-only change. Node 22 is used for the measurements and CI.
+compressor-only change. The subsequent search/XML follow-up preserves the
+654,000 raw-byte limit and adds 750 gzip bytes (186,750 total) for source/catalog
+and editor ownership checks. XML decoding and dead-code removal reduce their
+own footprint, while the complete bundle grows slightly to cover the new search
+checks; this is not a claim that all delivered artifacts become smaller.
+Node 22 is used for the measurements and CI.
 
 Size checking still covers server and staged native artifacts and rejects
 missing, stale or oversized outputs. Play is measured and checked separately.
@@ -96,17 +101,39 @@ player. No historical device ABI or optimizer safety guard was removed.
 
 These size checks are not a physical-device startup or memory measurement.
 
-## Remaining audited work
+## Search and playlist follow-up
 
-Active channel search still schedules publication and playback from mutable
-category/index projections. Independent probes confirmed stale-source results
-and wrong-channel playback after reorder. The next bounded replacement is a
-source/catalog-bound search session with stable group/item targets and owned
-timers, retaining the existing editor, query storage and device key behavior.
+Channel search owns its editor request and source/catalog lifetime. Results are
+published synchronously after accepted input. Actions retain stable group and
+channel IDs and resolve fresh positions at execution; stale editors, reordered
+lists, replaced catalogs and delayed PIN/playback callbacks cannot select a
+different channel. Accepted results remain usable after cancelling another
+search. Returning from the category picker explicitly creates a new result
+handler with the selected stable ID; callbacks from retired pickers stay inert.
+Preview, query storage, parental policy and device keys are preserved.
 
-The shared core has a quote-aware playlist scanner, while some provider/media
-parsers still split on the first comma and treat a blank line as the URL. A
-follow-up can reuse the scanner for M3U, generic fallback and media playlists.
-It must preserve numeric ID/hash contracts, guide/logo matching, archive policy
-and existing saved references. The eight operator-specific dialects require
-separate migration tests. These two follow-ups are not part of the cloud rewrite.
+The shared core scanner now handles quoted commas and blank lines before a URI
+in generic M3U/provider and media playlists. Display labels keep their full text;
+historical numeric hashes, companion EPG/logo request bodies, archive behavior
+and saved references remain compatible. Historical fixture files remain intact,
+with explicit expected display corrections tested separately. The eight special
+operator dialects retain their existing parser behavior and snapshot coverage.
+
+Provider XML decoding now projects the DOM directly into detached objects,
+without constructing and parsing an intermediate JSON string. This also fixes
+quoted attributes and Unicode entity recovery. Compatibility tests preserve
+existing mixed-content and repeated-element shapes, including empty nodes.
+
+On Node 22.23.3, the final server bundle is 653,905 raw / 186,501 gzip bytes;
+Tauri and Capacitor are 653,863 / 186,572. Against the preceding main build,
+this adds 659 raw and 818 gzip bytes per artifact. The isolated optimized XML
+module decreases from 4,104 / 1,648 to 3,166 / 1,417 bytes (isolated gzip level 6;
+complete-artifact gates use level 9). A local jsdom catalog
+benchmark (1,500 channels, 502,246 XML bytes, three warmups and nine alternating
+samples) measured median decoding at 67.771 ms before and 49.388 ms after;
+other runs gave 21–27% improvement. This measures XML parsing, normalization
+and DOM projection on Node/jsdom, not network transfer or physical-device startup.
+
+The active search and XML paths have source and optimized-artifact regression
+coverage. Further operator-dialect consolidation and physical old-device
+measurements remain separate follow-ups.

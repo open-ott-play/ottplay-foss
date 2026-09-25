@@ -5007,6 +5007,8 @@ window.previewChId = function (chId: number): void {
  */
 window.addChannel2bucket = function (): void {
     var w = window as any;
+    // Owned search supplies an explicit return; historical callers keep zero arity.
+    var resume = typeof arguments[0] === "function" ? arguments[0] : null;
     var idx = w.selIndex;
     var chId = w.listArray[idx];
     if (w.sFavorites) {
@@ -5022,7 +5024,28 @@ window.addChannel2bucket = function (): void {
                     (w._(" added to favorites") || " added to favorites")
             );
     } else {
+        var context = resume && w.__ottChannels.capture(w.listCatIndex);
+        if (resume && !context) return;
+        var picker: any = resume && w.__ottClassicScreenPort.listOwner();
+        var handler: any = null;
+        var groupIds =
+            resume &&
+            w.catsArray.slice(1).map(function (_label: string, index: number) {
+                return w.__ottChannels.group(index + 1);
+            });
+        var admitted = function (): boolean {
+            return (
+                !resume ||
+                !!(
+                    context.active() &&
+                    picker &&
+                    picker.foreground() &&
+                    (!handler || w.listKeyHandlerFn === handler)
+                )
+            );
+        };
         if (typeof w.saveListPanelState === "function") w.saveListPanelState();
+        if (!admitted()) return;
         var savedIdx = w.selIndex;
         var savedList = w.listArray;
         var savedGetListItem = w.getListItem;
@@ -5030,39 +5053,62 @@ window.addChannel2bucket = function (): void {
         var savedListKeyHandler = w.listKeyHandlerFn;
         var popupVisible =
             typeof $ !== "undefined" && $("#listPopUp").is(":visible");
+        if (!admitted()) return;
         w.selIndex = 0;
         w.listArray = w.catsArray.slice(1);
+        if (resume) w.listDataArray = w.listArray;
         w.getListItem = function (item: any, _idx: number): string {
             return "&nbsp;&nbsp;" + item;
         };
         w.detailListAction = function (): void {};
-        w.listKeyHandlerFn = function (e: number): boolean {
+        w.listKeyHandlerFn = handler = function (e: number): boolean {
+            if (!admitted()) return true;
             switch (e) {
                 case w.keys.ENTER:
+                    var groupId = resume
+                        ? groupIds[w.selIndex]
+                        : w.__ottChannels.group(
+                              w.catsArray.indexOf(w.listArray[w.selIndex])
+                          );
+                    if (
+                        resume &&
+                        (!context.position(chId) ||
+                            w.__ottChannels.index(groupId) < 0)
+                    )
+                        return true;
                     w.__ottChannels.change("member", {
                         action: "add",
                         channelId: chId,
-                        groupId: w.__ottChannels.group(
-                            w.catsArray.indexOf(w.listArray[w.selIndex])
-                        ),
+                        groupId: groupId,
                     });
+                    if (!admitted()) return true;
                     if (typeof w.saveChannelsCats === "function")
                         w.saveChannelsCats();
-                    if (typeof w.showShift === "function")
-                        w.showShift(
+                    if (!admitted()) return true;
+                    if (typeof w.showShift === "function") {
+                        var message =
                             (w._("Channel ") || "Channel ") +
-                                (w.channels && w.channels[chId]
-                                    ? w.channels[chId].channel_name
-                                    : "") +
-                                (w._(" added to category ") ||
-                                    " added to category ") +
-                                w.listArray[w.selIndex]
-                        );
+                            (w.channels && w.channels[chId]
+                                ? w.channels[chId].channel_name
+                                : "") +
+                            (w._(" added to category ") ||
+                                " added to category ") +
+                            w.listArray[w.selIndex];
+                        if (!admitted()) return true;
+                        w.showShift(message);
+                    }
                     break;
                 case w.keys.RETURN:
                     break;
                 default:
                     return false;
+            }
+            if (!admitted()) return true;
+            if (resume) {
+                w.getListItem = savedGetListItem;
+                w.detailListAction = savedDetailListAction;
+                resume(admitted);
+                return true;
             }
             if (typeof w.restoreListPanelState === "function")
                 w.restoreListPanelState();
@@ -5076,20 +5122,26 @@ window.addChannel2bucket = function (): void {
                 $("#listPopUp").show();
             return true;
         };
+        var caption =
+            w._("Select category to add channel") ||
+            "Select category to add channel";
+        if (!admitted()) return;
         var captionEl = document.getElementById("listCaption");
-        if (captionEl)
-            captionEl.innerHTML =
-                w._("Select category to add channel") ||
-                "Select category to add channel";
+        if (captionEl) captionEl.innerHTML = caption;
         var footerElement = document.getElementById("listPodval");
-        if (footerElement)
-            footerElement.innerHTML = w.renderButtonHint(
+        if (footerElement) {
+            var footer = w.renderButtonHint(
                 w.keys.RETURN,
                 w.strRETURN,
                 "Close"
             );
+            if (!admitted()) return;
+            footerElement.innerHTML = footer;
+        }
         if (typeof $ !== "undefined") $("#listPopUp").hide();
+        if (!admitted()) return;
         if (typeof w.showPage === "function") w.showPage();
+        if (resume) picker = w.__ottClassicScreenPort.listOwner();
     }
 };
 

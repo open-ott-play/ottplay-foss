@@ -592,7 +592,11 @@ function getChanelsArray(a) {
                     if (p.length !== 0) {
                         x += "~" + p.join("-");
                     }
-                    E += x + "~" + encodeURIComponent(d) + "\n";
+                    E +=
+                        x +
+                        "~" +
+                        encodeURIComponent(entry.titleHashInput || d) +
+                        "\n";
                 }
                 if (!l && (m != 0 || n || s)) {
                     if (x === void 0) {
@@ -601,7 +605,11 @@ function getChanelsArray(a) {
                             x += "~" + p.join("-");
                         }
                     }
-                    N += x + "~" + encodeURIComponent(d) + "\n";
+                    N +=
+                        x +
+                        "~" +
+                        encodeURIComponent(entry.titleHashInput || d) +
+                        "\n";
                 }
             });
         } catch (e) {

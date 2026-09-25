@@ -1,6 +1,7 @@
 "use strict";
 const assert = require("node:assert/strict");
 const fixture = require("./helpers/m3u-driver-fixture.cjs");
+const corrected = require("./helpers/playlist-corrected-expectations.cjs");
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const playlist =
     '#EXTM3U url-tvg="https://xml.test/main.xml"\n#EXTINF:-1 tvg-id="one" group-title="News",One\nhttps://cdn.test/one/index.m3u8\n#EXTINF:-1 tvg-id="two" group-title="News",Two\nhttps://cdn.test/two/index.m3u8\n';
@@ -38,14 +39,15 @@ test("14 captured M3U catalogs and matching request bodies retain legacy channel
             groups: f.host.cats,
             ids: f.host.cList,
         });
-        const expected = clone(row.main);
+        const contract = corrected.main(row);
+        const expected = clone(contract);
         delete expected.epgConfig;
         delete expected.epgBody;
         delete expected.logoBody;
         assert.deepEqual(actual, expected, row.input);
         for (const [suffix, body] of [
-            ["channels", row.main.epgBody],
-            ["logos", row.main.logoBody],
+            ["channels", contract.epgBody],
+            ["logos", contract.logoBody],
         ]) {
             const request = f.requests.find((item) =>
                 item.settings.url.endsWith("/match-" + suffix)

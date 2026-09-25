@@ -9,6 +9,12 @@ var channelPreferenceKinds: any = {
     aZooms: "zoom",
 };
 
+function channelLibraryIndex(id: string): number {
+    for (var i = 0; i < channelLibraryView.length; i++)
+        if (channelLibraryView[i].id === id) return i;
+    return -1;
+}
+
 function channelLibraryPublish(host: any): void {
     if (!channelLibraryInstance || !channelLibraryInstance.active()) return;
     var previousId = host.curList && host.curList[host.primaryIndex];
@@ -39,11 +45,7 @@ function channelLibraryPublish(host: any): void {
     var wantedGroup = selected
         ? selected.groupId
         : previousGroup && previousGroup.id;
-    var category = channelLibraryView
-        .map(function (group) {
-            return group.id;
-        })
-        .indexOf(wantedGroup);
+    var category = channelLibraryIndex(wantedGroup);
     if (category < 0) category = host.sFavorites ? 1 : 0;
     var list = categories[labels[category]] || [];
     var index = list.indexOf(previousId);
@@ -137,6 +139,48 @@ function channelLibraryChange(action: string, value?: any, extra?: any): any {
 }
 
 (window as any).__ottChannels = {
+    capture: function (category: number) {
+        var host = window as any;
+        var library = channelLibraryInstance;
+        var catalog = host.channels;
+        var group = channelLibraryView[category];
+        function active(): boolean {
+            return !!(
+                library &&
+                library === channelLibraryInstance &&
+                library.active() &&
+                catalog === host.channels
+            );
+        }
+        function locate(): number {
+            return active() && group ? channelLibraryIndex(group.id) : -1;
+        }
+        if (!group || !active()) return null;
+        return {
+            active: active,
+            category: locate,
+            members: function () {
+                var category = locate();
+                return category < 0
+                    ? []
+                    : (host.cats[host.catsArray[category]] || []).slice();
+            },
+            position: function (id: number) {
+                var category = locate();
+                var row = catalog[id];
+                if (
+                    category < 0 ||
+                    !row ||
+                    library.itemId(id) !== String(row.itemId || "channel:" + id)
+                )
+                    return null;
+                var index = (host.cats[host.catsArray[category]] || []).indexOf(
+                    id
+                );
+                return index < 0 ? null : [category, index];
+            },
+        };
+    },
     change: channelLibraryChange,
     document: function () {
         return channelLibraryInstance
@@ -146,13 +190,7 @@ function channelLibraryChange(action: string, value?: any, extra?: any): any {
     group: function (index: number) {
         return channelLibraryView[index] && channelLibraryView[index].id;
     },
-    index: function (id: string) {
-        return channelLibraryView
-            .map(function (group) {
-                return group.id;
-            })
-            .indexOf(id);
-    },
+    index: channelLibraryIndex,
     mount: mountChannelLibrary,
     preference: function (name: string, channelId: number | null) {
         var kind = channelPreferenceKinds[name];

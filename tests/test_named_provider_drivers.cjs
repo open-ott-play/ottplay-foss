@@ -327,7 +327,12 @@ test("bestlist real direct/proxy path preserves generic14 playlist contracts", (
             url: "https://relay.test/m3u/cp.php",
         });
         f.requests[1].resolve(row.input);
-        assert.deepEqual(catalogSnapshot(f, callbacks), row.generic);
+        assert.deepEqual(
+            catalogSnapshot(f, callbacks),
+            require("./helpers/playlist-corrected-expectations.cjs").generic(
+                row
+            )
+        );
     }
 });
 

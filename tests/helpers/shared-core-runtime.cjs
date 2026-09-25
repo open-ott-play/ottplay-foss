@@ -44,6 +44,7 @@ module.exports = function sharedCoreRuntime(context, options = {}) {
         "src/channels/channel-references.ts",
         "src/channels/library.ts",
         "src/channels/classic-library.ts",
+        "src/channels/classic-search.ts",
         "src/ui/screen-controller.ts",
         "src/ui/input-router.ts",
         "src/ui/classic-screen-port.ts",
