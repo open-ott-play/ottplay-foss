@@ -13,6 +13,12 @@ interface PlaybackJournalPorts {
 
 interface PlaybackJournalEntry {
     archiveStart?: number;
+    channelHint?: {
+        guideId: string;
+        name: string;
+        group: string;
+        routeId?: string;
+    };
     channelId: string;
     groupId?: string;
     kind: "live" | "archive" | "vod";
@@ -49,6 +55,22 @@ function createPlaybackJournal(ports: PlaybackJournalPorts) {
         if (value.kind === "archive" && !finite(value.archiveStart))
             return null;
         var result: PlaybackJournalEntry = { channelId: id, kind: value.kind };
+        var hint = value.channelHint;
+        if (
+            hint &&
+            typeof hint.guideId === "string" &&
+            typeof hint.name === "string" &&
+            typeof hint.group === "string" &&
+            (hint.guideId.trim() || hint.name.trim())
+        ) {
+            result.channelHint = {
+                group: hint.group,
+                guideId: hint.guideId,
+                name: hint.name,
+            };
+            if (typeof hint.routeId === "string" && hint.routeId.trim())
+                result.channelHint.routeId = hint.routeId;
+        }
         if (value.kind === "archive") result.archiveStart = value.archiveStart;
         if (finite(value.position)) result.position = value.position;
         if (typeof value.label === "string") result.label = value.label;

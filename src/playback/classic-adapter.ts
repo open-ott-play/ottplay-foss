@@ -546,6 +546,9 @@ function classicPlaybackSelect(
                 var payload = visit.payload || {};
                 return {
                     archiveStart: visit.archiveStart,
+                    channelHint:
+                        payload.channelHint ||
+                        classicPlaybackChannelHint(visit.channelId),
                     channelId: visit.channelId,
                     groupId:
                         (w.__ottChannels && w.__ottChannels.group(payload.c)) ||
@@ -693,7 +696,33 @@ function classicPlaybackJournal(): any {
     });
 }
 
-function classicPlaybackLocate(id: string, groupId?: string): any {
+/** M3U stream addresses can rotate even when the station metadata is unchanged. */
+function classicPlaybackChannelHint(id: string): any {
+    var w = classicPlaybackHost();
+    var channel = (w.channels || {})[id];
+    if (w.p_pref !== "m3u" || !channel) return undefined;
+    var name = String(channel.channel_name || "");
+    var guideId = String(channel.epg || "");
+    var route =
+        typeof channel.url === "string" ? channel.url.split(/[?#]/)[0] : "";
+    return name || guideId
+        ? {
+              group: String((channel.category || {}).name || ""),
+              guideId: guideId,
+              name: name,
+              routeId:
+                  route && typeof w.murmurhash3_32_gc === "function"
+                      ? String(w.murmurhash3_32_gc(route, 10))
+                      : undefined,
+          }
+        : undefined;
+}
+
+function classicPlaybackLocate(
+    id: string,
+    groupId?: string,
+    channelHint?: PlaybackJournalEntry["channelHint"]
+): any {
     var w = classicPlaybackHost();
     if (id.indexOf("channel-ref:") === 0) {
         try {
@@ -704,9 +733,9 @@ function classicPlaybackLocate(id: string, groupId?: string): any {
             );
             if (!ref.itemId && !ref.ambiguous && ref.legacyId !== undefined)
                 ref = codec.resolve(ref.legacyId, ref.origin);
+            if (ref.ambiguous) return null;
             var projected = codec.project(ref);
-            if (projected === null) return null;
-            id = String(projected);
+            if (projected !== null) id = String(projected);
         } catch (_) {
             return null;
         }
@@ -738,6 +767,38 @@ function classicPlaybackLocate(id: string, groupId?: string): any {
                 };
         }
     }
+    if (channelHint && w.p_pref === "m3u") {
+        var channels = w.channels || {};
+        var available = Object.keys(channels);
+        var candidates = channelHint.guideId
+            ? available.filter(function (key) {
+                  return (
+                      String(channels[key].epg || "") === channelHint.guideId
+                  );
+              })
+            : [];
+        // A unique guide ID survives renaming. Otherwise require an exact,
+        // unambiguous station name and provider group; never guess by position.
+        if (candidates.length !== 1)
+            candidates = (candidates.length ? candidates : available).filter(
+                function (key) {
+                    var row = channels[key];
+                    return (
+                        !!channelHint.name &&
+                        String(row.channel_name || "") === channelHint.name &&
+                        String((row.category || {}).name || "") ===
+                            channelHint.group
+                    );
+                }
+            );
+        if (candidates.length > 1 && channelHint.routeId)
+            candidates = candidates.filter(function (key) {
+                var hint = classicPlaybackChannelHint(key);
+                return hint && hint.routeId === channelHint.routeId;
+            });
+        if (candidates.length === 1)
+            return classicPlaybackLocate(candidates[0], groupId);
+    }
     return null;
 }
 
@@ -759,9 +820,14 @@ function classicPlaybackHydrate(): void {
             return entry.kind !== "vod";
         })
         .map(function (entry: PlaybackJournalEntry): any {
-            var found = classicPlaybackLocate(entry.channelId, entry.groupId);
+            var found = classicPlaybackLocate(
+                entry.channelId,
+                entry.groupId,
+                entry.channelHint
+            );
             var result: any = {
                 c: found ? found.category : -1,
+                channelHint: entry.channelHint,
                 ci: found ? found.id : entry.channelId,
                 e: entry.label,
                 i: found ? found.index : -1,
@@ -773,7 +839,8 @@ function classicPlaybackHydrate(): void {
     if (bookmark && bookmark.kind === "live") {
         var selected = classicPlaybackLocate(
             bookmark.channelId,
-            bookmark.groupId
+            bookmark.groupId,
+            bookmark.channelHint
         );
         if (selected) {
             w.catIndex = selected.category;
@@ -790,7 +857,11 @@ function classicPlaybackBookmark(): any {
     if (!journal.active() || !loaded.writable || !loaded.document.bookmark)
         return null;
     var item = loaded.document.bookmark;
-    var found = classicPlaybackLocate(item.channelId, item.groupId);
+    var found = classicPlaybackLocate(
+        item.channelId,
+        item.groupId,
+        item.channelHint
+    );
     if (!found) return null;
     return {
         catIndex: found.category,
@@ -841,6 +912,7 @@ function classicPlaybackCheckpoint(snapshot: any, force = false): void {
     var saved = journal.update({
         bookmark: {
             archiveStart: target.archiveStart,
+            channelHint: classicPlaybackChannelHint(target.channelId),
             channelId: target.channelId,
             groupId:
                 (w.__ottChannels && w.__ottChannels.group(payload.c)) ||

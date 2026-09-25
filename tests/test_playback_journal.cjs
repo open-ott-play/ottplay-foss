@@ -139,6 +139,146 @@ for (const raw of [
     assert.deepEqual(f.writes, []);
 }
 
+// Optional source-local metadata survives both journal paths without retaining
+// stream addresses or references to caller-owned objects.
+{
+    const f = fixture();
+    const hint = {
+        group: "News",
+        guideId: "news.two",
+        name: "Two",
+        routeId: "1234567",
+        url: "https://stream.test/live?token=private-fixture",
+    };
+    const expected = {
+        group: "News",
+        guideId: "news.two",
+        name: "Two",
+        routeId: "1234567",
+    };
+    assert.equal(
+        f.journal.update({
+            bookmark: { channelHint: hint, channelId: "22", kind: "live" },
+            history: [
+                {
+                    archiveStart: 1700000000,
+                    channelHint: hint,
+                    channelId: "22",
+                    kind: "archive",
+                },
+            ],
+        }),
+        true
+    );
+    hint.name = "caller mutation";
+    const read = f.journal.read().document;
+    assert.deepEqual(plain(read.bookmark.channelHint), expected);
+    assert.deepEqual(plain(read.history[0].channelHint), expected);
+    assert(!f.values.get("playbackJournal").includes("private-fixture"));
+    read.bookmark.channelHint.name = "read mutation";
+    read.history[0].channelHint.name = "history mutation";
+    assert.deepEqual(
+        plain(f.journal.read().document.bookmark.channelHint),
+        expected
+    );
+    assert.deepEqual(
+        plain(f.journal.read().document.history[0].channelHint),
+        expected
+    );
+    assert.equal(f.journal.update({ history: [] }), true);
+    assert.deepEqual(
+        plain(f.journal.read().document.bookmark.channelHint),
+        expected,
+        "history-only writes preserve the bookmark hint"
+    );
+}
+for (const channelHint of [
+    { group: "", guideId: "guide-only", name: "" },
+    { group: "", guideId: "", name: "Name only" },
+    { group: "", guideId: "guide", name: "", routeId: "0" },
+]) {
+    const f = fixture({
+        playbackJournal: {
+            bookmark: { channelHint, channelId: "22", kind: "live" },
+            history: [{ channelHint, channelId: "22", kind: "live" }],
+            sourceId: "fixture",
+            updatedAt: 0,
+            version: 2,
+        },
+    });
+    const read = f.journal.read();
+    assert.equal(read.writable, true);
+    assert.deepEqual(plain(read.document.bookmark.channelHint), channelHint);
+    assert.deepEqual(plain(read.document.history[0].channelHint), channelHint);
+    assert.equal(f.journal.update({ bookmark: read.document.bookmark }), true);
+    assert.deepEqual(
+        plain(f.journal.read().document.history[0].channelHint),
+        channelHint,
+        "bookmark-only writes preserve history hints"
+    );
+}
+for (const channelHint of [
+    null,
+    [],
+    {},
+    { group: "", guideId: "guide" },
+    { guideId: "guide", name: "Name" },
+    { group: "News", guideId: 12, name: "Name" },
+    { group: [], guideId: "guide", name: "Name" },
+    { group: "News", guideId: "guide", name: false },
+    { group: "News", guideId: "", name: "" },
+    { group: "News", guideId: " \t", name: "\n" },
+    { group: "News", guideId: "", name: "", routeId: "1234567" },
+]) {
+    const row = { channelHint, channelId: "22", kind: "live" };
+    const f = fixture({
+        playbackJournal: {
+            bookmark: row,
+            history: [row],
+            sourceId: "fixture",
+            updatedAt: 0,
+            version: 2,
+        },
+    });
+    const read = f.journal.read();
+    assert.equal(read.writable, true);
+    assert.deepEqual(plain(read.document.bookmark), {
+        channelId: "22",
+        kind: "live",
+    });
+    assert.equal(read.document.history.length, 1);
+    assert.equal(read.document.history[0].channelHint, undefined);
+    assert.equal(f.journal.update({ bookmark: row, history: [row] }), true);
+    assert(!f.values.get("playbackJournal").includes("channelHint"));
+}
+for (const routeId of [null, false, 12, {}, [], "", " \t\n"]) {
+    const expected = { group: "News", guideId: "two", name: "Two" };
+    const row = {
+        channelHint: { ...expected, routeId },
+        channelId: "22",
+        kind: "live",
+    };
+    const f = fixture({
+        playbackJournal: {
+            bookmark: row,
+            history: [row],
+            sourceId: "fixture",
+            updatedAt: 0,
+            version: 2,
+        },
+    });
+    const document = f.journal.read().document;
+    assert.deepEqual(plain(document.bookmark.channelHint), expected);
+    assert.deepEqual(plain(document.history[0].channelHint), expected);
+    assert.equal(f.journal.update({ bookmark: row, history: [row] }), true);
+    assert(!f.values.get("playbackJournal").includes("routeId"));
+    assert.deepEqual(
+        plain(f.journal.read().document.bookmark.channelHint),
+        expected,
+        "invalid optional route never discards usable station metadata"
+    );
+}
+
 // Failure and cancellation leave previous complete envelope in place.
 for (const fault of ["fail", "retire"]) {
     const f = fixture();
@@ -326,6 +466,312 @@ for (const fault of ["fail", "retire"]) {
 
 console.log(
     "PASS playback journal: versioned envelope, legacy import, rollback, isolation, canonical restore and reset lifetime"
+);
+
+// Fresh realms model restarts: numeric M3U URL hashes can change independently
+// from station metadata, while the real library and playback adapters share storage.
+// A deterministic fixture hash keeps assertions independent of the hash codec;
+// the production Murmur implementation has its own vectors and browser coverage.
+function playlistRouteHash(value, seed) {
+    let result = seed;
+    for (let index = 0; index < value.length; index++)
+        result = (result * 31 + value.charCodeAt(index)) >>> 0;
+    return result;
+}
+function playlistRestart(
+    storage,
+    rows,
+    playlist = "https://playlist.test/list.m3u"
+) {
+    const w = {
+        _: (value) => value,
+        catIndex: Number(storage.get("catIndex") || 0),
+        cats: {},
+        catsArray: [],
+        channels: {},
+        cList: rows.map((row) => row.id),
+        clearTimeout() {},
+        curList: [],
+        favoritesArray: [],
+        m3uArr: { active: 0, M3Us: [{ www: playlist }] },
+        murmurhash3_32_gc: playlistRouteHash,
+        p_pref: "m3u",
+        playTime: 0,
+        playType: 0,
+        prevArr: [],
+        primaryIndex: Number(storage.get("primaryIndex") || 0),
+        providerGetItem: (key) => storage.get(key) ?? null,
+        providerSetItem: (key, value) => storage.set(key, value),
+        setTimeout: () => 1,
+        settings: { prevCount: 2 },
+        sFavorites: false,
+    };
+    for (const row of rows)
+        w.channels[row.id] = {
+            category: { name: row.group ?? "News" },
+            channel_name: row.name,
+            epg: row.guideId ?? row.name.toLowerCase(),
+            url: row.url || "https://stream.test/" + row.id + "?token=fixture",
+        };
+    w.window = w;
+    vm.createContext(w);
+    sharedCore(w);
+    w.__ottChannels.mount(w);
+    w.__ottClassicPlayback.hydrate();
+    return w;
+}
+
+const originalStations = [
+    { id: 11, name: "One" },
+    { id: 22, name: "Two" },
+    { id: 33, name: "Three" },
+];
+const rotatedStations = [
+    { id: 303, name: "Three" },
+    { id: 101, name: "One" },
+    { id: 202, name: "Two" },
+];
+for (const kind of ["live", "archive"]) {
+    const storage = new Map();
+    const original = playlistRestart(storage, originalStations);
+    const api = original.__ottClassicPlayback;
+    api.command({ channelId: 11, type: "live" });
+    api.select(0, 1);
+    api.command({
+        archiveStart: 1700000000,
+        channelId: 22,
+        position: kind === "archive" ? 37 : 0,
+        type: kind,
+    });
+    const key = "playbackJournal:" + api.sourceId();
+    const before = JSON.parse(storage.get(key));
+    assert.deepEqual(before.bookmark.channelHint, {
+        group: "News",
+        guideId: "two",
+        name: "Two",
+        routeId: String(playlistRouteHash("https://stream.test/22", 10)),
+    });
+    assert(!storage.get(key).includes("token=fixture"));
+    const restarted = playlistRestart(storage, rotatedStations);
+    const bookmark = restarted.__ottClassicPlayback.bookmark();
+    assert.equal(bookmark.channelId, 202, kind + ": rotating URL/reorder");
+    assert.equal(bookmark.mode, kind);
+    if (kind === "live") {
+        assert.equal(restarted.primaryIndex, 2);
+        assert.equal(restarted.curList[restarted.primaryIndex], 202);
+    } else {
+        assert.equal(bookmark.playType, 1700000000);
+        assert.equal(bookmark.playTime, 37);
+    }
+    assert.equal(restarted.prevArr[0].ci, 101, "history follows metadata too");
+    // A normal selection writes current numeric compatibility state. Reopening
+    // one more realm must retain the descriptor rather than lose it on update.
+    restarted.__ottClassicPlayback.select(0, 2);
+    restarted.__ottClassicPlayback.command({ channelId: 202, type: "live" });
+    assert.equal(
+        playlistRestart(
+            storage,
+            originalStations
+        ).__ottClassicPlayback.bookmark().channelId,
+        22
+    );
+    const otherSource = playlistRestart(
+        storage,
+        rotatedStations,
+        "https://playlist.test/another.m3u"
+    );
+    assert.notEqual(
+        otherSource.__ottClassicPlayback.sourceId(),
+        api.sourceId()
+    );
+    assert.equal(
+        otherSource.__ottClassicPlayback.bookmark(),
+        null,
+        "same station metadata cannot import a different source's bookmark"
+    );
+}
+
+for (const scenario of [
+    {
+        expected: 202,
+        name: "unique guide ID survives station rename",
+        rows: [
+            { id: 101, name: "One" },
+            { guideId: "two", id: 202, name: "Two renamed" },
+        ],
+    },
+    {
+        expected: 202,
+        name: "duplicate guide IDs are narrowed by station name and group",
+        rows: [
+            { guideId: "two", id: 101, name: "One" },
+            { guideId: "two", id: 202, name: "Two" },
+        ],
+    },
+    {
+        expected: null,
+        name: "ambiguous metadata never chooses the first candidate",
+        rows: [
+            { guideId: "two", id: 101, name: "Two" },
+            { guideId: "two", id: 202, name: "Two" },
+        ],
+    },
+    {
+        expected: 202,
+        name: "missing guide ID uses unique exact name and group",
+        rows: [
+            { guideId: "", id: 101, name: "One" },
+            { guideId: "", id: 202, name: "Two" },
+        ],
+    },
+    {
+        expected: null,
+        name: "name alone cannot override a changed provider group",
+        rows: [
+            { guideId: "", id: 101, name: "One" },
+            { group: "Other", guideId: "", id: 202, name: "Two" },
+        ],
+    },
+]) {
+    const storage = new Map();
+    const original = playlistRestart(storage, originalStations);
+    original.__ottClassicPlayback.select(0, 1);
+    original.__ottClassicPlayback.command({ channelId: 22, type: "live" });
+    const bookmark = playlistRestart(
+        storage,
+        scenario.rows
+    ).__ottClassicPlayback.bookmark();
+    assert.equal(
+        bookmark && bookmark.channelId,
+        scenario.expected,
+        scenario.name
+    );
+}
+
+{
+    const storage = new Map();
+    const original = playlistRestart(storage, originalStations);
+    original.__ottClassicPlayback.select(0, 1);
+    original.__ottClassicPlayback.command({ channelId: 22, type: "live" });
+    const key = "playbackJournal:" + original.__ottClassicPlayback.sourceId();
+    const legacy = JSON.parse(storage.get(key));
+    delete legacy.bookmark.channelHint;
+    legacy.history.forEach((row) => delete row.channelHint);
+    storage.set(key, JSON.stringify(legacy));
+    const restored = playlistRestart(storage, originalStations);
+    assert.equal(restored.curList[restored.primaryIndex], 22);
+    assert.equal(restored.__ottClassicPlayback.bookmark().channelId, 22);
+    assert.equal(
+        storage.get(key),
+        JSON.stringify(legacy),
+        "read keeps old bytes"
+    );
+}
+
+for (const kind of ["live", "archive"]) {
+    const storage = new Map();
+    const original = playlistRestart(storage, [
+        {
+            guideId: "shared-guide",
+            id: 11,
+            name: "Same station",
+            url: "https://stream.test/variant-a?q=old#first",
+        },
+        {
+            guideId: "shared-guide",
+            id: 22,
+            name: "Same station",
+            url: "https://stream.test/variant-b?q=old#first",
+        },
+    ]);
+    original.__ottClassicPlayback.select(0, 1);
+    original.__ottClassicPlayback.command({
+        archiveStart: 1700000000,
+        channelId: 22,
+        position: kind === "archive" ? 37 : 0,
+        type: kind,
+    });
+    const key = "playbackJournal:" + original.__ottClassicPlayback.sourceId();
+    const saved = JSON.parse(storage.get(key));
+    assert.deepEqual(saved.bookmark.channelHint, {
+        group: "News",
+        guideId: "shared-guide",
+        name: "Same station",
+        routeId: String(playlistRouteHash("https://stream.test/variant-b", 10)),
+    });
+    const rotated = [
+        {
+            guideId: "shared-guide",
+            id: 202,
+            name: "Same station",
+            url: "https://stream.test/variant-a?q=new#second",
+        },
+        {
+            guideId: "shared-guide",
+            id: 101,
+            name: "Same station",
+            url: "https://stream.test/variant-b?q=new#second",
+        },
+    ];
+    const restarted = playlistRestart(storage, rotated);
+    const bookmark = restarted.__ottClassicPlayback.bookmark();
+    assert.equal(
+        bookmark.channelId,
+        101,
+        kind + ": distinct stable route wins"
+    );
+    assert.equal(bookmark.mode, kind);
+    if (kind === "live")
+        assert.equal(restarted.curList[restarted.primaryIndex], 101);
+    else {
+        assert.equal(bookmark.playType, 1700000000);
+        assert.equal(bookmark.playTime, 37);
+    }
+    const encoded = plain(saved);
+    encoded.bookmark.channelId =
+        "channel-ref:" + JSON.stringify({ legacyId: 22, origin: "canonical" });
+    storage.set(key, JSON.stringify(encoded));
+    assert.equal(
+        playlistRestart(storage, rotated).__ottClassicPlayback.bookmark()
+            .channelId,
+        101,
+        "unresolved encoded references can use a valid route descriptor"
+    );
+    encoded.bookmark.channelId =
+        "channel-ref:" +
+        JSON.stringify({ ambiguous: true, legacyId: 22, origin: "raw" });
+    storage.set(key, JSON.stringify(encoded));
+    assert.equal(
+        playlistRestart(storage, rotated).__ottClassicPlayback.bookmark(),
+        null,
+        "metadata cannot bypass an explicitly ambiguous imported reference"
+    );
+    const withoutRoute = plain(saved);
+    delete withoutRoute.bookmark.channelHint.routeId;
+    storage.set(key, JSON.stringify(withoutRoute));
+    assert.equal(
+        playlistRestart(storage, rotated).__ottClassicPlayback.bookmark(),
+        null,
+        "old metadata-only hints cannot guess among variants"
+    );
+    storage.set(key, JSON.stringify(saved));
+    rotated[0].url = "https://stream.test/variant-b?q=other#another";
+    assert.equal(
+        playlistRestart(storage, rotated).__ottClassicPlayback.bookmark(),
+        null,
+        "same metadata and static route remain ambiguous despite different queries"
+    );
+    rotated[0].name = "Different metadata";
+    rotated[1].name = "Different metadata";
+    assert.equal(
+        playlistRestart(storage, rotated).__ottClassicPlayback.bookmark(),
+        null,
+        "matching routes cannot override failed metadata matching"
+    );
+}
+
+console.log(
+    "PASS playback journal: M3U URL rotation, reordered restart, history/archive metadata, ambiguity and source isolation"
 );
 
 // The reference marker is committed inside the envelope/readback transaction.
