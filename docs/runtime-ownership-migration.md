@@ -74,11 +74,16 @@ physical-device beta pass before making a device compatibility guarantee.
 
 ## Artifact size budget
 
-The combined Full artifact measures 649,659 UTF-8 bytes / 183,620 bytes gzip
-(level 9); staged Tauri and Capacitor copies measure 649,617 / 183,694. The
-650,000 / 184,000 limits introduced with the six-owner migration are unchanged.
-Size checking covers server and staged native artifacts and rejects missing,
-stale or oversized outputs. Play is measured and checked separately.
+The combined Full artifact measures 649,659 UTF-8 bytes. Gzip level 9 produces
+184,198 bytes on CI Node 22.23.3 and 183,620 on local Node 26 from the same
+SHA-256 input. Staged Tauri and Capacitor copies measure 649,617 raw / 184,273
+gzip on Node 22 (183,694 gzip on Node 26).
+
+The raw limit stays 650,000 bytes. The gzip limit changes from 184,000 to
+184,500, a 500-byte adjustment for the verified compressor variation after
+removing unused delivery code and consolidating fullscreen. Size checking still
+covers server and staged native artifacts and rejects missing, stale or
+oversized outputs. Play is measured and checked separately.
 
 To retain this budget, Tauri fullscreen shares native completion and fallback
 code. Unused TypeScript-only filters, presentation helpers, language loader and
