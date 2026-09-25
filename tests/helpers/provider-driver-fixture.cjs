@@ -84,6 +84,23 @@ function fixture(initial = {}) {
     host.$ = jquery;
     host.window = host;
     vm.createContext(host);
+    vm.runInContext(
+        ts
+            .transpileModule(
+                fs.readFileSync(
+                    path.join(__dirname, "../../src/settings/store.ts"),
+                    "utf8"
+                ),
+                {
+                    compilerOptions: {
+                        module: ts.ModuleKind.ES2015,
+                        target: ts.ScriptTarget.ES5,
+                    },
+                }
+            )
+            .outputText.replace(/^export /gm, ""),
+        host
+    );
     require("./shared-core-runtime.cjs")(host, { vendorOnly: true });
     privateRuntime(host, "src/provider/runtime.ts");
     privateRuntime(host, "src/provider/driver-profiles.ts");
