@@ -34,7 +34,8 @@ identity and detached ChannelLibrary/FavoritesLibrary documents, retaining
 custom groups, hidden or missing items, preferences, unlocks and all favorite
 lists. Export fails on unreadable or unsupported owned state. Installation-only
 credentials and local consent remain excluded. Raw cloud/storage snapshots
-continue through their separate retained codecs.
+use the separately versioned [cloud codec](cloud-settings.md); local raw
+snapshots retain their separate restore policy.
 
 Import validates before opening confirmation and captures both source identity
 (including the account or M3U slot) and storage accessors. A foreign v2 source

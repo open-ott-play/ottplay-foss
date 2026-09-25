@@ -5,10 +5,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { gzipSync } = require("node:zlib");
 
-// Full measures 649659 raw / 184198 gzip on CI Node22; native copies gzip to184273.
-// Node26 compresses the identical bytes to183620. Preserve the raw limit and
-// allow 500 bytes for the verified compressor variation (docs/runtime-ownership-migration.md).
-const BUDGET = Object.freeze({ bytes: 650000, gzipBytes: 184500 });
+// The owned cloud transfer adds strict lossless UTF-16 decoding and guarded
+// replacement/rollback. Reserve its measured ~3.5k raw / ~1.5k gzip increase;
+// retain the same ES5 optimizer and all three final-artifact checks.
+const BUDGET = Object.freeze({ bytes: 654000, gzipBytes: 186000 });
 const ARTIFACTS = Object.freeze([
     "dist/stbPlayer.js",
     "src-tauri/frontend/dist/stbPlayer.js",

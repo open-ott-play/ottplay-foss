@@ -1,3 +1,4 @@
+const { cloudSource } = require("./helpers/cloud-source-fixture.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -47,7 +48,7 @@ function test(name, run) {
 test("cloud export omits this device's consent and secret code", () => {
     const w = fixture();
     try {
-        w.eval(func("src/settings/cloud.ts", "cloudSendSettings"));
+        w.eval(cloudSource());
         w.host_ott = "fixture.invalid";
         w.host_ott_proto = "https://";
         w.stbGetAllItems = () => ({
@@ -67,7 +68,10 @@ test("cloud export omits this device's consent and secret code", () => {
         };
         w.cloudSendSettings();
         assert.equal(post.url, "https://fixture.invalid/swop/a.php");
-        assert(post.data.d.includes('<entry key="fixture">value</entry>'));
+        assert.equal(
+            w.__ottCloudSettingsCodec.read(post.data.d).fixture,
+            "value"
+        );
         for (const key of [
             "commandServerAddress",
             "commandServerToken",
@@ -88,7 +92,7 @@ test("cloud export omits this device's consent and secret code", () => {
 test("cloud restore ignores injected local HTTP consent and credentials", () => {
     const w = fixture();
     try {
-        w.eval(func("src/settings/cloud.ts", "cloudLoadSettings"));
+        w.eval(cloudSource());
         const stored = new Map([
             ["sLocalHttpEnabled", "1"],
             ["sLocalHttpDeviceCode", "old-local-code"],
@@ -117,6 +121,9 @@ test("cloud restore ignores injected local HTTP consent and credentials", () => 
             stored.clear();
         };
         w.stbSetItem = (key, value) => stored.set(key, value);
+        w.stbGetItem = (key) => stored.get(key) ?? null;
+        w.stbDelItem = (key) => stored.delete(key);
+        w.stbGetAllItems = () => Object.fromEntries(stored);
         w.restart = () => restarted++;
         w.setTimeout = (callback, delay) => {
             if (delay === 10000) poll = callback;
@@ -149,7 +156,7 @@ test("cloud restore ignores injected local HTTP consent and credentials", () => 
                 "</properties>",
             status: "success",
         });
-        assert.equal(cleared, 1);
+        assert.equal(cleared, 0, "restore never clears the storage wholesale");
         assert.equal(restarted, 1);
         for (const key of [
             "commandServerAddress",

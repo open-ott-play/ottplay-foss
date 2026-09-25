@@ -1,3 +1,4 @@
+const { cloudSource } = require("./helpers/cloud-source-fixture.cjs");
 const fs = require("node:fs");
 const path = require("node:path");
 const assert = require("node:assert/strict");
@@ -178,6 +179,39 @@ function test(name, run) {
 const hostile =
     '<img src="missing" onerror="window.__executed=true"><script>window.__executed=true</script>';
 
+test("cloud bundle extraction selects exact closures and rejects missing dependencies", () => {
+    const code = [
+        "function metadataText(value) { return value; }",
+        "function commitSettingsWrites() {}",
+        "var unrelated = 1, cloudSettingsTransfer = { send: function(){}, load: function(){} };",
+        "function cloudSendSettings() { cloudSettingsTransfer.send(); }",
+        "function cloudLoadSettings() { cloudSettingsTransfer.load(); }",
+        "(function(){window.unrelatedBefore = true;})(), (function(){window.__ottSourceIdentity = {};})(), (function(){window.__ottCloudSettingsCodec = {};})(), (function(){window.unrelatedAfter = true;})();",
+    ].join("\n");
+    const parse = (value) =>
+        ts.createSourceFile("artifact.js", value, ts.ScriptTarget.Latest, true);
+    const extracted = cloudSource(parse(code));
+    acorn.parse(extracted, { ecmaVersion: 5 });
+    assert.equal(extracted.includes("unrelated"), false);
+    for (const name of [
+        "metadataText",
+        "commitSettingsWrites",
+        "cloudSettingsTransfer",
+        "cloudSendSettings",
+        "cloudLoadSettings",
+        "__ottSourceIdentity",
+        "__ottCloudSettingsCodec",
+    ]) {
+        const artifact = bundleAst ? bundleAst.text : code;
+        assert.throws(
+            () =>
+                cloudSource(parse(artifact.replaceAll(name, name + "Missing"))),
+            /Expected one bundled cloud dependency/,
+            name + " must come from the supplied artifact"
+        );
+    }
+});
+
 test("channel list keeps hostile titles as text and preserves intentional row layout", () => {
     const w = fixture();
     try {
@@ -339,7 +373,7 @@ test("buttons help closes with Back and existing RETURN, while native cloud save
         w.eval(
             func("src/index.ts", "buttonsInfo") +
                 func("src/keyhandler/index.ts", "keyHandler") +
-                func("src/settings/cloud.ts", "cloudSendSettings")
+                cloudSource(bundleAst)
         );
         for (const key of [w.keys.EXIT, w.keys.RETURN]) {
             w.buttonsInfo();
@@ -387,7 +421,7 @@ test("buttons help closes with Back and existing RETURN, while native cloud save
 test("cloud restore ignores injected local HTTP consent and credentials", () => {
     const w = fixture();
     try {
-        w.eval(func("src/settings/cloud.ts", "cloudLoadSettings"));
+        w.eval(cloudSource(bundleAst));
         const stored = new Map([
             ["sLocalHttpEnabled", "1"],
             ["sLocalHttpDeviceCode", "old-local-code"],
@@ -404,6 +438,9 @@ test("cloud restore ignores injected local HTTP consent and credentials", () => 
             stored.clear();
         };
         w.stbSetItem = (key, value) => stored.set(key, value);
+        w.stbGetItem = (key) => stored.get(key) ?? null;
+        w.stbDelItem = (key) => stored.delete(key);
+        w.stbGetAllItems = () => Object.fromEntries(stored);
         w.restart = () => restarted++;
         w.setTimeout = (callback, delay) => {
             if (delay === 10000) poll = callback;
@@ -432,7 +469,7 @@ test("cloud restore ignores injected local HTTP consent and credentials", () => 
                 "</properties>",
             status: "success",
         });
-        assert.equal(cleared, 1);
+        assert.equal(cleared, 0, "restore never clears the storage wholesale");
         assert.equal(restarted, 1);
         assert.equal(stored.get("ordinary"), "restored-value");
         assert.equal(

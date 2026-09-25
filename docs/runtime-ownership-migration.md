@@ -14,6 +14,9 @@ command paths; historical attribution and retained test oracles are unchanged.
   renewed grant. The classic keypad and device/provider hooks remain adapters.
 - `SettingsStore` owns settings, validation and editor drafts. Compatibility
   properties remain projections for device scripts and menus.
+- Cloud settings transfers own their screen, requests and timers. A strict
+  raw-storage codec and guarded replacement batch replace clear-first restore;
+  see [cloud-settings.md](cloud-settings.md).
 - `ChannelLibrary` owns stable channel IDs, groups, ordering and preferences.
   Operator API catalogs use provider identities. The core publishes explicit
   migration metadata separately from current catalog identities.
@@ -74,21 +77,36 @@ physical-device beta pass before making a device compatibility guarantee.
 
 ## Artifact size budget
 
-The combined Full artifact measures 649,659 UTF-8 bytes. Gzip level 9 produces
-184,198 bytes on CI Node 22.23.3 and 183,620 on local Node 26 from the same
-SHA-256 input. Staged Tauri and Capacitor copies measure 649,617 raw / 184,273
-gzip on Node 22 (183,694 gzip on Node 26).
+The cloud transfer rewrite adds about 3.5 KB raw / 1.5 KB gzip for strict,
+lossless raw-string decoding, cancellation and verified storage replacement.
+The size limits change from 650,000 to 654,000 raw bytes and from 184,500 to
+186,000 gzip bytes. This is an explicit allowance for new behavior, not a
+compressor-only change. Node 22 is used for the measurements and CI.
 
-The raw limit stays 650,000 bytes. The gzip limit changes from 184,000 to
-184,500, a 500-byte adjustment for the verified compressor variation after
-removing unused delivery code and consolidating fullscreen. Size checking still
-covers server and staged native artifacts and rejects missing, stale or
-oversized outputs. Play is measured and checked separately.
+Size checking still covers server and staged native artifacts and rejects
+missing, stale or oversized outputs. Play is measured and checked separately.
+The ES5 optimizer options, public names, function arity and property protections
+are unchanged. Exact measurements are emitted into the build report.
 
-To retain this budget, Tauri fullscreen shares native completion and fallback
+Tauri fullscreen shares native completion and fallback
 code. Unused TypeScript-only filters, presentation helpers, language loader and
 user-agent utilities remain in optional ESM modules outside classic delivery;
 the active search, guide, translation and native transport paths remain in the
 player. No historical device ABI or optimizer safety guard was removed.
 
 These size checks are not a physical-device startup or memory measurement.
+
+## Remaining audited work
+
+Active channel search still schedules publication and playback from mutable
+category/index projections. Independent probes confirmed stale-source results
+and wrong-channel playback after reorder. The next bounded replacement is a
+source/catalog-bound search session with stable group/item targets and owned
+timers, retaining the existing editor, query storage and device key behavior.
+
+The shared core has a quote-aware playlist scanner, while some provider/media
+parsers still split on the first comma and treat a blank line as the URL. A
+follow-up can reuse the scanner for M3U, generic fallback and media playlists.
+It must preserve numeric ID/hash contracts, guide/logo matching, archive policy
+and existing saved references. The eight operator-specific dialects require
+separate migration tests. These two follow-ups are not part of the cloud rewrite.
