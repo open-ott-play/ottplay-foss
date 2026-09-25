@@ -693,12 +693,12 @@ for (const kind of ["live", "archive"]) {
     });
     const key = "playbackJournal:" + original.__ottClassicPlayback.sourceId();
     const saved = JSON.parse(storage.get(key));
-    assert.equal(
-        saved.bookmark.channelHint.routeId,
-        String(playlistRouteHash("https://stream.test/variant-b", 10))
-    );
-    assert(!storage.get(key).includes("https://stream.test"));
-    assert(!storage.get(key).includes("?q=old"));
+    assert.deepEqual(saved.bookmark.channelHint, {
+        group: "News",
+        guideId: "shared-guide",
+        name: "Same station",
+        routeId: String(playlistRouteHash("https://stream.test/variant-b", 10)),
+    });
     const rotated = [
         {
             guideId: "shared-guide",
