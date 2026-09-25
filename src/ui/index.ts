@@ -2654,6 +2654,67 @@ export function hsvToRgb(h: number, s: number, v: number): number[] {
     return [Math.round(r * 255), Math.round(g2 * 255), Math.round(b * 255)];
 }
 
+/** Share HSV input while each public dialog owns its layout and setting. */
+function bindColorDialogInput(
+    hue: number,
+    saturation: number,
+    value: number,
+    cssProperty: string,
+    settingKey: string
+): void {
+    function preview(): void {
+        var rgb = hsvToRgb(hue, saturation, value);
+        $("#step").css(
+            cssProperty,
+            "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
+        );
+    }
+    (window as any).__ottClassicScreenPort.setOwnedCallback(
+        "about",
+        function (key: number): boolean {
+            switch (key) {
+                case keys.UP:
+                    saturation = Math.min(saturation + 5, 100);
+                    break;
+                case keys.DOWN:
+                    saturation = Math.max(saturation - 5, 0);
+                    break;
+                case keys.RIGHT:
+                    hue += 10;
+                    if (hue > 360) hue = 0;
+                    break;
+                case keys.LEFT:
+                    hue -= 10;
+                    if (hue < 0) hue = 360;
+                    break;
+                case keys.YELLOW:
+                    hue = 50;
+                    saturation = 85;
+                    break;
+                case keys.GREEN:
+                    hue = 90;
+                    saturation = 85;
+                    break;
+                case keys.BLUE:
+                    hue = 180;
+                    saturation = 85;
+                    break;
+                case keys.ENTER:
+                    (window as any)[settingKey] = hue + "," + saturation;
+                case keys.RETURN:
+                    $("#listAbout").text("").hide();
+                    restoreListPanelState();
+                    return true;
+                default:
+                    return false;
+            }
+            preview();
+            return true;
+        }
+    );
+    preview();
+}
+
 /**
  * Open the foreground color picker dialog (HSV selector).
  * The user adjusts hue (LEFT/RIGHT) and saturation (UP/DOWN) with presets via color keys.
@@ -2705,58 +2766,7 @@ export function colorDialog(): void {
                 "</div>"
         )
         .show();
-    (window as any).__ottClassicScreenPort.setOwnedCallback(
-        "about",
-        function (e: number): boolean {
-            switch (e) {
-                case keys.UP:
-                    n = Math.min(n + 5, 100);
-                    break;
-                case keys.DOWN:
-                    n = Math.max(n - 5, 0);
-                    break;
-                case keys.RIGHT:
-                    s += 10;
-                    if (s > 360) s = 0;
-                    break;
-                case keys.LEFT:
-                    s -= 10;
-                    if (s < 0) s = 360;
-                    break;
-                case keys.YELLOW:
-                    s = 50;
-                    n = 85;
-                    break;
-                case keys.GREEN:
-                    s = 90;
-                    n = 85;
-                    break;
-                case keys.BLUE:
-                    s = 180;
-                    n = 85;
-                    break;
-                case keys.ENTER:
-                    (window as any).eSHLcolor = s + "," + n;
-                case keys.RETURN:
-                    $("#listAbout").text("").hide();
-                    restoreListPanelState();
-                    return true;
-                default:
-                    return false;
-            }
-            var rgb = hsvToRgb(s, n, 100);
-            $("#step").css(
-                "color",
-                "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
-            );
-            return true;
-        }
-    );
-    var rgb0 = hsvToRgb(s, n, 100);
-    $("#step").css(
-        "color",
-        "rgb(" + rgb0[0] + "," + rgb0[1] + "," + rgb0[2] + ")"
-    );
+    bindColorDialogInput(s, n, 100, "color", "eSHLcolor");
 }
 
 /**
@@ -2792,58 +2802,7 @@ export function selColorDialog(): void {
                 '">&nbsp;1234567890&nbsp;</span>&nbsp;</div>'
         )
         .show();
-    (window as any).__ottClassicScreenPort.setOwnedCallback(
-        "about",
-        function (e: number): boolean {
-            switch (e) {
-                case keys.UP:
-                    n = Math.min(n + 5, 100);
-                    break;
-                case keys.DOWN:
-                    n = Math.max(n - 5, 0);
-                    break;
-                case keys.RIGHT:
-                    s += 10;
-                    if (s > 360) s = 0;
-                    break;
-                case keys.LEFT:
-                    s -= 10;
-                    if (s < 0) s = 360;
-                    break;
-                case keys.YELLOW:
-                    s = 50;
-                    n = 85;
-                    break;
-                case keys.GREEN:
-                    s = 90;
-                    n = 85;
-                    break;
-                case keys.BLUE:
-                    s = 180;
-                    n = 85;
-                    break;
-                case keys.ENTER:
-                    (window as any).eSHLcolSel = s + "," + n;
-                case keys.RETURN:
-                    $("#listAbout").text("").hide();
-                    restoreListPanelState();
-                    return true;
-                default:
-                    return false;
-            }
-            var rgb = hsvToRgb(s, n, 50);
-            $("#step").css(
-                "background-color",
-                "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
-            );
-            return true;
-        }
-    );
-    var rgb0 = hsvToRgb(s, n, 50);
-    $("#step").css(
-        "background-color",
-        "rgb(" + rgb0[0] + "," + rgb0[1] + "," + rgb0[2] + ")"
-    );
+    bindColorDialogInput(s, n, 50, "background-color", "eSHLcolSel");
 }
 
 /**
@@ -2878,58 +2837,7 @@ export function backColorDialog(): void {
                 '">&nbsp;1234567890&nbsp;</span>&nbsp;</div>'
         )
         .show();
-    (window as any).__ottClassicScreenPort.setOwnedCallback(
-        "about",
-        function (e: number): boolean {
-            switch (e) {
-                case keys.UP:
-                    n = Math.min(n + 5, 100);
-                    break;
-                case keys.DOWN:
-                    n = Math.max(n - 5, 0);
-                    break;
-                case keys.RIGHT:
-                    s += 10;
-                    if (s > 360) s = 0;
-                    break;
-                case keys.LEFT:
-                    s -= 10;
-                    if (s < 0) s = 360;
-                    break;
-                case keys.YELLOW:
-                    s = 50;
-                    n = 85;
-                    break;
-                case keys.GREEN:
-                    s = 90;
-                    n = 85;
-                    break;
-                case keys.BLUE:
-                    s = 180;
-                    n = 85;
-                    break;
-                case keys.ENTER:
-                    (window as any).eSHLcolorB = s + "," + n;
-                case keys.RETURN:
-                    $("#listAbout").text("").hide();
-                    restoreListPanelState();
-                    return true;
-                default:
-                    return false;
-            }
-            var rgb = hsvToRgb(s, n, 100);
-            $("#step").css(
-                "background-color",
-                "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")"
-            );
-            return true;
-        }
-    );
-    var rgb0 = hsvToRgb(s, n, 100);
-    $("#step").css(
-        "background-color",
-        "rgb(" + rgb0[0] + "," + rgb0[1] + "," + rgb0[2] + ")"
-    );
+    bindColorDialogInput(s, n, 100, "background-color", "eSHLcolorB");
 }
 
 /* ---------------------------------------------------------------------------
