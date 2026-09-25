@@ -434,8 +434,11 @@ function createXtreamDriver(
         },
         guide: function (id, callback) {
             if (!active()) return;
+            var scope = loads.current() || owner;
+            var requestedCatalog = catalog;
             var config = credentials();
-            var channel = catalog.channels[id];
+            if (!scope.active() || requestedCatalog !== catalog) return;
+            var channel = requestedCatalog.channels[id];
             if (
                 !config.server ||
                 !config.username ||
@@ -448,7 +451,7 @@ function createXtreamDriver(
             }
             var source = client(config);
             transport.send(
-                loads.current() || owner,
+                scope,
                 {
                     dataType: "json",
                     timeout: 10000,

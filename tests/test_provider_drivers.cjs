@@ -775,6 +775,35 @@ test("recursive editor save is cancelled synchronously and the visible draft rem
     assert.equal(f.reloads, 1);
 });
 
+test("guide credential reads retire completion on source, account and catalog replacement", () => {
+    for (const change of ["source", "save", "load"]) {
+        const f = fixture(stored()),
+            d = f.mount("xtream");
+        d.load(() => {});
+        f.requests[0].resolve({
+            live_streams: [{ name: "Channel", stream_id: 42 }],
+        });
+        const read = f.host.stbGetItem;
+        let entered = false,
+            completed = 0;
+        f.host.stbGetItem = (key) => {
+            const value = read(key);
+            if (!entered && key === "xtreamxtream_data") {
+                entered = true;
+                if (change === "source") f.mount("demo");
+                else if (change === "save")
+                    d.saveCredentials({ ...config, username: "new" });
+                else d.load(() => {});
+            }
+            return value;
+        };
+        d.guide(42, () => completed++);
+        assert(entered);
+        assert.equal(completed, 0);
+        assert.equal(f.requests.length, change === "load" ? 2 : 1);
+    }
+});
+
 console.log(
     "PASS typed provider instances: " +
         assertions +
