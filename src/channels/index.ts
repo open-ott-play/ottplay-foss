@@ -30,14 +30,6 @@ import {
     setActiveFavoritesList,
     syncFavoritesArrayFromActive,
 } from "./favorites-lists";
-import {
-    getFilteredChannelList,
-    getFilteredHistory,
-    historySearchText,
-    searchHistoryChannel,
-    searchText,
-    setSearchText,
-} from "./search";
 
 export type { FavoritesListsBlob };
 export {
@@ -46,13 +38,8 @@ export {
     favoritesArray,
     favoritesLists,
     getActiveFavoritesListName,
-    getFilteredChannelList,
-    getFilteredHistory,
-    historySearchText,
     listFavoritesLists,
     renameFavoritesList,
-    searchHistoryChannel,
-    searchText,
     setActiveFavoritesList,
 };
 
@@ -372,28 +359,6 @@ export let strFF = '<span class="fontello">&#xe802;</span>';
 export let strPREV = '<span class="fontello">&#xe806;</span>';
 export let strNEXT = '<span class="fontello">&#xe805;</span>';
 
-/** List of module state keys that should be persisted via the provider storage API. */
-export const persistedKeys: string[] = [
-    "catsArray",
-    "cats",
-    "favoritesArray",
-    "favoritesLists",
-    "parentalArray",
-    "catIndex",
-    "primaryIndex",
-    "prevArr",
-    "epgTimers",
-    "aAspects",
-    "aZooms",
-    "aAudios",
-    "aSubs",
-    "sSortAbc",
-    "sPlayers",
-    "medHistory",
-    "medFavorites",
-    "continueWatch",
-];
-
 /* Compatibility names are accessor views owned by SettingsStore. */
 declare var sNoSmall: number;
 declare var sStopPlay: number;
@@ -526,7 +491,7 @@ export let mediaNames: string[] = [],
 export let mediaRecords: MediaHistoryEntry[] = [];
 export let mediaRecordsPar: MediaHistoryEntry[] | null = null;
 export let mediaName = "";
-/* searchText + historySearchText: src/channels/search.ts (Phase D filter leaf). */
+
 export let searchInput = "",
     searchTimeout: any = null;
 export let archivePos = 0,
@@ -1099,18 +1064,7 @@ export function hasParentalLock(channelId: number): boolean {
  * Side effects: May call `window.enterPinAndSetAccess`, which shows a PIN dialog.
  */
 export function ifParentalAccess(callback: () => void): boolean {
-    if (
-        (window as any).OttPlayCore.classicParentalPrompt(
-            settings.psChannels,
-            window.parentPIN,
-            window.parentAccess
-        )
-    ) {
-        if (typeof window.enterPinAndSetAccess === "function")
-            window.enterPinAndSetAccess(callback);
-        return true;
-    }
-    return false;
+    return (window as any).__ottParental.require("channels", callback);
 }
 
 /**
@@ -1125,7 +1079,10 @@ export function ifParentalAccessChId(
     channelId: number,
     callback: () => void
 ): boolean {
-    if (hasParentalLock(channelId)) return ifParentalAccess(callback);
+    if (hasParentalLock(channelId))
+        return ifParentalAccess(
+            (window as any).__ottParental.guard(channelId, callback)
+        );
     return false;
 }
 
@@ -1973,30 +1930,6 @@ export function detailEPG(channelId: number): void {
     if (typeof w.scrollUp === "function") w.scrollUp("_prd", t, 5000);
     if (item.time > Date.now() / 1000) $("#bTimer").show();
     else $("#bTimer").hide();
-}
-
-/**
- * Render an array of EPG entries into a complete HTML string for use in
- * legacy view containers. Shows time range and optional description for each entry.
- *
- * @param epgData - Array of EPG entries to render.
- * @returns Concatenated HTML string (empty if input is null/empty).
- */
-export function renderEpgHTML(epgData: EPGEntry[]): string {
-    var html = "";
-    if (!(epgData && epgData.length)) return html;
-    epgData.forEach(function (entry: EPGEntry) {
-        html +=
-            '<div class="epg-entry"><span class="epg-time">' +
-            formatEpgTime(entry.time) +
-            '</span> <span class="epg-name">' +
-            entry.name +
-            "</span>";
-        if (entry.descr)
-            html += '<div class="epg-descr">' + entry.descr + "</div>";
-        html += "</div>";
-    });
-    return html;
 }
 
 /**
@@ -3479,7 +3412,6 @@ export function showActionsDialog(): void {
  * Caller: selectMedia() in stbPlayer.js — invoked only when
  * `e.search_on` is truthy.
  */
-/* searchHistoryChannel / getFilteredHistory / getFilteredChannelList: ./search.ts */
 
 export function searchMedia(e: MediaHistoryEntry): void {
     var w = window as any;
@@ -3883,103 +3815,7 @@ export function _enterPinCode(
     promptText: string,
     callback: (pin: string) => void
 ): void {
-    var pin = "";
-    var html = "";
-    var curIdx = 0;
-
-    function highlight(idx: number): void {
-        var k = document.getElementById("k" + curIdx);
-        if (k) {
-            k.style.backgroundColor = "";
-            k.style.color = "";
-        }
-        curIdx = idx;
-        if (curIdx < 0) curIdx = 9;
-        else if (curIdx > 9) curIdx = 0;
-        var next = document.getElementById("k" + curIdx);
-        if (next) {
-            next.style.backgroundColor = window.curColorB || "#668";
-            next.style.color = window.curColor || "gold";
-        }
-    }
-
-    /* build digit buttons: 1 2 3 4 5 6 7 8 9 0 */
-    for (var i = 0; i < 10; i++) {
-        var digit = i < 9 ? i + 1 : 0;
-        html +=
-            '<div id="k' +
-            digit +
-            '" style="display:inline-block;padding:6px;">' +
-            '<div class="btn" onclick="_doKey && _doKey(window.keys.N' +
-            digit +
-            ');">' +
-            digit +
-            "</div></div>";
-    }
-
-    if (!$("#dialogbox").length) return;
-    $("#dialogbox")
-        .html(
-            promptText +
-                '<br/><br/><span id="pin" style="font-size: 200%;">&nbsp;</span><br><br>' +
-                html
-        )
-        .show();
-    highlight(1);
-
-    window.dialogBoxKeyHandler = function (e: number): void {
-        switch (e) {
-            case window.keys.N0:
-            case window.keys.N1:
-            case window.keys.N2:
-            case window.keys.N3:
-            case window.keys.N4:
-            case window.keys.N5:
-            case window.keys.N6:
-            case window.keys.N7:
-            case window.keys.N8:
-            case window.keys.N9: {
-                // Native remotes use their own codes (Android digits are 7–16).
-                for (var digit = 0; digit < 10; digit++) {
-                    if (e === window.keys["N" + digit]) {
-                        pin += digit.toString();
-                        break;
-                    }
-                }
-                var pinEl = document.getElementById("pin");
-                if (pinEl)
-                    pinEl.innerHTML = "# # # # ".substr(0, pin.length * 2);
-                if (pin.length === 4) {
-                    $("#dialogbox").hide();
-                    window.dialogBoxKeyHandler = null;
-                    callback(pin);
-                }
-                return;
-            }
-            case window.keys.RETURN:
-                $("#dialogbox").hide();
-                window.dialogBoxKeyHandler = null;
-                callback("");
-                return;
-            case window.keys.LEFT:
-                highlight(curIdx - 1);
-                return;
-            case window.keys.RIGHT:
-                highlight(curIdx + 1);
-                return;
-            case window.keys.UP:
-                highlight(curIdx - 1);
-                return;
-            case window.keys.DOWN:
-                highlight(curIdx + 1);
-                return;
-            case window.keys.ENTER:
-                if (typeof window._doKey === "function") {
-                    window._doKey(window.keys["N" + curIdx]);
-                }
-                return;
-        }
-    };
+    (window as any).__ottParental.pin(promptText, callback);
 }
 
 /**
@@ -4014,18 +3850,7 @@ export function enterPinCode(
  * - Shows on-screen notification on failure.
  */
 export function setParentAccess(granted: boolean, callback: () => void): void {
-    window.parentAccess = granted;
-    if (granted) {
-        setTimeout(function () {
-            window.parentAccess = false;
-        }, 3600000); /* 1 hour */
-        callback();
-    } else {
-        if (typeof window.showShift === "function")
-            window.showShift(
-                window._("Wrong parental code !!!") || "Wrong parental code !!!"
-            );
-    }
+    (window as any).__ottParental.setAccess(granted, callback);
 }
 
 /**
@@ -4036,13 +3861,7 @@ export function setParentAccess(granted: boolean, callback: () => void): void {
  * Side effects: Shows PIN dialog; calls `setParentAccess`.
  */
 export function enterPinAndSetAccess(callback: () => void): void {
-    enterPinCode(
-        window._("Enter parental code") || "Enter parental code",
-        function (pin: string) {
-            if (!pin) return;
-            setParentAccess(pin === window.parentPIN, callback);
-        }
-    );
+    (window as any).__ottParental.request(callback);
 }
 
 /* ---------------------------------------------------------------------------
@@ -4066,7 +3885,7 @@ export function enterPinAndSetAccess(callback: () => void): void {
  * - Calls `window._setSetup` and `window.optionsList`.
  */
 export function parentControlSetup(): void {
-    if (window.parentPIN !== "*" && !window.parentAccess) {
+    if ((window as any).__ottParental.needs("control")) {
         enterPinAndSetAccess(parentControlSetup);
         return;
     }

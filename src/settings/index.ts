@@ -793,91 +793,191 @@ export function beginSettingsDraft(): SettingsDraft {
 }
 if (typeof window !== "undefined") installSettingsFacade(window as any);
 
-/**
- * Export envelope version 1.
- */
-export interface ExportEnvelopeV1 {
-    favoritesArray: number[];
-    parentalArray: number[];
-    settings: Omit<
-        PlayerSettings,
-        | "localHttpEnabled"
-        | "localHttpDeviceCode"
-        | "commandServerAddress"
-        | "commandServerToken"
-        | "commandServerEnabled"
-    >;
-    timestamp: number;
-    version: 1;
+/** Capture the account and storage ports across confirmation and every write. */
+function settingsBackupContext(): any {
+    var w = window as any;
+    var source = w.__ottSourceIdentity.current(w);
+    var get = w.providerGetItem,
+        set = w.providerSetItem,
+        del = w.providerDelItem;
+    function current(): boolean {
+        return (
+            source === w.__ottSourceIdentity.current(w) &&
+            get === w.providerGetItem &&
+            set === w.providerSetItem &&
+            del === w.providerDelItem
+        );
+    }
+    function port(key: string): any {
+        return {
+            read: function () {
+                return get ? get.call(w, key) : storage.get(key);
+            },
+            remove: function () {
+                if (!get) storage.del(key);
+                else if (del) del.call(w, key);
+                else set.call(w, key, "");
+            },
+            write: function (value: string) {
+                if (set) set.call(w, key, value);
+                else storage.set(key, value);
+            },
+        };
+    }
+    function document(): any {
+        function read(owner: any, key: string): any {
+            var value = owner && owner.document ? owner.document() : null;
+            return value === null
+                ? JSON.parse(port(key + source).read() || "null")
+                : value;
+        }
+        var tv = {
+            channels: read(w.__ottChannels, "channelLibrary:"),
+            favorites: read(w.__ottFavoritesLibrary, "favoritesLibrary:"),
+            sourceId: source,
+        };
+        if (!current() || !w.__ottLibraryBackup.validate(tv, source))
+            throw new Error("Library unavailable");
+        return tv;
+    }
+    return { current: current, document: document, port: port, source: source };
 }
 
-/**
- * Export current settings + channels state to JSON string (envelope v1).
- *
- * @returns JSON string containing settings, parentalArray, favoritesArray.
- *
- * @remarks
- * Uses providerGetJson to read parentalArray/favoritesArray from storage
- * (same keys used by channels/index.ts saveChannelsCats).
- */
+/** V2 carries stable references, including items absent from today's catalog. */
 export function exportSettings(): string {
-    // Consent and credentials belong to this installation, never a backup.
-    const exportedSettings = (
-        window as any
-    ).OttPlayCore.classicPortableSnapshot(settings, false);
-    const env: ExportEnvelopeV1 = {
-        favoritesArray: window.providerGetJson?.("favoritesArray", []) || [],
-        parentalArray: window.providerGetJson?.("parentalArray", []) || [],
-        settings: writeLegacySettingsFields(
-            exportedSettings
-        ) as ExportEnvelopeV1["settings"],
-        timestamp: Date.now(),
-        version: 1,
-    };
-    return JSON.stringify(env, null, 2);
+    var w = window as any,
+        context = settingsBackupContext();
+    var tv = context.document();
+    if (!tv.channels && !tv.favorites) {
+        var locked = context.port("parentalArray").read();
+        var favorites = context.port("favoritesArray").read();
+        if (locked || favorites)
+            tv = w.__ottLibraryBackup.legacy(
+                context.source,
+                JSON.parse(locked || "[]"),
+                JSON.parse(favorites || "[]"),
+                w.channels || {},
+                w.__ottLegacyChannelAliases,
+                tv,
+                w.__ottChannelReferences.create
+            );
+    }
+    if (!context.current()) throw new Error("Settings source changed");
+    return JSON.stringify(
+        {
+            settings: writeLegacySettingsFields(
+                w.OttPlayCore.classicPortableSnapshot(settings, false)
+            ),
+            timestamp: Date.now(),
+            tv: tv,
+            version: 2,
+        },
+        null,
+        2
+    );
 }
 
-/**
- * Import settings + channels state from JSON string (envelope v1).
- *
- * @param jsonStr - JSON string from exportSettings().
- * @param onConfirm - Callback when user confirms overwrite (for UI confirmBox).
- *
- * @remarks
- * Parses envelope, validates version, then:
- * 1. Restores PlayerSettings via saveSettings()
- * 2. Writes parentalArray/favoritesArray via providerSetItem()
- * 3. Reloads settings module state via loadSettings()
- * 4. Shows success via showShift()
- */
+/** Validate before confirmation; commit settings and library bytes together. */
 export function importSettings(
     jsonStr: string,
     onConfirm?: (ok: boolean) => void
 ): void {
-    let env: ExportEnvelopeV1;
-    try {
-        env = JSON.parse(jsonStr) as ExportEnvelopeV1;
-    } catch (_e) {
-        if (onConfirm) onConfirm(false);
-        return;
-    }
-
-    if (!(window as any).OttPlayCore.classicImportEnvelope(env)) {
-        if (onConfirm) onConfirm(false);
-        return;
-    }
-    var request = beginSettingsDraft();
+    var w = window as any,
+        request = settingsStore.begin(true),
+        context: any,
+        writes: any[] = [];
     var settled = false;
     function complete(accept: boolean): void {
         if (settled) return;
         settled = true;
-        var applied =
-            accept && request.active() && applyImport(env, request.active);
+        var applied = false;
+        try {
+            applied =
+                accept &&
+                request.active() &&
+                context.current() &&
+                applyImport(request, writes, context.current);
+        } catch (_error) {
+            /* A rejected import must never report success. */
+        }
         request.cancel();
         if (onConfirm) onConfirm(applied);
     }
-    if (typeof window.confirmBox === "function") {
-        window.confirmBox(
+    try {
+        var env = JSON.parse(jsonStr, function (key, value) {
+            if (
+                key === "__proto__" ||
+                key === "constructor" ||
+                key === "prototype"
+            )
+                throw new Error("Unsafe backup key");
+            return value;
+        });
+        if (
+            !env ||
+            (env.version !== 1 && env.version !== 2) ||
+            !env.settings ||
+            typeof env.settings !== "object" ||
+            Array.isArray(env.settings)
+        )
+            throw new Error("Invalid backup");
+        if (
+            env.version === 2 &&
+            (typeof env.timestamp !== "number" || !isFinite(env.timestamp))
+        )
+            throw new Error("Invalid timestamp");
+        context = settingsBackupContext();
+        var current = context.document();
+        var tv =
+            env.version === 1
+                ? w.__ottLibraryBackup.legacy(
+                      context.source,
+                      env.parentalArray === undefined ? [] : env.parentalArray,
+                      env.favoritesArray === undefined
+                          ? []
+                          : env.favoritesArray,
+                      w.channels || {},
+                      w.__ottLegacyChannelAliases,
+                      current,
+                      w.__ottChannelReferences.create
+                  )
+                : env.tv;
+        if (!w.__ottLibraryBackup.validate(tv, context.source))
+            throw new Error("Invalid library");
+        var input = readLegacySettingsFields(env.settings);
+        var installation = w.OttPlayCore.classicInstallationState(
+            settings,
+            false
+        );
+        Object.keys(installation).forEach(function (id) {
+            input[id] = installation[id];
+        });
+        settingsSchema.forEach(function (entry) {
+            if (
+                Object.prototype.hasOwnProperty.call(input, entry.id) &&
+                !request.set(entry.id, input[entry.id])
+            )
+                throw new Error("Invalid setting");
+        });
+        ["channels", "favorites"].forEach(function (name) {
+            if (tv[name] === null) return;
+            var port = context.port(
+                (name === "channels"
+                    ? "channelLibrary:"
+                    : "favoritesLibrary:") + context.source
+            );
+            writes.push({
+                after: JSON.stringify(tv[name]),
+                before: port.read(),
+                storage: port,
+            });
+        });
+    } catch (_error) {
+        complete(false);
+        return;
+    }
+    if (typeof w.confirmBox === "function")
+        w.confirmBox(
             "Overwrite current settings?",
             function () {
                 complete(true);
@@ -886,53 +986,35 @@ export function importSettings(
                 complete(false);
             }
         );
-    } else complete(true);
+    else complete(true);
 }
 
-function applyImport(env: ExportEnvelopeV1, admitted: () => boolean): boolean {
-    var remote = (window as any).__ottCommandServer;
-    if (remote)
-        remote.configure({
+function applyImport(
+    request: SettingsDraft,
+    writes: any[],
+    admitted: () => boolean
+): boolean {
+    var w = window as any;
+    if (!request.commit(writes, admitted)) {
+        if (w.showShift) w.showShift("Settings could not be saved");
+        return false;
+    }
+    if (!admitted()) return false;
+    if (w.__ottChannels) w.__ottChannels.reset();
+    if (!admitted()) return false;
+    if (w.__ottFavoritesLibrary) w.__ottFavoritesLibrary.reset();
+    if (!admitted()) return false;
+    if (w.__ottCommandServer)
+        w.__ottCommandServer.configure({
             address: settings.commandServerAddress,
             enabled: false,
             token: settings.commandServerToken,
         });
     if (!admitted()) return false;
-    // Ignore even explicitly injected credentials/consent in imported JSON.
-    // Importing ordinary preferences preserves this installation's own consent.
-    var saved = saveSettings({
-        ...(readLegacySettingsFields(
-            env.settings
-        ) as ExportEnvelopeV1["settings"]),
-        ...(window as any).OttPlayCore.classicInstallationState(
-            settings,
-            false
-        ),
-    });
-    if (!saved) {
-        if (typeof window.showShift === "function")
-            window.showShift("Settings could not be saved");
-        return false;
-    }
-    if (!admitted()) return false;
-    if (typeof window.providerSetItem === "function") {
-        window.providerSetItem(
-            "parentalArray",
-            JSON.stringify(env.parentalArray || [])
-        );
-        if (!admitted()) return false;
-        window.providerSetItem(
-            "favoritesArray",
-            JSON.stringify(env.favoritesArray || [])
-        );
-    }
-    if (!admitted()) return false;
     loadSettings();
-    if (typeof window.showShift === "function") {
-        window.showShift("Settings imported");
-    }
-    // Restart so live window.s* globals and channels module
-    // favoritesArray/parentalArray pick up the new data.
-    if (typeof window.restart === "function") window.restart();
+    if (!admitted()) return false;
+    if (w.showShift) w.showShift("Settings imported");
+    if (!admitted()) return false;
+    if (w.restart) w.restart();
     return true;
 }

@@ -7,6 +7,7 @@ const CLASSIC_MODULES = [
     "build/storage/index.js",
     "build/localization/index.js",
     "build/settings/cloud.js",
+    "build/settings/library-backup.js",
     "build/settings/store.js",
     "build/settings/index.js",
     "build/settings/editor.js",
@@ -17,8 +18,9 @@ const CLASSIC_MODULES = [
     "build/channels/types.js",
     "build/channels/channel-references.js",
     "build/channels/favorites-lists.js",
-    "build/channels/search.js",
     "build/provider/source-identity.js",
+    "build/access/session.js",
+    "build/access/classic-adapter.js",
     "build/playback/session.js",
     "build/playback/journal.js",
     "build/playback/classic-adapter.js",
@@ -85,6 +87,8 @@ const CLASSIC_MODULES = [
 // legacy bare-global ABI. These modules publish their API as window properties
 // and execute immediately at their original position in CLASSIC_MODULES.
 const CLASSIC_PRIVATE_MODULES = Object.freeze({
+    "build/access/classic-adapter.js": Object.freeze(["window.__ottParental"]),
+    "build/access/session.js": Object.freeze(["window.__ottAccessSession"]),
     "build/channels/channel-references.js": Object.freeze([
         "window.__ottChannelReferences",
     ]),
@@ -153,6 +157,9 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/provider/stalker-driver.js": Object.freeze([
         "window.__ottStalkerDriver",
+    ]),
+    "build/settings/library-backup.js": Object.freeze([
+        "window.__ottLibraryBackup",
     ]),
     "build/ui/classic-screen-port.js": Object.freeze([
         "window.__ottClassicScreenPort",

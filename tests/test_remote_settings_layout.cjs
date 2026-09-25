@@ -473,8 +473,16 @@ w.importSettingsUI();
 submit(envelope);
 confirmation.yes();
 assert.equal(stored.get("sLocalCmdUrl"), "http://lan/?literal=&amp;<text>");
-assert.equal(stored.get("parentalArray"), "[2]");
-assert.equal(stored.get("favoritesArray"), "[3]");
+const restoredSource = w.__ottSourceIdentity.current(w);
+assert.deepEqual(
+    JSON.parse(stored.get("channelLibrary:" + restoredSource)).locks,
+    ["unresolved:2"]
+);
+assert.deepEqual(
+    JSON.parse(stored.get("favoritesLibrary:" + restoredSource)).lists.lists
+        .Favorites,
+    [{ legacyId: 3, origin: "raw" }]
+);
 assert.equal(successes, 1);
 assert.equal(reloads, 1);
 assert.equal(restarts, 1);

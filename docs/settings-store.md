@@ -29,10 +29,28 @@ does not provide transactions: rollback can itself fail, and persistence may
 then be partially written until a subsequent reload. The implementation does
 not claim stronger atomicity than the backing storage supplies.
 
-Existing backup keys, version-1 aliases, provider scoping and installation-only
-credential exclusions remain at the compatibility boundary. Import reports
-failure if settings cannot be persisted. Existing raw cloud/backup payloads
-continue through their retained storage codecs and subsequent hydration.
+Portable JSON export now emits version 2. Its `tv` field contains the source
+identity and detached ChannelLibrary/FavoritesLibrary documents, retaining
+custom groups, hidden or missing items, preferences, unlocks and all favorite
+lists. Export fails on unreadable or unsupported owned state. Installation-only
+credentials and local consent remain excluded. Raw cloud/storage snapshots
+continue through their separate retained codecs.
+
+Import validates before opening confirmation and captures both source identity
+(including the account or M3U slot) and storage accessors. A foreign v2 source
+is rejected. Version-1 aliases remain accepted; numeric channel references are
+resolved as old raw IDs, and known collisions remain explicitly unresolved.
+V1 replaces the active favorite list and locks while preserving other lists,
+groups and preferences. It writes canonical documents even when migration
+claim markers already exist, without changing the old rollback arrays.
+
+The same SettingsDraft commit writes and reads back the canonical documents
+and settings before publishing runtime values. Concurrent library edits reject
+the confirmation. On failure it attempts rollback only while the captured
+source and accessors remain current, and does not overwrite later external
+writes. A source replacement stops the operation; legacy storage cannot promise
+cross-source or crash atomicity. Success retires the previous library owners,
+disables remote command control, reloads settings and restarts the player.
 Attribution and historical source fixtures remain unchanged.
 
 Verification covers draft cancellation, malformed values, storage rejection,

@@ -229,6 +229,56 @@ function currentFavoritesSource(): string {
     return (window as any).__ottSourceIdentity.current(window);
 }
 
+function favoriteLibrarySnapshot(index: any): any {
+    var lists: Record<string, ChannelReference[]> = Object.create(null);
+    var records: FavoriteReferenceList[] = [];
+    Object.keys(favoritesLists.lists).forEach(function (name) {
+        var view = favoritesLists.lists[name];
+        var prior: FavoriteReferenceList | undefined;
+        favoritesReferences.forEach(function (record) {
+            if (record.view === view) prior = record;
+        });
+        var references = mergeFavoriteReferences(view, prior, index);
+        lists[name] = references;
+        records.push(favoriteReferenceRecord(view, references, index, prior));
+    });
+    return {
+        document: {
+            lists: {
+                active: favoritesLists.active,
+                lists: lists,
+                order: favoritesLists.order.slice(),
+                v: 1,
+            },
+            sourceId: favoritesSource,
+            version: 2,
+        },
+        records: records,
+    };
+}
+
+function favoriteLibraryDocument(): any {
+    if (!favoritesOwner) return null;
+    if (!favoritesWritable || !favoritesOwner())
+        throw new Error("Favorites library is unavailable for backup");
+    var generation = favoritesGeneration;
+    var snapshot = favoriteLibrarySnapshot(favoritesReferenceIndex());
+    if (generation !== favoritesGeneration || !favoritesOwner())
+        throw new Error("Favorites source replaced during backup");
+    return JSON.parse(JSON.stringify(snapshot.document));
+}
+
+if (typeof window !== "undefined")
+    (window as any).__ottFavoritesLibrary = {
+        document: favoriteLibraryDocument,
+        reset: function () {
+            favoritesGeneration++;
+            favoritesOwner = null;
+            favoritesWritable = false;
+            favoritesReferences = [];
+        },
+    };
+
 export function saveFavoritesLists(): boolean {
     var w = window as any;
     if (!favoritesWritable || !favoritesOwner || !favoritesOwner())
@@ -251,30 +301,8 @@ export function saveFavoritesLists(): boolean {
     try {
         var index = favoritesReferenceIndex();
         if (!current()) return false;
-        var lists: Record<string, ChannelReference[]> = Object.create(null);
-        var records: FavoriteReferenceList[] = [];
-        Object.keys(favoritesLists.lists).forEach(function (name) {
-            var view = favoritesLists.lists[name];
-            var prior: FavoriteReferenceList | undefined;
-            favoritesReferences.forEach(function (record) {
-                if (record.view === view) prior = record;
-            });
-            var references = mergeFavoriteReferences(view, prior, index);
-            lists[name] = references;
-            records.push(
-                favoriteReferenceRecord(view, references, index, prior)
-            );
-        });
-        var text = JSON.stringify({
-            lists: {
-                active: favoritesLists.active,
-                lists: lists,
-                order: favoritesLists.order.slice(),
-                v: 1,
-            },
-            sourceId: source,
-            version: 2,
-        });
+        var snapshot = favoriteLibrarySnapshot(index);
+        var text = JSON.stringify(snapshot.document);
         var key = "favoritesLibrary:" + source;
         var prior = get.call(w, key);
         if (!current()) return false;
@@ -291,7 +319,7 @@ export function saveFavoritesLists(): boolean {
         }
         if (prior !== text) set.call(w, key, text);
         if (!current() || get.call(w, key) !== text || !current()) return false;
-        favoritesReferences = records;
+        favoritesReferences = snapshot.records;
         return true;
     } catch (_) {
         return false;

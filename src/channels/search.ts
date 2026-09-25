@@ -1,11 +1,4 @@
-/**
- * Search filter helpers leaf (Phase D).
- *
- * Pure/filter helpers extracted from channels/index.ts. Imported by that module;
- * listed on MODULES immediately before channels/index.js so concat+strip keeps
- * a single body per binding (not dual-listed with duplicate declarations).
- * Edit-key / heavy UI (searchChannel, searchMedia) stays in index.
- */
+/** Optional ESM filter helpers. The classic search screen owns its own query and selection. */
 
 /** Minimal history row shape used by getFilteredHistory. */
 export interface SearchHistoryEntry {

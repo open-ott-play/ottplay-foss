@@ -138,6 +138,11 @@ function channelLibraryChange(action: string, value?: any, extra?: any): any {
 
 (window as any).__ottChannels = {
     change: channelLibraryChange,
+    document: function () {
+        return channelLibraryInstance
+            ? channelLibraryInstance.document()
+            : null;
+    },
     group: function (index: number) {
         return channelLibraryView[index] && channelLibraryView[index].id;
     },

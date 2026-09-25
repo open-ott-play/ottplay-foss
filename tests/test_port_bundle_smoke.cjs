@@ -398,6 +398,8 @@ function fixture(profile) {
     );
     require("./helpers/shared-core-runtime.cjs")(w, { vendorOnly: true });
     for (const api of [
+        "__ottAccessSession",
+        "__ottParental",
         "__ottScreenController",
         "__ottScreens",
         "__ottInputRouter",
@@ -435,6 +437,8 @@ function fixture(profile) {
 
 function assertPrivateRuntime(w, profile) {
     for (const [api, method] of [
+        ["__ottAccessSession", "create"],
+        ["__ottParental", "request"],
         ["__ottScreenController", "create"],
         ["__ottScreens", "open"],
         ["__ottInputRouter", "create"],
@@ -495,6 +499,9 @@ function assertPrivateRuntime(w, profile) {
         Array.from(w.__ottProviderDriverProfiles, (profile) => profile.id)
     );
     for (const name of [
+        "createAccessSession",
+        "createClassicAccess",
+        "createPinEntry",
         "createScreenController",
         "createInputRouter",
         "createClassicScreenPort",
@@ -569,6 +576,122 @@ function assertPrivateRuntime(w, profile) {
             profile + ": private implementation exposed as bare global"
         );
     }
+}
+
+function exerciseAccessRuntime(profile) {
+    const w = fixture(profile);
+    vm.runInContext(bundle, w, { filename: bundlePath });
+    w.p_pref = "access-a";
+    w.parentPIN = "2468";
+    w.sPSchannels = 1;
+    let accepted = 0;
+    w.setParentAccess(true, () => accepted++);
+    const oldExpiry = [...fixtureTimers.get(w).values()].find(
+        (job) => job.delay === 3600000
+    );
+    assert(oldExpiry, "actual grant schedules hourly expiry");
+    w.setParentAccess(true, () => accepted++);
+    oldExpiry.fn();
+    assert.equal(
+        w.parentAccess,
+        true,
+        "old artifact timer cannot revoke renewed grant"
+    );
+    assert.equal(accepted, 2);
+    w.parentPIN = "9999";
+    w.parentPIN = "2468";
+    assert.equal(
+        w.parentAccess,
+        false,
+        "actual SettingsStore epochs reject a PIN ABA grant"
+    );
+    w.enterPinAndSetAccess(() => accepted++);
+    const entry = w.dialogBoxKeyHandler;
+    for (const digit of "2468") entry(w.keys["N" + digit]);
+    assert.equal(accepted, 3);
+    assert.equal(w.parentAccess, true);
+    w.parentAccess = false;
+    w.enterPinAndSetAccess(() => accepted++);
+    const changedPin = w.dialogBoxKeyHandler;
+    w.parentPIN = "9999";
+    w.parentPIN = "2468";
+    for (const digit of "2468") changedPin(w.keys["N" + digit]);
+    assert.equal(
+        accepted,
+        3,
+        "actual SettingsStore epochs reject a PIN ABA challenge"
+    );
+    w.enterPinAndSetAccess(() => accepted++);
+    const retired = w.dialogBoxKeyHandler;
+    w.p_pref = "access-b";
+    for (const digit of "2468") retired(w.keys["N" + digit]);
+    assert.equal(accepted, 3, "retired source cannot receive the PIN replay");
+    assert.equal(w.parentAccess, false);
+    console.log(
+        "OK: actual " +
+            profile +
+            " bundle PIN owner, renewal and source retirement"
+    );
+}
+
+function exerciseLibraryBackupRuntime(profile) {
+    const w = fixture(profile);
+    vm.runInContext(bundle, w, { filename: bundlePath });
+    const saved = new Map();
+    let accept,
+        outcome,
+        restarted = 0;
+    Object.assign(w, {
+        catIndex: 0,
+        channels: {
+            10: {
+                category: { name: "News" },
+                itemId: "stream:A",
+                legacyChannelId: 100,
+            },
+        },
+        cList: [10],
+        confirmBox: (_message, yes) => {
+            accept = yes;
+        },
+        p_pref: "backup-artifact",
+        primaryIndex: 0,
+        providerDelItem: (key) => saved.delete(key),
+        providerGetItem: (key) => saved.get(key) ?? null,
+        providerGetJson: (key, fallback) =>
+            JSON.parse(saved.get(key) || "null") || fallback,
+        providerSetItem: (key, value) => saved.set(key, value),
+        restart: () => restarted++,
+    });
+    w.loadFavoritesLists();
+    w.__ottChannels.mount(w);
+    const backup = JSON.parse(w.exportSettings());
+    assert.equal(backup.version, 2);
+    backup.tv.channels.locks = ["stream:A"];
+    backup.tv.favorites.lists.lists[backup.tv.favorites.lists.active] = [
+        { itemId: "stream:A" },
+        { itemId: "stream:missing" },
+    ];
+    w.importSettings(JSON.stringify(backup), (value) => {
+        outcome = value;
+    });
+    assert.equal(outcome, undefined);
+    accept();
+    assert.equal(outcome, true);
+    assert.equal(restarted, 1);
+    const restored = JSON.parse(w.exportSettings());
+    assert.deepEqual(restored.tv, backup.tv);
+    assert.equal(saved.has("favoritesArray"), false);
+    w.importSettings(JSON.stringify(backup), (value) => {
+        outcome = value;
+    });
+    w.p_pref = "backup-replacement";
+    accept();
+    assert.equal(outcome, false);
+    assert.equal(restarted, 1);
+    console.log(
+        "OK: actual " + profile + " bundle v2 backup and source-bound restore"
+    );
 }
 
 function exerciseMediaRuntime(profile) {
@@ -1632,6 +1755,8 @@ async function main() {
         }
         assertPrivateRuntime(w, profile);
         if (profile === "modern" || profile === "legacy") {
+            exerciseAccessRuntime(profile);
+            exerciseLibraryBackupRuntime(profile);
             exerciseScreenRuntime(profile);
             exercisePlaybackRuntime(w, profile);
             exerciseArchiveRuntime(profile);

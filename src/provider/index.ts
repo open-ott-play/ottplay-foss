@@ -570,7 +570,7 @@ declare var infoBox: (msg: string) => void;
  * for showProviderSelection. Always appends strTools button for showProviderSelection.
  */
 export function optionsList(fn?: () => void): void {
-    if (sPSoptions && parentPIN != "*" && !(window as any).parentAccess) {
+    if ((window as any).__ottParental.needs("settings")) {
         if (typeof (window as any).enterPinAndSetAccess === "function") {
             (window as any).enterPinAndSetAccess(optionsList as any);
         }
@@ -674,7 +674,7 @@ var providerSelectionUnlockCount = 0,
  */
 export function toggleProviderSelectionVisibility(): void {
     if (++providerSelectionUnlockCount < 7) return;
-    if (sPSprovs && parentPIN != "*" && !(window as any).parentAccess) {
+    if ((window as any).__ottParental.needs("providers")) {
         if (typeof (window as any).enterPinAndSetAccess === "function") {
             (window as any).enterPinAndSetAccess(
                 toggleProviderSelectionVisibility
@@ -700,7 +700,7 @@ export function toggleProviderSelectionVisibility(): void {
  */
 export function toggleProviderSettingsVisibility(): void {
     if (++providerSettingsUnlockCount < 7) return;
-    if (sPSoptions && parentPIN != "*" && !(window as any).parentAccess) {
+    if ((window as any).__ottParental.needs("settings")) {
         if (typeof (window as any).enterPinAndSetAccess === "function") {
             (window as any).enterPinAndSetAccess(
                 toggleProviderSettingsVisibility
@@ -855,6 +855,8 @@ export function loadProv(providerId?: string): void {
     var commandLoad = {};
     (window as any).__ottCommandChannelLoad = commandLoad;
     (window as any).commandChannelsReady = false;
+    (window as any).__ottParental.revoke();
+    if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
     if ((window as any).__ottClassicPlayback)
         (window as any).__ottClassicPlayback.cancel();
     if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
@@ -1318,7 +1320,7 @@ export function selectProviderByIndex(index: number): boolean {
         return false;
     var id = providerIds[index];
     if (!id || !isProviderAllowed(id)) return false;
-    if (sPSprovs && parentPIN !== "*" && !(window as any).parentAccess) {
+    if ((window as any).__ottParental.needs("providers")) {
         enterPinAndSetAccess(function (): void {
             selectProviderByIndex(providerIds.indexOf(id));
         });
@@ -1365,7 +1367,7 @@ export function selectProviderByIndex(index: number): boolean {
  * - RETURN from a non-dune setup calls firstRun(); otherwise calls optionsList.
  */
 export function showProviderSelection(): void {
-    if (sPSprovs && parentPIN !== "*" && !(window as any).parentAccess) {
+    if ((window as any).__ottParental.needs("providers")) {
         enterPinAndSetAccess(showProviderSelection);
         return;
     }

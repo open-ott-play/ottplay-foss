@@ -1,14 +1,20 @@
 /** Settings transfer/editor boundary; legacy window bindings live in index.ts. */
 /**
- * Export settings UI handler — serialises settings + channel arrays
- * to JSON envelope v1. Native shells show a copyable backup; browsers download it.
+ * Export settings UI handler — serialises settings + stable channel libraries
+ * to JSON envelope v2. Native shells show a copyable backup; browsers download it.
  *
  * Side effects: Creates a Blob download; no storage mutation.
  */
 export function exportSettingsUI(): void {
     var w = window as any;
     if (typeof w.exportSettings !== "function") return;
-    var jsonStr = w.exportSettings();
+    var jsonStr: string;
+    try {
+        jsonStr = w.exportSettings();
+    } catch (_error) {
+        if (w.showShift) w.showShift("Settings could not be exported");
+        return;
+    }
     if (
         typeof w.__TAURI__ !== "undefined" ||
         typeof w.Capacitor !== "undefined"
@@ -100,7 +106,7 @@ export function exportSettingsUI(): void {
     var blob = new Blob([jsonStr], { type: "application/json" });
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "ottplay-settings-v1.json";
+    a.download = "ottplay-settings-v2.json";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

@@ -135,13 +135,7 @@ import {
     updateArchiveInfo,
 } from "./channels";
 // Localization
-import {
-    _,
-    loadLanguage,
-    translate,
-    translations,
-    useGraphicIcons,
-} from "./localization";
+import { _, translate, translations, useGraphicIcons } from "./localization";
 // Settings
 import {
     applyTimezoneSetting,
@@ -2392,9 +2386,15 @@ function _playChannel(catIdx: number, chIdx: number): void {
                 Object.keys(providerGetJson("cats", {})).length
         );
     }
+    var requestedCategory = catsArray[catIdx];
+    var requestedId = cats[requestedCategory] && cats[requestedCategory][chIdx];
+    if (requestedId == null) return;
     if (
-        ifParentalAccessChId(cats[catsArray[catIdx]][chIdx], function () {
-            playChannel(catIdx, chIdx);
+        ifParentalAccessChId(requestedId, function () {
+            var category = catsArray.indexOf(requestedCategory);
+            var list = cats[requestedCategory];
+            var index = list ? list.indexOf(requestedId) : -1;
+            if (category >= 0 && index >= 0) playChannel(category, index);
         })
     ) {
         console.log("[playChannel] blocked by parental");
@@ -3758,7 +3758,7 @@ window._setSetup = function (
 window.stbOptions = function (): void {
     var w = window as any;
     var showPlayerChoice = w.ott_device !== "lg/webos";
-    if (w.sPSoptions && w.parentPIN !== "*" && !w.parentAccess) {
+    if (w.__ottParental.needs("settings")) {
         if (typeof w.enterPinAndSetAccess === "function")
             w.enterPinAndSetAccess(w.stbOptions);
         return;
@@ -4971,21 +4971,27 @@ window.previewChId = function (chId: number): void {
     clearTimeout(w.previewTimer);
     if (
         typeof w.ifParentalAccessChId === "function" &&
-        w.ifParentalAccessChId(chId, function () {
-            w.previewChId(chId);
-        })
+        w.ifParentalAccessChId(
+            chId,
+            w.__ottParental.guard(chId, function () {
+                w.previewChId(chId);
+            })
+        )
     )
         return;
-    w.previewTimer = setTimeout(function () {
-        if (w.sStopPlay && typeof w.stbStop === "function") w.stbStop();
-        w.previewChan = { c: 0, ch_id: chId, i: 0 };
-        if (typeof w.stbPlay === "function")
-            w.stbPlay(
-                typeof w.getChannelUrl === "function"
-                    ? w.getChannelUrl(chId)
-                    : null
-            );
-    }, 500);
+    w.previewTimer = setTimeout(
+        w.__ottParental.guard(chId, function () {
+            if (w.sStopPlay && typeof w.stbStop === "function") w.stbStop();
+            w.previewChan = { c: 0, ch_id: chId, i: 0 };
+            if (typeof w.stbPlay === "function")
+                w.stbPlay(
+                    typeof w.getChannelUrl === "function"
+                        ? w.getChannelUrl(chId)
+                        : null
+                );
+        }),
+        500
+    );
 };
 
 /**
@@ -5098,15 +5104,13 @@ window.addChannel2bucket = function (): void {
 window.parentChannel = function (): void {
     var w = window as any;
     if (!w.sPSchannels || w.parentPIN === "*") return;
-    if (!w.parentAccess) {
-        if (typeof w.enterPinAndSetAccess === "function")
-            w.enterPinAndSetAccess(w.parentChannel);
-        return;
-    }
     var chId = w.listArray[w.selIndex];
-    var pos = w.parentalArray.indexOf(chId);
-    w.__ottChannels.change("lock", chId, pos === -1);
-    if (typeof w.showPage === "function") w.showPage();
+    var apply = w.__ottParental.guard(chId, function () {
+        var pos = w.parentalArray.indexOf(chId);
+        w.__ottChannels.change("lock", chId, pos === -1);
+        if (typeof w.showPage === "function") w.showPage();
+    });
+    if (!w.__ottParental.require("channels", apply)) apply();
 };
 window.stbToggleZoom = stbToggleZoom;
 window.stbCSS = stbCSS;

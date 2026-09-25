@@ -182,6 +182,7 @@ function uiFixture() {
     w.window = w;
     vm.createContext(w);
     require("./helpers/screen-runtime.cjs")(w);
+    require("./helpers/access-runtime.cjs")(w);
     require("./helpers/private-runtime.cjs")(w, "src/provider/runtime.ts");
     require("./helpers/private-runtime.cjs")(
         w,

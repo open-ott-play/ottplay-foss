@@ -109,6 +109,7 @@ for (const [adapter, keys] of Object.entries(adapters)) {
     });
     const w = dom.window;
     require("./helpers/screen-runtime.cjs")(w);
+    require("./helpers/access-runtime.cjs")(w);
     try {
         w.eval(read("js/jquery-1.11.1.min.js"));
         const originalIs = w.$.fn.is;

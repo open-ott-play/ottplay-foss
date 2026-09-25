@@ -19,10 +19,15 @@ export interface SettingsPorts {
     effect(name: string): void;
     storage(definition: SettingDefinition): SettingStorage;
 }
+export interface SettingsWrite {
+    after: string;
+    before: string | null;
+    storage: SettingStorage;
+}
 export interface SettingsDraft {
     active(): boolean;
     cancel(): void;
-    commit(): boolean;
+    commit(writes?: SettingsWrite[], admitted?: () => boolean): boolean;
     error(): string;
     get(id: string): any;
     set(id: string, value: any): boolean;
@@ -36,6 +41,7 @@ export function createSettingsStore(
     var definitions: Record<string, SettingDefinition> = Object.create(null);
     var values: Record<string, any> = Object.create(null);
     var revision = 0;
+    var versions: Record<string, number> = Object.create(null);
     var context = ports.context();
     function copy(value: any): any {
         return Array.isArray(value) ? value.slice() : value;
@@ -52,10 +58,14 @@ export function createSettingsStore(
     function get(id: string): any {
         return copy(values[id]);
     }
+    function publish(id: string, value: any): void {
+        if (!equal(values[id], value)) versions[id] = (versions[id] || 0) + 1;
+        values[id] = copy(value);
+    }
     function observe(id: string, value: any): boolean {
         var entry = definitions[id];
         if (!entry || !entry.validate(value)) return false;
-        values[id] = copy(value);
+        publish(id, value);
         return true;
     }
     function reload(scope?: "application" | "provider"): void {
@@ -85,7 +95,7 @@ export function createSettingsStore(
         });
         if (generation !== revision || source !== ports.context()) return;
         Object.keys(loaded).forEach(function (id) {
-            values[id] = loaded[id];
+            publish(id, loaded[id]);
         });
     }
     function begin(persistCurrent = false): SettingsDraft {
@@ -115,8 +125,16 @@ export function createSettingsStore(
                 open = false;
                 pending = {};
             },
-            commit: function () {
-                if (!active()) {
+            commit: function (
+                additional = [],
+                admitted = function () {
+                    return true;
+                }
+            ) {
+                function current(): boolean {
+                    return active() && admitted();
+                }
+                if (!current()) {
                     message = "Settings source changed";
                     return false;
                 }
@@ -131,12 +149,14 @@ export function createSettingsStore(
                     message = "Settings changed while editing";
                     return false;
                 }
-                var writes: Array<{
-                    storage: SettingStorage;
-                    before: string | null;
-                    after: string;
-                }> = [];
+                var writes: SettingsWrite[] = [];
+                var attempted = 0;
                 try {
+                    additional.forEach(function (write) {
+                        if (write.storage.read() !== write.before)
+                            throw new Error("Backup state changed");
+                    });
+                    writes = additional.slice();
                     changes.forEach(function (id) {
                         var entry = definitions[id],
                             storage = ports.storage(entry);
@@ -149,17 +169,19 @@ export function createSettingsStore(
                         });
                     });
                     for (var i = 0; i < writes.length; i++) {
-                        if (!active())
+                        if (!current())
                             throw new Error("Settings source changed");
+                        attempted = i + 1;
                         writes[i].storage.write(writes[i].after);
                         if (writes[i].storage.read() !== writes[i].after)
                             throw new Error("Settings storage rejected write");
                     }
-                    if (!active()) throw new Error("Settings source changed");
+                    if (!current()) throw new Error("Settings source changed");
                 } catch (error) {
                     // Roll back only the captured keys. Do not touch a newer external write.
-                    for (var j = writes.length - 1; j >= 0; j--) {
+                    for (var j = attempted - 1; j >= 0; j--) {
                         try {
+                            if (!admitted()) break;
                             if (writes[j].storage.read() !== writes[j].after)
                                 continue;
                             if (writes[j].before === null)
@@ -178,13 +200,17 @@ export function createSettingsStore(
                 open = false;
                 var effects: string[] = [];
                 changes.forEach(function (id) {
-                    values[id] = copy(pending[id]);
+                    publish(id, pending[id]);
                     definitions[id].effects.forEach(function (name) {
                         if (effects.indexOf(name) === -1) effects.push(name);
                     });
                 });
                 effects.forEach(function (name) {
-                    if (generation !== revision || source !== ports.context())
+                    if (
+                        generation !== revision ||
+                        source !== ports.context() ||
+                        !admitted()
+                    )
                         return;
                     try {
                         ports.effect(name);
@@ -224,5 +250,12 @@ export function createSettingsStore(
         observe: observe,
         reload: reload,
         schema: schema.slice(),
+        version: function (ids: string[]): string {
+            return ids
+                .map(function (id) {
+                    return versions[id] || 0;
+                })
+                .join(":");
+        },
     };
 }
