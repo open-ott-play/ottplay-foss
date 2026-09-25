@@ -4,25 +4,25 @@ const assert = require("node:assert/strict");
 const origin = "https://ott-demo.invalid";
 const fixture = "https://liminal-sketch-vv8r.here.now";
 const types = {
+    ".css": "text/css",
     ".html": "text/html",
     ".js": "text/javascript",
-    ".css": "text/css",
     ".json": "application/json",
-    ".svg": "image/svg+xml",
     ".png": "image/png",
+    ".svg": "image/svg+xml",
+    ".ttf": "font/ttf",
     ".woff": "font/woff",
     ".woff2": "font/woff2",
-    ".ttf": "font/ttf",
 };
 module.exports = {
-    name: "ott-first-run-and-demo-playback",
-    privateGeometry: false,
     chromium: () => require("@playwright/test").chromium,
+    name: "ott-first-run-and-demo-playback",
     preflight: async (root) => {
         for (const file of ["dist/index.html", "dist/stbPlayer.js"])
             if (!fs.existsSync(path.join(root, file)))
                 throw new Error("Build first: npm ci && npm run build");
     },
+    privateGeometry: false,
     route: async (route, root) => {
         const url = new URL(route.request().url());
         if (
@@ -36,8 +36,8 @@ module.exports = {
                         "tests/fixtures/media-runtime",
                         url.pathname.endsWith("m3u8")
                             ? "index.m3u8"
-                            : "segment00.ts",
-                    ),
+                            : "segment00.ts"
+                    )
                 ),
                 contentType: url.pathname.endsWith("m3u8")
                     ? "application/vnd.apple.mpegurl"
@@ -62,7 +62,7 @@ module.exports = {
             !fs.statSync(file).isFile() ||
             !fs.realpathSync(file).startsWith(fs.realpathSync(dist) + path.sep)
         )
-            return route.fulfill({ status: 404, body: "" });
+            return route.fulfill({ body: "", status: 404 });
         return route.fulfill({
             body: fs.readFileSync(file),
             contentType:
@@ -71,7 +71,7 @@ module.exports = {
     },
     run: async (page, checkpoint) => {
         await page.addInitScript(() =>
-            localStorage.setItem("ottplaylang", "_eng"),
+            localStorage.setItem("ottplaylang", "_eng")
         );
         await page.goto(origin + "/f/pc/");
         await page
@@ -81,7 +81,7 @@ module.exports = {
         await checkpoint("first-run");
         await page.keyboard.press("Enter");
         await page.waitForFunction(
-            () => window.__ottActiveProviderDriver?.id === "demo",
+            () => window.__ottActiveProviderDriver?.id === "demo"
         );
         // Select the HLS demo channel backed by the checked-in synthetic fixture.
         await page.waitForFunction(() => window.cList?.length >= 2);
@@ -99,7 +99,7 @@ module.exports = {
         });
         assert.equal(
             await page.evaluate(() => localStorage.getItem("ottplayprov")),
-            "demo",
+            "demo"
         );
         await checkpoint("demo-playback");
         await page.keyboard.press("Enter");

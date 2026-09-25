@@ -14,33 +14,33 @@ async function main() {
                 root,
                 ".local-artifacts",
                 "demo-video",
-                new Date().toISOString().replace(/[:.]/g, "-"),
-            ),
+                new Date().toISOString().replace(/[:.]/g, "-")
+            )
     );
     if (fs.existsSync(output))
         throw new Error(
-            "Output directory already exists; choose a new recording directory.",
+            "Output directory already exists; choose a new recording directory."
         );
     const chromium = scenario.chromium();
     await scenario.preflight(root);
-    fs.mkdirSync(output, { recursive: true, mode: 0o700 });
+    fs.mkdirSync(output, { mode: 0o700, recursive: true });
     const browser = await chromium.launch({
-        headless: true,
-        executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined,
         args: [
             "--enable-webgl",
             "--use-angle=swiftshader",
             "--enable-unsafe-swiftshader",
         ],
+        executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined,
+        headless: true,
     });
     const checkpoints = [],
         errors = [];
     let context;
     try {
         context = await browser.newContext({
-            viewport: { width: 1280, height: 720 },
-            recordVideo: { dir: output, size: { width: 1280, height: 720 } },
+            recordVideo: { dir: output, size: { height: 720, width: 1280 } },
             serviceWorkers: "block",
+            viewport: { height: 720, width: 1280 },
         });
         await context.route("**/*", (route) => scenario.route(route, root));
         await context.routeWebSocket("**/*", (socket) => socket.close());
@@ -56,9 +56,9 @@ async function main() {
                 timeout: 180000,
             });
             checkpoints.push({
+                image,
                 label,
                 seconds: (Date.now() - started) / 1000,
-                image,
             });
             // Intentional reading time in the recorded demo, not a readiness wait.
             await page.waitForTimeout(1400);
@@ -75,19 +75,19 @@ async function main() {
             path.join(output, "recording.json"),
             JSON.stringify(
                 {
-                    version: 1,
-                    scenario: scenario.name,
-                    source: "screen.webm",
-                    resolution: "1280x720",
                     audio: false,
-                    network: "local fixtures only; all WebSockets blocked",
-                    private_geometry: scenario.privateGeometry,
                     checkpoints,
                     errors,
+                    network: "local fixtures only; all WebSockets blocked",
+                    private_geometry: scenario.privateGeometry,
+                    resolution: "1280x720",
+                    scenario: scenario.name,
+                    source: "screen.webm",
+                    version: 1,
                 },
                 null,
-                2,
-            ) + "\n",
+                2
+            ) + "\n"
         );
         console.log(recording);
     } finally {
