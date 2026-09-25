@@ -18,7 +18,6 @@ const CLASSIC_MODULES = [
     "build/channels/types.js",
     "build/channels/channel-references.js",
     "build/channels/favorites-lists.js",
-    "build/channels/search.js",
     "build/provider/source-identity.js",
     "build/access/session.js",
     "build/access/classic-adapter.js",
