@@ -46,8 +46,9 @@ Capacitor core does not replace the App plugin's different copyright statement.
 Every profile ships the same npm-locked **hls.js 1.7.3** UMD distribution.
 `js/runtime-polyfills.js` contains **core-js 3.50.0** (MIT) and the project's web
 API shims (MIT). It executes before third-party libraries in each page and is
-prepended to the standalone `js/hls.worker.js`. The worker is a modified
-distribution with its compatibility prelude identified in the generated file.
+imported synchronously by the ES5 loader in `js/hls.worker.js`. The worker is a
+modified distribution with its versioned compatibility loader identified in the
+generated file; the upstream worker bytes following that loader are unchanged.
 `js/media-runtime.json` records inputs and output hashes. Runtime packages retain
 [core-js notices](js/licenses/core-js-LICENSE.txt),
 [hls.js notices](js/licenses/hls.js-LICENSE.txt),

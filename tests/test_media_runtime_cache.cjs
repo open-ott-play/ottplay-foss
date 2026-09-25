@@ -90,9 +90,15 @@ function fixtureBuild() {
     const outputs = {
         "hls.min.js": read("node_modules/hls.js/dist/hls.min.js"),
         "hls.worker.js": Buffer.concat([
-            Buffer.from(runtime),
             Buffer.from(
-                "\n/* Upstream hls.js worker; compatibility bootstrap prepended. */\n"
+                "/*! OTT-play ES5 worker bootstrap; shared runtime and licenses in js/. */\n" +
+                    'importScripts("./runtime-polyfills.js?v=' +
+                    runtimeVersion +
+                    '");\n' +
+                    "if (self.__ottRuntimePolyfillsReady !== true || self.__ottMediaRuntimeVersion !== " +
+                    JSON.stringify(runtimeVersion) +
+                    ') { throw new Error("OTT-play worker runtime mismatch"); }\n' +
+                    "/* Upstream hls.js worker follows unchanged. */\n"
             ),
             read("node_modules/hls.js/dist/hls.worker.js"),
         ]),
@@ -195,6 +201,48 @@ async function main() {
     });
     await invalidates("missing worker", () => {
         fs.unlinkSync(path.join(root, "js/hls.worker.js"));
+    });
+    function rewriteWorker(rewrite) {
+        const worker = rewrite(read("js/hls.worker.js").toString());
+        write("js/hls.worker.js", worker);
+        const manifest = JSON.parse(read("js/media-runtime.json"));
+        manifest.assets["hls.worker.js"] = sha(worker);
+        write("js/media-runtime.json", JSON.stringify(manifest));
+    }
+    // Even a matching asset hash cannot authorize a different loader or upstream
+    // suffix. The auditor reconstructs the entire versioned worker recipe.
+    await invalidates(
+        "worker imports stale runtime despite matching hash",
+        () => {
+            rewriteWorker((worker) =>
+                worker.replace(
+                    /runtime-polyfills\.js\?v=[a-f0-9]+/,
+                    "runtime-polyfills.js?v=old"
+                )
+            );
+        }
+    );
+    await invalidates(
+        "worker readiness guard removed despite matching hash",
+        () => {
+            rewriteWorker((worker) =>
+                worker.replace(
+                    /^if \(self\.__ottRuntimePolyfillsReady[^\n]*\n/m,
+                    ""
+                )
+            );
+        }
+    );
+    await invalidates("worker upstream modified despite matching hash", () => {
+        rewriteWorker(
+            (worker) => worker + "\nself.extraWorkerBehavior = true;\n"
+        );
+    });
+    await invalidates("changed upstream worker bytes", () => {
+        write(
+            "node_modules/hls.js/dist/hls.worker.js",
+            "self.onmessage = function changedWorker() {};\n"
+        );
     });
     await invalidates("changed upstream HLS bytes", () => {
         write(
