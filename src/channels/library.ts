@@ -517,6 +517,11 @@ function createChannelLibrary(
                 ? id
                 : null;
         },
+        document: function (): LibraryDocument {
+            if (!writable || readFailed || !ports.current())
+                throw new Error("Channel library is unavailable for backup");
+            return clone(state!);
+        },
         itemId: function (id: number): string | null {
             return ids[String(id)] || null;
         },
