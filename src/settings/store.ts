@@ -20,9 +20,67 @@ export interface SettingsPorts {
     storage(definition: SettingDefinition): SettingStorage;
 }
 export interface SettingsWrite {
-    after: string;
+    after: string | null;
     before: string | null;
     storage: SettingStorage;
+}
+
+/** Persist captured bytes without publishing runtime state or adopting another owner. */
+export function commitSettingsWrites(
+    writes: SettingsWrite[],
+    current: () => boolean,
+    rollbackAllowed: () => boolean
+): void {
+    var batch = writes.map(function (write) {
+        return {
+            after: write.after,
+            before: write.before,
+            storage: write.storage,
+        };
+    });
+    var attempted = 0;
+    function requireCurrent(): void {
+        if (!current()) throw new Error("Settings source changed");
+    }
+    function checkBefore(write: SettingsWrite): void {
+        requireCurrent();
+        var actual = write.storage.read();
+        requireCurrent();
+        if (actual !== write.before) throw new Error("Backup state changed");
+    }
+    try {
+        requireCurrent();
+        batch.forEach(checkBefore);
+        for (var i = 0; i < batch.length; i++) {
+            var write = batch[i];
+            checkBefore(write);
+            attempted = i + 1;
+            if (write.after === null) write.storage.remove();
+            else write.storage.write(write.after);
+            requireCurrent();
+            var actual = write.storage.read();
+            requireCurrent();
+            if (actual !== write.after)
+                throw new Error("Settings storage rejected write");
+        }
+        requireCurrent();
+    } catch (error) {
+        // Roll back only attempted keys whose bytes still belong to this batch.
+        for (var j = attempted - 1; j >= 0; j--) {
+            try {
+                if (!rollbackAllowed()) break;
+                var write = batch[j];
+                var actual = write.storage.read();
+                if (!rollbackAllowed()) break;
+                if (actual !== write.after) continue;
+                if (write.before === null) write.storage.remove();
+                else write.storage.write(write.before);
+            } catch (_rollback) {
+                /* Preserve the original failure; a caller must not publish state. */
+            }
+        }
+        throw error;
+    }
 }
 export interface SettingsDraft {
     active(): boolean;
@@ -150,7 +208,6 @@ export function createSettingsStore(
                     return false;
                 }
                 var writes: SettingsWrite[] = [];
-                var attempted = 0;
                 try {
                     additional.forEach(function (write) {
                         if (write.storage.read() !== write.before)
@@ -168,32 +225,8 @@ export function createSettingsStore(
                             storage: storage,
                         });
                     });
-                    for (var i = 0; i < writes.length; i++) {
-                        if (!current())
-                            throw new Error("Settings source changed");
-                        attempted = i + 1;
-                        writes[i].storage.write(writes[i].after);
-                        if (writes[i].storage.read() !== writes[i].after)
-                            throw new Error("Settings storage rejected write");
-                    }
-                    if (!current()) throw new Error("Settings source changed");
+                    commitSettingsWrites(writes, current, admitted);
                 } catch (error) {
-                    // Roll back only the captured keys. Do not touch a newer external write.
-                    for (var j = attempted - 1; j >= 0; j--) {
-                        try {
-                            if (!admitted()) break;
-                            if (writes[j].storage.read() !== writes[j].after)
-                                continue;
-                            if (writes[j].before === null)
-                                writes[j].storage.remove();
-                            else
-                                writes[j].storage.write(
-                                    writes[j].before as string
-                                );
-                        } catch (_rollback) {
-                            /* Failure is exposed; runtime never adopts a partial commit. */
-                        }
-                    }
                     message = String(error);
                     return false;
                 }
