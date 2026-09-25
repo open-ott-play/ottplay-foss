@@ -11,3 +11,6 @@ strip = true
 # safety fix without advertising a different upstream version (see vendor/README.md).
 [patch.crates-io]
 glib = { path = "vendor/glib-0.18.5" }
+# Keep macOS drag callbacks safe when a pasteboard advertises unreadable data.
+wry = { path = "vendor/wry-0.55.1" }
+tao = { path = "vendor/tao-0.35.3" }

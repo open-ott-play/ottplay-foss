@@ -9,3 +9,13 @@
 # Receipt-pinned compiler output must have identical bytes on every host.
 /vendor/ottplay-core.* -text
 /licenses/native/* -text
+
+# Preserve the published bytes used by native dependency provenance checks.
+/vendor/wry-0.55.1/** -text
+/vendor/tao-0.35.3/** -text
+/vendor/wry-0.55.1.provenance.json -text
+/vendor/tao-0.35.3.provenance.json -text
+# Unified diff context deliberately contains single-space empty lines.
+/vendor/*-macos-drag-pasteboard.patch -text whitespace=-blank-at-eol
+# Preserve this upstream document verbatim, including its trailing space.
+/vendor/wry-0.55.1/SECURITY.md whitespace=-blank-at-eol

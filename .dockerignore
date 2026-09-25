@@ -36,6 +36,8 @@ deploy.sh
 local_proxy.py
 .venv/
 
-# glib embeds this upstream documentation in its Rust library at compile time.
+# These vendored crates embed their upstream README at compile time.
 !vendor/glib-0.18.5/README.md
+!vendor/wry-0.55.1/README.md
+!vendor/tao-0.35.3/README.md
 .local-ops/

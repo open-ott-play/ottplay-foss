@@ -184,6 +184,8 @@ jobs:
         run: cargo test --locked -p ottplay-core -p ottplay-server
       - name: Verify published GLib source and security backport
         run: node scripts/check-glib-backport.cjs
+      - name: Verify native drag pasteboard dependency guards
+        run: node scripts/check-macos-drag-backport.cjs
       - name: Install GLib for optimized iterator regression
         run: sudo apt-get update && sudo apt-get install -y libglib2.0-dev pkg-config
       - name: Exercise patched GLib iterator through FFI in release mode
