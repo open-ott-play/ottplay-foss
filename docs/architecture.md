@@ -184,6 +184,15 @@ ownership. Playback operation `guard()` cancels the previous pending operation
 and allocates a new ticket. Read the relevant implementation before sharing a
 lifetime helper between these modules.
 
+Ownership checks should read scalar state, while exported views remain detached.
+For example, the media library exposes `revision()` and `highlight(index)` for
+screen cleanup and navigation without copying a catalog; `select(index)` and
+`snapshot()` retain their copying contracts. A revision checks operation lifetime,
+not selection identity: `capture()` additionally observes the selected row.
+The [media contract](media-library.md) documents this distinction and tests it
+with observable payload reads in source and emitted bundles. Avoid turning an
+allocation optimization into a shared mutable snapshot or a second state owner.
+
 ## Provider contract and release boundary
 
 [driver-profiles.ts](../src/provider/driver-profiles.ts) is the single managed

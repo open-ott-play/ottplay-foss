@@ -5,12 +5,26 @@ resolution. Its injected ports describe provider rows, load a page and render a
 detached view. Back, replacement and close revoke pending completions before
 calling transport cleanup. Incremental page updates have the same frame lifetime.
 
+Navigation reads have different copying contracts. `revision()` reads the current
+operation generation without traversing frames. `highlight(index)` changes owned
+selection without returning an item or copying its metadata; missing rows leave
+selection unchanged. `select(index)` still returns a detached selected item, and
+`snapshot()` still detaches the complete view for consumers. Use `capture()` when
+work must also be invalidated by a selection change: highlighting another row
+does not increment the operation generation.
+
 `src/media/classic-adapter.ts` translates existing provider and UI ports. The
 `mediaRecords`, `mediaUrls`, `mediaNames`, `mediaSelects`, `medHistory` and
 `medFavorites` globals are compatibility projections. The active consumer uses
 owned frames and explicit catalog/history/favorites routes; numeric history
 routes are accepted only by the old public facade. The playback sentinel remains
 an output/legacy codec in the playback adapter, rather than a media identity.
+
+The adapter checks scalar revision when highlighting or releasing a screen, and
+captures one detached frame for each favorite action. Reading the same snapshot
+repeatedly would copy the entire navigation stack, including nested provider
+metadata. Keep detached publication at the boundary without introducing a second
+mutable catalog cache for these inexpensive ownership checks.
 
 An item is identified by `(sourceId, itemId)`. The shared source identity includes
 the provider account and playlist slot, and Edem's separate media portal. Provider
@@ -43,3 +57,9 @@ The implementation compiles to the existing ES5 bundle and requires no new brows
 APIs. Tests cover real UI/playback entrypoints, detached frames, cold URL renewal,
 account/slot isolation, cancellation and reentry, quality selection, lazy Edem
 pages, journal failures and full compiled-artifact startup.
+
+`tests/helpers/media-read-cost.cjs` uses 1,000 records with observable payload
+getters to verify that scalar reads and highlighting do not traverse metadata;
+it also verifies selection-guard invalidation and detached item/view results.
+The source media suite and actual bundle smoke execute this contract. These are
+deterministic allocation/work checks, not elapsed-time measurements on a TV.
