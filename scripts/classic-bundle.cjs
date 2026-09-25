@@ -39,6 +39,7 @@ const CLASSIC_MODULES = [
     "build/guide/classic-screen.js",
     "build/guide/classic-reminders.js",
     "build/channels/index.js",
+    "build/channels/classic-search.js",
     "build/debug/playback-debug.js",
     "build/core/auto-playback.js",
     "build/core/native-hls.js",
@@ -95,6 +96,9 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/channels/classic-library.js": Object.freeze([
         "window.__ottChannels",
+    ]),
+    "build/channels/classic-search.js": Object.freeze([
+        "window.__ottChannelSearch",
     ]),
     "build/channels/library.js": Object.freeze(["window.__ottChannelLibrary"]),
     "build/debug/playback-debug.js": Object.freeze(["window.__ottDebug"]),

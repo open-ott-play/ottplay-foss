@@ -5,10 +5,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { gzipSync } = require("node:zlib");
 
-// The owned cloud transfer adds strict lossless UTF-16 decoding and guarded
-// replacement/rollback. Reserve its measured ~3.5k raw / ~1.5k gzip increase;
-// retain the same ES5 optimizer and all three final-artifact checks.
-const BUDGET = Object.freeze({ bytes: 654000, gzipBytes: 186000 });
+// Cloud transfer and source/catalog-owned search add checked state transitions.
+// Search/XML cleanup fits the existing raw budget; allow another 750 gzip bytes
+// for search ownership without relaxing ES5/ABI or final-artifact checks.
+const BUDGET = Object.freeze({ bytes: 654000, gzipBytes: 186750 });
 const ARTIFACTS = Object.freeze([
     "dist/stbPlayer.js",
     "src-tauri/frontend/dist/stbPlayer.js",

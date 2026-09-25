@@ -1019,28 +1019,7 @@ function handleTouchMove(e: any): void {
 }
 
 /**
- * Legacy handler for `touchend` — only handles the 3-finger tap → SETUP case.
- * This is a subset of `body_handleTouchEnd` and is now primarily unused (body_handleTouchEnd replaces it for the body listener).
- *
- * @param e - The TouchEvent object (typed as `any` for compatibility).
- * @returns void
- * @sideeffect Dispatches SETUP key via `window._doKey`. Resets `xDown`, `yDown`, `tCount`.
- * @analysis Only triggers on exactly 3 touch points. Resets tracking state unconditionally after processing.
- */
-function handleTouchEnd(e: any): void {
-    if (
-        tCount === 3 &&
-        Math.abs(xUp! - xDown!) < touch_min_sensX * 5 &&
-        Math.abs(yUp! - yDown!) < touch_min_sensY * 2
-    )
-        (window as any)._doKey((window as any).keys.SETUP);
-    xDown = null as number | null;
-    yDown = null as number | null;
-    tCount = undefined as number | undefined;
-}
-
-/**
- * Handle the `touchend` event on the document body (replaces the legacy handleTouchEnd).
+ * Handle the `touchend` event on the document body.
  * Maps multi-finger gestures to remote control keys:
  * - 3-finger tap → SETUP
  * - 2-finger swipe → color keys (RED/GREEN/YELLOW/BLUE) or tap → ENTER
@@ -1060,7 +1039,7 @@ function body_handleTouchEnd(e: any): void {
     e.preventDefault();
     if (e.touches.length === 0) {
         if (tCount === 3) {
-            // 3-finger tap → SETUP (from handleTouchEnd)
+            // 3-finger tap → SETUP
             if (
                 checkTap(
                     xDown!,

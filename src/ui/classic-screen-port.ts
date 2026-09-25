@@ -24,6 +24,7 @@ function createClassicScreenPort(host: any) {
         owner: ScreenOwner | null;
     }> = [];
     var editorSave: any = null;
+    var committingEditor: ScreenOwner | null = null;
     var editorState = { caption: "", cursor: 0, value: "" };
     var visibleList = false;
     var intent = 0;
@@ -253,6 +254,7 @@ function createClassicScreenPort(host: any) {
         return listOwner!;
     }
     function closeList() {
+        intent++;
         visibleList = false;
         var previous = listOwner;
         listOwner = null;
@@ -275,7 +277,13 @@ function createClassicScreenPort(host: any) {
         // restorePanel commits it; a callback opening another screen owns teardown.
         close("editor");
         var before = screens.revision();
-        if (save && typeof callback === "function") callback();
+        var previousCommit = committingEditor;
+        committingEditor = save ? owner : null;
+        try {
+            if (save && typeof callback === "function") callback();
+        } finally {
+            committingEditor = previousCommit;
+        }
         if (before === screens.revision()) cleanup();
     }
     function invalidate() {
@@ -395,6 +403,15 @@ function createClassicScreenPort(host: any) {
         }
     );
     var port = {
+        acceptsEditorSave: function (owner: ScreenOwner | null) {
+            return (
+                !!owner &&
+                (owner.foreground() ||
+                    (owner === committingEditor &&
+                        (!owner.model.parent ||
+                            owner.model.parent.foreground())))
+            );
+        },
         close: close,
         closeList: closeList,
         commitList: commitList,
@@ -497,6 +514,9 @@ function createClassicScreenPort(host: any) {
             return snapshot && (!snapshot.owner || snapshot.owner.active())
                 ? snapshot.value
                 : null;
+        },
+        revision: function () {
+            return intent + screens.revision();
         },
         savedPanel: function () {
             return panelStack.length

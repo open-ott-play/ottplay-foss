@@ -17951,8 +17951,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
     while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
       var element = _iterator__ex2g4s.next_20eer_k$();
       var lines = split_0(element, charArrayOf([_Char___init__impl__6a9atx(10)]));
-      var title = getOrNull_0(split_0(lines.get_c1px32_k$(0), charArrayOf([_Char___init__impl__6a9atx(44)])), 1);
-      var url = next(OperatorPlaylist_instance, lines, true);
+      var comma = Playlist_getInstance().titleComma_xhrjer_k$(lines.get_c1px32_k$(0));
+      var title = comma < 0 ? null : substring_0(lines.get_c1px32_k$(0), comma + 1 | 0);
+      var url = Playlist_getInstance().recordUri$default_2uu9u7_k$(lines);
       var tmp;
       // Inline function 'kotlin.text.isEmpty' call
       if (charSequenceLength(url) === 0) {
@@ -21492,6 +21493,9 @@ if (typeof String.prototype.startsWith === 'undefined') {
     var it = CoreNumber_instance.javascript_5uxq0d_k$(value);
     return isNaN_0(it) || it === 0.0 ? 0.0 : it;
   }
+  function Playlist$recordUri$lambda(it) {
+    return Unit_instance;
+  }
   function archive$value($attrs, $defaults, key) {
     var tmp0_elvis_lhs = $attrs.get_wei43m_k$(key);
     var tmp;
@@ -21623,6 +21627,8 @@ if (typeof String.prototype.startsWith === 'undefined') {
   };
   protoOf(Playlist).titleComma_xhrjer_k$ = function (value) {
     var quote = null;
+    var valueStart = false;
+    var bareValue = false;
     // Inline function 'kotlin.text.forEachIndexed' call
     var index = 0;
     var inductionVariable = 0;
@@ -21632,32 +21638,61 @@ if (typeof String.prototype.startsWith === 'undefined') {
       var _unary__edvuaz = index;
       index = _unary__edvuaz + 1 | 0;
       var tmp = quote;
-      if (equals(tmp == null ? null : new Char(tmp), new Char(item)))
-        quote = null;
-      else {
-        var tmp_0;
-        var tmp_1 = quote;
-        if ((tmp_1 == null ? null : new Char(tmp_1)) == null) {
-          tmp_0 = contains_2('"\'', item);
-        } else {
-          tmp_0 = false;
-        }
-        if (tmp_0)
-          quote = item;
+      if (!((tmp == null ? null : new Char(tmp)) == null)) {
+        var tmp_0 = quote;
+        if (equals(tmp_0 == null ? null : new Char(tmp_0), new Char(item)))
+          quote = null;
+      } else {
+        if (item === _Char___init__impl__6a9atx(44))
+          return _unary__edvuaz;
         else {
-          var tmp_2;
-          var tmp_3 = quote;
-          if ((tmp_3 == null ? null : new Char(tmp_3)) == null) {
-            tmp_2 = item === _Char___init__impl__6a9atx(44);
-          } else {
-            tmp_2 = false;
+          if (CoreText_getInstance().space_3ylfpz_k$(item))
+            bareValue = false;
+          else {
+            if (valueStart) {
+              valueStart = false;
+              if (contains_2('"\'', item))
+                quote = item;
+              else
+                bareValue = true;
+            } else {
+              if (item === _Char___init__impl__6a9atx(61) && !bareValue)
+                valueStart = true;
+            }
           }
-          if (tmp_2)
-            return _unary__edvuaz;
         }
       }
     }
     return -1;
+  };
+  protoOf(Playlist).recordUri_rwee81_k$ = function (lines, onDirective) {
+    var inductionVariable = 1;
+    var last = lines.get_size_woubt6_k$();
+    if (inductionVariable < last)
+      $l$loop: do {
+        var index = inductionVariable;
+        inductionVariable = inductionVariable + 1 | 0;
+        var value = CoreText_getInstance().trim$default_yjecrm_k$(lines.get_c1px32_k$(index));
+        // Inline function 'kotlin.text.isEmpty' call
+        if (charSequenceLength(value) === 0)
+          continue $l$loop;
+        if (startsWith_1(value, _Char___init__impl__6a9atx(35)))
+          onDirective(value);
+        else
+          return value;
+      }
+       while (inductionVariable < last);
+    return '';
+  };
+  protoOf(Playlist).recordUri$default_2uu9u7_k$ = function (lines, onDirective, $super) {
+    var tmp;
+    if (onDirective === VOID) {
+      tmp = Playlist$recordUri$lambda;
+    } else {
+      tmp = onDirective;
+    }
+    onDirective = tmp;
+    return $super === VOID ? this.recordUri_rwee81_k$(lines, onDirective) : $super.recordUri_rwee81_k$.call(this, lines, onDirective);
   };
   protoOf(Playlist).read_8novqu_k$ = function (text, format, sourceId, resolve, identifier, component, filename, epgUrl, fallbackDays, onEntry, onDirective) {
     if (text.length > 33554432)
@@ -22449,6 +22484,30 @@ if (typeof String.prototype.startsWith === 'undefined') {
     var tmp0_elvis_lhs = toDoubleOrNull(substring(input, 0, at));
     return tmp0_elvis_lhs == null ? NaN : tmp0_elvis_lhs;
   }
+  function ProviderPlaylist$read$lambda($generic, $group) {
+    return function (value) {
+      var tmp;
+      var tmp_0;
+      var tmp_1;
+      if (!$generic) {
+        // Inline function 'kotlin.text.isEmpty' call
+        var this_0 = $group._v;
+        tmp_1 = charSequenceLength(this_0) === 0;
+      } else {
+        tmp_1 = false;
+      }
+      if (tmp_1) {
+        tmp_0 = contains_1(value, '#EXTGRP:');
+      } else {
+        tmp_0 = false;
+      }
+      if (tmp_0) {
+        $group._v = CoreText_getInstance().trim$default_yjecrm_k$(substringBefore_0(substringAfter_0(value, '#EXTGRP:'), '#EXTGRP:'));
+        tmp = Unit_instance;
+      }
+      return Unit_instance;
+    };
+  }
   function ProviderPlaylist() {
   }
   protoOf(ProviderPlaylist).blocks_90bblf_k$ = function (text) {
@@ -22556,233 +22615,199 @@ if (typeof String.prototype.startsWith === 'undefined') {
     var defaultMode = tmp;
     var defaultSource = this.attribute_s7yxes_k$(header, 'catchup-source');
     var _iterator__ex2g4s = drop(blocks, 1).iterator_jk1svi_k$();
-    $l$loop_2: while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+    $l$loop_0: while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
       var block = _iterator__ex2g4s.next_20eer_k$();
       var lines = split_0(block, charArrayOf([_Char___init__impl__6a9atx(10)]));
       var raw = lines.get_c1px32_k$(0);
-      var group = generic ? quoted(this, raw, 'group-title') : this.attribute_s7yxes_k$(raw, 'group-title');
-      var url = '';
-      var _iterator__ex2g4s_0 = drop(lines, 1).iterator_jk1svi_k$();
-      $l$loop_0: while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
-        var line = _iterator__ex2g4s_0.next_20eer_k$();
-        var value = CoreText_getInstance().trim$default_yjecrm_k$(line);
-        var tmp_0;
-        if (generic) {
-          // Inline function 'kotlin.text.isEmpty' call
-          tmp_0 = charSequenceLength(value) === 0;
-        } else {
-          tmp_0 = false;
-        }
-        if (tmp_0)
-          continue $l$loop_0;
-        if (!startsWith_1(value, _Char___init__impl__6a9atx(35))) {
-          url = value;
-          break $l$loop_0;
-        }
-        var tmp_1;
-        var tmp_2;
-        if (!generic) {
-          // Inline function 'kotlin.text.isEmpty' call
-          var this_1 = group;
-          tmp_2 = charSequenceLength(this_1) === 0;
-        } else {
-          tmp_2 = false;
-        }
-        if (tmp_2) {
-          tmp_1 = contains_1(value, '#EXTGRP:');
-        } else {
-          tmp_1 = false;
-        }
-        if (tmp_1)
-          group = CoreText_getInstance().trim$default_yjecrm_k$(substringBefore_0(substringAfter_0(value, '#EXTGRP:'), '#EXTGRP:'));
-      }
-      var tmp_3;
+      var group = {_v: generic ? quoted(this, raw, 'group-title') : this.attribute_s7yxes_k$(raw, 'group-title')};
+      var tmp_0 = Playlist_getInstance();
+      var url = tmp_0.recordUri_rwee81_k$(lines, ProviderPlaylist$read$lambda(generic, group));
+      var tmp_1;
       if (generic) {
         // Inline function 'kotlin.text.isEmpty' call
-        var this_2 = url;
-        tmp_3 = charSequenceLength(this_2) === 0;
+        tmp_1 = charSequenceLength(url) === 0;
       } else {
-        tmp_3 = false;
+        tmp_1 = false;
       }
-      if (tmp_3)
-        continue $l$loop_2;
+      if (tmp_1)
+        continue $l$loop_0;
       // Inline function 'kotlin.text.isEmpty' call
-      var this_3 = group;
-      if (charSequenceLength(this_3) === 0) {
+      var this_1 = group._v;
+      if (charSequenceLength(this_1) === 0) {
         // Inline function 'kotlin.text.ifEmpty' call
-        var this_4 = previousGroup;
-        var tmp_4;
+        var this_2 = previousGroup;
+        var tmp_2;
         // Inline function 'kotlin.text.isEmpty' call
-        if (charSequenceLength(this_4) === 0) {
-          tmp_4 = generic ? 'Other' : '';
+        if (charSequenceLength(this_2) === 0) {
+          tmp_2 = generic ? 'Other' : '';
         } else {
-          tmp_4 = this_4;
+          tmp_2 = this_2;
         }
-        group = tmp_4;
+        group._v = tmp_2;
       } else {
-        previousGroup = group;
+        previousGroup = group._v;
       }
       if (generic)
-        previousGroup = group;
-      var comma = indexOf_2(raw, _Char___init__impl__6a9atx(44));
+        previousGroup = group._v;
+      var comma = Playlist_getInstance().titleComma_xhrjer_k$(raw);
       var title = comma > 0 ? CoreText_getInstance().trim$default_yjecrm_k$(substring_0(raw, comma + 1 | 0)) : '';
+      var hashComma = indexOf_2(raw, _Char___init__impl__6a9atx(44));
+      var titleHashInput = hashComma === comma ? title : hashComma > 0 ? CoreText_getInstance().trim$default_yjecrm_k$(substring_0(raw, hashComma + 1 | 0)) : '';
       var epgId = generic ? '' : this.attribute_s7yxes_k$(raw, 'tvg-id');
       var epgName = generic ? '' : this.attribute_s7yxes_k$(raw, 'tvg-name');
-      var tmp_5;
+      var tmp_3;
       if (generic) {
-        tmp_5 = comma > 0 ? title : '???';
+        tmp_3 = comma > 0 ? title : '???';
       } else if (comma > 0) {
         // Inline function 'kotlin.text.ifEmpty' call
-        var tmp_6;
+        var tmp_4;
         // Inline function 'kotlin.text.isEmpty' call
         if (charSequenceLength(title) === 0) {
-          tmp_6 = epgName;
+          tmp_4 = epgName;
         } else {
-          tmp_6 = title;
+          tmp_4 = title;
         }
         // Inline function 'kotlin.text.ifEmpty' call
-        var this_5 = tmp_6;
-        var tmp_7;
+        var this_3 = tmp_4;
+        var tmp_5;
         // Inline function 'kotlin.text.isEmpty' call
-        if (charSequenceLength(this_5) === 0) {
-          tmp_7 = epgId;
+        if (charSequenceLength(this_3) === 0) {
+          tmp_5 = epgId;
         } else {
-          tmp_7 = this_5;
+          tmp_5 = this_3;
         }
-        tmp_5 = tmp_7;
+        tmp_3 = tmp_5;
       } else {
-        tmp_5 = '';
+        tmp_3 = '';
       }
-      var name = tmp_5;
-      var tmp_8;
+      var name = tmp_3;
+      var tmp_6;
       if (!generic) {
         // Inline function 'kotlin.text.isEmpty' call
-        tmp_8 = charSequenceLength(name) === 0;
+        tmp_6 = charSequenceLength(name) === 0;
       } else {
-        tmp_8 = false;
+        tmp_6 = false;
       }
-      var generated = tmp_8;
+      var generated = tmp_6;
       var id = hash(url);
-      var tmp_9;
+      var tmp_7;
       // Inline function 'kotlin.text.isNotEmpty' call
-      var this_6 = group;
-      if (charSequenceLength(this_6) > 0) {
-        tmp_9 = !(id === 0.0);
+      var this_4 = group._v;
+      if (charSequenceLength(this_4) > 0) {
+        tmp_7 = !(id === 0.0);
       } else {
-        tmp_9 = false;
+        tmp_7 = false;
       }
-      if (tmp_9) {
+      if (tmp_7) {
         // Inline function 'kotlin.collections.getOrPut' call
-        var key = group;
-        var value_0 = groups.get_wei43m_k$(key);
-        var tmp_10;
-        if (value_0 == null) {
-          var tmp2 = group;
+        var key = group._v;
+        var value = groups.get_wei43m_k$(key);
+        var tmp_8;
+        if (value == null) {
+          var tmp2 = group._v;
           // Inline function 'kotlin.collections.set' call
-          var value_1 = groups.get_size_woubt6_k$() + 2 | 0;
-          categories.put_4fpzoq_k$(tmp2, value_1);
+          var value_0 = groups.get_size_woubt6_k$() + 2 | 0;
+          categories.put_4fpzoq_k$(tmp2, value_0);
           // Inline function 'kotlin.collections.mutableListOf' call
           var answer = ArrayList_init_$Create$();
           groups.put_4fpzoq_k$(key, answer);
-          tmp_10 = answer;
+          tmp_8 = answer;
         } else {
-          tmp_10 = value_0;
+          tmp_8 = value;
         }
-        tmp_10.add_utx5q5_k$(id);
+        tmp_8.add_utx5q5_k$(id);
       }
-      var tmp_11;
+      var tmp_9;
       // Inline function 'kotlin.text.isEmpty' call
-      var this_7 = url;
-      if (charSequenceLength(this_7) === 0) {
-        tmp_11 = true;
+      if (charSequenceLength(url) === 0) {
+        tmp_9 = true;
       } else {
-        tmp_11 = entries.containsKey_aw81wo_k$(id);
+        tmp_9 = entries.containsKey_aw81wo_k$(id);
       }
-      if (tmp_11)
-        continue $l$loop_2;
-      var tmp_12;
+      if (tmp_9)
+        continue $l$loop_0;
+      var tmp_10;
       if (generic) {
-        tmp_12 = quoted(this, raw, 'tvg-logo');
+        tmp_10 = quoted(this, raw, 'tvg-logo');
       } else {
         // Inline function 'kotlin.takeIf' call
-        var this_8 = this.attribute_s7yxes_k$(raw, 'tvg-logo');
-        var tmp_13;
-        if (startsWith(this_8, '//') || startsWith(this_8, 'http', true)) {
-          tmp_13 = this_8;
+        var this_5 = this.attribute_s7yxes_k$(raw, 'tvg-logo');
+        var tmp_11;
+        if (startsWith(this_5, '//') || startsWith(this_5, 'http', true)) {
+          tmp_11 = this_5;
         } else {
-          tmp_13 = null;
+          tmp_11 = null;
         }
         // Inline function 'kotlin.text.orEmpty' call
-        var tmp0_elvis_lhs = tmp_13;
-        tmp_12 = tmp0_elvis_lhs == null ? '' : tmp0_elvis_lhs;
+        var tmp0_elvis_lhs = tmp_11;
+        tmp_10 = tmp0_elvis_lhs == null ? '' : tmp0_elvis_lhs;
       }
-      var logo = tmp_12;
-      var tmp_14;
+      var logo = tmp_10;
+      var tmp_12;
       if (generic) {
-        tmp_14 = 0.0;
+        tmp_12 = 0.0;
       } else {
         // Inline function 'kotlin.let' call
         var it = floatPrefix(this, this.attribute_s7yxes_k$(raw, 'tvg-shift'));
-        var tmp_15;
+        var tmp_13;
         if (isNaN_0(it) || it === 0.0) {
-          tmp_15 = 0.0;
+          tmp_13 = 0.0;
         } else {
           // Inline function 'kotlin.math.floor' call
           var x = it * -3600;
-          tmp_15 = Math.floor(x);
+          tmp_13 = Math.floor(x);
         }
-        tmp_14 = tmp_15;
+        tmp_12 = tmp_13;
       }
-      var shift = tmp_14;
-      var tmp_16 = url;
-      var tmp_17 = group;
-      var tmp0_elvis_lhs_0 = categories.get_wei43m_k$(group);
-      var tmp_18 = tmp0_elvis_lhs_0 == null ? 1 : tmp0_elvis_lhs_0;
-      var tmp_19 = generic ? name : epgName;
-      var tmp_20 = generic ? 0.0 : hours_0(this, raw, defaultHours);
-      var tmp_21;
+      var shift = tmp_12;
+      var tmp_14 = group._v;
+      var tmp0_elvis_lhs_0 = categories.get_wei43m_k$(group._v);
+      var tmp_15 = tmp0_elvis_lhs_0 == null ? 1 : tmp0_elvis_lhs_0;
+      var tmp_16 = generic ? name : epgName;
+      var tmp_17 = generic ? 0.0 : hours_0(this, raw, defaultHours);
+      var tmp_18;
       if (generic) {
-        tmp_21 = '';
+        tmp_18 = '';
       } else {
         // Inline function 'kotlin.text.ifEmpty' call
-        var this_9 = this.attribute_s7yxes_k$(raw, 'catchup');
-        var tmp_22;
+        var this_6 = this.attribute_s7yxes_k$(raw, 'catchup');
+        var tmp_19;
         // Inline function 'kotlin.text.isEmpty' call
-        if (charSequenceLength(this_9) === 0) {
-          tmp_22 = ProviderPlaylist_instance.attribute_s7yxes_k$(raw, 'catchup-type');
+        if (charSequenceLength(this_6) === 0) {
+          tmp_19 = ProviderPlaylist_instance.attribute_s7yxes_k$(raw, 'catchup-type');
         } else {
-          tmp_22 = this_9;
+          tmp_19 = this_6;
         }
         // Inline function 'kotlin.text.ifEmpty' call
-        var this_10 = tmp_22;
+        var this_7 = tmp_19;
+        var tmp_20;
+        // Inline function 'kotlin.text.isEmpty' call
+        if (charSequenceLength(this_7) === 0) {
+          tmp_20 = defaultMode;
+        } else {
+          tmp_20 = this_7;
+        }
+        tmp_18 = tmp_20;
+      }
+      var tmp_21 = tmp_18;
+      var tmp_22;
+      if (generic) {
+        tmp_22 = '';
+      } else {
+        // Inline function 'kotlin.text.ifEmpty' call
+        var this_8 = this.attribute_s7yxes_k$(raw, 'catchup-source');
         var tmp_23;
         // Inline function 'kotlin.text.isEmpty' call
-        if (charSequenceLength(this_10) === 0) {
-          tmp_23 = defaultMode;
+        if (charSequenceLength(this_8) === 0) {
+          tmp_23 = defaultSource;
         } else {
-          tmp_23 = this_10;
+          tmp_23 = this_8;
         }
-        tmp_21 = tmp_23;
-      }
-      var tmp_24 = tmp_21;
-      var tmp_25;
-      if (generic) {
-        tmp_25 = '';
-      } else {
-        // Inline function 'kotlin.text.ifEmpty' call
-        var this_11 = this.attribute_s7yxes_k$(raw, 'catchup-source');
-        var tmp_26;
-        // Inline function 'kotlin.text.isEmpty' call
-        if (charSequenceLength(this_11) === 0) {
-          tmp_26 = defaultSource;
-        } else {
-          tmp_26 = this_11;
-        }
-        tmp_25 = tmp_26;
+        tmp_22 = tmp_23;
       }
       // Inline function 'kotlin.collections.set' call
-      var value_2 = new ProviderPlaylistEntry(id, name, tmp_16, tmp_17, tmp_18, logo, epgId, tmp_19, tmp_20, tmp_24, tmp_25, shift, raw, comma > 0 ? title : '', generated);
-      entries.put_4fpzoq_k$(id, value_2);
+      var value_1 = new ProviderPlaylistEntry(id, name, url, tmp_14, tmp_15, logo, epgId, tmp_16, tmp_17, tmp_21, tmp_22, shift, raw, titleHashInput, generated);
+      entries.put_4fpzoq_k$(id, value_1);
     }
     return new ProviderPlaylistResult(header, toList_0(entries.get_values_ksazhn_k$()), groups, toList_0(groups.get_keys_wop4xp_k$()));
   };

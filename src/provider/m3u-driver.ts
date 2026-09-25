@@ -250,6 +250,8 @@ function createM3uProviderDriver(
             var name = entry.generatedName
                 ? ports.translate("??? No channel name")
                 : entry.name;
+            // Companion lookup labels retain the historical first-comma spelling.
+            var wireName = entry.titleHashInput || name;
             row.channel_name = name;
             var sources: any[] = [];
             sourceIds(attribute(entry.raw, "tvg-source"), true, sources);
@@ -290,7 +292,7 @@ function createM3uProviderDriver(
                     keys +
                         (sources.length ? "~" + sources.join("-") : "") +
                         "~" +
-                        encodeURIComponent(name)
+                        encodeURIComponent(wireName)
                 );
             }
             if (
@@ -304,7 +306,7 @@ function createM3uProviderDriver(
                             ? "~" + sources.join("-")
                             : "") +
                         "~" +
-                        encodeURIComponent(name)
+                        encodeURIComponent(wireName)
                 );
             }
         });
