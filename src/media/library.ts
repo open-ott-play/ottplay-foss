@@ -35,12 +35,13 @@ function mediaLibraryCopy(value: any, seen?: any[]): any {
     if (!value || typeof value !== "object") return value;
     var parents = seen || [];
     if (parents.indexOf(value) !== -1) return undefined;
+    parents = parents.concat([value]);
     var copy: any = Array.isArray(value) ? [] : {};
     Object.keys(value).forEach(function (key) {
         Object.defineProperty(copy, key, {
             configurable: true,
             enumerable: true,
-            value: mediaLibraryCopy(value[key], parents.concat([value])),
+            value: mediaLibraryCopy(value[key], parents),
             writable: true,
         });
     });

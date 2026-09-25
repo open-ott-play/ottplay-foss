@@ -399,6 +399,25 @@ test("Copying metadata never executes prototype setters or shares nested data", 
     assert.deepEqual(plain(detached.__proto__), { polluted: true });
 });
 
+test("Metadata copies isolate sibling references and cut only ancestor cycles", () => {
+    const c = fixture();
+    const shared = { value: 1 };
+    const source = { array: [shared], first: shared, second: shared };
+    source.self = source;
+    shared.parent = source;
+    const seen = Object.freeze([]);
+    const copy = c.__ottMediaLibrary.copy(source, seen);
+    assert.equal(copy.self, undefined);
+    assert.equal(copy.first.parent, undefined);
+    assert.equal(copy.second.value, 1);
+    assert.notEqual(copy.first, copy.second);
+    assert.notEqual(copy.first, copy.array[0]);
+    copy.first.value = 2;
+    assert.equal(copy.second.value, 1);
+    assert.equal(shared.value, 1);
+    assert.equal(seen.length, 0);
+});
+
 test("Actual Edem lazy-page codec publishes detached updates without global-array ownership", () => {
     const { edemFixture } = require("./helpers/edem-driver-fixture.cjs");
     const f = edemFixture();
