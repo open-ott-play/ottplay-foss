@@ -598,13 +598,29 @@ function exerciseAccessRuntime(profile) {
         "old artifact timer cannot revoke renewed grant"
     );
     assert.equal(accepted, 2);
-    w.parentAccess = false;
+    w.parentPIN = "9999";
+    w.parentPIN = "2468";
+    assert.equal(
+        w.parentAccess,
+        false,
+        "actual SettingsStore epochs reject a PIN ABA grant"
+    );
     w.enterPinAndSetAccess(() => accepted++);
     const entry = w.dialogBoxKeyHandler;
     for (const digit of "2468") entry(w.keys["N" + digit]);
     assert.equal(accepted, 3);
     assert.equal(w.parentAccess, true);
     w.parentAccess = false;
+    w.enterPinAndSetAccess(() => accepted++);
+    const changedPin = w.dialogBoxKeyHandler;
+    w.parentPIN = "9999";
+    w.parentPIN = "2468";
+    for (const digit of "2468") changedPin(w.keys["N" + digit]);
+    assert.equal(
+        accepted,
+        3,
+        "actual SettingsStore epochs reject a PIN ABA challenge"
+    );
     w.enterPinAndSetAccess(() => accepted++);
     const retired = w.dialogBoxKeyHandler;
     w.p_pref = "access-b";
