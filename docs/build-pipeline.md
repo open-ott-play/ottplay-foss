@@ -114,7 +114,7 @@ the worker prelude. Missing or stale assets trigger regeneration and another
 full audit. `npm run build:media` always rebuilds explicitly. No timestamp or
 process-local cache can bypass validation.
 
-Each final classic bundle is limited to 654,000 UTF-8 bytes and 186,750 bytes
+Each final classic bundle is limited to 654,000 UTF-8 bytes and 187,100 bytes
 compressed with gzip level 9. Both limits apply independently to server, Tauri
 and Capacitor artifacts. Native transformations are measured after staging.
 `npm run check:size` reads the actual artifacts; it does not trust a prior report.
