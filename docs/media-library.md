@@ -25,6 +25,9 @@ captures one detached frame for each favorite action. Reading the same snapshot
 repeatedly would copy the entire navigation stack, including nested provider
 metadata. Keep detached publication at the boundary without introducing a second
 mutable catalog cache for these inexpensive ownership checks.
+The recursive copier allocates its ancestor list once per object, not once per
+property; cycle detection stays local to each branch, so shared sibling values
+are copied independently and the caller's ancestor list is never mutated.
 
 An item is identified by `(sourceId, itemId)`. The shared source identity includes
 the provider account and playlist slot, and Edem's separate media portal. Provider
