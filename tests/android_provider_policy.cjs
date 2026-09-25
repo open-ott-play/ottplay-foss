@@ -379,6 +379,37 @@ const excluded = fullIds.filter((id) => !permitted.includes(id));
 test("transformed Play executes only its four driver families without Full implementations", () => {
     const full = fixture("full").w;
     const play = fixture().w;
+    for (const [flavor, w] of [
+        ["full", full],
+        ["play", play],
+    ]) {
+        const menuIds = Array.from(w.arrayProvaiders).filter(Boolean);
+        const profileIds = Array.from(
+            w.__ottProviderDriverProfiles,
+            (profile) => profile.id
+        );
+        const driverIds = Array.from(w.__ottProviderDrivers.registry.ids());
+        assert.equal(
+            new Set(menuIds).size,
+            menuIds.length,
+            flavor + ": unique menu IDs"
+        );
+        assert.equal(
+            new Set(profileIds).size,
+            profileIds.length,
+            flavor + ": unique profiles"
+        );
+        assert.deepEqual(
+            menuIds.slice().sort(),
+            profileIds.slice().sort(),
+            flavor + ": selectable IDs match managed profiles"
+        );
+        assert.deepEqual(
+            profileIds.slice().sort(),
+            driverIds.slice().sort(),
+            flavor + ": profiles match executable registry"
+        );
+    }
     assert.deepEqual(
         Array.from(full.__ottProviderDrivers.registry.ids()).sort(),
         fullIds.slice().sort()
@@ -523,6 +554,43 @@ for (const id of permitted) {
         assert.equal(f.w.__ottActiveProviderDriver.id, id);
     });
 }
+
+test("unknown saved and URL provider IDs reach setup without script or network fallback", () => {
+    for (const flavor of ["full", "play"]) {
+        for (const selection of ["stored", "url"]) {
+            const saved = { secretProfile: "unchanged" };
+            if (selection === "stored") saved.ottplayprov = "unknown/provider";
+            const f = fixture(
+                flavor,
+                saved,
+                selection === "url" ? "?unknown/provider" : ""
+            );
+            f.w.loadProv();
+            assert.equal(f.w.listCaptionElement.innerHTML, "First Run Setup");
+            assert.deepEqual(f.scripts, []);
+            assert.deepEqual(f.requests, []);
+            assert.equal(f.w.__ottActiveProviderDriver, undefined);
+            assert.equal(f.stored.get("secretProfile"), "unchanged");
+        }
+    }
+});
+
+test("missing managed driver cannot fall back to its retired provider script", () => {
+    for (const flavor of ["full", "play"]) {
+        const f = fixture(flavor, { ottplayprov: "m3u" });
+        const alerts = [];
+        f.w.alert = (message) => alerts.push(message);
+        const registry = f.w.__ottProviderDrivers.registry;
+        const has = registry.has;
+        registry.has = (id) => (id === "m3u" ? false : has(id));
+        f.w.loadProv();
+        assert.deepEqual(alerts, ["m3u: load error!!!"]);
+        assert.equal(f.w.listCaptionElement.innerHTML, "First Run Setup");
+        assert.deepEqual(f.scripts, []);
+        assert.deepEqual(f.requests, []);
+        assert.equal(f.w.__ottActiveProviderDriver, undefined);
+    }
+});
 
 test("completed provider loads omit unavailable logos but preserve Full logo and visibility rules", () => {
     for (const flavor of ["full", "play"]) {

@@ -79,10 +79,11 @@ function createProviderRegistry() {
 }
 
 /**
- * Compatibility effects only. Calls into a legacy provider receive a temporary
- * transport/timer scope; unrelated callers retain their original host methods.
- * External scripts are serialized because an onload guard cannot undo JS that
- * the browser has already evaluated. The next reset runs after that evaluation.
+ * Own provider/catalog lifetimes and serialize replacement during startup.
+ * Full dealer extensions retain scoped transport/timers and script evaluation;
+ * that compatibility machinery is omitted from Play, whose providers all use
+ * registered drivers with explicit request ownership. Managed drivers in Full
+ * also bypass interception.
  */
 function createClassicProviderAdapter(host: any) {
     var providers = createProviderRegistry();
@@ -96,6 +97,7 @@ function createClassicProviderAdapter(host: any) {
     } | null = null;
     var draining = false;
 
+    // OTTPLAY_FULL_ONLY_BEGIN
     function scopedCallback(session: ProviderSession, callback: any): any {
         if (Array.isArray(callback)) {
             return callback.map(function (item) {
@@ -258,6 +260,8 @@ function createClassicProviderAdapter(host: any) {
         }
     }
 
+    // OTTPLAY_FULL_ONLY_END
+
     function drain(): void {
         if (loadingScript || draining) return;
         draining = true;
@@ -268,13 +272,16 @@ function createClassicProviderAdapter(host: any) {
                 var pending = desired;
                 desired = null;
                 try {
-                    if (pending.unscoped) {
-                        if (pending.session.active())
-                            pending.start(pending.session);
-                    } else
+                    // OTTPLAY_FULL_ONLY_BEGIN
+                    if (!pending.unscoped) {
                         run(pending.session, function () {
                             pending.start(pending.session);
                         });
+                        continue;
+                    }
+                    // OTTPLAY_FULL_ONLY_END
+                    if (pending.session.active())
+                        pending.start(pending.session);
                 } catch (error) {
                     if (!failed) firstError = error;
                     failed = true;
@@ -293,32 +300,35 @@ function createClassicProviderAdapter(host: any) {
                 active: session.active,
                 dispose: session.dispose,
                 guard: function (callback: any) {
-                    return unscoped
-                        ? session.guard(callback)
-                        : scopedCallback(session, callback);
+                    // OTTPLAY_FULL_ONLY_BEGIN
+                    if (!unscoped) return scopedCallback(session, callback);
+                    // OTTPLAY_FULL_ONLY_END
+                    return session.guard(callback);
                 },
                 own: session.own,
                 run: function (callback: () => any) {
-                    return unscoped
-                        ? session.active()
-                            ? callback()
-                            : undefined
-                        : run(session, callback);
+                    // OTTPLAY_FULL_ONLY_BEGIN
+                    if (!unscoped) return run(session, callback);
+                    // OTTPLAY_FULL_ONLY_END
+                    if (session.active()) return callback();
                 },
             };
         },
+        // OTTPLAY_FULL_ONLY_BEGIN
         bind: function (session: ProviderSession, names: string[]) {
             names.forEach(function (name) {
                 if (typeof host[name] === "function")
                     host[name] = scopedCallback(session, host[name]);
             });
         },
+        // OTTPLAY_FULL_ONLY_END
         dispose: function () {
             replacementGeneration++;
             desired = null;
             catalogs.dispose();
             providers.dispose();
         },
+        // OTTPLAY_FULL_ONLY_BEGIN
         loadScript: function (
             session: ProviderSession,
             loader: (
@@ -365,6 +375,7 @@ function createClassicProviderAdapter(host: any) {
                 });
             }
         },
+        // OTTPLAY_FULL_ONLY_END
         replace: function (
             start: (session: ProviderSession) => void,
             unscoped?: boolean

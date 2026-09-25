@@ -1,4 +1,21 @@
-# ottplay-foss — Architecture
+# Historical player architecture (retired overview)
+
+> **Historical reference, not the current runtime contract.** This document is
+> retained as an earlier architectural snapshot. Its diagrams and line numbers
+> predate managed provider instances, owned playback/guide state, native PiP and
+> the current classic linker. Do not use it to choose a runtime API or remove code.
+>
+> Start with [Player architecture](../../docs/architecture.md). Current details live
+> in [Build pipeline](../../docs/build-pipeline.md),
+> [Playback sessions](../../docs/playback-session-architecture.md),
+> [Guide ownership](../../docs/guide-architecture.md),
+> [Media backend](../../docs/media-backend.md) and
+> [Device/native integration](../../docs/device-media-backend.md).
+>
+> In particular, PiP is not universally a CSS overlay: native windows/plugins and
+> a guarded CSS fallback have separate ownership. The bundle is assembled by the
+> ordered classic linker, and shipped provider profiles use owned driver instances;
+> the old diagrams below do not describe that implementation.
 
 End-to-end view of the player: how the browser bundle is loaded, how a key press becomes a stream playing, and how the Picture-in-Picture feature is wired across platforms.
 

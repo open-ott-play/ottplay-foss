@@ -9,6 +9,41 @@ completed schedules expire after twelve hours or after all programmes end.
 Only subscribed channels trigger clock refreshes. Channel renderer fields are
 accessors over this owner; scalar reads do not clone whole schedules.
 
+## Request, cache and projection are different operations
+
+`getChannelEpgCached(id, callback)` is a request interface despite its historical
+name. Its return value cancels that consumer; it is not an EPG array. A valid
+cache hit can invoke the callback synchronously. A miss queues transport work and
+coalesces consumers for the same source/channel reference; the service runs one
+transport request at a time. Each successful consumer receives detached rows.
+Empty/failing responses produce `null` rather than an indefinitely reusable empty
+schedule. A cancelled/retired consumer does not receive late completion.
+
+`__ottClassicGuide.peek(id)` and the compatibility `getEpgFromCache(id)` read a
+retained full schedule without fetching. They validate source identity, channel-row
+token, configured capacity and expiry, and update LRU recency. A returned array is
+a detached value, not mutable cache storage. `getCachedChannelEpg` needs special
+care: its source declaration is a cache reader, but provider/native startup
+replaces the public property with the retained current-guide **transport** hook.
+Do not infer a cache-only contract from that replaceable property's name.
+
+`observeCurrentProgramme(id, callback)` binds the renderer's now/next subscription
+and reports whether its current snapshot contains an airing programme. Its Boolean
+return does not promise an immediate callback. Notifications are queued and bound
+to the source/channel reference. Repeated calls retain the existing consumer until
+it is retired; they do not install a new listener for every paint. Cache capacity
+zero disables full-schedule retention, but requests and now/next projections still
+work. Publishing a display slice does not promote that slice to the full cache.
+
+Provider/native transport selection lives in `fetchChannelGuide`. Built-in M3U can
+use the Tauri/Capacitor XMLTV interface; other provider requests keep their declared
+API route. Native XMLTV warm-up invalidates accepted schedules and recreates pending
+consumers without letting a retired source publish into its replacement. Cancellation
+of the last consumer also retires the recreated request. These contracts are covered
+by `test_guide_service.cjs` and `test_guide_integration.cjs`.
+
+## Screens and durable reminders
+
 `src/guide/screen.ts` owns the programme list and selection by programme ID.
 Time, alphabetical and completed-record views are derived from one accepted
 schedule. The classic codec resolves category positions at commit, captures PIN

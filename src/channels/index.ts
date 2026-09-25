@@ -1030,10 +1030,11 @@ export function popFavLists(): void {
 }
 
 /**
- * Persist the current `catsArray`, `cats`, `favoritesArray`, and `parentalArray`
- * to storage via the provider API.
+ * Persist the active favorites lists and refresh the channel-library projection.
+ * Channel/group/parental edits persist through their own library operations;
+ * this retained compatibility hook does not serialize the projected arrays.
  *
- * Side effects: Writes JSON strings to provider storage (async via providerSetItem).
+ * Side effects: Writes favorites storage and republishes the current library view.
  */
 export function saveChannelsCats(): void {
     if (typeof providerSetItem === "function") {
@@ -1085,16 +1086,6 @@ export function ifParentalAccessChId(
         );
     return false;
 }
-
-/**
- * Look up EPG data for a channel from the in-memory cache (`epg` map).
- * Calls the callback synchronously with the cached data or `null`.
- *
- * @param channelId - Channel ID to look up.
- * @param callback  - Receives `(chId, programs | null)`.
- *
- * Side effects: None (pure lookup).
- */
 
 /**
  * Timezone hours for Mode B get_epg. NEVER use channel.rec — that is archive
@@ -1302,6 +1293,12 @@ export function fetchChannelGuide(
         }
     };
 }
+/**
+ * Request a detached full schedule from the owned guide service.
+ * A cache hit may call back synchronously; a miss joins the serial request queue.
+ * Returns cancellation for this consumer, not a cached schedule. Capacity zero
+ * disables retention but still permits provider/native requests and projections.
+ */
 export function getChannelEpgCached(
     channelId: number,
     callback: (id: number, rows: EPGEntry[] | null) => void
@@ -1310,11 +1307,13 @@ export function getChannelEpgCached(
 }
 
 /**
- * Get the currently cached EPG array for a channel, or null.
- * Convenience wrapper over `epg[channelId]`.
+ * Read a detached schedule after source, row-token, capacity and expiry checks.
+ * This source implementation updates cache recency without fetching. Startup
+ * replaces its public compatibility property with the current-guide transport;
+ * callers needing cache-only access use getEpgFromCache or __ottClassicGuide.peek.
  *
  * @param channelId - Channel ID.
- * @returns The EPGEntry[] or null if not cached.
+ * @returns The EPGEntry[] or null if unavailable.
  */
 export function getCachedChannelEpg(channelId: number): EPGEntry[] | null {
     return (window as any).__ottClassicGuide.peek(channelId);
@@ -2399,14 +2398,14 @@ if (typeof window !== "undefined")
     (window as any).__ottRenderArchive = renderArchiveInfo;
 
 /**
- * Stop archive playback and return to live TV for the current channel.
- * No-op if playback has not started, or if the current channel is not
- * an archive-capable (`rec`) channel.
+ * Pause live playback at the current broadcast time for archive resume.
+ * Requires a playing decoder and archive retention on the selected channel.
+ * Guide completion and parental access are checked before entering a paused
+ * archive target; this does not open a new stream or return archive playback live.
  *
- * Side effects: refreshes the EPG window, resets playType/playTime, and
- * pauses the underlying video element.
+ * Side effects: Requests guide data, updates playback state/UI and pauses decoder.
  */
-export function liveStop(): void {
+export function pauseLivePlayback(): void {
     if (!stbIsPlaying()) return;
     (window as any).__ottClassicArchive.pauseLive();
 }
@@ -2438,14 +2437,15 @@ function formatSeekOffset(e: number): string {
 }
 
 /**
- * Interactive OSD for manual archive position selection.
- * Opens a dialog that accumulates a delta via number keys, then calls
- * shiftArchive(delta) after a 3-second idle timeout.
+ * Interactive OSD for a manual playback offset.
+ * Opens a live/archive/VOD offset dialog; number/direction keys accumulate seconds.
+ * Enter or three seconds of inactivity submits to the mode-aware seek controller.
+ * Return/Exit cancels. Session replacement rejects even an already queued timer.
  *
- * @param initialDelta - Initial delta offset (seconds).
- * Side effects: Shows/hides a dialog box; calls shiftArchive().
+ * @param initialDelta - Initial signed offset in seconds.
+ * Side effects: Owns a dialog handler/timer and submits through shiftArchive().
  */
-export function shiftArchiveSelect(initialDelta: number): void {
+export function showPlaybackSeekDialog(initialDelta: number): void {
     var w = window as any;
     // Legacy stbPlayer.js:6205-6304
     var chId = curList[primaryIndex];
@@ -2562,7 +2562,13 @@ export function shiftArchiveSelect(initialDelta: number): void {
     r(initialDelta);
 }
 
-export function timeShift(offset: number): void {
+/**
+ * Replay archive content relative to the current live broadcast time.
+ * Positive seconds select now minus offset; zero selects the airing programme's
+ * start, not the live edge. Negative/nonfinite values are rejected by the owner.
+ * Guide, access and retention checks may complete after this function returns.
+ */
+export function replayFromLiveOffset(offset: number): void {
     (window as any).__ottClassicArchive.rewind(offset);
 }
 
