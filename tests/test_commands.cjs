@@ -40,6 +40,7 @@ const storage = new Map();
 const loaded = [];
 const pins = [];
 const context = {
+    clearTimeout() {},
     console,
     enterPinAndSetAccess(callback) {
         pins.push(callback);
@@ -55,6 +56,9 @@ const context = {
     parentPIN: "1234",
     playDistribution: false,
     providerIds: ["m3u", "stalker", "xtream", "", "demo", "commercial"],
+    setTimeout() {
+        return 1;
+    },
     sPSprovs: false,
     stbGetItem(key) {
         return storage.get(key);
@@ -65,6 +69,7 @@ const context = {
 };
 context.window = context;
 vm.createContext(context);
+require("./helpers/access-runtime.cjs")(context);
 vm.runInContext(emit(selected), context);
 const select = context.exports.selectProviderByIndex;
 assert.equal(select(1), true);
