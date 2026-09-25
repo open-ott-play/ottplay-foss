@@ -1,25 +1,44 @@
 /** Portable library documents. Storage, source selection and confirmation belong to the host. */
 function createLibraryBackupCodec() {
+    type Check = (value: any) => boolean;
+    type Fields = Record<string, Check | number | string>;
+    function owns(value: any, key: string | number): boolean {
+        return Object.prototype.hasOwnProperty.call(value, key);
+    }
     function object(value: any): boolean {
         return !!value && typeof value === "object" && !Array.isArray(value);
     }
-    function keys(
-        value: any,
-        required: string[],
-        optional: string[] = []
-    ): boolean {
-        return (
-            object(value) &&
-            required.every(function (key) {
-                return Object.prototype.hasOwnProperty.call(value, key);
-            }) &&
-            Object.keys(value).every(function (key) {
-                return (
-                    value[key] !== undefined &&
-                    (required.indexOf(key) >= 0 || optional.indexOf(key) >= 0)
-                );
-            })
-        );
+    /** Every own field must have a rule; all required fields must be present. */
+    function record(
+        required: Fields,
+        optional: Record<string, Check> = {}
+    ): Check {
+        return function (value) {
+            if (!object(value)) return false;
+            var keys = Object.keys(value);
+            return (
+                Object.keys(required).every(function (key) {
+                    return keys.indexOf(key) >= 0;
+                }) &&
+                keys.every(function (key) {
+                    var rule = owns(required, key)
+                        ? required[key]
+                        : owns(optional, key)
+                          ? optional[key]
+                          : undefined;
+                    return typeof rule === "function"
+                        ? rule(value[key])
+                        : rule !== undefined && value[key] === rule;
+                }) &&
+                Object.keys(optional).every(function (key) {
+                    return (
+                        owns(value, key) ||
+                        value[key] === undefined ||
+                        optional[key](value[key])
+                    );
+                })
+            );
+        };
     }
     function name(value: string): boolean {
         return (
@@ -39,11 +58,13 @@ function createLibraryBackupCodec() {
     function finite(value: any): boolean {
         return typeof value === "number" && isFinite(value);
     }
-    function array(
-        value: any,
-        check: (item: any) => boolean,
-        limit = 50000
-    ): boolean {
+    function scalar(value: any): boolean {
+        return text(value) || finite(value);
+    }
+    function boolean(value: any): boolean {
+        return typeof value === "boolean";
+    }
+    function array(value: any, check: Check, limit = 50000): boolean {
         if (
             !Array.isArray(value) ||
             value.length > limit ||
@@ -51,11 +72,7 @@ function createLibraryBackupCodec() {
         )
             return false;
         for (var i = 0; i < value.length; i++)
-            if (
-                !Object.prototype.hasOwnProperty.call(value, i) ||
-                !check(value[i])
-            )
-                return false;
+            if (!owns(value, i) || !check(value[i])) return false;
         return true;
     }
     function strings(value: any): boolean {
@@ -66,130 +83,132 @@ function createLibraryBackupCodec() {
             return true;
         });
     }
-    function dictionary(
-        value: any,
-        check: (item: any) => boolean,
-        limit = 50000
-    ): boolean {
-        return (
-            object(value) &&
-            Object.keys(value).length <= limit &&
-            Object.keys(value).every(function (key) {
-                return name(key) && text(key) && check(value[key]);
-            })
-        );
+    function dictionary(check: Check, limit = 50000): Check {
+        return function (value) {
+            return (
+                object(value) &&
+                Object.keys(value).length <= limit &&
+                Object.keys(value).every(function (key) {
+                    return name(key) && text(key) && check(value[key]);
+                })
+            );
+        };
     }
+    var itemReference = record({ itemId: text });
+    var legacyReference = record(
+        {
+            legacyId: scalar,
+            origin: function (value) {
+                return value === "raw" || value === "canonical";
+            },
+        },
+        { ambiguous: boolean }
+    );
     function reference(value: any): boolean {
-        if (keys(value, ["itemId"])) return text(value.itemId);
-        return (
-            keys(value, ["legacyId", "origin"], ["ambiguous"]) &&
-            (text(value.legacyId) || finite(value.legacyId)) &&
-            (value.origin === "raw" || value.origin === "canonical") &&
-            (value.ambiguous === undefined ||
-                typeof value.ambiguous === "boolean")
-        );
+        return itemReference(value) || legacyReference(value);
     }
-    function channels(value: any, source: string): boolean {
-        if (value === null) return true;
-        var ids: Record<string, boolean> = Object.create(null);
-        return (
-            keys(value, [
-                "version",
-                "sourceId",
-                "groups",
-                "hidden",
-                "locks",
-                "unlocks",
-                "nextGroup",
-                "preferences",
-                "selected",
-            ]) &&
-            value.version === 1 &&
-            value.sourceId === source &&
-            array(
-                value.groups,
-                function (group) {
-                    if (
-                        !keys(
-                            group,
-                            ["id", "label", "members"],
-                            ["known", "inheritsMembers"]
-                        ) ||
-                        !text(group.id) ||
-                        ids[group.id] ||
-                        !text(group.label, true) ||
-                        !strings(group.members) ||
-                        (group.known !== undefined && !strings(group.known)) ||
-                        (group.inheritsMembers !== undefined &&
-                            typeof group.inheritsMembers !== "boolean")
-                    )
-                        return false;
-                    ids[group.id] = true;
+    var group = record(
+        {
+            id: text,
+            label: function (value) {
+                return text(value, true);
+            },
+            members: strings,
+        },
+        { inheritsMembers: boolean, known: strings }
+    );
+    var numbers = dictionary(finite);
+    var selection = record({ groupId: text, itemId: text });
+    var channelDocument = record({
+        groups: function (value) {
+            var ids: Record<string, boolean> = Object.create(null);
+            return array(
+                value,
+                function (value) {
+                    if (!group(value) || ids[value.id]) return false;
+                    ids[value.id] = true;
                     return true;
                 },
                 1000
-            ) &&
-            strings(value.hidden) &&
-            strings(value.locks) &&
-            strings(value.unlocks) &&
-            value.locks.every(function (id: string) {
-                return value.unlocks.indexOf(id) < 0;
-            }) &&
-            finite(value.nextGroup) &&
-            value.nextGroup > 0 &&
-            Math.floor(value.nextGroup) === value.nextGroup &&
-            value.nextGroup <= 9007199254740991 &&
-            keys(
-                value.preferences,
-                [],
-                ["aspect", "audio", "subtitle", "zoom"]
-            ) &&
-            Object.keys(value.preferences).every(function (kind) {
-                return dictionary(value.preferences[kind], finite);
-            }) &&
-            (value.selected === null ||
-                (keys(value.selected, ["groupId", "itemId"]) &&
-                    text(value.selected.groupId) &&
-                    text(value.selected.itemId)))
+            );
+        },
+        hidden: strings,
+        locks: strings,
+        nextGroup: function (value) {
+            return (
+                finite(value) &&
+                value > 0 &&
+                Math.floor(value) === value &&
+                value <= 9007199254740991
+            );
+        },
+        preferences: record(
+            {},
+            {
+                aspect: numbers,
+                audio: numbers,
+                subtitle: numbers,
+                zoom: numbers,
+            }
+        ),
+        selected: function (value) {
+            return value === null || selection(value);
+        },
+        sourceId: text,
+        unlocks: strings,
+        version: 1,
+    });
+    function channels(value: any): boolean {
+        return (
+            value === null ||
+            (channelDocument(value) &&
+                value.locks.every(function (id: string) {
+                    return value.unlocks.indexOf(id) < 0;
+                }))
         );
     }
-    function favorites(value: any, source: string): boolean {
+    var favoriteDocument = record({
+        lists: record({
+            active: function (value) {
+                return text(value) && name(value);
+            },
+            lists: dictionary(function (value) {
+                return array(value, reference);
+            }, 1000),
+            order: strings,
+            v: 1,
+        }),
+        sourceId: text,
+        version: 2,
+    });
+    function favorites(value: any): boolean {
         if (value === null) return true;
-        if (
-            !keys(value, ["version", "sourceId", "lists"]) ||
-            value.version !== 2 ||
-            value.sourceId !== source ||
-            !keys(value.lists, ["v", "active", "lists", "order"]) ||
-            value.lists.v !== 1 ||
-            !text(value.lists.active) ||
-            !name(value.lists.active) ||
-            !dictionary(
-                value.lists.lists,
-                function (rows) {
-                    return array(rows, reference);
-                },
-                1000
-            ) ||
-            !Object.prototype.hasOwnProperty.call(
-                value.lists.lists,
-                value.lists.active
-            ) ||
-            !strings(value.lists.order) ||
-            value.lists.order.length > 1000
-        )
-            return false;
-        return value.lists.order.every(function (key: string) {
-            return Object.prototype.hasOwnProperty.call(value.lists.lists, key);
-        });
+        if (!favoriteDocument(value)) return false;
+        var lists = value.lists;
+        return (
+            owns(lists.lists, lists.active) &&
+            lists.order.length <= 1000 &&
+            lists.order.every(function (key: string) {
+                return owns(lists.lists, key);
+            })
+        );
     }
+    var portable = record({
+        channels: channels,
+        favorites: favorites,
+        sourceId: text,
+    });
     function validate(value: any, source: string): boolean {
         try {
             return (
-                text(source) &&
-                keys(value, ["sourceId", "channels", "favorites"]) &&
-                value.sourceId === source &&
-                channels(value.channels, source) &&
-                favorites(value.favorites, source)
+                portable(value) &&
+                [value, value.channels, value.favorites].every(
+                    function (document) {
+                        return (
+                            document === null || document.sourceId === source
+                        );
+                    }
+                )
             );
         } catch (_) {
             return false;
@@ -206,12 +225,8 @@ function createLibraryBackupCodec() {
     ): any {
         if (
             !validate(current, source) ||
-            !array(locked, function (value) {
-                return text(value) || finite(value);
-            }) ||
-            !array(selected, function (value) {
-                return text(value) || finite(value);
-            })
+            !array(locked, scalar) ||
+            !array(selected, scalar)
         )
             throw new Error("Invalid legacy library backup");
         var result = JSON.parse(JSON.stringify(current));
