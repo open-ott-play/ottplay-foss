@@ -5,7 +5,19 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { parse } = require("acorn");
 const root = path.resolve(__dirname, "..");
-const assets = ["runtime-polyfills.js", "hls.min.js", "hls.worker.js"];
+const assets = [
+    "runtime-polyfills.js",
+    "hls.min.js",
+    "hls.worker.js",
+    "video.min.js",
+];
+const mediaLicenses = [
+    "core-js",
+    "hls.js",
+    "video.js",
+    "@videojs/http-streaming",
+];
+const licenseName = (name) => name.replace("/", "-") + "-LICENSE.txt";
 const sha = (bytes) => crypto.createHash("sha256").update(bytes).digest("hex");
 const read = (file) => fs.readFileSync(path.join(root, file));
 const manifestPath = "js/media-runtime.json";
@@ -46,6 +58,8 @@ function inputs() {
     for (const name of [
         "core-js",
         "hls.js",
+        "video.js",
+        "@videojs/http-streaming",
         "typescript",
         "rollup",
         "terser",
@@ -149,6 +163,8 @@ async function buildMediaRuntime() {
         "hls.min.js": hls,
         "hls.worker.js": worker,
         "runtime-polyfills.js": runtime,
+        // The official v7 UMD includes the pinned VHS 2.x build, exactly once.
+        "video.min.js": read("node_modules/video.js/dist/video.min.js"),
     };
     const hashes = {};
     for (const [file, bytes] of Object.entries(outputs)) {
@@ -158,10 +174,10 @@ async function buildMediaRuntime() {
     }
     const licenses = path.join(root, "js/licenses");
     fs.mkdirSync(licenses, { recursive: true });
-    for (const name of ["core-js", "hls.js"])
+    for (const name of mediaLicenses)
         fs.copyFileSync(
             path.join(root, "node_modules", name, "LICENSE"),
-            path.join(licenses, name + "-LICENSE.txt")
+            path.join(licenses, licenseName(name))
         );
     fs.copyFileSync(
         path.join(root, "LICENSE"),
@@ -220,6 +236,18 @@ function auditMediaRuntime(directory = root) {
         sha(read("node_modules/hls.js/dist/hls.min.js")),
         "Modified upstream hls.js"
     );
+    assert.equal(
+        manifest.assets["video.min.js"],
+        sha(read("node_modules/video.js/dist/video.min.js")),
+        "Modified upstream Video.js/VHS"
+    );
+    assert.equal(
+        JSON.parse(read("node_modules/video.js/package.json")).dependencies[
+            "@videojs/http-streaming"
+        ],
+        expected.packages["@videojs/http-streaming"].version,
+        "Video.js must bundle the pinned VHS version"
+    );
     const worker = Buffer.concat([
         Buffer.from(workerBootstrap(manifest.runtimeVersion)),
         read("node_modules/hls.js/dist/hls.worker.js"),
@@ -229,11 +257,11 @@ function auditMediaRuntime(directory = root) {
         sha(worker),
         "Worker must synchronously import and verify the exact runtime before unchanged upstream code"
     );
-    for (const name of ["core-js", "hls.js"])
+    for (const name of mediaLicenses)
         assert(
             fs
                 .readFileSync(
-                    path.join(directory, "js/licenses", name + "-LICENSE.txt")
+                    path.join(directory, "js/licenses", licenseName(name))
                 )
                 .equals(read("node_modules/" + name + "/LICENSE")),
             "Missing media license: " + name

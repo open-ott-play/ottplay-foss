@@ -167,6 +167,8 @@ function runFixture(fixture, detector, legacy, nativeOverride) {
                     bootDevice,
                     "The bundle detector must preserve the boot decision"
                 );
+            } else if (requestPath === "/js/video.min.js") {
+                context.videojs = function () {};
             } else {
                 const adapterMatch = requestPath.match(
                     /^\/stb\/(.+)\/stb\.js$/
@@ -264,6 +266,7 @@ function runFixture(fixture, detector, legacy, nativeOverride) {
     assert.equal(starts, 1, "Boot reaches startPlayer once");
     assert.deepEqual(requests, [
         "/js/ottplay-core.js",
+        ...(fixture.expectedDevice === "pc2" ? ["/js/video.min.js"] : []),
         "/dist/stbPlayer.js",
         "/stb/" + fixture.expectedDevice + "/stb.js",
     ]);

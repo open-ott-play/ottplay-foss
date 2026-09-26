@@ -1,7 +1,8 @@
 /**
- * PC2 device stub.
+ * PC2 keyboard map. The shipped stb/pc2/stb.js also installs the optional
+ * Video.js engine after the shared bundle and local vendor have loaded.
  *
- * Keycodes for PC2 fallback.
+ * Keycodes match PC; playback uses Video.js 7 / VHS 2.
  * Sets window.keys.
  */
 

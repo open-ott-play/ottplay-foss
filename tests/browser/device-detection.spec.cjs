@@ -164,21 +164,31 @@ for (const fixture of fixtures.concat(routeFixtures)) {
             ]);
             expect(loadedScripts).toContain("/dist/stbPlayer.js");
             expect(loadedScripts[0]).toBe("/js/runtime-polyfills.js");
-            expect(loadedScripts).toContain("/js/hls.min.js");
-            expect(
-                await page.evaluate(() => ({
-                    ready: window.__ottRuntimePolyfillsReady,
-                    runtimeVersion: window.__ottMediaRuntimeVersion,
-                    version: window.Hls.version,
-                    worker: window.Hls.DefaultConfig.workerPath,
-                }))
-            ).toEqual({
-                ready: true,
-                runtimeVersion,
-                version: "1.7.3",
-                worker: localOrigin + "/js/hls.worker.js?v=" + runtimeVersion,
-            });
-            expect(mediaVersions).toEqual([runtimeVersion, runtimeVersion]);
+            if (fixture.expectedDevice === "pc2") {
+                expect(loadedScripts).toContain("/js/video.min.js");
+                expect(loadedScripts).not.toContain("/js/hls.min.js");
+                expect(await page.evaluate(() => window.videojs.VERSION)).toBe(
+                    "7.21.7"
+                );
+                expect(mediaVersions).toEqual([runtimeVersion]);
+            } else {
+                expect(loadedScripts).toContain("/js/hls.min.js");
+                expect(
+                    await page.evaluate(() => ({
+                        ready: window.__ottRuntimePolyfillsReady,
+                        runtimeVersion: window.__ottMediaRuntimeVersion,
+                        version: window.Hls.version,
+                        worker: window.Hls.DefaultConfig.workerPath,
+                    }))
+                ).toEqual({
+                    ready: true,
+                    runtimeVersion,
+                    version: "1.7.3",
+                    worker:
+                        localOrigin + "/js/hls.worker.js?v=" + runtimeVersion,
+                });
+                expect(mediaVersions).toEqual([runtimeVersion, runtimeVersion]);
+            }
             expect(
                 loadedScripts.filter((url) => /^\/stb\/.+\/stb\.js$/.test(url))
             ).toEqual(["/stb/" + fixture.expectedDevice + "/stb.js"]);

@@ -10,7 +10,8 @@ const { gzipSync } = require("node:zlib");
 // candidate-version suffixes and Node/zlib variation: CI Node 22 compresses
 // these bundles less than local Node 26. ES5, persisted menu identities and
 // final-artifact checks remain enforced.
-const BUDGET = Object.freeze({ bytes: 558500, gzipBytes: 167300 });
+// PC2 adds a small optional engine port; the compressed budget stays unchanged.
+const BUDGET = Object.freeze({ bytes: 559000, gzipBytes: 167300 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small

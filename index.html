@@ -3,7 +3,7 @@
     <head>
         <title>OTT-play FOSS (__OTTP_VERSION__)</title>
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <script src="/js/runtime-polyfills.js?v=9e1915ebe09c98a0"></script>
+        <script src="/js/runtime-polyfills.js?v=bcce3fda84cba68f"></script>
         <meta
             name="viewport"
             content="width=device-width, initial-scale=1.0, user-scalable=no"
@@ -541,6 +541,22 @@
 
             function loadLibraries() {
                 bootStatus("Loading media libraries…");
+                if (ott_device === "pc2") {
+                    loadCSS(host + "/stb/pc2/player.css?" + __av, _head);
+                    loadJS(host + "/js/video.min.js?v=" + window.__ottMediaRuntimeVersion,
+                        function () {
+                            if (typeof window.videojs === "function") loadSTB();
+                            else pc2Failed();
+                        }, _head, pc2Failed);
+                } else loadStandardLibraries();
+            }
+
+            function pc2Failed() {
+                bootLog("Local Video.js unavailable; using standard playback");
+                loadStandardLibraries();
+            }
+
+            function loadStandardLibraries() {
                 var need = 0;
                 function checkDone() {
                     if (++need === 2) loadSTB();

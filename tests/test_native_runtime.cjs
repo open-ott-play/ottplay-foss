@@ -303,7 +303,7 @@ function browser(folder, platform) {
         read("index.html").matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi),
         (match) => match[1]
     ).join("\n");
-    for (const name of ["loadJQ", "loadLibraries"])
+    for (const name of ["loadJQ", "loadLibraries", "loadStandardLibraries"])
         w.eval(
             one(
                 inline,

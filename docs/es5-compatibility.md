@@ -48,3 +48,9 @@ vendor libraries must pass the same gate.
 bridges, polyfills and device initialization. Syntax checks and simulated old
 APIs do not establish codec, DRM or native firmware support: those still require
 playback on the corresponding physical devices.
+
+PC2 additionally loads the locked Video.js 7.21.7 / VHS 2.16.3 distribution after
+this same blocking polyfill runtime. Its generated Blob workers are independently
+checked for ES5 and exercised with missing modern APIs, including AES decryption.
+See [PC2 compatibility and lifecycle](pc2-videojs.md). Other profiles do not load
+Video.js; no duplicate page polyfill or full polyfill copy in VHS workers is added.
