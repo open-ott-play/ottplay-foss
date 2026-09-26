@@ -555,4 +555,346 @@ check(
     }
 );
 
+check(
+    "category record shortcuts use the selected category and EPG, never VOD IDs",
+    () => {
+        for (const key of ["RED", "PLAY", "PAUSE", "PRECH"]) {
+            const f = fixture(),
+                h = f.host;
+            h.curList = [1];
+            h.cats.Group = [2];
+            h.channels[2].ch_id = 9002;
+            h.getMediaArray = () =>
+                assert.fail("Category archives cannot request VOD");
+            h.selIndex = 1;
+            assert.equal(h.bucketsKeyHandler(h.keys[key]), true);
+            f.tick();
+            assert.deepEqual(
+                f.requests.map((r) => r.id),
+                [2]
+            );
+            f.complete([
+                f.row(f.now() - 100, f.now() - 20, "Category programme"),
+            ]);
+            assert.equal(h.listArray.length, 1);
+            assert.equal(h.listArray[0].ch_id, 2);
+            assert(f.elements.listCaption.textContent.includes("Group"));
+            h.selectEpg();
+            assert.deepEqual(
+                f.calls.filter((x) => x[0] === "select"),
+                [["select", 2, true]]
+            );
+            assert.deepEqual(
+                f.calls.filter((x) => x[0] === "archive"),
+                [["archive", f.now() - 100]]
+            );
+        }
+    }
+);
+
+check(
+    "category archive keeps per-channel latest titles, sorts results and skips unavailable guides",
+    () => {
+        const f = fixture(),
+            h = f.host,
+            now = f.now();
+        h.channels[1].rec = 1;
+        h.channels[3] = {
+            channel_name: "Live only",
+            itemId: "station:live",
+            rec: 0,
+        };
+        h.channels[4] = {
+            channel_name: "No guide",
+            itemId: "station:empty",
+            rec: 24,
+        };
+        h.cList = [1, 2, 3, 4];
+        h.cats.Group = [2, 1, 3, 4];
+        h.getMediaArray = () =>
+            assert.fail("EPG archive must not enter provider media");
+        const a = [
+            f.row(now - 300, now - 250, "Same"),
+            f.row(now - 100, now - 50, "Same"),
+            f.row(now - 500, now - 450, "Alpha"),
+            f.row(now - 3700, now - 3650, "Expired"),
+            f.row(now - 10, now + 100, "Current"),
+        ];
+        // A cached later category member completes before the first queued member.
+        h.getChannelEpgCached(1, () => {});
+        f.tick();
+        f.complete(a);
+        h.openSelectedChannelRecordings(1);
+        f.tick();
+        assert.equal(f.requests.at(-1).id, 2);
+        f.complete([
+            f.row(now - 200, now - 150, "Same"),
+            f.row(now - 600, now - 550, "Zulu"),
+        ]);
+        assert.equal(f.requests.at(-1).id, 4);
+        f.complete(null);
+        assert.deepEqual(
+            f.requests.map((r) => r.id),
+            [1, 2, 4]
+        );
+        assert.deepEqual(
+            Array.from(h.listArray, (r) => r.name),
+            ["Alpha", "Same", "Same", "Zulu"]
+        );
+        const same = Array.from(h.listArray).filter((r) => r.name === "Same");
+        assert.deepEqual(
+            same.map((r) => [r.ch_id, r.time]).sort((a, b) => a[0] - b[0]),
+            [
+                [1, now - 100],
+                [2, now - 200],
+            ]
+        );
+        assert.notEqual(same[0].programmeId, same[1].programmeId);
+        h.selIndex = Array.from(h.listArray).findIndex(
+            (r) => r.name === "Same" && r.ch_id === 1
+        );
+        h.selectEpg();
+        assert.deepEqual(
+            f.calls.filter((x) => x[0] === "select"),
+            [["select", 1, true]]
+        );
+        assert.deepEqual(
+            Array.from(h.epgArray, (r) => r.name),
+            ["Alpha", "Same", "Same", "Current"]
+        );
+    }
+);
+
+check(
+    "closing or replacing category recordings retires queued and late guide callbacks",
+    () => {
+        for (const replace of ["close", "source", "category"]) {
+            const f = fixture(),
+                h = f.host;
+            h.cats.Group = [2];
+            h.openSelectedChannelRecordings(0);
+            f.tick();
+            const old = f.requests[0];
+            if (replace === "close") h.closeList();
+            else if (replace === "source") {
+                h.p_pref = "provider-b";
+                h.invalidateEpgCache();
+            } else h.openSelectedChannelRecordings(1);
+            f.tick();
+            assert.equal(old.aborts, 1);
+            const pages = f.calls.filter((x) => x[0] === "page").length;
+            f.complete([f.row(f.now() - 100, f.now() - 20, "Stale")], 0);
+            assert.equal(f.calls.filter((x) => x[0] === "page").length, pages);
+            assert(!Array.from(h.listArray).some((r) => r.name === "Stale"));
+            if (replace === "category") {
+                assert.equal(f.requests.at(-1).id, 2);
+                f.complete([
+                    f.row(f.now() - 100, f.now() - 20, "New category"),
+                ]);
+                assert.equal(h.listArray[0].name, "New category");
+            } else
+                assert.equal(
+                    f.requests.length,
+                    1,
+                    "Retired category cannot start its next request"
+                );
+        }
+    }
+);
+
+check(
+    "category archive PIN resolves channel and programme after category and channel reorder",
+    () => {
+        const f = fixture({ pin: true }),
+            h = f.host,
+            start = f.now() - 100;
+        h.cats.Group = [2, 1];
+        h.openSelectedChannelRecordings(1);
+        f.tick();
+        f.complete([
+            f.row(start, f.now() - 20, "B", "same-provider-programme"),
+        ]);
+        f.complete([
+            f.row(start, f.now() - 20, "A", "same-provider-programme"),
+        ]);
+        h.selIndex = Array.from(h.listArray).findIndex((r) => r.ch_id === 2);
+        h.selectEpg();
+        assert.deepEqual(
+            f.calls.filter((x) => x[0] === "pin"),
+            [["pin", 2]]
+        );
+        h.catsArray = ["Group", "All"];
+        h.cats.Group = [1, 2];
+        f.prompts[0].yes();
+        f.prompts[0].yes();
+        assert.deepEqual(
+            f.calls.filter((x) => x[0] === "select"),
+            [["select", 2, true]]
+        );
+        assert.deepEqual(
+            f.calls.filter((x) => x[0] === "archive"),
+            [["archive", start]]
+        );
+    }
+);
+
+check(
+    "category archive PIN rejects changed source, row, membership, retention and departed screen",
+    () => {
+        for (const mutation of [
+            "source",
+            "row",
+            "membership",
+            "category",
+            "retention",
+            "close",
+        ]) {
+            const f = fixture({ pin: true }),
+                h = f.host;
+            h.cats.Group = [2];
+            h.openSelectedChannelRecordings(1);
+            f.tick();
+            f.complete([f.row(f.now() - 100, f.now() - 20, "B")]);
+            h.selectEpg();
+            assert.equal(f.prompts.length, 1);
+            if (mutation === "source") h.p_pref = "provider-b";
+            if (mutation === "row") h.channels[2] = { ...h.channels[2] };
+            if (mutation === "membership") h.cats.Group = [];
+            if (mutation === "category") h.catsArray = ["All"];
+            if (mutation === "retention") f.tick(f.now() + 49 * 3600);
+            if (mutation === "close") h.closeList();
+            f.prompts[0].yes();
+            assert.equal(
+                f.calls.filter((x) => x[0] === "archive").length,
+                0,
+                mutation
+            );
+        }
+    }
+);
+
+check(
+    "category guide completion cannot publish a channel removed while loading",
+    () => {
+        const f = fixture(),
+            h = f.host;
+        h.cats.Group = [2];
+        h.openSelectedChannelRecordings(1);
+        f.tick();
+        h.cats.Group = [1];
+        f.complete([f.row(f.now() - 100, f.now() - 20, "Removed")]);
+        assert(!Array.from(h.listArray).some((r) => r.name === "Removed"));
+    }
+);
+
+check(
+    "category refresh retains a non-first channel programme and selected schedule",
+    () => {
+        const f = fixture(),
+            h = f.host,
+            now = f.now();
+        h.cats.Group = [2, 1];
+        h.openSelectedChannelRecordings(1);
+        f.tick();
+        f.complete([f.row(now - 100, now - 20, "Zulu", "b-programme")]);
+        f.complete([f.row(now - 200, now - 120, "Alpha", "a-programme")]);
+        h.selIndex = 1;
+        const selected = h.listArray[1].programmeId;
+        h.__ottClassicGuideScreen.refresh();
+        assert.equal(h.listArray[h.selIndex].programmeId, selected);
+        h.invalidateEpgCache(true);
+        h.__ottClassicGuideScreen.refresh();
+        f.tick();
+        f.complete([f.row(now - 100, now - 20, "Updated Zulu", "b-programme")]);
+        f.complete([f.row(now - 200, now - 120, "Alpha", "a-programme")]);
+        assert.equal(h.listArray[h.selIndex].programmeId, selected);
+        assert.equal(h.listArray[h.selIndex].ch_id, 2);
+        h.selectEpg();
+        assert.deepEqual(
+            f.calls.filter((x) => x[0] === "select"),
+            [["select", 2, true]]
+        );
+        assert.deepEqual(
+            Array.from(h.epgArray, (r) => r.name),
+            ["Updated Zulu"]
+        );
+    }
+);
+
+check(
+    "category cancellation reentry preserves the newer single-channel guide",
+    () => {
+        const f = fixture(),
+            h = f.host;
+        h.openSelectedChannelRecordings(0);
+        f.tick();
+        f.requests[0].onCancel = () => h.epgList(0, 1, false);
+        h.openSelectedChannelRecordings(1);
+        f.tick();
+        assert.equal(f.requests.at(-1).id, 2);
+        const latest = f.requests.length - 1;
+        f.complete([f.row(undefined, undefined, "New guide")], latest);
+        f.complete([f.row(f.now() - 100, f.now() - 20, "Stale archive")], 0);
+        assert.equal(h.epg_ch_id, 2);
+        assert.equal(h.listArray[0].name, "New guide");
+        assert.equal(h.__ottClassicGuideScreen.current().reference.id, 2);
+    }
+);
+
+check(
+    "category list-owner disposal cancels a partially completed aggregate",
+    () => {
+        const f = fixture(),
+            h = f.host;
+        let cleanup;
+        h.__ottClassicScreenPort = {
+            onDispose(fn) {
+                cleanup = fn;
+                let active = true;
+                return () => {
+                    if (!active) return;
+                    active = false;
+                    if (cleanup === fn) cleanup = null;
+                    fn();
+                };
+            },
+        };
+        h.openSelectedChannelRecordings(0);
+        f.tick();
+        f.complete([f.row(f.now() - 100, f.now() - 20, "First")]);
+        assert.equal(f.requests.at(-1).id, 2);
+        cleanup();
+        assert.equal(f.requests.at(-1).aborts, 1);
+        f.complete([f.row(f.now() - 100, f.now() - 20, "Late")]);
+        assert.equal(h.listArray.length, 0);
+        assert.equal(f.calls.filter((x) => x[0] === "page").length, 0);
+        assert.equal(h.__ottClassicGuideScreen.current(), null);
+    }
+);
+
+check(
+    "empty category recordings do not fetch VOD and return to the same moved category",
+    () => {
+        const f = fixture(),
+            h = f.host;
+        h.channels[1].rec = 0;
+        h.getMediaArray = () =>
+            assert.fail("Empty archives cannot fall back to VOD");
+        h.openSelectedChannelRecordings(1);
+        f.tick();
+        assert.equal(f.requests.length, 0);
+        assert.equal(h.listArray.length, 0);
+        assert(
+            f.calls.some(
+                (x) => x[0] === "info" && x[1] === "Records library is empty"
+            )
+        );
+        h.catsArray = ["Group", "All"];
+        const returned = [];
+        h.bucketsList = (category) => returned.push(category);
+        h.listKeyHandler(h.keys.RETURN);
+        assert.deepEqual(returned, [0]);
+    }
+);
+
 console.log("PASS " + count + " guide integration scenarios");

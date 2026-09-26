@@ -2029,69 +2029,78 @@ export function detailREC(): void {
     if (detailEl) detailEl.innerHTML = getMediaDescr(w.listArray[w.selIndex]);
 }
 
-/**
- * Open provider recordings for the channel at the supplied current-list index.
- * Fetches media array from the provider and renders it as a selectable list.
- *
- * @param channelIndex - Channel position within `curList`, not a category ID.
- *
- * Side effects:
- * - Calls `window.getMediaArray` (provider API).
- * - Sets `window.listArray`, `window.getListItemFn`, etc.
- * - Shows/hides #listPopUp, updates #listCaption / #listPodval.
- * - Calls `window.showPage`.
- */
-export function openSelectedChannelRecordings(channelIndex: number): void {
-    var w = window as any;
-    if (typeof w.closeList === "function") w.closeList();
+/** Open the selected category's EPG recordings through the owned guide screen. */
+export function openSelectedChannelRecordings(categoryIndex: number): void {
+    (window as any).__ottClassicGuideScreen.openCategory(categoryIndex);
+}
 
-    if (typeof w.getMediaArray !== "function") {
-        if (typeof w.infoBox === "function")
-            w.infoBox(w._("Records not supported by provider"));
-        return;
-    }
-
-    var chId = curList[channelIndex];
-    var ch = channels[chId] || ({} as Channel);
-    var providerChId = ch.ch_id;
-
-    w.getMediaArray(function (data: any[]) {
-        if (!data || data.length === 0) {
-            if (typeof w.infoBox === "function")
-                w.infoBox(w._("Records library is empty"));
-            return;
+/** Render category recordings; selection remains owned by the common guide screen. */
+export function renderCategoryRecordings(
+    categoryIndex: number,
+    model: any
+): void {
+    var w = window as any,
+        group = (w.catsArray || [])[categoryIndex],
+        rows = w.__ottClassicGuide.encodeRows(model.rows) || [];
+    rows.forEach(function (row: any) {
+        row.ch_id = model.channelIds[row.programmeId];
+    });
+    epgListMode = w.epgListMode = 3;
+    epg_ch_id = w.epg_ch_id = null;
+    curEpgData = w.curEpgData = null;
+    listEpgArray = w.listEpgArray = [];
+    w.listCatIndex = categoryIndex;
+    w.listArray = w.listDataArray = rows;
+    w.selIndex = Math.max(
+        0,
+        rows.findIndex(function (row: any) {
+            return row.programmeId === model.selectedId;
+        })
+    );
+    w.getListItem = w.getListItemFn = function (row: any): string {
+        var channel = (w.channels || {})[row.ch_id] || {};
+        return (
+            "&nbsp;&nbsp;" +
+            metadataText(row.name) +
+            " [" +
+            metadataText(channel.channel_name || "") +
+            "] " +
+            formatEpgTime(row.time)
+        );
+    };
+    w.detailListAction = w.detailListActionFn = function () {
+        var row = (w.listArray || [])[w.selIndex];
+        if (row) detailEPG(row.ch_id);
+    };
+    w.listKeyHandler = w.listKeyHandlerFn = function (key: number): boolean {
+        if (key === w.keys.RETURN || key === w.keys.EXIT) {
+            var category = (w.catsArray || []).indexOf(group);
+            if (category >= 0) bucketsList(category);
+            else if (w.closeList) w.closeList();
+            return true;
         }
-
-        w.listArray = data;
-        w.listDataArray = data;
-        mediaRecords = data;
-        var itemFn = function (item: any, _idx: number) {
-            return "&nbsp;&nbsp;" + metadataText(item.name || item.title);
-        };
-        w.getListItem = itemFn;
-        w.getListItemFn = itemFn;
-        w.detailListAction = detailREC;
-        w.detailListActionFn = detailREC;
-        w.listKeyHandler = mediaKeyHandler;
-        w.listKeyHandlerFn = mediaKeyHandler;
-
-        var captionEl = document.getElementById("listCaption");
-        if (captionEl)
-            captionEl.innerHTML = metadataText(
-                w._("Records for channel: ") + (ch.channel_name || "")
-            );
-
-        var footerElement = document.getElementById("listPodval");
-        if (footerElement) {
-            footerElement.innerHTML = w.renderButtonHint(
-                w.keys.RETURN,
-                w.strRETURN,
-                "Close"
-            );
+        if (key === w.keys.ENTER) {
+            selectEpg();
+            return true;
         }
-
-        if (typeof w.showPage === "function") w.showPage();
-    }, providerChId);
+        if (key === w.keys.INFO || key === w.keys.N2) {
+            var row = (w.listArray || [])[w.selIndex];
+            if (row && w.showProgramInfo) w.showProgramInfo(row.name);
+            return true;
+        }
+        return false;
+    };
+    var caption = document.getElementById("listCaption");
+    if (caption) caption.textContent = w._("Records") + ": " + group;
+    var footer = document.getElementById("listPodval");
+    if (footer)
+        footer.innerHTML =
+            w.renderButtonHint(w.keys.RETURN, w.strRETURN, "Close") +
+            w.renderButtonHint(w.keys.ENTER, w.strENTER, "Play") +
+            w.renderButtonHint(w.keys.INFO, w.strInfo, "Description");
+    $("#listPopUp").hide();
+    if (w.showPage) w.showPage();
+    if (!rows.length && w.infoBox) w.infoBox(w._("Records library is empty"));
 }
 
 // The legacy bundle links this renderer from ui/index.ts.

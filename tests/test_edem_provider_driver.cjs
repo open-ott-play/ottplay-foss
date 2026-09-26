@@ -288,6 +288,140 @@ test("5 captured portal item inheritance/description cases without source mutati
     }
 });
 
+test("large catalog and lazy pages traverse the response catalog only once", () => {
+    for (const page of [false, true]) {
+        const f = setup(),
+            count = 128;
+        let result,
+            catalogReads = 0,
+            titleReads = 0;
+        if (page) {
+            f.driver.mediaLoad("", count / 10, () => {});
+            f.requests.at(-1).resolve({
+                count,
+                items: [{ type: "next" }],
+                type: "category",
+            });
+            f.driver.mediaPage(0, (value) => (result = value));
+        } else f.driver.mediaLoad("", count / 10, (value) => (result = value));
+        const items = Object.freeze(
+            Array.from({ length: count }, (_, id) =>
+                Object.freeze({
+                    request: Object.freeze({ id }),
+                    title: "Item " + id,
+                    type: "stream",
+                    url: "https://media.test/" + id,
+                })
+            )
+        );
+        const response = Object.freeze({
+            controls: {
+                filters: [{ items: [], title: "Genre" }],
+                search: true,
+            },
+            get items() {
+                catalogReads++;
+                return items;
+            },
+            get title() {
+                titleReads++;
+                return "Collection";
+            },
+            type: "category",
+        });
+        f.requests.at(-1).resolve(response);
+        assert.equal(result.error, undefined);
+        assert.equal(result.records.length, count + (page ? 0 : 2));
+        assert.equal(result.records[0].title, "Collection - Item 0");
+        assert.equal(result.records[count - 1].request.id, count - 1);
+        assert.equal(
+            catalogReads,
+            1,
+            "the decoder owns the only catalog traversal"
+        );
+        assert.equal(
+            titleReads,
+            2,
+            "decoder plus one shared metadata snapshot"
+        );
+        result.records[0].request.id = "changed";
+        assert.equal(items[0].request.id, 0);
+        assert.equal(result.records[1].request.id, 1);
+        if (!page) {
+            assert.equal(result.records[count].search_on, 1);
+            assert.equal(result.records[count + 1].playlist_url.a, "filters");
+        }
+    }
+});
+
+test("metadata projection preserves unusual own values and isolates core mutations", () => {
+    for (const fields of [
+        {
+            agelimit: false,
+            duration: 0,
+            img: false,
+            imglr: "cover",
+            title: 0,
+            year: null,
+        },
+        {
+            agelimit: [12],
+            description: { text: "summary" },
+            duration: "90.5",
+            img: { nested: ["cover"] },
+            imglr: "",
+            title: "Parent",
+            year: JSON.parse('{"nested":[2026],"__proto__":{"valid":true}}'),
+        },
+    ]) {
+        const f = setup(),
+            response = {
+                ...fields,
+                description: fields.description,
+                type: "category",
+            },
+            original = f.host.OttPlayCore.operatorPortalItem;
+        Object.setPrototypeOf(response, {
+            ignored: "prototype",
+            title: "Inherited",
+        });
+        Object.defineProperty(response, "duration", {
+            enumerable: false,
+            value: response.duration,
+        });
+        const item = {
+            request: { nested: [1] },
+            title: "Child",
+            type: "stream",
+        };
+        response.items = [clone(item), clone(item)];
+        const before = clone(response);
+        let calls = 0,
+            result;
+        f.host.OttPlayCore.operatorPortalItem = (value, parent) => {
+            assert.equal(Object.hasOwn(parent, "items"), false);
+            assert.equal(Object.hasOwn(parent, "duration"), false);
+            const projected = original(value, parent),
+                expected = original(clone(value), response);
+            assert.deepEqual(clone(projected), clone(expected));
+            if (parent.year && typeof parent.year === "object")
+                parent.year.nested[0] = 1900;
+            if (parent.img && typeof parent.img === "object")
+                parent.img.nested[0] = "changed";
+            value.request.nested[0] = 9;
+            calls++;
+            return projected;
+        };
+        f.driver.mediaLoad("", 2, (value) => (result = value));
+        f.requests.at(-1).resolve(response);
+        assert.equal(result.error, undefined);
+        assert.equal(calls, 2);
+        assert.deepEqual(clone(response), before);
+        assert.deepEqual(clone(result.records[0].request), { nested: [1] });
+        assert.deepEqual(clone(result.records[1].request), { nested: [1] });
+    }
+});
+
 test("5 captured lazy-page routes/projections on actual placeholder state", () => {
     for (const row of portalCases.filter(
         (row) => row.input.method === "page"

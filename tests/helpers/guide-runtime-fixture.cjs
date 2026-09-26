@@ -30,7 +30,10 @@ const functionNames = sourceNames("src/channels/index.ts", [
     "epgList",
     "epgListAlpha",
     "recordsList",
+    "openSelectedChannelRecordings",
+    "bucketsKeyHandler",
     "renderGuideView",
+    "renderCategoryRecordings",
     "formatEpgTime",
     "renderEpgHTML",
     "renderEpgFooter",
@@ -94,6 +97,9 @@ module.exports = function guideFixture(options = {}) {
             html(value) {
                 el.html = value;
                 return chain;
+            },
+            is() {
+                return !!el.visible;
             },
             show() {
                 el.visible = true;
@@ -175,7 +181,15 @@ module.exports = function guideFixture(options = {}) {
             calls.push(["info", text]);
         },
         jQuery: query,
-        keys: { ENTER: 13, EXIT: 8, RETURN: 27 },
+        keys: {
+            ENTER: 13,
+            EXIT: 8,
+            PAUSE: 19,
+            PLAY: 415,
+            PRECH: 18,
+            RED: 403,
+            RETURN: 27,
+        },
         listArray: [],
         listCatIndex: 0,
         listChannel: 0,

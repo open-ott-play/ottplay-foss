@@ -100,7 +100,7 @@ function fixture() {
         "ifParentalAccessChId",
         "hasParentalLock",
     ]);
-    include(c, "src/keyhandler/index.ts", ["onPrevSelect"]);
+    include(c, "src/keyhandler/index.ts", ["onPrevSelect", "prevProg"]);
     c.effects = effects;
     c.requests = requests;
     c.prompts = prompts;
@@ -113,6 +113,61 @@ function fixture() {
         prompts[index]();
     };
     return c;
+}
+
+// The single-entry shortcut uses the same identity, archive and PIN policy as the picker.
+for (const archive of [false, true]) {
+    for (const category of ["original", "missing", "moved"]) {
+        for (const pin of [false, true]) {
+            const c = fixture();
+            if (!archive) delete c.prevArr[0].t;
+            if (pin) c.parentalArray = [202];
+            if (category !== "original") c.prevArr[0].c = 99;
+            if (category === "moved") {
+                c.catsArray = ["Current", "Moved"];
+                c.cats = { Current: [101], Moved: [202] };
+            }
+            assert.doesNotThrow(() => c.prevProg());
+            if (pin) {
+                assert.equal(c.prompts.length, 1);
+                assert.equal(c.requests.length, 0);
+                assert.deepEqual(c.effects, []);
+                c.grant();
+            }
+            const expected = category === "missing" ? [0, 1] : [1, 0];
+            assert.equal(c.catIndex, expected[0]);
+            assert.equal(c.primaryIndex, expected[1]);
+            if (archive) {
+                assert.equal(c.requests.length, 1);
+                assert.equal(c.requests[0].id, 202);
+                c.complete();
+                assert.deepEqual(
+                    c.effects.filter((effect) => effect[0] === "archive"),
+                    [["archive", 990000]]
+                );
+                assert.equal(
+                    c.effects.some((effect) => effect[0] === "live"),
+                    false
+                );
+            } else {
+                assert.deepEqual(c.effects, [["live", ...expected]]);
+                assert.equal(c.requests.length, 0);
+            }
+        }
+    }
+    const c = fixture();
+    if (!archive) delete c.prevArr[0].t;
+    c.parentalArray = [202];
+    c.prevProg();
+    assert.equal(c.prompts.length, 1);
+    c.p_pref = "replacement";
+    c.grant();
+    assert.equal(c.requests.length, 0);
+    assert.deepEqual(
+        c.effects,
+        [],
+        "retired single-entry PIN cannot start playback"
+    );
 }
 
 // Actual history selection uses the stable ID after a category moves/disappears.

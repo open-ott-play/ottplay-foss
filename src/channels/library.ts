@@ -370,30 +370,34 @@ function createChannelLibrary(
     // Unedited provider groups follow new catalog names and membership. User copies remain independent.
     function groups(): LibraryGroup[] {
         var seen: Record<string, boolean> = Object.create(null);
+        var hidden: Record<string, boolean> = Object.create(null);
+        state!.hidden.forEach(function (id) {
+            hidden[id] = true;
+        });
         var result = state!.groups.map(function (group) {
             seen[group.id] = true;
             var live = providerById[group.id];
+            var members = group.members;
+            if (live && group.inheritsMembers) members = live.members;
+            else if (live && group.known) {
+                var known: Record<string, boolean> = Object.create(null);
+                group.known.concat(members).forEach(function (id) {
+                    known[id] = true;
+                });
+                members = members.concat(
+                    live.members.filter(function (id) {
+                        return !known[id];
+                    })
+                );
+            }
             return {
                 id: group.id,
                 label: live && group.label === "" ? live.label : group.label,
-                members: (live && group.inheritsMembers
-                    ? live.members
-                    : group.members.concat(
-                          live
-                              ? live.members.filter(function (id) {
-                                    return (
-                                        !!group.known &&
-                                        group.known.indexOf(id) < 0 &&
-                                        group.members.indexOf(id) < 0
-                                    );
-                                })
-                              : []
-                      )
-                ).map(resolve),
+                members: members.map(resolve),
             };
         });
         provider.forEach(function (group) {
-            if (state!.hidden.indexOf(group.id) < 0 && !seen[group.id]) {
+            if (!hidden[group.id] && !seen[group.id]) {
                 seen[group.id] = true;
                 result.push({
                     id: group.id,
@@ -403,7 +407,7 @@ function createChannelLibrary(
             }
         });
         return result.filter(function (group) {
-            return state!.hidden.indexOf(group.id) < 0;
+            return !hidden[group.id];
         });
     }
     function commit(change: (draft: LibraryDocument) => void): boolean {
@@ -436,13 +440,11 @@ function createChannelLibrary(
         }
     }
     function numeric(members: string[]): number[] {
-        return members
-            .filter(function (id) {
-                return !!items[id];
-            })
-            .map(function (id) {
-                return items[id].id;
-            });
+        var result: number[] = [];
+        members.forEach(function (id) {
+            if (items[id]) result.push(items[id].id);
+        });
+        return result;
     }
     function editGroup(
         draft: LibraryDocument,

@@ -1,5 +1,6 @@
 const {
     attachSourceAliases,
+    classicName,
     sourceNames,
 } = require("./helpers/english-source-fixture.cjs");
 /* Use one classic-script scope, as the shipped concatenated bundle does. */
@@ -16,6 +17,14 @@ const policyNames = [
     "isPlayDistribution",
     "isProviderAllowed",
 ];
+const visibilityNames = [
+    "toggleProviderSelectionVisibility",
+    "toggleProviderSettingsVisibility",
+    "providerSelectionUnlockCount",
+    "providerSettingsUnlockCount",
+];
+const bundle = process.argv.includes("--bundle");
+const runtimeName = bundle ? classicName : (name) => name;
 
 function declarations(file, names) {
     names = sourceNames(file, names);
@@ -49,7 +58,7 @@ function declarations(file, names) {
 
 const lz = declarations("src/utils/lzstring.ts");
 const storage = declarations("src/storage/index.ts");
-const code = process.argv.includes("--bundle")
+const code = bundle
     ? declarations("dist/stbPlayer.js", [
           ...lz.names,
           ...storage.names,
@@ -57,6 +66,7 @@ const code = process.argv.includes("--bundle")
           "loadProv",
           "pdsa",
           ...policyNames,
+          ...visibilityNames.map(runtimeName),
           ...aliasNames,
       ]).code
     : [
@@ -66,6 +76,7 @@ const code = process.argv.includes("--bundle")
               "loadProv",
               "pdsa",
               ...policyNames,
+              ...visibilityNames,
           ]).code,
           declarations("src/index.ts", aliasNames).code,
       ].join("\n");
@@ -149,7 +160,7 @@ vm.runInContext(
     }).outputText,
     context
 );
-if (!process.argv.includes("--bundle")) attachSourceAliases(context);
+if (!bundle) attachSourceAliases(context);
 
 // First-run reset and repeated reloads must restore originals after provider overrides.
 for (let round = 0; round < 3; round++) {
@@ -173,7 +184,19 @@ for (let round = 0; round < 3; round++) {
     const value = "EPG history Кириллица ".repeat(50);
     context.providerSetItem("history", value);
     assert.equal(context.providerGetItem("history"), value);
+    const decompress = context.decompress;
+    let decompressions = 0;
+    context.decompress = (compressed) => {
+        decompressions++;
+        return decompress(compressed);
+    };
     assert.equal(context.providerHasItemValue("history"), true);
+    context.decompress = decompress;
+    assert.equal(
+        decompressions,
+        1,
+        "Presence checks decode stored data only once"
+    );
     assert(
         saved.get("provider-" + round + ":history").startsWith("\x01LZ\x01")
     );
@@ -192,4 +215,77 @@ assert(
 assert(
     context.pdsa.includes("continueWatch"),
     "source reset clears legacy resume mirror"
+);
+
+for (const [method, key, policy] of [
+    ["toggleProviderSelectionVisibility", "noSelProv", "providers"],
+    ["toggleProviderSettingsVisibility", "noProvParam", "settings"],
+]) {
+    for (const stored of ["0", "1"]) {
+        let value = stored,
+            granted = false,
+            resume,
+            confirmed,
+            restarts = 0,
+            prompts = 0;
+        context.__ottParental = {
+            needs(kind) {
+                assert.equal(kind, policy);
+                return !granted;
+            },
+        };
+        context.stbGetItem = (name) => {
+            assert.equal(name, key);
+            return value;
+        };
+        context.stbSetItem = (name, next) => {
+            assert.equal(name, key);
+            value = next;
+        };
+        context.enterPinAndSetAccess = (callback) => (resume = callback);
+        context.confirmBox = (message, yes) => {
+            prompts++;
+            assert.equal(
+                message.startsWith(stored === "1" ? "Show" : "Hide"),
+                true
+            );
+            confirmed = yes;
+        };
+        context.restart = () => restarts++;
+        context[runtimeName("providerSelectionUnlockCount")] = 0;
+        context[runtimeName("providerSettingsUnlockCount")] = 0;
+        for (let i = 0; i < 6; i++) context[runtimeName(method)]();
+        assert.equal(resume, undefined, "Six presses do not open the PIN gate");
+        assert.equal(prompts, 0);
+        context[runtimeName(method)]();
+        assert.equal(typeof resume, "function");
+        assert.equal(
+            prompts,
+            0,
+            "PIN confirmation precedes the setting confirmation"
+        );
+        granted = true;
+        resume();
+        assert.equal(prompts, 1);
+        assert.equal(
+            value,
+            stored,
+            "Cancelling confirmation keeps the existing bit"
+        );
+        assert.equal(restarts, 0);
+        confirmed = undefined;
+        for (let i = 0; i < 6; i++) context[runtimeName(method)]();
+        assert.equal(
+            confirmed,
+            undefined,
+            "Cancellation resets the seven-press gate"
+        );
+        context[runtimeName(method)]();
+        confirmed();
+        assert.equal(value, stored === "1" ? "0" : "1");
+        assert.equal(restarts, 1);
+    }
+}
+console.log(
+    "PASS provider visibility: both flags/states, PIN, seven presses and cancelled confirmation"
 );

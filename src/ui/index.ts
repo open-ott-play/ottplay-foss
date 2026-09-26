@@ -258,8 +258,10 @@ export function uiInit(): void {
         document.head.appendChild(link);
     }
 
-    // Patch jQuery show/hide to trigger events
+    // A standby wake reuses the page and its jQuery prototype.
     (function ($) {
+        if ($.fn.__ottVisibilityEvents) return;
+        $.fn.__ottVisibilityEvents = true;
         $.each(["show", "hide"], function (_i, ev) {
             var orig = $.fn[ev];
             $.fn[ev] = function () {
@@ -269,16 +271,18 @@ export function uiInit(): void {
         });
     })(jQuery);
 
-    $("#listAbout").on("show", function () {
+    // Replace only our listeners; newly created elements also need binding.
+    $("#listAbout, #listEdit, #dialogbox, #info1, #progress_div").off(".ottUi");
+    $("#listAbout").on("show.ottUi", function () {
         $("#listIn").hide();
     });
-    $("#listAbout").on("hide", function () {
+    $("#listAbout").on("hide.ottUi", function () {
         $("#listIn").show();
     });
-    $("#listEdit").on("show", function () {
+    $("#listEdit").on("show.ottUi", function () {
         $("#listIn").hide();
     });
-    $("#listEdit").on("hide", function () {
+    $("#listEdit").on("hide.ottUi", function () {
         $("#listIn").show();
         var editEl = document.getElementById(
             "editvar"
@@ -290,7 +294,7 @@ export function uiInit(): void {
         }
         $("#listEdit").text("");
     });
-    $("#dialogbox").on("show", function () {
+    $("#dialogbox").on("show.ottUi", function () {
         $(this)
             .css({ height: "auto", left: 0, top: 0, width: "auto" })
             .css({
@@ -300,7 +304,7 @@ export function uiInit(): void {
     });
 
     // Click on info bar toggles channel info display
-    $infoBar.click(function (e: any) {
+    $infoBar.on("click.ottUi", function (e: any) {
         if (!e) e = event;
         e.stopPropagation();
         if (typeof (window as any).showChannelInfo === "function")
@@ -466,7 +470,7 @@ export function uiInit(): void {
     var $progressDiv = $("#progress_div");
     var seekInProgress = false;
 
-    $progressDiv.mousedown(function (e: any) {
+    $progressDiv.on("mousedown.ottUi", function (e: any) {
         if (!e) e = event;
         if (e.clientX === undefined) {
             console.error("$progress_div[mousedown] evt.clientX not exist");
@@ -545,18 +549,18 @@ export function uiInit(): void {
                 w.playChannel(w.catIndex, w.primaryIndex);
         }
     }
-    $progressDiv.mouseup(function (e: any) {
+    $progressDiv.on("mouseup.ottUi", function (e: any) {
         if (!seekInProgress) return;
         seekInProgress = false;
         seekProgress(e, "mouseup");
     });
-    $progressDiv.click(function (e: any) {
+    $progressDiv.on("click.ottUi", function (e: any) {
         seekProgress(e, "click");
     });
 
     // Progress bar mousemove — show tooltip
     var tooltipEl = document.getElementById("progress_span");
-    $progressDiv.mousemove(function (e: any) {
+    $progressDiv.on("mousemove.ottUi", function (e: any) {
         if (!e) e = event;
         if (e.clientX === undefined) {
             console.error("$progress_div[mousemove] evt.clientX not exist");
@@ -728,6 +732,18 @@ export function showChannelInfo(timeoutSec: number): void {
 export function showPage(): void {
     var screenOwner = (window as any).__ottClassicScreenPort.commitList();
     if (!screenOwner.active()) return;
+    function scheduleLayoutRetry(key: string): void {
+        var host = window as any;
+        var pending = host[key];
+        if (pending && pending.owner === screenOwner) return;
+        var retry = { owner: screenOwner };
+        host[key] = retry;
+        requestAnimationFrame(function () {
+            if (host[key] !== retry) return;
+            host[key] = false;
+            if (screenOwner.active()) showPage();
+        });
+    }
     isListVisible = true;
     try {
         (window as any).isListVisible = true;
@@ -756,17 +772,8 @@ export function showPage(): void {
     // (common on first open in Tauri after show()).
     try {
         var _boxEarly = document.getElementById("listIn");
-        if (
-            _boxEarly &&
-            _boxEarly.clientHeight <= 40 &&
-            !(window as any).__ottListFitRetry
-        ) {
-            (window as any).__ottListFitRetry = true;
-            requestAnimationFrame(function () {
-                (window as any).__ottListFitRetry = false;
-                if (screenOwner.active()) showPage();
-            });
-        }
+        if (_boxEarly && _boxEarly.clientHeight <= 40)
+            scheduleLayoutRetry("__ottListFitRetry");
     } catch (_early) {}
     // Both classic spellings project the same ScreenPort arrays.
     var dataArr =
@@ -903,6 +910,7 @@ export function showPage(): void {
     try {
         packListRowBoxes(pageStart, pageEnd, pageSz);
         requestAnimationFrame(function () {
+            if (!screenOwner.active()) return;
             try {
                 var h2 = packListRowBoxes(pageStart, pageEnd, pageSz);
                 if (h2 > 0) (window as any).__ottListRowH = h2;
@@ -939,6 +947,8 @@ export function showPage(): void {
     // used to leave #itN without a visible cursor when only page HTML flipped).
     try {
         var pin = document.getElementById("it" + selIndex);
+        var cursorRetry = (window as any).__ottListCursorRetry;
+        var retryCursor = !cursorRetry || cursorRetry.owner !== screenOwner;
         if (pin) {
             pin.style.backgroundColor = curColorB || "#668";
             pin.style.color = curColor || "gold";
@@ -946,11 +956,7 @@ export function showPage(): void {
             // after layout (Tauri WKWebView often reports stale #listIn height).
             try {
                 var boxPin = listInElement || document.getElementById("listIn");
-                if (
-                    boxPin &&
-                    !(window as any).__ottListCursorRetry &&
-                    dataArr.length
-                ) {
+                if (boxPin && retryCursor && dataArr.length) {
                     var lr2 = (boxPin as HTMLElement).getBoundingClientRect();
                     var er2 = pin.getBoundingClientRect();
                     if (
@@ -958,26 +964,17 @@ export function showPage(): void {
                             er2.top >= lr2.top - 1 &&
                             er2.bottom <= lr2.bottom + 1
                         )
-                    ) {
-                        (window as any).__ottListCursorRetry = true;
-                        requestAnimationFrame(function () {
-                            (window as any).__ottListCursorRetry = false;
-                            showPage();
-                        });
-                    }
+                    )
+                        scheduleLayoutRetry("__ottListCursorRetry");
                 }
             } catch (_clip) {}
         } else if (
             dataArr.length &&
             selIndex >= 0 &&
             selIndex < dataArr.length &&
-            !(window as any).__ottListCursorRetry
+            retryCursor
         ) {
-            (window as any).__ottListCursorRetry = true;
-            requestAnimationFrame(function () {
-                (window as any).__ottListCursorRetry = false;
-                showPage();
-            });
+            scheduleLayoutRetry("__ottListCursorRetry");
         }
     } catch (_pin) {}
     (window as any).selIndex = selIndex;
@@ -1615,12 +1612,20 @@ function _t2(n: number): string {
  * 2. Every 30s — refresh channel info via `updateChannelInfo`.
  *
  * @returns void
- * @sideeffect Sets up two `setInterval` calls that run indefinitely. Updates DOM elements `current_t`,
+ * @sideeffect Replaces the two owned intervals on restart. Updates DOM elements `current_t`,
  *             `current_s`, `list_t`, `list_s`, `permanentTime`. Reads backend-owned `window.playTime`.
  * @analysis Playback timing belongs to the backend; the 1s timer only renders it. The 30s timer keeps EPG data fresh.
  */
 export function initBackgroundIntervals(): void {
-    setInterval(function () {
+    var host = window as any;
+    var previous = host.__ottUiTimers;
+    var owner: any = (host.__ottUiTimers = { clock: null, guide: null });
+    if (previous) {
+        clearInterval(previous.clock);
+        clearInterval(previous.guide);
+    }
+    owner.clock = setInterval(function () {
+        if (host.__ottUiTimers !== owner) return;
         var now = new Date();
         var timeStr = _t2(now.getHours()) + ":" + _t2(now.getMinutes());
         var secStr = ":" + _t2(now.getSeconds());
@@ -1651,7 +1656,8 @@ export function initBackgroundIntervals(): void {
             w_t.updateMediaInfo();
         }
     }, 1000);
-    setInterval(function () {
+    owner.guide = setInterval(function () {
+        if (host.__ottUiTimers !== owner) return;
         // Channel EPG must not replace the movie title/progress during VOD.
         if (
             !(window as any).playType &&
@@ -1821,12 +1827,17 @@ function scheduleListDetailUpdate(): void {
     if (listDetailElement) listDetailElement.innerHTML = "";
     var owner = (window as any).__ottClassicScreenPort.listOwner();
     if (!owner) return;
+    if (owner.model.detailCleanup) owner.model.detailCleanup();
     var detail = detailListActionFn;
     var release = owner.own(function () {
         clearTimeout(timer);
+        if (owner.model.detailCleanup === release)
+            delete owner.model.detailCleanup;
     });
+    owner.model.detailCleanup = release;
     var timer = setTimeout(
         owner.guard(function () {
+            if (owner.model.detailCleanup !== release) return;
             release();
             if (owner.foreground() && detail) detail();
         }),

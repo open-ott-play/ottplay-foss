@@ -46,7 +46,7 @@ import { sendClientFeedback } from "../utils/helpers";
                     (event.colno || "??")
             );
             etext.push(
-                typeof event.error === "object"
+                typeof event.error === "object" && event.error !== null
                     ? event.error.stack
                     : "<no_stack>"
             );

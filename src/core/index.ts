@@ -2094,7 +2094,6 @@ export function stbInit(): void {
         video!.addEventListener("loadedmetadata", function () {
             console.log("Event: loadedmetadata");
         });
-        video!.addEventListener("durationchange", function () {});
         video!.addEventListener("canplay", function () {
             $("#buffering").hide();
             $("#video_res").text("");

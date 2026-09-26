@@ -48,14 +48,14 @@ function channelLibraryPublish(host: any): void {
     var category = channelLibraryIndex(wantedGroup);
     if (category < 0) category = host.sFavorites ? 1 : 0;
     var list = categories[labels[category]] || [];
-    var index = list.indexOf(previousId);
+    var index = -1;
     if (selected) {
-        index = list
-            .map(function (id) {
-                return channelLibraryInstance.itemId(id);
-            })
-            .indexOf(selected.itemId);
-    }
+        for (var i = 0; i < list.length; i++)
+            if (channelLibraryInstance.itemId(list[i]) === selected.itemId) {
+                index = i;
+                break;
+            }
+    } else index = list.indexOf(previousId);
     host.catIndex = category;
     host.curList = list;
     host.primaryIndex = index < 0 ? 0 : index;

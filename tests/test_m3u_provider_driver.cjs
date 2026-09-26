@@ -526,6 +526,64 @@ test("Dune saved XML/JSON/M3U catalogs use owned media transport with MAC and st
     }
 });
 
+test("catalog delivery detaches nested XML rows and never appends pagination to the decoder cache", () => {
+    const f = fixture();
+    const cached = JSON.parse(
+        '{"channels":[{"title":"Film","__proto__":{"safe":true},"details":{"cast":["Actor"]}}],"next_page_url":"next"}'
+    );
+    Object.freeze(cached.channels);
+    Object.freeze(cached.channels[0]);
+    const owner = f.host.__ottProviderRuntime.createRegistry().activate("test");
+    let complete;
+    const catalog = f.host.__ottMediaCatalog.create(
+        {
+            core: { operatorVodUrl: (_profile, url) => url },
+            createLifetime: f.host.__ottProviderRuntime.createRegistry,
+            decodeXml: () => cached,
+        },
+        owner,
+        {
+            transport: () => ({
+                dispose() {},
+                send(scope, _request, success) {
+                    complete = scope.guard(success);
+                },
+            }),
+        }
+    );
+    let delivered;
+    catalog.load(
+        { profile: "m3u", url: "https://catalog.test/xml" },
+        (value) => {
+            delivered = value;
+        }
+    );
+    complete("<items>cached</items>");
+    assert.equal(delivered.records.length, 2);
+    assert.equal(delivered.records[1].playlist_url, "next");
+    assert.equal(cached.channels.length, 1);
+    delivered.records[0].details.cast[0] = "Changed";
+    delivered.records[0].__proto__.safe = false;
+    assert.equal(cached.channels[0].details.cast[0], "Actor");
+    assert.equal(cached.channels[0].__proto__.safe, true);
+    const json =
+        '{"channels":[{"title":"Film","details":{"cast":["Actor"]}}],"menu":[{"title":"Folder"}]}';
+    catalog.load(
+        { profile: "m3u", url: "https://catalog.test/json" },
+        (value) => {
+            delivered = value;
+        }
+    );
+    complete(json);
+    assert.deepEqual(
+        Array.from(delivered.records, (row) => row.t),
+        ["channel", "menu"]
+    );
+    assert.equal(delivered.records[0].details.cast[0], "Actor");
+    owner.dispose();
+    f.dom.window.close();
+});
+
 test("actual loadProv/loadChannels boot owns M3U without dynamic script or source callback resurrection", () => {
     const f = fixture({ integration: true });
     f.start();

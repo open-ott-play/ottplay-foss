@@ -213,11 +213,12 @@ function createReminderService(ports: ReminderPorts) {
                 retirePrompt();
                 if (!active() || expected !== operation) return false;
             }
+            var starts: Record<string, number> = Object.create(null);
+            old.forEach(function (record) {
+                starts[record.id] = record.start;
+            });
             next.forEach(function (record) {
-                var previous = old.filter(function (entry) {
-                    return entry.id === record.id;
-                })[0];
-                if (!previous || previous.start !== record.start) {
+                if (starts[record.id] !== record.start) {
                     delete prompted[record.id];
                     delete notified[record.id];
                 }

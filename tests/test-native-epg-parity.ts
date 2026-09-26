@@ -263,6 +263,19 @@ vm.runInContext(
     ]),
     matcher
 );
+const indexedRows = [
+    { icon: "first.png", id: "duplicate", name: "First" },
+    { icon: "second.png", id: "duplicate", name: "Second" },
+    { icon: "prototype.png", id: "__proto__", name: "Prototype" },
+    { icon: "constructor.png", id: "constructor", name: "Constructor" },
+    { icon: "method.png", id: "toString", name: "Method" },
+];
+const indexed = matcher.createNativeXmltvMatcher(indexedRows);
+assert.equal(indexed("duplicate", "", ""), indexedRows[0]);
+assert.equal(indexed("", "Second", ""), indexedRows[0]);
+for (const row of indexedRows.slice(2))
+    assert.equal(indexed(row.id, "", ""), row);
+assert.equal(indexed("missing", "", ""), undefined);
 const body =
     JSON.stringify({
         native_channels: {

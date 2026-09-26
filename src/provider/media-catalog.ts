@@ -93,9 +93,9 @@ function createOwnedMediaCatalog(
             )
                 data[key].forEach(function (row: any) {
                     if (!row || typeof row !== "object") return;
-                    var copy: any = detach(row);
-                    copy.t = key === "menu" ? "menu" : "channel";
-                    records.push(copy);
+                    // JSON.parse owns these rows; detach once at delivery.
+                    row.t = key === "menu" ? "menu" : "channel";
+                    records.push(row);
                 });
         });
         if (data.next_page_url)
@@ -205,15 +205,17 @@ function createOwnedMediaCatalog(
                                         value.title ||
                                         request.name ||
                                         "?",
-                                    records: detach(value.channels || []),
+                                    records: value.channels || [],
                                 };
                                 if (value.next_page_url)
-                                    decoded.records.push({
-                                        description: "...",
-                                        logo_30x30: "",
-                                        playlist_url: value.next_page_url,
-                                        title: "...",
-                                    });
+                                    decoded.records = decoded.records.concat([
+                                        {
+                                            description: "...",
+                                            logo_30x30: "",
+                                            playlist_url: value.next_page_url,
+                                            title: "...",
+                                        },
+                                    ]);
                             } else {
                                 stage = "catalog";
                                 decoded =

@@ -19,13 +19,31 @@ function createGuideScreen(ports: GuideScreenPorts) {
         cancel = null;
         if (old) old();
     }
+    function current(): boolean {
+        return (
+            !!state &&
+            (state.children
+                ? state.children.every(function (child: any) {
+                      return child.current();
+                  })
+                : ports.current(state.reference))
+        );
+    }
+    function selectedChild(): any {
+        return state && state.children ? state.owners[state.selectedId] : null;
+    }
     function snapshot(): any {
+        var model =
+            state && state.children
+                ? state.models[state.order[state.selectedId]]
+                : null;
         return state
             ? JSON.parse(
                   JSON.stringify({
+                      channelIds: state.channelIds,
                       mode: state.mode,
                       rows: state.rows,
-                      schedule: state.schedule,
+                      schedule: model ? model.schedule : state.schedule,
                       selectedId: state.selectedId,
                   })
               )
@@ -33,19 +51,12 @@ function createGuideScreen(ports: GuideScreenPorts) {
     }
     return {
         close: close,
-        current: function () {
-            return !!state && ports.current(state.reference);
-        },
+        current: current,
         guard: function (callback: any) {
             var expected = revision,
-                current = state;
+                captured = state;
             return function () {
-                if (
-                    revision === expected &&
-                    current === state &&
-                    current &&
-                    ports.current(current.reference)
-                )
+                if (revision === expected && captured === state && current())
                     callback();
             };
         },
@@ -131,16 +142,93 @@ function createGuideScreen(ports: GuideScreenPorts) {
             if (!completed && expected === revision) cancel = stop;
             else stop();
         },
+        openCategory: function (
+            references: GuideReference[],
+            playhead: number,
+            notify: any,
+            selectedId?: string
+        ) {
+            var expected = revision + 1;
+            close();
+            if (
+                expected !== revision ||
+                !references.every(function (reference) {
+                    return ports.current(reference);
+                })
+            )
+                return;
+            var children = references.map(function () {
+                return createGuideScreen(ports);
+            });
+            var view: any = {
+                channelIds: Object.create(null),
+                children: children,
+                mode: 3,
+                models: [],
+                order: Object.create(null),
+                owners: Object.create(null),
+                rows: [],
+                schedule: [],
+                selectedId: selectedId || "",
+            };
+            state = view;
+            cancel = function () {
+                children.forEach(function (child) {
+                    child.close();
+                });
+            };
+            var remaining = references.length;
+            function publish(): void {
+                if (state !== view || expected !== revision || !current())
+                    return;
+                view.models.forEach(function (model: any, index: number) {
+                    model.rows.forEach(function (row: any) {
+                        view.rows.push(row);
+                        view.owners[row.id] = children[index];
+                        view.order[row.id] = index;
+                        view.channelIds[row.id] = references[index].id;
+                    });
+                });
+                view.rows.sort(function (a: any, b: any) {
+                    return a.title < b.title
+                        ? -1
+                        : a.title > b.title
+                          ? 1
+                          : a.start - b.start ||
+                            view.order[a.id] - view.order[b.id];
+                });
+                if (!view.owners[view.selectedId])
+                    view.selectedId = view.rows.length ? view.rows[0].id : "";
+                notify(snapshot());
+            }
+            if (!remaining) publish();
+            references.forEach(function (reference, index) {
+                if (state !== view || expected !== revision) return;
+                children[index].open(
+                    reference,
+                    0,
+                    Number((reference.token as any).rec) || 0,
+                    playhead,
+                    function (model: any) {
+                        view.models[index] = model;
+                        if (--remaining === 0) publish();
+                    }
+                );
+            });
+        },
         reference: function () {
-            return state && state.reference;
+            var child = selectedChild();
+            return child ? child.reference() : state && state.reference;
         },
         select: function (id: string) {
-            if (!state || !ports.current(state.reference)) return null;
+            if (!current()) return null;
             var row = state.rows.filter(function (item: GuideProgramme) {
                 return item.id === id;
             })[0];
             if (!row) return null;
             state.selectedId = id;
+            var child = selectedChild();
+            if (child) child.select(id);
             return JSON.parse(JSON.stringify(row));
         },
         snapshot: snapshot,

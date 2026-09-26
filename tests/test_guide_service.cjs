@@ -100,6 +100,39 @@ check("coalesces requests and detaches every response/projection", () => {
     assert.equal(f.service.snapshot(f.ref()).current.title, "A");
 });
 check(
+    "subscription projections and explicit responses stay independently detached",
+    () => {
+        const f = fixture(),
+            projections = [],
+            responses = [];
+        f.service.subscribe(f.ref(), (value) => {
+            projections.push(value.current && value.current.id);
+            if (value.current) value.current.title = "subscriber mutation";
+        });
+        f.service.request(f.ref(), (rows) => {
+            responses.push(rows);
+            rows[0].title = "request mutation";
+        });
+        f.flush();
+        f.requests[0].done([
+            programme("current", 90, 110),
+            programme("next", 110, 130),
+        ]);
+        f.service.request(f.ref(), (rows) => responses.push(rows));
+        assert.equal(responses[1][0].title, "current");
+        assert.equal(f.service.snapshot(f.ref()).current.title, "current");
+        f.advance(110);
+        f.flush();
+        assert.equal(
+            f.requests.length,
+            1,
+            "clock projects the retained schedule"
+        );
+        assert.equal(projections.at(-1), "next");
+        assert.equal(f.service.snapshot(f.ref()).current.title, "next");
+    }
+);
+check(
     "last consumer cancellation aborts without rejecting another consumer",
     () => {
         const f = fixture(),

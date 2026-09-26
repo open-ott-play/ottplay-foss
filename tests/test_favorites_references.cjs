@@ -216,6 +216,48 @@ test("visible removals and reordering retain only invisible references and list 
     assert.equal(f.read().lists.lists.Main, undefined);
     assert.deepEqual(f.read().lists.lists.Keep, []);
 });
+test("membership lookup retains duplicate selections, reference identity and invisible neighbours for prototype-like IDs", (f) => {
+    f.w.channels = {
+        10: { itemId: "__proto__" },
+        20: { itemId: "constructor" },
+        30: { itemId: "toString" },
+    };
+    const first = { itemId: "__proto__" };
+    const second = { itemId: "constructor" };
+    const leading = { itemId: "missing leading" };
+    const middle = { itemId: "missing middle" };
+    const trailing = { itemId: "missing trailing" };
+    const prior = {
+        bindings: { 10: first, 20: second },
+        references: [
+            leading,
+            first,
+            middle,
+            second,
+            { itemId: "toString" },
+            first,
+            trailing,
+        ],
+        view: [10, 20, 30, 10],
+    };
+    const selected = [20, 10, 20];
+    const result = f.w.mergeFavoriteReferences(
+        selected,
+        prior,
+        f.w.__ottChannelReferences.create(f.w.channels)
+    );
+    const expected = [middle, second, leading, first, second, trailing];
+    assert.deepEqual(plain(result), expected);
+    expected.forEach((reference, index) =>
+        assert.equal(result[index], reference)
+    );
+    assert.deepEqual(selected, [20, 10, 20]);
+    assert.equal(
+        prior.references.length,
+        7,
+        "projection does not mutate prior references"
+    );
+});
 test("saving a stale numeric projection cannot duplicate or redirect its missing stable binding", (f) => {
     f.raw("favoritesArray", [100]);
     f.load();

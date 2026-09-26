@@ -58,7 +58,9 @@ function createNativeXmltvMatcher(
     name: string
 ) => NativeXmltvChannel | undefined {
     var rows: string[][] = [];
+    var channels: Record<string, NativeXmltvChannel> = Object.create(null);
     entries.forEach(function (entry) {
+        if (!channels[entry.id]) channels[entry.id] = entry;
         // Retain explicit IDs even when a channel has no searchable aliases.
         var aliases = entry.names || [entry.name];
         (aliases.length ? aliases : [""]).forEach(function (alias) {
@@ -77,9 +79,7 @@ function createNativeXmltvMatcher(
     );
     return function (id: string, tvgName: string, name: string) {
         var resolved = index.resolve(id, [tvgName, name]);
-        return entries.filter(function (entry) {
-            return entry.id === resolved;
-        })[0];
+        return typeof resolved === "string" ? channels[resolved] : undefined;
     };
 }
 
