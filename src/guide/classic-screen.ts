@@ -196,8 +196,7 @@ function openClassicCategoryRecordings(category: number): void {
             ? previousChoice.row.id
             : classicGuideView.selectedId;
     }
-    members.forEach(function (id: any) {
-        var reference = guide.reference(id);
+    guide.references(members).forEach(function (reference: any) {
         if (
             reference &&
             !seen[reference.channelId] &&
