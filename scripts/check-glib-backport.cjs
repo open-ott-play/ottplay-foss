@@ -59,22 +59,39 @@ assert.equal(
     manifest.files["src/variant_iter.rs"],
     "the source diff must be exactly the upstream two-line fix"
 );
-const cargo = fs.readFileSync(path.join(root, "Cargo.toml"), "utf8");
-assert.match(
-    cargo,
-    /\[patch\.crates-io\][\s\S]*?glib\s*=\s*\{\s*path\s*=\s*"vendor\/glib-0\.18\.5"\s*\}/
-);
-const lock = fs.readFileSync(path.join(root, "Cargo.lock"), "utf8");
-const record = lock
-    .split("[[package]]")
-    .find((entry) => /\nname = "glib"\n/.test(entry));
-assert.ok(record, "workspace lockfile must resolve glib");
-assert.match(record, /version = "0\.18\.5"/);
-assert.doesNotMatch(
-    record,
-    /\n(?:source|checksum) =/,
-    "glib must resolve locally, not to the unpatched registry release"
-);
+for (const [directory, source] of [
+    [".", "vendor/glib-0.18.5"],
+    ["tests/macos-drag-regression", "../../vendor/glib-0.18.5"],
+]) {
+    const cargo = fs.readFileSync(
+        path.join(root, directory, "Cargo.toml"),
+        "utf8"
+    );
+    const overrides = cargo.split("[patch.crates-io]")[1]?.split(/\n\[/)[0];
+    assert.ok(
+        overrides?.includes(`glib = { path = "${source}" }`),
+        directory + " must apply the GLib security backport"
+    );
+    const lock = fs.readFileSync(
+        path.join(root, directory, "Cargo.lock"),
+        "utf8"
+    );
+    const records = lock
+        .split("[[package]]")
+        .filter((entry) => /\nname = "glib"\n/.test(entry));
+    assert.equal(
+        records.length,
+        1,
+        directory + " must resolve one GLib version"
+    );
+    assert.match(records[0], /version = "0\.18\.5"/);
+    assert.doesNotMatch(
+        records[0],
+        /\n(?:source|checksum) =/,
+        directory +
+            " must resolve GLib locally, not to the unpatched registry release"
+    );
+}
 console.log(
-    "OK: glib 0.18.5 published source inventory, exact upstream safety patch, and workspace override"
+    "OK: glib 0.18.5 published source inventory, exact upstream safety patch, and workspace overrides"
 );
