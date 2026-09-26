@@ -1,10 +1,8 @@
 # Player architecture
 
 This is the developer entry point for the runtime shipped by `ottplay-foss`.
-It describes ownership and integration contracts, not a second implementation
-plan. The [runtime migration record](runtime-ownership-migration.md) records
-completed changes and measurements. Subsystem documents linked below contain
-their storage formats and detailed compatibility behavior.
+It describes ownership and integration contracts. Subsystem documents linked
+below contain storage formats and detailed compatibility behavior.
 
 The application has two relevant representations: TypeScript source modules and
 an ordered, classic ES5 script. An ES module import graph alone does not describe
@@ -237,9 +235,8 @@ and [M3U/VPortal](m3u-vportal.md).
 
 [provider-assets.cjs](../scripts/provider-assets.cjs) derives managed IDs from
 that same inventory. [runtime-assets.cjs](../scripts/runtime-assets.cjs) excludes
-their old `prov.js` files and `stb/core.js` from delivered roots. They remain
-source-controlled historical oracles, not runtime fallbacks. Metadata/logos and
-device adapters have separate staging rules.
+their `prov.js` fixtures and `stb/core.js` from delivered roots. These files are
+used only by tests. Metadata/logos and device adapters have separate staging rules.
 
 The **Full** distribution also supports an explicit dealer extension that can
 add a provider ID and load its external script. Therefore the 48 managed profiles
@@ -306,8 +303,7 @@ are admitted by the linker. Adding it to the manifest would reset shared arrays.
 [window-globals.md](window-globals.md) is a historical inventory, not a complete
 current contract or a proof that a name is removable. Use actual publications,
 the legacy-name map, linker manifest, identifier gate and behavior tests together.
-Renaming a private variable does not replace an algorithm or remove a state
-owner. Preserve attribution and licenses; see [provenance](legacy-provenance.md).
+Preserve attribution and licenses; see [inherited component notices](legacy-provenance.md).
 
 ## Build, distributions and shared-core updates
 
@@ -344,8 +340,7 @@ There are two independent distribution decisions:
 654,000 raw bytes and 187,200 gzip-level-9 bytes for each final classic artifact.
 It excludes separately loaded media libraries and shared core. The build report
 at `build/reports/classic-bundle.json` records modules, optimizer options,
-interfaces, hashes and actual sizes. Older measurements in migration documents
-are historical baselines, not additional current ceilings.
+interfaces, hashes and actual sizes.
 
 The core source lives in
 [ottplay-core/shared-core](https://github.com/open-ott-play/ottplay-core/tree/main/shared-core).
@@ -367,7 +362,7 @@ Use symbol references against the classic manifest and mapped aliases to find
 candidates, then follow escaped functions: returned driver methods, registry
 factories, stored callbacks and `window` publications are call paths even without
 a direct local call. Check every shipped provider profile and device route;
-retained oracle files alone do not establish runtime reachability or savings.
+test fixture files alone do not establish runtime reachability.
 
 Before removing a runtime binding or excluding a module:
 
@@ -375,7 +370,7 @@ Before removing a runtime binding or excluding a module:
    entrypoints, event registrations, indirect property access, generated wire
    contracts and saved menu/callback names. Search original and mapped names.
 2. Classify provider code as managed instance, external script integration or
-   retained oracle. Check explicit `/f/<adapter>` routes even when local device
+   test fixture. Check explicit `/f/<adapter>` routes even when local device
    detection never chooses them. HTTP-hosted players can run inside native shells.
 3. Trace initialization effects, side-effect imports and mutable alias readers.
    Distinguish an authoritative owner from a compatibility projection before
@@ -384,11 +379,9 @@ Before removing a runtime binding or excluding a module:
    and notices, and exercise both cold boot and the formerly reachable operation
    through actual output. Packaging must prove excluded scripts are absent.
 
-Record the call-root evidence and affected tests in the change description.
-Historical fixtures should remain immutable. Corrected behavior gets explicit
-new assertions or narrowly documented expectation corrections, as in
+Keep regression fixtures immutable. Corrected behavior gets explicit new
+assertions or narrowly documented expectation corrections, as in
 [playlist-corrected-expectations.cjs](../tests/helpers/playlist-corrected-expectations.cjs).
-A smaller source diff or renamed identifier is not proof of runtime independence.
 
 ## Making a change
 

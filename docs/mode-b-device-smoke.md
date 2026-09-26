@@ -14,7 +14,7 @@ This is **Mode B** (Capacitor / Tauri loopback). Do **not** confuse with Mode A 
 Related:
 
 - Build / store prep: [`docs/capacitor-mobile.md`](capacitor-mobile.md)
-- Command-queue curl: `./scripts/smoke-command-queue.sh` (#328)
+- Command-queue curl: `./scripts/smoke-command-queue.sh`
 - Browser baseline: a local or self-hosted web player built from the same revision.
 - Thin helper: `./scripts/smoke-capacitor-device.sh`
 

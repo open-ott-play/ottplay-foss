@@ -75,15 +75,10 @@ This does not establish persistent whole-application offline restart. Native
 packages retain both files locally and do not need a provider or CDN request.
 An uncached web origin has no new offline capability.
 
-The 2026-09-25 local fixture recorded one runtime HTTP request across the page
-and two new workers in Chromium 153.0.8010.12. WebKit 26.6 recorded two: its first
-worker fetched another response, then the second worker reused it. Therefore
-page-to-worker cache reuse is not a cross-engine promise. The browser test pins
-these observed counts separately; `no-store` responses are fetched again for
-each fresh worker realm. With the current guarded loader, the worker shrank
-from 345,461 to 118,574 bytes (gzip level 9: 122,529 to 40,976 on Node 26.8.2 /
-zlib 1.2.12). The full runtime remains 227,162 bytes. Package savings are
-independent of whether the HTTP cache supplies that runtime to a worker.
+Page-to-worker cache reuse depends on the browser. Browser tests check request
+counts separately for Chromium and WebKit; `no-store` responses are fetched
+again for each fresh worker realm. Keep the complete runtime packaged alongside
+the worker regardless of HTTP cache behavior.
 
 Worker permissions alone do not authorize its imported script. When a worker
 response carries CSP, its effective script policy must allow the same-origin

@@ -43,6 +43,4 @@ for existing legacy installations. `--open-android` only reports the new reposit
 
 The `android/` tree now contains [archived source fixtures](../android/README.md).
 Their JVM/security tests continue to check the shared TypeScript/native bridge
-contracts; they do not assemble an Android application. The archived
-[pre-extraction Capacitor document](legacy-android/capacitor-mobile.md) preserves
-historical Android implementation details and limitations.
+contracts; they do not assemble an Android application.

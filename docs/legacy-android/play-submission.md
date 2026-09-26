@@ -158,7 +158,7 @@ started. The declaration is subject to review.
 ## Release checklist and unresolved inputs
 
 - [ ] Resolve the scoped original-core permission evidence in
-  [the provenance record](../legacy-provenance.md); preserve applicable attribution.
+  [the inherited component notices](../legacy-provenance.md); preserve applicable attribution.
 - [ ] Build and verify the signed Play AAB, including package identity, release
   debug flag, permissions, backup rules, runtime hashes and required licenses.
 - [x] Publish the reviewed [privacy policy](../privacy-policy.md) to `main`.

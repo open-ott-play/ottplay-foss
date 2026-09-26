@@ -451,7 +451,7 @@ Player domain rules come from the pinned Kotlin multiplatform artifact in
 `vendor/ottplay-core.js`. Guide, archive, playlist, provider, durable-state and
 playback decisions share their implementation with FOSS2 and native Android.
 Browser/TV, Swift and Rust adapters retain device APIs, codecs, networking and
-UI effects. The browser artifact keeps ES5 syntax and the audited legacy API
+UI effects. The browser artifact keeps ES5 syntax and the supported legacy API
 bootstrap. `npm test`, `check:bundle` and `check:es5` verify the integration;
 the artifact manifest records source and output hashes.
 
@@ -476,8 +476,6 @@ src/
 ├── app/             # Device + init helpers
 └── index.ts         # Entry point, wires modules + window.* publish (concat last in MODULES)
 ```
-
-> Note: there is no `src/benchy/` — legacy developer CSS/JS live-reload and Maple `pperf_*` stamps were removed from the tree; they were never on the concat `MODULES` list.
 
 ## Device Detection
 
@@ -901,8 +899,8 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## Documentation
 
-- [System Architecture](./.github/docs/system-architecture.md) — End-to-end architecture: startup sequence, key-press dispatch, channel tuning, PiP, EPG, archive/timeshift, and per-provider data flows.
-- [Channels Phase D Cluster Map](./docs/channels-phase-d-map.md) — clusters in `src/channels/index.ts` with extract recommendations (Phase D1).
+- [Player architecture](./docs/architecture.md) — runtime ownership, provider integration, playback, guide, device adapters and build contracts.
+- [Classic ES5 build pipeline](./docs/build-pipeline.md) — compilation, compatibility checks and artifact size limits.
 
 ## License
 

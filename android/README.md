@@ -6,8 +6,7 @@ The new repository is currently a private preview and requires access.
 
 The old Capacitor Kotlin/Java sources, manifests and resources remain here because
 the shared player has regression tests for their bridge behavior, command queue,
-EPG cache, playback lifecycle, input handling and security configuration. Keeping
-these fixtures also preserves the provenance of the old wrapper.
+EPG cache, playback lifecycle, input handling and security configuration.
 
 Gradle configuration, Gradle Wrapper, APK/AAB packaging tools and Android release
 jobs have been removed. Do not run `cap sync android` here. Capacitor scripts in

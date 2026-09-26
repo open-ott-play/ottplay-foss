@@ -1,8 +1,8 @@
-# Native shells and the shared TS baseline
+# Native shell contracts
 
-The browser TS player is the behavioral baseline. Tauri and Capacitor must
-preserve its click targets, provider protocols, playback state and second-channel
-PiP semantics. An app compiling successfully is not a device playback result.
+Tauri and Capacitor share the TypeScript player's click targets, provider
+protocols, playback state and second-channel PiP semantics. An app compiling
+successfully is not a device playback result.
 
 ## Input and OS controls
 
@@ -33,11 +33,9 @@ queue draining, idle clients and startup/destroy races.
 
 ## Playback and PiP
 
-Normal Capacitor playback stays in the shared HTML/HLS/Shaka backend. The former
-automatic Android ExoPlayer takeover changed only play/pause methods and left
-seek, time, mute, tracks, aspect and layout attached to a different video. It also
-placed a native fullscreen view above the OTT interface. That automatic path is
-removed; it is not advertised as a working codec fallback.
+Normal Capacitor playback stays in the shared HTML/HLS/Shaka backend. The
+standalone Android ExoPlayer plugin is an explicit native API; it is not an
+automatic codec fallback for the shared player.
 
 Android second-channel PiP opens the requested URL in the shared muted
 `videopip`. Activity PiP is a separate explicit `enterSystemPip` plugin operation,
@@ -84,26 +82,25 @@ native adapter regressions. Tests execute actual application code, bundled
 jQuery and provider fixtures; they do not replace real decoder and OS tests.
 
 Run `node tests/test_android_activity.cjs` with JDK 21 for Android registration
-and hardware media events. PR CI compiles the Android and iOS applications and
+and hardware media events. CI compiles the Android and iOS applications and
 tests the compiled Tauri transport.
 
 Run Rust tests and compile both Capacitor projects after changing native plugins.
 The XMLTV plugin source copies must match the files actually shipped in the
 Android and iOS projects.
 
-On each target OS, use the same playlist and EPG fixture as the TS baseline:
+On each target OS, use a known playlist and EPG fixture:
 
 - Tap a non-selected channel, menu action and text input; check the actual target,
   keyboard focus and touchscreen lock.
-- Load provider JSON/JSONP, M3U mapping/logos and regional EPG; compare now/next,
+- Load provider JSON/JSONP, M3U mapping/logos and regional EPG; verify now/next,
   archive start and custom source selection.
 - Switch HLS/DASH/progressive streams; pause, seek, mute and change aspect/tracks.
   Check that only one primary player remains active and Stop stays stopped.
 - Open list, EPG and preview over video; enter/exit fullscreen and rotate the
-  device. Compare screenshot geometry and hit testing with the TS baseline.
+  device. Check layout geometry and hit testing.
 - Exercise repeated OS Play, Pause, Stop, Next and Previous; test second-channel
   PiP separately from system Activity PiP.
 
-Record the Git revision with test artifacts: the historical `1.1.40` version
-number alone identifies several different source snapshots. Codec/DRM support,
-background survival, safe area and pixel parity remain target-device checks.
+Record the Git revision with test artifacts. Codec/DRM support, background
+survival, safe area and layout remain target-device checks.

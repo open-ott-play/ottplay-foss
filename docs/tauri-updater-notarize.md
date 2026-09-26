@@ -1,6 +1,6 @@
 # Tauri updater + macOS notarization (Mode B)
 
-Readiness for desktop auto-updates and optional Apple notarization. Complements multiarch release CI (#310). **No secrets are committed** — unsigned builds keep working when secrets are absent.
+Configuration for desktop auto-updates and optional Apple notarization in multiarch release CI. **No secrets are committed** — unsigned builds keep working when secrets are absent.
 
 ## Updater (GitHub Releases)
 
@@ -78,14 +78,14 @@ Tauri reads these env vars during `tauri build` on macOS (see [macOS Code Signin
 | `APPLE_TEAM_ID` | 10-character Team ID |
 | `KEYCHAIN_PASSWORD` | Optional; CI generates a random unlock password if unset |
 
-When any of the notarize-required secrets are missing, the macOS job builds **unsigned** artifacts and continues (same as today’s #310 path). Do not bake certs into the repo or workflow files.
+When any of the notarize-required secrets are missing, the macOS job builds **unsigned** artifacts and continues. Do not bake certs into the repo or workflow files.
 
 Alternative to Apple ID + app password: App Store Connect API key via `APPLE_API_ISSUER` / `APPLE_API_KEY` / `APPLE_API_KEY_PATH` (see Tauri docs). Prefer documenting one path; this repo’s CI hooks the Apple ID path.
 
 ## Windows / Linux signing
 
 - **Updater signatures** use the Tauri minisign keypair above (all desktop OSes).
-- **Windows Authenticode / Linux package signing** are out of scope for this readiness PR — optional later; unsigned MSI/NSIS/AppImage/deb still attach to the release.
+- **Windows Authenticode / Linux package signing** are not configured; unsigned MSI/NSIS/AppImage/deb attach to the release.
 
 ## Local smoke (no secrets)
 
@@ -106,4 +106,3 @@ npx tauri build --ci --config '{"bundle":{"createUpdaterArtifacts":true}}'
 
 - Release workflows: `.github/workflows/release-build.yml` (native builds) and `.github/workflows/release-pipeline.yml` (validation and promotion)
 - Artifact collect: `scripts/ci-tauri-collect-artifacts.sh`
-- Upstream reference: inverter-desktop Tauri updater plugin wiring
