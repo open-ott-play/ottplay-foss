@@ -4,6 +4,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const acorn = require("acorn");
 const { assertQrSvg } = require("./helpers/qr-svg.cjs");
+const { assertLzWire } = require("./test_lzstring.cjs");
 const assertMenuRuntime = require("./helpers/menu-runtime.cjs");
 const {
     checkBundleIdentifiers,
@@ -2282,6 +2283,7 @@ async function main() {
         assertProviderFactories(w, profile);
         assertPrivateRuntime(w, profile);
         if (profile === "modern" || profile === "legacy") {
+            assertLzWire(w);
             assertQrSvg(
                 w,
                 "https://ott.example/invite?name=Телевизор&token=abc-123"

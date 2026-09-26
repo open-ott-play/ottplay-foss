@@ -3777,39 +3777,31 @@ window.stbOptions = function (): void {
      * re-apply them. Then re-open the stbOptions screen.
      */
     var page = createSettingsPage(w, "stbOptions", "Settings STB", true, true);
-    var noyes = [w._("no") || "no", w._("yes") || "yes"];
-    setListArrays(w, [
-        {
-            name: w._("Editor") || "Editor",
-            settingId: "editor",
-            val: w.sEditor,
-            values: [w._("built-in") || "built-in", w._("native") || "native"],
-        },
-        {
-            name:
-                w._("Type of player for streaming") ||
-                "Type of player for streaming",
-            settingId: "players",
-            val: w.sPlayers,
-            values: w.playerModeNames,
-        },
-        {
-            name: w._("Buffer Size, s") || "Buffer Size, s",
-            settingId: "bufSize",
-            val: w.sBufSize,
-            values: w.bufferSizes,
-        },
-        { cur: "", name: "", val: 0, values: w.noop || [] },
-        {
-            cur: "",
-            name:
-                '<div class="btn">' +
-                (w._("Save Settings") || "Save Settings") +
-                "</div>",
-            val: 0,
-            values: page.save,
-        },
-    ]);
+    var choice = page.choice;
+    var label = page.label;
+
+    var noyes = [label("no"), label("yes")];
+    setListArrays(
+        w,
+        page.rows([
+            choice(label("Editor"), "editor", w.sEditor, [
+                label("built-in"),
+                label("native"),
+            ]),
+            choice(
+                label("Type of player for streaming"),
+                "players",
+                w.sPlayers,
+                w.playerModeNames
+            ),
+            choice(
+                label("Buffer Size, s"),
+                "bufSize",
+                w.sBufSize,
+                w.bufferSizes
+            ),
+        ])
+    );
     if (!showPlayerChoice)
         setListArrays(
             w,
@@ -3863,6 +3855,29 @@ function createSettingsPage(
                 });
             editor.attach();
         },
+        choice: function (name: string, id: string, value: any, values?: any) {
+            return arguments.length === 3
+                ? { name: name, settingId: id, values: value }
+                : { name: name, settingId: id, val: value, values: values };
+        },
+        label: function (text: string): string {
+            return w._(text) || text;
+        },
+        rows: function (rows: any[]): any[] {
+            rows.push(
+                { cur: "", name: "", val: 0, values: w.noop || [] },
+                {
+                    cur: "",
+                    name:
+                        '<div class="btn">' +
+                        (w._("Save Settings") || "Save Settings") +
+                        "</div>",
+                    val: 0,
+                    values: saveCallback,
+                }
+            );
+            return rows;
+        },
         save: saveCallback,
     };
 }
@@ -3900,76 +3915,59 @@ window.settingsInterface = function (): void {
         true,
         false
     );
-    var noyes = [w._("no") || "no", w._("yes") || "yes"];
+    var choice = page.choice;
+    var label = page.label;
+
+    var noyes = [label("no"), label("yes")];
     var tz = (w.arrTimezone || ["system", "0"]).slice();
     tz[0] = w._(tz[0]) || tz[0];
-    setListArrays(w, [
-        {
-            name: w._("Interface theme"),
-            settingId: "interfaceTheme",
-            values: [w._("Classic"), "PLi-HD"],
-        },
-        {
-            name:
-                w._("Black screen while switching the channel") ||
-                "Black screen while switching the channel",
-            settingId: "stopPlay",
-            values: noyes,
-        },
-        {
-            name: w._("PiP window size") || "PiP window size",
-            settingId: "pipSize",
-            values: [
-                w._("small") || "small",
-                w._("medium") || "medium",
-                w._("large") || "large",
-            ],
-        },
-        {
-            name: w._("PiP window position") || "PiP window position",
-            settingId: "pipPosition",
-            values: [
-                w._("top-right") || "top-right",
-                w._("bottom-right") || "bottom-right",
-                w._("left-bottom") || "left-bottom",
-                w._("top-left") || "top-left",
-            ],
-        },
-        {
-            name: w._("Font type") || "Font type",
-            settingId: "fontSize",
-            values: w.__ottNativeFontOptions || [
-                '<span style="font-family:Helvetica, Arial, sans-serif;">' +
-                    (w._("system") || "system") +
-                    "</span>",
-                '<span style="font-family:Roboto;">Roboto</span>',
-                '<span style="font-family:RobotoCondensed;">Roboto Condensed</span>',
-                '<span style="font-family:Caveat;">Caveat</span>',
-                '<span style="font-family:Liberation;">Liberation</span>',
-                '<span style="font-family:Gabriela;">Gabriela</span>',
-                '<span style="font-family:PTSansNarrow;">PTSansNarrow</span>',
-            ],
-        },
-        {
-            name: w._("Timezone") || "Timezone",
-            settingId: "timezone",
-            values: tz,
-        },
-        {
-            name: w._("Sleep timer") || "Sleep timer",
-            settingId: "sleepTimeout",
-            values: [
-                w._("off") || "off",
-                w._("30 minutes") || "30 minutes",
-                w._("1 hour") || "1 hour",
-                w._("2 hours") || "2 hours",
-                w._("3 hours") || "3 hours",
-            ],
-        },
-        {
-            name: w._("Interface transparency") || "Interface transparency",
-            settingId: "osdOpacity",
-            values: [
+    setListArrays(
+        w,
+        page.rows([
+            choice(w._("Interface theme"), "interfaceTheme", [
+                w._("Classic"),
+                "PLi-HD",
+            ]),
+            choice(
+                label("Black screen while switching the channel"),
+                "stopPlay",
+                noyes
+            ),
+            choice(label("PiP window size"), "pipSize", [
+                label("small"),
+                label("medium"),
+                label("large"),
+            ]),
+            choice(label("PiP window position"), "pipPosition", [
+                label("top-right"),
+                label("bottom-right"),
+                label("left-bottom"),
+                label("top-left"),
+            ]),
+            choice(
+                label("Font type"),
+                "fontSize",
+                w.__ottNativeFontOptions || [
+                    '<span style="font-family:Helvetica, Arial, sans-serif;">' +
+                        label("system") +
+                        "</span>",
+                    '<span style="font-family:Roboto;">Roboto</span>',
+                    '<span style="font-family:RobotoCondensed;">Roboto Condensed</span>',
+                    '<span style="font-family:Caveat;">Caveat</span>',
+                    '<span style="font-family:Liberation;">Liberation</span>',
+                    '<span style="font-family:Gabriela;">Gabriela</span>',
+                    '<span style="font-family:PTSansNarrow;">PTSansNarrow</span>',
+                ]
+            ),
+            choice(label("Timezone"), "timezone", tz),
+            choice(label("Sleep timer"), "sleepTimeout", [
+                label("off"),
+                label("30 minutes"),
+                label("1 hour"),
+                label("2 hours"),
+                label("3 hours"),
+            ]),
+            choice(label("Interface transparency"), "osdOpacity", [
                 "100%",
                 "90%",
                 "80%",
@@ -3981,98 +3979,75 @@ window.settingsInterface = function (): void {
                 "20%",
                 "10%",
                 "0%",
-            ],
-        },
-        {
-            name: w._("Volume step, %") || "Volume step, %",
-            settingId: "volumeStep",
-            settingOffset: 3,
-            values: [3, 4, 5, 6, 7, 8, 9, 10],
-        },
-        {
-            cur: w._("select") || "select",
-            name: w._("Color spectrum") + " (" + w._("Classic") + ")",
-            settingId: "highlightColor",
-            values: w.colorDialog,
-        },
-        {
-            cur: w._("select") || "select",
-            name:
-                w._("Background color of selected item") +
-                " (" +
-                w._("Classic") +
-                ")",
-            settingId: "highlightColorSel",
-            values: w.selColorDialog,
-        },
-        {
-            cur: w._("select") || "select",
-            name: w._("Background color") + " (" + w._("Classic") + ")",
-            settingId: "highlightColorB",
-            values: w.backColorDialog,
-        },
-        {
-            name:
-                w._("Permanent clock on screen") || "Permanent clock on screen",
-            settingId: "permanentTime",
-            values: [
-                w._("no") || "no",
-                w._("yes") || "yes",
-                w._("transparent") || "transparent",
-            ],
-        },
-        {
-            name: w._("Graphical indication") || "Graphical indication",
-            settingId: "useGraphicalIndicators",
-            values: noyes,
-        },
-        {
-            name:
-                w._("Position shift -10 seconds after pause") ||
-                "Position shift -10 seconds after pause",
-            settingId: "resumeWithTenSecondRewind",
-            values: noyes,
-        },
-        {
-            name:
-                w._("Remember previous channels") ||
-                "Remember previous channels",
-            settingId: "prevCount",
-            values: [1, 5, 10, 15, 20],
-        },
-        {
-            name: w._("History in Media Library") || "History in Media Library",
-            settingId: "medCount",
-            values: [w._("no") || "no", 10, 20, 30, 40, 50],
-        },
-        {
-            name: w._("Editor") || "Editor",
-            settingId: "editor",
-            values: [w._("built-in") || "built-in", w._("native") || "native"],
-        },
-        {
-            name:
-                w._("Type of player for streaming") ||
-                "Type of player for streaming",
-            settingId: "players",
-            values: w.playerModeNames,
-        },
-        {
-            name: w._("Buffer Size, s") || "Buffer Size, s",
-            settingId: "bufSize",
-            values: w.bufferSizes,
-        },
-        { cur: "", name: "", val: 0, values: w.noop || [] },
-        {
-            cur: "",
-            name:
-                '<div class="btn">' +
-                (w._("Save Settings") || "Save Settings") +
-                "</div>",
-            val: 0,
-            values: page.save,
-        },
-    ]);
+            ]),
+            {
+                name: label("Volume step, %"),
+                settingId: "volumeStep",
+                settingOffset: 3,
+                values: [3, 4, 5, 6, 7, 8, 9, 10],
+            },
+            {
+                cur: label("select"),
+                name: w._("Color spectrum") + " (" + w._("Classic") + ")",
+                settingId: "highlightColor",
+                values: w.colorDialog,
+            },
+            {
+                cur: label("select"),
+                name:
+                    w._("Background color of selected item") +
+                    " (" +
+                    w._("Classic") +
+                    ")",
+                settingId: "highlightColorSel",
+                values: w.selColorDialog,
+            },
+            {
+                cur: label("select"),
+                name: w._("Background color") + " (" + w._("Classic") + ")",
+                settingId: "highlightColorB",
+                values: w.backColorDialog,
+            },
+            choice(label("Permanent clock on screen"), "permanentTime", [
+                label("no"),
+                label("yes"),
+                label("transparent"),
+            ]),
+            choice(
+                label("Graphical indication"),
+                "useGraphicalIndicators",
+                noyes
+            ),
+            choice(
+                label("Position shift -10 seconds after pause"),
+                "resumeWithTenSecondRewind",
+                noyes
+            ),
+            choice(
+                label("Remember previous channels"),
+                "prevCount",
+                [1, 5, 10, 15, 20]
+            ),
+            choice(label("History in Media Library"), "medCount", [
+                label("no"),
+                10,
+                20,
+                30,
+                40,
+                50,
+            ]),
+            choice(label("Editor"), "editor", [
+                label("built-in"),
+                label("native"),
+            ]),
+            choice(
+                label("Type of player for streaming"),
+                "players",
+                w.playerModeNames
+            ),
+            choice(label("Buffer Size, s"), "bufSize", w.bufferSizes),
+        ])
+    );
     setListArrays(
         w,
         w.listArray.filter(function (row: any): boolean {
@@ -4120,60 +4095,42 @@ window.settingsInfobar = function (): void {
         true,
         false
     );
-    var noyes = [w._("no") || "no", w._("yes") || "yes"];
-    setListArrays(w, [
-        {
-            name:
-                w._("Infobar display timeout, s") ||
-                "Infobar display timeout, s",
-            settingId: "infoTimeout",
-            settingOffset: 3,
-            val: w.sInfoTimeout - 3,
-            values: [3, 4, 5, 6, 7, 8, 9, 10],
-        },
-        {
-            name: w._('"Sliding" infobar') || '"Sliding" infobar',
-            settingId: "infoSlide",
-            val: w.sInfoSlide,
-            values: noyes,
-        },
-        {
-            name: w._("Show when switching") || "Show when switching",
-            settingId: "infoSwitch",
-            val: w.sInfoSwitch,
-            values: noyes,
-        },
-        {
-            name:
-                w._("Show when changing program") ||
-                "Show when changing program",
-            settingId: "infoChange",
-            val: w.sInfoChange,
-            values: noyes,
-        },
-        {
-            name: w._("Show when rewind") || "Show when rewind",
-            settingId: "infoRew",
-            val: w.sInfoRew,
-            values: noyes,
-        },
-        {
-            name: w._("Show thumbnails") || "Show thumbnails",
-            settingId: "thumbnail",
-            val: w.sThumbnail,
-            values: noyes,
-        },
-        { cur: "", name: "", val: 0, values: w.noop || [] },
-        {
-            cur: "",
-            name:
-                '<div class="btn">' +
-                (w._("Save Settings") || "Save Settings") +
-                "</div>",
-            val: 0,
-            values: page.save,
-        },
-    ]);
+    var choice = page.choice;
+    var label = page.label;
+
+    var noyes = [label("no"), label("yes")];
+    setListArrays(
+        w,
+        page.rows([
+            {
+                name: label("Infobar display timeout, s"),
+                settingId: "infoTimeout",
+                settingOffset: 3,
+                val: w.sInfoTimeout - 3,
+                values: [3, 4, 5, 6, 7, 8, 9, 10],
+            },
+            choice(
+                label('"Sliding" infobar'),
+                "infoSlide",
+                w.sInfoSlide,
+                noyes
+            ),
+            choice(
+                label("Show when switching"),
+                "infoSwitch",
+                w.sInfoSwitch,
+                noyes
+            ),
+            choice(
+                label("Show when changing program"),
+                "infoChange",
+                w.sInfoChange,
+                noyes
+            ),
+            choice(label("Show when rewind"), "infoRew", w.sInfoRew, noyes),
+            choice(label("Show thumbnails"), "thumbnail", w.sThumbnail, noyes),
+        ])
+    );
     page.attach();
 };
 
@@ -4199,89 +4156,79 @@ window.settingsLists = function (): void {
         true,
         false
     );
-    var noyes = [w._("no") || "no", w._("yes") || "yes"];
-    setListArrays(w, [
-        {
-            name:
-                w._("Not reduce video when showing the list (bugfix)") ||
-                "Not reduce video when showing the list (bugfix)",
-            settingId: "noSmall",
-            val: w.sNoSmall,
-            values: noyes,
-        },
-        {
-            name: w._("Number of rows in lists") || "Number of rows in lists",
-            settingId: "pageSize",
-            settingOffset: 10,
-            val: w.sPageSize - 10,
-            values: [
-                10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-                26, 27, 28, 29, 30,
-            ],
-        },
-        {
-            name:
-                w._("Distance between lines in lists") ||
-                "Distance between lines in lists",
-            settingId: "fontShift",
-            val: w.sFontShift,
-            values: [
-                "0",
-                1,
-                2,
-                3,
-                4,
-                5,
-                6,
-                7,
-                8,
-                9,
-                10,
-                11,
-                12,
-                13,
-                14,
-                15,
-                16,
-                17,
-                18,
-                19,
-                20,
-                21,
-                22,
-                23,
-                24,
-                25,
-                26,
-                27,
-                28,
-                29,
-                30,
-            ],
-        },
-        {
-            name: w._("List location") || "List location",
-            settingId: "listPosition",
-            val: w.sListPos,
-            values: [w._("right") || "right", w._("left") || "left"],
-        },
-        {
-            name: w._("Show scrollbar in list") || "Show scrollbar in list",
-            settingId: "showScroll",
-            val: w.sShowScroll,
-            values: noyes,
-        },
-        { cur: "", name: "", val: 0, values: w.noop || [] },
-        {
-            cur: "",
-            name:
-                '<div class="btn">' +
-                (w._("Save Settings") || "Save Settings") +
-                "</div>",
-            val: 0,
-            values: page.save,
-        },
-    ]);
+    var choice = page.choice;
+    var label = page.label;
+
+    var noyes = [label("no"), label("yes")];
+    setListArrays(
+        w,
+        page.rows([
+            choice(
+                label("Not reduce video when showing the list (bugfix)"),
+                "noSmall",
+                w.sNoSmall,
+                noyes
+            ),
+            {
+                name: label("Number of rows in lists"),
+                settingId: "pageSize",
+                settingOffset: 10,
+                val: w.sPageSize - 10,
+                values: [
+                    10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+                    25, 26, 27, 28, 29, 30,
+                ],
+            },
+            choice(
+                label("Distance between lines in lists"),
+                "fontShift",
+                w.sFontShift,
+                [
+                    "0",
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    9,
+                    10,
+                    11,
+                    12,
+                    13,
+                    14,
+                    15,
+                    16,
+                    17,
+                    18,
+                    19,
+                    20,
+                    21,
+                    22,
+                    23,
+                    24,
+                    25,
+                    26,
+                    27,
+                    28,
+                    29,
+                    30,
+                ]
+            ),
+            choice(label("List location"), "listPosition", w.sListPos, [
+                label("right"),
+                label("left"),
+            ]),
+            choice(
+                label("Show scrollbar in list"),
+                "showScroll",
+                w.sShowScroll,
+                noyes
+            ),
+        ])
+    );
     page.attach();
 };
 
@@ -4306,104 +4253,78 @@ window.settingsChannels = function (): void {
         true,
         false
     );
-    var noyes = [w._("no") || "no", w._("yes") || "yes"];
-    setListArrays(w, [
-        {
-            name:
-                w._("Show channel number in list") ||
-                "Show channel number in list",
-            settingId: "showNumber",
-            val: w.sShowNum,
-            values: noyes,
-        },
-        {
-            name:
-                w._("Show picons in channel list") ||
-                "Show picons in channel list",
-            settingId: "channelLogoMode",
-            val: w.sShowPikon,
-            values: [w._("no") || "no", "1x1", "3x4"],
-        },
-        {
-            name:
-                w._("Show channel name in list") || "Show channel name in list",
-            settingId: "showName",
-            val: w.sShowName,
-            values: noyes,
-        },
-        {
-            name: w._("Show program name") || "Show program name",
-            settingId: "showProgram",
-            val: w.sShowProgram,
-            values: noyes,
-        },
-        {
-            name:
-                w._("Show progress in channel list") ||
-                "Show progress in channel list",
-            settingId: "showProgress",
-            val: w.sShowProgress,
-            values: noyes,
-        },
-        {
-            name:
-                w._("Show archive availability in list") ||
-                "Show archive availability in list",
-            settingId: "showArchive",
-            val: w.sShowArchive,
-            values: noyes,
-        },
-        {
-            name: w._("Show description") || "Show description",
-            settingId: "showDescription",
-            val: w.sShowDescr,
-            values: noyes,
-        },
-        {
-            name: w._("Preview in channel list") || "Preview in channel list",
-            settingId: "preview",
-            val: w.sPreview,
-            values: [
-                w._("no") || "no",
-                w._("always") || "always",
+    var choice = page.choice;
+    var label = page.label;
+
+    var noyes = [label("no"), label("yes")];
+    setListArrays(
+        w,
+        page.rows([
+            choice(
+                label("Show channel number in list"),
+                "showNumber",
+                w.sShowNum,
+                noyes
+            ),
+            choice(
+                label("Show picons in channel list"),
+                "channelLogoMode",
+                w.sShowPikon,
+                [label("no"), "1x1", "3x4"]
+            ),
+            choice(
+                label("Show channel name in list"),
+                "showName",
+                w.sShowName,
+                noyes
+            ),
+            choice(
+                label("Show program name"),
+                "showProgram",
+                w.sShowProgram,
+                noyes
+            ),
+            choice(
+                label("Show progress in channel list"),
+                "showProgress",
+                w.sShowProgress,
+                noyes
+            ),
+            choice(
+                label("Show archive availability in list"),
+                "showArchive",
+                w.sShowArchive,
+                noyes
+            ),
+            choice(
+                label("Show description"),
+                "showDescription",
+                w.sShowDescr,
+                noyes
+            ),
+            choice(label("Preview in channel list"), "preview", w.sPreview, [
+                label("no"),
+                label("always"),
                 w._("on ") || "on " + (w.strENTER || "ENTER"),
-            ],
-        },
-        {
-            name:
-                w._("Number of next TV programs in channel list") ||
-                "Number of next TV programs in channel list",
-            settingId: "nextCountList",
-            val: w.sNextCountL,
-            values: [w._("no") || "no", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-        },
-        {
-            name:
-                w._("Channel list editing style") ||
-                "Channel list editing style",
-            settingId: "favorites",
-            val: w.sFavorites !== -1 ? w.sFavorites : w.noop || [],
-            values:
+            ]),
+            choice(
+                label("Number of next TV programs in channel list"),
+                "nextCountList",
+                w.sNextCountL,
+                [label("no"), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            ),
+            choice(
+                label("Channel list editing style"),
+                "favorites",
+                w.sFavorites !== -1 ? w.sFavorites : w.noop || [],
                 w.sFavorites !== -1
-                    ? [
-                          w._("All categories") || "All categories",
-                          w._('"Favorites"') || '"Favorites"',
-                      ]
+                    ? [label("All categories"), label('"Favorites"')]
                     : '<span style="color:gray;">' +
-                      (w._('"Favorites"') || '"Favorites"') +
-                      "</span>",
-        },
-        { cur: "", name: "", val: 0, values: w.noop || [] },
-        {
-            cur: "",
-            name:
-                '<div class="btn">' +
-                (w._("Save Settings") || "Save Settings") +
-                "</div>",
-            val: 0,
-            values: page.save,
-        },
-    ]);
+                          label('"Favorites"') +
+                          "</span>"
+            ),
+        ])
+    );
     page.attach();
 };
 
@@ -4428,6 +4349,9 @@ window.settingsButtons = function (): void {
         true,
         false
     );
+    var choice = page.choice;
+    var label = page.label;
+
     var r = "Behavior of %1/%2 buttons in lists";
     var s = "Button %1 function when viewing";
     var n = "Rewind step by buttons %1/%2";
@@ -4435,35 +4359,30 @@ window.settingsButtons = function (): void {
     var a = ia + '">';
     var o = "</div>";
     var l = '">&nbsp;' + o;
-    var c = [
-        w._("paging") || "paging",
-        w._("volume") || "volume",
-        "dune-php",
-        "neutrino",
-    ];
+    var c = [label("paging"), label("volume"), "dune-php", "neutrino"];
     var u = [
-        w._("Records") || "Records",
-        w._("Menu") || "Menu",
-        w._("Previous") || "Previous",
-        w._("Rewind") || "Rewind",
-        w._("Info") || "Info",
-        w._("Aspect") || "Aspect",
-        w._("Audio") || "Audio",
+        label("Records"),
+        label("Menu"),
+        label("Previous"),
+        label("Rewind"),
+        label("Info"),
+        label("Aspect"),
+        label("Audio"),
         "PiP",
-        w._("Close PiP") || "Close PiP",
-        w._("Category") || "Category",
-        w._("EPG") || "EPG",
-        w._("Media") || "Media",
-        w._("Joystick") || "Joystick",
+        label("Close PiP"),
+        label("Category"),
+        label("EPG"),
+        label("Media"),
+        label("Joystick"),
         "V+",
         "V-",
         "P+",
         "P-",
-        w._("Subtitle") || "Subtitle",
-        "-1 " + (w._(" m ") || " m ").trim(),
-        "+1 " + (w._(" m ") || " m ").trim(),
-        w._("Prev") || "Prev",
-        w._("Next") || "Next",
+        label("Subtitle"),
+        "-1 " + label(" m ").trim(),
+        "+1 " + label(" m ").trim(),
+        label("Prev"),
+        label("Next"),
     ];
     var d = [
         5, 10, 15, 20, 30, 60, 120, 180, 240, 300, 600, 900, 1200, 1800, 3600,
@@ -4485,132 +4404,58 @@ window.settingsButtons = function (): void {
         c[1] = "@@@";
     }
     if (typeof w.stbToggleSubtitle !== "function") u[17] = "@@@";
-    var noyes = [w._("no") || "no", w._("yes") || "yes"];
-    w.listArray = [
-        {
-            name: w._(
-                r,
-                a + (w.strLEFT || "L") + o,
-                a + (w.strRIGHT || "R") + o
-            ),
-            settingId: "arrowFun",
-            val: w.sArrowFun,
-            values: c,
-        },
-        {
-            name: w._(r, a + (w.strRW || "RW") + o, a + (w.strFF || "FF") + o),
-            settingId: "rewFun",
-            val: w.sRewFun,
-            values: [w._("paging") || "paging", "dune-php", "neutrino"],
-        },
-        {
-            name: w._(
+    var noyes = [label("no"), label("yes")];
+    w.listArray = page.rows([
+        choice(
+            w._(r, a + (w.strLEFT || "L") + o, a + (w.strRIGHT || "R") + o),
+            "arrowFun",
+            w.sArrowFun,
+            c
+        ),
+        choice(
+            w._(r, a + (w.strRW || "RW") + o, a + (w.strFF || "FF") + o),
+            "rewFun",
+            w.sRewFun,
+            [label("paging"), "dune-php", "neutrino"]
+        ),
+        choice(
+            w._(
                 r,
                 a + (w.strPREV || "PREV") + o,
                 a + (w.strNEXT || "NEXT") + o
             ),
-            settingId: "pnFun",
-            val: w.sPNFun,
-            values: [
-                w._("paging") || "paging",
-                "dune-php",
-                "neutrino",
-                w._("begin/end") || "begin/end",
-            ],
-        },
-        {
-            name: w._(s, a + (w.strLEFT || "L") + o),
-            settingId: "alFun",
-            val: w.sALfun,
-            values: u,
-        },
-        {
-            name: w._(s, a + (w.strRIGHT || "R") + o),
-            settingId: "arFun",
-            val: w.sARfun,
-            values: u,
-        },
-        {
-            name: w._(s, a + (w.strUP || "U") + o),
-            settingId: "auFun",
-            val: w.sAUfun,
-            values: u,
-        },
-        {
-            name: w._(s, a + (w.strDOWN || "D") + o),
-            settingId: "adFun",
-            val: w.sADfun,
-            values: u,
-        },
-        {
-            name: w._(s, a + (w.strRW || "RW") + o),
-            settingId: "rwFun",
-            val: w.sRWfun,
-            values: u,
-        },
-        {
-            name: w._(s, a + (w.strFF || "FF") + o),
-            settingId: "ffFun",
-            val: w.sFFfun,
-            values: u,
-        },
-        {
-            name: w._(s, a + (w.strPREV || "PREV") + o),
-            settingId: "prevFun",
-            val: w.sPREVfun,
-            values: u,
-        },
-        {
-            name: w._(s, a + (w.strNEXT || "NEXT") + o),
-            settingId: "nextFun",
-            val: w.sNEXTfun,
-            values: u,
-        },
-        {
-            name: w._(s, ia + " red" + l),
-            settingId: "rFun",
-            val: w.sRfun,
-            values: u,
-        },
-        {
-            name: w._(s, ia + " green" + l),
-            settingId: "gFun",
-            val: w.sGfun,
-            values: u,
-        },
-        {
-            name: w._(s, ia + " yellow" + l),
-            settingId: "yFun",
-            val: w.sYfun,
-            values: u,
-        },
-        {
-            name: w._(s, ia + " blue" + l),
-            settingId: "bFun",
-            val: w.sBfun,
-            values: u,
-        },
-        {
-            name: w._(s, a + (w.strRETURN || "RET") + o),
-            settingId: "eFun",
-            val: w.sEfun,
-            values: [
-                w._("Nothing") || "Nothing",
-                w._("Exit") || "Exit",
-                w._("Joystick") || "Joystick",
-                w._("Menu") || "Menu",
-                w._("Previous") || "Previous",
-            ],
-        },
-        {
-            name: w._(
+            "pnFun",
+            w.sPNFun,
+            [label("paging"), "dune-php", "neutrino", label("begin/end")]
+        ),
+        choice(w._(s, a + (w.strLEFT || "L") + o), "alFun", w.sALfun, u),
+        choice(w._(s, a + (w.strRIGHT || "R") + o), "arFun", w.sARfun, u),
+        choice(w._(s, a + (w.strUP || "U") + o), "auFun", w.sAUfun, u),
+        choice(w._(s, a + (w.strDOWN || "D") + o), "adFun", w.sADfun, u),
+        choice(w._(s, a + (w.strRW || "RW") + o), "rwFun", w.sRWfun, u),
+        choice(w._(s, a + (w.strFF || "FF") + o), "ffFun", w.sFFfun, u),
+        choice(w._(s, a + (w.strPREV || "PREV") + o), "prevFun", w.sPREVfun, u),
+        choice(w._(s, a + (w.strNEXT || "NEXT") + o), "nextFun", w.sNEXTfun, u),
+        choice(w._(s, ia + " red" + l), "rFun", w.sRfun, u),
+        choice(w._(s, ia + " green" + l), "gFun", w.sGfun, u),
+        choice(w._(s, ia + " yellow" + l), "yFun", w.sYfun, u),
+        choice(w._(s, ia + " blue" + l), "bFun", w.sBfun, u),
+        choice(w._(s, a + (w.strRETURN || "RET") + o), "eFun", w.sEfun, [
+            label("Nothing"),
+            label("Exit"),
+            label("Joystick"),
+            label("Menu"),
+            label("Previous"),
+        ]),
+        choice(
+            w._(
                 "Button function %1 when viewing archive",
                 a + (w.strENTER || "ENTER") + o
             ),
-            settingId: "okFun",
-            val: w.sOkfun,
-            values: [w._("EPG") || "EPG", w._("Channels") || "Channels"],
-        },
+            "okFun",
+            w.sOkfun,
+            [label("EPG"), label("Channels")]
+        ),
         {
             name: w._(n, a + 1 + o, a + 3 + o),
             settingId: "seek13Duration",
@@ -4632,30 +4477,19 @@ window.settingsButtons = function (): void {
             val: d.indexOf(normalizeSeekDuration(w.s79dur, 600)),
             values: p,
         },
-        {
-            name:
-                w._("Remote (color buttons N/A)") ||
-                "Remote (color buttons N/A)",
-            settingId: "noColorKeys",
-            val: w.sNoColorKeys,
-            values: noyes,
-        },
-        {
-            name:
-                w._("Remote (number buttons N/A)") ||
-                "Remote (number buttons N/A)",
-            settingId: "noNumbersKeys",
-            val: w.sNoNumbersKeys,
-            values: noyes,
-        },
-        { cur: "", name: "", val: 0, values: w.noop || [] },
-        {
-            cur: "",
-            name: a + (w._("Save Settings") || "Save Settings") + o,
-            val: 0,
-            values: page.save,
-        },
-    ];
+        choice(
+            label("Remote (color buttons N/A)"),
+            "noColorKeys",
+            w.sNoColorKeys,
+            noyes
+        ),
+        choice(
+            label("Remote (number buttons N/A)"),
+            "noNumbersKeys",
+            w.sNoNumbersKeys,
+            noyes
+        ),
+    ]);
     setListArrays(
         w,
         w.listArray.filter(function (row: any): boolean {
@@ -4705,7 +4539,9 @@ window.settingsMenu = function (): void {
         false,
         false
     );
-    var noyes = [w._("yes") || "yes", w._("no") || "no"];
+    var label = page.label;
+
+    var noyes = [label("yes"), label("no")];
     w.listArray = [];
     for (
         var i = 0;
@@ -4728,10 +4564,7 @@ window.settingsMenu = function (): void {
     w.listArray.push({ cur: "", name: "", val: 0, values: w.noop || [] });
     w.listArray.push({
         cur: "",
-        name:
-            '<div class="btn">' +
-            (w._("Save Settings") || "Save Settings") +
-            "</div>",
+        name: '<div class="btn">' + label("Save Settings") + "</div>",
         val: 0,
         values: page.save,
     });

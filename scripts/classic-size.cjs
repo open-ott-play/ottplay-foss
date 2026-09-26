@@ -5,13 +5,13 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { gzipSync } = require("node:zlib");
 
-// Bound the shipped outputs after internal callback-name mangling. Allow
+// Bound the shipped outputs after settings and codec deduplication. Allow
 // candidate-version suffixes and Node/zlib variation; ES5, persisted menu
 // identities and final-artifact checks remain enforced.
-const BUDGET = Object.freeze({ bytes: 562000, gzipBytes: 167000 });
+const BUDGET = Object.freeze({ bytes: 556500, gzipBytes: 166700 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
-const TOTAL_BUDGET = Object.freeze({ bytes: 621500, gzipBytes: 190000 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 616000, gzipBytes: 189700 });
 const ARTIFACTS = Object.freeze([
     "dist/stbPlayer.js",
     "src-tauri/frontend/dist/stbPlayer.js",

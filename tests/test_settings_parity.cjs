@@ -340,6 +340,68 @@ function save(w) {
     w.listKeyHandlerFn(w.keys.GREEN);
 }
 
+// Row construction must preserve extension-visible translation order, receiver
+// and the distinction between an absent draft value and an explicit value.
+{
+    const { w } = fixture();
+    const trace = [];
+    let initialRows;
+    const createEditor = w.createSettingsEditor;
+    w.createSettingsEditor = function (host, rows) {
+        initialRows = rows.map((row) => ({
+            fields: Object.keys(row),
+            id: row.settingId,
+            name: row.name,
+            val: row.val,
+            values: row.values,
+        }));
+        return createEditor(host, rows);
+    };
+    w.translationReceiver = "settings-host";
+    w._ = function (text) {
+        assert.equal(this.translationReceiver, "settings-host");
+        trace.push("translate:" + text);
+        return text === "Editor" || text === "Font type" ? "" : "T:" + text;
+    };
+    const editorValue = w.sEditor;
+    Object.defineProperty(w, "sEditor", {
+        configurable: true,
+        get() {
+            trace.push("read:editor");
+            return editorValue;
+        },
+    });
+    w.stbOptions();
+    const editorStart = trace.indexOf("translate:Editor");
+    assert.deepEqual(trace.slice(editorStart, editorStart + 4), [
+        "translate:Editor",
+        "read:editor",
+        "translate:built-in",
+        "translate:native",
+    ]);
+    const editor = initialRows.find((row) => row.id === "editor");
+    assert.equal(editor.name, "Editor");
+    assert.equal(editor.val, editorValue);
+    assert.deepEqual(editor.fields, ["name", "settingId", "val", "values"]);
+    assert.deepEqual(Array.from(editor.values), ["T:built-in", "T:native"]);
+    assert.equal(
+        initialRows.at(-1).name,
+        '<div class="btn">T:Save Settings</div>'
+    );
+    assert.equal(initialRows.at(-2).values, w.noop);
+    w.settingsInterface();
+    const stopPlay = initialRows.find((row) => row.id === "stopPlay");
+    assert.equal(stopPlay.fields.includes("val"), false);
+    assert.equal(
+        initialRows.find((row) => row.id === "fontSize").name,
+        "Font type"
+    );
+    assert.equal(typeof w.__ottSettingsEditor.save, "function");
+}
+console.log(
+    "OK: settings rows preserve translation receiver/order, fallback labels and initial draft fields"
+);
+
 // Each page must keep its own return target and close behavior when sharing
 // draft setup. A retained save callback cannot commit after cancellation.
 for (const [menu, caption] of [

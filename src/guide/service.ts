@@ -168,10 +168,7 @@ function createGuideService(ports: GuideServicePorts) {
         touch(id);
         while (order.length > limit) delete cache[order.shift()!];
     }
-    function project(
-        reference: GuideReference,
-        rows: GuideProgramme[]
-    ): GuideProjection {
+    function project(reference: GuideReference, rows: GuideProgramme[]): void {
         var id = key(reference),
             previous = states[id];
         var selection = clone(
@@ -194,7 +191,6 @@ function createGuideService(ports: GuideServicePorts) {
             }
         });
         scheduleClock();
-        return clone(selection);
     }
     function scheduleClock(): void {
         ports.clearTimer(clockTimer);

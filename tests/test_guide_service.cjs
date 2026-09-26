@@ -133,6 +133,46 @@ check(
     }
 );
 check(
+    "published schedules, subscribers, and later snapshots never share programme objects",
+    () => {
+        const f = fixture(),
+            received = [];
+        f.service.subscribe(f.ref(), (projection) => {
+            if (!projection.current) return;
+            projection.current.title = "first subscriber";
+            projection.following[0].title = "first following";
+            projection.following.push(programme("extra"));
+        });
+        f.service.subscribe(f.ref(), (projection) => received.push(projection));
+        const rows = [
+            programme("current", 90, 110),
+            programme("next", 110, 130),
+        ];
+        f.service.publish(f.ref(), rows);
+        assert.equal(rows[0].title, "current");
+        assert.equal(rows[1].title, "next");
+        rows[0].title = "publisher mutation";
+        rows[1].title = "publisher next mutation";
+        assert.equal(received.at(-1).current.title, "current");
+        assert.equal(received.at(-1).following[0].title, "next");
+        assert.equal(received.at(-1).following.length, 1);
+
+        const snapshot = f.service.snapshot(f.ref());
+        received.at(-1).current.title = "late subscriber mutation";
+        received.at(-1).following[0].title = "late following mutation";
+        snapshot.current.title = "snapshot mutation";
+        snapshot.following[0].title = "snapshot following mutation";
+        snapshot.following.length = 0;
+        const following = f.service.field(f.ref(), "following");
+        following[0].title = "field mutation";
+        following.length = 0;
+        const fresh = f.service.snapshot(f.ref());
+        assert.equal(fresh.current.title, "current");
+        assert.equal(fresh.following[0].title, "next");
+        assert.equal(fresh.following.length, 1);
+    }
+);
+check(
     "last consumer cancellation aborts without rejecting another consumer",
     () => {
         const f = fixture(),
