@@ -918,6 +918,8 @@ See [docs/local-build-scripts.md](docs/local-build-scripts.md).
 
 Read the [privacy policy](docs/privacy-policy.md) for information about local settings, configured services and your choices. Privacy and support contact: [alvit.work@gmail.com](mailto:alvit.work@gmail.com).
 
+Studio 2026 is the default interface theme. Classic and PLi-HD remain selectable,
+and saved user preferences are preserved. See [interface settings](docs/interface-settings.md).
 The PLi-HD theme credits Vali, littlesat, VU+NL, Milo and the upstream contributors.
 See [Interface credits and design history](docs/interface-history.md) for its
 English history and source links, also available from the player's information menu.

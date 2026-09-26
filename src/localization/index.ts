@@ -37,7 +37,7 @@ export var useGraphicIcons = false;
  * (e.g. `%1` → args[0], `%2` → args[1], ...).
  */
 export function translate(key: string, ...args: any[]): string {
-    if (useGraphicIcons) {
+    if ((window as any).sGrapI || useGraphicIcons) {
         switch (key) {
             case "off":
             case "no":
