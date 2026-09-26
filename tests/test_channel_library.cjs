@@ -289,6 +289,59 @@ assert.equal(
     "a returning old numeric alias resolves to its provider item ID"
 );
 const sourceId = context.window.__ottSourceIdentity;
+{
+    const saved = new Map();
+    const names = ["constructor", "__proto__", "", "10", "2", "constructor"];
+    const catalog = names.map((groupId, index) => ({
+        groupId,
+        groupLabel: "Group " + groupId,
+        id: index + 1,
+        itemId: "channel:" + index,
+        label: "Channel " + index,
+    }));
+    catalog.push({ ...catalog[0], groupId: "ignored duplicate" });
+    const indexed = create(
+        {
+            current: () => true,
+            get: (key) => saved.get(key) ?? null,
+            set: (key, value) => saved.set(key, value),
+            sourceId: "indexed-groups",
+        },
+        catalog
+    );
+    const original = plain(indexed.snapshot());
+    assert.deepEqual(
+        original.groups.map((group) => group.id),
+        names.slice(0, 5),
+        "provider groups keep first appearance order and accept object property names"
+    );
+    assert.deepEqual(original.groups[0].members, [1, 6]);
+    assert.deepEqual(original.all, [1, 2, 3, 4, 5, 6, 1]);
+    const disposable = indexed.snapshot();
+    disposable.all.length = 0;
+    disposable.groups[0].label = "Changed view";
+    disposable.groups[0].members.push(99);
+    disposable.groups.splice(1, 1);
+    assert.deepEqual(
+        plain(indexed.snapshot()),
+        original,
+        "view edits cannot mutate provider groups or later snapshots"
+    );
+    assert(indexed.renameGroup("__proto__", "Renamed"));
+    assert(indexed.changeMember("constructor", 1, "remove"));
+    assert(indexed.removeGroup("10"));
+    const updated = plain(indexed.snapshot());
+    assert.deepEqual(
+        updated.groups.map((group) => [group.id, group.label, group.members]),
+        [
+            ["__proto__", "Renamed", [2]],
+            ["constructor", "Group constructor", [6]],
+            ["", "Group ", [3]],
+            ["2", "Group 2", [5]],
+        ],
+        "edited and hidden groups remain independent of the provider index"
+    );
+}
 const host = {
     __ottActiveProviderDriver: {
         credentials: () => ({

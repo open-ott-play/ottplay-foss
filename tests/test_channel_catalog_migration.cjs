@@ -263,6 +263,28 @@ const translatedCollision = referenceCatalog([
 assertImport(translatedCollision, 9, [21], false);
 // Once 9 became 21, its original namespace is unknowable. Do not translate it again to 7.
 assertImport(translatedCollision, 9, [], true);
+{
+    const names = ["constructor", "__proto__", "", "10", "2", "constructor"];
+    const rows = names.map((groupName, index) => ({
+        groupId: "group:" + groupName,
+        groupName,
+        itemId: "channel:" + index,
+        name: "Channel " + index,
+        providerId: String(index + 1),
+    }));
+    rows.push({ ...rows[0], groupName: "ignored duplicate" });
+    const catalog = project(rows, hash, "fixture");
+    assert.deepEqual(plain(catalog.groupOrder), names.slice(0, 5));
+    assert.deepEqual(plain(catalog.ids), [1, 2, 3, 4, 5, 6]);
+    assert.deepEqual(plain(catalog.groups.constructor), [1, 6]);
+    assert.deepEqual(plain(catalog.groups.__proto__), [2]);
+    assert.deepEqual(
+        plain(catalog.ids.map((id) => catalog.channels[id].category.class)),
+        [0, 1, 2, 3, 4, 0],
+        "category numbers follow first appearance, including object property names"
+    );
+    assert.equal(catalog.groups["ignored duplicate"], undefined);
+}
 console.log(
     "PASS catalog migration: explicit references restore groups/locks/preferences; raw and preprocessed namespace collisions remain unresolved"
 );
