@@ -24,6 +24,7 @@ upstream links and the earlier OTT-play lineage in English.
 - **Layout:** list side, reduced-video mode and scrollbar visibility remain
   independent of the theme. The preview and its opaque mask use one shared
   rectangle. Resizing recalculates both row and logo/progress geometry.
+  Classic details also stay below the header when reduced video is disabled.
 - **Channel information:** number, logo (hidden/square/wide), channel name,
   programme name, progress, archive indication, description, thumbnail and
   upcoming programme count retain their existing controls and provider scope.

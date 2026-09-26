@@ -1182,7 +1182,7 @@ function setListPos(): void {
             : pli
               ? (settings.noSmall ? 110 : 360) * y
               : settings.noSmall
-                ? 30 * y + 1
+                ? top
                 : 330 * y,
         width: pli || studio ? preview.width * x : 514 * x + 1,
     });

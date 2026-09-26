@@ -920,6 +920,7 @@ for (const profile of ["server", "tauri"]) {
                                                 document.getElementById("it0");
                                             return {
                                                 bottom: rect("_b"),
+                                                caption: rect("listCaption"),
                                                 count: document.querySelectorAll(
                                                     "#listIn .item"
                                                 ).length,
@@ -971,6 +972,11 @@ for (const profile of ["server", "tauri"]) {
                                     ).toBeLessThanOrEqual(result.rowHeight);
                                     expect(result.windowVisible).toBe(!noSmall);
                                     expect(result.osdVisible).toBe(!!noSmall);
+                                    expect(
+                                        result.detail.y
+                                    ).toBeGreaterThanOrEqual(
+                                        result.caption.bottom
+                                    );
                                     expect(
                                         side
                                             ? result.list.x < result.detail.x
