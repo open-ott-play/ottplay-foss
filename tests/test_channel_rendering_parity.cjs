@@ -155,7 +155,7 @@ for (const profile of ["server", "tauri", "capacitor"]) {
         window.channels = window.chanels = channels;
         getCurProgData = function() { return true; };
         getChannelPicon = function() { return 'https://images.example/logo.png'; };
-        settings.pageSize = 25; settings.noSmall = 1;
+        settings.pageSize = 25; settings.noSmall = 1; settings.interfaceTheme = 0;
         sShowNum = sShowName = sShowPikon = sShowProgress = sShowProgram = sShowArchive = 1;
         sPSchannels = 1; parentPIN = ''; parentalArray = ['two'];
         sSHLcolor = '120,100'; sSHLcolSel = '240,100'; sSHLcolorB = '255,0';

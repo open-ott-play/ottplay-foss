@@ -22,6 +22,7 @@ var keyStrings = {
         "Не отримано список каналів!!!<br/><br/>Введіть дані провайдера та перезапустіть плеєр!!!<br/><br/>",
     "Channel list. Category: ": "Список каналів. Категорія: ",
     "Channel parental control": "Батьківський контроль каналу",
+    Classic: "Класична",
     Close: "Закрити",
     "Could not update HTTP remote control.":
         "Не вдалося змінити налаштування HTTP-пульта.",
@@ -50,6 +51,7 @@ var keyStrings = {
     "HTTP remote control is unavailable on this device.":
         "HTTP-пульт недоступний на цьому пристрої.",
     Info: "Інфо",
+    "Interface theme": "Тема інтерфейсу",
     Load: "Завантажити",
     "Load playlist": "Завантажити плейлист",
     "Local HTTP remote control": "Локальний HTTP-пульт",

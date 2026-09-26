@@ -47,6 +47,7 @@ var keyStrings = {
         "Channel list not received!<br/><br/>Enter your provider details and restart the player.<br/><br/>",
     "Channel list. Category: ": "Channel list. Category: ",
     "Channel parental control": "Channel parental control",
+    Classic: "Classic",
     Close: "Close",
     "Connecting to Stalker portal...": "Connecting to Stalker portal…",
     "Could not update HTTP remote control.":
@@ -111,6 +112,7 @@ var keyStrings = {
     Info: "Info",
     "Infobar display timeout, s": "Info bar display timeout, s",
     "Infobar settings": "Info bar settings",
+    "Interface theme": "Interface theme",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)",
     "List created": "List created",

@@ -1188,6 +1188,16 @@ function setListPos(): void {
     $("#listDetail").css({ top: n + "px" });
 }
 
+/** Convert validated Classic H,S at fixed V, or background H,V at S=100. */
+function classicColorRgb(value: string, brightness?: number): string {
+    var pair = value.split(",");
+    return hsvToRgb(
+        Number(pair[0]),
+        brightness ? Number(pair[1]) : 100,
+        brightness || Number(pair[1])
+    ).join(",");
+}
+
 /**
  * Apply highlight colors (foreground, selection background, list background)
  * from HSV settings to the DOM. Computes RGB values, writes to body color,
@@ -1199,41 +1209,36 @@ function setListPos(): void {
  * osdOpacity, listPosition.
  */
 function setColor(): void {
+    var pliHd = settings.interfaceTheme === 1;
+    $("body").toggleClass("theme-pli-hd", pliHd);
     $("body").css("color", bodyColor);
-    // sSHLcolSel -> curColorB (selection background), H,S at lightness 50
-    var selCv = settings.highlightColorSel.split(",");
-    curColorB =
-        "rgb(" +
-        hsvToRgb(Number.parseInt(selCv[0]), Number.parseInt(selCv[1]), 50).join(
-            ","
-        ) +
-        ")";
-    // sSHLcolor -> curColor (selection foreground), H,S at lightness 100
-    var fgCv = settings.highlightColor.split(",");
-    curColor =
-        "rgb(" +
-        hsvToRgb(Number.parseInt(fgCv[0]), Number.parseInt(fgCv[1]), 100).join(
-            ","
-        ) +
-        ")";
+    // PLi-HD's selectedFG / selectedBG. Keep the saved Classic palette intact.
+    curColorB = pliHd
+        ? "#303240"
+        : "rgb(" + classicColorRgb(settings.highlightColorSel, 50) + ")";
+    curColor = pliHd
+        ? "#fcc000"
+        : "rgb(" + classicColorRgb(settings.highlightColor, 100) + ")";
     // Keep window.* in sync — itemEPG / listDetail / getListItem read w.curColor.
     window.curColor = curColor;
     window.curColorB = curColorB;
     window.bodyColor = bodyColor;
 
-    $("#listCaption").css("border-bottom", "2px solid " + curColor);
-    $("#listPodval").css("border-top", "1px solid " + curColor);
-    $("#listPopUp").css("border", "1px solid " + curColor);
+    var borderColor = pliHd ? "#555555" : curColor;
+    $("#listCaption").css("border-bottom", "2px solid " + borderColor);
+    $("#listPodval").css("border-top", "1px solid " + borderColor);
+    $("#listPopUp, #dialogbox").css("border", "1px solid " + borderColor);
     $("#progress").css("background-color", curColor);
     if ($tooltipSpan && typeof $tooltipSpan.css === "function") {
         $tooltipSpan.css({ "background-color": curColorB, color: curColor });
     }
     $("#programm_name2").css("color", curColor);
-    $("#dialogbox").css("border", "1px solid " + curColor);
     try {
         if (tooltip && tooltip.style)
             tooltip.style.border =
-                3 * (window.innerHeight / 720) + "px solid " + curColor;
+                (pliHd ? 1 : 3) * (window.innerHeight / 720) +
+                "px solid " +
+                borderColor;
     } catch (e) {
         console.error(e);
     }
@@ -1249,14 +1254,9 @@ function setColor(): void {
     $("#_l").css("width", listFrameLeft * t);
     $("#_r").css("left", (listFrameLeft + 512) * t);
 
-    // Background color from sSHLcolorB
-    var bgCv = settings.highlightColorB.split(",");
-    var bgColor =
-        "rgb(" +
-        hsvToRgb(Number.parseInt(bgCv[0]), 100, Number.parseInt(bgCv[1])).join(
-            ","
-        ) +
-        ")";
+    var bgColor = pliHd
+        ? "#000000"
+        : "rgb(" + classicColorRgb(settings.highlightColorB) + ")";
     $(".list_back").css("background-color", bgColor);
     $("#listPopUp").css("background-color", bgColor);
 }
@@ -1273,17 +1273,11 @@ function setColor(): void {
  * Side effects: CSS background-color on .osd elements.
  */
 function stbSetOsdOpacity(val: number): void {
-    var cv = settings.highlightColorB.split(",");
-    $(".osd").css(
-        "background-color",
-        "rgba(" +
-            hsvToRgb(Number.parseInt(cv[0]), 100, Number.parseInt(cv[1])).join(
-                ","
-            ) +
-            "," +
-            val / 100 +
-            ")"
-    );
+    var rgb =
+        settings.interfaceTheme === 1
+            ? "8,8,8"
+            : classicColorRgb(settings.highlightColorB);
+    $(".osd").css("background-color", "rgba(" + rgb + "," + val / 100 + ")");
 }
 
 /**
@@ -3891,17 +3885,20 @@ window.settingsInterface = function (): void {
     tz[0] = w._(tz[0]) || tz[0];
     setListArrays(w, [
         {
+            name: w._("Interface theme"),
+            settingId: "interfaceTheme",
+            values: [w._("Classic"), "PLi-HD"],
+        },
+        {
             name:
                 w._("Black screen while switching the channel") ||
                 "Black screen while switching the channel",
             settingId: "stopPlay",
-            val: w.sStopPlay,
             values: noyes,
         },
         {
             name: w._("PiP window size") || "PiP window size",
             settingId: "pipSize",
-            val: w.sPipSize,
             values: [
                 w._("small") || "small",
                 w._("medium") || "medium",
@@ -3911,7 +3908,6 @@ window.settingsInterface = function (): void {
         {
             name: w._("PiP window position") || "PiP window position",
             settingId: "pipPosition",
-            val: w.sPipPos,
             values: [
                 w._("top-right") || "top-right",
                 w._("bottom-right") || "bottom-right",
@@ -3922,7 +3918,6 @@ window.settingsInterface = function (): void {
         {
             name: w._("Font type") || "Font type",
             settingId: "fontSize",
-            val: w.sFont,
             values: w.__ottNativeFontOptions || [
                 '<span style="font-family:Helvetica, Arial, sans-serif;">' +
                     (w._("system") || "system") +
@@ -3938,13 +3933,11 @@ window.settingsInterface = function (): void {
         {
             name: w._("Timezone") || "Timezone",
             settingId: "timezone",
-            val: w.sTimezone,
             values: tz,
         },
         {
             name: w._("Sleep timer") || "Sleep timer",
             settingId: "sleepTimeout",
-            val: w.sSleepTimeout,
             values: [
                 w._("off") || "off",
                 w._("30 minutes") || "30 minutes",
@@ -3956,7 +3949,6 @@ window.settingsInterface = function (): void {
         {
             name: w._("Interface transparency") || "Interface transparency",
             settingId: "osdOpacity",
-            val: w.sOsdOpacity,
             values: [
                 "100%",
                 "90%",
@@ -3975,37 +3967,34 @@ window.settingsInterface = function (): void {
             name: w._("Volume step, %") || "Volume step, %",
             settingId: "volumeStep",
             settingOffset: 3,
-            val: w.sVolumeStep - 3,
             values: [3, 4, 5, 6, 7, 8, 9, 10],
         },
         {
             cur: w._("select") || "select",
-            name: w._("Color spectrum") || "Color spectrum",
+            name: w._("Color spectrum") + " (" + w._("Classic") + ")",
             settingId: "highlightColor",
-            val: w.sSHLcolor,
             values: w.colorDialog,
         },
         {
             cur: w._("select") || "select",
             name:
-                w._("Background color of selected item") ||
-                "Background color of selected item",
+                w._("Background color of selected item") +
+                " (" +
+                w._("Classic") +
+                ")",
             settingId: "highlightColorSel",
-            val: w.sSHLcolSel,
             values: w.selColorDialog,
         },
         {
             cur: w._("select") || "select",
-            name: w._("Background color") || "Background color",
+            name: w._("Background color") + " (" + w._("Classic") + ")",
             settingId: "highlightColorB",
-            val: w.sSHLcolorB,
             values: w.backColorDialog,
         },
         {
             name:
                 w._("Permanent clock on screen") || "Permanent clock on screen",
             settingId: "permanentTime",
-            val: w.sPermanentTime,
             values: [
                 w._("no") || "no",
                 w._("yes") || "yes",
@@ -4015,7 +4004,6 @@ window.settingsInterface = function (): void {
         {
             name: w._("Graphical indication") || "Graphical indication",
             settingId: "useGraphicalIndicators",
-            val: w.sGrapI,
             values: noyes,
         },
         {
@@ -4023,7 +4011,6 @@ window.settingsInterface = function (): void {
                 w._("Position shift -10 seconds after pause") ||
                 "Position shift -10 seconds after pause",
             settingId: "resumeWithTenSecondRewind",
-            val: w.s10resum,
             values: noyes,
         },
         {
@@ -4031,19 +4018,16 @@ window.settingsInterface = function (): void {
                 w._("Remember previous channels") ||
                 "Remember previous channels",
             settingId: "prevCount",
-            val: w.sPrevCount,
             values: [1, 5, 10, 15, 20],
         },
         {
             name: w._("History in Media Library") || "History in Media Library",
             settingId: "medCount",
-            val: w.sMedCount,
             values: [w._("no") || "no", 10, 20, 30, 40, 50],
         },
         {
             name: w._("Editor") || "Editor",
             settingId: "editor",
-            val: w.sEditor,
             values: [w._("built-in") || "built-in", w._("native") || "native"],
         },
         {
@@ -4051,13 +4035,11 @@ window.settingsInterface = function (): void {
                 w._("Type of player for streaming") ||
                 "Type of player for streaming",
             settingId: "players",
-            val: w.sPlayers,
             values: w.playerModeNames,
         },
         {
             name: w._("Buffer Size, s") || "Buffer Size, s",
             settingId: "bufSize",
-            val: w.sBufSize,
             values: w.bufferSizes,
         },
         { cur: "", name: "", val: 0, values: w.noop || [] },

@@ -106,9 +106,10 @@ export function applyTimezoneSetting(index: number): number {
  * @property useGraphicalIndicators - Use graphical icons for yes/no/off (0/1).
  * @property parentPin         - Parental control PIN code.
  * @property hideMenus         - List of menu IDs to hide.
- * @property highlightColorSel - Selected item highlight colour (HSL H,S).
- * @property highlightColor    - Default highlight colour (HSL H,S).
- * @property highlightColorB   - Background highlight colour (HSL H,S).
+ * @property interfaceTheme    - Interface preset: Classic (0), PLi-HD (1).
+ * @property highlightColorSel - Classic selection colour (HSV H,S; V=50).
+ * @property highlightColor    - Classic accent colour (HSV H,S; V=100).
+ * @property highlightColorB   - Classic background colour (HSV H,V; S=100).
  */
 export interface PlayerSettings {
     adFun: number;
@@ -142,6 +143,7 @@ export interface PlayerSettings {
     infoSlide: number;
     infoSwitch: number;
     infoTimeout: number;
+    interfaceTheme: number;
     listPosition: number;
     localCmdUrl: string;
     localHttpDeviceCode: string;
@@ -240,6 +242,7 @@ export function defaultSettings(): PlayerSettings {
         infoSlide: 1,
         infoSwitch: 1,
         infoTimeout: 5,
+        interfaceTheme: 1,
         listPosition: 0,
         localCmdUrl: "",
         localHttpDeviceCode: "",
@@ -476,6 +479,15 @@ export const settingsSchema: SettingDefinition[] = [
     defineSetting("osdOpacity", "sOsdOpacity", "application", ["setColor"], {
         range: [0, 10],
     }),
+    defineSetting(
+        "interfaceTheme",
+        "sInterfaceTheme",
+        "application",
+        ["setColor"],
+        {
+            range: [0, 1],
+        }
+    ),
     defineSetting("listPosition", "sListPos", "application", ["setListPos"], {
         range: [0, 1],
     }),
