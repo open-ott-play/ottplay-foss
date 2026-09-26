@@ -1528,11 +1528,12 @@ export function showProviderSelection(): void {
     function selectProv(id: string): void {
         if (!id || !isProviderAllowed(id)) return;
         if (savedProvId === id) {
-            var edit = (window as any).__ottOpenProviderSettings;
+            var edit = (window as any).__ottEditProvider;
             if (
+                id === "stalker" &&
                 !Number.parseInt(stbGetItem("noProvParam") || "0") &&
                 edit &&
-                edit(id)
+                edit()
             )
                 return;
             optionsList(showProviderSelection);
