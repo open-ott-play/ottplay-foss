@@ -41,6 +41,51 @@ move to a supported GTK dependency graph with the upstream fix, or a
 compatible official 0.18 security release becomes available. All release
 builds must include `vendor/`; Docker copies it before resolving Rust packages.
 
+## macOS file drag pasteboard guards
+
+The workspace also patches the exact locked [Wry 0.55.1](https://crates.io/crates/wry/0.55.1)
+and [Tao 0.35.3](https://crates.io/crates/tao/0.35.3) releases. Their complete
+published crates, licenses and version numbers are preserved. The archive
+SHA256 values below were verified against the original workspace lockfile:
+
+- Wry: `186f9871daa55fd9c016578b810d149de58367113db7fb72b462d2323ce19514`.
+- Tao: `d1c93047acf68669466a34690ac58cca7010bd1b201e1ec86f1fd0a75d3dd4a9`.
+
+AppKit can advertise `NSFilenamesPboardType` but return no property list when
+the source cannot supply a readable file URL. Wry previously unwrapped this
+optional result and both array/string downcasts. Tao unwrapped the result and
+cast its array and elements without checking their classes. A panic cannot
+unwind safely through these native drag callbacks, and messaging an object of
+the wrong class can raise an Objective-C exception.
+
+The local patches check for missing property lists, require an actual array,
+and skip entries that are not strings or cannot supply UTF-8 data. Tao rejects
+a missing or non-array payload; Wry returns no file paths through its existing
+event/fallback path.
+Valid file order, Unicode conversion and hover/drop event handling are
+unchanged. File dragging remains enabled. These guards do not catch arbitrary
+exceptions thrown by AppKit itself or establish that every crash has this cause.
+No JavaScript or playback behavior is changed.
+
+Each `.provenance.json` inventories every published file and identifies the
+single changed macOS source file. Each `-macos-drag-pasteboard.patch` is the
+complete local diff. This is a local hardening patch, not a claimed upstream
+release or advisory fix; the shared Cargo cache is never changed. Remove these
+overrides after a compatible official release supplies equivalent guards.
+
+```sh
+node scripts/check-macos-drag-backport.cjs
+```
+
+The checker verifies the complete source inventories, all original/patched
+hashes, lockfile overrides and that reversing each exact diff recovers its
+published source. All platforms must receive these vendor directories before
+Cargo resolves the workspace, even though the code changes are macOS-only.
+
+The macOS CI job also runs the [native drag regression](../tests/macos-drag-regression/README.md).
+It invokes both dependencies' real hover/drop callbacks on isolated pasteboards
+and verifies 32 cases, including missing data, wrong types and Unicode paths.
+
 ## Shared OttPlay domain core
 
 `ottplay-core.js` and `ottplay-core.jar` are generated from the same canonical

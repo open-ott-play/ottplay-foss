@@ -758,8 +758,15 @@ export function showPage(): void {
     if (listInElement) listInElement.innerHTML = "";
     try {
         if (settings.noSmall) {
+            if (
+                $("#list_window").is(":visible") &&
+                typeof (window as any).stbToFullScreen === "function"
+            )
+                (window as any).stbToFullScreen();
+            $("#list_window").hide();
             $("#list_osd").show();
         } else {
+            $("#list_osd").hide();
             $("#list_window").show();
             if (typeof (window as any).stbSetWindow === "function")
                 (window as any).stbSetWindow();
@@ -858,6 +865,7 @@ export function showPage(): void {
             row.style.lineHeight = itemHeight + "px";
             row.style.width = itemWidth + "px";
             if (ri === selIndex) {
+                $(row).addClass("ott-selected");
                 row.style.color = curColor || "gold";
                 row.style.backgroundColor = curColorB || "#668";
             }
@@ -950,6 +958,7 @@ export function showPage(): void {
         var cursorRetry = (window as any).__ottListCursorRetry;
         var retryCursor = !cursorRetry || cursorRetry.owner !== screenOwner;
         if (pin) {
+            $(pin).addClass("ott-selected");
             pin.style.backgroundColor = curColorB || "#668";
             pin.style.color = curColor || "gold";
             // First open / page flip: if the pin is still clipped, remeasure once
@@ -1040,9 +1049,11 @@ export function changeSelect(delta: number): void {
     if (newItem && fullyVisible && !pageChanged) {
         var oldItem = document.getElementById("it" + oldIndex);
         if (oldItem) {
+            $(oldItem).removeClass("ott-selected");
             oldItem.style.backgroundColor = "";
             oldItem.style.color = "";
         }
+        $(newItem).addClass("ott-selected");
         newItem.style.backgroundColor = curColorB || "#668";
         newItem.style.color = curColor || "gold";
         scheduleListDetailUpdate();
@@ -1070,10 +1081,12 @@ export function setSelect(index: number): void {
         (window as any).selIndex = selIndex;
         var newItem = document.getElementById("it" + selIndex);
         if (oldItem) {
+            $(oldItem).removeClass("ott-selected");
             oldItem.style.backgroundColor = "";
             oldItem.style.color = "";
         }
         if (newItem) {
+            $(newItem).addClass("ott-selected");
             newItem.style.backgroundColor = curColorB || "#668";
             newItem.style.color = curColor || "gold";
         }

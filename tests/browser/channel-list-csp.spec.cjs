@@ -53,7 +53,7 @@ function initializeFixture(native) {
     }
 }
 
-function renderFixture() {
+function renderFixture(initialSettings) {
     document.body.classList.remove("booting");
     document.getElementById("launch").remove();
     uiInit();
@@ -87,7 +87,7 @@ function renderFixture() {
             time_to: now + 1800,
         },
     };
-    for (let number = 3; number <= 30; number++) {
+    for (let number = 3; number <= 40; number++) {
         const id = "fixture" + number;
         cats.Fixture.push(id);
         channels[id] = {
@@ -129,6 +129,12 @@ function renderFixture() {
     window.sSHLcolor = sSHLcolor;
     window.sSHLcolSel = sSHLcolSel;
     window.sSHLcolorB = sSHLcolorB;
+    if (initialSettings) {
+        loadSettings();
+        Object.keys(initialSettings).forEach((key) => {
+            settings[key] = initialSettings[key];
+        });
+    }
     bodyColor = "#f0f0f0";
     setColor();
     setFontSize();
@@ -137,7 +143,7 @@ function renderFixture() {
     window.__fixtureReady = true;
 }
 
-async function fixturePage(browser, profile) {
+async function fixturePage(browser, profile, initialSettings) {
     const native = profile === "tauri";
     const stage = native ? "src-tauri/frontend/" : "";
     const html = read(native ? stage + "index.html" : "dist/index.html");
@@ -164,7 +170,14 @@ async function fixturePage(browser, profile) {
             "/fixture-init.js",
             "(" + initializeFixture.toString() + ")(" + native + ");",
         ],
-        ["/fixture-render.js", "(" + renderFixture.toString() + ")();"],
+        [
+            "/fixture-render.js",
+            "(" +
+                renderFixture.toString() +
+                ")(" +
+                JSON.stringify(initialSettings) +
+                ");",
+        ],
         ["/js/runtime-polyfills.js", read(stage + "js/runtime-polyfills.js")],
         ["/js/ottplay-core.js", read(stage + "js/ottplay-core.js")],
         ["/dist/stbPlayer.js", read(stage + "dist/stbPlayer.js")],
@@ -699,7 +712,7 @@ test("server and Tauri retain rich channel formatting under the native CSP", asy
             await expect(page.locator("#listIn .item")).toHaveCount(25);
             await page.locator(".list-scroll-thumb").click();
             await expect(page.locator("#_name")).toContainText("Programme 27");
-            await expect(page.locator("#listIn .item")).toHaveCount(5);
+            await expect(page.locator("#listIn .item")).toHaveCount(15);
             await expect(page.locator("#it26")).toHaveCSS(
                 "background-color",
                 "rgb(0, 0, 128)"
@@ -784,3 +797,435 @@ test("server and Tauri retain rich channel formatting under the native CSP", asy
         await native.close();
     }
 });
+
+for (const profile of ["server", "tauri"]) {
+    test(
+        profile + ": Studio defaults and focus survive paging and EPG updates",
+        async ({ browser }, testInfo) => {
+            const fixture = await fixturePage(browser, profile, {});
+            const page = fixture.page;
+            try {
+                await expect(page.locator("body")).toHaveClass(/theme-studio/);
+                await expect(page.locator("#listIn .item")).toHaveCount(25);
+                await expect(page.locator("#it0")).toHaveCSS(
+                    "background-color",
+                    "rgb(231, 241, 235)"
+                );
+                await expect(page.locator("#it0 .ott-channel-label")).toHaveCSS(
+                    "color",
+                    "rgb(17, 33, 25)"
+                );
+                await expect(
+                    page.locator("#it0 .ott-channel-programme")
+                ).toHaveCSS("color", "rgb(74, 98, 85)");
+                expect(
+                    await page.evaluate(
+                        () =>
+                            parseFloat(
+                                getComputedStyle(
+                                    document.getElementById("list")
+                                ).fontSize
+                            ) <= document.getElementById("it0").offsetHeight
+                    )
+                ).toBe(true);
+                await page.screenshot({
+                    path: testInfo.outputPath(
+                        profile + "-studio-2026-default.png"
+                    ),
+                });
+                await page.evaluate(() => {
+                    changeSelect(1);
+                    updateChannelListRow("two");
+                });
+                await expect(page.locator("#it0")).not.toHaveClass(
+                    /ott-selected/
+                );
+                await expect(page.locator("#it1 .ott-channel-label")).toHaveCSS(
+                    "color",
+                    "rgb(17, 33, 25)"
+                );
+                await page.evaluate(() => changeSelect(24));
+                await expect(page.locator("#listIn .item")).toHaveCount(15);
+                await expect(page.locator("#it25")).toHaveClass(/ott-selected/);
+                await page.evaluate(() => changeSelect(-1));
+                await expect(page.locator("#it24")).toHaveClass(/ott-selected/);
+                await page.evaluate(() => {
+                    channels[101] = channels.one;
+                    cats.Fixture[0] = 101;
+                    curList = [101];
+                    primaryIndex = 0;
+                    _channelsList(0, 0);
+                    changeSelect(1);
+                });
+                await expect(page.locator("#it0")).toHaveClass(/ott-playing/);
+                await expect(page.locator("#it1")).not.toHaveClass(
+                    /ott-playing/
+                );
+                await page.evaluate(() => changeSelect(1));
+                await expect(page.locator("#_name")).toHaveCount(0);
+                await page.evaluate(() => settingsInterface());
+                await expect(page.locator("#listIn .ott-selected")).toHaveCSS(
+                    "color",
+                    "rgb(17, 33, 25)"
+                );
+                expect(fixture.errors).toEqual([]);
+                expect(fixture.unexpectedRequests).toEqual([]);
+            } finally {
+                await fixture.close();
+            }
+        }
+    );
+
+    test(
+        profile +
+            ": all themes honor row count, list side and video mode across resolutions",
+        async ({ browser }) => {
+            test.setTimeout(120000);
+            const fixture = await fixturePage(browser, profile);
+            const page = fixture.page;
+            try {
+                await page.evaluate(() => {
+                    const videoBox = document.createElement("div");
+                    videoBox.id = "vdiv";
+                    document.body.prepend(videoBox);
+                });
+                for (const viewport of [
+                    { height: 506, width: 900 },
+                    { height: 720, width: 1280 },
+                    { height: 1080, width: 1920 },
+                    { height: 2160, width: 3840 },
+                ]) {
+                    await page.setViewportSize(viewport);
+                    for (const theme of [0, 1, 2]) {
+                        for (const pageSize of [10, 25, 30]) {
+                            for (const side of [0, 1]) {
+                                for (const noSmall of [0, 1]) {
+                                    const result = await page.evaluate(
+                                        (input) => {
+                                            const saved = saveSettings(input);
+                                            _channelsList(0, 0);
+                                            const rect = (id) => {
+                                                const r = document
+                                                    .getElementById(id)
+                                                    .getBoundingClientRect();
+                                                return {
+                                                    bottom: r.bottom,
+                                                    height: r.height,
+                                                    right: r.right,
+                                                    x: r.x,
+                                                    y: r.y,
+                                                };
+                                            };
+                                            const row =
+                                                document.getElementById("it0");
+                                            return {
+                                                bottom: rect("_b"),
+                                                caption: rect("listCaption"),
+                                                count: document.querySelectorAll(
+                                                    "#listIn .item"
+                                                ).length,
+                                                detail: rect("listDetail"),
+                                                last: rect(
+                                                    "it" + (input.pageSize - 1)
+                                                ),
+                                                left: rect("_l"),
+                                                list: rect("listIn"),
+                                                osdVisible:
+                                                    $("#list_osd").is(
+                                                        ":visible"
+                                                    ),
+                                                piconHeight:
+                                                    row.querySelector(".img")
+                                                        .offsetHeight,
+                                                preview: rect("vdiv"),
+                                                right: rect("_r"),
+                                                rowHeight: row.offsetHeight,
+                                                saved,
+                                                top: rect("_t"),
+                                                windowVisible:
+                                                    $("#list_window").is(
+                                                        ":visible"
+                                                    ),
+                                            };
+                                        },
+                                        {
+                                            interfaceTheme: theme,
+                                            listPosition: side,
+                                            noSmall,
+                                            pageSize,
+                                        }
+                                    );
+                                    expect(result.saved).toBe(true);
+                                    expect(result.count).toBe(pageSize);
+                                    expect(
+                                        result.last.bottom
+                                    ).toBeLessThanOrEqual(
+                                        result.list.bottom + 0.5
+                                    );
+                                    expect(
+                                        result.last.right
+                                    ).toBeLessThanOrEqual(
+                                        result.list.right + 0.5
+                                    );
+                                    expect(
+                                        result.piconHeight
+                                    ).toBeLessThanOrEqual(result.rowHeight);
+                                    expect(result.windowVisible).toBe(!noSmall);
+                                    expect(result.osdVisible).toBe(!!noSmall);
+                                    expect(
+                                        result.detail.y
+                                    ).toBeGreaterThanOrEqual(
+                                        result.caption.bottom
+                                    );
+                                    expect(
+                                        side
+                                            ? result.list.x < result.detail.x
+                                            : result.list.x > result.detail.x
+                                    ).toBe(true);
+                                    if (!noSmall) {
+                                        expect(result.top.bottom).toBeCloseTo(
+                                            result.preview.y,
+                                            0
+                                        );
+                                        expect(result.left.right).toBeCloseTo(
+                                            result.preview.x,
+                                            0
+                                        );
+                                        expect(result.right.x).toBeCloseTo(
+                                            result.preview.right,
+                                            0
+                                        );
+                                        expect(result.bottom.y).toBeCloseTo(
+                                            result.preview.bottom,
+                                            0
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                // Resize an already mounted channel formatter, without reopening it.
+                await page.setViewportSize({ height: 360, width: 640 });
+                await expect
+                    .poll(() =>
+                        page.evaluate(() => {
+                            const row = document.getElementById("it0");
+                            return (
+                                row.querySelector(".img").offsetHeight <=
+                                row.offsetHeight
+                            );
+                        })
+                    )
+                    .toBe(true);
+                expect(fixture.errors).toEqual([]);
+                expect(fixture.unexpectedRequests).toEqual([]);
+            } finally {
+                await fixture.close();
+            }
+        }
+    );
+
+    test(
+        profile +
+            ": display switches, fonts, clock and opacity apply from saved settings",
+        async ({ browser }) => {
+            const fixture = await fixturePage(browser, profile, {});
+            const page = fixture.page;
+            try {
+                for (const theme of [0, 1, 2]) {
+                    for (const enabled of [0, 1]) {
+                        expect(
+                            await page.evaluate(
+                                ({ theme, enabled }) => {
+                                    const saved = saveSettings({
+                                        channelLogoMode: enabled * 2,
+                                        interfaceTheme: theme,
+                                        nextCountList: enabled,
+                                        showArchive: enabled,
+                                        showDescription: enabled,
+                                        showName: enabled,
+                                        showNumber: enabled,
+                                        showProgram: enabled,
+                                        showProgress: enabled,
+                                        showScroll: enabled,
+                                        thumbnail: enabled,
+                                    });
+                                    _channelsList(0, 0);
+                                    return saved;
+                                },
+                                { enabled, theme }
+                            )
+                        ).toBe(true);
+                        for (const selector of [
+                            ".ott-channel-number",
+                            ".ott-channel-picon",
+                            ".ott-channel-programme",
+                            ".ott-channel-progress",
+                            ".ott-channel-archive",
+                        ])
+                            await expect(
+                                page.locator("#it0 " + selector)
+                            ).toHaveCount(enabled);
+                        await expect(page.locator(".list-scroll")).toHaveCount(
+                            enabled
+                        );
+                        await expect
+                            .poll(() =>
+                                page
+                                    .locator("#_descr")
+                                    .evaluate((el) => el.offsetHeight > 0)
+                            )
+                            .toBe(!!enabled);
+                        await expect(
+                            page.locator(".ott-channel-thumbnail")
+                        ).toHaveCount(enabled);
+                        await expect(page.locator("#_nextpr span")).toHaveCount(
+                            enabled
+                        );
+                        expect(
+                            (await page.locator("#it0").textContent()).includes(
+                                "News"
+                            )
+                        ).toBe(!!enabled);
+                    }
+                }
+                for (const fontSize of [0, 1, 2, 3, 4, 5, 6]) {
+                    const sizes = [];
+                    for (const fontShift of [0, 30]) {
+                        sizes.push(
+                            await page.evaluate(
+                                ({ fontSize, fontShift }) => {
+                                    saveSettings({
+                                        fontShift,
+                                        fontSize,
+                                        pageSize: 10,
+                                    });
+                                    _channelsList(0, 0);
+                                    return {
+                                        family: getComputedStyle(document.body)
+                                            .fontFamily,
+                                        size: parseFloat(
+                                            getComputedStyle(
+                                                document.getElementById("list")
+                                            ).fontSize
+                                        ),
+                                    };
+                                },
+                                { fontShift, fontSize }
+                            )
+                        );
+                    }
+                    expect(sizes[0].family).not.toContain("undefined");
+                    expect(sizes[0].size).toBeGreaterThan(sizes[1].size);
+                }
+                for (const count of [0, 1, 20]) {
+                    await page.evaluate((nextCountList) => {
+                        const now = Date.now() / 1000;
+                        channels.one.nextpr = Array.from(
+                            { length: 20 },
+                            (_, i) => ({
+                                name: "Upcoming " + i,
+                                time: now + 1800 * (i + 1),
+                            })
+                        );
+                        saveSettings({
+                            fontShift: 0,
+                            nextCountList,
+                            pageSize: 30,
+                        });
+                        _channelsList(0, 0);
+                    }, count);
+                    await expect(page.locator("#_nextpr span")).toHaveCount(
+                        count
+                    );
+                    if (count) {
+                        expect(
+                            await page.evaluate(
+                                () =>
+                                    document
+                                        .getElementById("_nextpr")
+                                        .getBoundingClientRect().top >=
+                                    document
+                                        .getElementById("_name")
+                                        .getBoundingClientRect().bottom
+                            )
+                        ).toBe(true);
+                    }
+                }
+                for (const preview of [0, 1, 2]) {
+                    await page.evaluate((preview) => {
+                        window.__previewCalls = 0;
+                        window.previewChId = () => window.__previewCalls++;
+                        saveSettings({ preview });
+                        _channelsList(0, 0);
+                    }, preview);
+                    await expect
+                        .poll(() => page.locator("#_name").count())
+                        .toBe(1);
+                    // Flush the renderer's deferred detail callback.
+                    await page.evaluate(
+                        () => new Promise((resolve) => setTimeout(resolve, 250))
+                    );
+                    expect(
+                        await page.evaluate(() => window.__previewCalls > 0)
+                    ).toBe(preview === 1);
+                }
+                await page.evaluate(() => {
+                    saveSettings({ preview: 0 });
+                    closeList();
+                });
+                for (const opacity of [0, 3, 10]) {
+                    await page.evaluate(
+                        (osdOpacity) =>
+                            saveSettings({ osdOpacity, permanentTime: 1 }),
+                        opacity
+                    );
+                    await expect(page.locator("#permanentTime")).toBeVisible();
+                    const alpha = await page
+                        .locator("#permanentTime")
+                        .evaluate((el) => {
+                            const parts =
+                                getComputedStyle(el).backgroundColor.match(
+                                    /[\d.]+/g
+                                );
+                            return parts.length === 4 ? Number(parts[3]) : 1;
+                        });
+                    expect(alpha).toBe(opacity / 10);
+                }
+                await page.evaluate(() => saveSettings({ permanentTime: 2 }));
+                await expect(page.locator("#permanentTime")).not.toHaveClass(
+                    /osd/
+                );
+                await expect(page.locator("#permanentTime")).toHaveCSS(
+                    "background-color",
+                    "rgba(0, 0, 0, 0)"
+                );
+                await page.evaluate(() => {
+                    saveSettings({ osdOpacity: 3, permanentTime: 1 });
+                    saveSettings({ fontShift: 4 });
+                });
+                await expect(page.locator("#permanentTime")).toHaveCSS(
+                    "background-color",
+                    "rgba(14, 17, 20, 0.3)"
+                );
+                await page.evaluate(() => saveSettings({ permanentTime: 0 }));
+                await expect(page.locator("#permanentTime")).toBeHidden();
+                for (const enabled of [1, 0]) {
+                    const label = await page.evaluate(
+                        (useGraphicalIndicators) => {
+                            saveSettings({ useGraphicalIndicators });
+                            return _("yes");
+                        },
+                        enabled
+                    );
+                    expect(label.includes("<span")).toBe(!!enabled);
+                }
+                expect(fixture.errors).toEqual([]);
+                expect(fixture.unexpectedRequests).toEqual([]);
+            } finally {
+                await fixture.close();
+            }
+        }
+    );
+}

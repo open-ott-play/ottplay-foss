@@ -1,6 +1,12 @@
 # Interface credits and design history
 
-OTT-play FOSS's **PLi-HD** theme is a web implementation of the visual language
+**Studio 2026** is the default presentation, designed for the OTT-play FOSS
+project in September 2026. It uses neutral graphite surfaces, mint accents and
+a continuous light focus row. It retains the established two-panel navigation
+and user-controlled list density. This is an original presentation of the
+existing player, not an upstream OpenPLi skin. See [settings and validation](interface-settings.md).
+
+OTT-play FOSS's selectable **PLi-HD** theme is a web implementation of the visual language
 of the PLi-HD skin for Enigma2 receivers. Credit for that design belongs to its
 original authors. This project is independently maintained and does not imply
 endorsement by OpenPLi, Vali, littlesat or other upstream contributors.

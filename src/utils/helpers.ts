@@ -97,9 +97,9 @@ export function getViewportHeightScale(): number {
     return window.innerHeight / 720;
 }
 
-/** PLi-HD SelectionTemplate coordinates; Classic retains its existing window. */
+/** Shared video/mask geometry on the 1280 x 720 design canvas. */
 export function listPreviewRect(
-    pliHd: boolean,
+    theme: number,
     mirrored: number
 ): {
     height: number;
@@ -107,12 +107,12 @@ export function listPreviewRect(
     top: number;
     width: number;
 } {
-    var width = pliHd ? 417 : 512;
-    var left = pliHd ? 85 : 10;
+    var width = theme === 2 ? 440 : theme === 1 ? 417 : 512;
+    var left = theme === 2 ? 40 : theme === 1 ? 85 : 10;
     return {
-        height: pliHd ? 243 : 288,
+        height: theme === 2 ? 248 : theme === 1 ? 243 : 288,
         left: mirrored ? 1280 - left - width : left,
-        top: pliHd ? 110 : 62,
+        top: theme === 2 ? 100 : theme === 1 ? 110 : 62,
         width: width,
     };
 }
@@ -160,9 +160,14 @@ export function listFitPageSize(wanted: number): number {
  */
 export function listRowHeight(pageSize: number): number {
     var ps = Math.max(1, pageSize | 0);
+    // Font sizing also runs before the list becomes visible on first open.
+    var theme = (window as any).sInterfaceTheme;
+    var chrome = theme === 2 ? 180 : theme === 1 ? 210 : 130;
     var classic = Math.max(
         1,
-        Math.floor((window.innerHeight - 130 * getViewportHeightScale()) / ps)
+        Math.floor(
+            (window.innerHeight - chrome * getViewportHeightScale()) / ps
+        )
     );
     var avail = listInContentHeight();
     if (avail > 40) {

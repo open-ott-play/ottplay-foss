@@ -6,16 +6,16 @@ const path = require("node:path");
 const { gzipSync } = require("node:zlib");
 
 // Bound the shipped outputs after settings and codec deduplication, including
-// PLi-HD layout and the offline credit viewer controls. Allow
-// candidate-version suffixes and Node/zlib variation: the native bundle is
-// 166722 gzip bytes on CI Node 22.23.2 versus 166331 on local Node 26.8.2.
-// ES5, persisted menu identities and final-artifact checks remain enforced.
-const BUDGET = Object.freeze({ bytes: 557500, gzipBytes: 166900 });
+// PLi-HD/Studio layouts, settings fixes and offline credit controls. Allow
+// candidate-version suffixes and Node/zlib variation: CI Node 22 compresses
+// these bundles less than local Node 26. ES5, persisted menu identities and
+// final-artifact checks remain enforced.
+const BUDGET = Object.freeze({ bytes: 558500, gzipBytes: 167300 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
 // cancellable URL resolver to the shared backend (including release suffix room).
-const TOTAL_BUDGET = Object.freeze({ bytes: 622000, gzipBytes: 191700 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 623000, gzipBytes: 192100 });
 const ARTIFACTS = Object.freeze([
     "dist/stbPlayer.js",
     "src-tauri/frontend/dist/stbPlayer.js",

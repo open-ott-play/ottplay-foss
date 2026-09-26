@@ -111,3 +111,5 @@ jobs:
           --platform capacitor --source ios/App/App/public
       - name: Test compiled Tauri HTTP bridge
         run: cargo test --locked -p ottplay-tauri
+      - name: Exercise macOS drag callbacks with missing and malformed pasteboards
+        run: python3 tests/macos-drag-regression/run.py

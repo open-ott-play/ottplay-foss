@@ -1054,7 +1054,11 @@ for (const profile of [
     const themeRow = w.listArray.find(
         (row) => row.settingId === "interfaceTheme"
     );
-    assert.equal(themeRow.val, 1, "PLi-HD is selected in interface settings");
+    assert.equal(
+        themeRow.val,
+        2,
+        "Studio 2026 is selected in interface settings"
+    );
     themeRow.val = 0;
     w.listArray.find((row) => row.name === "Type of player for streaming").val =
         2;
