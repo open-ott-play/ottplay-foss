@@ -1,5 +1,4 @@
 const CLASSIC_MODULES = [
-    "build/polyfills/runtime.js",
     "build/polyfills/index.js",
     "build/compatibility/legacy-names.js",
     "build/shared/wire-contracts.js",
@@ -67,6 +66,7 @@ const CLASSIC_MODULES = [
     "build/provider/m3u-settings.js",
     "build/provider/m3u-driver.js",
     "build/provider/drivers.js",
+    "build/provider/assets.js",
     "build/provider/index.js",
     "build/commands/index.js",
     "build/app/init.js",
@@ -85,6 +85,19 @@ const CLASSIC_MODULES = [
     "build/plugins/vportal.js",
     "build/index.js",
 ];
+// Provider families are separate ES5 assets, loaded only for the selected profile.
+// Their modules publish factories and have no active provider state until mount.
+const CLASSIC_PROVIDER_BUNDLES = Object.freeze({
+    catalog: ["build/provider/catalog-drivers.js"],
+    edem: ["build/provider/edem-driver.js"],
+    m3u: ["build/provider/m3u-settings.js", "build/provider/m3u-driver.js"],
+    playlist: ["build/provider/playlist-drivers.js"],
+    stalker: ["build/provider/stalker-driver.js"],
+});
+const providerModules = new Set(Object.values(CLASSIC_PROVIDER_BUNDLES).flat());
+const CLASSIC_MAIN_MODULES = CLASSIC_MODULES.filter(
+    (file) => !providerModules.has(file)
+);
 // Explicitly audited implementation boundaries; all other modules retain the
 // legacy bare-global ABI. These modules publish their API as window properties
 // and execute immediately at their original position in CLASSIC_MODULES.
@@ -134,6 +147,7 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/playback/journal.js": Object.freeze(["window.__ottPlaybackJournal"]),
     "build/playback/session.js": Object.freeze(["window.__ottPlaybackSession"]),
+    "build/provider/assets.js": Object.freeze(["window.__ottProviderAssets"]),
     "build/provider/catalog-drivers.js": Object.freeze([
         "window.__ottCatalogDrivers",
     ]),
@@ -540,6 +554,15 @@ function assembleClassic(root, modules) {
             new Set(["popupActions", "popupArray", "popupDetail"]),
         ],
     ]);
+    // The blocking media bootstrap owns these implementations in page and worker
+    // realms. Keep the ESM source for module builds, without embedding it twice.
+    const bootstrapBridges = new Map([
+        [
+            path.resolve(root, "build/polyfills/runtime.js"),
+            new Set(["applyWebRuntimePolyfills"]),
+        ],
+    ]);
+    const bootstrapBindings = new Set();
     const globals = new Set();
     for (const source of sources) {
         if (isPrivate(source)) continue;
@@ -565,6 +588,18 @@ function assembleClassic(root, modules) {
             );
     }
     const allText = sources.map((source) => source.text).join("\n");
+    function hasDynamicScope(node) {
+        if (ts.isWithStatement(node)) return true;
+        if (ts.isCallExpression(node)) {
+            let callee = node.expression;
+            // Parentheses preserve direct eval and its ability to add locals.
+            while (ts.isParenthesizedExpression(callee))
+                callee = callee.expression;
+            if (ts.isIdentifier(callee) && callee.text === "eval") return true;
+        }
+        return ts.forEachChild(node, hasDynamicScope) || false;
+    }
+    const staticImportScopes = !sources.some(hasDynamicScope);
     const readers = new Map();
     function reader(name) {
         if (!readers.has(name)) {
@@ -598,11 +633,17 @@ function assembleClassic(root, modules) {
                 const bridge =
                     resolved &&
                     bridges.get(path.resolve(resolved.resolvedFileName));
+                const bootstrapBridge =
+                    resolved &&
+                    bootstrapBridges.get(
+                        path.resolve(resolved.resolvedFileName)
+                    );
                 if (
                     !specifier.startsWith(".") ||
                     !resolved ||
                     (!included.has(path.resolve(resolved.resolvedFileName)) &&
-                        !bridge)
+                        !bridge &&
+                        !bootstrapBridge)
                 ) {
                     throw new Error(
                         source.fileName +
@@ -619,10 +660,10 @@ function assembleClassic(root, modules) {
                         source.fileName +
                             ": cannot import bindings from a private classic module"
                     );
-                if (!clause && bridge)
+                if (!clause && (bridge || bootstrapBridge))
                     throw new Error(
                         source.fileName +
-                            ": ESM-only state cannot be imported for side effects"
+                            ": explicit classic bridge cannot be imported for side effects"
                     );
                 if (clause) {
                     if (
@@ -638,6 +679,33 @@ function assembleClassic(root, modules) {
                     }
                     for (const entry of clause.namedBindings?.elements || []) {
                         const alias = checker.getSymbolAtLocation(entry.name);
+                        if (bootstrapBridge) {
+                            const name = (entry.propertyName || entry.name)
+                                .text;
+                            const target =
+                                alias && checker.getAliasedSymbol(alias);
+                            const declaration =
+                                target && target.valueDeclaration;
+                            if (
+                                !bootstrapBridge.has(name) ||
+                                !declaration ||
+                                !ts.isFunctionDeclaration(declaration) ||
+                                declaration.name?.text !== name ||
+                                path.resolve(
+                                    declaration.getSourceFile().fileName
+                                ) !== path.resolve(resolved.resolvedFileName) ||
+                                globals.has(name)
+                            )
+                                throw new Error(
+                                    source.fileName +
+                                        ": missing external bootstrap bridge: " +
+                                        name
+                                );
+                            bootstrapBindings.add(name);
+                            if (entry.name.text !== name)
+                                aliases.set(alias, name);
+                            continue;
+                        }
                         if (bridge) {
                             const name = (entry.propertyName || entry.name)
                                 .text;
@@ -809,9 +877,18 @@ function assembleClassic(root, modules) {
                     const localCapture = (captured?.declarations || []).some(
                         (declaration) => !isSharedDeclaration(declaration)
                     );
-                    // An unshadowed legacy global is already a live binding.
-                    // Keep the reader only where lowering would capture a local.
-                    if (loweredGlobals.has(target) && !localCapture) {
+                    // A declared, unshadowed global is already a live binding.
+                    // Keep readers for local captures and implicit arguments or
+                    // eval, whose direct-call behavior differs from a value call.
+                    if (
+                        staticImportScopes &&
+                        !localCapture &&
+                        target !== "eval" &&
+                        target !== "arguments" &&
+                        (loweredGlobals.has(target) ||
+                            globals.has(target) ||
+                            bootstrapBindings.has(target))
+                    ) {
                         replace(
                             node,
                             shorthand ? node.text + ": " + target : target
@@ -843,7 +920,21 @@ function assembleClassic(root, modules) {
         readers,
         ([name, id]) => "function " + id + "() { return " + name + "; }"
     ).join("\n");
-    return prelude + "\n" + linked.join("\n");
+    const bootstrapCheck = bootstrapBindings.size
+        ? 'if (typeof window === "undefined" || window.__ottRuntimePolyfillsReady !== true || ' +
+          Array.from(
+              bootstrapBindings,
+              (name) => "typeof " + name + ' !== "function"'
+          ).join(" || ") +
+          ') { throw new Error("Missing shared runtime bootstrap"); }\n'
+        : "";
+    return bootstrapCheck + prelude + "\n" + linked.join("\n");
 }
 
-module.exports = { assembleClassic, CLASSIC_MODULES, CLASSIC_PRIVATE_MODULES };
+module.exports = {
+    assembleClassic,
+    CLASSIC_MAIN_MODULES,
+    CLASSIC_MODULES,
+    CLASSIC_PRIVATE_MODULES,
+    CLASSIC_PROVIDER_BUNDLES,
+};

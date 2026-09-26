@@ -113,6 +113,7 @@ function fixture(saved = new Map()) {
     w.setTimeout = w.setInterval = w.requestAnimationFrame = () => 1;
     w.console = { debug() {}, error() {}, info() {}, log() {}, warn() {} };
     w.confirm = () => false;
+    if (bundle) w.eval(read("js/runtime-polyfills.js"));
     w.eval(read("js/jquery-1.11.1.min.js"));
     if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     w.$.expr.filters.visible = (element) => element.style.display !== "none";

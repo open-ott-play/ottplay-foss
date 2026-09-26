@@ -105,10 +105,13 @@ for (const profile of ["server", "tauri", "capacitor"]) {
                 },
             },
         };
-    if (profile === "server") w.eval(read("js/jquery-1.11.1.min.js"));
-    else {
+    if (profile === "server") {
+        w.eval(read("js/runtime-polyfills.js"));
+        w.eval(read("js/jquery-1.11.1.min.js"));
+    } else {
         const stage =
             profile === "tauri" ? "src-tauri/frontend" : "dist-mobile";
+        w.eval(read(stage + "/js/runtime-polyfills.js"));
         w.eval(read(stage + "/js/native-environment.js"));
         w.eval(read(stage + "/js/jquery.min.js"));
     }

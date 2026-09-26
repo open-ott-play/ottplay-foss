@@ -5,7 +5,10 @@ const path = require("node:path");
 const vm = require("node:vm");
 const acorn = require("acorn");
 const ts = require("typescript");
-const { assembleClassic } = require("../scripts/classic-bundle.cjs");
+const {
+    assembleClassic,
+    CLASSIC_MODULES,
+} = require("../scripts/classic-bundle.cjs");
 const { optimizeClassic } = require("../scripts/classic-optimizer.cjs");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-linker-"));
 function write(name, source) {
@@ -631,6 +634,200 @@ async function testWireProviderGlobals() {
     }
 }
 
+async function testOrdinaryGlobalAliases() {
+    write(
+        "ordinary-dep.js",
+        `
+        export var ordinaryValue = "initial";
+        export function ordinaryReceiver() { return this; }
+        export function ordinaryStrictReceiver() { "use strict"; return this; }
+    `
+    );
+    write(
+        "ordinary-entry.js",
+        `
+        import { ordinaryValue as valueAlias, ordinaryReceiver as receiverAlias,
+            ordinaryStrictReceiver as strictAlias } from "./ordinary-dep";
+        export function directValue() { return valueAlias; }
+        export function capturedValue(ordinaryValue) { return valueAlias; }
+        export function ordinaryRecord() { return { valueAlias }; }
+        export function ordinaryCalls() { return [receiverAlias(), strictAlias()]; }
+        export function capturedReceiver(ordinaryReceiver) { return receiverAlias(); }
+    `
+    );
+    const linked = assembleClassic(root, [
+        "ordinary-dep.js",
+        "ordinary-entry.js",
+    ]);
+    assert.match(
+        linked,
+        /function directValue\(\) \{ return ordinaryValue; \}/
+    );
+    const optimized = await optimizeClassic(linked);
+    for (const source of [linked, optimized.code]) {
+        acorn.parse(source, { ecmaVersion: 5 });
+        const context = vm.createContext({});
+        vm.runInContext(source, context);
+        assert.equal(context.directValue(), "initial");
+        context.ordinaryValue = "replaced by provider";
+        assert.equal(context.directValue(), "replaced by provider");
+        assert.equal(context.capturedValue("local"), "replaced by provider");
+        assert.equal(
+            context.ordinaryRecord().valueAlias,
+            "replaced by provider"
+        );
+        const realm = vm.runInContext("this", context);
+        assert.equal(context.ordinaryCalls()[0], realm);
+        assert.equal(context.ordinaryCalls()[1], undefined);
+        assert.equal(
+            context.capturedReceiver(() => "local"),
+            realm
+        );
+        vm.runInContext(
+            'ordinaryReceiver = function () { return "new callback"; };',
+            context
+        );
+        assert.equal(context.ordinaryCalls()[0], "new callback");
+        assert.equal(
+            context.capturedReceiver(() => "local"),
+            "new callback"
+        );
+    }
+    for (const [label, body] of [
+        [
+            "bare eval",
+            `eval("var ordinaryValue = 'local eval binding';"); return valueAlias;`,
+        ],
+        [
+            "parenthesized eval",
+            `(eval)("var ordinaryValue = 'local eval binding';"); return valueAlias;`,
+        ],
+        [
+            "nested parentheses",
+            `(((eval)))("var ordinaryValue = 'local eval binding';"); return valueAlias;`,
+        ],
+        [
+            "eval in nested function",
+            `return (function () { ((eval))("var ordinaryValue = 'local eval binding';"); return valueAlias; })();`,
+        ],
+    ]) {
+        write(
+            "ordinary-dynamic.js",
+            `
+        import { ordinaryValue as valueAlias } from "./ordinary-dep";
+        export function readDynamic() {
+            ${body}
+        }
+    `
+        );
+        const dynamic = assembleClassic(root, [
+            "ordinary-dep.js",
+            "ordinary-dynamic.js",
+        ]);
+        const optimizedDynamic = await optimizeClassic(dynamic);
+        for (const source of [dynamic, optimizedDynamic.code]) {
+            acorn.parse(source, { ecmaVersion: 5 });
+            const context = vm.createContext({});
+            vm.runInContext(source, context);
+            assert.equal(
+                context.readDynamic(),
+                "initial",
+                label + " cannot capture a lowered import"
+            );
+            context.ordinaryValue = "changed";
+            assert.equal(context.readDynamic(), "changed", label);
+        }
+    }
+}
+
+async function testSharedBootstrapBridge() {
+    const runtimeFile = "build/polyfills/runtime.js";
+    const appFile = "build/polyfills/index.js";
+    assert(
+        !CLASSIC_MODULES.includes(runtimeFile),
+        "The media bootstrap owns web shims"
+    );
+    for (const name of ["runtime", "index"]) {
+        write(
+            "build/polyfills/" + name + ".js",
+            compile(
+                fs.readFileSync(
+                    path.join(__dirname, "../src/polyfills/" + name + ".ts"),
+                    "utf8"
+                )
+            )
+        );
+    }
+    const linked = assembleClassic(root, [appFile]);
+    const optimized = await optimizeClassic(linked);
+    const bootstrap = fs.readFileSync(
+        path.join(__dirname, "../js/runtime-polyfills.js"),
+        "utf8"
+    );
+    for (const source of [linked, optimized.code]) {
+        acorn.parse(source, { ecmaVersion: 5 });
+        assert(!source.includes("function installTextEncoder"));
+        assert(!source.includes("function applyWebRuntimePolyfills"));
+        for (const state of [
+            "function applyWebRuntimePolyfills() {}",
+            "window.__ottRuntimePolyfillsReady = true;",
+        ]) {
+            const missing = vm.createContext({});
+            vm.runInContext("var window = this; " + state, missing);
+            assert.throws(
+                () => vm.runInContext(source, missing),
+                /Missing shared runtime bootstrap/
+            );
+        }
+        const context = vm.createContext({});
+        vm.runInContext(
+            "var window = this; var self = this; TextEncoder = undefined; performance = undefined;",
+            context
+        );
+        vm.runInContext(bootstrap, context);
+        const installed = {
+            apply: context.applyWebRuntimePolyfills,
+            encoder: context.TextEncoder,
+            now: context.performance.now,
+        };
+        vm.runInContext(source, context);
+        assert.equal(context.TextEncoder, installed.encoder);
+        assert.equal(context.performance.now, installed.now);
+        assert.equal(context.applyWebRuntimePolyfills, installed.apply);
+        assert.equal(
+            vm.runInContext(
+                "Date.setTimezoneOffset(-180); applyPolyfills(); Date.getTimezoneOffset()",
+                context
+            ),
+            -180
+        );
+        assert.equal(vm.runInContext("new Date(0).getHours()", context), 3);
+        assert.equal(vm.runInContext("new Date(0).getTime()", context), 0);
+    }
+    assert.throws(
+        () => assembleClassic(root, [runtimeFile, appFile]),
+        /external bootstrap bridge/
+    );
+    write(
+        "build/bootstrap-invalid.js",
+        'import { installTextEncoder } from "./polyfills/runtime"; installTextEncoder();'
+    );
+    assert.throws(
+        () => assembleClassic(root, ["build/bootstrap-invalid.js"]),
+        /external bootstrap bridge/
+    );
+    write("build/bootstrap-invalid.js", 'import "./polyfills/runtime";');
+    assert.throws(
+        () => assembleClassic(root, ["build/bootstrap-invalid.js"]),
+        /cannot be imported for side effects/
+    );
+    write(runtimeFile, "export var applyWebRuntimePolyfills = 1;");
+    assert.throws(
+        () => assembleClassic(root, [appFile]),
+        /external bootstrap bridge/
+    );
+}
+
 async function main() {
     try {
         write(
@@ -737,6 +934,8 @@ async function main() {
         await testPrivateBoundary();
         await testWindowsPaths();
         await testWireProviderGlobals();
+        await testOrdinaryGlobalAliases();
+        await testSharedBootstrapBridge();
         console.log(
             "PASS: classic ES5 linker preserves live aliases, lexical bindings and async behavior; validates ABI bridges and deduplicates identical TypeScript helpers"
         );

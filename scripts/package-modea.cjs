@@ -5,6 +5,7 @@ const { createHash } = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { CLASSIC_PROVIDER_BUNDLES } = require("./classic-bundle.cjs");
 
 const root = path.resolve(__dirname, "..");
 // Keep deployable archives outside Capacitor's dist/ web root.
@@ -53,6 +54,12 @@ let staging;
 try {
     const index = requirePath("dist/index.html", false);
     const bundle = requirePath("dist/stbPlayer.js", false);
+    const providerBundles = Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
+        (kind) => {
+            const file = "provider-" + kind + ".js";
+            return { file, kind, source: requirePath("dist/" + file, false) };
+        }
+    );
     const assets = ["favicon.ico", "fonts", "js", "stb", "stbPlayer", "prov"];
     const sources = assets.map((name) =>
         requirePath("dist/" + name, name !== "favicon.ico")
@@ -77,6 +84,17 @@ try {
     fs.mkdirSync(path.join(webRoot, "dist"), { recursive: true });
     fs.copyFileSync(index, path.join(webRoot, "index.html"));
     fs.copyFileSync(bundle, path.join(webRoot, "dist", "stbPlayer.js"));
+    const providerMetadata = {};
+    providerBundles.forEach(({ file, kind, source }) => {
+        const relative = "dist/" + file;
+        const staged = path.join(webRoot, relative);
+        fs.copyFileSync(source, staged);
+        providerMetadata[kind] = {
+            bytes: fs.statSync(staged).size,
+            file: relative,
+            sha256: sha256(staged),
+        };
+    });
     assets.forEach((name, i) => {
         fs.cpSync(sources[i], path.join(webRoot, name), {
             preserveTimestamps: true,
@@ -85,6 +103,7 @@ try {
     });
     const metadata = {
         bundleSha256: sha256(path.join(webRoot, "dist", "stbPlayer.js")),
+        providerBundles: providerMetadata,
         revision: revision(),
         version: pkg.version,
     };

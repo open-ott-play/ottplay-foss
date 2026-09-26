@@ -459,17 +459,6 @@ export function providerDelItem(key: string): void {
 }
 
 /**
- * Read a provider-prefixed value and coerce it to a boolean.
- *
- * @param key - The logical key.
- * @returns `true` if the stored value is truthy (via `!!`), `false`
- *          otherwise (including missing key).
- */
-export function providerGetBool(key: string): boolean {
-    return !!providerGetItem(key);
-}
-
-/**
  * Read a provider-prefixed value and parse it as an integer.
  *
  * @param key          - The logical key.
@@ -515,21 +504,6 @@ export function providerGetJson<T>(key: string, defaultValue: T): T {
  */
 export function loadValue(key: string): string {
     return providerGetItem(key) || "";
-}
-
-/**
- * Persist a value only if it differs from the currently stored value.
- *
- * @param key   - The logical key (without provider prefix).
- * @param value - The new value to write.
- *
- * @remarks
- * Reads the current value via `loadValue(key)` and compares it with the
- * new value. Only calls `providerSetItem` if they differ. Useful for
- * reducing unnecessary storage writes (and compression overhead).
- */
-export function saveIfChanged(key: string, value: string): void {
-    if (loadValue(key) !== value) providerSetItem(key, value);
 }
 
 // ---------------------------------------------------------------------------

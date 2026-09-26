@@ -3,7 +3,7 @@
   "name": "ottplay-shared-core",
   "version": "0.1.0-dev",
   "source": {
-    "sha256": "a99c0190e2b2cff6a4c69e3cfd926bef6500230a777a22a0a7c1b768fa70e035",
+    "sha256": "d566b1df25e397bd2bca97e0841e3288c4b399586b32b06cf1c6e78c27cddb52",
     "files": {
       "LICENSE": "ec6a17ce723ea8b4c6b08f277ab84750440a8c3e5401aaa9f4e4e9d5fd0fd72c",
       "build.gradle.kts": "e89cc0e4057ab3989c6d4048d6b2ee7b5efb023a7c96c2886d8dd62778e42a73",
@@ -16,7 +16,7 @@
       "package.json": "154e1de2a6ab6a2a7f2f874960a3c4b7a2eb0cd02f663ce3f2f5ea9775e4465e",
       "scripts/canonical-js.cjs": "6f16fad688335bb753bb76e4875f3d64b1c213f9d19c1fc269f441f2a043ecff",
       "scripts/distribute.cjs": "31fafed503e65a7931ccead2ba19845e105f2865c1c8328710bcbb645522e4e2",
-      "scripts/minify-js.cjs": "7834a95b1b50d47b22cb141031fbc81298581ae3d3a4dafe3825276f72a61165",
+      "scripts/minify-js.cjs": "9be597ae8bfb8f7d29872835b545e78c97239d0422d35bed0d97110ad8d35525",
       "settings.gradle.kts": "de8cc9d9be33ed5e41247734b1cbac66deb0d372f550e2e263033ecb7e18ce05",
       "src/commonMain/kotlin/play/ott/core/Archive.kt": "6c588d4c4696f98e34f40e3253c98d072db2b656d4184e47ffd6c06b6c667522",
       "src/commonMain/kotlin/play/ott/core/BrowserDurableState.kt": "7af392128aae1c12f4197cd69abe922625dcf5f1248d2e820f0d2343034512d1",
@@ -134,8 +134,8 @@
   },
   "artifacts": {
     "ottplay-core.js": {
-      "sha256": "6baf1073951902d421a4df096c9b9564b5b082a53641adf4a4c594ff3babddc5",
-      "bytes": 626574
+      "sha256": "fb299f813534735d1f1348097f9d4652dc76efdfb594d0f7879f7ae3f64dc5b2",
+      "bytes": 526925
     },
     "ottplay-core.d.ts": {
       "sha256": "795b29b4b8b59cb633a37f4dc1cd6bf8f6680ab3dda49848b9883d4e93129cdd",

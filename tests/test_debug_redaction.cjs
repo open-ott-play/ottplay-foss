@@ -252,6 +252,10 @@ async function testBundle() {
             return respond(url, options);
         };
         context.fetch = fetch;
+        vm.runInContext(
+            fs.readFileSync(path.join(root, "js/runtime-polyfills.js"), "utf8"),
+            context
+        );
         require("./helpers/shared-core-runtime.cjs")(context);
         vm.runInContext(code, context);
         return {

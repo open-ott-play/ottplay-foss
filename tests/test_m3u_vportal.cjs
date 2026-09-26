@@ -85,6 +85,7 @@ function fixture(
     const w = dom.getInternalVMContext();
     w.setTimeout = w.setInterval = () => 1;
     w.console = { error() {}, log() {}, warn() {} };
+    if (bundled) vm.runInContext(read("js/runtime-polyfills.js"), w);
     require("./helpers/shared-core-runtime.cjs")(w);
     vm.runInContext(clientCode, w);
     if (!process.argv.includes("--bundle")) attachSourceAliases(w);

@@ -156,7 +156,6 @@ import { setSleepTimeout } from "./settings/sleepTimer";
 import {
     getMacAddress,
     providerDelItem,
-    providerGetBool,
     providerGetItem,
     providerGetJson,
     providerGetNum,
@@ -3782,13 +3781,7 @@ window.stbOptions = function (): void {
      * Persist the STB settings (editor, player mode, buffer size) and
      * re-apply them. Then re-open the stbOptions screen.
      */
-    function saveSettings(): void {
-        if (!editor.save()) return;
-        if (typeof w.showShift === "function")
-            w.showShift(w._("Settings saved") || "Settings saved");
-        if (typeof w.closeList === "function") w.closeList();
-        w.stbOptions();
-    }
+    var page = createSettingsPage(w, "stbOptions", "Settings STB", true, true);
     var noyes = [w._("no") || "no", w._("yes") || "yes"];
     setListArrays(w, [
         {
@@ -3819,7 +3812,7 @@ window.stbOptions = function (): void {
                 (w._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
-            values: saveSettings,
+            values: page.save,
         },
     ]);
     if (!showPlayerChoice)
@@ -3829,16 +3822,7 @@ window.stbOptions = function (): void {
                 return row.settingId !== "players";
             })
         );
-    var editor = createSettingsEditor(w, w.listArray);
-    var captionEl = document.getElementById("listCaption");
-    if (captionEl) captionEl.innerHTML = w._("Settings STB") || "Settings STB";
-    if (typeof w._setSetup === "function") {
-        w._setSetup(saveSettings, function () {
-            editor.cancel();
-            w.stbOptions();
-        });
-    }
-    editor.attach();
+    page.attach();
 };
 delete (window as any).addAoptions;
 
@@ -3847,6 +3831,47 @@ function setListArrays(w: any, data: any[]): void {
     w.listArray = data;
     w.listDataArray = data;
 }
+
+/** Settings screens share one draft lifecycle after their rows are filtered. */
+function createSettingsPage(
+    w: any,
+    menu: string,
+    caption: string,
+    closeAfterSave: boolean,
+    reopenStb: boolean
+) {
+    var editor: any;
+    function back() {
+        if (reopenStb) w.stbOptions();
+        else w.optionsList(w[menu]);
+    }
+    function save() {
+        if (!editor.save()) return;
+        if (typeof w.showShift === "function")
+            w.showShift(w._("Settings saved") || "Settings saved");
+        if (closeAfterSave && typeof w.closeList === "function") w.closeList();
+        back();
+    }
+    function saveSettings() {
+        save();
+    }
+    var saveCallback = reopenStb ? saveSettings : save;
+    return {
+        attach: function () {
+            editor = createSettingsEditor(w, w.listArray);
+            var cap = document.getElementById("listCaption");
+            if (cap) cap.innerHTML = w._(caption) || caption;
+            if (typeof w._setSetup === "function")
+                w._setSetup(saveCallback, function () {
+                    editor.cancel();
+                    back();
+                });
+            editor.attach();
+        },
+        save: saveCallback,
+    };
+}
+
 // ─── Settings UI functions (ported from original stbPlayer.js) ──────────────
 
 /**
@@ -3873,13 +3898,13 @@ window.settingsInterface = function (): void {
      * Conditionally saves PiP, OSD opacity, volume step, and editor
      * settings based on capability. Calls all apply-functions after saving.
      */
-    function save(): void {
-        if (!editor.save()) return;
-        if (typeof w.showShift === "function")
-            w.showShift(w._("Settings saved") || "Settings saved");
-        if (typeof w.closeList === "function") w.closeList();
-        w.optionsList(w.settingsInterface);
-    }
+    var page = createSettingsPage(
+        w,
+        "settingsInterface",
+        "Interface settings",
+        true,
+        false
+    );
     var noyes = [w._("no") || "no", w._("yes") || "yes"];
     var tz = (w.arrTimezone || ["system", "0"]).slice();
     tz[0] = w._(tz[0]) || tz[0];
@@ -4050,7 +4075,7 @@ window.settingsInterface = function (): void {
                 (w._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
-            values: save,
+            values: page.save,
         },
     ]);
     setListArrays(
@@ -4077,16 +4102,7 @@ window.settingsInterface = function (): void {
             return true;
         })
     );
-    var editor = createSettingsEditor(w, w.listArray);
-    var capEl = document.getElementById("listCaption");
-    if (capEl)
-        capEl.innerHTML = w._("Interface settings") || "Interface settings";
-    if (typeof w._setSetup === "function")
-        w._setSetup(save, function () {
-            editor.cancel();
-            w.optionsList(w.settingsInterface);
-        });
-    editor.attach();
+    page.attach();
 };
 
 /**
@@ -4102,13 +4118,13 @@ window.settingsInfobar = function (): void {
     var w = window as any;
 
     /** Persist infobar settings (timeout, slide, switch, change, rewind, thumbnails). */
-    function save(): void {
-        if (!editor.save()) return;
-        if (typeof w.showShift === "function")
-            w.showShift(w._("Settings saved") || "Settings saved");
-        if (typeof w.closeList === "function") w.closeList();
-        w.optionsList(w.settingsInfobar);
-    }
+    var page = createSettingsPage(
+        w,
+        "settingsInfobar",
+        "Infobar settings",
+        true,
+        false
+    );
     var noyes = [w._("no") || "no", w._("yes") || "yes"];
     setListArrays(w, [
         {
@@ -4160,18 +4176,10 @@ window.settingsInfobar = function (): void {
                 (w._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
-            values: save,
+            values: page.save,
         },
     ]);
-    var editor = createSettingsEditor(w, w.listArray);
-    var capEl = document.getElementById("listCaption");
-    if (capEl) capEl.innerHTML = w._("Infobar settings") || "Infobar settings";
-    if (typeof w._setSetup === "function")
-        w._setSetup(save, function () {
-            editor.cancel();
-            w.optionsList(w.settingsInfobar);
-        });
-    editor.attach();
+    page.attach();
 };
 
 /**
@@ -4189,13 +4197,13 @@ window.settingsLists = function (): void {
     var w = window as any;
 
     /** Persist list settings (noSmall, pageSize, fontShift, listPos, showScroll) and re-apply. */
-    function save(): void {
-        if (!editor.save()) return;
-        if (typeof w.showShift === "function")
-            w.showShift(w._("Settings saved") || "Settings saved");
-        if (typeof w.closeList === "function") w.closeList();
-        w.optionsList(w.settingsLists);
-    }
+    var page = createSettingsPage(
+        w,
+        "settingsLists",
+        "Lists settings",
+        true,
+        false
+    );
     var noyes = [w._("no") || "no", w._("yes") || "yes"];
     setListArrays(w, [
         {
@@ -4276,18 +4284,10 @@ window.settingsLists = function (): void {
                 (w._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
-            values: save,
+            values: page.save,
         },
     ]);
-    var editor = createSettingsEditor(w, w.listArray);
-    var capEl = document.getElementById("listCaption");
-    if (capEl) capEl.innerHTML = w._("Lists settings") || "Lists settings";
-    if (typeof w._setSetup === "function")
-        w._setSetup(save, function () {
-            editor.cancel();
-            w.optionsList(w.settingsLists);
-        });
-    editor.attach();
+    page.attach();
 };
 
 /**
@@ -4304,13 +4304,13 @@ window.settingsChannels = function (): void {
     var w = window as any;
 
     /** Persist channel list display settings (showNum, showPikon, showName, etc.). */
-    function save(): void {
-        if (!editor.save()) return;
-        if (typeof w.showShift === "function")
-            w.showShift(w._("Settings saved") || "Settings saved");
-        if (typeof w.closeList === "function") w.closeList();
-        w.optionsList(w.settingsChannels);
-    }
+    var page = createSettingsPage(
+        w,
+        "settingsChannels",
+        "Channel list settings",
+        true,
+        false
+    );
     var noyes = [w._("no") || "no", w._("yes") || "yes"];
     setListArrays(w, [
         {
@@ -4406,20 +4406,10 @@ window.settingsChannels = function (): void {
                 (w._("Save Settings") || "Save Settings") +
                 "</div>",
             val: 0,
-            values: save,
+            values: page.save,
         },
     ]);
-    var editor = createSettingsEditor(w, w.listArray);
-    var capEl = document.getElementById("listCaption");
-    if (capEl)
-        capEl.innerHTML =
-            w._("Channel list settings") || "Channel list settings";
-    if (typeof w._setSetup === "function")
-        w._setSetup(save, function () {
-            editor.cancel();
-            w.optionsList(w.settingsChannels);
-        });
-    editor.attach();
+    page.attach();
 };
 
 /**
@@ -4436,13 +4426,13 @@ window.settingsButtons = function (): void {
     var w = window as any;
 
     /** Persist button mapping settings (arrow fun, rewind fun, colour buttons, seek steps). */
-    function save(): void {
-        if (!editor.save()) return;
-        if (typeof w.showShift === "function")
-            w.showShift(w._("Settings saved") || "Settings saved");
-        if (typeof w.closeList === "function") w.closeList();
-        w.optionsList(w.settingsButtons);
-    }
+    var page = createSettingsPage(
+        w,
+        "settingsButtons",
+        "Buttons settings",
+        true,
+        false
+    );
     var r = "Behavior of %1/%2 buttons in lists";
     var s = "Button %1 function when viewing";
     var n = "Rewind step by buttons %1/%2";
@@ -4668,7 +4658,7 @@ window.settingsButtons = function (): void {
             cur: "",
             name: a + (w._("Save Settings") || "Save Settings") + o,
             val: 0,
-            values: save,
+            values: page.save,
         },
     ];
     setListArrays(
@@ -4697,15 +4687,7 @@ window.settingsButtons = function (): void {
             return true;
         })
     );
-    var editor = createSettingsEditor(w, w.listArray);
-    var capEl = document.getElementById("listCaption");
-    if (capEl) capEl.innerHTML = w._("Buttons settings") || "Buttons settings";
-    if (typeof w._setSetup === "function")
-        w._setSetup(save, function () {
-            editor.cancel();
-            w.optionsList(w.settingsButtons);
-        });
-    editor.attach();
+    page.attach();
 };
 
 /**
@@ -4721,12 +4703,13 @@ window.settingsMenu = function (): void {
     var w = window as any;
 
     /** Build the sHideMenus array from toggled list items and persist it. */
-    function save(): void {
-        if (!editor.save()) return;
-        if (typeof w.showShift === "function")
-            w.showShift(w._("Settings saved") || "Settings saved");
-        w.optionsList(w.settingsMenu);
-    }
+    var page = createSettingsPage(
+        w,
+        "settingsMenu",
+        "Select menu items",
+        false,
+        false
+    );
     var noyes = [w._("yes") || "yes", w._("no") || "no"];
     w.listArray = [];
     for (
@@ -4755,18 +4738,9 @@ window.settingsMenu = function (): void {
             (w._("Save Settings") || "Save Settings") +
             "</div>",
         val: 0,
-        values: save,
+        values: page.save,
     });
-    var editor = createSettingsEditor(w, w.listArray);
-    var capEl = document.getElementById("listCaption");
-    if (capEl)
-        capEl.innerHTML = w._("Select menu items") || "Select menu items";
-    if (typeof w._setSetup === "function")
-        w._setSetup(save, function () {
-            editor.cancel();
-            w.optionsList(w.settingsMenu);
-        });
-    editor.attach();
+    page.attach();
 };
 
 // Legacy device/provider API; implementation belongs to the settings module.

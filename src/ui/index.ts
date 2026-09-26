@@ -2379,18 +2379,6 @@ export function popStopPip(): void {
  * --------------------------------------------------------------------------- */
 
 /**
- * Toggle mute on the STB and show/hide the mute overlay.
- *
- * @returns void — early return if `stbToggleMute` is not a function.
- * @sideeffect Calls `window.stbToggleMute()` and toggles `#mute` visibility.
- */
-export function toggleMute(): void {
-    if (typeof (window as any).stbToggleMute !== "function") return;
-    (window as any).stbToggleMute();
-    $("#mute").toggle();
-}
-
-/**
  * Change the volume by a relative delta, clamped to [0, 100].
  *
  * @param delta - Signed integer to add to the current volume.

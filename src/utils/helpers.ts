@@ -6,27 +6,6 @@
  */
 
 /**
- * Create a DOM Event in a cross-browser compatible way.
- *
- * @param type - The event type name (e.g. `'click'`, `'customEvent'`).
- * @returns A new `Event` object.
- *
- * @sideEffects
- * Falls back to `document.createEvent('Event')` + `initEvent` when the
- * `new Event()` constructor is unavailable (legacy IE).
- */
-export function createNewEvent(type: string): Event {
-    var event: Event;
-    try {
-        event = new Event(type);
-    } catch (_e) {
-        event = document.createEvent("Event");
-        event.initEvent(type, false, false);
-    }
-    return event;
-}
-
-/**
  * Send a client feedback message to the default `/report_feedb` endpoint.
  *
  * @param message - The message string to report.
@@ -330,25 +309,6 @@ export function log(elementId: string, text: string): void {
     } else {
         console.error('log: element "' + elementId + '" is unavailable');
     }
-}
-
-/**
- * Check whether a script or CSS `<link>` with the given URL is already in
- * the document.
- *
- * @param url - A substring of the `href` attribute to search for.
- * @returns `true` if at least one `<link>` element contains the URL substring.
- *
- * @remarks
- * Only checks `<link>` elements (stylesheets). Does not inspect `<script>`
- * tags despite the function name mentioning scripts.
- */
-export function checkIfIncluded(url: string): boolean {
-    var links = document.getElementsByTagName("link");
-    for (var i = 0; i < links.length; i++) {
-        if (links[i].href.indexOf(url) !== -1) return true;
-    }
-    return false;
 }
 
 /**
