@@ -54,7 +54,7 @@ The synthetic test pattern can be regenerated with `scripts/generate-demo-media.
 - **Local proxy**: Optional local command server for 100% local automation (no central server needed)
 - **Debug**: Opt-in playback HUD / ring log via `?debug=1`
 - **24 device types**: Per-device remote control key mappings
-- **21 languages**: Full localization support
+- **28 interface languages**: Matching translation catalogs and [CLDR-checked keyboard alphabets](docs/localization.md)
 
 ## Debug HUD
 

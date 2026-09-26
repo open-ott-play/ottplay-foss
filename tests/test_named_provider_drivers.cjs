@@ -7,6 +7,25 @@ const {
 } = require("./helpers/provider-driver-fixture.cjs");
 const { declarations } = require("./helpers/playlist-fixture.cjs");
 const clone = (value) => JSON.parse(JSON.stringify(value));
+// Historical captures preserve their original Russian UI text. Protocol fields
+// remain unchanged; only these newly localized presentation values differ.
+function localizedCapture(value) {
+    const labels = {
+        "??? Нет названия канала": "??? No channel name",
+        "Для доступа необходимо ввести ID и PIN!":
+            "Enter an ID and PIN to access this service.",
+        "Для доступа необходимо ввести IPTV токен! (10 символов)":
+            "Enter an IPTV token (10 characters).",
+        "Для доступа необходимо ввести адрес плейлиста!":
+            "Enter a playlist URL to access this service.",
+        "Логин или пароль отсутсвуют!": "Username or password is missing.",
+    };
+    return JSON.parse(JSON.stringify(value), (_key, item) =>
+        typeof item === "string" && Object.hasOwn(labels, item)
+            ? labels[item]
+            : item
+    );
+}
 const named = ["1ott", "only4", "shara-tv", "tvteam"];
 const prefixes = {
     "1ott": "1ott",
@@ -163,7 +182,7 @@ test("48 captured named credentials, URL bootstrap, auth, interception and retry
                 href: f.host.location.href,
                 writes: f.writes,
             }),
-            row.expected,
+            localizedCapture(row.expected),
             row.profile + JSON.stringify(row.input)
         );
         count++;
@@ -182,7 +201,7 @@ test("92 captured named playlist catalogs including empty and malformed partial 
             settle(f, id, row.input);
             assert.deepEqual(
                 { ...catalogSnapshot(f, callbacks), errors: f.errors },
-                row.operators[id],
+                localizedCapture(row.operators[id]),
                 id + ": " + row.input
             );
             count++;
@@ -625,6 +644,88 @@ test("named settings keep prefixes, defaults, validation, cancel and stale-handl
         late();
         assert.equal(f.writes.length, count);
         assert.equal(f.saved.get("foreign-history"), "retained");
+    }
+});
+
+test("named settings translate captions, protocol choices, length errors and tv.team help", () => {
+    function translate(key, ...args) {
+        return (
+            "localized:" +
+            key.replace(/%(\d+)/g, (_match, index) => args[Number(index) - 1])
+        );
+    }
+    for (const id of named) {
+        const f = namedFixture(id);
+        f.host._ = translate;
+        f.mount(id);
+        Object.assign(f.host, {
+            popupActions: [f.host.noProvParam, () => {}],
+            popupArray: ["", ""],
+            popupDetail: ["", ""],
+        });
+        f.host.duneAddSettings(1);
+        assert(
+            !/[А-Яа-я]/.test(
+                f.host.popupArray.join("") + f.host.popupDetail.join("")
+            )
+        );
+        if (id === "shara-tv") {
+            assert(f.host.popupArray[1].endsWith("localized:Username"));
+            assert(f.host.popupDetail[1].includes("localized:Enter username"));
+            f.host.popupActions[1]();
+            assert(f.host.editCaption.startsWith("localized:Enter username"));
+            f.host.editvar = "short";
+            f.host.setEdit();
+            assert.equal(
+                f.errors.at(-1),
+                "localized:Enter a username (8 characters)."
+            );
+            f.host.popupActions[2]();
+            f.host.editvar = "short";
+            f.host.setEdit();
+            assert.equal(
+                f.errors.at(-1),
+                "localized:Enter a password (8 characters)."
+            );
+        } else if (id === "only4") {
+            f.host.popupActions[1]();
+            assert.equal(f.host.listArray[0], "localized:IPTV token");
+            assert.match(
+                f.host.listArray[1],
+                /^localized:Stream type: (MPEGTS|HLS\([av]\))$/
+            );
+            f.host.selIndex = 1;
+            f.host.detailListAction();
+            assert.equal(
+                f.host.listDetail.innerHTML,
+                "localized:Select a stream type:<br>MPEGTS, HLS(v), HLS(a)"
+            );
+            f.host.selIndex = 0;
+            f.host.listKeyHandler(f.host.keys.ENTER);
+            assert.equal(
+                f.host.editCaption,
+                "localized:Enter an IPTV token (10 characters)."
+            );
+            f.host.editvar = "short";
+            f.host.setEdit();
+            assert.equal(
+                f.errors.at(-1),
+                "localized:Enter an IPTV token (10 characters)."
+            );
+        } else if (id === "tvteam") {
+            assert(
+                f.host.popupDetail[1].startsWith(
+                    "localized:Enter the tv.team playlist URL."
+                )
+            );
+            assert(f.host.popupDetail[1].includes("<b>OTTPlayer</b>"));
+            assert(f.host.popupDetail[1].includes('"/playlist.m3u8"'));
+            f.host.popupActions[1]();
+            assert.equal(
+                f.host.editCaption,
+                "localized:Enter playlist URL tv.team"
+            );
+        }
     }
 });
 

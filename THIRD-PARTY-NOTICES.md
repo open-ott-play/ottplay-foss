@@ -20,6 +20,16 @@ authorship terms. The original source is
 [littlesat/skin-PLiHD](https://github.com/littlesat/skin-PLiHD). The project's MIT
 license does not relicense the upstream skin or imply OpenPLi endorsement.
 
+## Keyboard alphabet data
+
+The localized keyboard alphabets and their coverage fixtures derive from
+[Unicode CLDR 48](https://github.com/unicode-org/cldr/tree/acd6d88ae493633240e19a87a721076a8a75c310),
+Copyright © 1991–2025 Unicode, Inc., under the
+[Unicode License V3](js/licenses/Unicode-3.0.txt) (`Unicode-3.0`). The complete
+license is shipped with web and native packages. See
+[localization contracts and sources](docs/localization.md) for the selected
+writing systems, additional characters and case-mapping behavior.
+
 ## Native runtime: Tauri and Capacitor
 
 Native builds use the exact npm-locked releases **jQuery 4.0.0**, **hls.js 1.7.3**

@@ -10,13 +10,17 @@ const { gzipSync } = require("node:zlib");
 // candidate-version suffixes and Node/zlib variation: CI Node 22 compresses
 // these bundles less than local Node 26. ES5, persisted menu identities and
 // final-artifact checks remain enforced.
-// PC2 adds a small optional engine port; the compressed budget stays unchanged.
-const BUDGET = Object.freeze({ bytes: 559000, gzipBytes: 167300 });
+// Localized keyboard paging/case-safe cells, translated menus and eight new
+// selector entries add <1 KB after shared label reuse. Dictionaries stay external.
+// The optional PC2 engine port also fits within these measured budgets.
+const BUDGET = Object.freeze({ bytes: 560000, gzipBytes: 168100 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
 // cancellable URL resolver to the shared backend (including release suffix room).
-const TOTAL_BUDGET = Object.freeze({ bytes: 623000, gzipBytes: 192100 });
+// The combined localization and PC2 changes need 85 more raw bytes; retain
+// release suffix room without increasing the complete compressed budget.
+const TOTAL_BUDGET = Object.freeze({ bytes: 623500, gzipBytes: 192100 });
 const ARTIFACTS = Object.freeze([
     "dist/stbPlayer.js",
     "src-tauri/frontend/dist/stbPlayer.js",

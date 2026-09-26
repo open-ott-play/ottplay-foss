@@ -640,22 +640,33 @@ var TMDb: any = {
     hk: 1,
     la: {
         _arm: "hy",
+        _aze: "az",
         _bel: "be",
+        _bul: "bg",
+        _cze: "cs",
+        _dut: "nl",
         _eng: "en",
         _fra: "fr",
         _ger: "de",
         _gre: "el",
         _heb: "he",
         _hun: "hu",
+        _ind: "id",
+        _ita: "it",
+        _kaz: "kk",
         _lat: "lv",
         _lit: "lt",
+        _may: "ms",
         _pol: "pl",
         _por: "pt",
         _rou: "ro",
         _rus: "ru",
         _spa: "es",
+        _swe: "sv",
         _tur: "tr",
         _ukr: "uk",
+        _uzb: "uz",
+        _vie: "vi",
     },
     media_type_id: "",
     prepare: function () {},
@@ -1489,7 +1500,8 @@ function onPlayerStart(): void {
 // Language selection
 
 /**
- * Show the language selection list. Renders a list of 20 languages,
+ * Show the language selection list. New languages are appended so existing
+ * language positions stay stable. Renders all packaged languages,
  * saves the selection to stb storage, loads the corresponding language
  * JS file from /stbPlayer/{code}.js, then proceeds to loadProv() or
  * optionsList depending on duneAddSettings availability.
@@ -1525,6 +1537,14 @@ function selectLang(): void {
         "_tur",
         "_ukr",
         "_uzb",
+        "_ind",
+        "_vie",
+        "_may",
+        "_dut",
+        "_cze",
+        "_swe",
+        "_aze",
+        "_kaz",
     ];
     var langNames = [
         "English",
@@ -1547,6 +1567,14 @@ function selectLang(): void {
         "Turkish - Türkçe",
         "Ukrainian - Українська",
         "Uzbek - O'zbekcha",
+        "Indonesian - Bahasa Indonesia",
+        "Vietnamese - Tiếng Việt",
+        "Malay - Bahasa Melayu",
+        "Dutch - Nederlands",
+        "Czech - Čeština",
+        "Swedish - Svenska",
+        "Azerbaijani - Azərbaycanca",
+        "Kazakh - Қазақша",
     ];
     selIndex = langCodes.indexOf(stbGetItem("ottplaylang") || "");
     var prevSelIndex = selIndex;
@@ -6386,7 +6414,10 @@ if (typeof window.__TAURI__ !== "undefined") {
             // Soft prompt — do not force install on startup.
             const confirmed = await new Promise<boolean>((resolve) => {
                 confirmBox(
-                    `OttPlay FOSS ${ver} is available. Download and install now?`,
+                    _(
+                        "OttPlay FOSS %1 is available. Download and install now?",
+                        ver
+                    ),
                     () => resolve(true),
                     () => resolve(false)
                 );
@@ -6408,11 +6439,13 @@ if (typeof window.__TAURI__ !== "undefined") {
                         await processApi.relaunch();
                     } else {
                         infoBox(
-                            "Update installed. Please restart OttPlay FOSS."
+                            _("Update installed. Please restart OttPlay FOSS.")
                         );
                     }
                 } catch {
-                    infoBox("Update installed. Please restart OttPlay FOSS.");
+                    infoBox(
+                        _("Update installed. Please restart OttPlay FOSS.")
+                    );
                 }
             }
         } catch (err) {

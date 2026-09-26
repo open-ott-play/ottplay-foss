@@ -198,6 +198,11 @@ function createScreenMenuRegistry() {
         }
     }
     function open(host: any, selected: any) {
+        // Resolve labels when opening, after the active language has loaded.
+        // Keep the imported titles intact so later language changes can reuse them.
+        function translate(text: string): string {
+            return typeof host._ === "function" ? host._(text) : text;
+        }
         var records = importClassic(host);
         var hidden = host.sHideMenus || [];
         var focus = 0;
@@ -227,6 +232,7 @@ function createScreenMenuRegistry() {
                             : undefined;
                 if (toggled !== undefined && name.indexOf("/") >= 0)
                     name = name.split("/")[toggled ? 1 : 0].trim();
+                name = translate(name);
                 if (!host.sNoNumbersKeys && record.number)
                     name =
                         '<div class="btn">' + record.number + "</div> " + name;
@@ -240,7 +246,7 @@ function createScreenMenuRegistry() {
                     name = '<div class="btn">' + record.hint + "</div> " + name;
                 return {
                     action: record.action,
-                    desc: record.detail,
+                    desc: translate(record.detail),
                     id: record.id,
                     name: name,
                 };

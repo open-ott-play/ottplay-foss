@@ -468,7 +468,7 @@ function reportOwnedPlaylistLoad(
                 ) + 1
             );
             host.infoBox(
-                "Для доступа необходимо ввести ключ! (Ключ доступа для приложений - 8 символов)"
+                host._("Enter an application access key (8 characters).")
             );
         }
     } else host.alert(host._("Failed to load channel list!"));
@@ -502,13 +502,15 @@ function mountOwnedPlaylistDriver(
         if (!owner.active()) return;
         var revision = ++editor,
             previous = driver.credentials().username;
-        host.editCaption = "Редактирование ключа доступа для приложений";
+        host.editCaption = host._(
+            "Enter an application access key (8 characters)."
+        );
         host.editvar = previous;
         host.setEdit = function () {
             if (!current(revision) || previous === host.editvar) return;
             if (String(host.editvar).length !== 8) {
                 host.alert(
-                    "Для доступа необходимо ввести ключ! (Ключ доступа для приложений - 8 символов)"
+                    host._("Enter an application access key (8 characters).")
                 );
                 if (current(revision)) host.showEditKey([0, 1, 2]);
                 return;
@@ -533,8 +535,10 @@ function mountOwnedPlaylistDriver(
         driver.saveCredentials(config);
         if (!owner.active() || driver.credentials().mode !== config.mode)
             return;
-        host.popupArray[host.popupActions.indexOf(editMode)] =
-            "Тип потоков: " + (config.mode ? "MPEGTS" : "HLS");
+        host.popupArray[host.popupActions.indexOf(editMode)] = host._(
+            "Stream type: %1",
+            config.mode ? "MPEGTS" : "HLS"
+        );
         host.popupList(editMode);
         if (!owner.active()) return;
         if (!host.playType) host.playChannel(host.catIndex, host.primaryIndex);
@@ -634,14 +638,17 @@ function mountOwnedPlaylistDriver(
             host.popupArray.splice(
                 index,
                 0,
-                "Ключ доступа",
-                "Тип потоков: " + (driver.credentials().mode ? "MPEGTS" : "HLS")
+                host._("Access key"),
+                host._(
+                    "Stream type: %1",
+                    driver.credentials().mode ? "MPEGTS" : "HLS"
+                )
             );
             host.popupDetail.splice(
                 index,
                 0,
-                "Ввод ключа доступа для приложений",
-                "Выберите тип потоков: HLS или MPEGTS"
+                host._("Enter an application access key (8 characters)."),
+                host._("Select a stream type:<br>%1", "HLS, MPEGTS")
             );
             host.popupActions.splice(index, 0, editKey, editMode);
         } else {
