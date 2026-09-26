@@ -693,31 +693,50 @@ async function testOrdinaryGlobalAliases() {
             "new callback"
         );
     }
-    write(
-        "ordinary-dynamic.js",
-        `
+    for (const [label, body] of [
+        [
+            "bare eval",
+            `eval("var ordinaryValue = 'local eval binding';"); return valueAlias;`,
+        ],
+        [
+            "parenthesized eval",
+            `(eval)("var ordinaryValue = 'local eval binding';"); return valueAlias;`,
+        ],
+        [
+            "nested parentheses",
+            `(((eval)))("var ordinaryValue = 'local eval binding';"); return valueAlias;`,
+        ],
+        [
+            "eval in nested function",
+            `return (function () { ((eval))("var ordinaryValue = 'local eval binding';"); return valueAlias; })();`,
+        ],
+    ]) {
+        write(
+            "ordinary-dynamic.js",
+            `
         import { ordinaryValue as valueAlias } from "./ordinary-dep";
         export function readDynamic() {
-            eval("var ordinaryValue = 'local eval binding';");
-            return valueAlias;
+            ${body}
         }
     `
-    );
-    const dynamic = assembleClassic(root, [
-        "ordinary-dep.js",
-        "ordinary-dynamic.js",
-    ]);
-    const optimizedDynamic = await optimizeClassic(dynamic);
-    for (const source of [dynamic, optimizedDynamic.code]) {
-        const context = vm.createContext({});
-        vm.runInContext(source, context);
-        assert.equal(
-            context.readDynamic(),
-            "initial",
-            "Direct eval cannot capture a lowered import"
         );
-        context.ordinaryValue = "changed";
-        assert.equal(context.readDynamic(), "changed");
+        const dynamic = assembleClassic(root, [
+            "ordinary-dep.js",
+            "ordinary-dynamic.js",
+        ]);
+        const optimizedDynamic = await optimizeClassic(dynamic);
+        for (const source of [dynamic, optimizedDynamic.code]) {
+            acorn.parse(source, { ecmaVersion: 5 });
+            const context = vm.createContext({});
+            vm.runInContext(source, context);
+            assert.equal(
+                context.readDynamic(),
+                "initial",
+                label + " cannot capture a lowered import"
+            );
+            context.ordinaryValue = "changed";
+            assert.equal(context.readDynamic(), "changed", label);
+        }
     }
 }
 

@@ -589,14 +589,15 @@ function assembleClassic(root, modules) {
     }
     const allText = sources.map((source) => source.text).join("\n");
     function hasDynamicScope(node) {
-        return (
-            ts.isWithStatement(node) ||
-            (ts.isCallExpression(node) &&
-                ts.isIdentifier(node.expression) &&
-                node.expression.text === "eval") ||
-            ts.forEachChild(node, hasDynamicScope) ||
-            false
-        );
+        if (ts.isWithStatement(node)) return true;
+        if (ts.isCallExpression(node)) {
+            let callee = node.expression;
+            // Parentheses preserve direct eval and its ability to add locals.
+            while (ts.isParenthesizedExpression(callee))
+                callee = callee.expression;
+            if (ts.isIdentifier(callee) && callee.text === "eval") return true;
+        }
+        return ts.forEachChild(node, hasDynamicScope) || false;
     }
     const staticImportScopes = !sources.some(hasDynamicScope);
     const readers = new Map();
