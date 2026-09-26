@@ -11,6 +11,7 @@ function projectChannelCatalog(
         ids: [],
     };
     var identities: Record<string, string> = Object.create(null);
+    var groupIndices: Record<string, number> = Object.create(null);
     rows.forEach(function (row) {
         var raw = String(row.providerId || "");
         var id = Number(raw);
@@ -43,6 +44,7 @@ function projectChannelCatalog(
         identities[String(id)] = row.itemId;
         if (result.channels[id]) return;
         if (!result.groups[row.groupName]) {
+            groupIndices[row.groupName] = result.groupOrder.length;
             result.groupOrder.push(row.groupName);
             result.groups[row.groupName] = [];
         }
@@ -67,7 +69,7 @@ function projectChannelCatalog(
             ca: row.archiveMode || "",
             caso: "",
             category: {
-                class: result.groupOrder.indexOf(row.groupName),
+                class: groupIndices[row.groupName],
                 name: row.groupName,
             },
             ch_id: id,

@@ -48,6 +48,7 @@ function createChannelLibrary(
     var ids: Record<string, string> = Object.create(null);
     var aliases: Record<string, string | null> = Object.create(null);
     var provider: LibraryGroup[] = [];
+    var providerById: Record<string, LibraryGroup> = Object.create(null);
     var writable = true;
     var readFailed = false;
     function raw(name: string): string | null {
@@ -69,9 +70,10 @@ function createChannelLibrary(
                     ? row.itemId
                     : null;
         }
-        var group = groupById(provider, row.groupId);
+        var group = providerById[row.groupId];
         if (!group) {
             group = { id: row.groupId, label: row.groupLabel, members: [] };
+            providerById[row.groupId] = group;
             provider.push(group);
         }
         group.members.push(row.itemId);
@@ -83,6 +85,7 @@ function createChannelLibrary(
             return row.itemId;
         }),
     });
+    providerById["system:all"] = provider[0];
     function groupById(
         values: LibraryGroup[],
         id: string
@@ -366,8 +369,10 @@ function createChannelLibrary(
     if (state.selected) state.selected.itemId = resolve(state.selected.itemId);
     // Unedited provider groups follow new catalog names and membership. User copies remain independent.
     function groups(): LibraryGroup[] {
+        var seen: Record<string, boolean> = Object.create(null);
         var result = state!.groups.map(function (group) {
-            var live = groupById(provider, group.id);
+            seen[group.id] = true;
+            var live = providerById[group.id];
             return {
                 id: group.id,
                 label: live && group.label === "" ? live.label : group.label,
@@ -388,13 +393,14 @@ function createChannelLibrary(
             };
         });
         provider.forEach(function (group) {
-            if (
-                state!.hidden.indexOf(group.id) < 0 &&
-                !result.some(function (value) {
-                    return value.id === group.id;
-                })
-            )
-                result.push(clone(group));
+            if (state!.hidden.indexOf(group.id) < 0 && !seen[group.id]) {
+                seen[group.id] = true;
+                result.push({
+                    id: group.id,
+                    label: group.label,
+                    members: group.members.slice(),
+                });
+            }
         });
         return result.filter(function (group) {
             return state!.hidden.indexOf(group.id) < 0;
@@ -447,15 +453,8 @@ function createChannelLibrary(
             var live = groupById(groups(), id);
             if (live) {
                 group = clone(live);
-                if (
-                    provider.some(function (value) {
-                        return value.id === id;
-                    })
-                )
-                    group.label = "";
-                group.inheritsMembers = provider.some(function (value) {
-                    return value.id === id;
-                });
+                if (providerById[id]) group.label = "";
+                group.inheritsMembers = !!providerById[id];
                 draft.groups.push(group);
             }
         }
@@ -476,7 +475,7 @@ function createChannelLibrary(
                 if (!group) return;
                 var visible = groupById(groups(), groupId);
                 if (visible) group.members = visible.members.slice();
-                var live = groupById(provider, groupId);
+                var live = providerById[groupId];
                 group.inheritsMembers = false;
                 group.known = unique(
                     (group.known || []).concat(live ? live.members : [])
@@ -638,15 +637,13 @@ function createChannelLibrary(
             });
         },
         snapshot: function () {
+            var visible = groups();
             return {
                 all: numeric(
-                    (
-                        groups().filter(function (group) {
-                            return group.id === "system:all";
-                        })[0] || { members: [] }
-                    ).members
+                    (groupById(visible, "system:all") || { members: [] })
+                        .members
                 ),
-                groups: groups()
+                groups: visible
                     .filter(function (group) {
                         return group.id !== "system:all";
                     })
