@@ -105,6 +105,7 @@ function renderFixture() {
     getCurProgData = () => true;
     getChannelPicon = () => logo;
     settings.pageSize = 25;
+    settings.interfaceTheme = 0;
     settings.noSmall = 1;
     window.sNoSmall = 1;
     settings.showScroll = window.sShowScroll = 1;
@@ -300,6 +301,89 @@ async function snapshot(page) {
         };
     });
 }
+
+test("PLi-HD switches the shipped UI and restores custom Classic colours", async ({
+    browser,
+}, testInfo) => {
+    for (const profile of ["server", "tauri"]) {
+        const fixture = await fixturePage(browser, profile);
+        const page = fixture.page;
+        try {
+            const classic = await snapshot(page);
+            await page.screenshot({
+                path: testInfo.outputPath(profile + "-classic.png"),
+            });
+            const saved = await page.evaluate(() => {
+                const saved = saveSettings({ interfaceTheme: 1 });
+                _channelsList(0, 0);
+                return saved;
+            });
+            expect(saved).toBe(true);
+            await expect(page.locator("body")).toHaveClass(/theme-pli-hd/);
+            await expect(page.locator("#_name")).toContainText(
+                "Current bulletin"
+            );
+            const pli = await snapshot(page);
+            expect(pli.selection).toBe("rgb(48, 50, 64)");
+            expect(pli.programmeAccent).toBe("rgb(252, 192, 0)");
+            expect(pli.detailAccent).toBe("rgb(252, 192, 0)");
+            expect(pli.progressColor).toBe("rgb(252, 192, 0)");
+            expect(pli.rowHeight).toBe(classic.rowHeight);
+            expect(pli.picon).toEqual(classic.picon);
+            expect(
+                await page.evaluate(() => {
+                    const clock = document.getElementById("listTime");
+                    clock.textContent = "18:30:00";
+                    const rect = clock.getBoundingClientRect();
+                    return clock.contains(
+                        document.elementFromPoint(
+                            rect.x + rect.width / 2,
+                            rect.y + rect.height / 2
+                        )
+                    );
+                })
+            ).toBe(true);
+            await expect(page.locator("#listCaption")).toHaveCSS(
+                "background-color",
+                "rgb(36, 36, 36)"
+            );
+            await expect(page.locator("#it0")).toHaveCSS(
+                "border-radius",
+                "0px"
+            );
+            await expect(page.locator("#dialogbox")).toHaveCSS(
+                "border-radius",
+                "0px"
+            );
+            await expect(page.locator("#listIn .item")).toHaveCount(25);
+            await page.screenshot({
+                path: testInfo.outputPath(profile + "-pli-hd.png"),
+            });
+            await page.locator("#it1").click();
+            await expect(page.locator("#it1")).toHaveCSS(
+                "background-color",
+                "rgb(48, 50, 64)"
+            );
+            await expect(page.locator("#_name")).toContainText("Current film");
+            expect(
+                await page.evaluate(() => {
+                    const saved = saveSettings({ interfaceTheme: 0 });
+                    _channelsList(0, 0);
+                    return saved;
+                })
+            ).toBe(true);
+            await expect(page.locator("body")).not.toHaveClass(/theme-pli-hd/);
+            await expect(page.locator("#_name")).toContainText(
+                "Current bulletin"
+            );
+            expect(await snapshot(page)).toEqual(classic);
+            expect(fixture.errors).toEqual([]);
+            expect(fixture.unexpectedRequests).toEqual([]);
+        } finally {
+            await fixture.close();
+        }
+    }
+});
 
 test("active Tauri CSP reproduces the former inline-style failure", async ({
     browser,

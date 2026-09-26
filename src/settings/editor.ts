@@ -105,7 +105,9 @@ export function createSettingsEditor(host: any, rows: any[]) {
                 return get(pair[1]);
             },
             set: function (value) {
-                set(pair[1], value);
+                // Accepting a custom colour selects Classic in this same draft.
+                // Cancelling either picker or settings never changes the theme.
+                if (set(pair[1], value)) set("interfaceTheme", 0);
             },
         });
     });

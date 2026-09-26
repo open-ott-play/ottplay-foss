@@ -31,6 +31,7 @@ var keyStrings = {
         "Не получен список каналов!!!<br/><br/>Введите данные провайдера и перезапустите плеер!!!<br/><br/>",
     "Channel list. Category: ": "Список каналов. Категория: ",
     "Channel parental control": "Родительский контроль канала",
+    Classic: "Классическая",
     Close: "Закрыть",
     "Could not update HTTP remote control.":
         "Не удалось изменить настройки HTTP-пульта.",
@@ -79,6 +80,7 @@ var keyStrings = {
     "HTTP remote control is unavailable on this device.":
         "HTTP-пульт недоступен на этом устройстве.",
     Info: "Инфо",
+    "Interface theme": "Тема интерфейса",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Некорректная ссылка на канал! Укажите полный хост как в URL потока в кабинете (например subdomain.cdn-domain.tld)",
     "List created": "Список создан",
