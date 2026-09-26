@@ -1195,9 +1195,41 @@ export function loadProv(providerId?: string): void {
                 );
             }
         }
-        if (usesDriver) {
+        function mountDriver(): void {
+            if (!providerSession.active()) return;
+            if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
             driverRegistry.mount(window, s, providerSession);
-            providerReady();
+            if (providerSession.active()) providerReady();
+        }
+        if (usesDriver) {
+            var assets = (window as any).__ottProviderAssets;
+            if (assets) {
+                var profile = (
+                    window as any
+                ).__ottProviderDriverProfiles.filter(function (value: any) {
+                    return value.id === s;
+                })[0];
+                assets.classic.ensure(
+                    profile ? profile.kind : "",
+                    host,
+                    __cv,
+                    providerSession,
+                    mountDriver,
+                    function (error: any) {
+                        if (!providerSession.active()) return;
+                        if (
+                            (window as any).__ottCommandChannelLoad !==
+                            commandLoad
+                        )
+                            return;
+                        console.error(error);
+                        onError();
+                    }
+                );
+            } else {
+                // Source-module consumers may preload all driver implementations.
+                mountDriver();
+            }
         } else {
             // OTTPLAY_FULL_ONLY_BEGIN
             providerRuntime.loadScript(

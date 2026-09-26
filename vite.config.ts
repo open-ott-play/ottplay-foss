@@ -33,9 +33,8 @@ const { stageNativeRuntime } = classicRequire(
 const { configureNativeDev } = classicRequire(
     resolve(__dirname, "scripts/native-dev.cjs")
 );
-const { assembleClassic, CLASSIC_MODULES } = classicRequire(
-    resolve(__dirname, "scripts/classic-bundle.cjs")
-);
+const { assembleClassic, CLASSIC_MAIN_MODULES, CLASSIC_PROVIDER_BUNDLES } =
+    classicRequire(resolve(__dirname, "scripts/classic-bundle.cjs"));
 const { isRetiredRuntimeScript } = classicRequire(
     resolve(__dirname, "scripts/runtime-assets.cjs")
 );
@@ -170,6 +169,10 @@ function stageTauriFrontend(
     if (existsSync(bundleSrc)) {
         mkdirSync(join(stageDir, "dist"), { recursive: true });
         cpSync(bundleSrc, join(stageDir, "dist", "stbPlayer.js"));
+        for (const kind of Object.keys(CLASSIC_PROVIDER_BUNDLES)) {
+            const file = "provider-" + kind + ".js";
+            cpSync(join(distDir, file), join(stageDir, "dist", file));
+        }
     }
 
     // Preserve nested vendor paths (lg/webos, samsung/tizen, etc.).
@@ -331,7 +334,7 @@ export default defineConfig(({ mode }) => ({
 
                 let bundle = assembleClassic(
                     androidFlavor ? androidCompileRoot : __dirname,
-                    CLASSIC_MODULES
+                    CLASSIC_MAIN_MODULES
                 );
 
                 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
@@ -344,6 +347,32 @@ export default defineConfig(({ mode }) => ({
                 const result = await optimizeClassic(bundle);
                 const size = measureBundle(result.code, "dist/stbPlayer.js");
                 writeFileSync(outPath, result.code);
+                // Emit each implementation once; the selected provider loader
+                // fetches its family without downloading every other factory.
+                for (const name of readdirSync(outDir)) {
+                    if (/^provider-.*\.js$/.test(name))
+                        rmSync(join(outDir, name));
+                }
+                const providerKinds = Object.keys(
+                    CLASSIC_PROVIDER_BUNDLES
+                ).filter(
+                    (kind) =>
+                        androidFlavor !== "play" ||
+                        kind === "stalker" ||
+                        kind === "m3u"
+                );
+                for (const kind of providerKinds) {
+                    const providerSource = assembleClassic(
+                        androidFlavor ? androidCompileRoot : __dirname,
+                        CLASSIC_PROVIDER_BUNDLES[kind]
+                    ).replace(/__OTTP_VERSION__/g, version);
+                    const providerResult =
+                        await optimizeClassic(providerSource);
+                    writeFileSync(
+                        join(outDir, "provider-" + kind + ".js"),
+                        providerResult.code
+                    );
+                }
                 console.log(
                     "Classic bundle: " +
                         result.report.inputBytes +
@@ -389,8 +418,13 @@ export default defineConfig(({ mode }) => ({
                 // Native roots retain the /dist/stbPlayer.js bootstrap URL.
                 // Prepare the nested copy before staging Capacitor separately
                 // into dist-mobile and applying its native transformations.
+                rmSync(join(outDir, "dist"), { force: true, recursive: true });
                 mkdirSync(join(outDir, "dist"), { recursive: true });
                 cpSync(outPath, join(outDir, "dist", "stbPlayer.js"));
+                for (const kind of providerKinds) {
+                    const file = "provider-" + kind + ".js";
+                    cpSync(join(outDir, file), join(outDir, "dist", file));
+                }
                 console.log("Nested Cap contract: dist/dist/stbPlayer.js");
                 // Retire media left by older builds; demo streams now live on here.now.
                 rmSync(join(outDir, "demo"), { force: true, recursive: true });
@@ -478,7 +512,7 @@ export default defineConfig(({ mode }) => ({
                     writeBundleReport(
                         __dirname,
                         result.report,
-                        CLASSIC_MODULES,
+                        CLASSIC_MAIN_MODULES,
                         ["dist/stbPlayer.js"]
                     );
                     execFileSync(
@@ -498,7 +532,11 @@ export default defineConfig(({ mode }) => ({
                 const mobileDir = resolve(__dirname, "dist-mobile");
                 copyRuntimeAssets(outDir, mobileDir);
                 stageNativeRuntime(mobileDir, "capacitor");
-                writeBundleReport(__dirname, result.report, CLASSIC_MODULES);
+                writeBundleReport(
+                    __dirname,
+                    result.report,
+                    CLASSIC_MAIN_MODULES
+                );
                 // Only the server/legacy assets are constrained to ES5. Native
                 // vendor files are checked against their pinned npm bytes.
                 execSync("node scripts/check-es5.cjs", {

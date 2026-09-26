@@ -8,6 +8,7 @@ const assertMenuRuntime = require("./helpers/menu-runtime.cjs");
 const {
     checkBundleIdentifiers,
 } = require("../scripts/check-bundle-identifiers.cjs");
+const { CLASSIC_PROVIDER_BUNDLES } = require("../scripts/classic-bundle.cjs");
 
 const publicFixture = `
     function startPlayer() {} var popupActions = [];
@@ -91,6 +92,62 @@ for (const name of [
         "The classic bundle must reuse the shared bootstrap: " + name
     );
 const fixtureTimers = new WeakMap();
+const optionalProviderApis = {
+    catalog: ["__ottCatalogDrivers"],
+    edem: ["__ottEdemDriver"],
+    m3u: ["__ottM3uDriver", "__ottM3uSettings"],
+    playlist: ["__ottPlaylistDrivers"],
+    stalker: ["__ottStalkerDriver"],
+};
+assert.deepEqual(
+    Object.keys(CLASSIC_PROVIDER_BUNDLES).sort(),
+    Object.keys(optionalProviderApis).sort(),
+    "Every emitted provider family has an artifact ABI assertion"
+);
+
+function providerKinds() {
+    return playDistribution
+        ? ["m3u", "stalker"]
+        : Object.keys(CLASSIC_PROVIDER_BUNDLES);
+}
+
+function assertProvidersUnloaded(w, profile) {
+    for (const apis of Object.values(optionalProviderApis))
+        for (const api of apis)
+            assert.equal(
+                w[api],
+                undefined,
+                profile + ": main bundle defers provider implementation " + api
+            );
+}
+
+function loadProviderBundle(w, kind) {
+    assert(providerKinds().includes(kind), "Unexpected provider asset " + kind);
+    const file = path.join(
+        path.dirname(bundlePath),
+        "provider-" + kind + ".js"
+    );
+    const source = fs.readFileSync(file, "utf8");
+    acorn.parse(source, { ecmaVersion: 5 });
+    vm.runInContext(source, w, { filename: file, timeout: 5000 });
+}
+
+function assertProviderFactories(w, profile) {
+    for (const kind of providerKinds())
+        for (const api of optionalProviderApis[kind])
+            for (const method of w.__ottProviderAssets.groups[kind]
+                .find((entry) => entry[0] === api)
+                .slice(1))
+                assert.equal(
+                    typeof w[api]?.[method],
+                    "function",
+                    profile +
+                        ": emitted provider asset initializes " +
+                        api +
+                        "." +
+                        method
+                );
+}
 
 function fixture(profile) {
     const elements = new Map();
@@ -427,6 +484,7 @@ function fixture(profile) {
         "__ottClassicArchive",
         "__ottProviderDrivers",
         "__ottProviderDriverProfiles",
+        "__ottProviderAssets",
         "__ottStalkerDriver",
         "__ottCatalogDrivers",
         "__ottCatalogXml",
@@ -471,13 +529,9 @@ function assertPrivateRuntime(w, profile) {
         ["__ottClassicArchive", "update"],
         ["__ottProviderDrivers", "createRegistry"],
         ["__ottProviderDrivers", "mount"],
-        ["__ottStalkerDriver", "create"],
-        ["__ottStalkerDriver", "mountSettings"],
+        ["__ottProviderAssets", "create"],
         ["__ottCatalogXml", "decode"],
         ["__ottMediaCatalog", "create"],
-        ["__ottM3uDriver", "create"],
-        ["__ottM3uDriver", "mount"],
-        ["__ottM3uSettings", "mount"],
         ["__ottClassicPlayback", "select"],
         ["__ottClassicPlayback", "shift"],
         ["__ottClassicPlayback", "cancel"],
@@ -490,6 +544,7 @@ function assertPrivateRuntime(w, profile) {
             profile + ": bundle initializes " + api + "." + method
         );
     }
+    assert.equal(typeof w.__ottProviderAssets.classic.ensure, "function");
     assert.equal(typeof w.__ottProviderRuntime.classic.replace, "function");
     for (const method of ["bind", "loadScript"])
         assert.equal(
@@ -507,11 +562,6 @@ function assertPrivateRuntime(w, profile) {
         );
     } else {
         assert.equal(w.__ottProviderDrivers.registry.ids().length, 48);
-        for (const method of ["create", "mountSettings", "reportLoad"])
-            assert.equal(typeof w.__ottCatalogDrivers[method], "function");
-        for (const api of ["__ottPlaylistDrivers", "__ottEdemDriver"])
-            for (const method of ["create", "mount", "reportLoad"])
-                assert.equal(typeof w[api][method], "function");
     }
     assert(Array.isArray(w.__ottProviderDriverProfiles));
     assert.deepEqual(
@@ -1283,6 +1333,7 @@ function exerciseProviderRuntime(profile) {
     // previous smoke overrides and any source-module bootstrap.
     const w = fixture(profile);
     vm.runInContext(bundle, w, { filename: bundlePath, timeout: 5000 });
+    assertProvidersUnloaded(w, profile);
     assertPrivateRuntime(w, profile);
     w.document.createTextNode = (text) => ({ nodeType: 3, textContent: text });
     const stored = new Map([
@@ -1298,8 +1349,32 @@ function exerciseProviderRuntime(profile) {
     ]);
     const requests = [],
         scripts = [],
+        providerAssets = [],
+        pendingProviderAssets = [],
         scriptCallbacks = [],
         errors = [];
+    let deferProviderAssets = false;
+    const appendChild = w.document.body.appendChild;
+    w.document.body.appendChild = function (child) {
+        const result = appendChild.call(this, child);
+        if (child.tagName === "SCRIPT") {
+            const match = /\/dist\/provider-([a-z0-9]+)\.js\?[^/]*$/.exec(
+                child.src
+            );
+            assert(
+                match,
+                "Managed loader requested an unexpected asset: " + child.src
+            );
+            providerAssets.push(match[1]);
+            const complete = () => {
+                loadProviderBundle(w, match[1]);
+                child.onload();
+            };
+            if (deferProviderAssets) pendingProviderAssets.push(complete);
+            else complete();
+        }
+        return result;
+    };
     let completed = 0,
         ajaxWrites = 0;
     const ajax = (settings) => {
@@ -1535,7 +1610,15 @@ function exerciseProviderRuntime(profile) {
     );
     stored.set("ottplayprov", "stalker");
     let before = completed;
+    const beforeStalker = requests.length;
+    deferProviderAssets = true;
     w.loadProv("stalker");
+    assert.equal(w.__ottStalkerDriver, undefined);
+    assert.equal(w.__ottActiveProviderDriver, null);
+    assert.equal(requests.length, beforeStalker);
+    assert.equal(pendingProviderAssets.length, 1);
+    pendingProviderAssets.shift()();
+    deferProviderAssets = false;
     assert.equal(w.__ottActiveProviderDriver.id, "stalker");
     assert.equal(requests.at(-1).settings.contentType, "application/json");
     requests.at(-1).resolve({ result: {} });
@@ -1890,6 +1973,13 @@ function exerciseProviderRuntime(profile) {
         [],
         profile + ": registered drivers never execute provider scripts"
     );
+    assert.deepEqual(
+        providerAssets.slice().sort(),
+        providerKinds().slice().sort(),
+        profile +
+            ": provider switching loads each required real family asset once"
+    );
+    assertProviderFactories(w, profile);
     assert.equal(
         ajaxWrites,
         0,
@@ -2134,6 +2224,10 @@ async function main() {
         `,
             w
         );
+        assertProvidersUnloaded(w, profile);
+        assertPrivateRuntime(w, profile);
+        for (const kind of providerKinds()) loadProviderBundle(w, kind);
+        assertProviderFactories(w, profile);
         assertPrivateRuntime(w, profile);
         if (profile === "modern" || profile === "legacy") {
             assertQrSvg(

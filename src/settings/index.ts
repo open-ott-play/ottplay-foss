@@ -306,9 +306,9 @@ const settingDefaults = defaultSettings();
 function defineSetting(
     id: string,
     key: string,
-    scope: "application" | "provider",
-    effects: string[],
-    rules: any
+    rules: any = { range: [0, 1] },
+    effects: string[] = [],
+    scope: "application" | "provider" = "application"
 ): SettingDefinition {
     var fallback = (settingDefaults as any)[id];
     return {
@@ -375,266 +375,277 @@ function defineSetting(
     };
 }
 export const settingsSchema: SettingDefinition[] = [
-    defineSetting("noSmall", "sNoSmall", "application", ["setListPos"], {
-        range: [0, 1],
-    }),
-    defineSetting("stopPlay", "sStopPlay", "application", [], {
-        range: [0, 1],
-    }),
-    defineSetting("pipSize", "sPipSize", "application", ["setPipPosBuf"], {
-        range: [0, 2],
-    }),
-    defineSetting("pipPosition", "sPipPos", "application", ["setPipPosBuf"], {
-        range: [0, 3],
-    }),
     defineSetting(
-        "pageSize",
-        "sPageSize",
-        "application",
-        ["setFontSize", "setListPos"],
-        { range: [10, 30] }
+        "noSmall",
+        "sNoSmall",
+        {
+            range: [0, 1],
+        },
+        ["setListPos"]
+    ),
+    defineSetting("stopPlay", "sStopPlay"),
+    defineSetting(
+        "pipSize",
+        "sPipSize",
+        {
+            range: [0, 2],
+        },
+        ["setPipPosBuf"]
     ),
     defineSetting(
-        "fontShift",
-        "sFontShift",
-        "application",
-        ["setFontSize", "setListPos"],
-        { range: [0, 30] }
+        "pipPosition",
+        "sPipPos",
+        {
+            range: [0, 3],
+        },
+        ["setPipPosBuf"]
     ),
+    defineSetting("pageSize", "sPageSize", { range: [10, 30] }, [
+        "setFontSize",
+        "setListPos",
+    ]),
+    defineSetting("fontShift", "sFontShift", { range: [0, 30] }, [
+        "setFontSize",
+        "setListPos",
+    ]),
     defineSetting(
         "fontSize",
         "sFont",
-        "application",
-        ["setFontSize", "setListPos"],
         {
             range: [0, 6],
-        }
+        },
+        ["setFontSize", "setListPos"]
     ),
-    defineSetting("arrowFun", "sArrowFun", "application", [], {
+    defineSetting("arrowFun", "sArrowFun", {
         range: [0, 3],
     }),
-    defineSetting("rewFun", "sRewFun", "application", [], { range: [0, 3] }),
-    defineSetting("pnFun", "sPNFun", "application", [], { range: [0, 3] }),
-    defineSetting("rFun", "sRfun", "application", [], { range: [0, 64] }),
-    defineSetting("gFun", "sGfun", "application", [], { range: [0, 64] }),
-    defineSetting("yFun", "sYfun", "application", [], { range: [0, 64] }),
-    defineSetting("bFun", "sBfun", "application", [], { range: [0, 64] }),
-    defineSetting("alFun", "sALfun", "application", [], { range: [0, 64] }),
-    defineSetting("arFun", "sARfun", "application", [], { range: [0, 64] }),
-    defineSetting("auFun", "sAUfun", "application", [], { range: [0, 64] }),
-    defineSetting("adFun", "sADfun", "application", [], { range: [0, 64] }),
-    defineSetting("rwFun", "sRWfun", "application", [], { range: [0, 64] }),
-    defineSetting("ffFun", "sFFfun", "application", [], { range: [0, 64] }),
-    defineSetting("prevFun", "sPREVfun", "application", [], { range: [0, 64] }),
-    defineSetting("nextFun", "sNEXTfun", "application", [], { range: [0, 64] }),
-    defineSetting("eFun", "sEfun", "application", [], { range: [0, 4] }),
-    defineSetting("okFun", "sOkfun", "application", [], { range: [0, 1] }),
-    defineSetting("seek13Duration", "s13dur", "application", [], {
+    defineSetting("rewFun", "sRewFun", { range: [0, 3] }),
+    defineSetting("pnFun", "sPNFun", { range: [0, 3] }),
+    defineSetting("rFun", "sRfun", { range: [0, 64] }),
+    defineSetting("gFun", "sGfun", { range: [0, 64] }),
+    defineSetting("yFun", "sYfun", { range: [0, 64] }),
+    defineSetting("bFun", "sBfun", { range: [0, 64] }),
+    defineSetting("alFun", "sALfun", { range: [0, 64] }),
+    defineSetting("arFun", "sARfun", { range: [0, 64] }),
+    defineSetting("auFun", "sAUfun", { range: [0, 64] }),
+    defineSetting("adFun", "sADfun", { range: [0, 64] }),
+    defineSetting("rwFun", "sRWfun", { range: [0, 64] }),
+    defineSetting("ffFun", "sFFfun", { range: [0, 64] }),
+    defineSetting("prevFun", "sPREVfun", { range: [0, 64] }),
+    defineSetting("nextFun", "sNEXTfun", { range: [0, 64] }),
+    defineSetting("eFun", "sEfun", { range: [0, 4] }),
+    defineSetting("okFun", "sOkfun"),
+    defineSetting("seek13Duration", "s13dur", {
         durations: true,
     }),
-    defineSetting("seek46Duration", "s46dur", "application", [], {
+    defineSetting("seek46Duration", "s46dur", {
         durations: true,
     }),
-    defineSetting("seek79Duration", "s79dur", "application", [], {
+    defineSetting("seek79Duration", "s79dur", {
         durations: true,
     }),
-    defineSetting("noColorKeys", "sNoColorKeys", "application", [], {
-        range: [0, 1],
-    }),
-    defineSetting("noNumbersKeys", "sNoNumbersKeys", "application", [], {
-        range: [0, 1],
-    }),
-    defineSetting("timezone", "sTimezone", "application", ["setTimezone"], {
-        range: [0, 25],
-    }),
+    defineSetting("noColorKeys", "sNoColorKeys"),
+    defineSetting("noNumbersKeys", "sNoNumbersKeys"),
     defineSetting(
-        "sleepTimeout",
-        "sSleepTimeout",
-        "application",
-        ["setSleepTimeout"],
-        { range: [0, 4] }
+        "timezone",
+        "sTimezone",
+        {
+            range: [0, 25],
+        },
+        ["setTimezone"]
     ),
-    defineSetting("epgRemindMinutes", "sEpgRemindMinutes", "application", [], {
+    defineSetting("sleepTimeout", "sSleepTimeout", { range: [0, 4] }, [
+        "setSleepTimeout",
+    ]),
+    defineSetting("epgRemindMinutes", "sEpgRemindMinutes", {
         range: [0, 120],
     }),
-    defineSetting("volumeStep", "sVolumeStep", "application", [], {
+    defineSetting("volumeStep", "sVolumeStep", {
         range: [3, 10],
     }),
-    defineSetting("infoTimeout", "sInfoTimeout", "application", [], {
+    defineSetting("infoTimeout", "sInfoTimeout", {
         range: [3, 20],
     }),
-    defineSetting("infoSlide", "sInfoSlide", "application", [], {
-        range: [0, 1],
-    }),
-    defineSetting("infoSwitch", "sInfoSwitch", "application", [], {
-        range: [0, 1],
-    }),
-    defineSetting("infoChange", "sInfoChange", "application", [], {
-        range: [0, 1],
-    }),
-    defineSetting("infoRew", "sInfoRew", "application", [], { range: [0, 1] }),
-    defineSetting("thumbnail", "sThumbnail", "application", [], {
-        range: [0, 1],
-    }),
-    defineSetting("osdOpacity", "sOsdOpacity", "application", ["setColor"], {
-        range: [0, 10],
-    }),
+    defineSetting("infoSlide", "sInfoSlide"),
+    defineSetting("infoSwitch", "sInfoSwitch"),
+    defineSetting("infoChange", "sInfoChange"),
+    defineSetting("infoRew", "sInfoRew"),
+    defineSetting("thumbnail", "sThumbnail"),
+    defineSetting(
+        "osdOpacity",
+        "sOsdOpacity",
+        {
+            range: [0, 10],
+        },
+        ["setColor"]
+    ),
     defineSetting(
         "interfaceTheme",
         "sInterfaceTheme",
-        "application",
-        ["setColor"],
         {
             range: [0, 1],
-        }
+        },
+        ["setColor"]
     ),
-    defineSetting("listPosition", "sListPos", "application", ["setListPos"], {
-        range: [0, 1],
-    }),
-    defineSetting("editor", "sEditor", "application", ["setEditor"], {
-        range: [0, 1],
-    }),
-    defineSetting("showNumber", "sShowNum", "provider", [], { range: [0, 1] }),
-    defineSetting("channelLogoMode", "sShowPikon", "provider", [], {
-        range: [0, 2],
-    }),
-    defineSetting("showName", "sShowName", "provider", [], { range: [0, 1] }),
-    defineSetting("showProgress", "sShowProgress", "provider", [], {
-        range: [0, 1],
-    }),
-    defineSetting("showArchive", "sShowArchive", "provider", [], {
-        range: [0, 1],
-    }),
-    defineSetting("showScroll", "sShowScroll", "application", [], {
-        range: [0, 1],
-    }),
-    defineSetting("showDescription", "sShowDescr", "provider", [], {
-        range: [0, 1],
-    }),
-    defineSetting("showProgram", "sShowProgram", "provider", [], {
-        range: [0, 1],
-    }),
-    defineSetting("preview", "sPreview", "provider", [], { range: [0, 2] }),
-    defineSetting("nextCountList", "sNextCount", "provider", [], {
-        nextCount: true,
-        range: [0, 20],
-    }),
-    defineSetting("favorites", "sFavorites", "application", [], {
+    defineSetting(
+        "listPosition",
+        "sListPos",
+        {
+            range: [0, 1],
+        },
+        ["setListPos"]
+    ),
+    defineSetting(
+        "editor",
+        "sEditor",
+        {
+            range: [0, 1],
+        },
+        ["setEditor"]
+    ),
+    defineSetting("showNumber", "sShowNum", { range: [0, 1] }, [], "provider"),
+    defineSetting(
+        "channelLogoMode",
+        "sShowPikon",
+        {
+            range: [0, 2],
+        },
+        [],
+        "provider"
+    ),
+    defineSetting("showName", "sShowName", { range: [0, 1] }, [], "provider"),
+    defineSetting(
+        "showProgress",
+        "sShowProgress",
+        {
+            range: [0, 1],
+        },
+        [],
+        "provider"
+    ),
+    defineSetting(
+        "showArchive",
+        "sShowArchive",
+        {
+            range: [0, 1],
+        },
+        [],
+        "provider"
+    ),
+    defineSetting("showScroll", "sShowScroll"),
+    defineSetting(
+        "showDescription",
+        "sShowDescr",
+        {
+            range: [0, 1],
+        },
+        [],
+        "provider"
+    ),
+    defineSetting(
+        "showProgram",
+        "sShowProgram",
+        {
+            range: [0, 1],
+        },
+        [],
+        "provider"
+    ),
+    defineSetting("preview", "sPreview", { range: [0, 2] }, [], "provider"),
+    defineSetting(
+        "nextCountList",
+        "sNextCount",
+        {
+            nextCount: true,
+            range: [0, 20],
+        },
+        [],
+        "provider"
+    ),
+    defineSetting("favorites", "sFavorites", {
         range: [-1, 1],
     }),
-    defineSetting("permanentTime", "sPermanentTime", "application", [], {
+    defineSetting("permanentTime", "sPermanentTime", {
         range: [0, 2],
     }),
-    defineSetting("resumeWithTenSecondRewind", "s10resum", "application", [], {
-        range: [0, 1],
-    }),
-    defineSetting("prevCount", "sPrevCount", "application", [], {
+    defineSetting("resumeWithTenSecondRewind", "s10resum"),
+    defineSetting("prevCount", "sPrevCount", {
         range: [0, 4],
     }),
-    defineSetting("medCount", "sMedCount", "application", [], {
+    defineSetting("medCount", "sMedCount", {
         range: [0, 5],
     }),
-    defineSetting("psChannels", "sPSchannels", "application", [], {
-        range: [0, 1],
-    }),
-    defineSetting("psOptions", "sPSoptions", "application", [], {
-        range: [0, 1],
-    }),
+    defineSetting("psChannels", "sPSchannels"),
+    defineSetting("psOptions", "sPSoptions"),
+    defineSetting("requirePinForProviderSelection", "sPSprovs"),
+    defineSetting("hdmiSupport", "sHDMIsupport"),
     defineSetting(
-        "requirePinForProviderSelection",
-        "sPSprovs",
-        "application",
-        [],
+        "autorun",
+        "sAutorun",
         {
             range: [0, 1],
-        }
+        },
+        ["setAutorun"]
     ),
-    defineSetting("hdmiSupport", "sHDMIsupport", "application", [], {
-        range: [0, 1],
-    }),
-    defineSetting("autorun", "sAutorun", "application", ["setAutorun"], {
-        range: [0, 1],
-    }),
     defineSetting(
         "players",
         "sPlayers",
-        "provider",
-        ["setPlayerMode", "setPlayer"],
         {
             range: [0, 3],
-        }
+        },
+        ["setPlayerMode", "setPlayer"],
+        "provider"
     ),
-    defineSetting("bufSize", "sBufSize", "application", ["stbSetBuffer"], {
-        range: [0, 3600],
-    }),
+    defineSetting(
+        "bufSize",
+        "sBufSize",
+        {
+            range: [0, 3600],
+        },
+        ["stbSetBuffer"]
+    ),
     defineSetting(
         "useGraphicalIndicators",
         "sGrapI",
-        "application",
-        ["setColor"],
         {
             range: [0, 1],
-        }
+        },
+        ["setColor"]
     ),
-    defineSetting("parentPin", "parentPIN", "application", [], { pin: true }),
-    defineSetting("hideMenus", "sHideMenus", "application", [], { list: true }),
+    defineSetting("parentPin", "parentPIN", { pin: true }),
+    defineSetting("hideMenus", "sHideMenus", { list: true }),
     defineSetting(
         "highlightColorSel",
         "sSHLcolSel",
-        "application",
-        ["setColor"],
         {
             color: true,
-        }
+        },
+        ["setColor"]
     ),
-    defineSetting("highlightColor", "sSHLcolor", "application", ["setColor"], {
-        color: true,
-    }),
+    defineSetting(
+        "highlightColor",
+        "sSHLcolor",
+        {
+            color: true,
+        },
+        ["setColor"]
+    ),
     defineSetting(
         "highlightColorB",
         "sSHLcolorB",
-        "application",
-        ["setColor"],
         {
             color: true,
-        }
+        },
+        ["setColor"]
     ),
-    defineSetting(
-        "commandServerAddress",
-        "commandServerAddress",
-        "application",
-        [],
-        {}
-    ),
-    defineSetting(
-        "commandServerToken",
-        "commandServerToken",
-        "application",
-        [],
-        {}
-    ),
-    defineSetting("localCmdUrl", "sLocalCmdUrl", "application", [], {}),
-    defineSetting(
-        "localHttpDeviceCode",
-        "sLocalHttpDeviceCode",
-        "application",
-        [],
-        {}
-    ),
-    defineSetting("swopBaseUrl", "sSwopBaseUrl", "application", [], {}),
-    defineSetting("deviceUuid", "sDeviceUuid", "application", [], {}),
-    defineSetting("localHttpEnabled", "sLocalHttpEnabled", "application", [], {
-        range: [0, 1],
-    }),
-    defineSetting(
-        "commandServerEnabled",
-        "commandServerEnabled",
-        "application",
-        [],
-        {
-            range: [0, 1],
-        }
-    ),
+    defineSetting("commandServerAddress", "commandServerAddress", {}),
+    defineSetting("commandServerToken", "commandServerToken", {}),
+    defineSetting("localCmdUrl", "sLocalCmdUrl", {}),
+    defineSetting("localHttpDeviceCode", "sLocalHttpDeviceCode", {}),
+    defineSetting("swopBaseUrl", "sSwopBaseUrl", {}),
+    defineSetting("deviceUuid", "sDeviceUuid", {}),
+    defineSetting("localHttpEnabled", "sLocalHttpEnabled"),
+    defineSetting("commandServerEnabled", "commandServerEnabled"),
 ];
 function settingsSource(): string {
     var w = typeof window === "undefined" ? {} : (window as any);

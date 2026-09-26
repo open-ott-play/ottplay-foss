@@ -31,7 +31,13 @@ for (const [guideIds, names] of [
             const origin = new URL(baseURL).origin;
             let revision = 0;
             const errors = [];
+            const providerBundles = [];
             page.on("pageerror", (error) => errors.push(error.message));
+            page.on("request", (request) => {
+                const pathname = new URL(request.url()).pathname;
+                if (/^\/dist\/provider-[^/]+\.js$/.test(pathname))
+                    providerBundles.push(pathname);
+            });
             await context.route("**/*", async (route) => {
                 const url = new URL(route.request().url());
                 if (url.href.includes("fixture-channels.m3u")) {
@@ -108,6 +114,7 @@ for (const [guideIds, names] of [
                     )
                 )
                 .toBe("playing");
+            expect(providerBundles).toEqual(["/dist/provider-m3u.js"]);
             revision++;
             // A new document reloads the playlist and reconstructs all private stores.
             await page.reload();
@@ -136,6 +143,12 @@ for (const [guideIds, names] of [
                     )
                 )
                 .toBe("playing");
+            // Each cold document loads its selected family once; playback and
+            // channel rotation must not eagerly fetch any other provider.
+            expect(providerBundles).toEqual([
+                "/dist/provider-m3u.js",
+                "/dist/provider-m3u.js",
+            ]);
             expect(errors).toEqual([]);
         }
     );

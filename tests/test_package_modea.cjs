@@ -4,6 +4,7 @@ const { createHash } = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { CLASSIC_PROVIDER_BUNDLES } = require("../scripts/classic-bundle.cjs");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-package-test-"));
 try {
     const git = (...args) =>
@@ -30,6 +31,12 @@ try {
         path.join(root, "scripts/package-modea.cjs")
     );
     fs.writeFileSync(
+        path.join(root, "scripts/classic-bundle.cjs"),
+        "module.exports = " +
+            JSON.stringify({ CLASSIC_PROVIDER_BUNDLES }) +
+            ";\n"
+    );
+    fs.writeFileSync(
         path.join(root, "package.json"),
         JSON.stringify({ version: "1.2.3" })
     );
@@ -41,6 +48,17 @@ try {
         "<!doctype html><title>fixture</title>"
     );
     fs.writeFileSync(path.join(root, "dist/stbPlayer.js"), bundle);
+    const providerBundles = Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
+        (kind) => {
+            const file = "provider-" + kind + ".js";
+            const bytes = Buffer.from(
+                'var providerFixture = "' + kind + '";\n'
+            );
+            fs.writeFileSync(path.join(root, "dist", file), bytes);
+            return { bytes, file, kind };
+        }
+    );
+    fs.writeFileSync(path.join(root, "dist/provider-obsolete.js"), "stale");
     fs.writeFileSync(path.join(root, "dist/favicon.ico"), "icon");
     const browserAssets = path.resolve(__dirname, "../js/browser-app");
     fs.cpSync(browserAssets, path.join(root, "dist/js/browser-app"), {
@@ -102,6 +120,28 @@ try {
         createHash("sha256").update(bundle).digest("hex")
     );
     const archive = path.join(root, "build/packages/ottplay-foss-modea.tar.gz");
+    const entries = execFileSync("tar", ["-tzf", archive], { encoding: "utf8" })
+        .trim()
+        .split("\n");
+    assert.deepEqual(
+        Object.keys(metadata.providerBundles).sort(),
+        Object.keys(CLASSIC_PROVIDER_BUNDLES).sort()
+    );
+    for (const { bytes, file, kind } of providerBundles) {
+        const entry = "./dist/" + file;
+        assert.equal(
+            entries.filter((name) => name === entry).length,
+            1,
+            "Package each provider family exactly once: " + kind
+        );
+        assert.deepEqual(execFileSync("tar", ["-xOf", archive, entry]), bytes);
+        assert.deepEqual(metadata.providerBundles[kind], {
+            bytes: bytes.length,
+            file: "dist/" + file,
+            sha256: createHash("sha256").update(bytes).digest("hex"),
+        });
+    }
+    assert.equal(entries.includes("./dist/provider-obsolete.js"), false);
     for (const [file, entry] of [
         ["manifest.webmanifest", "/"],
         ["index.webmanifest", "/index.html"],
@@ -166,6 +206,25 @@ try {
         "unknown",
         "A source archive must not borrow the workflow event SHA"
     );
+    for (const { bytes, file } of providerBundles) {
+        const built = path.join(root, "dist", file);
+        fs.unlinkSync(built);
+        assert.throws(
+            packageAndRead,
+            (error) => error.message.includes("Missing dist/" + file),
+            "An absent provider family must fail packaging: " + file
+        );
+        fs.mkdirSync(built);
+        assert.throws(
+            packageAndRead,
+            (error) =>
+                error.message.includes("Unexpected file type: dist/" + file),
+            "A provider directory must not masquerade as a built script: " +
+                file
+        );
+        fs.rmdirSync(built);
+        fs.writeFileSync(built, bytes);
+    }
     for (const file of [
         "pc.webmanifest",
         "window-controls.js",
@@ -182,7 +241,7 @@ try {
         fs.copyFileSync(path.join(browserAssets, file), staged);
     }
     console.log(
-        "PASS actual Mode A archive metadata and browser installation assets: checked-out tag, bundle hash, route identity, icon/helper/CSS bytes, missing asset rejection, no misleading event-SHA fallback"
+        "PASS actual Mode A archive metadata and browser installation assets: checked-out tag, main/provider hashes and bytes, unique provider entries, required asset rejection, route identity, icon/helper/CSS bytes, no misleading event-SHA fallback"
     );
 } finally {
     fs.rmSync(root, { force: true, recursive: true });

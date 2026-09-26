@@ -8,7 +8,10 @@ const { gzipSync } = require("node:zlib");
 // Bound the shipped outputs after private-helper optimization and bootstrap
 // deduplication. Allow candidate-version suffixes and Node/zlib variation;
 // ES5, published callback identities and final-artifact checks remain enforced.
-const BUDGET = Object.freeze({ bytes: 641000, gzipBytes: 185200 });
+const BUDGET = Object.freeze({ bytes: 577000, gzipBytes: 169000 });
+// Count every optional family as well, so moving code out of the entry bundle
+// cannot disguise growth of the complete player payload.
+const TOTAL_BUDGET = Object.freeze({ bytes: 639000, gzipBytes: 192000 });
 const ARTIFACTS = Object.freeze([
     "dist/stbPlayer.js",
     "src-tauri/frontend/dist/stbPlayer.js",
@@ -41,6 +44,39 @@ function inspectBundles(root, artifacts = ARTIFACTS) {
     );
 }
 
+function inspectBundleSets(root, artifacts = ARTIFACTS) {
+    const { CLASSIC_PROVIDER_BUNDLES } = require("./classic-bundle.cjs");
+    const kinds = Object.keys(CLASSIC_PROVIDER_BUNDLES);
+    return inspectBundles(root, artifacts).map((entry) => {
+        const directory = path.dirname(entry.path);
+        const expected = kinds.map((kind) => "provider-" + kind + ".js");
+        for (const name of fs.readdirSync(path.join(root, directory))) {
+            if (/^provider-.*\.js$/.test(name) && !expected.includes(name))
+                throw new Error(
+                    "Unexpected provider bundle: " + path.join(directory, name)
+                );
+        }
+        const providers = expected.map((name) => {
+            const file = path.join(directory, name);
+            return measureBundle(fs.readFileSync(path.join(root, file)), file);
+        });
+        const total = [entry, ...providers].reduce(
+            (sum, item) => ({
+                bytes: sum.bytes + item.bytes,
+                gzipBytes: sum.gzipBytes + item.gzipBytes,
+            }),
+            { bytes: 0, gzipBytes: 0 }
+        );
+        for (const key of ["bytes", "gzipBytes"]) {
+            if (total[key] > TOTAL_BUDGET[key])
+                throw new Error(
+                    `${entry.path}: complete player ${key} ${total[key]} exceeds budget ${TOTAL_BUDGET[key]}`
+                );
+        }
+        return { entry: entry.path, providers, total };
+    });
+}
+
 function writeBundleReport(root, optimizer, modules, artifacts = ARTIFACTS) {
     const { CLASSIC_PRIVATE_MODULES } = require("./classic-bundle.cjs");
     const measured = inspectBundles(root, artifacts);
@@ -58,8 +94,10 @@ function writeBundleReport(root, optimizer, modules, artifacts = ARTIFACTS) {
                 modules.includes(file)
             )
         ),
+        providerBundles: inspectBundleSets(root, artifacts),
         schema: 1,
         toolchain: { node: process.versions.node, zlib: process.versions.zlib },
+        totalBudget: TOTAL_BUDGET,
     };
     const output = path.join(root, "build/reports/classic-bundle.json");
     fs.mkdirSync(path.dirname(output), { recursive: true });
@@ -73,6 +111,10 @@ if (require.main === module) {
             console.log(
                 `${result.path}: ${result.bytes} bytes; gzip ${result.gzipBytes} bytes`
             );
+        for (const result of inspectBundleSets(path.resolve(__dirname, "..")))
+            console.log(
+                `${result.entry}: complete player ${result.total.bytes} bytes; gzip ${result.total.gzipBytes} bytes`
+            );
     } catch (error) {
         console.error(error.message);
         process.exitCode = 1;
@@ -81,7 +123,9 @@ if (require.main === module) {
 module.exports = {
     ARTIFACTS,
     BUDGET,
+    inspectBundleSets,
     inspectBundles,
     measureBundle,
+    TOTAL_BUDGET,
     writeBundleReport,
 };

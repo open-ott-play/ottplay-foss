@@ -267,7 +267,7 @@ function fixture(
         compile(
             selectedSource(
                 "src/index.ts",
-                ["setListArrays"],
+                ["createSettingsPage", "setListArrays"],
                 ["_setSetup", ...menus]
             )
         ),
@@ -338,6 +338,64 @@ function fixture(
 }
 function save(w) {
     w.listKeyHandlerFn(w.keys.GREEN);
+}
+
+// Each page must keep its own return target and close behavior when sharing
+// draft setup. A retained save callback cannot commit after cancellation.
+for (const [menu, caption] of [
+    ["stbOptions", "Settings STB"],
+    ["settingsInterface", "Interface settings"],
+    ["settingsInfobar", "Infobar settings"],
+    ["settingsLists", "Lists settings"],
+    ["settingsChannels", "Channel list settings"],
+    ["settingsButtons", "Buttons settings"],
+    ["settingsMenu", "Select menu items"],
+]) {
+    for (const cancel of [false, true]) {
+        const { w, stored } = fixture();
+        const returnTarget = w[menu];
+        w[menu]();
+        assert.equal(
+            w.document.getElementById("listCaption").innerHTML,
+            caption
+        );
+        const editor = w.__ottSettingsEditor;
+        const row = w.listArray.find(
+            (item) => item.settingId && Array.isArray(item.values)
+        );
+        row.val = (row.val + 1) % row.values.length;
+        const saveRow = w.listArray[w.listArray.length - 1].values;
+        assert.equal(
+            saveRow.name,
+            menu === "stbOptions" ? "saveSettings" : "save"
+        );
+        assert.equal(saveRow.length, 0);
+        const navigation = [];
+        w.closeList = () => navigation.push("close");
+        w.optionsList = (target) => navigation.push(target);
+        if (menu === "stbOptions")
+            w.stbOptions = () => navigation.push(returnTarget);
+        if (cancel) {
+            w.listKeyHandlerFn(w.keys.RETURN);
+            saveRow();
+            assert.equal(
+                stored.size,
+                0,
+                menu + ": cancelled draft stays closed"
+            );
+        } else {
+            saveRow();
+            assert.ok(stored.size > 0, menu + ": save row commits its draft");
+        }
+        assert.equal(editor.active(), false, menu + ": draft is closed");
+        assert.deepEqual(
+            navigation,
+            !cancel && menu !== "settingsMenu"
+                ? ["close", returnTarget]
+                : [returnTarget],
+            menu + ": return behavior is preserved"
+        );
+    }
 }
 
 // LG Left opens Menu by default even when the shared HTML5 core exposes volume

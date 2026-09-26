@@ -54,6 +54,14 @@ The classic linker validates its explicit import bridge and the bundle checks
 bootstrap readiness before use. The application timezone adapter remains in the
 player bundle; standard web polyfills remain available to both page and HLS worker.
 
+The provider registry remains in the entry bundle. Specialized implementations
+are emitted once as `dist/provider-{catalog,edem,m3u,playlist,stalker}.js` and
+loaded when that family is selected. Concurrent requests share a script load;
+disposed provider sessions cannot mount a driver or publish a stale failure.
+Successful loads are reused and failures can be retried. Shared catalog, XML,
+transport and media services remain in the entry bundle. Native and Mode A
+packages include every supported family; Play includes only M3U and Stalker.
+
 `src/app/state.ts` remains an ESM-only state mirror. Its three provider popup
 imports (`popupActions`, `popupArray`, `popupDetail`) explicitly resolve to the
 classic arrays owned by `src/index.ts`. The linker checks those declarations and
@@ -125,9 +133,11 @@ manifest hash together cannot authorize another import or a removed guard.
 The loader recipe lives in the already-fingerprinted builder. Both runtime and
 worker remain staged together, with their licenses, in every web/native root.
 
-Each final classic bundle is limited to 641,000 UTF-8 bytes and 185,200 bytes
-compressed with gzip level 9. Both limits apply independently to server, Tauri
-and Capacitor artifacts. Native transformations are measured after staging.
+Each final classic entry bundle is limited to 577,000 UTF-8 bytes and 169,000
+bytes compressed with gzip level 9. The entry plus all five provider families
+must also fit within 639,000 bytes and 192,000 gzip bytes, summed per file.
+Both limits apply independently to server, Tauri and Capacitor artifacts.
+Native transformations are measured after staging.
 `npm run check:size` reads the actual artifacts; it does not trust a prior report.
 These budgets cover `stbPlayer.js`, not external media libraries or the complete
 application download. Raise a budget only with a reviewed feature/size tradeoff.

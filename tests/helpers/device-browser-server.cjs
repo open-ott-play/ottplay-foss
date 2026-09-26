@@ -4,6 +4,15 @@
 const fs = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
+const {
+    CLASSIC_PROVIDER_BUNDLES,
+} = require("../../scripts/classic-bundle.cjs");
+const playerScripts = new Set([
+    "stbPlayer.js",
+    ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
+        (kind) => "provider-" + kind + ".js"
+    ),
+]);
 
 const dist = path.resolve(__dirname, "../../dist");
 const port = Number(process.env.OTTP_DEVICE_TEST_PORT || 4179);
@@ -14,7 +23,7 @@ const diagnosticScript = diagnostics
           "utf8"
       )
     : "";
-for (const filename of ["index.html", "stbPlayer.js"]) {
+for (const filename of ["index.html", ...playerScripts]) {
     if (!fs.existsSync(path.join(dist, filename))) {
         throw new Error(
             "Missing dist/" + filename + "; run npm run build first."
@@ -117,8 +126,11 @@ http.createServer((request, response) => {
         relative = pathname.endsWith("/favicon.ico")
             ? "favicon.ico"
             : "index.html";
-    } else if (pathname === "/dist/stbPlayer.js") {
-        relative = "stbPlayer.js";
+    } else if (
+        pathname.startsWith("/dist/") &&
+        playerScripts.has(pathname.slice(6))
+    ) {
+        relative = pathname.slice(6);
     } else if (
         /^\/(?:fonts|js|stb|stbPlayer|prov)\//.test(pathname) ||
         pathname === "/favicon.ico"

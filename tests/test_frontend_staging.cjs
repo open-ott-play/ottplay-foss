@@ -5,6 +5,7 @@ const os = require("node:os");
 const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
+const { CLASSIC_PROVIDER_BUNDLES } = require("../scripts/classic-bundle.cjs");
 
 const configPath = path.resolve(__dirname, "../vite.config.ts");
 const text = fs.readFileSync(configPath, "utf8");
@@ -40,6 +41,7 @@ const code = ts.transpileModule(
 const context = vm.createContext({
     ...fs,
     ...path,
+    CLASSIC_PROVIDER_BUNDLES,
     console: { log() {} },
     isRetiredRuntimeScript: require("../scripts/runtime-assets.cjs")
         .isRetiredRuntimeScript,
@@ -110,6 +112,9 @@ try {
         "stage/stb/logs/previous-build.json",
     ])
         write(name);
+    for (const kind of Object.keys(CLASSIC_PROVIDER_BUNDLES)) {
+        write("dist/provider-" + kind + ".js", "provider " + kind);
+    }
     write(
         "src/build/core/auto-playback.js",
         "export function watchAutoNativePlayback() { return 'same shared helper'; }\n"
@@ -192,6 +197,18 @@ try {
         fs.readFileSync(path.join(fixture, "stage/dist/stbPlayer.js"), "utf8"),
         "dist/stbPlayer.js"
     );
+    for (const kind of Object.keys(CLASSIC_PROVIDER_BUNDLES)) {
+        const file = "provider-" + kind + ".js";
+        assert.equal(
+            fs.readFileSync(path.join(fixture, "stage/dist", file), "utf8"),
+            "provider " + kind
+        );
+        assert.equal(
+            exists("stage/" + file),
+            false,
+            "Native root must not duplicate provider chunks"
+        );
+    }
 
     // Capacitor retains its dist root between builds; copying a tree must
     // remove already staged private/stale files, not merely filter new copies.

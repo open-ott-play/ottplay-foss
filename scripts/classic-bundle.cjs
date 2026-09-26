@@ -66,6 +66,7 @@ const CLASSIC_MODULES = [
     "build/provider/m3u-settings.js",
     "build/provider/m3u-driver.js",
     "build/provider/drivers.js",
+    "build/provider/assets.js",
     "build/provider/index.js",
     "build/commands/index.js",
     "build/app/init.js",
@@ -84,6 +85,19 @@ const CLASSIC_MODULES = [
     "build/plugins/vportal.js",
     "build/index.js",
 ];
+// Provider families are separate ES5 assets, loaded only for the selected profile.
+// Their modules publish factories and have no active provider state until mount.
+const CLASSIC_PROVIDER_BUNDLES = Object.freeze({
+    catalog: ["build/provider/catalog-drivers.js"],
+    edem: ["build/provider/edem-driver.js"],
+    m3u: ["build/provider/m3u-settings.js", "build/provider/m3u-driver.js"],
+    playlist: ["build/provider/playlist-drivers.js"],
+    stalker: ["build/provider/stalker-driver.js"],
+});
+const providerModules = new Set(Object.values(CLASSIC_PROVIDER_BUNDLES).flat());
+const CLASSIC_MAIN_MODULES = CLASSIC_MODULES.filter(
+    (file) => !providerModules.has(file)
+);
 // Explicitly audited implementation boundaries; all other modules retain the
 // legacy bare-global ABI. These modules publish their API as window properties
 // and execute immediately at their original position in CLASSIC_MODULES.
@@ -133,6 +147,7 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/playback/journal.js": Object.freeze(["window.__ottPlaybackJournal"]),
     "build/playback/session.js": Object.freeze(["window.__ottPlaybackSession"]),
+    "build/provider/assets.js": Object.freeze(["window.__ottProviderAssets"]),
     "build/provider/catalog-drivers.js": Object.freeze([
         "window.__ottCatalogDrivers",
     ]),
@@ -915,4 +930,10 @@ function assembleClassic(root, modules) {
     return bootstrapCheck + prelude + "\n" + linked.join("\n");
 }
 
-module.exports = { assembleClassic, CLASSIC_MODULES, CLASSIC_PRIVATE_MODULES };
+module.exports = {
+    assembleClassic,
+    CLASSIC_MAIN_MODULES,
+    CLASSIC_MODULES,
+    CLASSIC_PRIVATE_MODULES,
+    CLASSIC_PROVIDER_BUNDLES,
+};
