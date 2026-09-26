@@ -1949,6 +1949,12 @@ function mountProviderDriver(
         profile.kind === "stalker"
             ? host.__ottStalkerDriver.mountSettings(host, driver, owner)
             : null;
+    host.__ottOpenProviderSettings = function (selected: string) {
+        if (!owner.active() || selected !== id || !stalkerSettings)
+            return false;
+        stalkerSettings.edit();
+        return true;
+    };
     if (stalkerSettings) host.duneAddSettings = stalkerSettings.mount;
     var specialized = profile.kind === "m3u" ? host.__ottM3uDriver : null;
     // OTTPLAY_FULL_ONLY_BEGIN

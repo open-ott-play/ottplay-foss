@@ -112,7 +112,7 @@ function createClassicStalkerDriver(
         operation: any,
         current: DriverLifetime,
         done: (result: any) => void,
-        fail: (auth?: boolean) => void
+        fail: (auth?: boolean, emptyHandshake?: boolean) => void
     ) {
         if (!active() || !current.active()) return;
         if (!operation || operation.failure) {
@@ -137,7 +137,13 @@ function createClassicStalkerDriver(
                     });
                 var error = operation.accept(data);
                 if (error) {
-                    fail(!!(response && response.not_valid_token));
+                    fail(
+                        !!(response && response.not_valid_token),
+                        /[?&]action=handshake(?:&|$)/.test(request.url) &&
+                            (response == null ||
+                                (typeof response === "object" &&
+                                    Object.keys(response).length === 0))
+                    );
                     return;
                 }
                 run(operation, current, done, fail);
@@ -253,17 +259,26 @@ function createClassicStalkerDriver(
                 return;
             }
             ports.progress("Connecting to Stalker portal...");
-            run(
-                client.load(),
-                scope,
-                function (result) {
-                    build(result);
-                    done(helpers.snapshot(catalog));
-                },
-                function () {
-                    done(helpers.emptyCatalog(), "stalker-connect");
-                }
-            );
+            var retried = false;
+            function connect() {
+                run(
+                    client.load(),
+                    scope,
+                    function (result) {
+                        build(result);
+                        done(helpers.snapshot(catalog));
+                    },
+                    function (_auth, emptyHandshake) {
+                        // Some classic portals occasionally return HTTP 200 with
+                        // an empty handshake. Recover once, without retrying denial.
+                        if (emptyHandshake && !retried) {
+                            retried = true;
+                            connect();
+                        } else done(helpers.emptyCatalog(), "stalker-connect");
+                    }
+                );
+            }
+            connect();
         },
         logo: function (id) {
             return active() && catalog.channels[id]

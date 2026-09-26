@@ -1518,8 +1518,8 @@ export function showProviderSelection(): void {
 
     /**
      * Select and persist a provider by its string ID, then reload via loadProv().
-     * If the chosen provider is the same as the current one, opens optionsList
-     * instead. Also updates the recent-providers list in storage.
+     * Re-selecting Stalker opens its current editor; other active providers
+     * return to optionsList. Also updates the recent-providers list in storage.
      *
      * @param id - Provider identifier (e.g. 'm3u', 'stalker').
      *
@@ -1528,6 +1528,13 @@ export function showProviderSelection(): void {
     function selectProv(id: string): void {
         if (!id || !isProviderAllowed(id)) return;
         if (savedProvId === id) {
+            var edit = (window as any).__ottOpenProviderSettings;
+            if (
+                !Number.parseInt(stbGetItem("noProvParam") || "0") &&
+                edit &&
+                edit(id)
+            )
+                return;
             optionsList(showProviderSelection);
             return;
         }

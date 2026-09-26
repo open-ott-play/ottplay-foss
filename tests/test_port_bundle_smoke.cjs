@@ -2241,6 +2241,8 @@ async function main() {
             encoder: w.TextEncoder,
             now: w.performance.now,
         };
+        w.__cv = "dev_1790460000000_abcd1234";
+        w.__av = "1.1.45-beta.29";
         try {
             vm.runInContext(bundle, w, { filename: bundlePath, timeout: 5000 });
         } catch (error) {
@@ -2249,6 +2251,16 @@ async function main() {
                 { cause: error }
             );
         }
+        assert.equal(
+            w.__cv,
+            "dev_1790460000000_abcd1234",
+            "provider modules keep the HTML boot cache key"
+        );
+        assert.equal(
+            w.__av,
+            "1.1.45-beta.29",
+            "assets keep the HTML release cache key"
+        );
         assert.equal(
             w.TextEncoder,
             bootstrapRuntime.encoder,

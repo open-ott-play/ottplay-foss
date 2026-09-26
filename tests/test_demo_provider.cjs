@@ -260,6 +260,45 @@ test("later selection and recent-provider reordering retain the demo ID/name pai
     assert.equal(saved.get("m3um3uArr"), storage().get("m3um3uArr"));
 });
 
+test("reselecting Stalker opens its current settings without a reload or bypassing hidden settings", () => {
+    const { w, saved, loaded } = uiFixture();
+    saved.set("ottplayprov", "stalker");
+    w.listCaption = {};
+    w.listFooter = {};
+    w.renderButtonHint = () => "";
+    saved.set(
+        "stalkerstalker_data",
+        JSON.stringify({
+            mac: "02:00:00:00:00:01",
+            portal: "https://portal.test/c/",
+        })
+    );
+    const registry = w.__ottProviderRuntime.createRegistry();
+    const owner = registry.activate("stalker");
+    w.__ottProviderDrivers.mount(w, "stalker", owner);
+    let options = 0;
+    w.optionsList = () => options++;
+    for (const key of [w.keys.ENTER, w.keys.GREEN]) {
+        w.selectProvaider();
+        w.selIndex = w.arrayProvaiders.indexOf("stalker");
+        w.listKeyHandlerFn(key);
+        assert.equal(w.listCaption.innerHTML, "Stalker Portal Provider");
+        assert.equal(w.listArray[0], "Portal URL: https://portal.test/c/");
+        assert.equal(w.listArray[1], "MAC address: 02:00:00:00:00:01");
+        assert.equal(options, 0);
+        assert.deepEqual(loaded, []);
+    }
+    saved.set("noProvParam", "1");
+    w.selectProvaider();
+    w.listKeyHandlerFn(w.keys.GREEN);
+    assert.equal(options, 1);
+    saved.delete("noProvParam");
+    registry.dispose();
+    w.selectProvaider();
+    w.listKeyHandlerFn(w.keys.GREEN);
+    assert.equal(options, 2, "retired settings cannot re-open");
+});
+
 test("provider switch clears both loop flags and retires demo before loading", () => {
     const { w, media, loaded } = uiFixture();
     vm.runInContext(providerLoad, w);
