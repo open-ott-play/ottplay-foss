@@ -931,11 +931,18 @@ for (const profile of [
         assert.equal(typed().seek13Duration, durations[index]);
     }
     w.settingsInterface();
+    const themeRow = w.listArray.find(
+        (row) => row.settingId === "interfaceTheme"
+    );
+    assert.equal(themeRow.val, 1, "PLi-HD is selected in interface settings");
+    themeRow.val = 0;
     w.listArray.find((row) => row.name === "Type of player for streaming").val =
         2;
     w.listArray.find((row) => row.name === "Sleep timer").val = 1;
     save(w);
     assert.equal(w.playerMode, 2, "actual engine mode changes");
+    assert.equal(typed().interfaceTheme, 0);
+    assert.equal(stored.get("sInterfaceTheme"), "0");
     assert.equal(stored.get("provider:sPlayers"), "2");
     assert.equal(
         [...timers.entries()].filter(([id]) => id !== accessTimer)[0][1].ms,

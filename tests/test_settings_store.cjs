@@ -501,6 +501,39 @@ function actual() {
     return { data, events, store, typed, w };
 }
 check(
+    "PLi-HD is the default; switching themes preserves the Classic palette",
+    () => {
+        const { w, typed, data, events } = actual();
+        data.set("sSHLcolor", "120,100");
+        data.set("sSHLcolSel", "240,100");
+        w.loadSettings();
+        assert.equal(typed.interfaceTheme, 1);
+        assert.equal(typed.highlightColor, "120,100");
+        assert.equal(typed.highlightColorSel, "240,100");
+        const rows = [{ settingId: "interfaceTheme" }];
+        w.listArray = rows;
+        const cancelled = w.createSettingsEditor(w, rows);
+        rows[0].val = 0;
+        cancelled.cancel();
+        assert.equal(typed.interfaceTheme, 1);
+        assert.equal(data.has("sInterfaceTheme"), false);
+        const saved = w.createSettingsEditor(w, rows);
+        rows[0].val = 0;
+        assert.equal(saved.save(), true);
+        assert.equal(data.get("sInterfaceTheme"), "0");
+        assert.deepEqual(events, ["color"]);
+        w.loadSettings();
+        assert.equal(typed.interfaceTheme, 0);
+        assert.equal(w.saveSettings({ interfaceTheme: 1 }), true);
+        assert.equal(typed.highlightColor, "120,100");
+        assert.equal(typed.highlightColorSel, "240,100");
+        assert.equal(w.saveSettings({ interfaceTheme: 2 }), false);
+        data.set("sInterfaceTheme", "99");
+        w.loadSettings();
+        assert.equal(typed.interfaceTheme, 1);
+    }
+);
+check(
     "typed and legacy properties are one store; array reads cannot mutate it",
     () => {
         const { w, store, typed } = actual();
@@ -551,10 +584,13 @@ check(
         rows[0].val = 1;
         w.eSHLcolor = "90,85";
         assert.equal(typed.highlightColor, "50,85");
+        assert.equal(typed.interfaceTheme, 1);
         assert.equal(data.size, 0);
         assert.equal(editor.save(), true);
         assert.deepEqual(Array.from(typed.hideMenus), ["unavailable", "live"]);
         assert.equal(typed.highlightColor, "90,85");
+        assert.equal(typed.interfaceTheme, 0);
+        assert.equal(data.get("sInterfaceTheme"), "0");
     }
 );
 check(

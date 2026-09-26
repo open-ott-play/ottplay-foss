@@ -1199,6 +1199,8 @@ function setListPos(): void {
  * osdOpacity, listPosition.
  */
 function setColor(): void {
+    var pliHd = settings.interfaceTheme === 1;
+    $("body").toggleClass("theme-pli-hd", pliHd);
     $("body").css("color", bodyColor);
     // sSHLcolSel -> curColorB (selection background), H,S at lightness 50
     var selCv = settings.highlightColorSel.split(",");
@@ -1216,24 +1218,32 @@ function setColor(): void {
             ","
         ) +
         ")";
+    // PLi-HD's selectedFG / selectedBG. Keep the saved Classic palette intact.
+    if (pliHd) {
+        curColor = "#fcc000";
+        curColorB = "#303240";
+    }
     // Keep window.* in sync — itemEPG / listDetail / getListItem read w.curColor.
     window.curColor = curColor;
     window.curColorB = curColorB;
     window.bodyColor = bodyColor;
 
-    $("#listCaption").css("border-bottom", "2px solid " + curColor);
-    $("#listPodval").css("border-top", "1px solid " + curColor);
-    $("#listPopUp").css("border", "1px solid " + curColor);
+    var borderColor = pliHd ? "#555555" : curColor;
+    $("#listCaption").css("border-bottom", "2px solid " + borderColor);
+    $("#listPodval").css("border-top", "1px solid " + borderColor);
+    $("#listPopUp").css("border", "1px solid " + borderColor);
     $("#progress").css("background-color", curColor);
     if ($tooltipSpan && typeof $tooltipSpan.css === "function") {
         $tooltipSpan.css({ "background-color": curColorB, color: curColor });
     }
     $("#programm_name2").css("color", curColor);
-    $("#dialogbox").css("border", "1px solid " + curColor);
+    $("#dialogbox").css("border", "1px solid " + borderColor);
     try {
         if (tooltip && tooltip.style)
             tooltip.style.border =
-                3 * (window.innerHeight / 720) + "px solid " + curColor;
+                (pliHd ? 1 : 3) * (window.innerHeight / 720) +
+                "px solid " +
+                borderColor;
     } catch (e) {
         console.error(e);
     }
@@ -1257,6 +1267,7 @@ function setColor(): void {
             ","
         ) +
         ")";
+    if (pliHd) bgColor = "#000000";
     $(".list_back").css("background-color", bgColor);
     $("#listPopUp").css("background-color", bgColor);
 }
@@ -1274,16 +1285,15 @@ function setColor(): void {
  */
 function stbSetOsdOpacity(val: number): void {
     var cv = settings.highlightColorB.split(",");
-    $(".osd").css(
-        "background-color",
-        "rgba(" +
-            hsvToRgb(Number.parseInt(cv[0]), 100, Number.parseInt(cv[1])).join(
-                ","
-            ) +
-            "," +
-            val / 100 +
-            ")"
-    );
+    var rgb =
+        settings.interfaceTheme === 1
+            ? "8,8,8"
+            : hsvToRgb(
+                  Number.parseInt(cv[0]),
+                  100,
+                  Number.parseInt(cv[1])
+              ).join(",");
+    $(".osd").css("background-color", "rgba(" + rgb + "," + val / 100 + ")");
 }
 
 /**
@@ -3891,6 +3901,12 @@ window.settingsInterface = function (): void {
     tz[0] = w._(tz[0]) || tz[0];
     setListArrays(w, [
         {
+            name: w._("Interface theme"),
+            settingId: "interfaceTheme",
+            val: settings.interfaceTheme,
+            values: [w._("Classic"), "PLi-HD"],
+        },
+        {
             name:
                 w._("Black screen while switching the channel") ||
                 "Black screen while switching the channel",
@@ -3980,7 +3996,7 @@ window.settingsInterface = function (): void {
         },
         {
             cur: w._("select") || "select",
-            name: w._("Color spectrum") || "Color spectrum",
+            name: w._("Color spectrum") + " (" + w._("Classic") + ")",
             settingId: "highlightColor",
             val: w.sSHLcolor,
             values: w.colorDialog,
@@ -3988,15 +4004,17 @@ window.settingsInterface = function (): void {
         {
             cur: w._("select") || "select",
             name:
-                w._("Background color of selected item") ||
-                "Background color of selected item",
+                w._("Background color of selected item") +
+                " (" +
+                w._("Classic") +
+                ")",
             settingId: "highlightColorSel",
             val: w.sSHLcolSel,
             values: w.selColorDialog,
         },
         {
             cur: w._("select") || "select",
-            name: w._("Background color") || "Background color",
+            name: w._("Background color") + " (" + w._("Classic") + ")",
             settingId: "highlightColorB",
             val: w.sSHLcolorB,
             values: w.backColorDialog,

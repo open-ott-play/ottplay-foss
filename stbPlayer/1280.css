@@ -775,6 +775,98 @@ body {
     font-weight: normal;
     line-height: 1;
 }
+/* PLi-HD palette: littlesat/skin-PLiHD, PLi-HD/skin.xml.
+   Keep geometry and Classic custom colours independent of this preset. */
+.theme-pli-hd #listCaption,
+.theme-pli-hd #listPodval {
+    color: #f0f0f0;
+    text-shadow: none;
+    background-color: #242424;
+}
+.theme-pli-hd #listCaption {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: normal;
+    letter-spacing: normal;
+}
+.theme-pli-hd #listTime {
+    z-index: 7;
+    padding-left: 0.4em;
+    font-weight: normal;
+    line-height: 2.36;
+    color: #f0f0f0;
+    text-shadow: none;
+    background-color: #242424;
+}
+.theme-pli-hd #listDetail {
+    color: #f0f0f0;
+    border-top-color: #555;
+}
+.theme-pli-hd #_nextpr {
+    background-color: rgba(8, 8, 8, 0.96);
+}
+.theme-pli-hd #listPopUp,
+.theme-pli-hd #dialogbox {
+    color: #f0f0f0;
+    text-shadow: none;
+    background-color: #080808;
+    border-radius: 0;
+    box-shadow: none;
+}
+.theme-pli-hd .item {
+    text-shadow: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+.theme-pli-hd .ott-channel-no-epg {
+    color: #aaa;
+}
+.theme-pli-hd .list-scroll,
+.theme-pli-hd .list-scroll-thumb,
+.theme-pli-hd .progress_div,
+.theme-pli-hd #progress_div,
+.theme-pli-hd #progress,
+.theme-pli-hd #picon,
+.theme-pli-hd .img,
+.theme-pli-hd #volume_div {
+    border-radius: 0;
+    box-shadow: none;
+}
+.theme-pli-hd .list-scroll,
+.theme-pli-hd .progress_div {
+    background-color: #242424;
+}
+.theme-pli-hd .list-scroll-thumb {
+    background-color: #aaa;
+}
+.theme-pli-hd #info1 {
+    border-top-color: #555;
+    box-shadow: none;
+}
+.theme-pli-hd .btn {
+    padding: 0.05em 0.3em;
+    text-shadow: none;
+    background-color: #303240;
+    border: 1px solid #555;
+    border-radius: 0;
+    box-shadow: none;
+}
+.theme-pli-hd .btn:hover {
+    background-color: #555;
+}
+.theme-pli-hd .red {
+    background-color: #c93434;
+}
+.theme-pli-hd .green {
+    background-color: #287d38;
+}
+.theme-pli-hd .yellow {
+    color: #080808;
+    background-color: #ffc000;
+}
+.theme-pli-hd .blue {
+    background-color: #335ca6;
+}
 #plogo {
     background-position: top right;
 }
