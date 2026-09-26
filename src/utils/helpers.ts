@@ -97,6 +97,26 @@ export function getViewportHeightScale(): number {
     return window.innerHeight / 720;
 }
 
+/** PLi-HD SelectionTemplate coordinates; Classic retains its existing window. */
+export function listPreviewRect(
+    pliHd: boolean,
+    mirrored: number
+): {
+    height: number;
+    left: number;
+    top: number;
+    width: number;
+} {
+    var width = pliHd ? 417 : 512;
+    var left = pliHd ? 85 : 10;
+    return {
+        height: pliHd ? 243 : 288,
+        left: mirrored ? 1280 - left - width : left,
+        top: pliHd ? 110 : 62,
+        width: width,
+    };
+}
+
 /**
  * Live `#listIn` content height (padding excluded), or 0 if not laid out.
  * Forces a layout read so Tauri/WKWebView does not report a stale height

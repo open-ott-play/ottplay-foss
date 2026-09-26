@@ -17,6 +17,7 @@
         <meta http-equiv="Expires" content="0">
         <link rel="icon" type="image/x-icon" href="favicon.ico">
         <style type="text/css">
+        #interfaceCreditsSource { display: none; }
         body {
             touch-action: none;
         }
@@ -174,6 +175,29 @@
         <!-- Browser window controls: end -->
     </head>
     <body class="booting" style="background: #111; color: #ccc;">
+        <div id="interfaceCreditsSource" hidden>
+          <div class="interface-credits" lang="en">
+            <p><b>Interface credits &amp; history</b></p>
+            <p>Use Up / Down to scroll. Back to close.</p>
+            <p>The PLi-HD theme adapts the layout and colours of
+                <a href="https://github.com/littlesat/skin-PLiHD" target="_blank" rel="noopener noreferrer">PLi-HD</a>,
+                the Enigma2 receiver skin maintained by littlesat and contributors.</p>
+            <p><b>Original design:</b> Magic_HD_Shadow_MiniTV by Vali (2009–2010).
+                PLi-HD also credits derived work from VU+NL, Milo and others.
+                These credits belong to the original designers.</p>
+            <p><b>2011:</b> PLi-HD entered its public Git history on 17 November,
+                already crediting that earlier design.</p>
+            <p><b>2019 / 2020:</b> In his Enigma2 forum post, OTT-play author
+                alex_qr described the interface as similar to OpenPLi. The post
+                was created in 2019 and edited in 2020.</p>
+            <p><b>2026:</b> OTT-play FOSS implements this visual adaptation in
+                HTML/CSS. It retains OTT-play navigation, configurable list density
+                and video aspect handling. No upstream skin images or fonts are bundled.</p>
+            <p><a href="https://github.com/open-ott-play/ottplay-foss/blob/main/docs/interface-history.md"
+                target="_blank" rel="noopener noreferrer">Full history, source references and upstream terms</a></p>
+            <p>Independent adaptation; no endorsement by OpenPLi or the original designers is implied.</p>
+          </div>
+        </div>
         <div id="permanentTime" class="osd"></div>
         <div id="info1" class="osd">
             <div id="descr">

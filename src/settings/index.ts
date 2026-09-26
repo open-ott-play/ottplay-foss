@@ -485,7 +485,7 @@ export const settingsSchema: SettingDefinition[] = [
         {
             range: [0, 1],
         },
-        ["setColor"]
+        ["setFontSize", "setColor"]
     ),
     defineSetting(
         "listPosition",

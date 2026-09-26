@@ -6,6 +6,20 @@ does not replace their licenses or establish permission for material whose
 provenance remains unverified. This is not a complete inventory of transitive
 native dependencies or a statement of store approval.
 
+## PLi-HD interface design
+
+The PLi-HD theme is a visual adaptation of the Enigma2 skin maintained by
+**littlesat and contributors**, based on **Magic_HD_Shadow_MiniTV by Vali
+(2009–2010)**, with derived work credited upstream to **VU+NL, Milo and others**.
+Credit for the original design belongs to those authors. No upstream skin
+images, fonts or XML files are bundled by this adaptation.
+
+See [Interface credits and design history](docs/interface-history.md) for the
+English history, pinned source references, adaptation details and the upstream
+authorship terms. The original source is
+[littlesat/skin-PLiHD](https://github.com/littlesat/skin-PLiHD). The project's MIT
+license does not relicense the upstream skin or imply OpenPLi endorsement.
+
 ## Native runtime: Tauri and Capacitor
 
 Native builds use the exact npm-locked releases **jQuery 4.0.0**, **hls.js 1.7.3**
