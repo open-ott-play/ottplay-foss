@@ -156,7 +156,6 @@ import { setSleepTimeout } from "./settings/sleepTimer";
 import {
     getMacAddress,
     providerDelItem,
-    providerGetBool,
     providerGetItem,
     providerGetJson,
     providerGetNum,

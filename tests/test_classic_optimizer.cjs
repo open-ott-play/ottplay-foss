@@ -689,6 +689,81 @@ async function main() {
         { booleans_as_integers: true },
         exerciseNativeBooleanContract
     );
+    const privateHelpers = await test(
+        "direct-call private helpers shrink while published callbacks retain identity",
+        `function createControls() {
+            function calculatePrivateChannelOffset(position) { return position * 2 + 1; }
+            function publishedSelection(position, unusedEvent) {
+                return calculatePrivateChannelOffset(position);
+            }
+            return publishedSelection;
+        }
+        function recursiveResult(value) {
+            function privateRecursiveSum(number) {
+                return number ? number + privateRecursiveSum(number - 1) : 0;
+            }
+            return privateRecursiveSum(value);
+        }`,
+        (context) => {
+            const action = context.createControls();
+            assert.equal(action.name, "publishedSelection");
+            assert.equal(action.length, 2);
+            assert.equal(action(4), 9);
+            assert.equal(context.recursiveResult(4), 10);
+        }
+    );
+    assert(!privateHelpers.code.includes("calculatePrivateChannelOffset"));
+    assert(!privateHelpers.code.includes("privateRecursiveSum"));
+    assert(privateHelpers.code.includes("publishedSelection"));
+    await test(
+        "a private helper's spelling cannot rename a same-named escaped function",
+        `function internalResult(value) {
+            function sharedSpelling(number) { return number + 1; }
+            return sharedSpelling(value);
+        }
+        function externalAction() {
+            var sharedSpelling = function sharedSpelling(value, unused) { return value; };
+            return sharedSpelling;
+        }
+        function constructorResult() {
+            function PrivateRecord(value) { this.value = value; }
+            return new PrivateRecord("ready");
+        }`,
+        (context) => {
+            assert.equal(context.internalResult(4), 5);
+            const action = context.externalAction();
+            assert.equal(action.name, "sharedSpelling");
+            assert.equal(action.length, 2);
+            const record = context.constructorResult();
+            assert.equal(record.constructor.name, "PrivateRecord");
+            assert.equal(record.value, "ready");
+        }
+    );
+    await test(
+        "reflection retains the name of a directly called private helper",
+        `function reflectedResult() {
+            function reflectedPrivateHelper() { return observeCallerName(); }
+            return reflectedPrivateHelper();
+        }
+        function observeCallerName() { return arguments.callee.caller.name; }`,
+        (context) => {
+            assert.equal(context.reflectedResult(), "reflectedPrivateHelper");
+        }
+    );
+    await test(
+        "computed reflection also retains private caller identities",
+        `function reflectedResult() {
+            function reflectedPrivateHelper() { return observeCallerName(); }
+            return reflectedPrivateHelper();
+        }
+        function observeCallerName() {
+            var first = "cal" + "lee", second = "call" + "er";
+            return arguments[first][second].name;
+        }`,
+        (context) => {
+            assert.equal(context.reflectedResult(), "reflectedPrivateHelper");
+        }
+    );
     const measured = await test(
         "local optimization shrinks code while preserving public entry points",
         `function calculateProgress(currentPosition, programmeStart, programmeEnd) {

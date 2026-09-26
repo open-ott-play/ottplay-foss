@@ -12,8 +12,9 @@ uses TypeScript syntax trees and bound symbols to remove module syntax; it
 supports multiline named imports and resolves renamed imports without confusing
 local variables or object property names.
 
-Imported aliases use small ES5 reader functions, so mutable values stay live
-and cannot capture a same-named parameter in the caller. An alias such as
+Imported aliases use the original global binding when it cannot be captured by
+a local declaration; otherwise small ES5 reader functions keep the value live.
+An alias such as
 `video as videoElement` continues to read the current `video` after initialization
 or replacement. Default and namespace imports are rejected with a diagnostic;
 use named imports for this classic output.
@@ -21,8 +22,12 @@ use named imports for this classic output.
 Classic adapter/provider modules share a global scope because separately loaded
 scripts use bare public identifiers. `scripts/classic-optimizer.cjs` compresses local
 implementation details while preserving every top-level binding, property name,
-function name and function arity. Menu preferences persist `callback.name`; these
-names must survive optimization. Top-level and property mangling, unsafe rewrites,
+published or escaping function name, and function arity. Menu preferences persist
+`callback.name`; these names must survive optimization. A local function used
+only by direct calls may be renamed or inlined. Symbol analysis retains constructors,
+callbacks, name collisions and functions used as values; known dynamic code or
+caller reflection disables this relaxation. Private stack-frame names are not an API.
+Top-level and property mangling, unsafe rewrites,
 getter purity assumptions, and IE-incompatible `typeof` rewrites remain disabled.
 The compressor uses three passes with declaration hoisting disabled.
 Indexed-argument rewrites and Boolean-to-integer conversion are disabled because
@@ -44,6 +49,10 @@ reachability audit; the linker cannot prove their intent.
 The HTML bootstrap owns startup: runtime support, media libraries, player bundle,
 selected adapter, then `startPlayer()`. Device detection always returns a
 nonempty route. There is no competing DOM-ready startup path.
+The shared runtime installer is supplied once by `js/runtime-polyfills.js`.
+The classic linker validates its explicit import bridge and the bundle checks
+bootstrap readiness before use. The application timezone adapter remains in the
+player bundle; standard web polyfills remain available to both page and HLS worker.
 
 `src/app/state.ts` remains an ESM-only state mirror. Its three provider popup
 imports (`popupActions`, `popupArray`, `popupDetail`) explicitly resolve to the
@@ -116,7 +125,7 @@ manifest hash together cannot authorize another import or a removed guard.
 The loader recipe lives in the already-fingerprinted builder. Both runtime and
 worker remain staged together, with their licenses, in every web/native root.
 
-Each final classic bundle is limited to 654,000 UTF-8 bytes and 187,200 bytes
+Each final classic bundle is limited to 641,000 UTF-8 bytes and 185,200 bytes
 compressed with gzip level 9. Both limits apply independently to server, Tauri
 and Capacitor artifacts. Native transformations are measured after staging.
 `npm run check:size` reads the actual artifacts; it does not trust a prior report.

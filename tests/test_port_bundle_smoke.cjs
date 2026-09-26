@@ -81,6 +81,15 @@ function collectGlobals(node) {
     }
 }
 collectGlobals(acorn.parse(bundle, { ecmaVersion: 5 }));
+for (const name of [
+    "installTextEncoder",
+    "installPerformanceNow",
+    "applyWebRuntimePolyfills",
+])
+    assert(
+        !globalNames.has(name),
+        "The classic bundle must reuse the shared bootstrap: " + name
+    );
 const fixtureTimers = new WeakMap();
 
 function fixture(profile) {
@@ -2084,6 +2093,11 @@ async function main() {
         "capacitor-native",
     ]) {
         const w = fixture(profile);
+        const bootstrapRuntime = {
+            apply: w.applyWebRuntimePolyfills,
+            encoder: w.TextEncoder,
+            now: w.performance.now,
+        };
         try {
             vm.runInContext(bundle, w, { filename: bundlePath, timeout: 5000 });
         } catch (error) {
@@ -2092,6 +2106,34 @@ async function main() {
                 { cause: error }
             );
         }
+        assert.equal(
+            w.TextEncoder,
+            bootstrapRuntime.encoder,
+            profile + ": retain bootstrap encoder"
+        );
+        assert.equal(
+            w.performance.now,
+            bootstrapRuntime.now,
+            profile + ": retain bootstrap clock"
+        );
+        assert.equal(
+            w.applyWebRuntimePolyfills,
+            bootstrapRuntime.apply,
+            profile + ": do not redefine bootstrap installer"
+        );
+        vm.runInContext(
+            `
+            (function () {
+                var originalOffset = Date.getTimezoneOffset();
+                Date.setTimezoneOffset(-180);
+                applyPolyfills();
+                if (Date.getTimezoneOffset() !== -180 || new Date(0).getHours() !== 3 || new Date(0).getTime() !== 0)
+                    throw Error("Repeated initialization changed the selected timezone");
+                Date.setTimezoneOffset(originalOffset);
+            }());
+        `,
+            w
+        );
         assertPrivateRuntime(w, profile);
         if (profile === "modern" || profile === "legacy") {
             assertQrSvg(
