@@ -75,7 +75,7 @@ var keys = {
 | `mag2` | (see `pc2`) |
 | `nodejs` | Node.js-based STB emulation |
 | `pc` | PC browser |
-| `pc2` | PC browser (alternate layout) |
+| `pc2` | PC browser with Video.js 7 / VHS 2 |
 | `panasonic` | Panasonic Viera TVs |
 | `philips` | Philips TVs |
 | `sharp` | Sharp Aquos TVs |
@@ -214,3 +214,20 @@ The biome config (`biome.json`) already enforces style rules via the `ultracite/
 **Recommended:** Add a pre-commit hook that runs biome check on `prov/**/prov.js` and `src/stb/**/stb.js` files only, to catch obvious issues without full project lint on every commit.
 
 See `.pre-commit-config.yaml` for the project's existing pre-commit configuration.
+
+## PC2 playback
+
+`/f/pc2` and `/f/pc2/` select the optional Video.js 7.21.7 / VHS 2.16.3
+engine. They keep the PC keyboard map, common UI, provider settings and device
+identity. They do not select another account or change the saved `sPlayers`
+preference used by `/f/pc`. The engine-choice row is hidden while Video.js is
+active, since that URL explicitly selects its engine.
+
+The executed adapter is `stb/pc2/stb.js`; `src/stb/pc2/stb.ts` retains the typed
+keyboard reference. The HTML bootstrap loads `js/video.min.js` and
+`stb/pc2/player.css` only for PC2, after the shared compatibility runtime.
+Ordinary PC keeps its existing native/HLS.js/Shaka choices. If the optional
+vendor fails to load, PC2 visibly logs the fallback and boots those same choices.
+
+See [PC2 engine and compatibility](pc2-videojs.md) for lifecycle, polyfills,
+version provenance, CSP requirements and tests.

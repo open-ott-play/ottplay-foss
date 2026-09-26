@@ -1614,7 +1614,9 @@ export function setAspect(v: number): void {
 export function applyAspectRatio(): void {
     var fit = ["contain", "cover"][aspectRatio] || "contain";
     var box = document.getElementById("vdiv");
-    var vEl = document.getElementById("video") as HTMLVideoElement | null;
+    // Optional engines may put #video on a wrapper; intrinsic dimensions
+    // always belong to the retained media element. CSS still sizes #video.
+    var vEl = video;
     // Force layout after stbToFullScreen / resize CSS so client* is not stale
     // (1.1.29 explicit px geometry otherwise froze the previous crop size).
     if (box) void (box as HTMLElement).offsetWidth;
@@ -2109,11 +2111,12 @@ export function stbInit(): void {
         });
         video!.addEventListener("error", function () {
             var _p =
-                _corePlaybackMode === 1
+                coreDeviceEffects.engineName ||
+                (_corePlaybackMode === 1
                     ? "hls.js"
                     : _corePlaybackMode === 2
                       ? "shaka"
-                      : "html5";
+                      : "html5");
             var err = video?.error;
             var me = ["", "ABORTED", "NETWORK", "DECODE", "SRC_NOT_SUPPORTED"];
             var errName = err?.code ? me[err.code] || String(err.code) : "";
@@ -2549,6 +2552,20 @@ function openCoreEngineLease(
         });
     }
     var media = pip ? videoPip : video;
+    // Optional device engines retain the same request ownership and UI commands.
+    if (coreDeviceEffects.engine) {
+        if (!pip) {
+            setCoreDemoMute((window as any).ottplayDemoActive === true);
+            resetCoreNativeBitrate();
+        }
+        var optionalEngine = coreDeviceEffects.engine(request, event, media);
+        var disposeEngine = optionalEngine.dispose;
+        optionalEngine.dispose = function (replaced?: boolean) {
+            disposeEngine(replaced);
+            if (!pip) setCoreDemoMute(false);
+        };
+        return optionalEngine;
+    }
     var listeners: Array<{ name: string; callback: () => void }> = [];
     var session = pip
         ? _corePipSession + 1

@@ -10,6 +10,8 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-media-cache-"));
 const names = [
     "core-js",
     "hls.js",
+    "video.js",
+    "@videojs/http-streaming",
     "typescript",
     "rollup",
     "terser",
@@ -47,7 +49,11 @@ function createFixture() {
         };
         write(
             "node_modules/" + name + "/package.json",
-            JSON.stringify({ name, version: "1.0.0" })
+            JSON.stringify({
+                dependencies: { "@videojs/http-streaming": "1.0.0" },
+                name,
+                version: "1.0.0",
+            })
         );
     }
     write("package-lock.json", JSON.stringify({ packages }));
@@ -62,6 +68,15 @@ function createFixture() {
     );
     write("node_modules/core-js/LICENSE", "Fixture core-js license\n");
     write("node_modules/hls.js/LICENSE", "Fixture HLS license\n");
+    write(
+        "node_modules/video.js/dist/video.min.js",
+        "var videojs = function () {};\n"
+    );
+    write("node_modules/video.js/LICENSE", "Fixture Video.js license\n");
+    write(
+        "node_modules/@videojs/http-streaming/LICENSE",
+        "Fixture VHS license\n"
+    );
     write("LICENSE", "Fixture project license\n");
     write("licenses/android/Apache-2.0.txt", "Fixture Apache license\n");
 }
@@ -103,6 +118,7 @@ function fixtureBuild() {
             read("node_modules/hls.js/dist/hls.worker.js"),
         ]),
         "runtime-polyfills.js": runtime,
+        "video.min.js": read("node_modules/video.js/dist/video.min.js"),
     };
     const assets = {};
     for (const [name, value] of Object.entries(outputs)) {
@@ -113,9 +129,14 @@ function fixtureBuild() {
         "js/media-runtime.json",
         JSON.stringify({ schema: 1, ...source, assets, runtimeVersion })
     );
-    for (const name of ["core-js", "hls.js"])
+    for (const name of [
+        "core-js",
+        "hls.js",
+        "video.js",
+        "@videojs/http-streaming",
+    ])
         write(
-            "js/licenses/" + name + "-LICENSE.txt",
+            "js/licenses/" + name.replace("/", "-") + "-LICENSE.txt",
             read("node_modules/" + name + "/LICENSE")
         );
     write("js/licenses/project-LICENSE.txt", read("LICENSE"));
@@ -198,6 +219,15 @@ async function main() {
     });
     await invalidates("corrupted runtime bytes", () => {
         write("js/runtime-polyfills.js", "var corrupted = true;\n");
+    });
+    await invalidates("corrupted optional Video.js asset", () => {
+        write("js/video.min.js", "var staleVideo = true;\n");
+    });
+    await invalidates("changed upstream Video.js bytes", () => {
+        write(
+            "node_modules/video.js/dist/video.min.js",
+            "var videojs = function updatedVideo() {};\n"
+        );
     });
     await invalidates("missing worker", () => {
         fs.unlinkSync(path.join(root, "js/hls.worker.js"));

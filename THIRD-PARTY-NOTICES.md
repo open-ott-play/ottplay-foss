@@ -240,3 +240,14 @@ QuickJS-NG engine. Both use the MIT license; complete upstream notices are in
 `licenses/native/rquickjs-LICENSE.txt` and `licenses/native/QuickJS-NG-LICENSE.txt`.
 The build stages these notices in `js/licenses` for web/server/native packages.
 iOS uses the system JavaScriptCore framework.
+
+## Optional PC2 streaming engine
+
+`js/video.min.js` is the unchanged **Video.js 7.21.7** upstream UMD, including
+**VHS 2.16.3**. It is loaded only by `/f/pc2`, after the common ES5 runtime.
+Both use Apache 2.0; their installed license texts are preserved in
+[js/licenses/video.js-LICENSE.txt](js/licenses/video.js-LICENSE.txt) and
+[js/licenses/@videojs-http-streaming-LICENSE.txt](js/licenses/@videojs-http-streaming-LICENSE.txt).
+The UMD retains upstream bundled-component notices, including vtt.js and
+parse-headers; the shared [Apache 2.0 text](js/licenses/Apache-2.0.txt) is packaged
+alongside them. Version and output hashes are recorded in `js/media-runtime.json`.

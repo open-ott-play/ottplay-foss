@@ -3810,7 +3810,9 @@ window._setSetup = function (
  */
 window.stbOptions = function (): void {
     var w = window as any;
-    var showPlayerChoice = w.ott_device !== "lg/webos";
+    var showPlayerChoice =
+        w.ott_device !== "lg/webos" &&
+        !(w.ott_device === "pc2" && typeof w.videojs === "function");
     if (w.__ottParental.needs("settings")) {
         if (typeof w.enterPinAndSetAccess === "function")
             w.enterPinAndSetAccess(w.stbOptions);
@@ -3946,7 +3948,9 @@ function createSettingsPage(
  */
 window.settingsInterface = function (): void {
     var w = window as any;
-    var showPlayerChoice = w.ott_device !== "lg/webos";
+    var showPlayerChoice =
+        w.ott_device !== "lg/webos" &&
+        !(w.ott_device === "pc2" && typeof w.videojs === "function");
     /**
      * Persist all interface settings and re-apply them.
      * Conditionally saves PiP, OSD opacity, volume step, and editor

@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "builderSha256": "e5b611f7d8de7eece297aad2a8901e9aacc5d694e89160b2bbbf7aa375cfb9d5",
-  "lockfileSha256": "b7dbeb015566a7306811005b5da2ff3ab3162249170f9e74029832598096f5d7",
+  "builderSha256": "442d33357161b5ba1cdeaf2c55eacedbfa154f58e4c9d94ed6756a835a836370",
+  "lockfileSha256": "4d734e6a9802ccbe5fce6e06dde7fc87d4aa57f968dab9adbb7406203e8fe9bc",
   "packages": {
     "core-js": {
       "integrity": "sha512-BRWgOLKkFeCgRudR6zrs8p9XJZcE14grzKMMssoYrk6krtuEZ7MTKPIY5RzOnqsEKIR9kst7wNzphttraT+Yqw==",
@@ -10,6 +10,14 @@
     "hls.js": {
       "integrity": "sha512-MsPlx6yVW4Qv4C7mEVou4/gk/5cN2dVxOTnrNjPSmyH2f0Ln+/UkG10Ax1PE6OvrmTVPKgQYozTtBaPOuCzq7A==",
       "version": "1.7.3"
+    },
+    "video.js": {
+      "integrity": "sha512-T2s3WFAht7Zjr2OSJamND9x9Dn2O+Z5WuHGdh8jI5SYh5mkMdVTQ7vSRmA5PYpjXJ2ycch6jpMjkJEIEU2xxqw==",
+      "version": "7.21.7"
+    },
+    "@videojs/http-streaming": {
+      "integrity": "sha512-91CJv5PnFBzNBvyEjt+9cPzTK/xoVixARj2g7ZAvItA+5bx8VKdk5RxCz/PP2kdzz9W+NiDUMPkdmTsosmy69Q==",
+      "version": "2.16.3"
     },
     "typescript": {
       "integrity": "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==",
@@ -35,8 +43,9 @@
   "webPolyfillsSha256": "5e14970ea932f18c571a94e03758a08a6d3f559d04cf6033fd3970af895b9aab",
   "assets": {
     "hls.min.js": "a12e7ee1cd64a69dcdb314157e45dafcba705bfb0b1440b7935cb265d374423e",
-    "hls.worker.js": "bda568bf19cc9a95ea3af2e28e4b9a726c1f7ea16244e6479c926f252dbd24a5",
-    "runtime-polyfills.js": "f04d14aeae50682f633e44da17c9afe8a49c2db08ee115372cd824fb65098994"
+    "hls.worker.js": "6e91c137df53194b7fa82d49dde80bac73c06f0dc42b3eabe0bafcefda0ae3a5",
+    "runtime-polyfills.js": "8621f6fd35144c1cfa6d1b1cb5965424b67445d1c6cd2d7a6d30ce74fbc25d0e",
+    "video.min.js": "820388ecff9bbd8108047f3a7f3913835613773940b8dd42527d580cc8629ac0"
   },
-  "runtimeVersion": "9e1915ebe09c98a0"
+  "runtimeVersion": "bcce3fda84cba68f"
 }
