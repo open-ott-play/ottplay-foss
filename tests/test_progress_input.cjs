@@ -20,6 +20,7 @@ const ast = ts.createSourceFile(
 );
 const names = [
     "uiInit",
+    "initBackgroundIntervals",
     "usesLgPointerInput",
     "virtualTimeshiftProg",
     "_t2",
@@ -38,14 +39,14 @@ const code = ts
     })
     .outputText.replace(/^export /gm, "");
 acorn.parse(code, { ecmaVersion: 5 });
-function fixture(options = {}) {
+function fixture(options = {}, jqueryFile = "js/jquery-1.11.1.min.js") {
     const dom = new JSDOM(
         '<link href="1280.css"><div id="progress_div" style="width:200px;height:10px"></div><div id="progress_span"><span></span></div>',
         { runScripts: "outside-only" }
     );
     const w = dom.window,
         calls = [];
-    w.eval(fs.readFileSync(path.join(root, "js/jquery-1.11.1.min.js"), "utf8"));
+    w.eval(fs.readFileSync(path.join(root, jqueryFile), "utf8"));
     const oldPosition = w.$.fn.position;
     w.$.fn.position = function () {
         return this[0]?.id === "progress_div"
@@ -267,6 +268,189 @@ for (const [mode, programme, position] of [
             assert.deepEqual(calls, []);
         }
     );
+}
+function startupFunctions(file, names) {
+    const source = fs.readFileSync(path.join(root, file), "utf8");
+    const tree = ts.createSourceFile(
+        file,
+        source,
+        ts.ScriptTarget.Latest,
+        true
+    );
+    const selected = tree.statements.filter(
+        (node) =>
+            ts.isFunctionDeclaration(node) && names.includes(node.name.text)
+    );
+    assert.equal(selected.length, names.length);
+    return ts
+        .transpileModule(
+            selected.map((node) => node.getText(tree)).join("\n"),
+            {
+                compilerOptions: {
+                    module: ts.ModuleKind.ES2015,
+                    target: ts.ScriptTarget.ES5,
+                },
+            }
+        )
+        .outputText.replace(/^export /gm, "");
+}
+const restartCode =
+    startupFunctions("src/index.ts", ["startPlayer"]) +
+    startupFunctions("src/core/index.ts", ["stbToggleStandby"]);
+for (const jqueryFile of [
+    "js/jquery-1.11.1.min.js",
+    "node_modules/jquery/dist/jquery.min.js",
+]) {
+    const f = fixture({}, jqueryFile);
+    try {
+        const { w, calls } = f;
+        const timers = new Map();
+        let timerId = 0,
+            unrelatedClicks = 0,
+            infoClicks = 0;
+        let mediaTicks = 0,
+            guideTicks = 0,
+            visibilityEvents = 0;
+        w.document.body.insertAdjacentHTML(
+            "beforeend",
+            '<div id="info1"></div><div id="listAbout"></div><div id="listEdit"></div>' +
+                '<div id="listIn"></div><div id="dialogbox"></div>'
+        );
+        Object.assign(w, {
+            __ottDeviceAdapter: {
+                create: () => ({ dispose() {}, start() {} }),
+            },
+            clearInterval: (id) => timers.delete(id),
+            getViewportHeightScale: () => 1,
+            getViewportWidthScale: () => 1,
+            hostUrl: "https://player.invalid",
+            isPlayDistribution: () => true,
+            onPlayerStart() {},
+            PLAYER_VERSION: "fixture",
+            setInterval(callback, delay) {
+                const id = timerId++;
+                timers.set(id, { callback, delay });
+                return id;
+            },
+            showChannelInfo: () => infoClicks++,
+            stbInit: () => false,
+            stbStop() {},
+            storage: { reset() {} },
+            updateChannelInfo: () => guideTicks++,
+            updateMediaInfo: () => mediaTicks++,
+        });
+        w.console.log = () => {};
+        w.eval(
+            "var _standby = false; var coreDeviceEffects = {};" + restartCode
+        );
+        w.$("#progress_div").on("click.outside", () => unrelatedClicks++);
+        const probe = w.$("<div>").on("show hide", () => visibilityEvents++);
+        function verify() {
+            const oldClicks = unrelatedClicks,
+                oldInfo = infoClicks;
+            const oldSeeks = calls.filter((call) => call[0] === "seek").length;
+            w.$("#progress_div").trigger(w.$.Event("click", { clientX: 110 }));
+            w.$("#info1").trigger("click");
+            assert.equal(
+                calls.filter((call) => call[0] === "seek").length,
+                oldSeeks + 1,
+                "each click seeks once after restart"
+            );
+            assert.equal(
+                unrelatedClicks,
+                oldClicks + 1,
+                "unrelated listener survives restart"
+            );
+            assert.equal(infoClicks, oldInfo + 1, "info click is bound once");
+            const beforeVisibility = visibilityEvents;
+            probe.show().hide();
+            assert.equal(
+                visibilityEvents,
+                beforeVisibility + 2,
+                "show/hide wrapper emits each notification once"
+            );
+            let listShows = 0,
+                listHides = 0;
+            w.$("#listIn")
+                .on("show.outside", () => listShows++)
+                .on("hide.outside", () => listHides++);
+            w.$("#listAbout").show().hide();
+            w.$("#listEdit").show().hide();
+            assert.deepEqual(
+                [listShows, listHides],
+                [2, 2],
+                "each overlay visibility event has one owned listener"
+            );
+            w.$("#listIn").off(".outside");
+            assert.deepEqual(
+                [...timers.values()]
+                    .map((job) => job.delay)
+                    .sort((a, b) => a - b),
+                [1000, 30000],
+                "one active timer for each background task"
+            );
+            const beforeMedia = mediaTicks,
+                beforeGuide = guideTicks;
+            for (const job of timers.values()) job.callback();
+            assert.equal(
+                mediaTicks,
+                beforeMedia + 1,
+                "one media refresh per tick"
+            );
+            w.playType = 0;
+            for (const job of timers.values())
+                if (job.delay === 30000) job.callback();
+            assert.equal(
+                guideTicks,
+                beforeGuide + 1,
+                "one guide refresh per tick"
+            );
+            w.playType = -1e11;
+        }
+        w.startPlayer();
+        verify();
+        for (let restart = 0; restart < 3; restart++) {
+            const retiredCallbacks = [...timers.values()].map(
+                (job) => job.callback
+            );
+            if (restart === 1) {
+                w.document.getElementById("progress_div").outerHTML =
+                    '<div id="progress_div" style="width:200px;height:10px"></div>';
+                w.document.getElementById("progress_span").outerHTML =
+                    '<div id="progress_span"><span></span></div>';
+                w.$("#progress_div").on(
+                    "click.outside",
+                    () => unrelatedClicks++
+                );
+            }
+            w.stbToggleStandby();
+            w.stbToggleStandby();
+            const beforeMedia = mediaTicks,
+                beforeGuide = guideTicks;
+            retiredCallbacks.forEach((callback) => callback());
+            assert.deepEqual(
+                [mediaTicks, guideTicks],
+                [beforeMedia, beforeGuide],
+                "callbacks queued before timer replacement are retired"
+            );
+            verify();
+            w.$("#progress_div").trigger(
+                w.$.Event("mousemove", { clientX: 110 })
+            );
+            assert.equal(
+                w.document.querySelector("#progress_span span").textContent,
+                "30:50",
+                "replacement progress and tooltip elements receive current handlers"
+            );
+        }
+        assert.equal(calls.filter((call) => call[0] === "error").length, 0);
+        passed++;
+        console.log(
+            "PASS progress: repeated standby/start lifecycle " + jqueryFile
+        );
+    } finally {
+        f.close();
+    }
 }
 console.log(
     "PASS progress input: " +

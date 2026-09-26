@@ -249,4 +249,44 @@ check("disposing revokes timers and outstanding prompt ownership", () => {
     f.prompts[0].accept();
     assert.equal(f.played.length, 0);
 });
+check(
+    "metadata saves retain notification state for prototype-like programme IDs",
+    () => {
+        const f = fixture();
+        const records = ["__proto__", "constructor", "toString"].map((id) => ({
+            ...f.record(id),
+            id,
+            programmeId: id,
+        }));
+        f.saved.set(
+            "guideReminders:source",
+            JSON.stringify({ records, sourceId: "source", version: 1 })
+        );
+        f.service.load();
+        f.advance(140);
+        f.flush();
+        assert.equal(f.notified.length, 3);
+        assert(f.service.persist());
+        f.flush();
+        assert.equal(
+            f.notified.length,
+            3,
+            "unchanged starts do not notify again"
+        );
+        f.advance(150);
+        assert(f.service.upsert({ ...records[1], start: 210, title: "Moved" }));
+        f.flush();
+        assert.equal(f.notified.length, 4);
+        assert.equal(f.notified[3][0].id, "constructor");
+        f.advance(200);
+        f.flush();
+        assert.deepEqual(
+            f.prompts.map((p) => p.record.id),
+            ["__proto__", "toString"]
+        );
+        f.advance(210);
+        f.flush();
+        assert.equal(f.prompts.at(-1).record.id, "constructor");
+    }
+);
 console.log("PASS " + passed + " ReminderService scenarios");

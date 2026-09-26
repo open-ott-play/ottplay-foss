@@ -9,7 +9,7 @@
  */
 
 import { resolveNativePlugin } from "./native-bridge";
-import { nativeWebFallback } from "./web-fallback";
+import { nativeWebFallback, nativeWebUnsupported } from "./web-fallback";
 
 export interface DashPlaybackState {
     duration: number;
@@ -67,22 +67,14 @@ class DashExoPlayerWeb implements DashExoPlayerPlugin {
     }
 
     isDashSupported(): Promise<{ ok: boolean; unsupported?: boolean }> {
-        return nativeWebFallback(function () {
-            console.warn(
-                "[DashExoPlayer] web fallback: isDashSupported unsupported"
-            );
-            return { ok: false, unsupported: true };
-        });
+        return nativeWebUnsupported("DashExoPlayer", "isDashSupported");
     }
 
     playDash(_opts: {
         url: string;
         position?: number;
     }): Promise<{ ok: boolean; unsupported?: boolean; error?: string }> {
-        return nativeWebFallback(function () {
-            console.warn("[DashExoPlayer] web fallback: playDash unsupported");
-            return { ok: false, unsupported: true };
-        });
+        return nativeWebUnsupported("DashExoPlayer", "playDash");
     }
 
     pauseDash(): Promise<{
@@ -90,10 +82,7 @@ class DashExoPlayerWeb implements DashExoPlayerPlugin {
         unsupported?: boolean;
         error?: string;
     }> {
-        return nativeWebFallback(function () {
-            console.warn("[DashExoPlayer] web fallback: pauseDash unsupported");
-            return { ok: false, unsupported: true };
-        });
+        return nativeWebUnsupported("DashExoPlayer", "pauseDash");
     }
 
     resumeDash(): Promise<{
@@ -101,12 +90,7 @@ class DashExoPlayerWeb implements DashExoPlayerPlugin {
         unsupported?: boolean;
         error?: string;
     }> {
-        return nativeWebFallback(function () {
-            console.warn(
-                "[DashExoPlayer] web fallback: resumeDash unsupported"
-            );
-            return { ok: false, unsupported: true };
-        });
+        return nativeWebUnsupported("DashExoPlayer", "resumeDash");
     }
 
     stopDash(): Promise<{
@@ -114,10 +98,7 @@ class DashExoPlayerWeb implements DashExoPlayerPlugin {
         unsupported?: boolean;
         error?: string;
     }> {
-        return nativeWebFallback(function () {
-            console.warn("[DashExoPlayer] web fallback: stopDash unsupported");
-            return { ok: false, unsupported: true };
-        });
+        return nativeWebUnsupported("DashExoPlayer", "stopDash");
     }
 }
 

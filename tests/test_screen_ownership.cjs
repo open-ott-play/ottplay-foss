@@ -213,6 +213,129 @@ test("screen invalidation detaches every old owner before reentrant cleanup", ({
     assert.deepEqual(calls, ["new"]);
     assert.equal(first.active(), false);
 });
+function layoutFixture(w) {
+    const frames = [];
+    const listIn = w.document.createElement("div");
+    listIn.id = "listIn";
+    w.listElement.appendChild(listIn);
+    Object.defineProperty(listIn, "clientHeight", {
+        configurable: true,
+        value: 100,
+    });
+    listIn.getBoundingClientRect = () => ({ bottom: -2, top: 0 });
+    let layouts = 0;
+    Object.assign(w, {
+        __ottClassicGuide: { cancelConsumers() {} },
+        $infoBar: w.$("#numprog"),
+        getListItemFn: (row) => row,
+        getViewportWidthScale: () => 1,
+        listArray: ["One"],
+        listInElement: listIn,
+        listKeyHandler: () => false,
+        listRowHeight: () => 20,
+        packListRowBoxes() {
+            layouts++;
+            return 20;
+        },
+        requestAnimationFrame(callback) {
+            frames.push(callback);
+        },
+        selIndex: 0,
+        settings: { noSmall: 1, pageSize: 25, showScroll: 0 },
+    });
+    w.listDataArray = w.listArray;
+    w.eval(functions("src/ui/index.ts", ["showPage"]));
+    return { frames, layouts: () => layouts, listIn };
+}
+test("retired list layout frames cannot resize or reopen the list", ({ w }) => {
+    const { frames, layouts, listIn } = layoutFixture(w);
+    w.showPage();
+    assert.equal(
+        frames.length,
+        2,
+        "layout and clipped-cursor retries are queued"
+    );
+    const owner = w.__ottClassicScreenPort.listOwner();
+    w.closeList();
+    assert.equal(owner.active(), false);
+    const html = listIn.innerHTML;
+    const pending = frames.splice(0);
+    pending.forEach((callback) => callback());
+    assert.equal(layouts(), 1, "retired rows are not measured again");
+    assert.equal(w.__ottClassicScreenPort.listOwner(), null);
+    assert.equal(listIn.innerHTML, html);
+    assert.equal(
+        frames.length,
+        0,
+        "a retired retry cannot schedule more frames"
+    );
+    assert.equal(w.__ottListCursorRetry, false);
+});
+for (const kind of ["cursor", "fit"])
+    test(
+        "replacement list owns its " +
+            kind +
+            " retry before the retired frame runs",
+        ({ w }) => {
+            const { frames, layouts, listIn } = layoutFixture(w);
+            const slot =
+                kind === "cursor"
+                    ? "__ottListCursorRetry"
+                    : "__ottListFitRetry";
+            if (kind === "fit") {
+                Object.defineProperty(listIn, "clientHeight", { value: 0 });
+                listIn.getBoundingClientRect = () => ({ bottom: 100, top: 0 });
+            }
+            w.showPage();
+            const oldOwner = w.__ottClassicScreenPort.listOwner();
+            const oldRetry = w[slot];
+            w.listArray = ["Replacement"];
+            w.listDataArray = w.listArray;
+            w.showPage();
+            const replacement = w.__ottClassicScreenPort.listOwner();
+            const replacementRetry = w[slot];
+            assert.equal(oldOwner.active(), false);
+            assert.equal(replacement.active(), true);
+            assert.equal(
+                frames.length,
+                4,
+                "replacement queues its own layout retry"
+            );
+            assert.notEqual(replacementRetry, oldRetry);
+            w.showPage();
+            assert.equal(
+                frames.length,
+                5,
+                "same owner coalesces a pending layout retry"
+            );
+            assert.equal(w[slot], replacementRetry);
+            const pending = frames.splice(0);
+            pending[0]();
+            pending[1]();
+            assert.equal(
+                layouts(),
+                3,
+                "retired layout cannot touch replacement rows"
+            );
+            assert.equal(
+                w[slot],
+                replacementRetry,
+                "retired retry cannot clear replacement state"
+            );
+            assert.equal(frames.length, 0);
+            Object.defineProperty(listIn, "clientHeight", { value: 100 });
+            listIn.getBoundingClientRect = () => ({ bottom: 100, top: 0 });
+            pending.slice(2).forEach((callback) => callback());
+            assert.equal(w.__ottClassicScreenPort.listOwner(), replacement);
+            assert.equal(w[slot], false);
+            assert.equal(
+                frames.length,
+                1,
+                "replacement rerenders exactly once, then only queues layout"
+            );
+            assert.equal(layouts(), 6);
+        }
+    );
 test("list callbacks, focus and cleanup have one authoritative owner", ({
     w,
     key,
@@ -327,6 +450,39 @@ test("source replacement retires dialogs, editor and scheduled list detail", ({
     old(13);
     jobs.forEach((j) => j.callback());
     assert.equal(calls, 0);
+});
+test("rapid list selection owns only the pending detail timer", ({
+    w,
+    jobs,
+}) => {
+    const owner = w.__ottClassicScreenPort.commitList();
+    const own = owner.own;
+    let cleanups = 0;
+    const rendered = [];
+    owner.own = (cleanup) => {
+        cleanups++;
+        return own(() => {
+            cleanups--;
+            cleanup();
+        });
+    };
+    for (let selection = 0; selection < 100; selection++) {
+        w.detailListActionFn = () => rendered.push(selection);
+        w.scheduleListDetailUpdate();
+    }
+    assert.equal(jobs.filter((job) => job.active).length, 1);
+    assert.equal(cleanups, 1, "canceled debounce cleanups are released");
+    jobs.forEach((job) => job.callback());
+    assert.deepEqual(rendered, [99], "queued canceled callbacks are inert");
+    assert.equal(cleanups, 0, "completed timer releases its cleanup");
+    assert.equal(jobs.filter((job) => job.active).length, 0);
+    w.scheduleListDetailUpdate();
+    assert.equal(cleanups, 1);
+    owner.close();
+    assert.equal(cleanups, 0, "closing the list releases the final timer");
+    assert.equal(jobs.filter((job) => job.active).length, 0);
+    jobs[jobs.length - 1].callback();
+    assert.deepEqual(rendered, [99]);
 });
 test("dialog callback opens a replacement without old closure closing it", ({
     w,

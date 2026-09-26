@@ -671,7 +671,7 @@ export function toggleProviderSelectionVisibility(): void {
     }
     var e = Number.parseInt(stbGetItem("noSelProv")) || 0;
     confirmBox(e ? "Show providers?" : "Hide providers?", function () {
-        stbSetItem("noSelProv", e ? "1" : "0");
+        stbSetItem("noSelProv", e ? "0" : "1");
         restart();
     });
     providerSelectionUnlockCount = 0;
@@ -699,7 +699,7 @@ export function toggleProviderSettingsVisibility(): void {
     confirmBox(
         e ? "Show provider settings?" : "Hide provider settings?",
         function () {
-            stbSetItem("noProvParam", e ? "1" : "0");
+            stbSetItem("noProvParam", e ? "0" : "1");
             restart();
         }
     );

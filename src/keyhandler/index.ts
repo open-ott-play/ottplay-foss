@@ -827,12 +827,12 @@ function onPrevSelect(sel: number): void {
 
 /**
  * Show the "previous programs" list and navigate to the selected channel/timeshift.
- * With 0 entries: does nothing. With 1 entry: immediately switches to that channel.
+ * With 0 entries: does nothing. With 1 entry: restores its live/archive target through the guarded selection path.
  * With 2+ entries: opens a select-box listing each entry with channel name, timestamp (if archived), and event name.
  *
  * @returns void
  * @sideeffect Calls `window.playChannel`, `window.showSelectBox`, or renders a popup list.
- *             Nested helpers `timeToday`, `fmtTime`, `setFromEntry` are closures over `prevArr`.
+ *             Nested helpers `timeToday` and `fmtTime` format archived positions.
  * @analysis Entries with invalid data are spliced out of the array during iteration. Archived entries
  *             show a red timestamp; live entries show no timestamp. Falls back to category "All" if the
  *             original category lookup fails.
@@ -865,39 +865,11 @@ export function prevProg(): void {
               ? (window as any).formatProgramDateTime(e)
               : "";
     }
-    var r: number, n: number;
-    /**
-     * Populate `r` (category index) and `n` (channel index in the category) from a prevArr entry.
-     * Falls back to category "All" if the original category does not contain the channel.
-     *
-     * @param entry - A prevArr entry with `.c` (category index) and `.ci` (channel id).
-     * @returns void
-     * @sideeffect Sets the outer-scope variables `r` and `n`.
-     */
-    function setFromEntry(entry: any): void {
-        r = entry.c;
-        n =
-            (window as any).cats && (window as any).catsArray
-                ? (window as any).cats[(window as any).catsArray[r]].indexOf(
-                      entry.ci
-                  )
-                : -1;
-        if (n !== -1) return;
-        n =
-            (window as any).cats && (window as any).cats[_("All")]
-                ? (window as any).cats[_("All")].indexOf(entry.ci)
-                : -1;
-        r = (window as any).catsArray
-            ? (window as any).catsArray.indexOf(_("All"))
-            : -1;
-    }
     switch (prevArr.length) {
         case 0:
             return;
         case 1:
-            setFromEntry(prevArr[0]);
-            if (typeof (window as any).playChannel === "function")
-                (window as any).playChannel(r!, n!);
+            onPrevSelect(0);
             return;
         default: {
             var items: string[] = [];

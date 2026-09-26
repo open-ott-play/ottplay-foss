@@ -121,6 +121,7 @@ import {
     recordsList,
     removeFromFavorites,
     renameFavoritesList,
+    renderCategoryRecordings,
     renderEpgFooter,
     renderGuideView,
     replayFromLiveOffset,
@@ -960,18 +961,14 @@ function setFontSize(): void {
     // Keep glyphs inside the integer row box (WKWebView expands on overflow).
     // 0.98 uses the spare line-box under the 25th row after the +1 step bump.
     r = Math.min(r, 40 * e, Math.max(10 * e, rowPx * 0.98));
-    $("#list").css("font-size", r + "px");
-    $("#testFont").css("font-size", r + "px");
-    $("#permanentTime").css("font-size", r + "px");
+    $("#list, #testFont, #permanentTime").css("font-size", r + "px");
 
     r = Math.max(r, 22 * e);
     if ($i1El) $i1El.css("font-size", r + "px");
-    $("#numprog").css("font-size", r + "px");
-    $("#dialogbox").css("font-size", r + "px");
+    $("#numprog, #dialogbox").css("font-size", r + "px");
 
     r = Math.min(r, 28 * e);
-    $("#listCaption").css("font-size", r + "px");
-    $("#listPodval").css("font-size", r + "px");
+    $("#listCaption, #listPodval").css("font-size", r + "px");
     $("#permanentTime")
         .toggle(settings.permanentTime !== 0)
         .toggleClass("osd", settings.permanentTime !== 2)
@@ -1025,13 +1022,7 @@ function setFontSize(): void {
         padding: 4 * e + "px 0px",
         top: 52 * e + 1 + "px",
     });
-    $("#listAbout").css({
-        bottom: 52 * e + 1 + "px",
-        left: 522 * t + "px",
-        padding: 14 * e + "px " + 16 * t + "px",
-        top: 52 * e + 1 + "px",
-    });
-    $("#listEdit").css({
+    $("#listAbout, #listEdit").css({
         bottom: 52 * e + 1 + "px",
         left: 522 * t + "px",
         padding: 14 * e + "px " + 16 * t + "px",
@@ -1045,17 +1036,19 @@ function setFontSize(): void {
     });
     $("#channel_number").css({ width: 70 * t + "px" });
     $("#progress_div").css({ margin: 6 * e + "px 0px " + 4 * e + "px 0px" });
-    $("#progress").css({ height: 8 * e + "px" });
-    $("#progress_r").css({ height: 8 * e + "px" });
-    $("#begin_time").css({ "font-size": 22 * e + "px", width: 70 * t + "px" });
-    $("#end_time").css({ "font-size": 22 * e + "px", width: 70 * t + "px" });
+    $("#progress, #progress_r").css({ height: 8 * e + "px" });
+    $("#begin_time, #end_time").css({
+        "font-size": 22 * e + "px",
+        width: 70 * t + "px",
+    });
     $("#programm_name").css({ width: 900 * t + "px" });
-    $("#nbegin_time").css({ "font-size": 20 * e + "px", width: 70 * t + "px" });
-    $("#nend_time").css({ "font-size": 20 * e + "px", width: 70 * t + "px" });
+    $("#nbegin_time, #nend_time").css({
+        "font-size": 20 * e + "px",
+        width: 70 * t + "px",
+    });
     $("#nprogramm_name").css({ width: 900 * t + "px" });
     $("#data").css({ "font-size": 22 * e + "px", width: 80 * t + "px" });
-    $("#current_s").css({ "font-size": 16 * e + "px" });
-    $("#video_res").css({ "font-size": 16 * e + "px" });
+    $("#current_s, #video_res").css({ "font-size": 16 * e + "px" });
     $("#descr").css({
         margin: "0px 0px " + 20 * e + "px 0px",
         padding: "0px " + 100 * t + "px",
@@ -1110,9 +1103,7 @@ function setFontSize(): void {
         n.text("").css("font-size", i);
         var o = a * 7;
         if (o) {
-            $("#picon").css({ width: o + "px" });
-            $("#data").css({ width: o + "px" });
-            $("#listTime").css({ width: o + "px" });
+            $("#picon, #data, #listTime").css({ width: o + "px" });
             $("#channel").css({ width: 1200 * t - o * 2 + "px" });
             $("#descr").css({ padding: "0px " + (o + 20 * t) + "px" });
         }
@@ -1133,14 +1124,18 @@ function setFontSize(): void {
             // ~2 inline-block HTML whitespace gaps between begin/name/end
             var gap = Math.max(8, Math.round(a2));
             $("#channel_number").css({ width: w + "px" });
-            $("#begin_time").css({ "font-size": "inherit", width: w + "px" });
-            $("#end_time").css({ "font-size": "inherit", width: w + "px" });
+            $("#begin_time, #end_time").css({
+                "font-size": "inherit",
+                width: w + "px",
+            });
             // Legacy: channel.width - digitWidth*12 (= begin + end columns)
             var chW = $("#channel").width() || 1040 * t;
             var nameW = Math.max(40, chW - w * 2 - gap);
             $("#programm_name").css({ width: nameW + "px" });
-            $("#nbegin_time").css({ "font-size": "inherit", width: w + "px" });
-            $("#nend_time").css({ "font-size": "inherit", width: w + "px" });
+            $("#nbegin_time, #nend_time").css({
+                "font-size": "inherit",
+                width: w + "px",
+            });
             $("#nprogramm_name").css({ width: nameW + "px" });
         }
     } catch (ex) {
@@ -1178,11 +1173,11 @@ function setListPos(): void {
     var r = settings.listPosition ? 0 : 522 * e;
     var s = settings.listPosition ? 522 * e : 0;
     var n = settings.listPosition ? 738 * e : 0;
-    $("#listIn").css({ left: r + "px", right: s + "px" });
-    $("#listAbout").css({ left: r + "px", right: s + "px" });
-    $("#listEdit").css({ left: r + "px", right: s + "px" });
-    $("#listDetail").css({ left: n + "px" });
-    $("#listPopUp").css({ left: n + "px" });
+    $("#listIn, #listAbout, #listEdit").css({
+        left: r + "px",
+        right: s + "px",
+    });
+    $("#listDetail, #listPopUp").css({ left: n + "px" });
     n = settings.noSmall ? 30 * t + 1 : 330 * t;
     $("#listDetail").css({ top: n + "px" });
 }
@@ -5242,6 +5237,7 @@ window.epgList = epgList;
 window.epgListAlpha = epgListAlpha;
 window.loadEpgListData = loadEpgListData;
 (window as any).renderGuideView = renderGuideView;
+(window as any).renderCategoryRecordings = renderCategoryRecordings;
 (window as any).publishGuideReminders = publishGuideReminders;
 window.epgKeyHandler = epgKeyHandler;
 window.renderEpgFooter = renderEpgFooter;

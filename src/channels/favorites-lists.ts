@@ -167,13 +167,16 @@ function mergeFavoriteReferences(
             index.resolve(id, "canonical")
         );
     });
-    var keys = selected.map(favoriteReferenceKey);
+    var keys: Record<string, boolean> = Object.create(null);
+    selected.forEach(function (reference) {
+        keys[favoriteReferenceKey(reference)] = true;
+    });
     var before: Record<string, ChannelReference[]> = Object.create(null);
     var pending: ChannelReference[] = [];
     if (prior)
         prior.references.forEach(function (reference) {
             var key = favoriteReferenceKey(reference);
-            if (keys.indexOf(key) >= 0) {
+            if (keys[key]) {
                 if (pending.length) {
                     before[key] = (before[key] || []).concat(pending);
                     pending = [];

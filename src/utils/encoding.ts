@@ -82,217 +82,95 @@ export function stripHttpScheme(input: string): string {
  * is finalised with XOR-folding and two additional mixing rounds.
  */
 export function murmurhash3_32(bytes: number[], seed?: number): number {
-    if (seed === undefined) seed = 0;
-    var remainder = bytes.length & 3;
-    var dataLen = bytes.length - remainder;
-    var result = seed;
-    var word0 = 0;
-    var offset = 0;
-
-    while (offset < dataLen) {
-        word0 =
-            (bytes[offset] & 0xff) |
-            ((bytes[++offset] & 0xff) << 8) |
-            ((bytes[++offset] & 0xff) << 16) |
-            ((bytes[++offset] & 0xff) << 24);
-        ++offset;
-        word0 =
-            ((word0 & 0xffff) * 0xcc9e2d51 +
-                ((((word0 >>> 16) * 0xcc9e2d51) & 0xffff) << 16)) &
-            0xffffffff;
-        word0 = (word0 << 15) | (word0 >>> 17);
-        word0 =
-            ((word0 & 0xffff) * 0x1b873593 +
-                ((((word0 >>> 16) * 0x1b873593) & 0xffff) << 16)) &
-            0xffffffff;
-        result ^= word0;
-        result = (result << 13) | (result >>> 19);
-        var product =
-            ((result & 0xffff) * 5 + ((((result >>> 16) * 5) & 0xffff) << 16)) &
-            0xffffffff;
-        result =
-            (product & 0xffff) +
-            0x6b64 +
-            ((((product >>> 16) + 0xe654) & 0xffff) << 16);
-    }
-
-    word0 = 0;
-    switch (remainder) {
-        case 3:
-            word0 ^= (bytes[offset + 2] & 0xff) << 16;
-        case 2:
-            word0 ^= (bytes[offset + 1] & 0xff) << 8;
-        case 1:
-            word0 ^= bytes[offset] & 0xff;
-            word0 =
-                ((word0 & 0xffff) * 0xcc9e2d51 +
-                    ((((word0 >>> 16) * 0xcc9e2d51) & 0xffff) << 16)) &
-                0xffffffff;
-            word0 = (word0 << 15) | (word0 >>> 17);
-            word0 =
-                ((word0 & 0xffff) * 0x1b873593 +
-                    ((((word0 >>> 16) * 0x1b873593) & 0xffff) << 16)) &
-                0xffffffff;
-            result ^= word0;
-    }
-
-    result ^= bytes.length;
-    result ^= result >>> 16;
-    result =
-        ((result & 0xffff) * 0x85ebca6b +
-            ((((result >>> 16) * 0x85ebca6b) & 0xffff) << 16)) &
-        0xffffffff;
-    result ^= result >>> 13;
-    result =
-        ((result & 0xffff) * 0xc2b2ae35 +
-            ((((result >>> 16) * 0xc2b2ae35) & 0xffff) << 16)) &
-        0xffffffff;
-    result ^= result >>> 16;
-    return result >>> 0;
+    return mixMurmur32(bytes, seed, 0xcc9e2d51, 0x1b873593, 0x6b64, 0xe654);
 }
 
-/** Previous TS-port algorithms, retained only to identify persisted channel IDs.
- * These constants are intentionally wrong; never use them for new channel/source keys. */
+/** Earlier port constants must remain unchanged to identify persisted channel IDs. */
 function previousPortMurmur32(bytes: number[], seed?: number): number {
-    if (seed === undefined) seed = 0;
-    var remainder = bytes.length & 3;
-    var dataLen = bytes.length - remainder;
-    var result = seed;
-    var word0 = 0;
-    var offset = 0;
-
-    while (offset < dataLen) {
-        word0 =
-            (bytes[offset] & 0xff) |
-            ((bytes[++offset] & 0xff) << 8) |
-            ((bytes[++offset] & 0xff) << 16) |
-            ((bytes[++offset] & 0xff) << 24);
-        ++offset;
-        word0 =
-            ((word0 & 0xffff) * 0x85ebca6b +
-                ((((word0 >>> 16) * 0x85ebca6b) & 0xffff) << 16)) &
-            0xffffffff;
-        word0 = (word0 << 15) | (word0 >>> 17);
-        word0 =
-            ((word0 & 0xffff) * 0xc2b2ae35 +
-                ((((word0 >>> 16) * 0xc2b2ae35) & 0xffff) << 16)) &
-            0xffffffff;
-        result ^= word0;
-        result = (result << 13) | (result >>> 19);
-        var product =
-            ((result & 0xffff) * 5 + ((((result >>> 16) * 5) & 0xffff) << 16)) &
-            0xffffffff;
-        result =
-            (product & 0xffff) +
-            0x165667b1 +
-            ((((product >>> 16) + 0xe6546b64) & 0xffff) << 16);
-    }
-
-    word0 = 0;
-    switch (remainder) {
-        case 3:
-            word0 ^= (bytes[offset + 2] & 0xff) << 16;
-        case 2:
-            word0 ^= (bytes[offset + 1] & 0xff) << 8;
-        case 1:
-            word0 ^= bytes[offset] & 0xff;
-            word0 =
-                ((word0 & 0xffff) * 0x85ebca6b +
-                    ((((word0 >>> 16) * 0x85ebca6b) & 0xffff) << 16)) &
-                0xffffffff;
-            word0 = (word0 << 15) | (word0 >>> 17);
-            word0 =
-                ((word0 & 0xffff) * 0xc2b2ae35 +
-                    ((((word0 >>> 16) * 0xc2b2ae35) & 0xffff) << 16)) &
-                0xffffffff;
-            result ^= word0;
-    }
-
-    result ^= bytes.length;
-    result ^= result >>> 16;
-    result =
-        ((result & 0xffff) * 0x85ebca6b +
-            ((((result >>> 16) * 0x85ebca6b) & 0xffff) << 16)) &
-        0xffffffff;
-    result ^= result >>> 13;
-    result =
-        ((result & 0xffff) * 0xc2b2ae35 +
-            ((((result >>> 16) * 0xc2b2ae35) & 0xffff) << 16)) &
-        0xffffffff;
-    result ^= result >>> 16;
-    return result >>> 0;
+    return mixMurmur32(
+        bytes,
+        seed,
+        0x85ebca6b,
+        0xc2b2ae35,
+        0x165667b1,
+        0xe6546b64
+    );
 }
 
 function previousPortXxHash32(bytes: number[], seed?: number): number {
+    return mixXxHash32(
+        bytes,
+        seed,
+        0x9e3779b9,
+        0x85ebca6b,
+        0xc2b2ae33,
+        0x9e4c43cb,
+        0x242f12f9
+    );
+}
+
+// Keep hashing usable before the runtime bootstrap on older device adapters.
+var hashMultiply32 =
+    Math.imul ||
+    function (left: number, right: number): number {
+        return ((left & 0xffff) * right + (((left >>> 16) * right) << 16)) | 0;
+    };
+
+function mixMurmur32(
+    bytes: number[],
+    seed: number | undefined,
+    c1: number,
+    c2: number,
+    addLow: number,
+    addHigh: number
+): number {
     if (seed === undefined) seed = 0;
-    var array = bytes;
-    var result = (seed + 0x242f12f9) & 0xffffffff;
-    var index = 0;
+    var multiply = hashMultiply32;
+    var remainder = bytes.length & 3;
+    var dataLen = bytes.length - remainder;
+    var result = seed;
+    var word0 = 0;
+    var offset = 0;
 
-    if (array.length >= 16) {
-        var lanes = [
-            (seed + 0x9e3779b9 + 0x85ebca6b) & 0xffffffff,
-            (seed + 0x85ebca6b) & 0xffffffff,
-            (seed + 0) & 0xffffffff,
-            (seed - 0x9e3779b9) & 0xffffffff,
-        ];
-        var tailEnd = array.length - 16;
-        var lane = 0;
-        for (index = 0; (index & 0xfffffff0) <= tailEnd; index += 4) {
-            var offset = index;
-            var word0 = array[offset + 0] + (array[offset + 1] << 8);
-            var word1 = array[offset + 2] + (array[offset + 3] << 8);
-            var product = word0 * 0x85ebca6b + ((word1 * 0x85ebca6b) << 16);
-            var acc = (lanes[lane] + product) & 0xffffffff;
-            acc = (acc << 13) | (acc >>> 19);
-            var lo = acc & 0xffff;
-            var hi = acc >>> 16;
-            lanes[lane] =
-                (lo * 0x9e3779b9 + ((hi * 0x9e3779b9) << 16)) & 0xffffffff;
-            lane = (lane + 1) & 3;
-        }
+    while (offset < dataLen) {
+        word0 =
+            (bytes[offset] & 0xff) |
+            ((bytes[++offset] & 0xff) << 8) |
+            ((bytes[++offset] & 0xff) << 16) |
+            ((bytes[++offset] & 0xff) << 24);
+        ++offset;
+        word0 = multiply(word0, c1);
+        word0 = (word0 << 15) | (word0 >>> 17);
+        word0 = multiply(word0, c2);
+        result ^= word0;
+        result = (result << 13) | (result >>> 19);
+        var product = multiply(result, 5);
         result =
-            (((lanes[0] << 1) | (lanes[0] >>> 31)) +
-                ((lanes[1] << 7) | (lanes[1] >>> 25)) +
-                ((lanes[2] << 12) | (lanes[2] >>> 20)) +
-                ((lanes[3] << 18) | (lanes[3] >>> 14))) &
-            0xffffffff;
+            (product & 0xffff) +
+            addLow +
+            ((((product >>> 16) + addHigh) & 0xffff) << 16);
     }
 
-    result = (result + array.length) & 0xffffffff;
-    var tailEnd2 = array.length - 4;
-    for (; index <= tailEnd2; index += 4) {
-        var offset2 = index;
-        var word0b = array[offset2 + 0] + (array[offset2 + 1] << 8);
-        var word1b = array[offset2 + 2] + (array[offset2 + 3] << 8);
-        var product2 = word0b * 0xc2b2ae33 + ((word1b * 0xc2b2ae33) << 16);
-        result = (result + product2) & 0xffffffff;
-        result = (result << 17) | (result >>> 15);
-        result =
-            ((result & 0xffff) * 0x9e4c43cb +
-                (((result >>> 16) * 0x9e4c43cb) << 16)) &
-            0xffffffff;
+    word0 = 0;
+    switch (remainder) {
+        case 3:
+            word0 ^= (bytes[offset + 2] & 0xff) << 16;
+        case 2:
+            word0 ^= (bytes[offset + 1] & 0xff) << 8;
+        case 1:
+            word0 ^= bytes[offset] & 0xff;
+            word0 = multiply(word0, c1);
+            word0 = (word0 << 15) | (word0 >>> 17);
+            word0 = multiply(word0, c2);
+            result ^= word0;
     }
 
-    for (; index < array.length; ++index) {
-        var byte = array[index];
-        result += byte * 0x242f12f9;
-        result = (result << 11) | (result >>> 21);
-        result =
-            ((result & 0xffff) * 0x9e3779b9 +
-                (((result >>> 16) * 0x9e3779b9) << 16)) &
-            0xffffffff;
-    }
-
-    result = result ^ (result >>> 15);
-    result =
-        (((result & 0xffff) * 0x85ebca6b) & 0xffffffff) +
-        (((result >>> 16) * 0x85ebca6b) << 16);
-    result = result ^ (result >>> 13);
-    result =
-        (((result & 0xffff) * 0xc2b2ae33) & 0xffffffff) +
-        (((result >>> 16) * 0xc2b2ae33) << 16);
-    result = result ^ (result >>> 16);
+    result ^= bytes.length;
+    result ^= result >>> 16;
+    result = multiply(result, 0x85ebca6b);
+    result ^= result >>> 13;
+    result = multiply(result, 0xc2b2ae35);
+    result ^= result >>> 16;
     return result >>> 0;
 }
 
@@ -349,21 +227,42 @@ export function murmurhash3_32_gc(input: string, seed?: number): number {
  * data in 4 parallel "lanes" with a round-robin accumulator, then
  * combines them with rotated sums. Remaining bytes are processed
  * one-by-one. The final output goes through three avalanche stages
- * (xor-shift-multiply). All arithmetic is performed with manual
- * 32-bit masking to ensure correct wrap-around.
+ * (xor-shift-multiply). Integer multiplication uses a 32-bit operation
+ * with a compatible fallback on hosts without Math.imul.
  */
 export function xxHash32(bytes: number[], seed?: number): number {
+    return mixXxHash32(
+        bytes,
+        seed,
+        0x9e3779b1,
+        0x85ebca77,
+        0xc2b2ae3d,
+        0x27d4eb2f,
+        0x165667b1
+    );
+}
+
+function mixXxHash32(
+    bytes: number[],
+    seed: number | undefined,
+    p1: number,
+    p2: number,
+    p3: number,
+    p4: number,
+    p5: number
+): number {
     if (seed === undefined) seed = 0;
+    var multiply = hashMultiply32;
     var array = bytes;
-    var result = (seed + 0x165667b1) & 0xffffffff;
+    var result = (seed + p5) & 0xffffffff;
     var index = 0;
 
     if (array.length >= 16) {
         var lanes = [
-            (seed + 0x9e3779b1 + 0x85ebca77) & 0xffffffff,
-            (seed + 0x85ebca77) & 0xffffffff,
+            (seed + p1 + p2) & 0xffffffff,
+            (seed + p2) & 0xffffffff,
             (seed + 0) & 0xffffffff,
-            (seed - 0x9e3779b1) & 0xffffffff,
+            (seed - p1) & 0xffffffff,
         ];
         var tailEnd = array.length - 16;
         var lane = 0;
@@ -371,13 +270,10 @@ export function xxHash32(bytes: number[], seed?: number): number {
             var offset = index;
             var word0 = array[offset + 0] + (array[offset + 1] << 8);
             var word1 = array[offset + 2] + (array[offset + 3] << 8);
-            var product = word0 * 0x85ebca77 + ((word1 * 0x85ebca77) << 16);
+            var product = multiply(word0 | (word1 << 16), p2);
             var acc = (lanes[lane] + product) & 0xffffffff;
             acc = (acc << 13) | (acc >>> 19);
-            var lo = acc & 0xffff;
-            var hi = acc >>> 16;
-            lanes[lane] =
-                (lo * 0x9e3779b1 + ((hi * 0x9e3779b1) << 16)) & 0xffffffff;
+            lanes[lane] = multiply(acc, p1);
             lane = (lane + 1) & 3;
         }
         result =
@@ -394,33 +290,23 @@ export function xxHash32(bytes: number[], seed?: number): number {
         var offset2 = index;
         var word0b = array[offset2 + 0] + (array[offset2 + 1] << 8);
         var word1b = array[offset2 + 2] + (array[offset2 + 3] << 8);
-        var product2 = word0b * 0xc2b2ae3d + ((word1b * 0xc2b2ae3d) << 16);
+        var product2 = multiply(word0b | (word1b << 16), p3);
         result = (result + product2) & 0xffffffff;
         result = (result << 17) | (result >>> 15);
-        result =
-            ((result & 0xffff) * 0x27d4eb2f +
-                (((result >>> 16) * 0x27d4eb2f) << 16)) &
-            0xffffffff;
+        result = multiply(result, p4);
     }
 
     for (; index < array.length; ++index) {
         var byte = array[index];
-        result += byte * 0x165667b1;
+        result += byte * p5;
         result = (result << 11) | (result >>> 21);
-        result =
-            ((result & 0xffff) * 0x9e3779b1 +
-                (((result >>> 16) * 0x9e3779b1) << 16)) &
-            0xffffffff;
+        result = multiply(result, p1);
     }
 
     result = result ^ (result >>> 15);
-    result =
-        (((result & 0xffff) * 0x85ebca77) & 0xffffffff) +
-        (((result >>> 16) * 0x85ebca77) << 16);
+    result = multiply(result, p2);
     result = result ^ (result >>> 13);
-    result =
-        (((result & 0xffff) * 0xc2b2ae3d) & 0xffffffff) +
-        (((result >>> 16) * 0xc2b2ae3d) << 16);
+    result = multiply(result, p3);
     result = result ^ (result >>> 16);
     return result >>> 0;
 }

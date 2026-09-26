@@ -69,6 +69,24 @@ function edemDetached(value: any): any {
     });
     return result;
 }
+function edemMediaParent(value: any): any {
+    var parent: any = {};
+    // Only inherited metadata reaches OperatorPortal.item. The response also
+    // contains the entire catalog, which must not be copied for every item.
+    [
+        "title",
+        "img",
+        "imglr",
+        "year",
+        "duration",
+        "agelimit",
+        "description",
+    ].forEach(function (key) {
+        if (Object.prototype.propertyIsEnumerable.call(value, key))
+            parent[key] = edemDetached(value[key]);
+    });
+    return parent;
+}
 function edemText(value: any): string {
     return String(value == null ? "" : value)
         .replace(/&/g, "&amp;")
@@ -466,12 +484,19 @@ function createEdemProviderDriver(
                                     data,
                                     false
                                 ),
-                            row: any;
+                            row: any,
+                            parent: any;
                         if (decoder.named()) mediaName = route.node.mediaName;
                         while ((row = decoder.next())) {
                             if (row.kind === "ERROR") error = "media-rejected";
                             else if (row.kind === "MEDIA")
-                                mediaRows.push(mediaRecord(row.value, data));
+                                mediaRows.push(
+                                    mediaRecord(
+                                        row.value,
+                                        parent ||
+                                            (parent = edemMediaParent(data))
+                                    )
+                                );
                             else if (row.kind === "LAZY")
                                 mediaRows.push({
                                     edemLazy: true,
@@ -545,12 +570,17 @@ function createEdemProviderDriver(
                                     data,
                                     true
                                 ),
-                            row: any;
+                            row: any,
+                            parent: any;
                         while ((row = decoder.next())) {
                             if (row.kind === "ERROR") error = "media-rejected";
                             else
                                 mediaRows[params.offset + row.index] =
-                                    mediaRecord(row.value, data);
+                                    mediaRecord(
+                                        row.value,
+                                        parent ||
+                                            (parent = edemMediaParent(data))
+                                    );
                         }
                     } catch (_) {
                         error = "media-processing";

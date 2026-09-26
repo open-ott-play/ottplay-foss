@@ -7,3 +7,16 @@ export function nativeWebFallback<T>(
         resolve(action());
     });
 }
+
+/** Shared unsupported response; the public native methods keep their own ABI. */
+export function nativeWebUnsupported(
+    plugin: string,
+    method: string
+): Promise<{ ok: boolean; unsupported: boolean }> {
+    return nativeWebFallback(function () {
+        console.warn(
+            "[" + plugin + "] web fallback: " + method + " unsupported"
+        );
+        return { ok: false, unsupported: true };
+    });
+}

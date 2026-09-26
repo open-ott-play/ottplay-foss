@@ -124,6 +124,29 @@ const cookieStorage = storageFixture("missing");
 assert.equal(cookieStorage.get("valid"), "stored");
 assert.equal(cookieStorage.get("malformed"), null);
 
+// ErrorEvent.error can be null (for example for opaque script failures).
+// Reporting that failure must not throw from the error handler itself.
+const reports = [];
+const errorContext = vm.createContext({
+    console: { error() {} },
+    sendClientFeedback(message) {
+        reports.push(message);
+    },
+});
+errorContext.window = errorContext;
+vm.runInContext(compile("src/app/init.ts"), errorContext);
+for (const error of [null, undefined, { stack: "retained stack" }]) {
+    assert.equal(
+        errorContext.onerror({ error, message: "script failure" }),
+        true
+    );
+    assert.equal(
+        reports.pop(),
+        "window_onerror::script failure__<no_url>__??:??__" +
+            (error ? error.stack : "<no_stack>")
+    );
+}
+
 // A native performance.now does not imply Date.now exists in the host engine.
 const dateContext = vm.createContext({
     performance: {

@@ -50,6 +50,36 @@ export interface StorageAdapter {
     setI(key: string, value: number): void;
 }
 
+function createStorageAdapter(
+    get: StorageAdapter["get"],
+    set: StorageAdapter["set"],
+    del: StorageAdapter["del"],
+    clear: StorageAdapter["clear"],
+    dump: StorageAdapter["dump"]
+): StorageAdapter {
+    return {
+        clear,
+        del,
+        dump,
+        get,
+        getI(key: string, defaultValue = 0): number {
+            const value = parseInt(get(key) || "", 10);
+            return isNaN(value) ? defaultValue : value;
+        },
+        has(key: string): boolean {
+            return get(key) !== null;
+        },
+        hasValue(key: string): boolean {
+            return (get(key) || "") !== "";
+        },
+        reset(): void {},
+        set,
+        setI(key: string, value: number): void {
+            set(key, String(value));
+        },
+    };
+}
+
 // -- localStorage implementation ------------------------------------------------
 
 /**
@@ -148,27 +178,7 @@ function createLocalStorageAdapter(): StorageAdapter {
         }
         return fallback.dump();
     };
-    return {
-        clear,
-        del,
-        dump,
-        get,
-        getI(key: string, defaultValue = 0): number {
-            const value = parseInt(get(key) || "", 10);
-            return isNaN(value) ? defaultValue : value;
-        },
-        has(key: string): boolean {
-            return get(key) !== null;
-        },
-        hasValue(key: string): boolean {
-            return (get(key) || "") !== "";
-        },
-        reset(): void {},
-        set,
-        setI(key: string, value: number): void {
-            set(key, String(value));
-        },
-    };
+    return createStorageAdapter(get, set, del, clear, dump);
 }
 
 // -- Cookie implementation ------------------------------------------------------
@@ -240,31 +250,17 @@ function createCookieAdapter(): StorageAdapter {
         }
         return result;
     };
-    return {
-        clear(): void {
+    return createStorageAdapter(
+        get,
+        set,
+        del,
+        function clear(): void {
             const all = dump();
             for (const key in all) del(key);
             cleared = true;
         },
-        del,
-        dump,
-        get,
-        getI(key: string, defaultValue = 0): number {
-            const value = parseInt(get(key) || "", 10);
-            return isNaN(value) ? defaultValue : value;
-        },
-        has(key: string): boolean {
-            return get(key) !== null;
-        },
-        hasValue(key: string): boolean {
-            return (get(key) || "") !== "";
-        },
-        reset(): void {},
-        set,
-        setI(key: string, value: number): void {
-            set(key, String(value));
-        },
-    };
+        dump
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -416,7 +412,8 @@ export function providerHasItem(key: string): boolean {
  * @returns `true` if the key exists AND its value is not `''`.
  */
 export function providerHasItemValue(key: string): boolean {
-    return providerGetItem(key) !== null && providerGetItem(key) !== "";
+    const value = providerGetItem(key);
+    return value !== null && value !== "";
 }
 
 /**

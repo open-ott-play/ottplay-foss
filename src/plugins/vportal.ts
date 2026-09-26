@@ -75,25 +75,30 @@ export function createVPortalClient(
     }
 
     function hideBusy(): void {
-        if (dialogHandler && w.dialogBoxKeyHandler === dialogHandler) {
-            jq("#dialogbox").hide();
-            w.dialogBoxKeyHandler = previousDialogHandler;
-        }
+        var handler = dialogHandler;
+        var previous = previousDialogHandler;
         dialogHandler = null;
         previousDialogHandler = null;
+        if (handler && w.dialogBoxKeyHandler === handler) {
+            w.dialogBoxKeyHandler = previous;
+            jq("#dialogbox").hide();
+        }
     }
 
     function cancel(): void {
-        revision++;
+        var token = ++revision;
         var request = pending;
         pending = null;
         if (request && typeof request.abort === "function") request.abort();
+        if (token !== revision) return;
         hideBusy();
-        if (qualityHandler && w.selectBoxKeyHandler === qualityHandler) {
+        if (token !== revision) return;
+        var picker = qualityHandler;
+        qualityHandler = null;
+        if (picker && w.selectBoxKeyHandler === picker) {
             w.selectBoxKeyHandler = null;
             jq("#numprog").hide();
         }
-        qualityHandler = null;
     }
 
     function showBusy(): void {
@@ -257,8 +262,9 @@ export function createVPortalClient(
     }
 
     function load(target: any, callback: VPortalCompletion): void {
+        var token = revision + 1;
         cancel();
-        var token = revision;
+        if (!isCurrent(token)) return;
         var view = w._mediaLoadState;
         function current(): boolean {
             return (
@@ -403,8 +409,9 @@ export function createVPortalClient(
     }
 
     function play(item: any, resolved?: (item: any) => void): void {
+        var token = revision + 1;
         cancel();
-        if (!item || !isCurrent(revision)) return;
+        if (!item || !isCurrent(token)) return;
         if (
             options.sourceId &&
             (item.request || item.vportalSource) &&
@@ -413,7 +420,6 @@ export function createVPortalClient(
             reportError();
             return;
         }
-        var token = revision;
         var view = w._mediaLoadState;
         function current(): boolean {
             return isCurrent(token) && view === w._mediaLoadState;
@@ -517,8 +523,8 @@ export function createVPortalClient(
     return {
         cancel: cancel,
         dispose: function (): void {
-            cancel();
             disposed = true;
+            cancel();
         },
         load: load,
         play: play,

@@ -254,14 +254,19 @@ async function testRenamedHelpers() {
         assert.equal(imported, reminder);
         assert.equal(reminder.ti, 999, "Legacy input is handed to its owner");
         const recordings = [];
-        c.curList = [7];
-        c.chanels = { 7: { ch_id: "provider-7" } };
-        c.closeList = () => recordings.push("close");
-        c.getMediaArray = (done, id) => {
-            recordings.push([id, typeof done]);
+        c.__ottClassicGuideScreen = {
+            openCategory(index) {
+                recordings.push(index);
+            },
         };
-        c.catRecordsList(0);
-        assert.deepEqual(recordings, ["close", ["provider-7", "function"]]);
+        c.getMediaArray = () => {
+            throw new Error(
+                "Category recordings must not invoke the VOD loader"
+            );
+        };
+        c.catRecordsList(2);
+        c.openSelectedChannelRecordings(1);
+        assert.deepEqual(recordings, [2, 1]);
         for (const [canonical, legacy] of pairs.slice(-2)) {
             const implementation = c[legacy];
             const external = function externalProviderCallback() {};

@@ -290,6 +290,122 @@ assert.equal(
 );
 const sourceId = context.window.__ottSourceIdentity;
 {
+    const document = {
+        groups: [
+            {
+                id: "edited",
+                known: ["__proto__", "removed"],
+                label: "Edited",
+                members: ["constructor", "unresolved:99", "absent"],
+            },
+            {
+                id: "inherited",
+                inheritsMembers: true,
+                known: ["old"],
+                label: "",
+                members: ["old"],
+            },
+            { id: "hidden", label: "Hidden", members: ["constructor"] },
+        ],
+        hidden: ["hidden", "__proto__"],
+        locks: [],
+        nextGroup: 1,
+        preferences: {},
+        selected: null,
+        sourceId: "membership",
+        unlocks: [],
+        version: 1,
+    };
+    const catalog = [
+        [1, "edited", "__proto__"],
+        [2, "edited", "constructor"],
+        [3, "edited", "new"],
+        [4, "edited", "removed"],
+        [99, "edited", "returned"],
+        [5, "inherited", "fresh"],
+        [6, "hidden", "invisible"],
+        [7, "__proto__", "also-invisible"],
+    ].map(([id, groupId, itemId]) => ({
+        groupId,
+        groupLabel: groupId,
+        id,
+        itemId,
+        label: itemId,
+    }));
+    const edited = create(
+        {
+            current: () => true,
+            get: (key) =>
+                key === "channelLibrary:membership"
+                    ? JSON.stringify(document)
+                    : null,
+            set: () => assert.fail("snapshot must not persist"),
+            sourceId: "membership",
+        },
+        catalog
+    );
+    assert.deepEqual(
+        plain(edited.snapshot().groups),
+        [
+            { id: "edited", label: "Edited", members: [2, 99, 3, 99] },
+            { id: "inherited", label: "inherited", members: [5] },
+        ],
+        "membership reconciliation preserves stored order, unresolved aliases, hidden groups and provider additions without reintroducing removed members"
+    );
+    assert.deepEqual(
+        plain(edited.document()).groups[0].members,
+        ["constructor", "unresolved:99", "absent"],
+        "resolving a projection does not replace stored user membership"
+    );
+}
+{
+    const host = vm.createContext({ window: {} });
+    runtime(host, "src/channels/classic-library.ts");
+    let reads = 0;
+    const selection = { groupId: "selected", itemId: "channel:2" };
+    const fakeLibrary = {
+        active: () => true,
+        itemId: (id) => {
+            reads++;
+            return "channel:" + id;
+        },
+        persist: () => true,
+        snapshot: () => ({
+            all: [1, 2, 3],
+            groups: [
+                { id: "selected", label: "Selected", members: [1, 2, 3, 2] },
+            ],
+            locks: [],
+            selected: selection,
+        }),
+    };
+    Object.assign(host.window, {
+        _: (label) => label,
+        __ottChannelLibrary: { create: () => fakeLibrary },
+        __ottSourceIdentity: { current: () => "selected" },
+    });
+    host.window.__ottChannels.mount(host.window);
+    assert.equal(host.window.catIndex, 1);
+    assert.equal(
+        host.window.primaryIndex,
+        1,
+        "the first matching position wins"
+    );
+    assert.equal(
+        reads,
+        2,
+        "selection stops reading item identities once found"
+    );
+    selection.itemId = "channel:missing";
+    host.window.__ottChannels.refresh();
+    assert.equal(
+        host.window.primaryIndex,
+        0,
+        "missing selection uses first position"
+    );
+    assert.equal(reads, 6, "an absent selection visits every member once");
+}
+{
     const saved = new Map();
     const names = ["constructor", "__proto__", "", "10", "2", "constructor"];
     const catalog = names.map((groupId, index) => ({

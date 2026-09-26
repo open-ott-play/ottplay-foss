@@ -3,7 +3,7 @@
   "name": "ottplay-shared-core",
   "version": "0.1.0-dev",
   "source": {
-    "sha256": "d566b1df25e397bd2bca97e0841e3288c4b399586b32b06cf1c6e78c27cddb52",
+    "sha256": "c2bfef572dd6d820989c7ea90fef359d95b844da0d2ebfbe5a355c8d49cbf312",
     "files": {
       "LICENSE": "ec6a17ce723ea8b4c6b08f277ab84750440a8c3e5401aaa9f4e4e9d5fd0fd72c",
       "build.gradle.kts": "e89cc0e4057ab3989c6d4048d6b2ee7b5efb023a7c96c2886d8dd62778e42a73",
@@ -29,7 +29,7 @@
       "src/commonMain/kotlin/play/ott/core/CoreText.kt": "23563e36428144351929739f2ff8c09a33853fc9433aa00b1bf6918ea1f4f3b8",
       "src/commonMain/kotlin/play/ott/core/DurableSelections.kt": "0e1e8f942bd5027596e110d6f37a625ff44ad1fab7e154222bdbe2faaaef8ddb",
       "src/commonMain/kotlin/play/ott/core/GuideCache.kt": "dc9250ff8776cc0ae6bd306609fa9f3f776e40a7dcd28c4b9c0524b651e613a4",
-      "src/commonMain/kotlin/play/ott/core/GuideFeed.kt": "a58fc31b7ada6692a209501cea68058da5fb8e7f2a8956de3bfa9c167593bf81",
+      "src/commonMain/kotlin/play/ott/core/GuideFeed.kt": "513c5a49c378e22fbbd48ad00d2ee33925b01f0b9928cd1996432f533e996f43",
       "src/commonMain/kotlin/play/ott/core/GuideNames.kt": "4fb05f86b86d4ea2b34b8c31697fef307e790c7757c1fa3af7e20178b5f7a390",
       "src/commonMain/kotlin/play/ott/core/GuideSchedule.kt": "f66476d52e5eed2ba6f3de1412ff5c4e5244e530f4af73bc27367ee3a48509f9",
       "src/commonMain/kotlin/play/ott/core/GuideTime.kt": "ad5b3458c584f207f535f1db064e76cbdeeb52f8bb1006cc0c205edfb061008a",
@@ -61,8 +61,8 @@
       "src/commonMain/kotlin/play/ott/core/PlaybackRules.kt": "697dfabda9d0bfd29dd39890587863089634c01db1b73d9fe871ffc93656b8df",
       "src/commonMain/kotlin/play/ott/core/PlaybackSession.kt": "fa01d78abc17c9ec379100e735dfa9705ed325824765299287254eee69dfe3ab",
       "src/commonMain/kotlin/play/ott/core/Playlist.kt": "0364495f3d239cdcecaf5b762eb102598c5b3e6ad8be5592d030e1a5a9826de9",
-      "src/commonMain/kotlin/play/ott/core/ProviderPlaylist.kt": "4cddfcd7040b93fd4ea2ced27eb84a319fe7fc02d545f8915e39df5f5a67c7ed",
-      "src/commonMain/kotlin/play/ott/core/ProviderValue.kt": "a1073cd8689e8244241673335f5f576991d799dffef1572d3c003b54b26c98c5",
+      "src/commonMain/kotlin/play/ott/core/ProviderPlaylist.kt": "1d4acdd0b575efb6116cd21f71fc09dd0ee359c680aa02d219f5de393eeee54d",
+      "src/commonMain/kotlin/play/ott/core/ProviderValue.kt": "7c1d512c2822bfeafbf4c9ac2b2b99ae97a9253b705cd14c5807fb934fb6051a",
       "src/commonMain/kotlin/play/ott/core/StalkerBrowser.kt": "038d7edc23fc0fa5e4e80f9a23eb14cf7b8af65909a1a19c6280b63259abc727",
       "src/commonMain/kotlin/play/ott/core/StalkerCatalog.kt": "7a7f60a1818891090eba4ee63ec754e0832a111ea8fb3f57c44c6a7a1fe14495",
       "src/commonMain/kotlin/play/ott/core/StalkerProtocol.kt": "8a0d4b3e20fc77978695a1a8b86b0aa53fd4e62b08b201b4474730128711eaf8",
@@ -75,7 +75,7 @@
       "src/commonTest/kotlin/play/ott/core/ChannelCatalogTest.kt": "c547505ed6ab2f71e35b4b8a18f3b71b74a1a7ba5b0588ab1e7da02cdfce97ce",
       "src/commonTest/kotlin/play/ott/core/ChannelNavigationTest.kt": "ea36c904622c9d98b0c6e73b766fda1d11600e780858f629a8d23e04a957b91d",
       "src/commonTest/kotlin/play/ott/core/DurableStateTest.kt": "9ea461de3713b257b6d445d49b39ad6f61ebf131b67a235af26da10e087619b5",
-      "src/commonTest/kotlin/play/ott/core/GuideFeedTest.kt": "1261aec4db22bc2e7f7d8a60e0aac89c9f4354eca7f873c178978e34c0752299",
+      "src/commonTest/kotlin/play/ott/core/GuideFeedTest.kt": "5325890a964a0daa5ece7a6cb3c42a00dac1e72288507c72a0ce5f9943510d3e",
       "src/commonTest/kotlin/play/ott/core/GuideTest.kt": "369936429caf00934f15d58d26642d02ca7ef13832a5d70d2b90095e36d90b4f",
       "src/commonTest/kotlin/play/ott/core/GuideTimelineTest.kt": "54aafcd420dfc49cce774a972cc5af4cc3b09466053ccaad135ad1295464fa71",
       "src/commonTest/kotlin/play/ott/core/MediaStateTest.kt": "9a578f9b897f5ae8d22aa59fe7c4381fd109d7d4f5d02e5520b69c1d7e612aa2",
@@ -95,12 +95,12 @@
       "src/commonTest/kotlin/play/ott/core/PlaybackRulesTest.kt": "5699dae4a2c02c7ddff9b78010732f4c0617c5d05a48f41e52514c2d7b256107",
       "src/commonTest/kotlin/play/ott/core/PlaybackSessionTest.kt": "c5a2d5b7ae7baad114c27bc22426d15f4835c55b4f1037b1a453684c58bb7c6f",
       "src/commonTest/kotlin/play/ott/core/PlaylistTest.kt": "400790a75ef758a0c526548a044d66ea3f6c0c0fa326bbe8bc2743d911341d0f",
-      "src/commonTest/kotlin/play/ott/core/ProviderPlaylistScanningTest.kt": "d454cf94d717ff033babe482128665856718cb377bd03ad84f4c8dd5082717a8",
+      "src/commonTest/kotlin/play/ott/core/ProviderPlaylistScanningTest.kt": "50acf68c474673830540874d5a6d78eff4cdb08a3b9c10751df2b67d6fda76df",
       "src/commonTest/kotlin/play/ott/core/StalkerTest.kt": "3b9c2abe5ce722bb3781469617fb460ac2f53471ecab880526d78354c916e4a9",
       "src/commonTest/kotlin/play/ott/core/StreamingGuideTest.kt": "9e73c3a373a7c1f1d64037caf0147064ae21caf88edbbf9913833fdde9c98a8b",
       "src/commonTest/kotlin/play/ott/core/XmltvRecordsTest.kt": "5858fe4a8cc196045bfa5fa583f6ba3869a7a51e7dcef60fc26614947e01c7a6",
       "src/commonTest/kotlin/play/ott/core/XmltvWebRecordsTest.kt": "3f1043cccf43af541c87e5588794d1a3eac5192e7632b173fd68436d1ba75178",
-      "src/commonTest/kotlin/play/ott/core/XtreamTest.kt": "f0c51171a2479fcd1ed385a90beed0dd0d61ea5c54d8d2906c35f792913a9694",
+      "src/commonTest/kotlin/play/ott/core/XtreamTest.kt": "d5c7c77c86d07ab472fcfbaae243d802bcbaa5c4ae8ca6f5adba9d4f5a840f46",
       "src/jsMain/kotlin/BrowserDurableStateExports.kt": "7a89a1a48bbedb25aa2d1fb4fe6baf1273015a78e25e96ab440302b1ebef5665",
       "src/jsMain/kotlin/BrowserGuideRefreshExports.kt": "d22e397fe35d78be8a8872117d07b2fe4416f55e6d0fcc9983412ab236485e59",
       "src/jsMain/kotlin/ChannelCatalogExports.kt": "6acd221db35b385e2cf1d56426ddcac60d3525d0b62968265ea3510f53322350",
@@ -134,16 +134,16 @@
   },
   "artifacts": {
     "ottplay-core.js": {
-      "sha256": "fb299f813534735d1f1348097f9d4652dc76efdfb594d0f7879f7ae3f64dc5b2",
-      "bytes": 526925
+      "sha256": "75bc745a57ca17545032c13c654d4fed5d75f83ca3d2c67f08fc93893b4b9388",
+      "bytes": 526297
     },
     "ottplay-core.d.ts": {
       "sha256": "795b29b4b8b59cb633a37f4dc1cd6bf8f6680ab3dda49848b9883d4e93129cdd",
       "bytes": 27746
     },
     "ottplay-core.jar": {
-      "sha256": "8b1afbfc5c1a4500cde3f7e4586307425689758b4fab73ce94e4e629c673e037",
-      "bytes": 636090
+      "sha256": "3086679ce8ddad4dacd5166c152adea9203f23e9961266fa9affc630de522bb6",
+      "bytes": 634810
     },
     "ottplay-core.LICENSE.txt": {
       "sha256": "1e72da3623b91daad1013e577c3611ad6ed314da508b757abe9a1b27a88a14cc",

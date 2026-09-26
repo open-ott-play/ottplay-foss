@@ -284,9 +284,10 @@ function createGuideService(ports: GuideServicePorts) {
                         ) {
                             consumer.active = false;
                             try {
-                                consumer.notify(
-                                    rows.length ? clone(rows) : null
-                                );
+                                if (!consumer.subscription)
+                                    consumer.notify(
+                                        rows.length ? clone(rows) : null
+                                    );
                             } catch (_) {}
                         }
                     });
@@ -331,7 +332,11 @@ function createGuideService(ports: GuideServicePorts) {
         if (cached) {
             var expected = generation;
             project(reference, cached);
-            if (generation === expected && active(reference))
+            if (
+                !consumer.subscription &&
+                generation === expected &&
+                active(reference)
+            )
                 notify(clone(cached));
             consumer.active = false;
             return function () {};

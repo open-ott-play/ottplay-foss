@@ -160,6 +160,7 @@ async function checkFallbacks(capacitor) {
     let methods = 0;
     for (const [pluginName, specs] of Object.entries(contracts)) {
         const plugin = plugins[pluginName];
+        assert.equal(plugin.constructor.name, pluginName + "Web");
         assert.deepEqual(
             Object.getOwnPropertyNames(Object.getPrototypeOf(plugin))
                 .filter((name) => name !== "constructor")
@@ -169,6 +170,11 @@ async function checkFallbacks(capacitor) {
         for (const [name, arity, warning, expected, error] of specs) {
             methods++;
             assert.equal(plugin[name].length, arity, pluginName + "." + name);
+            assert.equal(
+                plugin[name].name,
+                "",
+                "ES5 method name: " + pluginName + "." + name
+            );
             warnings.length = 0;
             const promise = invoke(plugin, name, options);
             assert.deepEqual(

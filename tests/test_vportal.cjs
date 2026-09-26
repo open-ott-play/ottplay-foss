@@ -43,7 +43,7 @@ vm.runInNewContext(
 );
 const link = "portal::[key:fixture-private-key]http://portal.example/api/v1/";
 
-function fixture(overrides = {}, options = {}) {
+function fixture(overrides = {}, options = {}, hooks = {}) {
     const requests = [],
         alerts = [],
         played = [],
@@ -94,6 +94,7 @@ function fixture(overrides = {}, options = {}) {
         return {
             hide() {
                 dom[selector].visible = false;
+                if (hooks.hide) hooks.hide(selector);
                 return this;
             },
             html(text) {
@@ -459,6 +460,103 @@ for (const query of [
         "Old portal source requests are never sent with a new key"
     );
     assert.equal(f.alerts.length, 3);
+}
+
+for (const action of ["load", "play", "resolve", "cancel"]) {
+    const previous = () => {},
+        f = fixture({ dialogBoxKeyHandler: previous });
+    let oldCalls = 0,
+        middleCalls = 0,
+        newestCalls = 0,
+        newestHandler;
+    f.client.load("", () => oldCalls++);
+    const old = f.requests[0],
+        abort = old.abort;
+    old.abort = function () {
+        abort.call(this);
+        f.client.load("search?q=newest", () => newestCalls++);
+        newestHandler = f.w.dialogBoxKeyHandler;
+    };
+    if (action === "load")
+        f.client.load("search?q=middle", () => middleCalls++);
+    else if (action === "cancel") f.client.cancel();
+    else
+        f.client[action](
+            { request: { cmd: "play" }, title: "Retired" },
+            () => middleCalls++
+        );
+    assert.equal(f.requests.length, 2, action + " must yield to abort reentry");
+    assert.strictEqual(f.w.dialogBoxKeyHandler, newestHandler);
+    assert.equal(f.dom["#dialogbox"].visible, true);
+    f.requests[1].receive({ items: [], type: "category" });
+    old.receive({ items: [], type: "category" });
+    assert.equal(newestCalls, 1);
+    assert.equal(oldCalls, 0);
+    assert.equal(middleCalls, 0);
+    assert.equal(f.played.length, 0);
+    assert.strictEqual(f.w.dialogBoxKeyHandler, previous);
+}
+
+for (const trigger of ["#dialogbox", "#numprog"]) {
+    let armed = false,
+        newestCalls = 0,
+        middleCalls = 0;
+    const f = fixture(
+        {},
+        {},
+        {
+            hide(selector) {
+                if (!armed || selector !== trigger) return;
+                armed = false;
+                f.client.load("search?q=newest", () => newestCalls++);
+            },
+        }
+    );
+    if (trigger === "#numprog") {
+        f.client.play({ request: { cmd: "play" }, title: "Quality" });
+        f.requests[0].receive({
+            url: "https://cdn.example/low.mp4",
+            variants: {
+                high: "https://cdn.example/high.mp4",
+                low: "https://cdn.example/low.mp4",
+            },
+        });
+    } else f.client.load("", () => {});
+    armed = true;
+    f.client.load("search?q=middle", () => middleCalls++);
+    assert.equal(
+        f.requests.length,
+        2,
+        "DOM cleanup reentry owns the next request"
+    );
+    assert.equal(f.dom["#dialogbox"].visible, true);
+    f.requests[1].receive({ items: [], type: "category" });
+    assert.equal(newestCalls, 1);
+    assert.equal(middleCalls, 0);
+}
+
+{
+    const previous = () => {},
+        f = fixture({ dialogBoxKeyHandler: previous });
+    f.client.load("", () => assert.fail("Disposed load completed"));
+    const old = f.requests[0],
+        abort = old.abort;
+    old.abort = function () {
+        abort.call(this);
+        f.client.load("search?q=newest", () => assert.fail("Revived load"));
+        f.client.play({ request: { cmd: "play" }, title: "Revived play" });
+    };
+    f.client.dispose();
+    assert.equal(f.requests.length, 1, "Abort cannot revive a disposed client");
+    assert.strictEqual(f.w.dialogBoxKeyHandler, previous);
+    assert.equal(f.dom["#dialogbox"].visible, false);
+    old.receive({ items: [], type: "category" });
+    const foreign = () => {};
+    f.w.dialogBoxKeyHandler = foreign;
+    f.w.selectBoxKeyHandler = foreign;
+    f.client.cancel();
+    assert.strictEqual(f.w.dialogBoxKeyHandler, foreign);
+    assert.strictEqual(f.w.selectBoxKeyHandler, foreign);
 }
 
 console.log(
