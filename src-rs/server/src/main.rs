@@ -1,4 +1,5 @@
 mod debug_api;
+mod stalker_api;
 mod vportal_api;
 
 use anyhow::{bail, Context};
@@ -262,6 +263,7 @@ async fn main() -> anyhow::Result<()> {
         .merge(disabled_command_routes())
         .merge(debug_api::routes())
         .merge(vportal_api::routes())
+        .merge(stalker_api::routes())
         .merge(device_entry_routes())
         .nest_service("/dist", ServeDir::new("dist"))
         .nest_service("/stbPlayer", ServeDir::new("stbPlayer"))

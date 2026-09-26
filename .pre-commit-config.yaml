@@ -11,12 +11,12 @@ repos:
     hooks:
       - id: end-of-file-fixer
         # vendored / generated trees stay untouched
-        # Preserve these published crate bytes; check-glib-backport verifies them.
+        # Preserve published crate bytes; the GLib/macOS backport checks verify them.
         # MPEG-TS fixtures are binary transport streams despite their .ts suffix.
-        exclude: '^(js|stb|stbPlayer|prov|fonts)/|^tests/fixtures/media-runtime/.*\.ts$|^vendor/glib-0\.18\.5/(LICENSE|\.cargo_vcs_info\.json)$'
+        exclude: '^(js|stb|stbPlayer|prov|fonts)/|^tests/fixtures/media-runtime/.*\.ts$|^vendor/glib-0\.18\.5/(LICENSE|\.cargo_vcs_info\.json)$|^vendor/(tao-0\.35\.3|wry-0\.55\.1)/'
       - id: trailing-whitespace
         # A unified patch uses a single space for an empty context line.
-        exclude: '^(js|stb|stbPlayer|prov|fonts)/|^tests/fixtures/media-runtime/.*\.ts$|^vendor/glib-0\.18\.5-RUSTSEC-2024-0429\.patch$'
+        exclude: '^(js|stb|stbPlayer|prov|fonts)/|^tests/fixtures/media-runtime/.*\.ts$|^vendor/(tao-0\.35\.3|wry-0\.55\.1)/|^vendor/(glib-0\.18\.5-RUSTSEC-2024-0429|tao-0\.35\.3-macos-drag-pasteboard|wry-0\.55\.1-macos-drag-pasteboard)\.patch$'
       - id: check-yaml
 
   - repo: https://github.com/jumanjihouse/pre-commit-hooks

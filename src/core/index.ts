@@ -2521,6 +2521,15 @@ export function getCoreMediaBackend(): any {
                 });
         },
         open: openCoreEngineLease,
+        resolve: function (url: string, done: (url: string | null) => void) {
+            var driver = (window as any).__ottActiveProviderDriver;
+            if (url.indexOf("ottplay-stalker:") === 0) {
+                if (driver && driver.resolveStream)
+                    return driver.resolveStream(url, done);
+                done(null);
+            } else done(url);
+            return function () {};
+        },
         setInterval: function (callback: () => void, delay: number) {
             return setInterval(callback, delay);
         },

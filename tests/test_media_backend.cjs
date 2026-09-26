@@ -454,6 +454,68 @@ test("actual legacy device wiring preserves Window timer receivers and disposes 
         "managed playback needs no legacy timer"
     );
 });
+test("async provider links belong to each lane and cannot start after stop, replacement or source change", () => {
+    const f = fixture();
+    const pending = [];
+    f.ports.resolve = (url, done) => {
+        const row = { cancelled: 0, done, url };
+        pending.push(row);
+        return () => {
+            row.cancelled++;
+        };
+    };
+    f.backend.open({ url: "old" });
+    f.backend.open({ url: "current" });
+    assert.equal(pending[0].cancelled, 1);
+    pending[0].done("https://stale.test/live");
+    assert.equal(f.leases.length, 0);
+    f.backend.open({ lane: "pip", url: "pip" });
+    pending[1].done("https://media.test/main");
+    pending[1].done("https://media.test/duplicate");
+    assert.equal(f.leases.length, 1);
+    assert.equal(f.leases[0].request.url, "https://media.test/main");
+    f.backend.stop("pip");
+    pending[2].done("https://media.test/pip");
+    assert.equal(f.leases.length, 1);
+    assert.equal(pending[2].cancelled, 1);
+    f.backend.open({ url: "different-source" });
+    f.domain({ generation: 2, kind: "live", position: 0 });
+    pending[3].done("https://stale.test/source");
+    assert.equal(f.leases.length, 1);
+});
+
+test("synchronous link resolution, failures and resolver reentry release the correct lease", () => {
+    const f = fixture();
+    let cancelled = 0;
+    f.ports.resolve = (url, done) => {
+        done(url === "fail" ? null : url);
+        return () => cancelled++;
+    };
+    const failed = f.backend.open({ url: "fail" });
+    assert.equal(f.leases.length, 0);
+    assert.equal(failed.active(), false);
+    assert.equal(cancelled, 1);
+    f.backend.open({ url: "ready" });
+    assert.equal(f.leases[0].request.url, "ready");
+    f.backend.stop();
+    assert.equal(cancelled, 2);
+    f.ports.resolve = (url, done) => {
+        if (url === "replace") f.backend.open({ url: "new" });
+        done(url);
+        return () => cancelled++;
+    };
+    f.backend.open({ url: "replace" });
+    assert.equal(f.leases.length, 2);
+    assert.equal(f.leases[1].request.url, "new");
+    assert.equal(cancelled, 3);
+    f.ports.resolve = () => {
+        throw new Error("resolver failed");
+    };
+    assert.throws(() => f.backend.open({ url: "throw" }), /resolver failed/);
+    assert.equal(f.backend.current(), null);
+    assert.equal(f.leases[1].disposed, 1);
+});
+
 console.log(
     "PASS media backend: " + passed + " ES5 lease/observer/device scenarios"
 );

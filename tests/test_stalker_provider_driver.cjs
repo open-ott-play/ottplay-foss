@@ -559,4 +559,177 @@ test("teardown reentry keeps the newer managed source selection authoritative", 
     }
 });
 
+function classicFixture(
+    url = "https://portal.test/stalker_portal/c/",
+    options = {}
+) {
+    const f = fixture({ config: { mac: "02:00:00:00:00:01", portal: url } });
+    if (options.native) f.ports.m3u = { native: () => true };
+    f.driver.load((catalog, error) => {
+        f.catalog = catalog;
+        f.error = error;
+    });
+    f.respond = (value) => f.requests.at(-1).done({ js: value });
+    f.request = () =>
+        options.native
+            ? f.requests.at(-1).settings
+            : JSON.parse(f.requests.at(-1).settings.data);
+    f.action = () => new URL(f.request().url).searchParams.get("action");
+    f.authorize = () => {
+        assert.equal(f.action(), "handshake");
+        f.respond({ token: "demo-token" });
+        assert.equal(f.action(), "get_profile");
+        assert.equal(f.request().headers.Authorization, "Bearer demo-token");
+        assert.match(
+            f.request().headers.Cookie,
+            /mac=02%3A00%3A00%3A00%3A00%3A01/
+        );
+        f.respond({ blocked: "0", id: "1", status: "0" });
+        assert.equal(f.action(), "get_genres");
+        f.respond([{ id: "1", title: "News" }]);
+        assert.equal(f.action(), "get_ordered_list");
+    };
+    f.channel = (id, temporary = true) => ({
+        cmd: temporary
+            ? "ffmpeg http://localhost/ch/" + id
+            : "https://media.test/" + id + ".m3u8",
+        id: String(id),
+        logo: "/logo.png",
+        name: "Channel " + id,
+        tv_genre_id: "1",
+        use_http_tmp_link: temporary ? 1 : 0,
+    });
+    f.finish = (rows = [f.channel(42)]) =>
+        f.respond({ data: rows, total_items: rows.length });
+    return f;
+}
+
+test("classic URL forms use the shared MAG protocol through browser or native transport", () => {
+    for (const url of [
+        "https://portal.test/c/",
+        "https://portal.test/stalker_portal/c/index.html",
+        "https://portal.test/stalker_portal",
+        "https://portal.test/stalker_portal/server/load.php",
+        "https://portal.test/portal.php",
+    ]) {
+        for (const native of [false, true]) {
+            const f = classicFixture(url, { native });
+            f.authorize();
+            f.finish();
+            assert.equal(f.error, undefined);
+            assert.equal(f.catalog.channels[42].channel_name, "Channel 42");
+            assert.equal(f.catalog.channels[42].category.name, "News");
+            assert.equal(
+                f.catalog.channels[42].logo,
+                "https://portal.test/logo.png"
+            );
+            assert.equal(f.driver.logo(42), "https://portal.test/logo.png");
+            assert.match(f.driver.stream(42), /^ottplay-stalker:/);
+            assert.equal(f.driver.archive(42, 1, 2), "");
+            if (!native)
+                assert(
+                    f.requests.every((r) => r.settings.url === "/stalker/api")
+                );
+        }
+    }
+});
+
+test("classic catalog pages, temporary links and EPG are projected without leaking session credentials", () => {
+    const f = classicFixture();
+    f.authorize();
+    f.respond({ data: [f.channel(42)], total_items: 2 });
+    assert.equal(new URL(f.request().url).searchParams.get("p"), "2");
+    f.respond({ data: [f.channel(43)], total_items: 2 });
+    assert.deepEqual(clone(f.catalog.ids), [42, 43]);
+    const ref = f.driver.stream(42);
+    assert(!ref.includes("demo-token"));
+    assert(!ref.includes("02:00"));
+    let result;
+    f.driver.resolveStream(ref, (value) => (result = value));
+    assert.equal(f.action(), "create_link");
+    assert.equal(
+        new URL(f.request().url).searchParams.get("cmd"),
+        "ffmpeg http://localhost/ch/42"
+    );
+    f.respond({ cmd: "ffmpeg https://media.test/signed.m3u8" });
+    assert.equal(result, "https://media.test/signed.m3u8");
+    let guide;
+    f.driver.guide(42, (value) => (guide = value));
+    assert.equal(f.action(), "get_short_epg");
+    f.respond([
+        {
+            name: "Bulletin",
+            start_timestamp: "1700000000",
+            stop_timestamp: "1700003600",
+        },
+    ]);
+    assert.equal(guide.length, 1);
+    assert.equal(guide[0].time, 1700000000);
+});
+
+test("classic direct links skip create_link, cancelled and replaced sessions cannot publish", () => {
+    const f = classicFixture();
+    f.authorize();
+    f.finish([f.channel(42, false), f.channel(43)]);
+    const before = f.requests.length;
+    let result;
+    f.driver.resolveStream(f.driver.stream(42), (value) => (result = value));
+    assert.equal(result, "https://media.test/42.m3u8");
+    assert.equal(f.requests.length, before);
+    result = undefined;
+    const cancel = f.driver.resolveStream(
+        f.driver.stream(43),
+        (value) => (result = value)
+    );
+    const pending = f.requests.at(-1);
+    cancel();
+    pending.done({ js: { cmd: "https://media.test/stale" } });
+    assert.equal(pending.aborts, 1);
+    assert.equal(result, undefined);
+    f.driver.resolveStream(f.driver.stream(43), (value) => (result = value));
+    const old = f.requests.at(-1);
+    f.driver.saveCredentials({
+        password: "",
+        server: "https://other.test/c/",
+        username: "02:00:00:00:00:02",
+    });
+    old.done({ js: { cmd: "https://media.test/stale" } });
+    assert.equal(old.aborts, 1);
+    assert.equal(result, undefined);
+});
+
+test("classic rejects blocked profiles, repeated pages and link failures", () => {
+    const blocked = classicFixture();
+    blocked.respond({ token: "t" });
+    blocked.respond({ id: "1", status: "1" });
+    assert.equal(blocked.error, "stalker-connect");
+    assert.equal(blocked.requests.length, 2);
+    const repeated = classicFixture();
+    repeated.authorize();
+    repeated.respond({ data: [repeated.channel(42)], total_items: 100 });
+    repeated.respond({ data: [repeated.channel(42)], total_items: 100 });
+    assert.equal(repeated.error, "stalker-connect");
+    const f = classicFixture();
+    f.authorize();
+    f.finish();
+    let result;
+    f.driver.resolveStream(f.driver.stream(42), (value) => (result = value));
+    f.respond({ error: "link_fault" });
+    assert.equal(result, null);
+});
+
+test("classic renews an expired token once for playback, never retries denied profiles", () => {
+    const f = classicFixture();
+    f.authorize();
+    f.finish();
+    let result;
+    f.driver.resolveStream(f.driver.stream(42), (value) => (result = value));
+    f.requests.at(-1).fail({ status: 401 });
+    f.authorize();
+    f.finish();
+    assert.equal(f.action(), "create_link");
+    f.requests.at(-1).fail({ status: 403 });
+    assert.equal(result, null);
+});
+
 console.log("PASS " + groups + " Stalker driver scenario groups");

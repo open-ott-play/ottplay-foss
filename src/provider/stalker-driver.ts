@@ -1,4 +1,340 @@
-/** Instance lifecycle for the MAC JSON-RPC dialect. Protocol policy lives in core. */
+/** Instance lifecycles for classic MAG and the retained MAC JSON-RPC dialect. */
+function classicStalkerUrl(url: string): string {
+    var clean = url.split(/[?#]/)[0].replace(/\/+$/, "");
+    if (/\/stalker_portal$/i.test(clean)) return clean + "/c/";
+    return /\/(?:c(?:\/index\.html)?|(?:server\/)?load\.php|portal\.php)$/i.test(
+        clean
+    )
+        ? clean
+        : "";
+}
+
+var classicStalkerSequence = 0;
+
+/** HTTP/JSON and classic-view codecs; handshake, paging and link policy stay in core. */
+function createClassicStalkerDriver(
+    ports: ProviderDriverPorts,
+    owner: DriverLifetime,
+    helpers: StalkerDriverHelpers,
+    credentials: ProviderCredentials
+): ProviderDriver {
+    var alive = true;
+    var lifetime = ports.createLifetime();
+    var scope = lifetime.activate("classic-stalker");
+    var prefix = "ottplay-stalker:" + ++classicStalkerSequence + ":";
+    var catalog = helpers.emptyCatalog();
+    var nodes: Record<string, any> = Object.create(null);
+    var rawRows: Record<string, any> = Object.create(null);
+    var headers: Record<string, string> = {};
+    var config: any = {
+        id: "classic-stalker",
+        language: "en",
+        mac: credentials.username,
+        profile: { stb_type: "MAG250" },
+        timezone: "Etc/UTC",
+        url: classicStalkerUrl(credentials.server),
+    };
+    var location = ports.core.stalkerConfig(config);
+    Object.keys(location).forEach(function (key) {
+        config[key] = location[key];
+    });
+    function active() {
+        if (!alive || !owner.active() || !scope.active()) return false;
+        try {
+            var saved = JSON.parse(ports.storage.get("stalker_data") || "null");
+            return (
+                saved &&
+                saved.portal === credentials.server &&
+                saved.mac === credentials.username
+            );
+        } catch (_) {
+            return false;
+        }
+    }
+    var transport = helpers.transport(ports, owner, active);
+    function absolute(value: string): string {
+        if (!value) return "";
+        try {
+            var url = new URL(value, config.referer);
+            return /^https?:$/.test(url.protocol) &&
+                !url.username &&
+                !url.password
+                ? url.href
+                : "";
+        } catch (_) {
+            return "";
+        }
+    }
+    var client = config.failure
+        ? null
+        : new ports.core.StalkerClient(
+              config,
+              1,
+              encodeURIComponent,
+              absolute,
+              absolute
+          );
+    function send(
+        request: any,
+        current: DriverLifetime,
+        done: (data: any) => void,
+        fail: (...args: any[]) => void
+    ) {
+        var native = ports.m3u && ports.m3u.native();
+        transport.send(
+            current,
+            native
+                ? {
+                      dataType: "json",
+                      headers: request.headers,
+                      timeout: 15000,
+                      type: "GET",
+                      url: request.url,
+                  }
+                : {
+                      contentType: "application/json",
+                      data: JSON.stringify({
+                          headers: request.headers,
+                          url: request.url,
+                      }),
+                      dataType: "json",
+                      timeout: 20000,
+                      type: "POST",
+                      url:
+                          (ports.relay || "").replace(/\/+$/, "") +
+                          "/stalker/api",
+                  },
+            done,
+            fail
+        );
+    }
+    function run(
+        operation: any,
+        current: DriverLifetime,
+        done: (result: any) => void,
+        fail: (auth?: boolean) => void
+    ) {
+        if (!active() || !current.active()) return;
+        if (!operation || operation.failure) {
+            fail();
+            return;
+        }
+        var request = operation.request();
+        if (!request) {
+            done(operation.result());
+            return;
+        }
+        headers = request.headers;
+        send(
+            request,
+            current,
+            function (data) {
+                var response = data && data.js;
+                if (response && Array.isArray(response.data))
+                    response.data.forEach(function (row: any) {
+                        if (row && row.id != null)
+                            rawRows[String(row.id)] = row;
+                    });
+                var error = operation.accept(data);
+                if (error) {
+                    fail(!!(response && response.not_valid_token));
+                    return;
+                }
+                run(operation, current, done, fail);
+            },
+            function (xhr: any) {
+                fail(!!xhr && (xhr.status === 401 || xhr.status === 403));
+            }
+        );
+    }
+    function build(result: any) {
+        var rows: any[] = [];
+        nodes = Object.create(null);
+        result.channels.forEach(function (item: any) {
+            if (item.kind !== "live") return;
+            var id = decodeURIComponent(
+                item.id.slice(item.id.lastIndexOf(":") + 1)
+            );
+            var raw = rawRows[id] || {};
+            var reference = prefix + encodeURIComponent(item.id);
+            nodes[reference] = { id: id, item: item, raw: raw };
+            rows.push({
+                genre: item.group,
+                id: id,
+                logo: absolute(raw.logo || item.logo),
+                name: raw.name || item.name,
+                url: reference,
+            });
+        });
+        // Project through the existing shared catalog identity codec.
+        var projection = new ports.core.LegacyStalkerClient(
+            credentials.server,
+            credentials.username
+        );
+        projection.accept({ result: {} });
+        projection.accept({ result: rows });
+        catalog = ports.channelCatalog!(
+            projection.channelCatalog(),
+            ports.hash,
+            "stalker"
+        );
+    }
+    function dispose() {
+        alive = false;
+        lifetime.dispose();
+        transport.dispose();
+        nodes = Object.create(null);
+        rawRows = Object.create(null);
+        headers = {};
+        catalog = helpers.emptyCatalog();
+    }
+    owner.own(dispose);
+    return {
+        archive: function () {
+            return "";
+        },
+        capabilities: {
+            archive: false,
+            guide: true,
+            media: false,
+            settings: true,
+        },
+        credentials: function () {
+            return credentials;
+        },
+        dispose: dispose,
+        guide: function (id, done) {
+            var row = active() && catalog.channels[id];
+            var node = row && nodes[row.url];
+            if (!node) {
+                done(null);
+                return;
+            }
+            send(
+                {
+                    headers: headers,
+                    url:
+                        config.endpoint +
+                        "?type=itv&action=get_short_epg&ch_id=" +
+                        encodeURIComponent(node.id) +
+                        "&size=100&JsHttpRequest=1-xml",
+                },
+                scope,
+                function (data) {
+                    var entries = data && data.js;
+                    if (!Array.isArray(entries)) {
+                        done(null);
+                        return;
+                    }
+                    var adapted = entries.map(function (entry: any) {
+                        return {
+                            descr: entry.descr,
+                            end_timestamp:
+                                entry.stop_timestamp || entry.end_timestamp,
+                            name: entry.name,
+                            start_timestamp: entry.start_timestamp,
+                        };
+                    });
+                    done(
+                        new ports.core.LegacyStalkerClient("", "").guide({
+                            result: adapted,
+                        })
+                    );
+                },
+                function () {
+                    done(null);
+                }
+            );
+        },
+        id: "stalker",
+        load: function (done) {
+            if (!client) {
+                done(null, "credentials");
+                return;
+            }
+            ports.progress("Connecting to Stalker portal...");
+            run(
+                client.load(),
+                scope,
+                function (result) {
+                    build(result);
+                    done(helpers.snapshot(catalog));
+                },
+                function () {
+                    done(helpers.emptyCatalog(), "stalker-connect");
+                }
+            );
+        },
+        logo: function (id) {
+            return active() && catalog.channels[id]
+                ? catalog.channels[id].logo
+                : "";
+        },
+        resolveStream: function (url, done) {
+            var requestLife = ports.createLifetime();
+            var requestScope = requestLife.activate("link");
+            var node = active() && nodes[url];
+            if (!node) {
+                done(url.indexOf("ottplay-stalker:") === 0 ? null : url);
+                return function () {};
+            }
+            // A direct command explicitly marked non-temporary needs no create_link.
+            var raw = node.raw;
+            var direct = String(raw.cmd || "").replace(
+                /^(?:ffmpeg|ffrt)\s+/i,
+                ""
+            );
+            if (
+                raw.use_http_tmp_link != null &&
+                Number(raw.use_http_tmp_link) === 0 &&
+                !Number(raw.wowza_tmp_link) &&
+                !Number(raw.use_load_balancing) &&
+                !Number(raw.nginx_secure_link) &&
+                /^https?:\/\//i.test(direct) &&
+                !/^https?:\/\/(?:localhost|127\.|\[::1\])/i.test(direct)
+            ) {
+                done(absolute(direct));
+            } else {
+                var retried = false;
+                function resolve() {
+                    run(
+                        client.playback(node.item),
+                        requestScope,
+                        function (result) {
+                            done(result.url || null);
+                        },
+                        function (auth) {
+                            if (!auth || retried) {
+                                done(null);
+                                return;
+                            }
+                            retried = true;
+                            run(
+                                client.load(),
+                                requestScope,
+                                resolve,
+                                function () {
+                                    done(null);
+                                }
+                            );
+                        }
+                    );
+                }
+                resolve();
+            }
+            return function () {
+                requestLife.dispose();
+            };
+        },
+        saveCredentials: function () {},
+        stream: function (id) {
+            return active() && catalog.channels[id]
+                ? catalog.channels[id].url
+                : "";
+        },
+    };
+}
+
 interface StalkerDriverHelpers {
     emptyCatalog(): DriverCatalog;
     snapshot(catalog: DriverCatalog): DriverCatalog;
@@ -27,6 +363,12 @@ function createStalkerProviderDriver(
     var catalogs = ports.createLifetime();
     var catalog = helpers.emptyCatalog();
     var loaded: ProviderCredentials | null = null;
+    var classic: ProviderDriver | null = null;
+    function retireClassic() {
+        var previous = classic;
+        classic = null;
+        if (previous) previous.dispose();
+    }
     function active(): boolean {
         return !disposed && owner.active();
     }
@@ -87,6 +429,7 @@ function createStalkerProviderDriver(
     }
     var driver: ProviderDriver = {
         archive: function (id, start, end) {
+            if (classic) return classic.archive(id, start, end);
             var channel = row(id);
             return channel
                 ? ports.core.providerArchiveUrl(
@@ -112,6 +455,7 @@ function createStalkerProviderDriver(
         dispose: function () {
             if (disposed) return;
             disposed = true;
+            retireClassic();
             revision++;
             catalogs.dispose();
             transport.dispose();
@@ -119,6 +463,7 @@ function createStalkerProviderDriver(
             catalog = helpers.emptyCatalog();
         },
         guide: function (id, callback) {
+            if (classic) return classic.guide(id, callback);
             if (!active()) return;
             var channel = row(id);
             var scope = catalogs.current();
@@ -143,6 +488,7 @@ function createStalkerProviderDriver(
         load: function (callback) {
             if (!active()) return;
             var operation = ++revision;
+            retireClassic();
             var scope = catalogs.activate("catalog");
             if (!active() || !scope.active() || operation !== revision) return;
             loaded = null;
@@ -155,6 +501,16 @@ function createStalkerProviderDriver(
             if (!active() || !scope.active() || operation !== revision) return;
             if (!valid) {
                 callback(null, "credentials");
+                return;
+            }
+            if (classicStalkerUrl(config.server)) {
+                classic = createClassicStalkerDriver(
+                    ports,
+                    scope,
+                    helpers,
+                    config
+                );
+                classic.load(callback);
                 return;
             }
             var source = client(config);
@@ -199,10 +555,17 @@ function createStalkerProviderDriver(
             advance();
         },
         logo: function (id) {
+            if (classic) return classic.logo(id);
             var channel = row(id);
             return channel ? channel.logo || "" : "";
         },
+        resolveStream: function (url, callback) {
+            if (classic) return classic.resolveStream!(url, callback);
+            callback(url.indexOf("ottplay-stalker:") === 0 ? null : url);
+            return function () {};
+        },
         saveCredentials: function (value) {
+            retireClassic();
             if (!active()) return;
             var operation = ++revision;
             catalogs.dispose();
@@ -220,6 +583,7 @@ function createStalkerProviderDriver(
             );
         },
         stream: function (id) {
+            if (classic) return classic.stream(id);
             var channel = row(id);
             return channel ? channel.url || "" : "";
         },
@@ -258,7 +622,7 @@ function mountStalkerProviderSettings(
         var titles = ["Portal URL", "MAC address"];
         var prompts = ["Enter Stalker portal URL", "Enter MAC address"];
         var details = [
-            "Enter Stalker portal URL (e.g. http://your-portal:8800)",
+            "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)",
             "Enter MAC address (e.g. 00:1A:2B:3C:4D:5E)",
             "",
             "Save settings and load channel list",

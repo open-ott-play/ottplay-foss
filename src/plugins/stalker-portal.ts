@@ -11,11 +11,8 @@ import { nativeWebFallback } from "./web-fallback";
  *   `<portal>/stalker_portal/api/` (and `/stalker_portal/stream/` text).
  * - Dealer/cloud entry (`edit_dealer_remote`, cloud settings) POST
  *   form-urlencoded bodies to `host_ott/swop/a.php`.
- * - Mag path-shaped URLs (`/load.php`, `/c/portal`) are **allowlisted** so
- *   Mode B can proxy Cookie / Authorization (and other safe headers) without
- *   CORS. FOSS does **not** ship a Mag JsHttpRequest / get_profile client —
- *   classic Mag handshake/channel-list still requires proprietary Mag
- *   middleware (or a portal that speaks FOSS JSON-RPC).
+ * - Classic MAG requests from the managed Stalker provider forward Cookie /
+ *   Authorization through the same native transport, including portal.php.
  *
  * Native apps have no companion HTTP server and WebView CORS blocks those
  * origins. This module:
@@ -100,11 +97,14 @@ function isHostOttSwopUrl(url: string): boolean {
 }
 
 /**
- * Classic Mag / Ministra path shapes. FOSS provider never calls these;
- * allowlisted so Mode B can proxy Mag-speaking callers with headers/cookies.
+ * Classic MAG / Ministra requests from the shared-core provider client.
  */
 function isMagLoadPhpUrl(url: string): boolean {
-    return url.indexOf("/load.php") !== -1 || url.indexOf("/c/portal") !== -1;
+    return (
+        url.indexOf("/load.php") !== -1 ||
+        url.indexOf("/portal.php") !== -1 ||
+        url.indexOf("/c/portal") !== -1
+    );
 }
 
 function isShimmedUrl(url: string): boolean {

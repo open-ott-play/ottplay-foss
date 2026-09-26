@@ -19,6 +19,7 @@ interface DriverHttpRequest {
     contentType?: string;
     data?: any;
     dataType?: string;
+    headers?: Record<string, string>;
     method?: string;
     timeout?: number;
     type?: string;
@@ -107,6 +108,10 @@ interface ProviderDriver {
         ) => void
     ): void;
     logo(id: string | number): string;
+    resolveStream?(
+        url: string,
+        callback: (url: string | null) => void
+    ): () => void;
     saveCredentials(value: ProviderCredentials): boolean | void;
     storageKey?(key: string): string;
     stream(id: string | number): string;

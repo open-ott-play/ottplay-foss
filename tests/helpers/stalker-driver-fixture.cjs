@@ -7,6 +7,7 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 
 module.exports = function fixture(options = {}) {
     const host = context();
+    host.URL = URL;
     privateRuntime(host, "src/provider/runtime.ts");
     privateRuntime(host, "src/provider/channel-catalog.ts");
     privateRuntime(host, "src/provider/stalker-driver.ts");
