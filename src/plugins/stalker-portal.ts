@@ -328,19 +328,18 @@ export function setupStalkerPortalShim(): void {
 
         const isTauri = typeof (window as any).__TAURI__ !== "undefined";
 
-        if (isTauri) {
-            const invokePromise = tauriInvoke<{
-                status: number;
-                body: string;
-                contentType: string;
-                setCookie?: string[];
-            }>("stalker_portal_fetch", {
-                body,
-                contentType,
-                headers,
-                method,
-                url,
-            }).then((res) => {
+        const request = { body, contentType, headers, method, url };
+        const response = isTauri
+            ? tauriInvoke<{
+                  status: number;
+                  body: string;
+                  contentType: string;
+                  setCookie?: string[];
+              }>("stalker_portal_fetch", request)
+            : StalkerPortal.portalRequest(request);
+        return nativePromiseToJq(
+            $,
+            response.then((res) => {
                 mergeSetCookie(url, res.setCookie);
                 if (!(res.status >= 200 && res.status < 300)) {
                     throw new Error(
@@ -356,46 +355,10 @@ export function setupStalkerPortalShim(): void {
                     url,
                     res.contentType || ""
                 );
-            });
-            return nativePromiseToJq(
-                $,
-                invokePromise,
-                opts,
-                "portalRequest failed"
-            );
-        }
-
-        const capPromise = StalkerPortal.portalRequest({
-            body,
-            contentType,
-            headers,
-            method,
-            url,
-        }).then(
-            (res: {
-                status: number;
-                body: string;
-                contentType: string;
-                setCookie?: string[];
-            }) => {
-                mergeSetCookie(url, res.setCookie);
-                if (!(res.status >= 200 && res.status < 300)) {
-                    throw new Error(
-                        "stalker HTTP " +
-                            res.status +
-                            ": " +
-                            (res.body || "").slice(0, 200)
-                    );
-                }
-                return parseResponseBody(
-                    res.body || "",
-                    opts,
-                    url,
-                    res.contentType || ""
-                );
-            }
+            }),
+            opts,
+            "portalRequest failed"
         );
-        return nativePromiseToJq($, capPromise, opts, "portalRequest failed");
     };
 }
 

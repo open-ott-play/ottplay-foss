@@ -285,6 +285,72 @@ async function nativeRoutes(w) {
     assert.deepEqual(result, { ok: true, value: "native tauri text" });
     delete w.__TAURI__;
 
+    function invoke(command, args) {
+        assert.equal(command, "stalker_portal_fetch");
+        assert.ok(this === w.__TAURI__ || this === w.__TAURI__.core);
+        calls.push(args);
+        return Promise.resolve(response);
+    }
+    for (const transport of [null, { core: { invoke } }, { invoke }]) {
+        if (transport) w.__TAURI__ = transport;
+        else delete w.__TAURI__;
+        w.__ottStalkerCookieJar = {};
+        const url = "https://portal.invalid/stalker_portal/api/";
+        for (const [status, body, contentType, expected] of [
+            [200, '{"ok":true}', "application/json", { ok: true }],
+            [201, "invalid JSON", "application/json", "invalid JSON"],
+            [204, "", "text/plain", ""],
+            [403, "denied", "text/plain", "Error: stalker HTTP 403: denied"],
+        ]) {
+            response = {
+                body,
+                contentType,
+                setCookie: ["session=" + status + "; Path=/; HttpOnly"],
+                status,
+            };
+            const events = [];
+            const jq = w.$.ajax({
+                complete() {
+                    assert.equal(this.url, url);
+                    events.push("complete");
+                },
+                data: { request: status },
+                error() {
+                    events.push("error");
+                },
+                success() {
+                    events.push("success");
+                },
+                type: "POST",
+                url,
+            });
+            events.push("returned");
+            assert.equal(jq.state(), "pending");
+            const result = await outcome(jq);
+            assert.equal(result.ok, status < 300);
+            assert.deepEqual(
+                JSON.parse(JSON.stringify(result.value)),
+                expected
+            );
+            assert.deepEqual(events, [
+                "returned",
+                status < 300 ? "success" : "error",
+                "complete",
+            ]);
+            const request = calls[calls.length - 1];
+            assert.equal(request.method, "POST");
+            assert.equal(request.body, JSON.stringify({ request: status }));
+            assert.equal(request.contentType, "application/json");
+            assert.equal(
+                w.cookieHeaderForUrl(url),
+                "session=" + status,
+                "cookies are retained even when HTTP status rejects the response"
+            );
+        }
+    }
+    delete w.__TAURI__;
+    const beforeProxy = calls.length;
+
     w.eval(compile("src/plugins/m3u-proxy.ts"));
     w.setupCapacitorCompanionShim();
     result = await outcome(
@@ -296,10 +362,10 @@ async function nativeRoutes(w) {
     assert.deepEqual(result, { ok: true, value: "#EXTM3U\nnative fixture" });
     assert.equal(
         calls.length,
-        4,
+        beforeProxy + 1,
         "all response checks use actual native route wrappers"
     );
-    assert.equal(calls[3].url, "https://stream.invalid/list.m3u");
+    assert.equal(calls[beforeProxy].url, "https://stream.invalid/list.m3u");
 }
 
 (async () => {

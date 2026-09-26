@@ -88,11 +88,9 @@ function _compress(
     getCharFromInt: (n: number) => string
 ): string {
     if (uncompressed == null) return "";
-    var i: number, value: number;
     var contextDictionary: Record<string, number> = {};
     var contextDictionaryToCreate: Record<string, boolean> = {};
     var contextW = "";
-    var contextWc = "";
     var contextDictSize = 3;
     var contextEnlargeIn = 2;
     var contextNumBits = 2;
@@ -100,161 +98,34 @@ function _compress(
     var contextDataVal = 0;
     var contextDataPosition = 0;
 
-    for (var ii = 0; ii < uncompressed.length; ii += 1) {
-        var contextC = uncompressed.charAt(ii);
-        if (
-            !Object.prototype.hasOwnProperty.call(contextDictionary, contextC)
-        ) {
-            contextDictionary[contextC] = contextDictSize++;
-            contextDictionaryToCreate[contextC] = true;
-        }
-        contextWc = contextW + contextC;
-        if (
-            Object.prototype.hasOwnProperty.call(contextDictionary, contextWc)
-        ) {
-            contextW = contextWc;
-        } else {
-            if (
-                Object.prototype.hasOwnProperty.call(
-                    contextDictionaryToCreate,
-                    contextW
-                )
-            ) {
-                if (contextW.charCodeAt(0) < 256) {
-                    for (i = 0; i < contextNumBits; i++) {
-                        contextDataVal = contextDataVal << 1;
-                        if (bitsPerChar - 1 === contextDataPosition) {
-                            contextDataPosition = 0;
-                            contextData.push(getCharFromInt(contextDataVal));
-                            contextDataVal = 0;
-                        } else {
-                            contextDataPosition++;
-                        }
-                    }
-                    value = contextW.charCodeAt(0);
-                    for (i = 0; i < 8; i++) {
-                        contextDataVal = (contextDataVal << 1) | (value & 1);
-                        if (bitsPerChar - 1 === contextDataPosition) {
-                            contextDataPosition = 0;
-                            contextData.push(getCharFromInt(contextDataVal));
-                            contextDataVal = 0;
-                        } else {
-                            contextDataPosition++;
-                        }
-                        value = value >> 1;
-                    }
-                } else {
-                    value = 1;
-                    for (i = 0; i < contextNumBits; i++) {
-                        contextDataVal = (contextDataVal << 1) | value;
-                        if (bitsPerChar - 1 === contextDataPosition) {
-                            contextDataPosition = 0;
-                            contextData.push(getCharFromInt(contextDataVal));
-                            contextDataVal = 0;
-                        } else {
-                            contextDataPosition++;
-                        }
-                        value = 0;
-                    }
-                    value = contextW.charCodeAt(0);
-                    for (i = 0; i < 16; i++) {
-                        contextDataVal = (contextDataVal << 1) | (value & 1);
-                        if (bitsPerChar - 1 === contextDataPosition) {
-                            contextDataPosition = 0;
-                            contextData.push(getCharFromInt(contextDataVal));
-                            contextDataVal = 0;
-                        } else {
-                            contextDataPosition++;
-                        }
-                        value = value >> 1;
-                    }
-                }
-                contextEnlargeIn--;
-                if (contextEnlargeIn === 0) {
-                    contextEnlargeIn = 2 ** contextNumBits;
-                    contextNumBits++;
-                }
-                delete contextDictionaryToCreate[contextW];
+    // Literal flags, code units and dictionary codes share the same bit stream.
+    // Keep buffering inside the word writer instead of calling once per bit.
+    function writeBits(count: number, value: number): void {
+        for (var i = 0; i < count; i++) {
+            contextDataVal = (contextDataVal << 1) | (value & 1);
+            if (bitsPerChar - 1 === contextDataPosition) {
+                contextDataPosition = 0;
+                contextData.push(getCharFromInt(contextDataVal));
+                contextDataVal = 0;
             } else {
-                value = contextDictionary[contextW];
-                for (i = 0; i < contextNumBits; i++) {
-                    contextDataVal = (contextDataVal << 1) | (value & 1);
-                    if (bitsPerChar - 1 === contextDataPosition) {
-                        contextDataPosition = 0;
-                        contextData.push(getCharFromInt(contextDataVal));
-                        contextDataVal = 0;
-                    } else {
-                        contextDataPosition++;
-                    }
-                    value = value >> 1;
-                }
+                contextDataPosition++;
             }
-            contextEnlargeIn--;
-            if (contextEnlargeIn === 0) {
-                contextEnlargeIn = 2 ** contextNumBits;
-                contextNumBits++;
-            }
-            contextDictionary[contextWc] = contextDictSize++;
-            contextW = String(contextC);
+            value >>= 1;
         }
     }
 
-    if (contextW !== "") {
+    // The last pending word follows exactly the same dictionary-width rules
+    // as a word terminated by the next input character.
+    function writeWord(): void {
         if (
             Object.prototype.hasOwnProperty.call(
                 contextDictionaryToCreate,
                 contextW
             )
         ) {
-            if (contextW.charCodeAt(0) < 256) {
-                for (i = 0; i < contextNumBits; i++) {
-                    contextDataVal = contextDataVal << 1;
-                    if (bitsPerChar - 1 === contextDataPosition) {
-                        contextDataPosition = 0;
-                        contextData.push(getCharFromInt(contextDataVal));
-                        contextDataVal = 0;
-                    } else {
-                        contextDataPosition++;
-                    }
-                }
-                value = contextW.charCodeAt(0);
-                for (i = 0; i < 8; i++) {
-                    contextDataVal = (contextDataVal << 1) | (value & 1);
-                    if (bitsPerChar - 1 === contextDataPosition) {
-                        contextDataPosition = 0;
-                        contextData.push(getCharFromInt(contextDataVal));
-                        contextDataVal = 0;
-                    } else {
-                        contextDataPosition++;
-                    }
-                    value = value >> 1;
-                }
-            } else {
-                value = 1;
-                for (i = 0; i < contextNumBits; i++) {
-                    contextDataVal = (contextDataVal << 1) | value;
-                    if (bitsPerChar - 1 === contextDataPosition) {
-                        contextDataPosition = 0;
-                        contextData.push(getCharFromInt(contextDataVal));
-                        contextDataVal = 0;
-                    } else {
-                        contextDataPosition++;
-                    }
-                    value = 0;
-                }
-                value = contextW.charCodeAt(0);
-                for (i = 0; i < 16; i++) {
-                    contextDataVal = (contextDataVal << 1) | (value & 1);
-                    if (bitsPerChar - 1 === contextDataPosition) {
-                        contextDataPosition = 0;
-                        contextData.push(getCharFromInt(contextDataVal));
-                        contextDataVal = 0;
-                    } else {
-                        contextDataPosition++;
-                    }
-                    value = value >> 1;
-                }
-            }
+            var width = contextW.charCodeAt(0) < 256 ? 8 : 16;
+            writeBits(contextNumBits, width === 8 ? 0 : 1);
+            writeBits(width, contextW.charCodeAt(0));
             contextEnlargeIn--;
             if (contextEnlargeIn === 0) {
                 contextEnlargeIn = 2 ** contextNumBits;
@@ -262,18 +133,7 @@ function _compress(
             }
             delete contextDictionaryToCreate[contextW];
         } else {
-            value = contextDictionary[contextW];
-            for (i = 0; i < contextNumBits; i++) {
-                contextDataVal = (contextDataVal << 1) | (value & 1);
-                if (bitsPerChar - 1 === contextDataPosition) {
-                    contextDataPosition = 0;
-                    contextData.push(getCharFromInt(contextDataVal));
-                    contextDataVal = 0;
-                } else {
-                    contextDataPosition++;
-                }
-                value = value >> 1;
-            }
+            writeBits(contextNumBits, contextDictionary[contextW]);
         }
         contextEnlargeIn--;
         if (contextEnlargeIn === 0) {
@@ -282,28 +142,38 @@ function _compress(
         }
     }
 
-    value = 2;
-    for (i = 0; i < contextNumBits; i++) {
-        contextDataVal = (contextDataVal << 1) | (value & 1);
-        if (bitsPerChar - 1 === contextDataPosition) {
-            contextDataPosition = 0;
-            contextData.push(getCharFromInt(contextDataVal));
-            contextDataVal = 0;
-        } else {
-            contextDataPosition++;
+    for (var ii = 0; ii < uncompressed.length; ii++) {
+        var contextC = uncompressed.charAt(ii);
+        if (
+            !Object.prototype.hasOwnProperty.call(contextDictionary, contextC)
+        ) {
+            contextDictionary[contextC] = contextDictSize++;
+            contextDictionaryToCreate[contextC] = true;
         }
-        value = value >> 1;
+        var contextWc = contextW + contextC;
+        if (
+            Object.prototype.hasOwnProperty.call(contextDictionary, contextWc)
+        ) {
+            contextW = contextWc;
+        } else {
+            writeWord();
+            contextDictionary[contextWc] = contextDictSize++;
+            contextW = String(contextC);
+        }
     }
+    if (contextW !== "") writeWord();
+    writeBits(contextNumBits, 2);
 
+    // A full output character is emitted even when the end marker ended on
+    // a character boundary; persisted LZ strings include this final padding.
     while (true) {
-        contextDataVal = contextDataVal << 1;
+        contextDataVal <<= 1;
         if (bitsPerChar - 1 === contextDataPosition) {
             contextData.push(getCharFromInt(contextDataVal));
             break;
         }
         contextDataPosition++;
     }
-
     return contextData.join("");
 }
 
@@ -358,86 +228,20 @@ function _decompress(
     var entry = "";
     var result: string[] = [];
     var w = "";
-    var resb: number;
-    var power: number;
-    var maxpower: number;
     var c: any;
+    var bits: number;
     var data: { val: number; position: number; index: number } = {
         index: 1,
         position: resetValue,
         val: getNextValue(0),
     };
-    var i: number;
 
-    for (i = 0; i < 3; i += 1) {
-        dictionary[i] = String.fromCharCode(i);
-    }
-
-    var next = 0,
-        bits = 0;
-    maxpower = 2 ** 2;
-    power = 1;
-    bits = 0;
-    while (power !== maxpower) {
-        resb = data.val & data.position;
-        data.position >>= 1;
-        if (data.position === 0) {
-            data.position = resetValue;
-            data.val = getNextValue(data.index++);
-        }
-        bits |= (resb > 0 ? 1 : 0) * power;
-        power <<= 1;
-    }
-    next = bits;
-
-    switch (next) {
-        case 0:
-            maxpower = 2 ** 8;
-            power = 1;
-            bits = 0;
-            while (power !== maxpower) {
-                resb = data.val & data.position;
-                data.position >>= 1;
-                if (data.position === 0) {
-                    data.position = resetValue;
-                    data.val = getNextValue(data.index++);
-                }
-                bits |= (resb > 0 ? 1 : 0) * power;
-                power <<= 1;
-            }
-            c = String.fromCharCode(bits);
-            break;
-        case 1:
-            maxpower = 2 ** 16;
-            power = 1;
-            bits = 0;
-            while (power !== maxpower) {
-                resb = data.val & data.position;
-                data.position >>= 1;
-                if (data.position === 0) {
-                    data.position = resetValue;
-                    data.val = getNextValue(data.index++);
-                }
-                bits |= (resb > 0 ? 1 : 0) * power;
-                power <<= 1;
-            }
-            c = String.fromCharCode(bits);
-            break;
-        case 2:
-            return "";
-    }
-
-    dictionary[3] = c;
-    w = c;
-    result.push(c);
-
-    while (true) {
-        if (data.index > length) return "";
-        maxpower = 2 ** numBits;
-        power = 1;
-        bits = 0;
+    function readBits(count: number): number {
+        var bits = 0;
+        var power = 1;
+        var maxpower = 2 ** count;
         while (power !== maxpower) {
-            resb = data.val & data.position;
+            var resb = data.val & data.position;
             data.position >>= 1;
             if (data.position === 0) {
                 data.position = resetValue;
@@ -446,41 +250,32 @@ function _decompress(
             bits |= (resb > 0 ? 1 : 0) * power;
             power <<= 1;
         }
-        next = bits;
+        return bits;
+    }
 
+    for (var i = 0; i < 3; i++) dictionary[i] = String.fromCharCode(i);
+
+    var next = readBits(2);
+    switch (next) {
+        case 0:
+        case 1:
+            bits = readBits(next === 0 ? 8 : 16);
+            c = String.fromCharCode(bits);
+            break;
+        case 2:
+            return "";
+    }
+    dictionary[3] = c;
+    w = c;
+    result.push(c);
+
+    while (true) {
+        if (data.index > length) return "";
+        next = readBits(numBits);
         switch (next) {
             case 0:
-                maxpower = 2 ** 8;
-                power = 1;
-                bits = 0;
-                while (power !== maxpower) {
-                    resb = data.val & data.position;
-                    data.position >>= 1;
-                    if (data.position === 0) {
-                        data.position = resetValue;
-                        data.val = getNextValue(data.index++);
-                    }
-                    bits |= (resb > 0 ? 1 : 0) * power;
-                    power <<= 1;
-                }
-                dictionary[dictSize++] = String.fromCharCode(bits);
-                next = dictSize - 1;
-                enlargeIn--;
-                break;
             case 1:
-                maxpower = 2 ** 16;
-                power = 1;
-                bits = 0;
-                while (power !== maxpower) {
-                    resb = data.val & data.position;
-                    data.position >>= 1;
-                    if (data.position === 0) {
-                        data.position = resetValue;
-                        data.val = getNextValue(data.index++);
-                    }
-                    bits |= (resb > 0 ? 1 : 0) * power;
-                    power <<= 1;
-                }
+                bits = readBits(next === 0 ? 8 : 16);
                 dictionary[dictSize++] = String.fromCharCode(bits);
                 next = dictSize - 1;
                 enlargeIn--;
@@ -488,12 +283,10 @@ function _decompress(
             case 2:
                 return result.join("");
         }
-
         if (enlargeIn === 0) {
             enlargeIn = 2 ** numBits;
             numBits++;
         }
-
         if (dictionary[next]) {
             entry = dictionary[next];
         } else {
