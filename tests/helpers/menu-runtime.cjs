@@ -76,6 +76,77 @@ module.exports = function assertMenuRuntime(registry) {
     assert.equal(label(menu, "playback.live"), "Live");
     assert.equal(label(menu, "pip.toggle"), "Swap PiP");
 
+    let language = {
+        "External settings": "Externe Einstellungen",
+        Live: "Direkt",
+        Paused: "Pausiert",
+        "Paused / Playing": "Pausiert / Wiedergabe",
+        Settings: "Einstellungen",
+        "Swap PiP": "PiP tauschen",
+    };
+    const translationKeys = [];
+    host._ = function (key) {
+        translationKeys.push(key);
+        return language[key] || key;
+    };
+    host.sNoNumbersKeys = 0;
+    host.strTools = "TOOLS";
+    menu = open();
+    assert.equal(
+        label(menu, "settings.open"),
+        '<div class="btn">TOOLS</div> <div class="btn">9</div> Einstellungen',
+        "translate the raw title before adding remote button markup"
+    );
+    assert.equal(label(menu, "playback.toggle"), "Pausiert");
+    assert.equal(
+        label(menu, "playback.live"),
+        '<div class="btn">7</div> Direkt'
+    );
+    assert.equal(
+        label(menu, "pip.toggle"),
+        '<div class="btn">5</div> PiP tauschen'
+    );
+    assert.equal(menu.rows[4].desc, "Externe Einstellungen");
+    assert.equal(menu.rows[1].desc, "Pausiert / Wiedergabe");
+    assert.ok(!translationKeys.some((key) => key.includes('<div class="btn')));
+    assert.equal(menu.records[0].title, "Settings");
+    assert.equal(menu.records[4].detail, "External settings");
+    assert.equal(
+        menu.focus,
+        4,
+        "localization must not affect command identity"
+    );
+
+    language = {
+        "Create PiP": "Ouvrir PiP",
+        "External settings": "Paramètres externes",
+        Playing: "Lecture",
+        Restart: "Redémarrer",
+        Settings: "Paramètres",
+    };
+    playing = true;
+    host.playType = 0;
+    host.pipIndex = null;
+    menu = open();
+    assert.equal(
+        label(menu, "settings.open"),
+        '<div class="btn">TOOLS</div> <div class="btn">9</div> Paramètres',
+        "reopening resolves the new language without rebuilding provider arrays"
+    );
+    assert.equal(label(menu, "playback.toggle"), "Lecture");
+    assert.equal(
+        label(menu, "playback.live"),
+        '<div class="btn">7</div> Redémarrer'
+    );
+    assert.equal(
+        label(menu, "pip.toggle"),
+        '<div class="btn">5</div> Ouvrir PiP'
+    );
+    assert.equal(menu.rows[4].desc, "Paramètres externes");
+    delete host._;
+    delete host.strTools;
+    host.sNoNumbersKeys = 1;
+
     for (const hidden of ["playback.toggle", "popPause"]) {
         host.sHideMenus = [hidden];
         menu = open();
@@ -153,4 +224,18 @@ module.exports = function assertMenuRuntime(registry) {
         throw new Error("unrelated external menu must not inspect playback");
     };
     assert.equal(open().rows[0].name, "External only");
+
+    host.popBuckets = function () {};
+    host.popupActions = [host.popBuckets];
+    host.popupArray = ["Category selection"];
+    host.popupDetail = [];
+    host.sNoColorKeys = 0;
+    host._ = (key) =>
+        key === "Category selection" ? "Choix de catégorie" : key;
+    menu = open();
+    assert.equal(
+        menu.rows[0].name,
+        '<div class="btn blue">&nbsp;</div> Choix de catégorie'
+    );
+    assert.equal(menu.rows[0].desc, "Choix de catégorie");
 };

@@ -21,5 +21,5 @@ host.window = host;
 vm.runInContext("(function(){" + code + "})();", host);
 assertMenuRuntime(host.__ottMenuRegistry);
 console.log(
-    "PASS menu: playback query bounds, provider callbacks, dynamic keys and ES5"
+    "PASS menu: localization, playback query bounds, provider callbacks, dynamic keys and ES5"
 );

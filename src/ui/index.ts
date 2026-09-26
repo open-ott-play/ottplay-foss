@@ -91,6 +91,8 @@ var _keysA = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09";
 var _keysL = "abcdefghijklmnopqrstuvwxyz";
 var _keysP = ".:/@,!?<>#$%^&*()-=_+;'\"[]{}`~";
 var _keys = "";
+var _keyPage = 0;
+var _keyPages = 1;
 var _keysSymbol: any[] = [
     {
         a: function () {
@@ -162,7 +164,16 @@ var _keysSymbol: any[] = [
         },
         s: "",
     },
-    { a: function () {}, s: "" },
+    {
+        a: function () {
+            if (_keyPages < 2) return;
+            _keyPage = (_keyPage + 1) % _keyPages;
+            _buildKeyboard();
+            _keyCur = _keys.length - 2;
+            showEdit();
+        },
+        s: "",
+    },
     {
         a: function () {
             (window as any).__ottClassicScreenPort.finishEditor(
@@ -2870,17 +2881,16 @@ export function joyMenu(): void {
  * --------------------------------------------------------------------------- */
 
 /**
- * Set the keyboard case (upper/lower). Updates `_keyUp` flag, transforms `_keys`, and updates the
+ * Set the keyboard case (upper/lower). Preserves the original cells and updates the
  * shift-key symbol. Also adds a red underline indicator if color keys are enabled.
  *
  * @param e - true for uppercase, false for lowercase.
  * @returns void — early return if punctuation mode is active (`_keyP`).
- * @sideeffect Modifies `_keys`, `_keyUp`, `_keysSymbol[0].s`.
+ * @sideeffect Modifies `_keyUp`, `_keysSymbol[0].s`.
  */
 function _setCase(e: boolean): void {
     if (_keyP) return;
     _keyUp = e;
-    _keys = _keyUp ? _keys.toUpperCase() : _keys.toLowerCase();
     _keysSymbol[0].s = _keyUp ? "&darr;a" : "&uarr;A";
     if (!(window as any).sNoColorKeys)
         _keysSymbol[0].s =
@@ -2889,15 +2899,18 @@ function _setCase(e: boolean): void {
             "</span>";
 }
 
-/**
- * Set the keyboard language/layout. Builds the `_keys` string from the current alphabet,
- * digits, and control symbols.
- *
- * @param e - true for English layout (default `_keysL`), false for localized layout.
- * @returns void
- * @sideeffect Modifies `_keys`, `_keyCur`, `_keyE`, `_keysSymbol[2].s`.
- * @analysis The layout is calculated to fit into 10-column rows. If the alphabet is short, punctuation is appended.
- */
+/** Case is derived from the original cell, never from a previous conversion. */
+function _keyboardCharacter(value: string): string {
+    if (!_keyUp || _keyP) return value;
+    if (!_keyE && /^_(tur|aze)$/.test(String(_ottplaylang()))) {
+        if (value === "i") return "İ";
+        if (value === "ı") return "I";
+    }
+    if (value === "ß") return "ẞ";
+    // Expanded uppercase forms (e.g. Armenian և) still occupy one key cell.
+    return value.toUpperCase();
+}
+
 function _ottplaylang(): any {
     try {
         if (typeof (window as any).stbGetItem === "function")
@@ -2912,13 +2925,7 @@ var _keysRu = "абвгдеёжзийклмнопрстуфхцчшщъыьэю�
 /** Alphabet for the non-English OSK layout. */
 function _localizedAlphabet(): string {
     var t = _("alhabet");
-    if (
-        typeof t === "string" &&
-        t.length > 0 &&
-        t !== "alhabet" &&
-        t !== _keysL
-    )
-        return t;
+    if (typeof t === "string" && t.length > 0 && t !== "alhabet") return t;
     return _keysRu;
 }
 
@@ -2930,17 +2937,27 @@ function _showLangKey(): boolean {
     return true;
 }
 
+/** Start the English or localized layout at its first page. */
 function _setLang(e: boolean): void {
-    // Non-English layout: keyStrings.alhabet, or Russian fallback for _eng.
-    var t: string = _localizedAlphabet();
     _keyE = e;
-    var r = e ? _keysL : t;
-    var s = Math.floor(r.length / 10);
-    if (r.length % 10) r = (r + _keysP).substr(0, (s + 1) * 10);
-    _keys = _keys1 + r + _keysA;
+    _keyPage = 0;
+    _buildKeyboard();
     _keysSymbol[2].s = "!?,";
     _setCase(_keyUp);
     _keyCur = _keys.length - 9;
+}
+
+/** Keep long alphabets reachable without making the remote-control grid taller. */
+function _buildKeyboard(): void {
+    var alphabet = _keyP ? _keysP : _keyE ? _keysL : _localizedAlphabet();
+    _keyPages = Math.max(1, Math.ceil(alphabet.length / 40));
+    _keyPage = _keyPage % _keyPages;
+    var letters = alphabet.substr(_keyPage * 40, 40);
+    var cells = Math.ceil(letters.length / 10) * 10;
+    letters = (letters + _keysP).substr(0, cells);
+    _keys = _keys1 + letters + _keysA;
+    _keysSymbol[8].s =
+        _keyPages > 1 ? _keyPage + 1 + "/" + _keyPages + " ›" : "";
 }
 
 /**
@@ -2954,7 +2971,8 @@ function _setLang(e: boolean): void {
 function _setPunct(_p: boolean): void {
     _keyP = _p;
     if (_p) {
-        _keys = _keys1 + _keysP + _keysA;
+        _keyPage = 0;
+        _buildKeyboard();
         _keysSymbol[0].s = "";
         _keysSymbol[2].s = "abc";
     } else {
@@ -3018,10 +3036,9 @@ export function showEditKey1(_initKeys: any, secret?: boolean): void {
                 "</span>";
     }
     editPos = (window as any).editvar.length;
-    if (_keyCur > _keys.length - 10) _keyCur = 14;
-    var r = _keyCur;
+    var r = _keyCur >= _keys.length - 10 ? 14 : _keyCur;
     _setPunct(_keyP);
-    _keyCur = r;
+    _keyCur = r >= 0 && r < _keys.length - 10 ? r : 14;
     showEdit();
 }
 
@@ -3036,7 +3053,7 @@ export function showEditKey1(_initKeys: any, secret?: boolean): void {
  *             Symbol keys (indices 0-9) use their custom render function; others show the raw character.
  */
 export function showEdit(): void {
-    var e = $("#listEdit");
+    var e = $("#listEdit").show();
     /* Slightly smaller than /12 so .osk-key margins fit a 10-key row. */
     var t = ((e.width() || 600) / 12.4) | 0;
     if (t < 24) t = 24;
@@ -3044,15 +3061,26 @@ export function showEdit(): void {
         '<div class="osk-cap">' +
         ((window as any).editCaption || "") +
         "</div>";
-    r += '<div id="ee"></div>';
+    r += '<div id="ee" dir="auto"></div><div class="osk-grid">';
     for (var s = 0; s < _keys.length; s++) {
-        if (s % 10 === 0) r += "<br/>";
+        if (s > 0 && s % 10 === 0) r += "<br/>";
         var sym = _keysSymbol[_keys.charCodeAt(s)];
-        var n = sym ? sym.s : _keys[s];
+        var character = _keyboardCharacter(_keys[s]);
+        var n = sym
+            ? sym.s
+            : metadataText(
+                  /^[\u0300-\u036f]/.test(character)
+                      ? "◌" + character
+                      : character
+              );
         r +=
             '<div id="ik' +
             s +
-            '" class="osk-key" onclick="clickKey(' +
+            '" class="osk-key"' +
+            (_keys.charCodeAt(s) === 8 && _keyPages > 1
+                ? ' aria-label="' + metadataText(_("Next keyboard page")) + '"'
+                : "") +
+            ' onclick="clickKey(' +
             s +
             ');" style="width:' +
             t +
@@ -3064,8 +3092,30 @@ export function showEdit(): void {
             n +
             "</div>";
     }
-    e.html(r).show();
+    e.html(r + "</div>");
+    var textSize = Math.min(
+        parseFloat(e.css("font-size")) || 24,
+        (e.height() || 600) / 14
+    );
+    e.find(".osk-cap, #ee").css("font-size", textSize);
     _changeEdit();
+    // Text settings can make the caption/input taller. Constrain cells by
+    // available height as well as width, without changing the user's font setting.
+    var grid = e.find(".osk-grid");
+    var available =
+        (e.height() || 600) -
+        (grid.position().top - parseFloat(e.css("padding-top") || "0"));
+    var rows = _keys.length / 10;
+    var height = Math.max(16, Math.min(t, Math.floor(available / rows) - 4));
+    grid.css({ "font-size": 0, "line-height": height + 4 + "px" });
+    grid.find(".osk-key").css({
+        "font-size": Math.min(
+            parseFloat(e.css("font-size")) || 24,
+            height * 0.65
+        ),
+        height: height,
+        "line-height": height + "px",
+    });
     $("#ik" + _keyCur).css({
         "background-color": (window as any).curColorB,
         color: (window as any).curColor,
@@ -3105,12 +3155,15 @@ export function showEdit(): void {
  */
 export function _changeEdit(): void {
     $("#ee").html(
-        (window as any).editvar.substr(0, editPos) +
+        metadataText((window as any).editvar.substr(0, editPos)) +
             '<div id="cursor" style="background-color:' +
             (window as any).curColor +
             ';"></div>' +
-            (window as any).editvar.substr(editPos)
+            metadataText((window as any).editvar.substr(editPos))
     );
+    var field = document.getElementById("ee");
+    var caret = document.getElementById("cursor");
+    if (field && caret) field.scrollTop = caret.offsetTop - field.offsetTop;
     clearInterval(cursorInterval);
     var owner = (window as any).__ottClassicScreenPort.owner("editor");
     if (!owner || !owner.active()) return;
@@ -3231,11 +3284,12 @@ export function editKey1(e: number): void {
             return;
         case (window as any).keys.ENTER:
             if (_keys.charCodeAt(_keyCur) > 9) {
+                var character = _keyboardCharacter(_keys[_keyCur]);
                 (window as any).editvar =
                     (window as any).editvar.substr(0, editPos) +
-                    _keys[_keyCur] +
+                    character +
                     (window as any).editvar.substr(editPos);
-                editPos++;
+                editPos += character.length;
                 _changeEdit();
             } else {
                 _keysSymbol[_keys.charCodeAt(_keyCur)].a();
@@ -3249,7 +3303,13 @@ export function editKey1(e: number): void {
             $("#listEdit").hide();
             return;
         default: {
-            var idx = _keys.indexOf(String.fromCharCode(e));
+            var idx = -1;
+            for (var i = 0; i < _keys.length; i++) {
+                if (_keyboardCharacter(_keys[i]) === String.fromCharCode(e)) {
+                    idx = i;
+                    break;
+                }
+            }
             if (idx > -1) {
                 $("#ik" + _keyCur).css({ "background-color": "", color: "" });
                 _keyCur += idx - _keyCur;

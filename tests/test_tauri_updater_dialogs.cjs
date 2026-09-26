@@ -58,6 +58,13 @@ function fixture(options = {}) {
     if (options.relaunch)
         window.__TAURI__.process = { relaunch: options.relaunch };
     vm.runInNewContext(code, {
+        _: (key, ...values) => {
+            let text = options.translations?.[key] || key;
+            values.forEach((value, index) => {
+                text = text.replace(new RegExp("%" + (index + 1), "g"), value);
+            });
+            return text;
+        },
         confirmBox: (message, yes, no) =>
             confirmations.push({ message, no, yes }),
         console: { debug: (...args) => errors.push(args) },
@@ -81,6 +88,10 @@ function fixture(options = {}) {
         "Installation must wait for explicit confirmation"
     );
     assert.equal(pending.confirmations.length, 1);
+    assert.equal(
+        pending.confirmations[0].message,
+        "OttPlay FOSS 1.1.41 is available. Download and install now?"
+    );
     pending.confirmations[0].no();
     await settle();
     assert.equal(pending.calls.length, 1, "Cancellation must not install");
@@ -135,7 +146,25 @@ function fixture(options = {}) {
     const browser = fixture({ browser: true });
     await settle();
     assert.equal(browser.calls.length, 0);
-    console.log("Tauri updater DOM dialog contracts passed (8 scenarios)");
+    const localized = fixture({
+        translations: {
+            "OttPlay FOSS %1 is available. Download and install now?":
+                "Доступна версия %1. Установить?",
+            "Update installed. Please restart OttPlay FOSS.":
+                "Обновление установлено. Перезапустите OttPlay FOSS.",
+        },
+    });
+    await settle();
+    assert.equal(
+        localized.confirmations[0].message,
+        "Доступна версия 1.1.41. Установить?"
+    );
+    localized.confirmations[0].yes();
+    await settle();
+    assert.deepEqual(localized.notices, [
+        "Обновление установлено. Перезапустите OttPlay FOSS.",
+    ]);
+    console.log("Tauri updater DOM dialog contracts passed (9 scenarios)");
 })().catch((error) => {
     console.error(error);
     process.exitCode = 1;

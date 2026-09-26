@@ -340,7 +340,9 @@ body {
     line-height: 1.45;
 }
 #listEdit .osk-cap {
+    max-height: 2.9em;
     margin-bottom: 0.45em;
+    overflow: hidden;
     font-weight: bold;
     color: #ffffff;
     letter-spacing: 0.03em;
@@ -349,9 +351,10 @@ body {
 #listEdit #ee {
     box-sizing: border-box;
     width: 100%;
-    min-height: 1.6em;
+    height: 2.8em;
     padding: 0.45em 0.65em;
     margin: 0 0 0.75em 0;
+    overflow: auto;
     word-wrap: break-word;
     white-space: pre-wrap;
     background-color: rgba(0, 0, 0, 0.35);
