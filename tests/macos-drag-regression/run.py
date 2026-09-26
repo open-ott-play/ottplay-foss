@@ -17,7 +17,8 @@ if sys.platform != "darwin":
 root = Path(__file__).resolve().parent
 repo = root.parent.parent
 # Refuse to exercise stale or unpatched sources before launching a native process.
-subprocess.run(["node", str(repo / "scripts/check-macos-drag-backport.cjs")], check=True, timeout=30)
+for checker in ["check-macos-drag-backport.cjs", "check-glib-backport.cjs"]:
+    subprocess.run(["node", str(repo / "scripts" / checker)], check=True, timeout=30)
 cargo_options = ["--locked", "--manifest-path", str(root / "Cargo.toml")]
 if args.offline:
     cargo_options.append("--offline")

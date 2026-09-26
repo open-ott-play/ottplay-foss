@@ -5,6 +5,11 @@ OttPlay. It is deliberately outside the app workspace and cannot load the
 unpatched crates. The runner only exercises expected-to-pass fixed behavior;
 it does not run the intentionally crashing upstream reproduction.
 
+This workspace also applies the application's existing GLib security backport.
+Cargo resolves Linux dependencies in its lockfile even for a macOS-only test,
+and a standalone workspace does not inherit the root `[patch.crates-io]` table.
+`scripts/check-glib-backport.cjs` verifies both workspace overrides and lockfiles.
+
 ```sh
 python3 tests/macos-drag-regression/run.py --offline
 ```
