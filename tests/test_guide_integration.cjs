@@ -897,4 +897,142 @@ check(
     }
 );
 
+check(
+    "batch references preserve scalar numeric, ambiguous, duplicate and prototype-like identities",
+    () => {
+        const f = fixture(),
+            h = f.host,
+            guide = h.__ottClassicGuide;
+        h.channels = Object.create(null);
+        h.cList = [
+            0,
+            1,
+            "1",
+            2,
+            2,
+            "003",
+            "__proto__",
+            "constructor",
+            "toString",
+            "hasOwnProperty",
+        ];
+        for (const id of [...h.cList, "outside-list"])
+            h.channels[id] = { itemId: "station:" + id, rec: 24 };
+        const ids = [
+                "0",
+                0,
+                "1",
+                1,
+                "2",
+                2,
+                "003",
+                "__proto__",
+                "constructor",
+                "toString",
+                "hasOwnProperty",
+                "outside-list",
+                "absent",
+                999,
+                null,
+                undefined,
+                "0",
+            ],
+            scalar = ids.map((id) => guide.reference(id)),
+            batch = guide.references(ids);
+        assert.equal(guide.reference.length, 1);
+        assert.equal(batch.length, scalar.length);
+        for (let i = 0; i < scalar.length; i++) {
+            if (!scalar[i]) assert.equal(batch[i], null, String(ids[i]));
+            else {
+                assert.equal(batch[i].id, scalar[i].id);
+                assert.equal(batch[i].channelId, scalar[i].channelId);
+                assert.equal(batch[i].sourceId, scalar[i].sourceId);
+                assert.equal(batch[i].token, scalar[i].token);
+                assert.deepEqual(Object.keys(batch[i]), Object.keys(scalar[i]));
+            }
+        }
+        assert.equal(batch[0].id, 0, "Only unique matches canonicalize type");
+        assert.equal(batch[2].id, "1", "Mixed-type duplicates stay ambiguous");
+        assert.equal(batch[4].id, "2", "Repeated identical IDs stay ambiguous");
+        assert.notEqual(
+            batch[0],
+            batch[16],
+            "References remain independently owned"
+        );
+        assert.equal(batch[0].token, batch[16].token);
+    }
+);
+
+check(
+    "batch reference indexes do not survive list, row or source replacement",
+    () => {
+        const f = fixture(),
+            h = f.host,
+            guide = h.__ottClassicGuide;
+        h.cList = [1];
+        const old = guide.references(["1"])[0];
+        h.cList = ["1"];
+        h.channels[1] = { ...h.channels[1], itemId: "replacement" };
+        h.p_pref = "provider-b";
+        const next = guide.references([1])[0];
+        assert.equal(next.id, "1");
+        assert.equal(next.channelId, "replacement");
+        assert.notEqual(next.token, old.token);
+        assert.notEqual(next.sourceId, old.sourceId);
+        assert.equal(guide.valid(old), false);
+        assert.equal(guide.valid(next), true);
+        delete h.cList;
+        h.curList = [1];
+        assert.equal(guide.references(["1"])[0].id, 1);
+        h.cList = [];
+        assert.equal(guide.references(["1"])[0].id, "1");
+        assert.deepEqual(Array.from(guide.references([])), []);
+    }
+);
+
+check(
+    "batch and category reference resolution scan a thousand-channel list once",
+    () => {
+        const f = fixture(),
+            h = f.host,
+            ids = Array.from({ length: 1000 }, (_, index) => index);
+        let reads = 0;
+        h.channels = Object.create(null);
+        for (const id of ids)
+            h.channels[id] = {
+                channel_name: "Channel " + id,
+                epg: "epg:" + id,
+                itemId: "station:" + id,
+                rec: 24,
+            };
+        h.cList = new Proxy(ids, {
+            get(target, key) {
+                if (/^\d+$/.test(String(key))) reads++;
+                return target[key];
+            },
+        });
+        const batch = h.__ottClassicGuide.references(ids.map(String));
+        assert.equal(
+            reads,
+            ids.length,
+            "Batch canonicalization is one linear scan"
+        );
+        assert.equal(batch.length, ids.length);
+        for (const id of ids) {
+            assert.equal(batch[id].id, id);
+            assert.equal(batch[id].token, h.channels[id]);
+        }
+        reads = 0;
+        h.cats.Group = ids;
+        h.openSelectedChannelRecordings(1);
+        assert.equal(
+            reads,
+            ids.length,
+            "The actual category caller uses the batch API"
+        );
+        h.closeList();
+        assert.equal(h.__ottClassicGuideScreen.current(), null);
+    }
+);
+
 console.log("PASS " + count + " guide integration scenarios");

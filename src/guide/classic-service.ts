@@ -17,14 +17,7 @@ function guideSource(): string {
 function guideChannelId(row: any, id: any): string {
     return String(row.itemId || "channel:" + id);
 }
-function guideReference(id: any): GuideReference | null {
-    var host = guideHost();
-    var candidates = (host.cList || host.curList || []).filter(function (
-        key: any
-    ) {
-        return String(key) === String(id);
-    });
-    if (candidates.length === 1) id = candidates[0];
+function guideRowReference(host: any, id: any): GuideReference | null {
     var row = (host.channels || {})[id];
     return row
         ? {
@@ -34,6 +27,31 @@ function guideReference(id: any): GuideReference | null {
               token: row,
           }
         : null;
+}
+function guideReference(id: any): GuideReference | null {
+    var host = guideHost();
+    var candidates = (host.cList || host.curList || []).filter(function (
+        key: any
+    ) {
+        return String(key) === String(id);
+    });
+    if (candidates.length === 1) id = candidates[0];
+    return guideRowReference(host, id);
+}
+function guideReferences(ids: any[]): Array<GuideReference | null> {
+    var host = guideHost(),
+        canonical: Record<string, { id: any; unique: boolean }> =
+            Object.create(null);
+    (host.cList || host.curList || []).forEach(function (id: any) {
+        var key = String(id),
+            entry = canonical[key];
+        if (entry) entry.unique = false;
+        else canonical[key] = { id: id, unique: true };
+    });
+    return ids.map(function (id: any) {
+        var entry = canonical[String(id)];
+        return guideRowReference(host, entry && entry.unique ? entry.id : id);
+    });
 }
 function guideCurrent(reference: GuideReference): boolean {
     return (
@@ -305,6 +323,7 @@ var classicGuideApi = {
         }
     },
     reference: guideReference,
+    references: guideReferences,
     request: requestGuide,
     search: function (text: string) {
         var query = text.toLowerCase(),
