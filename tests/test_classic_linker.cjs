@@ -759,6 +759,11 @@ async function testSharedBootstrapBridge() {
         );
     }
     const linked = assembleClassic(root, [appFile]);
+    const parts = assembleClassic(root, [appFile], { parts: true });
+    assert.match(parts.prelude, /Missing shared runtime bootstrap/);
+    assert.equal(parts.parts[0].file, appFile);
+    assert(!parts.parts[0].code.includes("Missing shared runtime bootstrap"));
+    assert.equal(parts.prelude + parts.parts[0].code, linked);
     const optimized = await optimizeClassic(linked);
     const bootstrap = fs.readFileSync(
         path.join(__dirname, "../js/runtime-polyfills.js"),
@@ -849,6 +854,22 @@ async function main() {
     `
         );
         const linked = assembleClassic(root, ["dep.js", "entry.js"]);
+        const parts = assembleClassic(root, ["dep.js", "entry.js"], {
+            parts: true,
+        });
+        assert.deepEqual(
+            parts.parts.map((part) => part.file),
+            ["dep.js", "entry.js"],
+            "Attribution retains the supplied module order"
+        );
+        assert.match(parts.prelude, /function __ottReadImport/);
+        assert.match(parts.parts[0].code, /function setVideo/);
+        assert.match(parts.parts[1].code, /function read/);
+        assert.equal(
+            parts.prelude + parts.parts.map((part) => part.code).join("\n"),
+            linked,
+            "Attribution includes the exact checked reader prelude and linked module text"
+        );
         acorn.parse(linked, { ecmaVersion: 5 });
         const context = vm.createContext({});
         vm.runInContext(linked, context);

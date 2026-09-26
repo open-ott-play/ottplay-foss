@@ -149,6 +149,55 @@ function assertProviderFactories(w, profile) {
                 );
 }
 
+function assertProviderMenuIds(w, provider) {
+    // These IDs are already stored in sHideMenus on existing installations.
+    // Exercise real provider closures from the emitted assets, not just the
+    // optimizer's synthetic callback fixtures.
+    const expected = {
+        "1ott": ["settingsMenu"],
+        antifriz: ["editKey", "editMode", ""],
+        "bestlist/stalker": ["editSettings"],
+        edem: ["settingsMenu"],
+        itv: ["editKey", "changeMode", "subscription", ""],
+        "kb-team": ["editSlot", "loadSlot", "info"],
+        m3u: ["showSlots"],
+        only4: ["settingsMenu"],
+        ottclub: ["editAddress", "editKey", ""],
+        "shara-tv": ["editUser", "editPassword", ""],
+        shura: ["editAddress", "editKey", "changeMode", ""],
+        tvteam: ["editUrl"],
+    }[provider];
+    assert(expected, "Missing persisted menu fixture: " + provider);
+    const records = w.__ottMenuRegistry.importClassic(w);
+    assert.deepEqual(
+        Array.from(records, (record) => record.legacyId),
+        ["noProvParam", ...expected, "optionsList"],
+        provider + ": minification preserves persisted menu identities"
+    );
+    const previous = w.sHideMenus;
+    try {
+        for (const record of records) {
+            if (!record.legacyId) continue;
+            w.sHideMenus = [];
+            assert(
+                w.__ottMenuRegistry
+                    .open(w, 0)
+                    .rows.some((row) => row.action === record.action),
+                provider + ": menu action is initially visible"
+            );
+            w.sHideMenus = [record.legacyId];
+            assert(
+                !w.__ottMenuRegistry
+                    .open(w, 0)
+                    .rows.some((row) => row.action === record.action),
+                provider + ": saved preference still hides " + record.legacyId
+            );
+        }
+    } finally {
+        w.sHideMenus = previous;
+    }
+}
+
 function fixture(profile) {
     const elements = new Map();
     const listeners = [];
@@ -1566,6 +1615,7 @@ function exerciseProviderRuntime(profile) {
             const start = requests.length;
             const before = completed;
             w.loadProv(id);
+            assertProviderMenuIds(w, id);
             assert.equal(w.__ottActiveProviderDriver.id, id);
             if (id === "1ott") requests[start].resolve('{"token":"artifact"}');
             requests.at(-1).reject();
@@ -1680,6 +1730,7 @@ function exerciseProviderRuntime(profile) {
         stored.set("ottplayprov", id);
         before = completed;
         w.loadProv(id);
+        assertProviderMenuIds(w, id);
         assert.equal(w.__ottActiveProviderDriver.id, id);
         if (id === "itv")
             requests.at(-1).resolve({
@@ -1839,6 +1890,7 @@ function exerciseProviderRuntime(profile) {
         before = completed;
         const start = requests.length;
         w.loadProv(id);
+        assertProviderMenuIds(w, id);
         assert.equal(w.__ottActiveProviderDriver.id, id);
         assert.equal(
             requests.length,

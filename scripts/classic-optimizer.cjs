@@ -9,7 +9,7 @@ const ts = require("typescript");
 // A spelling shared with another binding is kept: Terser's keep_fnames option
 // matches names, not lexical symbols. Escapes and known dynamic reflection keep
 // names; private stack-frame names are not part of the published player ABI.
-function privateFunctionNames(source) {
+function privateFunctionNames(source, requireStaticScope = false) {
     const filename = "classic-player.js";
     const options = {
         allowJs: true,
@@ -39,6 +39,19 @@ function privateFunctionNames(source) {
         if (!map.has(key)) map.set(key, []);
         map.get(key).push(node);
     }
+    function constantString(node) {
+        if (ts.isStringLiteral(node)) return node.text;
+        if (ts.isParenthesizedExpression(node))
+            return constantString(node.expression);
+        if (
+            ts.isBinaryExpression(node) &&
+            node.operatorToken.kind === ts.SyntaxKind.PlusToken
+        ) {
+            const left = constantString(node.left);
+            const right = constantString(node.right);
+            if (left !== undefined && right !== undefined) return left + right;
+        }
+    }
     function visit(node, depth = 0) {
         if (ts.isIdentifier(node)) {
             const symbol = ts.isShorthandPropertyAssignment(node.parent)
@@ -49,11 +62,7 @@ function privateFunctionNames(source) {
                 dynamic = true;
         }
         if (ts.isWithStatement(node)) dynamic = true;
-        if (
-            ts.isStringLiteral(node) &&
-            ["caller", "callee"].includes(node.text)
-        )
-            dynamic = true;
+        if (["caller", "callee"].includes(constantString(node))) dynamic = true;
         if (
             ts.isElementAccessExpression(node) &&
             ts.isIdentifier(node.expression) &&
@@ -66,11 +75,11 @@ function privateFunctionNames(source) {
             dynamic = true;
         const property = ts.isPropertyAccessExpression(node)
             ? node.name.text
-            : ts.isElementAccessExpression(node) &&
-                ts.isStringLiteral(node.argumentExpression)
-              ? node.argumentExpression.text
+            : ts.isElementAccessExpression(node)
+              ? constantString(node.argumentExpression)
               : undefined;
-        if (property === "caller" || property === "callee") dynamic = true;
+        if (["caller", "callee", "eval", "Function"].includes(property))
+            dynamic = true;
         if (
             (ts.isVariableDeclaration(node) ||
                 ts.isParameter(node) ||
@@ -92,7 +101,13 @@ function privateFunctionNames(source) {
         );
     }
     visit(tree);
-    if (dynamic) return [];
+    if (dynamic) {
+        if (requireStaticScope)
+            throw new Error(
+                "Classic player name policy requires static scope: dynamic code or function reflection found"
+            );
+        return [];
+    }
     return declarations
         .filter(
             ({ node, name, symbol }) =>
@@ -184,22 +199,57 @@ function sha256(source) {
     return createHash("sha256").update(source, "utf8").digest("hex");
 }
 
-async function optimizeClassic(source) {
+function classicOptimizerConfiguration(source, policy) {
     if (typeof source !== "string")
         throw new TypeError("Classic optimizer requires an ES5 source string");
     const globalNames = classicGlobals(source);
     const metadata = classicOptimizerMetadata();
-    const privateNames = privateFunctionNames(source);
+    let privateNames = [];
+    let retainedNames;
+    if (policy !== undefined) {
+        if (
+            !policy ||
+            !Array.isArray(policy.retainedFunctionNames) ||
+            !policy.retainedFunctionNames.every(
+                (name) =>
+                    typeof name === "string" && /^[A-Za-z_$][\w$]*$/.test(name)
+            )
+        )
+            throw new TypeError("Invalid retained classic function names");
+        // The audited player profile may rename escaped implementation callbacks.
+        // Reject newly introduced dynamic code/reflection rather than silently
+        // changing its names; ordinary numeric arguments access remains valid.
+        privateFunctionNames(source, true);
+        retainedNames = Array.from(
+            new Set([...globalNames, ...policy.retainedFunctionNames])
+        ).sort();
+        metadata.options.keep_fnames = new RegExp(
+            "^(?:" + retainedNames.map(escapeName).join("|") + ")$"
+        );
+        metadata.contracts.functionNames = "globals-and-retained";
+    } else {
+        privateNames = privateFunctionNames(source);
+    }
     if (privateNames.length) {
         metadata.options.keep_fnames = new RegExp(
-            "^(?!(?:" +
-                privateNames
-                    .map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-                    .join("|") +
-                ")$)"
+            "^(?!(?:" + privateNames.map(escapeName).join("|") + ")$)"
         );
         metadata.contracts.functionNames = "public-and-escaping";
     }
+    return { globalNames, metadata, privateNames, retainedNames };
+}
+
+function escapeName(name) {
+    return name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function classicOptimizerOptions(source, policy) {
+    return classicOptimizerConfiguration(source, policy).metadata.options;
+}
+
+async function optimizeClassic(source, policy) {
+    const { globalNames, metadata, privateNames, retainedNames } =
+        classicOptimizerConfiguration(source, policy);
     const result = await minify(source, metadata.options);
     if (typeof result.code !== "string")
         throw new Error("Classic optimizer produced no JavaScript");
@@ -220,11 +270,15 @@ async function optimizeClassic(source) {
                 options: {
                     ...metadata.options,
                     // JSON reports must record the actual regexp, not {}.
-                    keep_fnames: privateNames.length
-                        ? { regexp: metadata.options.keep_fnames.source }
-                        : true,
+                    keep_fnames:
+                        metadata.options.keep_fnames instanceof RegExp
+                            ? { regexp: metadata.options.keep_fnames.source }
+                            : true,
                 },
                 privateFunctionNames: privateNames,
+                ...(retainedNames
+                    ? { retainedFunctionNames: retainedNames }
+                    : {}),
             },
             outputBytes: Buffer.byteLength(result.code, "utf8"),
             outputSha256: sha256(result.code),
@@ -232,4 +286,8 @@ async function optimizeClassic(source) {
     };
 }
 
-module.exports = { classicOptimizerMetadata, optimizeClassic };
+module.exports = {
+    classicOptimizerMetadata,
+    classicOptimizerOptions,
+    optimizeClassic,
+};

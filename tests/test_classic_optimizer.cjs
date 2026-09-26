@@ -8,12 +8,16 @@ const { minify } = require("terser");
 const ts = require("typescript");
 const {
     classicOptimizerMetadata,
+    classicOptimizerOptions,
     optimizeClassic,
 } = require("../scripts/classic-optimizer.cjs");
+const {
+    CLASSIC_PLAYER_NAME_POLICY,
+} = require("../scripts/classic-function-names.cjs");
 
 let count = 0;
-async function test(name, source, exercise) {
-    const optimized = await optimizeClassic(source);
+async function test(name, source, exercise, policy) {
+    const optimized = await optimizeClassic(source, policy);
     parse(optimized.code, { ecmaVersion: 5, sourceType: "script" });
     for (const code of [source, optimized.code]) {
         const context = vm.createContext({});
@@ -715,6 +719,166 @@ async function main() {
     assert(!privateHelpers.code.includes("calculatePrivateChannelOffset"));
     assert(!privateHelpers.code.includes("privateRecursiveSum"));
     assert(privateHelpers.code.includes("publishedSelection"));
+    const popupNamesSource = ts
+        .transpileModule(
+            fs.readFileSync(
+                path.join(__dirname, "../src/compatibility/legacy-names.ts"),
+                "utf8"
+            ),
+            {
+                compilerOptions: {
+                    module: ts.ModuleKind.ES2015,
+                    target: ts.ScriptTarget.ES5,
+                },
+            }
+        )
+        .outputText.replace(/^export /gm, "");
+    const productionNames = await test(
+        "player profile preserves persisted provider menu IDs, arity and live globals",
+        popupNamesSource +
+            `
+        var playerSelection = 1;
+        function createPlayerCallbacks() {
+            function settingsMenu(hostCall, unusedState) {
+                var previous = playerSelection;
+                hostCall();
+                return [previous, playerSelection, this.label, arguments.length];
+            }
+            function privatePlaybackCompletion(value, unusedState) { return value + playerSelection; }
+            return { action: settingsMenu, complete: privatePlaybackCompletion };
+        }
+        var providerCallbacks = createPlayerCallbacks();`,
+        (context) => {
+            const action = context.providerCallbacks.action;
+            assert.equal(action.name, "settingsMenu");
+            assert.equal(action.length, 2);
+            assert.equal(
+                context.createPlayerCallbacks.name,
+                "createPlayerCallbacks"
+            );
+            assert.equal(context.popupActionId(action), "settingsMenu");
+            const savedHiddenMenus = ["settingsMenu"];
+            assert(savedHiddenMenus.includes(context.popupActionId(action)));
+            assert.deepEqual(
+                Array.from(
+                    action.call({ label: "Provider" }, () => {
+                        context.playerSelection = 9;
+                    })
+                ),
+                [1, 9, "Provider", 1]
+            );
+            assert.equal(context.providerCallbacks.complete.length, 2);
+            assert.equal(context.providerCallbacks.complete(2), 11);
+            vm.runInContext(
+                "function providerLoadedLater() { return 'external'; }",
+                context
+            );
+            assert.equal(
+                context.popupActionId(context.providerLoadedLater),
+                "providerLoadedLater"
+            );
+        },
+        CLASSIC_PLAYER_NAME_POLICY
+    );
+    assert(!productionNames.code.includes("privatePlaybackCompletion"));
+    assert.equal(
+        productionNames.report.optimizer.contracts.functionNames,
+        "globals-and-retained"
+    );
+    assert(
+        productionNames.report.optimizer.retainedFunctionNames.includes(
+            "settingsMenu"
+        )
+    );
+    const retainedActionsSource =
+        "function providerMenuActions() { " +
+        CLASSIC_PLAYER_NAME_POLICY.retainedFunctionNames
+            .map(
+                (name) =>
+                    "function " + name + "(value, unused) { return value; }"
+            )
+            .join("\n") +
+        " return [" +
+        CLASSIC_PLAYER_NAME_POLICY.retainedFunctionNames.join(",") +
+        "]; }";
+    await test(
+        "every built-in provider action keeps its persisted spelling",
+        retainedActionsSource,
+        (context) => {
+            const actions = Array.from(context.providerMenuActions());
+            assert.deepEqual(
+                actions.map((action) => action.name),
+                Array.from(CLASSIC_PLAYER_NAME_POLICY.retainedFunctionNames)
+            );
+            actions.forEach((action) => {
+                assert.equal(action.length, 2);
+                assert.equal(action("saved"), "saved");
+            });
+        },
+        CLASSIC_PLAYER_NAME_POLICY
+    );
+    const optionsProbe =
+        "function playerCallbacks(){ function completion(value){ return value; } return completion; }";
+    const optionsResult = await minify(
+        optionsProbe,
+        classicOptimizerOptions(optionsProbe, CLASSIC_PLAYER_NAME_POLICY)
+    );
+    assert.equal(
+        optionsResult.code,
+        (await optimizeClassic(optionsProbe, CLASSIC_PLAYER_NAME_POLICY)).code
+    );
+    for (const policy of [
+        null,
+        {},
+        { retainedFunctionNames: ["invalid.name"] },
+    ])
+        await assert.rejects(
+            optimizeClassic("var player = 1;", policy),
+            /Invalid retained classic function names/
+        );
+    const dynamicPlayerSources = [
+        'function dynamicPlayer() { return eval("settingsMenu"); }',
+        'function dynamicPlayer() { return (0, eval)("settingsMenu"); }',
+        'function dynamicPlayer() { return new Function("return settingsMenu")(); }',
+        'function dynamicPlayer() { return Function("return settingsMenu")(); }',
+        'function dynamicPlayer() { return window["Fun" + "ction"]("return settingsMenu")(); }',
+        'function dynamicPlayer() { return window["ev" + "al"]("settingsMenu"); }',
+        "function dynamicPlayer(host) { with (host) { return settingsMenu; } }",
+        "function dynamicPlayer() { return arguments.callee.caller.name; }",
+        'function dynamicPlayer() { return arguments["callee"]["caller"].name; }',
+        'function dynamicPlayer() { var first = "cal" + "lee", second = "call" + "er"; return arguments[first][second].name; }',
+        'function dynamicPlayer(callback) { return callback["cal" + "ler"].name; }',
+        "function dynamicPlayer(key) { return arguments[key].name; }",
+    ];
+    for (const source of dynamicPlayerSources) {
+        await assert.rejects(
+            optimizeClassic(source, CLASSIC_PLAYER_NAME_POLICY),
+            /name policy requires static scope/,
+            source
+        );
+        assert.throws(
+            () => classicOptimizerOptions(source, CLASSIC_PLAYER_NAME_POLICY),
+            /name policy requires static scope/,
+            "The measurement API enforces the same production boundary"
+        );
+    }
+    await test(
+        "player profile allows numeric arguments loops and ordinary metadata names",
+        `function capturePlayerArguments() {
+            var values = [];
+            for (var i = 0; i < arguments.length; i++) values.push(arguments[i]);
+            return values;
+        }
+        function metadataName(record) { return record.name; }`,
+        (context) => {
+            assert.deepEqual(
+                Array.from(context.capturePlayerArguments("news", 3)),
+                ["news", 3]
+            );
+            assert.equal(context.metadataName({ name: "Channel" }), "Channel");
+        },
+        CLASSIC_PLAYER_NAME_POLICY
+    );
     await test(
         "a private helper's spelling cannot rename a same-named escaped function",
         `function internalResult(value) {
