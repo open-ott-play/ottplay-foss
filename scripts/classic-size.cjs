@@ -7,9 +7,10 @@ const { gzipSync } = require("node:zlib");
 
 // Bound the shipped outputs after settings and codec deduplication, including
 // PLi-HD layout and the offline credit viewer controls. Allow
-// candidate-version suffixes and Node/zlib variation; ES5, persisted menu
-// identities and final-artifact checks remain enforced.
-const BUDGET = Object.freeze({ bytes: 557500, gzipBytes: 166700 });
+// candidate-version suffixes and Node/zlib variation: the native bundle is
+// 166722 gzip bytes on CI Node 22.23.2 versus 166331 on local Node 26.8.2.
+// ES5, persisted menu identities and final-artifact checks remain enforced.
+const BUDGET = Object.freeze({ bytes: 557500, gzipBytes: 166900 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
