@@ -163,8 +163,13 @@ impl Policy {
     }
 }
 
-fn pinned_client(url: &Url, addresses: &[SocketAddr]) -> Result<Client, String> {
-    Client::builder()
+fn pinned_client(url: &Url, addresses: &[SocketAddr], title_case: bool) -> Result<Client, String> {
+    let mut builder = Client::builder();
+    // Older Stalker PHP portals use case-sensitive getallheaders() lookups.
+    if title_case {
+        builder = builder.http1_title_case_headers();
+    }
+    builder
         .no_proxy()
         .redirect(redirect::Policy::none())
         .timeout(TIMEOUT)
@@ -180,7 +185,7 @@ async fn request_pinned(
     ua: &str,
     addresses: &[SocketAddr],
 ) -> Result<reqwest::Response, String> {
-    pinned_client(&url, addresses)?
+    pinned_client(&url, addresses, false)?
         .get(url)
         .header("User-Agent", ua)
         .send()
@@ -281,6 +286,74 @@ pub(crate) async fn fetch(raw: &str, ua: &str) -> Result<(HeaderMap, Vec<u8>), S
     .await
 }
 
+// Stalker needs explicit MAC/session headers which browsers cannot set. Keep
+// the existing DNS pinning, limits and destination policy for this transport.
+async fn get_headers_checked<F, Fut>(
+    mut url: Url,
+    headers: HeaderMap,
+    mut check: F,
+    max_bytes: usize,
+) -> Result<(reqwest::StatusCode, Vec<u8>), String>
+where
+    F: FnMut(Url) -> Fut,
+    Fut: Future<Output = Result<Vec<SocketAddr>, String>>,
+{
+    for hop in 0..=MAX_REDIRECTS {
+        let addresses = check(url.clone()).await?;
+        let response = pinned_client(&url, &addresses, true)?
+            .get(url.clone())
+            .headers(headers.clone())
+            .send()
+            .await
+            .map_err(|_| "Proxy upstream request failed")?;
+        let status = response.status();
+        if matches!(status.as_u16(), 301 | 302 | 303 | 307 | 308) {
+            if hop == MAX_REDIRECTS {
+                return Err("Too many proxy redirects".into());
+            }
+            let location = response
+                .headers()
+                .get(reqwest::header::LOCATION)
+                .and_then(|v| v.to_str().ok())
+                .ok_or("Invalid proxy redirect")?;
+            let next = redirect_url(&url, location)?;
+            if next.origin() != url.origin()
+                || !next.username().is_empty()
+                || next.password().is_some()
+            {
+                return Err("Stalker redirect must remain on the same origin".into());
+            }
+            url = next;
+            continue;
+        }
+        let (_, body) = read_bounded(response, max_bytes).await?;
+        return Ok((status, body));
+    }
+    Err("Too many proxy redirects".into())
+}
+
+pub(crate) async fn get_headers(
+    raw: &str,
+    headers: HeaderMap,
+) -> Result<(reqwest::StatusCode, Vec<u8>), String> {
+    limited(&REQUESTS, async {
+        let url = http_url(raw)?;
+        let policy =
+            Policy::parse(&std::env::var("OTTPLAY_PROXY_LAN_ORIGINS").unwrap_or_default())?;
+        get_headers_checked(
+            url,
+            headers,
+            |url| {
+                let policy = policy.clone();
+                async move { policy.resolve(&url).await }
+            },
+            MAX_BYTES,
+        )
+        .await
+    })
+    .await
+}
+
 async fn post_json_checked<F, Fut>(
     mut url: Url,
     body: &[u8],
@@ -293,7 +366,7 @@ where
 {
     for hop in 0..=MAX_REDIRECTS {
         let addresses = check(url.clone()).await?;
-        let response = pinned_client(&url, &addresses)?
+        let response = pinned_client(&url, &addresses, false)?
             .post(url.clone())
             .header(reqwest::header::USER_AGENT, "OTT-play-FOSS/1.0")
             .header(reqwest::header::CONTENT_TYPE, "application/json")
@@ -364,6 +437,73 @@ pub(crate) async fn post_json(
 mod tests {
     use super::*;
     use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
+
+    #[tokio::test]
+    async fn stalker_headers_are_preserved_and_cross_origin_redirects_are_rejected() {
+        for location in [
+            "/server/load.php?next=1",
+            "http://other.invalid/server/load.php",
+        ] {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let address = listener.local_addr().unwrap();
+            let external = location.starts_with("http");
+            let task = tokio::spawn(async move {
+                for index in 0..if external { 1 } else { 2 } {
+                    let (socket, _) = listener.accept().await.unwrap();
+                    let mut socket = tokio::io::BufReader::new(socket);
+                    let mut wire = String::new();
+                    loop {
+                        let mut line = String::new();
+                        assert!(socket.read_line(&mut line).await.unwrap() > 0);
+                        wire.push_str(&line);
+                        if line == "\r\n" {
+                            break;
+                        }
+                    }
+                    assert!(wire.contains("Authorization: Bearer fixture-token"));
+                    let text = wire.to_lowercase();
+                    assert!(text.contains("cookie: mac=fixture"));
+                    assert!(text.contains("authorization: bearer fixture-token"));
+                    let response = if index == 0 {
+                        format!("HTTP/1.1 302 Found\r\nLocation: {location}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                    } else {
+                        "HTTP/1.1 200 OK\r\nContent-Length: 9\r\nConnection: close\r\n\r\n{\"js\":{}}".into()
+                    };
+                    socket.write_all(response.as_bytes()).await.unwrap();
+                }
+            });
+            let mut headers = HeaderMap::new();
+            headers.insert("cookie", "mac=fixture".parse().unwrap());
+            headers.insert("authorization", "Bearer fixture-token".parse().unwrap());
+            let url = http_url(&format!(
+                "http://portal.invalid:{}/server/load.php",
+                address.port()
+            ))
+            .unwrap();
+            let mut resolutions = 0;
+            let result = get_headers_checked(
+                url,
+                headers,
+                |_| {
+                    resolutions += 1;
+                    async move { Ok(vec![address]) }
+                },
+                1024,
+            )
+            .await;
+            if external {
+                assert_eq!(
+                    result.unwrap_err(),
+                    "Stalker redirect must remain on the same origin"
+                );
+                assert_eq!(resolutions, 1);
+            } else {
+                assert_eq!(result.unwrap().1, b"{\"js\":{}}");
+                assert_eq!(resolutions, 2);
+            }
+            task.await.unwrap();
+        }
+    }
 
     #[test]
     fn public_destinations_exclude_special_ipv4_ipv6_and_numeric_aliases() {

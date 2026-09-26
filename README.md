@@ -294,6 +294,28 @@ EPG_HASH=<channel-hash> ./scripts/smoke-modea-companion.sh
 
 Checks live in `scripts/modea-smoke-checks.json`. No secrets. Command-queue / `local_proxy.py` (:8081) is covered separately by `scripts/smoke-command-queue.sh` (when present).
 
+## Classic Stalker / Ministra portals
+
+Choose **Stalker portals** and enter the provider-issued MAC and full portal URL,
+for example `http://provider.example/stalker_portal/c/`. `/c/index.html`,
+`/stalker_portal`, `/server/load.php`, `/load.php` and `/portal.php` URLs select
+the classic MAG protocol. Existing bare-server configurations retain JSON-RPC.
+The provider loads the profile, genres and paginated live channels using the
+shared Stalker core. Browser requests pass through the companion's `/stalker/api`
+endpoint; native apps use their existing HTTP transport. Browser and companion
+assets must be updated together.
+
+Live playback resolves temporary channel commands when opening a stream; channel
+changes, stop, PiP and provider replacement cancel stale resolutions. Explicit
+non-temporary HTTP(S) commands play directly. Short EPG is supported; classic
+portal archive and VOD are not exposed by this provider yet. Existing JSON-RPC
+archive/guide behavior is unchanged. Private LAN portals require an exact
+`OTTPLAY_PROXY_LAN_ORIGINS` entry, as with the other companion proxy routes.
+
+The public Infomir demo is `http://middleware-stalker.com/stalker_portal/c/`.
+It returned three live catalog entries on 2026-09-26, but its media endpoints
+were unavailable; use a controlled portal/media fixture for playback regression.
+
 ## M3U stream-proxy header smoke
 
 Compares upstream request headers that Mode A companion `POST /m3u/cp.php` injects when fetching a controllable echo URL (local mock by default — no IPTV providers, no secrets).

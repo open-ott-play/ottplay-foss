@@ -40,6 +40,7 @@ interface MediaBackendPorts {
         request: MediaBackendRequest,
         event: (type: string) => void
     ): MediaEngineLease;
+    resolve?(url: string, done: (url: string | null) => void): () => void;
     setInterval(callback: () => void, delay: number): any;
 }
 function createMediaBackend(ports: MediaBackendPorts) {
@@ -77,6 +78,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
               }
             : null;
         var engine: MediaEngineLease | null = null;
+        var cancelResolve = function () {};
         var alive = true;
         var timer: any = null;
         var phase = "loading";
@@ -214,6 +216,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
             dispose: function (replaced?: boolean) {
                 if (!alive) return;
                 alive = false;
+                cancelResolve();
                 if (lanes[lane] === handle) {
                     delete lanes[lane];
                     delete seeks[lane];
@@ -276,25 +279,54 @@ function createMediaBackend(ports: MediaBackendPorts) {
         if (!current()) return handle;
         command("loading");
         if (!current()) return handle;
-        var opened: MediaEngineLease;
+        var resolved = false;
+        function attach(url: string | null) {
+            if (resolved || !handle.active()) return;
+            resolved = true;
+            if (!url) {
+                command("stop");
+                publish(handle, "error");
+                handle.dispose();
+                return;
+            }
+            var opened: MediaEngineLease;
+            try {
+                opened = ports.open(
+                    {
+                        context: request.context,
+                        lane: request.lane,
+                        position: request.position,
+                        url: url,
+                    },
+                    observe
+                );
+            } catch (error) {
+                if (current()) command("stop");
+                handle.dispose();
+                throw error;
+            }
+            if (!current()) {
+                opened.dispose();
+                return;
+            }
+            engine = opened;
+            publish(handle, "open");
+            if (!current()) return;
+            pendingEvents.forEach(observe);
+            pendingEvents = [];
+            if (current()) updateTimer();
+        }
         try {
-            opened = ports.open(request, observe);
+            if (ports.resolve) {
+                var cancel = ports.resolve(request.url, attach);
+                if (current()) cancelResolve = cancel;
+                else cancel();
+            } else attach(request.url);
         } catch (error) {
             if (current()) command("stop");
             handle.dispose();
             throw error;
         }
-        if (!current()) {
-            opened.dispose();
-            return handle;
-        }
-        engine = opened;
-        publish(handle, "open");
-        if (!current()) return handle;
-        pendingEvents.forEach(observe);
-        pendingEvents = [];
-        if (!current()) return handle;
-        updateTimer();
         return handle;
     }
     return {

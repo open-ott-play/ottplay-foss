@@ -20,6 +20,7 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
             || url.contains("/stalker_portal/stream/")
             || url.contains("/swop/a.php")
             || url.contains("/load.php")
+            || url.contains("/portal.php")
             || url.contains("/c/portal")
     }
 
