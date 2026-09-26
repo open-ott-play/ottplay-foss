@@ -2,6 +2,8 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const vm = require("node:vm");
+const ts = require("typescript");
 const {
     ARTIFACTS,
     BUDGET,
@@ -13,6 +15,9 @@ const {
 } = require("../scripts/classic-size.cjs");
 const { CLASSIC_PROVIDER_BUNDLES } = require("../scripts/classic-bundle.cjs");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-size-test-"));
+const androidOutput = fs.mkdtempSync(
+    path.join(os.tmpdir(), "ottplay-size-android-output-")
+);
 try {
     const source = "var title = 'Программа';";
     const measurement = measureBundle(source, "unicode.js");
@@ -61,6 +66,113 @@ try {
     fs.writeFileSync(oversizedSet, source);
     fs.writeFileSync(additional, source);
     const optimizer = { outputSha256: measurement.sha256 };
+    // Android Play ships exactly the two permitted provider implementations.
+    // Check both its retained flat export and the nested Capacitor entry point.
+    const playArtifacts = ["play/stbPlayer.js", "play/dist/stbPlayer.js"];
+    const playKinds = ["m3u", "stalker"];
+    for (const file of playArtifacts) {
+        const directory = path.join(root, path.dirname(file));
+        fs.mkdirSync(directory, { recursive: true });
+        fs.writeFileSync(path.join(root, file), source);
+        for (const kind of playKinds)
+            fs.writeFileSync(
+                path.join(directory, "provider-" + kind + ".js"),
+                source
+            );
+    }
+    const playSets = inspectBundleSets(root, playArtifacts, playKinds);
+    assert.equal(playSets.length, 2);
+    assert.equal(playSets[0].providers.length, 2);
+    assert.equal(playSets[0].total.bytes, measurement.bytes * 3);
+    assert.equal(playSets[0].total.gzipBytes, measurement.gzipBytes * 3);
+    // Android's configured output may be outside the repository entirely.
+    // Both inventories are relative to that output root, not the default dist.
+    const androidArtifacts = ["stbPlayer.js", "dist/stbPlayer.js"];
+    for (const file of androidArtifacts) {
+        const directory = path.join(androidOutput, path.dirname(file));
+        fs.mkdirSync(directory, { recursive: true });
+        fs.writeFileSync(path.join(androidOutput, file), source);
+        for (const kind of playKinds)
+            fs.writeFileSync(
+                path.join(directory, "provider-" + kind + ".js"),
+                source
+            );
+    }
+    const config = ts.createSourceFile(
+        "vite.config.ts",
+        fs.readFileSync(path.join(__dirname, "../vite.config.ts"), "utf8"),
+        ts.ScriptTarget.Latest,
+        true
+    );
+    const androidGates = [];
+    function findAndroidGate(node) {
+        if (
+            ts.isCallExpression(node) &&
+            ts.isIdentifier(node.expression) &&
+            node.expression.text === "inspectBundleSets"
+        )
+            androidGates.push(node.getText(config));
+        ts.forEachChild(node, findAndroidGate);
+    }
+    findAndroidGate(config);
+    assert.equal(androidGates.length, 1);
+    const inspectAndroid = () =>
+        vm.runInNewContext(androidGates[0], {
+            __dirname: root,
+            inspectBundleSets,
+            outDir: androidOutput,
+            providerKinds: playKinds,
+        });
+    const androidSets = inspectAndroid();
+    assert.deepEqual(
+        Array.from(androidSets, (set) => set.entry),
+        androidArtifacts
+    );
+    assert.equal(androidSets[1].total.bytes, measurement.bytes * 3);
+    const externalChunk = path.join(androidOutput, "dist/provider-m3u.js");
+    fs.unlinkSync(externalChunk);
+    assert.throws(
+        inspectAndroid,
+        (error) => error.code === "ENOENT" && error.path === externalChunk
+    );
+    assert.equal(
+        writeBundleReport(root, optimizer, [], playArtifacts, playKinds)
+            .providerBundles[0].providers.length,
+        2
+    );
+    assert.throws(() => inspectBundleSets(root, playArtifacts), /ENOENT/);
+    assert.throws(
+        () => inspectBundleSets(root, playArtifacts, ["m3u", "unknown"]),
+        /Invalid expected provider bundle kinds/
+    );
+    assert.throws(
+        () => inspectBundleSets(root, playArtifacts, ["m3u", "m3u"]),
+        /Invalid expected provider bundle kinds/
+    );
+    const fullOnly = path.join(root, "play/dist/provider-edem.js");
+    fs.writeFileSync(fullOnly, source);
+    assert.throws(
+        () => inspectBundleSets(root, playArtifacts, playKinds),
+        /Unexpected provider bundle/
+    );
+    fs.unlinkSync(fullOnly);
+    const required = path.join(root, "play/dist/provider-stalker.js");
+    fs.unlinkSync(required);
+    assert.throws(
+        () => inspectBundleSets(root, playArtifacts, playKinds),
+        /ENOENT/
+    );
+    fs.writeFileSync(required, source);
+    fs.writeFileSync(required, "x".repeat(BUDGET.bytes - 1));
+    const otherRequired = path.join(root, "play/dist/provider-m3u.js");
+    fs.writeFileSync(
+        otherRequired,
+        "y".repeat(TOTAL_BUDGET.bytes - BUDGET.bytes)
+    );
+    assert.throws(
+        () => inspectBundleSets(root, playArtifacts, playKinds),
+        /complete player bytes .* exceeds budget/
+    );
     const report = writeBundleReport(root, optimizer, ["entry.js"]);
     assert.deepEqual(
         JSON.parse(
@@ -91,4 +203,5 @@ try {
     );
 } finally {
     fs.rmSync(root, { force: true, recursive: true });
+    fs.rmSync(androidOutput, { force: true, recursive: true });
 }

@@ -44,9 +44,20 @@ function inspectBundles(root, artifacts = ARTIFACTS) {
     );
 }
 
-function inspectBundleSets(root, artifacts = ARTIFACTS) {
+function inspectBundleSets(root, artifacts = ARTIFACTS, providerKinds) {
     const { CLASSIC_PROVIDER_BUNDLES } = require("./classic-bundle.cjs");
-    const kinds = Object.keys(CLASSIC_PROVIDER_BUNDLES);
+    const kinds = providerKinds || Object.keys(CLASSIC_PROVIDER_BUNDLES);
+    if (
+        new Set(kinds).size !== kinds.length ||
+        kinds.some(
+            (kind) =>
+                !Object.prototype.hasOwnProperty.call(
+                    CLASSIC_PROVIDER_BUNDLES,
+                    kind
+                )
+        )
+    )
+        throw new Error("Invalid expected provider bundle kinds");
     return inspectBundles(root, artifacts).map((entry) => {
         const directory = path.dirname(entry.path);
         const expected = kinds.map((kind) => "provider-" + kind + ".js");
@@ -77,7 +88,13 @@ function inspectBundleSets(root, artifacts = ARTIFACTS) {
     });
 }
 
-function writeBundleReport(root, optimizer, modules, artifacts = ARTIFACTS) {
+function writeBundleReport(
+    root,
+    optimizer,
+    modules,
+    artifacts = ARTIFACTS,
+    providerKinds
+) {
     const { CLASSIC_PRIVATE_MODULES } = require("./classic-bundle.cjs");
     const measured = inspectBundles(root, artifacts);
     if (measured[0].sha256 !== optimizer.outputSha256)
@@ -94,7 +111,7 @@ function writeBundleReport(root, optimizer, modules, artifacts = ARTIFACTS) {
                 modules.includes(file)
             )
         ),
-        providerBundles: inspectBundleSets(root, artifacts),
+        providerBundles: inspectBundleSets(root, artifacts, providerKinds),
         schema: 1,
         toolchain: { node: process.versions.node, zlib: process.versions.zlib },
         totalBudget: TOTAL_BUDGET,

@@ -24,7 +24,7 @@ const { ensureMediaRuntime } = classicRequire(
 const { optimizeClassic } = classicRequire(
     resolve(__dirname, "scripts/classic-optimizer.cjs")
 );
-const { measureBundle, writeBundleReport } = classicRequire(
+const { inspectBundleSets, measureBundle, writeBundleReport } = classicRequire(
     resolve(__dirname, "scripts/classic-size.cjs")
 );
 const { stageNativeRuntime } = classicRequire(
@@ -129,6 +129,22 @@ function autoPlaybackScript(srcRoot: string): string {
         join(srcRoot, "build/core/auto-playback.js"),
         "utf8"
     ).replace(/^export /gm, "");
+}
+
+// Capacitor serves the nested /dist scripts; flat build copies are unused.
+function removeDuplicatePlayerAssets(directory: string): void {
+    for (const file of [
+        "stbPlayer.js",
+        ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
+            (kind) => "provider-" + kind + ".js"
+        ),
+    ]) {
+        const flat = join(directory, file);
+        const nested = join(directory, "dist", file);
+        if (!readFileSync(flat).equals(readFileSync(nested)))
+            throw new Error("Mismatched native player copies: " + file);
+        rmSync(flat);
+    }
 }
 
 // Stage a Mode A-like web root for Tauri Mode B (frontendDist).
@@ -506,6 +522,11 @@ export default defineConfig(({ mode }) => ({
                         readFileSync(join(outDir, "dist/stbPlayer.js")),
                         "android/dist/stbPlayer.js"
                     );
+                    inspectBundleSets(
+                        outDir,
+                        ["stbPlayer.js", "dist/stbPlayer.js"],
+                        providerKinds
+                    );
                     return;
                 }
                 if (mode === "server") {
@@ -531,6 +552,7 @@ export default defineConfig(({ mode }) => ({
                 // Its own clean stage shares modern dependencies with Tauri.
                 const mobileDir = resolve(__dirname, "dist-mobile");
                 copyRuntimeAssets(outDir, mobileDir);
+                removeDuplicatePlayerAssets(mobileDir);
                 stageNativeRuntime(mobileDir, "capacitor");
                 writeBundleReport(
                     __dirname,

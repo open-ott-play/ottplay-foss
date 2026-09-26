@@ -21,6 +21,7 @@ const names = new Set([
     "stagePlayerAssets",
     "autoPlaybackScript",
     "stageTauriFrontend",
+    "removeDuplicatePlayerAssets",
 ]);
 const selected = config.statements.filter((node) => {
     if (ts.isFunctionDeclaration(node)) return names.has(node.name?.text);
@@ -209,6 +210,38 @@ try {
             "Native root must not duplicate provider chunks"
         );
     }
+
+    const scripts = [
+        "stbPlayer.js",
+        ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
+            (kind) => "provider-" + kind + ".js"
+        ),
+    ];
+    for (const file of scripts) {
+        write("mobile/" + file, "same " + file);
+        write("mobile/dist/" + file, "same " + file);
+    }
+    write("mobile/index.html", "boot");
+    context.removeDuplicatePlayerAssets(path.join(fixture, "mobile"));
+    for (const file of scripts) {
+        assert.equal(
+            exists("mobile/" + file),
+            false,
+            "Unused flat native script: " + file
+        );
+        assert.equal(
+            fs.readFileSync(path.join(fixture, "mobile/dist", file), "utf8"),
+            "same " + file
+        );
+    }
+    assert.equal(exists("mobile/index.html"), true);
+    write("broken/stbPlayer.js", "first");
+    write("broken/dist/stbPlayer.js", "second");
+    assert.throws(
+        () => context.removeDuplicatePlayerAssets(path.join(fixture, "broken")),
+        /Mismatched native player copies/
+    );
+    assert.equal(exists("broken/stbPlayer.js"), true);
 
     // Capacitor retains its dist root between builds; copying a tree must
     // remove already staged private/stale files, not merely filter new copies.
