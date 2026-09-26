@@ -6,13 +6,13 @@ const path = require("node:path");
 const { gzipSync } = require("node:zlib");
 
 // Bound the shipped outputs after settings and codec deduplication, including
-// PLi-HD layout and the offline credit viewer controls. Allow
+// PLi-HD/Studio layouts, settings fixes and offline credit controls. Allow
 // candidate-version suffixes and Node/zlib variation; ES5, persisted menu
 // identities and final-artifact checks remain enforced.
-const BUDGET = Object.freeze({ bytes: 557000, gzipBytes: 166700 });
+const BUDGET = Object.freeze({ bytes: 558000, gzipBytes: 167100 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
-const TOTAL_BUDGET = Object.freeze({ bytes: 616500, gzipBytes: 189700 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 617500, gzipBytes: 190100 });
 const ARTIFACTS = Object.freeze([
     "dist/stbPlayer.js",
     "src-tauri/frontend/dist/stbPlayer.js",

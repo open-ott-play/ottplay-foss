@@ -775,6 +775,144 @@ body {
     font-weight: normal;
     line-height: 1;
 }
+/* Studio 2026: original OTT-play FOSS presentation; existing settings own
+   density, typography, visibility and opacity. No vertical row decoration. */
+.theme-studio #listCaption,
+.theme-studio #listPodval,
+.theme-studio #listTime {
+    font-weight: normal;
+    color: #f0f3f1;
+    letter-spacing: normal;
+    text-shadow: none;
+    background-color: #0e1114;
+}
+.theme-studio #listCaption {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.theme-studio #listTime {
+    z-index: 7;
+    padding-left: 0.4em;
+    color: #a3afa9;
+}
+.theme-studio #listDetail,
+.theme-studio #listAbout {
+    line-height: 1.3;
+    color: #f0f3f1;
+    border-top: none;
+}
+.theme-studio #listDetail #_name {
+    margin-bottom: 0.5em;
+}
+.theme-studio #_name .ott-channel-detail-accent {
+    font-weight: bold;
+    color: #f0f3f1 !important;
+}
+.theme-studio .ott-channel-programme {
+    color: #a3afa9 !important;
+}
+.theme-studio .ott-channel-detail-time,
+.theme-studio .ott-channel-description,
+.theme-studio .ott-channel-no-epg,
+.theme-studio #nprogramm_name,
+.theme-studio #nbegin_time,
+.theme-studio #nend_time {
+    color: #a3afa9;
+}
+.theme-studio #_nextpr {
+    background-color: #0e1114;
+}
+.theme-studio .ott-channel-next-overlay {
+    padding-right: 0;
+    padding-left: 0;
+}
+.theme-studio #listPopUp,
+.theme-studio #dialogbox {
+    color: #f0f3f1;
+    text-shadow: none;
+    background-color: #1a2025;
+    border-radius: 10px;
+    box-shadow: none;
+}
+.theme-studio .item {
+    text-shadow: none;
+    border-radius: 4px;
+    box-shadow: none;
+}
+/* Explicit state survives keyboard, pointer, paging and asynchronous EPG fills.
+   These rules also override the legacy inline colours inside settings rows. */
+.theme-studio .item.ott-selected {
+    background-color: #e7f1eb !important;
+}
+.theme-studio .item.ott-selected,
+.theme-studio .item.ott-selected * {
+    color: #112119 !important;
+}
+.theme-studio .item.ott-selected .ott-channel-programme,
+.theme-studio .item.ott-selected .ott-channel-no-epg {
+    color: #4a6255 !important;
+}
+.theme-studio .ott-playing::after {
+    position: absolute;
+    top: 25%;
+    left: 0;
+    width: 3px;
+    height: 50%;
+    content: "";
+    background-color: #8bddb8;
+}
+.theme-studio .ott-playing.ott-selected::after {
+    background-color: #112119;
+}
+.theme-studio .ott-selected .ott-channel-progress-fill {
+    background-color: #4a6255 !important;
+}
+.theme-studio .list-scroll,
+.theme-studio .progress_div,
+.theme-studio #progress_div {
+    background-color: #2b3430;
+    border: none;
+    box-shadow: none;
+}
+.theme-studio .list-scroll-thumb {
+    background-color: #a3afa9;
+}
+.theme-studio #info1 {
+    border-top-color: #2b3430;
+    box-shadow: none;
+}
+.theme-studio .btn {
+    text-shadow: none;
+    background-color: #1a2025;
+    border: 1px solid #2b3430;
+    border-radius: 4px;
+    box-shadow: none;
+}
+.theme-studio .ott-selected .btn {
+    background-color: transparent;
+}
+.theme-studio .red {
+    background-color: #d97171;
+}
+.theme-studio .green {
+    background-color: #8bddb8;
+}
+.theme-studio .yellow {
+    background-color: #dec889;
+}
+.theme-studio .blue {
+    background-color: #8ab9de;
+}
+.theme-studio #picon,
+.theme-studio .img,
+.theme-studio #numprog,
+.theme-studio #permanentTime {
+    box-shadow: none;
+}
+.theme-studio .interface-credits a {
+    color: #8bddb8;
+}
+
 /* PLi-HD visual adaptation; see docs/interface-history.md for credits.
    PLi-HD by littlesat and contributors, based on Magic_HD_Shadow_MiniTV
    by Vali (2009-2010), with derived work from VU+NL, Milo and others.

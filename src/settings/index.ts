@@ -78,7 +78,7 @@ export function applyTimezoneSetting(index: number): number {
  * @property infoRew           - Info OSD during rewind/ff (0/1).
  * @property thumbnail         - Show channel thumbnail/preview (0/1).
  * @property osdOpacity        - OSD background opacity level.
- * @property listPosition      - Remember list scroll position (0/1).
+ * @property listPosition      - List location: right (0) or left (1).
  * @property editor            - Enable channel editor (0/1).
  * @property showNumber        - Show channel number in list (0/1).
  * @property channelLogoMode   - Channel logo layout: hidden, square, or portrait (0/1/2).
@@ -106,7 +106,7 @@ export function applyTimezoneSetting(index: number): number {
  * @property useGraphicalIndicators - Use graphical icons for yes/no/off (0/1).
  * @property parentPin         - Parental control PIN code.
  * @property hideMenus         - List of menu IDs to hide.
- * @property interfaceTheme    - Interface preset: Classic (0), PLi-HD (1).
+ * @property interfaceTheme    - Interface preset: Classic (0), PLi-HD (1), Studio 2026 (2).
  * @property highlightColorSel - Classic selection colour (HSV H,S; V=50).
  * @property highlightColor    - Classic accent colour (HSV H,S; V=100).
  * @property highlightColorB   - Classic background colour (HSV H,V; S=100).
@@ -242,7 +242,7 @@ export function defaultSettings(): PlayerSettings {
         infoSlide: 1,
         infoSwitch: 1,
         infoTimeout: 5,
-        interfaceTheme: 1,
+        interfaceTheme: 2,
         listPosition: 0,
         localCmdUrl: "",
         localHttpDeviceCode: "",
@@ -483,7 +483,7 @@ export const settingsSchema: SettingDefinition[] = [
         "interfaceTheme",
         "sInterfaceTheme",
         {
-            range: [0, 1],
+            range: [0, 2],
         },
         ["setFontSize", "setColor"]
     ),
@@ -565,9 +565,9 @@ export const settingsSchema: SettingDefinition[] = [
     defineSetting("favorites", "sFavorites", {
         range: [-1, 1],
     }),
-    defineSetting("permanentTime", "sPermanentTime", {
-        range: [0, 2],
-    }),
+    defineSetting("permanentTime", "sPermanentTime", { range: [0, 2] }, [
+        "setFontSize",
+    ]),
     defineSetting("resumeWithTenSecondRewind", "s10resum"),
     defineSetting("prevCount", "sPrevCount", {
         range: [0, 4],

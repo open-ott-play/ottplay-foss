@@ -1551,7 +1551,7 @@ export function stbSetWindow(): void {
     var h = window.innerHeight / 720,
         w = window.innerWidth / 1280;
     var preview = listPreviewRect(
-        (window as any).sInterfaceTheme === 1,
+        (window as any).sInterfaceTheme,
         window.sListPos
     );
     $("#vdiv").css({

@@ -976,9 +976,10 @@ function setFontSize(): void {
     r = Math.min(r, 28 * e);
     $("#listCaption, #listPodval").css("font-size", r + "px");
     $("#permanentTime")
-        .toggle(settings.permanentTime !== 0)
+        .toggle(settings.permanentTime !== 0 && !isListVisible)
         .toggleClass("osd", settings.permanentTime !== 2)
         .css("background-color", "");
+    stbSetOsdOpacity(settings.osdOpacity * 10);
 
     var s = (window as any).__ottNativeFontFamilies
         ? ""
@@ -993,8 +994,8 @@ function setFontSize(): void {
     });
     $("#permanentTime").css({
         padding: 10 * e + "px " + 10 * t + "px",
-        right: 20 * e + "px",
-        top: 20 * t + "px",
+        right: 20 * t + "px",
+        top: 20 * e + "px",
     });
     $("#launch").css({ "font-size": 16 * e + "px", padding: 100 * e + "px" });
     $("logo").css({ margin: 100 * e + "px" });
@@ -1114,17 +1115,14 @@ function setFontSize(): void {
         console.error(ex);
     }
 
-    // Hide elements in small-screen mode
-    if (settings.noSmall) {
-        $(".no_small").hide();
-    }
+    $(".no_small").toggle(!settings.noSmall);
 
     try {
         if (typeof (window as any).stbCSS === "function")
             (window as any).stbCSS();
         $("#descr").css(
             "max-height",
-            (660 - $("#channel").height()) * e + "px"
+            Math.max(0, 660 * e - $("#channel").height()) + "px"
         );
     } catch (ex) {
         console.error(ex);
@@ -1143,18 +1141,21 @@ function setListPos(): void {
     var x = window.innerWidth / 1280;
     var y = window.innerHeight / 720;
     var pli = settings.interfaceTheme === 1;
+    var studio = settings.interfaceTheme === 2;
     var flipped = settings.listPosition;
-    var inset = pli ? 60 : 0;
-    var split = pli ? 530 : 522;
-    var top = pli ? 110 * y : 52 * y + 1;
-    var bottom = pli ? 100 * y : top;
-    var preview = listPreviewRect(pli, flipped);
-    $("#list").css({ margin: pli ? "0" : 10 * y + "px " + 10 * x + "px" });
-    var lineHeight = (pli ? 88 : 52) * y + "px";
+    var inset = studio ? 40 : pli ? 60 : 0;
+    var split = studio ? 520 : pli ? 530 : 522;
+    var top = studio ? 100 * y : pli ? 110 * y : 52 * y + 1;
+    var bottom = studio ? 80 * y : pli ? 100 * y : top;
+    var preview = listPreviewRect(settings.interfaceTheme, flipped);
+    $("#list").css({
+        margin: pli || studio ? "0" : 10 * y + "px " + 10 * x + "px",
+    });
+    var lineHeight = (studio ? 72 : pli ? 88 : 52) * y + "px";
     $("#listCaption, #listPodval").css({
-        height: (pli ? 90 : 52) * y,
+        height: (studio ? 74 : pli ? 90 : 52) * y,
         "line-height": lineHeight,
-        padding: "0 " + (pli ? 85 : 12) * x + "px",
+        padding: "0 " + (studio ? 40 : pli ? 85 : 12) * x + "px",
     });
     $("#listTime").css({
         height: lineHeight,
@@ -1168,20 +1169,22 @@ function setListPos(): void {
         right: (flipped ? split : inset) * x,
         top: top,
     });
-    $("#listIn").css("padding", pli ? "0" : 4 * y + "px 0");
+    $("#listIn").css("padding", pli || studio ? "0" : 4 * y + "px 0");
     $("#listAbout, #listEdit").css("padding", 14 * y + "px " + 16 * x + "px");
     $("#listDetail, #listPopUp").css({
         bottom: bottom,
-        left: (pli ? preview.left : flipped ? 738 : 0) * x,
+        left: (pli || studio ? preview.left : flipped ? 738 : 0) * x,
     });
     $("#listDetail").css({
-        padding: pli ? "0" : 10 * y + "px " + 14 * x + "px",
-        top: pli
-            ? (settings.noSmall ? 110 : 360) * y
-            : settings.noSmall
-              ? 30 * y + 1
-              : 330 * y,
-        width: pli ? 417 * x : 514 * x + 1,
+        padding: pli || studio ? "0" : 10 * y + "px " + 14 * x + "px",
+        top: studio
+            ? (settings.noSmall ? 100 : 368) * y
+            : pli
+              ? (settings.noSmall ? 110 : 360) * y
+              : settings.noSmall
+                ? 30 * y + 1
+                : 330 * y,
+        width: pli || studio ? preview.width * x : 514 * x + 1,
     });
     $("#listPopUp").css({
         margin: 10 * y,
@@ -1216,21 +1219,28 @@ function classicColorRgb(value: string, brightness?: number): string {
  */
 function setColor(): void {
     var pliHd = settings.interfaceTheme === 1;
+    var studio = settings.interfaceTheme === 2;
     $("body").toggleClass("theme-pli-hd", pliHd);
+    $("body").toggleClass("theme-studio", studio);
+    bodyColor = studio ? "#f0f3f1" : "#f0f0f0";
     $("body").css("color", bodyColor);
     // PLi-HD's selectedFG / selectedBG. Keep the saved Classic palette intact.
-    curColorB = pliHd
-        ? "#303240"
-        : "rgb(" + classicColorRgb(settings.highlightColorSel, 50) + ")";
-    curColor = pliHd
-        ? "#fcc000"
-        : "rgb(" + classicColorRgb(settings.highlightColor, 100) + ")";
+    curColorB = studio
+        ? "#2b4437"
+        : pliHd
+          ? "#303240"
+          : "rgb(" + classicColorRgb(settings.highlightColorSel, 50) + ")";
+    curColor = studio
+        ? "#8bddb8"
+        : pliHd
+          ? "#fcc000"
+          : "rgb(" + classicColorRgb(settings.highlightColor, 100) + ")";
     // Keep window.* in sync — itemEPG / listDetail / getListItem read w.curColor.
     window.curColor = curColor;
     window.curColorB = curColorB;
     window.bodyColor = bodyColor;
 
-    var borderColor = pliHd ? "#555555" : curColor;
+    var borderColor = studio ? "#2b3430" : pliHd ? "#555555" : curColor;
     $("#listCaption").css("border-bottom", "2px solid " + borderColor);
     $("#listPodval").css("border-top", "1px solid " + borderColor);
     $("#listPopUp, #dialogbox").css("border", "1px solid " + borderColor);
@@ -1250,9 +1260,11 @@ function setColor(): void {
     }
     stbSetOsdOpacity(settings.osdOpacity * 10);
 
-    var bgColor = pliHd
-        ? "#000000"
-        : "rgb(" + classicColorRgb(settings.highlightColorB) + ")";
+    var bgColor = studio
+        ? "#0e1114"
+        : pliHd
+          ? "#000000"
+          : "rgb(" + classicColorRgb(settings.highlightColorB) + ")";
     $(".list_back").css("background-color", bgColor);
     $("#listPopUp").css("background-color", bgColor);
 }
@@ -1270,9 +1282,11 @@ function setColor(): void {
  */
 function stbSetOsdOpacity(val: number): void {
     var rgb =
-        settings.interfaceTheme === 1
-            ? "8,8,8"
-            : classicColorRgb(settings.highlightColorB);
+        settings.interfaceTheme === 2
+            ? "14,17,20"
+            : settings.interfaceTheme === 1
+              ? "8,8,8"
+              : classicColorRgb(settings.highlightColorB);
     $(".osd").css("background-color", "rgba(" + rgb + "," + val / 100 + ")");
 }
 
@@ -3929,6 +3943,7 @@ window.settingsInterface = function (): void {
             choice(w._("Interface theme"), "interfaceTheme", [
                 w._("Classic"),
                 "PLi-HD",
+                "Studio 2026",
             ]),
             choice(
                 label("Black screen while switching the channel"),
