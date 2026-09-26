@@ -310,7 +310,7 @@ function detailProg(): void {
             r +=
                 '<div id="_nextpr" class="ott-channel-next' +
                 (showDescr ? " ott-channel-next-overlay" : "") +
-                '">';
+                '"><div id="_nextitems">';
             e.nextpr.forEach(function (n: any, i: number) {
                 if (i < nextCountL)
                     r +=
@@ -319,7 +319,7 @@ function detailProg(): void {
                         metadataText(n.name) +
                         "</span></br>";
             });
-            r += "</div>";
+            r += "</div></div>";
         }
         listDetail.innerHTML = r;
         // Only app-owned elements receive styles; metadataHtml strips classes
@@ -339,7 +339,16 @@ function detailProg(): void {
             thumbnail.style.backgroundImage =
                 'url("' + metadataCssUrl(e.icon) + '")';
         }
-        // Gold formula (no extra nextGap). Prefer outerHeight so padding counts.
+        $("#_nextpr").css({
+            "max-height":
+                Math.max(
+                    0,
+                    ($("#listDetail").height() || 0) -
+                        ($("#_name").outerHeight(true) || 0)
+                ) + "px",
+            overflow: "auto",
+        });
+        // Prefer outerHeight so padding counts.
         var nextH = 0;
         try {
             var $np = $("#_nextpr");
@@ -349,7 +358,7 @@ function detailProg(): void {
         }
         var s = showDescr
             ? ($("#listDetail").height() || 0) -
-              ($("#_name").height() || 0) -
+              ($("#_name").outerHeight(true) || 0) -
               nextH
             : 0;
         if (!(s > 0)) s = 0;
@@ -359,7 +368,15 @@ function detailProg(): void {
             position: "relative",
         });
         s = ($("#_prd").height() || 0) + 10 - s;
-        scrollUp("_prd", s, 5000);
+        var nextOverflow =
+            ($("#_nextitems").height() || 0) - ($("#_nextpr").height() || 0);
+        scrollUp(
+            nextOverflow > 0 ? "_nextitems" : "_prd",
+            nextOverflow > 0 ? nextOverflow : s,
+            5000
+        );
+    } else {
+        listDetail.innerHTML = "";
     }
     if (previewMode == 1 && typeof wdet.previewChId === "function")
         wdet.previewChId(listArray[selIndex]);
@@ -1932,7 +1949,6 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     (window as any).selIndex = selIndex;
     listCatIndex = catIdx;
     listArray = cats[catsArray[listCatIndex]] || [];
-    var wk = getViewportWidthScale();
     var wglob = window as any;
     // Both typed settings and legacy s* properties read the same SettingsStore.
     // Rendering reads that state; normalization and updates belong to the store.
@@ -1944,49 +1960,61 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     var showProgram = state.showProgram;
     var showArchive = state.showArchive;
     var showPreview = state.preview;
-    // Honor settings.pageSize. Companion sizes picon/progress from the
-    // 90-chrome font formula (setFontSize); showPage row boxes use 130 /
-    // live #listIn via listRowHeight — do not mix those bases.
-    var pageSz = Math.max(
-        1,
-        ((wglob.settings && wglob.settings.pageSize) || pageSize || 25) | 0
-    );
-    wglob.listPageSize = pageSz;
-    var itemH = (window.innerHeight - 90 * getViewportHeightScale()) / pageSz;
-    if (!(itemH > 0) || isNaN(itemH)) {
-        itemH = Math.max(12 * getViewportHeightScale(), 16);
-    }
-    // Real showPage row box (130 / live #listIn) — cap picon/archive to it.
-    var rowH =
-        typeof wglob.listRowHeight === "function"
-            ? wglob.listRowHeight(pageSz)
-            : (window.innerHeight - 130 * getViewportHeightScale()) / pageSz;
-    if (!(rowH > 0) || isNaN(rowH)) rowH = itemH;
-    var boxH = Math.max(1, Math.floor(Math.min(itemH, rowH)));
-    var numWidth = 0;
-    if (showNum)
-        try {
-            var testEl = $("#testFont");
-            testEl.text("9");
-            numWidth =
-                testEl.width() * listArray.length.toString().length + 6 * wk;
-            testEl.text("");
-        } catch (e) {
-            console.error(e);
+    var numWidth: number,
+        archWidth: number,
+        channelLogoSize: number,
+        channelLogoMargin: number,
+        progWidth: number,
+        progBarH: number,
+        progMargin: number,
+        boxH: number;
+    function measureChannelRow(): void {
+        var wk = getViewportWidthScale();
+        // Honor settings.pageSize. Companion sizes picon/progress from the
+        // 90-chrome font formula (setFontSize); showPage row boxes use 130 /
+        // live #listIn via listRowHeight — do not mix those bases.
+        var pageSz = state.pageSize;
+        wglob.listPageSize = pageSz;
+        var itemH =
+            (window.innerHeight - 90 * getViewportHeightScale()) / pageSz;
+        if (!(itemH > 0) || isNaN(itemH)) {
+            itemH = Math.max(12 * getViewportHeightScale(), 16);
         }
-    var archWidth = showArchive ? 3 * wk : 0;
-    // Picon/progress geometry must fit the real showPage row box (boxH).
-    // Sizing from taller 90-chrome itemH made flex children outgrow #itN in
-    // WKWebView even with max-height on the row.
-    var channelLogoRawSize = [0, Math.max(0, boxH - 2), boxH * 1.5][
-        channelLogoMode
-    ];
-    var channelLogoSize = channelLogoRawSize > 0 ? channelLogoRawSize : 0;
-    var channelLogoMargin = channelLogoSize || !archWidth ? 6 * wk : 0;
-    var progWidth = showProgress ? 40 * wk : 0;
-    var progBarH = Math.max(1, Math.floor(boxH / 3.5));
-    // Vertical-only margins — all-side margin inflated the flex cross-size.
-    var progMargin = showProgress ? Math.floor((boxH - progBarH) / 2) : 0;
+        // Real showPage row box (130 / live #listIn) — cap picon/archive to it.
+        var rowH =
+            typeof wglob.listRowHeight === "function"
+                ? wglob.listRowHeight(pageSz)
+                : (window.innerHeight - 130 * getViewportHeightScale()) /
+                  pageSz;
+        if (!(rowH > 0) || isNaN(rowH)) rowH = itemH;
+        boxH = Math.max(1, Math.floor(Math.min(itemH, rowH)));
+        numWidth = 0;
+        if (showNum)
+            try {
+                var testEl = $("#testFont");
+                testEl.text("9");
+                numWidth =
+                    testEl.width() * listArray.length.toString().length +
+                    6 * wk;
+                testEl.text("");
+            } catch (e) {
+                console.error(e);
+            }
+        archWidth = showArchive ? 3 * wk : 0;
+        // Picon/progress geometry must fit the real showPage row box (boxH).
+        // Sizing from taller 90-chrome itemH made flex children outgrow #itN in
+        // WKWebView even with max-height on the row.
+        var channelLogoRawSize = [0, Math.max(0, boxH - 2), boxH * 1.5][
+            channelLogoMode
+        ];
+        channelLogoSize = channelLogoRawSize > 0 ? channelLogoRawSize : 0;
+        channelLogoMargin = channelLogoSize || !archWidth ? 6 * wk : 0;
+        progWidth = showProgress ? 40 * wk : 0;
+        progBarH = Math.max(1, Math.floor(boxH / 3.5));
+        // Vertical-only margins — all-side margin inflated the flex cross-size.
+        progMargin = showProgress ? Math.floor((boxH - progBarH) / 2) : 0;
+    }
+    measureChannelRow();
 
     var channelItemFormatter = function (chId: string, idx: number) {
         var ch = channels[chId];
@@ -2043,6 +2071,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
         // A later menu/provider can replace the formatter. Never apply channel
         // styling to another list or replay styles supplied in metadata.
         if (getListItemFn !== channelItemFormatter) return;
+        measureChannelRow();
         var labels = container.querySelectorAll(".ott-channel-label");
         var accent =
             (typeof curColor === "string" && curColor) ||
@@ -2059,6 +2088,10 @@ function _channelsList(catIdx: number, channelIdx: number): void {
             var row = label.parentElement;
             if (!ch || !row) continue;
             label.style.color = foreground;
+            $(row).toggleClass(
+                "ott-playing",
+                playType >= 0 && chId === String(curList[primaryIndex])
+            );
             var number = row.querySelector(
                 ".ott-channel-number"
             ) as HTMLElement | null;
@@ -2081,7 +2114,11 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                 archive.style.flexBasis = archWidth + "px";
                 archive.style.margin = archWidth + "px";
                 archive.style.height = Math.max(1, boxH - archWidth * 2) + "px";
-                archive.style.backgroundColor = ch.rec ? "lime" : "";
+                archive.style.backgroundColor = ch.rec
+                    ? state.interfaceTheme === 2
+                        ? accent
+                        : "lime"
+                    : "";
             }
             var picon = row.querySelector(
                 ".ott-channel-picon"
