@@ -421,7 +421,7 @@ function classicLegacyNames(root, sources) {
 
 // These modules deliberately share a classic-script global ABI. Resolve actual
 // import symbols instead of dropping import lines and leaving aliases undefined.
-function assembleClassic(root, modules) {
+function assembleClassic(root, modules, assemblyOptions = {}) {
     const files = modules.map((file) => path.resolve(root, file));
     const included = new Set(files);
     for (const file of files) {
@@ -928,7 +928,16 @@ function assembleClassic(root, modules) {
           ).join(" || ") +
           ') { throw new Error("Missing shared runtime bootstrap"); }\n'
         : "";
-    return bootstrapCheck + prelude + "\n" + linked.join("\n");
+    const prefix = bootstrapCheck + prelude + "\n";
+    if (assemblyOptions.parts)
+        return {
+            parts: linked.map((code, index) => ({
+                code,
+                file: modules[index],
+            })),
+            prelude: prefix,
+        };
+    return prefix + linked.join("\n");
 }
 
 module.exports = {

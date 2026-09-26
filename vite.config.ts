@@ -24,6 +24,9 @@ const { ensureMediaRuntime } = classicRequire(
 const { optimizeClassic } = classicRequire(
     resolve(__dirname, "scripts/classic-optimizer.cjs")
 );
+const { CLASSIC_PLAYER_NAME_POLICY } = classicRequire(
+    resolve(__dirname, "scripts/classic-function-names.cjs")
+);
 const { inspectBundleSets, measureBundle, writeBundleReport } = classicRequire(
     resolve(__dirname, "scripts/classic-size.cjs")
 );
@@ -360,7 +363,10 @@ export default defineConfig(({ mode }) => ({
                 const outPath = join(outDir, "stbPlayer.js");
                 // Optimize local implementation details while preserving the classic ABI.
                 console.log("Step 3: optimize ES5 classic bundle...");
-                const result = await optimizeClassic(bundle);
+                const result = await optimizeClassic(
+                    bundle,
+                    CLASSIC_PLAYER_NAME_POLICY
+                );
                 const size = measureBundle(result.code, "dist/stbPlayer.js");
                 writeFileSync(outPath, result.code);
                 // Emit each implementation once; the selected provider loader
@@ -382,8 +388,10 @@ export default defineConfig(({ mode }) => ({
                         androidFlavor ? androidCompileRoot : __dirname,
                         CLASSIC_PROVIDER_BUNDLES[kind]
                     ).replace(/__OTTP_VERSION__/g, version);
-                    const providerResult =
-                        await optimizeClassic(providerSource);
+                    const providerResult = await optimizeClassic(
+                        providerSource,
+                        CLASSIC_PLAYER_NAME_POLICY
+                    );
                     writeFileSync(
                         join(outDir, "provider-" + kind + ".js"),
                         providerResult.code

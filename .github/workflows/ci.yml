@@ -86,11 +86,16 @@ jobs:
       - name: Check classic bundle size budgets
         run: npm run check:size
 
+      - name: Measure emitted classic module composition
+        run: npm run measure:composition
+
       - name: Upload classic build report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: classic-build-report-${{ github.sha }}
-          path: build/reports/classic-bundle.json
+          path: |
+            build/reports/classic-bundle.json
+            build/reports/classic-composition.json
           if-no-files-found: error
           retention-days: 14
 
