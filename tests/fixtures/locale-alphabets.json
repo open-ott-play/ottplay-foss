@@ -1,0 +1,236 @@
+{
+  "version": 1,
+  "cldrVersion": "48",
+  "cldrRevision": "acd6d88ae493633240e19a87a721076a8a75c310",
+  "copyright": "Copyright © 1991-2025 Unicode, Inc.",
+  "license": "Unicode-3.0",
+  "licenseFile": "js/licenses/Unicode-3.0.txt",
+  "builtInLatin": "abcdefghijklmnopqrstuvwxyz",
+  "requiredCharactersScope": "Characters available across the lowercase and uppercase localized layout, plus the built-in Latin layout. CLDR braces denote sequences, not dedicated multi-letter keys.",
+  "locales": {
+    "_eng": {
+      "locale": "en",
+      "alphabet": "абвгдеёжзийклмнопрстуфхцчшщъыьэюя",
+      "requiredCharacters": "abcdefghijklmnopqrstuvwxyz",
+      "mainExemplar": "[a b c d e f g h i j k l m n o p q r s t u v w x y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/en.xml",
+      "secondarySource": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/ru.xml",
+      "notes": "The English letters are supplied by the built-in Latin layout. Preserve the existing Russian secondary layout for English-language search and editing."
+    },
+    "_rus": {
+      "locale": "ru",
+      "alphabet": "абвгдеёжзийклмнопрстуфхцчшщъыьэюя",
+      "requiredCharacters": "абвгдеёжзийклмнопрстуфхцчшщъыьэюя",
+      "mainExemplar": "[а б в г д её ж з и й к л м н о п р с т у ф х ц ч ш щ ъ ы ь э ю я]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/ru.xml"
+    },
+    "_arm": {
+      "locale": "hy",
+      "alphabet": "աբգդեզէըթժիլխծկհձղճմյնշոչպջռսվտրցւփքօֆև",
+      "requiredCharacters": "աբգդեզէըթժիլխծկհձղճմյնշոչպջռսվտրցւփքօֆև",
+      "mainExemplar": "[ա բ գ դ ե զ է ը թ ժ ի լ խ ծ կ հ ձ ղ ճ մ յ ն շ ո չ պ ջ ռ ս վ տ ր ց ւ փ ք օ ֆ]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/hy.xml",
+      "extraCharacters": "և",
+      "notes": "Includes the modern Armenian ligature և from the auxiliary exemplar. Its uppercase ԵՒ spans two characters; toggling back must restore the original key."
+    },
+    "_bel": {
+      "locale": "be",
+      "alphabet": "абвгдеёжзійклмнопрстуўфхцчшыьэюяʼ",
+      "requiredCharacters": "абвгджзеёійклмнопрстуўфхцчшыьэюяʼ",
+      "mainExemplar": "[а б в г д {дж} {дз} е ё ж з і й к л м н о п р с т у ў ф х ц ч ш ы ь э ю я]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/be.xml",
+      "extraCharacters": "ʼ",
+      "notes": "The main-exemplar digraphs дж and дз are entered sequentially. Add the modifier-letter apostrophe ʼ (U+02BC); ASCII apostrophe remains available in punctuation."
+    },
+    "_bul": {
+      "locale": "bg",
+      "alphabet": "абвгдежзийклмнопрстуфхцчшщъьюяѝ",
+      "requiredCharacters": "абвгдежзийклмнопрстуфхцчшщъьюяѝ",
+      "mainExemplar": "[а б в г д е ж з и й к л м н о п р с т у ф х ц ч ш щ ъ ь ю я]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/bg.xml",
+      "extraCharacters": "ѝ",
+      "notes": "Includes the customary accented pronoun ѝ from the auxiliary exemplar in addition to all 30 main alphabet letters."
+    },
+    "_fra": {
+      "locale": "fr",
+      "alphabet": "aàâæbcçdeéèêëfghiîïjklmnoôœpqrstuùûüvwxyÿz",
+      "requiredCharacters": "aàâæbcçdeéèêëfghiîïjklmnoôœpqrstuùûüvwxyÿz",
+      "mainExemplar": "[aàâ æ b cç d eéèêë f g h iîï j k l m n oô œ p q r s t uùûü v w x yÿ z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/fr.xml"
+    },
+    "_ger": {
+      "locale": "de",
+      "alphabet": "aäbcdefghijklmnoöpqrsßtuüvwxyz",
+      "requiredCharacters": "aäbcdefghijklmnoöpqrsßtuüvwxyz",
+      "mainExemplar": "[aä b c d e f g h i j k l m n oö p q r s ß t uü v w x y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/de.xml",
+      "notes": "Includes ä and ß. Unicode default uppercase expands ß to SS, so the lowercase layout must be retained rather than recreated by lowercasing the uppercase output."
+    },
+    "_gre": {
+      "locale": "el",
+      "alphabet": "αάβγδεέζηήθιίϊΐκλμνξοόπρσςτυύϋΰφχψωώ",
+      "requiredCharacters": "αάβγδεέζηήθιίϊΐκλμνξοόπρσςτυύϋΰφχψωώ",
+      "mainExemplar": "[αά β γ δ εέ ζ ηή θ ιίϊΐ κ λ μ ν ξ οό π ρ σς τ υύϋΰ φ χ ψ ωώ]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/el.xml",
+      "notes": "Includes final sigma ς and all modern Greek accents/diaereses in the main exemplar. Uppercase ΐ and ΰ expand into a base plus combining marks; uppercase sigma cannot distinguish the original σ and ς keys."
+    },
+    "_heb": {
+      "locale": "he",
+      "alphabet": "אבגדהוזחטיכךלמםנןסעפףצץקרשת",
+      "requiredCharacters": "אבגדהוזחטיכךלמםנןסעפףצץקרשת",
+      "mainExemplar": "[א ב ג ד ה ו ז ח ט י כך ל מם נן ס ע פף צץ ק ר ש ת]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/he.xml",
+      "notes": "Includes all five final letter forms ך ם ן ף ץ. Hebrew letters have no case; changing case must leave this layout intact."
+    },
+    "_hun": {
+      "locale": "hu",
+      "alphabet": "aábcdeéfghiíjklmnoóöőpqrstuúüűvwxyz",
+      "requiredCharacters": "aábcsdzeéfgyhiíjklmnoóöőprtuúüűv",
+      "mainExemplar": "[aá b c {cs} {ccs} d {dz} {ddz} {dzs} {ddzs} eé f g {gy} {ggy} h ií j k l {ly} {lly} m n {ny} {nny} oó öő p r s {sz} {ssz} t {ty} {tty} uú üű v z {zs} {zzs}]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/hu.xml",
+      "notes": "Digraphs and trigraphs (including doubled forms) are entered as sequences of letter keys. Existing q, w and x keys are retained."
+    },
+    "_ita": {
+      "locale": "it",
+      "alphabet": "aàbcdeéèfghiìíjklmnoóòpqrstuúùvwxyz",
+      "requiredCharacters": "aàbcdeéèfghiìjklmnoòpqrstuùvwxyz",
+      "mainExemplar": "[aà b c d eéè f g h iì j k l m n oò p q r s t uù v w x y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/it.xml",
+      "notes": "Existing additional accented í, ó and ú keys are retained alongside the main exemplar."
+    },
+    "_lat": {
+      "locale": "lv",
+      "alphabet": "aābcčdeēfgģhiījkķlļmnņoprsštuūvzž",
+      "requiredCharacters": "aābcčdeēfgģhiījkķlļmnņoprsštuūvzž",
+      "mainExemplar": "[a ā b c č d e ē f g ģ h i ī j k ķ l ļ m n ņ o p r s š t u ū v z ž]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/lv.xml"
+    },
+    "_lit": {
+      "locale": "lt",
+      "alphabet": "aąbcčdeęėfghiįyjklmnoprsštuųūvzž",
+      "requiredCharacters": "aąbcčdeęėfghiįyjklmnoprsštuųūvzž",
+      "mainExemplar": "[aą b c č d eęė f g h iįy j k l m n o p r s š t uųū v z ž]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/lt.xml"
+    },
+    "_pol": {
+      "locale": "pl",
+      "alphabet": "aąbcćdeęfghijklłmnńoópqrsśtuvwxyzźż",
+      "requiredCharacters": "aąbcćdeęfghijklłmnńoóprsśtuwyzźż",
+      "mainExemplar": "[a ą b c ć d e ę f g h i j k l ł m n ń o ó p r s ś t u w y z ź ż]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/pl.xml",
+      "notes": "Existing q, v and x keys are retained alongside the main exemplar."
+    },
+    "_por": {
+      "locale": "pt",
+      "alphabet": "aàáâãbcçdeéêfghiíîjklmnoòóôõpqrstuúvwxyz",
+      "requiredCharacters": "aáàâãbcçdeéêfghiíjklmnoóòôõpqrstuúvwxyz",
+      "mainExemplar": "[aáàâã b cç d eéê f g h ií j k l m n oóòôõ p q r s t uú v w x y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/pt.xml",
+      "notes": "Includes ò from the main exemplar; the existing î key is retained."
+    },
+    "_rou": {
+      "locale": "ro",
+      "alphabet": "aăâbcdefghiîjklmnopqrsștțuvwxyz",
+      "requiredCharacters": "aăâbcdefghiîjklmnopqrsștțuvwxyz",
+      "mainExemplar": "[a ă â b c d e f g h i î j k l m n o p q r s ș t ț u v w x y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/ro.xml"
+    },
+    "_spa": {
+      "locale": "es",
+      "alphabet": "aábcdeéfghiíjklmnñoópqrstuúüvwxyz",
+      "requiredCharacters": "aábcdeéfghiíjklmnñoópqrstuúüvwxyz",
+      "mainExemplar": "[aá b c d eé f g h ií j k l m n ñ oó p q r s t uúü v w x y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/es.xml"
+    },
+    "_tur": {
+      "locale": "tr",
+      "alphabet": "abcçdefgğhıijklmnoöprsştuüvyz",
+      "requiredCharacters": "abcçdefgğhıiİjklmnoöprsştuüvyz",
+      "mainExemplar": "[a b c ç d e f g ğ h ı iİ j k l m n o ö p r s ş t u ü v y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/tr.xml",
+      "requiredUppercase": "Iİ",
+      "notes": "Keep lowercase ı and i separate. Their uppercase partners are I and İ respectively; İ in the CLDR main exemplar is provided by the uppercase layout, not duplicated in lowercase."
+    },
+    "_ukr": {
+      "locale": "uk",
+      "alphabet": "абвгґдеєжзиіїйклмнопрстуфхцчшщьюяʼ",
+      "requiredCharacters": "абвгґдеєжзиіїйклмнопрстуфхцчшщьюяʼ",
+      "mainExemplar": "[а б в г ґ д е є ж з и і ї й к л м н о п р с т у ф х ц ч ш щ ь ю я ʼ]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/uk.xml",
+      "notes": "Includes the alphabetic apostrophe ʼ (U+02BC) from the main exemplar; ASCII apostrophe remains available in punctuation."
+    },
+    "_uzb": {
+      "locale": "uz",
+      "alphabet": "abcdefghijklmnopqrstuvxyzʻʼ",
+      "requiredCharacters": "abdefghijklmnopqrstuvxyzʻcʼ",
+      "mainExemplar": "[a b d e f g h i j k l m n o p q r s t u v x y z {oʻ} {gʻ} {sh} {ch} ʼ]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/uz.xml",
+      "notes": "Enter oʻ, gʻ, sh and ch sequentially. Includes c and both distinct modifier letters: ʻ (U+02BB) for oʻ/gʻ, and ʼ (U+02BC) for the apostrophe."
+    },
+    "_ind": {
+      "locale": "id",
+      "alphabet": "abcdefghijklmnopqrstuvwxyz",
+      "requiredCharacters": "abcdefghijklmnopqrstuvwxyz",
+      "mainExemplar": "[a b c d e f g h i j k l m n o p q r s t u v w x y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/id.xml",
+      "notes": "The complete main exemplar is the 26-letter Latin alphabet; the localized layout must not fall back to Russian merely because it equals the built-in Latin layout."
+    },
+    "_vie": {
+      "locale": "vi",
+      "alphabet": "aàảãáạăằẳẵắặâầẩẫấậbcdđeèẻẽéẹêềểễếệghiìỉĩíịklmnoòỏõóọôồổỗốộơờởỡớợpqrstuùủũúụưừửữứựvxyỳỷỹýỵ",
+      "requiredCharacters": "aàảãáạăằẳẵắặâầẩẫấậbcdđeèẻẽéẹêềểễếệghiìỉĩíịklmnoòỏõóọôồổỗốộơờởỡớợpqrstuùủũúụưừửữứựvxyỳỷỹýỵ",
+      "mainExemplar": "[aàảãáạ ăằẳẵắặ âầẩẫấậ b c d đ eèẻẽéẹ êềểễếệ g h iìỉĩíị k l m n oòỏõóọ ôồổỗốộ ơờởỡớợ p q r s t uùủũúụ ưừửữứự v x yỳỷỹýỵ]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/vi.xml",
+      "notes": "Includes all 89 main-exemplar characters, including every precomposed tone-marked vowel and đ. Auxiliary f, j, w and z remain available through the built-in Latin layout."
+    },
+    "_may": {
+      "locale": "ms",
+      "alphabet": "abcdefghijklmnopqrstuvwxyz",
+      "requiredCharacters": "abcdefghijklmnopqrstuvwxyz",
+      "mainExemplar": "[a b c d e f g h i j k l m n o p q r s t u v w x y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/ms.xml",
+      "notes": "Malay uses its Latin (Rumi) main exemplar. The localized layout must not fall back to Russian merely because it equals the built-in Latin layout; this is not a Jawi input method."
+    },
+    "_dut": {
+      "locale": "nl",
+      "alphabet": "aáäbcdeéëfghiíïj́klmnoóöpqrstuúüvwxyz",
+      "requiredCharacters": "aáäbcdeéëfghiíïj́klmnoóöpqrstuúüvwxyz",
+      "mainExemplar": "[aáä b c d eéë f g h iíï {ij}{íj́} j k l m n oóö p q r s t uúü v w x y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/nl.xml",
+      "notes": "Enter ij and accented íj́ as sequences of letter keys. U+0301 COMBINING ACUTE ACCENT is required for j́, which has no precomposed Unicode character; display a dotted-circle helper but insert only the combining mark."
+    },
+    "_cze": {
+      "locale": "cs",
+      "alphabet": "aábcčdďeéěfghiíjklmnňoópqrřsštťuúůvwxyýzž",
+      "requiredCharacters": "aábcčdďeéěfghiíjklmnňoópqrřsštťuúůvwxyýzž",
+      "mainExemplar": "[aá b c č dď eéě f g h {ch} ií j k l m nň oó p q r ř s š tť uúů v w x yý z ž]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/cs.xml",
+      "notes": "Enter ch as c followed by h. All main-exemplar precomposed accented letters are available directly."
+    },
+    "_swe": {
+      "locale": "sv",
+      "alphabet": "aàbcdeéfghijklmnopqrstuvwxyzåäö",
+      "requiredCharacters": "aàbcdeéfghijklmnopqrstuvwxyzåäö",
+      "mainExemplar": "[aà b c d eé f g h i j k l m n o p q r s t u v w x y z å ä ö]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/sv.xml",
+      "notes": "Includes à and é from the main exemplar as well as the Swedish alphabet ending å, ä, ö."
+    },
+    "_aze": {
+      "locale": "az",
+      "alphabet": "abcçdeəfgğhxıijkqlmnoöprsştuüvyz",
+      "requiredCharacters": "abcçdeəfgğhxıiİjkqlmnoöprsştuüvyz",
+      "mainExemplar": "[a b c ç d e ə f g ğ h x ı iİ j k q l m n o ö p r s ş t u ü v y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/az.xml",
+      "requiredUppercase": "Iİ",
+      "notes": "Use the Latin main exemplar, including ə, x, q, ı and i. The uppercase partners of ı and i are I and İ respectively."
+    },
+    "_kaz": {
+      "locale": "kk",
+      "alphabet": "аәбвгғдеёжзийкқлмнңоөпрстуұүфхһцчшщъыіьэюя",
+      "requiredCharacters": "аәбвгғдеёжзийкқлмнңоөпрстуұүфхһцчшщъыіьэюя",
+      "mainExemplar": "[а ә б в г ғ д е ё ж з и й к қ л м н ң о ө п р с т у ұ ү ф х һ ц ч ш щ ъ ы і ь э ю я]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/kk.xml",
+      "notes": "Use the Cyrillic main exemplar, including ә, ғ, қ, ң, ө, ұ, ү, һ and і; this layout does not claim to implement a future Latin-script transition."
+    }
+  }
+}

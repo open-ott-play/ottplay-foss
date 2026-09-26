@@ -679,7 +679,10 @@ async function testHttpRemoteSettings() {
     const dictionaries = fs
         .readdirSync(path.join(root, "stbPlayer"))
         .filter((name) => /^_[a-z]{3}\.js$/.test(name));
-    assert.equal(dictionaries.length, 20);
+    assert.deepEqual(
+        dictionaries.map((name) => name.replace(/\.js$/, "")).sort(),
+        Object.keys(require("./fixtures/locale-alphabets.json").locales).sort()
+    );
     for (const name of dictionaries) {
         w.eval(fs.readFileSync(path.join(root, "stbPlayer", name), "utf8"));
         for (const key of keys) assert.ok(w.keyStrings[key], `${name}: ${key}`);

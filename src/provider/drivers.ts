@@ -994,12 +994,9 @@ function createNamedPlaylistDriver(
                         );
                         parsed.entries.forEach(function (entry: any) {
                             if (entry.generatedName)
-                                entry.channel.channel_name =
-                                    id === "only4" || id === "shara-tv"
-                                        ? "??? Нет названия канала"
-                                        : ports.translate(
-                                              "??? No channel name"
-                                          );
+                                entry.channel.channel_name = ports.translate(
+                                    "??? No channel name"
+                                );
                         });
                         if (!scope.active()) return;
                         catalog = parsed;
@@ -1178,17 +1175,20 @@ providerDriverProfiles.forEach(function (profile) {
 
 // OTTPLAY_FULL_ONLY_BEGIN
 function namedCredentialMessage(
+    host: any,
     id: string,
     value: ProviderCredentials
 ): string {
-    if (id === "1ott") return "Для доступа необходимо ввести ID и PIN!";
-    if (id === "only4")
-        return "Для доступа необходимо ввести IPTV токен! (10 символов)";
+    if (id === "1ott")
+        return host._("Enter an ID and PIN to access this service.");
+    if (id === "only4") return host._("Enter an IPTV token (10 characters).");
     if (id === "tvteam")
-        return "Для доступа необходимо ввести адрес плейлиста!";
-    return !value.username || !value.password
-        ? "Логин или пароль отсутсвуют!"
-        : "Для доступа необходимо ввести Логин и пароль!";
+        return host._("Enter a playlist URL to access this service.");
+    return host._(
+        !value.username || !value.password
+            ? "Username or password is missing."
+            : "Enter a username and password to access this service."
+    );
 }
 
 /** The old menu and HTML form are codecs over instance credentials, never driver state. */
@@ -1264,10 +1264,10 @@ function mountNamedProviderSettings(
             "username",
             id === "1ott"
                 ? host._("Редактирование ID") + " " + profile.title
-                : "Редактирование логина " + profile.title,
+                : host._("Enter username") + " " + profile.title,
             id === "1ott" ? [0] : [0, 2],
             id === "shara-tv" ? 8 : undefined,
-            "Для доступа необходимо ввести Логин (8 символов)!"
+            host._("Enter a username (8 characters).")
         );
     }
     function editPassword() {
@@ -1275,16 +1275,16 @@ function mountNamedProviderSettings(
             "password",
             id === "1ott"
                 ? host._("Редактирование PIN") + " " + profile.title
-                : "Редактирование пароля " + profile.title,
+                : host._("Enter password") + " " + profile.title,
             id === "1ott" ? [0] : [0, 2],
             id === "shara-tv" ? 8 : undefined,
-            "Для доступа необходимо ввести Пароль (8 символов)!"
+            host._("Enter a password (8 characters).")
         );
     }
     function editUrl() {
         field(
             "playlist",
-            "Редактирование адреса плейлиста tv.team",
+            host._("Enter playlist URL") + " tv.team",
             undefined,
             undefined,
             undefined,
@@ -1301,14 +1301,15 @@ function mountNamedProviderSettings(
             return owner.active() && menu === menuRevision;
         }
         var tokenProvider = id === "only4";
-        var caption = tokenProvider
-            ? "Настройки провайдера " + profile.title
-            : host._("Settings") + " " + profile.title;
+        var caption = host._("Settings") + " " + profile.title;
         function render() {
             host.listArray = tokenProvider
                 ? [
-                      "IPTV токен",
-                      "Тип потоков: " + modes[driver.credentials().mode || 0],
+                      host._("IPTV token"),
+                      host._(
+                          "Stream type: %1",
+                          modes[driver.credentials().mode || 0]
+                      ),
                       "",
                       (host.sNoNumbersKeys ? "" : '<div class="btn">8</div> ') +
                           host._("Load playlist"),
@@ -1350,10 +1351,11 @@ function mountNamedProviderSettings(
         host.detailListAction = function () {
             var descriptions = tokenProvider
                 ? [
-                      "Ввод IPTV токена " +
+                      host._("IPTV token") +
+                          " " +
                           profile.title +
                           host._(" (after changing, load playlist)"),
-                      "Выберите тип потоков:<br>" + modes.join(", "),
+                      host._("Select a stream type:<br>%1", modes.join(", ")),
                       "",
                       host._("Load playlist"),
                   ]
@@ -1410,10 +1412,10 @@ function mountNamedProviderSettings(
                 if (tokenProvider)
                     field(
                         "username",
-                        "Редактирование IPTV токена (10 символов)",
+                        host._("Enter an IPTV token (10 characters)."),
                         [0, 1, 2],
                         10,
-                        namedCredentialMessage(id, driver.credentials()),
+                        namedCredentialMessage(host, id, driver.credentials()),
                         undefined,
                         refresh
                     );
@@ -1456,18 +1458,20 @@ function mountNamedProviderSettings(
             host.popupArray.splice(
                 index,
                 0,
-                profile.title + ": Логин",
-                profile.title + ": Пароль"
+                profile.title + ": " + host._("Username"),
+                profile.title + ": " + host._("Password")
             );
             host.popupDetail.splice(
                 index,
                 0,
-                "Ввод логина " +
+                host._("Enter username") +
+                    " " +
                     profile.title +
-                    " (после изменения нужно перезапустить плеер)",
-                "Ввод пароля " +
+                    host._(" (after changing, restart player)"),
+                host._("Enter password") +
+                    " " +
                     profile.title +
-                    " (после изменения нужно перезапустить плеер)"
+                    host._(" (after changing, restart player)")
             );
             host.popupActions.splice(index, 0, editUser, editPassword);
         } else {
@@ -1475,16 +1479,16 @@ function mountNamedProviderSettings(
                 index,
                 1,
                 id === "tvteam"
-                    ? "tv.team : Адрес плейлиста"
-                    : id === "only4"
-                      ? "Настройки провайдера " + profile.title
-                      : host._("Settings") + " " + profile.title
+                    ? "tv.team : " + host._("Playlist URL")
+                    : host._("Settings") + " " + profile.title
             );
             host.popupDetail.splice(
                 index,
                 1,
                 id === "tvteam"
-                    ? 'Ввод адреса плейлиста tv.team</b>Тип плейлиста: <b>OTTPlayer</b><br/><br/>Вы можете не вводить окончание адреса плейлиста "/playlist.m3u8" - оно будет добавлено автоматически'
+                    ? host._(
+                          'Enter the tv.team playlist URL.<br>Playlist type: <b>OTTPlayer</b><br/><br/>The "/playlist.m3u8" suffix is added automatically if omitted.'
+                      )
                     : ""
             );
             host.popupActions.splice(
@@ -1511,7 +1515,11 @@ function mountNamedProviderSettings(
                 value.password
             );
             if (!valid)
-                host.alert("Для доступа необходимо ввести Логин и пароль!");
+                host.alert(
+                    host._(
+                        "Enter a username and password to access this service."
+                    )
+                );
             return valid;
         };
         host.setProviderParams = function () {
@@ -1541,8 +1549,10 @@ function mountNamedProviderSettings(
             )
                 host.alert(
                     id === "tvteam"
-                        ? namedCredentialMessage(id, value)
-                        : "Для доступа необходимо ввести Логин и пароль!"
+                        ? namedCredentialMessage(host, id, value)
+                        : host._(
+                              "Enter a username and password to access this service."
+                          )
                 );
             return id === "tvteam"
                 ? before.playlist !== driver.credentials().playlist
@@ -2017,7 +2027,9 @@ function mountProviderDriver(
                         host.toggleProviderSettingsVisibility
                     ) + 1
                 );
-                host.infoBox(namedCredentialMessage(id, driver.credentials()));
+                host.infoBox(
+                    namedCredentialMessage(host, id, driver.credentials())
+                );
             } else if (named && error) {
                 host.alert(
                     host._(

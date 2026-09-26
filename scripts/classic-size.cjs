@@ -10,7 +10,9 @@ const { gzipSync } = require("node:zlib");
 // candidate-version suffixes and Node/zlib variation: CI Node 22 compresses
 // these bundles less than local Node 26. ES5, persisted menu identities and
 // final-artifact checks remain enforced.
-const BUDGET = Object.freeze({ bytes: 558500, gzipBytes: 167300 });
+// Localized keyboard paging/case-safe cells, translated menus and eight new
+// selector entries add <1 KB after shared label reuse. Dictionaries stay external.
+const BUDGET = Object.freeze({ bytes: 560000, gzipBytes: 168100 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small

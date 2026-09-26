@@ -272,6 +272,39 @@ test("settings and user-info callbacks are scoped, escaped and closeable", () =>
     assert(!k.panels["#listAbout"].html.includes("Speedtest"));
 });
 
+test("Antifriz settings localize access-key validation and stream choices", () => {
+    const f = fixture("antifriz"),
+        w = f.host;
+    w._ = (key, ...args) =>
+        "localized:" +
+        key.replace(/%(\d+)/g, (_match, index) => args[Number(index) - 1]);
+    w.duneAddSettings(0);
+    assert.equal(w.popupArray[0], "localized:Access key");
+    assert.equal(w.popupArray[1], "localized:Stream type: HLS");
+    assert.equal(
+        w.popupDetail[0],
+        "localized:Enter an application access key (8 characters)."
+    );
+    assert.equal(
+        w.popupDetail[1],
+        "localized:Select a stream type:<br>HLS, MPEGTS"
+    );
+    w.popupActions[0]();
+    assert.equal(
+        w.editCaption,
+        "localized:Enter an application access key (8 characters)."
+    );
+    w.editvar = "short";
+    w.setEdit();
+    assert.equal(
+        f.errors.at(-1),
+        "localized:Enter an application access key (8 characters)."
+    );
+    assert.equal(f.saved.get("azkey"), "12345678");
+    w.popupActions[1]();
+    assert.equal(w.popupArray[1], "localized:Stream type: MPEGTS");
+});
+
 test("owned media navigation supports JSON/XML/M3U and blocks stale/cancelled views", () => {
     for (const id of ["antifriz", "kb-team"]) {
         const f = fixture(id),
