@@ -744,6 +744,11 @@ body {
 .btn:hover {
     background: #3a3a42;
 }
+#listIn .item-label > .btn {
+    /* Raise settings action text by 0.1em without changing the button height. */
+    padding-bottom: 0.25em;
+    line-height: 0.95;
+}
 .red {
     background-color: #d32f2f;
 }
