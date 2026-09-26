@@ -131,6 +131,7 @@ function renderFixture() {
     window.sSHLcolorB = sSHLcolorB;
     bodyColor = "#f0f0f0";
     setColor();
+    setFontSize();
     setListPos();
     _channelsList(0, 0);
     window.__fixtureReady = true;
@@ -205,7 +206,7 @@ async function fixturePage(browser, profile) {
         if (url.pathname === "/") {
             return route.fulfill({
                 body:
-                    "<!doctype html><html><head>" +
+                    '<!doctype html><html><head><meta charset="utf-8">' +
                     styles.join("\n") +
                     '<link rel="stylesheet" href="/stbPlayer/1280.css"></head>' +
                     body.replace(
@@ -222,7 +223,7 @@ async function fixturePage(browser, profile) {
                             .join("\n") + "</body>"
                     ) +
                     "</html>",
-                contentType: "text/html",
+                contentType: "text/html; charset=utf-8",
                 headers: native
                     ? { "Content-Security-Policy": nativePolicy() }
                     : {},
@@ -328,8 +329,8 @@ test("PLi-HD switches the shipped UI and restores custom Classic colours", async
             expect(pli.programmeAccent).toBe("rgb(252, 192, 0)");
             expect(pli.detailAccent).toBe("rgb(252, 192, 0)");
             expect(pli.progressColor).toBe("rgb(252, 192, 0)");
-            expect(pli.rowHeight).toBe(classic.rowHeight);
-            expect(pli.picon).toEqual(classic.picon);
+            expect(pli.rowHeight).toBe(20);
+            expect(pli.picon.height).toBeLessThanOrEqual(pli.rowHeight);
             expect(
                 await page.evaluate(() => {
                     const clock = document.getElementById("listTime");
@@ -382,6 +383,167 @@ test("PLi-HD switches the shipped UI and restores custom Classic colours", async
         } finally {
             await fixture.close();
         }
+    }
+});
+
+test("PLi-HD keeps preview, mask and list aligned after mirroring and resize", async ({
+    browser,
+}) => {
+    for (const profile of ["server", "tauri"]) {
+        const fixture = await fixturePage(browser, profile);
+        const page = fixture.page;
+        try {
+            await page.evaluate(() => {
+                const videoBox = document.createElement("div");
+                videoBox.id = "vdiv";
+                document.body.prepend(videoBox);
+            });
+            for (const viewport of [
+                { height: 720, width: 1280 },
+                { height: 1080, width: 1920 },
+                { height: 540, width: 960 },
+            ]) {
+                await page.setViewportSize(viewport);
+                for (const side of [0, 1]) {
+                    for (const noSmall of [0, 1]) {
+                        const boxes = await page.evaluate(
+                            ({ side, noSmall }) => {
+                                saveSettings({
+                                    interfaceTheme: 1,
+                                    listPosition: side,
+                                    noSmall,
+                                });
+                                setFontSize();
+                                _channelsList(0, 0);
+                                const rect = (id) => {
+                                    const r = document
+                                        .getElementById(id)
+                                        .getBoundingClientRect();
+                                    return {
+                                        bottom: r.bottom,
+                                        height: r.height,
+                                        right: r.right,
+                                        width: r.width,
+                                        x: r.x,
+                                        y: r.y,
+                                    };
+                                };
+                                return {
+                                    bottom: rect("_b"),
+                                    detail: rect("listDetail"),
+                                    last: rect("it24"),
+                                    left: rect("_l"),
+                                    list: rect("listIn"),
+                                    preview: rect("vdiv"),
+                                    right: rect("_r"),
+                                    top: rect("_t"),
+                                };
+                            },
+                            { noSmall, side }
+                        );
+                        const x = viewport.width / 1280;
+                        const y = viewport.height / 720;
+                        expect(boxes.list.x).toBeCloseTo(
+                            (side ? 60 : 530) * x,
+                            0
+                        );
+                        expect(boxes.list.y).toBeCloseTo(110 * y, 0);
+                        expect(boxes.list.width).toBeCloseTo(690 * x, 0);
+                        expect(boxes.list.height).toBeCloseTo(510 * y, 0);
+                        expect(boxes.last.bottom).toBeLessThanOrEqual(
+                            boxes.list.bottom + 0.5
+                        );
+                        expect(boxes.detail.x).toBeCloseTo(
+                            (side ? 778 : 85) * x,
+                            0
+                        );
+                        expect(boxes.detail.y).toBeCloseTo(
+                            (noSmall ? 110 : 360) * y,
+                            0
+                        );
+                        if (!noSmall) {
+                            expect(boxes.preview.x).toBeCloseTo(
+                                (side ? 778 : 85) * x,
+                                0
+                            );
+                            expect(boxes.preview.y).toBeCloseTo(110 * y, 0);
+                            expect(boxes.preview.width).toBeCloseTo(417 * x, 0);
+                            expect(boxes.preview.height).toBeCloseTo(
+                                243 * y,
+                                0
+                            );
+                            expect(boxes.top.bottom).toBeCloseTo(
+                                boxes.preview.y,
+                                0
+                            );
+                            expect(boxes.left.right).toBeCloseTo(
+                                boxes.preview.x,
+                                0
+                            );
+                            expect(boxes.right.x).toBeCloseTo(
+                                boxes.preview.right,
+                                0
+                            );
+                            expect(boxes.bottom.y).toBeCloseTo(
+                                boxes.preview.bottom,
+                                0
+                            );
+                        }
+                    }
+                }
+            }
+            expect(fixture.errors).toEqual([]);
+            expect(fixture.unexpectedRequests).toEqual([]);
+        } finally {
+            await fixture.close();
+        }
+    }
+});
+
+test("English interface credits are readable offline and return to the list", async ({
+    browser,
+}) => {
+    const fixture = await fixturePage(browser, "tauri");
+    const page = fixture.page;
+    try {
+        const title = await page.locator("#listCaption").textContent();
+        await page.evaluate(() => {
+            infoArr
+                .find((entry) => entry.name === "Interface credits")
+                .action();
+        });
+        const credits = page.locator("#listAbout .interface-credits");
+        await expect(credits).toHaveAttribute("lang", "en");
+        await expect(credits).toContainText("Vali (2009–2010)");
+        await expect(credits).toContainText("VU+NL, Milo");
+        await expect(credits).toContainText("alex_qr");
+        await expect(credits.locator("a").first()).toHaveAttribute(
+            "href",
+            "https://github.com/littlesat/skin-PLiHD"
+        );
+        expect(
+            await page.evaluate(() => {
+                aboutKeyHandler(keys.DOWN);
+                return document.querySelector("#listAbout .interface-credits")
+                    .scrollTop;
+            })
+        ).toBeGreaterThan(0);
+        await page.evaluate(() => aboutKeyHandler(keys.RETURN));
+        await expect(credits).toHaveCount(0);
+        await expect(page.locator("#listCaption")).toHaveText(title);
+        await expect(page.locator("#it0")).toBeVisible();
+        await page.evaluate(() => {
+            infoArr
+                .find((entry) => entry.name === "Interface credits")
+                .action();
+        });
+        await page.locator('#listPodval [role="button"]').click();
+        await expect(credits).toHaveCount(0);
+        await expect(page.locator("#it0")).toBeVisible();
+        expect(fixture.errors).toEqual([]);
+        expect(fixture.unexpectedRequests).toEqual([]);
+    } finally {
+        await fixture.close();
     }
 });
 

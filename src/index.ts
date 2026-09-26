@@ -5,7 +5,12 @@ import {
     exportSettingsUI,
     importSettingsUI,
 } from "./settings/transfer-ui";
-import { hasTmdbService, metadataCssUrl, metadataText } from "./utils/helpers";
+import {
+    hasTmdbService,
+    listPreviewRect,
+    metadataCssUrl,
+    metadataText,
+} from "./utils/helpers";
 /**
  * OTT-play FOSS — main entry point.
  * Wires all modules together and exposes globals for backward compat.
@@ -942,6 +947,7 @@ function initUIReferences(): void {
  */
 function setFontSize(): void {
     pageSize = settings.pageSize;
+    setListPos();
     var $i1El = $i1 && typeof $i1.css === "function" ? $i1 : null;
     var e = window.innerHeight / 720;
     var t = window.innerWidth / 1280;
@@ -992,42 +998,8 @@ function setFontSize(): void {
     });
     $("#launch").css({ "font-size": 16 * e + "px", padding: 100 * e + "px" });
     $("logo").css({ margin: 100 * e + "px" });
-    $("#list").css({ margin: 10 * e + "px " + 10 * t + "px" });
-    $("#listCaption").css({
-        height: 52 * e + "px",
-        "line-height": 52 * e + "px",
-        padding: "0 " + 12 * t + "px",
-    });
-    $("#listTime").css({ "font-size": 22 * e + "px", width: 88 * t + "px" });
+    $("#listTime").css("font-size", 22 * e + "px");
     $("#list_s").css({ "font-size": 16 * e + "px" });
-    $("#listPodval").css({
-        height: 52 * e + "px",
-        "line-height": 52 * e + "px",
-        padding: "0 " + 12 * t + "px",
-    });
-    $("#listDetail").css({
-        bottom: 52 * e + 1 + "px",
-        padding: 10 * e + "px " + 14 * t + "px",
-        top: 330 * e + "px",
-        width: 514 * t + 1 + "px",
-    });
-    $("#listPopUp").css({
-        bottom: 52 * e + 1 + "px",
-        margin: 10 * e + "px",
-        padding: 14 * e + "px " + 18 * t + "px",
-    });
-    $("#listIn").css({
-        bottom: 52 * e + 1 + "px",
-        left: 522 * t + "px",
-        padding: 4 * e + "px 0px",
-        top: 52 * e + 1 + "px",
-    });
-    $("#listAbout, #listEdit").css({
-        bottom: 52 * e + 1 + "px",
-        left: 522 * t + "px",
-        padding: 14 * e + "px " + 16 * t + "px",
-        top: 52 * e + 1 + "px",
-    });
     $("#info1").css({ padding: 20 * e + "px " + 20 * t + "px" });
     $("#picon").css({ height: 80 * e + "px", width: 80 * t + "px" });
     $("#channel").css({
@@ -1168,18 +1140,58 @@ function setFontSize(): void {
  * #listDetail, #listPopUp via jQuery.
  */
 function setListPos(): void {
-    var e = window.innerWidth / 1280;
-    var t = window.innerHeight / 720;
-    var r = settings.listPosition ? 0 : 522 * e;
-    var s = settings.listPosition ? 522 * e : 0;
-    var n = settings.listPosition ? 738 * e : 0;
-    $("#listIn, #listAbout, #listEdit").css({
-        left: r + "px",
-        right: s + "px",
+    var x = window.innerWidth / 1280;
+    var y = window.innerHeight / 720;
+    var pli = settings.interfaceTheme === 1;
+    var flipped = settings.listPosition;
+    var inset = pli ? 60 : 0;
+    var split = pli ? 530 : 522;
+    var top = pli ? 110 * y : 52 * y + 1;
+    var bottom = pli ? 100 * y : top;
+    var preview = listPreviewRect(pli, flipped);
+    $("#list").css({ margin: pli ? "0" : 10 * y + "px " + 10 * x + "px" });
+    var lineHeight = (pli ? 88 : 52) * y + "px";
+    $("#listCaption, #listPodval").css({
+        height: (pli ? 90 : 52) * y,
+        "line-height": lineHeight,
+        padding: "0 " + (pli ? 85 : 12) * x + "px",
     });
-    $("#listDetail, #listPopUp").css({ left: n + "px" });
-    n = settings.noSmall ? 30 * t + 1 : 330 * t;
-    $("#listDetail").css({ top: n + "px" });
+    $("#listTime").css({
+        height: lineHeight,
+        "line-height": lineHeight,
+        right: inset * x,
+        width: (pli ? 150 : 88) * x,
+    });
+    $("#listIn, #listAbout, #listEdit").css({
+        bottom: bottom,
+        left: (flipped ? inset : split) * x,
+        right: (flipped ? split : inset) * x,
+        top: top,
+    });
+    $("#listIn").css("padding", pli ? "0" : 4 * y + "px 0");
+    $("#listAbout, #listEdit").css("padding", 14 * y + "px " + 16 * x + "px");
+    $("#listDetail, #listPopUp").css({
+        bottom: bottom,
+        left: (pli ? preview.left : flipped ? 738 : 0) * x,
+    });
+    $("#listDetail").css({
+        padding: pli ? "0" : 10 * y + "px " + 14 * x + "px",
+        top: pli
+            ? (settings.noSmall ? 110 : 360) * y
+            : settings.noSmall
+              ? 30 * y + 1
+              : 330 * y,
+        width: pli ? 417 * x : 514 * x + 1,
+    });
+    $("#listPopUp").css({
+        margin: 10 * y,
+        padding: 14 * y + "px " + 18 * x + "px",
+    });
+    // The opaque mask and the video use the same rectangle, including mirroring.
+    $("#_t").css("height", preview.top * y);
+    $("#_b").css("top", (preview.top + preview.height) * y);
+    $("#_l").css("width", preview.left * x);
+    $("#_r").css("left", (preview.left + preview.width) * x);
 }
 
 /** Convert validated Classic H,S at fixed V, or background H,V at S=100. */
@@ -1237,16 +1249,6 @@ function setColor(): void {
         console.error(e);
     }
     stbSetOsdOpacity(settings.osdOpacity * 10);
-
-    // Window frame elements — match stbSetWindow hole (margin 10 + caption 52).
-    var e = window.innerHeight / 720;
-    var t = window.innerWidth / 1280;
-    var frameTop = 10 * e + 52 * e;
-    $("#_t").css("height", frameTop);
-    $("#_b").css("top", frameTop + 288 * e);
-    var listFrameLeft = settings.listPosition ? 758 : 10;
-    $("#_l").css("width", listFrameLeft * t);
-    $("#_r").css("left", (listFrameLeft + 512) * t);
 
     var bgColor = pliHd
         ? "#000000"
@@ -5319,6 +5321,26 @@ function pluginInfo(): void {
     };
 }
 
+/** Readable with a remote or pointer; attribution remains available offline. */
+function interfaceCredits(): void {
+    var w = window as any;
+    w.saveListPanelState();
+    $("#listCaption").text("Interface credits");
+    $("#listAbout").html($("#interfaceCreditsSource").html()).show();
+    $("#listPodval").html(renderButtonHint(keys.RETURN, strRETURN, "Close"));
+    w.aboutKeyHandler = function (key: number): boolean {
+        if (key === w.keys.RETURN || key === w.keys.EXIT) {
+            $("#listAbout").hide().empty();
+            w.restoreListPanelState();
+            w.aboutKeyHandler = null;
+        } else if (key === w.keys.UP || key === w.keys.DOWN) {
+            var content = $("#listAbout .interface-credits")[0];
+            if (content) content.scrollTop += key === w.keys.UP ? -80 : 80;
+        }
+        return true;
+    };
+}
+
 /** Read the policy bundled with this Android installation, without a network service. */
 function privacyPolicy(onClose?: () => void): void {
     var w = window as any;
@@ -5502,6 +5524,10 @@ var infoArr: any[] = [
     { action: buttonsInfo, name: "Description of remote control buttons" },
     { action: noop },
     { action: pluginInfo, desc: "Player and device info", name: "About" },
+    {
+        action: interfaceCredits,
+        name: "Interface credits",
+    },
     {
         action: toggleDebugHudInfo,
         desc: "Toggle on-screen debug HUD",

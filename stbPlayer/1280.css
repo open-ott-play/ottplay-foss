@@ -775,8 +775,10 @@ body {
     font-weight: normal;
     line-height: 1;
 }
-/* PLi-HD palette: littlesat/skin-PLiHD, PLi-HD/skin.xml.
-   Keep geometry and Classic custom colours independent of this preset. */
+/* PLi-HD visual adaptation; see docs/interface-history.md for credits.
+   PLi-HD by littlesat and contributors, based on Magic_HD_Shadow_MiniTV
+   by Vali (2009-2010), with derived work from VU+NL, Milo and others.
+   Reference: https://github.com/littlesat/skin-PLiHD */
 .theme-pli-hd #listCaption,
 .theme-pli-hd #listPodval {
     color: #f0f0f0;
@@ -799,8 +801,19 @@ body {
     background-color: #242424;
 }
 .theme-pli-hd #listDetail {
+    line-height: 1.3;
     color: #f0f0f0;
-    border-top-color: #555;
+    border-top: none;
+}
+.theme-pli-hd #listDetail #_name {
+    margin-bottom: 0.45em;
+}
+.theme-pli-hd #listPodval {
+    background-color: #000;
+}
+.theme-pli-hd .ott-channel-next-overlay {
+    padding-right: 0;
+    padding-left: 0;
 }
 .theme-pli-hd #_nextpr {
     background-color: rgba(8, 8, 8, 0.96);
@@ -854,18 +867,32 @@ body {
 .theme-pli-hd .btn:hover {
     background-color: #555;
 }
+.interface-credits {
+    height: 100%;
+    overflow: auto;
+    font-size: 0.85em;
+    line-height: 1.45;
+    color: #f0f0f0;
+}
+.interface-credits p {
+    margin: 0 0 0.8em;
+}
+.interface-credits a {
+    color: #fcc000;
+    text-decoration: underline;
+}
 .theme-pli-hd .red {
-    background-color: #c93434;
+    background-color: #ff4a3c;
 }
 .theme-pli-hd .green {
-    background-color: #287d38;
+    background-color: #56c856;
 }
 .theme-pli-hd .yellow {
     color: #080808;
     background-color: #ffc000;
 }
 .theme-pli-hd .blue {
-    background-color: #335ca6;
+    background-color: #879ce1;
 }
 #plogo {
     background-position: top right;

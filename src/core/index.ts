@@ -27,6 +27,7 @@ import {
     providerHasItemValue,
     restoreLocalSettingsSnapshot,
 } from "../storage/index";
+import { listPreviewRect } from "../utils/helpers";
 import { watchAutoNativePlayback } from "./auto-playback";
 import { createNativeHlsTransport } from "./native-hls";
 
@@ -1549,23 +1550,21 @@ export function stbSetWindow(): void {
     isFullscreen = false;
     var h = window.innerHeight / 720,
         w = window.innerWidth / 1280;
-    // List chrome: #list margin 10 + caption 52 (yellow border under caption).
-    // The previous top:50*h position put the header behind the yellow line.
-    // Keep 512×288 hole; #_t/#_b are synced in setColor to the same metrics.
-    var listMargin = 10 * h;
-    var capH = 52 * h;
-    var top = listMargin + capH;
+    var preview = listPreviewRect(
+        (window as any).sInterfaceTheme === 1,
+        window.sListPos
+    );
     $("#vdiv").css({
         "align-items": "center",
         bottom: "auto",
         display: "flex",
-        height: 288 * h + "px",
+        height: preview.height * h + "px",
         "justify-content": "center",
-        left: window.sListPos ? 758 * w + "px" : 10 * w + "px",
+        left: preview.left * w + "px",
         position: "absolute",
         right: "auto",
-        top: top + "px",
-        width: 512 * w + "px",
+        top: preview.top * h + "px",
+        width: preview.width * w + "px",
     });
     applyAspectRatio();
     applyZoom();
