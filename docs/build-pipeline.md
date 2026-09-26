@@ -24,10 +24,9 @@ implementation details while preserving every top-level binding, property name,
 function name and function arity. Menu preferences persist `callback.name`; these
 names must survive optimization. Top-level and property mangling, unsafe rewrites,
 getter purity assumptions, and IE-incompatible `typeof` rewrites remain disabled.
-The compressor uses three passes. On the measured player, further passes produced
-identical bytes; declaration hoisting increased gzip size. Indexed-argument
-rewrites and Boolean-to-integer conversion are explicitly disabled because they
-change omitted/mapped arguments and native bridge Boolean contracts.
+The compressor uses three passes with declaration hoisting disabled.
+Indexed-argument rewrites and Boolean-to-integer conversion are disabled because
+they change omitted/mapped arguments and native bridge Boolean contracts.
 The optimizer parses both input and output as ES5 and rejects missing globals.
 Put leaf modules before consumers that use their values during initialization, and avoid
 duplicate global declarations when extracting new modules.
@@ -44,8 +43,7 @@ reachability audit; the linker cannot prove their intent.
 
 The HTML bootstrap owns startup: runtime support, media libraries, player bundle,
 selected adapter, then `startPlayer()`. Device detection always returns a
-nonempty route. The old empty-device auto-start branch never ran in shipped
-profiles and has been removed; there is no competing DOM-ready startup path.
+nonempty route. There is no competing DOM-ready startup path.
 
 `src/app/state.ts` remains an ESM-only state mirror. Its three provider popup
 imports (`popupActions`, `popupArray`, `popupDetail`) explicitly resolve to the
@@ -93,11 +91,8 @@ registered event callbacks are roots. A missing TypeScript import does not
 establish dead code. All 24 device adapters remain reachable through explicit
 `/f/<adapter>` routes; native bridges remain reachable from HTTP-hosted shells.
 
-The removed `_hasLocalizedAlphabet`, `loadProvCallback`, `time2dateStr`,
-`positionToText` and its only dependency `secondsToText` had no runtime callers,
-publications, documented API or original-player global contract. Preserve
-historical globals such as `handleTouchEnd` and the documented `DashExoPlayer`
-API even when current automatic playback does not call them.
+Preserve published globals such as `handleTouchEnd` and the documented
+`DashExoPlayer` API even when current automatic playback does not call them.
 
 For further extraction, define the public interface and immediate initialization
 effects first, then isolate internal state and test through that interface.
@@ -128,45 +123,16 @@ and Capacitor artifacts. Native transformations are measured after staging.
 These budgets cover `stbPlayer.js`, not external media libraries or the complete
 application download. Raise a budget only with a reviewed feature/size tradeoff.
 
-### Historical feature measurements
+### Measuring delivery size
 
-The following measurements record earlier integration steps, not current build
-ceilings. The active limits are the 654,000 raw / 186,750 gzip bytes stated above
-and enforced by `scripts/classic-size.cjs`.
+Use the same Node/zlib version, lockfile, optimizer settings and application
+version for repeatable measurements. Record raw bytes and gzip level 9 for each
+final server, Tauri and Capacitor bundle. Measure Play after its distribution
+filter and native staging; a pre-staging result is not the shipped artifact.
 
-The command-server connection and compatibility boundary measured 466,901 raw
-bytes / 126,699 gzip bytes against the prior 445,756 / 120,643 baseline with the
-same optimizer and version substitution: +6,056 gzip bytes (5.02%). This includes
-the outbound transport, retry/acknowledgement state, settings UI, command fixes,
-and live provider aliases. Direct unshadowed global reads save 167 gzip bytes
-without changing compression options or shadowed-binding behavior. The raw
-ceiling was unchanged at that step; its gzip allowance covered the measured growth.
-
-The shared-domain integration measured 473,261 raw / 129,329 gzip bytes after
-version substitution. Rebuilding baseline `b3c8cc0` with the same Terser 5.51.2
-options and version produces 466,922 raw / 126,848 gzip bytes: +6,339 raw bytes
-(1.36%) and +2,481 gzip bytes (1.96%). The integration adds the common operator
-transport adapter and generated wire validators to the classic bundle while
-removing more than 5,000 duplicated lines from separately loaded provider scripts.
-Its historical ceilings were 475,000 raw / 130,000 gzip bytes. Current checks still
-measure all three staged artifacts independently. The separate shared-core script
-is pinned and checked by its artifact receipt and ES5 runtime checks, and is not
-included in these bundle measurements.
-
-### Reproducing a comparison
-
-Rebuild the base and candidate with the same Node/zlib version, lockfile,
-optimizer settings and application version. Compare raw bytes and gzip level 9
-for each final server, Tauri and Capacitor bundle. Measure Play separately after
-its distribution filter and native staging; a pre-staging result is not the
-shipped artifact.
-
-Record the other delivered JavaScript paths and content hashes as well. Moving
-code to a shared-core, vendor or separately loaded file does not reduce the total
-delivery merely because `stbPlayer.js` becomes smaller. Duplicate nested paths
-in a staging tree are packaging contracts, not evidence that a page downloads
-the same script twice. Keep startup-transfer claims separate from per-file and
-package-size comparisons.
+Include separately loaded shared-core and vendor scripts when measuring the
+complete delivery. Duplicate nested paths in a staging tree are packaging
+contracts; they do not necessarily cause additional startup transfers.
 
 `build/reports/classic-bundle.json` records module order, optimizer version/options,
 public bindings, private-module interfaces, source/output hashes and final artifact sizes. CI publishes it
@@ -180,19 +146,18 @@ pipeline. Differential optimizer tests cover late provider mutations, reentrant
 callbacks, eval, function identity/arity, getters, side effects and sloppy-mode
 behavior. Actual device codec/DRM acceptance remains a separate playback check.
 
-## Comparing minifier options
+## Measuring optimizer profiles
 
-`npm run measure:classic` compiles fresh ES5 modules and compares bounded Terser
-profiles against an explicit one-pass baseline. It writes candidate scripts to
+`npm run measure:classic` compiles fresh ES5 modules and measures bounded Terser
+profiles, including a one-pass profile. It writes candidate scripts to
 `build/experiments/classic-options` and measurements to
 `build/reports/minify-options.json`, without changing shipped bundles. Use
 `npm run measure:classic -- --rounds 2` to check reproducible output across two
 runs. Timings are local samples, not stable build-speed measurements. Brotli
-quality 11 is a comparison metric, not the native packager's compression profile.
+quality 11 measurements do not describe the native packager's compression profile.
 
 Diagnostic profiles deliberately include options rejected by runtime contracts.
 ES5 parsing and preserved global declarations alone do not make them safe. The
-optimizer tests compare original and optimized behavior, including the real HTTP
-remote bridge, and prove the assertions reject changed getter, argument and
-Boolean behavior. Keep these tests and the emitted-bundle/browser checks passing
-before adopting a different profile.
+optimizer tests exercise the real HTTP remote bridge and reject changed getter,
+argument and Boolean behavior. Keep these tests and the emitted-bundle/browser
+checks passing before adopting a different profile.

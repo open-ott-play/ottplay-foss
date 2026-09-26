@@ -25,5 +25,5 @@ Unknown document versions and failed reads prevent writes. Failed writes do
 not publish a new in-memory channel document.
 
 Production JavaScript retains ES5. The unused `stb/core.js` artifact is excluded
-from browser and native staging but retained as a historical test oracle.
+from browser and native staging but retained as a test fixture.
 The packaging audit rejects its reappearance in the shipped roots.

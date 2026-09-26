@@ -216,8 +216,7 @@ source cannot let the interrupted outer selection overwrite that new driver.
 
 Malformed asynchronous catalog responses now complete startup once with an
 empty catalog and a processing error. Malformed Shura guide responses complete
-with no guide instead of throwing and leaving the caller pending. These are
-intentional fixes to the captured behavior, not changes to the saved oracles.
+with no guide instead of throwing and leaving the caller pending.
 Nested catalog and EPG snapshots are detached from the private driver state.
 
 `playlist-drivers.ts` supplies Antifriz and KB-Team instances, including MAC
@@ -242,15 +241,13 @@ identity so old navigation items cannot address a new account. Metadata callback
 recheck ownership after renderer callbacks that may select another provider.
 
 `catalog-xml.ts` handles the XML effect without publishing old operator globals.
-The generic XML codec retains Stefan Goessner's attribution and license notice;
-it is third-party code, not an independent rewrite. The old `operator.ts`
-transport helpers are no longer included in the classic bundle.
+The generic XML codec retains Stefan Goessner's attribution and license notice.
+The `operator.ts` transport helpers are excluded from the classic bundle.
 
 `provider-assets.cjs` derives the same 48 IDs from the declarative inventory.
 Vite and Play packaging omit their old executable scripts from browser, Tauri
-and Capacitor roots. UI metadata and logos remain. The original files stay in
-source control as provenance and compatibility test oracles; they are not
-runtime fallbacks for managed drivers. No shipped provider uses that script path.
+and Capacitor roots. UI metadata and logos remain. The excluded scripts are
+retained as test fixtures. Managed drivers do not use that script path at runtime.
 
 ## Version-2 playback journal
 

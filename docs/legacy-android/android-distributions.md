@@ -42,7 +42,7 @@ viewing rights. The Play flavor is a reviewable submission artifact, not a claim
 that Google has approved the application or any content source.
 
 Before public distribution, resolve the outstanding inherited-core permission
-question in the [provenance record](../legacy-provenance.md). The root MIT statement
+question in the [inherited component notices](../legacy-provenance.md). The root MIT statement
 does not establish the original authors' grant for imported code. Missing
 local evidence alone does not establish infringement or justify rewriting the
 entire player. Native builds no longer carry the historical text/icon fonts;

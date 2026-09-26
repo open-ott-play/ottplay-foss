@@ -2,7 +2,7 @@
 
 > **Mode B desktop (Tauri).** Sibling of Cap device smoke (`docs/mode-b-device-smoke.md`).
 > Debug webview often uses `OTTPLAY_WEB_URL=http://127.0.0.1:8443/`.
-> Native PiP: always-on-top `play_pip` / `stop_pip` / `set_pip_bounds` (#285). Unpaid/unsigned OK.
+> Native PiP: always-on-top `play_pip` / `stop_pip` / `set_pip_bounds`. Unpaid/unsigned OK.
 > Helper: `./scripts/smoke-tauri-desktop.sh` - does **not** assert headed play/PiP.
 
 Repeatable **macOS / Windows / Linux** smoke for Mode B Tauri desktop.
