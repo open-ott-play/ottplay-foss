@@ -5,6 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const acorn = require("acorn");
+const { JSDOM } = require("jsdom");
 const { inlineScripts } = require("../scripts/html-scripts.cjs");
 
 const root = path.resolve(__dirname, "..");
@@ -307,11 +308,12 @@ console.log(
         [phoneUrl],
         "Preserve phone write token in QR URL"
     );
-    const visible = c.messages.join(" ");
-    assert(visible.includes("https://swop.test/"));
-    assert(
-        visible.includes("ABCDEF-GHJKLM"),
-        "Show the complete manual entry code"
+    const panel = JSDOM.fragment(c.messages.at(-1));
+    const visible = panel.textContent;
+    assert.deepEqual(
+        Array.from(panel.querySelectorAll("span"), (span) => span.textContent),
+        ["https://swop.test/", "ABCDEF-GHJKLM"],
+        "Show exactly the short service address and complete manual entry code"
     );
     assert(
         !visible.includes("?c="),
@@ -373,15 +375,11 @@ console.log(
         sessionToken: "server-read-token",
         url: "https://swop.test/?c=ABCDEF&t=server-write-token",
     });
-    assert(
-        c.messages
-            .join(" ")
-            .includes("https://swop.test/?c=ABCDEF&amp;t=server-write-token"),
-        "Older Worker responses retain their escaped manual URL fallback"
-    );
-    assert(
-        c.messages.join(" ").includes("ABCDEF"),
-        "Older Worker responses retain their session code"
+    const panel = JSDOM.fragment(c.messages.at(-1));
+    assert.deepEqual(
+        Array.from(panel.querySelectorAll("span"), (span) => span.textContent),
+        ["https://swop.test/?c=ABCDEF&t=server-write-token", "ABCDEF"],
+        "Older Worker responses retain their decoded manual URL and session code"
     );
     assert.equal(c.storage.ott_device_uuid, "dev_server_generated_secure_id");
     c.timers.find((timer) => timer.delay === 3000).callback();
