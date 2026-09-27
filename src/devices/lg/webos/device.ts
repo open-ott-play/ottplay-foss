@@ -3,6 +3,8 @@
  *
  * Keycodes and platform-specific init for LG WebOS TVs.
  * Sets window.keys and overrides stbInit.
+ * The shipped ES5 adapter in devices/lg/webos/device.js also handles hosted
+ * History API Back events and remote key aliases.
  */
 
 import { stbInit as baseStbInit } from "../../../core";

@@ -113,6 +113,110 @@ for (const adapter of adapters) {
         adapter + " must preserve deferred init without platform APIs"
     );
 }
+// Some hosted webOS engines deliver semantic/page keys rather than TV codes.
+// Native codes and all other base codec behavior remain authoritative.
+{
+    const file = path.join(__dirname, "..", "devices/lg/webos/device.js");
+    const listeners = [];
+    const routed = [];
+    const exitTimers = [];
+    const historyReturns = [];
+    let historyWrites = 0;
+    let exitCalls = 0;
+    const originalState = { caller: "host" };
+    const w = {
+        addEventListener(name, callback) {
+            assert.equal(name, "popstate");
+            listeners.push(callback);
+        },
+        history: {
+            go(offset) {
+                historyReturns.push(offset);
+            },
+            length: 2,
+            pushState(state, title) {
+                assert.equal(title, "");
+                historyWrites++;
+                this.state = state;
+                this.length = 3;
+            },
+            replaceState(state) {
+                this.state = state;
+            },
+            state: originalState,
+        },
+        keyHandler(event) {
+            routed.push(event.keyCode);
+            event.preventDefault();
+            event.stopPropagation();
+        },
+        setTimeout(callback, delay) {
+            assert.equal(delay, 100);
+            exitTimers.push(callback);
+        },
+        stbEventToKeyCode: (event) => event.keyCode || event.which || 991,
+        stbExit() {
+            exitCalls++;
+            return "base exit";
+        },
+        stbInit: () => false,
+        version: "test",
+    };
+    w.window = w;
+    vm.createContext(w);
+    vm.runInContext(fs.readFileSync(file, "utf8"), w, { filename: file });
+    for (const [event, expected] of [
+        [{ keyCode: 427 }, 427],
+        [{ which: 428 }, 428],
+        [{ keyCode: 33 }, 427],
+        [{ keyCode: 34 }, 428],
+        [{ key: "ChannelUp" }, 427],
+        [{ code: "ChannelDown" }, 428],
+        [{ code: "ChannelUp", key: "Unidentified" }, 427],
+        [{ key: "PageUp" }, 427],
+        [{ key: "PageDown" }, 428],
+        [{ key: "BrowserBack" }, 461],
+        [{ code: "GoBack" }, 461],
+        [{ key: "ChannelUp", keyCode: 39 }, 39],
+        [{ key: "unhandled" }, 991],
+        [null, 0],
+    ])
+        assert.equal(w.stbEventToKeyCode(event), expected);
+    assert.equal(historyWrites, 0, "loading the adapter does not navigate");
+    w.stbInit();
+    w.stbInit();
+    assert.equal(listeners.length, 1, "initialization binds Back once");
+    assert.equal(historyWrites, 1, "initialization adds one same-page entry");
+    assert.deepEqual(originalState, { caller: "host" });
+    listeners[0]({ state: originalState });
+    assert.deepEqual(routed, [461], "history Back enters normal modal routing");
+    assert.equal(historyWrites, 2, "history guard is rearmed before routing");
+    listeners[0]({ state: w.history.state });
+    assert.deepEqual(
+        routed,
+        [461],
+        "forward to the guard does not repeat Back"
+    );
+    assert.equal(w.stbExit(), "base exit");
+    assert.equal(exitCalls, 1, "confirmed exit preserves the base exit");
+    assert.equal(
+        historyReturns.length,
+        0,
+        "native close gets the first chance"
+    );
+    assert.equal(exitTimers.length, 1);
+    exitTimers[0]();
+    assert.deepEqual(
+        historyReturns,
+        [-2],
+        "blocked close returns past our entry"
+    );
+    listeners[0]({ state: originalState });
+    assert.deepEqual(routed, [461], "confirmed exit releases history control");
+    assert.equal(historyWrites, 2);
+    w.stbExit();
+    assert.equal(exitTimers.length, 1, "exit fallback is scheduled only once");
+}
 console.log(
     "OK: seven ES5 device adapters call base init once and preserve deferred readiness"
 );
