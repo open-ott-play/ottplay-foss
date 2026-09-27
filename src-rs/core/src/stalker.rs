@@ -46,6 +46,7 @@ impl Request {
                     Some("itv"),
                     Some(
                         "get_genres"
+                            | "get_all_channels"
                             | "get_ordered_list"
                             | "create_link"
                             | "get_short_epg"
@@ -95,7 +96,17 @@ impl Request {
 
 pub async fn request(input: Request) -> Result<(reqwest::StatusCode, Vec<u8>), String> {
     let headers = input.validate()?;
-    super::proxy::get_headers(&input.url, headers).await
+    // Large MAG catalogs exceed the ordinary 16 MiB playlist limit. Keep the
+    // larger allowance confined to the validated, read-only bulk action.
+    let bulk = Url::parse(&input.url)
+        .map_err(|_| "Invalid Stalker URL")?
+        .query_pairs()
+        .any(|(key, value)| key == "action" && value == "get_all_channels");
+    if bulk {
+        super::proxy::get_headers_limit(&input.url, headers, 64 * 1024 * 1024).await
+    } else {
+        super::proxy::get_headers(&input.url, headers).await
+    }
 }
 
 #[cfg(test)]
@@ -113,6 +124,11 @@ mod tests {
     #[test]
     fn rejects_non_protocol_requests_and_unsafe_headers() {
         assert!(input().validate().is_ok());
+        let mut bulk = input();
+        bulk.url = "http://portal.example/server/load.php?type=itv&action=get_all_channels&JsHttpRequest=1-xml".into();
+        assert!(bulk.validate().is_ok());
+        bulk.url = bulk.url.replace("type=itv", "type=stb");
+        assert!(bulk.validate().is_err());
         for url in [
             "file:///tmp/load.php",
             "http://user:secret@portal.example/load.php",

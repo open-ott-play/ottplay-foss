@@ -336,6 +336,14 @@ pub(crate) async fn get_headers(
     raw: &str,
     headers: HeaderMap,
 ) -> Result<(reqwest::StatusCode, Vec<u8>), String> {
+    get_headers_limit(raw, headers, MAX_BYTES).await
+}
+
+pub(crate) async fn get_headers_limit(
+    raw: &str,
+    headers: HeaderMap,
+    max_bytes: usize,
+) -> Result<(reqwest::StatusCode, Vec<u8>), String> {
     limited(&REQUESTS, async {
         let url = http_url(raw)?;
         let policy =
@@ -347,7 +355,7 @@ pub(crate) async fn get_headers(
                 let policy = policy.clone();
                 async move { policy.resolve(&url).await }
             },
-            MAX_BYTES,
+            max_bytes,
         )
         .await
     })
