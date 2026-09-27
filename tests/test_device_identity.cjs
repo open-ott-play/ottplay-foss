@@ -297,6 +297,8 @@ console.log(
     const phoneUrl = "https://swop.test/?c=ABCDEF&t=phone-write-capability";
     session.success({
         code: "ABCDEF",
+        entryCode: "ABCDEF-GHJKLM",
+        entryUrl: "https://swop.test/",
         sessionToken: "private-read-capability",
         url: phoneUrl,
     });
@@ -304,6 +306,20 @@ console.log(
         c.qrUrls,
         [phoneUrl],
         "Preserve phone write token in QR URL"
+    );
+    const visible = c.messages.join(" ");
+    assert(visible.includes("https://swop.test/"));
+    assert(
+        visible.includes("ABCDEF-GHJKLM"),
+        "Show the complete manual entry code"
+    );
+    assert(
+        !visible.includes("?c="),
+        "Manual entry must not display the full QR URL"
+    );
+    assert(
+        !visible.includes("phone-write-capability"),
+        "QR write capability must not appear as TV text"
     );
     assert(
         !c.messages.join(" ").includes("private-read-capability"),
@@ -357,6 +373,16 @@ console.log(
         sessionToken: "server-read-token",
         url: "https://swop.test/?c=ABCDEF&t=server-write-token",
     });
+    assert(
+        c.messages
+            .join(" ")
+            .includes("https://swop.test/?c=ABCDEF&amp;t=server-write-token"),
+        "Older Worker responses retain their escaped manual URL fallback"
+    );
+    assert(
+        c.messages.join(" ").includes("ABCDEF"),
+        "Older Worker responses retain their session code"
+    );
     assert.equal(c.storage.ott_device_uuid, "dev_server_generated_secure_id");
     c.timers.find((timer) => timer.delay === 3000).callback();
     assert.equal(

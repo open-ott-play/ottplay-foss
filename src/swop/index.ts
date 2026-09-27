@@ -35,6 +35,8 @@ const SESSION_TIMEOUT_MS = 6e5;
 
 type AuthenticatedSessionResponse = SessionResponse & {
     clientId?: string;
+    entryCode?: string;
+    entryUrl?: string;
     sessionToken?: string;
 };
 
@@ -389,7 +391,7 @@ export function swopLoadValue(): void {
                     '<br/><span style="font-size:larger;word-break:break-all;color:' +
                     color +
                     '">' +
-                    escapeHtml(url) +
+                    escapeHtml(data.entryUrl || url) +
                     "</span><br/><br/>" +
                     (qrSvg
                         ? '<div style="margin:8px auto;padding:12px;background:#ffffff;display:inline-block;line-height:0;border-radius:4px">' +
@@ -400,7 +402,7 @@ export function swopLoadValue(): void {
                     ' <span style="font-size:200%;color:' +
                     color +
                     '">' +
-                    escapeHtml(code) +
+                    escapeHtml(data.entryCode || code) +
                     "</span>",
                 false,
                 true
