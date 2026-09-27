@@ -28,7 +28,11 @@ declare var renderButtonHint: (
 ) => string;
 declare var strRETURN: string;
 declare var curColor: string;
-declare var showEditKey1: (_initKeys?: any) => void;
+declare var showEditKey1: (
+    _initKeys?: any,
+    secret?: boolean,
+    resume?: boolean
+) => void;
 
 const POLL_MS = 2500;
 const SESSION_TIMEOUT_MS = 6e5;
@@ -257,9 +261,12 @@ export function swopLoadValue(): void {
         sessionToken = "";
         if (pollTimer) clearTimeout(pollTimer);
         clearTimeout(sessionTimer);
+        if (prevEditKey) w.editKey = prevEditKey;
         w.editvar = value == null ? "" : String(value);
-        if (typeof w.showEditKey === "function") w.showEditKey(null);
-        else if (typeof showEditKey1 === "function") showEditKey1(null);
+        if (typeof w.showEditKey === "function")
+            w.showEditKey(null, undefined, true);
+        else if (typeof showEditKey1 === "function")
+            showEditKey1(null, undefined, true);
     }
 
     function poll(): void {
@@ -319,8 +326,10 @@ export function swopLoadValue(): void {
     w.editKey = function (key: number): boolean {
         if (key === keys.RETURN || key === keys.EXIT) {
             cleanup();
-            if (typeof w.showEditKey === "function") w.showEditKey(null);
-            else if (typeof showEditKey1 === "function") showEditKey1(null);
+            if (typeof w.showEditKey === "function")
+                w.showEditKey(null, undefined, true);
+            else if (typeof showEditKey1 === "function")
+                showEditKey1(null, undefined, true);
             return true;
         }
         return true;
