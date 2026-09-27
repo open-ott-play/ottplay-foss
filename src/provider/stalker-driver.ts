@@ -27,9 +27,11 @@ function createClassicStalkerDriver(
     var rawRows: Record<string, any> = Object.create(null);
     var headers: Record<string, string> = {};
     var config: any = {
+        bulkCatalog: true,
         id: "classic-stalker",
         language: "en",
         mac: credentials.username,
+        preferHls: !ports.isDune(),
         profile: { stb_type: "MAG250" },
         timezone: "Etc/UTC",
         url: classicStalkerUrl(credentials.server),
@@ -154,7 +156,9 @@ function createClassicStalkerDriver(
                 run(operation, current, done, fail, retryHandshake);
             },
             function (xhr: any) {
-                fail(!!xhr && (xhr.status === 401 || xhr.status === 403));
+                if (operation.reject((xhr && xhr.status) || 0))
+                    run(operation, current, done, fail);
+                else fail(!!xhr && (xhr.status === 401 || xhr.status === 403));
             }
         );
     }
@@ -305,7 +309,7 @@ function createClassicStalkerDriver(
                 /^https?:\/\//i.test(direct) &&
                 !/^https?:\/\/(?:localhost|127\.|\[::1\])/i.test(direct)
             ) {
-                done(absolute(direct));
+                done(client.streamUrl(direct));
             } else {
                 var retried = false;
                 function resolve() {

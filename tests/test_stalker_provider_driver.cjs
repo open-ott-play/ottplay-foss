@@ -587,7 +587,7 @@ function classicFixture(
         f.respond({ blocked: "0", id: "1", status: "0" });
         assert.equal(f.action(), "get_genres");
         f.respond([{ id: "1", title: "News" }]);
-        assert.equal(f.action(), "get_ordered_list");
+        assert.equal(f.action(), "get_all_channels");
     };
     f.channel = (id, temporary = true) => ({
         cmd: temporary
@@ -637,6 +637,8 @@ test("classic URL forms use the shared MAG protocol through browser or native tr
 test("classic catalog pages, temporary links and EPG are projected without leaking session credentials", () => {
     const f = classicFixture();
     f.authorize();
+    f.respond(null);
+    assert.equal(f.action(), "get_ordered_list");
     f.respond({ data: [f.channel(42)], total_items: 2 });
     assert.equal(new URL(f.request().url).searchParams.get("p"), "2");
     f.respond({ data: [f.channel(43)], total_items: 2 });
@@ -665,6 +667,44 @@ test("classic catalog pages, temporary links and EPG are projected without leaki
     ]);
     assert.equal(guide.length, 1);
     assert.equal(guide[0].time, 1700000000);
+});
+
+test("classic bulk loading falls back once on unsupported HTTP responses but not auth denial", () => {
+    for (const status of [0, 404, 405, 413, 500, 501, 502, 503, 504]) {
+        const f = classicFixture();
+        f.authorize();
+        f.requests.at(-1).fail({ status });
+        assert.equal(f.action(), "get_ordered_list");
+        assert.equal(new URL(f.request().url).searchParams.get("p"), "1");
+        f.finish();
+        assert.deepEqual(clone(f.catalog.ids), [42]);
+    }
+    for (const status of [401, 403]) {
+        const f = classicFixture();
+        f.authorize();
+        const before = f.requests.length;
+        f.requests.at(-1).fail({ status });
+        assert.equal(f.requests.length, before);
+        assert.equal(f.error, "stalker-connect");
+    }
+});
+
+test("classic HLS preference preserves channel identity and adapts direct and resolved gateway links", () => {
+    const f = classicFixture();
+    f.authorize();
+    const url =
+        "https://portal.test/play/live.php?mac=fixture&stream=42&extension=ts&play_token=opaque";
+    f.finish([
+        { ...f.channel(42, false), cmd: "ffmpeg " + url },
+        f.channel(43),
+    ]);
+    let result;
+    f.driver.resolveStream(f.driver.stream(42), (value) => (result = value));
+    assert.equal(result, url.replace("extension=ts", "extension=m3u8"));
+    f.driver.resolveStream(f.driver.stream(43), (value) => (result = value));
+    f.respond({ cmd: "ffmpeg " + url });
+    assert.equal(result, url.replace("extension=ts", "extension=m3u8"));
+    assert.deepEqual(clone(f.catalog.ids), [42, 43]);
 });
 
 test("classic direct links skip create_link, cancelled and replaced sessions cannot publish", () => {
@@ -768,6 +808,7 @@ test("classic rejects blocked profiles, repeated pages and link failures", () =>
     assert.equal(blocked.requests.length, 2);
     const repeated = classicFixture();
     repeated.authorize();
+    repeated.respond(null);
     repeated.respond({ data: [repeated.channel(42)], total_items: 100 });
     repeated.respond({ data: [repeated.channel(42)], total_items: 100 });
     assert.equal(repeated.error, "stalker-connect");
