@@ -60,7 +60,10 @@ overhead. hls.js also measures LL-HLS parts. It does not display download bandwi
 or trust manifest BANDWIDTH. All footer refreshes use the same renderer.
 
 WKWebView does not supply a usable decoded-byte counter for native HLS. For HTTP(S)
-`.m3u8` playback, the main Tauri window therefore starts a temporary loopback relay.
+`.m3u8` playback (including portal URLs with `extension=m3u8`), the main Tauri
+window therefore starts a temporary loopback relay. Query-selected HLS keeps its
+signed upstream URL intact; the native decoder receives the loopback playlist
+instead of making an HTTP request that macOS App Transport Security can block.
 Only requests made by the player fetch upstream media; polling statistics uses
 local IPC. Playlists retain their durations and media requests are streamed to the
 native decoder. Only completed main segments enter the rolling measurement;
