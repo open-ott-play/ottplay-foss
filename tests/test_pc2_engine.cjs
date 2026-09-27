@@ -119,6 +119,22 @@ function fixture() {
     };
 }
 {
+    const f = fixture();
+    let owner = null;
+    f.w.__ottCoreBackend = () => ({ current: () => owner });
+    assert.equal(f.w.stbAudioTracksExists(), false);
+    assert.equal(f.w.stbSubtitleExists(), 0);
+    // A playback command invalidates the old engine before the next one opens.
+    owner = { tracks: () => null };
+    assert.equal(f.w.stbAudioTracksExists(), false);
+    assert.equal(f.w.stbSubtitleExists(), 0);
+    owner = f.open();
+    f.ready[0]();
+    assert.equal(f.w.stbAudioTracksExists(), true);
+    assert.equal(f.w.stbSubtitleExists(), 1);
+    owner.dispose();
+}
+{
     const f = fixture(),
         first = f.open();
     first.resume();

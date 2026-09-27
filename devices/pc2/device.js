@@ -281,7 +281,8 @@ var keys = {
     }
     function countTracks(kind) {
         var owner = w.__ottCoreBackend().current();
-        return owner ? owner.tracks(kind).length : 0;
+        var tracks = owner && owner.tracks(kind);
+        return tracks ? tracks.length : 0;
     }
     w.stbAudioTracksExists = function () {
         return countTracks("audio") > 1;

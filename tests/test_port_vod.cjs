@@ -255,10 +255,12 @@ function fixture() {
                 "mediaList",
                 "showSelectBox",
                 "updateMediaInfo",
+                "updateChannelInfo",
+                "virtualTimeshiftProg",
                 "initBackgroundIntervals",
                 "_t2",
             ]) +
-            sourceFunctions("src/index.ts", ["_playMedia"]),
+            sourceFunctions("src/index.ts", ["_playMedia", "_playChannel"]),
         context
     );
     c.__ottRenderMedia = c.showMediaList1;
@@ -306,6 +308,49 @@ function fixture() {
 module.exports = { fixture, sourceFunctions };
 
 if (require.main === module) {
+    // An outstanding TV guide callback must not overwrite the playing movie's OSD.
+    {
+        const c = fixture();
+        let guideReady;
+        c.channels = {
+            1: {
+                channel_name: "Previous TV",
+                logo: "https://example.invalid/tv.png",
+            },
+        };
+        c.observeCurrentProgramme = (_id, callback) => {
+            guideReady = callback;
+            return false;
+        };
+        c.updateChannelInfo(1);
+        assert.equal(c.elements["#channel_name"].textContent, "Previous TV");
+        c._playMedia({
+            id: 8,
+            logo_30x30: "https://example.invalid/movie.png",
+            stream_url: "movie.mp4",
+            title: "Selected movie",
+        });
+        c.updateMediaInfo();
+        const movieInfo = JSON.stringify(c.elements);
+        guideReady(1);
+        assert.equal(JSON.stringify(c.elements), movieInfo);
+        assert.equal(c.elements["#channel_name"].textContent, "Selected movie");
+        assert.equal(c.elements["#begin_time"].textContent, "2");
+        assert.equal(c.elements["#end_time"].textContent, "+8");
+
+        // Changing mode before rendering restores the previous channel on return.
+        c.ifParentalAccessChId = () => false;
+        c.getChannelUrl = () => "live.m3u8";
+        c.checkMedia = () => {};
+        c._playChannel(0, 0);
+        assert.equal(c.playType, 0);
+        assert.equal(c.elements["#channel_name"].textContent, "Previous TV");
+        assert.equal(
+            c.elements["#picon"].style.backgroundImage,
+            'url("https://example.invalid/tv.png")'
+        );
+        assert.equal(c.elements["#channel_number"].innerHTML, "1");
+    }
     // Root, folder, owned Back, local favorites/history, inline submenu.
     {
         const c = fixture();

@@ -1393,7 +1393,8 @@ export function virtualTimeshiftProg(nowSec?: number): {
 }
 
 export function updateChannelInfo(channelId: number): void {
-    if (channelId == null) return;
+    // Guide callbacks can arrive after playback has switched to a movie.
+    if (channelId == null || (window as any).playType < 0) return;
     var curList = (window as any).curList || [];
     var primaryIndex = (window as any).primaryIndex;
     if (channelId !== curList[primaryIndex]) return;

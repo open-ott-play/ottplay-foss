@@ -22,7 +22,8 @@ const BUDGET = Object.freeze({ bytes: 560000, gzipBytes: 168100 });
 // release suffix room without increasing the complete compressed budget.
 // Stalker recovery and settings re-entry measure 192100 gzip bytes in native
 // outputs on CI Node 22.23.2 (192106 with a beta version). Keep suffix headroom.
-const TOTAL_BUDGET = Object.freeze({ bytes: 623500, gzipBytes: 192200 });
+// VOD-owned native metadata and the late-guide guard measure 192222 on Node 22.
+const TOTAL_BUDGET = Object.freeze({ bytes: 623500, gzipBytes: 192300 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
