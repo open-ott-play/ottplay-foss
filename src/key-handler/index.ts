@@ -99,28 +99,25 @@ export var keys: Record<string, number> = {
 export function keyHandler(event: KeyboardEvent): void {
     // If an input, textarea, or contenteditable is focused, let the browser handle
     // printable typing. But when #listEdit is open (native playlist-name editor),
-    // still route Enter/Escape so accept/cancel reaches handleEditKey → editKey2.
+    // still route accept/cancel so TV Back also reaches handleEditKey → editKey2.
     const target = event.target as HTMLElement | null;
     if (
         target &&
-        (target.tagName === "INPUT" ||
-            target.tagName === "TEXTAREA" ||
-            target.isContentEditable)
+        (/^(INPUT|TEXTAREA)$/.test(target.tagName) || target.isContentEditable)
     ) {
-        const inputKeyCode = event.keyCode || event.which;
-        const isEnterOrEsc =
-            event.key === "Enter" ||
-            event.key === "Escape" ||
-            inputKeyCode === 13 ||
-            inputKeyCode === 27;
-        let listEditVisible = false;
         try {
-            listEditVisible =
-                typeof $ !== "undefined" && $("#listEdit").is(":visible");
+            const inputKeyCode = event.keyCode || event.which;
+            const cancelKeys = /^(Enter|Escape|GoBack|BrowserBack)$/;
+            const isAcceptOrCancel =
+                inputKeyCode === 13 ||
+                inputKeyCode === 27 ||
+                (inputKeyCode &&
+                    inputKeyCode !== 8 &&
+                    inputKeyCode === keys.RETURN) ||
+                cancelKeys.test(event.key) ||
+                cancelKeys.test(event.code);
+            if (!isAcceptOrCancel || !$("#listEdit").is(":visible")) return;
         } catch (_e) {
-            /* ignore */
-        }
-        if (!(listEditVisible && isEnterOrEsc)) {
             return;
         }
         // Fall through: preventDefault below once keyCode is known.

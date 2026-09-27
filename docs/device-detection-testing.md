@@ -149,11 +149,28 @@ record `navigator.userAgent`, `ott_device`, `keys.RETURN`, console errors and th
 loaded adapter request. Expect `lg/webos`, Back code 461 and
 `/devices/lg/webos/device.js`. On a fresh profile, select a language and use the SDK's
 RCU Down, Back and OK buttons to check the first-run screen and language chooser.
-During playback, LG profiles default Left to action 1 (Menu). A saved Left
-assignment takes precedence, including action 14 (volume down); a correct LG
-profile alone does not prove its shortcut configuration. Other profiles retain
-the existing Left default of 14, and Right remains 13 (volume up). Assignments
-can be changed in **Settings > Button settings**.
+During playback, LG profiles default Left to action 1 (Menu). webOS defaults
+Right to action 10 (current-channel guide) and Back to action 1 (confirm
+exit). NetCast and other profiles retain Right action 13 (volume up) and
+Back action 0. Saved assignments always take precedence, including old
+volume or no-action assignments; detecting the correct profile does not reset
+these preferences. Other profiles retain Left action 14 (volume down).
+Assignments can be changed in **Settings > Button settings**.
+
+Exercise both Back delivery paths: a numeric 461 key event and actual browser
+history traversal. The adapter retains one same-page history entry, so Back
+closes the player menu instead of navigating away. In unobstructed playback,
+the default Back action asks for confirmation; an open playback infobar is
+hidden first. Cancel must keep the player usable, and confirmation must exit
+only once. LG documents this distinction in its
+[Back button guide](https://webostv.developer.lge.com/develop/guides/back-button).
+
+Channel switching accepts delivered codes 427/428, Page Up/Down codes 33/34,
+and named ChannelUp/ChannelDown or PageUp/PageDown events. Test both directions
+on the actual launch shell: LG's
+[Magic Remote guide](https://webostv.developer.lge.com/develop/guides/magic-remote)
+marks Channel Up/Down unavailable to web apps, so a browser-generated event
+does not establish that a physical TV or host forwards those buttons.
 On webOS, both **STB settings** and **Interface settings** hide the playback
 engine selector. Playback chooses native HLS when supported, Shaka for DASH
 manifests, and hls.js when native HLS is unavailable or fails the Auto probe.

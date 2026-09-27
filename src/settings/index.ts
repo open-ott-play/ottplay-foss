@@ -194,13 +194,6 @@ export interface PlayerSettings {
     yFun: number;
 }
 
-/** The LG playback shortcut opens Menu even when shared software volume exists. */
-function defaultLeftArrowAction(): number {
-    const device =
-        typeof window !== "undefined" ? (window as any).ott_device : "";
-    return device === "lg/webos" || device === "lg/netcast" ? 1 : 14;
-}
-
 /**
  * Return the factory-default `PlayerSettings` object for the selected device.
  *
@@ -210,10 +203,13 @@ function defaultLeftArrowAction(): number {
  * Device shortcuts are selected before stored user overrides are loaded.
  */
 export function defaultSettings(): PlayerSettings {
+    const device =
+        typeof window !== "undefined" ? (window as any).ott_device : "";
+    const webos = device === "lg/webos";
     return {
         adFun: 16,
-        alFun: defaultLeftArrowAction(),
-        arFun: 13,
+        alFun: webos || device === "lg/netcast" ? 1 : 14,
+        arFun: webos ? 10 : 13,
         arrowFun: 0,
         auFun: 15,
         autorun: 0,
@@ -225,7 +221,7 @@ export function defaultSettings(): PlayerSettings {
         commandServerToken: "",
         deviceUuid: "",
         editor: 0,
-        eFun: 0,
+        eFun: webos ? 1 : 0,
         epgRemindMinutes: 5,
         favorites: 0,
         ffFun: 19,
@@ -766,8 +762,10 @@ export function installSettingsFacade(target: Record<string, any>): void {
     target.settings = settings;
 }
 export function loadSettings(): PlayerSettings {
+    // Device detection can finish after the settings schema was constructed.
+    var defaults = defaultSettings();
     settingsSchema.forEach(function (entry) {
-        if (entry.id === "alFun") entry.defaultValue = defaultLeftArrowAction();
+        entry.defaultValue = (defaults as any)[entry.id];
     });
     settingsStore.reload();
     var w = window as any;
