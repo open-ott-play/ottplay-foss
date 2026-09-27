@@ -2,7 +2,7 @@
 
 Device selection happens twice: in `index.html` before the bundle loads, then
 in `src/app/device.ts` inside the classic bundle. Both must select the same
-`stb/<device>/stb.js`. An explicit `/f/<device>/` path takes precedence over
+`devices/<device>/device.js`. An explicit `/f/<device>/` path takes precedence over
 user-agent and native API signals, including nested `lg/*` and `samsung/*` paths.
 
 ## Automated checks
@@ -147,7 +147,7 @@ Diagnostics are disabled in the Chromium CI matrix.
 In the [Simulator Inspector](https://webostv.developer.lge.com/develop/tools/simulator-dev-guide),
 record `navigator.userAgent`, `ott_device`, `keys.RETURN`, console errors and the
 loaded adapter request. Expect `lg/webos`, Back code 461 and
-`/stb/lg/webos/stb.js`. On a fresh profile, select a language and use the SDK's
+`/devices/lg/webos/device.js`. On a fresh profile, select a language and use the SDK's
 RCU Down, Back and OK buttons to check the first-run screen and language chooser.
 During playback, LG profiles default Left to action 1 (Menu). A saved Left
 assignment takes precedence, including action 14 (volume down); a correct LG

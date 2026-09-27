@@ -316,7 +316,7 @@ def smoke_archive(archive, platform, inspected):
         served = {}
         expected_files = inspected["critical_web_files"]
         require(
-            set(expected_files) == {"index.html", "dist/stbPlayer.js"},
+            set(expected_files) == {"index.html", "dist/player.js"},
             "OCI inspector must supply both critical frontend hashes",
         )
         for path, expected in sorted(expected_files.items()):

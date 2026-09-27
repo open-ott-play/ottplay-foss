@@ -3,7 +3,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { parse } = require("acorn");
-const code = fs.readFileSync(path.join(__dirname, "../stb/pc2/stb.js"), "utf8");
+const code = fs.readFileSync(
+    path.join(__dirname, "../devices/pc2/device.js"),
+    "utf8"
+);
 parse(code, { ecmaVersion: 5 });
 function emitter(target = {}) {
     const handlers = {};

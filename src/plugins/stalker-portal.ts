@@ -7,7 +7,7 @@ import { nativeWebFallback } from "./web-fallback";
  * Stalker portal + host_ott swop shim — Mode B native HTTP transport.
  *
  * Covers:
- * - Stalker provider scripts (`prov/stalker/prov.js`) POST JSON-RPC to
+ * - Stalker provider scripts (`providers/stalker/provider.js`) POST JSON-RPC to
  *   `<portal>/stalker_portal/api/` (and `/stalker_portal/stream/` text).
  * - Dealer/cloud entry (`edit_dealer_remote`, cloud settings) POST
  *   form-urlencoded bodies to `host_ott/swop/a.php`.

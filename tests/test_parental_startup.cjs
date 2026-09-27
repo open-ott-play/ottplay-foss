@@ -64,7 +64,7 @@ function functions(file, names) {
               .outputText.replace(/^export /gm, "");
 }
 const bundleAliases = bundle
-    ? functions("dist/stbPlayer.js", [
+    ? functions("dist/player.js", [
           "legacyPlayerBindings",
           "installEnglishPlayerAliases",
       ])
@@ -84,12 +84,12 @@ const modules = {
     ],
     "src/core/index.ts": ["stbEventToKeyCode"],
     "src/index.ts": ["_playChannel"],
-    "src/keyhandler/index.ts": ["dispatchKey", "keyHandler"],
+    "src/key-handler/index.ts": ["dispatchKey", "keyHandler"],
     "src/localization/index.ts": ["translate"],
     "src/ui/index.ts": ["confirmBox", "escapeHtml"],
 };
 const code = bundle
-    ? functions("dist/stbPlayer.js", Object.values(modules).flat())
+    ? functions("dist/player.js", Object.values(modules).flat())
     : Object.entries(modules)
           .map(([file, names]) => functions(file, names))
           .join("\n");

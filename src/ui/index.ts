@@ -19,7 +19,7 @@ import {
     requestMediaList,
 } from "../channels";
 import { updateCoreVideoInfo } from "../core";
-import { dispatchKey, keys, list_OnClick } from "../keyhandler";
+import { dispatchKey, keys, list_OnClick } from "../key-handler";
 import { translate as _ } from "../localization";
 import { settings } from "../settings";
 import { swopLoadValue } from "../swop";
@@ -261,11 +261,11 @@ export function uiInit(): void {
     var host = (window as any).__host || "";
     var version = (window as any).__av || "local";
 
-    if (!document.querySelector('link[href*="1280.css"]')) {
+    if (!document.querySelector('link[href*="styles/player.css"]')) {
         var link = document.createElement("link");
         link.rel = "stylesheet";
         link.type = "text/css";
-        link.href = host + "/stbPlayer/1280.css?" + version;
+        link.href = host + "/styles/player.css?" + version;
         document.head.appendChild(link);
     }
 
@@ -1790,6 +1790,7 @@ export function renderButtonHint(
     num?: string,
     extra?: string
 ): string {
+    keyLabel = Number(keyLabel);
     if (!(description && keyLabel)) return "";
     description = metadataHtml(_(description));
     var cls = "btn";
@@ -1815,14 +1816,16 @@ export function renderButtonHint(
         if ("0123456789".indexOf(num!) !== -1) num = undefined;
         if ("0123456789".indexOf(extra!) !== -1) extra = undefined;
     }
-    var a = label ? '<div class="' + cls + '">' + label + "</div>&nbsp;" : "";
+    var a = label
+        ? '<div class="' + cls + '">' + metadataHtml(label) + "</div>&nbsp;"
+        : "";
     if (
         (window as any).sNoColorKeys &&
         [keys.RED, keys.GREEN, keys.YELLOW, keys.BLUE].indexOf(keyLabel) !== -1
     )
         a = "";
-    if (num) a += '<div class="btn">' + num + "</div>&nbsp;";
-    if (extra) a += '<div class="btn">' + extra + "</div>&nbsp;";
+    if (num) a += '<div class="btn">' + metadataHtml(num) + "</div>&nbsp;";
+    if (extra) a += '<div class="btn">' + metadataHtml(extra) + "</div>&nbsp;";
     if (!a) description = '<div class="btn">' + description + "</div>";
     return (
         '<span role="button" tabindex="0" aria-label="' +

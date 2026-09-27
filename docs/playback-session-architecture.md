@@ -193,7 +193,7 @@ fields, API/M3U fallback and empty-EPG capability. Standalone Xtream preserves
 its catalog, live/archive URL and short-guide operations; it did not expose a
 media catalog before migration. The view codec publishes the narrow callbacks
 that the current renderer still consumes. Managed loading never evaluates
-`prov.js` or temporarily patches global AJAX/timer functions.
+`provider.js` or temporarily patches global AJAX/timer functions.
 
 Five additional profiles use explicit session drivers: `1ott`, `only4`,
 `shara-tv`, `tvteam` and `bestlist/stalker`. They retain their distinct credential

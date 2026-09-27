@@ -492,9 +492,9 @@ const profiles =
         ? (process.argv[bundleIndex + 1]
               ? [process.argv[bundleIndex + 1]]
               : [
-                    "dist/stbPlayer.js",
-                    "src-tauri/frontend/dist/stbPlayer.js",
-                    "dist-mobile/dist/stbPlayer.js",
+                    "dist/player.js",
+                    "src-tauri/frontend/dist/player.js",
+                    "dist-mobile/dist/player.js",
                 ]
           ).map((file) => [file, bundleRuntime(file)])
         : [["source", sourceRuntime()]];

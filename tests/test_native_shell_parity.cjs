@@ -27,7 +27,7 @@ function functions(file, names) {
     ).outputText;
 }
 
-const touchCode = functions("src/keyhandler/index.ts", [
+const touchCode = functions("src/key-handler/index.ts", [
     "capacitorOnly",
     "isNativeTouchEditor",
     "handleTouchStart",
@@ -173,7 +173,7 @@ for (const fingers of [1, 4]) {
 
 // Main-window drag exclusions and the body click bands must use the same
 // viewport geometry. Execute both production paths against real DOM targets.
-const bandCode = functions("src/keyhandler/index.ts", [
+const bandCode = functions("src/key-handler/index.ts", [
     "ottBandViewportHeight",
     "ottBottomInfoBandStart",
     "body_onClick",
@@ -319,7 +319,7 @@ console.log(
 // Execute JS extracted from each actual native bridge, with the actual loaded
 // device keymap and actual TS dispatch chain. No OS or native player is mocked
 // as successful by these assertions.
-const dispatch = functions("src/keyhandler/index.ts", [
+const dispatch = functions("src/key-handler/index.ts", [
     "dispatchKey",
     "keyHandler",
     "handleMainKey",
@@ -392,7 +392,7 @@ for (const platform of Object.keys(nativeSources)) {
         vm.createContext(w);
         require("./helpers/screen-runtime.cjs")(w);
         vm.runInContext(
-            read("stb/" + device + "/stb.js") +
+            read("devices/" + device + "/device.js") +
                 "\n" +
                 dispatch +
                 "\nwindow._doKey=dispatchKey;",

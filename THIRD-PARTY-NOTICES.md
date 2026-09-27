@@ -198,12 +198,13 @@ relicensing the application itself under OFL.
 
 ## Provenance still requiring confirmation
 
-- **Legacy player code:** source comments identify ports of `stbPlayer.js` and
-  `stb/core.js`. A grant from the original authors for the imported code has not
+- **Legacy player code:** source comments identify ports of the original
+  `stbPlayer.js` and `stb/core.js` (the latter is retained as
+  `devices/legacy-core.js`). A grant from the original authors for the imported code has not
   been established by this inventory. Publication and the root MIT declaration
   alone do not establish that grant. See the
   [inherited component notices](docs/legacy-provenance.md).
-- **Legacy startup artwork (Full only):** `stbPlayer/icon.png` and the matching
+- **Legacy startup artwork (Full only):** `images/player-logo.png` and the matching
   `favicon.ico` remain in Full and the shared web/desktop distributions. Play
   excludes both files and the code/HTML that displays or requests them. Their
   authorship and redistribution permission remain unverified; no new license is

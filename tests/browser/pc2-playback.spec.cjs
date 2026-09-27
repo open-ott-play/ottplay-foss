@@ -362,7 +362,7 @@ test("pc never downloads the optional Video.js runtime", async ({
         route: "/f/pc/",
     });
     expect(requests).not.toContain("/js/video.min.js");
-    expect(requests).not.toContain("/stb/pc2/player.css");
+    expect(requests).not.toContain("/devices/pc2/player.css");
     expect(errors).toEqual([]);
 });
 

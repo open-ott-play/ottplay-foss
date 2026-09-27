@@ -153,7 +153,9 @@ function fixture() {
             "backColorDialog",
         ])
     );
-    w.eval(functions("src/keyhandler/index.ts", ["keyHandler", "dispatchKey"]));
+    w.eval(
+        functions("src/key-handler/index.ts", ["keyHandler", "dispatchKey"])
+    );
     w.editKey = w.editKey2;
     return {
         close: () => dom.window.close(),

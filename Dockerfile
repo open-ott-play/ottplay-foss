@@ -1,4 +1,4 @@
-# Build the TS bundle (dist/stbPlayer.js)
+# Build the TS bundle (dist/player.js)
 FROM --platform=$BUILDPLATFORM node:26-alpine@sha256:ef24c5053d50fdc3e4e56eb4e7ddb7861874ab0fdc797046ba897581deb8e868 AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -15,9 +15,11 @@ COPY vendor/ottplay-core.js vendor/ottplay-core.manifest.json vendor/ottplay-cor
 COPY index.html favicon.ico ./
 COPY fonts ./fonts
 COPY js ./js
-COPY stb ./stb
-COPY stbPlayer ./stbPlayer
-COPY prov ./prov
+COPY devices ./devices
+COPY styles ./styles
+COPY images ./images
+COPY locales ./locales
+COPY providers ./providers
 COPY src-tauri/pip ./src-tauri/pip
 RUN npm run typecheck && npm run build:server
 
@@ -56,9 +58,11 @@ COPY --from=build /app/dist/favicon.ico ./favicon.ico
 COPY --from=build /app/dist/dist ./dist
 COPY --from=build /app/dist/fonts ./fonts
 COPY --from=build /app/dist/js ./js
-COPY --from=build /app/dist/stb ./stb
-COPY --from=build /app/dist/stbPlayer ./stbPlayer
-COPY --from=build /app/dist/prov ./prov
+COPY --from=build /app/dist/devices ./devices
+COPY --from=build /app/dist/styles ./styles
+COPY --from=build /app/dist/images ./images
+COPY --from=build /app/dist/locales ./locales
+COPY --from=build /app/dist/providers ./providers
 USER nonroot
 EXPOSE 8080
 CMD ["./ottplay-server", "--port", "8080"]

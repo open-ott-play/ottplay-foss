@@ -434,7 +434,7 @@ function legacyGuide(id, channelId, channels, response, failed) {
         chanels: channels,
     });
     vm.runInContext(
-        declarations("prov/" + id + "/prov.js")
+        declarations("providers/" + id + "/provider.js")
             .filter((row) => ["getEPGurl", "getEPGchanel"].includes(row.name))
             .map((row) => row.text)
             .join("\n"),

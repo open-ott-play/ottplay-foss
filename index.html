@@ -436,7 +436,7 @@
                 return;
             }
 
-            // Text-mode boot animation (runs before stbPlayer.js)
+            // Text-mode boot animation (runs before player.js)
             var _bootFrames = ["|", "/", "-", "\\"];
             var _bootFi = 0;
             var _bootTimer = setInterval(function () {
@@ -514,11 +514,11 @@
                 bootStatus("Loading player…");
                 // Load player bundle first (defines window.version), then device key mapping
                 loadJS(
-                    host + "/dist/stbPlayer.js?" + __cv,
+                    host + "/dist/player.js?" + __cv,
                     function () {
                         bootStatus("Loading device layer…");
                         loadJS(
-                            host + "/stb/" + ott_device + "/stb.js?" + __cv,
+                            host + "/devices/" + ott_device + "/device.js?" + __cv,
                             function () {
                                 bootStatus("Starting…");
                                 if (typeof startPlayer === "function")
@@ -534,7 +534,7 @@
                     _head,
                     function () {
                         bootStatus("Failed to load player");
-                        bootLog("Error: dist/stbPlayer.js");
+                        bootLog("Error: dist/player.js");
                     }
                 );
             }
@@ -542,7 +542,7 @@
             function loadLibraries() {
                 bootStatus("Loading media libraries…");
                 if (ott_device === "pc2") {
-                    loadCSS(host + "/stb/pc2/player.css?" + __av, _head);
+                    loadCSS(host + "/devices/pc2/player.css?" + __av, _head);
                     loadJS(host + "/js/video.min.js?v=" + window.__ottMediaRuntimeVersion,
                         function () {
                             if (typeof window.videojs === "function") loadSTB();
@@ -597,7 +597,7 @@
 
             function loadJQ() {
                 bootStatus("Loading UI…");
-                loadCSS(host + "/stbPlayer/1280.css?" + __av, _head);
+                loadCSS(host + "/styles/player.css?" + __av, _head);
                 // Same 1.11.1 release as the old CDN URL; legacy boot works offline.
                 loadJS(
                     host + (window.__ottNativeRuntime ? "/js/jquery.min.js" : "/js/jquery-1.11.1.min.js"),
@@ -610,7 +610,7 @@
                 );
             }
 
-            // Expose script loaders globally for stbPlayer.js
+            // Expose script loaders globally for player.js
             window.getScriptDOM = getScriptDOM;
 
             bootLog("device: " + ott_device);
@@ -637,13 +637,13 @@
                 if (typeof jQuery === "undefined") loadJQ();
                 else {
                     bootStatus("Loading UI…");
-                    loadCSS(host + "/stbPlayer/1280.css?" + __av, _head);
+                    loadCSS(host + "/styles/player.css?" + __av, _head);
                     loadLibraries();
                 }
             }, _head, coreFailed);
 
             // Local HTTP command polling is owned by the consent/authentication
-            // controller in stbPlayer.js. A configured URL alone never starts it.
+            // controller in player.js. A configured URL alone never starts it.
         })();
         </script>
     </body>

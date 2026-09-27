@@ -7,7 +7,7 @@ const fs = require("node:fs"),
 const { context } = require("./playlist-fixture.cjs");
 const root = path.resolve(__dirname, "../..");
 exports.run = function (profile, input, baseline) {
-    const file = "prov/" + profile + "/prov.js";
+    const file = "providers/" + profile + "/provider.js";
     const source = baseline
         ? cp.execFileSync("git", ["show", baseline + ":" + file], {
               cwd: root,

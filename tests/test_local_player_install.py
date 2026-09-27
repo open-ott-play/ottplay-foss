@@ -165,8 +165,8 @@ exit "$status"
                 "ios/App/native.txt": "iOS project",
                 "licenses/android/Apache-2.0.txt": "Apache license text",
                 "licenses/ios/LICENSE.txt": "iOS license text",
-                "src/stb/android/stb.ts": "Android TypeScript adapter",
-                "stb/android/stb.js": "Android JavaScript adapter",
+                "src/devices/android/device.ts": "Android TypeScript adapter",
+                "devices/android/device.js": "Android JavaScript adapter",
             }
             for relative, content in fixtures.items():
                 path = source / relative
@@ -178,7 +178,7 @@ exit "$status"
             self.assertFalse((dest / "android").exists())
             self.assertFalse((dest / "ios").exists())
             for relative in ["licenses/android/Apache-2.0.txt", "licenses/ios/LICENSE.txt",
-                             "src/stb/android/stb.ts", "stb/android/stb.js"]:
+                             "src/devices/android/device.ts", "devices/android/device.js"]:
                 self.assertTrue((dest / relative).is_file(), relative)
                 self.assertEqual((dest / relative).read_text(), fixtures[relative])
 

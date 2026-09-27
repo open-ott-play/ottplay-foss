@@ -100,7 +100,7 @@ function fixture() {
         "ifParentalAccessChId",
         "hasParentalLock",
     ]);
-    include(c, "src/keyhandler/index.ts", ["onPrevSelect", "prevProg"]);
+    include(c, "src/key-handler/index.ts", ["onPrevSelect", "prevProg"]);
     c.effects = effects;
     c.requests = requests;
     c.prompts = prompts;

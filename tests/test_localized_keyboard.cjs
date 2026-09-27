@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { JSDOM } = require("jsdom");
+const { languageAssetPath } = require("../scripts/localization-catalog.cjs");
 const {
     initializeKeyboard,
     keyboardCode,
@@ -54,23 +55,23 @@ w.eval(read("js/jquery-1.11.1.min.js"));
 w.eval("(" + initializeKeyboard.toString() + ")()");
 w.eval(
     keyboardCode(
-        process.argv.includes("--bundle") ? "dist/stbPlayer.js" : undefined
+        process.argv.includes("--bundle") ? "dist/player.js" : undefined
     )
 );
 try {
     for (const [code, locale] of Object.entries(fixture.locales)) {
-        const file = path.join(root, "stbPlayer", code + ".js");
+        const file = path.join(root, languageAssetPath(code));
         assert(fs.existsSync(file), "Packaged locale must exist: " + code);
         w.eval(fs.readFileSync(file, "utf8"));
         if (process.argv.includes("--bundle")) {
             for (const directory of [
-                "dist/stbPlayer",
-                "src-tauri/frontend/stbPlayer",
-                "dist-mobile/stbPlayer",
+                "dist",
+                "src-tauri/frontend",
+                "dist-mobile",
             ]) {
                 const packaged = {};
                 vm.runInNewContext(
-                    read(directory + "/" + code + ".js"),
+                    read(directory + languageAssetPath(code)),
                     packaged
                 );
                 assert.deepEqual(
@@ -83,7 +84,7 @@ try {
                         path.join(
                             root,
                             directory,
-                            "../js/licenses/Unicode-3.0.txt"
+                            "js/licenses/Unicode-3.0.txt"
                         )
                     ),
                     "Unicode license is packaged"
@@ -159,7 +160,7 @@ try {
         assert.equal(w._keyPages, pages);
     }
     function layout(code) {
-        w.eval(read("stbPlayer/" + code + ".js"));
+        w.eval(read(languageAssetPath(code)));
         w.fixtureLocale = code;
         w._keyP = false;
         w._setLang(false);
@@ -169,7 +170,7 @@ try {
         layout("_vie");
         w._keyCur = previousFocus;
         w.editKey1(w.keys.RETURN);
-        w.eval(read("stbPlayer/_eng.js"));
+        w.eval(read(languageAssetPath("_eng")));
         w.fixtureLocale = "_eng";
         w.showEditKey1();
         assert(w._keyCur >= 0 && w._keyCur < w._keys.length);

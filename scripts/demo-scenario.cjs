@@ -18,7 +18,7 @@ module.exports = {
     chromium: () => require("@playwright/test").chromium,
     name: "ott-first-run-and-demo-playback",
     preflight: async (root) => {
-        for (const file of ["dist/index.html", "dist/stbPlayer.js"])
+        for (const file of ["dist/index.html", "dist/player.js"])
             if (!fs.existsSync(path.join(root, file)))
                 throw new Error("Build first: npm ci && npm run build");
     },
@@ -51,8 +51,8 @@ module.exports = {
         const relative =
             url.pathname === "/" || url.pathname.startsWith("/f/")
                 ? "index.html"
-                : url.pathname === "/dist/stbPlayer.js"
-                  ? "stbPlayer.js"
+                : url.pathname === "/dist/player.js"
+                  ? "player.js"
                   : url.pathname.slice(1);
         const dist = path.join(root, "dist");
         const file = path.resolve(dist, relative);

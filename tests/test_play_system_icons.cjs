@@ -149,10 +149,10 @@ function treeBytes(directory) {
 }
 function makeStage(directory) {
     fs.mkdirSync(path.join(directory, "fonts"), { recursive: true });
-    fs.mkdirSync(path.join(directory, "stbPlayer"), { recursive: true });
+    fs.mkdirSync(path.join(directory, "styles"), { recursive: true });
     fs.copyFileSync(
-        path.join(root, "stbPlayer/1280.css"),
-        path.join(directory, "stbPlayer/1280.css")
+        path.join(root, "styles/player.css"),
+        path.join(directory, "styles/player.css")
     );
     for (const name of fs.readdirSync(path.join(root, "fonts"))) {
         if (/^fontello\./i.test(name) || name === "Gabriela-Regular.ttf")
@@ -268,7 +268,7 @@ try {
     );
     fs.cpSync(full, play, { recursive: true });
     stagePlaySystemIcons(play);
-    const css = fs.readFileSync(path.join(play, "stbPlayer/1280.css"), "utf8");
+    const css = fs.readFileSync(path.join(play, "styles/player.css"), "utf8");
     test("staging removes all five icon fonts and preserves Full plus unrelated font bytes", () => {
         assert.deepEqual(treeBytes(full), before);
         assert(
@@ -283,7 +283,7 @@ try {
             before["fonts/Gabriela-Regular.ttf"]
         );
         for (const name of [
-            "stbPlayer/1280.css",
+            "styles/player.css",
             "channels.js",
             "core.js",
             "ui.js",
@@ -292,7 +292,7 @@ try {
             assertNoIconFont(fs.readFileSync(path.join(play, name), "utf8"));
         assert(
             fs
-                .readFileSync(path.join(full, "stbPlayer/1280.css"), "utf8")
+                .readFileSync(path.join(full, "styles/player.css"), "utf8")
                 .includes("fontello.woff2")
         );
     });

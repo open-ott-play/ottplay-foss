@@ -22,9 +22,11 @@ const MIME = {
 };
 const INPUT_DIRECTORIES = [
     "src",
-    "prov",
-    "stb",
-    "stbPlayer",
+    "providers",
+    "devices",
+    "styles",
+    "images",
+    "locales",
     "scripts",
     "src-tauri/pip",
     "licenses/android",

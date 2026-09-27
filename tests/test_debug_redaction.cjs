@@ -222,7 +222,7 @@ async function testSource() {
 // real DOM lifecycle events. No private state is exposed for the test harness.
 async function testBundle() {
     const { JSDOM } = require("jsdom");
-    const code = fs.readFileSync(path.join(root, "dist/stbPlayer.js"), "utf8");
+    const code = fs.readFileSync(path.join(root, "dist/player.js"), "utf8");
     const token = "DUMMY_AUTH_TOKEN_".repeat(3);
     const settle = () => new Promise(setImmediate);
     function fixture(enabled, initialToken = "", serverEnabled = false) {

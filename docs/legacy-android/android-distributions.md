@@ -126,10 +126,10 @@ overlaid into Play. Missing frontend files, an incorrect application ID, invalid
 plugin metadata or a failed generator stop packaging. The preparer also verifies
 the exact Play provider inventory, frontend identity and ES5 scripts.
 
-Shared player assets use an explicit list: `1280.css`, language packs (`_*.js`)
-and, in Full only, the startup `icon.png`. Play excludes the startup image and
+Shared player assets use an explicit list: `styles/player.css`, language packs (`locales/*.js`)
+and, in Full only, the startup `images/player-logo.png`. Play excludes the startup image and
 its matching `favicon.ico`, removes their rendering/request code, and does not
-replace them with another logo. Adding an image to `stbPlayer/` does not
+replace them with another logo. Adding an image to `images/` does not
 automatically include it in a package. Staging removes old output first; the
 package audit rejects additional player images and a Play build containing either
 legacy logo file or references to it. Full retains its dynamically loaded provider

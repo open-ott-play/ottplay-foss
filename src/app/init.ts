@@ -2,12 +2,12 @@
  * Early concat module (MODULES, before index.js).
  *
  * Runtime `startPlayer` / `onStbReady` live in `src/index.ts` (last in MODULES),
- * which overwrites any earlier function of the same name. Device `stb.js` is
+ * which overwrites any earlier function of the same name. Device `device.js` is
  * loaded only from `index.html` — do not re-inject it here.
  *
  * This file keeps the global `window.onerror` handler so it still runs in the
  * classic bundle. Do not add a second auto-start; `index.html` calls
- * `startPlayer()` after `stbPlayer.js` + device `stb.js`.
+ * `startPlayer()` after `player.js` + device `device.js`.
  */
 
 import { sendClientFeedback } from "../utils/helpers";

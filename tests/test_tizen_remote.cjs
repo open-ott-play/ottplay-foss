@@ -36,14 +36,15 @@ function source(file, names) {
 }
 const adapters = {
     shipped: fs.readFileSync(
-        path.join(root, "stb/samsung/tizen/stb.js"),
+        path.join(root, "devices/samsung/tizen/device.js"),
         "utf8"
     ),
-    typescript: source("src/stb/samsung/tizen/stb.ts"),
+    typescript: source("src/devices/samsung/tizen/device.ts"),
 };
 let handlers =
+    source("src/localization/assets.ts") +
     source("src/core/index.ts", ["stbEventToKeyCode"]) +
-    source("src/keyhandler/index.ts", [
+    source("src/key-handler/index.ts", [
         "keyHandler",
         "handleMainKey",
         "toggleMainPlayback",
@@ -52,10 +53,7 @@ let handlers =
     source("src/provider/index.ts", ["firstRun"]);
 const useBundle = process.argv.includes("--bundle");
 if (useBundle) {
-    const bundle = fs.readFileSync(
-        path.join(root, "dist/stbPlayer.js"),
-        "utf8"
-    );
+    const bundle = fs.readFileSync(path.join(root, "dist/player.js"), "utf8");
     const ast = acorn.parse(bundle, { ecmaVersion: 5 });
     const selected = new Map();
     function includeDeclaration(name) {
@@ -95,6 +93,8 @@ if (useBundle) {
         "handleMainKey",
         "toggleMainPlayback",
         "selectLang",
+        "languageNames",
+        "languageAssetPath",
         "firstRun",
         "stbEventToKeyCode",
         "legacyPlayerBindings",
@@ -353,6 +353,6 @@ for (const [name, code] of Object.entries(adapters)) {
 }
 console.log(
     "Samsung Tizen remote keys, real UI handlers and registration failures passed (" +
-        (useBundle ? "dist/stbPlayer.js" : "source") +
+        (useBundle ? "dist/player.js" : "source") +
         ")"
 );

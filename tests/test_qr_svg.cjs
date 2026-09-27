@@ -7,7 +7,7 @@ const ts = require("typescript");
 const { assertQrSvg } = require("./helpers/qr-svg.cjs");
 
 const source = fs.readFileSync(
-    path.join(__dirname, "../src/utils/qrcode.ts"),
+    path.join(__dirname, "../src/utils/qr-code.ts"),
     "utf8"
 );
 const code = ts

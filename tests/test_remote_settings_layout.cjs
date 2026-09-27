@@ -676,19 +676,17 @@ async function testHttpRemoteSettings() {
         "Applying HTTP remote settings...",
         "on",
     ];
-    const dictionaries = fs
-        .readdirSync(path.join(root, "stbPlayer"))
-        .filter((name) => /^_[a-z]{3}\.js$/.test(name));
+    const { languageAssets } = require("../scripts/localization-catalog.cjs");
     assert.deepEqual(
-        dictionaries.map((name) => name.replace(/\.js$/, "")).sort(),
+        Object.keys(languageAssets).sort(),
         Object.keys(require("./fixtures/locale-alphabets.json").locales).sort()
     );
-    for (const name of dictionaries) {
-        w.eval(fs.readFileSync(path.join(root, "stbPlayer", name), "utf8"));
-        for (const key of keys) assert.ok(w.keyStrings[key], `${name}: ${key}`);
+    for (const [code, file] of Object.entries(languageAssets)) {
+        w.eval(fs.readFileSync(path.join(root, file), "utf8"));
+        for (const key of keys) assert.ok(w.keyStrings[key], `${code}: ${key}`);
     }
     w._ = (key) => w.keyStrings[key] || key;
-    w.eval(fs.readFileSync(path.join(root, "stbPlayer/_rus.js"), "utf8"));
+    w.eval(fs.readFileSync(path.join(root, "locales/russian.js"), "utf8"));
     w.settingsCommands();
     assert.equal(w.listCaptionElement.textContent, "Удалённое управление");
     assert.match(
@@ -702,7 +700,7 @@ testHttpRemoteSettings()
     .then(() => {
         dom.window.close();
         console.log(
-            "OK: Remote settings layout, authenticated HTTP controls, selectable credentials, async lifecycle and 20 translations"
+            "OK: Remote settings layout, authenticated HTTP controls, selectable credentials, async lifecycle and 28 translations"
         );
     })
     .catch((error) => {

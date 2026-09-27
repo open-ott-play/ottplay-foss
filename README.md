@@ -263,7 +263,7 @@ No old release assets are deleted or replaced by this extraction.
 ```bash
 # 1. Build the player bundle
 npm install
-npm run build          # production (minified → dist/stbPlayer.js)
+npm run build          # production (minified → dist/player.js)
 
 # 2. Build + start the Rust server
 cargo build --release -p ottplay-server
@@ -401,7 +401,7 @@ Exit: `0` pass, `1` not listening, `2` assertion / warm-up failed, `3` usage. Si
 Companion-side **play-path / stream readiness** smoke (HTTP only — **not** headed UI E2E). Against a running Mode A companion it checks:
 
 - Health or index reachable
-- Static player-shell assets (`/`, `/stbPlayer/1280.css`, `/js/jquery-…`, `/f/…`)
+- Static player-shell assets (`/`, `/styles/player.css`, `/js/jquery-…`, `/f/…`)
 - Optional `GET /epg/<hash>.json` when `EPG_HASH` is set
 - `POST /m3u/match-channels` with a secret-free JSON fixture (empty list + one synthetic channel)
 - Stream-proxy **play**: `POST /m3u/cp.php` to a controllable media fixture (local HLS playlist by default, or `MEDIA_URL`) and assert HTTP 200 + non-empty body / expected `Content-Type` (first bytes through the proxy)
@@ -492,7 +492,7 @@ src/
 ├── debug/           # Opt-in playback HUD / ring / ingest (`?debug=1`)
 ├── core/            # Playback (HLS.js/Shaka, fullscreen, PiP, audio/subtitle, soft live restart)
 ├── ui/              # UI (info bar, dialogs, lists, volume, color)
-├── keyhandler/      # Remote control key dispatch
+├── key-handler/     # Remote control key dispatch
 ├── provider/        # Providers (load, M3U/Xtream/Stalker)
 ├── commands/        # Push command handler (webhook commands)
 ├── app/             # Device + init helpers
@@ -894,16 +894,15 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 ├── local_proxy.py         # Standalone local command proxy
 ├── index.html             # Player entry point (device detection + poller)
 ├── dist/
-│   └── stbPlayer.js       # Built player bundle (TypeScript → ES5, minified)
-├── src/                   # TypeScript sources (13 modules)
-├── stb/
-│   ├── core.js            # Shared STB implementation
-│   └── {device}/stb.js    # Per-device key mappings (24 types)
-├── stbPlayer/
-│   ├── 1280.css           # Player styles and animated loading indicator
-│   ├── _*.js              # Localization files (21 languages)
-│   └── icon.png           # Player icon
-├── prov/                  # IPTV provider scripts
+│   └── player.js          # Built player bundle (TypeScript → ES5, minified)
+├── src/                   # TypeScript sources
+├── devices/
+│   ├── legacy-core.js     # Retained compatibility test oracle (not packaged)
+│   └── {device}/device.js # Device adapters and key mappings
+├── styles/player.css      # Responsive player interface and themes
+├── locales/{language}.js  # 28 complete language packs, named in English
+├── images/player-logo.png # Player startup logo
+├── providers/             # Provider descriptions, logos and retained test oracles
 ├── js/                    # CDN libraries (HLS.js, Shaka, jQuery)
 └── fonts/                 # Local fonts
 ```
@@ -923,6 +922,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 - [Player architecture](./docs/architecture.md) — runtime ownership, provider integration, playback, guide, device adapters and build contracts.
 - [Classic ES5 build pipeline](./docs/build-pipeline.md) — compilation, compatibility checks and artifact size limits.
+- [Runtime asset names and deployment migration](./docs/asset-layout.md) — descriptive paths shared by web and native packages.
 
 ## License
 

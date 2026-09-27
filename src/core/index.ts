@@ -2,7 +2,7 @@
  * Core STB player — video element management, playback control,
  * fullscreen, PiP, aspect ratio, audio/subtitle tracks.
  *
- * Ported from stb/core.js.
+ * Ported from devices/legacy-core.js.
  */
 
 declare var Hls: any;
@@ -2318,7 +2318,7 @@ export function stbToggleSubtitle(): void {
 
 /**
  * Apply the current zoomLevel to #video (CSS transform scale) and body.stb-zoom.
- * Overflow crop is on #vdiv (see 1280.css). HS5-safe: also sets -webkit-transform.
+ * Overflow crop is on #vdiv (see styles/player.css). HS5-safe: also sets -webkit-transform.
  */
 export function applyZoom(): void {
     var scale = zoomScales[zoomLevel] || 1;

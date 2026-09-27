@@ -46,7 +46,7 @@ server that always serves current bytes for that path.
 ## Load order and separate JavaScript environments
 
 The bootstrap must complete `runtime-polyfills.js` before jQuery, hls.js,
-Shaka, device/provider scripts, and `dist/stbPlayer.js`. Code that runs before
+Shaka, device/provider scripts, and `dist/player.js`. Code that runs before
 the compatibility layer must use ES5 built-ins and guarded host APIs only.
 Failure to load the layer must stop dependent initialization with a useful
 boot error; proceeding with partially initialized libraries hides the cause.

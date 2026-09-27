@@ -12,9 +12,9 @@ const profiles = bundleMode
     ? process.argv[3]
         ? [process.argv[3]]
         : [
-              "dist/stbPlayer.js",
-              "src-tauri/frontend/dist/stbPlayer.js",
-              "dist-mobile/dist/stbPlayer.js",
+              "dist/player.js",
+              "src-tauri/frontend/dist/player.js",
+              "dist-mobile/dist/player.js",
           ]
     : [null];
 for (const profile of profiles) {
@@ -80,7 +80,7 @@ for (const profile of profiles) {
     const decode = (text, profile = "m3u") =>
         w.__ottCatalogXml.decode(w, text, profile);
     vm.runInContext(
-        declarations("prov/m3u/prov.js")
+        declarations("providers/m3u/provider.js")
             .filter((entry) =>
                 ["fXMLCh2Json", "fXML_to_JSON"].includes(entry.name)
             )

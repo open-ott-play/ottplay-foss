@@ -24,6 +24,6 @@ inheriting the same old records. Old keys remain available for recovery.
 Unknown document versions and failed reads prevent writes. Failed writes do
 not publish a new in-memory channel document.
 
-Production JavaScript retains ES5. The unused `stb/core.js` artifact is excluded
+Production JavaScript retains ES5. The unused `devices/legacy-core.js` artifact is excluded
 from browser and native staging but retained as a test fixture.
 The packaging audit rejects its reappearance in the shipped roots.

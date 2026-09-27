@@ -12,7 +12,7 @@ test("remote keyboard keeps every alphabet page visible at supported densities a
 }) => {
     await page.setContent(
         "<style>" +
-            read("stbPlayer/1280.css") +
+            read("styles/player.css") +
             '</style><div id="listEdit"></div><div id="listPodval"></div>'
     );
     await page.addScriptTag({ content: read("js/jquery-1.11.1.min.js") });
@@ -124,7 +124,7 @@ test("remote and pointer input reach later pages and preserve expanded case text
 }) => {
     await page.setContent(
         "<style>" +
-            read("stbPlayer/1280.css") +
+            read("styles/player.css") +
             '</style><div id="listEdit"></div><div id="listPodval"></div>'
     );
     await page.addScriptTag({ content: read("js/jquery-1.11.1.min.js") });

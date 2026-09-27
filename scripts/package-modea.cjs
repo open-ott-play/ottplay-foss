@@ -53,14 +53,23 @@ function revision() {
 let staging;
 try {
     const index = requirePath("dist/index.html", false);
-    const bundle = requirePath("dist/stbPlayer.js", false);
+    const bundle = requirePath("dist/player.js", false);
     const providerBundles = Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
         (kind) => {
             const file = "provider-" + kind + ".js";
             return { file, kind, source: requirePath("dist/" + file, false) };
         }
     );
-    const assets = ["favicon.ico", "fonts", "js", "stb", "stbPlayer", "prov"];
+    const assets = [
+        "favicon.ico",
+        "fonts",
+        "js",
+        "devices",
+        "styles",
+        "images",
+        "locales",
+        "providers",
+    ];
     const sources = assets.map((name) =>
         requirePath("dist/" + name, name !== "favicon.ico")
     );
@@ -83,7 +92,7 @@ try {
     const webRoot = path.join(staging, "web");
     fs.mkdirSync(path.join(webRoot, "dist"), { recursive: true });
     fs.copyFileSync(index, path.join(webRoot, "index.html"));
-    fs.copyFileSync(bundle, path.join(webRoot, "dist", "stbPlayer.js"));
+    fs.copyFileSync(bundle, path.join(webRoot, "dist", "player.js"));
     const providerMetadata = {};
     providerBundles.forEach(({ file, kind, source }) => {
         const relative = "dist/" + file;
@@ -102,7 +111,7 @@ try {
         });
     });
     const metadata = {
-        bundleSha256: sha256(path.join(webRoot, "dist", "stbPlayer.js")),
+        bundleSha256: sha256(path.join(webRoot, "dist", "player.js")),
         providerBundles: providerMetadata,
         revision: revision(),
         version: pkg.version,

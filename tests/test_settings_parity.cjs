@@ -302,7 +302,7 @@ function fixture(
     vm.runInContext(
         compile(
             fs.readFileSync(
-                path.join(root, "src/settings/sleepTimer.ts"),
+                path.join(root, "src/settings/sleep-timer.ts"),
                 "utf8"
             )
         ),

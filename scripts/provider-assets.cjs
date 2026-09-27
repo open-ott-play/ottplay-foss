@@ -37,7 +37,7 @@ function managedProviderIds() {
 const ids = new Set(managedProviderIds());
 function isManagedProviderScript(filename) {
     const normalized = filename.replace(/\\/g, "/");
-    const match = /(?:^|\/)prov\/(.+)\/prov\.js$/.exec(normalized);
+    const match = /(?:^|\/)providers\/(.+)\/provider\.js$/.exec(normalized);
     return !!match && ids.has(match[1]);
 }
 module.exports = { isManagedProviderScript, managedProviderIds };

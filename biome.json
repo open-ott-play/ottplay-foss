@@ -161,7 +161,7 @@
     "ignoreUnknown": true,
     "includes": [
       "src/**",
-      "stb/**",
+      "devices/**",
       "biome.json",
       "package.json",
       "tsconfig.json",

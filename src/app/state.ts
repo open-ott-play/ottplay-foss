@@ -69,7 +69,7 @@ export let previewTimer: any = null;
 //
 // MUTATION CONTRACT — these must remain the SAME array objects for the
 // whole lifetime of the player. `src/provider/index.ts` and all ~47
-// `prov/*/prov.js` plugins mutate them in place with `.splice()`,
+// `providers/*/provider.js` plugins mutate them in place with `.splice()`,
 // `.push()`, `.length = 0` and locate the provider-settings action through
 // its stable compatibility identity. Never rebind with `=` — always
 // mutate the existing array.

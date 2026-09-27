@@ -34,7 +34,7 @@ exports.run = function (provider, input) {
         request.complete();
     };
     vm.runInContext(
-        declarations("prov/" + provider + "/prov.js")
+        declarations("providers/" + provider + "/provider.js")
             .map((row) => row.text)
             .join("\n"),
         ctx

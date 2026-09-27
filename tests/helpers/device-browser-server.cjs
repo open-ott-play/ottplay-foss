@@ -8,7 +8,7 @@ const {
     CLASSIC_PROVIDER_BUNDLES,
 } = require("../../scripts/classic-bundle.cjs");
 const playerScripts = new Set([
-    "stbPlayer.js",
+    "player.js",
     ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
         (kind) => "provider-" + kind + ".js"
     ),
@@ -132,7 +132,9 @@ http.createServer((request, response) => {
     ) {
         relative = pathname.slice(6);
     } else if (
-        /^\/(?:fonts|js|stb|stbPlayer|prov)\//.test(pathname) ||
+        /^\/(?:fonts|js|devices|providers|styles|images|locales)\//.test(
+            pathname
+        ) ||
         pathname === "/favicon.ico"
     ) {
         relative = pathname.slice(1);

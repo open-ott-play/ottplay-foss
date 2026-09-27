@@ -11,7 +11,7 @@ const acorn = require("acorn");
 const { JSDOM } = require("jsdom");
 const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
-const adapter = read("prov/demo/prov.js");
+const adapter = read("providers/demo/provider.js");
 const mediaBase = "https://liminal-sketch-vv8r.here.now/demo/";
 acorn.parse(adapter, { ecmaVersion: 5 });
 
@@ -59,7 +59,7 @@ function declarations(file, names) {
     }).outputText;
 }
 const providerSource = process.argv.includes("--bundle")
-    ? "dist/stbPlayer.js"
+    ? "dist/player.js"
     : "src/provider/index.ts";
 const providerUi =
     (process.argv.includes("--bundle")
@@ -546,7 +546,7 @@ function menuFixture(noSelProv, noProvParam, query = "") {
     w.loadChannels = () => {};
     w.getScriptDOM = (url, ready) => {
         loaded.push(url);
-        if (url.includes("/prov/demo/")) vm.runInContext(adapter, w);
+        if (url.includes("/providers/demo/")) vm.runInContext(adapter, w);
         else {
             w.getEPGchanel = () => {};
             w.duneAddSettings = (index) => {
@@ -636,7 +636,7 @@ test("explicit provider chosen from pinned Demo loads once, then normal reload o
     w.selIndex = w.arrayProvaiders.indexOf("stalker");
     w.listKeyHandlerFn(w.keys.ENTER);
     assert.equal(
-        loaded.some((url) => url.includes("/prov/stalker/prov.js")),
+        loaded.some((url) => url.includes("/providers/stalker/provider.js")),
         false
     );
     assert.equal(w.__ottActiveProviderDriver.id, "stalker");
@@ -765,7 +765,7 @@ test("demo neither discovers a local service nor derives media from script or pr
         };
         w.host = "http://infrastructure.invalid:8080";
         const script = w.document.createElement("script");
-        script.src = "https://cdn.invalid/player/dist/stbPlayer.js";
+        script.src = "https://cdn.invalid/player/dist/player.js";
         w.document.head.appendChild(script);
         w.getChanelsArray(() => {});
         assert.equal(w.getChannelUrl(w.cList[0]), mediaBase + "pattern.mp4");

@@ -6,14 +6,15 @@ const { test, expect } = require("@playwright/test");
 const fixtures = require("../fixtures/device-detection.json");
 const runtimeVersion = require("../../js/media-runtime.json").runtimeVersion;
 
-const adapterRoot = path.resolve(__dirname, "../../stb");
+const adapterRoot = path.resolve(__dirname, "../../devices");
 const adapterNames = [];
 function collectAdapters(directory, prefix = "") {
     for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
         if (!entry.isDirectory()) continue;
         const name = prefix + entry.name;
         const child = path.join(directory, entry.name);
-        if (fs.existsSync(path.join(child, "stb.js"))) adapterNames.push(name);
+        if (fs.existsSync(path.join(child, "device.js")))
+            adapterNames.push(name);
         else collectAdapters(child, name + "/");
     }
 }
@@ -162,7 +163,7 @@ for (const fixture of fixtures.concat(routeFixtures)) {
             ).toEqual([
                 { back: remote.RETURN, device: fixture.expectedDevice },
             ]);
-            expect(loadedScripts).toContain("/dist/stbPlayer.js");
+            expect(loadedScripts).toContain("/dist/player.js");
             expect(loadedScripts[0]).toBe("/js/runtime-polyfills.js");
             if (fixture.expectedDevice === "pc2") {
                 expect(loadedScripts).toContain("/js/video.min.js");
@@ -190,8 +191,10 @@ for (const fixture of fixtures.concat(routeFixtures)) {
                 expect(mediaVersions).toEqual([runtimeVersion, runtimeVersion]);
             }
             expect(
-                loadedScripts.filter((url) => /^\/stb\/.+\/stb\.js$/.test(url))
-            ).toEqual(["/stb/" + fixture.expectedDevice + "/stb.js"]);
+                loadedScripts.filter((url) =>
+                    /^\/devices\/.+\/device\.js$/.test(url)
+                )
+            ).toEqual(["/devices/" + fixture.expectedDevice + "/device.js"]);
 
             // Browser keyboard input must move the first-run selection. Maple
             // and Android emit their platform keycodes for the same arrow.

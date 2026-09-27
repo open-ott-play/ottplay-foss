@@ -213,6 +213,7 @@ function fixture(
     const requests = [];
     const timers = [];
     const about = [];
+    const aboutCallbacks = [];
     const scriptCallbacks = [];
     const images = [];
     const appendedImages = [];
@@ -328,7 +329,11 @@ function fixture(
             },
             image,
             is: () => launchVisible,
-            load: (url) => about.push(url),
+            load(url, callback) {
+                about.push(url);
+                if (callback) aboutCallbacks.push(callback);
+                return chain;
+            },
             on(name, handler) {
                 if (image) image.events[name] = handler;
                 return chain;
@@ -352,6 +357,7 @@ function fixture(
     attachSourceAliases(w);
     return {
         about,
+        aboutCallbacks,
         appendedImages,
         errors,
         images,
@@ -643,7 +649,7 @@ test("completed provider loads omit unavailable logos but preserve Full logo and
                     const image = f.images[0];
                     assert.equal(
                         image.attrs.src,
-                        "https://player.invalid/prov/" +
+                        "https://player.invalid/providers/" +
                             id +
                             "/logo.png?fixture"
                     );
@@ -823,6 +829,7 @@ test("Full dealer extensions retain scoped script startup beyond the built-in re
     // Model the external dealer's public ABI; no downloaded script is evaluated.
     f.w.doDealer = (value) => {
         assert.equal(value, "custom:opaque-code");
+        f.w.host = "https://dealer.invalid";
         f.w.arrayProvaiders.push("custom/dealer");
         f.stored.set("ottplayprov", "custom/dealer");
         f.w.loadProv();
@@ -830,7 +837,7 @@ test("Full dealer extensions retain scoped script startup beyond the built-in re
     f.scriptCallbacks[0]();
     assert.deepEqual(f.scripts, [
         "https://player.invalid/d/custom.js?fixture",
-        "https://player.invalid/prov/custom/dealer/prov.js?fixture",
+        "https://dealer.invalid/prov/custom/dealer/prov.js?fixture",
     ]);
     assert.equal(f.w.__ottProviderDrivers.registry.has("custom/dealer"), false);
     f.w.duneAddSettings = () => {};
@@ -838,6 +845,30 @@ test("Full dealer extensions retain scoped script startup beyond the built-in re
     f.scriptCallbacks[1]();
     assert.equal(loaded, 1);
     assert.deepEqual(f.errors, []);
+    assert.equal(
+        f.images[0].attrs.src,
+        "https://dealer.invalid/prov/custom/dealer/logo.png?fixture",
+        "The external dealer retains its own logo namespace"
+    );
+    f.w.selectProvaider();
+    f.w.selIndex = f.w.arrayProvaiders.indexOf("custom/dealer");
+    for (const language of ["_eng", "_rus", "_fra", "_deu", ""]) {
+        f.stored.set("ottplaylang", language);
+        f.w.detailListAction();
+        assert.equal(
+            f.about.at(-1),
+            "https://dealer.invalid/prov/custom/dealer/about" +
+                (language === "_eng" ? "" : language) +
+                ".html?fixture",
+            "External descriptions keep the persisted language suffix"
+        );
+    }
+    f.aboutCallbacks.at(-1)("", "error");
+    assert.equal(
+        f.about.at(-1),
+        "https://dealer.invalid/prov/custom/dealer/about.html?fixture",
+        "A missing external translation falls back within the dealer namespace"
+    );
     const retiredUrl = f.w.getChannelUrl;
     assert.equal(retiredUrl(), "https://media.invalid/custom.m3u8");
     f.w.loadProv("demo");
@@ -848,6 +879,24 @@ test("Full dealer extensions retain scoped script startup beyond the built-in re
         undefined,
         "replacement retires the script owner"
     );
+});
+
+test("Built-in descriptions use renamed assets independently of legacy dealer URLs", () => {
+    for (const flavor of ["full", "play"]) {
+        const f = fixture(flavor);
+        f.w.selectProvaider();
+        f.w.selIndex = f.w.arrayProvaiders.indexOf("demo");
+        for (const language of ["_eng", "_rus", "_fra", ""]) {
+            f.stored.set("ottplaylang", language);
+            f.w.detailListAction();
+            assert.equal(
+                f.about.at(-1),
+                "https://player.invalid/providers/demo/about" +
+                    (language === "_rus" ? "-ru" : "") +
+                    ".html?fixture"
+            );
+        }
+    }
 });
 
 test("Play options omit legacy dealer actions in place while retaining generic setup", () => {
@@ -948,7 +997,7 @@ for (const flavor of ["full", "play"]) {
                 if (flavor === "full")
                     assert.equal(
                         images[0].src,
-                        "https://localhost/stbPlayer/icon.png?42.7.fixture"
+                        "https://localhost/images/player-logo.png?42.7.fixture"
                     );
                 // Inspect actual emitted string literals, alongside live DOM. A
                 // hidden or unreachable request must not remain in Play JavaScript.
@@ -962,7 +1011,7 @@ for (const flavor of ["full", "play"]) {
                 function visit(node) {
                     if (
                         ts.isStringLiteral(node) &&
-                        node.text.includes("icon.png")
+                        node.text.includes("player-logo.png")
                     )
                         iconLiterals.push(node.text);
                     ts.forEachChild(node, visit);
