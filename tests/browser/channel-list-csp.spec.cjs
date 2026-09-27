@@ -800,6 +800,193 @@ test("server and Tauri retain rich channel formatting under the native CSP", asy
 
 for (const profile of ["server", "tauri"]) {
     test(
+        profile + ": category picker arrows page without opening or leaving",
+        async ({ browser }) => {
+            test.setTimeout(90000);
+            const fixture = await fixturePage(browser, profile, {});
+            const page = fixture.page;
+            try {
+                await page.evaluate(() => {
+                    // The fixture skips provider boot, which normally installs
+                    // these production entry points and the keyboard listener.
+                    window.channelsList = window._channelsList;
+                    window.stbBindKeyHandler();
+                    window.__categoryVolumeCalls = [];
+                    window.changeVolume = (delta) =>
+                        window.__categoryVolumeCalls.push(delta);
+                });
+                for (const pageSize of [10, 25, 30]) {
+                    const total = 2 * pageSize + 7;
+                    await page.evaluate((count) => {
+                        const channel =
+                            window.channels[
+                                window.cats[window.catsArray[0]][0]
+                            ];
+                        window.catsArray = [];
+                        window.cats = {};
+                        window.channels = window.chanels = {};
+                        for (let index = 0; index < count; index++) {
+                            const category = "Paging category " + index;
+                            const id = "paging-member-" + index;
+                            window.catsArray.push(category);
+                            window.cats[category] = [id];
+                            window.channels[id] = Object.assign({}, channel, {
+                                channel_name: "Member of category " + index,
+                            });
+                        }
+                        window.catIndex = window.primaryIndex = 0;
+                        window.curList = window.cats[window.catsArray[0]];
+                    }, total);
+                    const assertCategory = async (index) => {
+                        await expect(page.locator("#list")).toBeVisible();
+                        await expect(page.locator("#listCaption")).toHaveText(
+                            "Category selection"
+                        );
+                        const selected = page.locator("#listIn .ott-selected");
+                        await expect(selected).toHaveCount(1);
+                        await expect(selected).toHaveAttribute(
+                            "id",
+                            "it" + index
+                        );
+                        await expect(selected).toContainText(
+                            "Paging category " + index
+                        );
+                        const start = Math.floor(index / pageSize) * pageSize;
+                        expect(
+                            await page
+                                .locator("#listIn .item")
+                                .evaluateAll((items) =>
+                                    items.map((item) => item.id)
+                                )
+                        ).toEqual(
+                            Array.from(
+                                { length: Math.min(pageSize, total - start) },
+                                (_, offset) => "it" + (start + offset)
+                            )
+                        );
+                        await expect
+                            .poll(() =>
+                                selected.evaluate((item) => {
+                                    const row = item.getBoundingClientRect();
+                                    const list = document
+                                        .getElementById("listIn")
+                                        .getBoundingClientRect();
+                                    return {
+                                        highlighted:
+                                            getComputedStyle(item)
+                                                .backgroundColor !==
+                                            "rgba(0, 0, 0, 0)",
+                                        index: window.selIndex,
+                                        pageSize: window.listPageSize,
+                                        visible:
+                                            row.height > 0 &&
+                                            row.top >= list.top - 1 &&
+                                            row.bottom <= list.bottom + 1,
+                                    };
+                                })
+                            )
+                            .toEqual({
+                                highlighted: true,
+                                index,
+                                pageSize,
+                                visible: true,
+                            });
+                        await expect(
+                            page.locator("#listIn .ott-channel-label")
+                        ).toHaveCount(0);
+                    };
+                    for (const arrowFun of [0, 2]) {
+                        expect(
+                            await page.evaluate(
+                                (input) => {
+                                    const saved = saveSettings(input);
+                                    bucketsList(3);
+                                    document.activeElement.blur();
+                                    return saved;
+                                },
+                                { arrowFun, pageSize, volumeStep: 7 }
+                            )
+                        ).toBe(true);
+                        await assertCategory(3);
+                        // Real key events exercise screen ownership, the
+                        // category callback, shared paging and DOM rendering.
+                        for (const [key, index] of [
+                            ["ArrowLeft", 0],
+                            ["ArrowLeft", 0],
+                            ["ArrowRight", pageSize],
+                            ["ArrowRight", 2 * pageSize],
+                            ["ArrowRight", total - 1],
+                            ["ArrowRight", total - 1],
+                            ["ArrowLeft", pageSize + 6],
+                            ["ArrowLeft", 6],
+                            ["ArrowLeft", 0],
+                            ["ArrowRight", pageSize],
+                        ]) {
+                            await page.keyboard.press(key);
+                            await assertCategory(index);
+                        }
+                        await page.keyboard.press("Enter");
+                        await expect(page.locator("#listCaption")).toHaveText(
+                            "Channel list. Category: Paging category " +
+                                pageSize
+                        );
+                        await expect(
+                            page.locator("#listIn .ott-channel-label")
+                        ).toHaveAttribute(
+                            "data-channel-id",
+                            "paging-member-" + pageSize
+                        );
+                        await expect(
+                            page.locator("#listIn .ott-channel-label")
+                        ).toContainText("Member of category " + pageSize);
+                        await page.evaluate(
+                            (index) => bucketsList(index),
+                            pageSize
+                        );
+                        await page.keyboard.press("Backspace");
+                        await expect(page.locator("#list")).toBeHidden();
+                        expect(
+                            await page.evaluate(() => window.isListVisible)
+                        ).toBe(false);
+                        expect(
+                            await page.evaluate(
+                                () => window.__categoryVolumeCalls
+                            )
+                        ).toEqual([]);
+                    }
+                    expect(
+                        await page.evaluate((size) => {
+                            window.__categoryVolumeCalls = [];
+                            const saved = saveSettings({
+                                arrowFun: 1,
+                                pageSize: size,
+                                volumeStep: 7,
+                            });
+                            bucketsList(3);
+                            return saved;
+                        }, pageSize)
+                    ).toBe(true);
+                    await page.keyboard.press("ArrowRight");
+                    await assertCategory(3);
+                    await page.keyboard.press("ArrowLeft");
+                    await assertCategory(3);
+                    expect(
+                        await page.evaluate(() => {
+                            const calls = window.__categoryVolumeCalls;
+                            window.__categoryVolumeCalls = [];
+                            return calls;
+                        })
+                    ).toEqual([7, -7]);
+                }
+                expect(fixture.errors).toEqual([]);
+                expect(fixture.unexpectedRequests).toEqual([]);
+            } finally {
+                await fixture.close();
+            }
+        }
+    );
+
+    test(
         profile + ": Studio defaults and focus survive paging and EPG updates",
         async ({ browser }, testInfo) => {
             const fixture = await fixturePage(browser, profile, {});

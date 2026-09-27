@@ -2699,8 +2699,9 @@ export function bucketsList(catIdx: number, _channelIdx?: number): void {
  * Key handler for the category list (buckets) view.
  * Supports:
  * - Number keys 1-9 for direct category jump.
- * - LEFT/RW/PREV → popup list or close.
- * - RIGHT/ENTER → open channels list for selected category.
+ * - LEFT/RIGHT → shared list paging (one visible page).
+ * - RW/PREV → popup list or close.
+ * - ENTER → open channels list for selected category.
  * - FF/NEXT → next category.
  * - RED/PLAY/PAUSE/PRECH → records list for category.
  * - RETURN → close.
@@ -2839,7 +2840,6 @@ export function bucketsKeyHandler(keyCode: number): boolean {
             return true;
         }
 
-        case keys.LEFT:
         case keys.RW:
         case keys.PREV:
             if (typeof w.popupList === "function") {
@@ -2849,7 +2849,6 @@ export function bucketsKeyHandler(keyCode: number): boolean {
             }
             return true;
 
-        case keys.RIGHT:
         case keys.ENTER:
             if (typeof w.channelsList === "function") {
                 w.channelsList(
