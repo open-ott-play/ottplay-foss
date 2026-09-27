@@ -129,6 +129,8 @@ var keyStrings = {
     "Channel list. Category: ": "Kanallista. Kategori: ",
     "Channel parental control": "Föräldrakontroll för kanal",
     Channels: "Kanaler",
+    "Check this server's SWOP configuration.":
+        "Kontrollera den här serverns SWOP-konfiguration.",
     "Choose from": "Välj från",
     "Choose language": "Välj språk",
     "Choose provider": "Välj leverantör",
@@ -537,10 +539,14 @@ var keyStrings = {
     "Remote session expired": "Fjärrsessionen har gått ut",
     "Remote text entry denied": "Fjärrinmatning av text nekades",
     "Remote text entry error": "Fel vid fjärrinmatning av text",
+    "Remote text entry needs a Device ID.":
+        "Fjärrinmatning av text kräver ett enhets-ID.",
     "Remote text entry not configured":
         "Fjärrinmatning av text är inte konfigurerad",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "Fjärrinmatning av text kräver ett enhets-ID. Be serveradministratören tilldela ett.",
+    "Remote text entry returned no Device ID":
+        "Fjärrinmatning av text returnerade inget enhets-ID",
     "Remove timer?": "Ta bort timer?",
     Rename: "Byt namn",
     "Rename category": "Byt namn på kategori",

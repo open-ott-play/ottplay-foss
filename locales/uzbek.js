@@ -131,6 +131,8 @@ var keyStrings = {
     "Channel list. Category: ": "Kanallar ro'yxati. Kategoriya: ",
     "Channel parental control": "Kanal ota-ona nazorati",
     Channels: "Kanallar",
+    "Check this server's SWOP configuration.":
+        "Ushbu serverning SWOP sozlamalarini tekshiring.",
     "Choose from": "Quyidagidan tanlash",
     "Choose language": "Tilni tanlash",
     "Choose provider": "Provayderni tanlash",
@@ -540,9 +542,13 @@ var keyStrings = {
     "Remote session expired": "Masofaviy seans muddati tugadi",
     "Remote text entry denied": "Masofaviy matn kiritish rad etildi",
     "Remote text entry error": "Masofaviy matn kiritishda xato",
+    "Remote text entry needs a Device ID.":
+        "Masofadan matn kiritish uchun qurilma ID raqami kerak.",
     "Remote text entry not configured": "Masofaviy matn kiritish sozlanmagan",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "Masofaviy matn kiritish uchun qurilma ID raqami kerak. Uni ajratishni server maʼmuridan soʻrang.",
+    "Remote text entry returned no Device ID":
+        "Masofadan matn kiritish xizmati qurilma ID raqamini qaytarmadi",
     "Remove timer?": "Taymer olib tashlansinmi?",
     Rename: "Nomini oʻzgartirish",
     "Rename category": "Turkum nomini oʻzgartirish",

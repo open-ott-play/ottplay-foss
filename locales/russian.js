@@ -128,6 +128,8 @@ var keyStrings = {
     "Channel list. Category: ": "Список каналов. Категория: ",
     "Channel parental control": "Родительский контроль канала",
     Channels: "Каналы",
+    "Check this server's SWOP configuration.":
+        "Проверьте настройки SWOP этого сервера.",
     "Choose from": "Выбрать из",
     "Choose language": "Выберите язык",
     "Choose provider": "Выберите провайдера",
@@ -533,9 +535,13 @@ var keyStrings = {
     "Remote session expired": "Сеанс удалённого доступа истёк",
     "Remote text entry denied": "Удалённый ввод текста запрещён",
     "Remote text entry error": "Ошибка удалённого ввода текста",
+    "Remote text entry needs a Device ID.":
+        "Для удалённого ввода текста нужен ID устройства.",
     "Remote text entry not configured": "Удалённый ввод текста не настроен",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "Для удалённого ввода текста нужен ID устройства. Попросите администратора сервера его выдать.",
+    "Remote text entry returned no Device ID":
+        "Сервис удалённого ввода текста не вернул ID устройства",
     "Remove timer?": "Удалить таймер?",
     Rename: "Переименовать",
     "Rename category": "Переименовать категорию",

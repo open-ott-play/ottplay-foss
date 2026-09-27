@@ -129,6 +129,8 @@ var keyStrings = {
     "Channel list. Category: ": "Ալիքների ցուցակ. Կատեգորիա: ",
     "Channel parental control": "Ծնողական վերահսկողություն ալիքի համար",
     Channels: "Ալիքներ",
+    "Check this server's SWOP configuration.":
+        "Ստուգեք այս սերվերի SWOP կարգավորումները։",
     "Choose from": "Ընտրել աղբյուրից",
     "Choose language": "Ընտրել լեզուն",
     "Choose provider": "Ընտրել մատակարարին",
@@ -538,10 +540,14 @@ var keyStrings = {
     "Remote session expired": "Հեռակա աշխատաշրջանի ժամկետը լրացել է",
     "Remote text entry denied": "Հեռակա տեքստի մուտքագրումը մերժված է",
     "Remote text entry error": "Հեռակա տեքստի մուտքագրման սխալ",
+    "Remote text entry needs a Device ID.":
+        "Հեռակա տեքստի մուտքագրման համար անհրաժեշտ է սարքի ID։",
     "Remote text entry not configured":
         "Հեռակա տեքստի մուտքագրումը կարգավորված չէ",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "Հեռակա տեքստի մուտքագրման համար պահանջվում է սարքի ID։ Խնդրեք սերվերի օպերատորին տրամադրել այն։",
+    "Remote text entry returned no Device ID":
+        "Հեռակա տեքստի մուտքագրման ծառայությունը չի վերադարձրել սարքի ID",
     "Remove timer?": "Հեռացնե՞լ ժամանակաչափը։",
     Rename: "Վերանվանել",
     "Rename category": "Վերանվանել կատեգորիան",

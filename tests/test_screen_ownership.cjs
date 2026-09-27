@@ -5,6 +5,7 @@ const vm = require("node:vm");
 const ts = require("typescript");
 const acorn = require("acorn");
 const { JSDOM } = require("jsdom");
+const { keyboardCode } = require("./helpers/localized-keyboard.cjs");
 const root = path.resolve(__dirname, "..");
 function functions(file, names) {
     const source = ts.createSourceFile(
@@ -437,6 +438,136 @@ test("editor save reentry preserves replacement editor and callback", ({
     w.editKey2(13);
     assert.equal(saved, 11);
 });
+function configureSwopEditor(w, mode) {
+    w.eval(keyboardCode());
+    Object.assign(w, {
+        ensureDeviceClientId: () => "test-device",
+        getSwopBaseUrl: () => "/swop",
+        makeQrSvg: () => "<svg></svg>",
+        ott_device: mode === "native" ? "pc" : "tizen",
+        POLL_MS: 2500,
+        SESSION_TIMEOUT_MS: 600000,
+        stbGetItem: () => "_eng",
+        wire: {
+            swopClientHeader: "X-Swop-Client-Id",
+            swopSessionPath: "/session",
+            swopValuePath: "/val",
+        },
+    });
+    w.eval(functions("src/swop/index.ts", ["swopHeaders", "swopLoadValue"]));
+    w.editKey = mode === "native" ? w.editKey2 : w.editKey1;
+    // Exercise the desktop redirect as well as the TV renderer.
+    w.showEditKey = w.showEditKey1;
+}
+function beginSwopEditor({ w, jobs }, mode) {
+    configureSwopEditor(w, mode);
+    const port = w.__ottClassicScreenPort;
+    const requests = [],
+        saves = [];
+    w.$.ajax = (request) => requests.push(request);
+    w.listKeyHandler = () => true;
+    port.commitList();
+    w.editCaption = "Search";
+    w.editvar = "initial draft";
+    let editor;
+    const save = () => {
+        // Channel search captures this original owner when opening the editor.
+        if (!port.acceptsEditorSave(editor)) return;
+        saves.push(w.editvar);
+    };
+    w.setEdit = save;
+    w.showEditKey();
+    editor = port.owner("editor");
+    const handler = w.editKey,
+        panel = port.savedPanel();
+    w.swopLoadValue();
+    assert.notEqual(w.editKey, handler);
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].url, "/swop/session");
+    requests[0].success({
+        code: "ABCDEF",
+        entryCode: "ABCDEF-GHJKLM",
+        entryUrl: "https://swop.test/",
+        sessionToken: "test-read-token",
+        url: "https://swop.test/?c=ABCDEF&t=test-write-token",
+    });
+    const poll = jobs.find((job) => job.active && job.delay === 3000);
+    assert(poll, "session schedules the production poll callback");
+    poll.active = false;
+    poll.callback();
+    assert.equal(requests.length, 2);
+    assert.equal(requests[1].url, "/swop/val");
+    return { editor, handler, panel, port, requests, save, saves };
+}
+for (const mode of ["native", "TV"]) {
+    test(
+        "SWOP " + mode + " resumes the original editor and Enter saves once",
+        (f) => {
+            const { w, key } = f;
+            const s = beginSwopEditor(f, mode);
+            const value = "Новости & café <2026>";
+            s.requests[1].success({ status: "ready", value });
+            assert.equal(s.port.owner("editor"), s.editor);
+            assert.equal(s.editor.model.save, s.save);
+            assert.equal(s.port.savedPanel(), s.panel);
+            assert.equal(w.editKey, s.handler);
+            assert.equal(w.editvar, value);
+            if (mode === "native") {
+                const input = w.document.getElementById("editvar");
+                assert.equal(input.value, value);
+                assert.equal(w.document.activeElement, input);
+            } else {
+                const selected = w.document.getElementById("ik" + w._keyCur);
+                assert.equal(selected.textContent.trim(), "Ok");
+                assert(selected.style.backgroundColor);
+            }
+            key(w.keys.ENTER);
+            assert.deepEqual(s.saves, [value]);
+            assert.equal(s.editor.active(), false);
+            assert.equal(w.$("#listEdit").is(":visible"), false);
+            assert.equal(w.listCaptionElement.textContent, "Parent");
+            assert.equal(w.listFooterElement.textContent, "Footer");
+            key(w.keys.ENTER);
+            assert.deepEqual(s.saves, [value]);
+        }
+    );
+    test(
+        "SWOP " + mode + " cancel retains the editor and ignores a late result",
+        (f) => {
+            const { w, key } = f;
+            const s = beginSwopEditor(f, mode);
+            key(w.keys.RETURN);
+            assert.equal(s.port.owner("editor"), s.editor);
+            assert.equal(s.editor.model.save, s.save);
+            assert.equal(s.port.savedPanel(), s.panel);
+            assert.equal(w.editKey, s.handler);
+            assert.equal(w.editvar, "initial draft");
+            assert.equal(w.$("#listEdit").is(":visible"), true);
+            assert.deepEqual(s.saves, []);
+            s.requests[1].success({
+                status: "ready",
+                value: "late phone value",
+            });
+            assert.equal(w.editvar, "initial draft");
+            key(w.keys.RETURN);
+            assert.equal(s.editor.active(), false);
+            assert.equal(w.$("#listEdit").is(":visible"), false);
+            assert.equal(w.listCaptionElement.textContent, "Parent");
+            assert.deepEqual(s.saves, []);
+        }
+    );
+    test(
+        "SWOP " + mode + " resume without an editor cannot create one",
+        ({ w }) => {
+            configureSwopEditor(w, mode);
+            assert.doesNotThrow(() => w.showEditKey(null, undefined, true));
+            assert.equal(w.__ottClassicScreenPort.owner("editor"), undefined);
+            assert.equal(w.__ottScreens.current(), null);
+            assert.equal(w.$("#listEdit").is(":visible"), false);
+            assert.equal(w.listCaptionElement.textContent, "Parent");
+        }
+    );
+}
 test("source replacement retires dialogs, editor and scheduled list detail", ({
     w,
     jobs,

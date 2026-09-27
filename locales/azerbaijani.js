@@ -130,6 +130,8 @@ var keyStrings = {
     "Channel list. Category: ": "Kanal siyahısı. Kateqoriya: ",
     "Channel parental control": "Kanal üçün valideyn nəzarəti",
     Channels: "Kanallar",
+    "Check this server's SWOP configuration.":
+        "Bu serverin SWOP konfiqurasiyasını yoxlayın.",
     "Choose from": "Buradan seçin",
     "Choose language": "Dil seçin",
     "Choose provider": "Provayder seçin",
@@ -535,9 +537,13 @@ var keyStrings = {
     "Remote session expired": "Uzaq sessiyanın müddəti bitdi",
     "Remote text entry denied": "Uzaqdan mətn daxil etmə rədd edildi",
     "Remote text entry error": "Uzaqdan mətn daxil etmə xətası",
+    "Remote text entry needs a Device ID.":
+        "Uzaqdan mətn daxil etmək üçün cihaz ID-si lazımdır.",
     "Remote text entry not configured": "Uzaqdan mətn daxil etmə qurulmayıb",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "Uzaqdan mətn daxil etmək üçün cihaz ID-si lazımdır. Server administratorundan onu təmin etməsini istəyin.",
+    "Remote text entry returned no Device ID":
+        "Uzaqdan mətn daxiletmə xidməti cihaz ID-si qaytarmadı",
     "Remove timer?": "Taymer silinsin?",
     Rename: "Adını dəyiş",
     "Rename category": "Kateqoriyanın adını dəyiş",

@@ -1009,7 +1009,7 @@ function setFontSize(): void {
         right: 20 * t + "px",
         top: 20 * e + "px",
     });
-    $("#launch").css({ "font-size": 16 * e + "px", padding: 100 * e + "px" });
+    $("#launch").css({ "font-size": 20 * e + "px", padding: 100 * e + "px" });
     $("logo").css({ margin: 100 * e + "px" });
     $("#listTime").css("font-size", 22 * e + "px");
     $("#list_s").css({ "font-size": 16 * e + "px" });

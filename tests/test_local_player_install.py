@@ -268,7 +268,7 @@ sys.exit(113)
                                capture_output=True, check=True)
                 current = plistlib.loads(plist.read_bytes())
                 self.assertEqual(current["ProgramArguments"], [str(dest / "ottplay-server"),
-                    "--host", "127.0.0.1", "--port", "8443", "--port", "8444",
+                    "--host", "0.0.0.0", "--port", "8443", "--port", "8444",
                     "--port", "8445", "--port", "8446"])
                 for key in ["StandardOutPath", "StandardErrorPath", "ThrottleInterval"]:
                     self.assertEqual(current[key], old[key])
@@ -290,6 +290,28 @@ sys.exit(113)
             config = plistlib.loads(plist.read_bytes())
             self.assertNotIn("--cert", config["ProgramArguments"])
             self.assertNotIn("--https-port", config["ProgramArguments"])
+
+    def test_swop_installation_credential_is_private_and_survives_reinstall(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            plist = root / "player.plist"
+            dest = root / "player"
+            args = [sys.executable, "-", str(plist), str(dest / "ottplay-server"),
+                    str(dest), "com.ottplay-foss-local", str(root / "archive"), "8443 8444 8445 8446"]
+            clean_env = {key: value for key, value in os.environ.items() if not key.startswith("SWOP_")}
+            credential = "fixture-installation-secret-" + "a" * 48
+            for env in [dict(clean_env, SWOP_BASE_URL="https://worker.invalid",
+                             SWOP_INSTALLATION_TOKEN=credential), clean_env]:
+                result = subprocess.run(args, input=embedded_python("PYPLIST"), env=env,
+                                        text=True, capture_output=True, check=True)
+                saved = plistlib.loads(plist.read_bytes())["EnvironmentVariables"]
+                self.assertEqual(saved["SWOP_BASE_URL"], "https://worker.invalid")
+                self.assertEqual(saved["SWOP_INSTALLATION_TOKEN"], credential)
+                self.assertEqual(plist.stat().st_mode & 0o777, 0o600)
+                self.assertEqual(json.loads((dest / "local/swop.json").read_text()),
+                                 {"swopBaseUrl": "/swop"})
+                self.assertNotIn(credential, result.stdout + result.stderr)
+                self.assertNotIn(credential, (dest / "local/swop.json").read_text())
 
 
 if __name__ == "__main__":

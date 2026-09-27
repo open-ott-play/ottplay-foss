@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Player half of the local macOS stack (called by install-local-stack.sh).
 # Syncs repo to ~/ottplay-foss-local, builds player + Rust binary, and installs
-# one loopback-only launchd agent with four independent HTTP browser origins.
+# one LAN-accessible launchd agent with four independent HTTP browser origins.
 #
 # Prefer: scripts/install-local-stack.sh
 # Usage: scripts/install-ottplay-local-service.sh
@@ -11,15 +11,15 @@
 # HTTP allows legacy portals and media that do not support HTTPS. Each port
 # remains a separate browser origin with independent player settings.
 # Existing certificates and keychain trust are left untouched.
-# Binds loopback only (--host 127.0.0.1); Docker defaults are unchanged.
+# Binds all IPv4 interfaces (--host 0.0.0.0), including loopback and LAN.
 # Package downloads bypass inherited proxies and package-manager proxy settings.
 #
 # Optional remote text entry (swop) — do NOT commit private Worker hostnames:
 #   export SWOP_BASE_URL=https://your-worker.example
-#   export SWOP_ADMIN_TOKEN=...   # host-only; wrangler secret; never git
-# Then re-run this script. It writes gitignored $DEST/local/swop.json
-# ({swopBaseUrl, clientId}) served at /local/swop.json, and POSTs clientId
-# to $SWOP_BASE_URL/admin/clients when SWOP_ADMIN_TOKEN is set.
+#   export SWOP_INSTALLATION_TOKEN=... # server-only installation credential
+# Register this installation and its exact LAN/localhost origins on the Worker.
+# Re-running preserves the credential in the mode-0600 launchd plist; browsers
+# receive only {"swopBaseUrl":"/swop"}, never a server credential or shared ID.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -44,6 +44,10 @@ fi
 python3 - "$HTTP_PORTS" "$LABEL_BASE" <<'PYCONFIG'
 import re
 import sys
+import os
+import plistlib
+from pathlib import Path
+from urllib.parse import urlsplit
 ports = sys.argv[1].split()
 if (not ports or any(not re.fullmatch(r"[0-9]+", p) for p in ports)
         or any(not 1 <= int(p) <= 65535 for p in ports)
@@ -52,6 +56,19 @@ if (not ports or any(not re.fullmatch(r"[0-9]+", p) for p in ports)
     sys.exit("error: OTTPLAY_HTTP_PORTS must contain distinct ports 1-65535, excluding retired port 8095")
 if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", sys.argv[2]):
     sys.exit("error: invalid OTTPLAY_LABEL")
+saved = Path.home() / "Library/LaunchAgents" / (sys.argv[2] + ".plist")
+swop = plistlib.loads(saved.read_bytes()).get("EnvironmentVariables", {}) if saved.exists() else {}
+for key in ("SWOP_BASE_URL", "SWOP_INSTALLATION_TOKEN"):
+    if os.environ.get(key, "").strip():
+        swop[key] = os.environ[key].strip()
+if swop.get("SWOP_INSTALLATION_TOKEN"):
+    upstream = urlsplit(swop.get("SWOP_BASE_URL", ""))
+    if (len(swop["SWOP_INSTALLATION_TOKEN"]) < 32
+            or any(c in swop["SWOP_INSTALLATION_TOKEN"] for c in "\r\n")
+            or upstream.scheme != "https" or not upstream.hostname
+            or upstream.username is not None or upstream.password is not None
+            or upstream.query or upstream.fragment):
+        sys.exit("error: SWOP requires an HTTPS SWOP_BASE_URL and a valid SWOP_INSTALLATION_TOKEN")
 PYCONFIG
 
 for tool in rsync node npm cargo python3; do
@@ -81,33 +98,6 @@ rsync -a --delete \
     --exclude '*.local.py' --exclude 'certs' --exclude 'local' \
     --exclude 'debug.enabled' --exclude 'debug-playback.log' --exclude 'debug-playback.log.1' \
     "$SRC/" "$DEST/"
-
-# Operator-local swop inject (gitignored under $DEST/local — never from committed SRC)
-mkdir -p "$DEST/local"
-UUID_FILE="$DEST/local/device-uuid.txt"
-if [ ! -f "$UUID_FILE" ]; then
-    echo "dev_$(openssl rand -hex 8)" > "$UUID_FILE"
-fi
-SWOP_CLIENT_ID="$(tr -d '[:space:]' < "$UUID_FILE")"
-if [ -n "${SWOP_BASE_URL:-}" ]; then
-    SWOP_BASE_TRIMMED="$(printf '%s' "$SWOP_BASE_URL" | sed 's:/*$::')"
-    printf '%s\n' "{\"swopBaseUrl\":\"$SWOP_BASE_TRIMMED\",\"clientId\":\"$SWOP_CLIENT_ID\"}"         > "$DEST/local/swop.json"
-    echo "wrote $DEST/local/swop.json (swopBaseUrl from env; clientId=$SWOP_CLIENT_ID)"
-    if [ -n "${SWOP_ADMIN_TOKEN:-}" ]; then
-        if curl -fsS -X POST "$SWOP_BASE_TRIMMED/admin/clients" \
-            -H "Authorization: Bearer $SWOP_ADMIN_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{\"clientId\":\"$SWOP_CLIENT_ID\",\"note\":\"ottplay-local\"}" >/dev/null; then
-            echo "allowlisted $SWOP_CLIENT_ID on swop Worker"
-        else
-            echo "warning: failed to allowlist $SWOP_CLIENT_ID (check SWOP_ADMIN_TOKEN / Worker)" >&2
-        fi
-    else
-        echo "note: set SWOP_ADMIN_TOKEN to auto-allowlist $SWOP_CLIENT_ID"
-    fi
-elif [ -f "$DEST/local/swop.json" ]; then
-    echo "kept existing $DEST/local/swop.json (SWOP_BASE_URL unset)"
-fi
 
 echo "[2/5] npm ci + build"
 cd "$DEST"
@@ -176,18 +166,29 @@ import sys
 path, binary, dest, label, archive, ports = sys.argv[1:]
 p = Path(path)
 config = plistlib.loads(p.read_bytes()) if p.exists() else {}
-config.update(Label=label, ProgramArguments=[binary, "--host", "127.0.0.1"] +
+config.update(Label=label, ProgramArguments=[binary, "--host", "0.0.0.0"] +
               [value for port in ports.split() for value in ("--port", str(int(port)))],
               WorkingDirectory=dest, RunAtLoad=True, KeepAlive=True)
 env = config.setdefault("EnvironmentVariables", {})
 env.setdefault("EPG_URLS", "http://epg.it999.ru/epg2.xml.gz")
 env["OTTPLAY_DEBUG_ARCHIVE"] = archive
+for key in ("SWOP_BASE_URL", "SWOP_INSTALLATION_TOKEN"):
+    if os.environ.get(key, "").strip():
+        env[key] = os.environ[key].strip()
+if env.get("SWOP_INSTALLATION_TOKEN"):
+    # This public file contains only a same-origin path. The Rust endpoint also
+    # generates it dynamically so a stale static config cannot bypass the relay.
+    local = Path(dest) / "local"
+    local.mkdir(parents=True, exist_ok=True)
+    (local / "swop.json").write_text('{"swopBaseUrl":"/swop"}\n')
+    os.chmod(local / "swop.json", 0o644)
 log = str(Path.home() / "Library/Logs" / (label + ".log"))
 config.setdefault("StandardOutPath", log)
 config.setdefault("StandardErrorPath", log)
 new = p.with_suffix(".plist.new")
-new.write_bytes(plistlib.dumps(config))
-os.chmod(new, 0o600)
+with os.fdopen(os.open(new, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "wb") as output:
+    os.fchmod(output.fileno(), 0o600)
+    output.write(plistlib.dumps(config))
 new.replace(p)
 PYPLIST
 launchctl bootstrap "$DOMAIN" "$PLIST"
@@ -223,4 +224,5 @@ PYRETIRED
 for p in $HTTP_PORTS; do
     echo "installed: http://127.0.0.1:$p/"
 done
+echo "LAN / Media Station X: use this Mac's LAN IP or hostname with the same ports."
 echo "log: ~/Library/Logs/${LABEL}.log"

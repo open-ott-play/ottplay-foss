@@ -132,6 +132,8 @@ var keyStrings = {
     "Channel list. Category: ": "Lista canalelor. Categorie: ",
     "Channel parental control": "Control parental al canalului",
     Channels: "Canale",
+    "Check this server's SWOP configuration.":
+        "Verificați configurația SWOP a acestui server.",
     "Choose from": "Alege din",
     "Choose language": "Alege limba",
     "Choose provider": "Alege furnizorul",
@@ -544,10 +546,14 @@ var keyStrings = {
     "Remote text entry denied":
         "Introducerea textului de la distanță a fost refuzată",
     "Remote text entry error": "Eroare la introducerea textului de la distanță",
+    "Remote text entry needs a Device ID.":
+        "Introducerea textului de la distanță necesită un ID de dispozitiv.",
     "Remote text entry not configured":
         "Introducerea textului de la distanță nu este configurată",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "Introducerea textului de la distanță necesită un ID de dispozitiv. Solicitați-l administratorului serverului.",
+    "Remote text entry returned no Device ID":
+        "Introducerea textului de la distanță nu a returnat un ID de dispozitiv",
     "Remove timer?": "Eliminați temporizatorul?",
     Rename: "Redenumește",
     "Rename category": "Redenumește categoria",

@@ -125,6 +125,7 @@ var keyStrings = {
     "Channel list. Category: ": "רשימת ערוצים. קטגוריה: ",
     "Channel parental control": "בקרת הורים לערוץ",
     Channels: "ערוצים",
+    "Check this server's SWOP configuration.": "בדקו את הגדרות SWOP של שרת זה.",
     "Choose from": "בחר מתוך",
     "Choose language": "בחר שפה",
     "Choose provider": "בחר ספק",
@@ -524,9 +525,12 @@ var keyStrings = {
     "Remote session expired": "תוקף ההפעלה המרוחקת פג",
     "Remote text entry denied": "הזנת טקסט מרחוק נדחתה",
     "Remote text entry error": "שגיאה בהזנת טקסט מרחוק",
+    "Remote text entry needs a Device ID.": "הזנת טקסט מרחוק דורשת מזהה מכשיר.",
     "Remote text entry not configured": "הזנת טקסט מרחוק לא הוגדרה",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "הזנת טקסט מרחוק דורשת מזהה מכשיר. בקש ממפעיל השרת להקצות מזהה.",
+    "Remote text entry returned no Device ID":
+        "שירות הזנת הטקסט מרחוק לא החזיר מזהה מכשיר",
     "Remove timer?": "להסיר את הטיימר?",
     Rename: "שנה שם",
     "Rename category": "שנה שם קטגוריה",

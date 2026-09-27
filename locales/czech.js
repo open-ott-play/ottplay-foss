@@ -127,6 +127,8 @@ var keyStrings = {
     "Channel list. Category: ": "Seznam kanálů. Kategorie: ",
     "Channel parental control": "Rodičovská kontrola kanálu",
     Channels: "Kanály",
+    "Check this server's SWOP configuration.":
+        "Zkontrolujte nastavení SWOP tohoto serveru.",
     "Choose from": "Vybrat z",
     "Choose language": "Vyberte jazyk",
     "Choose provider": "Vyberte poskytovatele",
@@ -529,10 +531,14 @@ var keyStrings = {
     "Remote session expired": "Platnost vzdálené relace vypršela",
     "Remote text entry denied": "Vzdálené zadávání textu bylo zamítnuto",
     "Remote text entry error": "Chyba vzdáleného zadávání textu",
+    "Remote text entry needs a Device ID.":
+        "Vzdálené zadávání textu vyžaduje ID zařízení.",
     "Remote text entry not configured":
         "Vzdálené zadávání textu není nastaveno",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "Vzdálené zadávání textu vyžaduje ID zařízení. Požádejte správce serveru o jeho přidělení.",
+    "Remote text entry returned no Device ID":
+        "Služba vzdáleného zadávání textu nevrátila ID zařízení",
     "Remove timer?": "Odstranit časovač?",
     Rename: "Přejmenovat",
     "Rename category": "Přejmenovat kategorii",

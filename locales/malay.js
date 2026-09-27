@@ -130,6 +130,8 @@ var keyStrings = {
     "Channel list. Category: ": "Senarai saluran. Kategori: ",
     "Channel parental control": "Kawalan ibu bapa untuk saluran",
     Channels: "Saluran",
+    "Check this server's SWOP configuration.":
+        "Semak konfigurasi SWOP pelayan ini.",
     "Choose from": "Pilih daripada",
     "Choose language": "Pilih bahasa",
     "Choose provider": "Pilih penyedia",
@@ -533,10 +535,14 @@ var keyStrings = {
     "Remote session expired": "Sesi jauh tamat tempoh",
     "Remote text entry denied": "Input teks jauh ditolak",
     "Remote text entry error": "Ralat input teks jauh",
+    "Remote text entry needs a Device ID.":
+        "Input teks jauh memerlukan ID peranti.",
     "Remote text entry not configured":
         "Input teks jauh belum dikonfigurasikan",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "Input teks jauh memerlukan ID peranti. Minta pengendali pelayan menyediakannya.",
+    "Remote text entry returned no Device ID":
+        "Input teks jauh tidak mengembalikan ID peranti",
     "Remove timer?": "Padam pemasa?",
     Rename: "Namakan semula",
     "Rename category": "Namakan semula kategori",

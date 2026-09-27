@@ -130,6 +130,8 @@ var keyStrings = {
     "Channel list. Category: ": "Арналар тізімі. Санат: ",
     "Channel parental control": "Арнаның ата-ана бақылауы",
     Channels: "Арналар",
+    "Check this server's SWOP configuration.":
+        "Осы сервердің SWOP баптауларын тексеріңіз.",
     "Choose from": "Мынадан таңдау",
     "Choose language": "Тілді таңдаңыз",
     "Choose provider": "Провайдерді таңдаңыз",
@@ -538,9 +540,13 @@ var keyStrings = {
     "Remote session expired": "Қашықтағы сеанстың мерзімі аяқталды",
     "Remote text entry denied": "Қашықтан мәтін енгізуге рұқсат жоқ",
     "Remote text entry error": "Қашықтан мәтін енгізу қатесі",
+    "Remote text entry needs a Device ID.":
+        "Қашықтан мәтін енгізу үшін құрылғы ID-і қажет.",
     "Remote text entry not configured": "Қашықтан мәтін енгізу бапталмаған",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "Қашықтан мәтін енгізу үшін құрылғы ID-і қажет. Оны сервер әкімшісінен сұраңыз.",
+    "Remote text entry returned no Device ID":
+        "Қашықтан мәтін енгізу қызметі құрылғы ID-ін қайтармады",
     "Remove timer?": "Таймер жойылсын ба?",
     Rename: "Атын өзгерту",
     "Rename category": "Санат атауын өзгерту",

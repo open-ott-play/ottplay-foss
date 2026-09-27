@@ -2988,12 +2988,17 @@ var showEditKey: any = showEditKey1;
  * Sets up key symbols, color indicators, cursor position, and keyboard mode.
  *
  * @param _initKeys - Ignored (accepts any value for API compatibility with `showEdit`).
+ * @param resume - Redraw after SWOP without replacing the editor or its save callback.
  * @returns void
  * @sideeffect Calls `saveListPanelState()`. Modifies `_keysSymbol` entries. Sets `editPos`, `_keyCur`. Calls `_setPunct` and `showEdit`.
  * @analysis Checks `window.stbGetItem('ottplaylang') === '_eng'` to determine initial language.
  *             Color-key underlines are added to shift/lang/backspace/ok symbols if color keys are enabled.
  */
-export function showEditKey1(_initKeys: any, secret?: boolean): void {
+export function showEditKey1(
+    _initKeys: any,
+    secret?: boolean,
+    resume?: boolean
+): void {
     // Desktop / Tauri / Capacitor: always use the native <input> line. The
     // graphical OSK is for STB remotes; several call sites still invoke
     // showEditKey1 (or a stale window.showEditKey alias) directly.
@@ -3003,12 +3008,13 @@ export function showEditKey1(_initKeys: any, secret?: boolean): void {
         /^(pc|pc2|tauri|desktop|nodejs)$/.test(String(w.ott_device || ""));
     var isCap = typeof w.Capacitor !== "undefined";
     if ((isPc || isCap) && typeof w.showEditKey2 === "function") {
-        w.showEditKey2(_initKeys, secret);
+        w.showEditKey2(_initKeys, secret, resume);
         return;
     }
-    saveListPanelState();
-    var editorOwner = (window as any).__ottClassicScreenPort.openEditor();
-    if (!editorOwner.active()) return;
+    if (!resume) saveListPanelState();
+    var port = w.__ottClassicScreenPort;
+    var editorOwner = resume ? port.owner("editor") : port.openEditor();
+    if (!editorOwner || !editorOwner.active()) return;
     // Legacy stbPlayer.js:3993 uses == "_eng" (not ===)
     if (_ottplaylang() == "_eng") _keyE = true;
     _keysSymbol[1].s = _showLangKey()
@@ -3037,7 +3043,11 @@ export function showEditKey1(_initKeys: any, secret?: boolean): void {
     editPos = (window as any).editvar.length;
     var r = _keyCur >= _keys.length - 10 ? 14 : _keyCur;
     _setPunct(_keyP);
-    _keyCur = r >= 0 && r < _keys.length - 10 ? r : 14;
+    _keyCur = resume
+        ? _keys.length - 1
+        : r >= 0 && r < _keys.length - 10
+          ? r
+          : 14;
     showEdit();
 }
 
@@ -3350,15 +3360,21 @@ export function editKey2(code: number): void {
  * graphical on-screen keyboard.
  *
  * @param _initKeys - Optional array of initial key values (unused, for API compatibility).
+ * @param resume - Redraw after SWOP while retaining the current editor owner.
  * @returns void
  * @sideeffect Calls `window.saveListPanelState()` if available. Renders `#listEdit` with an `<input>` field
  *             and save/discard buttons. Focuses the input field.
  */
-export function showEditKey2(_initKeys?: number[], secret?: boolean): void {
-    if (typeof (window as any).saveListPanelState === "function")
+export function showEditKey2(
+    _initKeys?: number[],
+    secret?: boolean,
+    resume?: boolean
+): void {
+    if (!resume && typeof (window as any).saveListPanelState === "function")
         (window as any).saveListPanelState();
-    var editorOwner = (window as any).__ottClassicScreenPort.openEditor();
-    if (!editorOwner.active()) return;
+    var port = (window as any).__ottClassicScreenPort;
+    var editorOwner = resume ? port.owner("editor") : port.openEditor();
+    if (!editorOwner || !editorOwner.active()) return;
     var caption = (window as any).editCaption || "";
     var val = (window as any).editvar || "";
     var keys = (window as any).keys || {};

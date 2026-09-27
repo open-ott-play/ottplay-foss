@@ -555,21 +555,24 @@ Purpose: type on a phone for ♥™ / remote virtual keyboard when the TV and ph
 are on **different networks**, via a Cloudflare Worker session handoff.
 
 - Worker repo: [ottplay-swop](https://github.com/open-ott-play/ottplay-swop)
-- **Client id** = this player Device UUID (`deviceId` / `ott_device_uuid`); the
-  Worker operator must **allowlist** it before `POST /session` / `GET /val` succeed
+- **Installation authorization:** the player sends requests to its server's
+  same-origin `/swop` relay. That server adds its private installation token;
+  every client on the registered server origin can use remote text entry.
+  Device UUIDs identify sessions and require no per-device allowlist.
 - Setting: `swopBaseUrl` (empty = ♥™ shows “not configured” / no-op). Edit under
   **Settings → Remote control** (key **2**), or inject via gitignored
   `/local/swop.json` on operator installs
-- Headers on `/session` and `/val`: `X-Swop-Client-Id` (Device UUID)
-- **Local inject:** `scripts/install-ottplay-local-service.sh` writes
-  `$DEST/local/swop.json` when `SWOP_BASE_URL` is set in the environment, and
-  allowlists `clientId` when `SWOP_ADMIN_TOKEN` is set. Never commit private
-  Worker hostnames or tokens into git / the public image.
-- **`deploy.sh` today** only pulls/runs Docker — it does **not** register clients.
-  Optional `SWOP_*` env on the deploy host can auto-allow + inject an id for
-  *operator* installs (see [ottplay-swop Access control](https://github.com/open-ott-play/ottplay-swop#access-control)).
-  Not enabled by default; never bake `ADMIN_TOKEN` into the image.
-- **Status:** Worker allowlist + foss client ♥™ wiring landed
+- `POST /session` includes `clientId`, `caption`, and `draft`; `POST /val`
+  includes `clientId`, `code`, and the returned `sessionToken`. The phone URL
+  contains a separate write token. Session read tokens stay in browser memory.
+- **Local install:** set `SWOP_BASE_URL` and `SWOP_INSTALLATION_TOKEN` after
+  registering that installation and its exact LAN/localhost origins in the
+  Worker. `scripts/install-ottplay-local-service.sh` preserves them in its
+  private mode-0600 launchd plist. Public `/local/swop.json` contains only
+  `{"swopBaseUrl":"/swop"}`. Never put an installation token in public assets.
+- **Static hosting:** configure a server-side authenticated proxy for the same
+  two endpoints. Keep the installation token in the hosting service's secrets.
+  Copying the public player files does not copy that server credential.
 
 > The central OTT server keeps `/api/webhook/commands`, `/webhook/poll`, `/webhook/notify`, and command health aliases disabled for every HTTP method. Use the separate command server or an explicitly configured authenticated `local_proxy.py` for Mode A; the central server has no broadcast command queue.
 

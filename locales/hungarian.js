@@ -130,6 +130,8 @@ var keyStrings = {
     "Channel list. Category: ": "Csatornalista. Kategória: ",
     "Channel parental control": "Csatorna szülői felügyelete",
     Channels: "Csatornák",
+    "Check this server's SWOP configuration.":
+        "Ellenőrizze a kiszolgáló SWOP-beállításait.",
     "Choose from": "Választás innen",
     "Choose language": "Nyelv kiválasztása",
     "Choose provider": "Szolgáltató kiválasztása",
@@ -540,10 +542,14 @@ var keyStrings = {
     "Remote session expired": "A távoli munkamenet lejárt",
     "Remote text entry denied": "Távoli szövegbevitel megtagadva",
     "Remote text entry error": "Távoli szövegbeviteli hiba",
+    "Remote text entry needs a Device ID.":
+        "A távoli szövegbevitelhez eszközazonosító szükséges.",
     "Remote text entry not configured":
         "A távoli szövegbevitel nincs beállítva",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "A távoli szövegbevitelhez eszközazonosító szükséges. Kérje a kiszolgáló üzemeltetőjétől.",
+    "Remote text entry returned no Device ID":
+        "A távoli szövegbevitel nem adott vissza eszközazonosítót",
     "Remove timer?": "Törli az időzítőt?",
     Rename: "Átnevezés",
     "Rename category": "Kategória átnevezése",

@@ -131,6 +131,8 @@ var keyStrings = {
     "Channel list. Category: ": "Danh sách kênh. Danh mục: ",
     "Channel parental control": "Kiểm soát kênh của phụ huynh",
     Channels: "Kênh",
+    "Check this server's SWOP configuration.":
+        "Kiểm tra cấu hình SWOP của máy chủ này.",
     "Choose from": "Chọn từ",
     "Choose language": "Chọn ngôn ngữ",
     "Choose provider": "Chọn nhà cung cấp",
@@ -534,9 +536,13 @@ var keyStrings = {
     "Remote session expired": "Phiên từ xa đã hết hạn",
     "Remote text entry denied": "Nhập văn bản từ xa bị từ chối",
     "Remote text entry error": "Lỗi nhập văn bản từ xa",
+    "Remote text entry needs a Device ID.":
+        "Nhập văn bản từ xa cần ID thiết bị.",
     "Remote text entry not configured": "Chưa cấu hình nhập văn bản từ xa",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "Nhập văn bản từ xa yêu cầu ID thiết bị. Yêu cầu quản trị viên máy chủ cấp ID.",
+    "Remote text entry returned no Device ID":
+        "Dịch vụ nhập văn bản từ xa không trả về ID thiết bị",
     "Remove timer?": "Xóa hẹn giờ?",
     Rename: "Đổi tên",
     "Rename category": "Đổi tên danh mục",
