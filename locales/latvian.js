@@ -130,6 +130,8 @@ var keyStrings = {
     "Channel list. Category: ": "Kanālu saraksts. Kategorija: ",
     "Channel parental control": "Kanāla vecāku kontrole",
     Channels: "Kanāli",
+    "Check this server's SWOP configuration.":
+        "Pārbaudiet šī servera SWOP konfigurāciju.",
     "Choose from": "Izvēlēties no",
     "Choose language": "Izvēlēties valodu",
     "Choose provider": "Izvēlēties pakalpojuma sniedzēju",
@@ -540,10 +542,14 @@ var keyStrings = {
     "Remote session expired": "Attālinātās sesijas derīgums ir beidzies",
     "Remote text entry denied": "Attālinātā teksta ievade liegta",
     "Remote text entry error": "Attālinātās teksta ievades kļūda",
+    "Remote text entry needs a Device ID.":
+        "Attālinātai teksta ievadei ir nepieciešams ierīces ID.",
     "Remote text entry not configured":
         "Attālinātā teksta ievade nav iestatīta",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "Attālinātai teksta ievadei nepieciešams ierīces ID. Lūdziet servera operatoram to piešķirt.",
+    "Remote text entry returned no Device ID":
+        "Attālinātā teksta ievade neatgrieza ierīces ID",
     "Remove timer?": "Noņemt taimeri?",
     Rename: "Pārdēvēt",
     "Rename category": "Pārdēvēt kategoriju",

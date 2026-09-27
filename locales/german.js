@@ -132,6 +132,8 @@ var keyStrings = {
     "Channel list. Category: ": "Senderliste. Kategorie: ",
     "Channel parental control": "Sender-Jugendschutz",
     Channels: "Sender",
+    "Check this server's SWOP configuration.":
+        "Prüfen Sie die SWOP-Konfiguration dieses Servers.",
     "Choose from": "Auswählen aus",
     "Choose language": "Sprache wählen",
     "Choose provider": "Anbieter wählen",
@@ -546,9 +548,13 @@ var keyStrings = {
     "Remote session expired": "Fernsitzung abgelaufen",
     "Remote text entry denied": "Ferntexteingabe verweigert",
     "Remote text entry error": "Fehler bei der Ferntexteingabe",
+    "Remote text entry needs a Device ID.":
+        "Die Ferntexteingabe benötigt eine Geräte-ID.",
     "Remote text entry not configured": "Ferntexteingabe nicht eingerichtet",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "Für die Ferntexteingabe ist eine Geräte-ID erforderlich. Bitten Sie den Serverbetreiber, eine bereitzustellen.",
+    "Remote text entry returned no Device ID":
+        "Die Ferntexteingabe hat keine Geräte-ID zurückgegeben",
     "Remove timer?": "Timer entfernen?",
     Rename: "Umbenennen",
     "Rename category": "Kategorie umbenennen",

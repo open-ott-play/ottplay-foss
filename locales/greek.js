@@ -132,6 +132,8 @@ var keyStrings = {
     "Channel list. Category: ": "Λίστα καναλιών. Κατηγορία: ",
     "Channel parental control": "Γονικός έλεγχος καναλιού",
     Channels: "Κανάλια",
+    "Check this server's SWOP configuration.":
+        "Ελέγξτε τη ρύθμιση SWOP αυτού του διακομιστή.",
     "Choose from": "Επιλογή από",
     "Choose language": "Επιλογή γλώσσας",
     "Choose provider": "Επιλογή παρόχου",
@@ -548,10 +550,14 @@ var keyStrings = {
     "Remote text entry denied":
         "Δεν επιτρέπεται η απομακρυσμένη εισαγωγή κειμένου",
     "Remote text entry error": "Σφάλμα απομακρυσμένης εισαγωγής κειμένου",
+    "Remote text entry needs a Device ID.":
+        "Η απομακρυσμένη εισαγωγή κειμένου απαιτεί αναγνωριστικό συσκευής.",
     "Remote text entry not configured":
         "Η απομακρυσμένη εισαγωγή κειμένου δεν έχει ρυθμιστεί",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "Η απομακρυσμένη εισαγωγή κειμένου απαιτεί αναγνωριστικό συσκευής. Ζητήστε από τον διαχειριστή του διακομιστή να το εκδώσει.",
+    "Remote text entry returned no Device ID":
+        "Η απομακρυσμένη εισαγωγή κειμένου δεν επέστρεψε αναγνωριστικό συσκευής",
     "Remove timer?": "Διαγραφή χρονοδιακόπτη;",
     Rename: "Μετονομασία",
     "Rename category": "Μετονομασία κατηγορίας",

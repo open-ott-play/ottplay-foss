@@ -131,6 +131,8 @@ var keyStrings = {
     "Channel list. Category: ": "Zenderlijst. Categorie: ",
     "Channel parental control": "Ouderlijk toezicht op zenders",
     Channels: "Zenders",
+    "Check this server's SWOP configuration.":
+        "Controleer de SWOP-configuratie van deze server.",
     "Choose from": "Kiezen uit",
     "Choose language": "Taal kiezen",
     "Choose provider": "Provider kiezen",
@@ -541,10 +543,14 @@ var keyStrings = {
     "Remote session expired": "Externe sessie verlopen",
     "Remote text entry denied": "Tekstinvoer op afstand geweigerd",
     "Remote text entry error": "Fout bij tekstinvoer op afstand",
+    "Remote text entry needs a Device ID.":
+        "Tekstinvoer op afstand vereist een apparaat-ID.",
     "Remote text entry not configured":
         "Tekstinvoer op afstand niet geconfigureerd",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "Tekstinvoer op afstand vereist een apparaat-ID. Vraag de serverbeheerder er een aan te maken.",
+    "Remote text entry returned no Device ID":
+        "Tekstinvoer op afstand heeft geen apparaat-ID teruggestuurd",
     "Remove timer?": "Timer verwijderen?",
     Rename: "Hernoemen",
     "Rename category": "Categorie hernoemen",

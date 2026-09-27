@@ -134,6 +134,8 @@ var keyStrings = {
     "Channel list. Category: ": "Elenco canali. Categoria: ",
     "Channel parental control": "Controllo parentale del canale",
     Channels: "Canali",
+    "Check this server's SWOP configuration.":
+        "Controlla la configurazione SWOP di questo server.",
     "Choose from": "Scegli tra",
     "Choose language": "Scegli lingua",
     "Choose provider": "Scegli fornitore",
@@ -544,10 +546,14 @@ var keyStrings = {
     "Remote session expired": "Sessione remota scaduta",
     "Remote text entry denied": "Inserimento testo remoto negato",
     "Remote text entry error": "Errore nell'inserimento testo remoto",
+    "Remote text entry needs a Device ID.":
+        "L’inserimento di testo remoto richiede un ID dispositivo.",
     "Remote text entry not configured":
         "Inserimento testo remoto non configurato",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "L'inserimento testo remoto richiede un ID dispositivo. Chiedi al gestore del server di fornirne uno.",
+    "Remote text entry returned no Device ID":
+        "L’inserimento di testo remoto non ha restituito un ID dispositivo",
     "Remove timer?": "Rimuovere il timer?",
     Rename: "Rinomina",
     "Rename category": "Rinomina categoria",

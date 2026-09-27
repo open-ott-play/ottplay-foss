@@ -130,6 +130,8 @@ var keyStrings = {
     "Channel list. Category: ": "Daftar saluran. Kategori: ",
     "Channel parental control": "Kontrol orang tua saluran",
     Channels: "Saluran",
+    "Check this server's SWOP configuration.":
+        "Periksa konfigurasi SWOP server ini.",
     "Choose from": "Pilih dari",
     "Choose language": "Pilih bahasa",
     "Choose provider": "Pilih penyedia",
@@ -534,10 +536,14 @@ var keyStrings = {
     "Remote session expired": "Sesi jarak jauh kedaluwarsa",
     "Remote text entry denied": "Input teks jarak jauh ditolak",
     "Remote text entry error": "Kesalahan input teks jarak jauh",
+    "Remote text entry needs a Device ID.":
+        "Input teks jarak jauh memerlukan ID perangkat.",
     "Remote text entry not configured":
         "Input teks jarak jauh belum dikonfigurasi",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "Input teks jarak jauh memerlukan ID perangkat. Minta operator server untuk menyediakannya.",
+    "Remote text entry returned no Device ID":
+        "Input teks jarak jauh tidak mengembalikan ID perangkat",
     "Remove timer?": "Hapus pengatur waktu?",
     Rename: "Ubah nama",
     "Rename category": "Ubah nama kategori",

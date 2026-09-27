@@ -129,6 +129,8 @@ var keyStrings = {
     "Channel list. Category: ": "Kanalų sąrašas. Kategorija: ",
     "Channel parental control": "Kanalo tėvų kontrolė",
     Channels: "Kanalai",
+    "Check this server's SWOP configuration.":
+        "Patikrinkite šio serverio SWOP konfigūraciją.",
     "Choose from": "Pasirinkti iš",
     "Choose language": "Pasirinkti kalbą",
     "Choose provider": "Pasirinkti teikėją",
@@ -536,10 +538,14 @@ var keyStrings = {
     "Remote session expired": "Nuotolinio seanso galiojimas baigėsi",
     "Remote text entry denied": "Nuotolinė teksto įvestis uždrausta",
     "Remote text entry error": "Nuotolinės teksto įvesties klaida",
+    "Remote text entry needs a Device ID.":
+        "Nuotolinei teksto įvesčiai reikia įrenginio ID.",
     "Remote text entry not configured":
         "Nuotolinė teksto įvestis nesukonfigūruota",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "Nuotolinei teksto įvesčiai būtinas įrenginio ID. Paprašykite serverio administratoriaus jį suteikti.",
+    "Remote text entry returned no Device ID":
+        "Nuotolinė teksto įvestis negrąžino įrenginio ID",
     "Remove timer?": "Pašalinti laikmatį?",
     Rename: "Pervadinti",
     "Rename category": "Pervadinti kategoriją",

@@ -128,6 +128,8 @@ var keyStrings = {
     "Channel list. Category: ": "Channel list. Category: ",
     "Channel parental control": "Channel parental control",
     Channels: "Channels",
+    "Check this server's SWOP configuration.":
+        "Check this server's SWOP configuration.",
     "Choose from": "Choose from",
     "Choose language": "Choose language",
     "Choose provider": "Choose provider",
@@ -533,9 +535,13 @@ var keyStrings = {
     "Remote session expired": "Remote session expired",
     "Remote text entry denied": "Remote text entry denied",
     "Remote text entry error": "Remote text entry error",
+    "Remote text entry needs a Device ID.":
+        "Remote text entry needs a Device ID.",
     "Remote text entry not configured": "Remote text entry not configured",
     "Remote text entry requires a Device ID. Ask the server operator to provision one.":
         "Remote text entry requires a Device ID. Ask the server operator to provision one.",
+    "Remote text entry returned no Device ID":
+        "Remote text entry returned no Device ID",
     "Remove timer?": "Remove timer?",
     Rename: "Rename",
     "Rename category": "Rename category",
