@@ -403,6 +403,11 @@ pub fn apply_fullscreen(
                 }
             });
         }
+        // macOS Tahoe draws a 1px gray rim while the window shadow is enabled,
+        // even in simple fullscreen. Apply this after the deferred style update
+        // and restore the main window's normal shadow when returning windowed.
+        window.set_shadow(!fullscreen).map_err(|e| e.to_string())?;
+        sync_window_queue(window);
         return Ok(());
     }
     #[cfg(not(target_os = "macos"))]
