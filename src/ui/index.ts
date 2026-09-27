@@ -1459,7 +1459,7 @@ export function updateChannelInfo(channelId: number): void {
     if (nbeginTimeEl) nbeginTimeEl.textContent = "";
     if (nendTimeEl) nendTimeEl.textContent = "";
 
-    // EPG data — legacy player.js:1258-1281 uses observeCurrentProgramme return,
+    // EPG data — legacy stbPlayer.js:1258-1281 uses observeCurrentProgramme return,
     // then always writes +remaining minutes and next-program duration.
     var hasProg = observeCurrentProgramme(channelId, updateChannelInfo);
     if (hasProg && t && t.time_to) {
@@ -1663,7 +1663,7 @@ export function initBackgroundIntervals(): void {
         if (listTEl) listTEl.innerHTML = timeStr;
         if (listSEl) listSEl.innerHTML = secStr;
         if (permTEl) permTEl.innerHTML = timeStr;
-        // Drive archive OSD progress bar (player.js:1744-1746 tick).
+        // Drive archive OSD progress bar (stbPlayer.js:1744-1746 tick).
         // Skip live mode (playType === 0) — showChannelInfo already covers it.
         var w_t = window as any;
         if (
@@ -1790,6 +1790,7 @@ export function renderButtonHint(
     num?: string,
     extra?: string
 ): string {
+    keyLabel = Number(keyLabel);
     if (!(description && keyLabel)) return "";
     description = metadataHtml(_(description));
     var cls = "btn";
@@ -1815,14 +1816,16 @@ export function renderButtonHint(
         if ("0123456789".indexOf(num!) !== -1) num = undefined;
         if ("0123456789".indexOf(extra!) !== -1) extra = undefined;
     }
-    var a = label ? '<div class="' + cls + '">' + label + "</div>&nbsp;" : "";
+    var a = label
+        ? '<div class="' + cls + '">' + metadataHtml(label) + "</div>&nbsp;"
+        : "";
     if (
         (window as any).sNoColorKeys &&
         [keys.RED, keys.GREEN, keys.YELLOW, keys.BLUE].indexOf(keyLabel) !== -1
     )
         a = "";
-    if (num) a += '<div class="btn">' + num + "</div>&nbsp;";
-    if (extra) a += '<div class="btn">' + extra + "</div>&nbsp;";
+    if (num) a += '<div class="btn">' + metadataHtml(num) + "</div>&nbsp;";
+    if (extra) a += '<div class="btn">' + metadataHtml(extra) + "</div>&nbsp;";
     if (!a) description = '<div class="btn">' + description + "</div>";
     return (
         '<span role="button" tabindex="0" aria-label="' +

@@ -1829,7 +1829,6 @@ function onStbReady(): void {
         getScriptDOM(
             hostUrl + languageAssetPath(lang) + "?" + PLAYER_VERSION,
             function () {
-                console.log("TRACE langJS loaded (onStbReady path)");
                 if (typeof duneAddSettings !== "function") loadProv();
                 else if (typeof (window as any).optionsList === "function")
                     (window as any).optionsList(selectLang);

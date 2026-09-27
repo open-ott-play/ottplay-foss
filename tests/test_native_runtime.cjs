@@ -52,6 +52,29 @@ function write(folder, file, bytes) {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, bytes);
 }
+function inlineScriptSource(html) {
+    const parsed = new JSDOM(html);
+    try {
+        return Array.from(
+            parsed.window.document.querySelectorAll("script:not([src])"),
+            (script) => script.textContent
+        ).join("\n");
+    } finally {
+        parsed.window.close();
+    }
+}
+assert.equal(
+    inlineScriptSource(
+        '<script data-label=">">window.first = 1;</script >' +
+            '<script src="/external.js">window.external = 1;</script>' +
+            "<!-- <script>window.comment = 1;</script> -->" +
+            "<SCRIPT>window.second = 2;</SCRIPT\t>"
+    ),
+    "window.first = 1;\nwindow.second = 2;"
+);
+pass(
+    "inline boot script extraction follows HTML parsing for attributes, comments and closing-tag whitespace"
+);
 function nodes(code, predicate) {
     const ast = ts.createSourceFile(
         "fixture.ts",
@@ -299,10 +322,7 @@ function browser(folder, platform) {
         );
         done();
     };
-    const inline = Array.from(
-        read("index.html").matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi),
-        (match) => match[1]
-    ).join("\n");
+    const inline = inlineScriptSource(read("index.html"));
     for (const name of ["loadJQ", "loadLibraries", "loadStandardLibraries"])
         w.eval(
             one(
