@@ -492,7 +492,7 @@ dialog.id = "dialogbox";
 w.document.body.appendChild(dialog);
 w.strENTER = "Enter";
 w.strRETURN = "Back";
-w.eval(extract("src/ui/index.ts", ["escapeHtml", "confirmBox"]));
+w.eval(extract("src/ui/index.ts", ["confirmBox"]));
 let accepted = 0,
     cancelled = 0,
     resumed = 0;

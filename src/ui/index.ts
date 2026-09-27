@@ -1208,20 +1208,11 @@ export function infoBox(message: string): void {
     );
 }
 
-function escapeHtml(text: string): string {
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-}
-
 /**
  * Show a confirmation dialog with Yes (ENTER) and No (RETURN) buttons.
  * Calls the appropriate callback based on the user's key press.
  *
- * @param message - HTML string for the dialog body.
+ * @param message - Text with newlines or attribute-free `<br>` tags for line breaks.
  * @param onYes - Callback invoked when ENTER is pressed.
  * @param onNo - Optional callback invoked for any non-ENTER key, including No/RETURN.
  * @returns void
@@ -1239,7 +1230,11 @@ export function confirmBox(
     $("#dialogbox")
         .html(
             "<center>" +
-                escapeHtml(_(message)) +
+                // Preserve line breaks without interpreting other message HTML.
+                metadataText(_(message)).replace(
+                    /&lt;br\s*\/?&gt;|\r\n?|\n/gi,
+                    "<br/>"
+                ) +
                 "<br/><br/>" +
                 renderButtonHint(keys.ENTER, strENTER, "Yes") +
                 renderButtonHint(keys.RETURN, strRETURN, "No") +
