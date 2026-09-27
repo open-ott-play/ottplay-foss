@@ -36,7 +36,7 @@ const routeFixtures = adapterNames.sort().map((name) => ({
         "Mozilla/5.0 (SmartTV; Linux; Web0S) AppleWebKit/537.36 Chrome/120.0 Safari/537.36",
 }));
 
-async function remoteKey(page, keyCode, key) {
+async function remoteKey(page, keyCode, key, code) {
     // Chromium's input dispatch emits a browser keyboard event with the TV's
     // numeric code, through window.onkeydown and the real list key handler.
     const cdp = await page.context().newCDPSession(page);
@@ -46,6 +46,7 @@ async function remoteKey(page, keyCode, key) {
             nativeVirtualKeyCode: keyCode,
             windowsVirtualKeyCode: keyCode,
         };
+        if (code) event.code = code;
         await cdp.send("Input.dispatchKeyEvent", {
             ...event,
             type: "rawKeyDown",
@@ -421,6 +422,292 @@ async function bootForMagicRemote(page, context, baseURL, device, visible) {
     });
     return errors;
 }
+
+async function bootForWebosRemote(
+    page,
+    context,
+    baseURL,
+    observeNativeExit = true
+) {
+    const errors = await bootForMagicRemote(
+        page,
+        context,
+        baseURL,
+        "lg/webos",
+        false
+    );
+    await page.evaluate((observeExit) => {
+        // Keep the shipped loader, key router, menus and confirmation dialog.
+        // Only observe playback/native effects; no LG firmware is emulated.
+        window.__remoteEffects = {
+            exits: 0,
+            played: [],
+            playing: true,
+            volume: [],
+        };
+        if (observeExit) window.close = () => window.__remoteEffects.exits++;
+        window.stbIsPlaying = () => window.__remoteEffects.playing;
+        window.stbPause = () => {
+            window.__remoteEffects.playing = false;
+        };
+        window.stbContinue = () => {
+            window.__remoteEffects.playing = true;
+        };
+        window.stbSetVolume = (volume) =>
+            window.__remoteEffects.volume.push(volume);
+        const stored = new Map();
+        window.providerGetItem = (key) => stored.get(key) ?? null;
+        window.providerSetItem = (key, value) => stored.set(key, value);
+        window.catsArray = ["Remote fixture"];
+        window.cats = { "Remote fixture": [101, 102, 103] };
+        window.channels = window.chanels = {};
+        for (const id of window.cats["Remote fixture"]) {
+            window.channels[id] = { channel_name: "Channel " + id, rec: 0 };
+        }
+        window.fetchChannelGuide = (id, complete) => {
+            const now = Math.floor(Date.now() / 1000);
+            complete(id, [
+                {
+                    descr: "Remote guide fixture",
+                    name: "Programme " + id,
+                    time: now - 600,
+                    time_to: now + 600,
+                },
+            ]);
+        };
+        window.catIndex = window.primaryIndex = window.playType = 0;
+        window.curList = window.cats["Remote fixture"];
+        window.playChannel = (category, index) => {
+            window.catIndex = category;
+            window.curList = window.cats[window.catsArray[category]];
+            window.primaryIndex = index;
+            window.__remoteEffects.played.push(window.curList[index]);
+            window.__remoteEffects.playing = true;
+        };
+        window.closeList();
+        window.infoBarHide();
+    }, observeNativeExit);
+    return errors;
+}
+
+test.describe("webOS fullscreen remote navigation", () => {
+    test.use({
+        userAgent:
+            "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 Chrome/120.0 Safari/537.36 WebAppManager",
+    });
+
+    for (const delivery of ["Back key 461", "LG browser history Back"]) {
+        test(
+            delivery + " returns Menu to video before confirming exit",
+            async ({ page, context, baseURL }) => {
+                const errors = await bootForWebosRemote(page, context, baseURL);
+                const playerUrl = page.url();
+                const back = () =>
+                    delivery === "Back key 461"
+                        ? remoteKey(page, 461, "BrowserBack")
+                        : page.goBack();
+                await page.evaluate(() => window.popupList());
+                await expect(page.locator("#listCaption")).toHaveText("Menu");
+                await back();
+                await expect(page).toHaveURL(playerUrl);
+                await expect(page.locator("#list")).toBeHidden();
+                await expect(page.locator("#dialogbox")).toBeHidden();
+                expect(
+                    await page.evaluate(() => window.__remoteEffects)
+                ).toMatchObject({ exits: 0, playing: true });
+
+                await back();
+                await expect(page).toHaveURL(playerUrl);
+                await expect(page.locator("#dialogbox")).toContainText(
+                    "Do you want to exit the player?"
+                );
+                expect(
+                    await page.evaluate(() => window.__remoteEffects.exits)
+                ).toBe(0);
+                await remoteKey(page, 461, "BrowserBack");
+                await expect(page.locator("#dialogbox")).toBeHidden();
+                expect(
+                    await page.evaluate(() => window.__remoteEffects)
+                ).toMatchObject({ exits: 0, playing: true });
+
+                await back();
+                await expect(page.locator("#dialogbox")).toBeVisible();
+                await remoteKey(page, 13, "Enter");
+                await expect(page.locator("#dialogbox")).toBeHidden();
+                expect(
+                    await page.evaluate(() => window.__remoteEffects.exits)
+                ).toBe(1);
+                // A held/second OK must not re-run the retired confirmation callback.
+                await remoteKey(page, 13, "Enter");
+                expect(
+                    await page.evaluate(() => window.__remoteEffects.exits)
+                ).toBe(1);
+                expect(errors).toEqual([]);
+            }
+        );
+    }
+
+    test("confirmed hosted exit returns to the immediate launcher page", async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        const launcher = baseURL + "/__webos_launcher";
+        let launcherVisits = 0;
+        page.on("framenavigated", (frame) => {
+            if (frame === page.mainFrame() && frame.url() === launcher)
+                launcherVisits++;
+        });
+        await page.route("**/__webos_launcher", (route) =>
+            route.fulfill({
+                body: "<!doctype html><title>Launcher</title><h1>Launcher</h1>",
+                contentType: "text/html",
+            })
+        );
+        await page.goto(launcher);
+        // Leave window.close intact: Chromium rejects closing a navigated tab.
+        const errors = await bootForWebosRemote(page, context, baseURL, false);
+        const playerUrl = page.url();
+        await page.evaluate(() => window.popupList());
+        await page.goBack();
+        await expect(page.locator("#list")).toBeHidden();
+        await expect(page).toHaveURL(playerUrl);
+        await page.goBack();
+        await expect(page.locator("#dialogbox")).toBeVisible();
+        await remoteKey(page, 461, "BrowserBack");
+        await expect(page.locator("#dialogbox")).toBeHidden();
+        await expect(page).toHaveURL(playerUrl);
+        expect(launcherVisits).toBe(1);
+        await page.goBack();
+        await expect(page.locator("#dialogbox")).toBeVisible();
+        await remoteKey(page, 13, "Enter");
+        await expect(page).toHaveURL(launcher);
+        await expect(
+            page.getByRole("heading", { name: "Launcher" })
+        ).toBeVisible();
+        expect(launcherVisits).toBe(2);
+        expect(errors).toEqual([]);
+    });
+
+    test("native editor keeps L and Backspace as text input and remote Back cancels", async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        const errors = await bootForWebosRemote(page, context, baseURL);
+        await page.evaluate(() => {
+            window.__remoteEffects.fullscreen = 0;
+            window.__remoteEffects.saved = 0;
+            document.documentElement.requestFullscreen = () => {
+                window.__remoteEffects.fullscreen++;
+                return Promise.resolve();
+            };
+            window.popupList();
+            window.editCaption = "Playlist name";
+            window.editvar = "";
+            window.editKey = window.editKey2;
+            window.setEdit = () => window.__remoteEffects.saved++;
+            window.showEditKey2();
+        });
+        const input = page.locator("#editvar");
+        await input.press("L");
+        await expect(input).toHaveValue("L");
+        await input.press("Backspace");
+        await expect(input).toHaveValue("");
+        await input.press("L");
+        await remoteKey(page, 461, "BrowserBack");
+        await expect(page.locator("#listEdit")).toBeHidden();
+        await expect(page.locator("#listCaption")).toHaveText("Menu");
+        await page.evaluate(() => window.showEditKey2());
+        await expect(page.locator("#editvar")).toBeFocused();
+        await remoteKey(page, 0, "Unidentified", "BrowserBack");
+        await expect(page.locator("#listEdit")).toBeHidden();
+        await expect(page.locator("#listCaption")).toHaveText("Menu");
+        expect(await page.evaluate(() => window.__remoteEffects)).toMatchObject(
+            {
+                exits: 0,
+                fullscreen: 0,
+                playing: true,
+                saved: 0,
+            }
+        );
+        expect(errors).toEqual([]);
+    });
+
+    test("default Right opens the guide without adjusting volume", async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        const errors = await bootForWebosRemote(page, context, baseURL);
+        await page.keyboard.press("ArrowRight");
+        await expect(page.locator("#list")).toBeVisible();
+        await expect(page.locator("#listCaption")).toHaveText(
+            "EPG and archive. Channel: Channel 101"
+        );
+        await expect(page.locator("#list")).toContainText("Programme 101");
+        expect(
+            await page.evaluate(() => window.__remoteEffects.volume)
+        ).toEqual([]);
+        expect(await page.evaluate(() => window.__remoteEffects.exits)).toBe(0);
+        expect(errors).toEqual([]);
+    });
+
+    test("saved directional actions retain channel and category navigation", async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        await context.addInitScript(() => {
+            localStorage.setItem("sARfun", "15");
+            localStorage.setItem("sALfun", "9");
+        });
+        const errors = await bootForWebosRemote(page, context, baseURL);
+        expect(
+            await page.evaluate(() => ({
+                left: window.settings.alFun,
+                right: window.settings.arFun,
+            }))
+        ).toEqual({ left: 9, right: 15 });
+        await page.keyboard.press("ArrowRight");
+        expect(
+            await page.evaluate(() => window.__remoteEffects.played)
+        ).toEqual([102]);
+        await page.keyboard.press("ArrowLeft");
+        await expect(page.locator("#listCaption")).toHaveText(
+            "Category selection"
+        );
+        expect(
+            await page.evaluate(() => window.__remoteEffects.volume)
+        ).toEqual([]);
+        expect(errors).toEqual([]);
+    });
+
+    for (const [delivery, up, down] of [
+        ["LG numeric channel codes", [427, "ChannelUp"], [428, "ChannelDown"]],
+        ["named channel keys", [0, "ChannelUp"], [0, "ChannelDown"]],
+        ["named page keys", [0, "PageUp"], [0, "PageDown"]],
+    ]) {
+        test(
+            delivery + " changes channels from fullscreen",
+            async ({ page, context, baseURL }) => {
+                const errors = await bootForWebosRemote(page, context, baseURL);
+                await remoteKey(page, ...up);
+                await remoteKey(page, ...down);
+                await remoteKey(page, ...down);
+                expect(
+                    await page.evaluate(() => window.__remoteEffects.played)
+                ).toEqual([102, 101, 103]);
+                expect(await page.evaluate(() => window.primaryIndex)).toBe(2);
+                await expect(page.locator("#list")).toBeHidden();
+                expect(
+                    await page.evaluate(() => window.__remoteEffects.volume)
+                ).toEqual([]);
+                expect(errors).toEqual([]);
+            }
+        );
+    }
+});
 
 test("command server settings start and stop polling in the shipped player", async ({
     page,

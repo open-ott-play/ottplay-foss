@@ -50,6 +50,94 @@ var keys = {
 var strEXIT = "EXIT";
 var strTools = "TOOLS";
 var strRETURN = "BACK";
+var _baseWebosKey = window.stbEventToKeyCode;
+window.stbEventToKeyCode = function (event) {
+    if (!event) return 0;
+    var code = event.keyCode || event.which || 0;
+    if (code === 33) return keys.CH_UP;
+    if (code === 34) return keys.CH_DOWN;
+    if (!code) {
+        var names = [event.key, event.code];
+        for (var i = 0; i < names.length; i++) {
+            var name = names[i];
+            if (name === "ChannelUp" || name === "PageUp") return keys.CH_UP;
+            if (name === "ChannelDown" || name === "PageDown")
+                return keys.CH_DOWN;
+            if (name === "GoBack" || name === "BrowserBack") return keys.RETURN;
+        }
+    }
+    return typeof _baseWebosKey === "function"
+        ? _baseWebosKey.call(this, event)
+        : code;
+};
+var _webosBackBound = false;
+var _webosBackActive = false;
+var _webosBackDepth = 0;
+var _baseWebosExit = window.stbExit;
+window.stbExit = function () {
+    var releaseHistory = _webosBackActive;
+    _webosBackActive = false;
+    var result;
+    if (typeof _baseWebosExit === "function")
+        result = _baseWebosExit.apply(this, arguments);
+    // Native webOS closes the app. Ordinary hosted tabs may reject close(); in
+    // that case leave our entry and return exactly one pre-player history entry.
+    // At a direct entry with no previous page, only remove our own extra entry.
+    if (releaseHistory && typeof window.setTimeout === "function")
+        window.setTimeout(function () {
+            var history = window.history;
+            if (
+                !window.closed &&
+                history.state &&
+                history.state.ottplayWebosBack === _webosBackDepth
+            )
+                history.go(_webosBackDepth > 2 ? -2 : -1);
+        }, 100);
+    return result;
+};
+// Hosted webOS pages receive Back through history by default. Keep one same-page
+// entry so the player can close its own menus and ask before the confirmed exit.
+// https://webostv.developer.lge.com/develop/guides/back-button
+function _bindWebosBackHistory() {
+    var history = window.history;
+    if (
+        _webosBackBound ||
+        !history ||
+        typeof history.pushState !== "function" ||
+        typeof history.replaceState !== "function" ||
+        typeof window.addEventListener !== "function"
+    )
+        return;
+    function arm() {
+        history.pushState({ ottplayWebosBack: true }, "");
+        // pushState discards forward entries, so length now gives the actual
+        // entry depth. Persist it so reloads cannot confuse length with index.
+        _webosBackDepth = history.length;
+        history.replaceState({ ottplayWebosBack: _webosBackDepth }, "");
+    }
+    try {
+        if (history.state && typeof history.state.ottplayWebosBack === "number")
+            _webosBackDepth = history.state.ottplayWebosBack;
+        else arm();
+        _webosBackActive = true;
+        _webosBackBound = true;
+        window.addEventListener("popstate", function (event) {
+            if (
+                !_webosBackActive ||
+                (event.state &&
+                    event.state.ottplayWebosBack === _webosBackDepth)
+            )
+                return;
+            arm();
+            if (typeof window.keyHandler === "function")
+                window.keyHandler({
+                    keyCode: keys.RETURN,
+                    preventDefault: function () {},
+                    stopPropagation: function () {},
+                });
+        });
+    } catch (e) {}
+}
 // Capture the existing initializer before assigning the device wrapper.
 var _baseStbInit = typeof stbInit === "function" ? stbInit : function () {};
 // Hide LG splash/logo on launch — 2–5 s native delay otherwise
@@ -104,6 +192,7 @@ function _showPipMenu() {
     } catch (e) {}
 }
 stbInit = function () {
+    _bindWebosBackHistory();
     var baseInitResult = _baseStbInit.apply(this, arguments);
     try {
         if (typeof webOS !== "undefined") {
