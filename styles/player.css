@@ -52,6 +52,11 @@ body {
     -webkit-user-select: none;
     user-select: none;
 }
+/* The player handles keyboard focus; WebKit's video outline must not frame the picture. */
+#video,
+#videopip {
+    outline: none;
+}
 .osd {
     position: absolute;
 }
