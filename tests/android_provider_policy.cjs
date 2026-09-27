@@ -665,10 +665,14 @@ test("completed provider loads omit unavailable logos but preserve Full logo and
                         image.css.right,
                         launchVisible ? "100px" : "6px"
                     );
-                    assert.equal(
-                        image.attrs[launchVisible ? "width" : "height"],
-                        launchVisible ? "25%" : "40"
-                    );
+                    if (launchVisible) {
+                        assert.equal(image.css["max-width"], "25%");
+                        assert.equal(image.css["max-height"], "25%");
+                        assert.equal(image.attrs.width, undefined);
+                        assert.equal(image.attrs.height, undefined);
+                    } else {
+                        assert.equal(image.attrs.height, "40");
+                    }
                     const failedImage = { width: 25 };
                     image.events.error.call(failedImage);
                     assert.equal(
