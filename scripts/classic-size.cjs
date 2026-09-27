@@ -20,7 +20,9 @@ const BUDGET = Object.freeze({ bytes: 560000, gzipBytes: 168100 });
 // cancellable URL resolver to the shared backend (including release suffix room).
 // The combined localization and PC2 changes need 85 more raw bytes; retain
 // release suffix room without increasing the complete compressed budget.
-const TOTAL_BUDGET = Object.freeze({ bytes: 623500, gzipBytes: 192100 });
+// Stalker recovery and settings re-entry measure 192100 gzip bytes in native
+// outputs on CI Node 22.23.2 (192106 with a beta version). Keep suffix headroom.
+const TOTAL_BUDGET = Object.freeze({ bytes: 623500, gzipBytes: 192200 });
 const ARTIFACTS = Object.freeze([
     "dist/stbPlayer.js",
     "src-tauri/frontend/dist/stbPlayer.js",

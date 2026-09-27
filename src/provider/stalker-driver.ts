@@ -112,7 +112,8 @@ function createClassicStalkerDriver(
         operation: any,
         current: DriverLifetime,
         done: (result: any) => void,
-        fail: (auth?: boolean) => void
+        fail: (auth?: boolean) => void,
+        retryHandshake?: boolean
     ) {
         if (!active() || !current.active()) return;
         if (!operation || operation.failure) {
@@ -137,10 +138,20 @@ function createClassicStalkerDriver(
                     });
                 var error = operation.accept(data);
                 if (error) {
-                    fail(!!(response && response.not_valid_token));
+                    // Some portals return HTTP 200 with an empty handshake.
+                    // Retry initial loading once, without retrying denial.
+                    if (
+                        retryHandshake &&
+                        /[?&]action=handshake(?:&|$)/.test(request.url) &&
+                        (response == null ||
+                            (typeof response === "object" &&
+                                Object.keys(response).length === 0))
+                    )
+                        run(client.load(), current, done, fail);
+                    else fail(!!(response && response.not_valid_token));
                     return;
                 }
-                run(operation, current, done, fail);
+                run(operation, current, done, fail, retryHandshake);
             },
             function (xhr: any) {
                 fail(!!xhr && (xhr.status === 401 || xhr.status === 403));
@@ -262,7 +273,8 @@ function createClassicStalkerDriver(
                 },
                 function () {
                     done(helpers.emptyCatalog(), "stalker-connect");
-                }
+                },
+                true
             );
         },
         logo: function (id) {
@@ -614,8 +626,8 @@ function mountStalkerProviderSettings(
                   ")"
                 : "");
     }
-    function edit(): void {
-        if (!owner.active()) return;
+    function edit(): boolean {
+        if (!owner.active()) return false;
         var editor = ++revision;
         var fieldRevision = 0;
         var draft = driver.credentials();
@@ -695,6 +707,7 @@ function mountStalkerProviderSettings(
         );
         host.$("#listPopUp").hide();
         host.showPage();
+        return true;
     }
     return {
         edit: edit,
