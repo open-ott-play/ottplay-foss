@@ -352,6 +352,7 @@ var keyStrings = {
     Favorites: "Ընտրյալներ",
     "File selection is not supported on this device":
         "Այս սարքը չի աջակցում ֆայլի ընտրությանը",
+    Filter: "Զտիչ",
     Filters: "Զտիչներ",
     "First Run Setup": "Առաջին գործարկման կարգավորում",
     "Font type": "Տառատեսակ",

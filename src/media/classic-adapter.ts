@@ -55,6 +55,7 @@ function classicMediaRuntime(): any {
     var checkpointTime = 0;
     var checkpointItem = "";
     var rendering = false;
+    var filterText = "";
     var pendingStart: any = null;
     var automaticRequest: any = null;
     var automaticGeneration = 0;
@@ -85,7 +86,7 @@ function classicMediaRuntime(): any {
         var titles: { [key: string]: number } = Object.create(null);
         return records
             .filter(function (row) {
-                return row && typeof row === "object";
+                return row && typeof row === "object" && !row.__ottMediaFilter;
             })
             .map(function (row) {
                 var payload = copy(row);
@@ -199,12 +200,17 @@ function classicMediaRuntime(): any {
     }
     function project(view: MediaLibraryView, render = true) {
         if (!current()) return;
+        (view as any).filter = filterText;
         var frame = view.frame;
-        w.mediaRecords = frame
-            ? frame.items.map(function (item) {
-                  return copy(item.payload);
-              })
-            : [];
+        // Provider codecs may append incremental rows to this full-page projection.
+        w.mediaRecords = library
+            .catalog()
+            .filter(function (item: MediaLibraryItem) {
+                return !item.payload.__ottMediaRoute;
+            })
+            .map(function (item: MediaLibraryItem) {
+                return item.payload;
+            });
         w.mediaName = frame ? frame.route.title : "";
         w.mediaNames = view.frames.map(function (row) {
             return row.route.title;
@@ -279,6 +285,13 @@ function classicMediaRuntime(): any {
             title: "",
         });
     }
+    function normalizedFilter(value: string) {
+        return value
+            .toLowerCase()
+            .replace(/ё/g, "е")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
     library = w.__ottMediaLibrary.create({
         describe: function (records: any[], route: MediaRoute) {
             var items = describe(records, route);
@@ -302,6 +315,30 @@ function classicMediaRuntime(): any {
                 });
             }
             return items;
+        },
+        filter: function (items: MediaLibraryItem[], route: MediaRoute) {
+            if (route.kind === "variants") return items;
+            var query = normalizedFilter(filterText);
+            var result = items.filter(function (item) {
+                var payload = item.payload;
+                return (
+                    !query ||
+                    (route.kind === "catalog" && payload.__ottMediaSequence) ||
+                    !(
+                        payload.__ottMediaFilterable ||
+                        (!payload.playlist_url &&
+                            (payload.stream_url || payload.request))
+                    ) ||
+                    normalizedFilter(item.title).indexOf(query) !== -1
+                );
+            });
+            var title = w._("Filter") + ": " + filterText;
+            result.push({
+                payload: { __ottMediaFilter: true, title: title },
+                ref: { itemId: "view:filter", sourceId: source },
+                title: title,
+            });
+            return result;
         },
         items: function (route: MediaRoute) {
             return route.kind === "variants"
@@ -511,6 +548,7 @@ function classicMediaRuntime(): any {
             else proceed();
         },
         favorite: function (payload: any) {
+            if (payload.__ottMediaFilter) return;
             var frame = library.snapshot().frame;
             var item = describe(
                 [payload],
@@ -529,6 +567,20 @@ function classicMediaRuntime(): any {
             if (removing) library.replaceItems(collectionItems("favorites"));
             else if (w.showShift)
                 w.showShift(item.title + w._(" added to favorites"));
+        },
+        filter: function () {
+            var frame = library.snapshot().frame;
+            if (!frame || frame.route.kind === "variants") return;
+            var admitted = library.capture();
+            w.editCaption = w._("Filter");
+            w.editvar = filterText;
+            w.setEdit = function () {
+                if (!current() || !admitted()) return;
+                filterText = String(w.editvar || "").trim();
+                api.cancelAuto();
+                library.refilter();
+            };
+            if (typeof w.showEditKey === "function") w.showEditKey();
         },
         highlight: function (index: number, revision: number) {
             if (current() && library.revision() === revision)
@@ -660,7 +712,8 @@ function classicMediaRuntime(): any {
             function proceed() {
                 if (!admitted()) return;
                 var payload = item.payload;
-                if (payload.__ottMediaRoute)
+                if (payload.__ottMediaFilter) api.filter();
+                else if (payload.__ottMediaRoute)
                     library.open({
                         kind: payload.__ottMediaRoute,
                         title: item.title,
@@ -691,7 +744,11 @@ function classicMediaRuntime(): any {
             else proceed();
         },
         show: library.show,
-        snapshot: library.snapshot,
+        snapshot: function () {
+            var view = library.snapshot();
+            view.filter = filterText;
+            return view;
+        },
         sourceId: source,
     };
     mediaClassicInstance = api;
@@ -730,6 +787,9 @@ function classicMediaRuntime(): any {
     },
     favorite: function (item: any) {
         classicMediaRuntime().favorite(item);
+    },
+    filter: function () {
+        classicMediaRuntime().filter();
     },
     highlight: function (index: number, revision: number) {
         classicMediaRuntime().highlight(index, revision);

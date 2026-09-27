@@ -355,6 +355,7 @@ var keyStrings = {
     Favorites: "Izlase",
     "File selection is not supported on this device":
         "Šajā ierīcē failu izvēle netiek atbalstīta",
+    Filter: "Filtrs",
     Filters: "Filtri",
     "First Run Setup": "Pirmās palaišanas iestatīšana",
     "Font type": "Fonta veids",

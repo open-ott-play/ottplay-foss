@@ -355,6 +355,7 @@ var keyStrings = {
     Favorites: "Sevimlilar",
     "File selection is not supported on this device":
         "Bu qurilmada fayl tanlash qoʻllab-quvvatlanmaydi",
+    Filter: "Filtr",
     Filters: "Filtrlar",
     "First Run Setup": "Birinchi ishga tushirish sozlamalari",
     "Font type": "Shrift turi",

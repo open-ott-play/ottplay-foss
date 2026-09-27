@@ -354,6 +354,7 @@ var keyStrings = {
     Favorites: "Sevimlilər",
     "File selection is not supported on this device":
         "Bu cihazda fayl seçimi dəstəklənmir",
+    Filter: "Filtr",
     Filters: "Filtrlər",
     "First Run Setup": "İlk açılış quraşdırması",
     "Font type": "Şrift növü",

@@ -354,6 +354,7 @@ var keyStrings = {
     Favorites: "Mėgstamiausi",
     "File selection is not supported on this device":
         "Šiame įrenginyje failų pasirinkimas nepalaikomas",
+    Filter: "Filtras",
     Filters: "Filtrai",
     "First Run Setup": "Pirmojo paleidimo nustatymas",
     "Font type": "Šriftas",

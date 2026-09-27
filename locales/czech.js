@@ -349,6 +349,7 @@ var keyStrings = {
     Favorites: "Oblíbené",
     "File selection is not supported on this device":
         "Výběr souboru není na tomto zařízení podporován",
+    Filter: "Filtr",
     Filters: "Filtry",
     "First Run Setup": "Počáteční nastavení",
     "Font type": "Druh písma",

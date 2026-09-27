@@ -353,6 +353,7 @@ var keyStrings = {
     Favorites: "Favorit",
     "File selection is not supported on this device":
         "Pemilihan file tidak didukung di perangkat ini",
+    Filter: "Filter",
     Filters: "Filter",
     "First Run Setup": "Pengaturan awal",
     "Font type": "Jenis font",
