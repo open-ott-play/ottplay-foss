@@ -39,7 +39,7 @@ env.WEBOS_CLI = cli;
 for (const file of [
     "scripts/run-webos-simulator.sh",
     "scripts/prepare-webos-simulator.cjs",
-    "stbPlayer/icon.png",
+    "images/player-logo.png",
 ]) {
     fs.mkdirSync(path.dirname(path.join(fixture, file)), { recursive: true });
     fs.copyFileSync(path.join(root, file), path.join(fixture, file));

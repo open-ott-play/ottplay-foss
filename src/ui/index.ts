@@ -19,7 +19,7 @@ import {
     requestMediaList,
 } from "../channels";
 import { updateCoreVideoInfo } from "../core";
-import { dispatchKey, keys, list_OnClick } from "../keyhandler";
+import { dispatchKey, keys, list_OnClick } from "../key-handler";
 import { translate as _ } from "../localization";
 import { settings } from "../settings";
 import { swopLoadValue } from "../swop";
@@ -261,11 +261,11 @@ export function uiInit(): void {
     var host = (window as any).__host || "";
     var version = (window as any).__av || "local";
 
-    if (!document.querySelector('link[href*="1280.css"]')) {
+    if (!document.querySelector('link[href*="styles/player.css"]')) {
         var link = document.createElement("link");
         link.rel = "stylesheet";
         link.type = "text/css";
-        link.href = host + "/stbPlayer/1280.css?" + version;
+        link.href = host + "/styles/player.css?" + version;
         document.head.appendChild(link);
     }
 
@@ -1459,7 +1459,7 @@ export function updateChannelInfo(channelId: number): void {
     if (nbeginTimeEl) nbeginTimeEl.textContent = "";
     if (nendTimeEl) nendTimeEl.textContent = "";
 
-    // EPG data — legacy stbPlayer.js:1258-1281 uses observeCurrentProgramme return,
+    // EPG data — legacy player.js:1258-1281 uses observeCurrentProgramme return,
     // then always writes +remaining minutes and next-program duration.
     var hasProg = observeCurrentProgramme(channelId, updateChannelInfo);
     if (hasProg && t && t.time_to) {
@@ -1663,7 +1663,7 @@ export function initBackgroundIntervals(): void {
         if (listTEl) listTEl.innerHTML = timeStr;
         if (listSEl) listSEl.innerHTML = secStr;
         if (permTEl) permTEl.innerHTML = timeStr;
-        // Drive archive OSD progress bar (stbPlayer.js:1744-1746 tick).
+        // Drive archive OSD progress bar (player.js:1744-1746 tick).
         // Skip live mode (playType === 0) — showChannelInfo already covers it.
         var w_t = window as any;
         if (

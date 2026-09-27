@@ -68,7 +68,7 @@ try {
     const optimizer = { outputSha256: measurement.sha256 };
     // Android Play ships exactly the two permitted provider implementations.
     // Check both its retained flat export and the nested Capacitor entry point.
-    const playArtifacts = ["play/stbPlayer.js", "play/dist/stbPlayer.js"];
+    const playArtifacts = ["play/player.js", "play/dist/player.js"];
     const playKinds = ["m3u", "stalker"];
     for (const file of playArtifacts) {
         const directory = path.join(root, path.dirname(file));
@@ -87,7 +87,7 @@ try {
     assert.equal(playSets[0].total.gzipBytes, measurement.gzipBytes * 3);
     // Android's configured output may be outside the repository entirely.
     // Both inventories are relative to that output root, not the default dist.
-    const androidArtifacts = ["stbPlayer.js", "dist/stbPlayer.js"];
+    const androidArtifacts = ["player.js", "dist/player.js"];
     for (const file of androidArtifacts) {
         const directory = path.join(androidOutput, path.dirname(file));
         fs.mkdirSync(directory, { recursive: true });

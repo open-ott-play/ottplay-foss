@@ -233,9 +233,12 @@ w.m3uArr = {
         },
     ],
 };
-const m3uSource = fs.readFileSync(path.join(root, "prov/m3u/prov.js"), "utf8");
+const m3uSource = fs.readFileSync(
+    path.join(root, "providers/m3u/provider.js"),
+    "utf8"
+);
 const m3uAst = ts.createSourceFile(
-    "prov.js",
+    "provider.js",
     m3uSource,
     ts.ScriptTarget.Latest,
     true

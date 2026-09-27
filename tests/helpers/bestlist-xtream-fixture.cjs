@@ -31,7 +31,7 @@ exports.run = function (input) {
         };
     };
     vm.runInContext(
-        declarations("prov/bestlist/stalker/prov.js")
+        declarations("providers/bestlist/stalker/provider.js")
             .filter((row) =>
                 [
                     "_bestlist_stalker_xtream",

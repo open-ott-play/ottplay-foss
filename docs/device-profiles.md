@@ -7,9 +7,9 @@ For regression checks and an official LG Simulator launcher, see
 
 ## 1. Adding a New Device Profile
 
-Device profiles live in `src/stb/` and define the remote control key codes for a specific STB platform. Each profile is a JavaScript file named `{device-name}/stb.js` containing a `keys` object mapping symbolic key names to platform-specific key codes.
+Device profiles live in `src/devices/` and define the remote control key codes for a specific STB platform. Each profile is a JavaScript file named `{device-name}/device.js` containing a `keys` object mapping symbolic key names to platform-specific key codes.
 
-### File: `src/stb/{device}/stb.js`
+### File: `src/devices/{device}/device.js`
 
 **Required structure:**
 
@@ -51,7 +51,7 @@ var keys = {
 
 ### Adding a new device:
 
-1. Create directory `src/stb/{device}/`
+1. Create directory `src/devices/{device}/`
 2. Copy an existing profile as a template (e.g., `android/` or `hbbtv/`)
 3. Replace the key codes with the correct values for your target device
 4. Update the `version` line if needed
@@ -89,9 +89,9 @@ var keys = {
 
 ## 2. Adding a New Provider Script
 
-Provider scripts handle IPTV playlist parsing and live in `prov/`. Each script is a JavaScript file named `{provider-name}/prov.js` that exports parsing functions for a specific IPTV service.
+Provider scripts handle IPTV playlist parsing and live in `providers/`. Each script is a JavaScript file named `{provider-name}/provider.js` that exports parsing functions for a specific IPTV service.
 
-### File: `prov/{provider}/prov.js`
+### File: `providers/{provider}/provider.js`
 
 **Required structure:**
 
@@ -186,7 +186,7 @@ var {providerName} = {
 
 ### Adding a new provider:
 
-1. Create directory `prov/{provider}/`
+1. Create directory `providers/{provider}/`
 2. Copy an existing provider script as template (e.g., `stalker/` or `xtream/`)
 3. Replace the `version` line and `p_pref` value
 4. Update the provider-specific functions (portal URL format, API endpoints, etc.)
@@ -211,7 +211,7 @@ npm run lint:fix
 
 The biome config (`biome.json`) already enforces style rules via the `ultracite/biome/core` extended config. Additional provider-specific validations can be added via a pre-commit hook or CI check.
 
-**Recommended:** Add a pre-commit hook that runs biome check on `prov/**/prov.js` and `src/stb/**/stb.js` files only, to catch obvious issues without full project lint on every commit.
+**Recommended:** Add a pre-commit hook that runs biome check on `providers/**/provider.js` and `src/devices/**/device.js` files only, to catch obvious issues without full project lint on every commit.
 
 See `.pre-commit-config.yaml` for the project's existing pre-commit configuration.
 
@@ -223,9 +223,9 @@ identity. They do not select another account or change the saved `sPlayers`
 preference used by `/f/pc`. The engine-choice row is hidden while Video.js is
 active, since that URL explicitly selects its engine.
 
-The executed adapter is `stb/pc2/stb.js`; `src/stb/pc2/stb.ts` retains the typed
+The executed adapter is `devices/pc2/device.js`; `src/devices/pc2/device.ts` retains the typed
 keyboard reference. The HTML bootstrap loads `js/video.min.js` and
-`stb/pc2/player.css` only for PC2, after the shared compatibility runtime.
+`devices/pc2/player.css` only for PC2, after the shared compatibility runtime.
 Ordinary PC keeps its existing native/HLS.js/Shaka choices. If the optional
 vendor fails to load, PC2 visibly logs the fallback and boots those same choices.
 

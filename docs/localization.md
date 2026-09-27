@@ -2,12 +2,20 @@
 
 ## Translation catalog
 
-`stbPlayer/_eng.js` is the canonical 616-key dictionary. The other 27 language
+`locales/english.js` is the canonical 616-key dictionary. The other 27 language
 packs contain the same keys; `lang` and the historical `alhabet` spelling are
 locale metadata. Existing language codes and the first 20 selector positions
 are preserved. Translations were completed with AI assistance and checked for
 key and formatting consistency; these checks do not replace native-speaker
 editorial review.
+
+Language packs use descriptive English filenames under `locales/`.
+`src/localization/assets.ts` is the shared map from persisted identifiers such
+as `_eng` and `_rus` to `/locales/english.js` and `/locales/russian.js`.
+Both runtime loaders and the catalog/packaging checks use this map. Existing
+saved preferences and keyboard locale identifiers are unchanged; an unknown
+identifier loads English. The catalog audit verifies a one-to-one relationship
+between the selector, the asset map, and all 28 shipped files.
 
 `scripts/localization-catalog.cjs` derives keys from translation calls, settings
 labels, menu definitions, provider schemas and shipped device/provider scripts.

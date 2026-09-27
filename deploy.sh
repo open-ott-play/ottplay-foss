@@ -83,7 +83,7 @@ run_deploy() {
         fail "endpoint ${BASE_URL}/ did not return HTTP 200"
     }
 
-    wait_for "${BASE_URL}/dist/stbPlayer.js" 15 || fail "player bundle endpoint not reachable"
+    wait_for "${BASE_URL}/dist/player.js" 15 || fail "player bundle endpoint not reachable"
 
     log "OK: container '${CONTAINER}' is up."
     log "  Image:   $($DOCKER inspect -f '{{.Config.Image}}' "$CONTAINER")"

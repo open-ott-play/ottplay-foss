@@ -165,7 +165,7 @@ test("built driver, media session and journal stay connected through playback", 
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("request", (request) => {
         const url = new URL(request.url());
-        if (/\/prov\/.+\/prov\.js$/.test(url.pathname))
+        if (/\/providers\/.+\/provider\.js$/.test(url.pathname))
             providerScripts.push(url.pathname);
     });
     await context.route("**/*", async (route) => {

@@ -121,7 +121,7 @@ function stagePlaySystemIcons(directory) {
     }
     visit(directory);
     fs.appendFileSync(
-        path.join(directory, "stbPlayer/1280.css"),
+        path.join(directory, "styles/player.css"),
         "\n/* System text symbols keep menu values and paired controls aligned. */\n" +
             ".system-icons { font-family: sans-serif; display: inline-block; " +
             "min-width: 1em; text-align: center; white-space: nowrap; " +

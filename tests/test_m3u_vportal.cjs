@@ -14,7 +14,7 @@ const { JSDOM } = require("jsdom");
 const root = path.resolve(__dirname, "..");
 const bundled = process.argv.includes("--bundle");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
-const adapter = read("prov/m3u/prov.js");
+const adapter = read("providers/m3u/provider.js");
 const portal = "portal::[key:FIXTURE_PRIVATE_KEY]http://portal.invalid/api/v1/";
 const otherPortal =
     "portal::[key:OTHER_PRIVATE_KEY]https://other.invalid/api/v1/";
@@ -55,7 +55,7 @@ function declarations(file, names) {
 }
 
 const clientCode = bundled
-    ? read("dist/stbPlayer.js")
+    ? read("dist/player.js")
     : declarations("src/utils/helpers.ts", [
           "metadataText",
           "metadataImageUrl",

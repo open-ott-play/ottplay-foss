@@ -75,7 +75,7 @@ if (require.main === module) {
             /favoritesLists\.order\.splice/,
         ],
         [
-            "prov/edem/prov.js",
+            "providers/edem/provider.js",
             ["OperatorPortalCatalogClient", "operatorPortalNavigate"],
             /JSON\.stringify\(data\.items/,
         ],

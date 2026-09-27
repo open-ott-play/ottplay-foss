@@ -209,7 +209,7 @@ class Runner:
         print("==> static player-shell assets")
         checks = [
             ("/", 1, None),
-            ("/stbPlayer/1280.css", 10, None),
+            ("/styles/player.css", 10, None),
             ("/js/jquery-1.11.1.min.js", 100, None),
             ("/f/README.md", 1, None),  # ServeDir(".") under /f
         ]

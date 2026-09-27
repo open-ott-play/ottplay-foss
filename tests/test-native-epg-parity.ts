@@ -185,7 +185,7 @@ for (const native of [false, true]) {
         ctx
     );
     vm.runInContext(
-        functions("prov/m3u/prov.js", [
+        functions("providers/m3u/provider.js", [
             "getChanelsArray",
             "addChan2cat",
             "nativeXmltvSources",

@@ -2,4 +2,4 @@
 # These are third-party provider configs that store session preferences, not credentials.
 # The actual auth tokens flow through stbSetItem/stbGetItem (secure storage path).
 paths-ignore:
-  - prov/
+  - providers/

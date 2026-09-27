@@ -9,7 +9,7 @@ exports.run = function (input) {
         events = [];
     const source = ts.createSourceFile(
         "edem",
-        fs.readFileSync("prov/edem/prov.js", "utf8"),
+        fs.readFileSync("providers/edem/provider.js", "utf8"),
         ts.ScriptTarget.Latest,
         true
     );

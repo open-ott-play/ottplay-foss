@@ -1,6 +1,6 @@
 //! Stalker portal + host_ott swop transport for Tauri Mode B.
 //!
-//! Provider scripts (`prov/stalker/prov.js`) POST JSON-RPC to
+//! Provider scripts (`providers/stalker/provider.js`) POST JSON-RPC to
 //! `<portal>/stalker_portal/api/`. Dealer/cloud entry POSTs form bodies to
 //! `host_ott/swop/a.php`. Embed Mode B has no companion HTTP server and
 //! WebView CORS would block those origins — forward from Rust.

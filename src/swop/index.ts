@@ -14,7 +14,7 @@ import {
     validSwopClientId,
     wire,
 } from "../shared/wire-contracts";
-import { makeQrSvg } from "../utils/qrcode";
+import { makeQrSvg } from "../utils/qr-code";
 
 declare var $: any;
 declare var keys: any;

@@ -37,7 +37,7 @@ exports.run = function (input) {
         };
     };
     vm.runInContext(
-        declarations("prov/stalker/prov.js")
+        declarations("providers/stalker/provider.js")
             .filter((row) =>
                 [
                     "getChanelsArray",

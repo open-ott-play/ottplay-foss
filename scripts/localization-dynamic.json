@@ -237,17 +237,17 @@
       "reason": "Built-in titles/details and toggle variants are extracted from screenMenuDefinitions; external provider labels remain runtime metadata."
     },
     {
-      "file": "prov/1ott/prov.js",
+      "file": "providers/1ott/provider.js",
       "expression": "listArray[selIndex].desc || listArray[selIndex].name || \"\"",
       "reason": "Settings/information schema name and description fields are extracted at their declarations; external or already-rendered rows stay runtime data."
     },
     {
-      "file": "prov/edem/prov.js",
+      "file": "providers/edem/provider.js",
       "expression": "title",
       "reason": "Forwarded translation parameter: callers and explicit wrapper/schema rules in localization-catalog.cjs provide the finite key set; provider titles and external error details are runtime data."
     },
     {
-      "file": "prov/m3u/prov.js",
+      "file": "providers/m3u/provider.js",
       "expression": "e",
       "reason": "Forwarded translation parameter: callers and explicit wrapper/schema rules in localization-catalog.cjs provide the finite key set; provider titles and external error details are runtime data."
     }

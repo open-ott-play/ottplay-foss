@@ -31,7 +31,7 @@ function run(input) {
     };
     const vm = require("node:vm");
     vm.runInContext(
-        declarations("prov/xtream/prov.js")
+        declarations("providers/xtream/provider.js")
             .filter((row) =>
                 ["getChanelsArray", "xtreamCore"].includes(row.name)
             )
@@ -77,7 +77,7 @@ function guide(input) {
     };
     const vm = require("node:vm");
     vm.runInContext(
-        declarations("prov/xtream/prov.js")
+        declarations("providers/xtream/provider.js")
             .filter((row) => ["getEPGchanel", "xtreamCore"].includes(row.name))
             .map((row) => row.text)
             .join("\n"),

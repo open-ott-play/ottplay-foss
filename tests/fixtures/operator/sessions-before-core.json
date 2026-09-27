@@ -6,135 +6,135 @@
   },
   "providers": [
     {
-      "file": "prov/all4you/prov.js",
+      "file": "providers/all4you/provider.js",
       "prefix": "_all4you"
     },
     {
-      "file": "prov/bestlist/prov.js",
+      "file": "providers/bestlist/provider.js",
       "prefix": "_bestlist"
     },
     {
-      "file": "prov/cbilling/prov.js",
+      "file": "providers/cbilling/provider.js",
       "prefix": "_cbilling"
     },
     {
-      "file": "prov/d/maxtv/prov.js",
+      "file": "providers/d/maxtv/provider.js",
       "prefix": "_d_maxtv"
     },
     {
-      "file": "prov/diamondtv/prov.js",
+      "file": "providers/diamondtv/provider.js",
       "prefix": "_diamondtv"
     },
     {
-      "file": "prov/dosug/prov.js",
+      "file": "providers/dosug/provider.js",
       "prefix": "_dosug"
     },
     {
-      "file": "prov/dragon/prov.js",
+      "file": "providers/dragon/provider.js",
       "prefix": "_dragon"
     },
     {
-      "file": "prov/drvao/prov.js",
+      "file": "providers/drvao/provider.js",
       "prefix": "_drvao"
     },
     {
-      "file": "prov/fabryka/prov.js",
+      "file": "providers/fabryka/provider.js",
       "prefix": "_fabryka"
     },
     {
-      "file": "prov/fox/prov.js",
+      "file": "providers/fox/provider.js",
       "prefix": "_fox"
     },
     {
-      "file": "prov/fxml/prov.js",
+      "file": "providers/fxml/provider.js",
       "prefix": "_fxml"
     },
     {
-      "file": "prov/great/prov.js",
+      "file": "providers/great/provider.js",
       "prefix": "_great"
     },
     {
-      "file": "prov/ipstream/prov.js",
+      "file": "providers/ipstream/provider.js",
       "prefix": "_ipstream"
     },
     {
-      "file": "prov/iptv-ott.ru/prov.js",
+      "file": "providers/iptv-ott.ru/provider.js",
       "prefix": "_iptv_ott_ru"
     },
     {
-      "file": "prov/korona/prov.js",
+      "file": "providers/korona/provider.js",
       "prefix": "_korona"
     },
     {
-      "file": "prov/moidom/prov.js",
+      "file": "providers/moidom/provider.js",
       "prefix": "_moidom"
     },
     {
-      "file": "prov/newlook/prov.js",
+      "file": "providers/newlook/provider.js",
       "prefix": "_newlook"
     },
     {
-      "file": "prov/ottg/prov.js",
+      "file": "providers/ottg/provider.js",
       "prefix": "_ottg"
     },
     {
-      "file": "prov/ottprime/prov.js",
+      "file": "providers/ottprime/provider.js",
       "prefix": "_ottprime"
     },
     {
-      "file": "prov/polmedia/prov.js",
+      "file": "providers/polmedia/provider.js",
       "prefix": "_polmedia"
     },
     {
-      "file": "prov/prost/prov.js",
+      "file": "providers/prost/provider.js",
       "prefix": "_prost"
     },
     {
-      "file": "prov/raduga/prov.js",
+      "file": "providers/raduga/provider.js",
       "prefix": "_raduga"
     },
     {
-      "file": "prov/rd/prov.js",
+      "file": "providers/rd/provider.js",
       "prefix": "_rd"
     },
     {
-      "file": "prov/russkoetv/prov.js",
+      "file": "providers/russkoetv/provider.js",
       "prefix": "_russkoetv"
     },
     {
-      "file": "prov/shara.club/prov.js",
+      "file": "providers/shara.club/provider.js",
       "prefix": "_shara_club"
     },
     {
-      "file": "prov/sharavoz/prov.js",
+      "file": "providers/sharavoz/provider.js",
       "prefix": "_sharavoz"
     },
     {
-      "file": "prov/shocktv/prov.js",
+      "file": "providers/shocktv/provider.js",
       "prefix": "_shocktv"
     },
     {
-      "file": "prov/tabox/prov.js",
+      "file": "providers/tabox/provider.js",
       "prefix": "_tabox"
     },
     {
-      "file": "prov/top/prov.js",
+      "file": "providers/top/provider.js",
       "prefix": "_top"
     },
     {
-      "file": "prov/topiptv/prov.js",
+      "file": "providers/topiptv/provider.js",
       "prefix": "_topiptv"
     },
     {
-      "file": "prov/tvclub/prov.js",
+      "file": "providers/tvclub/provider.js",
       "prefix": "_tvclub"
     },
     {
-      "file": "prov/ultifl1x/prov.js",
+      "file": "providers/ultifl1x/provider.js",
       "prefix": "_ultifl1x"
     },
     {
-      "file": "prov/vidok/prov.js",
+      "file": "providers/vidok/provider.js",
       "prefix": "_vidok"
     }
   ],
@@ -184,39 +184,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -352,39 +352,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -506,39 +506,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -638,39 +638,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -717,39 +717,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -818,39 +818,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -921,39 +921,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1028,39 +1028,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1130,39 +1130,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1242,39 +1242,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1334,39 +1334,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1431,7 +1431,7 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js"
+            "providers/all4you/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1454,7 +1454,7 @@
         },
         {
           "providers": [
-            "prov/bestlist/prov.js"
+            "providers/bestlist/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1477,7 +1477,7 @@
         },
         {
           "providers": [
-            "prov/cbilling/prov.js"
+            "providers/cbilling/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1500,7 +1500,7 @@
         },
         {
           "providers": [
-            "prov/d/maxtv/prov.js"
+            "providers/d/maxtv/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1523,7 +1523,7 @@
         },
         {
           "providers": [
-            "prov/diamondtv/prov.js"
+            "providers/diamondtv/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1546,7 +1546,7 @@
         },
         {
           "providers": [
-            "prov/dosug/prov.js"
+            "providers/dosug/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1569,7 +1569,7 @@
         },
         {
           "providers": [
-            "prov/dragon/prov.js"
+            "providers/dragon/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1592,7 +1592,7 @@
         },
         {
           "providers": [
-            "prov/drvao/prov.js"
+            "providers/drvao/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1615,7 +1615,7 @@
         },
         {
           "providers": [
-            "prov/fabryka/prov.js"
+            "providers/fabryka/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1638,7 +1638,7 @@
         },
         {
           "providers": [
-            "prov/fox/prov.js"
+            "providers/fox/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1661,7 +1661,7 @@
         },
         {
           "providers": [
-            "prov/fxml/prov.js"
+            "providers/fxml/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1684,7 +1684,7 @@
         },
         {
           "providers": [
-            "prov/great/prov.js"
+            "providers/great/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1707,7 +1707,7 @@
         },
         {
           "providers": [
-            "prov/ipstream/prov.js"
+            "providers/ipstream/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1730,7 +1730,7 @@
         },
         {
           "providers": [
-            "prov/iptv-ott.ru/prov.js"
+            "providers/iptv-ott.ru/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1753,7 +1753,7 @@
         },
         {
           "providers": [
-            "prov/korona/prov.js"
+            "providers/korona/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1776,7 +1776,7 @@
         },
         {
           "providers": [
-            "prov/moidom/prov.js"
+            "providers/moidom/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1799,7 +1799,7 @@
         },
         {
           "providers": [
-            "prov/newlook/prov.js"
+            "providers/newlook/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1822,7 +1822,7 @@
         },
         {
           "providers": [
-            "prov/ottg/prov.js"
+            "providers/ottg/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1845,7 +1845,7 @@
         },
         {
           "providers": [
-            "prov/ottprime/prov.js"
+            "providers/ottprime/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1868,7 +1868,7 @@
         },
         {
           "providers": [
-            "prov/polmedia/prov.js"
+            "providers/polmedia/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1891,7 +1891,7 @@
         },
         {
           "providers": [
-            "prov/prost/prov.js"
+            "providers/prost/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1914,7 +1914,7 @@
         },
         {
           "providers": [
-            "prov/raduga/prov.js"
+            "providers/raduga/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1937,7 +1937,7 @@
         },
         {
           "providers": [
-            "prov/rd/prov.js"
+            "providers/rd/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1960,7 +1960,7 @@
         },
         {
           "providers": [
-            "prov/russkoetv/prov.js"
+            "providers/russkoetv/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -1983,7 +1983,7 @@
         },
         {
           "providers": [
-            "prov/shara.club/prov.js"
+            "providers/shara.club/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -2006,7 +2006,7 @@
         },
         {
           "providers": [
-            "prov/sharavoz/prov.js"
+            "providers/sharavoz/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -2029,7 +2029,7 @@
         },
         {
           "providers": [
-            "prov/shocktv/prov.js"
+            "providers/shocktv/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -2052,7 +2052,7 @@
         },
         {
           "providers": [
-            "prov/tabox/prov.js"
+            "providers/tabox/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -2075,7 +2075,7 @@
         },
         {
           "providers": [
-            "prov/top/prov.js"
+            "providers/top/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -2098,7 +2098,7 @@
         },
         {
           "providers": [
-            "prov/topiptv/prov.js"
+            "providers/topiptv/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -2121,7 +2121,7 @@
         },
         {
           "providers": [
-            "prov/tvclub/prov.js"
+            "providers/tvclub/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -2144,7 +2144,7 @@
         },
         {
           "providers": [
-            "prov/ultifl1x/prov.js"
+            "providers/ultifl1x/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -2167,7 +2167,7 @@
         },
         {
           "providers": [
-            "prov/vidok/prov.js"
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -2200,39 +2200,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 0,
@@ -2282,39 +2282,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 0,
@@ -2366,39 +2366,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 0,
@@ -2454,39 +2454,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 0,
@@ -2563,39 +2563,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -2685,39 +2685,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -2811,39 +2811,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 1,
@@ -2921,39 +2921,39 @@
       "outcomes": [
         {
           "providers": [
-            "prov/all4you/prov.js",
-            "prov/bestlist/prov.js",
-            "prov/cbilling/prov.js",
-            "prov/d/maxtv/prov.js",
-            "prov/diamondtv/prov.js",
-            "prov/dosug/prov.js",
-            "prov/dragon/prov.js",
-            "prov/drvao/prov.js",
-            "prov/fabryka/prov.js",
-            "prov/fox/prov.js",
-            "prov/fxml/prov.js",
-            "prov/great/prov.js",
-            "prov/ipstream/prov.js",
-            "prov/iptv-ott.ru/prov.js",
-            "prov/korona/prov.js",
-            "prov/moidom/prov.js",
-            "prov/newlook/prov.js",
-            "prov/ottg/prov.js",
-            "prov/ottprime/prov.js",
-            "prov/polmedia/prov.js",
-            "prov/prost/prov.js",
-            "prov/raduga/prov.js",
-            "prov/rd/prov.js",
-            "prov/russkoetv/prov.js",
-            "prov/shara.club/prov.js",
-            "prov/sharavoz/prov.js",
-            "prov/shocktv/prov.js",
-            "prov/tabox/prov.js",
-            "prov/top/prov.js",
-            "prov/topiptv/prov.js",
-            "prov/tvclub/prov.js",
-            "prov/ultifl1x/prov.js",
-            "prov/vidok/prov.js"
+            "providers/all4you/provider.js",
+            "providers/bestlist/provider.js",
+            "providers/cbilling/provider.js",
+            "providers/d/maxtv/provider.js",
+            "providers/diamondtv/provider.js",
+            "providers/dosug/provider.js",
+            "providers/dragon/provider.js",
+            "providers/drvao/provider.js",
+            "providers/fabryka/provider.js",
+            "providers/fox/provider.js",
+            "providers/fxml/provider.js",
+            "providers/great/provider.js",
+            "providers/ipstream/provider.js",
+            "providers/iptv-ott.ru/provider.js",
+            "providers/korona/provider.js",
+            "providers/moidom/provider.js",
+            "providers/newlook/provider.js",
+            "providers/ottg/provider.js",
+            "providers/ottprime/provider.js",
+            "providers/polmedia/provider.js",
+            "providers/prost/provider.js",
+            "providers/raduga/provider.js",
+            "providers/rd/provider.js",
+            "providers/russkoetv/provider.js",
+            "providers/shara.club/provider.js",
+            "providers/sharavoz/provider.js",
+            "providers/shocktv/provider.js",
+            "providers/tabox/provider.js",
+            "providers/top/provider.js",
+            "providers/topiptv/provider.js",
+            "providers/tvclub/provider.js",
+            "providers/ultifl1x/provider.js",
+            "providers/vidok/provider.js"
           ],
           "expected": {
             "callbacks": 0,

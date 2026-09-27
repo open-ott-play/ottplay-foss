@@ -9,8 +9,8 @@ Build the same package locally with `npm run build && npm run package:modea`.
 The archive and checksum are written to `build/packages/`, outside the `dist/`
 web root used by Capacitor, so mobile applications do not embed the archive.
 Extract it into a Mode A companion's web root or a static host. The latter needs
-an index fallback for `/f/<device>/` while keeping `/dist`, `/stb`, `/js`,
-`/stbPlayer`, `/fonts` and `/prov` at the root. Proxy, EPG and other companion APIs
+an index fallback for `/f/<device>/` while keeping `/dist`, `/devices`, `/js`,
+`/styles`, `/images`, `/locales`, `/fonts` and `/providers` at the root. Proxy, EPG and other companion APIs
 still require a backend; the static archive does not include that server.
 
 The Rust companion serves the player index for `/f`, `/f/`, and nested device

@@ -162,7 +162,7 @@ async function fixturePage(browser, profile, initialSettings) {
         ...(native ? ["/js/native-environment.js"] : []),
         native ? "/js/jquery.min.js" : "/js/jquery-1.11.1.min.js",
         "/js/ottplay-core.js",
-        "/dist/stbPlayer.js",
+        "/dist/player.js",
         "/fixture-render.js",
     ];
     const assets = new Map([
@@ -180,8 +180,8 @@ async function fixturePage(browser, profile, initialSettings) {
         ],
         ["/js/runtime-polyfills.js", read(stage + "js/runtime-polyfills.js")],
         ["/js/ottplay-core.js", read(stage + "js/ottplay-core.js")],
-        ["/dist/stbPlayer.js", read(stage + "dist/stbPlayer.js")],
-        ["/stbPlayer/1280.css", read(stage + "stbPlayer/1280.css")],
+        ["/dist/player.js", read(stage + "dist/player.js")],
+        ["/styles/player.css", read(stage + "styles/player.css")],
     ]);
     for (const file of scripts.filter((file) =>
         /jquery|native-environment/.test(file)
@@ -221,7 +221,7 @@ async function fixturePage(browser, profile, initialSettings) {
                 body:
                     '<!doctype html><html><head><meta charset="utf-8">' +
                     styles.join("\n") +
-                    '<link rel="stylesheet" href="/stbPlayer/1280.css"></head>' +
+                    '<link rel="stylesheet" href="/styles/player.css"></head>' +
                     body.replace(
                         /<\/body>/i,
                         scripts

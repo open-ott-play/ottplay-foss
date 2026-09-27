@@ -1,7 +1,7 @@
 # Classic ES5 build pipeline
 
 `npm run build` runs Vite, TypeScript compilation, the classic linker in
-`scripts/classic-bundle.cjs`, and Terser. The result is `dist/stbPlayer.js`.
+`scripts/classic-bundle.cjs`, and Terser. The result is `dist/player.js`.
 Vite uses an empty build entry to avoid transforming an unused second module
 graph, then stages the web roots and validates the actual shipped scripts as ES5.
 
@@ -139,7 +139,7 @@ must also fit within 639,000 bytes and 192,000 gzip bytes, summed per file.
 Both limits apply independently to server, Tauri and Capacitor artifacts.
 Native transformations are measured after staging.
 `npm run check:size` reads the actual artifacts; it does not trust a prior report.
-These budgets cover `stbPlayer.js`, not external media libraries or the complete
+These budgets cover `player.js`, not external media libraries or the complete
 application download. Raise a budget only with a reviewed feature/size tradeoff.
 
 ### Measuring delivery size

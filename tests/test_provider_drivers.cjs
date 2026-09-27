@@ -343,7 +343,10 @@ test("all33 operator instances preserve660 transport contracts with provider-own
     for (const row of baseline.cases) {
         for (const outcome of row.outcomes) {
             for (const file of outcome.providers) {
-                const id = file.slice("prov/".length, -"/prov.js".length);
+                const id = file.slice(
+                    "providers/".length,
+                    -"/provider.js".length
+                );
                 const profile = audit.find((item) => item.id === id);
                 assert(
                     profile,

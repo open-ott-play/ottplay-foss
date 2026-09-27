@@ -24,9 +24,9 @@ const BUDGET = Object.freeze({ bytes: 560000, gzipBytes: 168100 });
 // outputs on CI Node 22.23.2 (192106 with a beta version). Keep suffix headroom.
 const TOTAL_BUDGET = Object.freeze({ bytes: 623500, gzipBytes: 192200 });
 const ARTIFACTS = Object.freeze([
-    "dist/stbPlayer.js",
-    "src-tauri/frontend/dist/stbPlayer.js",
-    "dist-mobile/dist/stbPlayer.js",
+    "dist/player.js",
+    "src-tauri/frontend/dist/player.js",
+    "dist-mobile/dist/player.js",
 ]);
 
 function measureBundle(source, name, budget = BUDGET) {

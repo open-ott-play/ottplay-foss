@@ -7,11 +7,11 @@ current generated API list. For current ownership and compatibility rules, see
 bundle before adding or removing an API. Settings now use store-backed accessors;
 the former `pullSettingsFromWindow` copy operation has been removed.
 
-HS5 / MAG plugins (`prov.js`, device `stb/*.js`) are classic scripts. They read and write the player surface as bare identifiers and as `window.*` (for example `popupActions.splice`, `listKeyHandler = …`, `chanels`). That surface is published today by **inline** `window.NAME =` / `(window as any).NAME =` assignments in `src/index.ts` (and a few concat modules).
+HS5 / MAG plugins (`provider.js`, device `devices/*.js`) are classic scripts. They read and write the player surface as bare identifiers and as `window.*` (for example `popupActions.splice`, `listKeyHandler = …`, `chanels`). That surface is published today by **inline** `window.NAME =` / `(window as any).NAME =` assignments in `src/index.ts` (and a few concat modules).
 
-**Runtime policy:** keep those inline assigns until an `exposeGlobals()` refactor is proven safe on Dune HS5 / real `prov.js`. Do **not** move assignments into a helper in this hygiene pass — bundling/order surprises can drop or rename identifiers that plugins still need.
+**Runtime policy:** keep those inline assigns until an `exposeGlobals()` refactor is proven safe on Dune HS5 / real `provider.js`. Do **not** move assignments into a helper in this hygiene pass — bundling/order surprises can drop or rename identifiers that plugins still need.
 
-This file is an inventory only. CI enforces a small must-keep identifier snapshot in `dist/stbPlayer.js` (see `scripts/check-bundle-identifiers.sh`). Do not grow `window` without adding a row here.
+This file is an inventory only. CI enforces a small must-keep identifier snapshot in `dist/player.js` (see `scripts/check-bundle-identifiers.sh`). Do not grow `window` without adding a row here.
 
 
 ## Inventory
@@ -366,9 +366,9 @@ published values and live list-key-handler alias used by providers.
 | Identifier | Why |
 | --- | --- |
 | `startPlayer` | HTML / STB boot entry after bundle + device script |
-| `popupActions` | prov.js mutates popup action table (splice / labels) |
+| `popupActions` | provider.js mutates popup action table (splice / labels) |
 | `noProvParam` | provider Close / restart path; regression surface for early-execute bugs |
-| `optionsList` | settings / options UI entry used from keyhandler and boot paths |
+| `optionsList` | settings / options UI entry used from key-handler and boot paths |
 | `listKeyHandler` | providers assign bare listKeyHandler; preserve the live public accessor |
 | `chanels` | legacy misspelling alias (window.chanels = channels); old plugins/HTML |
 **Original inventory snapshot:** 335 unique names assigned in `src/index.ts`.

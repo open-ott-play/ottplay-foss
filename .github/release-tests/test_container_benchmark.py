@@ -340,7 +340,7 @@ class SmokeTests(TemporaryTest):
 
     def smoke(self, *, wrong_bytes=False, wrong_config=False):
         calls, requests = [], []
-        web = {"index.html": b"<html>player</html>", "dist/stbPlayer.js": b"var player = true;"}
+        web = {"index.html": b"<html>player</html>", "dist/player.js": b"var player = true;"}
         inspected = {
             "config_digest": CONFIG,
             "critical_web_files": {name: hashlib.sha256(raw).hexdigest() for name, raw in web.items()},

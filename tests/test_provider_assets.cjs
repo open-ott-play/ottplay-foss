@@ -23,42 +23,49 @@ function compatibilityProviders(directory, prefix = "") {
                     path.join(directory, entry.name),
                     name
                 );
-            return entry.name === "prov.js" && !ids.includes(prefix)
+            return entry.name === "provider.js" && !ids.includes(prefix)
                 ? [prefix]
                 : [];
         });
 }
-assert.deepEqual(compatibilityProviders(path.join(root, "prov")), []);
+assert.deepEqual(compatibilityProviders(path.join(root, "providers")), []);
 assert(ids.includes("demo") && ids.includes("xtream"));
 for (const id of ids) {
     assert.equal(
-        isManagedProviderScript(path.join(root, "prov", id, "prov.js")),
-        true
-    );
-    assert.equal(
         isManagedProviderScript(
-            "C:\\runtime\\prov\\" + id.replace(/\//g, "\\") + "\\prov.js"
+            path.join(root, "providers", id, "provider.js")
         ),
         true
     );
     assert.equal(
-        isManagedProviderScript(path.join(root, "prov", id, "logo.png")),
+        isManagedProviderScript(
+            "C:\\runtime\\providers\\" +
+                id.replace(/\//g, "\\") +
+                "\\provider.js"
+        ),
+        true
+    );
+    assert.equal(
+        isManagedProviderScript(path.join(root, "providers", id, "logo.png")),
         false
     );
     assert.equal(
-        isManagedProviderScript(path.join(root, "prov", id, "about.html")),
+        isManagedProviderScript(path.join(root, "providers", id, "about.html")),
         false
     );
 }
-assert.equal(isManagedProviderScript("prov/m3u/prov.js"), true);
-assert.equal(isManagedProviderScript("prov/stalker/prov.js"), true);
-assert.equal(isManagedProviderScript("prov/unknown/prov.js"), false);
-assert.equal(isRetiredRuntimeScript("stb/core.js"), true);
-assert.equal(isRetiredRuntimeScript("C:\\runtime\\stb\\core.js"), true);
-assert.equal(isRetiredRuntimeScript("stb/pc/stb.js"), false);
+assert.equal(isManagedProviderScript("providers/m3u/provider.js"), true);
+assert.equal(isManagedProviderScript("providers/stalker/provider.js"), true);
+assert.equal(isManagedProviderScript("providers/unknown/provider.js"), false);
+assert.equal(isRetiredRuntimeScript("devices/legacy-core.js"), true);
+assert.equal(
+    isRetiredRuntimeScript("C:\\runtime\\devices\\legacy-core.js"),
+    true
+);
+assert.equal(isRetiredRuntimeScript("devices/pc/device.js"), false);
 assert.equal(isRetiredRuntimeScript("js/ottplay-core.js"), false);
 assert(
-    fs.existsSync(path.join(root, "stb/core.js")),
+    fs.existsSync(path.join(root, "devices/legacy-core.js")),
     "historical oracle retained"
 );
 const stage = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-driver-assets-"));
@@ -66,7 +73,7 @@ try {
     stagePlayProviders(root, stage);
     for (const id of ["demo", "xtream", "stalker", "m3u"]) {
         assert(
-            !fs.existsSync(path.join(stage, id, "prov.js")),
+            !fs.existsSync(path.join(stage, id, "provider.js")),
             "Play does not ship retired executable " + id
         );
         assert(
@@ -84,12 +91,14 @@ if (process.argv.includes("--bundle")) {
             "Missing built artifact: " + target
         );
         assert(
-            !fs.existsSync(path.join(root, target, "stb/core.js")),
+            !fs.existsSync(path.join(root, target, "devices/legacy-core.js")),
             target + " still contains retired device implementation"
         );
         for (const id of ids)
             assert(
-                !fs.existsSync(path.join(root, target, "prov", id, "prov.js")),
+                !fs.existsSync(
+                    path.join(root, target, "providers", id, "provider.js")
+                ),
                 target + " still contains retired script " + id
             );
     }

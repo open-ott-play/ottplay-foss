@@ -1975,7 +1975,7 @@ export function setEpgTimer(_channelId?: any, _time?: number): void {
 }
 
 /**
- * Alphabetical EPG list (mode=2). vs gold stbPlayer.js:6602.
+ * Alphabetical EPG list (mode=2). vs gold player.js:6602.
  * Not an alias — delegates to loadEpgListData(2, ...) then sorts by name.
  *
  * @param catIdx - Category index.
@@ -3194,7 +3194,7 @@ export function showActionsDialog(): void {
  *  - Mutates window.mediaName and window.mediaSelects.
  *  - Calls window.mediaList with the search-suffixed playlist URL.
  *
- * Caller: selectMedia() in stbPlayer.js — invoked only when
+ * Caller: selectMedia() in player.js — invoked only when
  * `e.search_on` is truthy.
  */
 

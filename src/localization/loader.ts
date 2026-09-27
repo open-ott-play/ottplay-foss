@@ -1,3 +1,4 @@
+import { languageAssetPath } from "./assets";
 import { setTranslations } from "./index";
 
 /**
@@ -18,7 +19,7 @@ import { setTranslations } from "./index";
  *
  * @remarks
  * The script URL is constructed as:
- * `{host}/stbPlayer/{langCode}.js?{version}` where `host` and `version`
+ * `{host}{languageAssetPath(langCode)}?{version}` where `host` and `version`
  * come from `window.__host` and `window.__cv` (defaults: `''` and `'local'`).
  */
 export function loadLanguage(
@@ -28,7 +29,7 @@ export function loadLanguage(
 ): void {
     var host = (window as any).__host || "";
     var version = (window as any).__cv || "local";
-    var scriptUrl = host + "/stbPlayer/" + langCode + ".js?" + version;
+    var scriptUrl = host + languageAssetPath(langCode) + "?" + version;
 
     var script = document.createElement("script");
     script.src = scriptUrl;

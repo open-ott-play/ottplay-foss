@@ -7,7 +7,7 @@ import { metadataCssUrl, metadataHtml, metadataText } from "../utils/helpers";
  *
  * This module handles:
  * - Mounting registered provider drivers with owned request lifetimes
- * - Full-only dealer extensions via serialized provider scripts (prov.js)
+ * - Full-only dealer extensions via serialized provider scripts (provider.js)
  * - Provider selection UI (list of known IPTV providers)
  * - Channel list rendering and interaction
  * - Popup menu state for the OSD action menu
@@ -178,7 +178,7 @@ import { popupActions, popupArray, popupDetail } from "../app/state";
  * is a different array object than `target`.
  *
  * The popup arrays must stay the same objects for their whole lifetime
- * (`src/app/state.ts` documents the mutation contract; ~47 prov/*\/prov.js
+ * (`src/app/state.ts` documents the mutation contract; ~47 providers/*\/provider.js
  * plugins splice into them and locate the provider-settings action through
  * its stable compatibility identity). Because we publish those same
  * objects on `window` before handing control to a provider script, the
@@ -639,10 +639,6 @@ export function optionsList(fn?: () => void): void {
                 popupList(optionsList);
                 return true;
             case keys.ENTER:
-                console.log(
-                    "DBG optionsList ENTER: optionsArr[selIndex].action=" +
-                        (optionsArr[selIndex].action ? "function" : "undefined")
-                );
                 if (optionsArr[selIndex].action) optionsArr[selIndex].action();
                 return true;
             case keys.TOOLS:
@@ -839,7 +835,7 @@ declare var confirmBox: (
  * Mount a registered provider instance or load its retained compatibility script.
  * Resets global function overrides (playChannel, channelsList, etc.) to
  * internal implementations and restores base popup state. Full dealer extensions
- * outside the built-in inventory can load /prov/{id}/prov.js. A missing built-in
+ * outside the built-in inventory keep their external /prov/{id}/prov.js contract. A missing built-in
  * driver fails closed, since its historical script is excluded from packages.
  *
  * Flow:
@@ -989,7 +985,7 @@ export function loadProv(providerId?: string): void {
         } else {
             // Fallback when savedPopup was never snapshotted: reuse the single
             // concat allocator published on window.* by src/index.ts. Do not
-            // hardcode a second 20-label table here (HS5 / prov.js depend on
+            // hardcode a second 20-label table here (HS5 / provider.js depend on
             // one shared popupActions/popupArray/popupDetail identity).
             var wPop = window as any;
             if (wPop.popupActions && wPop.popupActions.length) {
@@ -1106,7 +1102,7 @@ export function loadProv(providerId?: string): void {
                     //
                     // GUARDED ON PURPOSE. The three assignments above alias
                     // window.popupActions/popupArray/popupDetail to the very
-                    // same array objects, and every prov/*/prov.js plugin
+                    // same array objects, and every providers/*/provider.js plugin
                     // mutates them in place (.splice()/.push(), never
                     // `= [...]`), so the working arrays are already current
                     // here. The previous unguarded version did
@@ -1169,7 +1165,11 @@ export function loadProv(providerId?: string): void {
                         const img = $("<img>");
                         img.attr(
                             "src",
-                            host + "/prov/" + s + "/logo.png?" + __av
+                            host +
+                                (usesDriver ? "/providers/" : "/prov/") +
+                                s +
+                                "/logo.png?" +
+                                __av
                         );
                         img.attr("alt", " ");
                         img.css("position", "absolute");
@@ -1495,7 +1495,7 @@ export function showProviderSelection(): void {
 
     /**
      * Display the "about" description HTML for the currently selected provider.
-     * Loads /prov/{id}/about{lang}.html into #listDetail, then copies it into
+     * Loads the built-in or legacy external provider description into #listDetail, then copies it into
      * #listAbout as a full-screen overlay.
      *
      * Side effects: Saves/restores CPD (current page data); shows #listAbout;
@@ -1598,10 +1598,19 @@ export function showProviderSelection(): void {
         );
     };
     detailListAction = function () {
-        if (providerIds[selIndex] && isProviderAllowed(providerIds[selIndex])) {
-            var aboutUrl = host + "/prov/" + providerIds[selIndex] + "/about";
+        var id = providerIds[selIndex];
+        if (id && isProviderAllowed(id)) {
+            var builtIn = (window as any).__ottProviderDrivers.registry.has(id);
+            var aboutUrl =
+                host + (builtIn ? "/providers/" : "/prov/") + id + "/about";
             var lang = stbGetItem("ottplaylang") || "";
-            if (lang === "_eng") lang = "";
+            lang = builtIn
+                ? lang === "_rus"
+                    ? "-ru"
+                    : ""
+                : lang === "_eng"
+                  ? ""
+                  : lang;
             $("#listDetail").load(
                 "" + aboutUrl + lang + ".html?" + __av,
                 function (_e: any, status: string) {
@@ -1890,7 +1899,7 @@ export function edit_dealer_remote(): void {
 // ─── Dune add settings (provider hook) ────────────────────────────────────────
 
 /**
- * Called by provider scripts (prov.js) to extend the settings/popup UI.
+ * Called by provider scripts (provider.js) to extend the settings/popup UI.
  * Override point — providers assign a function that inserts their own
  * settings entries into popupActions/popupArray/popupDetail at the
  * given index.

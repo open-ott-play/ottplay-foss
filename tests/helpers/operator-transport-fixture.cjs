@@ -29,7 +29,7 @@ exports.run = function (profile, input) {
     };
     if (input.intercept)
         ctx.stbInterceptRequest = (value) => events.push(["intercept", value]);
-    const get = declarations("prov/" + profile + "/prov.js").find(
+    const get = declarations("providers/" + profile + "/provider.js").find(
         (row) => row.name === "getChanelsArray"
     );
     const load = get.node.body.statements.find(

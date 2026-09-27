@@ -51,7 +51,7 @@ fs.writeFileSync(
     ) + "\n"
 );
 fs.copyFileSync(
-    path.join(root, "stbPlayer/icon.png"),
+    path.join(root, "images/player-logo.png"),
     path.join(destination, "icon.png")
 );
 fs.writeFileSync(

@@ -1,7 +1,7 @@
 {
   "provenance": {
     "commit": "b3c8cc072e92f14c8e352a223157788f24ca4dce",
-    "file": "prov/edem/prov.js",
+    "file": "providers/edem/provider.js",
     "sourceSha256": "c7ba87872a9806c68381bf9c5bcdb4f1251391c9e85545fa03e9ce14f49c8136",
     "description": "Actual untouched Edem VPortal entrypoints, native transport/UI mocked; exact outcomes retained."
   },

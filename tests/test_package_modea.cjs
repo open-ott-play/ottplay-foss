@@ -40,14 +40,22 @@ try {
         path.join(root, "package.json"),
         JSON.stringify({ version: "1.2.3" })
     );
-    for (const directory of ["fonts", "js", "stb", "stbPlayer", "prov"])
+    for (const directory of [
+        "fonts",
+        "js",
+        "devices",
+        "providers",
+        "styles",
+        "images",
+        "locales",
+    ])
         fs.mkdirSync(path.join(root, "dist", directory), { recursive: true });
     const bundle = "var fixture = true;\n";
     fs.writeFileSync(
         path.join(root, "dist/index.html"),
         "<!doctype html><title>fixture</title>"
     );
-    fs.writeFileSync(path.join(root, "dist/stbPlayer.js"), bundle);
+    fs.writeFileSync(path.join(root, "dist/player.js"), bundle);
     const providerBundles = Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
         (kind) => {
             const file = "provider-" + kind + ".js";

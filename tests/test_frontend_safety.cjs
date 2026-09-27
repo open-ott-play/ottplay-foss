@@ -372,7 +372,7 @@ test("buttons help closes with Back and existing RETURN, while native cloud save
     try {
         w.eval(
             func("src/index.ts", "buttonsInfo") +
-                func("src/keyhandler/index.ts", "keyHandler") +
+                func("src/key-handler/index.ts", "keyHandler") +
                 cloudSource(bundleAst)
         );
         for (const key of [w.keys.EXIT, w.keys.RETURN]) {
@@ -525,7 +525,7 @@ test("real password action selects a secret editor; normal input restores text a
     try {
         w.eval(
             func("src/ui/index.ts", "showEditKey2") +
-                func("prov/xtream/prov.js", "editXtreamSettings") +
+                func("providers/xtream/provider.js", "editXtreamSettings") +
                 func("src/ui/index.ts", "renderButtonHint")
         );
         w.xtream = {

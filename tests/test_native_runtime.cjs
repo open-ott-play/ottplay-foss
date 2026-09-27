@@ -140,33 +140,33 @@ function fixture(name, play) {
     const folder = path.join(temp, name);
     fs.mkdirSync(folder);
     write(folder, "index.html", read("index.html"));
-    write(folder, "dist/stbPlayer.js", app);
+    write(folder, "dist/player.js", app);
     for (const top of ["js", "fonts"]) {
         for (const file of walk(path.join(root, top)))
             write(folder, path.relative(root, file), fs.readFileSync(file));
     }
-    write(folder, "stbPlayer/1280.css", read("stbPlayer/1280.css"));
-    for (const lang of fs.readdirSync(path.join(root, "stbPlayer")))
-        if (/^_.*\.js$/.test(lang))
-            write(folder, "stbPlayer/" + lang, read("stbPlayer/" + lang));
+    write(folder, "styles/player.css", read("styles/player.css"));
+    for (const lang of fs.readdirSync(path.join(root, "locales")))
+        if (/\.js$/.test(lang))
+            write(folder, "locales/" + lang, read("locales/" + lang));
     for (const device of ["android", "pc"])
         write(
             folder,
-            "stb/" + device + "/stb.js",
-            read("stb/" + device + "/stb.js")
+            "devices/" + device + "/device.js",
+            read("devices/" + device + "/device.js")
         );
     const providers = play
         ? ["demo", "m3u", "stalker", "xtream"]
         : fs
-              .readdirSync(path.join(root, "prov"))
+              .readdirSync(path.join(root, "providers"))
               .filter((id) =>
-                  fs.existsSync(path.join(root, "prov", id, "prov.js"))
+                  fs.existsSync(path.join(root, "providers", id, "provider.js"))
               );
     for (const id of providers)
         write(
             folder,
-            "prov/" + id + "/prov.js",
-            read("prov/" + id + "/prov.js")
+            "providers/" + id + "/provider.js",
+            read("providers/" + id + "/provider.js")
         );
     return folder;
 }
@@ -284,7 +284,7 @@ function browser(folder, platform) {
     const loaded = [];
     w.loadCSS = () => {};
     w.loadSTB = () =>
-        w.eval(fs.readFileSync(path.join(folder, "dist/stbPlayer.js"), "utf8"));
+        w.eval(fs.readFileSync(path.join(folder, "dist/player.js"), "utf8"));
     w.loadJS = (url, done) => {
         assert(
             url.startsWith("/js/"),

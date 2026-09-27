@@ -59,7 +59,7 @@ function declarations(file, names) {
 const lz = declarations("src/utils/lzstring.ts");
 const storage = declarations("src/storage/index.ts");
 const code = bundle
-    ? declarations("dist/stbPlayer.js", [
+    ? declarations("dist/player.js", [
           ...lz.names,
           ...storage.names,
           "__spreadArray",

@@ -19,7 +19,7 @@
   {
     "name": "dist_bundle",
     "method": "GET",
-    "path": "/dist/stbPlayer.js",
+    "path": "/dist/player.js",
     "expect_code": "200",
     "min_bytes": 100,
     "required": false,
@@ -28,7 +28,7 @@
   {
     "name": "stb_css",
     "method": "GET",
-    "path": "/stbPlayer/1280.css",
+    "path": "/styles/player.css",
     "expect_code": "200",
     "min_bytes": 10,
     "required": true

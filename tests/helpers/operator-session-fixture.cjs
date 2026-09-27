@@ -11,7 +11,7 @@ function scan(directory) {
     })) {
         const file = directory + "/" + row.name;
         if (row.isDirectory()) scan(file);
-        else if (row.name === "prov.js") {
+        else if (row.name === "provider.js") {
             const source = fs.readFileSync(path.join(root, file), "utf8");
             const match = /function (_\w+)_xtream\(/.exec(source);
             if (match && !source.includes("legacyXtreamClient"))
@@ -19,7 +19,7 @@ function scan(directory) {
         }
     }
 }
-scan("prov");
+scan("providers");
 exports.providers = inventory;
 exports.run = function (provider, input) {
     const ctx = context(),

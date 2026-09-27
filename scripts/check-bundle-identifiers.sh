@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BUNDLE="${1:-${ROOT}/dist/stbPlayer.js}"
+BUNDLE="${1:-${ROOT}/dist/player.js}"
 
 if [[ ! -f "$BUNDLE" ]]; then
   echo "error: missing built bundle — run the Vite build first" >&2

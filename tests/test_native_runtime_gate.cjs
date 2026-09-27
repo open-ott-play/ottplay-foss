@@ -22,18 +22,18 @@ function cli(...args) {
     );
 }
 try {
-    fs.mkdirSync(path.join(source, "stbPlayer"), { recursive: true });
+    fs.mkdirSync(path.join(source, "styles"), { recursive: true });
     fs.mkdirSync(path.join(source, "dist"));
     fs.writeFileSync(
         path.join(source, "index.html"),
-        '<html><head><script src="/js/runtime-polyfills.js"></script></head><body><script src="./dist/stbPlayer.js"></script></body></html>'
+        '<html><head><script src="/js/runtime-polyfills.js"></script></head><body><script src="./dist/player.js"></script></body></html>'
     );
     fs.writeFileSync(
-        path.join(source, "stbPlayer/1280.css"),
+        path.join(source, "styles/player.css"),
         "body { color: white; }"
     );
     fs.writeFileSync(
-        path.join(source, "dist/stbPlayer.js"),
+        path.join(source, "dist/player.js"),
         'window.playerVersion = "fixture-current";'
     );
     stageNativeRuntime(source, "capacitor");
@@ -71,25 +71,25 @@ try {
     assert.match(missing.stderr, /native-runtime\.json/);
     fs.writeFileSync(manifest, bytes);
     fs.writeFileSync(
-        path.join(copied, "dist/stbPlayer.js"),
+        path.join(copied, "dist/player.js"),
         'window.playerVersion = "stale";'
     );
     assert.throws(
         () => auditNativeRuntimeCopy(source, copied),
-        /Stale copied native asset: dist[/\\]stbPlayer\.js/
+        /Stale copied native asset: dist[/\\]player\.js/
     );
     fs.copyFileSync(
-        path.join(source, "dist/stbPlayer.js"),
-        path.join(copied, "dist/stbPlayer.js")
+        path.join(source, "dist/player.js"),
+        path.join(copied, "dist/player.js")
     );
-    fs.unlinkSync(path.join(copied, "stbPlayer/1280.css"));
+    fs.unlinkSync(path.join(copied, "styles/player.css"));
     assert.throws(
         () => auditNativeRuntimeCopy(source, copied),
         /Missing copied native asset/
     );
     fs.copyFileSync(
-        path.join(source, "stbPlayer/1280.css"),
-        path.join(copied, "stbPlayer/1280.css")
+        path.join(source, "styles/player.css"),
+        path.join(copied, "styles/player.css")
     );
     assert.equal(cli("audit", copied, "--platform", "tauri").status, 1);
     assert(auditNativeRuntimeCopy(source, copied).files > 10);

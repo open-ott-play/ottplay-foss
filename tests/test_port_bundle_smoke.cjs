@@ -57,7 +57,7 @@ assert.throws(
 // No network requests or media decoding run. Selected controller timers are
 // driven explicitly through fake host ports after loading the complete artifact.
 const bundlePath = path.resolve(
-    process.argv[2] || path.join(__dirname, "../dist/stbPlayer.js")
+    process.argv[2] || path.join(__dirname, "../dist/player.js")
 );
 const bundle = fs.readFileSync(bundlePath, "utf8");
 const playDistribution = process.argv.includes("--play");
@@ -2215,7 +2215,7 @@ async function main() {
             pathname + ": bundle must preserve the boot device selection"
         );
         // This is the device URL requested by HTML after the bundle's onload.
-        const adapterPath = "stb/" + w.ott_device + "/stb.js";
+        const adapterPath = "devices/" + w.ott_device + "/device.js";
         const adapter = fs.readFileSync(
             path.join(__dirname, "..", adapterPath),
             "utf8"

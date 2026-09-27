@@ -264,13 +264,8 @@ async fn main() -> anyhow::Result<()> {
         .merge(debug_api::routes())
         .merge(vportal_api::routes())
         .merge(stalker_api::routes())
-        .merge(device_entry_routes())
-        .nest_service("/dist", ServeDir::new("dist"))
-        .nest_service("/stbPlayer", ServeDir::new("stbPlayer"))
-        .nest_service("/stb", ServeDir::new("stb"))
-        .nest_service("/fonts", ServeDir::new("fonts"))
-        .nest_service("/js", ServeDir::new("js"))
-        .nest_service("/prov", ServeDir::new("prov"))
+        .merge(device_entry_routes(std::path::Path::new(".")))
+        .merge(player_asset_routes(std::path::Path::new(".")))
         // Operator-local overrides (gitignored); 404 if directory missing
         .nest_service("/local", ServeDir::new("local"))
         .layer(cors);
@@ -351,12 +346,34 @@ fn build_tls_config(cert_path: &str, key_path: &str) -> anyhow::Result<Arc<Serve
     Ok(Arc::new(config))
 }
 
-fn device_entry_routes() -> Router {
+fn device_entry_routes(directory: &std::path::Path) -> Router {
     // Device paths select an adapter in index.html; they are not filesystem paths.
+    let directory = directory.to_path_buf();
+    let entry = move || {
+        let directory = directory.clone();
+        async move { read_root(&directory) }
+    };
     Router::new()
-        .route("/f", get(root))
-        .route("/f/", get(root))
-        .route("/f/*device", get(root))
+        .route("/f", get(entry.clone()))
+        .route("/f/", get(entry.clone()))
+        .route("/f/*device", get(entry))
+}
+
+fn player_asset_routes(directory: &std::path::Path) -> Router {
+    let mut routes = Router::new();
+    for name in [
+        "dist",
+        "styles",
+        "images",
+        "locales",
+        "devices",
+        "fonts",
+        "js",
+        "providers",
+    ] {
+        routes = routes.nest_service(&format!("/{name}"), ServeDir::new(directory.join(name)));
+    }
+    routes
 }
 
 #[cfg(test)]
@@ -620,10 +637,14 @@ mod epg_startup_tests {
 }
 
 async fn root() -> impl IntoResponse {
+    read_root(std::path::Path::new("."))
+}
+
+fn read_root(directory: &std::path::Path) -> Html<String> {
     // Prefer dist/index.html: vite substitutes __OTTP_VERSION__ there.
     // Source index.html keeps the placeholder for local/dev editing.
     for candidate in ["dist/index.html", "index.html"] {
-        if let Ok(html) = std::fs::read_to_string(candidate) {
+        if let Ok(html) = std::fs::read_to_string(directory.join(candidate)) {
             return Html(html);
         }
     }
@@ -1104,16 +1125,13 @@ mod device_entry_tests {
     use axum::http::Request;
     use std::path::PathBuf;
 
-    // root() reads the web root from the process working directory. This server
-    // test binary has one filesystem test; always restore its directory on panic.
+    // Absolute fixture roots keep parallel requests/tests independent of cwd.
     struct WebRootFixture {
-        previous: PathBuf,
         directory: PathBuf,
     }
 
     impl Drop for WebRootFixture {
         fn drop(&mut self) {
-            std::env::set_current_dir(&self.previous).unwrap();
             std::fs::remove_dir_all(&self.directory).unwrap();
         }
     }
@@ -1136,7 +1154,6 @@ mod device_entry_tests {
 
     #[tokio::test]
     async fn mode_a_device_entries_serve_html_without_exposing_web_root() {
-        let previous = std::env::current_dir().unwrap();
         let stamp = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
@@ -1146,7 +1163,7 @@ mod device_entry_tests {
             std::process::id()
         ));
         std::fs::create_dir_all(directory.join("dist")).unwrap();
-        std::fs::create_dir_all(directory.join("stb/lg/webos")).unwrap();
+        std::fs::create_dir_all(directory.join("devices/lg/webos")).unwrap();
         std::fs::create_dir_all(directory.join("src-rs/server/src")).unwrap();
         std::fs::create_dir_all(directory.join(".git")).unwrap();
         let built_html = "<!doctype html><html><body>built player</body></html>";
@@ -1163,15 +1180,13 @@ mod device_entry_tests {
         .unwrap();
         std::fs::write(directory.join(".env"), "PRIVATE=value").unwrap();
         std::fs::write(directory.join(".git/config"), "private git config").unwrap();
-        std::fs::write(directory.join("stb/lg/webos/stb.js"), adapter).unwrap();
-        std::env::set_current_dir(&directory).unwrap();
+        std::fs::write(directory.join("devices/lg/webos/device.js"), adapter).unwrap();
         let _fixture = WebRootFixture {
-            previous,
-            directory,
+            directory: directory.clone(),
         };
 
         // Reproduce both failures in the former production route.
-        let mut old = Router::new().nest_service("/f", ServeDir::new("."));
+        let mut old = Router::new().nest_service("/f", ServeDir::new(&directory));
         for path in ["/f/dune/", "/f/lg/webos/"] {
             assert_eq!(request(&mut old, path).await.0, StatusCode::NOT_FOUND);
         }
@@ -1180,11 +1195,12 @@ mod device_entry_tests {
         assert_eq!(exposed.2.as_ref(), private_source.as_bytes());
 
         let mut app = Router::new()
-            .merge(device_entry_routes())
-            .nest_service("/stb", ServeDir::new("stb"));
+            .merge(device_entry_routes(&directory))
+            .merge(player_asset_routes(&directory));
         for path in [
             "/f",
             "/f/",
+            "/f/pc/",
             "/f/dune/",
             "/f/mag/",
             "/f/hisense/",
@@ -1196,14 +1212,14 @@ mod device_entry_tests {
             "/f/src-rs/server/src/main.rs",
             "/f/.env",
             "/f/.git/config",
-            "/f/stb/lg/webos/stb.js",
+            "/f/devices/lg/webos/device.js",
         ] {
             let response = request(&mut app, path).await;
             assert_eq!(response.0, StatusCode::OK, "{path}");
             assert!(response.1.starts_with("text/html"), "{path}");
             assert_eq!(response.2.as_ref(), built_html.as_bytes(), "{path}");
         }
-        let asset = request(&mut app, "/stb/lg/webos/stb.js").await;
+        let asset = request(&mut app, "/devices/lg/webos/device.js").await;
         assert_eq!(asset.0, StatusCode::OK);
         assert_eq!(asset.2.as_ref(), adapter.as_bytes());
         assert_eq!(
@@ -1211,9 +1227,77 @@ mod device_entry_tests {
             StatusCode::NOT_FOUND
         );
 
-        std::fs::remove_file("dist/index.html").unwrap();
+        std::fs::remove_file(directory.join("dist/index.html")).unwrap();
         let fallback = request(&mut app, "/f/lg/webos/").await;
         assert_eq!(fallback.0, StatusCode::OK);
         assert_eq!(fallback.2.as_ref(), source_html.as_bytes());
+    }
+
+    #[tokio::test]
+    async fn renamed_runtime_assets_resolve_without_exposing_retired_roots() {
+        let stamp = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let directory = std::env::temp_dir().join(format!(
+            "ottplay-runtime-routes-{}-{stamp}",
+            std::process::id()
+        ));
+        let fixtures = [
+            ("dist/player.js", "var player = 'renamed';", "javascript"),
+            ("styles/player.css", "body { color: white; }", "text/css"),
+            ("images/player-logo.png", "fixture logo", "image/png"),
+            ("locales/russian.js", "var keyStrings = {};", "javascript"),
+            ("devices/pc/device.js", "var keys = {};", "javascript"),
+            (
+                "providers/m3u/about.html",
+                "<p>Playlist provider</p>",
+                "text/html",
+            ),
+        ];
+        for (path, contents, _) in fixtures {
+            let file = directory.join(path);
+            std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+            std::fs::write(file, contents).unwrap();
+        }
+        let html = "<!doctype html><title>Renamed player</title>";
+        std::fs::write(directory.join("dist/index.html"), html).unwrap();
+        // Real stale files must not accidentally become reachable under the
+        // removed directory routes after an in-place package upgrade.
+        for old in ["stbPlayer/1280.css", "stb/pc/stb.js", "prov/m3u/about.html"] {
+            let file = directory.join(old);
+            std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+            std::fs::write(file, "stale asset").unwrap();
+        }
+        let _fixture = WebRootFixture {
+            directory: directory.clone(),
+        };
+        let mut app = Router::new()
+            .merge(device_entry_routes(&directory))
+            .merge(player_asset_routes(&directory));
+        for (path, expected, mime) in fixtures {
+            for suffix in ["", "?1.2.3-beta.4"] {
+                let url = format!("/{path}{suffix}");
+                let response = request(&mut app, &url).await;
+                assert_eq!(response.0, StatusCode::OK, "{url}");
+                assert!(response.1.contains(mime), "{url}: {}", response.1);
+                assert_eq!(response.2.as_ref(), expected.as_bytes(), "{url}");
+            }
+        }
+        let entry = request(&mut app, "/f/pc/").await;
+        assert_eq!(entry.0, StatusCode::OK);
+        assert!(entry.1.starts_with("text/html"));
+        assert_eq!(entry.2.as_ref(), html.as_bytes());
+        for old in [
+            "/stbPlayer/1280.css",
+            "/stb/pc/stb.js",
+            "/prov/m3u/about.html",
+        ] {
+            assert_eq!(
+                request(&mut app, old).await.0,
+                StatusCode::NOT_FOUND,
+                "{old}"
+            );
+        }
     }
 }
