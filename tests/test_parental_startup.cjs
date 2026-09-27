@@ -86,7 +86,8 @@ const modules = {
     "src/index.ts": ["_playChannel"],
     "src/key-handler/index.ts": ["dispatchKey", "keyHandler"],
     "src/localization/index.ts": ["translate"],
-    "src/ui/index.ts": ["confirmBox", "escapeHtml"],
+    "src/ui/index.ts": ["confirmBox"],
+    "src/utils/helpers.ts": ["metadataText"],
 };
 const code = bundle
     ? functions("dist/player.js", Object.values(modules).flat())

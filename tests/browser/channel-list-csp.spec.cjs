@@ -143,7 +143,7 @@ function renderFixture(initialSettings) {
     window.__fixtureReady = true;
 }
 
-async function fixturePage(browser, profile, initialSettings) {
+async function fixturePage(browser, profile, initialSettings, language) {
     const native = profile === "tauri";
     const stage = native ? "src-tauri/frontend/" : "";
     const html = read(native ? stage + "index.html" : "dist/index.html");
@@ -163,6 +163,7 @@ async function fixturePage(browser, profile, initialSettings) {
         native ? "/js/jquery.min.js" : "/js/jquery-1.11.1.min.js",
         "/js/ottplay-core.js",
         "/dist/player.js",
+        ...(language ? ["/locales/" + language + ".js"] : []),
         "/fixture-render.js",
     ];
     const assets = new Map([
@@ -184,7 +185,7 @@ async function fixturePage(browser, profile, initialSettings) {
         ["/styles/player.css", read(stage + "styles/player.css")],
     ]);
     for (const file of scripts.filter((file) =>
-        /jquery|native-environment/.test(file)
+        /jquery|native-environment|\/locales\//.test(file)
     ))
         assets.set(file, read(stage + file.slice(1)));
     if (!native) {
@@ -270,6 +271,188 @@ async function fixturePage(browser, profile, initialSettings) {
     expect(errors).toEqual([]);
     expect(unexpectedRequests).toEqual([]);
     return { close: () => context.close(), errors, page, unexpectedRequests };
+}
+
+for (const profile of ["server", "tauri"]) {
+    test(
+        profile +
+            " archive confirmation preserves translated lines and choices",
+        async ({ browser }) => {
+            for (const [language, title, age, yes, no] of [
+                [
+                    "english",
+                    "Resume from archive?",
+                    "Bookmark age: 0 days",
+                    "Yes",
+                    "No",
+                ],
+                [
+                    "russian",
+                    "Продолжить из архива?",
+                    "Давность закладки: 0 дн.",
+                    "Да",
+                    "Нет",
+                ],
+            ]) {
+                const fixture = await fixturePage(
+                    browser,
+                    profile,
+                    undefined,
+                    language
+                );
+                const page = fixture.page;
+                try {
+                    const archiveStart = await page.evaluate(() => {
+                        // Provider startup normally installs numeric channel
+                        // IDs and the production keyboard listener.
+                        window.channels[101] = window.channels.one;
+                        window.cats.Fixture = [101];
+                        window.curList = window.cats.Fixture;
+                        window.catIndex = window.primaryIndex = 0;
+                        window.stbBindKeyHandler();
+                        const start = Math.floor(Date.now() / 1000) - 3600;
+                        const stored = new Map([
+                            [
+                                "continueWatch",
+                                JSON.stringify({
+                                    catIndex: 0,
+                                    channelId: 101,
+                                    mode: "archive",
+                                    playTime: 25,
+                                    playType: start,
+                                    updatedAt: Date.now(),
+                                    v: 1,
+                                }),
+                            ],
+                        ]);
+                        window.providerGetItem = (key) =>
+                            stored.get(key) ?? null;
+                        window.providerSetItem = (key, value) =>
+                            stored.set(key, value);
+                        window.__confirmationChoices = [];
+                        window.playArchive = (time) =>
+                            window.__confirmationChoices.push([
+                                "archive",
+                                time,
+                            ]);
+                        window.playChannel = (category, index) =>
+                            window.__confirmationChoices.push([
+                                "live",
+                                category,
+                                index,
+                            ]);
+                        window.stbIsPlaying = () => false;
+                        return start;
+                    });
+                    const dialog = page.locator("#dialogbox");
+                    for (const accept of [true, false]) {
+                        expect(
+                            await page.evaluate(() => restoreContinueWatch())
+                        ).toBe(true);
+                        await expect(dialog).toBeVisible();
+                        await expect(dialog).toContainText(title);
+                        await expect(dialog).toContainText(age);
+                        await expect(dialog).not.toContainText(
+                            /<br\s*\/?\s*>/i
+                        );
+                        await expect(dialog.locator("center > br")).toHaveCount(
+                            4
+                        );
+                        const lines = await dialog.evaluate((element) => {
+                            const nodes = [
+                                ...element.firstElementChild.childNodes,
+                            ].filter(
+                                (node) =>
+                                    node.nodeType === Node.TEXT_NODE &&
+                                    node.textContent.trim()
+                            );
+                            return nodes.slice(0, 2).map((node) => {
+                                const range = document.createRange();
+                                range.selectNodeContents(node);
+                                const rect = range.getBoundingClientRect();
+                                return { height: rect.height, top: rect.top };
+                            });
+                        });
+                        expect(lines).toHaveLength(2);
+                        expect(lines[1].top - lines[0].top).toBeGreaterThan(
+                            lines[0].height * 1.5
+                        );
+                        await expect(
+                            dialog.getByRole("button", {
+                                exact: true,
+                                name: yes,
+                            })
+                        ).toBeVisible();
+                        await expect(
+                            dialog.getByRole("button", {
+                                exact: true,
+                                name: no,
+                            })
+                        ).toBeVisible();
+                        if (accept) await page.keyboard.press("Enter");
+                        else if (profile === "tauri")
+                            await page.keyboard.press("Backspace");
+                        else
+                            await dialog
+                                .getByRole("button", { exact: true, name: no })
+                                .click();
+                        await expect(dialog).toBeHidden();
+                    }
+                    expect(
+                        await page.evaluate(() => window.__confirmationChoices)
+                    ).toEqual([
+                        ["archive", archiveStart],
+                        ["live", 0, 0],
+                    ]);
+                    expect(fixture.errors).toEqual([]);
+                    expect(fixture.unexpectedRequests).toEqual([]);
+                } finally {
+                    await fixture.close();
+                }
+            }
+        }
+    );
+
+    test(
+        profile +
+            " confirmation allows only plain breaks and keeps markup inert",
+        async ({ browser }) => {
+            const fixture = await fixturePage(browser, profile);
+            const page = fixture.page;
+            try {
+                const markup =
+                    '<img src="/injected" onerror="window.__confirmationInjected=true"><svg onload="window.__confirmationInjected=true"></svg><script>window.__confirmationInjected=true</script><br onclick="window.__confirmationInjected=true">&lt;br&gt;';
+                await page.evaluate((untrusted) => {
+                    window.stbBindKeyHandler();
+                    window.__confirmationChoices = [];
+                    confirmBox(
+                        "Title<br>A<br/>B<BR />C\r\nD\rE\nF" + untrusted,
+                        () => window.__confirmationChoices.push("yes"),
+                        () => window.__confirmationChoices.push("no")
+                    );
+                }, markup);
+                const dialog = page.locator("#dialogbox");
+                await expect(dialog).toBeVisible();
+                await expect(dialog.locator("center > br")).toHaveCount(8);
+                await expect(
+                    dialog.locator("img, svg, script, br[onclick]")
+                ).toHaveCount(0);
+                await expect(dialog).toContainText(markup);
+                expect(
+                    await page.evaluate(() => window.__confirmationInjected)
+                ).toBeUndefined();
+                await page.keyboard.press("Backspace");
+                await expect(dialog).toBeHidden();
+                expect(
+                    await page.evaluate(() => window.__confirmationChoices)
+                ).toEqual(["no"]);
+                expect(fixture.errors).toEqual([]);
+                expect(fixture.unexpectedRequests).toEqual([]);
+            } finally {
+                await fixture.close();
+            }
+        }
+    );
 }
 
 async function snapshot(page) {

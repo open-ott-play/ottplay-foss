@@ -135,7 +135,6 @@ function fixture() {
     w.eval(
         functions("src/ui/index.ts", [
             "_changeEdit",
-            "escapeHtml",
             "infoBox",
             "confirmBox",
             "showSelectBox",
