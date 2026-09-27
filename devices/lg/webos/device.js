@@ -60,6 +60,13 @@ window.stbEventToKeyCode = function (event) {
         var names = [event.key, event.code];
         for (var i = 0; i < names.length; i++) {
             var name = names[i];
+            var color = [
+                "ColorF0Red",
+                "ColorF1Green",
+                "ColorF2Yellow",
+                "ColorF3Blue",
+            ].indexOf(name);
+            if (color >= 0) return 403 + color;
             if (name === "ChannelUp" || name === "PageUp") return keys.CH_UP;
             if (name === "ChannelDown" || name === "PageDown")
                 return keys.CH_DOWN;

@@ -183,6 +183,7 @@ module.exports = function assertMenuRuntime(registry) {
         ["EPG", "guide.open"],
         ["RED", "guide.open"],
         ["GREEN", "archive.records"],
+        ["YELLOW", "media.open"],
         ["BLUE", "channels.categories"],
         ["PREV", "channels.categories"],
     ];

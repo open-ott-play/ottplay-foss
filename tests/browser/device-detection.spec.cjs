@@ -707,6 +707,71 @@ test.describe("webOS fullscreen remote navigation", () => {
             }
         );
     }
+
+    for (const [delivery, yellow, blue] of [
+        ["LG numeric colors", [405, "Unidentified"], [406, "Unidentified"]],
+        ["named colors", [0, "ColorF2Yellow"], [0, "ColorF3Blue"]],
+        [
+            "named color codes",
+            [0, "Unidentified", "ColorF2Yellow"],
+            [0, "Unidentified", "ColorF3Blue"],
+        ],
+    ]) {
+        test(
+            delivery + " opens Media Library and categories from Menu",
+            async ({ page, context, baseURL }) => {
+                const errors = await bootForWebosRemote(page, context, baseURL);
+                const playerUrl = page.url();
+                const pressColor = (event) =>
+                    event[2]
+                        ? // CDP drops these non-PC physical codes. Deliver the
+                          // host's DOM event through the normal window listener.
+                          page.locator("body").dispatchEvent("keydown", {
+                              code: event[2],
+                              key: event[1],
+                              keyCode: event[0],
+                          })
+                        : remoteKey(page, ...event);
+                await page.evaluate(() => {
+                    // Stub only the provider boundary; keep the real Menu,
+                    // media/category screens and all remote handlers.
+                    window.getMediaArray = (_target, complete) => {
+                        window.mediaRecords = [
+                            {
+                                stream_url: "https://media.invalid/fixture.mp4",
+                                title: "Remote media fixture",
+                            },
+                        ];
+                        window.mediaName = "Media Library";
+                        complete();
+                    };
+                    window.popupList();
+                });
+                await expect(page.locator("#listCaption")).toHaveText("Menu");
+                await expect(
+                    page.locator("#list").getByText("Show Media Library")
+                ).toBeVisible();
+                await pressColor(yellow);
+                await expect(page.locator("#listCaption")).toHaveText(
+                    "Media Library"
+                );
+                await expect(page.locator("#list")).toContainText(
+                    "Remote media fixture"
+                );
+                await remoteKey(page, 461, "BrowserBack");
+                await expect(page.locator("#listCaption")).toHaveText("Menu");
+                await pressColor(blue);
+                await expect(page.locator("#listCaption")).toHaveText(
+                    "Category selection"
+                );
+                await expect(page.locator("#list")).toContainText(
+                    "Remote fixture"
+                );
+                await expect(page).toHaveURL(playerUrl);
+                expect(errors).toEqual([]);
+            }
+        );
+    }
 });
 
 test("command server settings start and stop polling in the shipped player", async ({
