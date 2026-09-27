@@ -1176,7 +1176,7 @@ export function loadProv(providerId?: string): void {
                         if (launch_id !== "#dialogbox") {
                             img.css("top", "100px");
                             img.css("right", "100px");
-                            img.attr("width", "25%");
+                            img.css("max-width", "25%");
                             img.css("max-height", "25%");
                         } else {
                             img.css("top", "6px");

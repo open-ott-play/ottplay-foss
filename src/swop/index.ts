@@ -240,9 +240,9 @@ export function swopLoadValue(): void {
         var listEdit = $("#listEdit");
         listEdit
             .html(
-                '<div style="text-align:center;font-size:larger;' +
+                '<div class="swop-panel" style="' +
                     (isError ? "color:red;" : "") +
-                    '"><br/><br/><span class="swop-msg-text"></span></div>'
+                    '"><div class="swop-msg-text"></div></div>'
             )
             .show();
         var el = listEdit.find(".swop-msg-text");
@@ -385,25 +385,19 @@ export function swopLoadValue(): void {
                 qrSvg = "";
             }
             showMsg(
-                _("Request sended!") +
-                    "<br/><br/>" +
-                    _("For enter value open") +
-                    '<br/><span style="font-size:larger;word-break:break-all;color:' +
+                _("For enter value open") +
+                    '<br/><span class="swop-url" style="color:' +
                     color +
                     '">' +
                     escapeHtml(data.entryUrl || url) +
-                    "</span><br/><br/>" +
-                    (qrSvg
-                        ? '<div style="margin:8px auto;padding:12px;background:#ffffff;display:inline-block;line-height:0;border-radius:4px">' +
-                          qrSvg +
-                          "</div><br/><br/>"
-                        : "") +
+                    "</span><br/>" +
                     _("and enter code") +
-                    ' <span style="font-size:200%;color:' +
+                    '<span class="swop-code" style="color:' +
                     color +
                     '">' +
                     escapeHtml(data.entryCode || code) +
-                    "</span>",
+                    "</span>" +
+                    (qrSvg ? '<div class="swop-qr">' + qrSvg + "</div>" : ""),
                 false,
                 true
             );
