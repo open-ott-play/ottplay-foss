@@ -62,8 +62,8 @@ export function detectDevice(): string {
  */
 
 export let host = window.location.origin || "http://localhost:8080";
-export let __cv = "local";
-export let __av = "local";
+export let __cv = (window as any).__cv || "local";
+export let __av = (window as any).__av || "local";
 export let __iid = "";
 export let dnt = false;
 export let ott_device: string = detectDevice();

@@ -698,6 +698,68 @@ test("classic direct links skip create_link, cancelled and replaced sessions can
     assert.equal(result, undefined);
 });
 
+test("classic startup recovers one empty handshake, preserving saved settings and channel loading", () => {
+    for (const empty of [null, {}, []]) {
+        const config = JSON.stringify({
+            mac: "02:00:00:00:00:01",
+            portal: "https://portal.test/c/",
+        });
+        const f = startup({ stalkerstalker_data: config });
+        f.host.URL = URL;
+        f.host.loadProv();
+        f.requests.at(-1).resolve({ js: empty });
+        assert.equal(f.requests.length, 2);
+        assert.equal(
+            f.completed,
+            0,
+            "empty handshake must not publish an empty catalog"
+        );
+        f.requests.at(-1).resolve({ js: { token: "fixture-token" } });
+        f.requests
+            .at(-1)
+            .resolve({ js: { blocked: "0", id: "1", status: "0" } });
+        f.requests.at(-1).resolve({ js: [{ id: "1", title: "Demo" }] });
+        f.requests.at(-1).resolve({
+            js: {
+                data: [
+                    {
+                        cmd: "https://media.test/demo.m3u8",
+                        id: "42",
+                        name: "Demo channel",
+                        tv_genre_id: "1",
+                        use_http_tmp_link: 0,
+                    },
+                ],
+                total_items: 1,
+            },
+        });
+        assert.equal(f.completed, 1);
+        assert.deepEqual(Array.from(f.host.cList), [42]);
+        assert.deepEqual(f.errors, []);
+        assert.equal(f.saved.get("stalkerstalker_data"), config);
+    }
+});
+
+test("classic empty-handshake recovery is bounded and is cancelled with its owner", () => {
+    const f = classicFixture();
+    f.respond({});
+    f.respond({});
+    assert.equal(f.requests.length, 2);
+    assert.equal(f.error, "stalker-connect");
+    const denied = classicFixture();
+    denied.respond({ error: "access_denied" });
+    assert.equal(denied.requests.length, 1);
+    assert.equal(denied.error, "stalker-connect");
+    const cancelled = classicFixture();
+    cancelled.respond({});
+    const retry = cancelled.requests.at(-1);
+    cancelled.driver.dispose();
+    retry.done({ js: { token: "stale" } });
+    assert.equal(retry.aborts, 1);
+    assert.equal(cancelled.requests.length, 2);
+    assert.equal(cancelled.catalog, undefined);
+});
+
 test("classic rejects blocked profiles, repeated pages and link failures", () => {
     const blocked = classicFixture();
     blocked.respond({ token: "t" });
