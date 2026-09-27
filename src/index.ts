@@ -2403,8 +2403,6 @@ function _playChannel(catIdx: number, chIdx: number): void {
             " url=" +
             getChannelUrl(channelId)
     );
-    updateChannelInfo(channelId);
-    if (settings.infoSwitch) showChannelInfo(settings.infoTimeout);
     if (
         (window as any).__ottClassicPlayback &&
         typeof (window as any).__ottClassicPlayback.command === "function"
@@ -2414,6 +2412,8 @@ function _playChannel(catIdx: number, chIdx: number): void {
             type: "live",
         });
     else (window as any).playType = 0;
+    updateChannelInfo(channelId);
+    if (settings.infoSwitch) showChannelInfo(settings.infoTimeout);
     if (typeof setPlayer === "function") setPlayer();
     stbPlay(getChannelUrl(channelId));
     clearTimeout((window as any)._tmedia);
@@ -2571,18 +2571,24 @@ function nativeMediaMetadata(): {
     let positionSec: number | undefined;
     let seekable = false;
     try {
-        const chName =
-            (document.getElementById("channel") as HTMLElement | null)
-                ?.textContent ||
-            (document.getElementById("cname") as HTMLElement | null)
-                ?.textContent ||
-            "";
-        if (chName && chName.trim()) title = chName.trim();
         const w = window as any;
+        const playType = typeof w.playType === "number" ? w.playType : 0;
+        const media = playType < 0 && w.__ottMedia && w.__ottMedia.current();
+        const movie = (media && media.payload) || {};
+        const chName =
+            playType < 0
+                ? String(movie.title || "")
+                : (document.getElementById("channel") as HTMLElement | null)
+                      ?.textContent ||
+                  (document.getElementById("cname") as HTMLElement | null)
+                      ?.textContent ||
+                  "";
+        if (chName && chName.trim()) title = chName.trim();
         const curList = w.curList;
         const primaryIndex = w.primaryIndex;
         let chId: any;
         if (
+            playType >= 0 &&
             Array.isArray(curList) &&
             typeof primaryIndex === "number" &&
             curList[primaryIndex] != null
@@ -2596,28 +2602,22 @@ function nativeMediaMetadata(): {
                     artworkUrl = pic.trim();
                 }
             }
-            const ch =
-                (w.channels &&
-                    (w.channels[chId] || w.channels[String(chId)])) ||
-                null;
-            if (ch) {
-                const icon = ch.icon || ch.logo_30x30 || ch.logo || "";
-                if (
-                    !artworkUrl &&
-                    icon &&
-                    typeof icon === "string" &&
-                    icon.trim()
-                ) {
-                    artworkUrl = icon.trim();
-                }
-                if (ch.channel_name && !chName) {
-                    title = String(ch.channel_name);
-                }
+        }
+        const ch =
+            playType < 0
+                ? movie
+                : chId != null && w.channels && w.channels[chId];
+        if (ch) {
+            const icon = ch.icon || ch.logo_30x30 || ch.logo || "";
+            if (!artworkUrl && typeof icon === "string" && icon.trim()) {
+                artworkUrl = icon.trim();
+            }
+            if (ch.channel_name && !chName) {
+                title = String(ch.channel_name);
             }
         }
         // Live IPTV (playType === 0): not seekable. Archive/VOD only when
         // duration is finite and usable.
-        const playType = typeof w.playType === "number" ? w.playType : 0;
         const dur =
             typeof w.stbGetLen === "function" ? Number(w.stbGetLen()) : NaN;
         const pos =
