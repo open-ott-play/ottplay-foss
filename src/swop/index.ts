@@ -1,7 +1,8 @@
 /**
  * Remote text entry (swop) — Cloudflare Worker session handoff for the ♥™ VKB key.
  *
- * Uses allowlisted Device UUID (`X-Swop-Client-Id`) against `settings.swopBaseUrl`.
+ * Uses a server-authenticated same-origin relay against `settings.swopBaseUrl`.
+ * The Device UUID identifies sessions; installation credentials stay on the server.
  * Optional same-origin `/local/swop.json` (gitignored; written by local install) can
  * inject base URL + clientId without committing private operator hostnames.
  */
@@ -31,6 +32,11 @@ declare var showEditKey1: (_initKeys?: any) => void;
 
 const POLL_MS = 2500;
 const SESSION_TIMEOUT_MS = 6e5;
+
+type AuthenticatedSessionResponse = SessionResponse & {
+    clientId?: string;
+    sessionToken?: string;
+};
 
 interface LocalSwopConfig {
     clientId?: string;
@@ -107,11 +113,7 @@ export function getSwopBaseUrl(): string {
         (typeof w.sSwopBaseUrl === "string" && w.sSwopBaseUrl) ||
         settings.swopBaseUrl ||
         "";
-    var s = String(u).trim();
-    while (s.length > 0 && s.charAt(s.length - 1) === "/") {
-        s = s.slice(0, -1);
-    }
-    return s;
+    return String(u).trim().replace(/\/+$/, "");
 }
 
 function persistSwopBaseUrl(url: string): void {
@@ -165,10 +167,7 @@ export function applyLocalSwopConfig(done?: () => void): void {
 }
 
 function swopHeaders(clientId: string): Record<string, string> {
-    return {
-        "Content-Type": "application/json",
-        [wire.swopClientHeader]: clientId,
-    };
+    return { [wire.swopClientHeader]: clientId };
 }
 
 function authErrorMessage(status: number, body: any): string {
@@ -185,9 +184,7 @@ function authErrorMessage(status: number, body: any): string {
             " (" +
             detail +
             "). " +
-            _("Allowlist this Device ID") +
-            ": " +
-            ensureDeviceClientId()
+            _("Check this server's SWOP configuration.")
         );
     }
     return _("Remote text entry error") + ": " + detail;
@@ -200,30 +197,27 @@ function authErrorMessage(status: number, body: any): string {
 export function swopLoadValue(): void {
     var base = getSwopBaseUrl();
     if (!base) {
-        alert(
-            _("Remote text entry not configured") ||
-                "Remote text entry not configured"
-        );
+        alert(_("Remote text entry not configured"));
         return;
     }
 
     var clientId = ensureDeviceClientId();
-    if (!clientId) {
-        alert(
-            _(
-                "Remote text entry requires a Device ID. Ask the server operator to provision one."
-            )
-        );
+    // Legacy TV engines can obtain a secure ID from the trusted installation.
+    if (!clientId && base !== "/swop") {
+        alert(_("Remote text entry needs a Device ID."));
         return;
     }
     var cancelled = false;
     var code = "";
+    // Read access is scoped to this session and is never stored or put in the QR.
+    var sessionToken = "";
     var pollTimer: any = null;
     var w = window as any;
     var prevEditKey = w.editKey;
 
     function cleanup(): void {
         cancelled = true;
+        sessionToken = "";
         if (pollTimer) clearTimeout(pollTimer);
         clearTimeout(sessionTimer);
         if (prevEditKey) w.editKey = prevEditKey;
@@ -258,6 +252,7 @@ export function swopLoadValue(): void {
 
     function returnToVkb(value: string): void {
         cancelled = true;
+        sessionToken = "";
         if (pollTimer) clearTimeout(pollTimer);
         clearTimeout(sessionTimer);
         w.editvar = value == null ? "" : String(value);
@@ -269,6 +264,12 @@ export function swopLoadValue(): void {
         if (cancelled || !code) return;
         $.ajax({
             cache: false,
+            contentType: "application/json",
+            data: JSON.stringify({
+                clientId: clientId,
+                code: code,
+                sessionToken: sessionToken,
+            }),
             dataType: "json",
             error: function (jqXHR: any) {
                 if (cancelled) return;
@@ -293,17 +294,14 @@ export function swopLoadValue(): void {
                 } else if (st === "ready") {
                     returnToVkb(data.value != null ? String(data.value) : "");
                 } else if (st === "gone") {
-                    showMsg(
-                        _("Remote session expired") || "Session expired",
-                        true
-                    );
+                    showMsg(_("Remote session expired"), true);
                 } else {
                     pollTimer = setTimeout(poll, POLL_MS);
                 }
             },
             timeout: 10000,
-            type: "GET",
-            url: base + wire.swopValuePath + "?c=" + encodeURIComponent(code),
+            type: "POST",
+            url: base + wire.swopValuePath,
         });
     }
 
@@ -315,7 +313,7 @@ export function swopLoadValue(): void {
             "Close"
         );
 
-    showMsg((_("Send request") || "Send request") + "...");
+    showMsg(_("Send request") + "...");
     w.editKey = function (key: number): boolean {
         if (key === keys.RETURN || key === keys.EXIT) {
             cleanup();
@@ -328,14 +326,17 @@ export function swopLoadValue(): void {
 
     var caption =
         (typeof w.editCaption === "string" && w.editCaption) ||
-        _("Enter value") ||
-        "Enter value";
+        _("Enter value");
     var draft = typeof w.editvar === "string" ? w.editvar : "";
 
     $.ajax({
         cache: false,
         contentType: "application/json",
-        data: JSON.stringify({ caption: caption, draft: draft }),
+        data: JSON.stringify({
+            caption: caption,
+            clientId: clientId,
+            draft: draft,
+        }),
         dataType: "json",
         error: function (jqXHR: any) {
             var body: any = null;
@@ -352,13 +353,25 @@ export function swopLoadValue(): void {
             );
         },
         headers: swopHeaders(clientId),
-        success: function (data: SessionResponse) {
+        success: function (data: AuthenticatedSessionResponse) {
             if (cancelled) return;
             if (!data || !data.code) {
-                showMsg(_("Error Code!") || "Error Code!", true);
+                showMsg(_("Error Code!"), true);
+                return;
+            }
+            if (
+                !clientId &&
+                data.clientId &&
+                validSwopClientId(data.clientId)
+            ) {
+                clientId = ensureDeviceClientId(data.clientId);
+            }
+            if (!clientId) {
+                showMsg(_("Remote text entry returned no Device ID"), true);
                 return;
             }
             code = String(data.code);
+            sessionToken = data.sessionToken ? String(data.sessionToken) : "";
             var url =
                 (data.url && String(data.url)) ||
                 base + "/?c=" + encodeURIComponent(code);
@@ -370,9 +383,9 @@ export function swopLoadValue(): void {
                 qrSvg = "";
             }
             showMsg(
-                (_("Request sended!") || "Request sent!") +
+                _("Request sended!") +
                     "<br/><br/>" +
-                    (_("For enter value open") || "Open") +
+                    _("For enter value open") +
                     '<br/><span style="font-size:larger;word-break:break-all;color:' +
                     color +
                     '">' +
@@ -383,7 +396,7 @@ export function swopLoadValue(): void {
                           qrSvg +
                           "</div><br/><br/>"
                         : "") +
-                    (_("and enter code") || "code") +
+                    _("and enter code") +
                     ' <span style="font-size:200%;color:' +
                     color +
                     '">' +

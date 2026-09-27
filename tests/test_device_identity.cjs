@@ -72,6 +72,9 @@ function fixture(options = {}) {
     const requests = [];
     const alerts = [];
     const rngCalls = [];
+    const timers = [];
+    const messages = [];
+    const qrUrls = [];
     const ui = {
         find() {
             return this;
@@ -79,13 +82,15 @@ function fixture(options = {}) {
         hide() {
             return this;
         },
-        html() {
+        html(value) {
+            messages.push(value);
             return this;
         },
         show() {
             return this;
         },
-        text() {
+        text(value) {
+            messages.push(value);
             return this;
         },
     };
@@ -99,25 +104,35 @@ function fixture(options = {}) {
         alerts,
         clearTimeout() {},
         console,
+        curColor: "gold",
         document: {
             getElementById() {
                 return null;
             },
         },
+        keys: { EXIT: 27, RETURN: 8 },
         localStorage: {
             getItem: (key) => storage[key] || null,
             setItem: (key, value) => {
                 storage[key] = value;
             },
         },
+        makeQrSvg(url) {
+            qrUrls.push(url);
+            return "<svg></svg>";
+        },
+        messages,
+        qrUrls,
         requests,
         rngCalls,
         saveSettings() {},
-        setTimeout() {
-            return 1;
+        setTimeout(callback, delay) {
+            timers.push({ callback, delay });
+            return timers.length;
         },
         settings: { deviceUuid: "", swopBaseUrl: "https://swop.test" },
         storage,
+        timers,
     });
     c.window = c;
     if (options.storageBlocked) {
@@ -255,4 +270,101 @@ for (const rng of [undefined, "crypto", "msCrypto"]) {
 }
 console.log(
     "PASS: secure/provisioned identity remains usable when storage access throws"
+);
+
+{
+    const c = fixture({ rng: "crypto" });
+    c.applyLocalSwopConfig();
+    c.requests[0].success({ swopBaseUrl: "/swop/" });
+    assert.equal(
+        c.getSwopBaseUrl(),
+        "/swop",
+        "Server relay replaces a saved direct Worker URL"
+    );
+    assert.equal(
+        c.ensureDeviceClientId(),
+        expected,
+        "Installation config keeps each device identity"
+    );
+    c.swopLoadValue();
+    const session = c.requests[1];
+    assert.equal(session.url, "/swop/session");
+    assert.equal(
+        session.headers.Authorization,
+        undefined,
+        "Browser never has installation credentials"
+    );
+    const phoneUrl = "https://swop.test/?c=ABCDEF&t=phone-write-capability";
+    session.success({
+        code: "ABCDEF",
+        sessionToken: "private-read-capability",
+        url: phoneUrl,
+    });
+    assert.deepEqual(
+        c.qrUrls,
+        [phoneUrl],
+        "Preserve phone write token in QR URL"
+    );
+    assert(
+        !c.messages.join(" ").includes("private-read-capability"),
+        "Poll token must not be displayed"
+    );
+    assert(
+        !JSON.stringify(c.storage).includes("private-read-capability"),
+        "Poll token must not be persisted"
+    );
+    c.timers.find((timer) => timer.delay === 3000).callback();
+    const poll = c.requests[2];
+    assert.equal(poll.url, "/swop/val");
+    assert.equal(poll.type, "POST");
+    assert.deepEqual(JSON.parse(poll.data), {
+        clientId: expected,
+        code: "ABCDEF",
+        sessionToken: "private-read-capability",
+    });
+    assert.equal(poll.headers["X-Swop-Client-Id"], expected);
+    poll.success({ status: "ready", value: "https://playlist.test/list.m3u" });
+    assert.equal(c.editvar, "https://playlist.test/list.m3u");
+}
+
+{
+    const c = fixture({ rng: "crypto" });
+    c.swopLoadValue();
+    c.requests[0].error({
+        responseJSON: { error: "installation origin denied" },
+        status: 403,
+    });
+    assert(
+        c.messages.join(" ").includes("Check this server's SWOP configuration.")
+    );
+    assert(!c.messages.join(" ").includes("Allowlist this Device ID"));
+}
+console.log(
+    "PASS: installation relay config, private per-session polling, unchanged phone QR and installation errors"
+);
+
+{
+    const c = fixture({ noTypedArrays: true });
+    c.applyLocalSwopConfig();
+    c.requests[0].success({ swopBaseUrl: "/swop" });
+    c.swopLoadValue();
+    const session = c.requests[1];
+    assert.equal(session.url, "/swop/session");
+    assert.equal(session.headers["X-Swop-Client-Id"], "");
+    session.success({
+        clientId: "dev_server_generated_secure_id",
+        code: "ABCDEF",
+        sessionToken: "server-read-token",
+        url: "https://swop.test/?c=ABCDEF&t=server-write-token",
+    });
+    assert.equal(c.storage.ott_device_uuid, "dev_server_generated_secure_id");
+    c.timers.find((timer) => timer.delay === 3000).callback();
+    assert.equal(
+        JSON.parse(c.requests[2].data).clientId,
+        "dev_server_generated_secure_id"
+    );
+    assert.equal(c.alerts.length, 0);
+}
+console.log(
+    "PASS: installation relay provisions legacy TVs without browser crypto"
 );

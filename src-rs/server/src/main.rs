@@ -1,5 +1,7 @@
 mod debug_api;
+mod msx;
 mod stalker_api;
+mod swop;
 mod vportal_api;
 
 use anyhow::{bail, Context};
@@ -195,7 +197,7 @@ async fn serve_listeners(
     for listener in listeners.http {
         let address = listener.local_addr()?;
         println!("ottplay-server: http://{address}");
-        let app = app.clone();
+        let app = app.clone().layer(axum::Extension(msx::Scheme("http")));
         tasks.spawn(async move {
             axum::serve(listener, app)
                 .await
@@ -205,7 +207,7 @@ async fn serve_listeners(
     for listener in listeners.https {
         let address = listener.local_addr()?;
         println!("ottplay-server: https://{address}");
-        let app = app.clone();
+        let app = app.clone().layer(axum::Extension(msx::Scheme("https")));
         let config = tls_config.clone().context("missing TLS configuration")?;
         tasks.spawn(async move {
             serve_tls(listener, app, config)
@@ -264,11 +266,14 @@ async fn main() -> anyhow::Result<()> {
         .merge(debug_api::routes())
         .merge(vportal_api::routes())
         .merge(stalker_api::routes())
+        .merge(msx::routes())
         .merge(device_entry_routes(std::path::Path::new(".")))
         .merge(player_asset_routes(std::path::Path::new(".")))
         // Operator-local overrides (gitignored); 404 if directory missing
         .nest_service("/local", ServeDir::new("local"))
-        .layer(cors);
+        .layer(cors)
+        // Installation-authenticated relay must not inherit permissive asset CORS.
+        .merge(swop::routes_from_env()?);
 
     serve_listeners(listeners, app, tls_config).await
 }
