@@ -1426,6 +1426,8 @@ export function stbPlay(url: string, position?: number): void {
     getCoreMediaBackend().open({ position: position, url: url });
 }
 export function stbStop(): void {
+    var media = (window as any).__ottMedia;
+    if (media && media.cancelAuto) media.cancelAuto();
     if ((window as any).__ottClassicPlayback)
         (window as any).__ottClassicPlayback.cancel();
     getCoreMediaBackend().stop();
@@ -2515,13 +2517,17 @@ export function getCoreMediaBackend(): any {
             duration: number
         ) {
             var playback = (window as any).__ottClassicPlayback;
-            if (playback)
+            if (playback) {
                 playback.command({
                     duration: duration,
                     generation: context.generation,
                     position: position,
-                    type: type,
+                    type: type === "ended" ? "stop" : type,
                 });
+                var media = (window as any).__ottMedia;
+                if (type === "ended" && context.kind === "vod" && media)
+                    media.ended(context.generation + 1);
+            }
         },
         open: openCoreEngineLease,
         resolve: function (url: string, done: (url: string | null) => void) {

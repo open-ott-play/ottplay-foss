@@ -6,6 +6,254 @@ const { test, expect } = require("@playwright/test");
 
 const mediaRoot = path.resolve(__dirname, "../fixtures/media-runtime");
 
+async function episodeFixture(page, context, baseURL, holdNext = false) {
+    const origin = new URL(baseURL).origin;
+    const errors = [];
+    const resolutions = [];
+    const manifests = [];
+    let releaseNext;
+    const nextResponse = new Promise((resolve) => {
+        releaseNext = resolve;
+    });
+    page.on("pageerror", (error) => errors.push(error.message));
+    await context.route("**/*", async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        if (url.origin === origin && url.pathname === "/vportal/api") {
+            const { params } = request.postDataJSON();
+            if (params.cmd === "play") {
+                const revision = resolutions.push(params.id);
+                if (holdNext && revision === 2) await nextResponse;
+                const media = (quality) =>
+                    "https://media.test/" +
+                    params.id +
+                    "/" +
+                    quality +
+                    "/index.m3u8?revision=" +
+                    revision;
+                return route.fulfill({
+                    json: {
+                        url: media("SD"),
+                        variants: { HD: media("HD"), SD: media("SD") },
+                    },
+                });
+            }
+            return route.fulfill({
+                json: {
+                    items: [1, 2].map((id) => ({
+                        request: { cmd: "play", id },
+                        title: "Episode " + id,
+                        type: "stream",
+                    })),
+                    title: "Fixture series",
+                    type: "multistream",
+                },
+            });
+        }
+        if (
+            url.hostname === "media.test" ||
+            url.pathname.startsWith("/demo/")
+        ) {
+            const segment = url.pathname.endsWith(".ts");
+            if (url.hostname === "media.test" && !segment)
+                manifests.push(url.pathname + url.search);
+            return route.fulfill({
+                body: fs.readFileSync(
+                    path.join(
+                        mediaRoot,
+                        segment ? "segment00.ts" : "index.m3u8"
+                    )
+                ),
+                contentType: segment
+                    ? "video/mp2t"
+                    : "application/vnd.apple.mpegurl",
+                headers: { "Access-Control-Allow-Origin": "*" },
+            });
+        }
+        return url.origin === origin
+            ? route.continue()
+            : route.abort("blockedbyclient");
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(() => {
+        localStorage.setItem("ottplaylang", "_eng");
+        localStorage.setItem("ottplayprov", "demo");
+    });
+    await page.goto(process.env.OTTP_EPISODE_ENTRY || "/f/pc/");
+    await page.waitForFunction(
+        () => window.__ottDevice && !document.body.classList.contains("booting")
+    );
+    await page.evaluate(() => {
+        window.stbStop();
+        window.__ottMedia.cancel();
+        window.host = location.origin;
+        window.p_pref = "episode-browser-fixture";
+        window.m3uArr = null;
+        window.ottplayDemoActive = false;
+        window.sFavorites = 1;
+        window.sMedCount = 2;
+        window.parentPIN = "";
+        window.settings.stopPlay = true;
+        const saved = {};
+        window.providerGetItem = (key) => saved[key] || null;
+        window.providerSetItem = (key, value) => {
+            saved[key] = value;
+        };
+        const client = window.createVPortalClient(
+            "portal::[key:SYNTHETIC_FIXTURE_KEY]http://portal.invalid/api/v1/",
+            { sourceId: "browser-fixture", title: "VPortal" }
+        );
+        window.providerMediaClient = client;
+        window.getMediaArray = client.load;
+        window.playMedia = client.play;
+        const sourceId = window.__ottSourceIdentity.media(window);
+        // An unfinished second episode must not interrupt automatic playback
+        // with the manual resume prompt or start from its saved position.
+        saved["mediaJournal.v1:" + sourceId] = JSON.stringify({
+            favorites: [],
+            history: [
+                {
+                    itemId: 'request:{"cmd":"play","id":2}',
+                    payload: { title: "Fixture series - Episode 2" },
+                    position: 90,
+                    sourceId,
+                },
+            ],
+            sourceId,
+            version: 1,
+        });
+        window.__episodeEvents = [];
+        document.querySelector("video").addEventListener("ended", (event) => {
+            window.__episodeEvents.push({ trusted: event.isTrusted });
+        });
+        window.__episodePickers = 0;
+        const showSelectBox = window.showSelectBox;
+        window.showSelectBox = function (...args) {
+            window.__episodePickers++;
+            return showSelectBox.apply(this, args);
+        };
+        window.__ottMedia.open("");
+    });
+    await page.waitForFunction(() => {
+        const view = window.__ottMedia.snapshot();
+        return (
+            !view.loading &&
+            view.frame?.items.filter((item) => item.payload.__ottMediaSequence)
+                .length === 2
+        );
+    });
+    expect(
+        await page.evaluate(() =>
+            window.__ottMedia
+                .snapshot()
+                .frame.items.filter((item) => item.payload.__ottMediaSequence)
+                .map((item) => ({
+                    sequence: item.payload.__ottMediaSequence,
+                    title: item.title,
+                }))
+        )
+    ).toEqual([
+        { sequence: true, title: "Fixture series - Episode 1" },
+        { sequence: true, title: "Fixture series - Episode 2" },
+    ]);
+    await page.evaluate(() => window.__ottMedia.select(0));
+    await expect(page.locator("#numprog")).toContainText("HD");
+    await page.evaluate(() => {
+        window._doKey(window.keys.DOWN);
+        window._doKey(window.keys.ENTER);
+    });
+    await pauseEpisode(page, 1);
+    return { errors, manifests, releaseNext, resolutions };
+}
+
+async function pauseEpisode(page, id) {
+    await page.waitForFunction((episode) => {
+        const state = window.__ottClassicPlayback.snapshot();
+        const video = document.querySelector("video");
+        if (
+            state.phase !== "playing" ||
+            state.target?.channelId !==
+                'request:{"cmd":"play","id":' + episode + "}" ||
+            video.readyState < 2
+        )
+            return false;
+        window.stbPause();
+        return true;
+    }, id);
+    await expect(page.locator("#dialogbox")).toBeHidden();
+    await expect(page.locator("#numprog")).toBeHidden();
+}
+
+async function finishEpisode(page) {
+    await page.evaluate(() => {
+        const video = document.querySelector("video");
+        if (!Number.isFinite(video.duration))
+            throw new Error("Missing HLS duration");
+        window.stbSetPosTime(video.duration - 0.15);
+        window.stbContinue();
+    });
+}
+
+test("natural episode completion resolves the next episode and loops with fresh URLs", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await episodeFixture(page, context, baseURL);
+    await finishEpisode(page);
+    await pauseEpisode(page, 2);
+    expect(fixture.resolutions).toEqual([1, 2]);
+    expect(
+        await page.evaluate(() => document.querySelector("video").currentTime)
+    ).toBeLessThan(1);
+    await finishEpisode(page);
+    await pauseEpisode(page, 1);
+    expect(fixture.resolutions).toEqual([1, 2, 1]);
+    expect(fixture.manifests).toEqual([
+        "/1/HD/index.m3u8?revision=1",
+        "/2/HD/index.m3u8?revision=2",
+        "/1/HD/index.m3u8?revision=3",
+    ]);
+    expect(await page.evaluate(() => window.__episodePickers)).toBe(1);
+    expect(await page.evaluate(() => window.__episodeEvents)).toEqual([
+        { trusted: true },
+        { trusted: true },
+    ]);
+    expect(fixture.errors).toEqual([]);
+});
+
+test("manual Stop cancels the pending automatic episode resolution", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await episodeFixture(page, context, baseURL, true);
+    await finishEpisode(page);
+    await expect.poll(() => fixture.resolutions).toEqual([1, 2]);
+    const cancelled = page.waitForEvent("requestfailed", {
+        predicate: (request) =>
+            new URL(request.url()).pathname === "/vportal/api" &&
+            request.postDataJSON().params.id === 2,
+    });
+    await page.evaluate(() => window.stbStop());
+    await cancelled;
+    fixture.releaseNext();
+    await page.evaluate(
+        () =>
+            new Promise((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(resolve))
+            )
+    );
+    expect(
+        await page.evaluate(() => window.__ottClassicPlayback.snapshot().phase)
+    ).toBe("stopped");
+    expect(fixture.manifests).toEqual(["/1/HD/index.m3u8?revision=1"]);
+    expect(await page.evaluate(() => window.__episodeEvents)).toEqual([
+        { trusted: true },
+    ]);
+    expect(fixture.errors).toEqual([]);
+});
+
 for (const [guideIds, names] of [
     [
         ["one", "two", "three"],
