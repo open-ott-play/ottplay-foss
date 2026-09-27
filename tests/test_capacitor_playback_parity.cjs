@@ -204,6 +204,47 @@ function checkNativeMetadata() {
     for (const platform of ["android", "ios", "tauri"]) {
         {
             const f = metadataFixture(platform);
+            const live = f.play();
+            let movie = {
+                payload: {
+                    logo_30x30: "https://example.invalid/movie.png",
+                    title: "Selected movie",
+                },
+            };
+            f.w.__ottMedia = { current: () => movie };
+            f.w.playType = -1;
+            const expected = {
+                ...live,
+                artworkUrl: "https://example.invalid/movie.png",
+                title: "Selected movie",
+            };
+            assert.deepEqual(f.play(), expected);
+            f.values.channelText = "Late TV programme";
+            f.values.position = 90;
+            assert.deepEqual(f.update(), { ...expected, positionSec: 90 });
+            movie = { payload: { title: "Movie without poster" } };
+            const withoutPoster = {
+                ...expected,
+                positionSec: 90,
+                title: movie.payload.title,
+            };
+            delete withoutPoster.artworkUrl;
+            assert.deepEqual(f.play(), withoutPoster);
+            movie = null;
+            assert.deepEqual(f.update(), {
+                ...withoutPoster,
+                title: "OTT-play FOSS",
+            });
+            f.w.playType = 0;
+            assert.deepEqual(f.play(), {
+                artist: "Now playing",
+                artworkUrl: live.artworkUrl,
+                seekable: false,
+                title: "Late TV programme",
+            });
+        }
+        {
+            const f = metadataFixture(platform);
             const first = f.play();
             assert.deepEqual(first, {
                 artist: "Now playing",
