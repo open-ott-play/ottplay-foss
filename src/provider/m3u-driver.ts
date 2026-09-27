@@ -351,6 +351,9 @@ function createM3uProviderDriver(
         }
         ports.progress(kind === "guide" ? "epgs..." : "logos...");
         if (!scope.active() || !current(token)) return;
+        var companion =
+            (kind === "guide" ? plan.guideServer : plan.logoServer) ||
+            defaultCompanion();
         transport.send(
             scope,
             {
@@ -366,8 +369,7 @@ function createM3uProviderDriver(
                 timeout: 120000,
                 type: "POST",
                 url:
-                    ((kind === "guide" ? plan.guideServer : plan.logoServer) ||
-                        defaultCompanion()) +
+                    companion +
                     "/m3u/match-" +
                     (kind === "guide" ? "channels" : "logos"),
             },
@@ -383,6 +385,20 @@ function createM3uProviderDriver(
                         var item = line.split("~");
                         if (item.length !== 2) return;
                         var base = item[1] + "epg/";
+                        // Relative sources belong to the responding companion,
+                        // which may be hosted separately from the player.
+                        if (
+                            /^https?:\/\//i.test(companion) &&
+                            !/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(base)
+                        )
+                            try {
+                                base = new URL(
+                                    base,
+                                    companion.replace(/\/?$/, "/")
+                                ).href;
+                            } catch (_) {
+                                // Keep the existing request/error path for invalid URLs.
+                            }
                         if (!ports.m3u.crossOrigin())
                             base = base.replace(
                                 "//epg.ottp.eu.org/",
