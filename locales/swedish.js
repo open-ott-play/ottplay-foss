@@ -352,6 +352,7 @@ var keyStrings = {
     Favorites: "Favoriter",
     "File selection is not supported on this device":
         "Filval stöds inte på den här enheten",
+    Filter: "Filter",
     Filters: "Filter",
     "First Run Setup": "Förstagångsinställning",
     "Font type": "Typsnitt",

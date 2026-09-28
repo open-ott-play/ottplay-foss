@@ -343,6 +343,7 @@ var keyStrings = {
     Favorites: "מועדפים",
     "File selection is not supported on this device":
         "בחירת קבצים אינה נתמכת במכשיר זה",
+    Filter: "מסנן",
     Filters: "מסננים",
     "First Run Setup": "הגדרות הפעלה ראשונה",
     "Font type": "סוג גופן",

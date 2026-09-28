@@ -352,6 +352,7 @@ var keyStrings = {
     Favorites: "Yêu thích",
     "File selection is not supported on this device":
         "Thiết bị này không hỗ trợ chọn tệp",
+    Filter: "Bộ lọc",
     Filters: "Bộ lọc",
     "First Run Setup": "Thiết lập lần đầu",
     "Font type": "Kiểu chữ",

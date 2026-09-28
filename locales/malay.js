@@ -351,6 +351,7 @@ var keyStrings = {
     Favorites: "Kegemaran",
     "File selection is not supported on this device":
         "Pemilihan fail tidak disokong pada peranti ini",
+    Filter: "Penapis",
     Filters: "Penapis",
     "First Run Setup": "Persediaan kali pertama",
     "Font type": "Jenis fon",

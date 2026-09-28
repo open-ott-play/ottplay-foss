@@ -3523,9 +3523,10 @@ function showMediaList1(view?: any): void {
     var captionEl = document.getElementById("listCaption");
     if (captionEl)
         captionEl.textContent =
-            (w.mediaNames || []).join(" / ") ||
-            w.mediaName ||
-            w._("Media Library");
+            ((w.mediaNames || []).join(" / ") ||
+                w.mediaName ||
+                w._("Media Library")) +
+            (view.filter ? " — " + w._("Filter") + ": " + view.filter : "");
     var detailEl = document.getElementById("listDetail");
     if (detailEl) detailEl.innerHTML = "";
     var footerElement = document.getElementById("listPodval");
@@ -3552,6 +3553,9 @@ function showMediaList1(view?: any): void {
                             : ""
                   )) +
             w.renderButtonHint(w.keys.N2, w.strInfo, "Description", "2") +
+            (frame && frame.route.kind !== "variants"
+                ? w.renderButtonHint(w.keys.BLUE, "", "Filter")
+                : "") +
             (data.length && w.sFavorites !== -1 && depth > 1
                 ? w.renderButtonHint(
                       w.keys.GREEN,

@@ -355,6 +355,7 @@ var keyStrings = {
     Favorites: "Kedvencek",
     "File selection is not supported on this device":
         "Ez az eszköz nem támogatja a fájlkiválasztást",
+    Filter: "Szűrő",
     Filters: "Szűrők",
     "First Run Setup": "Első indítás beállításai",
     "Font type": "Betűtípus",

@@ -352,6 +352,7 @@ var keyStrings = {
     Favorites: "Избранные",
     "File selection is not supported on this device":
         "Выбор файла не поддерживается на этом устройстве",
+    Filter: "Фильтр",
     Filters: "Фильтры",
     "First Run Setup": "Первоначальная настройка",
     "Font type": "Шрифт",

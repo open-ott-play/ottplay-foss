@@ -357,6 +357,7 @@ var keyStrings = {
     Favorites: "Favorieten",
     "File selection is not supported on this device":
         "Bestandsselectie wordt niet ondersteund op dit apparaat",
+    Filter: "Filter",
     Filters: "Filters",
     "First Run Setup": "Eerste configuratie",
     "Font type": "Lettertype",

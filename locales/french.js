@@ -365,6 +365,7 @@ var keyStrings = {
     Favorites: "Favoris",
     "File selection is not supported on this device":
         "La sélection de fichiers n'est pas prise en charge sur cet appareil",
+    Filter: "Filtre",
     Filters: "Filtres",
     "First Run Setup": "Configuration initiale",
     "Font type": "Police de caractères",
