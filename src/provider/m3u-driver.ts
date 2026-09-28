@@ -276,7 +276,9 @@ function createM3uProviderDriver(
                     ? xmltvUrls(custom, nativeDefaults, plan.aliases)
                     : nativeDefaults.slice();
                 row.epg_external = !!(
-                    plan.guideServer && plan.guideServer !== defaultCompanion()
+                    !hosted() &&
+                    plan.guideServer &&
+                    plan.guideServer !== defaultCompanion()
                 );
             }
             var titleHash = entry.titleHashInput
@@ -339,6 +341,7 @@ function createM3uProviderDriver(
     ): void {
         var lines: string[] = plan[kind];
         if (
+            hosted() ||
             !catalog.ids.length ||
             !lines.length ||
             !scope.active() ||
@@ -604,7 +607,9 @@ function createM3uProviderDriver(
                 guideSources = plan.sources;
                 complete();
                 var bridge = hosted();
-                if (bridge && !plan.guideServer) {
+                if (bridge) {
+                    // Hosted installations own guide processing even when an old
+                    // playlist advertises !epg-server or !ico-server companions.
                     if (!scope.active() || !current(token)) return;
                     var entries = catalog.ids
                         .filter(function (id) {
@@ -640,8 +645,6 @@ function createM3uProviderDriver(
                                     ports.progress(message);
                             }
                         );
-                    if (plan.logoServer)
-                        matchRequest(scope, token, plan, "logo");
                     return;
                 }
                 matchRequest(scope, token, plan, "guide");
