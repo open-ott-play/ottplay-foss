@@ -96,9 +96,10 @@ function copyRuntimeAssets(
             return (
                 info.isDirectory() ||
                 (info.isFile() &&
-                    /\.(html|js|css|json|webmanifest|txt|png|gif|ico|jpe?g|svg|ttf|otf|eot|woff2?)$/i.test(
+                    (/\.(html|js|css|json|webmanifest|txt|png|gif|ico|jpe?g|svg|ttf|otf|eot|woff2?)$/i.test(
                         name
-                    ))
+                    ) ||
+                        /^(?:pako|sax)-LICENSE$/.test(name)))
             );
         },
         recursive: true,

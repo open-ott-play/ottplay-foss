@@ -111,6 +111,8 @@ try {
         "dist/index.html",
         "dist/player.js",
         "dist/hosted/epg-worker.js",
+        "dist/hosted/pako-LICENSE",
+        "dist/hosted/sax-LICENSE",
         "dist/swop-input/index.html",
         "dist/swop-input/app.js",
         "stage/devices/logs/previous-build.json",
@@ -151,6 +153,8 @@ try {
     }
     for (const name of [
         "hosted/epg-worker.js",
+        "hosted/pako-LICENSE",
+        "hosted/sax-LICENSE",
         "swop-input/index.html",
         "swop-input/app.js",
     ]) {
