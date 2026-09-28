@@ -304,7 +304,13 @@ async fn refresh_epg_snapshot(
     build: impl FnOnce() -> anyhow::Result<EpgSnapshot> + Send + 'static,
 ) -> anyhow::Result<()> {
     let fresh = tokio::task::spawn_blocking(build).await??;
-    *cache.write().await = Arc::new(fresh);
+    let previous = {
+        let mut current = cache.write().await;
+        std::mem::replace(&mut *current, Arc::new(fresh))
+    };
+    // A full guide contains hundreds of thousands of owned strings. Releasing
+    // our old generation must not hold the publication lock or an async worker.
+    tokio::task::spawn_blocking(move || drop(previous)).await?;
     Ok(())
 }
 
@@ -774,14 +780,18 @@ async fn epg_handler(
             .unwrap_or(0),
     };
     let archive_hours: i64 = params.hours.map(|h| h as i64).unwrap_or(0);
-    let result = ottplay_core::get_epg_slice(
-        &snapshot.cache,
-        &hash,
-        &channel_id,
-        time_shift,
-        archive_hours,
-    )
-    .await;
+    let result = tokio::task::spawn_blocking(move || {
+        ottplay_core::get_epg_slice_with_index(
+            &snapshot.cache,
+            &snapshot.index,
+            &hash,
+            &channel_id,
+            time_shift,
+            archive_hours,
+        )
+    })
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     result
         .map(Json)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)

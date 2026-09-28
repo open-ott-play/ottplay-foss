@@ -57,8 +57,8 @@ pub fn match_channels_with_index(
                     score: 0.0,
                 });
             }
-            let time_shift = xmltv::extract_time_shift(&ch.name)?;
-            let base_name = xmltv::strip_time_shift(&ch.name)?;
+            let time_shift = index.extract_time_shift(&ch.name)?;
+            let base_name = index.strip_time_shift(&ch.name)?;
             Ok(match xmltv::match_in_index(&base_name, index)? {
                 Some((xmltv_id, score)) => {
                     let epg_hash = compute_epg_hash(&format!("{xmltv_id}|{time_shift}"));
@@ -118,7 +118,7 @@ pub fn match_logos_with_index(
             let logo_url = if xmltv_ch.is_empty() {
                 format!("/logo/{}.svg?ch={}", ch.id, urlencoding::encode(&ch.name))
             } else {
-                let base_name = xmltv::strip_time_shift(&ch.name)?;
+                let base_name = index.strip_time_shift(&ch.name)?;
                 match xmltv::match_in_index(&base_name, index)? {
                     Some((xmltv_id, _score)) => xmltv_ch
                         .get(&xmltv_id)
@@ -246,8 +246,8 @@ pub fn match_channels_text_with_index(
         };
 
         if !xmltv_ch.is_empty() && !ch_name.is_empty() {
-            let time_shift = xmltv::extract_time_shift(&ch_name)?;
-            let base_name = xmltv::strip_time_shift(&ch_name)?;
+            let time_shift = index.extract_time_shift(&ch_name)?;
+            let base_name = index.strip_time_shift(&ch_name)?;
             if let Some((xmltv_id, _score)) = xmltv::match_in_index(&base_name, index)? {
                 let epg_hash = compute_epg_hash(&format!("{xmltv_id}|{time_shift}"));
                 epg_to_xmltv.insert(epg_hash.clone(), xmltv_id);
@@ -294,7 +294,7 @@ pub fn match_logos_text_with_index(
         let logo_url = if xmltv_ch.is_empty() || ch_name.is_empty() {
             format!("/logo/{}.svg?ch={}", ch_id, urlencoding::encode(&ch_name))
         } else {
-            let base_name = xmltv::strip_time_shift(&ch_name)?;
+            let base_name = index.strip_time_shift(&ch_name)?;
             match xmltv::match_in_index(&base_name, index)? {
                 Some((xmltv_id, _)) => xmltv_ch
                     .get(&xmltv_id)

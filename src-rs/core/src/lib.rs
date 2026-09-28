@@ -104,10 +104,38 @@ pub async fn get_epg_slice(
     time_shift_hours: i64,
     archive_hours: i64,
 ) -> anyhow::Result<JsonValue> {
+    get_epg_slice_using(
+        cache, channel_id, time_shift_hours, archive_hours, shared_guide::slice,
+    )
+}
+
+/// Return a slice using the snapshot's existing shared-core context.
+/// This synchronous operation belongs on a blocking worker in async servers.
+pub fn get_epg_slice_with_index(
+    cache: &xmltv::XmltvCache,
+    index: &xmltv::MatchIndex,
+    _hash: &str,
+    channel_id: &str,
+    time_shift_hours: i64,
+    archive_hours: i64,
+) -> anyhow::Result<JsonValue> {
+    get_epg_slice_using(
+        cache, channel_id, time_shift_hours, archive_hours,
+        |times, now, archive, shift| index.slice(times, now, archive, shift),
+    )
+}
+
+fn get_epg_slice_using(
+    cache: &xmltv::XmltvCache,
+    channel_id: &str,
+    time_shift_hours: i64,
+    archive_hours: i64,
+    select: impl FnOnce(Vec<Vec<f64>>, i64, i64, i64) -> anyhow::Result<Vec<Vec<f64>>>,
+) -> anyhow::Result<JsonValue> {
     let now = chrono::Utc::now().timestamp();
     let programs = cache.programs.get(channel_id).map(Vec::as_slice).unwrap_or(&[]);
     let times = programs.iter().map(|p| vec![p.start as f64, p.stop as f64]).collect();
-    let rows = shared_guide::slice(times, now, archive_hours, time_shift_hours)?;
+    let rows = select(times, now, archive_hours, time_shift_hours)?;
     let epg_data: Vec<JsonValue> = rows.into_iter().map(|row| {
         let p = &programs[row[0] as usize];
         serde_json::json!({ "time": row[1] as i64, "time_to": row[2] as i64,
@@ -196,6 +224,24 @@ mod tests {
             programs,
             fetched_at: now as u64,
         }
+    }
+
+    #[tokio::test]
+    async fn indexed_slice_preserves_archive_shift_and_missing_channel() -> anyhow::Result<()> {
+        let cache = sample_cache(chrono::Utc::now().timestamp());
+        let index = xmltv::build_match_index(&cache.channels)?;
+        for channel in ["ch1", "missing"] {
+            for archive in [0, 24, 144] {
+                for shift in [-12, 0, 2, 24] {
+                    assert_eq!(
+                        get_epg_slice_with_index(&cache, &index, "", channel, shift, archive)?,
+                        get_epg_slice(&cache, "", channel, shift, archive).await?,
+                        "channel={channel}, archive={archive}, shift={shift}"
+                    );
+                }
+            }
+        }
+        Ok(())
     }
 
     #[tokio::test]

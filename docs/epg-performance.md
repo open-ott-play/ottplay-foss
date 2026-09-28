@@ -36,6 +36,15 @@ CPU work runs on blocking workers. The same index serves typed and legacy text
 matching, logos, and programme lookup by name. Existing standalone matching APIs
 remain available for other clients.
 
+Name/shift primitives and programme slicing also use that index's existing core
+context. Otherwise a fresh blocking worker would still initialize its separate
+thread-local scalar VM on its first request. Parallel API tests verify that the
+indexed request paths leave that scalar slot uninitialized.
+
+Refresh releases its reference to the previous generation on a blocking worker,
+after releasing the publication lock. Freeing a large guide is substantial work
+too, even when the new generation has already been built.
+
 ## Parser CPU work
 
 Shared XMLTV date conversion formerly used general integer parsing on already
@@ -43,6 +52,11 @@ validated ASCII fields, then Kotlin/JS emulated `Long` division to produce decim
 timestamps. The shared core now uses direct validated decimal arithmetic and an
 integer fast path where its range permits it. Unicode/legacy timestamp profiles
 and far-date fallbacks remain covered by the existing contract fixtures.
+
+An identity fast path also avoids copying already-trimmed titles/descriptions
+through the Rust string callback. The Rust primitive remains authoritative for
+values that either whitespace definition could change, including NEL and FEFF
+edge cases. All Rust Unicode whitespace boundaries and mixed edges are tested.
 
 The Rust adapter still owns XML decoding and transport; the shared core still
 owns record rules. File reads are asynchronous, and decompression plus parsing
@@ -64,11 +78,30 @@ measurement was 32.855 seconds; the optimized shared parser measured 16.001
 seconds. These are individual runs with ordinary host load, not a statistical
 cross-platform benchmark. Do not compare them directly with Linux timings.
 
+A separate alternating host/guard/guard/host comparison of the trim fast path
+used one diagnostic executable and the same input. Host-callback runs took
+17.010/16.254 seconds; guarded runs took 15.532/15.717 seconds. All four produced
+the same complete output fingerprint. This is a modest additional saving,
+not a replacement for removing VM/index setup from request handling.
+
+The final local full-feed HTTP check loaded all programmes in 16.323 seconds.
+Repeated РЕН ТВ matching had a 4.905 ms median (12.557 ms first request), matching
+500 channels took 17.972 ms, and four concurrent РЕН ТВ requests finished within
+7.821 ms. The earlier v1.1.46 HTTP run on this file took 24.754 seconds to load
+and 110.574 ms median for РЕН ТВ matching. These are observed local timings;
+shipping-container checks and target-node acceptance are separate requirements.
+
 On the same `mp` Linux node, exact published images with local files and the same
 2 CPU / 2 GiB limits loaded 3,247 channels plus 10,000 real programmes in 0.86
 seconds (v1.1.43) and 50.65 seconds (v1.1.46). CPU quota throttling and memory
 pressure did not account for the difference. This excludes source-download,
 Cloudflare and browser latency from the reproduction.
+
+The node is a VirtualBox VM with a Xeon E5-2690 v2 CPU model. Concurrent unrelated
+video processing and substantial CPU pressure were observed during follow-up
+tests. A full-feed candidate run exceeded a 180-second diagnostic bound there;
+passing CI is therefore not sufficient evidence to replace the working v1.1.43
+deployment. Same-node controls and complete programme readiness remain required.
 
 Run a local parser/index benchmark with:
 
@@ -79,6 +112,22 @@ cargo run --locked --release -p ottplay-core --example epg_bench -- feed.xml mat
 The fingerprint is a lightweight deterministic output comparison, not an
 authentication hash. Input provenance uses SHA-256 separately. Benchmarks must
 hold the file, architecture, compiler profile and resource limits fixed.
+
+## Linux musl allocator
+
+The standalone musl server uses mimalloc, and rquickjs's supported `rust-alloc`
+feature routes QuickJS allocations through the same Rust global allocator.
+Other platform allocators are unchanged. No custom unsafe allocator is added.
+
+One static QuickJS C probe, with identical code and 3,247 input rows, took
+9.215/10.493 seconds to build the index using libc and 5.754/6.106 seconds using
+mimalloc on `mp`. Its Zig-provided musl differs from the release toolchain, so
+this establishes the mechanism rather than the shipping server's total gain.
+Exact native-image controls additionally remove only the allocator wiring while
+retaining the lockfile, source and build flags. The first clean 10,000-programme
+pair took 56.53 seconds without the allocator change and 46.51 seconds with it;
+process CPU differed much less (29.21 versus 27.50 seconds). Allocation helps,
+but it does not restore the native v1.1.43 parser's cost.
 
 ## Blocking HTTP and container checks
 
