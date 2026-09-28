@@ -1018,31 +1018,58 @@ test("programmatic and raw portal replacement rotate media identity and reject r
 
 test("hosted M3U owns XMLTV without companion requests and disposes stale guide sessions", () => {
     const f = fixture();
-    let rows, notify, stopped = 0;
+    let rows,
+        notify,
+        stopped = 0;
     f.host.__ottHostedEpg = {
         enabled: () => true,
         open(entries, callback) {
-            rows = entries; notify = callback;
-            return { close() { stopped++; }, guide(id, callback) {
-                callback([{ time: 10000, time_to: 11000, name: "Hosted", descr: "" }]);
-            } };
-        }
+            rows = entries;
+            notify = callback;
+            return {
+                close() {
+                    stopped++;
+                },
+                guide(id, callback) {
+                    callback([
+                        {
+                            descr: "",
+                            name: "Hosted",
+                            time: 10000,
+                            time_to: 11000,
+                        },
+                    ]);
+                },
+            };
+        },
     };
     const { driver } = load(f);
-    assert.equal(f.requests.length, 1, "only the playlist is fetched; no matching POST");
+    assert.equal(
+        f.requests.length,
+        1,
+        "only the playlist is fetched; no matching POST"
+    );
     assert.deepEqual(clone(rows[0].xmltv_urls), ["https://xml.test/main.xml"]);
     const id = f.host.cList[0];
     notify({ [id]: { logo: "https://logos.test/one.png" } });
     let result;
-    driver.guide(id, value => result = value);
+    driver.guide(id, (value) => (result = value));
     assert.equal(result[0].name, "Hosted");
     assert.equal(f.requests.length, 1, "guide comes from worker bridge");
     driver.load(() => {});
     assert.equal(stopped, 1);
     notify({ [id]: { logo: "https://logos.test/stale.png" } });
-    assert.equal(driver.logo(id), "", "old worker cannot publish into the new catalog");
+    assert.equal(
+        driver.logo(id),
+        "",
+        "old worker cannot publish into the new catalog"
+    );
     f.requests[1].reject();
-    assert.equal(f.requests.length, 2, "hosted playlist failure never falls back to companion cp.php");
+    assert.equal(
+        f.requests.length,
+        2,
+        "hosted playlist failure never falls back to companion cp.php"
+    );
     f.dom.window.close();
 });
 

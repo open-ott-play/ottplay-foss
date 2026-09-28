@@ -504,13 +504,18 @@ function createM3uProviderDriver(
                 var hostedShift = Number(row.ts) || 0;
                 hostedGuide.guide(id, function (rows: any) {
                     if (!current(token)) return;
-                    callback(rows && rows.map(function (entry: any) {
-                        var copy: any = {};
-                        Object.keys(entry).forEach(function (key) { copy[key] = entry[key]; });
-                        copy.time += hostedShift;
-                        copy.time_to += hostedShift;
-                        return copy;
-                    }));
+                    callback(
+                        rows &&
+                            rows.map(function (entry: any) {
+                                var copy: any = {};
+                                Object.keys(entry).forEach(function (key) {
+                                    copy[key] = entry[key];
+                                });
+                                copy.time += hostedShift;
+                                copy.time_to += hostedShift;
+                                return copy;
+                            })
+                    );
                 });
                 return;
             }
@@ -601,28 +606,42 @@ function createM3uProviderDriver(
                 var bridge = hosted();
                 if (bridge && !plan.guideServer) {
                     if (!scope.active() || !current(token)) return;
-                    var entries = catalog.ids.filter(function (id) {
-                        // An explicit =source JSON endpoint remains owned by its provider.
-                        return !catalog.channels[id].epg_src;
-                    }).map(function (id) {
-                        var row: any = { id: id };
-                        Object.keys(catalog.channels[id]).forEach(function (key) { row[key] = catalog.channels[id][key]; });
-                        return row;
-                    });
-                    if (entries.length) hostedGuide = bridge.open(entries, function (mappings: any) {
-                        if (!scope.active() || !current(token)) return;
-                        Object.keys(mappings).forEach(function (id) {
-                            var row = catalog.channels[id];
-                            if (!row) return;
-                            row.epg_src = "hosted";
-                            row.epg_url = id;
-                            if (!row.logo && mappings[id].logo) row.logo = mappings[id].logo;
+                    var entries = catalog.ids
+                        .filter(function (id) {
+                            // An explicit =source JSON endpoint remains owned by its provider.
+                            return !catalog.channels[id].epg_src;
+                        })
+                        .map(function (id) {
+                            var row: any = { id: id };
+                            Object.keys(catalog.channels[id]).forEach(
+                                function (key) {
+                                    row[key] = catalog.channels[id][key];
+                                }
+                            );
+                            return row;
                         });
-                        publish("guide");
-                    }, function (message: string) {
-                        if (scope.active() && current(token)) ports.progress(message);
-                    });
-                    if (plan.logoServer) matchRequest(scope, token, plan, "logo");
+                    if (entries.length)
+                        hostedGuide = bridge.open(
+                            entries,
+                            function (mappings: any) {
+                                if (!scope.active() || !current(token)) return;
+                                Object.keys(mappings).forEach(function (id) {
+                                    var row = catalog.channels[id];
+                                    if (!row) return;
+                                    row.epg_src = "hosted";
+                                    row.epg_url = id;
+                                    if (!row.logo && mappings[id].logo)
+                                        row.logo = mappings[id].logo;
+                                });
+                                publish("guide");
+                            },
+                            function (message: string) {
+                                if (scope.active() && current(token))
+                                    ports.progress(message);
+                            }
+                        );
+                    if (plan.logoServer)
+                        matchRequest(scope, token, plan, "logo");
                     return;
                 }
                 matchRequest(scope, token, plan, "guide");
@@ -663,7 +682,10 @@ function createM3uProviderDriver(
                 parse,
                 function () {
                     if (!current(token)) return;
-                    if (hosted()) { complete("m3u-network"); return; }
+                    if (hosted()) {
+                        complete("m3u-network");
+                        return;
+                    }
                     ports.progress(
                         "Playlist is not loading directly...Loading via server..."
                     );
