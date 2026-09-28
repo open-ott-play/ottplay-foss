@@ -161,6 +161,8 @@ async function main() {
         "bounded full-size messages fit platform record cap",
         async () => {
             assert.equal(core.hereNowValidValue("x".repeat(4097)), false);
+            assert.equal(core.hereNowValidValue('"'.repeat(4096)), false);
+            assert.equal(core.hereNowValidValue("\n".repeat(4096)), false);
             const maximum = {
                 ack: "",
                 offer: await core.hereNowSeal(w, a, "offer", {
@@ -427,6 +429,163 @@ async function main() {
                 );
                 assert.equal(resumed, 2);
             } finally {
+                dom.window.close();
+            }
+        }
+    );
+    await check(
+        "phone accepts a fresh same-page QR and discards the old asynchronous submission",
+        async () => {
+            const { JSDOM } = require("jsdom");
+            const first = pair(),
+                second = pair("rec_01BBBBBBBBBBBBBBBBBBBBBBBB");
+            const records = new Map();
+            records.set(first.recordId, {
+                offer: await core.hereNowSeal(w, first, "offer", {
+                    caption: "First",
+                    draft: "first draft",
+                }),
+            });
+            records.set(second.recordId, {
+                offer: await core.hereNowSeal(w, second, "offer", {
+                    caption: "Second",
+                    draft: "second draft",
+                }),
+            });
+            const dom = new JSDOM(
+                '<p id="status"></p><form id="pairing"><textarea id="link"></textarea></form><form id="entry" hidden><label id="caption"></label><textarea id="value"></textarea><button id="send"></button><button id="cancel"></button></form>',
+                {
+                    runScripts: "outside-only",
+                    url: core.hereNowPairLink(w, first, "/swop-input/"),
+                }
+            );
+            const phone = dom.window,
+                writes = [];
+            Object.defineProperty(phone, "crypto", { value: webcrypto });
+            phone.__OTTPLAY_HOSTED__ = {
+                swop: {
+                    collection: "swop_pairs",
+                    entryUrl: "/swop-input/",
+                    transport: "herenow",
+                },
+                version: 1,
+            };
+            let releaseOld,
+                firstEncryptionStarted = false;
+            const gate = new Promise((resolve) => {
+                releaseOld = resolve;
+            });
+            const phoneCore = {
+                ...core,
+                hereNowSeal: async (...args) => {
+                    const encrypted = await core.hereNowSeal(...args);
+                    if (args[1].recordId === first.recordId) {
+                        firstEncryptionStarted = true;
+                        await gate;
+                    }
+                    return encrypted;
+                },
+            };
+            phone.XMLHttpRequest = class {
+                open(method, url) {
+                    this.method = method;
+                    this.url = url;
+                }
+                setRequestHeader() {}
+                send(body) {
+                    queueMicrotask(() => {
+                        const id = this.url.split("/").pop();
+                        if (this.method === "PATCH") {
+                            writes.push({ body: JSON.parse(body), id });
+                            records.set(id, {
+                                ...records.get(id),
+                                ...JSON.parse(body),
+                            });
+                        }
+                        this.status = 200;
+                        this.responseText = JSON.stringify({
+                            record: { data: records.get(id), id },
+                        });
+                        this.onload();
+                    });
+                }
+            };
+            phone.require = () => phoneCore;
+            phone.exports = {};
+            const source = ts.transpileModule(
+                fs.readFileSync(
+                    path.join(__dirname, "../src/swop/herenow-phone.ts"),
+                    "utf8"
+                ),
+                {
+                    compilerOptions: {
+                        module: ts.ModuleKind.CommonJS,
+                        target: ts.ScriptTarget.ES5,
+                    },
+                }
+            ).outputText;
+            async function until(predicate) {
+                const deadline = Date.now() + 2000;
+                while (!predicate() && Date.now() < deadline)
+                    await new Promise((resolve) => setImmediate(resolve));
+                assert(predicate(), "phone transition completed");
+            }
+            const element = (id) => phone.document.getElementById(id);
+            const submit = () =>
+                element("entry").dispatchEvent(
+                    new phone.Event("submit", { cancelable: true })
+                );
+            try {
+                phone.eval(source);
+                await until(() => !element("entry").hidden);
+                assert.equal(phone.location.hash, "");
+                element("value").value = '"'.repeat(4096);
+                submit();
+                assert.equal(element("value").readOnly, false);
+                assert.equal(writes.length, 0);
+                element("value").value = "old response";
+                submit();
+                await until(() => firstEncryptionStarted);
+                phone.location.hash = new URL(
+                    core.hereNowPairLink(w, second, "/swop-input/")
+                ).hash;
+                await until(
+                    () =>
+                        element("value").value === "second draft" &&
+                        !element("entry").hidden
+                );
+                assert.equal(phone.location.hash, "");
+                assert.equal(element("value").readOnly, false);
+                releaseOld();
+                await new Promise((resolve) => setImmediate(resolve));
+                element("value").value = "new response";
+                submit();
+                await until(
+                    () =>
+                        element("status").textContent.indexOf("Text sent.") ===
+                        0
+                );
+                assert.equal(writes.length, 1);
+                assert.equal(writes[0].id, second.recordId);
+                assert.deepEqual(
+                    await core.hereNowOpen(
+                        w,
+                        second,
+                        "reply",
+                        writes[0].body.reply
+                    ),
+                    { value: "new response" }
+                );
+                phone.dispatchEvent(
+                    new phone.PageTransitionEvent("pageshow", {
+                        persisted: true,
+                    })
+                );
+                assert.equal(element("pairing").hidden, false);
+                assert.equal(element("entry").hidden, true);
+                assert.equal(element("value").value, "");
+            } finally {
+                releaseOld();
                 dom.window.close();
             }
         }

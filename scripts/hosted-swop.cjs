@@ -2,14 +2,17 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 /** Run after tsc. Adds only a self-contained, same-origin input page. */
-async function stageHostedSwop(outputRoot) {
+async function stageHostedSwop(
+    outputRoot,
+    compileRoot = path.join(__dirname, "../build")
+) {
     const { rollup } = require("rollup");
     const { nodeResolve } = require("@rollup/plugin-node-resolve");
     const { minify } = require("terser");
     const directory = path.join(outputRoot, "swop-input");
     fs.mkdirSync(directory, { recursive: true });
     const bundle = await rollup({
-        input: path.join(__dirname, "../build/swop/herenow-phone.js"),
+        input: path.join(compileRoot, "swop/herenow-phone.js"),
         onwarn(warning) {
             if (warning.code !== "THIS_IS_UNDEFINED")
                 throw new Error(warning.message);

@@ -327,6 +327,16 @@ var keyStrings = {
         "Մուտքագրեք Xtream սերվերի URL-ը (օր.՝ https://your-server:8080)",
     EPG: "Հեռուստածրագիր",
     "EPG and archive. Channel: ": "Հեռուստածրագիր և արխիվ։ Ալիք՝ ",
+    "EPG ready": "EPG ready",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
     "ERROR!": "Սխալ։",
     "Error Code!": "Անվավեր կոդ։",
     Exit: "Ելք",

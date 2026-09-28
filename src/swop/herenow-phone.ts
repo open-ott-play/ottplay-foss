@@ -115,7 +115,7 @@ import {
             return;
         }
         if (!hereNowValidValue(valueInput.value)) {
-            say("Text must be no longer than 4096 UTF-8 bytes.");
+            say("Text is too long. Please shorten it before sending.");
             return;
         }
         sending = true;
@@ -126,24 +126,36 @@ import {
         var revision = generation;
         (async function () {
             try {
-                if (!reply)
-                    reply = await hereNowSeal(w, current, "reply", {
+                var envelope =
+                    reply ||
+                    (await hereNowSeal(w, current, "reply", {
                         value: valueInput.value,
-                    });
+                    }));
                 if (generation !== revision || expired()) return;
+                reply = envelope;
                 await store.patch(current.recordId, { reply: reply });
                 if (generation !== revision) return;
                 forget();
                 say("Text sent. Check your TV to confirm it appeared.");
             } catch (_) {
                 if (generation !== revision) return;
+                if (!reply) {
+                    valueInput.readOnly = false;
+                    button.textContent = "Send to TV";
+                    say(
+                        "Could not prepare this text. Please shorten it and try again."
+                    );
+                    return;
+                }
                 say(
                     "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires."
                 );
                 button.textContent = "Retry same message";
             } finally {
-                sending = false;
-                button.disabled = false;
+                if (generation === revision) {
+                    sending = false;
+                    button.disabled = false;
+                }
             }
         })();
     };
@@ -154,9 +166,10 @@ import {
         say("Session closed. Start a new one from your TV when needed.");
     };
     w.addEventListener("pagehide", forget);
-    var initial = w.location.hash;
     // Keep capability out of persistent browser history as soon as it is read.
-    if (initial) {
+    function openFragment(): void {
+        var initial = w.location.hash;
+        if (!initial) return;
         try {
             w.history.replaceState(null, "", w.location.pathname);
         } catch (_) {
@@ -165,4 +178,17 @@ import {
         }
         void start(initial);
     }
+    w.addEventListener("hashchange", openFragment);
+    w.addEventListener("pageshow", function (event: any) {
+        if (!event.persisted) return;
+        forget();
+        if (w.location.hash) openFragment();
+        else {
+            pairing.hidden = false;
+            say(
+                "Scan a new QR code on your TV, or paste its complete private pairing link."
+            );
+        }
+    });
+    openFragment();
 })();

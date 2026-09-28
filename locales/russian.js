@@ -326,6 +326,15 @@ var keyStrings = {
         "Введите адрес сервера Xtream (например, https://your-server:8080)",
     EPG: "Программа",
     "EPG and archive. Channel: ": "Программа и архив. Канал: ",
+    "EPG ready": "EPG готова",
+    "EPG unavailable on this browser": "EPG недоступна в этом браузере",
+    "EPG unavailable: %1": "EPG недоступна: %1",
+    "EPG update failed; using saved programme guide":
+        "Не удалось обновить EPG; используется сохранённая программа передач",
+    "EPG: downloading programme guide...": "EPG: загрузка программы передач...",
+    "EPG: processing programme guide...": "EPG: обработка программы передач...",
+    "EPG: updating saved programme guide...":
+        "EPG: обновление сохранённой программы передач...",
     "ERROR!": "Ошибка!",
     "Error Code!": "Неверный код!",
     Exit: "Выход",

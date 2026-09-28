@@ -8,6 +8,7 @@ import {
     hereNowSeal,
     hereNowStore,
     hereNowSwopConfig,
+    hereNowUtf8,
     hereNowValidValue,
 } from "./herenow";
 
@@ -39,6 +40,8 @@ export function openHereNowSwop(
         typeof w.editCaption === "string"
             ? w.editCaption.slice(0, 120)
             : translate("Enter value");
+    while (hereNowUtf8(JSON.stringify(caption)).length > 360)
+        caption = caption.slice(0, -1);
     var jq = w.jQuery || w.$;
     var screen = w.__ottClassicScreenPort;
     var editor = screen && screen.owner("editor");

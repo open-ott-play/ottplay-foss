@@ -329,6 +329,16 @@ var keyStrings = {
         "Ievadiet Xtream servera URL (piem., https://your-server:8080)",
     EPG: "Programma",
     "EPG and archive. Channel: ": "EPG un arhīvs. Kanāls: ",
+    "EPG ready": "EPG ready",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
     "ERROR!": "Kļūda!",
     "Error Code!": "Nederīgs kods!",
     Exit: "Iziet",

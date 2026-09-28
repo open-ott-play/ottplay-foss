@@ -332,6 +332,16 @@ var keyStrings = {
         "Introducir URL del servidor Xtream (p. ej. https://your-server:8080)",
     EPG: "Guía TV",
     "EPG and archive. Channel: ": "EPG y archivo. Canal: ",
+    "EPG ready": "EPG ready",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
     "ERROR!": "¡Error!",
     "Error Code!": "¡Código no válido!",
     Exit: "Salir",

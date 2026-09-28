@@ -329,6 +329,16 @@ var keyStrings = {
         "Xtream serveri URL manzilini kiriting (masalan, https://your-server:8080)",
     EPG: "TV dasturi",
     "EPG and archive. Channel: ": "EPG va arxiv. Kanal: ",
+    "EPG ready": "EPG ready",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
     "ERROR!": "Xato!",
     "Error Code!": "Kod notoʻgʻri!",
     Exit: "Chiqish",

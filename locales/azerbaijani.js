@@ -327,6 +327,16 @@ var keyStrings = {
         "Xtream serverinin URL-ini daxil edin (məs. https://your-server:8080)",
     EPG: "Proqram cədvəli",
     "EPG and archive. Channel: ": "Proqram cədvəli və arxiv. Kanal: ",
+    "EPG ready": "EPG ready",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
     "ERROR!": "Xəta!",
     "Error Code!": "Yanlış kod!",
     Exit: "Çıxış",

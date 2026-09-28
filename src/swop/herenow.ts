@@ -141,7 +141,7 @@ export async function hereNowSeal(
             v: hereNowProtocol,
         })
     );
-    if (plain.length > 4600) throw new Error("value_limit");
+    if (plain.length > 4800) throw new Error("value_limit");
     // Fresh IV per encryption. Retries reuse the returned immutable envelope.
     var iv = hereNowRandom(w, 12);
     var ciphertext = await w.crypto.subtle.encrypt(
@@ -184,7 +184,7 @@ export async function hereNowOpen(
         await hereNowKey(w, pair, role),
         hereNowUnbase64(w, box.ciphertext, 6500)
     );
-    if (plain.byteLength > 4600) throw new Error("invalid_message");
+    if (plain.byteLength > 4800) throw new Error("invalid_message");
     var body = JSON.parse(hereNowText(new Uint8Array(plain)));
     if (
         !body ||
@@ -200,7 +200,9 @@ export function hereNowValidValue(value: any): boolean {
     try {
         return (
             typeof value === "string" &&
-            hereNowUtf8(value).length <= HERENOW_SWOP_VALUE_BYTES
+            hereNowUtf8(value).length <= HERENOW_SWOP_VALUE_BYTES &&
+            hereNowUtf8(JSON.stringify(value)).length <=
+                HERENOW_SWOP_VALUE_BYTES + 2
         );
     } catch (_) {
         return false;
