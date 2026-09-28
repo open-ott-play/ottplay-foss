@@ -53,6 +53,13 @@ timestamps. The shared core now uses direct validated decimal arithmetic and an
 integer fast path where its range permits it. Unicode/legacy timestamp profiles
 and far-date fallbacks remain covered by the existing contract fixtures.
 
+A follow-up removes an unnecessary UTF-8 encoding of ordinary timezone suffixes
+and avoids constructing emulated `Long` values for Rust record epochs inside the
+integer fast path. Short multibyte suffixes and other platform profiles retain
+their original validation. Shared-core changes are reviewed in
+[PR #23](https://github.com/open-ott-play/ottplay-core/pull/23) and
+[PR #24](https://github.com/open-ott-play/ottplay-core/pull/24).
+
 An identity fast path also avoids copying already-trimmed titles/descriptions
 through the Rust string callback. The Rust primitive remains authoritative for
 values that either whitespace definition could change, including NEL and FEFF
@@ -84,12 +91,25 @@ used one diagnostic executable and the same input. Host-callback runs took
 the same complete output fingerprint. This is a modest additional saving,
 not a replacement for removing VM/index setup from request handling.
 
-The final local full-feed HTTP check loaded all programmes in 16.323 seconds.
+Before the timezone follow-up, the local full-feed HTTP check loaded all
+programmes in 16.323 seconds.
 Repeated РЕН ТВ matching had a 4.905 ms median (12.557 ms first request), matching
 500 channels took 17.972 ms, and four concurrent РЕН ТВ requests finished within
 7.821 ms. The earlier v1.1.46 HTTP run on this file took 24.754 seconds to load
 and 110.574 ms median for РЕН ТВ matching. These are observed local timings;
 shipping-container checks and target-node acceptance are separate requirements.
+
+The timezone/epoch follow-up was measured with an alternating A/B/B/A full-file
+comparison in one diagnostic executable: 15.746/15.422 seconds before and
+13.762/13.688 seconds after (11.9% lower mean). All four fingerprints match.
+8,037 native timestamp comparisons and 13,395 record comparisons across platform
+profiles also match, in addition to the usual JVM/JS and ABI checks.
+
+The final combined HTTP check loaded the full file in 15.003 seconds, with
+4.849 ms median РЕН ТВ matching and 17.550 ms median for 500 channels. Both
+programme endpoints and four concurrent readers passed the same acceptance
+checks. Relative to the earlier v1.1.46 local run, this improves full-load time
+by about 39% while leaving a large gap from the native-parser baseline.
 
 On the same `mp` Linux node, exact published images with local files and the same
 2 CPU / 2 GiB limits loaded 3,247 channels plus 10,000 real programmes in 0.86
@@ -133,6 +153,35 @@ A cleaner v1.1.43 full-feed run loaded all 565,973 programmes in 27.83 seconds.
 An earlier 126.31-second run overlapped diagnostic compilation and is excluded
 from comparisons. Node placement or CPU reservation changes need independent
 acceptance; passing a benchmark on another machine does not qualify this node.
+
+The earlier allocator candidate subsequently failed a 360-second full-file
+bound, consuming 264.59 seconds of process CPU without completing. This is an
+earlier diagnostic build, not the final source, but it confirms that scheduling
+pressure alone cannot explain the shared-parser regression.
+
+The subsequent no-allocator `4ad3c05` image verified the request-context fix on
+`mp`: the first РЕН ТВ request fell from 1.621 seconds in the earlier indexed
+control to 0.277 seconds, and the first programme request from 2.635 to 0.273
+seconds. These used a persistent HTTP client over the same localhost
+port-forward, whose transport floor is significant. All 49 returned programmes
+for fixed XMLTV ID `18` matched v1.1.43, including future entries. The 10,000-row
+load took 38.23 seconds; this is not full-feed acceptance. This image precedes
+the additional timezone/epoch optimization.
+
+## Larger architectural option
+
+An isolated retained-v1.1.43 reducer experiment parsed the same full file in
+0.602 seconds while keeping shared matching and programme selection. The checked
+record/error fixtures, date oracle and complete output fingerprint agree. This
+is a pure-parser measurement; the hybrid server has not passed target-node or
+full-image acceptance.
+
+That implementation is not included here: it duplicates calendar/record rules
+and conflicts with the explicit common-core ownership and unification checks.
+Adopting it requires a documented server-only exception, ongoing differential
+compatibility tests and separate exact-image qualification. Moving the code out
+of the guard's view would not satisfy that contract. The current patch keeps
+shared ownership and does not claim to restore native-parser startup speed.
 
 ## Blocking HTTP and container checks
 
