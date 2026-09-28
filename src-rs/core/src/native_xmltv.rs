@@ -6,7 +6,36 @@ use serde::Deserialize;
 use crate::xmltv::{self, XmltvCache};
 use crate::shared_guide;
 
-type SourceSlot = Arc<Mutex<Option<Arc<XmltvCache>>>>;
+/// Data and its complete native alias index are published as one immutable generation.
+/// Retaining an Arc keeps both alive while a refresh replaces the current snapshot.
+pub struct NativeSnapshot {
+    cache: XmltvCache,
+    index: xmltv::MatchIndex,
+    programme_count: usize,
+}
+
+impl NativeSnapshot {
+    /// Builds a QuickJS index; call on a blocking worker in async applications.
+    pub fn new(cache: XmltvCache) -> anyhow::Result<Self> {
+        let index = build_index(&cache)?;
+        let programme_count = cache.programs.values().map(Vec::len).sum();
+        Ok(Self { cache, index, programme_count })
+    }
+
+    pub fn cache(&self) -> &XmltvCache { &self.cache }
+
+    pub fn index(&self) -> &xmltv::MatchIndex { &self.index }
+
+    pub fn counts(&self) -> (usize, usize) {
+        (self.cache.channels.len(), self.programme_count)
+    }
+
+    pub fn resolve(&self, tvg_id: &str, tvg_name: &str, name: &str) -> anyhow::Result<Option<String>> {
+        resolve_in_index(&self.cache, &self.index, tvg_id, tvg_name, name)
+    }
+}
+
+type SourceSlot = Arc<Mutex<Option<Arc<NativeSnapshot>>>>;
 static SOURCES: LazyLock<Mutex<HashMap<Vec<String>, SourceSlot>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -31,6 +60,7 @@ pub fn match_ids(body: &str) -> Vec<String> {
 }
 
 /// Explicit XMLTV IDs are authoritative; names are a fallback, in provider order.
+/// One-off helper; repeated queries should reuse `NativeSnapshot::resolve`.
 pub fn resolve_id(cache: &XmltvCache, tvg_id: &str, tvg_name: &str, name: &str) -> anyhow::Result<Option<String>> {
     resolve_in_index(cache, &build_index(cache)?, tvg_id, tvg_name, name)
 }
@@ -61,7 +91,7 @@ pub fn merge_source(target: &mut XmltvCache, mut source: XmltvCache) -> anyhow::
     Ok(())
 }
 
-pub async fn load_sources(urls: &[String]) -> anyhow::Result<Arc<XmltvCache>> {
+pub async fn load_sources(urls: &[String]) -> anyhow::Result<Arc<NativeSnapshot>> {
     anyhow::ensure!(!urls.is_empty(), "No XMLTV sources");
     anyhow::ensure!(urls.iter().all(|url| url.starts_with("http://") || url.starts_with("https://")), "Invalid XMLTV URL");
     let slot = {
@@ -75,7 +105,7 @@ pub async fn load_sources(urls: &[String]) -> anyhow::Result<Arc<XmltvCache>> {
     let mut guard = slot.lock().await;
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_secs();
     if let Some(cache) = guard.as_ref() {
-        if shared_guide::source_fresh(now.saturating_sub(cache.fetched_at))? { return Ok(cache.clone()); }
+        if shared_guide::source_fresh(now.saturating_sub(cache.cache.fetched_at))? { return Ok(cache.clone()); }
     }
     let mut merged = XmltvCache::default();
     let mut last_error = None;
@@ -93,7 +123,7 @@ pub async fn load_sources(urls: &[String]) -> anyhow::Result<Arc<XmltvCache>> {
         _ => anyhow::bail!("Invalid shared guide refresh decision"),
     }
     merged.fetched_at = now;
-    let fresh = Arc::new(merged);
+    let fresh = Arc::new(tokio::task::spawn_blocking(move || NativeSnapshot::new(merged)).await??);
     *guard = Some(fresh.clone());
     Ok(fresh)
 }
@@ -113,14 +143,14 @@ mod tests {
         impl Drop for Server { fn drop(&mut self) { self.0.abort(); } }
         let _server = Server(tokio::spawn(async move { axum::serve(listener, app).await.unwrap(); }));
         let urls = vec![format!("http://{address}/bad"), format!("http://{address}/good")];
-        let stale = Arc::new(fixture("private-id", "Earlier source", "original schedule"));
+        let stale = Arc::new(NativeSnapshot::new(fixture("private-id", "Earlier source", "original schedule")).unwrap());
         SOURCES.lock().await.insert(urls.clone(), Arc::new(Mutex::new(Some(stale.clone()))));
         let retained = load_sources(&urls).await.unwrap();
         assert!(Arc::ptr_eq(&retained, &stale));
-        assert_eq!(retained.programs["private-id"][0].title, "original schedule");
+        assert_eq!(retained.cache.programs["private-id"][0].title, "original schedule");
         let reversed: Vec<_> = urls.iter().rev().cloned().collect();
         let partial = load_sources(&reversed).await.unwrap();
-        assert_eq!(partial.channels["private-id"].name, "Later source");
+        assert_eq!(partial.cache.channels["private-id"].name, "Later source");
         assert!(!Arc::ptr_eq(&partial, &stale));
         assert!(load_sources(&urls[..1]).await.is_err());
         let mut sources = SOURCES.lock().await;
@@ -146,6 +176,47 @@ mod tests {
         cache.channels.get_mut("cinema").unwrap().names.push("Films".into());
         assert_eq!(resolve_id(&cache, "missing", "News Extra", "Cinema").unwrap(), Some("cinema".into()));
         assert_eq!(resolve_id(&cache, "missing", "Films", "Renamed").unwrap(), Some("cinema".into()));
+    }
+    #[tokio::test]
+    async fn retained_native_index_preserves_aliases_shifts_slices_and_old_generation() {
+        let mut cache = fixture("news", "News", "current");
+        merge_source(&mut cache, fixture("cinema", "Cinema", "film")).unwrap();
+        cache.channels.get_mut("cinema").unwrap().names.push("Films".into());
+        let now = chrono::Utc::now().timestamp();
+        cache.programs.insert("news".into(), vec![
+            xmltv::Programme { start: now - 72 * 3600, stop: now - 71 * 3600, title: "archive".into(), ..Default::default() },
+            xmltv::Programme { start: now - 1800, stop: now + 1800, title: "current".into(), ..Default::default() },
+            xmltv::Programme { start: now + 24 * 3600, stop: now + 25 * 3600, title: "future".into(), ..Default::default() },
+        ]);
+        let snapshot = Arc::new(NativeSnapshot::new(cache).unwrap());
+        for (id, tvg, name, expected) in [
+            ("news", "Films", "Cinema", "news"),
+            ("missing", "News Extra", "Cinema", "cinema"),
+            ("", "Films", "Renamed", "cinema"),
+            ("", "", "News +3", "news"),
+        ] {
+            assert_eq!(snapshot.resolve(id, tvg, name).unwrap().as_deref(), Some(expected));
+            assert_eq!(snapshot.resolve(id, tvg, name).unwrap(), resolve_id(&snapshot.cache, id, tvg, name).unwrap());
+        }
+        assert_eq!(snapshot.index.extract_time_shift("News +3").unwrap(), xmltv::extract_time_shift("News +3").unwrap());
+        for archive in [0, 96] {
+            let expected = crate::get_epg_slice(&snapshot.cache, "hash", "news", 3, archive).await.unwrap();
+            let held = snapshot.clone();
+            let actual = tokio::task::spawn_blocking(move || crate::get_epg_slice_with_index(
+                &held.cache, &held.index, "hash", "news", 3, archive)).await.unwrap().unwrap();
+            assert_eq!(actual, expected);
+            assert_eq!(actual["epg_data"].as_array().unwrap().len(), if archive == 0 { 2 } else { 3 });
+        }
+        let held = snapshot.clone();
+        let slot = tokio::sync::RwLock::new(snapshot);
+        *slot.write().await = Arc::new(NativeSnapshot::new(fixture("replacement", "Replacement", "new")).unwrap());
+        assert_eq!(slot.read().await.resolve("replacement", "", "").unwrap().as_deref(), Some("replacement"));
+        let old = tokio::task::spawn_blocking(move || {
+            assert_eq!(held.resolve("news", "", "").unwrap().as_deref(), Some("news"));
+            assert_eq!(held.cache.programs["news"][1].title, "current");
+            held.counts()
+        }).await.unwrap();
+        assert_eq!(old, (2, 4));
     }
     #[test]
     fn custom_feed_cdata_aliases_and_programme_order() {

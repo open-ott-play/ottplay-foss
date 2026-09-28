@@ -332,6 +332,8 @@ var keyStrings = {
         "Архив или XML программы передач повреждён.",
     "EPG cache updated: %1": "Кеш обновлён: %1",
     "EPG channels: %1": "Каналов с EPG: %1",
+    "EPG could not start. Restart the player to reload its files. Playback will stop.":
+        "Не удалось запустить EPG. Перезапустите плеер, чтобы обновить его файлы. Воспроизведение остановится.",
     "EPG diagnostics": "Диагностика EPG",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
         "Не удалось скачать EPG. Проверьте соединение, HTTPS и разрешение CORS у источника.",
