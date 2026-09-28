@@ -28,6 +28,12 @@ import { nativeWebFallback } from "./web-fallback";
  */
 
 export interface StalkerPortalPlugin {
+    /** Dedicated bounded SWOP relay request; never uses provider cookies. */
+    swopRequest(opts: {
+        url: string;
+        body: string;
+        clientId: string;
+    }): Promise<NativeHttpResponse>;
     /** Generic raw-text HTTP for provider JSON/JSONP requests in the native app. */
     httpRequest(opts: {
         url: string;
@@ -51,6 +57,9 @@ export interface StalkerPortalPlugin {
 }
 
 class StalkerPortalWeb implements StalkerPortalPlugin {
+    swopRequest(): Promise<NativeHttpResponse> {
+        return Promise.reject(new Error("Native SWOP unavailable"));
+    }
     httpRequest(): Promise<NativeHttpResponse> {
         return nativeWebFallback(function () {
             throw new Error(

@@ -11,9 +11,14 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "portalRequest", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "httpRequest", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "swopRequest", returnType: CAPPluginReturnPromise),
     ]
 
     private static let DEFAULT_TIMEOUT: TimeInterval = 15
+
+    @objc func swopRequest(_ call: CAPPluginCall) {
+        NativeSwopRequest.start(call)
+    }
 
     private func isAllowedUrl(_ url: String) -> Bool {
         return url.contains("/stalker_portal/api/")
@@ -134,5 +139,107 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
         task.resume()
+    }
+}
+
+/// A separate capability: no provider cookies, credentials, redirects or logging.
+/// The Origin is a native assertion for the explicit relay, not browser proof.
+private final class NativeSwopRequest: NSObject, URLSessionDataDelegate {
+    private static let limit = 64 * 1024
+    private let call: CAPPluginCall
+    private var bytes = Data()
+    private var status = 0
+    private var session: URLSession?
+    private var finished = false
+
+    private init(_ call: CAPPluginCall) { self.call = call }
+
+    static func start(_ call: CAPPluginCall) {
+        guard let raw = call.getString("url"),
+              raw.range(of: #"^https://([A-Za-z0-9.-]+|\[[0-9a-fA-F:]+\])(:[0-9]{1,5})?/swop/(session|val)$"#, options: .regularExpression) != nil,
+              let parts = URLComponents(string: raw), let url = parts.url,
+              parts.host != nil, parts.user == nil, parts.password == nil,
+              parts.query == nil, parts.fragment == nil,
+              parts.port == nil || (1...65535).contains(parts.port!),
+              let body = call.getString("body"), let data = body.data(using: .utf8), data.count <= limit,
+              (try? JSONSerialization.jsonObject(with: data)) is [String: Any],
+              let clientID = call.getString("clientId"),
+              clientID.range(of: #"^[A-Za-z0-9._:-]{1,128}$"#, options: .regularExpression) != nil
+        else { call.reject("Native remote text entry request failed"); return }
+
+        var origin = parts
+        origin.path = ""
+        if origin.port == 443 { origin.port = nil }
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
+        request.httpMethod = "POST"
+        request.httpBody = data
+        request.httpShouldHandleCookies = false
+        request.setValue(origin.string!, forHTTPHeaderField: "Origin")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue(clientID, forHTTPHeaderField: "X-Swop-Client-Id")
+
+        let config = URLSessionConfiguration.ephemeral
+        config.httpCookieStorage = nil
+        config.httpShouldSetCookies = false
+        config.urlCredentialStorage = nil
+        config.urlCache = nil
+        config.timeoutIntervalForRequest = 10
+        config.timeoutIntervalForResource = 10
+        let owner = NativeSwopRequest(call)
+        let session = URLSession(configuration: config, delegate: owner, delegateQueue: nil)
+        owner.session = session
+        session.dataTask(with: request).resume()
+    }
+
+    private func fail(_ timeout: Bool = false) {
+        guard !finished else { return }
+        finished = true
+        call.reject("Native remote text entry request failed", timeout ? "timeout" : nil)
+        session?.invalidateAndCancel()
+        session = nil
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask,
+                    willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
+                    completionHandler: @escaping (URLRequest?) -> Void) {
+        completionHandler(nil)
+        fail()
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask,
+                    didReceive challenge: URLAuthenticationChallenge,
+                    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust {
+            completionHandler(.performDefaultHandling, nil)
+        } else { completionHandler(.cancelAuthenticationChallenge, nil) }
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask,
+                    didReceive response: URLResponse,
+                    completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        guard let http = response as? HTTPURLResponse, !(300...399).contains(http.statusCode),
+              response.expectedContentLength <= Int64(Self.limit) else {
+            completionHandler(.cancel); fail(); return
+        }
+        status = http.statusCode
+        completionHandler(.allow)
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        guard !finished else { return }
+        guard bytes.count + data.count <= Self.limit else { fail(); return }
+        bytes.append(data)
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        guard !finished else { return }
+        if let error = error { fail((error as NSError).code == NSURLErrorTimedOut); return }
+        guard status > 0, let body = String(data: bytes, encoding: .utf8) else { fail(); return }
+        finished = true
+        call.resolve(["status": status, "statusText": HTTPURLResponse.localizedString(forStatusCode: status),
+                      "body": body, "headers": "Content-Type: application/json\r\n"])
+        session.finishTasksAndInvalidate()
+        self.session = nil
     }
 }

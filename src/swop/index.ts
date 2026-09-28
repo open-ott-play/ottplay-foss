@@ -51,7 +51,7 @@ interface LocalSwopConfig {
 }
 
 /**
- * Ensure a stable Device UUID suitable for the Worker allowlist charset.
+ * Ensure a stable Device UUID suitable for the SWOP identity charset.
  * Prefers an explicit id, then window/localStorage/settings; generates a secure id if possible.
  * Returns empty when no id is provisioned and the engine has no secure random API.
  */
@@ -304,6 +304,7 @@ export function swopLoadValue(): void {
     function poll(): void {
         if (!ownsSession() || !code) return;
         $.ajax({
+            swopNativeRequest: true,
             cache: false,
             contentType: "application/json",
             data: JSON.stringify({
@@ -374,6 +375,7 @@ export function swopLoadValue(): void {
     var draft = typeof w.editvar === "string" ? w.editvar : "";
 
     $.ajax({
+        swopNativeRequest: true,
         cache: false,
         contentType: "application/json",
         data: JSON.stringify({
