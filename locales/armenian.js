@@ -327,6 +327,16 @@ var keyStrings = {
         "Մուտքագրեք Xtream սերվերի URL-ը (օր.՝ https://your-server:8080)",
     EPG: "Հեռուստածրագիր",
     "EPG and archive. Channel: ": "Հեռուստածրագիր և արխիվ։ Ալիք՝ ",
+    "EPG ready": "EPG ready",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
     "ERROR!": "Սխալ։",
     "Error Code!": "Անվավեր կոդ։",
     Exit: "Ելք",
@@ -477,6 +487,8 @@ var keyStrings = {
     Ok: "Լավ",
     Open: "Բացել",
     "Open in PiP": "Բացել PiP-ով",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE կարգավորումներ",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -511,6 +523,7 @@ var keyStrings = {
         "Դադարից հետո 10 վայրկյան հետ անցնել",
     PROST: "PROST",
     "PROST settings": "PROST կարգավորումներ",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Նախորդ",
     "Preview in channel list": "Նախադիտում ալիքների ցուցակում",
     Previous: "Նախորդ",
@@ -538,6 +551,10 @@ var keyStrings = {
     "Remote (number buttons N/A)":
         "Հեռակառավարման վահանակ (առանց թվային կոճակների)",
     "Remote control": "Հեռակառավարում",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Հեռակա աշխատաշրջանի ժամկետը լրացել է",
     "Remote text entry denied": "Հեռակա տեքստի մուտքագրումը մերժված է",
     "Remote text entry error": "Հեռակա տեքստի մուտքագրման սխալ",
@@ -575,9 +592,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Պահպանել կարգավորումները և բեռնել ալիքների ցուցակը",
     "Save settings to storage": "Պահպանել կարգավորումները պահոցում",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Սցենար",
     Search: "Որոնել",
     "Search programme": "Որոնել հաղորդումը",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Ընտրեք հոսքի տեսակը՝<br>%1",
     "Select category to add channel":
         "Ընտրեք կատեգորիա ալիքը ավելացնելու համար",
@@ -661,6 +686,7 @@ var keyStrings = {
     system: "համակարգային",
     Tabox: "Tabox",
     "Tabox settings": "Tabox կարգավորումներ",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.":
         "Հասցեում սարքի ID-ն անվավեր է։",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
@@ -706,6 +732,8 @@ var keyStrings = {
     Username: "Օգտանուն",
     "Username or password is missing.":
         "Օգտանունը կամ գաղտնաբառը բացակայում է։",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM կարգավորումներ",
     "Vidok.TV": "Vidok.TV",

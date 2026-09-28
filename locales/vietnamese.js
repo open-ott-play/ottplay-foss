@@ -327,6 +327,16 @@ var keyStrings = {
         "Nhập URL máy chủ Xtream (ví dụ: https://your-server:8080)",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG và lưu trữ. Kênh: ",
+    "EPG ready": "EPG ready",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
     "ERROR!": "Lỗi!",
     "Error Code!": "Mã không hợp lệ!",
     Exit: "Thoát",
@@ -476,6 +486,8 @@ var keyStrings = {
     Ok: "OK",
     Open: "Mở",
     "Open in PiP": "Mở trong PiP",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Cài đặt OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -510,6 +522,7 @@ var keyStrings = {
         "Tua lùi 10 giây sau khi tạm dừng",
     PROST: "PROST",
     "PROST settings": "Cài đặt PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Trước",
     "Preview in channel list": "Xem trước trong danh sách kênh",
     Previous: "Trước",
@@ -534,6 +547,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Điều khiển từ xa không có nút màu",
     "Remote (number buttons N/A)": "Điều khiển từ xa không có nút số",
     "Remote control": "Điều khiển từ xa",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Phiên từ xa đã hết hạn",
     "Remote text entry denied": "Nhập văn bản từ xa bị từ chối",
     "Remote text entry error": "Lỗi nhập văn bản từ xa",
@@ -569,9 +586,17 @@ var keyStrings = {
     "Save settings": "Lưu cài đặt",
     "Save settings and load channel list": "Lưu cài đặt và tải danh sách kênh",
     "Save settings to storage": "Lưu cài đặt vào bộ nhớ",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Kịch bản",
     Search: "Tìm kiếm",
     "Search programme": "Tìm chương trình",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Chọn loại luồng:<br>%1",
     "Select category to add channel": "Chọn danh mục để thêm kênh",
     "Select color": "Chọn màu",
@@ -651,6 +676,7 @@ var keyStrings = {
     system: "hệ thống",
     Tabox: "Tabox",
     "Tabox settings": "Cài đặt Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.":
         "ID thiết bị trong địa chỉ không hợp lệ.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
@@ -694,6 +720,8 @@ var keyStrings = {
         "Dùng TRÁI/PHẢI để chọn điều khiển, OK để kích hoạt và LÊN/XUỐNG để cuộn.",
     Username: "Tên người dùng",
     "Username or password is missing.": "Thiếu tên người dùng hoặc mật khẩu.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Cài đặt VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

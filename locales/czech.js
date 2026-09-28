@@ -323,6 +323,16 @@ var keyStrings = {
         "Zadejte URL serveru Xtream (např. https://your-server:8080)",
     EPG: "Program TV",
     "EPG and archive. Channel: ": "Program a archiv. Kanál: ",
+    "EPG ready": "EPG ready",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
     "ERROR!": "Chyba!",
     "Error Code!": "Neplatný kód!",
     Exit: "Ukončit",
@@ -472,6 +482,8 @@ var keyStrings = {
     Ok: "OK",
     Open: "Otevřít",
     "Open in PiP": "Otevřít v PiP",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Nastavení OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -505,6 +517,7 @@ var keyStrings = {
     "Position shift -10 seconds after pause": "Vrátit o 10 sekund po pauze",
     PROST: "PROST",
     "PROST settings": "Nastavení PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Předchozí",
     "Preview in channel list": "Náhled v seznamu kanálů",
     Previous: "Předchozí kanál",
@@ -529,6 +542,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Ovladač bez barevných tlačítek",
     "Remote (number buttons N/A)": "Ovladač bez číselných tlačítek",
     "Remote control": "Dálkové ovládání",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Platnost vzdálené relace vypršela",
     "Remote text entry denied": "Vzdálené zadávání textu bylo zamítnuto",
     "Remote text entry error": "Chyba vzdáleného zadávání textu",
@@ -566,9 +583,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Uložit nastavení a načíst seznam kanálů",
     "Save settings to storage": "Uložit nastavení do úložiště",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Scénář",
     Search: "Hledat",
     "Search programme": "Hledat pořad",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Vyberte typ streamu:<br>%1",
     "Select category to add channel": "Vyberte kategorii pro přidání kanálu",
     "Select color": "Vyberte barvu",
@@ -649,6 +674,7 @@ var keyStrings = {
     system: "systémový",
     Tabox: "Tabox",
     "Tabox settings": "Nastavení Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.":
         "ID zařízení v adrese není platné.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
@@ -692,6 +718,8 @@ var keyStrings = {
         "VLEVO/VPRAVO — výběr prvku, OK — aktivace, NAHORU/DOLŮ — posouvání.",
     Username: "Uživatelské jméno",
     "Username or password is missing.": "Chybí uživatelské jméno nebo heslo.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Nastavení VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

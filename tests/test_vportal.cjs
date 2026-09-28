@@ -721,6 +721,89 @@ for (const trigger of ["#dialogbox", "#numprog"]) {
     assert.strictEqual(f.w.selectBoxKeyHandler, foreign);
 }
 
+{
+    const profile = {
+        version: 1,
+        vportal: {
+            routes: [
+                {
+                    path: "/vportal/provider-1",
+                    upstream: "http://portal.example/api/v1/",
+                },
+            ],
+        },
+    };
+    const f = fixture({ __OTTPLAY_HOSTED__: profile });
+    f.client.load("", () => {});
+    const request = f.requests[0].options;
+    assert.equal(request.url, "/vportal/provider-1");
+    assert.equal(request.type, "POST");
+    assert.equal(request.contentType, "application/json; charset=UTF-8");
+    assert.deepEqual(JSON.parse(request.data), {
+        app: "ott-play",
+        key: "fixture-private-key",
+        limit: 300,
+    });
+    assert(!request.url.includes("fixture-private-key"));
+    assert.equal(JSON.parse(request.data).url, undefined);
+    assert.equal(JSON.parse(request.data).params, undefined);
+
+    for (const invalid of [
+        null,
+        {},
+        { ...profile, version: 2 },
+        { version: 1, vportal: { routes: [] } },
+        {
+            version: 1,
+            vportal: {
+                routes: [
+                    {
+                        ...profile.vportal.routes[0],
+                        upstream: "https://portal.example/api/v1/",
+                    },
+                ],
+            },
+        },
+        ...[
+            "//attacker.example",
+            "https://attacker.example/api",
+            "/vportal/provider-1?url=external",
+            "/vportal/../api",
+            "/vportal/provider-1/extra",
+        ].map((path) => ({
+            version: 1,
+            vportal: { routes: [{ ...profile.vportal.routes[0], path }] },
+        })),
+        {
+            version: 1,
+            vportal: {
+                routes: [profile.vportal.routes[0], profile.vportal.routes[0]],
+            },
+        },
+    ]) {
+        const rejected = fixture({ __OTTPLAY_HOSTED__: invalid });
+        let completed = 0;
+        rejected.client.load("", () => completed++);
+        assert.equal(
+            rejected.requests.length,
+            0,
+            "Invalid hosted route cannot fall back to another relay"
+        );
+        assert.equal(completed, 1);
+        assert.equal(rejected.alerts.length, 1);
+        assert(!rejected.alerts[0].includes("fixture-private-key"));
+        assert.equal(rejected.dom["#dialogbox"].visible, false);
+    }
+
+    const native = fixture({ __OTTPLAY_HOSTED__: profile, __TAURI__: {} });
+    native.client.load("", () => {});
+    assert.equal(
+        native.requests[0].options.url,
+        "http://portal.example/api/v1/"
+    );
+    assert.equal(JSON.parse(native.requests[0].options.data).params, undefined);
+}
+
 console.log(
     "PASS VPortal parser, browser/native JSON transport, catalogue controls and paging, asynchronous lifecycle, quality and secret-safe failures"
 );

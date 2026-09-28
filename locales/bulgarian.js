@@ -328,6 +328,16 @@ var keyStrings = {
         "Въведете URL на сървъра Xtream (напр. https://your-server:8080)",
     EPG: "ТВ програма",
     "EPG and archive. Channel: ": "Програма и архив. Канал: ",
+    "EPG ready": "EPG ready",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
     "ERROR!": "Грешка!",
     "Error Code!": "Невалиден код!",
     Exit: "Изход",
@@ -480,6 +490,8 @@ var keyStrings = {
     Ok: "ОК",
     Open: "Отваряне",
     "Open in PiP": "Отвори в PiP",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Настройки за OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -513,6 +525,7 @@ var keyStrings = {
     "Position shift -10 seconds after pause": "Връщане с 10 секунди след пауза",
     PROST: "PROST",
     "PROST settings": "Настройки за PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Предишна",
     "Preview in channel list": "Преглед в списъка с канали",
     Previous: "Предишен канал",
@@ -537,6 +550,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Дистанционно без цветни бутони",
     "Remote (number buttons N/A)": "Дистанционно без цифрови бутони",
     "Remote control": "Дистанционно управление",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Сесията за дистанционен достъп изтече",
     "Remote text entry denied": "Дистанционното въвеждане на текст е забранено",
     "Remote text entry error": "Грешка при дистанционно въвеждане на текст",
@@ -574,9 +591,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Запазване на настройките и зареждане на списъка с канали",
     "Save settings to storage": "Запазване на настройките в хранилището",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Сценарий",
     Search: "Търсене",
     "Search programme": "Търсене на предаване",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Изберете тип поток:<br>%1",
     "Select category to add channel": "Изберете категория за добавяне на канал",
     "Select color": "Изберете цвят",
@@ -659,6 +684,7 @@ var keyStrings = {
     system: "системен",
     Tabox: "Tabox",
     "Tabox settings": "Настройки за Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.":
         "ID на устройството в адреса е невалиден.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
@@ -704,6 +730,8 @@ var keyStrings = {
         "НАЛЯВО/НАДЯСНО — избор на елемент, OK — активиране, НАГОРЕ/НАДОЛУ — превъртане.",
     Username: "Потребителско име",
     "Username or password is missing.": "Липсва потребителско име или парола.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Настройки за VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

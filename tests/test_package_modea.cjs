@@ -48,9 +48,20 @@ try {
         "styles",
         "images",
         "locales",
+        "hosted",
+        "swop-input",
     ])
         fs.mkdirSync(path.join(root, "dist", directory), { recursive: true });
     const bundle = "var fixture = true;\n";
+    const hostedFiles = [
+        "hosted/epg-worker.js",
+        "hosted/pako-inflate.js",
+        "hosted/sax.js",
+        "swop-input/index.html",
+        "swop-input/app.js",
+    ];
+    for (const file of hostedFiles)
+        fs.writeFileSync(path.join(root, "dist", file), "fixture:" + file);
     fs.writeFileSync(
         path.join(root, "dist/index.html"),
         "<!doctype html><title>fixture</title>"
@@ -150,6 +161,13 @@ try {
         });
     }
     assert.equal(entries.includes("./dist/provider-obsolete.js"), false);
+    for (const file of hostedFiles)
+        assert.equal(
+            execFileSync("tar", ["-xOf", archive, "./" + file], {
+                encoding: "utf8",
+            }),
+            "fixture:" + file
+        );
     for (const [file, entry] of [
         ["manifest.webmanifest", "/"],
         ["index.webmanifest", "/index.html"],

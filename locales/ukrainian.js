@@ -327,6 +327,16 @@ var keyStrings = {
         "Введіть адресу сервера Xtream (наприклад, https://your-server:8080)",
     EPG: "Програма",
     "EPG and archive. Channel: ": "Програма й архів. Канал: ",
+    "EPG ready": "EPG ready",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
     "ERROR!": "Помилка!",
     "Error Code!": "Неправильний код!",
     Exit: "Вихід",
@@ -478,6 +488,8 @@ var keyStrings = {
     Ok: "ОК",
     Open: "Відкрити",
     "Open in PiP": "Відкрити в PiP",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Налаштування OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -512,6 +524,7 @@ var keyStrings = {
         "Відступити на 10 секунд після паузи",
     PROST: "PROST",
     "PROST settings": "Налаштування PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Попередня",
     "Preview in channel list": "Попередній перегляд у списку каналів",
     Previous: "Попередній канал",
@@ -536,6 +549,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Пульт без кольорових кнопок",
     "Remote (number buttons N/A)": "Пульт без цифрових кнопок",
     "Remote control": "Віддалене керування",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Сеанс віддаленого доступу завершився",
     "Remote text entry denied": "Віддалене введення тексту заборонено",
     "Remote text entry error": "Помилка віддаленого введення тексту",
@@ -573,9 +590,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Зберегти налаштування й завантажити список каналів",
     "Save settings to storage": "Зберегти налаштування у сховищі",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Сценарій",
     Search: "Пошук",
     "Search programme": "Пошук передачі",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Виберіть тип потоку:<br>%1",
     "Select category to add channel": "Вибір категорії для додавання каналу",
     "Select color": "Виберіть колір",
@@ -655,6 +680,7 @@ var keyStrings = {
     system: "системний",
     Tabox: "Tabox",
     "Tabox settings": "Налаштування Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.":
         "В адресі вказано неправильний ID пристрою.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
@@ -699,6 +725,8 @@ var keyStrings = {
     Username: "Ім’я користувача",
     "Username or password is missing.":
         "Не вказано ім’я користувача або пароль.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Налаштування VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

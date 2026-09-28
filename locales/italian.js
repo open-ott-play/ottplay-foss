@@ -332,6 +332,16 @@ var keyStrings = {
         "Inserisci URL del server Xtream (es. https://your-server:8080)",
     EPG: "Guida TV",
     "EPG and archive. Channel: ": "EPG e archivio. Canale: ",
+    "EPG ready": "EPG ready",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
     "ERROR!": "Errore!",
     "Error Code!": "Codice non valido!",
     Exit: "Esci",
@@ -485,6 +495,8 @@ var keyStrings = {
     Ok: "OK",
     Open: "Apri",
     "Open in PiP": "Apri in PiP",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Impostazioni di OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -519,6 +531,7 @@ var keyStrings = {
         "Torna indietro di 10 secondi dopo una pausa",
     PROST: "PROST",
     "PROST settings": "Impostazioni di PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Precedente",
     "Preview in channel list": "Anteprima nell'elenco canali",
     Previous: "Precedente",
@@ -544,6 +557,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Telecomando senza tasti colorati",
     "Remote (number buttons N/A)": "Telecomando senza tasti numerici",
     "Remote control": "Controllo remoto",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Sessione remota scaduta",
     "Remote text entry denied": "Inserimento testo remoto negato",
     "Remote text entry error": "Errore nell'inserimento testo remoto",
@@ -582,9 +599,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Salva impostazioni e carica elenco canali",
     "Save settings to storage": "Salva impostazioni nella memoria",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Sceneggiatura",
     Search: "Cerca",
     "Search programme": "Cerca programma",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Seleziona un tipo di flusso:<br>%1",
     "Select category to add channel":
         "Seleziona categoria per aggiungere canale",
@@ -667,6 +692,7 @@ var keyStrings = {
     system: "sistema",
     Tabox: "Tabox",
     "Tabox settings": "Impostazioni di Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.":
         "L'ID dispositivo nell'indirizzo non è valido.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
@@ -710,6 +736,8 @@ var keyStrings = {
         "Usa SINISTRA/DESTRA per selezionare un controllo, OK per attivarlo e SU/GIÙ per scorrere.",
     Username: "Nome utente",
     "Username or password is missing.": "Nome utente o password mancante.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Impostazioni di VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",
