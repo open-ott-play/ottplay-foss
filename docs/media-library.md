@@ -82,3 +82,21 @@ category navigation and page/search controls remain reachable, including on page
 with no matches. Quality variant menus are not filtered. VPortal's advertised
 server search is global, so a local title filter does not silently turn a category
 into global search or fetch every page.
+
+Internal snapshots can select `current` payloads for rendering or `none` for
+navigation metadata. The default `snapshot()` still detaches every page for public
+consumers. Rendering and filter setup must not traverse payloads belonging to
+ancestor pages. `tests/helpers/media-filter-cost.cjs` measures the actual runtime
+copier, and the media-library suite enforces deterministic allocation budgets at
+300 and 1,000 records per page; timings are diagnostic rather than test gates.
+With 1,000 records on each of six pages, opening Filter falls from 54,072 copied
+objects to 18, and Next/Back from 308,395 to 47,133. These are fixture allocation
+counts, not television latency measurements.
+
+Request revision and published-view revision have separate lifetimes: refiltering
+and incremental replacement retire old highlight callbacks without invalidating a
+current provider page stream. Selection captures also retain the selected item's
+source and ID, so replacing a row at the same index cannot authorize an older PIN
+intent. Filter text commits only after cancellation succeeds without a newer
+navigation taking ownership. Favorite removal similarly rechecks its navigation
+owner after journal callbacks before updating the visible list.

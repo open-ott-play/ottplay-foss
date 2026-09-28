@@ -56,11 +56,13 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
     var frames: MediaOwnedFrame[] = [];
     var filterRevision = 0;
     var revision = 0;
+    var viewRevision = 0;
     var loading = false;
     var resolving = false;
     var cleanup: (() => void) | null = null;
     function cancel() {
         var token = ++revision;
+        viewRevision++;
         var previous = cleanup;
         cleanup = null;
         loading = false;
@@ -68,10 +70,18 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
         if (previous) previous();
         return token;
     }
-    function snapshot(): MediaLibraryView {
-        var copy = frames.map(function (frame) {
+    // Public snapshots retain every page. Rendering needs only the current
+    // page's payloads; navigation decisions need detached route metadata.
+    function snapshot(
+        items: "all" | "current" | "none" = "all"
+    ): MediaLibraryView {
+        var copy = frames.map(function (frame, index) {
             return mediaLibraryCopy({
-                items: frame.items,
+                items:
+                    items === "none" ||
+                    (items === "current" && index !== frames.length - 1)
+                        ? []
+                        : frame.items,
                 route: frame.route,
                 selected: frame.selected,
             });
@@ -80,7 +90,7 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
             frame: copy.length ? copy[copy.length - 1] : null,
             frames: copy,
             loading: loading,
-            revision: revision,
+            revision: viewRevision,
         };
     }
     function applyFilter(
@@ -103,11 +113,12 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
         items: MediaLibraryItem[],
         selected?: MediaLibraryItem
     ) {
+        viewRevision++;
         frame.catalog = items;
         applyFilter(frame, selected);
     }
     function render() {
-        ports.render(snapshot());
+        ports.render(snapshot("current"));
     }
     function selectItem(index: number): MediaLibraryItem | null {
         var frame = frames[frames.length - 1];
@@ -188,12 +199,19 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
             var filtered = filterRevision;
             var frame = frames[frames.length - 1];
             var selected = frame && frame.selected;
+            var item = frame && frame.items[selected];
             return function () {
+                var current = frame && frame.items[frame.selected];
                 return (
                     token === revision &&
                     filtered === filterRevision &&
                     frame === frames[frames.length - 1] &&
-                    (!frame || selected === frame.selected)
+                    (!frame || selected === frame.selected) &&
+                    (item
+                        ? current &&
+                          current.ref.itemId === item.ref.itemId &&
+                          current.ref.sourceId === item.ref.sourceId
+                        : !current)
                 );
             };
         },
@@ -211,9 +229,11 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
             selectItem(index);
         },
         open: open,
-        refilter: function () {
+        refilter: function (commit?: () => void) {
             if (resolving && cancel() !== revision) return;
+            if (commit) commit();
             filterRevision++;
+            viewRevision++;
             frames.forEach(function (frame) {
                 applyFilter(frame);
             });
@@ -249,7 +269,7 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
             }
         },
         revision: function () {
-            return revision;
+            return viewRevision;
         },
         select: function (index: number): MediaLibraryItem | null {
             return mediaLibraryCopy(selectItem(index));

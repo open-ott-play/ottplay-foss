@@ -325,31 +325,48 @@ fn spawn_epg_refresh(urls: Vec<String>) {
                         let channels = fresh.channels.len();
                         let programmes: usize = fresh.programs.values().map(Vec::len).sum();
                         match refresh_epg_snapshot(&cache, move || EpgSnapshot::new(fresh)).await {
-                            Ok(()) => println!(
-                                "[EPG] Loaded {channels} channels, {programmes} programmes"
-                            ),
-                            Err(error) => eprintln!("[EPG] Index error: {error}"),
+                            Ok(()) => {
+                                println!(
+                                    "[EPG] Loaded {channels} channels, {programmes} programmes"
+                                );
+                                return true;
+                            }
+                            Err(_) => eprintln!("[EPG] Index refresh failed"),
                         }
                     }
                     Err(error) => eprintln!("[EPG] Fetch error: {error}"),
                 }
+                false
             }
         },
-        std::time::Duration::from_secs(2 * 3600),
+        |failures| ottplay_core::epg_refresh_interval(failures).map(std::time::Duration::from_secs),
     );
 }
 
-fn spawn_epg_refresh_loop<F, Work>(
+fn spawn_epg_refresh_loop<F, Work, Delay>(
     mut refresh: F,
-    interval: std::time::Duration,
+    mut delay: Delay,
 ) -> tokio::task::JoinHandle<()>
 where
     F: FnMut() -> Work + Send + 'static,
-    Work: std::future::Future<Output = ()> + Send + 'static,
+    Work: std::future::Future<Output = bool> + Send + 'static,
+    Delay: FnMut(u32) -> anyhow::Result<std::time::Duration> + Send + 'static,
 {
     tokio::spawn(async move {
+        let mut failures = 0u32;
         loop {
-            refresh().await;
+            failures = if refresh().await {
+                0
+            } else {
+                failures.saturating_add(1)
+            };
+            let interval = match delay(failures) {
+                Ok(interval) => interval,
+                Err(_) => {
+                    eprintln!("[EPG] Refresh scheduling failed");
+                    return;
+                }
+            };
             // Unlike interval().tick(), the first sleep is not immediate:
             // initial fetch and periodic refresh never overlap or run twice.
             tokio::time::sleep(interval).await;
@@ -610,6 +627,88 @@ mod epg_startup_tests {
     use axum::http::Request;
 
     #[tokio::test]
+    async fn failed_refreshes_back_off_and_only_an_accepted_snapshot_resets_the_delay() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let cache = Arc::new(RwLock::new(Arc::new(
+            EpgSnapshot::new(XmltvCache::default()).unwrap(),
+        )));
+        let previous = cache.read().await.clone();
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let active = Arc::new(AtomicUsize::new(0));
+        let finish = Arc::new(tokio::sync::Notify::new());
+        let (started, mut starts) = tokio::sync::mpsc::unbounded_channel();
+        let (sent, mut received) = tokio::sync::mpsc::unbounded_channel();
+        let task = spawn_epg_refresh_loop(
+            {
+                let cache = cache.clone();
+                let attempts = attempts.clone();
+                let active = active.clone();
+                let finish = finish.clone();
+                move || {
+                    let cache = cache.clone();
+                    let previous = previous.clone();
+                    let attempt = attempts.fetch_add(1, Ordering::SeqCst);
+                    let active = active.clone();
+                    let finish = finish.clone();
+                    let started = started.clone();
+                    async move {
+                        assert_eq!(
+                            active.fetch_add(1, Ordering::SeqCst),
+                            0,
+                            "refreshes cannot overlap"
+                        );
+                        started.send(attempt).unwrap();
+                        finish.notified().await;
+                        let accepted = refresh_epg_snapshot(&cache, move || {
+                            if attempt < 2 {
+                                anyhow::bail!("synthetic index failure");
+                            }
+                            EpgSnapshot::new(XmltvCache::default())
+                        })
+                        .await
+                        .is_ok();
+                        assert_eq!(Arc::ptr_eq(&*cache.read().await, &previous), !accepted);
+                        active.fetch_sub(1, Ordering::SeqCst);
+                        accepted
+                    }
+                }
+            },
+            move |failures| {
+                let seconds = ottplay_core::epg_refresh_interval(failures)?;
+                sent.send((failures, seconds)).unwrap();
+                // Scale only the host timer; assert the actual shared policy values.
+                Ok(if failures == 0 {
+                    std::time::Duration::from_secs(seconds)
+                } else {
+                    std::time::Duration::from_millis(10)
+                })
+            },
+        );
+        for (attempt, expected) in [(1, 60), (2, 120), (0, 7200)].into_iter().enumerate() {
+            assert_eq!(
+                tokio::time::timeout(std::time::Duration::from_secs(5), starts.recv())
+                    .await
+                    .unwrap(),
+                Some(attempt)
+            );
+            assert!(
+                received.try_recv().is_err(),
+                "delay starts only after completion"
+            );
+            assert_eq!(active.load(Ordering::SeqCst), 1);
+            finish.notify_one();
+            assert_eq!(
+                tokio::time::timeout(std::time::Duration::from_secs(5), received.recv())
+                    .await
+                    .unwrap(),
+                Some(expected)
+            );
+        }
+        assert_eq!(attempts.load(Ordering::SeqCst), 3);
+        task.abort();
+    }
+
+    #[tokio::test]
     async fn http_startup_does_not_wait_for_initial_epg_or_duplicate_its_refresh() {
         use std::sync::atomic::{AtomicUsize, Ordering};
         use tokio::sync::Notify;
@@ -634,10 +733,11 @@ mod epg_startup_tests {
                         // Represents an offline EPG request with no response yet.
                         finish_fetch.notified().await;
                         finished.notify_one();
+                        true
                     }
                 }
             },
-            std::time::Duration::from_secs(2 * 3600),
+            |_| Ok(std::time::Duration::from_secs(2 * 3600)),
         );
         let deadline = std::time::Duration::from_secs(5);
         tokio::time::timeout(deadline, started.notified())

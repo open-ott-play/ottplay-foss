@@ -12,6 +12,10 @@ function createHostedEpgWorker(env: any): void {
     var leaseTimer: any = null;
     var databaseName = "";
     var owner = "";
+    var releasing = false;
+    var released: any[] = [];
+    var published = "";
+    var publishedStale = false;
     var signature = "";
     var retainedBytes = 0;
     var retainedRecords = 0;
@@ -71,6 +75,7 @@ function createHostedEpgWorker(env: any): void {
         if (abort) xhr.abort();
     }
     function fail(code: string): void {
+        if (closed) return;
         loading = false;
         release();
         clearDownload(true);
@@ -83,19 +88,55 @@ function createHostedEpgWorker(env: any): void {
             type: "error",
         });
     }
-    function release(): void {
+    function release(callback?: (success: boolean) => void): void {
+        if (callback) released.push(callback);
         env.clearInterval(leaseTimer);
         leaseTimer = null;
-        if (!database || !owner) return;
+        if (releasing) return;
+        function complete(success: boolean): void {
+            releasing = false;
+            var callbacks = released;
+            released = [];
+            callbacks.forEach(function (done) {
+                done(success);
+            });
+        }
+        if (!database || !owner) {
+            complete(true);
+            return;
+        }
         var token = owner;
         owner = "";
-        var tx = transaction(["meta"], true),
-            store = tx.objectStore("meta"),
-            read = store.get("lease");
-        read.onsuccess = function () {
-            if (read.result && read.result.owner === token)
-                store.delete("lease");
-        };
+        releasing = true;
+        try {
+            var tx = transaction(["meta"], true),
+                store = tx.objectStore("meta"),
+                read = store.get("lease");
+            read.onsuccess = function () {
+                if (read.result && read.result.owner === token)
+                    store.delete("lease");
+            };
+            tx.oncomplete = function () {
+                complete(true);
+            };
+            tx.onabort = function () {
+                complete(false);
+            };
+        } catch (_) {
+            complete(false);
+        }
+    }
+    function close(): void {
+        closed = true;
+        loading = false;
+        env.clearTimeout(timer);
+        clearDownload(true);
+        release(function (success) {
+            if (database) database.close();
+            database = null;
+            // This acknowledgement follows the committed lease deletion.
+            if (success) env.postMessage({ type: "closed" });
+        });
     }
     function lease(callback: () => void): void {
         var tx = transaction(["meta"], true),
@@ -103,6 +144,7 @@ function createHostedEpgWorker(env: any): void {
             read = store.get("lease");
         var granted = false;
         read.onsuccess = function () {
+            if (closed) return;
             if (!read.result || read.result.until < Date.now()) {
                 owner =
                     String(Date.now()) +
@@ -120,6 +162,7 @@ function createHostedEpgWorker(env: any): void {
             fail("EPG_STORAGE_FAILED");
         };
         tx.oncomplete = function () {
+            if (closed) return;
             if (!granted) {
                 progress("waiting");
                 loading = false;
@@ -187,10 +230,14 @@ function createHostedEpgWorker(env: any): void {
             fail("EPG_STORAGE_BLOCKED");
         };
         opening.onsuccess = function () {
+            if (closed) {
+                opening.result.close();
+                return;
+            }
             database = opening.result;
             database.onversionchange = function () {
-                database.close();
                 fail("EPG_STORAGE_CHANGED");
+                close();
             };
             callback();
         };
@@ -222,11 +269,14 @@ function createHostedEpgWorker(env: any): void {
                 return;
             }
             var keep = snapshot ? snapshot.generation : "";
-            var cursor = tx.objectStore("rows").openCursor();
+            var rows = tx.objectStore("rows");
+            // Generation keys suffice; do not clone every programme description
+            // from the retained snapshot merely to decide which rows to keep.
+            var cursor = rows.index("generation").openKeyCursor();
             cursor.onsuccess = function () {
                 var item = cursor.result;
                 if (!item) return;
-                if (item.value.generation !== keep) item.delete();
+                if (item.key !== keep) rows.delete(item.primaryKey);
                 item.continue();
             };
         };
@@ -239,9 +289,17 @@ function createHostedEpgWorker(env: any): void {
         };
     }
     function ready(stale: boolean): void {
+        if (
+            closed ||
+            (stale && publishedStale && published === active.generation)
+        )
+            return;
+        published = active.generation;
+        publishedStale = stale;
         send({
             cacheName: databaseName,
             fetched: active.fetched,
+            generation: active.generation,
             mappings: active.mappings,
             records: active.records,
             stale: stale,
@@ -292,9 +350,11 @@ function createHostedEpgWorker(env: any): void {
             active = null;
         }
         function begin(): void {
+            if (closed) return;
             var tx = transaction(["meta"], false);
             var read = tx.objectStore("meta").get("active");
             read.onsuccess = function () {
+                if (closed) return;
                 var previous = read.result;
                 if (previous && previous.signature !== signature) {
                     fail("EPG_CACHE_IDENTITY");
@@ -321,6 +381,7 @@ function createHostedEpgWorker(env: any): void {
                 // Orphan writes from interrupted refreshes never replace the last good generation.
                 lease(function () {
                     cleanup(function (snapshot: any) {
+                        if (closed) return;
                         // Another tab may have completed between the first read
                         // and this lease acquisition. Reuse its accepted result.
                         if (
@@ -347,6 +408,7 @@ function createHostedEpgWorker(env: any): void {
         else open(begin);
     }
     function schedule(): void {
+        if (closed) return;
         env.clearTimeout(timer);
         timer = env.setTimeout(function () {
             load(configuration);
@@ -408,6 +470,7 @@ function createHostedEpgWorker(env: any): void {
                 schedule();
             };
             tx.oncomplete = function () {
+                if (closed) return;
                 active = replacement;
                 loading = false;
                 ready(false);
@@ -530,6 +593,7 @@ function createHostedEpgWorker(env: any): void {
             failed = false,
             indexed = false;
         var metadata: any = Object.create(null),
+            metadataCount = 0,
             aliases: string[][] = [],
             admitted: any = Object.create(null);
         var pending: any = Object.create(null),
@@ -646,11 +710,11 @@ function createHostedEpgWorker(env: any): void {
             var row = result.value;
             if (result.kind === "channel") {
                 if (indexed) throw new Error("EPG_XML_ORDER");
-                if (!metadata[row.id]) metadata[row.id] = row;
-                if (
-                    aliases.length > 65536 ||
-                    Object.keys(metadata).length > 16384
-                )
+                if (!metadata[row.id]) {
+                    metadata[row.id] = row;
+                    metadataCount++;
+                }
+                if (aliases.length > 65536 || metadataCount > 16384)
                     throw new Error("EPG_CHANNEL_LIMIT");
                 (row.names.length ? row.names : [""]).forEach(function (
                     name: string
@@ -771,6 +835,9 @@ function createHostedEpgWorker(env: any): void {
                         throw new Error("EPG_GZIP");
                     parser.close();
                     if (!sawRoot || depth !== 0) throw new Error("EPG_XML");
+                    // Channel declarations retain source priority even in an
+                    // otherwise valid feed without any programme elements.
+                    indexChannels();
                     ended = true;
                 }
             } catch (exception) {
@@ -864,15 +931,10 @@ function createHostedEpgWorker(env: any): void {
     }
     env.onmessage = function (event: any) {
         var message = event.data || {};
+        if (closed && message.type !== "close") return;
         if (message.type === "load") load(message);
         else if (message.type === "guide")
             guide(String(message.id), message.query);
-        else if (message.type === "close") {
-            closed = true;
-            env.clearTimeout(timer);
-            release();
-            clearDownload(true);
-            if (database) database.close();
-        }
+        else if (message.type === "close") close();
     };
 }

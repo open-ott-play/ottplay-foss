@@ -12,7 +12,7 @@ This connection is disabled by default and independent of the local HTTP listene
 
 ## Delivery behavior
 
-The player polls about once per second with an 8-second transport timeout, non-overlapping requests and bounded retry backoff. Acknowledgement removes commands only after dispatch or explicit rejection. Repeated IDs are deduplicated during a running page session, including reconnects with the same server and access code; failed acknowledgements are retried without repeating the action. Changing the address/code or disconnecting cancels the active generation, so a delayed old response cannot control the player.
+When idle, the player polls about once per second with an 8-second transport timeout, non-overlapping requests and bounded retry backoff. A known request backlog drains without the idle delay while yielding between responses; repeated or invalid queue entries retain the idle cadence. Acknowledgement removes commands only after dispatch or explicit rejection. Repeated IDs are deduplicated during a running page session, including reconnects with the same server and access code; failed acknowledgements are retried without repeating the action. Changing the address/code or disconnecting cancels the active generation, so a delayed old response cannot control the player.
 
 Commands that need channels wait while the provider is loading. The server supplies its current time and command expiry, so an incorrect TV clock does not extend command lifetime. Older compatible responses have a bounded local waiting period. Expired commands are retired without dispatch.
 
@@ -53,6 +53,10 @@ exclude stream URLs and provider secrets. Provider settings use the active
 driver and preserve parental/distribution policy. A successful dispatch reply
 does not prove playback or hardware state. HTTP result retries do not repeat
 a command within one page session; restarting a player clears deduplication.
+Retries send the same serialized result bytes. Invalid or oversized handler
+results are explicitly rejected so polling can continue. EPG collection yields
+between batches, keeps at most four guide requests pending, and rejects results
+if the source or channel-load generation changes during collection.
 The previous command-only API remains compatible with older servers and players.
 
 OTTClub's `server` is a bare host with an optional port, such as `club.example:8080`;

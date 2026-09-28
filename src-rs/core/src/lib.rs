@@ -25,9 +25,11 @@ pub async fn fetch_xmltv(urls: &[String]) -> anyhow::Result<xmltv::XmltvCache> {
     let refresh = shared_guide::GuideRefresh::new(urls.len())?;
     let mut all_channels: HashMap<String, xmltv::Channel> = HashMap::new();
     let mut all_programs: HashMap<String, Vec<xmltv::Programme>> = HashMap::new();
+    let mut failure = None;
 
     while refresh.action()? == "FETCH" {
-        let url = &urls[refresh.index()?];
+        let source_index = refresh.index()?;
+        let url = &urls[source_index];
         match xmltv::fetch_single(url).await {
             Ok((mut ch, pr)) => {
                 for id in refresh.unowned(ch.keys().cloned().collect())? {
@@ -42,7 +44,10 @@ pub async fn fetch_xmltv(urls: &[String]) -> anyhow::Result<xmltv::XmltvCache> {
                 refresh.advance(true, true)?;
             }
             Err(e) => {
-                tracing::warn!("XMLTV fetch failed for {url}: {e}");
+                // fetch_single returns only credential-free failure categories.
+                let error = anyhow::anyhow!("source {}: {e}", source_index + 1);
+                tracing::warn!("XMLTV fetch failed: {error}");
+                failure = Some(error);
                 refresh.advance(false, true)?;
             }
         }
@@ -58,7 +63,6 @@ pub async fn fetch_xmltv(urls: &[String]) -> anyhow::Result<xmltv::XmltvCache> {
     };
 
     let mut pool = None;
-    let mut failure = None;
     loop {
         match refresh.action()?.as_str() {
             "OPEN_DATABASE" => match db::pool().await {
@@ -66,8 +70,8 @@ pub async fn fetch_xmltv(urls: &[String]) -> anyhow::Result<xmltv::XmltvCache> {
                     refresh.advance(true, opened.is_some())?;
                     pool = opened;
                 }
-                Err(error) => {
-                    failure = Some(error);
+                Err(_) => {
+                    failure = Some(anyhow::anyhow!("EPG database unavailable"));
                     refresh.advance(false, false)?;
                 }
             },
@@ -78,16 +82,21 @@ pub async fn fetch_xmltv(urls: &[String]) -> anyhow::Result<xmltv::XmltvCache> {
                 )
                 .await;
                 let succeeded = result.is_ok();
-                if let Err(error) = result {
-                    tracing::warn!("SQLite persist error: {error}");
+                if result.is_err() {
+                    tracing::warn!("EPG database write failed");
                 }
                 refresh.advance(succeeded, true)?;
             }
             "REPLACE" => return Ok(cache),
-            "FAIL" => return Err(failure.expect("shared core retained a database failure")),
+            "FAIL" => return Err(failure.expect("shared core retained a refresh failure")),
             _ => anyhow::bail!("Unexpected shared guide refresh action"),
         }
     }
+}
+
+/// Shared refresh policy; hosts count rejected refreshes and execute timers.
+pub fn epg_refresh_interval(consecutive_failures: u32) -> anyhow::Result<u64> {
+    shared_guide::refresh_interval(consecutive_failures)
 }
 
 /// Return EPG slice for `channel_id`.
@@ -152,7 +161,7 @@ pub fn match_channel(name: &str, channels: &xmltv::Channels) -> anyhow::Result<O
 
 /// Background task: refresh XMLTV every 2h, update the shared cache.
 pub async fn background_refresh(xmltv_urls: Vec<String>, cache: Arc<RwLock<xmltv::XmltvCache>>) {
-    let seconds = match shared_guide::refresh_interval() {
+    let seconds = match shared_guide::refresh_interval(0) {
         Ok(seconds) => seconds,
         Err(error) => {
             tracing::warn!("XMLTV refresh policy failed: {error}");

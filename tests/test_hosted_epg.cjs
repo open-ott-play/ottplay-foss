@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
 const zlib = require("node:zlib");
+const vm = require("node:vm");
 const ts = require("typescript");
 const { chromium } = require("playwright");
 const { artifacts } = require("../scripts/hosted-epg.cjs");
@@ -147,11 +148,38 @@ for (const [property, boundary, cost, error] of [
         error
     );
 }
+// Repeated XMLTV declarations may add aliases but must neither replace the
+// first metadata entry nor consume the distinct-channel budget again.
+{
+    const channelFixture = new Function(
+        "var parser = {}, metadata = Object.create(null), metadataCount = 0, " +
+            "aliases = [], indexed = false, depth = 2, row, " +
+            "records = {end: function() { return {kind: 'channel', value: row}; }};\n" +
+            retainedSource +
+            "\nreturn {accept: function(id, name) {row = {id: id, names: [name]}; parser.onclosetag('channel');}, " +
+            "metadata: metadata, aliases: aliases};"
+    )();
+    channelFixture.accept("first", "First name");
+    channelFixture.accept("first", "Another alias");
+    assert.equal(channelFixture.metadata.first.names[0], "First name");
+    assert.deepEqual(channelFixture.aliases.slice(0, 2), [
+        ["first", "First name"],
+        ["first", "Another alias"],
+    ]);
+    for (let index = 1; index < 16384; index++)
+        channelFixture.accept("channel" + index, "Channel " + index);
+    assert.equal(Object.keys(channelFixture.metadata).length, 16384);
+    assert.doesNotThrow(() => channelFixture.accept("first", "At capacity"));
+    assert.throws(
+        () => channelFixture.accept("one-too-many", "Overflow"),
+        /EPG_CHANNEL_LIMIT/
+    );
+}
 // Drive the actual download/cleanup functions with a deterministic XHR clock.
 // Long transfers and stalled sockets must have different deadlines, without
 // making the browser suite wait ten minutes for a timeout regression.
 const downloadSource = ts.transpileModule(
-    ["clearDownload", "fail", "fetchSource"]
+    ["clearDownload", "fail", "close", "fetchSource"]
         .map((name) =>
             workerFactory.body.statements
                 .find(
@@ -183,6 +211,7 @@ function downloadFixture() {
             timers.delete(id);
         },
         location: { protocol: "https:" },
+        postMessage() {},
         setTimeout(callback, delay) {
             const id = ++nextTimer;
             timers.set(id, { callback, due: now + delay });
@@ -224,7 +253,7 @@ function downloadFixture() {
             "timer = null, database = null, active = {}, scheduled = 0, parsed = 0, " +
             "messages = [], WIRE_LIMIT = 96 * 1024 * 1024, " +
             "configuration = { refreshMs: 7200000 };\n" +
-            "function release() {}\nfunction progress() {}\n" +
+            "function release(done) { if (done) done(true); }\nfunction progress() {}\n" +
             "function send(value) { if (!closed) messages.push(value); }\n" +
             "function schedule() { scheduled++; }\n" +
             "function parse() { parsed++; }\n" +
@@ -402,6 +431,356 @@ for (const failure of ["network", "http", "wire", "storage", "close"]) {
 console.log(
     "PASS hosted EPG download deadlines: first byte, increasing progress, idle, total time and cleanup"
 );
+// A pending failure release and a later close must join the same transaction.
+const releaseSource = ts.transpileModule(
+    ["release", "close"]
+        .map((name) =>
+            workerFactory.body.statements
+                .find(
+                    (node) =>
+                        ts.isFunctionDeclaration(node) &&
+                        node.name.text === name
+                )
+                .getText(workerAst)
+        )
+        .join("\n"),
+    { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+).outputText;
+for (const outcome of ["commit", "abort", "throw", "no-owner", "no-database"]) {
+    let transactions = 0,
+        deleted = 0,
+        closedConnections = 0;
+    const messages = [],
+        read = { result: { owner: "fixture" } };
+    const tx = {
+        objectStore: () => ({ delete: () => deleted++, get: () => read }),
+    };
+    const env = {
+        clearInterval() {},
+        clearTimeout() {},
+        postMessage(value) {
+            messages.push(value);
+        },
+    };
+    const database =
+        outcome === "no-database"
+            ? null
+            : {
+                  close() {
+                      closedConnections++;
+                  },
+              };
+    const fixture = new Function(
+        "env",
+        "database",
+        "transaction",
+        "owner",
+        "var leaseTimer=null, timer=null, releasing=false, released=[], closed=false, loading=true; " +
+            "function clearDownload() {}\n" +
+            releaseSource +
+            "\nreturn {release:release,close:close};"
+    )(
+        env,
+        database,
+        () => {
+            transactions++;
+            if (outcome === "throw") throw new Error("InvalidStateError");
+            return tx;
+        },
+        outcome === "no-owner" ? "" : "fixture"
+    );
+    if (outcome === "commit" || outcome === "abort") {
+        fixture.release(); // failure started releasing before close arrived
+        fixture.close();
+        assert.equal(transactions, 1);
+        assert.equal(
+            messages.length,
+            0,
+            "pending release cannot acknowledge early"
+        );
+        read.onsuccess();
+        assert.equal(deleted, 1);
+        if (outcome === "commit") tx.oncomplete();
+        else tx.onabort();
+    } else assert.doesNotThrow(() => fixture.close());
+    assert.equal(closedConnections, database ? 1 : 0);
+    assert.equal(
+        messages.length,
+        outcome === "abort" || outcome === "throw" ? 0 : 1,
+        "only a successful release/no-owner close acknowledges; failures use the bridge fallback"
+    );
+}
+// The actual bridge under a controlled clock: close acknowledgement, fallback,
+// stale callbacks, generation deduplication and per-refresh diagnostic timing.
+const bridgeSource = ts.transpileModule(
+    fs.readFileSync(path.join(root, "src/hosted/epg.ts"), "utf8"),
+    { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+).outputText;
+function bridgeFixture() {
+    let now = 1000000,
+        timer = 0,
+        notifications = 0,
+        invalidations = 0;
+    const timeouts = new Map(),
+        workers = [];
+    const host = {
+        _: (value) => value,
+        __OTTPLAY_HOSTED__: {
+            epg: {
+                source: "https://fixture.test/feed.gz",
+                workerUrl: "/hosted/epg-worker.js",
+            },
+            version: 1,
+        },
+        __ottClassicGuide: {
+            invalidate() {
+                invalidations++;
+            },
+        },
+        clearInterval() {},
+        clearTimeout(id) {
+            timeouts.delete(id);
+        },
+        setInterval() {
+            return 0;
+        },
+        setTimeout(callback, delay) {
+            const id = ++timer;
+            timeouts.set(id, { callback, due: now + delay });
+            return id;
+        },
+        Worker: function () {
+            this.messages = [];
+            this.postMessage = (value) => this.messages.push(value);
+            this.terminate = () => {
+                this.terminated = true;
+            };
+            workers.push(this);
+        },
+    };
+    vm.runInNewContext(bridgeSource, {
+        Date: { now: () => now },
+        window: host,
+    });
+    const session = host.__ottHostedEpg.open(
+        [{ id: "18", name: "Fixture" }],
+        () => notifications++
+    );
+    return {
+        advance(milliseconds) {
+            now += milliseconds;
+            for (const [id, value] of timeouts)
+                if (value.due <= now) {
+                    timeouts.delete(id);
+                    value.callback();
+                }
+        },
+        counts: () => [notifications, invalidations],
+        diagnostics: host.__ottHostedEpg.diagnostics,
+        host,
+        send(value, worker = workers[workers.length - 1]) {
+            worker.onmessage({ data: value });
+        },
+        session,
+        workers,
+    };
+}
+{
+    const f = bridgeFixture(),
+        old = f.workers[0],
+        stale = old.onmessage;
+    f.session.retry();
+    assert.equal(
+        old.terminated,
+        undefined,
+        "lease release precedes termination"
+    );
+    assert.equal(
+        f.workers.length,
+        1,
+        "replacement waits for the close acknowledgement"
+    );
+    stale({ data: { mappings: {}, type: "ready" } });
+    assert.deepEqual(
+        f.counts(),
+        [0, 0],
+        "old attempt is immediately invalidated"
+    );
+    f.send({ type: "closed" }, old);
+    assert.equal(old.terminated, true);
+    assert.equal(f.workers.length, 2);
+    f.session.close();
+    f.advance(1000);
+    assert.equal(
+        f.workers[1].terminated,
+        true,
+        "wedged close is bounded to one second"
+    );
+    assert.equal(f.diagnostics().phase, "idle");
+}
+{
+    const f = bridgeFixture();
+    const ready = {
+        fetched: 1,
+        generation: "retained",
+        mappings: { 18: {} },
+        type: "ready",
+    };
+    f.send(ready);
+    // Exercise the same GuideService used by ClassicGuide: a cancelled hosted
+    // query projects a miss and schedules a later retry until invalidation.
+    const context = vm.createContext({ window: f.host });
+    require("./helpers/shared-core-runtime.cjs")(context, { vendorOnly: true });
+    require("./helpers/private-runtime.cjs")(context, "src/guide/service.ts");
+    const reference = {
+        channelId: "18",
+        id: "18",
+        sourceId: "fixture",
+        token: {},
+    };
+    const service = f.host.__ottGuideService.create({
+        capacity: () => 0,
+        clearTimer: f.host.clearTimeout,
+        context: () => "fixture",
+        current: () => true,
+        decode: (_ref, rows) => rows || [],
+        fetch: (_ref, done) => f.session.guide("18", done),
+        nextCount: () => 1,
+        now: () => 100,
+        select: (rows, now, count) =>
+            f.host.OttPlayCore.guideScheduleSelection(rows, now, count),
+        timer: f.host.setTimeout,
+    });
+    const invalidate = f.host.__ottClassicGuide.invalidate;
+    f.host.__ottClassicGuide.invalidate = (warm) => {
+        invalidate(warm);
+        service.invalidate(warm);
+    };
+    service.subscribe(reference, () => {});
+    f.advance(0);
+    assert.equal(f.workers[0].messages.at(-1).type, "guide");
+    f.session.retry();
+    assert.equal(service.field(reference, "missing"), true);
+    assert(
+        service.field(reference, "retryAt") > 100,
+        "cancelled query leaves a real miss throttle"
+    );
+    f.send({ type: "closed" });
+    f.send({ ...ready, stale: true });
+    f.advance(0);
+    const query = f.workers[1].messages.at(-1);
+    assert.equal(
+        query.type,
+        "guide",
+        "retained generation after retry immediately refetches cancelled guide"
+    );
+    f.send({
+        query: query.query,
+        rows: [
+            {
+                description: "",
+                end: 110,
+                id: "programme",
+                start: 90,
+                title: "Retained guide",
+            },
+        ],
+        type: "guide",
+    });
+    assert.equal(service.field(reference, "title"), "Retained guide");
+    f.send({ ...ready, stale: true });
+    assert.deepEqual(
+        f.counts(),
+        [2, 2],
+        "each attempt accepts the cache once, not on every lease poll"
+    );
+    service.dispose();
+    f.session.close();
+}
+{
+    const f = bridgeFixture();
+    f.session.retry();
+    f.session.retry();
+    assert.equal(f.workers.length, 1, "rapid retries share the pending close");
+    f.session.close();
+    f.send({ type: "closed" });
+    f.advance(1000);
+    assert.equal(f.workers.length, 1, "close cancels every pending restart");
+}
+{
+    const f = bridgeFixture();
+    f.advance(20000);
+    const ready = {
+        fetched: 1020000,
+        generation: "first",
+        mappings: { 18: {} },
+        records: 1,
+        type: "ready",
+    };
+    f.send(ready);
+    assert.equal(f.diagnostics().finished - f.diagnostics().started, 20000);
+    f.advance(7200000);
+    f.send({ phase: "cache", type: "progress" });
+    const started = f.diagnostics().started;
+    for (let n = 0; n < 3; n++) {
+        f.send({ ...ready, stale: true });
+        f.send({ phase: "waiting", type: "progress" });
+        f.advance(1000);
+        f.send({ phase: "cache", type: "progress" });
+    }
+    assert.deepEqual(
+        f.counts(),
+        [1, 1],
+        "unchanged generation does not rebuild guide mappings"
+    );
+    assert.equal(
+        f.diagnostics().started,
+        started,
+        "waiting belongs to the same refresh"
+    );
+    f.send(ready);
+    assert.equal(
+        f.diagnostics().phase,
+        "ready",
+        "fresh/stale transitions still update status"
+    );
+    f.send({ ...ready, generation: "second" });
+    assert.deepEqual(
+        f.counts(),
+        [2, 2],
+        "new generation invalidates even with the same timestamp"
+    );
+    f.send({
+        cached: true,
+        code: "EPG_HTTP",
+        httpStatus: 503,
+        phase: "download",
+        type: "error",
+    });
+    f.advance(7200000);
+    f.send({ phase: "cache", type: "progress" });
+    assert.equal(
+        f.diagnostics().started - started,
+        7203000,
+        "scheduled recovery resets elapsed time"
+    );
+    f.session.close();
+}
+{
+    const f = bridgeFixture();
+    f.send({ fetched: 1, mappings: {}, type: "ready" });
+    f.send({ fetched: 1, mappings: {}, type: "ready" });
+    f.send({ fetched: 2, mappings: {}, type: "ready" });
+    assert.deepEqual(
+        f.counts(),
+        [2, 2],
+        "older Worker readiness uses its fetched timestamp"
+    );
+    f.session.close();
+}
+console.log(
+    "PASS hosted EPG bridge close/retry, generation notifications and refresh elapsed time"
+);
 const now = Math.floor(Date.now() / 1000);
 const stamp = (offset) =>
     new Date((now + offset) * 1000)
@@ -420,7 +799,9 @@ const base =
     "</tv>";
 let body = zlib.gzipSync(base),
     status = 200,
-    calls = 0;
+    calls = 0,
+    holdFeed = false;
+const heldResponses = new Set();
 const server = http.createServer((request, response) => {
     const name = new URL(request.url, "http://fixture").pathname;
     if (name === "/") {
@@ -431,7 +812,11 @@ const server = http.createServer((request, response) => {
     if (name === "/feed.gz") {
         calls++;
         response.statusCode = status;
-        response.end(body);
+        if (holdFeed) {
+            heldResponses.add(response);
+            response.on("close", () => heldResponses.delete(response));
+            response.write(body.subarray(0, 10));
+        } else response.end(body);
         return;
     }
     if (name.startsWith("/hosted/") && generated[name.slice(8)]) {
@@ -475,9 +860,11 @@ const server = http.createServer((request, response) => {
                         opening.result.createObjectStore("meta", {
                             keyPath: "key",
                         });
-                        opening.result.createObjectStore("rows", {
-                            keyPath: "key",
-                        });
+                        opening.result
+                            .createObjectStore("rows", {
+                                keyPath: "key",
+                            })
+                            .createIndex("generation", "generation");
                     };
                     opening.onsuccess = () => resolve(opening.result);
                     opening.onerror = () => reject(opening.error);
@@ -503,14 +890,29 @@ const server = http.createServer((request, response) => {
                             (scenario === "expired-owner" ? -1000 : 60000),
                     });
                     for (const generation of ["old", "new", "orphan"])
-                        tx.objectStore("rows").put({
-                            generation,
-                            key: generation,
-                        });
+                        for (const batch of [0, 1])
+                            tx.objectStore("rows").put({
+                                generation,
+                                key: generation + ":" + batch,
+                                rows: [{ descr: "Full programme description" }],
+                            });
                     tx.oncomplete = resolve;
                     tx.onabort = () => reject(tx.error);
                 });
                 const scopes = [];
+                // Cleaning a generation must not deserialize its programme data.
+                const valueDescriptor = Object.getOwnPropertyDescriptor(
+                    IDBCursorWithValue.prototype,
+                    "value"
+                );
+                let valuesRead = 0;
+                Object.defineProperty(IDBCursorWithValue.prototype, "value", {
+                    ...valueDescriptor,
+                    get() {
+                        valuesRead++;
+                        return valueDescriptor.get.call(this);
+                    },
+                });
                 const outcome = await new Promise((resolve) => {
                     const cleanup = new Function(
                         "transaction",
@@ -538,26 +940,31 @@ const server = http.createServer((request, response) => {
                         cleanup("old", () => resolve({ code: null }));
                     else cleanup(() => resolve({ code: null }));
                 });
+                Object.defineProperty(
+                    IDBCursorWithValue.prototype,
+                    "value",
+                    valueDescriptor
+                );
                 const keys = await new Promise((resolve) => {
                     const tx = database.transaction(["rows"], "readonly"),
                         read = tx.objectStore("rows").getAllKeys();
                     read.onsuccess = () => resolve(read.result);
                 });
                 database.close();
-                results.push({ keys, outcome, scenario, scopes });
+                results.push({ keys, outcome, scenario, scopes, valuesRead });
             }
             return results;
         }, cleanupSource);
         assert.deepEqual(
             cleanupRaces[0].keys,
-            ["new"],
+            ["new:0", "new:1"],
             "cleanup retains the committed pointer, not load's stale snapshot"
         );
         for (const race of cleanupRaces.slice(1)) {
             assert.equal(race.outcome.code, "EPG_LEASE_LOST", race.scenario);
             assert.deepEqual(
                 race.keys,
-                ["new", "old", "orphan"],
+                ["new:0", "new:1", "old:0", "old:1", "orphan:0", "orphan:1"],
                 "unowned cleanup must not delete any rows"
             );
         }
@@ -565,6 +972,11 @@ const server = http.createServer((request, response) => {
             cleanupRaces[0].scopes,
             [["meta", "rows"]],
             "lease, pointer and deletion share one transaction"
+        );
+        assert.equal(
+            cleanupRaces[0].valuesRead,
+            0,
+            "generation cleanup reads keys without cloning programme descriptions"
         );
         await page.evaluate(() => {
             window.messages = [];
@@ -821,6 +1233,97 @@ const server = http.createServer((request, response) => {
             "different playlist cache is isolated"
         );
 
+        // A close acknowledgement means the lease transaction has committed.
+        // Version changes during both download and parsing stop all continuations.
+        holdFeed = true;
+        await page.evaluate(() => {
+            makeWorker();
+            worker.postMessage({ ...pairInput, force: true });
+        });
+        await page.waitForFunction(() =>
+            messages.some((m) => m.phase === "download")
+        );
+        await page.evaluate(() => worker.postMessage({ type: "close" }));
+        assert.equal(
+            (await page.evaluate(() => waitMessage("closed"))).type,
+            "closed"
+        );
+        const leaseAfterClose = await page.evaluate(
+            (name) =>
+                new Promise((resolve, reject) => {
+                    const request = indexedDB.open(name, 1);
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => {
+                        const db = request.result,
+                            tx = db.transaction("meta"),
+                            read = tx.objectStore("meta").get("lease");
+                        tx.oncomplete = () => {
+                            db.close();
+                            resolve(read.result || null);
+                        };
+                    };
+                }),
+            pairReady[0].cacheName
+        );
+        assert.equal(
+            leaseAfterClose,
+            null,
+            "close releases rather than waiting 30 seconds for expiry"
+        );
+        for (const phase of ["download", "parse"]) {
+            holdFeed = phase === "download";
+            if (!holdFeed)
+                body = zlib.gzipSync(
+                    header +
+                        Array.from({ length: 10000 }, (_, i) =>
+                            programme(
+                                -1800,
+                                1800,
+                                "Version change " + i,
+                                "description ".repeat(50)
+                            )
+                        ).join("") +
+                        "</tv>"
+                );
+            await page.evaluate(() => {
+                makeWorker();
+                worker.postMessage({ ...pairInput, force: true });
+            });
+            await page.waitForFunction(
+                (value) => messages.some((m) => m.phase === value),
+                phase
+            );
+            await page.evaluate((name) => {
+                window.storageDeleted = new Promise((resolve, reject) => {
+                    const request = indexedDB.deleteDatabase(name);
+                    request.onsuccess = () => resolve(true);
+                    request.onerror = () => reject(request.error);
+                });
+            }, pairReady[0].cacheName);
+            const changed = await page.evaluate(() => waitMessage("error"));
+            assert.equal(changed.code, "EPG_STORAGE_CHANGED", phase);
+            assert.equal(changed.phase, phase);
+            assert.equal(
+                (await page.evaluate(() => waitMessage("closed"))).type,
+                "closed"
+            );
+            assert.equal(await page.evaluate(() => storageDeleted), true);
+            await page.waitForTimeout(100); // queued parser/transaction continuations must remain inert
+            assert.equal(
+                await page.evaluate(
+                    () =>
+                        messages.filter(
+                            (m) =>
+                                m.type === "fatal" ||
+                                m.type === "error" ||
+                                (m.type === "ready" && !m.stale)
+                        ).length
+                ),
+                0
+            );
+        }
+        holdFeed = false;
+
         // More than the former 50,000-programme policy. Every admitted record survives.
         status = 200;
         let large = header;
@@ -1017,7 +1520,97 @@ const server = http.createServer((request, response) => {
             await page.locator("#listAbout").innerText(),
             /EPG_WORKER/
         );
-        await page.evaluate(() => epgSession.close());
+        assert.match(
+            await page.locator("#listAbout").innerText(),
+            /Playback will stop/
+        );
+        await page.evaluate(() => {
+            window.restarts = 0;
+            window.restart = () => {
+                restarts++;
+            };
+        });
+        await page
+            .getByRole("button", { exact: true, name: "Restart player" })
+            .click();
+        assert.equal(
+            await page.evaluate(() => restarts),
+            1,
+            "restart requires an explicit action"
+        );
+        await page.evaluate(() => aboutKeyHandler(keys.RETURN));
+        assert.equal(
+            await page.evaluate(() => restarts),
+            1,
+            "Back only closes diagnostics"
+        );
+        await page.evaluate(() => {
+            epgSession.close();
+            window.fakeWorkers = [];
+            window.Worker = function () {
+                fakeWorkers.push(this);
+                this.postMessage = (value) => {
+                    if (value.type === "close")
+                        this.onmessage({ data: { type: "closed" } });
+                };
+                this.terminate = () => {};
+            };
+            epgSession = __ottHostedEpg.open(
+                [{ id: "race", name: "Fixture" }],
+                () => {}
+            );
+            __ottHostedEpg.showDiagnostics();
+            // The visible Retry label must not silently become destructive.
+            fakeWorkers[0].onerror();
+            document.querySelector("#listAbout button").click();
+        });
+        assert.equal(
+            await page.evaluate(() => restarts),
+            1,
+            "stale Retry activation only updates its label"
+        );
+        assert.equal(
+            await page
+                .getByRole("button", { exact: true, name: "Restart player" })
+                .count(),
+            1
+        );
+        assert.match(
+            await page.locator("#footer").innerText(),
+            /Restart player/
+        );
+        await page.evaluate(() => aboutKeyHandler(keys.ENTER));
+        assert.equal(
+            await page.evaluate(() => restarts),
+            2,
+            "remote OK invokes the advertised restart"
+        );
+        await page.evaluate(() => {
+            fakeWorkers[0].onmessage({
+                data: { fetched: 1, mappings: {}, type: "ready" },
+            });
+            aboutKeyHandler(keys.ENTER);
+        });
+        assert.equal(
+            await page.evaluate(() => restarts),
+            2,
+            "stale Restart activation cannot restart a recovered player"
+        );
+        assert.equal(
+            await page.evaluate(() => fakeWorkers.length),
+            1,
+            "mode change only renders the new action"
+        );
+        await page.evaluate(() => aboutKeyHandler(keys.ENTER));
+        assert.equal(
+            await page.evaluate(() => fakeWorkers.length),
+            2,
+            "recovered mode retains normal retry"
+        );
+        await page.evaluate(() => {
+            aboutKeyHandler(keys.RETURN);
+            epgSession.close();
+        });
         await page.evaluate(() => {
             window.Worker = function () {
                 this.postMessage = () => {};
@@ -1038,7 +1631,7 @@ const server = http.createServer((request, response) => {
         await page.waitForFunction(
             () => __ottHostedEpg.diagnostics().code === "EPG_STALLED"
         );
-        assert.equal(await page.evaluate(() => stalledTerminated), true);
+        await page.waitForFunction(() => window.stalledTerminated === true);
         await page.evaluate(() => {
             restoreClock();
             epgSession.close();
@@ -1048,6 +1641,7 @@ const server = http.createServer((request, response) => {
         );
     } finally {
         await browser.close();
+        for (const response of heldResponses) response.destroy();
         await new Promise((resolve) => server.close(resolve));
     }
 })().catch((error) => {

@@ -281,26 +281,37 @@ export function executeRemoteRequest(
         return;
     }
     var source = guide.source();
+    var channelLoad = w.__ottCommandChannelLoad;
     var asOf = Date.now() / 1000;
     var programs: any[] = [];
     var position = 0,
         running = 0,
         checked = 0;
     var stopped = false;
+    var pumpTimer: any = null;
     var cancels: Array<() => void> = [];
     function cancel(): void {
         stopped = true;
         w.clearTimeout(timer);
+        w.clearTimeout(pumpTimer);
+        pumpTimer = null;
         cancels.forEach(function (fn) {
             fn();
         });
     }
+    function changed(): boolean {
+        return (
+            source !== guide.source() ||
+            channelLoad !== w.__ottCommandChannelLoad ||
+            w.commandChannelsReady !== true
+        );
+    }
     function finish(): void {
         if (stopped) return;
-        var changed = source !== guide.source();
+        var stale = changed();
         cancel();
-        if (changed) {
-            reject("Provider changed while reading EPG. Retry.");
+        if (stale || changed()) {
+            reject("Channels or provider changed while reading EPG. Retry.");
             return;
         }
         reply({
@@ -316,25 +327,36 @@ export function executeRemoteRequest(
     var timer = w.setTimeout(finish, 25000);
     function consume(row: any, entries: any): void {
         checked++;
-        for (var j = 0; entries && j < entries.length; j++) {
-            var entry = entries[j];
-            if (entry.time <= asOf && entry.time_to > asOf && entry.name) {
-                if (includes(String(entry.name), params.search))
-                    programs.push({
-                        channel: row.name,
-                        end: entry.time_to,
-                        number: row.number,
-                        start: entry.time,
-                        title: String(entry.name),
-                    });
-                break;
-            }
-        }
+        if (!entries || !entries.length) return;
+        var current = w.OttPlayCore.guideScheduleSelection(
+            entries.map(function (entry: any) {
+                return { end: entry.time_to, row: entry, start: entry.time };
+            }),
+            asOf,
+            0
+        ).current;
+        if (!current || !current.row.name) return;
+        var entry = current.row;
+        if (includes(String(entry.name), params.search))
+            programs.push({
+                channel: row.name,
+                end: entry.time_to,
+                number: row.number,
+                start: entry.time,
+                title: String(entry.name),
+            });
+    }
+    function schedulePump(): void {
+        if (stopped || pumpTimer !== null) return;
+        pumpTimer = w.setTimeout(function () {
+            pumpTimer = null;
+            pump();
+        }, 0);
     }
     // Yield between batches even when cached callbacks complete synchronously.
     function pump(): void {
         if (stopped) return;
-        if (source !== guide.source()) {
+        if (changed()) {
             finish();
             return;
         }
@@ -360,14 +382,14 @@ export function executeRemoteRequest(
                         completed = true;
                         running--;
                         consume(row, entries);
-                        w.setTimeout(pump, 0);
+                        schedulePump();
                     }
                 );
                 cancels.push(release);
             })(rows[position++]);
         }
         if (!running && position === rows.length) finish();
-        else if (running < 4 && position < rows.length) w.setTimeout(pump, 0);
+        else if (running < 4 && position < rows.length) schedulePump();
     }
     pump();
     return cancel;
