@@ -15,19 +15,63 @@ function createHostedEpgWorker(env: any): void {
     var retainedBytes = 0;
     var retainedRecords = 0;
     var closed = false;
+    var phase = "starting";
+    var source = -1;
+    var downloaded = 0;
+    var total = 0;
+    var httpStatus = 0;
+    var lastProgress = 0;
     var WIRE_LIMIT = 96 * 1024 * 1024;
     var XML_LIMIT = 512 * 1024 * 1024;
     var CHANNEL_BYTES = 8 * 1024 * 1024;
     var CHANNEL_RECORDS = 20000;
+    function xmlByteLength(value: string): number {
+        // The input limit is UTF-8 XML bytes, not the cumulative UTF-16 storage
+        // of transient parser chunks. Only bounded chunks are held in memory.
+        var size = 0;
+        for (var i = 0; i < value.length; i++) {
+            var code = value.charCodeAt(i);
+            if (code < 128) size++;
+            else if (code < 2048) size += 2;
+            else if (
+                code >= 0xd800 &&
+                code <= 0xdbff &&
+                value.charCodeAt(i + 1) >= 0xdc00 &&
+                value.charCodeAt(i + 1) <= 0xdfff
+            ) {
+                size += 4;
+                i++;
+            } else size += 3;
+        }
+        return size;
+    }
     function send(value: any): void {
         if (!closed) env.postMessage(value);
+    }
+    function progress(next: string, loaded = 0, size = 0): void {
+        phase = next;
+        send({
+            loaded: loaded,
+            phase: phase,
+            records: retainedRecords,
+            source: source,
+            total: size,
+            type: "progress",
+        });
     }
     function fail(code: string): void {
         loading = false;
         release();
         if (request) request.abort();
         request = null;
-        send({ cached: !!active, code: code, type: "error" });
+        send({
+            cached: !!active,
+            code: code,
+            httpStatus: httpStatus,
+            phase: phase,
+            source: source,
+            type: "error",
+        });
     }
     function release(): void {
         env.clearInterval(leaseTimer);
@@ -67,6 +111,7 @@ function createHostedEpgWorker(env: any): void {
         };
         tx.oncomplete = function () {
             if (!granted) {
+                progress("waiting");
                 loading = false;
                 timer = env.setTimeout(function () {
                     load(configuration);
@@ -188,6 +233,7 @@ function createHostedEpgWorker(env: any): void {
             cacheName: databaseName,
             fetched: active.fetched,
             mappings: active.mappings,
+            records: active.records,
             stale: stale,
             type: "ready",
         });
@@ -226,6 +272,7 @@ function createHostedEpgWorker(env: any): void {
         }
         configuration = input;
         loading = true;
+        progress("cache");
         signature = JSON.stringify([input.sources, input.channels]);
         databaseName = "ottplay-hosted-epg-v1-" + identity(signature);
         if (database && database.name !== databaseName) {
@@ -248,8 +295,15 @@ function createHostedEpgWorker(env: any): void {
                         ? previous
                         : null;
                 if (active)
-                    ready(Date.now() - active.fetched >= input.refreshMs);
-                if (active && Date.now() - active.fetched < input.refreshMs) {
+                    ready(
+                        !!input.force ||
+                            Date.now() - active.fetched >= input.refreshMs
+                    );
+                if (
+                    active &&
+                    !input.force &&
+                    Date.now() - active.fetched < input.refreshMs
+                ) {
                     loading = false;
                     schedule();
                     return;
@@ -261,6 +315,7 @@ function createHostedEpgWorker(env: any): void {
                         // and this lease acquisition. Reuse its accepted result.
                         if (
                             snapshot &&
+                            !input.force &&
                             Date.now() - snapshot.fetched < input.refreshMs
                         ) {
                             active = snapshot;
@@ -292,6 +347,7 @@ function createHostedEpgWorker(env: any): void {
             String(Date.now()) + "-" + Math.random().toString(36).slice(2);
         retainedBytes = 0;
         retainedRecords = 0;
+        configuration.force = false;
         var mappings: any = Object.create(null);
         var count = 0;
         var sourceIndex = 0;
@@ -320,6 +376,7 @@ function createHostedEpgWorker(env: any): void {
                 generation: generation,
                 key: "active",
                 mappings: mappings,
+                records: retainedRecords,
                 signature: signature,
             };
             var tx = transaction(["meta"], true);
@@ -361,6 +418,18 @@ function createHostedEpgWorker(env: any): void {
     ): void {
         var xhr = new env.XMLHttpRequest();
         request = xhr;
+        source = sourceIndex;
+        downloaded = total = httpStatus = 0;
+        progress("download");
+        if (
+            env.location &&
+            env.location.protocol === "https:" &&
+            /^http:\/\//i.test(url)
+        ) {
+            fail("EPG_INSECURE_SOURCE");
+            schedule();
+            return;
+        }
         // Source sends a many-month max-age. Freeze this bucket for this entire download.
         var address = url.split("#")[0];
         var separator = address.indexOf("?") < 0 ? "?" : "&";
@@ -382,26 +451,30 @@ function createHostedEpgWorker(env: any): void {
                 schedule();
                 return;
             }
-            send({
-                loaded: event.loaded,
-                phase: "download",
-                total: event.total || 0,
-                type: "progress",
-            });
+            downloaded = event.loaded;
+            total = event.total || 0;
+            progress("download", downloaded, total);
         };
-        xhr.onerror = xhr.ontimeout = function () {
+        xhr.onerror = function () {
             fail("EPG_NETWORK");
+            schedule();
+        };
+        xhr.ontimeout = function () {
+            fail("EPG_TIMEOUT");
             schedule();
         };
         xhr.onload = function () {
             request = null;
             if (closed) return;
+            httpStatus = xhr.status;
             if (xhr.status < 200 || xhr.status >= 300 || !xhr.response) {
-                fail("EPG_NETWORK");
+                fail(xhr.status ? "EPG_HTTP" : "EPG_NETWORK");
                 schedule();
                 return;
             }
             var buffer = xhr.response;
+            downloaded = total = buffer.byteLength;
+            progress("download", downloaded, total);
             xhr.onload = xhr.onerror = xhr.ontimeout = xhr.onprogress = null;
             if (!buffer.byteLength || buffer.byteLength > WIRE_LIMIT) {
                 fail("EPG_WIRE_LIMIT");
@@ -421,6 +494,7 @@ function createHostedEpgWorker(env: any): void {
     ): void {
         var bytes = new Uint8Array(buffer);
         var compressed = bytes[0] === 31 && bytes[1] === 139;
+        progress("parse", 0, bytes.length);
         var offset = 0,
             decoded = 0,
             retained = 0,
@@ -514,12 +588,7 @@ function createHostedEpgWorker(env: any): void {
                         shift: shift,
                     };
             });
-            send({
-                loaded: 0,
-                phase: "parse",
-                total: bytes.length,
-                type: "progress",
-            });
+            progress("parse", 0, bytes.length);
         }
         parser.ondoctype = function (value: string) {
             // Permit the feed's inert external declaration; never resolve a DTD or entities.
@@ -596,7 +665,7 @@ function createHostedEpgWorker(env: any): void {
             }
         };
         function text(value: string): void {
-            decoded += value.length * 2;
+            decoded += xmlByteLength(value);
             if (decoded > XML_LIMIT) throw new Error("EPG_XML_LIMIT");
             parser.write(value);
         }
@@ -693,6 +762,10 @@ function createHostedEpgWorker(env: any): void {
             }
             flush(function () {
                 if (failed || closed) return;
+                if (ended || Date.now() - lastProgress >= 250) {
+                    lastProgress = Date.now();
+                    progress("parse", offset, bytes.length);
+                }
                 if (ended) {
                     bytes = new Uint8Array(0);
                     complete(retained);

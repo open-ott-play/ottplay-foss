@@ -61,6 +61,8 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv կարգավորումներ",
     "Allowlist this Device ID": "Թույլատրել այս սարքի ID-ն",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Առանց պորտի IP-ն օգտագործում է HTTP 8081 պորտը։ Դադարեցնելու համար մաքրեք հասցեն կամ ընտրեք «Անջատել»։",
     "API failed, trying M3U...": "API-ն չաշխատեց, փորձարկվում է M3U…",
@@ -327,16 +329,43 @@ var keyStrings = {
         "Մուտքագրեք Xtream սերվերի URL-ը (օր.՝ https://your-server:8080)",
     EPG: "Հեռուստածրագիր",
     "EPG and archive. Channel: ": "Հեռուստածրագիր և արխիվ։ Ալիք՝ ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
     "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
     "EPG unavailable on this browser": "EPG unavailable on this browser",
     "EPG unavailable: %1": "EPG unavailable: %1",
     "EPG update failed; using saved programme guide":
         "EPG update failed; using saved programme guide",
     "EPG: downloading programme guide...":
         "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
     "EPG: processing programme guide...": "EPG: processing programme guide...",
     "EPG: updating saved programme guide...":
         "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "Սխալ։",
     "Error Code!": "Անվավեր կոդ։",
     Exit: "Ելք",
@@ -471,6 +500,8 @@ var keyStrings = {
     "Next TV program": "Հաջորդ հաղորդում",
     No: "Ոչ",
     "No channel name": "Ալիքի անուն չկա",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Պահպանված կարգավորումներ չեն գտնվել",
     "Not found": "Չի գտնվել",
     "Not reduce video when showing the list (bugfix)":
@@ -576,6 +607,7 @@ var keyStrings = {
     "Restart stream": "Վերագործարկել հոսքը",
     "Restart stream / Live": "Վերագործարկել հոսքը / ուղիղ եթեր",
     "Resume from archive?": "Շարունակե՞լ արխիվից։",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Վերադառնալ նախորդ ալիքին",
     Rewind: "Տեղաշարժել",
     "Rewind step by buttons %1/%2": "Հետ պտտելու քայլը %1/%2 կոճակներով",

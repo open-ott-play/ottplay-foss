@@ -5539,6 +5539,14 @@ var infoArr: any[] = [
         name: "Debug HUD",
     },
 ];
+if ((window as any).__OTTPLAY_HOSTED__) {
+    infoArr.push({
+        action: function () {
+            (window as any).__ottHostedEpg.showDiagnostics();
+        },
+        name: "EPG diagnostics",
+    });
+}
 if (isPlayDistribution()) {
     infoArr.push({
         action: function () {
