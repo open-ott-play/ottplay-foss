@@ -1,8 +1,3 @@
-// rquickjs's rust-alloc feature routes its allocations through this allocator too.
-#[cfg(all(target_os = "linux", target_env = "musl"))]
-#[global_allocator]
-static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
-
 mod debug_api;
 mod msx;
 mod stalker_api;
