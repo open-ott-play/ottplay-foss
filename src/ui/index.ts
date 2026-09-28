@@ -3007,7 +3007,13 @@ export function showEditKey1(
         typeof w.__TAURI__ !== "undefined" ||
         /^(pc|pc2|tauri|desktop|nodejs)$/.test(String(w.ott_device || ""));
     var isCap = typeof w.Capacitor !== "undefined";
-    if ((isPc || isCap) && typeof w.showEditKey2 === "function") {
+    var previousEditor = resume && w.__ottClassicScreenPort.owner("editor");
+    var nativeResume =
+        previousEditor && previousEditor.model.nativeInputSecret !== undefined;
+    if (
+        (isPc || isCap || nativeResume) &&
+        typeof w.showEditKey2 === "function"
+    ) {
         w.showEditKey2(_initKeys, secret, resume);
         return;
     }
@@ -3344,6 +3350,19 @@ export function editKey1(e: number): void {
  */
 export function editKey2(code: number): void {
     var w = window as any;
+    var owner = w.__ottClassicScreenPort.owner("editor");
+    if (!owner || !owner.foreground()) return;
+    var input = document.getElementById("editvar");
+    var remote = document.getElementById("editRemoteInput");
+    if (code === w.keys.UP || code === w.keys.DOWN) {
+        var next = document.activeElement === remote ? input : remote;
+        if (next) next.focus();
+        return;
+    }
+    if (code === w.keys.ENTER && remote && document.activeElement === remote) {
+        remote.click();
+        return;
+    }
     if (code !== w.keys.ENTER && code !== w.keys.EXIT && code !== w.keys.RETURN)
         return;
     if (code === w.keys.ENTER)
@@ -3393,7 +3412,7 @@ export function showEditKey2(
         metadataText(caption) +
         '" id="editvar" style="color:' +
         ((window as any).curColor || "#fff") +
-        ';" autofocus><br/><br/>';
+        ';"><br/><br/>';
     html +=
         '<button type="button" id="editRemoteInput">' +
         metadataText(_("Remote text entry")) +
@@ -3420,6 +3439,39 @@ export function showEditKey2(
     if (editEl) {
         // Assign the value as text: HTML entities in URLs/passwords must round-trip.
         editEl.value = String(val);
+        var openingEvent = port.keyEvent();
+        var openingCode =
+            openingEvent &&
+            openingEvent.type === "keydown" &&
+            (openingEvent.keyCode || openingEvent.which);
+        // LG can send keypress/repeats after a shortcut opens and focuses an
+        // editor. Keep the field read-only until that physical key is released.
+        editEl.readOnly = !!openingCode;
+        var releaseOpeningKey = function (): void {
+            openingCode = 0;
+            editEl!.readOnly = false;
+            window.removeEventListener("keydown", openingKey, true);
+            window.removeEventListener("keypress", openingKey, true);
+            window.removeEventListener("keyup", openingKey, true);
+        };
+        var openingKey = editorOwner.guard(function (ev: KeyboardEvent): void {
+            if (!openingCode || !editorOwner.foreground()) return;
+            if ((ev.keyCode || ev.which) !== openingCode) {
+                if (ev.type === "keydown") releaseOpeningKey();
+                return;
+            }
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (ev.type === "keyup") {
+                releaseOpeningKey();
+                editEl!.focus();
+            }
+        });
+        if (openingCode) {
+            window.addEventListener("keydown", openingKey, true);
+            window.addEventListener("keypress", openingKey, true);
+            window.addEventListener("keyup", openingKey, true);
+        }
         var prev = (editEl as any).__ottEditKey2Handler;
         if (typeof prev === "function") {
             editEl.removeEventListener("keydown", prev);
@@ -3435,7 +3487,16 @@ export function showEditKey2(
                 ev.stopPropagation();
                 return;
             }
-            if (ev.key === "Enter" || ev.keyCode === 13) {
+            if (
+                ev.key === "ArrowUp" ||
+                ev.keyCode === (keys.UP || 38) ||
+                ev.key === "ArrowDown" ||
+                ev.keyCode === (keys.DOWN || 40)
+            ) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                editKey2(keys.DOWN || 40);
+            } else if (ev.key === "Enter" || ev.keyCode === 13) {
                 ev.preventDefault();
                 ev.stopPropagation();
                 editKey2(keys.ENTER || 13);
@@ -3443,6 +3504,15 @@ export function showEditKey2(
                 ev.preventDefault();
                 ev.stopPropagation();
                 editKey2(keys.EXIT || 27);
+            } else if (
+                ev.currentTarget === remoteButton &&
+                (ev.key === " " ||
+                    ev.key === "Tab" ||
+                    ev.keyCode === 9 ||
+                    ev.keyCode === 32)
+            ) {
+                // Keep Space/Tab native; do not let the global router save.
+                ev.stopPropagation();
             }
         });
         var onRemoteClick = editorOwner.guard(function (ev: MouseEvent): void {
@@ -3457,44 +3527,21 @@ export function showEditKey2(
             (window as any).editvar = editEl!.value;
             swopLoadValue();
         });
-        var onRemoteKeyDown = editorOwner.guard(function (
-            ev: KeyboardEvent
-        ): void {
-            if (
-                !editorOwner.foreground() ||
-                document.getElementById("editRemoteInput") !== remoteButton
-            )
-                return;
-            // Keep button activation native; do not let the global router save.
-            if (
-                ev.key === "Enter" ||
-                ev.key === " " ||
-                ev.key === "Tab" ||
-                ev.keyCode === 13 ||
-                ev.keyCode === 9 ||
-                ev.keyCode === 32
-            )
-                ev.stopPropagation();
-            else if (ev.key === "Escape" || ev.keyCode === 27) {
-                ev.preventDefault();
-                ev.stopPropagation();
-                editKey2(keys.EXIT || 27);
-            }
-        });
         editorOwner.model.releaseNativeInput = editorOwner.own(function () {
+            releaseOpeningKey();
             editEl!.removeEventListener("keydown", onKeyDown);
             if (remoteButton) {
                 remoteButton.removeEventListener("click", onRemoteClick);
-                remoteButton.removeEventListener("keydown", onRemoteKeyDown);
+                remoteButton.removeEventListener("keydown", onKeyDown);
             }
         });
         (editEl as any).__ottEditKey2Handler = onKeyDown;
         editEl.addEventListener("keydown", onKeyDown);
         if (remoteButton) {
             remoteButton.addEventListener("click", onRemoteClick);
-            remoteButton.addEventListener("keydown", onRemoteKeyDown);
+            remoteButton.addEventListener("keydown", onKeyDown);
         }
-        editEl.focus();
+        if (!openingCode) editEl.focus();
     }
 }
 
