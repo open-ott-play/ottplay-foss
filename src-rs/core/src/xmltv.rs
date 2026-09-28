@@ -9,6 +9,9 @@ use quick_xml::Reader;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+#[path = "xmltv_fetch_tests.rs"]
+mod fetch_tests;
 mod server_records;
 
 #[derive(Clone, Debug, Default)]
@@ -51,23 +54,18 @@ pub async fn fetch_single_native(source: &str) -> anyhow::Result<(Channels, Prog
 
 async fn fetch_single_impl(source: &str, native: bool) -> anyhow::Result<(Channels, Programs)> {
     let content: Vec<u8> = if source.starts_with("http://") || source.starts_with("https://") {
-        let builder = Client::builder().user_agent("OTT-play-FOSS/1.0");
-        let builder = if native {
-            builder.timeout(std::time::Duration::from_secs(60))
-        } else {
-            builder
-        };
-        let client = builder.build()?;
-        let resp = client.get(source).send().await?;
-        let resp = if native {
-            resp.error_for_status()?
-        } else {
-            resp
-        };
-        let bytes = resp.bytes().await?;
-        bytes.to_vec()
+        let client = Client::builder()
+            .user_agent("OTT-play-FOSS/1.0")
+            .connect_timeout(std::time::Duration::from_secs(30))
+            .read_timeout(std::time::Duration::from_secs(60))
+            .timeout(std::time::Duration::from_secs(600))
+            .build()
+            .map_err(|error| fetch_failure(native, "HTTP client failed", error.into()))?;
+        fetch_remote(source, &client, native).await?
     } else {
-        tokio::fs::read(source).await?
+        tokio::fs::read(source)
+            .await
+            .map_err(|error| fetch_failure(native, "source read failed", error.into()))?
     };
 
     let source_has_gz_extension = source.ends_with(".gz");
@@ -78,15 +76,52 @@ async fn fetch_single_impl(source: &str, native: bool) -> anyhow::Result<(Channe
         let raw: Vec<u8> = if is_gz {
             let mut d = GzDecoder::new(&content[..]);
             let mut out = Vec::new();
-            d.read_to_end(&mut out)?;
+            d.read_to_end(&mut out)
+                .map_err(|error| fetch_failure(native, "gzip decode failed", error.into()))?;
             out
         } else {
             content
         };
         let text = String::from_utf8_lossy(&raw);
         parse_xmltv_impl(&text, native)
+            .map_err(|error| fetch_failure(native, "XMLTV parse failed", error))
     })
-    .await?
+    .await
+    .map_err(|error| fetch_failure(native, "XMLTV worker failed", error.into()))?
+}
+
+async fn fetch_remote(source: &str, client: &Client, native: bool) -> anyhow::Result<Vec<u8>> {
+    let response = client
+        .get(source)
+        .send()
+        .await
+        .and_then(reqwest::Response::error_for_status)
+        .map_err(|error| fetch_failure(native, "HTTP request failed", error.into()))?;
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|error| fetch_failure(native, "HTTP body failed", error.into()))?;
+    Ok(bytes.to_vec())
+}
+
+// URLs, response bodies and nested error text can all contain credentials.
+// Native callers retain their existing detailed error contract.
+fn fetch_failure(native: bool, stage: &'static str, error: anyhow::Error) -> anyhow::Error {
+    if native {
+        return error;
+    }
+    if let Some(http) = error.downcast_ref::<reqwest::Error>() {
+        if let Some(status) = http.status() {
+            return anyhow::anyhow!("HTTP status {}", status.as_u16());
+        }
+        if http.is_timeout() {
+            return anyhow::anyhow!("HTTP timeout");
+        }
+        if http.is_connect() {
+            return anyhow::anyhow!("HTTP connection failed");
+        }
+    }
+    anyhow::anyhow!(stage)
 }
 
 /// Event-based XMLTV parser. Cheap; no DOM.
