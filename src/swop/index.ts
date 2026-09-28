@@ -51,7 +51,7 @@ interface LocalSwopConfig {
 }
 
 /**
- * Ensure a stable Device UUID suitable for the Worker allowlist charset.
+ * Ensure a stable Device UUID suitable for the SWOP identity charset.
  * Prefers an explicit id, then window/localStorage/settings; generates a secure id if possible.
  * Returns empty when no id is provisioned and the engine has no secure random API.
  */
@@ -340,6 +340,7 @@ export function swopLoadValue(): void {
                     pollTimer = setTimeout(poll, POLL_MS);
                 }
             },
+            swopNativeRequest: true,
             timeout: 10000,
             type: "POST",
             url: base + wire.swopValuePath,
@@ -446,6 +447,7 @@ export function swopLoadValue(): void {
             );
             pollTimer = setTimeout(poll, 3000);
         },
+        swopNativeRequest: true,
         timeout: 10000,
         type: "POST",
         url: base + wire.swopSessionPath,
