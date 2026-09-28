@@ -118,6 +118,7 @@ function fixture(initial = []) {
         _: (value) => value,
         __ottLocalHttpRemote: { init() {}, status: () => ({ enabled: false }) },
         deviceUUID: "fixture-device",
+        executeRemoteRequest: () => {},
         handleCommand: (command) => delivered.push(command),
         keys: {
             DOWN: 40,
