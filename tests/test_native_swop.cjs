@@ -2,6 +2,21 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const ts = require("typescript");
 const { JSDOM } = require("jsdom");
+// Capacitor's default debug bridge logger records options and results, including
+// drafts and scoped tokens. Keep the shipping config safe in Debug as well.
+const configModule = { exports: {} };
+require("node:vm").runInNewContext(
+    ts.transpileModule(fs.readFileSync("capacitor.config.ts", "utf8"), {
+        compilerOptions: { module: ts.ModuleKind.CommonJS },
+    }).outputText,
+    { module: configModule, exports: configModule.exports }
+);
+const capacitorConfig = configModule.exports.default;
+assert.equal(capacitorConfig.loggingBehavior, "none");
+for (const platform of ["ios", "android"])
+    assert(
+        [undefined, "none"].includes(capacitorConfig[platform]?.loggingBehavior)
+    );
 const source = fs.readFileSync("src/plugins/native-http.ts", "utf8");
 const script = ts
     .transpileModule(source, {

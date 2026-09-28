@@ -3,6 +3,8 @@ import type { CapacitorConfig } from "@capacitor/cli";
 const config: CapacitorConfig = {
     appId: "play.ott.foss",
     appName: "OTT-play FOSS",
+    // Bridge debug logs include native call options/results (SWOP drafts/tokens).
+    loggingBehavior: "none",
     ios: {
         backgroundAudio: true,
         contentInset: "automatic",
