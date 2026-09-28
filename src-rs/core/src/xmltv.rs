@@ -96,6 +96,10 @@ pub fn parse_xmltv_native(xml: &str) -> anyhow::Result<(Channels, Programs)> {
 }
 
 fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Programs)> {
+    // EXPERIMENT ONLY: retained v1.1.43 reducer for the standalone/server profile.
+    // This knowingly fails the shared-core ownership guard; do not ship.
+    #[cfg(feature = "experimental-native-server-records")]
+    if !native { return parse_xmltv_143(xml, false); }
     let mut reader = Reader::from_str(xml);
     // quick-xml 0.41 emits references separately. Preserve whitespace between
     // text/reference/CDATA events and trim once when the complete field closes.
@@ -500,5 +504,303 @@ mod tests {
         let m = match_channel("Первый канал", &ch).unwrap();
         assert!(m.is_some());
         assert_eq!(m.unwrap().0, "c1");
+    }
+}
+
+// BEGIN NONSHIPPING COMPATIBILITY EXPERIMENT
+#[cfg(feature = "experimental-native-server-records")]
+fn parse_xmltv_143(xml: &str, native: bool) -> anyhow::Result<(Channels, Programs)> {
+    let mut reader = Reader::from_str(xml);
+    // quick-xml 0.41 emits references separately. Preserve whitespace between
+    // text/reference/CDATA events and trim once when the complete field closes.
+    reader.config_mut().trim_text(false);
+
+    let mut channels: Channels = HashMap::new();
+    let mut programs: Programs = HashMap::new();
+
+    let mut current_channel: Option<Channel> = None;
+    let mut current_programme: Option<(String, Programme)> = None;
+    let mut text_target: Option<TextTarget> = None;
+    let mut text_buffer = String::new();
+
+    let mut buf = Vec::new();
+    let mut depth = 0usize;
+    let mut root_seen = false;
+    let mut root_closed = false;
+    loop {
+        let event = reader.read_event_into(&mut buf);
+        if native {
+            // quick_xml can return EOF after complete channels inside an unclosed root.
+            // Such a partial download must never replace the native cache.
+            match &event {
+                Ok(Event::Start(element)) => {
+                    if depth == 0 {
+                        anyhow::ensure!(
+                            !root_seen && element.name().as_ref() == b"tv",
+                            "Invalid XMLTV root"
+                        );
+                        root_seen = true;
+                    }
+                    depth += 1;
+                }
+                Ok(Event::Empty(element)) if depth == 0 => {
+                    anyhow::ensure!(
+                        !root_seen && element.name().as_ref() == b"tv",
+                        "Invalid XMLTV root"
+                    );
+                    root_seen = true;
+                    root_closed = true;
+                }
+                Ok(Event::End(element)) => {
+                    anyhow::ensure!(depth > 0, "Unexpected XMLTV closing element");
+                    depth -= 1;
+                    if depth == 0 {
+                        anyhow::ensure!(
+                            element.name().as_ref() == b"tv",
+                            "Invalid XMLTV closing root"
+                        );
+                        root_closed = true;
+                    }
+                }
+                Ok(Event::Text(text)) if depth == 0 => {
+                    anyhow::ensure!(text.decode()?.trim().is_empty(), "Text outside XMLTV root");
+                }
+                Ok(Event::GeneralRef(_)) if depth == 0 => {
+                    anyhow::bail!("Entity outside XMLTV root")
+                }
+                Ok(Event::CData(_)) if depth == 0 => anyhow::bail!("CDATA outside XMLTV root"),
+                Ok(Event::Eof) => anyhow::ensure!(
+                    root_seen && root_closed && depth == 0,
+                    "Incomplete XMLTV document"
+                ),
+                _ => {}
+            }
+        }
+        match event {
+            Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
+                let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                match name.as_str() {
+                    "channel" => {
+                        let id = attr(&e, "id").unwrap_or_default();
+                        current_channel = Some(Channel {
+                            id,
+                            name: String::new(),
+                            icon: String::new(),
+                            names: Vec::new(),
+                        });
+                    }
+                    "programme" => {
+                        let channel = attr(&e, "channel").unwrap_or_default();
+                        let start = parse_xmltv_time_143(&attr(&e, "start").unwrap_or_default());
+                        let stop = parse_xmltv_time_143(&attr(&e, "stop").unwrap_or_default());
+                        current_programme = Some((
+                            channel,
+                            Programme {
+                                start,
+                                stop,
+                                title: String::new(),
+                                desc: String::new(),
+                                icon: String::new(),
+                            },
+                        ));
+                    }
+                    "display-name" if current_channel.is_some() => {
+                        text_target = Some(TextTarget::ChannelName);
+                        text_buffer.clear();
+                    }
+                    "title" if current_programme.is_some() => {
+                        text_target = Some(TextTarget::ProgTitle);
+                        text_buffer.clear();
+                    }
+                    "desc" if current_programme.is_some() => {
+                        text_target = Some(TextTarget::ProgDesc);
+                        text_buffer.clear();
+                    }
+                    "icon" => {
+                        if let Some(src) = attr(&e, "src") {
+                            if let Some(c) = current_channel.as_mut() {
+                                c.icon = src;
+                            } else if let Some((_, p)) = current_programme.as_mut() {
+                                p.icon = src;
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            Ok(Event::Text(t)) => {
+                if text_target.is_some() {
+                    text_buffer.push_str(&t.decode()?);
+                }
+            }
+            Ok(Event::CData(t)) => {
+                if text_target.is_some() {
+                    text_buffer.push_str(&t.decode()?);
+                }
+            }
+            Ok(Event::GeneralRef(reference)) => {
+                if text_target.is_some() {
+                    if let Some(character) = reference.resolve_char_ref()? {
+                        text_buffer.push(character);
+                    } else {
+                        let name = reference.decode()?;
+                        match quick_xml::escape::resolve_predefined_entity(&name) {
+                            Some(value) => text_buffer.push_str(value),
+                            None => anyhow::bail!("Unsupported XML entity: &{name};"),
+                        }
+                    }
+                }
+            }
+            Ok(Event::End(e)) => {
+                let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                match name.as_str() {
+                    "display-name" | "title" | "desc" => {
+                        if let Some(target) = text_target.take() {
+                            let value = text_buffer.trim().to_owned();
+                            match target {
+                                TextTarget::ChannelName => {
+                                    if let Some(c) = current_channel.as_mut() {
+                                        c.names.push(value.clone());
+                                        c.name = value;
+                                    }
+                                }
+                                TextTarget::ProgTitle => {
+                                    if let Some((_, p)) = current_programme.as_mut() {
+                                        p.title = value;
+                                    }
+                                }
+                                TextTarget::ProgDesc => {
+                                    if let Some((_, p)) = current_programme.as_mut() {
+                                        p.desc = value;
+                                    }
+                                }
+                            }
+                        }
+                        text_buffer.clear();
+                    }
+                    "channel" => {
+                        if let Some(mut c) = current_channel.take() {
+                            if c.name.is_empty() {
+                                c.name = c.id.clone();
+                            }
+                            channels.insert(c.id.clone(), c);
+                        }
+                    }
+                    "programme" => {
+                        if let Some((channel_id, p)) = current_programme.take() {
+                            if !p.title.is_empty() {
+                                programs.entry(channel_id).or_default().push(p);
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+                text_target = None;
+            }
+            Ok(Event::Eof) => break,
+            Err(e) => anyhow::bail!("XML parse error at {}: {e}", reader.buffer_position()),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    if native {
+        for programs in programs.values_mut() {
+            programs.sort_by_key(|program| program.start);
+        }
+    }
+    Ok((channels, programs))
+}
+
+#[cfg(feature = "experimental-native-server-records")]
+#[derive(Copy, Clone)]
+enum TextTarget {
+    ChannelName,
+    ProgTitle,
+    ProgDesc,
+}
+
+#[cfg(feature = "experimental-native-server-records")]
+fn parse_xmltv_time_143(ts: &str) -> i64 {
+    let ts = ts.trim();
+    if ts.len() < 14 || !ts.as_bytes()[..14].iter().all(u8::is_ascii_digit) {
+        return 0;
+    }
+    let (date_part, tz_part) = if ts.len() > 14 {
+        if ts.as_bytes()[14] == b' ' {
+            (ts[..14].to_string(), ts[15..].trim().to_string())
+        } else {
+            (ts[..14].to_string(), ts[14..].trim().to_string())
+        }
+    } else {
+        (ts.to_string(), String::new())
+    };
+
+    let dt = match chrono::NaiveDateTime::parse_from_str(&date_part, "%Y%m%d%H%M%S") {
+        Ok(d) => d,
+        Err(_) => return 0,
+    };
+
+    if tz_part.len() >= 5 {
+        let bytes = tz_part.as_bytes();
+        if bytes[0] == b'+' || bytes[0] == b'-' {
+            if !bytes[1..5].iter().all(u8::is_ascii_digit) {
+                return 0;
+            }
+            let sign: i64 = if bytes[0] == b'+' { 1 } else { -1 };
+            let th: i64 = tz_part[1..3].parse().unwrap_or(0);
+            let tm: i64 = tz_part[3..5].parse().unwrap_or(0);
+            let offset = sign * (th * 3600 + tm * 60);
+            return dt.and_utc().timestamp() - offset;
+        }
+    }
+    dt.and_utc().timestamp()
+}
+
+
+#[cfg(all(test, feature = "experimental-native-server-records"))]
+mod native_parser_feasibility {
+    #[test]
+    fn existing_shared_calendar_oracle_2928_dates_match_native() -> anyhow::Result<()> {
+        // Exact input grid from shared-core/scripts/check-js.cjs Gregorian Date oracle.
+        let mut count = 0;
+        for year in (1..=9999).step_by(41) {
+            for month in 1..=12 {
+                let value = format!("{year:04}{month:02}17123456 +0000");
+                assert_eq!(super::parse_xmltv_time_143(&value), super::parse_xmltv_time(&value)?, "{value}");
+                count += 1;
+            }
+        }
+        assert_eq!(count, 2928);
+        Ok(())
+    }
+
+    #[test]
+    fn dates_match_shared_rust_profile_across_2928_generated_cases() -> anyhow::Result<()> {
+        let mut count = 0;
+        for year in [0, 1, 4, 100, 400, 1582, 1600, 1900, 1969, 1970, 2000, 2024, 2026, 2038, 2100, 9999] {
+            for month in 1..=12 {
+                for day in [1, 28, 29, 30, 31] {
+                    for zone in ["", " +0300", " -0530"] {
+                        let value = format!("{year:04}{month:02}{day:02}235959{zone}");
+                        assert_eq!(super::parse_xmltv_time_143(&value), super::parse_xmltv_time(&value)?, "{value:?}");
+                        count += 1;
+                    }
+                }
+            }
+        }
+        for value in ["", "20260101", "20260101000060Z", "20260101000061Z", "20260101240000",
+            "20260101000000 +9999", "20260101000000 +2360", "20260101000000 +0300ignored",
+            "20260101000000 CET", "20260101000000 +03", "20260101000000 +0💥",
+            "2026010100000💥", "２０２６０１０１００００００", "20260101000000-0530",
+            "20260101000000\t+0300", "20260101000000 "] {
+            for edge in ["", "\u{85}", "\u{feff}"] {
+                let value = format!("{edge}{value}{edge}");
+                assert_eq!(super::parse_xmltv_time_143(&value), super::parse_xmltv_time(&value)?, "{value:?}");
+                count += 1;
+            }
+        }
+        assert_eq!(count, 2928);
+        Ok(())
     }
 }

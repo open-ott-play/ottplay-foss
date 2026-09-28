@@ -5,6 +5,10 @@ edition = "2021"
 
 [lib]
 
+[features]
+# Local feasibility experiment only; intentionally violates shared-core ownership.
+experimental-native-server-records = []
+
 [dependencies]
 axum = "0.7"
 tokio = { version = "1", features = ["full"] }
