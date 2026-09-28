@@ -222,11 +222,14 @@ function createHostedEpgWorker(env: any): void {
                 return;
             }
             var keep = snapshot ? snapshot.generation : "";
-            var cursor = tx.objectStore("rows").openCursor();
+            var rows = tx.objectStore("rows");
+            // Generation keys suffice; do not clone every programme description
+            // from the retained snapshot merely to decide which rows to keep.
+            var cursor = rows.index("generation").openKeyCursor();
             cursor.onsuccess = function () {
                 var item = cursor.result;
                 if (!item) return;
-                if (item.value.generation !== keep) item.delete();
+                if (item.key !== keep) rows.delete(item.primaryKey);
                 item.continue();
             };
         };
@@ -530,6 +533,7 @@ function createHostedEpgWorker(env: any): void {
             failed = false,
             indexed = false;
         var metadata: any = Object.create(null),
+            metadataCount = 0,
             aliases: string[][] = [],
             admitted: any = Object.create(null);
         var pending: any = Object.create(null),
@@ -646,11 +650,11 @@ function createHostedEpgWorker(env: any): void {
             var row = result.value;
             if (result.kind === "channel") {
                 if (indexed) throw new Error("EPG_XML_ORDER");
-                if (!metadata[row.id]) metadata[row.id] = row;
-                if (
-                    aliases.length > 65536 ||
-                    Object.keys(metadata).length > 16384
-                )
+                if (!metadata[row.id]) {
+                    metadata[row.id] = row;
+                    metadataCount++;
+                }
+                if (aliases.length > 65536 || metadataCount > 16384)
                     throw new Error("EPG_CHANNEL_LIMIT");
                 (row.names.length ? row.names : [""]).forEach(function (
                     name: string

@@ -147,6 +147,33 @@ for (const [property, boundary, cost, error] of [
         error
     );
 }
+// Repeated XMLTV declarations may add aliases but must neither replace the
+// first metadata entry nor consume the distinct-channel budget again.
+{
+    const channelFixture = new Function(
+        "var parser = {}, metadata = Object.create(null), metadataCount = 0, " +
+            "aliases = [], indexed = false, depth = 2, row, " +
+            "records = {end: function() { return {kind: 'channel', value: row}; }};\n" +
+            retainedSource +
+            "\nreturn {accept: function(id, name) {row = {id: id, names: [name]}; parser.onclosetag('channel');}, " +
+            "metadata: metadata, aliases: aliases};"
+    )();
+    channelFixture.accept("first", "First name");
+    channelFixture.accept("first", "Another alias");
+    assert.equal(channelFixture.metadata.first.names[0], "First name");
+    assert.deepEqual(channelFixture.aliases.slice(0, 2), [
+        ["first", "First name"],
+        ["first", "Another alias"],
+    ]);
+    for (let index = 1; index < 16384; index++)
+        channelFixture.accept("channel" + index, "Channel " + index);
+    assert.equal(Object.keys(channelFixture.metadata).length, 16384);
+    assert.doesNotThrow(() => channelFixture.accept("first", "At capacity"));
+    assert.throws(
+        () => channelFixture.accept("one-too-many", "Overflow"),
+        /EPG_CHANNEL_LIMIT/
+    );
+}
 // Drive the actual download/cleanup functions with a deterministic XHR clock.
 // Long transfers and stalled sockets must have different deadlines, without
 // making the browser suite wait ten minutes for a timeout regression.
@@ -475,9 +502,11 @@ const server = http.createServer((request, response) => {
                         opening.result.createObjectStore("meta", {
                             keyPath: "key",
                         });
-                        opening.result.createObjectStore("rows", {
-                            keyPath: "key",
-                        });
+                        opening.result
+                            .createObjectStore("rows", {
+                                keyPath: "key",
+                            })
+                            .createIndex("generation", "generation");
                     };
                     opening.onsuccess = () => resolve(opening.result);
                     opening.onerror = () => reject(opening.error);
@@ -503,14 +532,29 @@ const server = http.createServer((request, response) => {
                             (scenario === "expired-owner" ? -1000 : 60000),
                     });
                     for (const generation of ["old", "new", "orphan"])
-                        tx.objectStore("rows").put({
-                            generation,
-                            key: generation,
-                        });
+                        for (const batch of [0, 1])
+                            tx.objectStore("rows").put({
+                                generation,
+                                key: generation + ":" + batch,
+                                rows: [{ descr: "Full programme description" }],
+                            });
                     tx.oncomplete = resolve;
                     tx.onabort = () => reject(tx.error);
                 });
                 const scopes = [];
+                // Cleaning a generation must not deserialize its programme data.
+                const valueDescriptor = Object.getOwnPropertyDescriptor(
+                    IDBCursorWithValue.prototype,
+                    "value"
+                );
+                let valuesRead = 0;
+                Object.defineProperty(IDBCursorWithValue.prototype, "value", {
+                    ...valueDescriptor,
+                    get() {
+                        valuesRead++;
+                        return valueDescriptor.get.call(this);
+                    },
+                });
                 const outcome = await new Promise((resolve) => {
                     const cleanup = new Function(
                         "transaction",
@@ -538,26 +582,31 @@ const server = http.createServer((request, response) => {
                         cleanup("old", () => resolve({ code: null }));
                     else cleanup(() => resolve({ code: null }));
                 });
+                Object.defineProperty(
+                    IDBCursorWithValue.prototype,
+                    "value",
+                    valueDescriptor
+                );
                 const keys = await new Promise((resolve) => {
                     const tx = database.transaction(["rows"], "readonly"),
                         read = tx.objectStore("rows").getAllKeys();
                     read.onsuccess = () => resolve(read.result);
                 });
                 database.close();
-                results.push({ keys, outcome, scenario, scopes });
+                results.push({ keys, outcome, scenario, scopes, valuesRead });
             }
             return results;
         }, cleanupSource);
         assert.deepEqual(
             cleanupRaces[0].keys,
-            ["new"],
+            ["new:0", "new:1"],
             "cleanup retains the committed pointer, not load's stale snapshot"
         );
         for (const race of cleanupRaces.slice(1)) {
             assert.equal(race.outcome.code, "EPG_LEASE_LOST", race.scenario);
             assert.deepEqual(
                 race.keys,
-                ["new", "old", "orphan"],
+                ["new:0", "new:1", "old:0", "old:1", "orphan:0", "orphan:1"],
                 "unowned cleanup must not delete any rows"
             );
         }
@@ -565,6 +614,11 @@ const server = http.createServer((request, response) => {
             cleanupRaces[0].scopes,
             [["meta", "rows"]],
             "lease, pointer and deletion share one transaction"
+        );
+        assert.equal(
+            cleanupRaces[0].valuesRead,
+            0,
+            "generation cleanup reads keys without cloning programme descriptions"
         );
         await page.evaluate(() => {
             window.messages = [];
