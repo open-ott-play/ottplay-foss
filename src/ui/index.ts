@@ -3469,7 +3469,9 @@ export function showEditKey2(
             if (
                 ev.key === "Enter" ||
                 ev.key === " " ||
+                ev.key === "Tab" ||
                 ev.keyCode === 13 ||
+                ev.keyCode === 9 ||
                 ev.keyCode === 32
             )
                 ev.stopPropagation();

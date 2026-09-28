@@ -79,7 +79,11 @@ test("native editor remote button sends typed draft, resumes and saves only on c
         exact: true,
         name: "Remote text entry",
     });
-    await remote.focus();
+    await field.press("Tab");
+    await expect(remote).toBeFocused();
+    await remote.press("Shift+Tab");
+    await expect(field).toBeFocused();
+    await field.press("Tab");
     await remote.press("Enter");
     await expect(page.locator(".swop-code")).toHaveText("ABCDEF-GHJKLM");
     expect(await page.evaluate(() => window.__nativeRemoteSaves)).toEqual([]);
