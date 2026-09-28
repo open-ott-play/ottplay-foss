@@ -872,45 +872,32 @@ function ottDebugInstallFlushHooks(): void {
 }
 
 function ottDebugInstallApi(enabled: boolean): void {
-    if (enabled) {
-        (window as any).__ottDebug = {
-            attachHls: ottDebugAttachHls,
-            beginSession: ottDebugBeginSession,
-            clear: ottDebugClear,
-            dump: ottDebugDump,
-            enabled: true,
-            isDebugEnabled: ottDebugIsEnabled,
-            onVideoEvent: ottDebugOnVideoEvent,
-            push: ottDebugPush,
-            setHud: ottDebugSetHud,
-            toggleHud: function () {
-                ottDebugSetHud(!_ottDbgHudOn);
-            },
-            wrapXhrSetup: ottDebugWrapXhrSetup,
-        };
-    } else {
-        (window as any).__ottDebug = {
-            attachHls: function () {},
-            beginSession: function () {},
-            clear: function () {},
-            dump: function () {
-                return "";
-            },
-            enabled: false,
-            isDebugEnabled: ottDebugIsEnabled,
-            onVideoEvent: function () {},
-            push: function () {},
-            setHud: function () {},
-            toggleHud: function () {
-                // Menu opt-in lasts for this page; further toggles hide/show HUD.
-                ottDebugEnable();
-                ottDebugSetHud(true);
-            },
-            wrapXhrSetup: function (prev: any) {
-                return prev;
-            },
-        };
-    }
+    function noop(): void {}
+    (window as any).__ottDebug = {
+        attachHls: enabled ? ottDebugAttachHls : noop,
+        beginSession: enabled ? ottDebugBeginSession : noop,
+        clear: enabled ? ottDebugClear : noop,
+        dump: enabled
+            ? ottDebugDump
+            : function () {
+                  return "";
+              },
+        enabled: enabled,
+        isDebugEnabled: ottDebugIsEnabled,
+        onVideoEvent: enabled ? ottDebugOnVideoEvent : noop,
+        push: enabled ? ottDebugPush : noop,
+        setHud: enabled ? ottDebugSetHud : noop,
+        toggleHud: function () {
+            // Menu opt-in lasts for this page; further toggles hide/show HUD.
+            if (!enabled) ottDebugEnable();
+            ottDebugSetHud(enabled ? !_ottDbgHudOn : true);
+        },
+        wrapXhrSetup: enabled
+            ? ottDebugWrapXhrSetup
+            : function (prev: any) {
+                  return prev;
+              },
+    };
 }
 
 function ottDebugEnable(): void {

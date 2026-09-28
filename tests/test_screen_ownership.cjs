@@ -406,8 +406,19 @@ test("saved native key callback cannot save a replacement editor", ({ w }) => {
         newSaves = 0;
     w.editvar = "old";
     w.setEdit = () => oldSaves++;
-    w.showEditKey2();
-    const handler = w.document.getElementById("editvar").__ottEditKey2Handler;
+    let handler;
+    const events = w.EventTarget.prototype;
+    const add = events.addEventListener;
+    events.addEventListener = function (type, callback, options) {
+        if (this.id === "editvar" && type === "keydown") handler = callback;
+        return add.call(this, type, callback, options);
+    };
+    try {
+        w.showEditKey2();
+    } finally {
+        events.addEventListener = add;
+    }
+    assert.equal(typeof handler, "function");
     w.setEdit = () => newSaves++;
     w.editvar = "new";
     w.showEditKey2();
