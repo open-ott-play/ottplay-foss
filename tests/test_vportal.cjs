@@ -225,6 +225,16 @@ function fixture(overrides = {}, options = {}, hooks = {}) {
     assert.equal(f.w.mediaRecords.length, 6);
     const stream = f.w.mediaRecords[2];
     assert.equal(
+        stream.__ottMediaSequence,
+        undefined,
+        "Movie catalogue rows are not episodes"
+    );
+    assert.equal(
+        f.w.mediaRecords[1].__ottMediaSequence,
+        undefined,
+        "A series folder is not an episode"
+    );
+    assert.equal(
         stream.stream_url,
         "vportal:request",
         "Request-only entries must be selectable"
@@ -248,6 +258,48 @@ function fixture(overrides = {}, options = {}, hooks = {}) {
     f.requests[1].receive({ items: [], type: "category" });
     f.client.load(next.playlist_url, () => {});
     assert.equal(JSON.parse(f.requests[2].options.data).params.offset, 3);
+}
+
+{
+    const f = fixture();
+    f.client.load(
+        { mediaName: "Series", request: { cmd: "series", fid: 10 } },
+        () => {}
+    );
+    f.requests[0].receive({
+        items: [
+            {
+                request: { cmd: "play", fid: 12 },
+                title: "Episode 2",
+                type: "stream",
+            },
+            {
+                request: { cmd: "play", fid: 20 },
+                title: "Episode 10",
+                type: "stream",
+            },
+            {
+                request: { cmd: "season", fid: 30 },
+                title: "Other season",
+                type: "category",
+            },
+        ],
+        title: "Series",
+        type: "multistream",
+    });
+    assert.deepEqual(
+        Array.from(f.w.mediaRecords, (item) => item.title),
+        ["Series - Episode 2", "Series - Episode 10", "Series - Other season"]
+    );
+    assert.deepEqual(
+        Array.from(f.w.mediaRecords, (item) => item.__ottMediaSequence),
+        [true, true, undefined]
+    );
+    assert.deepEqual(
+        Array.from(f.w.mediaRecords.slice(0, 2), (item) => item.request.fid),
+        [12, 20],
+        "Episode order remains the provider's order"
+    );
 }
 
 for (const native of [
@@ -281,6 +333,116 @@ for (const query of [
     assert.equal(JSON.parse(f.requests[0].options.data).params.query, query);
     f.requests[0].receive({ items: [], type: "category" });
     assert.equal(f.w.mediaName, "[" + query + "]");
+}
+
+{
+    const f = fixture();
+    const resolved = [];
+    const episode = (fid) => ({
+        request: { cmd: "play", fid },
+        stream_url: "vportal:request",
+        title: "Episode",
+    });
+    const reply = (
+        index,
+        fid,
+        variants = { high: "high", low: "low" },
+        defaultQuality = "low"
+    ) => {
+        const urls = Object.fromEntries(
+            Object.entries(variants).map(([name, suffix]) => [
+                name,
+                "https://cdn.example/" + fid + "-" + suffix + ".mp4",
+            ])
+        );
+        f.requests[index].receive({
+            type: "stream",
+            variants: urls,
+            ...(defaultQuality
+                ? {
+                      url:
+                          "https://cdn.example/" +
+                          fid +
+                          "-" +
+                          defaultQuality +
+                          ".mp4",
+                  }
+                : {}),
+        });
+    };
+    f.client.resolve(episode(1), (item) => resolved.push(item));
+    reply(0, 1);
+    const picker = f.selection();
+    picker.index = picker.labels.indexOf("high");
+    f.w.selectBoxKeyHandler(f.w.keys.ENTER);
+    assert.equal(resolved[0].stream_url, "https://cdn.example/1-high.mp4");
+
+    f.client.resolve(episode(2), (item) => resolved.push(item), true);
+    reply(1, 2);
+    assert.strictEqual(
+        f.selection(),
+        picker,
+        "Automatic episode resolution never reopens the quality picker"
+    );
+    assert.equal(
+        resolved[1].stream_url,
+        "https://cdn.example/2-high.mp4",
+        "Automatic playback reuses the chosen quality label with a fresh URL"
+    );
+    assert.equal(JSON.parse(f.requests[1].options.data).params.fid, 2);
+
+    f.client.resolve(episode(3), (item) => resolved.push(item), true);
+    reply(2, 3, { low: "low", medium: "medium" }, "medium");
+    assert.equal(
+        resolved[2].stream_url,
+        "https://cdn.example/3-medium.mp4",
+        "An unavailable preferred quality falls back to the provider default"
+    );
+    f.client.resolve(episode(4), (item) => resolved.push(item), true);
+    reply(3, 4);
+    assert.equal(
+        resolved[3].stream_url,
+        "https://cdn.example/4-high.mp4",
+        "A temporary fallback does not erase the user's preference"
+    );
+
+    f.client.resolve(episode(5), (item) => resolved.push(item));
+    reply(4, 5);
+    const cancelled = f.selection();
+    assert.notStrictEqual(
+        cancelled,
+        picker,
+        "Manual playback still offers explicit quality selection"
+    );
+    f.w.selectBoxKeyHandler(f.w.keys.RETURN);
+    cancelled.done(cancelled.labels.indexOf("low"));
+    assert.equal(
+        resolved.length,
+        4,
+        "A stale quality callback cannot resolve playback"
+    );
+    f.client.resolve(episode(6), (item) => resolved.push(item), true);
+    reply(5, 6);
+    assert.equal(
+        resolved[4].stream_url,
+        "https://cdn.example/6-high.mp4",
+        "A cancelled picker cannot change the remembered quality"
+    );
+    f.client.resolve(episode(7), (item) => resolved.push(item), true);
+    reply(6, 7, { first: "first", second: "second" }, "");
+    assert.equal(
+        resolved[5].stream_url,
+        "https://cdn.example/7-first.mp4",
+        "Without a preferred or default URL, the first valid variant is used"
+    );
+    f.client.resolve(episode(8), (item) => resolved.push(item), true);
+    f.client.cancel();
+    reply(7, 8);
+    assert.equal(
+        resolved.length,
+        6,
+        "Cancelled automatic resolution cannot start a late episode"
+    );
 }
 
 {

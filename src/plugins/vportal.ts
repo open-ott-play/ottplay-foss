@@ -42,7 +42,7 @@ export interface VPortalClient {
     dispose(): void;
     load(target: any, callback: VPortalCompletion): void;
     play(item: any): void;
-    resolve(item: any, done: (item: any) => void): void;
+    resolve(item: any, done: (item: any) => void, automatic?: boolean): void;
 }
 
 /** The provider owns this instance, so replacing its settings invalidates all work. */
@@ -61,6 +61,7 @@ export function createVPortalClient(
     var dialogHandler: any = null;
     var previousDialogHandler: any = null;
     var qualityHandler: any = null;
+    var preferredQuality = "";
 
     function translate(text: string): string {
         return typeof w._ === "function" ? w._(text) : text;
@@ -240,6 +241,8 @@ export function createVPortalClient(
         sourceTarget(record);
         if (item.adult || (parent && parent.adult)) record.adult = 1;
         if (item.type === "stream") {
+            if (parent && parent.type === "multistream")
+                record.__ottMediaSequence = true;
             if (item.request && typeof item.request === "object")
                 record.request = copyRequest(item.request);
             record.stream_url = validStream(item.url)
@@ -408,7 +411,11 @@ export function createVPortalClient(
         );
     }
 
-    function play(item: any, resolved?: (item: any) => void): void {
+    function play(
+        item: any,
+        resolved?: (item: any) => void,
+        automatic = false
+    ): void {
         var token = revision + 1;
         cancel();
         if (!item || !isCurrent(token)) return;
@@ -466,7 +473,13 @@ export function createVPortalClient(
                     reportError();
                     return;
                 }
-                if (names.length < 2 || typeof w.showSelectBox !== "function") {
+                if (
+                    automatic ||
+                    names.length < 2 ||
+                    typeof w.showSelectBox !== "function"
+                ) {
+                    if (automatic && names.indexOf(preferredQuality) !== -1)
+                        url = variants[preferredQuality];
                     start(url);
                     return;
                 }
@@ -478,8 +491,10 @@ export function createVPortalClient(
                     selected,
                     names.map(metadataText),
                     function (index: number) {
-                        if (index >= 0 && index < names.length)
+                        if (current() && index >= 0 && index < names.length) {
+                            preferredQuality = names[index];
                             start(variants[names[index]]);
+                        }
                     },
                     -1,
                     !!resolved
@@ -528,8 +543,12 @@ export function createVPortalClient(
         },
         load: load,
         play: play,
-        resolve: function (item: any, done: (item: any) => void) {
-            play(item, done);
+        resolve: function (
+            item: any,
+            done: (item: any) => void,
+            automatic?: boolean
+        ) {
+            play(item, done, automatic);
         },
     };
 }

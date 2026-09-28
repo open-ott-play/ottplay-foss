@@ -159,6 +159,196 @@ test("a source generation change rejects old backend observations", (f) => {
     f.leases[0].event("timeupdate");
     assert.equal(f.commands.length, before);
 });
+test("natural completion is emitted once and late playing cannot revive the ended lease", (f) => {
+    const events = [];
+    f.backend.subscribe((event) => events.push(event.type));
+    const handle = f.backend.open({ url: "episode" });
+    f.playing();
+    f.leases[0].event("ended");
+    const before = f.commands.length;
+    f.leases[0].event("playing");
+    f.leases[0].event("pause");
+    f.leases[0].event("ended");
+    f.leases[0].event("timeupdate");
+    assert.equal(f.commands.length, before);
+    assert.equal(f.commands.at(-1).type, "ended");
+    assert.equal(events.filter((type) => type === "ended").length, 1);
+    assert.equal(handle.snapshot().phase, "stopped");
+    assert(f.timers.every((timer) => !timer.active));
+});
+test("manual stop, replacement and retired source generations never emit natural completion", (f) => {
+    const completed = [];
+    f.backend.subscribe((event) => {
+        if (event.type === "ended") completed.push(event.id);
+    });
+    f.backend.open({ url: "manual stop" });
+    f.playing();
+    f.backend.stop();
+    f.leases[0].event("ended");
+    f.backend.open({ url: "replaced" });
+    f.playing(1);
+    f.backend.open({ url: "different generation" });
+    f.playing(2);
+    f.leases[1].event("ended");
+    f.domain({ generation: 2, kind: "vod", position: 0 });
+    f.leases[2].event("ended");
+    let active = true;
+    f.domain({ active: () => active, generation: 3, kind: "vod", position: 0 });
+    f.backend.open({ url: "retired source" });
+    f.playing(3);
+    active = false;
+    f.leases[3].event("ended");
+    assert.deepEqual(completed, []);
+    assert.equal(
+        f.commands.filter((command) => command.type === "ended").length,
+        0
+    );
+});
+
+function coreBridge(f, kind = "vod") {
+    const file = "src/core/index.ts";
+    const source = ts.createSourceFile(
+        file,
+        fs.readFileSync(path.join(__dirname, "..", file), "utf8"),
+        ts.ScriptTarget.Latest,
+        true
+    );
+    const code = source.statements
+        .filter(
+            (node) =>
+                ts.isFunctionDeclaration(node) &&
+                ["getCoreMediaBackend", "stbStop"].includes(node.name?.text)
+        )
+        .map((node) => node.getText(source).replace(/^export /, ""))
+        .join("\n");
+    load(f.context, "src/playback/session.ts");
+    const state = f.context.__ottPlaybackSession.createState(() => {});
+    function select(nextKind = kind) {
+        state.open({
+            channelId: "episode",
+            kind: nextKind,
+            sourceId: "series",
+        });
+    }
+    select();
+    const calls = [];
+    Object.assign(f.context, {
+        __ottClassicPlayback: {
+            cancel: () => calls.push("cancel-playback"),
+            command(command) {
+                if (
+                    command.generation !== undefined &&
+                    command.generation !== state.snapshot().generation
+                )
+                    return;
+                calls.push(command.type);
+                if (command.type === "position")
+                    state.position(command.position, command.duration);
+                else
+                    state.phase(
+                        command.type === "stop" ? "stopped" : command.type
+                    );
+            },
+            context() {
+                const generation = state.snapshot().generation;
+                return {
+                    isCurrentBackend: () =>
+                        generation === state.snapshot().generation,
+                    isCurrentSource: () => true,
+                };
+            },
+            snapshot: state.snapshot,
+        },
+        __ottMedia: {
+            cancelAuto: () => calls.push("cancel-auto"),
+            ended(generation) {
+                assert.equal(state.snapshot().phase, "stopped");
+                assert.equal(state.snapshot().generation, generation);
+                calls.push("ended:" + generation);
+            },
+        },
+        clearInterval: f.ports.clearInterval,
+        coreMediaBackend: null,
+        openCoreEngineLease: f.ports.open,
+        setInterval: f.ports.setInterval,
+    });
+    vm.runInContext(
+        ts.transpileModule(code, {
+            compilerOptions: { target: ts.ScriptTarget.ES5 },
+        }).outputText,
+        f.context
+    );
+    f.backend = f.context.getCoreMediaBackend();
+    return { calls, select, state };
+}
+test("actual core bridge commits stop before VOD completion and manual Stop cancels pending advance", (f) => {
+    const { calls, state } = coreBridge(f);
+    f.backend.open({ url: "episode" });
+    f.playing();
+    const expected = state.snapshot().generation + 1;
+    f.leases[0].event("ended");
+    assert.deepEqual(calls.slice(-2), ["stop", "ended:" + expected]);
+    assert.equal(
+        calls.includes("cancel-auto"),
+        false,
+        "natural completion is not an explicit Stop"
+    );
+    f.context.stbStop();
+    assert.deepEqual(calls.slice(-3), [
+        "cancel-auto",
+        "cancel-playback",
+        "stop",
+    ]);
+    assert.equal(
+        state.snapshot().generation,
+        expected,
+        "already-stopped playback keeps its generation"
+    );
+    f.leases[0].event("ended");
+    assert.equal(calls.filter((call) => call.startsWith("ended:")).length, 1);
+});
+test("core completion bridge excludes live, archive, PiP and stale VOD", (f) => {
+    const { calls, select } = coreBridge(f, "live");
+    f.backend.open({ url: "live" });
+    f.playing();
+    f.leases[0].event("ended");
+    select("archive");
+    f.backend.open({ url: "archive" });
+    f.playing(1);
+    f.leases[1].event("ended");
+    select("vod");
+    f.backend.open({ url: "old VOD" });
+    f.playing(2);
+    select("vod");
+    f.leases[2].event("ended");
+    f.backend.open({ lane: "pip", url: "PiP" });
+    f.playing(3);
+    f.leases[3].event("ended");
+    assert.equal(calls.filter((call) => call.startsWith("ended:")).length, 0);
+});
+test("synchronous next-episode startup survives the prior decoder's completion", (f) => {
+    const { calls, select, state } = coreBridge(f);
+    let next;
+    f.context.__ottMedia.ended = (generation) => {
+        assert.equal(state.snapshot().generation, generation);
+        assert.equal(state.snapshot().phase, "stopped");
+        select();
+        next = f.backend.open({ url: "episode 2" });
+        f.playing(1);
+    };
+    const old = f.backend.open({ url: "episode 1" });
+    f.playing();
+    f.leases[0].event("ended");
+    assert.equal(old.active(), false);
+    assert.equal(f.leases[0].disposed, 1);
+    assert.equal(next.active(), true);
+    assert.equal(state.snapshot().phase, "playing");
+    const before = calls.length;
+    f.leases[0].event("ended");
+    f.leases[0].event("playing");
+    assert.equal(calls.length, before);
+    assert.equal(next.snapshot().phase, "playing");
+});
 test("PiP and main have isolated disposal and track selection guards", (f) => {
     const main = f.backend.open({ url: "main" });
     const pip = f.backend.open({ lane: "pip", url: "pip" });

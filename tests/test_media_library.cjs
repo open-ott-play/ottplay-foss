@@ -675,4 +675,213 @@ test("Synchronous source replacement during storage reads cannot publish the old
     );
 });
 
+function episodeFixture(ids = [30, 2, 11]) {
+    const c = fixture();
+    c.catalogs[""] = ids.map((id) => ({
+        __ottMediaSequence: true,
+        id,
+        request: { fid: id },
+        title: "Episode " + id,
+    }));
+    c.catalogs[""].splice(1, 0, {
+        playlist_url: "elsewhere",
+        title: "Navigation",
+    });
+    c.resolutions = [];
+    c.providerMediaClient = {
+        cancel() {},
+        resolve(item, done, automatic) {
+            c.resolutions.push({ automatic, item });
+            const resolved = {
+                ...item,
+                stream_url: item.id + "-" + c.resolutions.length + ".mp4",
+            };
+            if (c.defer) c.pendingEpisode = () => done(resolved);
+            else done(resolved);
+        },
+    };
+    c.closeList = () => c.__ottMedia.cancel();
+    c.stbStop = () => {
+        c.__ottMedia.cancelAuto();
+        c.__ottClassicPlayback.command({ type: "stop" });
+    };
+    c.finishEpisode = () => {
+        c.__ottClassicPlayback.command({ type: "stop" });
+        c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    };
+    c.mediaList(null);
+    c.selectMedia(0);
+    return c;
+}
+
+test("Episode completion preserves provider order, resolves fresh URLs and loops last to first", () => {
+    const c = episodeFixture();
+    c.settings.stopPlay = true;
+    const first = c.__ottMedia.current();
+    c.__ottClassicPlayback.command({
+        duration: 600,
+        position: 599,
+        type: "position",
+    });
+    c.__ottMedia.checkpoint(first.ref, 599, true);
+    c.finishEpisode();
+    assert.equal(
+        c.documentState().history.find((row) => row.itemId === first.ref.itemId)
+            .position,
+        0,
+        "The next episode's departure checkpoint cannot restore the completed position"
+    );
+    c.finishEpisode();
+    c.finishEpisode();
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.id),
+        [30, 2, 11, 30]
+    );
+    assert.deepEqual(
+        c.resolutions.map((row) => row.automatic),
+        [false, true, true, true]
+    );
+    assert.deepEqual(
+        c.calls.filter((row) => row[0] === "play").map((row) => row[1]),
+        ["30-1.mp4", "2-2.mp4", "11-3.mp4", "30-4.mp4"]
+    );
+    assert(
+        !c.calls.some((row) => row[0] === "confirm"),
+        "automatic restarts do not prompt to resume"
+    );
+    assert.equal(
+        c.documentState().history.find((row) => row.itemId === first.ref.itemId)
+            .position,
+        0
+    );
+});
+
+test("Automatic episode completion preserves a reopened browsing menu", () => {
+    const c = episodeFixture();
+    const browsing = [{ title: "Reopened browsing menu" }];
+    c.listArray = c.listDataArray = browsing;
+    c.closeList = () => {
+        c.__ottMedia.cancelAuto();
+        assert.fail("Automatic playback must not dismiss the current menu");
+    };
+    c.finishEpisode();
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.id),
+        [30, 2]
+    );
+    assert.strictEqual(c.listArray, browsing);
+    assert.strictEqual(c.listDataArray, browsing);
+    assert.equal(c.calls.filter((row) => row[0] === "play").length, 2);
+});
+
+test("A synchronous Stop during the next episode's journal write cancels its playback", () => {
+    const c = fixture();
+    const write = c.providerSetItem;
+    let armed = false;
+    c.providerSetItem = (key, value) => {
+        write(key, value);
+        if (
+            armed &&
+            key.startsWith("mediaJournal.v1:") &&
+            JSON.parse(value).history[0]?.itemId === "provider:2"
+        ) {
+            armed = false;
+            c.__ottMedia.cancelAuto();
+            c.__ottClassicPlayback.command({ type: "stop" });
+        }
+    };
+    c.catalogs[""] = [
+        { __ottMediaSequence: true, id: 1, stream_url: "one.mp4" },
+        { __ottMediaSequence: true, id: 2, stream_url: "two.mp4" },
+    ];
+    c.mediaList(null);
+    c.selectMedia(0);
+    const first = c.__ottMedia.current();
+    armed = true;
+    c.__ottClassicPlayback.command({ type: "stop" });
+    c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    assert.equal(armed, false, "The cancellation ran inside the journal write");
+    assert.strictEqual(c.__ottMedia.current(), first);
+    assert.equal(c.calls.filter((row) => row[0] === "play").length, 1);
+});
+
+test("Single episode loops; ordinary films and saved collections never become episode queues", () => {
+    const single = episodeFixture([7]);
+    single.finishEpisode();
+    assert.deepEqual(
+        single.resolutions.map((row) => row.item.id),
+        [7, 7]
+    );
+    const movie = fixture();
+    movie.mediaList(null);
+    movie.selectMedia(0);
+    movie.__ottClassicPlayback.command({ type: "stop" });
+    movie.__ottMedia.ended(movie.__ottClassicPlayback.snapshot().generation);
+    assert.equal(movie.calls.filter((row) => row[0] === "play").length, 1);
+    for (const collection of [-1, -2]) {
+        const c = episodeFixture();
+        c.__ottMedia.favorite(c.__ottMedia.current().payload);
+        c.mediaList(collection);
+        c.selectMedia(0);
+        const count = c.resolutions.length;
+        c.finishEpisode();
+        assert.equal(c.resolutions.length, count);
+    }
+});
+
+test("Duplicate completion, Stop, Back, source replacement and manual selection revoke auto resolve", () => {
+    for (const cancel of ["stop", "back", "source", "select"]) {
+        const c = episodeFixture();
+        c.defer = true;
+        c.finishEpisode();
+        const done = c.pendingEpisode;
+        const generation = c.__ottClassicPlayback.snapshot().generation;
+        c.__ottMedia.ended(generation);
+        assert.equal(c.resolutions.length, 2, "completion dispatches once");
+        if (cancel === "stop") c.stbStop();
+        else if (cancel === "back") c.__ottMedia.back();
+        else if (cancel === "source") c.providerGetItem = () => null;
+        else {
+            c.defer = false;
+            c.__ottMedia.select(3);
+        }
+        const plays = c.calls.filter((row) => row[0] === "play").length;
+        done();
+        assert.equal(
+            c.calls.filter((row) => row[0] === "play").length,
+            plays,
+            cancel
+        );
+    }
+});
+
+test("Auto-next respects parental access and Stop or navigation revokes a pending PIN", () => {
+    for (const action of ["allow", "stop", "back"]) {
+        const c = fixture();
+        c.catalogs[""] = [
+            { __ottMediaSequence: true, id: 1, stream_url: "one.mp4" },
+            {
+                __ottMediaSequence: true,
+                adult: 1,
+                id: 2,
+                stream_url: "two.mp4",
+            },
+        ];
+        c.mediaList(null);
+        c.selectMedia(0);
+        c.__ottClassicPlayback.command({ type: "stop" });
+        c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+        assert.equal(typeof c.unlock, "function");
+        assert.equal(c.calls.filter((row) => row[0] === "play").length, 1);
+        if (action === "stop") c.__ottMedia.cancelAuto();
+        if (action === "back") c.__ottMedia.back();
+        c.parentAccess = true;
+        c.unlock();
+        assert.equal(
+            c.calls.filter((row) => row[0] === "play").length,
+            action === "allow" ? 2 : 1
+        );
+    }
+});
+
 console.log(`PASS MediaLibrary/MediaJournal ${groups} scenario groups`);
