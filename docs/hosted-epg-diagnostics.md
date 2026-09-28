@@ -1,5 +1,11 @@
 # EPG diagnostics on the hosted player
 
+The decompressed-input limit is 512 MiB of UTF-8 XML. Count bytes in the
+incrementally decoded chunks, not `string.length * 2`: the latter incorrectly
+rejected the 457,465,999-byte public feed on 2026-09-28 because its cumulative
+UTF-16 representation was 647,854,032 bytes. The full XML is never retained;
+separate chunk, channel and retained-cache limits still bound memory.
+
 Open **Information → EPG diagnostics** from the player menu (also available with
 a TV remote). The screen stays available after startup and updates while XMLTV
 downloads and parses. It shows the source host and index, byte progress, retained

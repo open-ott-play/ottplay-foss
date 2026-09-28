@@ -33,6 +33,48 @@ const cleanupSource = ts.transpileModule(
         },
     }
 ).outputText;
+// Exercise the shipped parser's cumulative limit at a small boundary instead
+// of allocating a half-gigabyte feed in every CI run. Today's 457 MB public
+// feed has 648 MB of cumulative UTF-16 strings and used to fail this check.
+const parseDeclaration = workerFactory.body.statements.find(
+    (node) => ts.isFunctionDeclaration(node) && node.name.text === "parse"
+);
+const textDeclaration = parseDeclaration.body.statements.find(
+    (node) => ts.isFunctionDeclaration(node) && node.name.text === "text"
+);
+const bytesDeclaration = workerFactory.body.statements.find(
+    (node) =>
+        ts.isFunctionDeclaration(node) && node.name.text === "xmlByteLength"
+);
+const limitSource = ts.transpileModule(
+    bytesDeclaration.getText(workerAst) +
+        "\n" +
+        textDeclaration.getText(workerAst),
+    { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+).outputText;
+for (const chunks of [
+    ["<tv>", "ascii programme data".repeat(100), "</tv>"],
+    ["Программа передач", "日本語", "😀", "</tv>"],
+]) {
+    const limit = Buffer.byteLength(chunks.join(""), "utf8");
+    const written = [];
+    const accept = new Function(
+        "XML_LIMIT",
+        "parser",
+        "var decoded = 0;\n" + limitSource + "\nreturn text;"
+    )(limit, { write: (chunk) => written.push(chunk) });
+    for (const chunk of chunks) accept(chunk);
+    assert.deepEqual(
+        written,
+        chunks,
+        "valid UTF-8 bytes fit exactly within the configured XML limit"
+    );
+    assert.throws(
+        () => accept("x"),
+        /EPG_XML_LIMIT/,
+        "the actual input limit still rejects one extra byte"
+    );
+}
 const now = Math.floor(Date.now() / 1000);
 const stamp = (offset) =>
     new Date((now + offset) * 1000)

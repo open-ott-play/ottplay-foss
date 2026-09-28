@@ -25,6 +25,26 @@ function createHostedEpgWorker(env: any): void {
     var XML_LIMIT = 512 * 1024 * 1024;
     var CHANNEL_BYTES = 8 * 1024 * 1024;
     var CHANNEL_RECORDS = 20000;
+    function xmlByteLength(value: string): number {
+        // The input limit is UTF-8 XML bytes, not the cumulative UTF-16 storage
+        // of transient parser chunks. Only bounded chunks are held in memory.
+        var size = 0;
+        for (var i = 0; i < value.length; i++) {
+            var code = value.charCodeAt(i);
+            if (code < 128) size++;
+            else if (code < 2048) size += 2;
+            else if (
+                code >= 0xd800 &&
+                code <= 0xdbff &&
+                value.charCodeAt(i + 1) >= 0xdc00 &&
+                value.charCodeAt(i + 1) <= 0xdfff
+            ) {
+                size += 4;
+                i++;
+            } else size += 3;
+        }
+        return size;
+    }
     function send(value: any): void {
         if (!closed) env.postMessage(value);
     }
@@ -645,7 +665,7 @@ function createHostedEpgWorker(env: any): void {
             }
         };
         function text(value: string): void {
-            decoded += value.length * 2;
+            decoded += xmlByteLength(value);
             if (decoded > XML_LIMIT) throw new Error("EPG_XML_LIMIT");
             parser.write(value);
         }
