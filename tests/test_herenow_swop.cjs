@@ -1,0 +1,399 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const { webcrypto } = require("node:crypto");
+const ts = require("typescript");
+function load(file, dependencies = {}) {
+    const source = ts.transpileModule(
+        fs.readFileSync(path.join(__dirname, "..", file), "utf8"),
+        {
+            compilerOptions: {
+                module: ts.ModuleKind.CommonJS,
+                target: ts.ScriptTarget.ES5,
+            },
+        }
+    ).outputText;
+    require("acorn").parse(source, { ecmaVersion: 5 });
+    const module = { exports: {} };
+    new Function("require", "module", "exports", source)(
+        (id) => dependencies[id],
+        module,
+        module.exports
+    );
+    return module.exports;
+}
+const core = load("src/swop/herenow.ts");
+const w = {
+    atob,
+    btoa,
+    crypto: webcrypto,
+    location: { origin: "https://player.fixture", pathname: "/swop-input/" },
+    Promise,
+    Uint8Array,
+};
+let count = 0;
+async function check(name, fn) {
+    await fn();
+    count++;
+    console.log("PASS here.now SWOP: " + name);
+}
+function pair(id = "rec_01AAAAAAAAAAAAAAAAAAAAAAAA") {
+    return {
+        deadline: Date.now() + 600000,
+        origin: w.location.origin,
+        recordId: id,
+        secret: core.hereNowRandom(w, 32),
+        sid: core.hereNowBase64(w, core.hereNowRandom(w, 16)),
+    };
+}
+async function main() {
+    const a = pair(),
+        b = pair("rec_01BBBBBBBBBBBBBBBBBBBBBBBB");
+    const draft = "https://fixture.invalid/playlist?key=private-draft-test";
+    const value = "https://fixture.invalid/playlist?key=private-reply-test";
+    const offer = await core.hereNowSeal(w, a, "offer", {
+        caption: "Title filter",
+        draft,
+    });
+    const reply = await core.hereNowSeal(w, a, "reply", { value });
+    await check(
+        "public records do not expose draft, reply or pair secret",
+        async () => {
+            const stored = JSON.stringify({ offer, reply });
+            for (const secret of [
+                draft,
+                value,
+                core.hereNowBase64(w, a.secret),
+            ])
+                assert(!stored.includes(secret));
+            assert.deepEqual(await core.hereNowOpen(w, a, "offer", offer), {
+                caption: "Title filter",
+                draft,
+            });
+        }
+    );
+    await check(
+        "pair, record, role, origin and deadline all authenticate",
+        async () => {
+            await assert.rejects(() => core.hereNowOpen(w, b, "reply", reply));
+            await assert.rejects(() => core.hereNowOpen(w, a, "reply", offer));
+            for (const patch of [
+                { recordId: b.recordId },
+                { sid: b.sid },
+                { origin: "https://elsewhere.invalid" },
+                { deadline: a.deadline + 1 },
+            ])
+                await assert.rejects(() =>
+                    core.hereNowOpen(w, { ...a, ...patch }, "reply", reply)
+                );
+        }
+    );
+    await check(
+        "tamper is rejected; sixteen concurrent polls accept exactly once",
+        async () => {
+            const delivered = [];
+            const receiver = core.hereNowReceiver(
+                w,
+                a,
+                () => false,
+                (value) => delivered.push(value)
+            );
+            const box = JSON.parse(reply);
+            box.ciphertext =
+                (box.ciphertext[0] === "A" ? "B" : "A") +
+                box.ciphertext.slice(1);
+            assert.equal(
+                await receiver.receive(JSON.stringify(box)),
+                "rejected"
+            );
+            const results = await Promise.all(
+                Array.from({ length: 16 }, () => receiver.receive(reply))
+            );
+            assert.equal(
+                results.filter((result) => result === "accepted").length,
+                1
+            );
+            assert.deepEqual(delivered, [value]);
+            assert.equal(await receiver.receive(reply), "closed");
+        }
+    );
+    await check(
+        "cancel and expiry while decryption is pending never apply text",
+        async () => {
+            let expired = false;
+            const cancel = core.hereNowReceiver(
+                w,
+                a,
+                () => false,
+                () => assert.fail("cancelled apply")
+            );
+            const pending = cancel.receive(reply);
+            cancel.cancel();
+            assert.equal(await pending, "cancelled");
+            const timeout = core.hereNowReceiver(
+                w,
+                a,
+                () => expired,
+                () => assert.fail("expired apply")
+            );
+            const finishing = timeout.receive(reply);
+            expired = true;
+            assert.equal(await finishing, "expired");
+        }
+    );
+    await check(
+        "full pairing link round trip uses fragment and rejects foreign links",
+        async () => {
+            const link = core.hereNowPairLink(w, a, "/swop-input/");
+            assert.equal(new URL(link).search, "");
+            assert.deepEqual(core.hereNowReadPair(w, link), a);
+            assert.deepEqual(core.hereNowReadPair(w, new URL(link).hash), a);
+            assert.throws(() =>
+                core.hereNowReadPair(
+                    w,
+                    link.replace("player.fixture", "evil.invalid")
+                )
+            );
+            assert.throws(() => core.hereNowReadPair(w, link + "&k=duplicate"));
+        }
+    );
+    await check(
+        "bounded full-size messages fit platform record cap",
+        async () => {
+            assert.equal(core.hereNowValidValue("x".repeat(4097)), false);
+            const maximum = {
+                ack: "",
+                offer: await core.hereNowSeal(w, a, "offer", {
+                    caption: "x".repeat(120),
+                    draft: "a".repeat(4096),
+                }),
+                reply: await core.hereNowSeal(w, a, "reply", {
+                    value: "b".repeat(4096),
+                }),
+                v: 1,
+            };
+            assert(Buffer.byteLength(JSON.stringify(maximum)) < 16384);
+            assert(
+                maximum.offer.length <= 6500 && maximum.reply.length <= 6500
+            );
+            await assert.rejects(() =>
+                core.hereNowOpen(w, a, "reply", "x".repeat(6501))
+            );
+        }
+    );
+    await check(
+        "store uses exact Site-local record API, no owner or installation credentials",
+        async () => {
+            const requests = [];
+            const wire = {
+                ...w,
+                XMLHttpRequest: class {
+                    open(method, url) {
+                        this.method = method;
+                        this.url = url;
+                    }
+                    setRequestHeader(name, value) {
+                        (this.headers ||= {})[name] = value;
+                    }
+                    send(body) {
+                        requests.push({
+                            body,
+                            headers: this.headers,
+                            method: this.method,
+                            url: this.url,
+                        });
+                        this.status = 200;
+                        this.responseText = JSON.stringify({
+                            record: { data: { offer, reply }, id: a.recordId },
+                        });
+                        this.onload();
+                    }
+                },
+            };
+            const store = core.hereNowStore(wire, "swop_pairs");
+            assert.equal(await store.create(), a.recordId);
+            await store.patch(a.recordId, { reply });
+            assert.deepEqual(await store.get(a.recordId), { offer, reply });
+            await store.remove(a.recordId);
+            assert.deepEqual(
+                requests.map((r) => r.method),
+                ["POST", "PATCH", "GET", "DELETE"]
+            );
+            requests.forEach((r) => {
+                assert(r.url.startsWith("/.herenow/data/swop_pairs"));
+                assert.equal(r.headers.Authorization, undefined);
+            });
+            await assert.rejects(() => store.get("../other"));
+        }
+    );
+    await check(
+        "hosted profile overrides legacy only when explicitly selected; unsupported crypto fails closed",
+        async () => {
+            assert.equal(core.hereNowSwopConfig(w), null);
+            const config = {
+                collection: "swop_pairs",
+                entryUrl: "/swop-input/",
+                transport: "herenow",
+            };
+            assert.deepEqual(
+                core.hereNowSwopConfig({
+                    __OTTPLAY_HOSTED__: { swop: config, version: 1 },
+                }),
+                config
+            );
+            assert.throws(() =>
+                core.hereNowSwopConfig({
+                    __OTTPLAY_HOSTED__: {
+                        swop: { ...config, entryUrl: "//external/" },
+                        version: 1,
+                    },
+                })
+            );
+            assert.equal(core.hereNowCryptoAvailable({}), false);
+            assert.throws(() => core.hereNowRandom({}, 32));
+        }
+    );
+    await check(
+        "hosted TV UI resumes the existing edit continuation including title-filter input",
+        async () => {
+            const { JSDOM } = require("jsdom");
+            const dom = new JSDOM('<div id="listEdit"></div>', {
+                runScripts: "outside-only",
+                url: "https://player.fixture/",
+            });
+            const tv = dom.window;
+            Object.defineProperty(tv, "crypto", { value: webcrypto });
+            tv.eval(
+                fs.readFileSync(
+                    path.join(__dirname, "../js/jquery-1.11.1.min.js"),
+                    "utf8"
+                )
+            );
+            const records = new Map(),
+                jobs = new Map();
+            let job = 0,
+                sequence = 0,
+                link = "",
+                resumed = 0,
+                alerts = [];
+            tv.__OTTPLAY_HOSTED__ = {
+                swop: {
+                    collection: "swop_pairs",
+                    entryUrl: "/swop-input/",
+                    transport: "herenow",
+                },
+                version: 1,
+            };
+            tv.keys = { EXIT: 27, RETURN: 8 };
+            tv.editCaption = "Title filter";
+            tv.editvar = "old filter";
+            const originalKey = () => false;
+            tv.editKey = originalKey;
+            tv.showEditKey = () => resumed++;
+            tv.alert = (text) => alerts.push(text);
+            tv.setTimeout = (fn, delay) => {
+                jobs.set(++job, { delay, fn });
+                return job;
+            };
+            tv.clearTimeout = (id) => jobs.delete(id);
+            tv.XMLHttpRequest = class {
+                open(method, url) {
+                    this.method = method;
+                    this.url = url;
+                }
+                setRequestHeader() {}
+                send(body) {
+                    queueMicrotask(() => {
+                        let id = this.url.split("/").pop(),
+                            data;
+                        if (this.method === "POST") {
+                            id = "rec_01AAAAAAAAAAAAAAAAAAAAAAA" + ++sequence;
+                            records.set(id, JSON.parse(body));
+                        } else if (this.method === "PATCH")
+                            records.set(id, {
+                                ...records.get(id),
+                                ...JSON.parse(body),
+                            });
+                        data = records.get(id);
+                        if (this.method === "DELETE") records.delete(id);
+                        this.status = 200;
+                        this.responseText = JSON.stringify({
+                            record: { data, id },
+                        });
+                        this.onload();
+                    });
+                }
+            };
+            const ui = load("src/swop/herenow-ui.ts", { "./herenow": core });
+            async function until(predicate) {
+                const deadline = Date.now() + 2000;
+                while (!predicate() && Date.now() < deadline)
+                    await new Promise((resolve) => setImmediate(resolve));
+                assert(predicate(), "asynchronous UI transition completed");
+            }
+            try {
+                ui.openHereNowSwop(
+                    tv,
+                    (s) => s,
+                    (text) => {
+                        link = text;
+                        return "<svg></svg>";
+                    }
+                );
+                await until(() => link !== "");
+                const phone = {
+                    ...w,
+                    location: {
+                        origin: tv.location.origin,
+                        pathname: "/swop-input/",
+                    },
+                };
+                const pairing = core.hereNowReadPair(phone, link);
+                const record = records.get(pairing.recordId);
+                assert.deepEqual(
+                    await core.hereNowOpen(
+                        phone,
+                        pairing,
+                        "offer",
+                        record.offer
+                    ),
+                    { caption: "Title filter", draft: "old filter" }
+                );
+                record.reply = await core.hereNowSeal(phone, pairing, "reply", {
+                    value: "РЕН ТВ",
+                });
+                const timer = [...jobs.entries()].find(
+                    ([, value]) => value.delay === 5000
+                );
+                assert(timer);
+                jobs.delete(timer[0]);
+                timer[1].fn();
+                await until(() => resumed === 1 && records.size === 0);
+                assert.equal(tv.editvar, "РЕН ТВ");
+                assert.equal(tv.editKey, originalKey);
+                assert.equal(
+                    tv.document.getElementById("listEdit").style.display,
+                    "none"
+                );
+                assert.deepEqual(alerts, []);
+                // Closing before create resolves must delete the late-created record.
+                ui.openHereNowSwop(
+                    tv,
+                    (s) => s,
+                    () => "<svg></svg>"
+                );
+                tv.editKey(tv.keys.RETURN);
+                await until(() => sequence === 2 && records.size === 0);
+                assert.equal(resumed, 2);
+                assert.equal(tv.editvar, "РЕН ТВ");
+            } finally {
+                dom.window.close();
+            }
+        }
+    );
+    console.log("PASS here.now SWOP " + count + " checks");
+}
+main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});

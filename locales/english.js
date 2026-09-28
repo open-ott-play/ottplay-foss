@@ -474,6 +474,8 @@ var keyStrings = {
     Ok: "OK",
     Open: "Open",
     "Open in PiP": "Open in PiP",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE settings",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -508,6 +510,7 @@ var keyStrings = {
         "Seek back 10 seconds after pause",
     PROST: "PROST",
     "PROST settings": "PROST settings",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Previous",
     "Preview in channel list": "Preview in channel list",
     Previous: "Previous",
@@ -533,6 +536,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Remote (no color buttons)",
     "Remote (number buttons N/A)": "Remote (no number buttons)",
     "Remote control": "Remote control",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Remote session expired",
     "Remote text entry denied": "Remote text entry denied",
     "Remote text entry error": "Remote text entry error",
@@ -569,9 +576,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Save settings and load channel list",
     "Save settings to storage": "Save settings to storage",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Screenplay",
     Search: "Search",
     "Search programme": "Search programme",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Select a stream type:<br>%1",
     "Select category to add channel": "Select a category to add the channel",
     "Select color": "Select color",
@@ -650,6 +665,7 @@ var keyStrings = {
     system: "system",
     Tabox: "Tabox",
     "Tabox settings": "Tabox settings",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.":
         "The device ID in the address is invalid.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
@@ -693,6 +709,8 @@ var keyStrings = {
         "Use LEFT/RIGHT to select a control, OK to activate it, and UP/DOWN to scroll.",
     Username: "Username",
     "Username or password is missing.": "Username or password is missing.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM settings",
     "Vidok.TV": "Vidok.TV",

@@ -481,6 +481,8 @@ var keyStrings = {
     Ok: "OK",
     Open: "Ochish",
     "Open in PiP": "PiP da ochish",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE sozlamalari",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -515,6 +517,7 @@ var keyStrings = {
         "Pauzadan keyin 10 soniya orqaga qaytish",
     PROST: "PROST",
     "PROST settings": "PROST sozlamalari",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Oldingi",
     "Preview in channel list": "Kanallar roʻyxatida oldindan koʻrish",
     Previous: "Oldingi",
@@ -540,6 +543,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Pult (rangli tugmalarsiz)",
     "Remote (number buttons N/A)": "Pult (raqamli tugmalarsiz)",
     "Remote control": "Masofadan boshqarish",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Masofaviy seans muddati tugadi",
     "Remote text entry denied": "Masofaviy matn kiritish rad etildi",
     "Remote text entry error": "Masofaviy matn kiritishda xato",
@@ -577,9 +584,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Sozlamalarni saqlash va kanallar roʻyxatini yuklash",
     "Save settings to storage": "Sozlamalarni xotiraga saqlash",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Ssenariy",
     Search: "Qidirish",
     "Search programme": "Koʻrsatuv qidirish",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Oqim turini tanlang:<br>%1",
     "Select category to add channel":
         "Kanal qo'shish uchun kategoriyani tanlang",
@@ -661,6 +676,7 @@ var keyStrings = {
     system: "tizim",
     Tabox: "Tabox",
     "Tabox settings": "Tabox sozlamalari",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.":
         "Manzildagi qurilma ID raqami notoʻgʻri.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
@@ -706,6 +722,8 @@ var keyStrings = {
     Username: "Foydalanuvchi nomi",
     "Username or password is missing.":
         "Foydalanuvchi nomi yoki parol kiritilmagan.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM sozlamalari",
     "Vidok.TV": "Vidok.TV",

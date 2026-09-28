@@ -475,6 +475,8 @@ var keyStrings = {
     Ok: "OK",
     Open: "Buka",
     "Open in PiP": "Buka dalam PiP",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Tetapan OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -508,6 +510,7 @@ var keyStrings = {
     "Position shift -10 seconds after pause": "Undur 10 saat selepas jeda",
     PROST: "PROST",
     "PROST settings": "Tetapan PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Sebelumnya",
     "Preview in channel list": "Pratonton dalam senarai saluran",
     Previous: "Sebelumnya",
@@ -533,6 +536,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Kawalan jauh tanpa butang warna",
     "Remote (number buttons N/A)": "Kawalan jauh tanpa butang nombor",
     "Remote control": "Kawalan jauh",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Sesi jauh tamat tempoh",
     "Remote text entry denied": "Input teks jauh ditolak",
     "Remote text entry error": "Ralat input teks jauh",
@@ -570,9 +577,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Simpan tetapan dan muatkan senarai saluran",
     "Save settings to storage": "Simpan tetapan ke storan",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Lakon layar",
     Search: "Cari",
     "Search programme": "Cari rancangan",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Pilih jenis strim:<br>%1",
     "Select category to add channel": "Pilih kategori untuk menambah saluran",
     "Select color": "Pilih warna",
@@ -653,6 +668,7 @@ var keyStrings = {
     system: "sistem",
     Tabox: "Tabox",
     "Tabox settings": "Tetapan Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.":
         "ID peranti dalam alamat tidak sah.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
@@ -697,6 +713,8 @@ var keyStrings = {
         "Gunakan KIRI/KANAN untuk memilih kawalan, OK untuk mengaktifkannya dan ATAS/BAWAH untuk menatal.",
     Username: "Nama pengguna",
     "Username or password is missing.": "Nama pengguna atau kata laluan tiada.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Tetapan VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

@@ -480,6 +480,8 @@ var keyStrings = {
     Ok: "OK",
     Open: "Ашу",
     "Open in PiP": "PiP ішінде ашу",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE баптаулары",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -514,6 +516,7 @@ var keyStrings = {
         "Кідіртуден кейін 10 секунд артқа қайту",
     PROST: "PROST",
     "PROST settings": "PROST баптаулары",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Алдыңғы",
     "Preview in channel list": "Арналар тізіміндегі алдын ала қарау",
     Previous: "Алдыңғы арна",
@@ -538,6 +541,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Түрлі түсті түймелері жоқ пульт",
     "Remote (number buttons N/A)": "Сандық түймелері жоқ пульт",
     "Remote control": "Қашықтан басқару",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Қашықтағы сеанстың мерзімі аяқталды",
     "Remote text entry denied": "Қашықтан мәтін енгізуге рұқсат жоқ",
     "Remote text entry error": "Қашықтан мәтін енгізу қатесі",
@@ -574,9 +581,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Баптауларды сақтау және арналар тізімін жүктеу",
     "Save settings to storage": "Баптауларды жадқа сақтау",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Сценарий",
     Search: "Іздеу",
     "Search programme": "Бағдарламаны іздеу",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Ағын түрін таңдаңыз:<br>%1",
     "Select category to add channel": "Арнаны қосатын санатты таңдаңыз",
     "Select color": "Түсті таңдаңыз",
@@ -659,6 +674,7 @@ var keyStrings = {
     system: "жүйелік",
     Tabox: "Tabox",
     "Tabox settings": "Tabox баптаулары",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.":
         "Мекенжайдағы құрылғы ID-і жарамсыз.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
@@ -703,6 +719,8 @@ var keyStrings = {
         "Элементті таңдау үшін СОЛ/ОҢ, іске қосу үшін OK, айналдыру үшін ЖОҒАРЫ/ТӨМЕН түймелерін пайдаланыңыз.",
     Username: "Пайдаланушы аты",
     "Username or password is missing.": "Пайдаланушы аты немесе құпиясөз жоқ.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM баптаулары",
     "Vidok.TV": "Vidok.TV",

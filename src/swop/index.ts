@@ -16,6 +16,7 @@ import {
     wire,
 } from "../shared/wire-contracts";
 import { makeQrSvg } from "../utils/qr-code";
+import { openHereNowSwop } from "./herenow-ui";
 
 declare var $: any;
 declare var keys: any;
@@ -140,6 +141,10 @@ function persistSwopBaseUrl(url: string): void {
  */
 export function applyLocalSwopConfig(done?: () => void): void {
     var finish = typeof done === "function" ? done : function () {};
+    if ((window as any).__OTTPLAY_HOSTED__) {
+        finish();
+        return;
+    }
     try {
         $.ajax({
             cache: false,
@@ -201,6 +206,18 @@ function authErrorMessage(status: number, body: any): string {
  * then fill `editvar` and return to the on-screen keyboard.
  */
 export function swopLoadValue(): void {
+    if ((window as any).__OTTPLAY_HOSTED__) {
+        try {
+            openHereNowSwop(window, _, makeQrSvg);
+        } catch (_) {
+            alert(
+                _(
+                    "Secure remote input could not start. Please use the on-screen keyboard."
+                )
+            );
+        }
+        return;
+    }
     var base = getSwopBaseUrl();
     if (!base) {
         alert(_("Remote text entry not configured"));

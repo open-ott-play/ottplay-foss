@@ -475,6 +475,8 @@ var keyStrings = {
     Ok: "ОК",
     Open: "Открыть",
     "Open in PiP": "Открыть в PiP",
+    "Or open this complete private link on another device:":
+        "Или откройте эту полную секретную ссылку на другом устройстве:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Настройки OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -509,6 +511,8 @@ var keyStrings = {
         "Отступить на 10 секунд после паузы",
     PROST: "PROST",
     "PROST settings": "Настройки PROST",
+    "Preparing secure remote input...":
+        "Подготовка защищённого удалённого ввода...",
     Prev: "Предыдущая",
     "Preview in channel list": "Предпросмотр в списке каналов",
     Previous: "Предыдущий канал",
@@ -533,6 +537,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Пульт без цветных кнопок",
     "Remote (number buttons N/A)": "Пульт без цифровых кнопок",
     "Remote control": "Удалённое управление",
+    "Remote input expired. Open a new session to try again.":
+        "Время удалённого ввода истекло. Откройте новый сеанс.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Сеанс удалённого ввода недоступен. Откройте новый сеанс.",
     "Remote session expired": "Сеанс удалённого доступа истёк",
     "Remote text entry denied": "Удалённый ввод текста запрещён",
     "Remote text entry error": "Ошибка удалённого ввода текста",
@@ -569,9 +577,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Сохранить настройки и загрузить список каналов",
     "Save settings to storage": "Сохранить настройки в хранилище",
+    "Scan this QR code with your phone to enter text.":
+        "Отсканируйте QR-код телефоном, чтобы ввести текст.",
     Script: "Сценарий",
     Search: "Поиск",
     "Search programme": "Поиск передачи",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Не удалось начать защищённый удалённый ввод. Повторите попытку или используйте экранную клавиатуру.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Не удалось начать защищённый удалённый ввод. Используйте экранную клавиатуру.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "На этом устройстве недоступен защищённый удалённый ввод. Используйте экранную клавиатуру.",
     "Select a stream type:<br>%1": "Выберите тип потока:<br>%1",
     "Select category to add channel": "Выбор категории для добавления канала",
     "Select color": "Выберите цвет",
@@ -651,6 +667,8 @@ var keyStrings = {
     system: "системный",
     Tabox: "Tabox",
     "Tabox settings": "Настройки Tabox",
+    "Text is too long for remote input.":
+        "Текст слишком длинный для удалённого ввода.",
     "The device ID in the address is invalid.":
         "В адресе указан неверный ID устройства.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
@@ -695,6 +713,8 @@ var keyStrings = {
     Username: "Имя пользователя",
     "Username or password is missing.":
         "Не указано имя пользователя или пароль.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Действует 10 минут. Кнопка «Назад» закрывает сеанс.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Настройки VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

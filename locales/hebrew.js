@@ -466,6 +466,8 @@ var keyStrings = {
     Ok: "אישור",
     Open: "פתח",
     "Open in PiP": "פתח ב-PiP",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "הגדרות OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -499,6 +501,7 @@ var keyStrings = {
     "Position shift -10 seconds after pause": "חזור 10 שניות אחורה לאחר השהיה",
     PROST: "PROST",
     "PROST settings": "הגדרות PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "הקודם",
     "Preview in channel list": "תצוגה מקדימה ברשימת הערוצים",
     Previous: "הקודם",
@@ -523,6 +526,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "שלט (ללא לחצנים צבעוניים)",
     "Remote (number buttons N/A)": "שלט (ללא לחצני מספרים)",
     "Remote control": "שליטה מרחוק",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "תוקף ההפעלה המרוחקת פג",
     "Remote text entry denied": "הזנת טקסט מרחוק נדחתה",
     "Remote text entry error": "שגיאה בהזנת טקסט מרחוק",
@@ -557,9 +564,17 @@ var keyStrings = {
     "Save settings": "שמור הגדרות",
     "Save settings and load channel list": "שמור הגדרות וטען רשימת ערוצים",
     "Save settings to storage": "שמור הגדרות באחסון",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "תסריט",
     Search: "חיפוש",
     "Search programme": "חפש תוכנית",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "בחר סוג שידור:<br>%1",
     "Select category to add channel": "בחר קטגוריה להוספת ערוץ",
     "Select color": "בחר צבע",
@@ -638,6 +653,7 @@ var keyStrings = {
     system: "מערכת",
     Tabox: "Tabox",
     "Tabox settings": "הגדרות Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.": "מזהה המכשיר בכתובת אינו תקין.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "נגן HTTPS זה אינו יכול להתחבר לשרת HTTP. השתמש בשרת HTTPS או פתח את הנגן דרך HTTP.",
@@ -679,6 +695,8 @@ var keyStrings = {
         "השתמש בשמאל/ימין לבחירת פקד, ב-OK להפעלתו ובמעלה/מטה לגלילה.",
     Username: "שם משתמש",
     "Username or password is missing.": "שם המשתמש או הסיסמה חסרים.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "הגדרות VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

@@ -479,6 +479,8 @@ var keyStrings = {
     Ok: "Gerai",
     Open: "Atverti",
     "Open in PiP": "Atidaryti PiP",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE nustatymai",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -512,6 +514,7 @@ var keyStrings = {
     "Position shift -10 seconds after pause": "Po pauzės atsukti 10 sekundžių",
     PROST: "PROST",
     "PROST settings": "PROST nustatymai",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Ankstesnis",
     "Preview in channel list": "Peržiūra kanalų sąraše",
     Previous: "Ankstesnis",
@@ -536,6 +539,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Pultas (be spalvotų mygtukų)",
     "Remote (number buttons N/A)": "Pultas (be skaitmenų mygtukų)",
     "Remote control": "Nuotolinis valdymas",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Nuotolinio seanso galiojimas baigėsi",
     "Remote text entry denied": "Nuotolinė teksto įvestis uždrausta",
     "Remote text entry error": "Nuotolinės teksto įvesties klaida",
@@ -573,9 +580,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Išsaugoti nustatymus ir įkelti kanalų sąrašą",
     "Save settings to storage": "Išsaugoti nustatymus saugykloje",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Scenarijus",
     Search: "Paieška",
     "Search programme": "Ieškoti laidos",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Pasirinkite srauto tipą:<br>%1",
     "Select category to add channel": "Pasirinkite kategoriją kanalui pridėti",
     "Select color": "Pasirinkti spalvą",
@@ -655,6 +670,7 @@ var keyStrings = {
     system: "sistemos",
     Tabox: "Tabox",
     "Tabox settings": "Tabox nustatymai",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.":
         "Įrenginio ID adrese netinkamas.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
@@ -699,6 +715,8 @@ var keyStrings = {
     Username: "Naudotojo vardas",
     "Username or password is missing.":
         "Trūksta naudotojo vardo arba slaptažodžio.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM nustatymai",
     "Vidok.TV": "Vidok.TV",
