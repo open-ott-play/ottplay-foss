@@ -18,6 +18,10 @@ class ContainerValidationScopeTests(unittest.TestCase):
     def test_unrelated_changes_skip_builds(self):
         self.assertFalse(scope.relevant(["README.md", ".github/workflows/auto-approve.yml", "src/ui.ts"]))
 
+    def test_native_record_kernel_and_its_oracle_require_container_validation(self):
+        for path in ["src-rs/core/src/xmltv/server_records.rs", "src-rs/core/src/xmltv_differential_tests.rs"]:
+            self.assertTrue(scope.relevant([path]), path)
+
     def test_pr_and_queue_compare_immutable_commits(self):
         base, head = "a" * 40, "b" * 40
         for kind, event in [("pull_request", {"pull_request": {"base": {"sha": base}, "head": {"sha": head}}}), ("merge_group", {"merge_group": {"base_sha": base, "head_sha": head}})]:

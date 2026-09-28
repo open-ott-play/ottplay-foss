@@ -13,7 +13,8 @@ PATTERNS = (
     "scripts/prepare-container-workspace.py", "scripts/assemble-container-oci.py",
     "scripts/benchmark-container-build.py", "scripts/container_validation_scope.py",
     "scripts/check-epg-performance.py", "scripts/check-container-epg.py",
-    "src-rs/core/src/xmltv.rs", "src-rs/core/src/shared_guide.rs", "src-rs/core/src/m3u.rs",
+    "src-rs/core/src/xmltv.rs", "src-rs/core/src/xmltv/**", "src-rs/core/src/xmltv_differential_tests.rs",
+    "src-rs/core/src/shared_guide.rs", "src-rs/core/src/m3u.rs",
     "src-rs/core/src/lib.rs", "src-rs/core/src/native_xmltv.rs", "src-rs/server/src/main.rs", "vendor/ottplay-core.*",
     "tests/test_container_workspace.py", ".github/release-tests/test_container_*.py",
 )

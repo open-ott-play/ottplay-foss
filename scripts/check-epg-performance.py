@@ -166,8 +166,8 @@ def main() -> None:
     parser.add_argument("--feed", type=Path)
     parser.add_argument("--probe-name", default="РЕН ТВ HD", help="Playlist name whose EPG must resolve")
     parser.add_argument("--channels", type=int, default=3247)
-    parser.add_argument("--programmes", type=int, default=100000)
-    parser.add_argument("--warmup-seconds", type=float, default=90)
+    parser.add_argument("--programmes", type=int, default=600000)
+    parser.add_argument("--warmup-seconds", type=float, default=30)
     parser.add_argument("--request-ms", type=float, default=2000)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
@@ -177,7 +177,8 @@ def main() -> None:
         parser.error("Need at least one channel and one programme per channel")
     if args.warmup_seconds <= 0 or args.request_ms <= 0 or not args.probe_name:
         parser.error("Performance budgets and probe name must be nonempty and positive")
-    report: dict = {"samples": {}}
+    report: dict = {"samples": {}, "budgets": {"warmup_seconds": args.warmup_seconds,
+                                              "request_ms": args.request_ms}}
     report["image" if args.image else "server"] = args.image or str(args.server)
     if args.image:
         report["container_limits"] = {"cpus": 2, "memory_bytes": 2 * 1024 ** 3}

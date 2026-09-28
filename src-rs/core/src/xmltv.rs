@@ -1,4 +1,5 @@
 //! XMLTV fetch + parse + fuzzy match.
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Read;
 
@@ -7,6 +8,8 @@ use quick_xml::events::Event;
 use quick_xml::Reader;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+
+mod server_records;
 
 #[derive(Clone, Debug, Default)]
 pub struct Channel {
@@ -69,7 +72,7 @@ async fn fetch_single_impl(source: &str, native: bool) -> anyhow::Result<(Channe
 
     let source_has_gz_extension = source.ends_with(".gz");
     // XMLTV feeds can contain hundreds of megabytes of XML. Decompression and
-    // the synchronous shared reducer must not occupy an async request worker.
+    // synchronous record reduction must not occupy an async request worker.
     tokio::task::spawn_blocking(move || {
         let is_gz = (!native && source_has_gz_extension) || content.starts_with(&[0x1f, 0x8b]);
         let raw: Vec<u8> = if is_gz {
@@ -96,6 +99,19 @@ pub fn parse_xmltv_native(xml: &str) -> anyhow::Result<(Channels, Programs)> {
 }
 
 fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Programs)> {
+    let records = if native {
+        Records::Shared(RecordTokens::new(true)?)
+    } else {
+        Records::Server(server_records::ServerRecords::default())
+    };
+    parse_xmltv_with_records(xml, native, records)
+}
+
+fn parse_xmltv_with_records(
+    xml: &str,
+    native: bool,
+    mut records: Records,
+) -> anyhow::Result<(Channels, Programs)> {
     let mut reader = Reader::from_str(xml);
     // quick-xml 0.41 emits references separately. Preserve whitespace between
     // text/reference/CDATA events and trim once when the complete field closes.
@@ -103,8 +119,6 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
 
     let mut channels: Channels = HashMap::new();
     let mut programs: Programs = HashMap::new();
-
-    let mut records = RecordTokens::new(native)?;
 
     let mut buf = Vec::new();
     let mut depth = 0usize;
@@ -172,40 +186,26 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
         match event {
             Ok(Event::Start(element)) | Ok(Event::Empty(element)) => {
                 // Empty elements have always supplied only a start event here.
-                let mut row = vec![
-                    "start".into(),
-                    String::from_utf8_lossy(element.name().as_ref()).into_owned(),
-                ];
-                for key in ["id", "channel", "start", "stop", "src"] {
-                    if let Some(value) = attr(&element, key) {
-                        row.push(key.into());
-                        row.push(value);
-                    }
-                }
-                records.push(row, &mut channels, &mut programs)?;
+                records.start(&element, &mut channels, &mut programs)?;
             }
             Ok(Event::Text(text)) => {
                 records.text(
-                    text.decode()
-                        .map(|text| text.into_owned())
-                        .map_err(Into::into),
+                    text.decode().map_err(Into::into),
                     &mut channels,
                     &mut programs,
                 )?;
             }
             Ok(Event::CData(text)) => {
                 records.text(
-                    text.decode()
-                        .map(|text| text.into_owned())
-                        .map_err(Into::into),
+                    text.decode().map_err(Into::into),
                     &mut channels,
                     &mut programs,
                 )?;
             }
             Ok(Event::GeneralRef(reference)) => {
-                let decoded = (|| -> anyhow::Result<String> {
+                let decoded = (|| -> anyhow::Result<Cow<'_, str>> {
                     if let Some(character) = reference.resolve_char_ref()? {
-                        return Ok(character.to_string());
+                        return Ok(Cow::Owned(character.to_string()));
                     }
                     let name = reference.decode()?;
                     match quick_xml::escape::resolve_predefined_entity(&name) {
@@ -215,14 +215,9 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
                 })();
                 records.text(decoded, &mut channels, &mut programs)?;
             }
-            Ok(Event::End(element)) => records.push(
-                vec![
-                    "end".into(),
-                    String::from_utf8_lossy(element.name().as_ref()).into_owned(),
-                ],
-                &mut channels,
-                &mut programs,
-            )?,
+            Ok(Event::End(element)) => {
+                records.end(element.name().as_ref(), &mut channels, &mut programs)?
+            }
             Ok(Event::Eof) => break,
             Err(error) => {
                 // A prior batched decode error keeps its original precedence.
@@ -236,6 +231,9 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
 
     records.flush(&mut channels, &mut programs)?;
     if native {
+        let Records::Shared(records) = records else {
+            unreachable!("native custom feeds use the shared reducer");
+        };
         for entries in programs.values_mut() {
             let order = records
                 .core
@@ -253,6 +251,80 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
         }
     }
     Ok((channels, programs))
+}
+
+// Both profiles share tokenization, attribute normalization and error handling.
+// Only the server's per-event record/calendar work avoids the QuickJS bridge.
+enum Records {
+    Server(server_records::ServerRecords),
+    Shared(RecordTokens),
+}
+
+impl Records {
+    fn start(
+        &mut self,
+        element: &quick_xml::events::BytesStart<'_>,
+        channels: &mut Channels,
+        programs: &mut Programs,
+    ) -> anyhow::Result<()> {
+        match self {
+            Self::Server(records) => {
+                records.start(element);
+                Ok(())
+            }
+            Self::Shared(records) => {
+                let mut row = vec![
+                    "start".into(),
+                    String::from_utf8_lossy(element.name().as_ref()).into_owned(),
+                ];
+                for key in ["id", "channel", "start", "stop", "src"] {
+                    if let Some(value) = attr(element, key) {
+                        row.push(key.into());
+                        row.push(value);
+                    }
+                }
+                records.push(row, channels, programs)
+            }
+        }
+    }
+
+    fn text(
+        &mut self,
+        value: anyhow::Result<Cow<'_, str>>,
+        channels: &mut Channels,
+        programs: &mut Programs,
+    ) -> anyhow::Result<()> {
+        match self {
+            Self::Server(records) => records.text(value),
+            Self::Shared(records) => records.text(value.map(Cow::into_owned), channels, programs),
+        }
+    }
+
+    fn end(
+        &mut self,
+        name: &[u8],
+        channels: &mut Channels,
+        programs: &mut Programs,
+    ) -> anyhow::Result<()> {
+        match self {
+            Self::Server(records) => {
+                records.end(name, channels, programs);
+                Ok(())
+            }
+            Self::Shared(records) => records.push(
+                vec!["end".into(), String::from_utf8_lossy(name).into_owned()],
+                channels,
+                programs,
+            ),
+        }
+    }
+
+    fn flush(&mut self, channels: &mut Channels, programs: &mut Programs) -> anyhow::Result<()> {
+        match self {
+            Self::Server(_) => Ok(()),
+            Self::Shared(records) => records.flush(channels, programs),
+        }
+    }
 }
 
 /// The bounded transport queue contains XML tokens and original decoder errors.
@@ -356,16 +428,19 @@ impl RecordTokens {
     }
 }
 
-fn attr(e: &quick_xml::events::BytesStart<'_>, key: &str) -> Option<String> {
+fn attr_value<'a>(e: &'a quick_xml::events::BytesStart<'_>, key: &str) -> Option<Cow<'a, str>> {
     for a in e.attributes().flatten() {
         if a.key.as_ref() == key.as_bytes() {
             return a
                 .decoded_and_normalized_value(quick_xml::XmlVersion::Implicit1_0, e.decoder())
-                .ok()
-                .map(|v| v.into_owned());
+                .ok();
         }
     }
     None
+}
+
+fn attr(e: &quick_xml::events::BytesStart<'_>, key: &str) -> Option<String> {
+    attr_value(e, key).map(Cow::into_owned)
 }
 
 /// Parse XMLTV timestamps through the pinned shared core (seconds).
@@ -403,6 +478,15 @@ pub fn strip_time_shift(name: &str) -> anyhow::Result<String> {
 pub fn extract_time_shift(name: &str) -> anyhow::Result<i64> {
     crate::shared_guide::text::<i32>("nativeGuideShift", name).map(i64::from)
 }
+
+#[cfg(test)]
+fn parse_xmltv_shared_reference(xml: &str) -> anyhow::Result<(Channels, Programs)> {
+    parse_xmltv_with_records(xml, false, Records::Shared(RecordTokens::new(false)?))
+}
+
+#[cfg(test)]
+#[path = "xmltv_differential_tests.rs"]
+mod differential_tests;
 
 #[cfg(test)]
 mod tests {
