@@ -73,6 +73,7 @@ const contracts = {
         ]),
     ],
     StalkerPortal: [
+        ["swopRequest", 0, "", null, "Native SWOP unavailable"],
         [
             "httpRequest",
             0,
@@ -215,7 +216,7 @@ async function checkFallbacks(capacitor) {
             ]);
         }
     }
-    assert.equal(methods, 24);
+    assert.equal(methods, 25);
 }
 
 async function checkErrors() {
@@ -349,7 +350,7 @@ async function main() {
     await checkPromiseBoundary();
     await checkNativeSelection();
     console.log(
-        "OK: 24 native fallback contracts, immediate effects, Promise rejection/adoption/order, and native proxy selection"
+        "OK: 25 native fallback contracts, immediate effects, Promise rejection/adoption/order, and native proxy selection"
     );
 }
 

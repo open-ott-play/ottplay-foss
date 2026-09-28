@@ -48,9 +48,20 @@ export interface StalkerPortalPlugin {
         contentType: string;
         setCookie?: string[];
     }>;
+    /** Dedicated bounded SWOP relay request; never uses provider cookies. */
+    swopRequest(opts: {
+        url: string;
+        body: string;
+        clientId: string;
+    }): Promise<NativeHttpResponse>;
 }
 
 class StalkerPortalWeb implements StalkerPortalPlugin {
+    swopRequest(): Promise<NativeHttpResponse> {
+        return nativeWebFallback(function () {
+            throw new Error("Native SWOP unavailable");
+        });
+    }
     httpRequest(): Promise<NativeHttpResponse> {
         return nativeWebFallback(function () {
             throw new Error(

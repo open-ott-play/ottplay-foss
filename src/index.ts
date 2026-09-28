@@ -6081,7 +6081,7 @@ window.settingsCommands = function (): void {
             text(uid) +
             "</span><br/><br/>" +
             "This ID identifies your player for commands from Home Assistant or other automation. " +
-            "For remote text entry (♥™), the Worker operator must allowlist this ID.<br/><br/>" +
+            "Remote text entry (♥™) uses the configured relay server's installation authorization; this ID identifies the player, not a credential.<br/><br/>" +
             "<b>Local command URL:</b><br/>" +
             text(lurl || "not set (local command polling disabled)") +
             "<br/><br/>" +

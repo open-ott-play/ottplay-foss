@@ -7,6 +7,8 @@ const config: CapacitorConfig = {
         backgroundAudio: true,
         contentInset: "automatic",
     },
+    // Bridge debug logs include native call options/results (SWOP drafts/tokens).
+    loggingBehavior: "none",
     plugins: {
         MobileCommandQueue: {
             // Internal queue only by default; HTTP requires explicit opt-in and a token.

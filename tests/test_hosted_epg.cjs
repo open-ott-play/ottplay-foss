@@ -75,6 +75,333 @@ for (const chunks of [
         "the actual input limit still rejects one extra byte"
     );
 }
+// Exercise the shipped accounting/limits without allocating hundreds of MiB.
+// The standard 1,565-channel feed currently retains 134,648,412 estimated bytes,
+// just beyond the former 128 MiB limit, while each transaction remains bounded.
+const retainedSource = ts.transpileModule(
+    workerFactory.body.statements
+        .filter(
+            (node) =>
+                ts.isVariableStatement(node) &&
+                node.declarationList.declarations.some((declaration) =>
+                    [
+                        "CACHE_BYTES",
+                        "CHANNEL_BYTES",
+                        "CHANNEL_RECORDS",
+                    ].includes(declaration.name.getText(workerAst))
+                )
+        )
+        .map((node) => node.getText(workerAst))
+        .join("\n") +
+        "\n" +
+        parseDeclaration.body.statements
+            .find((node) =>
+                node.getText(workerAst).startsWith("parser.onclosetag =")
+            )
+            .getText(workerAst),
+    { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+).outputText;
+function retainFixture(overrides = {}) {
+    const initial = {
+        channelBytes: 0,
+        channelRecords: 0,
+        pendingBytes: 0,
+        retainedBytes: 0,
+        retainedRecords: 0,
+        ...overrides,
+    };
+    return new Function(
+        "initial",
+        "var retainedBytes = initial.retainedBytes, retainedRecords = initial.retainedRecords, " +
+            "pendingBytes = initial.pendingBytes, depth = 2, generation = 'fixture', sourceIndex = 0, retained = 0, " +
+            "pending = {}, parser = {}, channelSizes = {'fixture|0|channel': {bytes: initial.channelBytes, rows: initial.channelRecords}}, " +
+            "records = {end: function() {return {kind: 'programme', value: {id: 'channel', title: '', desc: '', begin: 1, end: 2}};}};\n" +
+            retainedSource +
+            "\nparser.onclosetag('programme'); return {bytes: retainedBytes, rows: retainedRecords, limit: CACHE_BYTES};"
+    )(initial);
+}
+const cacheLimit = 192 * 1024 * 1024;
+assert.equal(retainFixture().limit, cacheLimit);
+assert.equal(retainFixture({ retainedBytes: 134648412 - 80 }).bytes, 134648412);
+assert.equal(
+    retainFixture({ retainedBytes: cacheLimit - 80 }).bytes,
+    cacheLimit
+);
+assert.throws(
+    () => retainFixture({ retainedBytes: cacheLimit - 79 }),
+    /EPG_CACHE_LIMIT/
+);
+assert.equal(retainFixture({ retainedRecords: 299999 }).rows, 300000);
+assert.throws(
+    () => retainFixture({ retainedRecords: 300000 }),
+    /EPG_CACHE_LIMIT/
+);
+for (const [property, boundary, cost, error] of [
+    ["channelBytes", 8 * 1024 * 1024, 80, /EPG_CHANNEL_LIMIT/],
+    ["channelRecords", 20000, 1, /EPG_CHANNEL_LIMIT/],
+    ["pendingBytes", 4 * 1024 * 1024, 80, /EPG_BATCH_LIMIT/],
+]) {
+    assert.doesNotThrow(() => retainFixture({ [property]: boundary - cost }));
+    assert.throws(
+        () => retainFixture({ [property]: boundary - cost + 1 }),
+        error
+    );
+}
+// Drive the actual download/cleanup functions with a deterministic XHR clock.
+// Long transfers and stalled sockets must have different deadlines, without
+// making the browser suite wait ten minutes for a timeout regression.
+const downloadSource = ts.transpileModule(
+    ["clearDownload", "fail", "fetchSource"]
+        .map((name) =>
+            workerFactory.body.statements
+                .find(
+                    (node) =>
+                        ts.isFunctionDeclaration(node) &&
+                        node.name.text === name
+                )
+                .getText(workerAst)
+        )
+        .join("\n") +
+        "\n" +
+        workerFactory.body.statements
+            .find((node) =>
+                node.getText(workerAst).startsWith("env.onmessage =")
+            )
+            .getText(workerAst),
+    { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+).outputText;
+function downloadFixture() {
+    let now = 0,
+        nextTimer = 0;
+    const timers = new Map(),
+        requests = [];
+    const env = {
+        clearInterval(id) {
+            timers.delete(id);
+        },
+        clearTimeout(id) {
+            timers.delete(id);
+        },
+        location: { protocol: "https:" },
+        setTimeout(callback, delay) {
+            const id = ++nextTimer;
+            timers.set(id, { callback, due: now + delay });
+            return id;
+        },
+        XMLHttpRequest: class {
+            constructor() {
+                this.aborts = 0;
+                requests.push(this);
+            }
+            open() {}
+            send() {
+                // Model the browser's total XHR timeout; progress cannot reset it.
+                this.deadline = env.setTimeout(() => {
+                    if (this.ontimeout) this.ontimeout();
+                }, this.timeout);
+            }
+            abort() {
+                this.aborts++;
+                env.clearTimeout(this.deadline);
+                // Abort can synchronously trigger error delivery on older hosts.
+                if (this.onerror) this.onerror();
+            }
+            progress(loaded, total = 1000000) {
+                if (this.onprogress) this.onprogress({ loaded, total });
+            }
+            finish(status = 200) {
+                env.clearTimeout(this.deadline);
+                this.status = status;
+                this.response = new ArrayBuffer(8);
+                if (this.onload) this.onload();
+            }
+        },
+    };
+    const worker = new Function(
+        "env",
+        "var request = null, downloadTimer = null, loading = true, closed = false, " +
+            "source = -1, downloaded = 0, total = 0, httpStatus = 0, phase = 'download', " +
+            "timer = null, database = null, active = {}, scheduled = 0, parsed = 0, " +
+            "messages = [], WIRE_LIMIT = 96 * 1024 * 1024, " +
+            "configuration = { refreshMs: 7200000 };\n" +
+            "function release() {}\nfunction progress() {}\n" +
+            "function send(value) { if (!closed) messages.push(value); }\n" +
+            "function schedule() { scheduled++; }\n" +
+            "function parse() { parsed++; }\n" +
+            downloadSource +
+            "\nreturn { start: function() { fetchSource('https://fixture.test/feed.gz', 0, {}, function() {}); }, " +
+            "fail: fail, messages: messages, state: function() { return {scheduled: scheduled, parsed: parsed, active: active, downloaded: downloaded, total: total}; } };"
+    )(env);
+    worker.start();
+    return {
+        ...worker,
+        advance(milliseconds) {
+            const end = now + milliseconds;
+            while (true) {
+                const next = [...timers].sort((a, b) => a[1].due - b[1].due)[0];
+                if (!next || next[1].due > end) break;
+                now = next[1].due;
+                timers.delete(next[0]);
+                next[1].callback();
+            }
+            now = end;
+        },
+        close() {
+            env.onmessage({ data: { type: "close" } });
+        },
+        requests,
+        timers,
+    };
+}
+function stoppedDownload(fixture, code, schedules = 1) {
+    assert.equal(fixture.messages.length, code ? 1 : 0);
+    if (code) {
+        assert.equal(fixture.messages[0].code, code);
+        assert.equal(
+            fixture.messages[0].cached,
+            true,
+            "last good cache survives"
+        );
+    }
+    assert.equal(fixture.state().scheduled, schedules);
+    assert.equal(fixture.timers.size, 0, "no download timer survives cleanup");
+    for (const name of ["onload", "onerror", "ontimeout", "onprogress"])
+        assert.equal(fixture.requests[0][name], null);
+    fixture.advance(600000);
+    assert.equal(fixture.messages.length, code ? 1 : 0, "no late timeout");
+}
+{
+    const f = downloadFixture();
+    f.advance(59000);
+    f.requests[0].progress(1);
+    f.advance(59000);
+    assert.equal(
+        f.messages.length,
+        0,
+        "a delayed first byte renews the idle budget"
+    );
+    f.requests[0].finish();
+    assert.equal(f.state().parsed, 1);
+    stoppedDownload(f, null, 0);
+}
+{
+    const f = downloadFixture();
+    for (let index = 1; index <= 7; index++) {
+        f.advance(30000);
+        f.requests[0].progress(index * 1000);
+    }
+    assert.equal(
+        f.messages.length,
+        0,
+        "active download survives the former 180s deadline"
+    );
+    f.requests[0].finish();
+    assert.equal(f.state().parsed, 1);
+    stoppedDownload(f, null, 0);
+}
+for (const [first, next] of [
+    [0, 0],
+    [1, 1],
+    [2, 1],
+]) {
+    const f = downloadFixture();
+    f.requests[0].progress(first, 0);
+    for (let index = 0; index < 5; index++) {
+        f.advance(10000);
+        f.requests[0].progress(next, 0);
+        assert.equal(
+            f.state().downloaded,
+            first,
+            "downloaded byte count remains monotonic"
+        );
+        assert.equal(
+            f.state().total,
+            0,
+            "unknown content length stays unknown"
+        );
+    }
+    f.advance(10000);
+    assert.equal(
+        f.requests[0].aborts,
+        1,
+        "unchanged/zero/regressing-byte events cannot prevent an idle timeout"
+    );
+    stoppedDownload(f, "EPG_TIMEOUT");
+}
+{
+    const f = downloadFixture();
+    const old = f.requests[0];
+    const callbacks = [old.onload, old.onerror, old.ontimeout, old.onprogress];
+    f.fail("EPG_STORAGE_FAILED");
+    f.start();
+    const current = f.requests[1];
+    for (const callback of callbacks)
+        callback({ loaded: 100000001, total: 100000001 });
+    assert.equal(
+        f.messages.length,
+        1,
+        "stale terminal/progress callbacks cannot fail a retry"
+    );
+    assert.equal(
+        f.state().downloaded,
+        0,
+        "stale progress cannot mutate a retry"
+    );
+    assert.equal(
+        current.aborts,
+        0,
+        "a stale callback cannot abort the new request"
+    );
+    f.advance(59000);
+    current.progress(10);
+    f.advance(59000);
+    current.finish();
+    assert.equal(
+        f.state().parsed,
+        1,
+        "retry retains its own live callbacks and timer"
+    );
+    assert.equal(f.timers.size, 0);
+    f.advance(600000);
+    assert.equal(f.messages.length, 1);
+}
+{
+    const f = downloadFixture();
+    for (let index = 1; index <= 10; index++) {
+        f.advance(59000);
+        f.requests[0].progress(index);
+    }
+    assert.equal(f.messages.length, 0);
+    f.advance(10000);
+    assert.equal(
+        f.requests[0].aborts,
+        1,
+        "active traffic still has a 600s total deadline"
+    );
+    stoppedDownload(f, "EPG_TIMEOUT");
+}
+for (const failure of ["network", "http", "wire", "storage", "close"]) {
+    const f = downloadFixture();
+    if (failure === "network") f.requests[0].onerror();
+    if (failure === "http") f.requests[0].finish(503);
+    if (failure === "wire") f.requests[0].progress(96 * 1024 * 1024 + 1);
+    if (failure === "storage") f.fail("EPG_STORAGE_FAILED");
+    if (failure === "close") f.close();
+    stoppedDownload(
+        f,
+        {
+            close: null,
+            http: "EPG_HTTP",
+            network: "EPG_NETWORK",
+            storage: "EPG_STORAGE_FAILED",
+            wire: "EPG_WIRE_LIMIT",
+        }[failure],
+        failure === "close" || failure === "storage" ? 0 : 1
+    );
+}
+console.log(
+    "PASS hosted EPG download deadlines: first byte, increasing progress, idle, total time and cleanup"
+);
 const now = Math.floor(Date.now() / 1000);
 const stamp = (offset) =>
     new Date((now + offset) * 1000)

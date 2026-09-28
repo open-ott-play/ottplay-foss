@@ -176,11 +176,15 @@ export function installTauriHttpTransport(
     installNativeHttpTransport($, function (args) {
         return invoke("proxy_http", args);
     });
+    installNativeSwopTransport($, (args) => invoke("swop_http", args), true);
 }
 
 export function installCapacitorHttpTransport(
     $: any,
-    http: { httpRequest(args: any): Promise<NativeHttpResponse> }
+    http: {
+        httpRequest(args: any): Promise<NativeHttpResponse>;
+        swopRequest?(args: any): Promise<NativeHttpResponse>;
+    }
 ): void {
     var capacitor = (window as any).Capacitor;
     if (
@@ -192,5 +196,120 @@ export function installCapacitorHttpTransport(
     installNativeHttpTransport($, function (args) {
         args.url = String(args.url).replace(/^@/, "");
         return http.httpRequest(args);
+    });
+    if (capacitor && capacitor.isNativePlatform?.() === true) {
+        installNativeSwopTransport(
+            $,
+            (args) => {
+                if (!http.swopRequest)
+                    throw new Error("Native SWOP unavailable");
+                return http.swopRequest(args);
+            },
+            false
+        );
+    }
+}
+
+/** Dedicated, explicit SWOP capability. Never fall back to provider HTTP/XHR. */
+function installNativeSwopTransport(
+    $: any,
+    request: (args: {
+        url: string;
+        body: string;
+        clientId: string;
+    }) => Promise<NativeHttpResponse>,
+    allowLoopback: boolean
+): void {
+    $.ajaxTransport("+*", function (opts: any, original: any) {
+        if (opts.swopNativeRequest !== true) return;
+        var aborted = false;
+        return {
+            abort: function (): void {
+                aborted = true;
+            },
+            send: function (
+                headers: Record<string, string>,
+                complete: any
+            ): void {
+                function fail(timeout?: boolean): void {
+                    if (!aborted)
+                        complete(0, timeout ? "timeout" : "error", {
+                            text: "Native remote text entry request failed",
+                        });
+                }
+                try {
+                    var url = String(original.url || "");
+                    if (url !== String(opts.url || "")) throw new Error();
+                    // Reject URL normalization tricks before parsing (encoded paths,
+                    // userinfo, query, fragment, whitespace and backslashes).
+                    var match =
+                        /^(https?):\/\/([A-Za-z0-9.-]+|\[[0-9a-fA-F:]+\])(?::([0-9]{1,5}))?\/swop\/(session|val)$/.exec(
+                            url
+                        );
+                    if (
+                        !match ||
+                        (match[1] !== "https" &&
+                            !(
+                                allowLoopback &&
+                                (match[2] === "127.0.0.1" ||
+                                    match[2] === "[::1]")
+                            ))
+                    )
+                        throw new Error();
+                    var parsed = new URL(url);
+                    if (
+                        !parsed.hostname ||
+                        (match[3] && (+match[3] < 1 || +match[3] > 65535))
+                    )
+                        throw new Error();
+                    var body = String(opts.data || "");
+                    var value = JSON.parse(body);
+                    if (
+                        !value ||
+                        typeof value !== "object" ||
+                        Array.isArray(value) ||
+                        unescape(encodeURIComponent(body)).length > 65536 ||
+                        opts.type !== "POST" ||
+                        opts.async === false ||
+                        !/^application\/json(?:\s*;|$)/i.test(
+                            String(opts.contentType || "")
+                        ) ||
+                        (opts.dataTypes || []).indexOf("json") === -1
+                    )
+                        throw new Error();
+                    var clientId = "";
+                    for (var key in headers) {
+                        var name = key.toLowerCase();
+                        if (name === "x-swop-client-id")
+                            clientId = headers[key];
+                        else if (name !== "accept" && name !== "content-type")
+                            throw new Error();
+                    }
+                    if (!/^[A-Za-z0-9._:-]{1,128}$/.test(clientId))
+                        throw new Error();
+                    // Only these fields cross IPC; native code independently validates
+                    // and creates its own fixed headers, origin and ten-second deadline.
+                    request({ body: body, clientId: clientId, url: url }).then(
+                        function (response) {
+                            if (!aborted)
+                                complete(
+                                    response.status,
+                                    response.statusText,
+                                    { text: response.body },
+                                    response.headers
+                                );
+                        },
+                        function (error) {
+                            fail(
+                                error &&
+                                    (error.timeout || error.code === "timeout")
+                            );
+                        }
+                    );
+                } catch (_error) {
+                    fail();
+                }
+            },
+        };
     });
 }
