@@ -5,6 +5,7 @@ function createHostedEpgWorker(env: any): void {
     var active: any = null;
     var loading = false;
     var request: any = null;
+    var downloadTimer: any = null;
     var generation = "";
     var configuration: any = null;
     var timer: any = null;
@@ -23,6 +24,7 @@ function createHostedEpgWorker(env: any): void {
     var lastProgress = 0;
     var WIRE_LIMIT = 96 * 1024 * 1024;
     var XML_LIMIT = 512 * 1024 * 1024;
+    var CACHE_BYTES = 192 * 1024 * 1024;
     var CHANNEL_BYTES = 8 * 1024 * 1024;
     var CHANNEL_RECORDS = 20000;
     function xmlByteLength(value: string): number {
@@ -59,11 +61,19 @@ function createHostedEpgWorker(env: any): void {
             type: "progress",
         });
     }
+    function clearDownload(abort: boolean): void {
+        env.clearTimeout(downloadTimer);
+        downloadTimer = null;
+        var xhr = request;
+        request = null;
+        if (!xhr) return;
+        xhr.onload = xhr.onerror = xhr.ontimeout = xhr.onprogress = null;
+        if (abort) xhr.abort();
+    }
     function fail(code: string): void {
         loading = false;
         release();
-        if (request) request.abort();
-        request = null;
+        clearDownload(true);
         send({
             cached: !!active,
             code: code,
@@ -443,29 +453,44 @@ function createHostedEpgWorker(env: any): void {
             : address;
         xhr.open("GET", refreshUrl, true);
         xhr.responseType = "arraybuffer";
-        xhr.timeout = 180000;
+        // A full public feed can take longer than three minutes on a TV.
+        // Bound total time separately from a stall with no new response bytes.
+        xhr.timeout = 600000;
+        function watchProgress(): void {
+            env.clearTimeout(downloadTimer);
+            downloadTimer = env.setTimeout(function () {
+                if (closed || request !== xhr) return;
+                fail("EPG_TIMEOUT");
+                schedule();
+            }, 60000);
+        }
         xhr.onprogress = function (event: any) {
+            if (closed || request !== xhr) return;
             if (event.loaded > WIRE_LIMIT) {
-                xhr.abort();
                 fail("EPG_WIRE_LIMIT");
                 schedule();
                 return;
             }
-            downloaded = event.loaded;
+            if (event.loaded > downloaded) {
+                downloaded = event.loaded;
+                watchProgress();
+            }
             total = event.total || 0;
             progress("download", downloaded, total);
         };
         xhr.onerror = function () {
+            if (closed || request !== xhr) return;
             fail("EPG_NETWORK");
             schedule();
         };
         xhr.ontimeout = function () {
+            if (closed || request !== xhr) return;
             fail("EPG_TIMEOUT");
             schedule();
         };
         xhr.onload = function () {
-            request = null;
-            if (closed) return;
+            if (closed || request !== xhr) return;
+            clearDownload(false);
             httpStatus = xhr.status;
             if (xhr.status < 200 || xhr.status >= 300 || !xhr.response) {
                 fail(xhr.status ? "EPG_HTTP" : "EPG_NETWORK");
@@ -475,7 +500,6 @@ function createHostedEpgWorker(env: any): void {
             var buffer = xhr.response;
             downloaded = total = buffer.byteLength;
             progress("download", downloaded, total);
-            xhr.onload = xhr.onerror = xhr.ontimeout = xhr.onprogress = null;
             if (!buffer.byteLength || buffer.byteLength > WIRE_LIMIT) {
                 fail("EPG_WIRE_LIMIT");
                 schedule();
@@ -483,6 +507,7 @@ function createHostedEpgWorker(env: any): void {
             }
             parse(buffer, url, sourceIndex, mappings, complete);
         };
+        watchProgress();
         xhr.send(null);
     }
     function parse(
@@ -653,10 +678,7 @@ function createHostedEpgWorker(env: any): void {
                 retainedRecords++;
                 if (usage.bytes > CHANNEL_BYTES || usage.rows > CHANNEL_RECORDS)
                     throw new Error("EPG_CHANNEL_LIMIT");
-                if (
-                    retainedBytes > 128 * 1024 * 1024 ||
-                    retainedRecords > 300000
-                )
+                if (retainedBytes > CACHE_BYTES || retainedRecords > 300000)
                     throw new Error("EPG_CACHE_LIMIT");
                 pendingBytes += size;
                 if (pendingBytes > 4 * 1024 * 1024)
@@ -849,7 +871,7 @@ function createHostedEpgWorker(env: any): void {
             closed = true;
             env.clearTimeout(timer);
             release();
-            if (request) request.abort();
+            clearDownload(true);
             if (database) database.close();
         }
     };
