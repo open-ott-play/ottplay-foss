@@ -26,6 +26,33 @@ export function parseVPortalLink(value: unknown): VPortalLink | null {
     return { key: match[1], url: endpoint };
 }
 
+/** A hosted installation publishes exact provider routes, never an open relay. */
+export function hostedVPortalRoute(
+    endpoint: string,
+    profile: any
+): string | null {
+    if (
+        !profile ||
+        profile.version !== 1 ||
+        !profile.vportal ||
+        !Array.isArray(profile.vportal.routes)
+    )
+        return null;
+    var selected: string | null = null;
+    for (var index = 0; index < profile.vportal.routes.length; index++) {
+        var route = profile.vportal.routes[index];
+        if (!route || route.upstream !== endpoint) continue;
+        if (
+            selected !== null ||
+            typeof route.path !== "string" ||
+            !/^\/vportal\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(route.path)
+        )
+            return null;
+        selected = route.path;
+    }
+    return selected;
+}
+
 interface VPortalCompletion {
     isCurrent?: () => boolean;
     (): void;
@@ -167,9 +194,17 @@ export function createVPortalClient(
         var body = copyRequest(params);
         body.app = "ott-play";
         body.key = portal.key;
+        var hosted = !native && w.__OTTPLAY_HOSTED__ !== undefined;
+        var endpoint: string | null =
+            String(w.host || "").replace(/\/$/, "") + "/vportal/api";
+        if (native) endpoint = portal.url;
+        else if (hosted)
+            endpoint = hostedVPortalRoute(portal.url, w.__OTTPLAY_HOSTED__);
         var finished = false;
         showBusy();
         try {
+            if (!endpoint)
+                throw new Error("VPortal endpoint is not configured");
             var xhr = jq.ajax({
                 complete: function (): void {
                     finished = true;
@@ -180,7 +215,7 @@ export function createVPortalClient(
                 },
                 contentType: "application/json; charset=UTF-8",
                 data: JSON.stringify(
-                    native ? body : { params: body, url: portal.url }
+                    native || hosted ? body : { params: body, url: portal.url }
                 ),
                 dataType: "json",
                 error: function (_xhr: any, status: string): void {
@@ -192,9 +227,7 @@ export function createVPortalClient(
                 },
                 timeout: 30000,
                 type: "POST",
-                url: native
-                    ? portal.url
-                    : String(w.host || "").replace(/\/$/, "") + "/vportal/api",
+                url: endpoint,
                 vportalRequest: true,
             });
             if (!finished && isCurrent(token)) pending = xhr;
