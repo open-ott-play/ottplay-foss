@@ -56,7 +56,9 @@ import {
             var cfg = hereNowSwopConfig(w);
             if (!cfg) throw new Error("configuration");
             pair = hereNowReadPair(w, link.trim());
-            if (expired() || pair.deadline - Date.now() > 600000)
+            // Small device clock differences must not reject a freshly scanned
+            // QR. The TV independently enforces its original monotonic expiry.
+            if (expired() || pair.deadline - Date.now() > 660000)
                 throw new Error("expired");
             store = hereNowStore(w, cfg.collection);
             var current = pair;
@@ -87,7 +89,7 @@ import {
                         "This pairing link has expired. Open a new session on your TV."
                     );
                 },
-                Math.max(0, current.deadline - Date.now())
+                Math.min(600000, Math.max(0, current.deadline - Date.now()))
             );
         } catch (_) {
             if (generation !== revision) return;
