@@ -293,6 +293,21 @@ const server = http.createServer((request, response) => {
         });
         const ready = await page.evaluate(() => waitMessage("ready"));
         assert.equal(ready.stale, false);
+        const phases = await page.evaluate(() =>
+            messages.filter((m) => m.type === "progress")
+        );
+        assert(phases.some((m) => m.phase === "cache"));
+        assert(
+            phases.some(
+                (m) => m.phase === "download" && m.loaded > 0 && m.source === 0
+            )
+        );
+        assert(
+            phases.some(
+                (m) =>
+                    m.phase === "parse" && m.loaded === m.total && m.records > 0
+            )
+        );
         let long = await page.evaluate(() => getGuide("long"));
         let short = await page.evaluate(() => getGuide("short"));
         assert.equal(long.length, 3);
@@ -341,6 +356,12 @@ const server = http.createServer((request, response) => {
             );
             const error = await page.evaluate(() => waitMessage("error"));
             assert.equal(error.cached, true, failure);
+            if (failure === "network") {
+                assert.equal(error.code, "EPG_HTTP");
+                assert.equal(error.httpStatus, 503);
+                assert.equal(error.phase, "download");
+                assert.equal(error.source, 0);
+            }
             long = await page.evaluate(() => getGuide("long"));
             assert.equal(
                 long.length,
@@ -534,8 +555,127 @@ const server = http.createServer((request, response) => {
             (await page.evaluate(() => getGuide("extra1"))).length > 0,
             "oversized cache read must leave the Worker responsive without errors"
         );
+        // The actual bridge/UI must retain an actionable error after the boot
+        // screen is hidden, without displaying credentials in source URLs.
+        await page.goto("http://127.0.0.1:" + server.address().port);
+        await page.addScriptTag({
+            path: path.join(root, "js/jquery-1.11.1.min.js"),
+        });
+        await page.evaluate(() => {
+            document.body.innerHTML =
+                '<div id="launch" style="display:none"></div><div id="listCaption"></div><div id="listAbout"></div><div id="footer"></div>';
+            window._ = (value, arg) => value.replace("%1", String(arg));
+            window.keys = { DOWN: 40, ENTER: 13, EXIT: 27, RETURN: 8, UP: 38 };
+            window.listFooter = document.getElementById("footer");
+            window.saveListPanelState = () => {};
+            window.restoreListPanelState = () => {};
+            window.renderButtonHint = (_key, _label, title) => title;
+            window.showShift = (value) => {
+                window.lastNotice = value;
+            };
+            window.__OTTPLAY_HOSTED__ = {
+                epg: {
+                    source:
+                        location.origin + "/feed.gz?token=private-source-test",
+                    workerUrl: "/hosted/epg-worker.js",
+                },
+                version: 1,
+            };
+        });
+        await page.addScriptTag({
+            content: ts.transpileModule(
+                fs.readFileSync(path.join(root, "src/hosted/epg.ts"), "utf8"),
+                { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+            ).outputText,
+        });
+        status = 503;
+        await page.evaluate(() => {
+            window.epgSession = __ottHostedEpg.open(
+                [{ channel_name: "РЕН ТВ HD", id: "diagnostics", rec: 168 }],
+                () => {},
+                (value) => $("#launch").append(value)
+            );
+        });
+        await page.waitForFunction(
+            () => __ottHostedEpg.diagnostics().phase === "error"
+        );
+        await page.evaluate(() => __ottHostedEpg.showDiagnostics());
+        let details = await page.locator("#listAbout").innerText();
+        assert.match(details, /HTTP 503/);
+        assert.match(details, /EPG_HTTP/);
+        assert(!details.includes("private-source-test"));
+        assert.match(await page.evaluate(() => lastNotice), /EPG diagnostics/);
+        status = 200;
+        body = zlib.gzipSync(base);
+        await page.getByRole("button", { name: "Retry EPG download" }).click();
+        await page.waitForFunction(
+            () => __ottHostedEpg.diagnostics().phase === "ready",
+            null,
+            { timeout: 45000 }
+        );
+        await page.waitForFunction(() =>
+            document
+                .getElementById("listAbout")
+                .textContent.includes("EPG channels: 1/1")
+        );
+        details = await page.locator("#listAbout").innerText();
+        assert.match(details, /EPG programmes: 3/);
+        assert(!details.includes("EPG_HTTP"));
+        const beforeRetry = calls;
+        await page.evaluate(() => aboutKeyHandler(keys.ENTER));
+        await page.waitForFunction(
+            () => __ottHostedEpg.diagnostics().phase === "ready",
+            null,
+            { timeout: 45000 }
+        );
+        assert.equal(
+            calls,
+            beforeRetry + 1,
+            "remote retry refreshes even a fresh cache"
+        );
+        await page.evaluate(() => aboutKeyHandler(keys.RETURN));
+        assert.equal(await page.locator("#listAbout").isVisible(), false);
+        await page.evaluate(() => {
+            epgSession.close();
+            window.Worker = undefined;
+            epgSession = __ottHostedEpg.open(
+                [{ id: "unsupported", name: "РЕН ТВ HD" }],
+                () => {}
+            );
+            __ottHostedEpg.showDiagnostics();
+        });
+        assert.match(
+            await page.locator("#listAbout").innerText(),
+            /EPG_WORKER/
+        );
+        await page.evaluate(() => epgSession.close());
+        await page.evaluate(() => {
+            window.Worker = function () {
+                this.postMessage = () => {};
+                this.terminate = () => {
+                    window.stalledTerminated = true;
+                };
+            };
+            epgSession = __ottHostedEpg.open(
+                [{ id: "stalled", name: "РЕН ТВ HD" }],
+                () => {}
+            );
+            const clock = Date.now;
+            window.restoreClock = () => {
+                Date.now = clock;
+            };
+            Date.now = () => clock() + 61000;
+        });
+        await page.waitForFunction(
+            () => __ottHostedEpg.diagnostics().code === "EPG_STALLED"
+        );
+        assert.equal(await page.evaluate(() => stalledTerminated), true);
+        await page.evaluate(() => {
+            restoreClock();
+            epgSession.close();
+        });
         console.log(
-            "PASS hosted EPG: actual ES5 worker/IndexedDB, cache refresh, gzip/XML corruption, entity rejection, archive windows, shifts, 50k+ records"
+            "PASS hosted EPG: actual ES5 worker/IndexedDB, cache refresh, gzip/XML corruption, archive windows, 50k+ records, visible diagnostics and remote retry"
         );
     } finally {
         await browser.close();

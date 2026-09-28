@@ -61,6 +61,8 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Setări All4you.tv",
     "Allowlist this Device ID": "Permite acest ID de dispozitiv",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "O adresă IP fără port folosește portul HTTP 8081. Ștergeți adresa sau alegeți Deconectare pentru a opri.",
     "API failed, trying M3U...": "API a eșuat, se încearcă M3U…",
@@ -331,16 +333,43 @@ var keyStrings = {
         "Introduceți URL-ul serverului Xtream (de ex. https://your-server:8080)",
     EPG: "Ghid TV",
     "EPG and archive. Channel: ": "EPG și arhivă. Canal: ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
     "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
     "EPG unavailable on this browser": "EPG unavailable on this browser",
     "EPG unavailable: %1": "EPG unavailable: %1",
     "EPG update failed; using saved programme guide":
         "EPG update failed; using saved programme guide",
     "EPG: downloading programme guide...":
         "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
     "EPG: processing programme guide...": "EPG: processing programme guide...",
     "EPG: updating saved programme guide...":
         "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "Eroare!",
     "Error Code!": "Cod nevalid!",
     Exit: "Ieșire",
@@ -479,6 +508,8 @@ var keyStrings = {
     "Next TV program": "Emisiunea următoare",
     No: "Nu",
     "No channel name": "Fără nume de canal",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Nu au fost găsite setări salvate",
     "Not found": "Nu a fost găsit",
     "Not reduce video when showing the list (bugfix)":
@@ -582,6 +613,7 @@ var keyStrings = {
     "Restart stream": "Repornește fluxul",
     "Restart stream / Live": "Repornește fluxul / în direct",
     "Resume from archive?": "Reluați din arhivă?",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Revino la canalul anterior",
     Rewind: "Derulare",
     "Rewind step by buttons %1/%2": "Pasul derulării cu butoanele %1/%2",

@@ -61,6 +61,8 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv sozlamalari",
     "Allowlist this Device ID": "Bu qurilma ID raqamiga ruxsat berish",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Portsiz IP manzil HTTP 8081 portidan foydalanadi. Toʻxtatish uchun manzilni tozalang yoki Uzish bandini tanlang.",
     "API failed, trying M3U...": "API ishlamadi, M3U sinab koʻrilmoqda…",
@@ -329,16 +331,43 @@ var keyStrings = {
         "Xtream serveri URL manzilini kiriting (masalan, https://your-server:8080)",
     EPG: "TV dasturi",
     "EPG and archive. Channel: ": "EPG va arxiv. Kanal: ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
     "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
     "EPG unavailable on this browser": "EPG unavailable on this browser",
     "EPG unavailable: %1": "EPG unavailable: %1",
     "EPG update failed; using saved programme guide":
         "EPG update failed; using saved programme guide",
     "EPG: downloading programme guide...":
         "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
     "EPG: processing programme guide...": "EPG: processing programme guide...",
     "EPG: updating saved programme guide...":
         "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "Xato!",
     "Error Code!": "Kod notoʻgʻri!",
     Exit: "Chiqish",
@@ -475,6 +504,8 @@ var keyStrings = {
     "Next TV program": "Keyingi koʻrsatuv",
     No: "Yoʻq",
     "No channel name": "Kanal nomi yo'q",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Saqlangan sozlamalar topilmadi",
     "Not found": "Topilmadi",
     "Not reduce video when showing the list (bugfix)":
@@ -577,6 +608,7 @@ var keyStrings = {
     "Restart stream": "Oqimni qayta ishga tushirish",
     "Restart stream / Live": "Oqimni qayta ishga tushirish / jonli efir",
     "Resume from archive?": "Arxivdan davom ettirilsinmi?",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Oldingi kanalga qaytish",
     Rewind: "Vaqt boʻyicha oʻtkazish",
     "Rewind step by buttons %1/%2":

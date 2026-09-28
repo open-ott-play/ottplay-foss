@@ -61,6 +61,8 @@ var keyStrings = {
     "All4you.tv settings": "Ustawienia All4you.tv",
     "Allowlist this Device ID":
         "Dodaj ten identyfikator urządzenia do dozwolonych",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Adres IP bez portu używa portu HTTP 8081. Aby zatrzymać połączenie, usuń adres lub wybierz „Rozłącz”.",
     "API failed, trying M3U...": "Błąd API, próba przez M3U…",
@@ -329,16 +331,43 @@ var keyStrings = {
         "Wprowadź adres serwera Xtream (np. https://your-server:8080)",
     EPG: "Program TV",
     "EPG and archive. Channel: ": "Program i archiwum. Kanał: ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
     "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
     "EPG unavailable on this browser": "EPG unavailable on this browser",
     "EPG unavailable: %1": "EPG unavailable: %1",
     "EPG update failed; using saved programme guide":
         "EPG update failed; using saved programme guide",
     "EPG: downloading programme guide...":
         "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
     "EPG: processing programme guide...": "EPG: processing programme guide...",
     "EPG: updating saved programme guide...":
         "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "Błąd!",
     "Error Code!": "Nieprawidłowy kod!",
     Exit: "Wyjście",
@@ -472,6 +501,8 @@ var keyStrings = {
     "Next TV program": "Następny program",
     No: "Nie",
     "No channel name": "Brak nazwy kanału",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Nie znaleziono zapisanych ustawień",
     "Not found": "Nie znaleziono",
     "Not reduce video when showing the list (bugfix)":
@@ -573,6 +604,7 @@ var keyStrings = {
     "Restart stream": "Uruchom ponownie strumień",
     "Restart stream / Live": "Uruchom ponownie strumień / na żywo",
     "Resume from archive?": "Wznowić z archiwum?",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Wróć do poprzedniego kanału",
     Rewind: "Przewijanie",
     "Rewind step by buttons %1/%2": "Krok przewijania przyciskami %1/%2",
