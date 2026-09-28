@@ -88,8 +88,17 @@ function createM3uProviderDriver(
     var catalog = helpers.emptyCatalog();
     var catalogIdentity = "";
     var guideSources: { [key: string]: string } = Object.create(null);
+    var hostedGuide: any = null;
     var listeners: Array<(event: any) => void> = [];
     var fixedSlot = -1;
+    function hosted(): any {
+        var bridge = (window as any).__ottHostedEpg;
+        return bridge && bridge.enabled() ? bridge : null;
+    }
+    function closeHostedGuide(): void {
+        if (hostedGuide) hostedGuide.close();
+        hostedGuide = null;
+    }
     if (ports.isDune() && ports.location) {
         var match = /[?&]n=(\d+)(?:&|$)/.exec(ports.location());
         var number = match ? Number(match[1]) : 0;
@@ -256,7 +265,7 @@ function createM3uProviderDriver(
             var sources: any[] = [];
             sourceIds(attribute(entry.raw, "tvg-source"), true, sources);
             sourceIds(attribute(entry.raw, "url-tvg"), true, sources);
-            if (ports.m3u.native()) {
+            if (ports.m3u.native() || hosted()) {
                 var custom = [
                     attribute(entry.raw, "tvg-source"),
                     attribute(entry.raw, "url-tvg"),
@@ -473,6 +482,7 @@ function createM3uProviderDriver(
         dispose: function () {
             if (disposed) return;
             disposed = true;
+            closeHostedGuide();
             revision++;
             lifetimes.dispose();
             transport.dispose();
@@ -490,6 +500,20 @@ function createM3uProviderDriver(
             var row = ownedRow(id);
             var scope = lifetimes.current();
             var token = catalogIdentity;
+            if (hostedGuide && row && row.epg_src === "hosted") {
+                var hostedShift = Number(row.ts) || 0;
+                hostedGuide.guide(id, function (rows: any) {
+                    if (!current(token)) return;
+                    callback(rows && rows.map(function (entry: any) {
+                        var copy: any = {};
+                        Object.keys(entry).forEach(function (key) { copy[key] = entry[key]; });
+                        copy.time += hostedShift;
+                        copy.time_to += hostedShift;
+                        return copy;
+                    }));
+                });
+                return;
+            }
             if (!url || !row || !scope) {
                 callback(null);
                 return;
@@ -539,6 +563,7 @@ function createM3uProviderDriver(
             if (!active()) return;
             var operation = ++revision;
             var scope = lifetimes.activate("playlist");
+            closeHostedGuide();
             if (!active() || !scope.active() || operation !== revision) return;
             catalog = helpers.emptyCatalog();
             catalogIdentity = "";
@@ -573,6 +598,33 @@ function createM3uProviderDriver(
                 catalogIdentity = token;
                 guideSources = plan.sources;
                 complete();
+                var bridge = hosted();
+                if (bridge && !plan.guideServer) {
+                    if (!scope.active() || !current(token)) return;
+                    var entries = catalog.ids.filter(function (id) {
+                        // An explicit =source JSON endpoint remains owned by its provider.
+                        return !catalog.channels[id].epg_src;
+                    }).map(function (id) {
+                        var row: any = { id: id };
+                        Object.keys(catalog.channels[id]).forEach(function (key) { row[key] = catalog.channels[id][key]; });
+                        return row;
+                    });
+                    if (entries.length) hostedGuide = bridge.open(entries, function (mappings: any) {
+                        if (!scope.active() || !current(token)) return;
+                        Object.keys(mappings).forEach(function (id) {
+                            var row = catalog.channels[id];
+                            if (!row) return;
+                            row.epg_src = "hosted";
+                            row.epg_url = id;
+                            if (!row.logo && mappings[id].logo) row.logo = mappings[id].logo;
+                        });
+                        publish("guide");
+                    }, function (message: string) {
+                        if (scope.active() && current(token)) ports.progress(message);
+                    });
+                    if (plan.logoServer) matchRequest(scope, token, plan, "logo");
+                    return;
+                }
                 matchRequest(scope, token, plan, "guide");
                 matchRequest(scope, token, plan, "logo");
             }
@@ -611,6 +663,7 @@ function createM3uProviderDriver(
                 parse,
                 function () {
                     if (!current(token)) return;
+                    if (hosted()) { complete("m3u-network"); return; }
                     ports.progress(
                         "Playlist is not loading directly...Loading via server..."
                     );
@@ -666,6 +719,7 @@ function createM3uProviderDriver(
             });
             var operation = ++revision;
             if (identity(next) !== identity(configuration())) {
+                closeHostedGuide();
                 lifetimes.dispose();
                 if (!active() || operation !== revision) return false;
                 catalog = helpers.emptyCatalog();
