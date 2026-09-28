@@ -642,6 +642,12 @@ test("notifications and stream selectors sanitize metadata while preserving fixe
         const info = w.document.createElement("div");
         info.id = "info";
         w.document.body.appendChild(info);
+        const style = w.document.createElement("style");
+        style.textContent = fs
+            .readFileSync(path.join(root, "styles/player.css"), "utf8")
+            .match(/#info\s*\{[^}]*\}/)[0];
+        w.document.head.appendChild(style);
+        assert.equal(w.getComputedStyle(info).display, "none");
         w.channelNumberElement = w.document.createElement("div");
         w.document.body.appendChild(w.channelNumberElement);
         w.closeList = () => {};
@@ -650,6 +656,7 @@ test("notifications and stream selectors sanitize metadata while preserving fixe
                 func("src/ui/index.ts", "showSelectBox")
         );
         w.showShift("<b>Notice</b>" + hostile);
+        assert.notEqual(w.getComputedStyle(info).display, "none");
         assert(info.querySelector("b"));
         assert.equal(info.querySelectorAll("script,[onerror]").length, 0);
         const legacyIcon = '<span class="fontello">&#xe811;</span>';

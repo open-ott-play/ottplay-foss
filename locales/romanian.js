@@ -592,6 +592,7 @@ var keyStrings = {
     "Remote input session is unavailable. Open a new session to try again.":
         "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Sesiunea de la distanță a expirat",
+    "Remote text entry": "Introducerea textului de la distanță",
     "Remote text entry denied":
         "Introducerea textului de la distanță a fost refuzată",
     "Remote text entry error": "Eroare la introducerea textului de la distanță",

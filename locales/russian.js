@@ -583,6 +583,7 @@ var keyStrings = {
     "Remote input session is unavailable. Open a new session to try again.":
         "Сеанс удалённого ввода недоступен. Откройте новый сеанс.",
     "Remote session expired": "Сеанс удалённого доступа истёк",
+    "Remote text entry": "Удалённый ввод текста",
     "Remote text entry denied": "Удалённый ввод текста запрещён",
     "Remote text entry error": "Ошибка удалённого ввода текста",
     "Remote text entry needs a Device ID.":

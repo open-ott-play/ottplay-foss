@@ -589,6 +589,7 @@ var keyStrings = {
     "Remote input session is unavailable. Open a new session to try again.":
         "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "A távoli munkamenet lejárt",
+    "Remote text entry": "Távoli szövegbevitel",
     "Remote text entry denied": "Távoli szövegbevitel megtagadva",
     "Remote text entry error": "Távoli szövegbeviteli hiba",
     "Remote text entry needs a Device ID.":

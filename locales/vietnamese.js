@@ -583,6 +583,7 @@ var keyStrings = {
     "Remote input session is unavailable. Open a new session to try again.":
         "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Phiên từ xa đã hết hạn",
+    "Remote text entry": "Nhập văn bản từ xa",
     "Remote text entry denied": "Nhập văn bản từ xa bị từ chối",
     "Remote text entry error": "Lỗi nhập văn bản từ xa",
     "Remote text entry needs a Device ID.":

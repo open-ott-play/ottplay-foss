@@ -596,6 +596,7 @@ var keyStrings = {
     "Remote input session is unavailable. Open a new session to try again.":
         "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Η απομακρυσμένη συνεδρία έληξε",
+    "Remote text entry": "Απομακρυσμένη εισαγωγή κειμένου",
     "Remote text entry denied":
         "Δεν επιτρέπεται η απομακρυσμένη εισαγωγή κειμένου",
     "Remote text entry error": "Σφάλμα απομακρυσμένης εισαγωγής κειμένου",

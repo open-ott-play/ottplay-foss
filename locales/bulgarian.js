@@ -586,6 +586,7 @@ var keyStrings = {
     "Remote input session is unavailable. Open a new session to try again.":
         "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Сесията за дистанционен достъп изтече",
+    "Remote text entry": "Дистанционно въвеждане на текст",
     "Remote text entry denied": "Дистанционното въвеждане на текст е забранено",
     "Remote text entry error": "Грешка при дистанционно въвеждане на текст",
     "Remote text entry needs a Device ID.":
