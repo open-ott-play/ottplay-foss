@@ -491,6 +491,49 @@ const server = http.createServer((request, response) => {
             Math.ceil(50001 / 21),
             "explicit size failure preserves good snapshot"
         );
+        // Oversized records from an older/corrupt cache fail the read without
+        // continuing an already-aborted cursor or throwing a Worker error.
+        await page.evaluate(
+            () =>
+                new Promise((resolve, reject) => {
+                    const opening = indexedDB.open(window.cacheName, 1);
+                    opening.onsuccess = () => {
+                        const db = opening.result;
+                        const tx = db.transaction(
+                            ["meta", "rows"],
+                            "readwrite"
+                        );
+                        const read = tx.objectStore("meta").get("active");
+                        read.onsuccess = () => {
+                            const cursor = tx
+                                .objectStore("rows")
+                                .index("channel")
+                                .openCursor(
+                                    IDBKeyRange.only(
+                                        read.result.mappings.long.channel
+                                    )
+                                );
+                            cursor.onsuccess = () => {
+                                const item = cursor.result;
+                                const value = item.value;
+                                value.rows = Array(20001).fill(value.rows[0]);
+                                item.update(value);
+                            };
+                        };
+                        tx.oncomplete = () => {
+                            db.close();
+                            resolve();
+                        };
+                        tx.onabort = () => reject(tx.error);
+                    };
+                    opening.onerror = () => reject(opening.error);
+                })
+        );
+        assert.equal(await page.evaluate(() => getGuide("long")), null);
+        assert.ok(
+            (await page.evaluate(() => getGuide("extra1"))).length > 0,
+            "oversized cache read must leave the Worker responsive without errors"
+        );
         console.log(
             "PASS hosted EPG: actual ES5 worker/IndexedDB, cache refresh, gzip/XML corruption, entity rejection, archive windows, shifts, 50k+ records"
         );

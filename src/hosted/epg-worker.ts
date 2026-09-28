@@ -728,14 +728,15 @@ function createHostedEpgWorker(env: any): void {
             cursor.onsuccess = function () {
                 var item = cursor.result;
                 if (!item) return;
-                item.value.rows.forEach(function (entry: any) {
+                for (var index = 0; index < item.value.rows.length; index++) {
+                    var entry = item.value.rows[index];
                     var now = Math.floor(Date.now() / 1000);
                     if (
                         entry.time_to + mapping.shift <=
                             now - mapping.archiveHours * 3600 ||
                         entry.time + mapping.shift >= now + 48 * 3600
                     )
-                        return;
+                        continue;
                     rowBytes +=
                         80 + 2 * (entry.name.length + entry.descr.length);
                     if (
@@ -752,7 +753,7 @@ function createHostedEpgWorker(env: any): void {
                         time: entry.time + mapping.shift,
                         time_to: entry.time_to + mapping.shift,
                     });
-                });
+                }
                 item.continue();
             };
         };
