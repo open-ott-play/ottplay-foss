@@ -341,6 +341,9 @@ function ottDebugCounters(): any {
         bufferAhead: _ottDbgSampleBufAhead,
         bwEstimate: _ottDbgSampleBw,
         errorCount: _ottDbgErrorCount,
+        input: (window as any).__ottDebugInput
+            ? (window as any).__ottDebugInput()
+            : "",
         lastStallMs: _ottDbgLastStallMs,
         level: _ottDbgSampleLevel,
         recoverCount: _ottDbgRecoverCount,
@@ -381,6 +384,8 @@ function ottDebugUpdateHud(): void {
             Math.round(_ottDbgStallMaxMs / 1000) +
             "s"
     );
+    if ((window as any).__ottDebugInput)
+        parts.push((window as any).__ottDebugInput());
     if (!v) {
         parts.push("(no video)");
         _ottDbgHudEl.innerHTML = parts.join(" · ");
@@ -867,46 +872,39 @@ function ottDebugInstallFlushHooks(): void {
 }
 
 function ottDebugInstallApi(enabled: boolean): void {
-    if (enabled) {
-        (window as any).__ottDebug = {
-            attachHls: ottDebugAttachHls,
-            beginSession: ottDebugBeginSession,
-            clear: ottDebugClear,
-            dump: ottDebugDump,
-            enabled: true,
-            isDebugEnabled: ottDebugIsEnabled,
-            onVideoEvent: ottDebugOnVideoEvent,
-            push: ottDebugPush,
-            setHud: ottDebugSetHud,
-            toggleHud: function () {
-                ottDebugSetHud(!_ottDbgHudOn);
-            },
-            wrapXhrSetup: ottDebugWrapXhrSetup,
-        };
-    } else {
-        (window as any).__ottDebug = {
-            attachHls: function () {},
-            beginSession: function () {},
-            clear: function () {},
-            dump: function () {
-                return "";
-            },
-            enabled: false,
-            isDebugEnabled: ottDebugIsEnabled,
-            onVideoEvent: function () {},
-            push: function () {},
-            setHud: function () {},
-            toggleHud: function () {},
-            wrapXhrSetup: function (prev: any) {
-                return prev;
-            },
-        };
-    }
+    function noop(): void {}
+    (window as any).__ottDebug = {
+        attachHls: enabled ? ottDebugAttachHls : noop,
+        beginSession: enabled ? ottDebugBeginSession : noop,
+        clear: enabled ? ottDebugClear : noop,
+        dump: enabled
+            ? ottDebugDump
+            : function () {
+                  return "";
+              },
+        enabled: enabled,
+        isDebugEnabled: ottDebugIsEnabled,
+        onVideoEvent: enabled ? ottDebugOnVideoEvent : noop,
+        push: enabled ? ottDebugPush : noop,
+        setHud: enabled ? ottDebugSetHud : noop,
+        toggleHud: function () {
+            // Menu opt-in lasts for this page; further toggles hide/show HUD.
+            if (!enabled) ottDebugEnable();
+            ottDebugSetHud(enabled ? !_ottDbgHudOn : true);
+        },
+        wrapXhrSetup: enabled
+            ? ottDebugWrapXhrSetup
+            : function (prev: any) {
+                  return prev;
+              },
+    };
 }
 
 function ottDebugEnable(): void {
     if (_ottDbgEnabled) return;
     _ottDbgEnabled = true;
+    if ((window as any).__ottDebugInputInit)
+        (window as any).__ottDebugInputInit();
     try {
         (window as any).__OTT_DEBUG__ = true;
     } catch (_e) {}

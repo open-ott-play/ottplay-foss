@@ -634,6 +634,84 @@ test.describe("webOS fullscreen remote navigation", () => {
         expect(errors).toEqual([]);
     });
 
+    for (const digit of ["3", "4"]) {
+        test(
+            "remote settings shortcut " +
+                digit +
+                " does not type or repeat into the native editor",
+            async ({ page, context, baseURL }) => {
+                const errors = await bootForWebosRemote(page, context, baseURL);
+                await page.evaluate(() => {
+                    window.optionsList();
+                    window.settingsCommands();
+                });
+                await page.keyboard.down(digit);
+                const input = page.locator("#editvar");
+                await expect(input).toBeVisible();
+                await expect(input).toHaveValue("");
+                await expect(input).toHaveJSProperty("readOnly", true);
+                await page.keyboard.down(digit);
+                await page.keyboard.down(digit);
+                await expect(input).toHaveValue("");
+                await page.keyboard.up(digit);
+                await expect(input).toBeFocused();
+                await expect(input).toHaveJSProperty("readOnly", false);
+                await page.keyboard.type("L3");
+                await expect(input).toHaveValue("L3");
+                await input.press("Backspace");
+                await expect(input).toHaveValue("L");
+                await remoteKey(page, 461, "BrowserBack");
+                await expect(page.locator("#listEdit")).toBeHidden();
+                expect(errors).toEqual([]);
+            }
+        );
+    }
+    test("LG D-pad opens native remote text entry with the current draft", async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        const errors = await bootForWebosRemote(page, context, baseURL);
+        await page.evaluate(() => {
+            window.optionsList();
+            window.settingsCommands();
+            window.sSwopBaseUrl = "/swop";
+            window.__swopDrafts = [];
+            window.$.ajax = (request) =>
+                window.__swopDrafts.push(JSON.parse(request.data).draft);
+        });
+        await page.keyboard.press("3");
+        const input = page.locator("#editvar");
+        const remote = page.getByRole("button", {
+            exact: true,
+            name: "Remote text entry",
+        });
+        await input.fill("https://fixture.invalid/path?x=3&y=4");
+        await page.keyboard.press("ArrowDown");
+        await expect(remote).toBeFocused();
+        await expect(remote).toHaveCSS("outline-style", "solid");
+        await page.keyboard.press("ArrowUp");
+        await expect(input).toBeFocused();
+        await page.keyboard.press("ArrowUp");
+        await expect(remote).toBeFocused();
+        await page.keyboard.press("Enter");
+        expect(await page.evaluate(() => window.__swopDrafts)).toEqual([
+            "https://fixture.invalid/path?x=3&y=4",
+        ]);
+        await expect(input).toHaveCount(0);
+        await remoteKey(page, 461, "BrowserBack");
+        await expect(input).toBeVisible();
+        await expect(input).toHaveValue("https://fixture.invalid/path?x=3&y=4");
+        await expect(input).toBeFocused();
+        await remoteKey(page, 461, "BrowserBack");
+        await expect(page.locator("#listEdit")).toBeHidden();
+        await expect(page.locator("#remoteSettingsContent")).toBeVisible();
+        await page.keyboard.press("4");
+        await expect(input).toBeVisible();
+        await expect(input).toHaveAttribute("type", "password");
+        expect(errors).toEqual([]);
+    });
+
     test("default Right opens the guide without adjusting volume", async ({
         page,
         context,

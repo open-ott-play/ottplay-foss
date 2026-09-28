@@ -330,6 +330,7 @@ var keyStrings = {
     "EPG and archive. Channel: ": "Программа и архив. Канал: ",
     "EPG archive or XML is invalid.":
         "Архив или XML программы передач повреждён.",
+    "EPG cache and wait time: %1": "Кэш и ожидание: %1",
     "EPG cache updated: %1": "Кеш обновлён: %1",
     "EPG channels: %1": "Каналов с EPG: %1",
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
@@ -337,6 +338,7 @@ var keyStrings = {
     "EPG diagnostics": "Диагностика EPG",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
         "Не удалось скачать EPG. Проверьте соединение, HTTPS и разрешение CORS у источника.",
+    "EPG download time: %1": "Скачивание EPG: %1",
     "EPG download timed out. Retry the download.":
         "Истекло время загрузки EPG. Повторите загрузку.",
     "EPG elapsed: %1": "Прошло: %1",
@@ -348,6 +350,7 @@ var keyStrings = {
         "EPG ещё не загружается. Загрузите плейлист M3U.",
     "EPG local storage is unavailable or full.":
         "Локальное хранилище EPG недоступно или заполнено.",
+    "EPG processing and storage time: %1": "Обработка и сохранение EPG: %1",
     "EPG processing stopped. Retry and check browser support.":
         "Обработка EPG остановилась. Повторите загрузку и проверьте поддержку браузера.",
     "EPG programmes: %1": "Передач: %1",

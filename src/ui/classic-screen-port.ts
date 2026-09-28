@@ -30,6 +30,7 @@ function createClassicScreenPort(host: any) {
     var intent = 0;
     var replacingKind = "";
     var mainInput: ((command: ScreenCommand) => void) | null = null;
+    var keyEvent: any = null;
     function call(name: string, value?: any) {
         if (typeof host[name] === "function") return host[name](value);
     }
@@ -78,8 +79,14 @@ function createClassicScreenPort(host: any) {
                 host.editPos = position - 1;
                 call("_changeEdit");
             }
-        } else if (typeof host.editKey === "function")
-            host.editKey(command.code);
+        } else if (typeof host.editKey === "function") {
+            var editor = overlays.editor;
+            var nativeInput =
+                editor && editor.model.nativeInputSecret !== undefined;
+            (nativeInput && host.editKey === host.editKey1
+                ? host.editKey2
+                : host.editKey)(command.code);
+        }
     }
     function visible(selector: string): boolean {
         try {
@@ -446,10 +453,19 @@ function createClassicScreenPort(host: any) {
                 if (event.preventDefault) event.preventDefault();
                 if (event.stopPropagation) event.stopPropagation();
             }
-            return router.fromKey(code, event);
+            var previousEvent = keyEvent;
+            keyEvent = event;
+            try {
+                return router.fromKey(code, event);
+            } finally {
+                keyEvent = previousEvent;
+            }
         },
         finishEditor: finishEditor,
         invalidate: invalidate,
+        keyEvent: function () {
+            return keyEvent;
+        },
         listOwner: function () {
             return listOwner;
         },
@@ -477,7 +493,10 @@ function createClassicScreenPort(host: any) {
                 ["about", "#listAbout"],
                 ["editor", "#listEdit"],
             ].forEach(function (entry) {
-                if (overlays[entry[0]] && !visible(entry[1])) close(entry[0]);
+                // A hidden parent stays alive while its modal child owns input.
+                var owner = overlays[entry[0]];
+                if (owner && owner.foreground() && !visible(entry[1]))
+                    close(entry[0]);
             });
             if (visibleList) commitList();
             if (

@@ -406,8 +406,19 @@ test("saved native key callback cannot save a replacement editor", ({ w }) => {
         newSaves = 0;
     w.editvar = "old";
     w.setEdit = () => oldSaves++;
-    w.showEditKey2();
-    const handler = w.document.getElementById("editvar").__ottEditKey2Handler;
+    let handler;
+    const events = w.EventTarget.prototype;
+    const add = events.addEventListener;
+    events.addEventListener = function (type, callback, options) {
+        if (this.id === "editvar" && type === "keydown") handler = callback;
+        return add.call(this, type, callback, options);
+    };
+    try {
+        w.showEditKey2();
+    } finally {
+        events.addEventListener = add;
+    }
+    assert.equal(typeof handler, "function");
     w.setEdit = () => newSaves++;
     w.editvar = "new";
     w.showEditKey2();
@@ -459,6 +470,149 @@ function configureSwopEditor(w, mode) {
     // Exercise the desktop redirect as well as the TV renderer.
     w.showEditKey = w.showEditKey1;
 }
+test("native editor consumes its opening key until release and releases stale listeners", ({
+    w,
+}) => {
+    const port = w.__ottClassicScreenPort;
+    const event = (type, code, repeat = false) =>
+        new w.KeyboardEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            keyCode: code,
+            repeat,
+        });
+    w.aboutKeyHandler = () => w.showEditKey2();
+    w.$("#listAbout").show();
+    w.keyHandler(event("keydown", 51));
+    const input = w.document.getElementById("editvar");
+    assert.equal(
+        port.keyEvent(),
+        null,
+        "dispatch context ends with the opening action"
+    );
+    assert.equal(input.readOnly, true);
+    for (const type of ["keydown", "keypress"]) {
+        const held = event(type, 51, true);
+        input.dispatchEvent(held);
+        assert.equal(
+            held.defaultPrevented,
+            true,
+            type + " cannot insert the shortcut digit"
+        );
+    }
+    input.dispatchEvent(event("keyup", 51));
+    assert.equal(input.readOnly, false);
+    assert.equal(w.document.activeElement, input);
+    const typed = event("keydown", 51);
+    input.dispatchEvent(typed);
+    assert.equal(
+        typed.defaultPrevented,
+        false,
+        "a fresh digit press remains normal typing"
+    );
+    w.editKey2(w.keys.EXIT);
+    w.$("#listAbout").show();
+    w.keyHandler(event("keydown", 52));
+    const previous = w.document.getElementById("editvar");
+    assert.equal(previous.readOnly, true);
+    w.showEditKey2();
+    const replacement = w.document.getElementById("editvar");
+    previous.dispatchEvent(event("keyup", 52));
+    assert.equal(w.document.activeElement, replacement);
+    assert.equal(replacement.readOnly, false);
+    const fresh = event("keydown", 52);
+    replacement.dispatchEvent(fresh);
+    assert.equal(
+        fresh.defaultPrevented,
+        false,
+        "retired opening-key capture cannot swallow later input"
+    );
+});
+test("forced native editor keeps its hidden settings parent and routes remote save", ({
+    w,
+    key,
+}) => {
+    const port = w.__ottClassicScreenPort;
+    w.aboutKeyHandler = () => true;
+    w.$("#listAbout").show();
+    const parent = port.owner("about");
+    w.editKey1 = () =>
+        assert.fail("Native settings must not route to the graphical editor");
+    w.editKey = w.editKey1;
+    const saved = [];
+    w.setEdit = () => saved.push(w.editvar);
+    w.$("#listAbout").hide();
+    w.showEditKey2();
+    const editor = port.owner("editor");
+    key(w.keys.DOWN);
+    assert.equal(editor.active(), true);
+    assert.equal(
+        parent.active(),
+        true,
+        "hidden settings parent is suspended, not retired"
+    );
+    assert.equal(w.document.activeElement.id, "editRemoteInput");
+    key(w.keys.UP);
+    w.document.getElementById("editvar").value =
+        "https://fixture.invalid/control";
+    key(w.keys.ENTER);
+    assert.deepEqual(saved, ["https://fixture.invalid/control"]);
+    assert.equal(editor.active(), false);
+    assert.equal(parent.active(), true);
+    port.reconcile();
+    assert.equal(
+        parent.active(),
+        false,
+        "hidden foreground screens still retire normally"
+    );
+});
+test("native editor D-pad reaches remote input, keeps cursor keys, and hands off the draft once", ({
+    w,
+}) => {
+    configureSwopEditor(w, "native");
+    let saves = 0;
+    const requests = [];
+    w.setEdit = () => saves++;
+    w.$.ajax = (request) => requests.push(request);
+    w.showEditKey2(undefined, true);
+    const input = w.document.getElementById("editvar");
+    const button = w.document.getElementById("editRemoteInput");
+    input.value = "https://fixture.invalid:8081/path?x=&y=3";
+    function press(target, key, keyCode, isComposing = false) {
+        const event = new w.KeyboardEvent("keydown", {
+            bubbles: true,
+            cancelable: true,
+            isComposing,
+            key,
+            keyCode,
+        });
+        target.dispatchEvent(event);
+        return event;
+    }
+    assert.equal(press(input, "ArrowLeft", 37).defaultPrevented, false);
+    assert.equal(
+        press(input, "ArrowDown", 40, true).defaultPrevented,
+        false,
+        "IME keeps candidate navigation"
+    );
+    assert.equal(w.document.activeElement, input);
+    assert.equal(press(input, "ArrowDown", 40).defaultPrevented, true);
+    assert.equal(w.document.activeElement, button);
+    press(button, "ArrowUp", 38);
+    assert.equal(w.document.activeElement, input);
+    press(input, "ArrowUp", 38);
+    assert.equal(w.document.activeElement, button);
+    press(button, "Enter", 13);
+    assert.equal(requests.length, 1);
+    assert.equal(JSON.parse(requests[0].data).draft, input.value);
+    assert.equal(saves, 0, "OK on remote input does not save the editor");
+    press(button, "Enter", 13);
+    assert.equal(
+        requests.length,
+        1,
+        "detached remote button cannot start another session"
+    );
+});
 function beginSwopEditor({ w, jobs }, mode, pendingSession = false) {
     configureSwopEditor(w, mode);
     const port = w.__ottClassicScreenPort;
