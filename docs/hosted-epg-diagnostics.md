@@ -34,9 +34,13 @@ displayed; diagnostics remain on the device and are not uploaded.
 
 **OK / Retry EPG download** restarts the worker and requests a fresh guide even
 when the saved cache is still fresh. The last accepted cache remains available
-until a replacement commits. If the old worker was interrupted while writing,
-the replacement waits for its short cache lease to expire. **Back** closes the
-screen; up/down scroll its details. A failure also displays a brief notice with
+until a replacement commits. The old worker acknowledges closure after releasing
+its cache lease; an unresponsive worker is terminated after one second. If it
+cannot release the lease before termination, or the release transaction fails,
+the replacement may still wait for the remaining lease lifetime (up to 30 seconds).
+Repeated lease polling does not republish the same schedule generation, and elapsed time
+restarts for each scheduled refresh rather than including the idle interval.
+**Back** closes the screen; up/down scroll its details. A failure also displays a brief notice with
 the menu location, rather than only appending to the hidden startup screen.
 
 - `EPG_HTTP` includes the source HTTP status; `EPG_TIMEOUT` is the download timeout.
@@ -50,6 +54,13 @@ the menu location, rather than only appending to the hidden startup screen.
 - `EPG_EMPTY` means no usable programmes matched the playlist and time window.
 - `EPG_WORKER` or `EPG_STALLED` identifies unavailable/crashed/unresponsive
   background processing. Retrying does not enable an infrastructure fallback.
+  If the worker failed during startup, diagnostics offers **Restart player**
+  and explains that playback will stop. An explicit button press or remote OK
+  reloads the player files, which also recovers an old tab whose worker URL was
+  removed by a deployment. Nothing restarts automatically; if the action changes
+  since it was displayed, the first activation only updates its label.
+- `EPG_STORAGE_CHANGED` stops the worker and releases its connection when
+  another tab upgrades or removes the cache. It does not reload the player.
 
 For a physical-TV report, record the code, stage, source host, progress and model
 from this screen. A desktop browser test is not proof of physical webOS support.

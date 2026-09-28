@@ -331,6 +331,8 @@ var keyStrings = {
     "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
     "EPG cache updated: %1": "EPG cache updated: %1",
     "EPG channels: %1": "EPG channels: %1",
+    "EPG could not start. Restart the player to reload its files. Playback will stop.":
+        "Не ўдалося запусціць EPG. Перазапусціце плэер, каб нанова загрузіць яго файлы. Прайграванне спыніцца.",
     "EPG diagnostics": "EPG diagnostics",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
         "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
