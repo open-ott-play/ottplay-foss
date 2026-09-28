@@ -5,10 +5,34 @@ const fs = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
 const zlib = require("node:zlib");
+const ts = require("typescript");
 const { chromium } = require("playwright");
 const { artifacts } = require("../scripts/hosted-epg.cjs");
 const root = path.resolve(__dirname, "..");
 const generated = artifacts();
+const workerAst = ts.createSourceFile(
+    "epg-worker.ts",
+    fs.readFileSync(path.join(root, "src/hosted/epg-worker.ts"), "utf8"),
+    ts.ScriptTarget.Latest,
+    true
+);
+const workerFactory = workerAst.statements.find(
+    (node) =>
+        ts.isFunctionDeclaration(node) &&
+        node.name.text === "createHostedEpgWorker"
+);
+const cleanupDeclaration = workerFactory.body.statements.find(
+    (node) => ts.isFunctionDeclaration(node) && node.name.text === "cleanup"
+);
+const cleanupSource = ts.transpileModule(
+    cleanupDeclaration.getText(workerAst),
+    {
+        compilerOptions: {
+            module: ts.ModuleKind.ES2015,
+            target: ts.ScriptTarget.ES5,
+        },
+    }
+).outputText;
 const now = Math.floor(Date.now() / 1000);
 const stamp = (offset) =>
     new Date((now + offset) * 1000)
@@ -66,6 +90,113 @@ const server = http.createServer((request, response) => {
     try {
         const page = await browser.newPage();
         await page.goto("http://127.0.0.1:" + server.address().port);
+        // Execute the actual cleanup function over real IndexedDB at the exact
+        // race boundary, without timer-dependent interleaving of two downloads.
+        const cleanupRaces = await page.evaluate(async (source) => {
+            const results = [];
+            for (const scenario of [
+                "stale-pointer",
+                "lost-owner",
+                "expired-owner",
+            ]) {
+                const name = "epg-cleanup-race-" + scenario;
+                const database = await new Promise((resolve, reject) => {
+                    const opening = indexedDB.open(name, 1);
+                    opening.onupgradeneeded = () => {
+                        opening.result.createObjectStore("meta", {
+                            keyPath: "key",
+                        });
+                        opening.result.createObjectStore("rows", {
+                            keyPath: "key",
+                        });
+                    };
+                    opening.onsuccess = () => resolve(opening.result);
+                    opening.onerror = () => reject(opening.error);
+                });
+                await new Promise((resolve, reject) => {
+                    const tx = database.transaction(
+                        ["meta", "rows"],
+                        "readwrite"
+                    );
+                    tx.objectStore("meta").put({
+                        generation: "new",
+                        key: "active",
+                        signature: "fixture",
+                    });
+                    tx.objectStore("meta").put({
+                        key: "lease",
+                        owner:
+                            scenario === "lost-owner"
+                                ? "replacement"
+                                : "holder",
+                        until:
+                            Date.now() +
+                            (scenario === "expired-owner" ? -1000 : 60000),
+                    });
+                    for (const generation of ["old", "new", "orphan"])
+                        tx.objectStore("rows").put({
+                            generation,
+                            key: generation,
+                        });
+                    tx.oncomplete = resolve;
+                    tx.onabort = () => reject(tx.error);
+                });
+                const scopes = [];
+                const outcome = await new Promise((resolve) => {
+                    const cleanup = new Function(
+                        "transaction",
+                        "owner",
+                        "signature",
+                        "fail",
+                        "schedule",
+                        source + "\nreturn cleanup;"
+                    )(
+                        (stores, write) => {
+                            scopes.push(stores);
+                            return database.transaction(
+                                stores,
+                                write ? "readwrite" : "readonly"
+                            );
+                        },
+                        "holder",
+                        "fixture",
+                        (code) => resolve({ code }),
+                        () => {}
+                    );
+                    // The old implementation accepted the stale value from load.
+                    // Passing it here makes the regression fail against that code.
+                    if (cleanup.length === 2)
+                        cleanup("old", () => resolve({ code: null }));
+                    else cleanup(() => resolve({ code: null }));
+                });
+                const keys = await new Promise((resolve) => {
+                    const tx = database.transaction(["rows"], "readonly"),
+                        read = tx.objectStore("rows").getAllKeys();
+                    read.onsuccess = () => resolve(read.result);
+                });
+                database.close();
+                results.push({ keys, outcome, scenario, scopes });
+            }
+            return results;
+        }, cleanupSource);
+        assert.deepEqual(
+            cleanupRaces[0].keys,
+            ["new"],
+            "cleanup retains the committed pointer, not load's stale snapshot"
+        );
+        for (const race of cleanupRaces.slice(1)) {
+            assert.equal(race.outcome.code, "EPG_LEASE_LOST", race.scenario);
+            assert.deepEqual(
+                race.keys,
+                ["new", "old", "orphan"],
+                "unowned cleanup must not delete any rows"
+            );
+        }
+        assert.deepEqual(
+            cleanupRaces[0].scopes,
+            [["meta", "rows"]],
+            "lease, pointer and deletion share one transaction"
+        );
         await page.evaluate(() => {
             window.messages = [];
             window.makeWorker = function () {

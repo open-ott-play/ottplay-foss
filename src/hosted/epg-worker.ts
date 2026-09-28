@@ -79,7 +79,11 @@ function createHostedEpgWorker(env: any): void {
                     values = renew.objectStore("meta"),
                     current = values.get("lease");
                 current.onsuccess = function () {
-                    if (current.result && current.result.owner === owner)
+                    if (
+                        current.result &&
+                        current.result.owner === owner &&
+                        current.result.until > Date.now()
+                    )
                         values.put({
                             key: "lease",
                             owner: owner,
@@ -136,18 +140,47 @@ function createHostedEpgWorker(env: any): void {
             callback();
         };
     }
-    function cleanup(keep: string, callback: () => void): void {
-        var tx = transaction(["rows"], true);
-        var cursor = tx.objectStore("rows").openCursor();
-        cursor.onsuccess = function () {
-            var item = cursor.result;
-            if (!item) return;
-            if (item.value.generation !== keep) item.delete();
-            item.continue();
+    function cleanup(callback: (snapshot: any) => void): void {
+        // The lease and retained pointer must be read under the same write lock
+        // as deletion. Neither an earlier load snapshot nor an expired owner
+        // may choose which generation is still live.
+        var tx = transaction(["meta", "rows"], true);
+        var meta = tx.objectStore("meta");
+        var lock = meta.get("lease");
+        var read = meta.get("active");
+        var snapshot: any = null;
+        var lostLease = false;
+        lock.onsuccess = function () {
+            if (
+                !lock.result ||
+                lock.result.owner !== owner ||
+                lock.result.until <= Date.now()
+            ) {
+                lostLease = true;
+                tx.abort();
+            }
         };
-        tx.oncomplete = callback;
+        read.onsuccess = function () {
+            snapshot = read.result || null;
+            if (snapshot && snapshot.signature !== signature) {
+                tx.abort();
+                return;
+            }
+            var keep = snapshot ? snapshot.generation : "";
+            var cursor = tx.objectStore("rows").openCursor();
+            cursor.onsuccess = function () {
+                var item = cursor.result;
+                if (!item) return;
+                if (item.value.generation !== keep) item.delete();
+                item.continue();
+            };
+        };
+        tx.oncomplete = function () {
+            callback(snapshot);
+        };
         tx.onabort = function () {
-            fail("EPG_STORAGE_FAILED");
+            fail(lostLease ? "EPG_LEASE_LOST" : "EPG_STORAGE_FAILED");
+            schedule();
         };
     }
     function ready(stale: boolean): void {
@@ -223,7 +256,20 @@ function createHostedEpgWorker(env: any): void {
                 }
                 // Orphan writes from interrupted refreshes never replace the last good generation.
                 lease(function () {
-                    cleanup(previous ? previous.generation : "", function () {
+                    cleanup(function (snapshot: any) {
+                        // Another tab may have completed between the first read
+                        // and this lease acquisition. Reuse its accepted result.
+                        if (
+                            snapshot &&
+                            Date.now() - snapshot.fetched < input.refreshMs
+                        ) {
+                            active = snapshot;
+                            loading = false;
+                            ready(false);
+                            release();
+                            schedule();
+                            return;
+                        }
                         refresh(signature);
                     });
                 });
@@ -280,7 +326,11 @@ function createHostedEpgWorker(env: any): void {
             var store = tx.objectStore("meta"),
                 lock = store.get("lease");
             lock.onsuccess = function () {
-                if (!lock.result || lock.result.owner !== owner) {
+                if (
+                    !lock.result ||
+                    lock.result.owner !== owner ||
+                    lock.result.until <= Date.now()
+                ) {
                     tx.abort();
                     return;
                 }
@@ -295,7 +345,7 @@ function createHostedEpgWorker(env: any): void {
                 loading = false;
                 ready(false);
                 // Collect the previous snapshot only after the pointer transaction committed.
-                cleanup(active.generation, function () {
+                cleanup(function () {
                     release();
                     schedule();
                 });
@@ -583,7 +633,11 @@ function createHostedEpgWorker(env: any): void {
                 lock = tx.objectStore("meta").get("lease");
             var batch = pending;
             lock.onsuccess = function () {
-                if (!lock.result || lock.result.owner !== owner) {
+                if (
+                    !lock.result ||
+                    lock.result.owner !== owner ||
+                    lock.result.until <= Date.now()
+                ) {
                     tx.abort();
                     return;
                 }
