@@ -85,7 +85,75 @@ function call(action, params = {}) {
         ctx.exports.executeRemoteRequest({ action, params }, resolve)
     );
 }
+function checkPendingGuideSnapshot() {
+    let pending, result;
+    let nextTimer = 0;
+    let clock = now * 1000;
+    const timers = new Map();
+    const pendingHost = {
+        ...host,
+        __ottClassicGuide: {
+            peek: (id) =>
+                id === "a"
+                    ? [
+                          {
+                              name: "At query start",
+                              time: now - 60,
+                              time_to: now + 5,
+                          },
+                      ]
+                    : [],
+            request: (_id, callback) => {
+                pending = callback;
+                return () => {};
+            },
+            source: () => "one",
+        },
+        cList: ["a", "c"],
+        clearTimeout: (id) => timers.delete(id),
+        commandChannelsReady: true,
+        setTimeout: (fn, delay) => {
+            const id = ++nextTimer;
+            timers.set(id, { delay, fn });
+            return id;
+        },
+    };
+    const pendingContext = {
+        ...ctx,
+        Date: { now: () => clock },
+        exports: {},
+        window: pendingHost,
+    };
+    vm.runInNewContext(code, pendingContext);
+    pendingContext.exports.executeRemoteRequest(
+        { action: "programs", params: {} },
+        (value) => (result = value)
+    );
+    assert.equal(result, undefined);
+    assert.deepEqual(
+        [...timers.values()].map((timer) => timer.delay),
+        [25000],
+        "after dispatching the final row, wait for its callback without empty pump timers"
+    );
+    clock += 10000;
+    pending("c", [
+        { name: "Started after the query", time: now + 8, time_to: now + 130 },
+    ]);
+    const continuation = [...timers.entries()].find(
+        (entry) => entry[1].delay === 0
+    );
+    assert.ok(continuation, "the guide callback resumes collection");
+    timers.delete(continuation[0]);
+    continuation[1].fn();
+    assert.equal(result.data.partial, false);
+    assert.equal(result.data.checked, 2);
+    assert.equal(result.data.as_of, now);
+    assert.equal(result.data.programs.length, 1);
+    assert.equal(result.data.programs[0].title, "At query start");
+    assert.equal(timers.size, 0, "completion clears the deadline");
+}
 (async () => {
+    checkPendingGuideSnapshot();
     let r = await call("channels", { search: "ПЕРВЫЙ" });
     assert.equal(r.data.channels.length, 2);
     assert.equal(r.data.channels[0].number, 1);
@@ -135,6 +203,41 @@ function call(action, params = {}) {
     ]) {
         r = await call("provider_settings", { provider: "xtream", settings });
         assert.equal(r.status, "rejected");
+    }
+    host.__ottActiveProviderDriver = {
+        credentials: () => ({ server: "club.test", username: "old-key" }),
+        id: "ottclub",
+        saveCredentials: (value) => (saved = value),
+    };
+    r = await call("provider_settings", {
+        provider: "ottclub",
+        settings: { key: "new-key" },
+    });
+    assert.equal(r.status, "ok");
+    assert.equal(saved.server, "club.test");
+    assert.equal(saved.username, "new-key");
+    assert.ok(!JSON.stringify(r).includes("new-key"));
+    r = await call("provider_settings", {
+        provider: "ottclub",
+        settings: { server: "new.test:8080" },
+    });
+    assert.equal(r.status, "ok");
+    assert.equal(saved.server, "new.test:8080");
+    const priorSaves = loaded;
+    for (const server of [
+        "https://new.test",
+        "new.test/path",
+        "user@new.test",
+        "new.test?key=secret",
+        "new.test\\path",
+        "bad host",
+    ]) {
+        r = await call("provider_settings", {
+            provider: "ottclub",
+            settings: { server },
+        });
+        assert.equal(r.status, "rejected", server);
+        assert.equal(loaded, priorSaves);
     }
     host.commandChannelsReady = false;
     r = await call("channels");

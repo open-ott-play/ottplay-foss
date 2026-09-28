@@ -43,9 +43,18 @@ The terminal's alias maps to the device's UUID in the server configuration.
 Each installation needs its own code. No administrator token belongs in a player.
 
 Queries use the player's current catalogue and guide service; EPG requests have
-a 25-second collection budget and report partial results explicitly. Read results
+a 25-second collection budget and report partial results explicitly. Programmes
+share the Unix-seconds `as_of` timestamp captured when collection starts, even
+when guide callbacks arrive later. `checked` counts completed channel lookups;
+`partial: false` means collection completed, not that every feed has EPG. The
+guide service can return an empty result for either missing data or a fetch
+failure, and neither appears in the programme list. Read results
 exclude stream URLs and provider secrets. Provider settings use the active
 driver and preserve parental/distribution policy. A successful dispatch reply
 does not prove playback or hardware state. HTTP result retries do not repeat
 a command within one page session; restarting a player clears deduplication.
 The previous command-only API remains compatible with older servers and players.
+
+OTTClub's `server` is a bare host with an optional port, such as `club.example:8080`;
+its existing driver supplies the URL scheme. Other supported providers accept
+HTTP(S) URLs. Changing an OTTClub key preserves the stored host.

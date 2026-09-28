@@ -162,17 +162,25 @@ export function executeRemoteRequest(
         var endpoint = driver.id === "m3u" ? config.playlist : config.server;
         if (endpoint) {
             try {
-                var parsed = new URL(endpoint);
+                var club = driver.id === "ottclub";
+                if (club && /[\s/\\?#@]/.test(endpoint)) throw new Error();
+                var parsed = new URL(club ? "http://" + endpoint : endpoint);
                 if (
                     !/^https?:$/.test(parsed.protocol) ||
                     !parsed.hostname ||
                     parsed.username ||
                     parsed.password ||
-                    !checkProviderUrl(endpoint)
+                    !checkProviderUrl(parsed.href)
                 )
                     throw new Error();
+                // The OTTClub driver prepends HTTP to its stored host.
+                if (club) config.server = parsed.host;
             } catch (_error) {
-                reject("Use a valid HTTP(S) provider URL.");
+                reject(
+                    driver.id === "ottclub"
+                        ? "Use an OTTClub host, optionally with a port, without a URL scheme or path."
+                        : "Use a valid HTTP(S) provider URL."
+                );
                 return;
             }
         }
@@ -273,6 +281,7 @@ export function executeRemoteRequest(
         return;
     }
     var source = guide.source();
+    var asOf = Date.now() / 1000;
     var programs: any[] = [];
     var position = 0,
         running = 0,
@@ -295,6 +304,7 @@ export function executeRemoteRequest(
             return;
         }
         reply({
+            as_of: asOf,
             checked: checked,
             partial: checked < rows.length,
             programs: programs.sort(function (a, b) {
@@ -306,10 +316,9 @@ export function executeRemoteRequest(
     var timer = w.setTimeout(finish, 25000);
     function consume(row: any, entries: any): void {
         checked++;
-        var now = Date.now() / 1000;
         for (var j = 0; entries && j < entries.length; j++) {
             var entry = entries[j];
-            if (entry.time <= now && entry.time_to > now && entry.name) {
+            if (entry.time <= asOf && entry.time_to > asOf && entry.name) {
                 if (includes(String(entry.name), params.search))
                     programs.push({
                         channel: row.name,
@@ -358,7 +367,7 @@ export function executeRemoteRequest(
             })(rows[position++]);
         }
         if (!running && position === rows.length) finish();
-        else if (running < 4) w.setTimeout(pump, 0);
+        else if (running < 4 && position < rows.length) w.setTimeout(pump, 0);
     }
     pump();
     return cancel;
