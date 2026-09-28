@@ -34,10 +34,26 @@ use tower::Service;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
 
-use ottplay_core::xmltv::XmltvCache;
+use ottplay_core::xmltv::{self, XmltvCache};
 
-static EPG_CACHE: Lazy<Arc<RwLock<XmltvCache>>> =
-    Lazy::new(|| Arc::new(RwLock::new(XmltvCache::default())));
+// Cache and index travel together: readers retain a coherent immutable generation
+// while a refresh builds the next generation outside the request/runtime locks.
+struct EpgSnapshot {
+    cache: XmltvCache,
+    index: xmltv::MatchIndex,
+}
+
+impl EpgSnapshot {
+    fn new(cache: XmltvCache) -> anyhow::Result<Self> {
+        let index = xmltv::build_match_index(&cache.channels)?;
+        Ok(Self { cache, index })
+    }
+}
+
+static EPG_CACHE: Lazy<Arc<RwLock<Arc<EpgSnapshot>>>> = Lazy::new(|| {
+    let empty = EpgSnapshot::new(XmltvCache::default()).expect("initialize empty EPG index");
+    Arc::new(RwLock::new(Arc::new(empty)))
+});
 
 static EPG_TO_XMLTV: Lazy<Arc<RwLock<HashMap<String, String>>>> =
     Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
@@ -278,6 +294,21 @@ async fn main() -> anyhow::Result<()> {
     serve_listeners(listeners, app, tls_config).await
 }
 
+async fn refresh_epg_snapshot(
+    cache: &RwLock<Arc<EpgSnapshot>>,
+    build: impl FnOnce() -> anyhow::Result<EpgSnapshot> + Send + 'static,
+) -> anyhow::Result<()> {
+    let fresh = tokio::task::spawn_blocking(build).await??;
+    let previous = {
+        let mut current = cache.write().await;
+        std::mem::replace(&mut *current, Arc::new(fresh))
+    };
+    // A full guide contains hundreds of thousands of owned strings. Releasing
+    // our old generation must not hold the publication lock or an async worker.
+    tokio::task::spawn_blocking(move || drop(previous)).await?;
+    Ok(())
+}
+
 fn spawn_epg_refresh(urls: Vec<String>) {
     if urls.is_empty() {
         return;
@@ -293,8 +324,12 @@ fn spawn_epg_refresh(urls: Vec<String>) {
                     Ok(fresh) => {
                         let channels = fresh.channels.len();
                         let programmes: usize = fresh.programs.values().map(Vec::len).sum();
-                        *cache.write().await = fresh;
-                        println!("[EPG] Loaded {channels} channels, {programmes} programmes");
+                        match refresh_epg_snapshot(&cache, move || EpgSnapshot::new(fresh)).await {
+                            Ok(()) => println!(
+                                "[EPG] Loaded {channels} channels, {programmes} programmes"
+                            ),
+                            Err(error) => eprintln!("[EPG] Index error: {error}"),
+                        }
                     }
                     Err(error) => eprintln!("[EPG] Fetch error: {error}"),
                 }
@@ -710,28 +745,51 @@ async fn epg_handler(
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     // Client requests /epg/{hash}.json — strip optional .json suffix.
     let hash = hash.strip_suffix(".json").unwrap_or(&hash).to_string();
-    let cache = EPG_CACHE.read().await;
-    let map = EPG_TO_XMLTV.read().await;
-    let shifts = TIME_SHIFT_BY_EPG.read().await;
-    let channel_id = params
-        .ch
-        .as_ref()
-        .map(|ch| ottplay_core::match_channel(ch, &cache.channels))
-        .transpose()
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .flatten()
-        .map(|(id, _)| id)
-        .or_else(|| map.get(&hash).cloned())
-        .unwrap_or_else(|| hash.clone());
-    let time_shift: i64 = params
-        .ts
-        .map(|ts| ts as i64)
-        .or_else(|| shifts.get(&hash).copied())
-        .unwrap_or(0);
+    let snapshot = EPG_CACHE.read().await.clone();
+    let matched = if let Some(ch) = params.ch {
+        let snapshot = snapshot.clone();
+        tokio::task::spawn_blocking(move || xmltv::match_in_index(&ch, &snapshot.index))
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .map(|(id, _)| id)
+    } else {
+        None
+    };
+    let channel_id = match matched {
+        Some(id) => id,
+        None => EPG_TO_XMLTV
+            .read()
+            .await
+            .get(&hash)
+            .cloned()
+            .unwrap_or_else(|| hash.clone()),
+    };
+    let time_shift: i64 = match params.ts {
+        Some(ts) => ts as i64,
+        None => TIME_SHIFT_BY_EPG
+            .read()
+            .await
+            .get(&hash)
+            .copied()
+            .unwrap_or(0),
+    };
     let archive_hours: i64 = params.hours.map(|h| h as i64).unwrap_or(0);
-    let result =
-        ottplay_core::get_epg_slice(&cache, &hash, &channel_id, time_shift, archive_hours).await;
-    result.map(Json).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+    let result = tokio::task::spawn_blocking(move || {
+        ottplay_core::get_epg_slice_with_index(
+            &snapshot.cache,
+            &snapshot.index,
+            &hash,
+            &channel_id,
+            time_shift,
+            archive_hours,
+        )
+    })
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    result
+        .map(Json)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
 #[derive(Debug, Deserialize)]
@@ -749,15 +807,16 @@ async fn match_channels_handler(body: Bytes) -> impl IntoResponse {
     // Matching is CPU-heavy — run off the async runtime so /epg and UI stay responsive.
     let body_owned = String::from_utf8_lossy(&body).into_owned();
     let is_text = body_owned.contains("\n\t\n");
-    let channels_map = EPG_CACHE.read().await.channels.clone();
+    let snapshot = EPG_CACHE.read().await.clone();
 
     if is_text {
         let result = tokio::task::spawn_blocking(move || {
             let mut epg_to_xmltv = std::collections::HashMap::new();
             let mut time_shift_by_epg = std::collections::HashMap::new();
-            let text = ottplay_core::m3u::match_channels_text(
+            let text = ottplay_core::m3u::match_channels_text_with_index(
                 &body_owned,
-                &channels_map,
+                &snapshot.cache.channels,
+                &snapshot.index,
                 &mut epg_to_xmltv,
                 &mut time_shift_by_epg,
             );
@@ -800,9 +859,10 @@ async fn match_channels_handler(body: Bytes) -> impl IntoResponse {
             let result = tokio::task::spawn_blocking(move || {
                 let mut epg_to_xmltv = std::collections::HashMap::new();
                 let mut time_shift_by_epg = std::collections::HashMap::new();
-                let results = ottplay_core::m3u::match_channels(
+                let results = ottplay_core::m3u::match_channels_with_index(
                     channels,
-                    &channels_map,
+                    &snapshot.cache.channels,
+                    &snapshot.index,
                     &mut epg_to_xmltv,
                     &mut time_shift_by_epg,
                 );
@@ -833,11 +893,15 @@ async fn match_channels_handler(body: Bytes) -> impl IntoResponse {
 async fn match_logos_handler(body: Bytes) -> impl IntoResponse {
     let body_owned = String::from_utf8_lossy(&body).into_owned();
     let is_text = body_owned.contains("\n\t\n");
-    let channels_map = EPG_CACHE.read().await.channels.clone();
+    let snapshot = EPG_CACHE.read().await.clone();
 
     if is_text {
         let result = tokio::task::spawn_blocking(move || {
-            ottplay_core::m3u::match_logos_text(&body_owned, &channels_map)
+            ottplay_core::m3u::match_logos_text_with_index(
+                &body_owned,
+                &snapshot.cache.channels,
+                &snapshot.index,
+            )
         })
         .await;
         return match result {
@@ -867,7 +931,11 @@ async fn match_logos_handler(body: Bytes) -> impl IntoResponse {
     match serde_json::from_slice::<Vec<ottplay_core::m3u::LogoChannel>>(&body) {
         Ok(channels) => {
             let result = tokio::task::spawn_blocking(move || {
-                ottplay_core::m3u::match_logos(channels, &channels_map)
+                ottplay_core::m3u::match_logos_with_index(
+                    channels,
+                    &snapshot.cache.channels,
+                    &snapshot.index,
+                )
             })
             .await;
             match result {
@@ -1304,5 +1372,130 @@ mod device_entry_tests {
                 "{old}"
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod epg_snapshot_tests {
+    use super::*;
+
+    fn snapshot(id: &str, title: &str) -> anyhow::Result<EpgSnapshot> {
+        let cache = XmltvCache {
+            channels: HashMap::from([(
+                id.into(),
+                xmltv::Channel {
+                    id: id.into(),
+                    name: "News".into(),
+                    ..Default::default()
+                },
+            )]),
+            programs: HashMap::from([(
+                id.into(),
+                vec![xmltv::Programme {
+                    title: title.into(),
+                    ..Default::default()
+                }],
+            )]),
+            ..Default::default()
+        };
+        EpgSnapshot::new(cache)
+    }
+
+    #[tokio::test]
+    async fn refresh_replaces_index_and_programmes_together_without_invalidating_readers(
+    ) -> anyhow::Result<()> {
+        let cache = RwLock::new(Arc::new(snapshot("old", "Old schedule")?));
+        let in_flight = cache.read().await.clone();
+        refresh_epg_snapshot(&cache, || snapshot("new", "New schedule")).await?;
+        let refreshed = cache.read().await.clone();
+        for (snapshot, expected_id, expected_title) in [
+            (in_flight, "old", "Old schedule"),
+            (refreshed, "new", "New schedule"),
+        ] {
+            // A request can finish on another worker after the refresh has swapped.
+            std::thread::spawn(move || {
+                let (id, _) = xmltv::match_in_index("News HD", &snapshot.index)
+                    .unwrap()
+                    .unwrap();
+                assert_eq!(id, expected_id);
+                assert_eq!(snapshot.cache.programs[&id][0].title, expected_title);
+            })
+            .join()
+            .unwrap();
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn failed_or_panicked_index_build_retains_previous_generation() -> anyhow::Result<()> {
+        let previous = Arc::new(snapshot("old", "Old schedule")?);
+        let cache = RwLock::new(previous.clone());
+        assert!(
+            refresh_epg_snapshot(&cache, || anyhow::bail!("index fixture failed"))
+                .await
+                .is_err()
+        );
+        assert!(Arc::ptr_eq(&*cache.read().await, &previous));
+        assert!(
+            refresh_epg_snapshot(&cache, || panic!("index worker fixture panicked"))
+                .await
+                .is_err()
+        );
+        assert!(Arc::ptr_eq(&*cache.read().await, &previous));
+        assert_eq!(
+            xmltv::match_in_index("News", &previous.index)?.unwrap().0,
+            "old"
+        );
+        Ok(())
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn parallel_matching_keeps_serving_while_next_index_is_built() -> anyhow::Result<()> {
+        let cache = Arc::new(RwLock::new(Arc::new(snapshot("old", "Old schedule")?)));
+        let (started_tx, started_rx) = tokio::sync::oneshot::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let refreshing = cache.clone();
+        let refresh = tokio::spawn(async move {
+            refresh_epg_snapshot(&refreshing, move || {
+                let _ = started_tx.send(());
+                release_rx.recv()?;
+                snapshot("new", "New schedule")
+            })
+            .await
+        });
+        started_rx.await?;
+        let mut readers = JoinSet::new();
+        for _ in 0..8 {
+            let cache = cache.clone();
+            readers.spawn(async move {
+                let snapshot = cache.read().await.clone();
+                tokio::task::spawn_blocking(move || {
+                    for _ in 0..20 {
+                        let (id, _) = xmltv::match_in_index("News HD", &snapshot.index)?.unwrap();
+                        anyhow::ensure!(id == "old");
+                        anyhow::ensure!(snapshot.cache.programs[&id][0].title == "Old schedule");
+                    }
+                    Ok::<_, anyhow::Error>(())
+                })
+                .await?
+            });
+        }
+        let reads = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            while let Some(result) = readers.join_next().await {
+                result??;
+            }
+            Ok::<_, anyhow::Error>(())
+        })
+        .await;
+        // Release the worker even if a regression times out, so runtime shutdown cannot hang.
+        release_tx.send(())?;
+        reads??;
+        refresh.await??;
+        let refreshed = cache.read().await.clone();
+        assert_eq!(
+            xmltv::match_in_index("News", &refreshed.index)?.unwrap().0,
+            "new"
+        );
+        Ok(())
     }
 }

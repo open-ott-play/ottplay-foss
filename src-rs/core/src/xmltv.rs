@@ -64,21 +64,26 @@ async fn fetch_single_impl(source: &str, native: bool) -> anyhow::Result<(Channe
         let bytes = resp.bytes().await?;
         bytes.to_vec()
     } else {
-        std::fs::read(source)?
+        tokio::fs::read(source).await?
     };
 
-    let is_gz = (!native && source.ends_with(".gz")) || content.starts_with(&[0x1f, 0x8b]);
-    let raw: Vec<u8> = if is_gz {
-        let mut d = GzDecoder::new(&content[..]);
-        let mut out = Vec::new();
-        d.read_to_end(&mut out)?;
-        out
-    } else {
-        content
-    };
-
-    let text = String::from_utf8_lossy(&raw);
-    parse_xmltv_impl(&text, native)
+    let source_has_gz_extension = source.ends_with(".gz");
+    // XMLTV feeds can contain hundreds of megabytes of XML. Decompression and
+    // the synchronous shared reducer must not occupy an async request worker.
+    tokio::task::spawn_blocking(move || {
+        let is_gz = (!native && source_has_gz_extension) || content.starts_with(&[0x1f, 0x8b]);
+        let raw: Vec<u8> = if is_gz {
+            let mut d = GzDecoder::new(&content[..]);
+            let mut out = Vec::new();
+            d.read_to_end(&mut out)?;
+            out
+        } else {
+            content
+        };
+        let text = String::from_utf8_lossy(&raw);
+        parse_xmltv_impl(&text, native)
+    })
+    .await?
 }
 
 /// Event-based XMLTV parser. Cheap; no DOM.
