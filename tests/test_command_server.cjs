@@ -109,7 +109,7 @@ for (const input of [
 ]) {
     assert.throws(() => normalize(input), undefined, input);
 }
-function harness(protocol = "http:") {
+function harness(protocol = "http:", execute) {
     const jobs = new Map();
     const requests = [];
     const saved = [];
@@ -140,7 +140,8 @@ function harness(protocol = "http:") {
             if (behavior.outcome !== "deferred") delivered.push(command);
             if (behavior.onDispatch) behavior.onDispatch();
             return behavior.outcome;
-        }
+        },
+        execute
     );
     function next() {
         assert.equal(jobs.size, 1, "only one retry/poll timer is scheduled");
@@ -614,3 +615,65 @@ assert.equal(batch.requests.at(-1).request.method, "GET");
     console.error(error);
     process.exitCode = 1;
 });
+
+// Request execution is invalidated by reconnects, and network delay cannot
+// revive a request whose server deadline has already passed.
+{
+    let completeWork;
+    let cancellations = 0;
+    let executions = 0;
+    const rpc = harness("http:", (_request, done) => {
+        executions++;
+        completeWork = done;
+        return () => cancellations++;
+    });
+    const id = "a".repeat(32);
+    rpc.connect({ address: "https://server.example/base" });
+    rpc.respond({
+        commands: [],
+        requests: [
+            { action: "status", expires_at: clock / 1000 + 5, id, params: {} },
+        ],
+        server_time: clock / 1000,
+    });
+    assert.equal(executions, 1);
+    rpc.controller.configure({
+        address: "https://server.example/base",
+        enabled: false,
+        token,
+    });
+    assert.equal(cancellations, 1);
+    completeWork({ data: { volume: 22 }, status: "ok" });
+    assert.equal(rpc.jobs.size, 0, "revoked work cannot enqueue a response");
+    rpc.connect();
+    const serverTime = clock / 1000;
+    clock += 3000;
+    rpc.respond({
+        commands: [],
+        requests: [
+            { action: "status", expires_at: serverTime + 1, id, params: {} },
+        ],
+        server_time: serverTime,
+    });
+    assert.equal(executions, 1, "expired request is never dispatched");
+    rpc.next();
+    rpc.respond({
+        commands: [],
+        requests: [
+            { action: "status", expires_at: clock / 1000 + 30, id, params: {} },
+        ],
+        server_time: clock / 1000,
+    });
+    completeWork({ data: { volume: 22 }, status: "ok" });
+    rpc.next();
+    assert.equal(
+        rpc.requests.at(-1).request.url,
+        "http://server.local:8081/api/responses"
+    );
+    rpc.respond({ error: "expired" }, 404);
+    rpc.next();
+    assert.match(rpc.requests.at(-1).request.url, /delivery=ack$/);
+    console.log(
+        "PASS RPC transport cancellation, server-relative expiry and expired-result recovery"
+    );
+}

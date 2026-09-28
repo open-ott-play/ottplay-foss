@@ -307,6 +307,7 @@ declare var $: any;
 
 // Command handler (push commands via webhook)
 import { type Command, handleCommand, showPopup } from "./commands";
+import { executeRemoteRequest } from "./commands/remote-requests";
 // Key handler
 import {
     dispatchKey,
@@ -5685,7 +5686,8 @@ window.showPopup = showPopup;
         )
             throw new Error("Command server settings could not be saved");
     },
-    handleCommand
+    handleCommand,
+    executeRemoteRequest
 );
 
 // Tauri Mode B: poll the native command queue (queue_poll invoke) instead of

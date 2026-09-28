@@ -32,3 +32,29 @@ The public player address is https://ott.2560801.xyz/. A browser loaded from tha
 TypeScript uses descriptive English names. `src/compatibility/legacy-names.ts` declares the established provider-script globals, popup action IDs and version-1 backup fields. The classic linker preserves those external names, while live aliases let both interfaces observe provider hook replacement. Stored keys, DOM IDs, provider-specific fields and action identities retain their existing contracts.
 
 Validate source behavior, emitted provider ABI, persisted settings, ES5 syntax and actual transport separately. `tests/test_english_naming.cjs` covers source names, shadowed bindings, classic emission, live aliases, action identity and backup round trips. The command-server and dispatcher suites cover retries, stale responses, boot readiness and provider restrictions. Physical TV/STB transport and playback remain device acceptance checks.
+
+## Terminal CLI and replies
+
+The optional protocol-1 request extension supports `ott NAME v`, `s`, `p`,
+channel selection by catalogue number/name, provider listing/selection and
+explicit M3U/Xtream/Stalker/OTTClub settings adapters. See the
+[CLI guide](https://github.com/open-ott-play/ottplay-control-server/blob/main/docs/cli.md).
+The terminal's alias maps to the device's UUID in the server configuration.
+Each installation needs its own code. No administrator token belongs in a player.
+
+Queries use the player's current catalogue and guide service; EPG requests have
+a 25-second collection budget and report partial results explicitly. Programmes
+share the Unix-seconds `as_of` timestamp captured when collection starts, even
+when guide callbacks arrive later. `checked` counts completed channel lookups;
+`partial: false` means collection completed, not that every feed has EPG. The
+guide service can return an empty result for either missing data or a fetch
+failure, and neither appears in the programme list. Read results
+exclude stream URLs and provider secrets. Provider settings use the active
+driver and preserve parental/distribution policy. A successful dispatch reply
+does not prove playback or hardware state. HTTP result retries do not repeat
+a command within one page session; restarting a player clears deduplication.
+The previous command-only API remains compatible with older servers and players.
+
+OTTClub's `server` is a bare host with an optional port, such as `club.example:8080`;
+its existing driver supplies the URL scheme. Other supported providers accept
+HTTP(S) URLs. Changing an OTTClub key preserves the stored host.
