@@ -576,7 +576,8 @@ function bridgeFixture() {
                 }
         },
         counts: () => [notifications, invalidations],
-        diagnostics: host.__ottHostedEpg.diagnostics,
+        diagnostics: () =>
+            JSON.parse(JSON.stringify(host.__ottHostedEpg.diagnostics())),
         host,
         send(value, worker = workers[workers.length - 1]) {
             worker.onmessage({ data: value });
@@ -775,6 +776,77 @@ function bridgeFixture() {
         f.counts(),
         [2, 2],
         "older Worker readiness uses its fetched timestamp"
+    );
+    f.session.close();
+}
+{
+    const f = bridgeFixture();
+    f.advance(100);
+    f.send({ phase: "cache", type: "progress" });
+    f.advance(900);
+    f.send({ phase: "download", source: 0, type: "progress" });
+    f.advance(30000);
+    const duringDownload = f.diagnostics();
+    assert.deepEqual(duringDownload.timings, {
+        cache: 1000,
+        download: 30000,
+        parse: 0,
+    });
+    assert.deepEqual(
+        f.diagnostics().timings,
+        duringDownload.timings,
+        "reading live diagnostics cannot count a stage twice"
+    );
+    f.send({ phase: "download", source: 0, type: "progress" });
+    f.advance(20000);
+    f.send({ phase: "parse", source: 0, type: "progress" });
+    f.advance(25000);
+    f.send({ phase: "download", source: 1, type: "progress" });
+    f.advance(10000);
+    f.send({ phase: "parse", source: 1, type: "progress" });
+    f.advance(10000);
+    f.send({ fetched: 1, mappings: {}, type: "ready" });
+    assert.equal(f.diagnostics().finished - f.diagnostics().started, 96000);
+    assert.deepEqual(f.diagnostics().timings, {
+        cache: 1000,
+        download: 60000,
+        parse: 35000,
+    });
+    f.advance(7200000);
+    assert.deepEqual(
+        f.diagnostics().timings,
+        { cache: 1000, download: 60000, parse: 35000 },
+        "completed stage durations freeze alongside total elapsed time"
+    );
+    f.send({ phase: "cache", type: "progress" });
+    f.advance(50);
+    f.send({ phase: "waiting", type: "progress" });
+    f.advance(1000);
+    f.send({ phase: "cache", type: "progress" });
+    f.send({ fetched: 1, mappings: {}, stale: true, type: "ready" });
+    f.advance(50);
+    f.send({ phase: "download", type: "progress" });
+    f.advance(2000);
+    f.send({ code: "EPG_HTTP", phase: "download", type: "error" });
+    assert.deepEqual(f.diagnostics().timings, {
+        cache: 1100,
+        download: 2000,
+        parse: 0,
+    });
+    f.advance(10000);
+    assert.equal(
+        f.diagnostics().timings.download,
+        2000,
+        "failure freezes timing"
+    );
+    f.session.retry();
+    f.send({ type: "closed" });
+    f.advance(80);
+    f.send({ fetched: 1, mappings: {}, type: "ready" });
+    assert.deepEqual(
+        f.diagnostics().timings,
+        { cache: 80, download: 0, parse: 0 },
+        "retry resets all stages; a warm cache has no download or parse time"
     );
     f.session.close();
 }
@@ -1492,6 +1564,9 @@ const server = http.createServer((request, response) => {
         );
         details = await page.locator("#listAbout").innerText();
         assert.match(details, /EPG programmes: 3/);
+        assert.match(details, /EPG cache and wait time: [\d.]+ s/);
+        assert.match(details, /EPG download time: [\d.]+ s/);
+        assert.match(details, /EPG processing and storage time: [\d.]+ s/);
         assert(!details.includes("EPG_HTTP"));
         const beforeRetry = calls;
         await page.evaluate(() => aboutKeyHandler(keys.ENTER));

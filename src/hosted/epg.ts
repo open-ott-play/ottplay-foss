@@ -2,6 +2,26 @@
 (function (host: any) {
     var previous: any = null;
     var status: any = { phase: "idle" };
+    function timings(): any {
+        var values: any = { cache: 0, download: 0, parse: 0 };
+        if (!status.timings) return values;
+        Object.keys(values).forEach(function (key: string) {
+            values[key] = status.timings[key];
+        });
+        var key = status.phase;
+        if (key === "starting" || key === "waiting") key = "cache";
+        if (typeof values[key] === "number")
+            values[key] += Math.max(0, Date.now() - status.phaseStarted);
+        return values;
+    }
+    function phase(next: string): void {
+        status.timings = timings();
+        status.phaseStarted = Date.now();
+        status.phase = next;
+    }
+    function seconds(value: number): string {
+        return (value / 1000).toFixed(1) + " s";
+    }
     function restartNeeded(): boolean {
         return (
             status.code === "EPG_WORKER" && status.failedPhase === "starting"
@@ -143,7 +163,7 @@
                 lines.push(
                     host._("EPG update failed; using saved programme guide")
                 );
-            if (status.started)
+            if (status.started) {
                 lines.push(
                     host._(
                         "EPG elapsed: %1",
@@ -153,6 +173,16 @@
                         ) + " s"
                     )
                 );
+                var times = timings();
+                lines.push(
+                    host._("EPG cache and wait time: %1", seconds(times.cache)),
+                    host._("EPG download time: %1", seconds(times.download)),
+                    host._(
+                        "EPG processing and storage time: %1",
+                        seconds(times.parse)
+                    )
+                );
+            }
             content.text(lines.join("\n\n"));
         }
         function close(): void {
@@ -262,7 +292,7 @@
             status.httpStatus = (value && value.httpStatus) || 0;
             status.cached = value ? !!value.cached : !!status.cached;
             status.failedPhase = (value && value.phase) || status.phase;
-            status.phase = "error";
+            phase("error");
             status.finished = Date.now();
             var expected = attempt;
             Object.keys(pending).forEach(function (query) {
@@ -373,8 +403,10 @@
             status = {
                 channels: rows.length,
                 phase: "starting",
+                phaseStarted: Date.now(),
                 sources: sources.map(sourceLabel),
                 started: Date.now(),
+                timings: { cache: 0, download: 0, parse: 0 },
             };
             heartbeat = Date.now();
             try {
@@ -397,7 +429,7 @@
                             value.mappings || {}
                         ).length;
                         status.records = value.records;
-                        status.phase = value.stale ? "cache" : "ready";
+                        phase(value.stale ? "cache" : "ready");
                         status.code = "";
                         status.finished = value.stale ? 0 : Date.now();
                         var revision = value.generation || value.fetched;
@@ -425,9 +457,11 @@
                             value.phase === "cache" &&
                             (status.phase === "ready" ||
                                 status.phase === "error")
-                        )
+                        ) {
                             status.started = Date.now();
-                        status.phase = value.phase;
+                            status.timings = null;
+                        }
+                        phase(value.phase);
                         status.source = value.source;
                         status.loaded = value.loaded;
                         status.total = value.total;
@@ -479,7 +513,9 @@
     }
     host.__ottHostedEpg = {
         diagnostics: function () {
-            return JSON.parse(JSON.stringify(status));
+            var value = JSON.parse(JSON.stringify(status));
+            value.timings = timings();
+            return value;
         },
         enabled: function () {
             return !!settings();
