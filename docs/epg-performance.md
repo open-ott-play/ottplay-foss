@@ -113,21 +113,26 @@ The fingerprint is a lightweight deterministic output comparison, not an
 authentication hash. Input provenance uses SHA-256 separately. Benchmarks must
 hold the file, architecture, compiler profile and resource limits fixed.
 
-## Linux musl allocator
+## Allocator experiment and remaining node limits
 
-The standalone musl server uses mimalloc, and rquickjs's supported `rust-alloc`
-feature routes QuickJS allocations through the same Rust global allocator.
-Other platform allocators are unchanged. No custom unsafe allocator is added.
+A musl-only mimalloc/rquickjs `rust-alloc` variant was tested, but is excluded
+from this change because repeat measurements did not establish a whole-server
+benefit. One static QuickJS C probe, with identical code and 3,247 input rows,
+took 9.215/10.493 seconds to build the index using libc and 5.754/6.106 seconds
+using mimalloc on `mp`. This isolated result did not predict the complete server.
 
-One static QuickJS C probe, with identical code and 3,247 input rows, took
-9.215/10.493 seconds to build the index using libc and 5.754/6.106 seconds using
-mimalloc on `mp`. Its Zig-provided musl differs from the release toolchain, so
-this establishes the mechanism rather than the shipping server's total gain.
-Exact native-image controls additionally remove only the allocator wiring while
-retaining the lockfile, source and build flags. The first clean 10,000-programme
-pair took 56.53 seconds without the allocator change and 46.51 seconds with it;
-process CPU differed much less (29.21 versus 27.50 seconds). Allocation helps,
-but it does not restore the native v1.1.43 parser's cost.
+Exact native-image controls removed only allocator wiring while retaining the
+lockfile, source and build flags. Two alternating 10,000-programme pairs measured
+46.51/40.46 seconds with mimalloc and 56.53/31.69 seconds without it. Process CPU
+was 27.50/25.05 versus 29.20/19.71 seconds, respectively. Node CPU pressure ranged
+from 41–62%; an unrelated video workload requested and could use 12 of 16 CPUs.
+The diagnostic pod matched production's 100m CPU request and 2 CPU limit. No
+quota throttling does not rule out CPU-share competition or virtualization cost.
+
+A cleaner v1.1.43 full-feed run loaded all 565,973 programmes in 27.83 seconds.
+An earlier 126.31-second run overlapped diagnostic compilation and is excluded
+from comparisons. Node placement or CPU reservation changes need independent
+acceptance; passing a benchmark on another machine does not qualify this node.
 
 ## Blocking HTTP and container checks
 

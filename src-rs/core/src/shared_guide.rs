@@ -16,7 +16,6 @@ pub struct GuideRecords(Context);
 pub struct GuideRefresh(Context);
 
 fn context() -> anyhow::Result<Context> {
-    // On musl, Cargo enables rust-alloc so QuickJS shares the host's global allocator.
     let runtime = Runtime::new()?;
     runtime.set_max_stack_size(1024 * 1024);
     let context = Context::full(&runtime)?;
