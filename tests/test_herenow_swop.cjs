@@ -229,6 +229,62 @@ async function main() {
         }
     );
     await check(
+        "orphan cleanup is bounded, follows cursors and trusts only server metadata time",
+        async () => {
+            const storage = new Map(), requests = [];
+            const serverNow = Date.parse("2026-09-28T00:00:00Z");
+            const row = (n, age, data = {}) => ({
+                id: "rec_01AAAAAAAAAAAAAAAAAAAAAAA" + n,
+                createdAt: new Date(serverNow - age).toISOString(),
+                data,
+            });
+            let records = [row(1, 86400001), row(2, 1000, { createdAt: "2000-01-01", expired: true }),
+                row(3, 86400000), row(4, -1000), { ...row(5, 86400001), createdAt: "invalid" }];
+            let nextCursor = "opaque/next+page", date = new Date(serverNow).toUTCString();
+            const wire = {
+                ...w,
+                localStorage: {
+                    getItem: (key) => storage.get(key),
+                    setItem: (key, value) => storage.set(key, value),
+                    removeItem: (key) => storage.delete(key),
+                },
+                XMLHttpRequest: class {
+                    open(method, url) { this.method = method; this.url = url; }
+                    setRequestHeader() {}
+                    getResponseHeader(name) { assert.equal(name, "Date"); return date; }
+                    send() {
+                        requests.push({ method: this.method, url: this.url, timeout: this.timeout });
+                        this.status = 200;
+                        this.responseText = JSON.stringify(this.method === "GET" ? { records, nextCursor } : {});
+                        this.onload();
+                    }
+                },
+            };
+            const store = core.hereNowStore(wire, "swop_pairs");
+            await store.collect();
+            assert.deepEqual(requests.map((r) => r.method), ["GET", "DELETE"]);
+            assert.equal(requests[1].url.split("/").pop(), row(1, 0).id);
+            assert.equal(storage.get("ottplay.swop.gc.swop_pairs"), nextCursor);
+            requests.length = 0;
+            records = [1, 2, 3, 4, 5].map((n) => row(n, 90000000));
+            nextCursor = null;
+            await store.collect();
+            assert(requests[0].url.endsWith("?limit=5&cursor=opaque%2Fnext%2Bpage"));
+            assert.deepEqual(requests.map((r) => r.method), ["GET", "DELETE", "DELETE", "DELETE"]);
+            assert(requests.every((r) => r.timeout === 3000));
+            assert.equal(storage.size, 0);
+            requests.length = 0;
+            date = null; // An incorrect client clock is never used as a substitute.
+            await store.collect();
+            assert.deepEqual(requests.map((r) => r.method), ["GET"]);
+            requests.length = 0;
+            date = new Date(serverNow).toUTCString();
+            records.push(row(6, 90000000));
+            await store.collect();
+            assert.deepEqual(requests.map((r) => r.method), ["GET"]);
+        }
+    );
+    await check(
         "hosted profile overrides legacy only when explicitly selected; unsupported crypto fails closed",
         async () => {
             assert.equal(core.hereNowSwopConfig(w), null);

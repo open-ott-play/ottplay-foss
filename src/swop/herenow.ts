@@ -269,13 +269,22 @@ export function hereNowStore(w: any, collection: string): any {
     if (!/^[a-z][a-z0-9_]{0,63}$/.test(collection))
         throw new Error("configuration");
     var base = "/.herenow/data/" + collection;
-    function request(method: string, id?: string, body?: any): Promise<any> {
+    function request(
+        method: string,
+        id?: string,
+        body?: any,
+        options?: any
+    ): Promise<any> {
         if (id !== undefined && !/^rec_[0-9A-HJKMNP-TV-Z]{26}$/.test(id))
             return Promise.reject(new Error("invalid_pair"));
         return new Promise(function (resolve, reject) {
             var xhr = new w.XMLHttpRequest();
-            xhr.open(method, base + (id ? "/" + id : ""), true);
-            xhr.timeout = 15000;
+            xhr.open(
+                method,
+                base + (id ? "/" + id : "") + (options?.query || ""),
+                true
+            );
+            xhr.timeout = options?.timeout || 15000;
             xhr.setRequestHeader("Accept", "application/json");
             xhr.setRequestHeader("Cache-Control", "no-store");
             if (body !== undefined)
@@ -294,10 +303,22 @@ export function hereNowStore(w: any, collection: string): any {
                     return;
                 }
                 try {
-                    if (xhr.responseText.length > 20000)
+                    if (xhr.responseText.length > (options?.maximum || 20000))
                         throw new Error("response_limit");
+                    var response = xhr.responseText
+                        ? JSON.parse(xhr.responseText)
+                        : {};
                     resolve(
-                        xhr.responseText ? JSON.parse(xhr.responseText) : {}
+                        options?.metadata
+                            ? {
+                                  body: response,
+                                  date:
+                                      typeof xhr.getResponseHeader ===
+                                      "function"
+                                          ? xhr.getResponseHeader("Date")
+                                          : null,
+                              }
+                            : response
                     );
                 } catch (_) {
                     reject(new Error("service_unavailable"));
@@ -310,6 +331,75 @@ export function hereNowStore(w: any, collection: string): any {
         });
     }
     return {
+        collect: function (): Promise<void> {
+            // One small page per attempt; the cursor eventually reaches old orphans.
+            // Dates belong to Site Data metadata, never to visitor-controlled fields.
+            var key = "ottplay.swop.gc." + collection;
+            var cursor = "";
+            try {
+                cursor = w.localStorage.getItem(key) || "";
+            } catch (_) {}
+            if (cursor.length > 1024) cursor = "";
+            return request("GET", undefined, undefined, {
+                maximum: 80000,
+                metadata: true,
+                query:
+                    "?limit=5" +
+                    (cursor ? "&cursor=" + encodeURIComponent(cursor) : ""),
+                timeout: 3000,
+            })
+                .then(async function (response) {
+                    var data = response.body;
+                    var serverNow = Date.parse(response.date || "");
+                    if (
+                        !data ||
+                        !Array.isArray(data.records) ||
+                        data.records.length > 5 ||
+                        !isFinite(serverNow)
+                    )
+                        throw new Error("invalid_list");
+                    try {
+                        if (
+                            typeof data.nextCursor === "string" &&
+                            data.nextCursor.length <= 1024
+                        )
+                            w.localStorage.setItem(key, data.nextCursor);
+                        else w.localStorage.removeItem(key);
+                    } catch (_) {}
+                    var removed = 0;
+                    for (
+                        var i = 0;
+                        i < data.records.length && removed < 3;
+                        i++
+                    ) {
+                        var record = data.records[i];
+                        var created =
+                            record && typeof record.createdAt === "string"
+                                ? Date.parse(record.createdAt)
+                                : NaN;
+                        if (
+                            !record ||
+                            !/^rec_[0-9A-HJKMNP-TV-Z]{26}$/.test(
+                                record.id || ""
+                            ) ||
+                            !isFinite(created) ||
+                            created <= 0 ||
+                            serverNow - created <= 86400000
+                        )
+                            continue;
+                        removed++;
+                        await request("DELETE", record.id, undefined, {
+                            timeout: 3000,
+                        }).catch(function () {});
+                    }
+                })
+                .catch(function () {
+                    // Best effort only. A bad/stale cursor must not block a later sweep.
+                    try {
+                        w.localStorage.removeItem(key);
+                    } catch (_) {}
+                });
+        },
         create: function () {
             return request("POST", undefined, {
                 ack: "",

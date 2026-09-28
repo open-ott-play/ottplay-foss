@@ -190,6 +190,7 @@ export function openHereNowSwop(
             translate("Remote input expired. Open a new session to try again.")
         );
     }, HERENOW_SWOP_TTL);
+    store.collect(); // Bounded orphan cleanup never delays opening the new pair.
     store
         .create()
         .then(async function (id: string) {
