@@ -217,3 +217,111 @@ stbInit = function () {
     } catch (e) {}
     return baseInitResult;
 };
+
+// Read-only, session-opt-in diagnosis of the native pointer boundary. Unknown
+// means no visibility event was received; it must not be reported as hidden.
+// https://webostv.developer.lge.com/develop/guides/system-ui-visibility
+(function () {
+    var started = false;
+    var cursor = "unknown";
+    var focus = "unknown";
+    var area = "unknown";
+    var moves = 0;
+    var downs = 0;
+    var clicks = 0;
+    window.__ottDebugInputInit = function () {
+        if (started || !document.addEventListener) return;
+        started = true;
+        try {
+            if (typeof document.hasFocus === "function")
+                focus = document.hasFocus() ? "on" : "off";
+        } catch (e) {}
+        window.__ottDebugInput = function () {
+            var page = document.visibilityState;
+            return (
+                "LG input: cursor=" +
+                cursor +
+                " focus=" +
+                focus +
+                " page=" +
+                (page === "visible" || page === "hidden" ? page : "unknown") +
+                " area=" +
+                area +
+                " move=" +
+                moves +
+                " down=" +
+                downs +
+                " click=" +
+                clicks
+            );
+        };
+        function state() {
+            if (window.__ottDebug && window.__ottDebug.enabled)
+                window.__ottDebug.push(
+                    "sys",
+                    "input",
+                    window.__ottDebugInput()
+                );
+        }
+        document.addEventListener(
+            "cursorStateChange",
+            function (event) {
+                var visible = event.detail && event.detail.visibility;
+                if (typeof visible !== "boolean") return;
+                cursor = visible ? "on" : "off";
+                state();
+            },
+            false
+        );
+        document.addEventListener(
+            "webOSMouse",
+            function (event) {
+                var type = event.detail && event.detail.type;
+                if (type !== "Enter" && type !== "Leave") return;
+                area = type === "Enter" ? "in" : "out";
+                state();
+            },
+            false
+        );
+        window.addEventListener(
+            "focus",
+            function () {
+                focus = "on";
+                state();
+            },
+            false
+        );
+        window.addEventListener(
+            "blur",
+            function () {
+                focus = "off";
+                state();
+            },
+            false
+        );
+        // Count delivery only; never record positions, typed keys or individual moves.
+        document.addEventListener(
+            "mousemove",
+            function () {
+                moves++;
+            },
+            true
+        );
+        document.addEventListener(
+            "mousedown",
+            function () {
+                downs++;
+            },
+            true
+        );
+        document.addEventListener(
+            "click",
+            function () {
+                clicks++;
+            },
+            true
+        );
+    };
+    if (window.__ottDebug && window.__ottDebug.enabled)
+        window.__ottDebugInputInit();
+})();

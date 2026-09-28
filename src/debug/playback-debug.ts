@@ -341,6 +341,9 @@ function ottDebugCounters(): any {
         bufferAhead: _ottDbgSampleBufAhead,
         bwEstimate: _ottDbgSampleBw,
         errorCount: _ottDbgErrorCount,
+        input: (window as any).__ottDebugInput
+            ? (window as any).__ottDebugInput()
+            : "",
         lastStallMs: _ottDbgLastStallMs,
         level: _ottDbgSampleLevel,
         recoverCount: _ottDbgRecoverCount,
@@ -381,6 +384,8 @@ function ottDebugUpdateHud(): void {
             Math.round(_ottDbgStallMaxMs / 1000) +
             "s"
     );
+    if ((window as any).__ottDebugInput)
+        parts.push((window as any).__ottDebugInput());
     if (!v) {
         parts.push("(no video)");
         _ottDbgHudEl.innerHTML = parts.join(" · ");
@@ -896,7 +901,11 @@ function ottDebugInstallApi(enabled: boolean): void {
             onVideoEvent: function () {},
             push: function () {},
             setHud: function () {},
-            toggleHud: function () {},
+            toggleHud: function () {
+                // Menu opt-in lasts for this page; further toggles hide/show HUD.
+                ottDebugEnable();
+                ottDebugSetHud(true);
+            },
             wrapXhrSetup: function (prev: any) {
                 return prev;
             },
@@ -907,6 +916,8 @@ function ottDebugInstallApi(enabled: boolean): void {
 function ottDebugEnable(): void {
     if (_ottDbgEnabled) return;
     _ottDbgEnabled = true;
+    if ((window as any).__ottDebugInputInit)
+        (window as any).__ottDebugInputInit();
     try {
         (window as any).__OTT_DEBUG__ = true;
     } catch (_e) {}

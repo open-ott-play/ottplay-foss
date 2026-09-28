@@ -218,6 +218,214 @@ async function testSource() {
     await testTransport();
 }
 
+async function testInputDiagnostics() {
+    const { JSDOM } = require("jsdom");
+    const source = fs.readFileSync(
+        path.join(root, "src/debug/playback-debug.ts"),
+        "utf8"
+    );
+    const code = bundle
+        ? fs.readFileSync(path.join(root, "dist/player.js"), "utf8")
+        : ts.transpileModule(source, {
+              compilerOptions: {
+                  module: ts.ModuleKind.None,
+                  target: ts.ScriptTarget.ES5,
+              },
+          }).outputText;
+    for (const enabledAtBoot of [false, true]) {
+        const dom = new JSDOM(
+            "<!doctype html><button id='target'>Select</button>",
+            {
+                runScripts: "outside-only",
+                url: "https://fixture.invalid/",
+            }
+        );
+        const context = dom.getInternalVMContext();
+        const timers = [];
+        const requests = [];
+        const nativeCalls = [];
+        context.setTimeout = () => 1;
+        context.setInterval = (callback, ms) => {
+            timers.push({ callback, ms });
+            return timers.length;
+        };
+        context.console = { error() {}, info() {}, log() {}, warn() {} };
+        context.fetch = (url) => {
+            requests.push(url);
+            return Promise.resolve({ ok: false });
+        };
+        context.__OTT_DEBUG__ = enabledAtBoot;
+        context.webOS = {
+            device: { cursorVisible: (value) => nativeCalls.push(value) },
+        };
+        try {
+            if (bundle) {
+                vm.runInContext(
+                    fs.readFileSync(
+                        path.join(root, "js/runtime-polyfills.js"),
+                        "utf8"
+                    ),
+                    context
+                );
+                require("./helpers/shared-core-runtime.cjs")(context);
+            }
+            vm.runInContext(code, context);
+            context.version = "fixture";
+            vm.runInContext(
+                fs.readFileSync(
+                    path.join(root, "devices/lg/webos/device.js"),
+                    "utf8"
+                ),
+                context
+            );
+            const document = context.document;
+            const target = document.getElementById("target");
+            if (!enabledAtBoot) {
+                assert.equal(
+                    context.__ottDebugInput,
+                    undefined,
+                    "Disabled diagnostics collect no pointer events"
+                );
+                assert.equal(document.getElementById("ott_debug_hud"), null);
+                target.dispatchEvent(
+                    new context.MouseEvent("mousemove", { bubbles: true })
+                );
+                if (bundle) context.toggleDebugHudInfo();
+                else context.__ottDebug.toggleHud();
+            }
+            const api = context.__ottDebug;
+            assert.equal(
+                api.enabled,
+                true,
+                "The menu enables diagnostics immediately"
+            );
+            const hud = () => document.getElementById("ott_debug_hud");
+            assert(hud(), "No restart or video is needed for the HUD");
+            const refresh = () => {
+                const updates = timers.filter((timer) => timer.ms === 1000);
+                assert.equal(updates.length, 1);
+                updates[0].callback();
+            };
+            refresh();
+            assert(hud().textContent.includes("cursor=unknown"));
+            assert(hud().textContent.includes("move=0 down=0 click=0"));
+            assert(hud().textContent.includes("(no video)"));
+            const cursor = (visibility) =>
+                document.dispatchEvent(
+                    new context.CustomEvent("cursorStateChange", {
+                        detail: { visibility },
+                    })
+                );
+            cursor(true);
+            context.dispatchEvent(new context.Event("focus"));
+            document.dispatchEvent(
+                new context.CustomEvent("webOSMouse", {
+                    detail: { type: "Enter" },
+                })
+            );
+            refresh();
+            assert(hud().textContent.includes("cursor=on focus=on"));
+            assert(hud().textContent.includes("area=in"));
+            cursor("DUMMY_SECRET");
+            document.dispatchEvent(
+                new context.CustomEvent("webOSMouse", {
+                    detail: { type: "DUMMY_SECRET" },
+                })
+            );
+            assert(
+                !api.dump().includes("DUMMY_SECRET"),
+                "Only documented state values are retained"
+            );
+            const beforeMoves = api.dump();
+            let moves = 0;
+            let clicks = 0;
+            target.addEventListener("mousemove", () => moves++);
+            target.addEventListener("click", () => clicks++);
+            for (let index = 0; index < 1000; index++) {
+                const event = new context.MouseEvent("mousemove", {
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: 9876,
+                    clientY: 5432,
+                });
+                assert(target.dispatchEvent(event));
+                assert.equal(event.defaultPrevented, false);
+            }
+            target.dispatchEvent(
+                new context.MouseEvent("mousedown", { bubbles: true })
+            );
+            target.dispatchEvent(
+                new context.MouseEvent("click", { bubbles: true })
+            );
+            target.dispatchEvent(
+                new context.KeyboardEvent("keydown", {
+                    bubbles: true,
+                    key: "DUMMY_SECRET",
+                })
+            );
+            assert.equal(
+                moves,
+                1000,
+                "Diagnostics leave pointer events available to the player"
+            );
+            assert.equal(clicks, 1);
+            assert.equal(
+                api.dump(),
+                beforeMoves,
+                "Mouse traffic does not flood the event ring"
+            );
+            refresh();
+            assert(hud().textContent.includes("move=1000 down=1 click=1"));
+            cursor(false);
+            context.dispatchEvent(new context.Event("blur"));
+            document.dispatchEvent(
+                new context.CustomEvent("webOSMouse", {
+                    detail: { type: "Leave" },
+                })
+            );
+            refresh();
+            assert(hud().textContent.includes("cursor=off focus=off"));
+            assert(hud().textContent.includes("area=out"));
+            assert(!api.dump().includes("9876"));
+            assert(!api.dump().includes("DUMMY_SECRET"));
+            const timerCount = timers.length;
+            api.toggleHud();
+            assert.equal(hud(), null);
+            api.toggleHud();
+            target.dispatchEvent(
+                new context.MouseEvent("mousemove", { bubbles: true })
+            );
+            refresh();
+            assert(
+                hud().textContent.includes("move=1001"),
+                "Reopening the HUD must not duplicate listeners"
+            );
+            assert.equal(timers.length, timerCount);
+            assert.equal(
+                context.localStorage.getItem("ottplay_debug"),
+                null,
+                "Menu opt-in is limited to this page"
+            );
+            assert.equal(
+                requests.length,
+                0,
+                "Local diagnosis sends no requests without an explicit debug token"
+            );
+            assert.deepEqual(
+                nativeCalls,
+                [],
+                "Diagnostics never change native pointer visibility"
+            );
+            assert.notEqual(document.body.style.cursor, "none");
+        } finally {
+            dom.window.close();
+        }
+    }
+    console.log(
+        "PASS debug input: menu activation, boot opt-in, native state, event delivery, bounded counters, session scope and no upload"
+    );
+}
+
 // The packaged runtime is tested through its supported API, scheduled work and
 // real DOM lifecycle events. No private state is exposed for the test harness.
 async function testBundle() {
@@ -576,7 +784,9 @@ async function testBundle() {
     );
 }
 
-(bundle ? testBundle() : testSource()).catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+(bundle ? testBundle() : testSource())
+    .then(testInputDiagnostics)
+    .catch((error) => {
+        console.error(error);
+        process.exitCode = 1;
+    });

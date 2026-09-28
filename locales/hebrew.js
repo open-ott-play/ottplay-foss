@@ -322,6 +322,7 @@ var keyStrings = {
     EPG: "לוח שידורים",
     "EPG and archive. Channel: ": "לוח שידורים וארכיון. ערוץ: ",
     "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
     "EPG cache updated: %1": "EPG cache updated: %1",
     "EPG channels: %1": "EPG channels: %1",
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
@@ -329,6 +330,7 @@ var keyStrings = {
     "EPG diagnostics": "EPG diagnostics",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
         "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download time: %1": "EPG download time: %1",
     "EPG download timed out. Retry the download.":
         "EPG download timed out. Retry the download.",
     "EPG elapsed: %1": "EPG elapsed: %1",
@@ -340,6 +342,8 @@ var keyStrings = {
         "EPG has not started. Load an M3U playlist.",
     "EPG local storage is unavailable or full.":
         "EPG local storage is unavailable or full.",
+    "EPG processing and storage time: %1":
+        "EPG processing and storage time: %1",
     "EPG processing stopped. Retry and check browser support.":
         "EPG processing stopped. Retry and check browser support.",
     "EPG programmes: %1": "EPG programmes: %1",

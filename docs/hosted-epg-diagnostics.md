@@ -32,6 +32,17 @@ programme count, matched channels, cache timestamp, elapsed time, and the failed
 stage with an error code. Source credentials, paths and query parameters are not
 displayed; diagnostics remain on the device and are not uploaded.
 
+Elapsed time is the completed attempt's total, not a countdown: it stops when
+the guide becomes ready or fails. The three times below it separate cache access
+and waiting (including worker startup), downloading, and local processing and
+storage. Processing includes gzip decompression, XML parsing and IndexedDB writes;
+these operations are interleaved and are not reported as separate CPU timings.
+Stage durations accumulate across all sources, update while running and freeze
+on completion. Each retry or scheduled refresh starts fresh counters. A fresh
+saved guide has zero download and processing time. These device-local wall times
+make it possible to distinguish a slow transfer from slow TV processing without
+assuming that a desktop benchmark describes the TV.
+
 **OK / Retry EPG download** restarts the worker and requests a fresh guide even
 when the saved cache is still fresh. The last accepted cache remains available
 until a replacement commits. The old worker acknowledges closure after releasing
