@@ -254,6 +254,258 @@ test("manual Stop cancels the pending automatic episode resolution", async ({
     expect(fixture.errors).toEqual([]);
 });
 
+async function titleFilterFixture(page, context, baseURL) {
+    const origin = new URL(baseURL).origin;
+    const errors = [];
+    const requests = [];
+    const swopRequests = [];
+    const query = "  ТРИ   КОТ  ";
+    const movie = (title, id) => ({
+        request: { cmd: "play", id },
+        title,
+        type: "stream",
+    });
+    const series = (title, id) => ({
+        request: { cmd: "series", id },
+        title,
+        type: "multistream",
+    });
+    const category = {
+        request: { cmd: "category", id: 1 },
+        title: "Мультфильмы",
+        type: "category",
+    };
+    page.on("pageerror", (error) => errors.push(error.message));
+    await context.route("**/*", async (route) => {
+        const url = new URL(route.request().url());
+        if (url.origin === origin && url.pathname === "/vportal/api") {
+            const { params } = route.request().postDataJSON();
+            requests.push(params);
+            let items = [category];
+            if (params.cmd === "category")
+                items = params.offset
+                    ? [
+                          series("Три кота. Новые истории", 21),
+                          movie("Зимняя сказка", 22),
+                          { ...category, title: "Архив" },
+                      ]
+                    : [
+                          series("Три кота", 11),
+                          movie("ТРИ    КОТА: кино", 12),
+                          movie("Ежик в тумане", 13),
+                          series("Смешарики", 14),
+                          { ...category, title: "Все сезоны" },
+                          { request: { offset: 20 }, type: "next" },
+                      ];
+            return route.fulfill({
+                json: {
+                    controls: { search: true },
+                    items,
+                    type: "category",
+                },
+            });
+        }
+        if (url.origin === origin && url.pathname.startsWith("/swop/")) {
+            swopRequests.push({
+                body: route.request().postDataJSON(),
+                path: url.pathname,
+            });
+            return route.fulfill({
+                json:
+                    url.pathname === "/swop/session"
+                        ? {
+                              code: "ABCDEF",
+                              entryCode: "ABCDEF-GHJKLM",
+                              entryUrl: "https://swop.test/",
+                              sessionToken: "synthetic-read-token",
+                              url: "https://swop.test/?c=ABCDEF&t=synthetic-write-token",
+                          }
+                        : { status: "ready", value: query },
+            });
+        }
+        // The demonstration provider only boots the shipped UI. Catalogue
+        // navigation never plays media or contacts an external provider.
+        if (url.origin === origin) return route.continue();
+        return route.abort("blockedbyclient");
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(() => {
+        localStorage.setItem("ottplaylang", "_eng");
+        localStorage.setItem("ottplayprov", "demo");
+    });
+    await page.goto(process.env.OTTP_MEDIA_FILTER_ENTRY || "/f/pc/");
+    await page.waitForFunction(
+        () => window.__ottDevice && !document.body.classList.contains("booting")
+    );
+    await page.evaluate(() => {
+        window.stbStop();
+        window.__ottMedia.cancel();
+        window.host = location.origin;
+        window.p_pref = "title-filter-browser-fixture";
+        window.m3uArr = null;
+        window.ottplayDemoActive = false;
+        window.sFavorites = 1;
+        window.sMedCount = 2;
+        window.parentPIN = "";
+        const saved = {};
+        window.providerGetItem = (key) => saved[key] || null;
+        window.providerSetItem = (key, value) => {
+            saved[key] = value;
+        };
+        const client = window.createVPortalClient(
+            "portal::[key:SYNTHETIC_FIXTURE_KEY]http://portal.invalid/api/v1/",
+            { sourceId: "filter-fixture", title: "VPortal" }
+        );
+        window.providerMediaClient = client;
+        window.getMediaArray = client.load;
+        window.playMedia = client.play;
+        // Use the real TV keyboard and remote router in the desktop browser.
+        window.ott_device = "lg/webos";
+        window.showEditKey = window.showEditKey1;
+        window.editKey = window.editKey1;
+        window.sSwopBaseUrl = "/swop";
+        window.__filterDocument = {};
+        window.__ottMedia.open("");
+    });
+    await page
+        .getByRole("button", { exact: true, name: "Мультфильмы" })
+        .click();
+    await expect(
+        page.getByRole("button", { exact: true, name: "Три кота" })
+    ).toBeVisible();
+    return { errors, requests, swopRequests };
+}
+
+async function confirmTitleFilter(page, query) {
+    await page.evaluate(() => window._doKey(window.keys.BLUE));
+    await expect(page.locator("#listEdit")).toBeVisible();
+    await page.evaluate((value) => {
+        window.editvar = value;
+        window._doKey(window.keys.BLUE);
+    }, query);
+    await expect(page.locator("#listEdit")).toBeHidden();
+}
+
+test("media title filter uses TV and SWOP confirmation and survives paging and Back", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await titleFilterFixture(page, context, baseURL);
+    const title = (name) => page.getByRole("button", { exact: true, name });
+    const initialRequests = fixture.requests.length;
+    await page.evaluate(() => window._doKey(window.keys.BLUE));
+    await expect(page.locator("#listEdit .osk-key").first()).toBeVisible();
+    await page.evaluate(() => window.swopLoadValue());
+    await expect(page.locator(".swop-code")).toHaveText("ABCDEF-GHJKLM");
+    await expect
+        .poll(() => page.evaluate(() => window.editvar))
+        .toBe("  ТРИ   КОТ  ");
+    await page.evaluate(() => window._doKey(window.keys.ENTER));
+    await expect(page.locator("#listEdit")).toBeHidden();
+    await expect(title("Три кота")).toBeVisible();
+    await expect(title("ТРИ    КОТА: кино")).toBeVisible();
+    await expect(title("Смешарики")).toHaveCount(0);
+    await expect(title("Ежик в тумане")).toHaveCount(0);
+    for (const name of ["Все сезоны", "Next page", "Search"])
+        await expect(title(name)).toBeVisible();
+    await expect(page.locator("#listCaption")).toContainText(/три\s+кот/i);
+    expect(fixture.requests).toHaveLength(initialRequests);
+    expect(fixture.swopRequests.map((request) => request.path)).toEqual([
+        "/swop/session",
+        "/swop/val",
+    ]);
+
+    await title("Все сезоны").click();
+    await expect(page.locator("#listCaption")).toContainText("Все сезоны");
+    await expect(title("Три кота")).toBeVisible();
+    await expect(title("Смешарики")).toHaveCount(0);
+    await expect(page.locator("#listCaption")).toContainText(/три\s+кот/i);
+    await page.evaluate(() => window._doKey(window.keys.RETURN));
+    await expect(title("Next page")).toBeVisible();
+
+    await title("Next page").click();
+    await expect(title("Три кота. Новые истории")).toBeVisible();
+    await expect(title("Зимняя сказка")).toHaveCount(0);
+    await expect(title("Архив")).toBeVisible();
+    await expect(page.locator("#listCaption")).toContainText(/три\s+кот/i);
+    expect(fixture.requests.at(-1).offset).toBe(20);
+    await page.evaluate(() => window._doKey(window.keys.RETURN));
+    await expect(title("Три кота")).toBeVisible();
+    await expect(title("Смешарики")).toHaveCount(0);
+
+    await confirmTitleFilter(page, "нет совпадений");
+    for (const name of [
+        "Три кота",
+        "ТРИ    КОТА: кино",
+        "Смешарики",
+        "Ежик в тумане",
+    ])
+        await expect(title(name)).toHaveCount(0);
+    for (const name of ["Все сезоны", "Next page", "Search"])
+        await expect(title(name)).toBeVisible();
+    await title("Next page").click();
+    await expect(title("Архив")).toBeVisible();
+    await expect(title("Три кота. Новые истории")).toHaveCount(0);
+    await page.evaluate(() => window._doKey(window.keys.RETURN));
+    await expect(title("Next page")).toBeVisible();
+
+    await confirmTitleFilter(page, "ЁЖ");
+    await expect(title("Ежик в тумане")).toBeVisible();
+    await expect(title("Три кота")).toHaveCount(0);
+    const filterRow = await page.evaluate(
+        () => window.listArray.find((item) => item.__ottMediaFilter).title
+    );
+    await title(filterRow).click();
+    await expect(page.locator("#listEdit")).toBeVisible();
+    await page.evaluate(() => {
+        window.editvar = "";
+        window._doKey(window.keys.BLUE);
+    });
+    await expect(page.locator("#listEdit")).toBeHidden();
+    for (const name of [
+        "Три кота",
+        "ТРИ    КОТА: кино",
+        "Смешарики",
+        "Ежик в тумане",
+    ])
+        await expect(title(name)).toBeVisible();
+    await expect(page.locator("#listCaption")).not.toContainText("ЁЖ");
+    expect(await page.evaluate(() => !!window.__filterDocument)).toBe(true);
+    expect(fixture.errors).toEqual([]);
+});
+
+test("stale media title filter editors cannot change another list or source", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await titleFilterFixture(page, context, baseURL);
+    for (const replaceSource of [false, true]) {
+        await page.evaluate(() => {
+            window.__ottMedia.filter();
+            window.__lateFilterSave = window.setEdit;
+        });
+        await expect(page.locator("#listEdit")).toBeVisible();
+        await page.evaluate((replace) => {
+            if (replace) window.p_pref = "replacement-filter-fixture";
+            window.__ottMedia.open("");
+            window.editvar = "must not be applied";
+            window.__lateFilterSave();
+        }, replaceSource);
+        await page
+            .getByRole("button", { exact: true, name: "Мультфильмы" })
+            .click();
+        await expect(
+            page.getByRole("button", { exact: true, name: "Смешарики" })
+        ).toBeVisible();
+        await expect(page.locator("#listCaption")).not.toContainText(
+            "must not be applied"
+        );
+    }
+    expect(fixture.errors).toEqual([]);
+});
+
 for (const [guideIds, names] of [
     [
         ["one", "two", "three"],

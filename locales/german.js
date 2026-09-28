@@ -360,6 +360,7 @@ var keyStrings = {
     Favorites: "Favoriten",
     "File selection is not supported on this device":
         "Dateiauswahl wird auf diesem Gerät nicht unterstützt",
+    Filter: "Filter",
     Filters: "Filter",
     "First Run Setup": "Ersteinrichtung",
     "Font type": "Schriftart",

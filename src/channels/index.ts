@@ -2161,6 +2161,9 @@ export function mediaKeyHandler(keyCode: number): boolean {
         case keys.ENTER:
             selectMedia(w.selIndex);
             return true;
+        case keys.BLUE:
+            w.__ottMedia.filter();
+            return true;
         case keys.N2:
         case keys.INFO:
             if (typeof w.infoMedia === "function") w.infoMedia();
@@ -2194,6 +2197,7 @@ export function mediaKeyHandler(keyCode: number): boolean {
         case keys.YELLOW:
             if (
                 item &&
+                !(item as any).__ottMediaFilter &&
                 hasTmdbService() &&
                 w.TMDb &&
                 typeof w.TMDb.search === "function"

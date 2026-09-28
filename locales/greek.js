@@ -360,6 +360,7 @@ var keyStrings = {
     Favorites: "Αγαπημένα",
     "File selection is not supported on this device":
         "Η επιλογή αρχείου δεν υποστηρίζεται σε αυτή τη συσκευή",
+    Filter: "Φίλτρο",
     Filters: "Φίλτρα",
     "First Run Setup": "Ρύθμιση πρώτης εκκίνησης",
     "Font type": "Γραμματοσειρά",

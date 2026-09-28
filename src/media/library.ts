@@ -18,6 +18,9 @@ interface MediaLibraryFrame {
     route: MediaRoute;
     selected: number;
 }
+interface MediaOwnedFrame extends MediaLibraryFrame {
+    catalog: MediaLibraryItem[];
+}
 interface MediaLibraryView {
     frame: MediaLibraryFrame | null;
     frames: MediaLibraryFrame[];
@@ -26,6 +29,7 @@ interface MediaLibraryView {
 }
 interface MediaLibraryPorts {
     describe(records: any[], route: MediaRoute): MediaLibraryItem[];
+    filter?(items: MediaLibraryItem[], route: MediaRoute): MediaLibraryItem[];
     items(route: MediaRoute): MediaLibraryItem[];
     load(route: MediaRoute, done: any): (() => void) | void;
     render(view: MediaLibraryView): void;
@@ -49,26 +53,58 @@ function mediaLibraryCopy(value: any, seen?: any[]): any {
 }
 
 function createMediaLibrary(ports: MediaLibraryPorts) {
-    var frames: MediaLibraryFrame[] = [];
+    var frames: MediaOwnedFrame[] = [];
+    var filterRevision = 0;
     var revision = 0;
     var loading = false;
+    var resolving = false;
     var cleanup: (() => void) | null = null;
     function cancel() {
         var token = ++revision;
         var previous = cleanup;
         cleanup = null;
         loading = false;
+        resolving = false;
         if (previous) previous();
         return token;
     }
     function snapshot(): MediaLibraryView {
-        var copy = mediaLibraryCopy(frames);
+        var copy = frames.map(function (frame) {
+            return mediaLibraryCopy({
+                items: frame.items,
+                route: frame.route,
+                selected: frame.selected,
+            });
+        });
         return {
             frame: copy.length ? copy[copy.length - 1] : null,
             frames: copy,
             loading: loading,
             revision: revision,
         };
+    }
+    function applyFilter(
+        frame: MediaOwnedFrame,
+        selected: MediaLibraryItem = frame.items[frame.selected]
+    ) {
+        frame.items = ports.filter
+            ? ports.filter(frame.catalog, frame.route)
+            : frame.catalog;
+        frame.selected = 0;
+        if (selected && !selected.payload.__ottMediaFilter)
+            frame.items.some(function (item, index) {
+                if (item.ref.itemId !== selected.ref.itemId) return false;
+                frame.selected = index;
+                return true;
+            });
+    }
+    function setItems(
+        frame: MediaOwnedFrame,
+        items: MediaLibraryItem[],
+        selected?: MediaLibraryItem
+    ) {
+        frame.catalog = items;
+        applyFilter(frame, selected);
     }
     function render() {
         ports.render(snapshot());
@@ -83,14 +119,15 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
         var token = cancel();
         if (token !== revision) return;
         if (reset) frames = [];
-        var frame: MediaLibraryFrame = {
+        var frame: MediaOwnedFrame = {
+            catalog: [],
             items: [],
             route: mediaLibraryCopy(route),
             selected: 0,
         };
         frames.push(frame);
         if (route.kind !== "catalog") {
-            frame.items = mediaLibraryCopy(ports.items(route));
+            setItems(frame, mediaLibraryCopy(ports.items(route)));
             if (token === revision) render();
             return;
         }
@@ -101,7 +138,7 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
             settled = true;
             loading = false;
             cleanup = null;
-            frame.items = ports.describe(records || [], frame.route);
+            setItems(frame, ports.describe(records || [], frame.route));
             if (typeof title === "string" && title) frame.route.title = title;
             if (token === revision) render();
         };
@@ -121,9 +158,13 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
             selected?: number
         ) {
             if (!done.active()) return;
-            frame.items = ports.describe(records || [], frame.route);
+            var items = ports.describe(records || [], frame.route);
+            setItems(
+                frame,
+                items,
+                typeof selected === "number" ? items[selected] : undefined
+            );
             if (typeof title === "string") frame.route.title = title;
-            if (typeof selected === "number") frame.selected = selected;
             render();
         };
         var abort = ports.load(frame.route, done);
@@ -144,15 +185,21 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
         cancel: cancel,
         capture: function () {
             var token = revision;
+            var filtered = filterRevision;
             var frame = frames[frames.length - 1];
             var selected = frame && frame.selected;
             return function () {
                 return (
                     token === revision &&
+                    filtered === filterRevision &&
                     frame === frames[frames.length - 1] &&
                     (!frame || selected === frame.selected)
                 );
             };
+        },
+        catalog: function () {
+            var frame = frames[frames.length - 1];
+            return frame ? mediaLibraryCopy(frame.catalog) : [];
         },
         close: function () {
             var pending = loading;
@@ -164,9 +211,17 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
             selectItem(index);
         },
         open: open,
+        refilter: function () {
+            if (resolving && cancel() !== revision) return;
+            filterRevision++;
+            frames.forEach(function (frame) {
+                applyFilter(frame);
+            });
+            render();
+        },
         replaceItems: function (items: MediaLibraryItem[]) {
             if (!frames.length) return;
-            frames[frames.length - 1].items = mediaLibraryCopy(items);
+            setItems(frames[frames.length - 1], mediaLibraryCopy(items));
             render();
         },
         resolve: function (
@@ -175,10 +230,12 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
         ) {
             var token = cancel();
             if (token !== revision) return;
+            resolving = true;
             var settled = false;
             var done: any = function (item: any) {
                 if (!done.isCurrent()) return;
                 settled = true;
+                resolving = false;
                 cleanup = null;
                 accept(item);
             };

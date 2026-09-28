@@ -66,3 +66,19 @@ getters to verify that scalar reads and highlighting do not traverse metadata;
 it also verifies selection-guard invalidation and detached item/view results.
 The source media suite and actual bundle smoke execute this contract. These are
 deterministic allocation/work checks, not elapsed-time measurements on a TV.
+
+Title filtering is owned by each media source runtime and lasts across navigation,
+pagination and reopening the list. The Filter row and blue remote key use the same
+TV/native editor and SWOP input path. An empty value restores the loaded page;
+matching ignores case, repeated whitespace and the Russian е/ё distinction.
+
+Frames retain one full catalog and a derived visible list. Snapshots expose only
+visible items; provider projections retain the full catalog so incremental updates
+cannot discard hidden rows. Refiltering revokes captured selection/editor actions
+without cancelling incremental page updates, and selected identities map into the
+visible list. The filter applies to playable items and VPortal multistream folders;
+all episodes in a selected series remain available to its playback queue, while
+category navigation and page/search controls remain reachable, including on pages
+with no matches. Quality variant menus are not filtered. VPortal's advertised
+server search is global, so a local title filter does not silently turn a category
+into global search or fetch every page.

@@ -238,6 +238,7 @@ export function createVPortalClient(
             ),
             title: title,
         };
+        if (item.type === "multistream") record.__ottMediaFilterable = true;
         sourceTarget(record);
         if (item.adult || (parent && parent.adult)) record.adult = 1;
         if (item.type === "stream") {

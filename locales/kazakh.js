@@ -355,6 +355,7 @@ var keyStrings = {
     Favorites: "Таңдаулылар",
     "File selection is not supported on this device":
         "Бұл құрылғыда файл таңдау қолдау көрсетілмейді",
+    Filter: "Сүзгі",
     Filters: "Сүзгілер",
     "First Run Setup": "Алғашқы іске қосу баптауы",
     "Font type": "Қаріп түрі",

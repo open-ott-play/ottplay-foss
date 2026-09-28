@@ -358,6 +358,7 @@ var keyStrings = {
     Favorites: "Favorite",
     "File selection is not supported on this device":
         "Selectarea fișierelor nu este acceptată pe acest dispozitiv",
+    Filter: "Filtru",
     Filters: "Filtre",
     "First Run Setup": "Configurare la prima pornire",
     "Font type": "Tip de font",

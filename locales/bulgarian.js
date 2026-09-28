@@ -355,6 +355,7 @@ var keyStrings = {
     Favorites: "Любими",
     "File selection is not supported on this device":
         "Изборът на файл не се поддържа на това устройство",
+    Filter: "Филтър",
     Filters: "Филтри",
     "First Run Setup": "Първоначална настройка",
     "Font type": "Шрифт",

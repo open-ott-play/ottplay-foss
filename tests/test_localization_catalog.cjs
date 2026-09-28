@@ -209,6 +209,7 @@ try {
         "Call PiP",
         "PiP exchange",
         "Player and device info",
+        "Filter",
         "Enter the command server IP or address.",
         "OttPlay FOSS %1 is available. Download and install now?",
     ])
@@ -218,7 +219,7 @@ try {
     });
     assert.deepEqual(result.errors, [], result.errors.join("\n"));
     assert.equal(result.localeCount, 28);
-    assert.equal(result.keyCount, 619);
+    assert.equal(result.keyCount, 620);
     console.log(
         `PASS localization: ${result.keyCount} canonical keys, ${result.sourceKeyCount} source-derived keys, ${result.localeCount} locale assets; missing/duplicate keys, placeholders, HTML, whitespace and selector coverage`
     );
