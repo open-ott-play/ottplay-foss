@@ -14,6 +14,74 @@ test("Scalar navigation reads and highlights never copy a catalog", () => {
     require("./helpers/media-read-cost.cjs").assertMediaReadContract(fixture());
 });
 
+test("Scoped internal snapshots detach metadata and preserve full public snapshots", () => {
+    const c = fixture();
+    require("./helpers/media-read-cost.cjs").trackMediaSnapshots(c);
+    let reads = 0;
+    let rendered;
+    const library = c.__ottMediaLibrary.create({
+        describe: (rows) => rows,
+        items: () => [],
+        load: (route, done) =>
+            done([
+                {
+                    payload: {
+                        get title() {
+                            reads++;
+                            return route.title;
+                        },
+                    },
+                    ref: { itemId: route.title, sourceId: "scope-fixture" },
+                    title: route.title,
+                },
+            ]),
+        render: (view) => {
+            rendered = view;
+        },
+    });
+    library.open({ kind: "catalog", target: "parent", title: "Parent" });
+    library.open({ kind: "catalog", target: "child", title: "Child" });
+    assert.equal(rendered.frames[0].items.length, 0);
+    assert.equal(rendered.frame.items[0].title, "Child");
+    reads = 0;
+    const navigation = library.snapshot("none");
+    assert.equal(reads, 0, "Navigation reads no ancestor or current payloads");
+    navigation.frame.route.title = "Poisoned route";
+    const current = library.snapshot("current");
+    assert.equal(reads, 1, "Current scope reads only the visible page");
+    assert.equal(current.frame.route.title, "Child");
+    current.frame.items[0].payload.title = "Poisoned current item";
+    reads = 0;
+    const all = library.snapshot();
+    assert.equal(reads, 2, "Public default still detaches every page");
+    assert.equal(all.frames[0].items[0].payload.title, "Parent");
+    assert.equal(all.frame.items[0].payload.title, "Child");
+});
+
+test("Filter and paging copy costs exclude ancestor payloads at catalog scale", () => {
+    const { mediaFilterCost } = require("./helpers/media-filter-cost.cjs");
+    for (const rows of [300, 1000]) {
+        const depth = 6;
+        const cost = mediaFilterCost({ depth, rows, samples: 1 });
+        assert(
+            cost.filterOpen.objects <= depth * 4,
+            "Opening the editor must copy only page metadata"
+        );
+        assert(
+            cost.show.objects <= rows * 19 + depth * 4,
+            "Rendering must detach current UI and provider projections only"
+        );
+        assert(
+            cost.filterApplyAndClear.objects <= rows * 30 + depth * 40,
+            "Refiltering must not clone retained parent pages"
+        );
+        assert(
+            cost.nextAndBack.objects <= rows * 50 + depth * 40,
+            "Paging cost must not include prior pages' payloads"
+        );
+    }
+});
+
 test("Facade highlight and screen release read revision without detached snapshots", () => {
     const c = fixture();
     const counts = require("./helpers/media-read-cost.cjs").trackMediaSnapshots(
@@ -1134,3 +1202,4 @@ test("Saved episode entries remain filterable in history and favorites", () => {
 });
 
 console.log(`PASS MediaLibrary/MediaJournal ${groups} scenario groups`);
+require("./test_media_filter_ownership.cjs");

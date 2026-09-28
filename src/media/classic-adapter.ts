@@ -254,7 +254,7 @@ function classicMediaRuntime(): any {
             }
             var records = w.mediaRecords;
             var title = w.mediaName;
-            project(library.snapshot(), false);
+            project(library.snapshot("none"), false);
             done(copy(records || []), title);
         };
         complete.isCurrent = function () {
@@ -295,7 +295,10 @@ function classicMediaRuntime(): any {
     library = w.__ottMediaLibrary.create({
         describe: function (records: any[], route: MediaRoute) {
             var items = describe(records, route);
-            if (library.snapshot().frames.length === 1 && w.sFavorites !== -1) {
+            if (
+                library.snapshot("none").frames.length === 1 &&
+                w.sFavorites !== -1
+            ) {
                 if (limit())
                     items.push({
                         payload: {
@@ -350,7 +353,7 @@ function classicMediaRuntime(): any {
     });
     function sequenceFor(item: MediaLibraryItem) {
         if (!item.payload.__ottMediaSequence) return null;
-        var frame = library.snapshot().frame;
+        var frame = library.snapshot("current").frame;
         if (!frame || frame.route.kind !== "catalog") return null;
         var items = frame.items.filter(function (row: MediaLibraryItem) {
             return (
@@ -549,7 +552,8 @@ function classicMediaRuntime(): any {
         },
         favorite: function (payload: any) {
             if (payload.__ottMediaFilter) return;
-            var frame = library.snapshot().frame;
+            var admitted = api.capture();
+            var frame = library.snapshot("none").frame;
             var item = describe(
                 [payload],
                 frame ? frame.route : { kind: "catalog", target: "", title: "" }
@@ -560,25 +564,32 @@ function classicMediaRuntime(): any {
                 !journal.change(
                     removing ? "unfavorite" : "favorite",
                     entry(item)
-                )
+                ) ||
+                !admitted()
             )
                 return;
             collections();
-            if (removing) library.replaceItems(collectionItems("favorites"));
-            else if (w.showShift)
+            if (!admitted()) return;
+            if (removing) {
+                var items = collectionItems("favorites");
+                if (admitted()) library.replaceItems(items);
+            } else if (w.showShift)
                 w.showShift(item.title + w._(" added to favorites"));
         },
         filter: function () {
-            var frame = library.snapshot().frame;
+            var frame = library.snapshot("none").frame;
             if (!frame || frame.route.kind === "variants") return;
             var admitted = library.capture();
             w.editCaption = w._("Filter");
             w.editvar = filterText;
             w.setEdit = function () {
                 if (!current() || !admitted()) return;
-                filterText = String(w.editvar || "").trim();
-                api.cancelAuto();
-                library.refilter();
+                var value = String(w.editvar || "").trim();
+                library.refilter(function () {
+                    automaticGeneration++;
+                    automaticRequest = null;
+                    filterText = value;
+                });
             };
             if (typeof w.showEditKey === "function") w.showEditKey();
         },
@@ -587,7 +598,7 @@ function classicMediaRuntime(): any {
                 library.highlight(index);
         },
         open: function (target: any, title?: string) {
-            var view = library.snapshot();
+            var view = library.snapshot("none");
             if (target === null && view.frame) {
                 library.show();
                 return;
@@ -703,7 +714,7 @@ function classicMediaRuntime(): any {
             };
         },
         restoreProjection: function () {
-            project(library.snapshot(), false);
+            project(library.snapshot("none"), false);
         },
         select: function (index: number) {
             var item = library.select(index);
