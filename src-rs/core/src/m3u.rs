@@ -35,6 +35,17 @@ pub fn match_channels(
     time_shift_by_epg: &mut HashMap<String, i64>,
 ) -> anyhow::Result<Vec<MatchResult>> {
     let index = xmltv::build_match_index(xmltv_ch)?;
+    match_channels_with_index(channels, xmltv_ch, &index, epg_to_xmltv, time_shift_by_epg)
+}
+
+/// Reuse the index for the same immutable XMLTV channel snapshot.
+pub fn match_channels_with_index(
+    channels: Vec<M3uChannel>,
+    xmltv_ch: &Channels,
+    index: &xmltv::MatchIndex,
+    epg_to_xmltv: &mut HashMap<String, String>,
+    time_shift_by_epg: &mut HashMap<String, i64>,
+) -> anyhow::Result<Vec<MatchResult>> {
     channels
         .into_iter()
         .map(|ch| {
@@ -48,7 +59,7 @@ pub fn match_channels(
             }
             let time_shift = xmltv::extract_time_shift(&ch.name)?;
             let base_name = xmltv::strip_time_shift(&ch.name)?;
-            Ok(match xmltv::match_in_index(&base_name, &index)? {
+            Ok(match xmltv::match_in_index(&base_name, index)? {
                 Some((xmltv_id, score)) => {
                     let epg_hash = compute_epg_hash(&format!("{xmltv_id}|{time_shift}"));
                     epg_to_xmltv.insert(epg_hash.clone(), xmltv_id.clone());
@@ -87,8 +98,20 @@ pub struct LogoResult {
 }
 
 /// POST /m3u/match-logos
-pub fn match_logos(channels: Vec<LogoChannel>, xmltv_ch: &Channels) -> anyhow::Result<Vec<LogoResult>> {
+pub fn match_logos(
+    channels: Vec<LogoChannel>,
+    xmltv_ch: &Channels,
+) -> anyhow::Result<Vec<LogoResult>> {
     let index = xmltv::build_match_index(xmltv_ch)?;
+    match_logos_with_index(channels, xmltv_ch, &index)
+}
+
+/// Reuse the same snapshot index as channel matching and EPG lookup.
+pub fn match_logos_with_index(
+    channels: Vec<LogoChannel>,
+    xmltv_ch: &Channels,
+    index: &xmltv::MatchIndex,
+) -> anyhow::Result<Vec<LogoResult>> {
     channels
         .into_iter()
         .map(|ch| {
@@ -96,7 +119,7 @@ pub fn match_logos(channels: Vec<LogoChannel>, xmltv_ch: &Channels) -> anyhow::R
                 format!("/logo/{}.svg?ch={}", ch.id, urlencoding::encode(&ch.name))
             } else {
                 let base_name = xmltv::strip_time_shift(&ch.name)?;
-                match xmltv::match_in_index(&base_name, &index)? {
+                match xmltv::match_in_index(&base_name, index)? {
                     Some((xmltv_id, _score)) => xmltv_ch
                         .get(&xmltv_id)
                         .and_then(|c| {
@@ -202,10 +225,20 @@ pub fn match_channels_text(
     epg_to_xmltv: &mut HashMap<String, String>,
     time_shift_by_epg: &mut HashMap<String, i64>,
 ) -> anyhow::Result<String> {
+    let index = xmltv::build_match_index(xmltv_ch)?;
+    match_channels_text_with_index(body, xmltv_ch, &index, epg_to_xmltv, time_shift_by_epg)
+}
+
+pub fn match_channels_text_with_index(
+    body: &str,
+    xmltv_ch: &Channels,
+    index: &xmltv::MatchIndex,
+    epg_to_xmltv: &mut HashMap<String, String>,
+    time_shift_by_epg: &mut HashMap<String, i64>,
+) -> anyhow::Result<String> {
     let parts: Vec<&str> = body.split("\n\t\n").collect();
     let id_section = parts.get(2).copied().unwrap_or("");
     let mut ch_mappings: Vec<String> = Vec::new();
-    let index = xmltv::build_match_index(xmltv_ch)?;
 
     for line in id_section.lines() {
         let Some((ch_id, name_hash, ch_name)) = parse_match_line(line) else {
@@ -215,7 +248,7 @@ pub fn match_channels_text(
         if !xmltv_ch.is_empty() && !ch_name.is_empty() {
             let time_shift = xmltv::extract_time_shift(&ch_name)?;
             let base_name = xmltv::strip_time_shift(&ch_name)?;
-            if let Some((xmltv_id, _score)) = xmltv::match_in_index(&base_name, &index)? {
+            if let Some((xmltv_id, _score)) = xmltv::match_in_index(&base_name, index)? {
                 let epg_hash = compute_epg_hash(&format!("{xmltv_id}|{time_shift}"));
                 epg_to_xmltv.insert(epg_hash.clone(), xmltv_id);
                 if time_shift != 0 {
@@ -240,10 +273,18 @@ pub fn match_channels_text(
 /// Legacy FOSS text body for POST /m3u/match-logos.
 /// Response: `{}\n\t\n{ch_id~logo_url}`
 pub fn match_logos_text(body: &str, xmltv_ch: &Channels) -> anyhow::Result<String> {
+    let index = xmltv::build_match_index(xmltv_ch)?;
+    match_logos_text_with_index(body, xmltv_ch, &index)
+}
+
+pub fn match_logos_text_with_index(
+    body: &str,
+    xmltv_ch: &Channels,
+    index: &xmltv::MatchIndex,
+) -> anyhow::Result<String> {
     let parts: Vec<&str> = body.split("\n\t\n").collect();
     let id_section = parts.get(2).copied().unwrap_or("");
     let mut log_mappings: Vec<String> = Vec::new();
-    let index = xmltv::build_match_index(xmltv_ch)?;
 
     for line in id_section.lines() {
         let Some((ch_id, _name_hash, ch_name)) = parse_match_line(line) else {
@@ -254,7 +295,7 @@ pub fn match_logos_text(body: &str, xmltv_ch: &Channels) -> anyhow::Result<Strin
             format!("/logo/{}.svg?ch={}", ch_id, urlencoding::encode(&ch_name))
         } else {
             let base_name = xmltv::strip_time_shift(&ch_name)?;
-            match xmltv::match_in_index(&base_name, &index)? {
+            match xmltv::match_in_index(&base_name, index)? {
                 Some((xmltv_id, _)) => xmltv_ch
                     .get(&xmltv_id)
                     .and_then(|c| {
@@ -274,4 +315,94 @@ pub fn match_logos_text(body: &str, xmltv_ch: &Channels) -> anyhow::Result<Strin
     }
 
     Ok(format!("{{}}\n\t\n{}", log_mappings.join("\n")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn channels() -> Channels {
+        HashMap::from([(
+            "news".into(),
+            xmltv::Channel {
+                id: "news".into(),
+                name: "News".into(),
+                icon: "https://fixture.test/news.png".into(),
+                names: vec!["News".into()],
+            },
+        )])
+    }
+
+    #[test]
+    fn reused_index_preserves_text_protocol_hashes_shifts_and_logo_fallbacks() -> anyhow::Result<()>
+    {
+        let channels = channels();
+        let index = xmltv::build_match_index(&channels)?;
+        let body = "{}\n\t\n\n\t\n1-0-0-17~News%20%2B2\n2-0-0-23~Unrelated\n3-0-0-0~";
+        let mut expected_map = HashMap::new();
+        let mut expected_shifts = HashMap::new();
+        let expected =
+            match_channels_text(body, &channels, &mut expected_map, &mut expected_shifts)?;
+        let expected_logos = match_logos_text(body, &channels)?;
+        for _ in 0..3 {
+            let mut map = HashMap::new();
+            let mut shifts = HashMap::new();
+            assert_eq!(
+                match_channels_text_with_index(body, &channels, &index, &mut map, &mut shifts)?,
+                expected
+            );
+            assert_eq!(map, expected_map);
+            assert_eq!(shifts, expected_shifts);
+            assert_eq!(
+                match_logos_text_with_index(body, &channels, &index)?,
+                expected_logos
+            );
+        }
+        let shifted_hash = compute_epg_hash("news|2");
+        assert!(expected.contains(&format!("1~local~{shifted_hash}")));
+        assert_eq!(expected_shifts[&shifted_hash], 2);
+        assert!(expected.contains("2~local~23\n3~local~3"));
+        assert!(expected_logos.contains("1~https://fixture.test/news.png"));
+        assert!(expected_logos.contains("2~/logo/2.svg?ch=Unrelated"));
+        Ok(())
+    }
+
+    #[test]
+    fn reused_index_preserves_json_protocol() -> anyhow::Result<()> {
+        let channels = channels();
+        let index = xmltv::build_match_index(&channels)?;
+        let input = r#"[{"id":"1","name":"News +2"},{"id":"2","name":"Unrelated"}]"#;
+        let mut expected_map = HashMap::new();
+        let mut expected_shifts = HashMap::new();
+        let expected = match_channels(
+            serde_json::from_str(input)?,
+            &channels,
+            &mut expected_map,
+            &mut expected_shifts,
+        )?;
+        let mut map = HashMap::new();
+        let mut shifts = HashMap::new();
+        let actual = match_channels_with_index(
+            serde_json::from_str(input)?,
+            &channels,
+            &index,
+            &mut map,
+            &mut shifts,
+        )?;
+        assert_eq!(
+            serde_json::to_value(actual)?,
+            serde_json::to_value(expected)?
+        );
+        assert_eq!(map, expected_map);
+        assert_eq!(shifts, expected_shifts);
+        assert_eq!(
+            serde_json::to_value(match_logos_with_index(
+                serde_json::from_str(input)?,
+                &channels,
+                &index
+            )?)?,
+            serde_json::to_value(match_logos(serde_json::from_str(input)?, &channels)?)?,
+        );
+        Ok(())
+    }
 }

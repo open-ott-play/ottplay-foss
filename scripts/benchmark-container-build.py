@@ -249,6 +249,39 @@ def docker_daemon_host():
     return host
 
 
+def epg_image_check(image, output):
+    report = output / "epg-performance.json"
+    diagnostic = output / "epg-performance.log"
+    report.unlink(missing_ok=True)
+    # subprocess.run kills a timed-out child immediately. Allow the checker to
+    # unwind its SIGTERM handler and remove its Docker container before killing it.
+    process = subprocess.Popen(
+        [sys.executable, str(ROOT / "scripts/check-epg-performance.py"),
+         "--image", image, "--output", str(report)],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+    )
+    try:
+        try:
+            stdout, stderr = process.communicate(timeout=180)
+        except subprocess.TimeoutExpired as error:
+            raise BenchmarkError("Exact OCI EPG check exceeded its overall time budget") from error
+        if process.returncode:
+            diagnostic.write_text(safe_diagnostic(stdout + "\n" + stderr))
+            raise BenchmarkError("Exact OCI EPG check failed; see " + diagnostic.name)
+        evidence = json.loads(report.read_text())
+        require(evidence.get("passed") is True, "Exact OCI runtime failed EPG performance checks")
+        return evidence
+    finally:
+        if process.poll() is None:
+            process.terminate()
+            try:
+                stdout, stderr = process.communicate(timeout=40)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                stdout, stderr = process.communicate(timeout=5)
+            diagnostic.write_text(safe_diagnostic(stdout + "\n" + stderr))
+
+
 def smoke_archive(archive, platform, inspected):
     name = "ottplay-benchmark-" + uuid.uuid4().hex
     image = "ottplay-container-benchmark:" + uuid.uuid4().hex
@@ -327,6 +360,7 @@ def smoke_archive(archive, platform, inspected):
                     digest.update(block)
             require(digest.hexdigest() == expected, "Served frontend differs from OCI bytes: " + path)
             served[path] = digest.hexdigest()
+        epg = epg_image_check(image, archive.parent)
         return {
             "healthStatus": 200,
             "uid": 65532,
@@ -334,6 +368,7 @@ def smoke_archive(archive, platform, inspected):
             "configDigest": config_id,
             "port": port,
             "servedSha256": served,
+            "epgPerformance": epg,
         }
     finally:
         cleanup(["docker", "rm", "--force", name])

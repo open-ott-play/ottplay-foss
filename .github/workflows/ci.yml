@@ -182,6 +182,18 @@ jobs:
         run: python3 tests/test_container_workspace.py
       - name: Test core and server without desktop system dependencies
         run: cargo test --locked -p ottplay-core -p ottplay-server
+      - name: Enforce release server EPG performance budgets
+        run: |
+          cargo build --locked --release -p ottplay-server
+          python3 scripts/check-epg-performance.py --server target/release/ottplay-server --output reports/epg/performance.json
+      - name: Preserve EPG performance evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: epg-performance
+          path: reports/epg/performance.json
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Verify published GLib source and security backport
         run: node scripts/check-glib-backport.cjs
       - name: Verify native drag pasteboard dependency guards

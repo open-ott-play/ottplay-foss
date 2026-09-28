@@ -31,3 +31,7 @@ hyper-util = { version = "0.1", features = ["server", "tokio"] }
 tower = "0.5"
 md-5 = "0.10"
 regex = "1"
+
+# The Alpine image uses musl; share one efficient allocator with QuickJS.
+[target.'cfg(all(target_os = "linux", target_env = "musl"))'.dependencies]
+mimalloc = { version = "=0.1.52", default-features = false }

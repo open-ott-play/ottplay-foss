@@ -20,6 +20,10 @@ serde_json = "1"
 urlencoding = "2"
 rquickjs = { version = "=0.14.0", features = ["parallel"] }
 
+# QuickJS must use the binary's Rust allocator on musl instead of libc malloc.
+[target.'cfg(all(target_os = "linux", target_env = "musl"))'.dependencies]
+rquickjs = { version = "=0.14.0", features = ["rust-alloc"] }
+
 [build-dependencies]
 sha2 = "0.10"
 serde_json = "1"
