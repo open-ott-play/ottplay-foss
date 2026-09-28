@@ -748,6 +748,13 @@ export function installTauriFsKeyCapture(): void {
                 ) {
                     return;
                 }
+                // The native editor owns Escape on its remote-input button,
+                // just as it does while its text field has focus.
+                if (t && t.id === "editRemoteInput") {
+                    var port = (window as any).__ottClassicScreenPort;
+                    var editor = port && port.owner("editor");
+                    if (editor && editor.foreground()) return;
+                }
             } catch (_t) {}
             var key = ev.key || "";
             var code = ev.code || "";

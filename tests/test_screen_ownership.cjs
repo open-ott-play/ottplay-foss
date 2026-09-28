@@ -543,6 +543,41 @@ for (const platform of ["__TAURI__", "Capacitor"]) {
         }
     );
 }
+test("Tauri fullscreen capture lets native remote-button Escape discard the editor", ({
+    w,
+}) => {
+    configureSwopEditor(w, "native");
+    const fullscreenCalls = [],
+        saves = [];
+    w.__TAURI__ = {};
+    w.__ottTauriNativeFs = true;
+    w.stbSetTauriNativeFullscreen = (value) => fullscreenCalls.push(value);
+    w.eval(functions("src/core/index.ts", ["installTauriFsKeyCapture"]));
+    w.installTauriFsKeyCapture();
+    w.setEdit = () => saves.push(w.editvar);
+    w.showEditKey();
+    const owner = w.__ottClassicScreenPort.owner("editor");
+    const button = w.document.getElementById("editRemoteInput");
+    const escape = () =>
+        new w.KeyboardEvent("keydown", {
+            bubbles: true,
+            cancelable: true,
+            code: "Escape",
+            key: "Escape",
+            keyCode: 27,
+        });
+    button.focus();
+    button.dispatchEvent(escape());
+    assert.equal(owner.active(), false);
+    assert.deepEqual(saves, []);
+    assert.deepEqual(fullscreenCalls, []);
+    w.document.body.dispatchEvent(escape());
+    assert.deepEqual(
+        fullscreenCalls,
+        [false],
+        "Escape outside the editor still exits fullscreen"
+    );
+});
 for (const mode of ["native", "TV"]) {
     test(
         "SWOP " + mode + " resumes the original editor and Enter saves once",
