@@ -334,6 +334,16 @@ var keyStrings = {
         "Εισαγάγετε το URL του διακομιστή Xtream (π.χ. https://your-server:8080)",
     EPG: "Οδηγός TV",
     "EPG and archive. Channel: ": "EPG και αρχείο. Κανάλι: ",
+    "EPG ready": "EPG ready",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
     "ERROR!": "Σφάλμα!",
     "Error Code!": "Μη έγκυρος κωδικός!",
     Exit: "Έξοδος",
@@ -487,6 +497,8 @@ var keyStrings = {
     Ok: "Εντάξει",
     Open: "Άνοιγμα",
     "Open in PiP": "Άνοιγμα σε PiP",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Ρυθμίσεις OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -522,6 +534,7 @@ var keyStrings = {
         "Μετάβαση 10 δευτερόλεπτα πίσω μετά από παύση",
     PROST: "PROST",
     "PROST settings": "Ρυθμίσεις PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Προηγούμενο",
     "Preview in channel list": "Προεπισκόπηση στη λίστα καναλιών",
     Previous: "Προηγούμενο",
@@ -547,6 +560,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Τηλεχειριστήριο (χωρίς έγχρωμα πλήκτρα)",
     "Remote (number buttons N/A)": "Τηλεχειριστήριο (χωρίς αριθμητικά πλήκτρα)",
     "Remote control": "Τηλεχειρισμός",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Η απομακρυσμένη συνεδρία έληξε",
     "Remote text entry denied":
         "Δεν επιτρέπεται η απομακρυσμένη εισαγωγή κειμένου",
@@ -585,9 +602,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Αποθήκευση ρυθμίσεων και φόρτωση λίστας καναλιών",
     "Save settings to storage": "Αποθήκευση ρυθμίσεων στον χώρο αποθήκευσης",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Σενάριο",
     Search: "Αναζήτηση",
     "Search programme": "Αναζήτηση εκπομπής",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Επιλέξτε τύπο ροής:<br>%1",
     "Select category to add channel":
         "Επιλέξτε κατηγορία για προσθήκη καναλιού",
@@ -671,6 +696,7 @@ var keyStrings = {
     system: "συστήματος",
     Tabox: "Tabox",
     "Tabox settings": "Ρυθμίσεις Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.":
         "Το αναγνωριστικό συσκευής στη διεύθυνση δεν είναι έγκυρο.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
@@ -716,6 +742,8 @@ var keyStrings = {
     Username: "Όνομα χρήστη",
     "Username or password is missing.":
         "Λείπει το όνομα χρήστη ή ο κωδικός πρόσβασης.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Ρυθμίσεις VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

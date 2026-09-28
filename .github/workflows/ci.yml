@@ -108,6 +108,9 @@ jobs:
       - name: Install browsers for device and native UI checks
         run: npx playwright install --with-deps chromium webkit
 
+      - name: Test hosted EPG worker and persistent cache
+        run: npm run test:hosted:browser
+
       - name: Test device boot and remote navigation in Chromium
         run: npm run test:devices:browser
 

@@ -331,6 +331,16 @@ var keyStrings = {
         "URL van Xtream-server invoeren (bijv. https://your-server:8080)",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG en archief. Zender: ",
+    "EPG ready": "EPG ready",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
     "ERROR!": "Fout!",
     "Error Code!": "Ongeldige code!",
     Exit: "Afsluiten",
@@ -482,6 +492,8 @@ var keyStrings = {
     Ok: "OK",
     Open: "Openen",
     "Open in PiP": "In PiP openen",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Instellingen voor OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -516,6 +528,7 @@ var keyStrings = {
         "Na pauze 10 seconden terugspringen",
     PROST: "PROST",
     "PROST settings": "Instellingen voor PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Vorige",
     "Preview in channel list": "Voorbeeld in zenderlijst",
     Previous: "Vorige",
@@ -541,6 +554,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Afstandsbediening zonder kleurknoppen",
     "Remote (number buttons N/A)": "Afstandsbediening zonder cijferknoppen",
     "Remote control": "Afstandsbediening",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Externe sessie verlopen",
     "Remote text entry denied": "Tekstinvoer op afstand geweigerd",
     "Remote text entry error": "Fout bij tekstinvoer op afstand",
@@ -578,9 +595,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Instellingen opslaan en zenderlijst laden",
     "Save settings to storage": "Instellingen in opslag bewaren",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Scenario",
     Search: "Zoeken",
     "Search programme": "Programma zoeken",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Kies een streamtype:<br>%1",
     "Select category to add channel":
         "Categorie kiezen om zender toe te voegen",
@@ -663,6 +688,7 @@ var keyStrings = {
     system: "systeem",
     Tabox: "Tabox",
     "Tabox settings": "Instellingen voor Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.":
         "De apparaat-ID in het adres is ongeldig.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
@@ -707,6 +733,8 @@ var keyStrings = {
     Username: "Gebruikersnaam",
     "Username or password is missing.":
         "Gebruikersnaam of wachtwoord ontbreekt.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Instellingen voor VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

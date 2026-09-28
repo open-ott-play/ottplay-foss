@@ -329,6 +329,16 @@ var keyStrings = {
         "Adja meg az Xtream-kiszolgáló URL-címét (pl. https://your-server:8080)",
     EPG: "Műsorújság",
     "EPG and archive. Channel: ": "Műsorújság és archívum. Csatorna: ",
+    "EPG ready": "EPG ready",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
     "ERROR!": "Hiba!",
     "Error Code!": "Érvénytelen kód!",
     Exit: "Kilépés",
@@ -481,6 +491,8 @@ var keyStrings = {
     Ok: "OK",
     Open: "Megnyitás",
     "Open in PiP": "Megnyitás PiP-ben",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE beállításai",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -515,6 +527,7 @@ var keyStrings = {
         "10 másodperc visszaugrás szünet után",
     PROST: "PROST",
     "PROST settings": "PROST beállításai",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Előző",
     "Preview in channel list": "Előnézet a csatornalistában",
     Previous: "Előző",
@@ -540,6 +553,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Távirányító (színes gombok nélkül)",
     "Remote (number buttons N/A)": "Távirányító (számgombok nélkül)",
     "Remote control": "Távirányítás",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "A távoli munkamenet lejárt",
     "Remote text entry denied": "Távoli szövegbevitel megtagadva",
     "Remote text entry error": "Távoli szövegbeviteli hiba",
@@ -577,9 +594,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Beállítások mentése és csatornalista betöltése",
     "Save settings to storage": "Beállítások mentése a tárhelyre",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Forgatókönyv",
     Search: "Keresés",
     "Search programme": "Műsor keresése",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Válasszon adatfolyamtípust:<br>%1",
     "Select category to add channel":
         "Válasszon kategóriát a csatorna hozzáadásához",
@@ -664,6 +689,7 @@ var keyStrings = {
     system: "rendszer",
     Tabox: "Tabox",
     "Tabox settings": "Tabox beállításai",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.":
         "A címben szereplő eszközazonosító érvénytelen.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
@@ -709,6 +735,8 @@ var keyStrings = {
     Username: "Felhasználónév",
     "Username or password is missing.":
         "Hiányzik a felhasználónév vagy a jelszó.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM beállításai",
     "Vidok.TV": "Vidok.TV",

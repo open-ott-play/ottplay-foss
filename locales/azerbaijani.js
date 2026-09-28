@@ -327,6 +327,16 @@ var keyStrings = {
         "Xtream serverinin URL-ini daxil edin (məs. https://your-server:8080)",
     EPG: "Proqram cədvəli",
     "EPG and archive. Channel: ": "Proqram cədvəli və arxiv. Kanal: ",
+    "EPG ready": "EPG ready",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
     "ERROR!": "Xəta!",
     "Error Code!": "Yanlış kod!",
     Exit: "Çıxış",
@@ -477,6 +487,8 @@ var keyStrings = {
     Ok: "OK",
     Open: "Aç",
     "Open in PiP": "PiP-də aç",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE ayarları",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -511,6 +523,7 @@ var keyStrings = {
         "Fasilədən sonra 10 saniyə geri qayıt",
     PROST: "PROST",
     "PROST settings": "PROST ayarları",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Əvvəlki",
     "Preview in channel list": "Kanal siyahısında önbaxış",
     Previous: "Əvvəlki kanal",
@@ -535,6 +548,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Rəngli düymələri olmayan pult",
     "Remote (number buttons N/A)": "Rəqəm düymələri olmayan pult",
     "Remote control": "Uzaqdan idarəetmə",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Uzaq sessiyanın müddəti bitdi",
     "Remote text entry denied": "Uzaqdan mətn daxil etmə rədd edildi",
     "Remote text entry error": "Uzaqdan mətn daxil etmə xətası",
@@ -571,9 +588,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Ayarları saxla və kanal siyahısını yüklə",
     "Save settings to storage": "Ayarları yaddaşa saxla",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Ssenari",
     Search: "Axtarış",
     "Search programme": "Veriliş axtar",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Yayım növünü seçin:<br>%1",
     "Select category to add channel":
         "Kanalı əlavə etmək üçün kateqoriya seçin",
@@ -655,6 +680,7 @@ var keyStrings = {
     system: "sistem",
     Tabox: "Tabox",
     "Tabox settings": "Tabox ayarları",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.":
         "Ünvandakı cihaz ID-si etibarsızdır.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
@@ -698,6 +724,8 @@ var keyStrings = {
         "İdarəetməni seçmək üçün SOL/SAĞ, aktivləşdirmək üçün OK, sürüşdürmək üçün YUXARI/AŞAĞI istifadə edin.",
     Username: "İstifadəçi adı",
     "Username or password is missing.": "İstifadəçi adı və ya şifrə yoxdur.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM ayarları",
     "Vidok.TV": "Vidok.TV",

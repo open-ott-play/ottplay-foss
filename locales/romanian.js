@@ -331,6 +331,16 @@ var keyStrings = {
         "Introduceți URL-ul serverului Xtream (de ex. https://your-server:8080)",
     EPG: "Ghid TV",
     "EPG and archive. Channel: ": "EPG și arhivă. Canal: ",
+    "EPG ready": "EPG ready",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
     "ERROR!": "Eroare!",
     "Error Code!": "Cod nevalid!",
     Exit: "Ieșire",
@@ -485,6 +495,8 @@ var keyStrings = {
     Ok: "OK",
     Open: "Deschide",
     "Open in PiP": "Deschide în PiP",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Setări OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -518,6 +530,7 @@ var keyStrings = {
     "Position shift -10 seconds after pause": "Revino cu 10 secunde după pauză",
     PROST: "PROST",
     "PROST settings": "Setări PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Anterior",
     "Preview in channel list": "Previzualizare în lista de canale",
     Previous: "Anterior",
@@ -543,6 +556,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Telecomandă (fără butoane colorate)",
     "Remote (number buttons N/A)": "Telecomandă (fără butoane numerice)",
     "Remote control": "Control la distanță",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Sesiunea de la distanță a expirat",
     "Remote text entry denied":
         "Introducerea textului de la distanță a fost refuzată",
@@ -581,9 +598,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Salvează setările și încarcă lista de canale",
     "Save settings to storage": "Salvează setările în stocare",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Scenariu",
     Search: "Căutare",
     "Search programme": "Caută emisiunea",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Alegeți tipul de flux:<br>%1",
     "Select category to add channel":
         "Selectați categoria pentru a adăuga canalul",
@@ -666,6 +691,7 @@ var keyStrings = {
     system: "sistem",
     Tabox: "Tabox",
     "Tabox settings": "Setări Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.":
         "ID-ul dispozitivului din adresă este nevalid.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
@@ -711,6 +737,8 @@ var keyStrings = {
     Username: "Nume de utilizator",
     "Username or password is missing.":
         "Lipsește numele de utilizator sau parola.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Setări VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

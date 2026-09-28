@@ -329,6 +329,16 @@ var keyStrings = {
         "Wprowadź adres serwera Xtream (np. https://your-server:8080)",
     EPG: "Program TV",
     "EPG and archive. Channel: ": "Program i archiwum. Kanał: ",
+    "EPG ready": "EPG ready",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
     "ERROR!": "Błąd!",
     "Error Code!": "Nieprawidłowy kod!",
     Exit: "Wyjście",
@@ -478,6 +488,8 @@ var keyStrings = {
     Ok: "OK",
     Open: "Otwórz",
     "Open in PiP": "Otwórz w PiP",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Ustawienia OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -511,6 +523,7 @@ var keyStrings = {
     "Position shift -10 seconds after pause": "Cofnij o 10 sekund po pauzie",
     PROST: "PROST",
     "PROST settings": "Ustawienia PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Poprzednia",
     "Preview in channel list": "Podgląd na liście kanałów",
     Previous: "Poprzedni kanał",
@@ -535,6 +548,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Pilot bez kolorowych przycisków",
     "Remote (number buttons N/A)": "Pilot bez przycisków numerycznych",
     "Remote control": "Zdalne sterowanie",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Sesja zdalna wygasła",
     "Remote text entry denied": "Odmowa zdalnego wpisywania tekstu",
     "Remote text entry error": "Błąd zdalnego wpisywania tekstu",
@@ -572,9 +589,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Zapisz ustawienia i wczytaj listę kanałów",
     "Save settings to storage": "Zapisz ustawienia w pamięci",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Scenariusz",
     Search: "Szukaj",
     "Search programme": "Szukaj programu",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Wybierz typ strumienia:<br>%1",
     "Select category to add channel": "Wybierz kategorię, aby dodać kanał",
     "Select color": "Wybierz kolor",
@@ -655,6 +680,7 @@ var keyStrings = {
     system: "systemowy",
     Tabox: "Tabox",
     "Tabox settings": "Ustawienia Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.":
         "Identyfikator urządzenia w adresie jest nieprawidłowy.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
@@ -699,6 +725,8 @@ var keyStrings = {
         "LEWO/PRAWO — wybór elementu, OK — aktywacja, GÓRA/DÓŁ — przewijanie.",
     Username: "Nazwa użytkownika",
     "Username or password is missing.": "Brakuje nazwy użytkownika lub hasła.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Ustawienia VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

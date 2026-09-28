@@ -329,6 +329,16 @@ var keyStrings = {
         "Ievadiet Xtream servera URL (piem., https://your-server:8080)",
     EPG: "Programma",
     "EPG and archive. Channel: ": "EPG un arhīvs. Kanāls: ",
+    "EPG ready": "EPG ready",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
     "ERROR!": "Kļūda!",
     "Error Code!": "Nederīgs kods!",
     Exit: "Iziet",
@@ -481,6 +491,8 @@ var keyStrings = {
     Ok: "Labi",
     Open: "Atvērt",
     "Open in PiP": "Atvērt PiP",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE iestatījumi",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -515,6 +527,7 @@ var keyStrings = {
         "Pēc pauzes pāriet 10 sekundes atpakaļ",
     PROST: "PROST",
     "PROST settings": "PROST iestatījumi",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Iepriekšējais",
     "Preview in channel list": "Priekšskatījums kanālu sarakstā",
     Previous: "Iepriekšējais",
@@ -540,6 +553,10 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Pults (bez krāsu pogām)",
     "Remote (number buttons N/A)": "Pults (bez ciparu pogām)",
     "Remote control": "Tālvadība",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Attālinātās sesijas derīgums ir beidzies",
     "Remote text entry denied": "Attālinātā teksta ievade liegta",
     "Remote text entry error": "Attālinātās teksta ievades kļūda",
@@ -577,9 +594,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Saglabāt iestatījumus un ielādēt kanālu sarakstu",
     "Save settings to storage": "Saglabāt iestatījumus krātuvē",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Scenārijs",
     Search: "Meklēt",
     "Search programme": "Meklēt raidījumu",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Izvēlieties straumes veidu:<br>%1",
     "Select category to add channel":
         "Izvēlieties kategoriju, lai pievienotu kanālu",
@@ -660,6 +685,7 @@ var keyStrings = {
     system: "sistēmas",
     Tabox: "Tabox",
     "Tabox settings": "Tabox iestatījumi",
+    "Text is too long for remote input.": "Text is too long for remote input.",
     "The device ID in the address is invalid.": "Ierīces ID adresē nav derīgs.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Šis HTTPS atskaņotājs nevar savienoties ar HTTP serveri. Izmantojiet HTTPS serveri vai atveriet atskaņotāju ar HTTP.",
@@ -702,6 +728,8 @@ var keyStrings = {
         "Ar PA KREISI/PA LABI izvēlieties vadīklu, ar OK aktivizējiet to, ar UZ AUGŠU/UZ LEJU ritiniet.",
     Username: "Lietotājvārds",
     "Username or password is missing.": "Trūkst lietotājvārda vai paroles.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM iestatījumi",
     "Vidok.TV": "Vidok.TV",

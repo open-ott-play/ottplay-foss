@@ -1016,4 +1016,119 @@ test("programmatic and raw portal replacement rotate media identity and reject r
     }
 });
 
+test("hosted M3U owns XMLTV without companion requests and disposes stale guide sessions", () => {
+    const f = fixture();
+    let rows,
+        notify,
+        stopped = 0;
+    f.host.__ottHostedEpg = {
+        enabled: () => true,
+        open(entries, callback) {
+            rows = entries;
+            notify = callback;
+            return {
+                close() {
+                    stopped++;
+                },
+                guide(id, callback) {
+                    callback([
+                        {
+                            descr: "",
+                            name: "Hosted",
+                            time: 10000,
+                            time_to: 11000,
+                        },
+                    ]);
+                },
+            };
+        },
+    };
+    const { driver } = load(f);
+    assert.equal(
+        f.requests.length,
+        1,
+        "only the playlist is fetched; no matching POST"
+    );
+    assert.deepEqual(clone(rows[0].xmltv_urls), ["https://xml.test/main.xml"]);
+    const id = f.host.cList[0];
+    notify({ [id]: { logo: "https://logos.test/one.png" } });
+    let result;
+    driver.guide(id, (value) => (result = value));
+    assert.equal(result[0].name, "Hosted");
+    assert.equal(f.requests.length, 1, "guide comes from worker bridge");
+    driver.load(() => {});
+    assert.equal(stopped, 1);
+    notify({ [id]: { logo: "https://logos.test/stale.png" } });
+    assert.equal(
+        driver.logo(id),
+        "",
+        "old worker cannot publish into the new catalog"
+    );
+    f.requests[1].reject();
+    assert.equal(
+        f.requests.length,
+        2,
+        "hosted playlist failure never falls back to companion cp.php"
+    );
+    f.dom.window.close();
+});
+
+test("hosted M3U ignores retired companion directives and retains explicit provider JSON guides", () => {
+    const f = fixture();
+    let entries;
+    f.host.__ottHostedEpg = {
+        enabled: () => true,
+        open(rows) {
+            entries = rows;
+            return { close() {}, guide() {} };
+        },
+    };
+    const body = playlist
+        .replace(
+            "#EXTM3U",
+            '#EXTM3U foss-tvg="!epg-server::https://epg.2560801.xyz,!ico-server::https://epg.2560801.xyz,=provider::https://provider.test/guide/"'
+        )
+        .replace('tvg-id="one"', 'tvg-id="one" tvg-source="=provider"');
+    const { driver } = load(f, body);
+    try {
+        assert.equal(f.requests.length, 1, "no guide or logo companion POST");
+        assert.equal(
+            entries.length,
+            1,
+            "only the XMLTV channel enters the worker"
+        );
+        assert.equal(entries[0].id, f.host.cList[1]);
+        assert.equal(entries[0].epg_external, false);
+        assert.deepEqual(clone(entries[0].xmltv_urls), [
+            "https://xml.test/main.xml",
+        ]);
+        const id = f.host.cList[0];
+        assert.equal(f.host.channels[id].epg_src, "=provider");
+        let programme;
+        driver.guide(id, (rows) => (programme = rows));
+        assert.equal(
+            f.requests.length,
+            2,
+            "an explicit provider guide remains direct"
+        );
+        assert(
+            f.requests[1].settings.url.startsWith(
+                "https://provider.test/guide/"
+            )
+        );
+        f.requests[1].resolve({
+            epg_data: [{ name: "Provider guide", time: 100, time_to: 200 }],
+        });
+        assert.equal(programme[0].name, "Provider guide");
+        assert(
+            f.requests.every(
+                (request) => !request.settings.url.includes("2560801.xyz")
+            )
+        );
+    } finally {
+        driver.dispose();
+        f.dom.window.close();
+    }
+});
+
 console.log("PASS M3U provider driver: " + passed + " scenario groups");

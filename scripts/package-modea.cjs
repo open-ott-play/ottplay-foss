@@ -69,10 +69,20 @@ try {
         "images",
         "locales",
         "providers",
+        "hosted",
+        "swop-input",
     ];
     const sources = assets.map((name) =>
         requirePath("dist/" + name, name !== "favicon.ico")
     );
+    for (const file of [
+        "hosted/epg-worker.js",
+        "hosted/pako-inflate.js",
+        "hosted/sax.js",
+        "swop-input/index.html",
+        "swop-input/app.js",
+    ])
+        requirePath("dist/" + file, false);
     // Require built installation assets; a stale dist must not silently package
     // an installable entry point without its metadata, icon or window layout.
     for (const file of [
