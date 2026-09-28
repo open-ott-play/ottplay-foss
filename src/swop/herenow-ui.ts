@@ -40,12 +40,16 @@ export function openHereNowSwop(
             ? w.editCaption.slice(0, 120)
             : translate("Enter value");
     var jq = w.jQuery || w.$;
+    var screen = w.__ottClassicScreenPort;
+    var editor = screen && screen.owner("editor");
+    if (screen && (!editor || !editor.active())) return;
     var previous = w.editKey;
     var closed = false;
     var recordId = "";
     var timer: any = null;
     var timeout: any = null;
     var receiver: any = null;
+    var releaseOwner: (() => void) | null = null;
     var store = hereNowStore(w, config.collection);
     var started = Date.now();
     var monotonic =
@@ -76,19 +80,33 @@ export function openHereNowSwop(
             )
             .show();
     }
+    function ownsEditor(): boolean {
+        return (
+            !editor || (editor.active() && screen.owner("editor") === editor)
+        );
+    }
+    function ownsPanel(): boolean {
+        return ownsEditor() && w.editKey === handler;
+    }
     function cleanup(): void {
         if (closed) return;
+        var owned = ownsPanel();
         closed = true;
         if (timer) w.clearTimeout(timer);
         if (timeout) w.clearTimeout(timeout);
         if (receiver) receiver.cancel();
-        if (w.editKey === handler) w.editKey = previous;
+        if (owned) w.editKey = previous;
         if (hereNowActiveClose === cleanup) hereNowActiveClose = null;
-        jq("#listEdit").hide().empty();
+        if (owned) jq("#listEdit").hide().empty();
+        if (releaseOwner) {
+            releaseOwner();
+            releaseOwner = null;
+        }
         for (var i = 0; i < pair.secret.length; i++) pair.secret[i] = 0;
         if (recordId) store.remove(recordId).catch(function () {});
     }
     function resume(): void {
+        if (!ownsEditor()) return;
         if (typeof w.showEditKey === "function")
             w.showEditKey(null, undefined, true);
         else if (typeof w.showEditKey1 === "function")
@@ -102,7 +120,9 @@ export function openHereNowSwop(
         return true;
     }
     function fail(value: string): void {
+        var owned = !closed && ownsPanel();
         cleanup();
+        if (!owned) return;
         resume();
         w.alert(value);
     }
@@ -111,6 +131,10 @@ export function openHereNowSwop(
     }
     function poll(): void {
         if (closed) return;
+        if (!ownsPanel()) {
+            cleanup();
+            return;
+        }
         if (expired()) {
             fail(
                 translate(
@@ -123,6 +147,10 @@ export function openHereNowSwop(
             .get(recordId)
             .then(function (data: any) {
                 if (closed) return;
+                if (!ownsPanel()) {
+                    cleanup();
+                    return;
+                }
                 if (!data.reply) {
                     schedule(5000);
                     return;
@@ -151,6 +179,8 @@ export function openHereNowSwop(
     }
     hereNowActiveClose = cleanup;
     w.editKey = handler;
+    if (editor) releaseOwner = editor.own(cleanup);
+    if (closed) return;
     message(translate("Preparing secure remote input..."));
     timeout = w.setTimeout(function () {
         fail(
@@ -165,16 +195,30 @@ export function openHereNowSwop(
                 await store.remove(id).catch(function () {});
                 return;
             }
+            if (!ownsPanel()) {
+                cleanup();
+                return;
+            }
             pair.recordId = id;
             var offer = await hereNowSeal(w, pair, "offer", {
                 caption: caption,
                 draft: draft,
             });
-            if (closed) return;
+            if (closed || !ownsPanel()) {
+                cleanup();
+                return;
+            }
             await store.patch(id, { offer: offer });
-            if (closed) return;
+            if (closed || !ownsPanel()) {
+                cleanup();
+                return;
+            }
             receiver = hereNowReceiver(w, pair, expired, function (value) {
                 // Consume locally before callbacks. Delete is cleanup, never authorization.
+                if (closed || !ownsPanel()) {
+                    cleanup();
+                    return;
+                }
                 cleanup();
                 w.editvar = value;
                 resume();

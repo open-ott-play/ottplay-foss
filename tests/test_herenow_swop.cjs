@@ -269,6 +269,8 @@ async function main() {
                     "utf8"
                 )
             );
+            require("./helpers/screen-runtime.cjs")(tv);
+            tv.__ottClassicScreenPort.openEditor();
             const records = new Map(),
                 jobs = new Map();
             let job = 0,
@@ -386,6 +388,44 @@ async function main() {
                 await until(() => sequence === 2 && records.size === 0);
                 assert.equal(resumed, 2);
                 assert.equal(tv.editvar, "РЕН ТВ");
+                // Exercise the actual owner lifecycle, not only a callback stub.
+                link = "";
+                ui.openHereNowSwop(
+                    tv,
+                    (s) => s,
+                    (text) => {
+                        link = text;
+                        return "<svg></svg>";
+                    }
+                );
+                await until(() => link !== "");
+                const oldPair = core.hereNowReadPair(phone, link);
+                records.get(oldPair.recordId).reply = await core.hereNowSeal(
+                    phone,
+                    oldPair,
+                    "reply",
+                    { value: "must not reach new editor" }
+                );
+                const oldPoll = [...jobs.entries()].find(
+                    ([, value]) => value.delay === 5000
+                );
+                jobs.delete(oldPoll[0]);
+                oldPoll[1].fn();
+                tv.__ottClassicScreenPort.openEditor();
+                tv.editvar = "new editor value";
+                const replacementKey = () => true;
+                tv.editKey = replacementKey;
+                tv.$("#listEdit").text("replacement editor").show();
+                await until(() => records.size === 0);
+                await new Promise((resolve) => setImmediate(resolve));
+                assert.equal(tv.editvar, "new editor value");
+                assert.equal(tv.editKey, replacementKey);
+                assert.equal(tv.$("#listEdit").text(), "replacement editor");
+                assert.notEqual(
+                    tv.document.getElementById("listEdit").style.display,
+                    "none"
+                );
+                assert.equal(resumed, 2);
             } finally {
                 dom.window.close();
             }
