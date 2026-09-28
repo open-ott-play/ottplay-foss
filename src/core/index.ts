@@ -943,7 +943,7 @@ function startCoreEngine(
         var ready = function (playbackUrl: string): void {
             if (session !== _playSession) return;
             if (observe) observe();
-            startCorePlayback(playbackUrl, position, session);
+            startCorePlayback(playbackUrl, position, session, url);
         };
         if (coreDeviceEffects.prepareSource)
             coreDeviceEffects.prepareSource(url, ready, function () {
@@ -962,7 +962,8 @@ function startCoreEngine(
 function startCorePlayback(
     url: string,
     position: number | undefined,
-    session: number
+    session: number,
+    originalUrl: string = url
 ): void {
     cancelCoreNativeHls();
     _coreHlsBitrate = null;
@@ -1206,7 +1207,7 @@ function startCorePlayback(
                                 _liveRestartTimer = null;
                                 _inLiveRestart = true;
                                 try {
-                                    startCoreEngine(url, 0);
+                                    startCoreEngine(originalUrl, 0);
                                 } finally {
                                     _inLiveRestart = false;
                                     liveRestartPolicy().finish();
@@ -1374,7 +1375,12 @@ function startCorePlayback(
                             console.log(
                                 "[Auto] native HLS incompatible, using hls.js"
                             );
-                            startCorePlayback(url, nextPosition, session);
+                            startCorePlayback(
+                                url,
+                                nextPosition,
+                                session,
+                                originalUrl
+                            );
                         },
                         restore: function () {
                             _coreAutoCancel = null;
@@ -2573,9 +2579,18 @@ function openCoreEngineLease(
     var pip = request.lane === "pip";
     if (pip && coreDeviceEffects.pip && !cssOnly) {
         stopCorePipEngine();
-        return coreDeviceEffects.pip.open(request, function () {
-            return openCoreEngineLease(request, event, true);
-        });
+        return coreDeviceEffects.pip.open(
+            request,
+            function (playbackUrl: string) {
+                // Keep request identity on the original source while the fallback
+                // decoder uses the same authenticated transport as native PiP.
+                var fallbackRequest =
+                    playbackUrl === request.url
+                        ? request
+                        : Object.assign({}, request, { url: playbackUrl });
+                return openCoreEngineLease(fallbackRequest, event, true);
+            }
+        );
     }
     var media = pip ? videoPip : video;
     // Optional device engines retain the same request ownership and UI commands.

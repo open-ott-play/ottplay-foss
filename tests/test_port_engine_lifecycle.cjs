@@ -229,6 +229,31 @@ test("PiP starts after manifest and ignores callbacks after switch/stop", () => 
     assert.equal(w.videoPip.src, "");
     assert.ok(hidden.includes("#pip_buffering"));
 });
+test("native PiP fallback keeps source identity and uses the prepared transport", () => {
+    const { w } = fixture();
+    const source = "https://source.invalid/protected.m3u8";
+    const local =
+        "http://127.0.0.1:12345/access/" +
+        "a".repeat(43) +
+        "/fixture/media.m3u8";
+    let original;
+    w.playerMode = 0;
+    w.__ottCoreTransport.configure({
+        pip: {
+            open(request, fallback) {
+                original = request;
+                return fallback(local);
+            },
+        },
+    });
+    w.stbPlayPip(source);
+    assert.equal(original.url, source);
+    assert.equal(w.videoPip.src, local);
+    assert.equal(w.videoPip.playCalls, 1);
+    w.stbStopPip();
+    assert.equal(w.videoPip.src, "");
+    assert.equal(w.videoPip.paused, true);
+});
 test("PiP loader stays compact and centered through size, corner and canvas changes", () => {
     const { w, styles } = fixture();
     const presets = [
@@ -445,6 +470,48 @@ test("iOS source login cannot replace a newer channel or revive stopped playback
     await tick();
     assert.equal(w.video.playCalls, 1);
 });
+test("iOS HLS reconnect prepares the original source again, not a stale loopback URL", async () => {
+    const { w, players } = fixture();
+    const prepared = [];
+    const timers = [];
+    const source = "https://source.invalid/live.m3u8";
+    const local =
+        "http://127.0.0.1:12345/access/" +
+        "a".repeat(43) +
+        "/fixture/media.m3u8";
+    w.playerMode = 1;
+    w.setTimeout = (callback) => {
+        timers.push(callback);
+        return timers.length;
+    };
+    w.clearTimeout = () => {};
+    w.__ottCoreTransport.configure({ prepareSource: w.prepareAccessMedia });
+    w.Capacitor = {
+        getPlatform: () => "ios",
+        Plugins: {
+            AccessMedia: {
+                prepare: ({ url }) => {
+                    prepared.push(url);
+                    return Promise.resolve({ url: local });
+                },
+            },
+        },
+    };
+    w.stbPlay(source);
+    await tick();
+    players[0].events.error(null, {
+        details: "manifestParsingError",
+        fatal: true,
+        type: "network",
+    });
+    assert.equal(timers.length, 1);
+    timers[0]();
+    await tick();
+    assert.deepEqual(prepared, [source, source]);
+    assert.equal(players.length, 2);
+    w.stbStop();
+});
+
 test("iOS source login failure does not fall back to an unprotected URL", async () => {
     const { w } = fixture();
     const messages = [];

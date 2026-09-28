@@ -162,7 +162,9 @@ function fixture(platform, capacitorPlatform = "ios") {
         open(request) {
             if (effects.pip) {
                 cssStop();
-                return effects.pip.open(request, () => cssLease(request));
+                return effects.pip.open(request, (url) =>
+                    cssLease(Object.assign({}, request, { url }))
+                );
             }
             return cssLease(request);
         },
@@ -296,6 +298,7 @@ for (const platform of ["Capacitor"]) {
             );
             assert.deepEqual(f.nativeCalls, [
                 ["play", "A"],
+                ["stop"],
                 ["play", "B"],
             ]);
             f.succeed(f.requests[1]);
@@ -523,6 +526,20 @@ for (const action of ["stop", "replace"]) {
         assert.equal(f.requests.length, 0);
         if (action === "stop") f.stop();
         else f.play("https://source.invalid/new.m3u8");
+        await settle();
+        if (action === "stop") {
+            assert.deepEqual(
+                f.nativeCalls,
+                [["stop"]],
+                "Stop must not wait for the sign-in prompt"
+            );
+        } else {
+            assert.equal(
+                pending.length,
+                2,
+                "the new source can prepare before the retired login finishes"
+            );
+        }
         pending[0].resolve({ url: pending[0].url });
         await settle();
         assert.equal(
@@ -538,6 +555,85 @@ for (const action of ["stop", "replace"]) {
             assert.equal(f.requests[0].url, "https://source.invalid/new.m3u8");
         }
         assert.deepEqual(f.cssPlays, []);
+    });
+}
+
+test("Capacitor iOS: rejected source sign-in never starts CSS fallback", async () => {
+    const f = fixture("Capacitor");
+    f.window.Capacitor.Plugins = {
+        AccessMedia: {
+            prepare: () =>
+                Promise.reject(new Error("Source sign-in cancelled")),
+        },
+    };
+    f.play("https://source.invalid/private.m3u8");
+    await settle();
+    assert.deepEqual(f.nativeCalls, []);
+    assert.deepEqual(f.cssPlays, []);
+});
+
+for (const result of ["success", "failure"]) {
+    test(`Capacitor iOS: playing A stops while replacement B awaits sign-in (${result})`, async () => {
+        const f = fixture("Capacitor");
+        const old = "https://source.invalid/A.m3u8";
+        const next = "https://source.invalid/B.m3u8";
+        f.play(old);
+        await settle();
+        f.succeed(f.requests[0]);
+        await settle();
+        let resolve, reject;
+        f.window.Capacitor.Plugins = {
+            AccessMedia: {
+                prepare: () =>
+                    new Promise((yes, no) => {
+                        resolve = yes;
+                        reject = no;
+                    }),
+            },
+        };
+        f.play(next);
+        await settle();
+        assert.deepEqual(
+            f.nativeCalls,
+            [["play", old], ["stop"]],
+            "The replaced decoder stops without waiting for B's login"
+        );
+        if (result === "failure") reject(new Error("Sign-in cancelled"));
+        else resolve({ url: next });
+        await settle();
+        assert.deepEqual(
+            f.nativeCalls,
+            result === "failure"
+                ? [["play", old], ["stop"]]
+                : [["play", old], ["stop"], ["play", next]]
+        );
+        assert.deepEqual(f.cssPlays, []);
+    });
+}
+
+for (const result of ["failure", "unsupported"]) {
+    test(`Capacitor iOS: prepared source survives native ${result} into CSS fallback`, async () => {
+        const f = fixture("Capacitor");
+        const source = "https://source.invalid/protected.m3u8";
+        const local =
+            "http://127.0.0.1:12345/access/" +
+            "a".repeat(43) +
+            "/fixture/media.m3u8";
+        f.window.Capacitor.Plugins = {
+            AccessMedia: { prepare: () => Promise.resolve({ url: local }) },
+        };
+        f.play(source);
+        await settle();
+        assert.equal(f.requests[0].url, local);
+        if (result === "failure")
+            f.requests[0].reject(new Error("Native decoder failed"));
+        else f.requests[0].resolve({ ok: false });
+        await settle();
+        assert.deepEqual(f.cssPlays, [local]);
+        f.stop();
+        await settle();
+        assert.equal(f.displays.at(-1), "stopped");
+        assert.deepEqual(f.cssPlays, [local]);
     });
 }
 

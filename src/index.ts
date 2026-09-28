@@ -2669,23 +2669,19 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                       error: function (error: any) {
                           console.warn("[Capacitor] PiP failed:", error);
                       },
-                      invoke: function (
-                          action: string,
-                          args: any,
-                          active?: () => boolean
-                      ) {
-                          if (action !== "play") return cap.stopPip();
+                      invoke: function (action: string, args: any) {
+                          return action === "play"
+                              ? cap.playPip(args)
+                              : cap.stopPip();
+                      },
+                      prepare: function (args: any) {
                           return new Promise(function (resolve, reject) {
                               prepareAccessMedia(
                                   args.url,
                                   function (url) {
-                                      if (active && !active()) {
-                                          resolve({ ok: false });
-                                          return;
-                                      }
-                                      cap.playPip(
+                                      resolve(
                                           Object.assign({}, args, { url: url })
-                                      ).then(resolve, reject);
+                                      );
                                   },
                                   function () {
                                       reject(

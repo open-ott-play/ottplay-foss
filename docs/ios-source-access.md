@@ -9,12 +9,16 @@ recovery verification.
 When a playlist request receives an authentication failure, the app checks
 `https://<source>/_ottplay/public/config`. Playback also performs discovery once
 per HTTPS origin, including when the channel list was restored from a cache.
-Sources without this endpoint keep their normal transport. Discovery failures
-are cached for five minutes to avoid probing each channel on the same host.
+Sources without this endpoint keep their normal transport. Definitive absence
+is cached for five minutes; transient network/server failures retry after ten
+seconds. Concurrent discovery and sign-in requests share one operation. An
+unknown media alias must present a contract matching one fetched directly from
+its claimed source, so it cannot overwrite another source's trusted mapping.
 
 After signing in, playback and native HTTP/EPG downloads share a native session.
 Settings → Manage settings → **Source access** offers sign-in and local sign-out.
-Local sign-out removes the app's credentials and stops its media listener; it
+Local sign-out removes the app's credentials, cancels pending sign-in and stops
+its media listener; delayed browser/network completions cannot restore it. It
 does not log the user out of Safari or revoke the identity provider's session.
 
 ## Server contract, version 1
@@ -68,10 +72,18 @@ only to discovered source/media origins. Manifests rewrite relative and
 same-source absolute URIs, including variants, audio, subtitles, keys, init
 maps, parts and preload hints. Other HTTPS origins retain their original URLs
 and never receive an Access cookie. Binary media is streamed with backpressure;
-HEAD, byte ranges and content ranges are preserved. Manifest buffering is
-bounded to 2 MiB. Loopback URLs are not saved as channel identities.
+HEAD, byte ranges and content ranges are preserved. A single isolated upstream
+session reuses its connection pool, with credentials and redirect decisions
+scoped to each task. Low-latency HLS reload directives reach upstream without
+rewriting the original signed query. Manifest buffering is bounded to 2 MiB.
+Loopback URLs are not saved as channel identities; reconnects prepare the
+original source again.
 
-Native PiP uses the same preparation. EPG uses an injected native transport
+Native PiP uses the same preparation outside its native command queue, so Stop
+does not wait for an open sign-in prompt. Replacing a playing channel retires
+its decoder even while the next channel waits for sign-in. Failed sign-in never
+starts a CSS fallback; a native playback failure after successful preparation
+passes the authenticated URL to that fallback. EPG uses an injected native transport
 while retaining original source/cache keys. Direct AirPlay receivers cannot
 consume the phone's loopback URL; remote receiver playback needs a separate
 authenticated transport. Web/Android/TV/desktop builds do not acquire iOS
@@ -91,3 +103,9 @@ complete passkey login, play/switch/seek channels, exercise native PiP, restart
 the app, sign out, cancel a login, and test the configured recovery path. Unit
 fixtures and an unsigned build do not establish successful biometric login
 or provider playback on an iPhone.
+
+`python3 tests/test_ios_access_auth.py` exercises the actual authentication code
+with deterministic OS/network fixtures: concurrent discovery/login/renewal,
+saved-session reuse, source/alias trust, failed browser start, cancellation
+without an OS callback, and delayed callbacks/exchange after logout. This fixture
+does not invoke the real system browser or Keychain.

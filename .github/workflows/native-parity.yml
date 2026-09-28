@@ -100,6 +100,7 @@ jobs:
           python3 tests/test_native_xmltv_records.py --platform ios
           python3 tests/test_ios_proxy.py
           python3 tests/test_ios_access_media.py
+          python3 tests/test_ios_access_auth.py
           python3 tests/test_native_swop_swift.py
           python3 tests/test_xmltv_warmup_smoke.py
       - name: Test iOS command queue consent and authentication

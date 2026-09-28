@@ -117,39 +117,67 @@ enum AccessMediaPolicy {
 
 // Used only for protected requests and discovery. Never follows redirects out of
 // the trusted HTTPS origin, or accepts cookies from the app's JavaScript runtime.
-final class AccessMediaHTTP: NSObject, URLSessionDataDelegate {
+final class AccessMediaHTTP: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+    // Cancellation runs on the caller's executor; all response/buffer callbacks
+    // run on URLSession's serial delegate queue. Only lifecycle state is shared.
+    private let lock = NSLock()
     private var session: URLSession?
+    private var task: URLSessionTask?
+    private var cancelled = false
     private var buffer = Data()
     private var response: HTTPURLResponse?
     private let request: URLRequest
     private let limit: Int
-    private let completion: (Data?, URLResponse?, Error?) -> Void
+    private let sessionConfiguration: () -> URLSessionConfiguration
+    private var completion: ((Data?, URLResponse?, Error?) -> Void)?
     private var failure: Error?
 
-    init(_ request: URLRequest, limit: Int, completion: @escaping (Data?, URLResponse?, Error?) -> Void) {
-        self.request = request; self.limit = limit; self.completion = completion
+    private init(_ request: URLRequest, limit: Int, sessionConfiguration: @escaping () -> URLSessionConfiguration) {
+        self.request = request; self.limit = limit; self.sessionConfiguration = sessionConfiguration
     }
-    func start() {
-        let config = URLSessionConfiguration.ephemeral
+    private func start(completion: @escaping (Data?, URLResponse?, Error?) -> Void) {
+        let config = sessionConfiguration()
         config.httpCookieStorage = nil; config.httpShouldSetCookies = false; config.urlCache = nil
         config.urlCredentialStorage = nil
+        lock.lock()
+        guard !cancelled else { lock.unlock(); completion(nil, nil, CancellationError()); return }
+        self.completion = completion
         let session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
         self.session = session
-        session.dataTask(with: request).resume()
+        let task = session.dataTask(with: request)
+        self.task = task
+        lock.unlock()
+        task.resume()
     }
-    static func fetch(_ request: URLRequest, limit: Int = 64 * 1024 * 1024) async throws -> (Data, HTTPURLResponse) {
-        try await withCheckedThrowingContinuation { continuation in
-            AccessMediaHTTP(request, limit: limit) { data, response, error in
-                if let error { continuation.resume(throwing: error) }
-                else if let data, let response = response as? HTTPURLResponse { continuation.resume(returning: (data, response)) }
-                else { continuation.resume(throwing: AccessMediaFailure.unavailable) }
-            }.start()
-        }
+    private func cancel() {
+        lock.lock(); cancelled = true
+        let task = self.task
+        lock.unlock()
+        task?.cancel()
+    }
+    static func fetch(_ request: URLRequest, limit: Int = 64 * 1024 * 1024,
+                      sessionConfiguration: @escaping () -> URLSessionConfiguration = { .ephemeral }) async throws -> (Data, HTTPURLResponse) {
+        guard let url = request.url, AccessMediaPolicy.origin(url) != nil else { throw AccessMediaFailure.invalid }
+        let operation = AccessMediaHTTP(request, limit: limit, sessionConfiguration: sessionConfiguration)
+        return try await withTaskCancellationHandler(operation: {
+            try Task.checkCancellation()
+            let result: (Data, HTTPURLResponse) = try await withCheckedThrowingContinuation { continuation in
+                operation.start { data, response, error in
+                    if let error { continuation.resume(throwing: error) }
+                    else if let data, let response = response as? HTTPURLResponse { continuation.resume(returning: (data, response)) }
+                    else { continuation.resume(throwing: AccessMediaFailure.unavailable) }
+                }
+            }
+            try Task.checkCancellation()
+            return result
+        }, onCancel: {
+            operation.cancel()
+        })
     }
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
                     newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
-        guard let from = self.request.url, let to = request.url,
-              AccessMediaPolicy.origin(from) == AccessMediaPolicy.origin(to) else { completionHandler(nil); return }
+        guard let from = self.request.url, let origin = AccessMediaPolicy.origin(from), let to = request.url,
+              origin == AccessMediaPolicy.origin(to) else { completionHandler(nil); return }
         var next = request
         next.setValue(self.request.value(forHTTPHeaderField: "Cookie"), forHTTPHeaderField: "Cookie")
         completionHandler(next)
@@ -170,7 +198,12 @@ final class AccessMediaHTTP: NSObject, URLSessionDataDelegate {
         buffer.append(data)
     }
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        completion(buffer, response, failure ?? error)
-        session.invalidateAndCancel(); self.session = nil
+        lock.lock()
+        let completion = self.completion
+        let cancelled = self.cancelled
+        self.completion = nil; self.session = nil; self.task = nil
+        lock.unlock()
+        session.invalidateAndCancel()
+        completion?(buffer, response, cancelled ? CancellationError() : failure ?? error)
     }
 }

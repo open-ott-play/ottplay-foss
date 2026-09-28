@@ -9,20 +9,37 @@ private struct SavedAccessMedia: Codable {
     var session: AccessMediaSession?
 }
 
+private struct AccessMediaDiscovery {
+    let config: AccessMediaConfig?
+    let retryAfter: TimeInterval
+}
+
+private struct AccessMediaAuthentication {
+    let id: UUID
+    let session: ASWebAuthenticationSession
+    let continuation: CheckedContinuation<URL, Error>
+}
+
 @MainActor
 final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProviding {
     static let shared = AccessMedia()
     weak var presenter: UIViewController?
     private var entries: [String: SavedAccessMedia] = [:]
     private var missing: [String: Date] = [:]
-    private var discovery: [String: Task<AccessMediaConfig?, Error>] = [:]
+    private var discovery: [String: Task<AccessMediaDiscovery, Error>] = [:]
     private var logins: [String: Task<AccessMediaSession, Error>] = [:]
-    private var authentication: ASWebAuthenticationSession?
+    private var authentication: AccessMediaAuthentication?
     private var proxy: AccessMediaProxy?
     private var generation = 0
     private let keychainService = "play.ott.foss.source-access.v1"
+    private let fetch: (URLRequest, Int) async throws -> (Data, HTTPURLResponse)
+    private let now: () -> Date
 
-    override init() {
+    init(now: @escaping () -> Date = Date.init,
+         fetch: @escaping (URLRequest, Int) async throws -> (Data, HTTPURLResponse) = {
+        try await AccessMediaHTTP.fetch($0, limit: $1)
+    }) {
+        self.fetch = fetch; self.now = now
         super.init()
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService, kSecAttrAccount as String: "sources",
@@ -31,7 +48,8 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
         if SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
            let data = result as? Data, let saved = try? JSONDecoder().decode([String: SavedAccessMedia].self, from: data) {
             for (origin, entry) in saved {
-                if let url = URL(string: origin), (try? entry.config.validated(for: url)) != nil {
+                if origin == entry.config.source_origin, let url = URL(string: origin),
+                   (try? entry.config.validated(for: url)) != nil {
                     entries[origin] = entry
                 }
             }
@@ -56,25 +74,47 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
         if let entry = entries[origin] { return entry.config }
         if let entry = entries.values.first(where: { $0.config.media_origin == origin }) { return entry.config }
         guard discover else { return nil }
-        if let until = missing[origin], until > Date() { return nil }
-        if let pending = discovery[origin] { return try await pending.value }
-        let pending = Task<AccessMediaConfig?, Error> {
+        if let until = missing[origin], until > now() { return nil }
+        if let pending = discovery[origin] { return try await pending.value.config }
+        let pending = Task<AccessMediaDiscovery, Error> {
             var request = URLRequest(url: URL(string: origin + "/_ottplay/public/config")!)
             request.timeoutInterval = 5
             request.setValue("application/json", forHTTPHeaderField: "Accept")
-            guard let (data, response) = try? await AccessMediaHTTP.fetch(request, limit: 4096), response.statusCode == 200,
-                  let config = try? JSONDecoder().decode(AccessMediaConfig.self, from: data) else { return nil }
-            return try config.validated(for: url)
+            guard let (data, response) = try? await self.fetch(request, 4096) else {
+                return AccessMediaDiscovery(config: nil, retryAfter: 10)
+            }
+            guard response.statusCode == 200 else {
+                return AccessMediaDiscovery(config: nil, retryAfter: [404, 410].contains(response.statusCode) ? 300 : 10)
+            }
+            guard let config = try? JSONDecoder().decode(AccessMediaConfig.self, from: data) else {
+                return AccessMediaDiscovery(config: nil, retryAfter: 300)
+            }
+            _ = try config.validated(for: url)
+            if config.source_origin != origin {
+                // An unknown alias may name a source, but only that source may
+                // authorize the mapping. Otherwise any playlist host could claim
+                // a trusted source and replace its destination in our cache.
+                var verification = URLRequest(url: URL(string: config.source_origin + "/_ottplay/public/config")!)
+                verification.timeoutInterval = 5
+                verification.setValue("application/json", forHTTPHeaderField: "Accept")
+                let (proof, response) = try await self.fetch(verification, 4096)
+                guard response.statusCode == 200,
+                      (try? JSONDecoder().decode(AccessMediaConfig.self, from: proof)) == config else {
+                    throw AccessMediaFailure.invalid
+                }
+            }
+            return AccessMediaDiscovery(config: config, retryAfter: 0)
         }
         discovery[origin] = pending
         defer { discovery[origin] = nil }
-        if let config = try await pending.value {
+        let result = try await pending.value
+        if let config = result.config {
             if entries[config.source_origin]?.config != config {
                 entries[config.source_origin] = SavedAccessMedia(config: config, session: nil)
             }
             return config
         }
-        missing[origin] = Date().addingTimeInterval(300)
+        missing[origin] = now().addingTimeInterval(result.retryAfter)
         return nil
     }
 
@@ -82,11 +122,28 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
         presenter?.view.window ?? ASPresentationAnchor()
     }
 
+    private func finishAuthentication(_ id: UUID, result: Result<URL, Error>) {
+        guard let active = authentication, active.id == id else { return }
+        authentication = nil
+        active.continuation.resume(with: result)
+    }
+
     private func authenticate(_ config: AccessMediaConfig) async throws -> AccessMediaSession {
-        if let current = entries[config.source_origin]?.session, current.valid(for: config) { return current }
-        if let pending = logins[config.source_origin] { return try await pending.value }
         let generation = self.generation
+        try Task.checkCancellation()
+        if let current = entries[config.source_origin]?.session, current.valid(for: config) { return current }
+        if let pending = logins[config.source_origin] {
+            let session = try await pending.value
+            guard self.generation == generation else { throw AccessMediaFailure.cancelled }
+            try Task.checkCancellation()
+            return session
+        }
         let pending = Task<AccessMediaSession, Error> {
+            // Retire the shared task before waking any waiter. A completed task
+            // must not hand a rejected token back to a concurrent retry.
+            defer { if self.generation == generation { self.logins[config.source_origin] = nil } }
+            guard self.generation == generation else { throw AccessMediaFailure.cancelled }
+            try Task.checkCancellation()
             guard self.authentication == nil else { throw AccessMediaFailure.busy }
             guard UIApplication.shared.applicationState == .active, self.presenter?.view.window != nil else {
                 throw AccessMediaFailure.login
@@ -98,29 +155,31 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
                 URLQueryItem(name: "code_challenge", value: AccessMediaPolicy.challenge(verifier)),
                 URLQueryItem(name: "code_challenge_method", value: "S256")]
             let callback: URL = try await withCheckedThrowingContinuation { continuation in
+                let id = UUID()
                 let auth = ASWebAuthenticationSession(url: login.url!, callbackURLScheme: "ottplay-access") { url, error in
-                    Task { @MainActor in self.authentication = nil }
-                    if let url { continuation.resume(returning: url) }
-                    else {
+                    Task { @MainActor in
                         let cancelled = (error as? ASWebAuthenticationSessionError)?.code == .canceledLogin
-                        continuation.resume(throwing: cancelled ? AccessMediaFailure.cancelled : AccessMediaFailure.login)
+                        self.finishAuthentication(id, result: url.map(Result.success) ??
+                            .failure(cancelled ? AccessMediaFailure.cancelled : AccessMediaFailure.login))
                     }
                 }
                 auth.presentationContextProvider = self
                 auth.prefersEphemeralWebBrowserSession = false
-                self.authentication = auth
+                self.authentication = AccessMediaAuthentication(id: id, session: auth, continuation: continuation)
                 if !auth.start() {
-                    self.authentication = nil
-                    continuation.resume(throwing: AccessMediaFailure.login)
+                    self.finishAuthentication(id, result: .failure(AccessMediaFailure.login))
                 }
             }
+            guard self.generation == generation else { throw AccessMediaFailure.cancelled }
+            try Task.checkCancellation()
             let code = try AccessMediaPolicy.callbackCode(callback, state: state)
             var exchange = URLRequest(url: URL(string: config.media_origin + config.exchange_path)!)
             exchange.httpMethod = "POST"; exchange.timeoutInterval = 15
             exchange.setValue("application/json", forHTTPHeaderField: "Content-Type")
             exchange.httpBody = try JSONSerialization.data(withJSONObject: ["code": code, "verifier": verifier])
-            let (data, response) = try await AccessMediaHTTP.fetch(exchange, limit: 20000)
+            let (data, response) = try await self.fetch(exchange, 20000)
             guard self.generation == generation else { throw AccessMediaFailure.cancelled }
+            try Task.checkCancellation()
             guard response.statusCode == 200, let result = try? JSONDecoder().decode(AccessMediaSession.self, from: data),
                   result.valid(for: config) else { throw AccessMediaFailure.login }
             self.entries[config.source_origin] = SavedAccessMedia(config: config, session: result)
@@ -131,8 +190,10 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
             return result
         }
         logins[config.source_origin] = pending
-        defer { logins[config.source_origin] = nil }
-        return try await pending.value
+        let session = try await pending.value
+        guard self.generation == generation else { throw AccessMediaFailure.cancelled }
+        try Task.checkCancellation()
+        return session
     }
 
     func authorized(_ request: URLRequest, config: AccessMediaConfig, replacing rejectedCookie: String? = nil) async throws -> URLRequest {
@@ -153,10 +214,30 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
     }
 
     func preparedURL(_ url: URL) async throws -> URL {
+        let generation = self.generation
         guard let config = try await configuration(for: url, discover: true) else { return url }
+        guard self.generation == generation else { throw AccessMediaFailure.cancelled }
         _ = try await authenticate(config)
         if proxy == nil { proxy = try AccessMediaProxy() }
-        return try await proxy!.url(for: url, config: config)
+        let local = try await proxy!.url(for: url, config: config)
+        guard self.generation == generation else { throw AccessMediaFailure.cancelled }
+        return local
+    }
+
+    func signOut() throws {
+        generation += 1
+        for pending in logins.values { pending.cancel() }
+        logins.removeAll()
+        if let active = authentication {
+            // Programmatic cancellation must release waiters even if the system
+            // browser never calls its completion handler. Late callbacks are ignored.
+            authentication = nil
+            active.session.cancel()
+            active.continuation.resume(throwing: AccessMediaFailure.cancelled)
+        }
+        proxy?.stop(); proxy = nil
+        for origin in entries.keys { entries[origin]?.session = nil }
+        try save()
     }
 
     // No credentials or ephemeral loopback URLs are written to JS settings/backups.
@@ -165,6 +246,7 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
         Task {
             do {
                 guard let url = request.url else { throw AccessMediaFailure.invalid }
+                let generation = await shared.generation
                 var config = try await shared.configuration(for: url, discover: false)
                 if config == nil {
                     let (data, response) = try await URLSession.shared.data(for: request)
@@ -179,8 +261,10 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
                 guard let config else { throw AccessMediaFailure.invalid }
                 var rejectedCookie: String?
                 for attempt in 0...1 {
+                    guard await shared.generation == generation else { throw AccessMediaFailure.cancelled }
                     let authorized = try await shared.authorized(request, config: config, replacing: rejectedCookie)
                     let (data, response) = try await AccessMediaHTTP.fetch(authorized)
+                    guard await shared.generation == generation else { throw AccessMediaFailure.cancelled }
                     if [301, 302, 303, 307, 308, 401, 403].contains(response.statusCode) {
                         if attempt == 0 { rejectedCookie = authorized.value(forHTTPHeaderField: "Cookie"); continue }
                         throw AccessMediaFailure.login
@@ -223,11 +307,7 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
         }
         if !entries.isEmpty {
             alert.addAction(UIAlertAction(title: russian ? "Выйти из всех источников" : "Sign out of all sources", style: .destructive) { _ in
-                self.generation += 1
-                self.authentication?.cancel()
-                self.proxy?.stop(); self.proxy = nil
-                for origin in self.entries.keys { self.entries[origin]?.session = nil }
-                do { try self.save() } catch { self.showError(error) }
+                do { try self.signOut() } catch { self.showError(error) }
             })
         }
         alert.addAction(UIAlertAction(title: russian ? "Закрыть" : "Close", style: .cancel))
