@@ -835,6 +835,9 @@ function createHostedEpgWorker(env: any): void {
                         throw new Error("EPG_GZIP");
                     parser.close();
                     if (!sawRoot || depth !== 0) throw new Error("EPG_XML");
+                    // Channel declarations retain source priority even in an
+                    // otherwise valid feed without any programme elements.
+                    indexChannels();
                     ended = true;
                 }
             } catch (exception) {

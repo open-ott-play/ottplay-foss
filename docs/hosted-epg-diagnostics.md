@@ -64,3 +64,13 @@ the menu location, rather than only appending to the hidden startup screen.
 
 For a physical-TV report, record the code, stage, source host, progress and model
 from this screen. A desktop browser test is not proof of physical webOS support.
+
+Hosted source selection follows the browser's ordered source affinity: each
+playlist channel tries its XMLTV URLs in order, resolving its ID and names
+within each feed. A match in an earlier source keeps priority over a match in
+a later source. This differs from native clients that merge feed metadata
+before resolving channels globally. Declaring a matching channel establishes
+its source priority even if the feed has no programmes or only programmes
+outside the selected date window; those two cases must behave alike. If no
+source supplies any usable programmes, the refresh still reports `EPG_EMPTY`
+and preserves the last accepted cache.
