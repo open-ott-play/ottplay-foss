@@ -689,6 +689,8 @@ var keyStrings = {
     "Show when switching": "Hiển thị khi chuyển kênh",
     "Sleep timer": "Hẹn giờ ngủ",
     "Sort channels": "Sắp xếp kênh",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Nhà cung cấp cổng Stalker",
     "Stalker portal settings": "Cài đặt cổng Stalker",
     "Stalker portals": "Cổng Stalker",

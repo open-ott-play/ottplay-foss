@@ -713,6 +713,8 @@ var keyStrings = {
     "Show when switching": "Afficher au changement de chaîne",
     "Sleep timer": "Minuterie de veille",
     "Sort channels": "Trier les chaînes",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Fournisseur de portail Stalker",
     "Stalker portal settings": "Paramètres du portail Stalker",
     "Stalker portals": "Portails Stalker",

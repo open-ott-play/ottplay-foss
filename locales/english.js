@@ -688,6 +688,8 @@ var keyStrings = {
     "Show when switching": "Show when switching channels",
     "Sleep timer": "Sleep timer",
     "Sort channels": "Sort channels",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Stalker portal provider",
     "Stalker portal settings": "Stalker portal settings",
     "Stalker portals": "Stalker portals",

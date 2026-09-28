@@ -940,8 +940,18 @@ function startCoreEngine(
     // Shaka detach is asynchronous and may otherwise clear the next engine's src.
     var start = function (): void {
         if (session !== _playSession) return;
-        if (observe) observe();
-        startCorePlayback(url, position, session);
+        var ready = function (playbackUrl: string): void {
+            if (session !== _playSession) return;
+            if (observe) observe();
+            startCorePlayback(playbackUrl, position, session);
+        };
+        if (coreDeviceEffects.prepareSource)
+            coreDeviceEffects.prepareSource(url, ready, function () {
+                if (session !== _playSession) return;
+                $("#buffering").hide();
+                showShift(_("Source sign-in required"));
+            });
+        else ready(url);
     };
     if (_coreShakaTeardown) _coreShakaTeardown.then(start, start);
     else start();
@@ -980,7 +990,10 @@ function startCorePlayback(
               : "html5";
     console.log(
         "[stbPlay] url=" +
-            url.substring(0, 80) +
+            (url.indexOf("/access/") >= 0 &&
+            url.indexOf("http://127.0.0.1:") === 0
+                ? "[protected source]"
+                : url.substring(0, 80)) +
             "... playerMode=" +
             playerMode +
             " (" +

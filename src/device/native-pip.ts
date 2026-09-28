@@ -4,7 +4,7 @@ function createNativePipPort(ports: any) {
     var pending: any = null;
     function invoke(action: string, args: any, active?: () => boolean): any {
         function run() {
-            if (!active || active()) return ports.invoke(action, args);
+            if (!active || active()) return ports.invoke(action, args, active);
         }
         var task: any;
         try {

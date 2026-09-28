@@ -1,4 +1,5 @@
 const CLASSIC_MODULES = [
+    "build/plugins/access-media.js",
     "build/polyfills/index.js",
     "build/compatibility/legacy-names.js",
     "build/shared/wire-contracts.js",

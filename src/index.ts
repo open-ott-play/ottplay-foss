@@ -1,5 +1,6 @@
 import { popupActionId } from "./compatibility/legacy-names";
 import { languageAssetPath, languageNames } from "./localization/assets";
+import { prepareAccessMedia } from "./plugins/access-media";
 import { createSettingsEditor } from "./settings/editor";
 import {
     editSettingsText,
@@ -2668,10 +2669,31 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                       error: function (error: any) {
                           console.warn("[Capacitor] PiP failed:", error);
                       },
-                      invoke: function (action: string, args: any) {
-                          return action === "play"
-                              ? cap.playPip(args)
-                              : cap.stopPip();
+                      invoke: function (
+                          action: string,
+                          args: any,
+                          active?: () => boolean
+                      ) {
+                          if (action !== "play") return cap.stopPip();
+                          return new Promise(function (resolve, reject) {
+                              prepareAccessMedia(
+                                  args.url,
+                                  function (url) {
+                                      if (active && !active()) {
+                                          resolve({ ok: false });
+                                          return;
+                                      }
+                                      cap.playPip(
+                                          Object.assign({}, args, { url: url })
+                                      ).then(resolve, reject);
+                                  },
+                                  function () {
+                                      reject(
+                                          new Error("Source sign-in required")
+                                      );
+                                  }
+                              );
+                          });
                       },
                       ready: function () {
                           var el = document.getElementById("videopip");
@@ -2687,6 +2709,7 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                       serial: true,
                   })
                 : null,
+            prepareSource: ios ? prepareAccessMedia : null,
             standby: function (standby: boolean) {
                 (standby ? cap.allowSleep() : cap.preventSleep()).catch(
                     function (error: any) {
@@ -4705,6 +4728,19 @@ window.settingsManage = function (): void {
         w.listArray.splice(0, 0, {
             action: w.saveOpt,
             name: w._("Save settings to storage") || "Save settings to storage",
+        });
+    var sourceAccess =
+        w.Capacitor &&
+        typeof w.Capacitor.getPlatform === "function" &&
+        w.Capacitor.getPlatform() === "ios" &&
+        w.Capacitor.Plugins &&
+        w.Capacitor.Plugins.AccessMedia;
+    if (sourceAccess)
+        w.listArray.push({
+            action: function () {
+                sourceAccess.manage();
+            },
+            name: w._("Source access"),
         });
     w.selIndex = 0;
     w.getListItem = function (item: any, _idx: number) {

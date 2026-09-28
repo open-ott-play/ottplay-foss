@@ -688,6 +688,8 @@ var keyStrings = {
     "Show when switching": "Паказваць пры пераключэнні каналаў",
     "Sleep timer": "Таймер сну",
     "Sort channels": "Сартаваць каналы",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Правайдар партала Stalker",
     "Stalker portal settings": "Налады партала Stalker",
     "Stalker portals": "Парталы Stalker",

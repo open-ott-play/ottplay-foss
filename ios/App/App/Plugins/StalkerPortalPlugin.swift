@@ -90,7 +90,7 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
             request.httpBody = bodyString.data(using: .utf8)
         }
 
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+        let completion: (Data?, URLResponse?, Error?) -> Void = { data, response, error in
             if let error = error {
                 DispatchQueue.main.async {
                     let code = (error as NSError).code == NSURLErrorTimedOut ? "timeout" : nil
@@ -138,7 +138,11 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
                 ])
             }
         }
-        task.resume()
+        #if os(iOS)
+        AccessMedia.fetch(request, completion: completion)
+        #else
+        URLSession.shared.dataTask(with: request, completionHandler: completion).resume()
+        #endif
     }
 }
 

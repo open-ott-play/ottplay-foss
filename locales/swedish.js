@@ -693,6 +693,8 @@ var keyStrings = {
     "Show when switching": "Visa vid kanalbyte",
     "Sleep timer": "Insomningstimer",
     "Sort channels": "Sortera kanaler",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Stalker-portalleverantör",
     "Stalker portal settings": "Inställningar för Stalker-portal",
     "Stalker portals": "Stalker-portaler",

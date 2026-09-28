@@ -26,6 +26,9 @@
 		A3B2C1D2FEDC1B000F3C39C /* M3UProxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3B2C1D1FEDC1B000F3C39C /* M3UProxy.swift */; };
 		B4C3D2E1FEDC1B000F3C39D /* StalkerPortalPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C3D2E0FEDC1B000F3C39D /* StalkerPortalPlugin.swift */; };
 		C5D4E3F3FEDC1B000F3C39E /* DashExoPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5D4E3F2FEDC1B000F3C39E /* DashExoPlayer.swift */; };
+		DAACC0000000000000000012 /* AccessMediaPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAACC0000000000000000011 /* AccessMediaPolicy.swift */; };
+		DAACC0000000000000000022 /* AccessMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAACC0000000000000000021 /* AccessMedia.swift */; };
+		DAACC0000000000000000032 /* AccessMediaProxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAACC0000000000000000031 /* AccessMediaProxy.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -50,6 +53,9 @@
 		65871D83BE744D7284BAE975 /* MobileNativeMedia.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileNativeMedia.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		6A7B8C9D0E1F2A3B4C5D6E8 /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
+		DAACC0000000000000000011 /* AccessMediaPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessMediaPolicy.swift; sourceTree = "<group>"; };
+		DAACC0000000000000000021 /* AccessMedia.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessMedia.swift; sourceTree = "<group>"; };
+		DAACC0000000000000000031 /* AccessMediaProxy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessMediaProxy.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -84,6 +90,9 @@
 		6A7B8C9D0E1F2A3B4C5D6E9 /* Plugins */ = {
 			isa = PBXGroup;
 			children = (
+				DAACC0000000000000000011 /* AccessMediaPolicy.swift */,
+				DAACC0000000000000000021 /* AccessMedia.swift */,
+				DAACC0000000000000000031 /* AccessMediaProxy.swift */,
 				6A7B8C9D0E1F2A3B4C5D6EA /* MobileCommandQueue.swift */,
 				65871D83BE744D7284BAE975 /* MobileNativeMedia.swift */,
 				B4C3D2E0FEDC1B000F3C39D /* StalkerPortalPlugin.swift */,
@@ -204,6 +213,9 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				6A7B8C9D0E1F2A3B4C5D6E7 /* MainViewController.swift in Sources */,
+				DAACC0000000000000000012 /* AccessMediaPolicy.swift in Sources */,
+				DAACC0000000000000000022 /* AccessMedia.swift in Sources */,
+				DAACC0000000000000000032 /* AccessMediaProxy.swift in Sources */,
 				5F2A4B6D1FED79650016851F /* MobileCommandQueue.swift in Sources */,
 				04BC0D8B75264E3D90FEB2C9 /* MobileNativeMedia.swift in Sources */,
 				B4C3D2E1FEDC1B000F3C39D /* StalkerPortalPlugin.swift in Sources */,

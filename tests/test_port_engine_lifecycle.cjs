@@ -4,7 +4,11 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const root = path.resolve(__dirname, "..");
-const source = ["src/core/native-hls.ts", "src/core/index.ts"]
+const source = [
+    "src/plugins/access-media.ts",
+    "src/core/native-hls.ts",
+    "src/core/index.ts",
+]
     .map((file) => fs.readFileSync(path.join(root, file), "utf8"))
     .join("\n");
 const core = ts
@@ -406,6 +410,58 @@ test("native and HLS recovery preserve seek on engines rejecting pre-metadata cu
     for (const cb of stale) cb();
     w.video.metadata();
     assert.equal(w.video.currentTime, 12);
+});
+test("iOS source login cannot replace a newer channel or revive stopped playback", async () => {
+    const { w } = fixture();
+    const first = deferred(),
+        second = deferred(),
+        stopped = deferred();
+    const pending = [first, second, stopped];
+    w.__ottCoreTransport.configure({ prepareSource: w.prepareAccessMedia });
+    w.Capacitor = {
+        getPlatform: () => "ios",
+        Plugins: {
+            AccessMedia: {
+                prepare: () => pending.shift().promise,
+            },
+        },
+    };
+    const local =
+        "http://127.0.0.1:12345/access/" +
+        "a".repeat(43) +
+        "/fixture/media.m3u8";
+    w.stbPlay("https://source.invalid/old.m3u8");
+    w.stbPlay("https://source.invalid/new.m3u8", 12);
+    first.resolve({ url: local + "old" });
+    await tick();
+    assert.equal(w.video.playCalls, 0);
+    second.resolve({ url: local });
+    await tick();
+    assert.equal(w.video.src, local);
+    assert.equal(w.video.playCalls, 1);
+    w.stbPlay("https://source.invalid/stopped.m3u8");
+    w.stbStop();
+    stopped.resolve({ url: local });
+    await tick();
+    assert.equal(w.video.playCalls, 1);
+});
+test("iOS source login failure does not fall back to an unprotected URL", async () => {
+    const { w } = fixture();
+    const messages = [];
+    w.showShift = (message) => messages.push(message);
+    w.__ottCoreTransport.configure({ prepareSource: w.prepareAccessMedia });
+    w.Capacitor = {
+        getPlatform: () => "ios",
+        Plugins: {
+            AccessMedia: {
+                prepare: () => Promise.reject(new Error("cancelled")),
+            },
+        },
+    };
+    w.stbPlay("https://source.invalid/blocked.m3u8");
+    await tick();
+    assert.equal(w.video.playCalls, 0);
+    assert.deepEqual(messages, ["Source sign-in required"]);
 });
 test("HLS level zero is never confused with current higher level", () => {
     const { w, players } = fixture();

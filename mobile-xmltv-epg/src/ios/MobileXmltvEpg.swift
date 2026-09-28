@@ -5,6 +5,8 @@ import CryptoKit
 
 @objc(MobileXmltvEpg)
 public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
+    /// Optional host transport for authenticated sources; install before loading EPG.
+    public static var requestHandler: ((URLRequest, @escaping (Data?, URLResponse?, Error?) -> Void) -> Void)?
     public let identifier = "MobileXmltvEpgPlugin"
     public let jsName = "MobileXmltvEpg"
     public let pluginMethods: [CAPPluginMethod] = [
@@ -234,7 +236,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func fetchXmltv(_ url: URL, completion: @escaping (Result<(data: Data, xml: String), Error>) -> Void) {
-        URLSession.shared.dataTask(with: url) { data, response, err in
+        let completionHandler: (Data?, URLResponse?, Error?) -> Void = { data, response, err in
             if let response = response as? HTTPURLResponse, !(200...299).contains(response.statusCode) {
                 completion(.failure(NSError(domain: "MobileXmltvEpg", code: response.statusCode))); return
             }
@@ -249,7 +251,9 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                 return
             }
             completion(.success((data, xmlStr)))
-        }.resume()
+        }
+        if let handler = Self.requestHandler { handler(URLRequest(url: url), completionHandler) }
+        else { URLSession.shared.dataTask(with: url, completionHandler: completionHandler).resume() }
     }
 
     // MARK: - Gzip

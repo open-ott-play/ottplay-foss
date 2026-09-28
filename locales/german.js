@@ -705,6 +705,8 @@ var keyStrings = {
     "Show when switching": "Bei Senderwechsel anzeigen",
     "Sleep timer": "Ausschalttimer",
     "Sort channels": "Sender sortieren",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Stalker-Portal-Anbieter",
     "Stalker portal settings": "Stalker-Portal-Einstellungen",
     "Stalker portals": "Stalker-Portale",

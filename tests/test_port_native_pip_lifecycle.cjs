@@ -112,6 +112,23 @@ function fixture(platform, capacitorPlatform = "ios") {
     };
     c.window = c;
     vm.createContext(c);
+    vm.runInContext(
+        ts
+            .transpileModule(
+                fs.readFileSync(
+                    path.join(__dirname, "../src/plugins/access-media.ts"),
+                    "utf8"
+                ),
+                {
+                    compilerOptions: {
+                        module: ts.ModuleKind.ES2015,
+                        target: ts.ScriptTarget.ES5,
+                    },
+                }
+            )
+            .outputText.replace(/^export /gm, ""),
+        c
+    );
     for (const file of ["media-backend", "native-pip"])
         require("./helpers/private-runtime.cjs")(
             c,
@@ -487,6 +504,40 @@ for (const mode of [1, 2]) {
         assert.equal(f.requests[2].engine, mode);
         assert.equal(f.requests[2].loop, false);
         assert.equal(f.window.playerMode, mode);
+    });
+}
+
+for (const action of ["stop", "replace"]) {
+    test(`Capacitor iOS: ${action} during source login cannot start the retired stream`, async () => {
+        const f = fixture("Capacitor");
+        const pending = [];
+        f.window.Capacitor.Plugins = {
+            AccessMedia: {
+                prepare: ({ url }) =>
+                    new Promise((resolve) => pending.push({ resolve, url })),
+            },
+        };
+        f.play("https://source.invalid/old.m3u8");
+        await settle();
+        assert.equal(pending.length, 1);
+        assert.equal(f.requests.length, 0);
+        if (action === "stop") f.stop();
+        else f.play("https://source.invalid/new.m3u8");
+        pending[0].resolve({ url: pending[0].url });
+        await settle();
+        assert.equal(
+            f.requests.length,
+            0,
+            "old auth callback never reaches native playback"
+        );
+        if (action === "replace") {
+            assert.equal(pending.length, 2);
+            pending[1].resolve({ url: pending[1].url });
+            await settle();
+            assert.equal(f.requests.length, 1);
+            assert.equal(f.requests[0].url, "https://source.invalid/new.m3u8");
+        }
+        assert.deepEqual(f.cssPlays, []);
     });
 }
 

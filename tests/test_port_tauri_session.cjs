@@ -108,6 +108,23 @@ function fixture(platform = "tauri") {
     }
     w.window = w;
     vm.createContext(w);
+    vm.runInContext(
+        ts
+            .transpileModule(
+                fs.readFileSync(
+                    path.join(__dirname, "../src/plugins/access-media.ts"),
+                    "utf8"
+                ),
+                {
+                    compilerOptions: {
+                        module: ts.ModuleKind.ES2015,
+                        target: ts.ScriptTarget.ES5,
+                    },
+                }
+            )
+            .outputText.replace(/^export /gm, ""),
+        w
+    );
     nativeWindow = vm.runInContext("window", w);
     for (const file of ["media-backend", "media-session", "native-pip"])
         require("./helpers/private-runtime.cjs")(

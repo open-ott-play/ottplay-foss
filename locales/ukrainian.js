@@ -692,6 +692,8 @@ var keyStrings = {
     "Show when switching": "Показувати під час перемикання каналів",
     "Sleep timer": "Таймер сну",
     "Sort channels": "Сортувати канали",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Провайдер порталу Stalker",
     "Stalker portal settings": "Налаштування порталу Stalker",
     "Stalker portals": "Портали Stalker",

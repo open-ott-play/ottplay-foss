@@ -700,6 +700,8 @@ var keyStrings = {
     "Show when switching": "Tonen bij zenderwisseling",
     "Sleep timer": "Slaaptimer",
     "Sort channels": "Zenders sorteren",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Stalker-portaalprovider",
     "Stalker portal settings": "Instellingen van Stalker-portaal",
     "Stalker portals": "Stalker-portalen",

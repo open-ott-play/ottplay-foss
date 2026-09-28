@@ -20,6 +20,7 @@ function compile(source) {
 const core = [
     "src/utils/helpers.ts",
     "src/core/native-hls.ts",
+    "src/plugins/access-media.ts",
     "src/core/index.ts",
 ]
     .map((file) => compile(read(file)))
@@ -43,8 +44,14 @@ const metadataDeclaration = entryAst.statements.find(
 );
 assert(metadataDeclaration, "Exercise the actual shared metadata collector");
 const metadata = compile(metadataDeclaration.getText(entryAst));
-const wrapper = metadata + compile(entry.slice(begin, end));
-const nativeWrappers = metadata + compile(entry.slice(begin, nativeEnd));
+const wrapper =
+    compile(read("src/plugins/access-media.ts")) +
+    metadata +
+    compile(entry.slice(begin, end));
+const nativeWrappers =
+    compile(read("src/plugins/access-media.ts")) +
+    metadata +
+    compile(entry.slice(begin, nativeEnd));
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 
 function metadataFixture(platform) {

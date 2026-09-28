@@ -697,6 +697,8 @@ var keyStrings = {
     "Show when switching": "Rādīt, pārslēdzot kanālus",
     "Sleep timer": "Miega taimeris",
     "Sort channels": "Kārtot kanālus",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Stalker portāla pakalpojuma sniedzējs",
     "Stalker portal settings": "Stalker portāla iestatījumi",
     "Stalker portals": "Stalker portāli",

@@ -1,0 +1,176 @@
+import Foundation
+import CryptoKit
+import Security
+
+enum AccessMediaFailure: String, Error, LocalizedError {
+    case invalid = "Invalid protected source configuration"
+    case login = "Sign in to the protected source again"
+    case cancelled = "Source sign-in was cancelled"
+    case unavailable = "Protected source is unavailable"
+    case busy = "Another source sign-in is already open"
+    var errorDescription: String? { rawValue }
+}
+
+struct AccessMediaConfig: Codable, Equatable {
+    let version: Int
+    let source_origin: String
+    let media_origin: String
+    let authorize_path: String
+    let exchange_path: String
+    let callback: String
+
+    func validated(for source: URL) throws -> AccessMediaConfig {
+        guard version == 1, [source_origin, media_origin].contains(AccessMediaPolicy.origin(source) ?? ""),
+              let original = URL(string: source_origin), AccessMediaPolicy.origin(original) == source_origin,
+              original.path.isEmpty, original.query == nil, original.fragment == nil,
+              let media = URL(string: media_origin), AccessMediaPolicy.origin(media) == media_origin,
+              media.scheme == "https", media.user == nil, media.password == nil,
+              media.port == nil || media.port == 443, media.path.isEmpty,
+              media.query == nil, media.fragment == nil,
+              authorize_path == "/_ottplay/authorize",
+              exchange_path == "/_ottplay/public/exchange",
+              callback == "ottplay-access://callback" else { throw AccessMediaFailure.invalid }
+        return self
+    }
+
+    func map(_ url: URL) -> URL? {
+        guard let origin = AccessMediaPolicy.origin(url),
+              origin == source_origin || origin == media_origin,
+              let media = URLComponents(string: media_origin),
+              var target = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              target.user == nil, target.password == nil else { return nil }
+        target.scheme = media.scheme; target.host = media.host; target.port = media.port
+        target.fragment = nil
+        return target.url
+    }
+}
+
+struct AccessMediaSession: Codable {
+    let token: String
+    let expires_at: TimeInterval
+    let media_origin: String
+    func valid(for config: AccessMediaConfig, now: TimeInterval = Date().timeIntervalSince1970) -> Bool {
+        media_origin == config.media_origin && expires_at > now + 30 && expires_at <= now + 86400 &&
+            token.utf8.count <= 16384 && token.range(of: "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$", options: .regularExpression) != nil
+    }
+}
+
+enum AccessMediaPolicy {
+    static func origin(_ url: URL) -> String? {
+        guard url.scheme == "https", let host = url.host?.lowercased(), !host.isEmpty,
+              url.user == nil, url.password == nil else { return nil }
+        let authority = host.contains(":") && !host.hasPrefix("[") ? "[\(host)]" : host
+        return "https://\(authority)" + (url.port.map { $0 == 443 ? "" : ":\($0)" } ?? "")
+    }
+    static func base64(_ data: Data) -> String {
+        data.base64EncodedString().replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
+    }
+    static func decode(_ string: String) -> Data? {
+        let value = string.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        return Data(base64Encoded: value + String(repeating: "=", count: (4 - value.count % 4) % 4))
+    }
+    static func random() throws -> String {
+        var bytes = [UInt8](repeating: 0, count: 32)
+        guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else {
+            throw AccessMediaFailure.unavailable
+        }
+        return base64(Data(bytes))
+    }
+    static func challenge(_ verifier: String) -> String { base64(Data(SHA256.hash(data: Data(verifier.utf8)))) }
+    static func callbackCode(_ url: URL, state: String) throws -> String {
+        guard url.scheme == "ottplay-access", url.host == "callback", url.path.isEmpty,
+              url.user == nil, url.password == nil, url.port == nil, url.fragment == nil,
+              let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+              items.filter({ $0.name == "state" }).count == 1,
+              items.first(where: { $0.name == "state" })?.value == state,
+              items.filter({ $0.name == "code" }).count == 1,
+              let code = items.first(where: { $0.name == "code" })?.value,
+              code.range(of: "^[A-Za-z0-9_-]{43}$", options: .regularExpression) != nil else {
+            throw AccessMediaFailure.invalid
+        }
+        return code
+    }
+
+    static func rewriteManifest(_ text: String, base: URL, rewrite: (URL) -> URL?) -> String {
+        func replace(_ value: String) -> String {
+            guard let url = URL(string: value, relativeTo: base)?.absoluteURL,
+                  let local = rewrite(url) else { return value }
+            return local.absoluteString
+        }
+        let expression = try! NSRegularExpression(pattern: "(?:^|[, :])(?:URI|SERVER-URI)=\"([^\"]*)\"")
+        return text.components(separatedBy: "\n").map { line in
+            if line.hasPrefix("#") {
+                var result = line
+                for match in expression.matches(in: line, range: NSRange(line.startIndex..., in: line)).reversed() {
+                    if let range = Range(match.range(at: 1), in: result) {
+                        result.replaceSubrange(range, with: replace(String(result[range])))
+                    }
+                }
+                return result
+            }
+            let value = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            return value.isEmpty ? line : replace(value)
+        }.joined(separator: "\n")
+    }
+}
+
+// Used only for protected requests and discovery. Never follows redirects out of
+// the trusted HTTPS origin, or accepts cookies from the app's JavaScript runtime.
+final class AccessMediaHTTP: NSObject, URLSessionDataDelegate {
+    private var session: URLSession?
+    private var buffer = Data()
+    private var response: HTTPURLResponse?
+    private let request: URLRequest
+    private let limit: Int
+    private let completion: (Data?, URLResponse?, Error?) -> Void
+    private var failure: Error?
+
+    init(_ request: URLRequest, limit: Int, completion: @escaping (Data?, URLResponse?, Error?) -> Void) {
+        self.request = request; self.limit = limit; self.completion = completion
+    }
+    func start() {
+        let config = URLSessionConfiguration.ephemeral
+        config.httpCookieStorage = nil; config.httpShouldSetCookies = false; config.urlCache = nil
+        config.urlCredentialStorage = nil
+        let session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
+        self.session = session
+        session.dataTask(with: request).resume()
+    }
+    static func fetch(_ request: URLRequest, limit: Int = 64 * 1024 * 1024) async throws -> (Data, HTTPURLResponse) {
+        try await withCheckedThrowingContinuation { continuation in
+            AccessMediaHTTP(request, limit: limit) { data, response, error in
+                if let error { continuation.resume(throwing: error) }
+                else if let data, let response = response as? HTTPURLResponse { continuation.resume(returning: (data, response)) }
+                else { continuation.resume(throwing: AccessMediaFailure.unavailable) }
+            }.start()
+        }
+    }
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
+        guard let from = self.request.url, let to = request.url,
+              AccessMediaPolicy.origin(from) == AccessMediaPolicy.origin(to) else { completionHandler(nil); return }
+        var next = request
+        next.setValue(self.request.value(forHTTPHeaderField: "Cookie"), forHTTPHeaderField: "Cookie")
+        completionHandler(next)
+    }
+    func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge,
+                    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        completionHandler(challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust
+            ? .performDefaultHandling : .cancelAuthenticationChallenge, nil)
+    }
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
+                    completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        self.response = response as? HTTPURLResponse
+        if response.expectedContentLength > Int64(limit) { failure = AccessMediaFailure.unavailable; completionHandler(.cancel) }
+        else { completionHandler(.allow) }
+    }
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        guard buffer.count + data.count <= limit else { failure = AccessMediaFailure.unavailable; dataTask.cancel(); return }
+        buffer.append(data)
+    }
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        completion(buffer, response, failure ?? error)
+        session.invalidateAndCancel(); self.session = nil
+    }
+}

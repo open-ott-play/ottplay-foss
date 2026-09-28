@@ -703,6 +703,8 @@ var keyStrings = {
     "Show when switching": "Afișează la schimbarea canalelor",
     "Sleep timer": "Temporizator de oprire",
     "Sort channels": "Sortează canalele",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Furnizor de portal Stalker",
     "Stalker portal settings": "Setările portalului Stalker",
     "Stalker portals": "Portaluri Stalker",
