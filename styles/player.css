@@ -432,6 +432,19 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 6px;
 }
+#listEdit #editRemoteInput {
+    padding: 0.4em 0.8em;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid currentColor;
+    border-radius: 6px;
+}
+#listEdit #editRemoteInput:focus {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+}
 #listAbout .osk-key {
     box-sizing: border-box;
     display: inline-block;

@@ -6,6 +6,163 @@ const { test, expect } = require("@playwright/test");
 
 const mediaRoot = path.resolve(__dirname, "../fixtures/media-runtime");
 
+async function nativeRemoteInputFixture(
+    page,
+    context,
+    baseURL,
+    configured = true
+) {
+    const origin = new URL(baseURL).origin;
+    const requests = [];
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await context.route("**/*", async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        if (url.origin === origin && url.pathname.startsWith("/swop/")) {
+            requests.push({
+                body: request.postDataJSON(),
+                headers: request.headers(),
+                path: url.pathname,
+            });
+            return route.fulfill({
+                json:
+                    url.pathname === "/swop/session"
+                        ? {
+                              code: "ABCDEF",
+                              entryCode: "ABCDEF-GHJKLM",
+                              entryUrl: "https://swop.test/",
+                              sessionToken: "synthetic-read-token",
+                              url: "https://swop.test/?c=ABCDEF&t=synthetic-write-token",
+                          }
+                        : { status: "ready", value: "Phone text & <literal>" },
+            });
+        }
+        return url.origin === origin
+            ? route.continue()
+            : route.abort("blockedbyclient");
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(() => {
+        localStorage.setItem("ottplaylang", "_eng");
+        localStorage.setItem("ottplayprov", "demo");
+    });
+    await page.goto("/f/pc/");
+    await page.waitForFunction(
+        () => window.__ottDevice && !document.body.classList.contains("booting")
+    );
+    await page.evaluate((enabled) => {
+        window.stbStop();
+        window.popupList();
+        window.sSwopBaseUrl = enabled ? "/swop" : "";
+        window.settings.swopBaseUrl = window.sSwopBaseUrl;
+        window.__nativeRemoteSaves = [];
+        window.editCaption = "Search";
+        window.editvar = "before typing";
+        window.setEdit = () => window.__nativeRemoteSaves.push(window.editvar);
+        window.showEditKey(null, true);
+        window.__nativeRemoteOwner =
+            window.__ottClassicScreenPort.owner("editor");
+    }, configured);
+    return { errors, requests };
+}
+
+test("native editor remote button sends typed draft, resumes and saves only on confirmation", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await nativeRemoteInputFixture(page, context, baseURL);
+    const field = page.getByLabel("Search", { exact: true });
+    await field.fill("Typed draft & <literal>");
+    const remote = page.getByRole("button", {
+        exact: true,
+        name: "Remote text entry",
+    });
+    await field.press("Tab");
+    await expect(remote).toBeFocused();
+    await remote.press("Shift+Tab");
+    await expect(field).toBeFocused();
+    await field.press("Tab");
+    await remote.press("Enter");
+    await expect(page.locator(".swop-code")).toHaveText("ABCDEF-GHJKLM");
+    expect(await page.evaluate(() => window.__nativeRemoteSaves)).toEqual([]);
+    expect(fixture.requests[0].body.draft).toBe("Typed draft & <literal>");
+    expect(fixture.requests[0].path).toBe("/swop/session");
+    await expect(field).toHaveValue("Phone text & <literal>");
+    await expect(field).toHaveAttribute("type", "password");
+    await expect(field).toBeFocused();
+    expect(
+        await page.evaluate(
+            () =>
+                window.__nativeRemoteOwner ===
+                window.__ottClassicScreenPort.owner("editor")
+        )
+    ).toBe(true);
+    expect(await page.evaluate(() => window.__nativeRemoteSaves)).toEqual([]);
+    expect(fixture.requests.map((request) => request.path)).toEqual([
+        "/swop/session",
+        "/swop/val",
+    ]);
+    expect(
+        fixture.requests.every((request) => !request.headers.authorization)
+    ).toBe(true);
+    await field.press("Enter");
+    await expect(page.locator("#listEdit")).toBeHidden();
+    expect(await page.evaluate(() => window.__nativeRemoteSaves)).toEqual([
+        "Phone text & <literal>",
+    ]);
+    expect(fixture.errors).toEqual([]);
+});
+
+test("native editor remote cancel preserves typing and Escape discards without saving", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await nativeRemoteInputFixture(page, context, baseURL);
+    const field = page.getByLabel("Search", { exact: true });
+    await field.fill("Keep this draft");
+    await page
+        .getByRole("button", { exact: true, name: "Remote text entry" })
+        .click();
+    await expect(page.locator(".swop-code")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(field).toHaveValue("Keep this draft");
+    await expect(field).toHaveAttribute("type", "password");
+    await field.press("Escape");
+    await expect(page.locator("#listEdit")).toBeHidden();
+    expect(await page.evaluate(() => window.__nativeRemoteSaves)).toEqual([]);
+    expect(fixture.requests.length).toBe(1);
+    expect(fixture.errors).toEqual([]);
+});
+
+test("native editor remote button explains missing configuration and keeps the field", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await nativeRemoteInputFixture(
+        page,
+        context,
+        baseURL,
+        false
+    );
+    const field = page.getByLabel("Search", { exact: true });
+    await field.fill("Local draft");
+    await page
+        .getByRole("button", { exact: true, name: "Remote text entry" })
+        .click();
+    await expect(field).toHaveValue("Local draft");
+    await expect(page.locator("#info")).toHaveText(
+        "Remote text entry not configured"
+    );
+    await expect(page.locator("#info")).toBeVisible();
+    expect(fixture.requests).toEqual([]);
+    expect(await page.evaluate(() => window.__nativeRemoteSaves)).toEqual([]);
+    expect(fixture.errors).toEqual([]);
+});
+
 async function episodeFixture(page, context, baseURL, holdNext = false) {
     const origin = new URL(baseURL).origin;
     const errors = [];

@@ -1176,7 +1176,7 @@ export function showShift(message: string): void {
     var info = document.getElementById("info");
     if (info) {
         info.innerHTML = metadataHtml(message);
-        info.style.display = "";
+        info.style.display = "block";
     }
     setTimeout(function () {
         if (info) info.style.display = "none";
@@ -3363,7 +3363,7 @@ export function editKey2(code: number): void {
  * @param resume - Redraw after SWOP while retaining the current editor owner.
  * @returns void
  * @sideeffect Calls `window.saveListPanelState()` if available. Renders `#listEdit` with an `<input>` field
- *             and save/discard buttons. Focuses the input field.
+ *             with remote input and save/discard controls. Focuses the input field.
  */
 export function showEditKey2(
     _initKeys?: number[],
@@ -3375,6 +3375,9 @@ export function showEditKey2(
     var port = (window as any).__ottClassicScreenPort;
     var editorOwner = resume ? port.owner("editor") : port.openEditor();
     if (!editorOwner || !editorOwner.active()) return;
+    if (!resume) editorOwner.model.nativeInputSecret = !!secret;
+    if (editorOwner.model.releaseNativeInput)
+        editorOwner.model.releaseNativeInput();
     var caption = (window as any).editCaption || "";
     var val = (window as any).editvar || "";
     var keys = (window as any).keys || {};
@@ -3385,12 +3388,16 @@ export function showEditKey2(
     var html = metadataText(caption) + ":<br/><br/>";
     html +=
         '<br/><input type="' +
-        (secret ? "password" : "text") +
+        (editorOwner.model.nativeInputSecret ? "password" : "text") +
         '" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="' +
         metadataText(caption) +
         '" id="editvar" style="color:' +
         ((window as any).curColor || "#fff") +
         ';" autofocus><br/><br/>';
+    html +=
+        '<button type="button" id="editRemoteInput">' +
+        metadataText(_("Remote text entry")) +
+        "</button>";
     html +=
         "<br/>" +
         (
@@ -3409,6 +3416,7 @@ export function showEditKey2(
         )(keys.ENTER || 13, strEnter, "- save");
     $("#listEdit").show().html(html);
     var editEl = document.getElementById("editvar") as HTMLInputElement | null;
+    var remoteButton = document.getElementById("editRemoteInput");
     if (editEl) {
         // Assign the value as text: HTML entities in URLs/passwords must round-trip.
         editEl.value = String(val);
@@ -3417,7 +3425,11 @@ export function showEditKey2(
             editEl.removeEventListener("keydown", prev);
         }
         var onKeyDown = editorOwner.guard(function (ev: KeyboardEvent): void {
-            if (!editorOwner.foreground()) return;
+            if (
+                !editorOwner.foreground() ||
+                document.getElementById("editvar") !== editEl
+            )
+                return;
             if (ev.isComposing || ev.keyCode === 229) {
                 // Keep IME default handling, but do not let the window key router save.
                 ev.stopPropagation();
@@ -3433,11 +3445,55 @@ export function showEditKey2(
                 editKey2(keys.EXIT || 27);
             }
         });
-        editorOwner.own(function () {
+        var onRemoteClick = editorOwner.guard(function (ev: MouseEvent): void {
+            if (
+                !editorOwner.foreground() ||
+                document.getElementById("editvar") !== editEl
+            )
+                return;
+            ev.preventDefault();
+            ev.stopPropagation();
+            // Native typing lives in the input until save or remote handoff.
+            (window as any).editvar = editEl!.value;
+            swopLoadValue();
+        });
+        var onRemoteKeyDown = editorOwner.guard(function (
+            ev: KeyboardEvent
+        ): void {
+            if (
+                !editorOwner.foreground() ||
+                document.getElementById("editRemoteInput") !== remoteButton
+            )
+                return;
+            // Keep button activation native; do not let the global router save.
+            if (
+                ev.key === "Enter" ||
+                ev.key === " " ||
+                ev.key === "Tab" ||
+                ev.keyCode === 13 ||
+                ev.keyCode === 9 ||
+                ev.keyCode === 32
+            )
+                ev.stopPropagation();
+            else if (ev.key === "Escape" || ev.keyCode === 27) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                editKey2(keys.EXIT || 27);
+            }
+        });
+        editorOwner.model.releaseNativeInput = editorOwner.own(function () {
             editEl!.removeEventListener("keydown", onKeyDown);
+            if (remoteButton) {
+                remoteButton.removeEventListener("click", onRemoteClick);
+                remoteButton.removeEventListener("keydown", onRemoteKeyDown);
+            }
         });
         (editEl as any).__ottEditKey2Handler = onKeyDown;
         editEl.addEventListener("keydown", onKeyDown);
+        if (remoteButton) {
+            remoteButton.addEventListener("click", onRemoteClick);
+            remoteButton.addEventListener("keydown", onRemoteKeyDown);
+        }
         editEl.focus();
     }
 }

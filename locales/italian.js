@@ -593,6 +593,7 @@ var keyStrings = {
     "Remote input session is unavailable. Open a new session to try again.":
         "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Sessione remota scaduta",
+    "Remote text entry": "Inserimento testo remoto",
     "Remote text entry denied": "Inserimento testo remoto negato",
     "Remote text entry error": "Errore nell'inserimento testo remoto",
     "Remote text entry needs a Device ID.":

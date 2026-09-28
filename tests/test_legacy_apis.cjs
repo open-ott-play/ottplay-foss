@@ -214,6 +214,7 @@ const selected = [];
 const keys = [];
 const savedValues = [];
 const c = vm.createContext({
+    _: (value) => value,
     _doKey(key) {
         keys.push(key);
     },
