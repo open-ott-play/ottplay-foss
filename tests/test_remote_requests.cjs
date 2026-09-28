@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const ts = require("typescript");
 const acorn = require("acorn");
+const sharedCore = require("./helpers/shared-core-runtime.cjs");
 const now = Math.floor(Date.now() / 1000);
 const entries = {
     a: [{ name: "НОВОСТИ дня", time: now - 60, time_to: now + 600 }],
@@ -79,7 +80,9 @@ const ctx = {
     URL,
     window: host,
 };
-vm.runInNewContext(code, ctx);
+vm.createContext(ctx);
+sharedCore(ctx, { vendorOnly: true });
+vm.runInContext(code, ctx);
 function call(action, params = {}) {
     return new Promise((resolve) =>
         ctx.exports.executeRemoteRequest({ action, params }, resolve)
@@ -124,7 +127,9 @@ function checkPendingGuideSnapshot() {
         exports: {},
         window: pendingHost,
     };
-    vm.runInNewContext(code, pendingContext);
+    vm.createContext(pendingContext);
+    sharedCore(pendingContext, { vendorOnly: true });
+    vm.runInContext(code, pendingContext);
     pendingContext.exports.executeRemoteRequest(
         { action: "programs", params: {} },
         (value) => (result = value)
@@ -152,8 +157,206 @@ function checkPendingGuideSnapshot() {
     assert.equal(result.data.programs[0].title, "At query start");
     assert.equal(timers.size, 0, "completion clears the deadline");
 }
+function guideQueryFixture(count, guide, params = {}) {
+    let nextTimer = 0,
+        peakTimers = 0,
+        result;
+    const timers = new Map();
+    const queryHost = {
+        ...host,
+        __ottClassicGuide: guide,
+        __ottCommandChannelLoad: {},
+        channels: {},
+        cList: Array.from({ length: count }, (_, id) => id),
+        clearTimeout: (id) => timers.delete(id),
+        setTimeout: (fn, delay) => {
+            const id = ++nextTimer;
+            timers.set(id, { delay, fn });
+            peakTimers = Math.max(peakTimers, timers.size);
+            return id;
+        },
+    };
+    for (const id of queryHost.cList)
+        queryHost.channels[id] = { channel_name: "Channel " + id };
+    const queryContext = vm.createContext({
+        ...ctx,
+        Date: { now: () => now * 1000 },
+        exports: {},
+        window: queryHost,
+    });
+    sharedCore(queryContext, { vendorOnly: true });
+    vm.runInContext(code, queryContext);
+    const cancel = queryContext.exports.executeRemoteRequest(
+        { action: "programs", params },
+        (value) => {
+            assert.equal(result, undefined, "one query has one reply");
+            result = value;
+        }
+    );
+    return {
+        cancel,
+        flush(delay = 0) {
+            let task,
+                iterations = 0;
+            while (
+                (task = [...timers].find(([, timer]) => timer.delay === delay))
+            ) {
+                assert(++iterations <= count + 10, "query timers converge");
+                timers.delete(task[0]);
+                task[1].fn();
+            }
+        },
+        host: queryHost,
+        get result() {
+            return result;
+        },
+        stats: () => ({ created: nextTimer, peak: peakTimers }),
+        timers,
+    };
+}
+function checkGuideBatchingAndCancellation() {
+    const count = 1565;
+    let checked = 0;
+    const f = guideQueryFixture(count, {
+        peek: () => null,
+        request: (id, callback) => {
+            checked++;
+            callback(id, null);
+            return () => {};
+        },
+        source: () => "one",
+    });
+    assert.equal(checked, 64, "large synchronous results yield after a batch");
+    assert.equal(f.result, undefined);
+    f.flush();
+    assert.equal(f.result.data.checked, count);
+    assert.equal(f.result.data.partial, false);
+    assert.equal(f.result.data.programs.length, 0);
+    assert.ok(f.stats().created <= Math.ceil(count / 64) + 1);
+    assert.equal(f.stats().peak, 2, "only a deadline and one continuation");
+    assert.equal(f.timers.size, 0, "no canceled work remains queued");
+
+    const cached = guideQueryFixture(count, {
+        peek: () => entries.a,
+        request: () => {
+            throw new Error("cached current schedules need no fetch");
+        },
+        source: () => "one",
+    });
+    assert.equal(cached.result, undefined, "cached schedules also yield");
+    cached.flush();
+    assert.equal(cached.result.data.programs.length, count);
+    assert.equal(cached.result.data.programs[0].number, 1);
+    assert.equal(cached.result.data.programs[count - 1].number, count);
+    assert.equal(cached.result.data.partial, false);
+
+    const pending = [];
+    let released = 0;
+    const canceled = guideQueryFixture(count, {
+        peek: () => null,
+        request: (id, callback) => {
+            pending.push(() => callback(id, entries.a));
+            return () => released++;
+        },
+        source: () => "one",
+    });
+    assert.equal(pending.length, 4, "guide concurrency stays bounded");
+    pending[0]();
+    assert.equal(canceled.timers.size, 2);
+    canceled.cancel();
+    pending.forEach((notify) => notify());
+    canceled.flush();
+    assert.equal(released, 4);
+    assert.equal(canceled.result, undefined, "late callbacks cannot reply");
+    assert.equal(canceled.timers.size, 0, "cancel removes the continuation");
+    assert.equal(pending.length, 4, "cancel cannot dispatch more guide work");
+
+    const deadline = guideQueryFixture(count, {
+        peek: (id) => (id === 0 ? entries.a : null),
+        request: () => () => {},
+        source: () => "one",
+    });
+    deadline.flush(25000);
+    assert.equal(deadline.result.data.partial, true);
+    assert.equal(deadline.result.data.checked, 1);
+    assert.equal(deadline.result.data.total, count);
+    assert.equal(deadline.result.data.programs.length, 1);
+    assert.equal(deadline.timers.size, 0);
+    console.log(
+        "PASS remote EPG 1565-channel batching: " +
+            f.stats().created +
+            " timers, peak " +
+            f.stats().peak
+    );
+}
+function checkGuideSelectionAndReload() {
+    const schedules = [
+        { name: "Long overlap", time: now - 60, time_to: now + 60 },
+        { name: "Current latest", time: now - 5, time_to: now + 5 },
+        { name: "Same-start correction", time: now - 5, time_to: now + 10 },
+        { name: "Future", time: now + 5, time_to: now + 60 },
+    ];
+    const guide = {
+        peek: () => schedules,
+        request: () => {
+            throw new Error("cached schedules need no fetch");
+        },
+        source: () => "one",
+    };
+    const f = guideQueryFixture(1, guide);
+    assert.equal(f.result.data.programs[0].title, "Current latest");
+    assert.equal(
+        guideQueryFixture(1, guide, { search: "Long" }).result.data.programs
+            .length,
+        0,
+        "filter the chosen current programme, not an older overlap"
+    );
+    for (const reload of [
+        (queryHost) => (queryHost.__ottCommandChannelLoad = {}),
+        (queryHost) => (queryHost.commandChannelsReady = false),
+        (queryHost) => (queryHost.__ottClassicGuide.source = () => "two"),
+    ]) {
+        let late,
+            released = 0;
+        const pending = guideQueryFixture(2, {
+            peek: (id) => (id === 0 ? schedules : null),
+            request: (id, callback) => {
+                late = () => callback(id, schedules);
+                return () => released++;
+            },
+            source: () => "one",
+        });
+        reload(pending.host);
+        pending.flush(25000);
+        assert.equal(pending.result.status, "rejected");
+        assert.equal(pending.result.data.programs, undefined);
+        assert.equal(released, 1);
+        late();
+        assert.equal(pending.timers.size, 0);
+    }
+    for (const reenter of [
+        (queryHost) => (queryHost.__ottCommandChannelLoad = {}),
+        (queryHost) => (queryHost.__ottClassicGuide.source = () => "two"),
+    ]) {
+        const pending = guideQueryFixture(2, {
+            peek: (id) => (id === 0 ? schedules : null),
+            request: () => () => reenter(pending.host),
+            source: () => "one",
+        });
+        pending.flush(25000);
+        assert.equal(
+            pending.result.status,
+            "rejected",
+            "guide cancellation can synchronously replace the catalog/source"
+        );
+        assert.equal(pending.result.data.programs, undefined);
+        assert.equal(pending.timers.size, 0);
+    }
+}
 (async () => {
     checkPendingGuideSnapshot();
+    checkGuideBatchingAndCancellation();
+    checkGuideSelectionAndReload();
     let r = await call("channels", { search: "ПЕРВЫЙ" });
     assert.equal(r.data.channels.length, 2);
     assert.equal(r.data.channels[0].number, 1);
