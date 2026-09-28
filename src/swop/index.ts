@@ -304,7 +304,6 @@ export function swopLoadValue(): void {
     function poll(): void {
         if (!ownsSession() || !code) return;
         $.ajax({
-            swopNativeRequest: true,
             cache: false,
             contentType: "application/json",
             data: JSON.stringify({
@@ -341,6 +340,7 @@ export function swopLoadValue(): void {
                     pollTimer = setTimeout(poll, POLL_MS);
                 }
             },
+            swopNativeRequest: true,
             timeout: 10000,
             type: "POST",
             url: base + wire.swopValuePath,
@@ -375,7 +375,6 @@ export function swopLoadValue(): void {
     var draft = typeof w.editvar === "string" ? w.editvar : "";
 
     $.ajax({
-        swopNativeRequest: true,
         cache: false,
         contentType: "application/json",
         data: JSON.stringify({
@@ -448,6 +447,7 @@ export function swopLoadValue(): void {
             );
             pollTimer = setTimeout(poll, 3000);
         },
+        swopNativeRequest: true,
         timeout: 10000,
         type: "POST",
         url: base + wire.swopSessionPath,

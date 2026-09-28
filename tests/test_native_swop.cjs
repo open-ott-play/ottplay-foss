@@ -9,7 +9,7 @@ require("node:vm").runInNewContext(
     ts.transpileModule(fs.readFileSync("capacitor.config.ts", "utf8"), {
         compilerOptions: { module: ts.ModuleKind.CommonJS },
     }).outputText,
-    { module: configModule, exports: configModule.exports }
+    { exports: configModule.exports, module: configModule }
 );
 const capacitorConfig = configModule.exports.default;
 assert.equal(capacitorConfig.loggingBehavior, "none");
@@ -21,18 +21,18 @@ const source = fs.readFileSync("src/plugins/native-http.ts", "utf8");
 const script = ts
     .transpileModule(source, {
         compilerOptions: {
-            target: ts.ScriptTarget.ES5,
             module: ts.ModuleKind.ES2015,
+            target: ts.ScriptTarget.ES5,
         },
     })
     .outputText.replace(/^export /gm, "");
 function fixture(platform = "tauri", responder) {
     const dom = new JSDOM("", {
+        runScripts: "outside-only",
         url:
             platform === "tauri"
                 ? "http://tauri.localhost/"
                 : "capacitor://localhost/",
-        runScripts: "outside-only",
     });
     const w = dom.window;
     w.eval(
@@ -46,14 +46,14 @@ function fixture(platform = "tauri", responder) {
     w.eval(script);
     const calls = [];
     const request = (command, args) => {
-        calls.push({ command, args });
+        calls.push({ args, command });
         return responder
             ? responder(args)
             : Promise.resolve({
+                  body: '{"status":"ready","value":"Привет & <test> + 42"}',
+                  headers: "Content-Type: application/json\r\n",
                   status: 200,
                   statusText: "OK",
-                  headers: "Content-Type: application/json\r\n",
-                  body: '{"status":"ready","value":"Привет & <test> + 42"}',
               });
     };
     if (platform === "tauri") w.installTauriHttpTransport(w.$, request);
@@ -64,26 +64,26 @@ function fixture(platform = "tauri", responder) {
             swopRequest: (args) => request("swopRequest", args),
         });
     }
-    return { w, calls, close: () => w.close() };
+    return { calls, close: () => w.close(), w };
 }
 const options = (extra = {}) =>
     Object.assign(
         {
-            url: "https://relay.example/swop/session",
-            type: "POST",
             contentType: "application/json",
-            dataType: "json",
             data: '{"draft":"Привет"}',
-            timeout: 1000,
+            dataType: "json",
             headers: { "X-Swop-Client-Id": "device-123" },
             swopNativeRequest: true,
+            timeout: 1000,
+            type: "POST",
+            url: "https://relay.example/swop/session",
         },
         extra
     );
 const settle = (xhr) =>
     new Promise((resolve) => {
-        xhr.done((data, status, jq) => resolve({ ok: true, data, status, jq }));
-        xhr.fail((jq, status) => resolve({ ok: false, status, jq }));
+        xhr.done((data, status, jq) => resolve({ data, jq, ok: true, status }));
+        xhr.fail((jq, status) => resolve({ jq, ok: false, status }));
     });
 (async () => {
     let groups = 0;
@@ -152,15 +152,15 @@ const settle = (xhr) =>
         { data: JSON.stringify({ draft: "я".repeat(32768) }) },
         {
             headers: {
-                "X-Swop-Client-Id": "device",
                 Authorization: "Bearer secret",
+                "X-Swop-Client-Id": "device",
             },
         },
-        { headers: { "X-Swop-Client-Id": "device", Cookie: "secret" } },
+        { headers: { Cookie: "secret", "X-Swop-Client-Id": "device" } },
         {
             headers: {
-                "X-Swop-Client-Id": "device",
                 Origin: "https://spoof.example",
+                "X-Swop-Client-Id": "device",
             },
         },
         { headers: { "X-Swop-Client-Id": "bad\r\nvalue" } },
@@ -179,10 +179,10 @@ const settle = (xhr) =>
         );
         const f = fixture("tauri", () =>
             Promise.resolve({
+                body,
+                headers: "Content-Type: application/json\r\n",
                 status: 200,
                 statusText: "OK",
-                headers: "Content-Type: application/json\r\n",
-                body,
             })
         );
         assert.equal(
@@ -217,8 +217,8 @@ const settle = (xhr) =>
             .join("\n"),
         {
             compilerOptions: {
-                target: ts.ScriptTarget.ES5,
                 module: ts.ModuleKind.None,
+                target: ts.ScriptTarget.ES5,
             },
         }
     ).outputText;
@@ -226,19 +226,19 @@ const settle = (xhr) =>
         const result = "界".repeat(8000);
         const f = fixture(platform, (args) =>
             Promise.resolve({
-                status: 200,
-                statusText: "OK",
-                headers: "Content-Type: application/json\r\n",
                 body: JSON.stringify(
                     args.url.endsWith("/session")
                         ? {
                               code: "ABCDEF",
+                              entryCode: "ABCDEF-123456",
                               sessionToken: "read-only-token",
                               url: "https://phone.example/",
-                              entryCode: "ABCDEF-123456",
                           }
                         : { status: "ready", value: result }
                 ),
+                headers: "Content-Type: application/json\r\n",
+                status: 200,
+                statusText: "OK",
             })
         );
         let resumed, cleanup;
@@ -251,25 +251,25 @@ const settle = (xhr) =>
         };
         Object.assign(f.w, require("./load-wire.cjs")(), {
             _: (text) => text,
-            settings: {},
-            saveSettings() {},
-            deviceUUID: "device-123",
-            sSwopBaseUrl: "https://relay.example/swop",
-            editCaption: "Search",
-            editvar: "typed draft",
-            editKey: () => {},
-            renderButtonHint: () => "",
-            strRETURN: "Return",
-            curColor: "gold",
-            makeQrSvg: () => "",
             __ottClassicScreenPort: { owner: () => owner },
+            curColor: "gold",
+            deviceUUID: "device-123",
+            editCaption: "Search",
+            editKey: () => {},
+            editvar: "typed draft",
+            makeQrSvg: () => "",
+            renderButtonHint: () => "",
+            saveSettings() {},
+            settings: {},
             showEditKey: () => {
                 resumed = f.w.editvar;
             },
+            sSwopBaseUrl: "https://relay.example/swop",
+            strRETURN: "Return",
         });
         f.w.document.body.innerHTML =
             '<div id="listEdit"></div><div id="listPodval"></div>';
-        f.w.keys = { RETURN: 8, EXIT: 27 };
+        f.w.keys = { EXIT: 27, RETURN: 8 };
         const timer = f.w.setTimeout.bind(f.w);
         f.w.setTimeout = (fn, ms) => timer(fn, ms === 3000 ? 0 : ms);
         f.w.eval(swopScript);
@@ -289,10 +289,10 @@ const settle = (xhr) =>
     }
     const error = fixture("tauri", () =>
         Promise.resolve({
+            body: '{"error":"denied"}',
+            headers: "Content-Type: application/json\r\n",
             status: 403,
             statusText: "Forbidden",
-            headers: "Content-Type: application/json\r\n",
-            body: '{"error":"denied"}',
         })
     );
     const denied = await settle(error.w.$.ajax(options()));
@@ -313,14 +313,14 @@ const settle = (xhr) =>
         let successes = 0;
         const xhr = f.w.$.ajax(
             options({
-                timeout: action === "timeout" ? 10 : 1000,
                 success: () => successes++,
+                timeout: action === "timeout" ? 10 : 1000,
             })
         );
         const result = settle(xhr);
         if (action === "abort") xhr.abort();
         assert.equal((await result).status, action);
-        resolve({ status: 200, statusText: "OK", headers: "", body: "{}" });
+        resolve({ body: "{}", headers: "", status: 200, statusText: "OK" });
         await new Promise((r) => setTimeout(r, 10));
         assert.equal(successes, 0);
         f.close();
@@ -341,6 +341,7 @@ const settle = (xhr) =>
     const web = fixture("web");
     let browserCalls = 0;
     web.w.$.ajaxTransport("+*", () => ({
+        abort() {},
         send: (_h, done) => {
             browserCalls++;
             done(
@@ -350,7 +351,6 @@ const settle = (xhr) =>
                 "Content-Type: application/json\r\n"
             );
         },
-        abort() {},
     }));
     assert.equal((await settle(web.w.$.ajax(options()))).ok, true);
     assert.equal(web.calls.length, 0);
@@ -362,8 +362,8 @@ const settle = (xhr) =>
         opts.swopNativeRequest
             ? undefined
             : {
-                  send: (_h, done) => done(200, "OK", { text: "{}" }),
                   abort() {},
+                  send: (_h, done) => done(200, "OK", { text: "{}" }),
               }
     );
     assert.equal(

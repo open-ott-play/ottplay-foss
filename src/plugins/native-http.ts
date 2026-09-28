@@ -289,7 +289,7 @@ function installNativeSwopTransport(
                         throw new Error();
                     // Only these fields cross IPC; native code independently validates
                     // and creates its own fixed headers, origin and ten-second deadline.
-                    request({ url: url, body: body, clientId: clientId }).then(
+                    request({ body: body, clientId: clientId, url: url }).then(
                         function (response) {
                             if (!aborted)
                                 complete(
