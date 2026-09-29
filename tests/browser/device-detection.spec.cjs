@@ -712,6 +712,98 @@ test.describe("webOS fullscreen remote navigation", () => {
         expect(errors).toEqual([]);
     });
 
+    test("resumed archive can leave an empty guide with LG Back", async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        const errors = await bootForMagicRemote(
+            page,
+            context,
+            baseURL,
+            "lg/webos",
+            false
+        );
+        const archiveStart = await page.evaluate(() => {
+            const start = Math.floor(Date.now() / 1000) - 3600;
+            const stored = new Map([
+                [
+                    "continueWatch",
+                    JSON.stringify({
+                        catIndex: 0,
+                        channelId: 101,
+                        mode: "archive",
+                        playTime: 25,
+                        playType: start,
+                        updatedAt: Date.now(),
+                        v: 1,
+                    }),
+                ],
+            ]);
+            // Keep the actual restore, archive controller, guide and key router.
+            // Only isolate provider responses and native decoder side effects.
+            window.__resumeEffects = { played: [], seeks: [], stops: 0 };
+            window.stbPlay = (url, offset) =>
+                window.__resumeEffects.played.push({ offset, url });
+            window.stbStop = () => window.__resumeEffects.stops++;
+            window.stbIsPlaying = () =>
+                window.__resumeEffects.played.length > 0;
+            window.stbSetPosTime = (time) =>
+                window.__resumeEffects.seeks.push(time);
+            window.sStopPlay = window.sInfoRew = false;
+            window.providerGetItem = (key) => stored.get(key) ?? null;
+            window.providerSetItem = (key, value) => stored.set(key, value);
+            window.p_pref = "archive-fixture";
+            window.channels = window.chanels = {
+                101: {
+                    category: { name: "Fixture" },
+                    channel_name: "Channel 101",
+                    rec: 24,
+                },
+            };
+            window.catsArray = ["Fixture"];
+            window.cats = { Fixture: [101] };
+            window.curList = window.cList = window.cats.Fixture;
+            window.catIndex = window.primaryIndex = 0;
+            window.playType = window.playTime = 0;
+            window.epgArray = window.parentalArray = [];
+            window.fetchChannelGuide = (id, complete) => complete(id, []);
+            window.getArchiveUrl = () =>
+                location.origin + "/archive-fixture.m3u8";
+            window.closeList();
+            window.infoBarHide();
+            if (!window.restoreContinueWatch())
+                throw new Error("Fresh archive bookmark was not offered");
+            return start;
+        });
+        await expect(page.locator("#dialogbox")).toContainText(
+            "Resume from archive?"
+        );
+        await page.keyboard.press("Enter");
+        await expect
+            .poll(() => page.evaluate(() => window.__resumeEffects.seeks))
+            .toEqual([25]);
+        expect(await page.evaluate(() => window.playType)).toBe(archiveStart);
+        await expect(page.locator("#list")).toBeHidden();
+        await page.keyboard.press("ArrowRight");
+        await expect(page.locator("#listCaption")).toHaveText(
+            "EPG and archive. Channel: Channel 101"
+        );
+        await expect(page.locator("#list")).toBeVisible();
+        expect(await page.evaluate(() => window.listArray)).toEqual([]);
+        if (await page.locator("#dialogbox").isVisible())
+            await remoteKey(page, 461, "BrowserBack");
+        await remoteKey(page, 461, "BrowserBack");
+        await expect(page.locator("#list")).toBeHidden();
+        await expect(page.locator("#dialogbox")).toBeHidden();
+        const effects = await page.evaluate(() => window.__resumeEffects);
+        expect(effects.played).toHaveLength(1);
+        expect(effects.seeks).toEqual([25]);
+        expect(effects.stops).toBe(0);
+        expect(await page.evaluate(() => window.playType)).toBe(archiveStart);
+        expect(errors).toEqual([]);
+    });
+
     test("default Right opens the guide without adjusting volume", async ({
         page,
         context,
