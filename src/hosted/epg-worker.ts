@@ -813,7 +813,9 @@ function createHostedEpgWorker(env: any): void {
         }
         function flush(next: () => void): void {
             var keys = Object.keys(pending);
-            if (!keys.length) {
+            // Yield short parser slices without a transaction for every slice.
+            // The final partial batch still commits before publishing readiness.
+            if (!keys.length || (!ended && pendingBytes < 256 * 1024)) {
                 next();
                 return;
             }
@@ -834,7 +836,14 @@ function createHostedEpgWorker(env: any): void {
                     store.put({
                         channel: channel,
                         generation: generation,
-                        key: generation + ":" + sourceIndex + ":" + sequence++,
+                        // At most 300000 retained rows: six digits keep new
+                        // blocks in source order, including equal-time entries.
+                        key:
+                            generation +
+                            ":" +
+                            sourceIndex +
+                            ":" +
+                            ("000000" + sequence++).slice(-6),
                         rows: batch[channel],
                     });
                 });

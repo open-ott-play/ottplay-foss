@@ -218,6 +218,158 @@ const cleanupSource = ts.transpileModule(
 const parseDeclaration = workerFactory.body.statements.find(
     (node) => ts.isFunctionDeclaration(node) && node.name.text === "parse"
 );
+// Keep pending rows across short parser yields, but persist the final partial
+// batch before readiness. Exercise the actual flush and close/queue functions.
+const flushSource = ts.transpileModule(
+    parseDeclaration.body.statements
+        .find(
+            (node) =>
+                ts.isFunctionDeclaration(node) && node.name.text === "flush"
+        )
+        .getText(workerAst) +
+        "\n" +
+        workerFactory.body.statements
+            .filter(
+                (node) =>
+                    ts.isFunctionDeclaration(node) &&
+                    ["continueParse", "yieldParse", "close"].includes(
+                        node.name.text
+                    )
+            )
+            .map((node) => node.getText(workerAst))
+            .join("\n"),
+    { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+).outputText;
+function flushFixture(bytes, ended = false) {
+    const transactions = [],
+        tasks = [],
+        errors = [],
+        messages = [];
+    const batch = { channel: [{ name: "first" }, { name: "second" }] };
+    const fixture = new Function(
+        "initial",
+        "env",
+        "transaction",
+        "error",
+        "var pending=initial.batch, pendingBytes=initial.bytes, ended=initial.ended, " +
+            "owner='owner', generation='generation', sourceIndex=0, sequence=0, " +
+            "closed=false, parseNext=null, parseChannel=null, database=null, timer=null, loading=true; " +
+            "function clearDownload() {} function release(done) {if(done) done(true);}\n" +
+            flushSource +
+            "\nreturn {flush:flush, close:close, enqueue:yieldParse, " +
+            "finish:function(){ended=true;}, state:function(){return {pending:pending, bytes:pendingBytes};}};"
+    )(
+        { batch, bytes, ended },
+        {
+            clearTimeout() {},
+            postMessage: (value) => messages.push(value),
+            setTimeout: (task) => tasks.push(task),
+        },
+        () => {
+            const read = {
+                result: { owner: "owner", until: Date.now() + 60000 },
+            };
+            const tx = {
+                abort() {
+                    this.aborted = true;
+                    this.onabort();
+                },
+                aborted: false,
+                commit() {
+                    read.onsuccess();
+                    if (!this.aborted) this.oncomplete();
+                },
+                objectStore: (name) =>
+                    name === "meta"
+                        ? { get: () => read }
+                        : { put: (row) => tx.writes.push(row) },
+                read,
+                writes: [],
+            };
+            transactions.push(tx);
+            return tx;
+        },
+        (code) => errors.push(code)
+    );
+    return { ...fixture, batch, errors, messages, tasks, transactions };
+}
+{
+    const f = flushFixture(256 * 1024 - 1);
+    let continued = 0;
+    f.flush(() => continued++);
+    assert.equal(
+        continued,
+        1,
+        "sub-threshold batches still yield to the scheduler"
+    );
+    assert.equal(
+        f.transactions.length,
+        0,
+        "a short slice needs no write transaction"
+    );
+    assert.equal(f.state().pending, f.batch, "deferred rows remain pending");
+    assert.equal(f.state().bytes, 256 * 1024 - 1);
+    f.finish();
+    f.flush(() => continued++);
+    assert.equal(continued, 1, "final continuation waits for commit");
+    assert.equal(f.transactions.length, 1);
+    assert.equal(f.state().bytes, 0);
+    f.transactions[0].commit();
+    assert.equal(continued, 2);
+    assert.deepEqual(f.transactions[0].writes, [
+        {
+            channel: "channel",
+            generation: "generation",
+            key: "generation:0:000000",
+            rows: f.batch.channel,
+        },
+    ]);
+}
+for (const failure of [null, "lease", "transaction"]) {
+    const f = flushFixture(256 * 1024);
+    let continued = false;
+    f.flush(() => {
+        continued = true;
+    });
+    assert.equal(
+        f.transactions.length,
+        1,
+        "the exact threshold persists immediately"
+    );
+    assert.equal(continued, false);
+    const tx = f.transactions[0];
+    if (failure === "lease") tx.read.result.owner = "replacement-owner";
+    if (failure === "transaction") tx.abort();
+    else tx.commit();
+    assert.equal(continued, failure === null);
+    assert.deepEqual(f.errors, failure ? ["EPG_STORAGE_FAILED"] : []);
+    assert.equal(tx.writes.length, failure ? 0 : 1);
+}
+{
+    const f = flushFixture(80);
+    let completed = false;
+    f.flush(() =>
+        f.enqueue(() => {
+            f.finish();
+            f.flush(() => {
+                completed = true;
+            });
+        })
+    );
+    assert.equal(f.tasks.length, 1);
+    f.close();
+    f.tasks[0]();
+    assert.equal(completed, false);
+    assert.equal(
+        f.transactions.length,
+        0,
+        "close cancels deferred persistence"
+    );
+    assert.deepEqual(f.messages, [{ type: "closed" }]);
+}
+console.log(
+    "PASS hosted EPG bounded persistence, final commit, lease failure and pending close"
+);
 const textDeclaration = parseDeclaration.body.statements.find(
     (node) => ts.isFunctionDeclaration(node) && node.name.text === "text"
 );
@@ -1807,6 +1959,91 @@ const server = http.createServer((request, response) => {
             );
         }
         holdFeed = false;
+
+        // Equal-time records must retain XML order across double-digit block
+        // numbers. Plain XML and ~32 KiB retained rows force distinct batches;
+        // each description stays below the shared 16384-character field limit.
+        const tiedTitles = Array.from({ length: 117 }, (_, i) => "Tied " + i);
+        tiedTitles.push(tiedTitles[3]); // Identical programmes are not deduplicated.
+        const tiedDescription = "x".repeat(16000);
+        const tiedXml = "<![CDATA[" + tiedDescription + "]]>";
+        body = Buffer.from(
+            header +
+                tiedTitles
+                    .map((title) => programme(-1800, 1800, title, tiedXml))
+                    .join("") +
+                "</tv>"
+        );
+        await page.evaluate(() => {
+            makeWorker();
+            const source = location.origin + "/feed.gz";
+            worker.postMessage({
+                channels: [
+                    {
+                        archiveHours: 48,
+                        id: "tied",
+                        name: "РЕН ТВ HD",
+                        sources: [source],
+                        tvgId: "18",
+                        tvgName: "",
+                    },
+                ],
+                refreshMs: 7200000,
+                sources: [source],
+                type: "load",
+            });
+        });
+        const tiedReady = await page.evaluate(() => waitMessage("ready"));
+        const tiedBlocks = await page.evaluate(
+            (name) =>
+                new Promise((resolve, reject) => {
+                    const opening = indexedDB.open(name, 1);
+                    opening.onerror = () => reject(opening.error);
+                    opening.onsuccess = () => {
+                        const db = opening.result,
+                            tx = db.transaction(["meta", "rows"]);
+                        const read = tx.objectStore("meta").get("active");
+                        let count;
+                        read.onsuccess = () => {
+                            count = tx
+                                .objectStore("rows")
+                                .index("channel")
+                                .count(
+                                    IDBKeyRange.only(
+                                        read.result.mappings.tied.channel
+                                    )
+                                );
+                        };
+                        tx.oncomplete = () => {
+                            db.close();
+                            resolve(count.result);
+                        };
+                        tx.onabort = () => {
+                            db.close();
+                            reject(tx.error);
+                        };
+                    };
+                }),
+            tiedReady.cacheName
+        );
+        assert(
+            tiedBlocks >= 12,
+            "ordering regression spans at least twelve persisted blocks"
+        );
+        const tiedRows = await page.evaluate(() => getGuide("tied"));
+        assert.deepEqual(
+            tiedRows.map((row) => row.name),
+            tiedTitles
+        );
+        assert(
+            tiedRows.every(
+                (row) =>
+                    row.descr === tiedDescription &&
+                    row.icon === "" &&
+                    row.time === now - 1800 &&
+                    row.time_to === now + 1800
+            )
+        );
 
         // More than the former 50,000-programme policy. Every admitted record survives.
         status = 200;
