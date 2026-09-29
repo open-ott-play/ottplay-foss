@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const { JSDOM } = require("jsdom");
 const fixture = require("./helpers/m3u-driver-fixture.cjs");
 const corrected = require("./helpers/playlist-corrected-expectations.cjs");
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -120,7 +121,7 @@ test("direct timeout/proxy fallback/interception/local files retain request cont
         data: { url: "@https://playlist.test/list.m3u" },
         dataType: "text",
         method: "post",
-        timeout: 15000,
+        timeout: 65000,
         url: "https://relay.test/m3u/cp.php",
     });
     f.requests[1].resolve(playlist);
@@ -137,6 +138,161 @@ test("direct timeout/proxy fallback/interception/local files retain request cont
     local.host.getChannelsArray(() => {});
     assert.equal(local.host.cList.length, 2);
     assert(local.requests.every((r) => r.settings.type === "POST"));
+});
+
+test("direct playlists remain text under legacy and native jQuery MIME detection", () => {
+    for (const file of [
+        "js/jquery-1.11.1.min.js",
+        "node_modules/jquery/dist/jquery.min.js",
+    ]) {
+        for (const mime of [
+            "text/plain",
+            "application/json",
+            "application/xml",
+            "application/javascript",
+        ]) {
+            const f = fixture();
+            const browser = new JSDOM("<!doctype html>", {
+                runScripts: "outside-only",
+                url: "https://playlist.test/",
+            });
+            try {
+                const w = browser.window;
+                w.eval(
+                    fs.readFileSync(path.join(__dirname, "..", file), "utf8")
+                );
+                const requests = [];
+                let response = playlist;
+                w.$.ajaxTransport("+*", (options) => ({
+                    abort() {},
+                    send(_headers, complete) {
+                        requests.push(options.url);
+                        if (options.url === "https://playlist.test/list.m3u")
+                            complete(
+                                200,
+                                "OK",
+                                { text: response },
+                                "Content-Type: " + mime
+                            );
+                        else complete(503, "Unavailable", { text: "" });
+                    },
+                }));
+                f.host.$.ajax = w.$.ajax.bind(w.$);
+                const driver = f.start();
+                let completed = 0;
+                driver.load((catalog, error) => {
+                    assert.equal(error, undefined, file + ": " + mime);
+                    assert.equal(catalog.ids.length, 2);
+                    completed++;
+                });
+                assert.equal(completed, 1);
+                assert.equal(
+                    requests.some((url) => url.endsWith("/m3u/cp.php")),
+                    false,
+                    "A mislabeled response must not require the companion proxy"
+                );
+                if (mime === "application/javascript") {
+                    response = "window.__ottPlaylistMimeExecuted = true;";
+                    driver.load(() => completed++);
+                    assert.equal(completed, 2);
+                    assert.equal(w.__ottPlaylistMimeExecuted, undefined);
+                }
+            } finally {
+                browser.window.close();
+                f.dom.window.close();
+            }
+        }
+    }
+});
+
+test("slow companion playlists get the upstream budget and still terminate at the client deadline", () => {
+    const f = fixture();
+    const browser = new JSDOM("<!doctype html>", {
+        runScripts: "outside-only",
+        url: "https://playlist.test/",
+    });
+    try {
+        const w = browser.window;
+        w.eval(
+            fs.readFileSync(
+                path.join(__dirname, "../js/jquery-1.11.1.min.js"),
+                "utf8"
+            )
+        );
+        const timers = new Map();
+        let now = 0;
+        let nextTimer = 0;
+        w.setTimeout = (callback, delay) => {
+            const id = ++nextTimer;
+            timers.set(id, { at: now + delay, callback });
+            return id;
+        };
+        w.clearTimeout = (id) => timers.delete(id);
+        function advance(milliseconds) {
+            const until = now + milliseconds;
+            for (;;) {
+                const next = [...timers].sort((a, b) => a[1].at - b[1].at)[0];
+                if (!next || next[1].at > until) break;
+                now = next[1].at;
+                timers.delete(next[0]);
+                next[1].callback();
+            }
+            now = until;
+        }
+        let proxyResponse;
+        let aborts = 0;
+        w.$.ajaxTransport("+*", (options) => ({
+            abort() {
+                aborts++;
+            },
+            send(_headers, complete) {
+                if (options.url.endsWith("/m3u/cp.php"))
+                    proxyResponse = complete;
+                else complete(503, "Unavailable", { text: "" });
+            },
+        }));
+        f.host.$.ajax = w.$.ajax.bind(w.$);
+        const driver = f.start();
+        const outcomes = [];
+        function completed(catalog, error) {
+            outcomes.push({ count: catalog.ids.length, error });
+        }
+        driver.load(completed);
+        advance(30000);
+        assert.equal(
+            outcomes.length,
+            0,
+            "Slow upstream playlists remain pending after 30 seconds"
+        );
+        proxyResponse(
+            200,
+            "OK",
+            { text: playlist },
+            "Content-Type: text/plain"
+        );
+        assert.deepEqual(outcomes, [{ count: 2, error: undefined }]);
+        assert.equal(aborts, 0);
+        driver.load(completed);
+        advance(64999);
+        assert.equal(outcomes.length, 1);
+        advance(1);
+        assert.deepEqual(outcomes[1], { count: 0, error: "m3u-network" });
+        assert.equal(aborts, 1);
+        proxyResponse(
+            200,
+            "OK",
+            { text: playlist },
+            "Content-Type: text/plain"
+        );
+        assert.equal(
+            outcomes.length,
+            2,
+            "Timed-out responses cannot publish a late catalog"
+        );
+    } finally {
+        browser.window.close();
+        f.dom.window.close();
+    }
 });
 
 test("matching companion uses the relay hostname and preserves custom and relative relays without URL", () => {

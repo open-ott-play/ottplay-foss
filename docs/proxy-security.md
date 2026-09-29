@@ -59,13 +59,25 @@ responses without Content-Length, and redirects to five hops. The Python
 endpoint additionally limits the incoming form to 64 KiB and rejects conflicting
 or malformed framing.
 
-Rust applies a 15-second total deadline across DNS, redirects and response reads.
+Rust applies a 60-second total deadline to playlist fetches across DNS, redirects
+and response reads. The browser retains a 5-second direct attempt before its
+65-second proxy fallback, allowing the server to finish and report failures.
+Stalker and VPortal API operations retain their separate 15-second deadline.
 Separate DNS slots stay held until an underlying system lookup actually finishes,
-even when its caller times out. Python uses the same network budget and closes
+even when its caller times out. Python retains its 15-second network budget and closes
 an active socket when the deadline expires; its synchronous system DNS lookup
 remains subject to the operating system's DNS timeout and keeps its concurrency
 slot until it returns. Neither implementation logs complete proxy URLs or returns
 URL-bearing transport errors.
+
+Mode A buffers the bounded upstream body and lets its HTTP server generate new
+response framing. It forwards only Content-Type and Content-Encoding from the
+upstream response; compressed bytes remain unchanged so the browser can decode
+them. Provider cookies and connection headers never become local-origin headers.
+The response always supplies local `Content-Security-Policy: sandbox` and
+`X-Content-Type-Options: nosniff` headers. A form POST that navigates to upstream
+HTML cannot execute its scripts or access the player's origin in CSP-capable
+browsers; XHR still receives the unchanged playlist text.
 
 The Python fallback now requires `archive/proxy_security.py` alongside
 `archive/server.py`. Run or distribute the two files together.
@@ -74,6 +86,7 @@ The Python fallback now requires `archive/proxy_security.py` alongside
 
 ```sh
 cargo test -p ottplay-core proxy::tests
+cargo test -p ottplay-server cp_proxy_tests
 PYTHONDONTWRITEBYTECODE=1 python3 tests/test_proxy_security.py
 ```
 

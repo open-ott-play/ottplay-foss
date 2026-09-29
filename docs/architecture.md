@@ -92,6 +92,15 @@ invalidates transient screens/guide work and hydrates provider settings.
 catalog acceptance. Refreshing a projection is different from reloading a
 provider catalog.
 
+Managed catalog loads dismiss their loading indicator through the optional
+`getChannelsArray(ready, settled)` completion port. `settled` runs on a terminal
+result before credentials/settings UI opens; partial catalogs keep loading.
+`ready` remains the separate catalog-publication callback. Catalog disposal also
+cleans up its indicator, and obsolete completions cannot hide a newer load.
+Only external dealer scripts retain the three-second compatibility fallback.
+Network deadlines belong to transports, not the screen timer; see the bounded
+M3U direct/proxy sequence in [Proxy security](proxy-security.md).
+
 ### Selecting, playing and observing
 
 A list/search/guide callback captures source, catalog, stable item/group identity
