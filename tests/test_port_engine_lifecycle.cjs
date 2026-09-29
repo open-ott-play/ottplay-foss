@@ -486,6 +486,70 @@ test("iOS source login cannot replace a newer channel or revive stopped playback
     await tick();
     assert.equal(w.video.playCalls, 1);
 });
+for (const behavior of [
+    "missing",
+    "nonfunction",
+    "throw",
+    "empty",
+    "reject",
+    "getter",
+]) {
+    test(`iOS source cancellation tolerates ${behavior} optional bridge`, async () => {
+        for (const settled of [false, true]) {
+            const { w } = fixture();
+            const pending = deferred();
+            let calls = 0;
+            let ready = 0;
+            let failed = 0;
+            const plugin = { prepare: () => pending.promise };
+            if (behavior === "getter")
+                Object.defineProperty(plugin, "cancelPrepare", {
+                    get() {
+                        throw new Error("bridge unavailable");
+                    },
+                });
+            else if (behavior === "nonfunction") plugin.cancelPrepare = true;
+            else if (behavior !== "missing")
+                plugin.cancelPrepare = function () {
+                    assert.equal(this, plugin);
+                    calls++;
+                    if (behavior === "throw")
+                        throw new Error("bridge unavailable");
+                    if (behavior === "reject")
+                        return Promise.reject(new Error("unsupported"));
+                };
+            w.Capacitor = {
+                getPlatform: () => "ios",
+                Plugins: { AccessMedia: plugin },
+            };
+            const source = "https://source.invalid/live.m3u8";
+            const cancel = w.prepareAccessMedia(
+                source,
+                () => ready++,
+                () => failed++
+            );
+            assert.equal(typeof cancel, "function");
+            if (settled) {
+                pending.resolve({ url: source });
+                await tick();
+            }
+            assert.doesNotThrow(() => {
+                cancel();
+                cancel();
+            });
+            pending.resolve({ url: source });
+            await tick();
+            assert.equal(ready, settled ? 1 : 0);
+            assert.equal(failed, 0);
+            assert.equal(
+                calls,
+                !settled && ["throw", "empty", "reject"].includes(behavior)
+                    ? 1
+                    : 0
+            );
+        }
+    });
+}
 test("iOS HLS reconnect prepares the original source again, not a stale loopback URL", async () => {
     const { w, players } = fixture();
     const prepared = [];

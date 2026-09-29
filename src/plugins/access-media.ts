@@ -52,14 +52,10 @@ export function prepareAccessMedia(
     return function () {
         if (!active) return;
         active = false;
-        if (typeof plugin.cancelPrepare === "function") {
-            try {
-                var cancellation = plugin.cancelPrepare({
-                    requestId: requestId,
-                });
-                if (cancellation && typeof cancellation.catch === "function")
-                    cancellation.catch(function () {});
-            } catch (_error) {}
-        }
+        try {
+            plugin
+                .cancelPrepare({ requestId: requestId })
+                .catch(function () {});
+        } catch (_error) {}
     };
 }
