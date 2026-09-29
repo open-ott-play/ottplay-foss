@@ -1,6 +1,6 @@
 import { nativePromiseToJq } from "./jquery-bridge";
 import { resolveNativePlugin } from "./native-bridge";
-import { installCapacitorHttpTransport } from "./native-http";
+import "./native-http";
 import { StalkerPortal } from "./stalker-portal";
 import { nativeWebFallback } from "./web-fallback";
 
@@ -172,7 +172,7 @@ function setupCapacitorCompanionShim(): void {
     }
     if ((window as any).__ottCapacitorAjaxShim) return;
     (window as any).__ottCapacitorAjaxShim = true;
-    installCapacitorHttpTransport($, StalkerPortal);
+    window.installCapacitorHttpTransport($, StalkerPortal);
     const origAjax = $.ajax.bind($);
 
     $.ajax = function (urlOrOpts: any, maybeOpts?: any): any {

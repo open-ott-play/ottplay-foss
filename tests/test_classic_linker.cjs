@@ -10,6 +10,9 @@ const {
     CLASSIC_MODULES,
 } = require("../scripts/classic-bundle.cjs");
 const { optimizeClassic } = require("../scripts/classic-optimizer.cjs");
+const {
+    CLASSIC_PLAYER_NAME_POLICY,
+} = require("../scripts/classic-function-names.cjs");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-linker-"));
 function write(name, source) {
     const file = path.join(root, name);
@@ -37,6 +40,91 @@ function helperCount(source, name) {
                     (declaration) => declaration.id.name === name
                 )
         ).length;
+}
+
+async function testNativeHttpBoundary() {
+    const moduleFile = "build/plugins/native-http.js";
+    write(
+        moduleFile,
+        compile(
+            fs.readFileSync(
+                path.join(__dirname, "../src/plugins/native-http.ts"),
+                "utf8"
+            )
+        )
+    );
+    write(
+        "native-http-consumer.js",
+        'import "./build/plugins/native-http"; ' +
+            "window.installCapacitorHttpTransport($, http); " +
+            "installTauriHttpTransport(tauriJquery, invoke);"
+    );
+    const linked = assembleClassic(root, [
+        moduleFile,
+        "native-http-consumer.js",
+    ]);
+    const optimized = await optimizeClassic(linked, CLASSIC_PLAYER_NAME_POLICY);
+    for (const source of [linked, optimized.code]) {
+        const registrations = [];
+        const tauriRegistrations = [];
+        const requests = [];
+        const context = vm.createContext({
+            $: { ajaxTransport: (...args) => registrations.push(args) },
+            Capacitor: {
+                getPlatform: () => "ios",
+                isNativePlatform: () => true,
+            },
+            http: {
+                cancelHttpRequest: () => Promise.resolve(),
+                httpRequest: (args) => {
+                    requests.push(args);
+                    return Promise.resolve({
+                        body: "playlist",
+                        headers: "Content-Type: text/plain\r\n",
+                        status: 200,
+                        statusText: "OK",
+                    });
+                },
+            },
+            invoke: () => Promise.resolve(),
+            location: { origin: "capacitor://localhost" },
+            nativeHttpSequence: 700,
+            tauriJquery: {
+                ajaxTransport: (...args) => tauriRegistrations.push(args),
+            },
+            URL,
+        });
+        context.window = context;
+        acorn.parse(source, { ecmaVersion: 5 });
+        vm.runInContext(source, context);
+        assert.equal(typeof context.installCapacitorHttpTransport, "function");
+        assert.equal(typeof context.installTauriHttpTransport, "function");
+        assert.equal(context.nativeHttpSequence, 700);
+        for (const name of [
+            "nativeHttpRemoteUrl",
+            "nativeHttpFormField",
+            "nativeHttpJsonpConverter",
+            "installNativeHttpTransport",
+            "installNativeSwopTransport",
+            "nativeHttpInstallTauri",
+            "nativeHttpInstallCapacitor",
+        ])
+            assert.equal(context[name], undefined, name + " must stay private");
+        assert.equal(registrations.length, 2);
+        assert.equal(tauriRegistrations.length, 2);
+        const transport = registrations[0][1]({
+            contents: {},
+            dataTypes: ["text"],
+            type: "GET",
+            url: "https://source.example/playlist.m3u",
+        });
+        const response = await new Promise((resolve) =>
+            transport.send({}, (...args) => resolve(args))
+        );
+        assert.match(requests[0].requestId, /^http-\d+-1$/);
+        assert.equal(response[0], 200);
+        assert.equal(response[2].text, "playlist");
+    }
 }
 
 // Exercise Windows path identities with the real compiler on every CI host.
@@ -953,6 +1041,7 @@ async function main() {
         );
         await testHelpers();
         await testPrivateBoundary();
+        await testNativeHttpBoundary();
         await testWindowsPaths();
         await testWireProviderGlobals();
         await testOrdinaryGlobalAliases();

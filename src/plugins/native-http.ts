@@ -1,9 +1,14 @@
 /** Native HTTP underneath jQuery, leaving its public AJAX contract intact. */
-export interface NativeHttpResponse {
+interface NativeHttpResponse {
     body: string;
     headers: string;
     status: number;
     statusText: string;
+}
+
+interface Window {
+    installCapacitorHttpTransport: typeof nativeHttpInstallCapacitor;
+    installTauriHttpTransport: typeof nativeHttpInstallTauri;
 }
 
 var nativeHttpSequence = 0;
@@ -188,7 +193,7 @@ function installNativeHttpTransport(
     });
 }
 
-export function installTauriHttpTransport(
+function nativeHttpInstallTauri(
     $: any,
     invoke: (command: string, args: any) => Promise<NativeHttpResponse>
 ): void {
@@ -198,7 +203,7 @@ export function installTauriHttpTransport(
     installNativeSwopTransport($, (args) => invoke("swop_http", args), true);
 }
 
-export function installCapacitorHttpTransport(
+function nativeHttpInstallCapacitor(
     $: any,
     http: {
         httpRequest(args: any): Promise<NativeHttpResponse>;
@@ -237,6 +242,10 @@ export function installCapacitorHttpTransport(
         );
     }
 }
+
+// Preserve the classic installation API while keeping transport helpers private.
+window.installTauriHttpTransport = nativeHttpInstallTauri;
+window.installCapacitorHttpTransport = nativeHttpInstallCapacitor;
 
 /** Dedicated, explicit SWOP capability. Never fall back to provider HTTP/XHR. */
 function installNativeSwopTransport(

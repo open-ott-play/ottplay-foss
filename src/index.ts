@@ -49,7 +49,8 @@ import { nativePromiseToJq } from "./plugins/jquery-bridge";
 import { createLocalHttpRemote } from "./plugins/local-http-remote";
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
 import { MobileNativeMedia } from "./plugins/mobile-native-media";
-import { installTauriHttpTransport } from "./plugins/native-http";
+import { tauriInvoke } from "./plugins/native-bridge";
+import "./plugins/native-http";
 import {
     StalkerPortal,
     setupStalkerPortalShim,
@@ -1898,22 +1899,6 @@ window.keys = keys;
 // When running in browser/STB (Mode A), leave getChannelEpg unchanged for provider HTTP fetch
 
 /**
- * Shared Tauri invoke helper. Uses @tauri-apps/api/core if available,
- * falls back to window.__TAURI__.invoke for bundled apps.
- */
-function tauriInvoke<T>(
-    command: string,
-    args: Record<string, unknown>
-): Promise<T> {
-    // Prefer core.invoke (Tauri v2 core API), fallback to global __TAURI__
-    const core = (window as any).__TAURI__?.core;
-    if (core?.invoke) {
-        return core.invoke(command, args) as Promise<T>;
-    }
-    return (window as any).__TAURI__.invoke(command, args) as Promise<T>;
-}
-
-/**
  * Setup Tauri EPG override for getChannelEpg. Uses Tauri IPC instead of HTTP fetch.
  * Mode A (browser/STB): leaves getChannelEpg unchanged — provider HTTP fetch path.
  * Mode B (Tauri): passes playlist channel name + epg_url hash so Rust can resolve
@@ -2076,7 +2061,7 @@ function setupTauriCompanionShim(): void {
     (window as any).__ottTauriAjaxShim = true;
     const origAjax = $.ajax.bind($);
     // jQuery retains serialization, converters, callback order and jqXHR state.
-    installTauriHttpTransport($, tauriInvoke);
+    window.installTauriHttpTransport($, tauriInvoke);
 
     $.ajax = function (urlOrOpts: any, maybeOpts?: any) {
         let opts: any;

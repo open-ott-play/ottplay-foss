@@ -35,6 +35,7 @@ function fixture(file, expectedVersion) {
     w.eval(read(file));
     assert.equal(w.$.fn.jquery, expectedVersion);
     w.eval(helper);
+    w.eval(compile("src/plugins/native-bridge.ts"));
     return { close: () => w.close(), w };
 }
 
@@ -226,6 +227,50 @@ function outcome(jq) {
     });
 }
 
+async function tauriInvokeContract(w) {
+    for (const mode of ["core", "legacy", "empty-core"]) {
+        for (const outcome of ["resolve", "reject", "throw"]) {
+            const args = { url: "https://portal.invalid/" };
+            const failure = new Error("native fixture");
+            const result =
+                outcome === "reject"
+                    ? Promise.reject(failure)
+                    : Promise.resolve(args);
+            const owner = {
+                invoke(command, value) {
+                    assert.equal(this, owner);
+                    assert.equal(command, "fixture_command");
+                    assert.equal(value, args);
+                    if (outcome === "throw") throw failure;
+                    return result;
+                },
+            };
+            w.__TAURI__ =
+                mode === "core"
+                    ? {
+                          core: owner,
+                          invoke() {
+                              assert.fail("core.invoke must take precedence");
+                          },
+                      }
+                    : owner;
+            if (mode === "empty-core") owner.core = {};
+            if (outcome === "throw") {
+                assert.throws(
+                    () => w.tauriInvoke("fixture_command", args),
+                    (error) => error === failure
+                );
+            } else {
+                assert.equal(w.tauriInvoke("fixture_command", args), result);
+                if (outcome === "reject")
+                    await assert.rejects(result, (error) => error === failure);
+                else assert.equal(await result, args);
+            }
+        }
+    }
+    delete w.__TAURI__;
+}
+
 async function nativeRoutes(w) {
     let response = {
         body: '{"channels":["fixture"]}',
@@ -341,10 +386,37 @@ async function nativeRoutes(w) {
             assert.equal(request.method, "POST");
             assert.equal(request.body, JSON.stringify({ request: status }));
             assert.equal(request.contentType, "application/json");
+            await outcome(w.$.ajax({ url }));
             assert.equal(
-                w.cookieHeaderForUrl(url),
+                calls[calls.length - 1].headers.Cookie,
                 "session=" + status,
-                "cookies are retained even when HTTP status rejects the response"
+                "the next request sends cookies even when the prior HTTP status rejected"
+            );
+            await outcome(
+                w.$.ajax({
+                    headers: {
+                        Authorization: "Bearer fixture",
+                        cookie: "caller=1",
+                    },
+                    url,
+                })
+            );
+            const explicit = calls[calls.length - 1].headers;
+            assert.equal(explicit.cookie, "caller=1");
+            assert.equal(explicit.Cookie, undefined);
+            assert.equal(explicit.Authorization, "Bearer fixture");
+            await outcome(
+                w.$.ajax({
+                    url:
+                        "https://other-" +
+                        status +
+                        ".invalid/stalker_portal/api/",
+                })
+            );
+            assert.equal(
+                calls[calls.length - 1].headers,
+                undefined,
+                "the cookie jar remains isolated by origin"
             );
         }
     }
@@ -376,6 +448,7 @@ async function nativeRoutes(w) {
             callbackContract(w, true);
             synchronousBoundaries(w);
             await promiseTiming(w);
+            await tauriInvokeContract(w);
             await nativeRoutes(w);
             console.log(
                 "PASS native jQuery bridge " +
