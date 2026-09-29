@@ -16,6 +16,7 @@ const CLASSIC_MODULES = [
     "build/settings/transfer-ui.js",
     "build/utils/helpers.js",
     "build/utils/encoding.js",
+    "build/utils/caseless.js",
     "build/utils/qr-code.js",
     "build/channels/types.js",
     "build/channels/channel-references.js",

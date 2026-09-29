@@ -5,6 +5,7 @@ import {
     providerLabels,
     selectProviderByIndex,
 } from "../provider";
+import { caselessKey } from "../utils/caseless";
 import { handleCommand } from "./index";
 
 /** Read only producer-owned, allowlisted snapshots; never raw diagnostics or logs. */
@@ -72,11 +73,8 @@ export function executeRemoteRequest(
                 };
             });
     }
-    function includes(value: string, search: any): boolean {
-        return (
-            value.toLowerCase().indexOf(String(search || "").toLowerCase()) !==
-            -1
-        );
+    function includes(value: string, search: string): boolean {
+        return !search || caselessKey(value).indexOf(search) !== -1;
     }
     function providers(): any[] {
         return providerIds
@@ -123,6 +121,7 @@ export function executeRemoteRequest(
     }
     if (request.action === "provider") {
         var query = String(params.query).toLowerCase();
+        var providerSearch = caselessKey(query);
         var all = providers();
         var found = all.filter(function (row) {
             return (
@@ -131,7 +130,7 @@ export function executeRemoteRequest(
         });
         if (!found.length)
             found = all.filter(function (row) {
-                return includes(row.name, query);
+                return includes(row.name, providerSearch);
             });
         if (found.length !== 1) {
             reject("Choose one provider by ID or index.", found);
@@ -243,25 +242,27 @@ export function executeRemoteRequest(
     }
     var rows = channels();
     if (request.action === "channels") {
+        var channelSearch = caselessKey(String(params.search || ""));
         reply({
             channels: rows.filter(function (row) {
-                return includes(row.name, params.search);
+                return includes(row.name, channelSearch);
             }),
         });
         return;
     }
     if (request.action === "play") {
         var text = String(params.query).trim();
+        var playSearch = caselessKey(text);
         var matches = /^\d+$/.test(text)
             ? rows.filter(function (row) {
                   return row.number === Number(text);
               })
             : rows.filter(function (row) {
-                  return row.name.toLowerCase() === text.toLowerCase();
+                  return caselessKey(row.name) === playSearch;
               });
         if (!matches.length && !/^\d+$/.test(text))
             matches = rows.filter(function (row) {
-                return includes(row.name, text);
+                return includes(row.name, playSearch);
             });
         if (matches.length !== 1) {
             reject(
@@ -307,6 +308,7 @@ export function executeRemoteRequest(
     var source = guide.source();
     var channelLoad = w.__ottCommandChannelLoad;
     var asOf = Date.now() / 1000;
+    var programSearch = caselessKey(String(params.search || ""));
     var programs: any[] = [];
     var position = 0,
         running = 0,
@@ -361,7 +363,7 @@ export function executeRemoteRequest(
         ).current;
         if (!current || !current.row.name) return;
         var entry = current.row;
-        if (includes(String(entry.name), params.search))
+        if (includes(String(entry.name), programSearch))
             programs.push({
                 channel: row.name,
                 end: entry.time_to,

@@ -157,7 +157,9 @@ function moduleOf(file, requireFn, window) {
                               providerLabels: null,
                               selectProviderByIndex: () => true,
                           }
-                        : { handleCommand: dispatch },
+                        : name === "../utils/caseless"
+                          ? moduleOf("src/utils/caseless.ts", () => {}, host)
+                          : { handleCommand: dispatch },
                 host
             ).executeRemoteRequest;
             const transport = moduleOf(
