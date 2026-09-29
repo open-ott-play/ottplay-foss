@@ -296,6 +296,38 @@ assert.equal(
 w.sNoNumbersKeys = 1;
 w.keys.LEFT = 37;
 w.keys.RIGHT = 39;
+let discoveryListener = null;
+let discoveryState = { code: "", message: "Idle", servers: [], state: "idle" };
+const discoveries = [];
+let canceledDiscoveries = 0;
+w.__ottControlDiscovery = {
+    cancel() {
+        canceledDiscoveries++;
+        discoveryState = {
+            code: "",
+            message: "Canceled",
+            servers: [],
+            state: "canceled",
+        };
+        if (discoveryListener) discoveryListener();
+    },
+    start(explicit) {
+        discoveries.push(explicit);
+        discoveryState = {
+            code: "ABC12345",
+            message: "Waiting",
+            servers: [],
+            state: "waiting",
+        };
+        if (discoveryListener) discoveryListener();
+    },
+    status() {
+        return discoveryState;
+    },
+    subscribe(listener) {
+        discoveryListener = listener;
+    },
+};
 w.settingsCommands();
 function remoteKey(key) {
     const event = new w.KeyboardEvent("keydown", {
@@ -314,8 +346,12 @@ assert.deepEqual(
     [...w.document.querySelectorAll("#remoteSettingsContent button .btn")].map(
         (badge) => badge.textContent
     ),
-    ["3", "4", "5"],
+    ["3", "4", "5", "6"],
     "numeric shortcuts remain visible without duplicated footer hints"
+);
+assert.equal(
+    w.document.getElementById("commandServerDiscoveryCancel").disabled,
+    true
 );
 assert.equal(w.document.activeElement.id, "commandServerAddress");
 assert.match(w.document.activeElement.style.outline, /2px solid/);
@@ -348,6 +384,18 @@ assert.equal(keyboardContent.scrollTop, 100, "UP/DOWN retain scrolling");
 remoteKey(w.keys.UP);
 assert.equal(keyboardContent.scrollTop, 0);
 remoteKey(w.keys.RIGHT);
+assert.equal(w.document.activeElement.id, "commandServerFind");
+remoteKey(w.keys.ENTER);
+assert.deepEqual(discoveries, [true], "OK starts one explicit discovery");
+assert.equal(
+    w.document.getElementById("commandServerDiscoveryCancel").disabled,
+    false
+);
+assert.match(
+    w.document.getElementById("commandServerDiscoveryStatus").textContent,
+    /ABC12345/
+);
+remoteKey(w.keys.RIGHT);
 assert.match(w.document.activeElement.textContent, /Local URL/);
 remoteKey(w.keys.ENTER);
 assert.match(w.editCaption, /Local command URL/);
@@ -359,6 +407,19 @@ assert.match(w.document.activeElement.textContent, /HTTP remote/);
 remoteKey(w.keys.RIGHT);
 assert.match(w.document.activeElement.textContent, /Close/);
 remoteKey(w.keys.RIGHT);
+assert.equal(w.document.activeElement.id, "commandServerDiscoveryCancel");
+const previousCancellations = canceledDiscoveries;
+remoteKey(w.keys.ENTER);
+assert.equal(
+    canceledDiscoveries,
+    previousCancellations + 1,
+    "OK cancels the pending pairing once"
+);
+assert.equal(
+    w.document.getElementById("commandServerDiscoveryCancel").disabled,
+    true
+);
+remoteKey(w.keys.RIGHT);
 assert.equal(
     w.document.activeElement.id,
     "commandServerAddress",
@@ -369,6 +430,11 @@ assert.match(w.document.activeElement.textContent, /Close/);
 remoteKey(w.keys.ENTER);
 assert.equal(w.document.getElementById("listAbout").style.display, "none");
 assert.equal(serverListener, null);
+assert.equal(
+    discoveryListener,
+    null,
+    "closed settings unsubscribe discovery updates"
+);
 w.sNoNumbersKeys = 0;
 
 // New server copy uses the existing translator; missing entries remain English.
@@ -378,6 +444,8 @@ const translated = {
     "Command server": "Translated server",
     Connected: "Translated connected",
     Disconnect: "Translated disconnect",
+    "Find command server": "Translated find server",
+    "Cancel pairing": "Translated cancel pairing",
     "Server address": "Translated address",
     "Server device access code": "Translated code editor",
 };
@@ -403,6 +471,14 @@ assert.equal(
 assert.equal(
     w.document.getElementById("commandServerConnect").textContent,
     "5 " + translated.Disconnect
+);
+assert.equal(
+    w.document.getElementById("commandServerFind").textContent,
+    "6 " + translated["Find command server"]
+);
+assert.equal(
+    w.document.getElementById("commandServerDiscoveryCancel").textContent,
+    translated["Cancel pairing"]
 );
 w.aboutKeyHandler(52);
 assert.equal(w.editCaption, translated["Server device access code"]);
