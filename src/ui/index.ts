@@ -2710,7 +2710,7 @@ function showColorDialog(
     var hue = Number.parseInt(setting.split(",")[0]);
     var saturation = Number.parseInt(setting.split(",")[1]);
     saveListPanelState();
-    if (listCaptionElement) listCaptionElement.innerHTML = _(caption);
+    if (listCaptionElement) listCaptionElement.innerHTML = caption;
     if (listFooterElement)
         listFooterElement.innerHTML =
             renderButtonHint(keys.RETURN, strRETURN, "Close") +
@@ -2765,17 +2765,17 @@ function showColorDialog(
 
 /** Adjust foreground text color, stored in eSHLcolor. */
 export function colorDialog(): void {
-    showColorDialog("eSHLcolor", "50,85", "Color spectrum", 100, true);
+    showColorDialog("eSHLcolor", "50,85", _("Color spectrum"), 100, true);
 }
 
 /** Adjust the selection background at HSV value 50, stored in eSHLcolSel. */
 export function selColorDialog(): void {
-    showColorDialog("eSHLcolSel", "50,85", "Select color", 50);
+    showColorDialog("eSHLcolSel", "50,85", _("Select color"), 50);
 }
 
 /** Adjust the list background at HSV value 100, stored in eSHLcolorB. */
 export function backColorDialog(): void {
-    showColorDialog("eSHLcolorB", "255,0", "Background color", 100);
+    showColorDialog("eSHLcolorB", "255,0", _("Background color"), 100);
 }
 
 /* ---------------------------------------------------------------------------
