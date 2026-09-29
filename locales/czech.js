@@ -350,6 +350,8 @@ var keyStrings = {
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
         "EPG se nepodařilo spustit. Restartujte přehrávač, aby znovu načetl své soubory. Přehrávání se zastaví.",
     "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
         "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
     "EPG download time: %1": "EPG download time: %1",

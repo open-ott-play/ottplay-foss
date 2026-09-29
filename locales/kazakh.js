@@ -355,6 +355,8 @@ var keyStrings = {
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
         "EPG іске қосылмады. Файлдарын қайта жүктеу үшін ойнатқышты қайта іске қосыңыз. Ойнату тоқтайды.",
     "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
         "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
     "EPG download time: %1": "EPG download time: %1",

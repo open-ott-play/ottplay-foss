@@ -18,6 +18,12 @@ updates:
     ignore:
       - dependency-name: typescript
         versions: [">=6"]
+      # The shipped, unmodified UMD must retain ES5 for legacy TVs.
+      # Video.js 8 / VHS 3 require newer syntax; see docs/es5-compatibility.md.
+      - dependency-name: video.js
+        versions: [">=8"]
+      - dependency-name: "@videojs/http-streaming"
+        versions: [">=3"]
     # The media manifest hashes the complete lockfile. Refresh generated media
     # with npm run build:media before merging this dependency batch.
     groups:

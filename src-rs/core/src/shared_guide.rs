@@ -171,6 +171,26 @@ impl GuideIndex {
         Ok(Self(context, None))
     }
 
+    /// Hosted HTTP clients retain the browser's ordered aliases, UTF-16 length
+    /// and double precision. Legacy/native indexes keep their existing profile.
+    pub fn web(rows: Vec<Vec<String>>) -> anyhow::Result<Self> {
+        let context = context()?;
+        checked(&context, |ctx| {
+            let measure = ctx.eval::<Function, _>("(function(value) { return value.length; })")?;
+            let precision = ctx.eval::<Function, _>("(function(value) { return value; })")?;
+            let constructor: Constructor = core(&ctx)?.get("NativeGuide")?;
+            let index: Object = constructor.construct((rows, "web", measure, precision))?;
+            ctx.globals().set("guideIndex", index)
+        })?;
+        Ok(Self(context, None))
+    }
+
+    pub fn web_shift_seconds(&self, name: &str) -> anyhow::Result<i64> {
+        checked(&self.0, |ctx| {
+            core(&ctx)?.get::<_, Function>("nativeGuideShift")?.call::<_, i32>((name, "web"))
+        }).map(|hours| i64::from(hours) * 3600)
+    }
+
     /// HTTP snapshots retain every alias. The shared core owns normalization and
     /// unique-name selection; these maps only index its keys by distinct IDs.
     pub(crate) fn with_aliases(rows: Vec<Vec<String>>, aliases: Vec<Vec<String>>) -> anyhow::Result<Self> {

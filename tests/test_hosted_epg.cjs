@@ -218,6 +218,158 @@ const cleanupSource = ts.transpileModule(
 const parseDeclaration = workerFactory.body.statements.find(
     (node) => ts.isFunctionDeclaration(node) && node.name.text === "parse"
 );
+// Keep pending rows across short parser yields, but persist the final partial
+// batch before readiness. Exercise the actual flush and close/queue functions.
+const flushSource = ts.transpileModule(
+    parseDeclaration.body.statements
+        .find(
+            (node) =>
+                ts.isFunctionDeclaration(node) && node.name.text === "flush"
+        )
+        .getText(workerAst) +
+        "\n" +
+        workerFactory.body.statements
+            .filter(
+                (node) =>
+                    ts.isFunctionDeclaration(node) &&
+                    ["continueParse", "yieldParse", "close"].includes(
+                        node.name.text
+                    )
+            )
+            .map((node) => node.getText(workerAst))
+            .join("\n"),
+    { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+).outputText;
+function flushFixture(bytes, ended = false) {
+    const transactions = [],
+        tasks = [],
+        errors = [],
+        messages = [];
+    const batch = { channel: [{ name: "first" }, { name: "second" }] };
+    const fixture = new Function(
+        "initial",
+        "env",
+        "transaction",
+        "error",
+        "var pending=initial.batch, pendingBytes=initial.bytes, ended=initial.ended, " +
+            "owner='owner', generation='generation', sourceIndex=0, sequence=0, " +
+            "closed=false, parseNext=null, parseChannel=null, database=null, timer=null, loading=true; " +
+            "function clearDownload() {} function release(done) {if(done) done(true);}\n" +
+            flushSource +
+            "\nreturn {flush:flush, close:close, enqueue:yieldParse, " +
+            "finish:function(){ended=true;}, state:function(){return {pending:pending, bytes:pendingBytes};}};"
+    )(
+        { batch, bytes, ended },
+        {
+            clearTimeout() {},
+            postMessage: (value) => messages.push(value),
+            setTimeout: (task) => tasks.push(task),
+        },
+        () => {
+            const read = {
+                result: { owner: "owner", until: Date.now() + 60000 },
+            };
+            const tx = {
+                abort() {
+                    this.aborted = true;
+                    this.onabort();
+                },
+                aborted: false,
+                commit() {
+                    read.onsuccess();
+                    if (!this.aborted) this.oncomplete();
+                },
+                objectStore: (name) =>
+                    name === "meta"
+                        ? { get: () => read }
+                        : { put: (row) => tx.writes.push(row) },
+                read,
+                writes: [],
+            };
+            transactions.push(tx);
+            return tx;
+        },
+        (code) => errors.push(code)
+    );
+    return { ...fixture, batch, errors, messages, tasks, transactions };
+}
+{
+    const f = flushFixture(256 * 1024 - 1);
+    let continued = 0;
+    f.flush(() => continued++);
+    assert.equal(
+        continued,
+        1,
+        "sub-threshold batches still yield to the scheduler"
+    );
+    assert.equal(
+        f.transactions.length,
+        0,
+        "a short slice needs no write transaction"
+    );
+    assert.equal(f.state().pending, f.batch, "deferred rows remain pending");
+    assert.equal(f.state().bytes, 256 * 1024 - 1);
+    f.finish();
+    f.flush(() => continued++);
+    assert.equal(continued, 1, "final continuation waits for commit");
+    assert.equal(f.transactions.length, 1);
+    assert.equal(f.state().bytes, 0);
+    f.transactions[0].commit();
+    assert.equal(continued, 2);
+    assert.deepEqual(f.transactions[0].writes, [
+        {
+            channel: "channel",
+            generation: "generation",
+            key: "generation:0:000000",
+            rows: f.batch.channel,
+        },
+    ]);
+}
+for (const failure of [null, "lease", "transaction"]) {
+    const f = flushFixture(256 * 1024);
+    let continued = false;
+    f.flush(() => {
+        continued = true;
+    });
+    assert.equal(
+        f.transactions.length,
+        1,
+        "the exact threshold persists immediately"
+    );
+    assert.equal(continued, false);
+    const tx = f.transactions[0];
+    if (failure === "lease") tx.read.result.owner = "replacement-owner";
+    if (failure === "transaction") tx.abort();
+    else tx.commit();
+    assert.equal(continued, failure === null);
+    assert.deepEqual(f.errors, failure ? ["EPG_STORAGE_FAILED"] : []);
+    assert.equal(tx.writes.length, failure ? 0 : 1);
+}
+{
+    const f = flushFixture(80);
+    let completed = false;
+    f.flush(() =>
+        f.enqueue(() => {
+            f.finish();
+            f.flush(() => {
+                completed = true;
+            });
+        })
+    );
+    assert.equal(f.tasks.length, 1);
+    f.close();
+    f.tasks[0]();
+    assert.equal(completed, false);
+    assert.equal(
+        f.transactions.length,
+        0,
+        "close cancels deferred persistence"
+    );
+    assert.deepEqual(f.messages, [{ type: "closed" }]);
+}
+console.log(
+    "PASS hosted EPG bounded persistence, final commit, lease failure and pending close"
+);
 const textDeclaration = parseDeclaration.body.statements.find(
     (node) => ts.isFunctionDeclaration(node) && node.name.text === "text"
 );
@@ -1286,6 +1438,20 @@ let body = zlib.gzipSync(base),
     calls = 0,
     holdFeed = false;
 const heldResponses = new Set();
+let diagnosticsCalls = 0,
+    diagnosticsStatus = 200,
+    holdDiagnostics = false;
+let diagnosticsBody = generated["epg-diagnostics.js"];
+const heldDiagnostics = new Set();
+function releaseDiagnostics() {
+    for (const response of heldDiagnostics) response.end(diagnosticsBody);
+    heldDiagnostics.clear();
+}
+async function waitDiagnostics(expected) {
+    for (let i = 0; i < 200 && diagnosticsCalls < expected; i++)
+        await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(diagnosticsCalls, expected);
+}
 const server = http.createServer((request, response) => {
     const name = new URL(request.url, "http://fixture").pathname;
     if (name === "/") {
@@ -1301,6 +1467,17 @@ const server = http.createServer((request, response) => {
             response.on("close", () => heldResponses.delete(response));
             response.write(body.subarray(0, 10));
         } else response.end(body);
+        return;
+    }
+    if (name === "/hosted/epg-diagnostics.js") {
+        diagnosticsCalls++;
+        response.statusCode = diagnosticsStatus;
+        response.setHeader("Content-Type", "text/javascript");
+        response.setHeader("Cache-Control", "no-store");
+        if (holdDiagnostics) {
+            heldDiagnostics.add(response);
+            response.on("close", () => heldDiagnostics.delete(response));
+        } else response.end(diagnosticsBody);
         return;
     }
     if (name.startsWith("/hosted/") && generated[name.slice(8)]) {
@@ -1808,6 +1985,91 @@ const server = http.createServer((request, response) => {
         }
         holdFeed = false;
 
+        // Equal-time records must retain XML order across double-digit block
+        // numbers. Plain XML and ~32 KiB retained rows force distinct batches;
+        // each description stays below the shared 16384-character field limit.
+        const tiedTitles = Array.from({ length: 117 }, (_, i) => "Tied " + i);
+        tiedTitles.push(tiedTitles[3]); // Identical programmes are not deduplicated.
+        const tiedDescription = "x".repeat(16000);
+        const tiedXml = "<![CDATA[" + tiedDescription + "]]>";
+        body = Buffer.from(
+            header +
+                tiedTitles
+                    .map((title) => programme(-1800, 1800, title, tiedXml))
+                    .join("") +
+                "</tv>"
+        );
+        await page.evaluate(() => {
+            makeWorker();
+            const source = location.origin + "/feed.gz";
+            worker.postMessage({
+                channels: [
+                    {
+                        archiveHours: 48,
+                        id: "tied",
+                        name: "РЕН ТВ HD",
+                        sources: [source],
+                        tvgId: "18",
+                        tvgName: "",
+                    },
+                ],
+                refreshMs: 7200000,
+                sources: [source],
+                type: "load",
+            });
+        });
+        const tiedReady = await page.evaluate(() => waitMessage("ready"));
+        const tiedBlocks = await page.evaluate(
+            (name) =>
+                new Promise((resolve, reject) => {
+                    const opening = indexedDB.open(name, 1);
+                    opening.onerror = () => reject(opening.error);
+                    opening.onsuccess = () => {
+                        const db = opening.result,
+                            tx = db.transaction(["meta", "rows"]);
+                        const read = tx.objectStore("meta").get("active");
+                        let count;
+                        read.onsuccess = () => {
+                            count = tx
+                                .objectStore("rows")
+                                .index("channel")
+                                .count(
+                                    IDBKeyRange.only(
+                                        read.result.mappings.tied.channel
+                                    )
+                                );
+                        };
+                        tx.oncomplete = () => {
+                            db.close();
+                            resolve(count.result);
+                        };
+                        tx.onabort = () => {
+                            db.close();
+                            reject(tx.error);
+                        };
+                    };
+                }),
+            tiedReady.cacheName
+        );
+        assert(
+            tiedBlocks >= 12,
+            "ordering regression spans at least twelve persisted blocks"
+        );
+        const tiedRows = await page.evaluate(() => getGuide("tied"));
+        assert.deepEqual(
+            tiedRows.map((row) => row.name),
+            tiedTitles
+        );
+        assert(
+            tiedRows.every(
+                (row) =>
+                    row.descr === tiedDescription &&
+                    row.icon === "" &&
+                    row.time === now - 1800 &&
+                    row.time_to === now + 1800
+            )
+        );
+
         // More than the former 50,000-programme policy. Every admitted record survives.
         status = 200;
         let large = header;
@@ -1955,7 +2217,181 @@ const server = http.createServer((request, response) => {
         await page.waitForFunction(
             () => __ottHostedEpg.diagnostics().phase === "error"
         );
+        // The optional panel never steals a later screen or survives a cancelled request.
+        const noLatePanel = async () => {
+            releaseDiagnostics();
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            assert.equal(await page.locator("#listAbout pre").count(), 0);
+            assert.equal(
+                await page.locator('script[src*="epg-diagnostics.js"]').count(),
+                0
+            );
+        };
+        const beginDiagnostics = async () => {
+            await page.evaluate(() => {
+                delete window.__ottHostedEpgDiagnostics;
+                __ottHostedEpg.showDiagnostics();
+            });
+        };
+        holdDiagnostics = true;
+        let expectedDiagnostics = diagnosticsCalls + 1;
+        await beginDiagnostics();
         await page.evaluate(() => __ottHostedEpg.showDiagnostics());
+        await waitDiagnostics(expectedDiagnostics);
+        await page.keyboard.press("Escape");
+        await noLatePanel();
+        assert.equal(
+            diagnosticsCalls,
+            expectedDiagnostics,
+            "concurrent opens share one asset request"
+        );
+
+        expectedDiagnostics++;
+        await beginDiagnostics();
+        await waitDiagnostics(expectedDiagnostics);
+        await page.evaluate(() => {
+            window.aboutKeyHandler = () => true;
+            document.getElementById("listAbout").textContent = "Another screen";
+        });
+        await noLatePanel();
+        assert.equal(
+            await page.locator("#listAbout").innerText(),
+            "Another screen"
+        );
+        await page.evaluate(() => {
+            window.aboutKeyHandler = null;
+            $("#listAbout").hide().empty();
+        });
+
+        for (const action of ["retry", "close"]) {
+            expectedDiagnostics++;
+            await beginDiagnostics();
+            await waitDiagnostics(expectedDiagnostics);
+            await page.evaluate((action) => epgSession[action](), action);
+            await noLatePanel();
+            if (action === "close")
+                await page.evaluate(() => {
+                    window.epgSession = __ottHostedEpg.open(
+                        [
+                            {
+                                channel_name: "РЕН ТВ HD",
+                                id: "diagnostics",
+                                rec: 168,
+                            },
+                        ],
+                        () => {}
+                    );
+                });
+            await page.waitForFunction(
+                () => __ottHostedEpg.diagnostics().phase === "error"
+            );
+        }
+
+        // A stalled asset request is bounded even though no Worker timeout is involved.
+        expectedDiagnostics++;
+        await beginDiagnostics();
+        await waitDiagnostics(expectedDiagnostics);
+        await page.waitForFunction(
+            () => lastNotice.includes("could not load"),
+            null,
+            { timeout: 15000 }
+        );
+        await noLatePanel();
+        holdDiagnostics = false;
+        diagnosticsStatus = 503;
+        expectedDiagnostics++;
+        await beginDiagnostics();
+        await waitDiagnostics(expectedDiagnostics);
+        await page.waitForFunction(() => lastNotice.includes("could not load"));
+        await noLatePanel();
+
+        diagnosticsStatus = 200;
+        diagnosticsBody = "window.__ottHostedEpgDiagnostics={version:0};";
+        expectedDiagnostics++;
+        await beginDiagnostics();
+        await waitDiagnostics(expectedDiagnostics);
+        await page.waitForFunction(() => lastNotice.includes("could not load"));
+        await noLatePanel();
+        diagnosticsBody = generated["epg-diagnostics.js"];
+
+        for (const url of [
+            "https://private.invalid/ui.js",
+            "//private.invalid/ui.js",
+            "/\\private.invalid/ui.js",
+        ]) {
+            await page.evaluate((url) => {
+                delete window.__ottHostedEpgDiagnostics;
+                __OTTPLAY_HOSTED__.epg.diagnosticsUrl = url;
+                __ottHostedEpg.showDiagnostics();
+            }, url);
+            assert.equal(
+                diagnosticsCalls,
+                expectedDiagnostics,
+                "diagnostics URLs cannot escape the publisher origin"
+            );
+            assert.match(
+                await page.evaluate(() => lastNotice),
+                /could not load/
+            );
+        }
+        await page.evaluate(() => {
+            delete __OTTPLAY_HOSTED__.epg.diagnosticsUrl;
+        });
+
+        const diagnosticsStyle = fs
+            .readFileSync(path.join(root, "styles/player.css"), "utf8")
+            .match(/\.hosted-epg-diagnostics\s*\{[^}]+\}/)[0];
+        await page.addStyleTag({ content: diagnosticsStyle });
+        await page.evaluate(() => {
+            document.getElementById("listAbout").style.cssText =
+                "height:500px;font-size:20px;font-family:Arial";
+            __ottHostedEpg.showDiagnostics();
+        });
+        await page.waitForSelector("#listAbout pre");
+        assert.deepEqual(
+            await page.locator("#listAbout pre").evaluate((element) => {
+                const style = getComputedStyle(element);
+                return [
+                    style.fontFamily,
+                    style.fontSize,
+                    style.height,
+                    style.overflow,
+                    style.touchAction,
+                    style.whiteSpace,
+                ];
+            }),
+            ["Arial", "16px", "400px", "auto", "pan-y", "pre-wrap"],
+            "the shared stylesheet preserves the diagnostics panel layout"
+        );
+        await page.evaluate(() => {
+            window.originalDiagnosticsModule = __ottHostedEpgDiagnostics;
+            window.originalDiagnosticsHandler = aboutKeyHandler;
+        });
+        await page.addScriptTag({
+            content: generated["epg-diagnostics.js"].toString(),
+        });
+        assert.equal(
+            await page.evaluate(
+                () => __ottHostedEpgDiagnostics === originalDiagnosticsModule
+            ),
+            true,
+            "late duplicate script execution preserves the active module"
+        );
+        const loadedDiagnosticsCalls = diagnosticsCalls;
+        await page.evaluate(() => __ottHostedEpg.showDiagnostics());
+        assert.equal(await page.locator("#listAbout pre").count(), 1);
+        assert.equal(
+            await page.evaluate(
+                () => aboutKeyHandler === originalDiagnosticsHandler
+            ),
+            true,
+            "reopening after duplicate registration does not nest another panel"
+        );
+        assert.equal(
+            diagnosticsCalls,
+            loadedDiagnosticsCalls,
+            "registered diagnostics module is reused"
+        );
         let details = await page.locator("#listAbout").innerText();
         assert.match(details, /HTTP 503/);
         assert.match(details, /EPG_HTTP/);

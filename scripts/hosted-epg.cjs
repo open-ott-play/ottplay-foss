@@ -46,6 +46,48 @@ function artifacts() {
         "\ncreateHostedEpgWorker(self);\n";
     acorn.parse(worker, { ecmaVersion: 5 });
     files["epg-worker.js"] = Buffer.from(worker);
+    const server = ts.transpileModule(
+        fs.readFileSync(path.join(root, "src/hosted/epg-server.ts"), "utf8"),
+        {
+            compilerOptions: {
+                removeComments: true,
+                target: ts.ScriptTarget.ES5,
+            },
+            reportDiagnostics: true,
+        }
+    );
+    assert.equal(
+        (server.diagnostics || []).filter(
+            (d) => d.category === ts.DiagnosticCategory.Error
+        ).length,
+        0,
+        "Hosted EPG server transport compile failed"
+    );
+    const transport = server.outputText + "\ncreateHostedEpgServer(self);\n";
+    acorn.parse(transport, { ecmaVersion: 5 });
+    files["epg-server.js"] = Buffer.from(transport);
+    const diagnostics = ts.transpileModule(
+        fs.readFileSync(
+            path.join(root, "src/hosted/epg-diagnostics.ts"),
+            "utf8"
+        ),
+        {
+            compilerOptions: {
+                removeComments: true,
+                target: ts.ScriptTarget.ES5,
+            },
+            reportDiagnostics: true,
+        }
+    );
+    assert.equal(
+        (diagnostics.diagnostics || []).filter(
+            (d) => d.category === ts.DiagnosticCategory.Error
+        ).length,
+        0,
+        "Hosted EPG diagnostics compile failed"
+    );
+    acorn.parse(diagnostics.outputText, { ecmaVersion: 5 });
+    files["epg-diagnostics.js"] = Buffer.from(diagnostics.outputText);
     files["manifest.json"] = Buffer.from(
         JSON.stringify(receipt, null, 2) + "\n"
     );

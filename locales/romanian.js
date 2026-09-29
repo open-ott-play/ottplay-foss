@@ -358,6 +358,8 @@ var keyStrings = {
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
         "EPG nu a putut porni. Reporniți playerul pentru a-i reîncărca fișierele. Redarea se va opri.",
     "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
         "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
     "EPG download time: %1": "EPG download time: %1",

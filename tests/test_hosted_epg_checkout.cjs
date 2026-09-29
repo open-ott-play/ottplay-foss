@@ -30,6 +30,8 @@ try {
         ".gitattributes",
         "scripts/hosted-epg.cjs",
         "src/hosted/epg-worker.ts",
+        "src/hosted/epg-server.ts",
+        "src/hosted/epg-diagnostics.ts",
         "vendor/hosted-epg",
     ]) {
         const destination = path.join(source, relative);
