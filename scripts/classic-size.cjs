@@ -25,7 +25,11 @@ const { gzipSync } = require("node:zlib");
 // helper deduplication. Native Node 22 output exceeded the previous gzip cap by
 // 16 bytes; allocate 50 bytes for this reviewed feature cost without raising raw
 // or complete-payload limits.
-const BUDGET = Object.freeze({ bytes: 606000, gzipBytes: 183550 });
+// CSP-safe playback controls plus shared color-picker layout reduce raw output
+// by 119 bytes and add 210 gzip bytes to native output on Node 22.23.2. The beta
+// artifact measures 183726 gzip bytes; allow this reviewed feature cost and
+// version suffix headroom while retaining raw and complete-payload limits.
+const BUDGET = Object.freeze({ bytes: 606000, gzipBytes: 184000 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
