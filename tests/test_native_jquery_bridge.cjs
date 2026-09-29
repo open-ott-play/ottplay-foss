@@ -438,6 +438,116 @@ async function nativeRoutes(w) {
         "all response checks use actual native route wrappers"
     );
     assert.equal(calls[beforeProxy].url, "https://stream.invalid/list.m3u");
+    const target = "https://stream.invalid/list.m3u";
+    const encodedTarget = "url=" + encodeURIComponent(target);
+    for (const [data, userAgent, referer] of [
+        [
+            {
+                referer: "https://origin.invalid/a+b",
+                ua: "Player + Test",
+                url: target,
+            },
+            "Player + Test",
+            "https://origin.invalid/a+b",
+        ],
+        [
+            encodedTarget +
+                "&ua=Player+%2B+Test&referer=https%3A%2F%2Forigin.invalid%2Fa%2Bb",
+            "Player + Test",
+            "https://origin.invalid/a+b",
+        ],
+        [{ referer: "", ua: "", url: target }, undefined, undefined],
+        [encodedTarget + "&ua=&referer=", undefined, undefined],
+        [{ referer: null, ua: null, url: target }, undefined, undefined],
+        [{ referer: 3, ua: false, url: target }, undefined, undefined],
+        [{ url: target }, undefined, undefined],
+    ]) {
+        const before = calls.length;
+        const response = await outcome(w.$.ajax({ data, url: "/m3u/cp.php" }));
+        assert.equal(response.ok, true);
+        assert.equal(calls.length, before + 1);
+        assert.equal(calls[before].url, target);
+        assert.equal(calls[before].userAgent, userAgent);
+        assert.equal(calls[before].referer, referer);
+    }
+    for (const data of [null, "", undefined]) {
+        const before = calls.length;
+        const response = await outcome(w.$.ajax({ data, url: "/m3u/cp.php" }));
+        assert.equal(response.ok, false);
+        assert.match(response.value, /missing url/);
+        assert.equal(calls.length, before);
+    }
+    for (const throwing of [undefined, "ua", "referer"]) {
+        const reads = [];
+        const failure = new Error("header getter failed");
+        const data = {};
+        for (const [key, value] of [
+            ["url", target],
+            ["ua", "Stateful player"],
+            ["referer", "https://origin.invalid/"],
+        ]) {
+            Object.defineProperty(data, key, {
+                get() {
+                    reads.push(key);
+                    if (key === throwing) throw failure;
+                    return value;
+                },
+            });
+        }
+        const before = calls.length;
+        if (throwing) {
+            assert.throws(
+                () => w.$.ajax({ data, url: "/m3u/cp.php" }),
+                (error) => error === failure
+            );
+            assert.equal(calls.length, before);
+        } else {
+            assert.equal(
+                (await outcome(w.$.ajax({ data, url: "/m3u/cp.php" }))).ok,
+                true
+            );
+            assert.equal(calls.length, before + 1);
+            assert.equal(calls[before].userAgent, "Stateful player");
+            assert.equal(calls[before].referer, "https://origin.invalid/");
+        }
+        assert.deepEqual(
+            reads,
+            throwing === "ua" ? ["url", "ua"] : ["url", "ua", "referer"]
+        );
+    }
+    for (const field of ["ua", "referer"]) {
+        const before = calls.length;
+        assert.throws(
+            () =>
+                w.$.ajax({
+                    data: encodedTarget + "&" + field + "=%",
+                    url: "/m3u/cp.php",
+                }),
+            (error) => error.name === "URIError"
+        );
+        assert.equal(calls.length, before);
+    }
+    const decoded = [];
+    const decode = w.decodeURIComponent;
+    w.decodeURIComponent = (value) => {
+        decoded.push(value);
+        return decode(value);
+    };
+    const beforeInvalid = calls.length;
+    try {
+        assert.throws(
+            () =>
+                w.$.ajax({
+                    data: encodedTarget + "&ua=%&referer=%E0%A4%A",
+                    url: "/m3u/cp.php",
+                }),
+            (error) => error.name === "URIError"
+        );
+    } finally {
+        w.decodeURIComponent = decode;
+    }
+    assert.deepEqual(decoded, [encodeURIComponent(target), "%"]);
+    assert.equal(calls.length, beforeInvalid);
 }
 
 (async () => {

@@ -148,18 +148,6 @@ export async function matchCapacitorM3u(
     );
 }
 
-function isLocalCapacitorCompanionUrl(url: string): boolean {
-    try {
-        var target = new URL(url, window.location.href);
-        var current = new URL(window.location.href);
-        return (
-            target.protocol === current.protocol && target.host === current.host
-        );
-    } catch (_e) {
-        return false;
-    }
-}
-
 function setupCapacitorCompanionShim(): void {
     const $ = (window as any).$;
     if (
@@ -174,6 +162,39 @@ function setupCapacitorCompanionShim(): void {
     (window as any).__ottCapacitorAjaxShim = true;
     window.installCapacitorHttpTransport($, StalkerPortal);
     const origAjax = $.ajax.bind($);
+
+    function isLocalCapacitorCompanionUrl(url: string): boolean {
+        try {
+            var target = new URL(url, window.location.href);
+            var current = new URL(window.location.href);
+            return (
+                target.protocol === current.protocol &&
+                target.host === current.host
+            );
+        } catch (_e) {
+            return false;
+        }
+    }
+
+    function extractProxyField(
+        data: any,
+        key: "ua" | "referer"
+    ): string | undefined {
+        if (!data) return undefined;
+        if (typeof data === "string") {
+            const pattern =
+                key === "ua" ? /(?:^|&)ua=([^&]*)/ : /(?:^|&)referer=([^&]*)/;
+            const m = pattern.exec(data);
+            if (m)
+                return (
+                    decodeURIComponent(m[1].replace(/\+/g, " ")) || undefined
+                );
+            return undefined;
+        }
+        const value = data[key];
+        if (typeof value === "string" && value) return value;
+        return undefined;
+    }
 
     $.ajax = function (urlOrOpts: any, maybeOpts?: any): any {
         let opts: any;
@@ -220,8 +241,8 @@ function setupCapacitorCompanionShim(): void {
                 } catch (_e) {}
                 return dfd.promise(dfd) as any;
             }
-            const ua = extractUA(data);
-            const referer = extractReferer(data);
+            const ua = extractProxyField(data, "ua");
+            const referer = extractProxyField(data, "referer");
             return nativePromiseToJq(
                 $,
                 M3UProxy.proxyFetch({
@@ -236,30 +257,6 @@ function setupCapacitorCompanionShim(): void {
 
         return origAjax(urlOrOpts, maybeOpts);
     };
-}
-
-function extractUA(data: any): string | undefined {
-    if (!data) return undefined;
-    if (typeof data === "string") {
-        const m = /(?:^|&)ua=([^&]*)/.exec(data);
-        if (m) return decodeURIComponent(m[1].replace(/\+/g, " ")) || undefined;
-        return undefined;
-    }
-    const ua = (data as any).ua;
-    if (typeof ua === "string" && ua) return ua;
-    return undefined;
-}
-
-function extractReferer(data: any): string | undefined {
-    if (!data) return undefined;
-    if (typeof data === "string") {
-        const m = /(?:^|&)referer=([^&]*)/.exec(data);
-        if (m) return decodeURIComponent(m[1].replace(/\+/g, " ")) || undefined;
-        return undefined;
-    }
-    const ref = (data as any).referer;
-    if (typeof ref === "string" && ref) return ref;
-    return undefined;
 }
 
 export { M3UProxy, setupCapacitorCompanionShim };
