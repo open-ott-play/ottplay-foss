@@ -267,6 +267,11 @@ function collectSourceKeys(repository = root) {
                 )
                     collect(node.arguments[1]);
                 if (
+                    relative === "src/plugins/control-discovery.ts" &&
+                    ["notify", "finish"].includes(method)
+                )
+                    collect(node.arguments[1]);
+                if (
                     relative.startsWith("src/provider/") &&
                     method === "progress" &&
                     ts.isPropertyAccessExpression(node.expression) &&
@@ -338,7 +343,10 @@ function collectSourceKeys(repository = root) {
                                     collect(property.initializer);
                 }
                 if (
-                    relative === "src/plugins/command-server.ts" &&
+                    [
+                        "src/plugins/command-server.ts",
+                        "src/plugins/control-discovery.ts",
+                    ].includes(relative) &&
                     id === "message"
                 )
                     collect(node.initializer);

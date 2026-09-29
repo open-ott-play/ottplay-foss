@@ -43,6 +43,7 @@ import {
     createCommandServerTransport,
     normalizeCommandServerAddress,
 } from "./plugins/command-server";
+import { createControlDiscovery } from "./plugins/control-discovery";
 import { nativePromiseToJq } from "./plugins/jquery-bridge";
 import { createLocalHttpRemote } from "./plugins/local-http-remote";
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
@@ -1781,6 +1782,7 @@ function onStbReady(): void {
         // Device UUID for remote control / swop allowlist; optional /local/swop.json
         if (typeof (window as any).ensureDeviceClientId === "function")
             (window as any).ensureDeviceClientId();
+        (window as any).__ottControlDiscovery.start();
         if (typeof (window as any).applyLocalSwopConfig === "function")
             (window as any).applyLocalSwopConfig();
         initUIReferences();
@@ -5690,6 +5692,40 @@ window.showPopup = showPopup;
     executeRemoteRequest
 );
 
+(window as any).__ottControlDiscovery = createControlDiscovery(
+    window,
+    createCommandServerTransport(
+        window,
+        typeof window.__TAURI__ !== "undefined"
+            ? function (request: any): Promise<any> {
+                  return tauriInvoke("proxy_http", request);
+              }
+            : undefined
+    ),
+    function () {
+        return {
+            address: settings.commandServerAddress,
+            enabled: settings.commandServerEnabled === 1,
+            generation: (window as any).__ottCommandServer.status().generation,
+            token: settings.commandServerToken,
+        };
+    },
+    function (config: any) {
+        (window as any).__ottCommandServer.configure(config);
+        if (!(window as any).__ottCommandServer.status().enabled)
+            throw new Error("Approved command server could not be configured");
+    },
+    function () {
+        return String((window as any).deviceUUID || "");
+    },
+    typeof window.__TAURI__ !== "undefined"
+        ? function (): Promise<any> {
+              return tauriInvoke("discover_control_servers", {});
+          }
+        : undefined
+);
+(window as any).__OTT_CONTROL_DISCOVERY_VERSION__ = 1;
+
 // Tauri Mode B: poll the native command queue (queue_poll invoke) instead of
 // the local_proxy.py GET endpoint. Mirrors the STB poll cadence (~10s) so
 // push commands (popup_message, channel switches, …) arrive promptly.
@@ -5832,6 +5868,41 @@ if (
 window.settingsCommands = function (): void {
     var w = window as any;
     var commandServer = w.__ottCommandServer;
+    var discovery = w.__ottControlDiscovery;
+    function refreshDiscovery(): void {
+        if (!discovery || closed) return;
+        var status = discovery.status();
+        var label = document.getElementById("commandServerDiscoveryStatus");
+        if (label)
+            label.textContent =
+                w._(status.message, status.messageArgument) +
+                (status.code ? " " + status.code : "");
+        var cancel = document.getElementById(
+            "commandServerDiscoveryCancel"
+        ) as HTMLButtonElement | null;
+        if (cancel)
+            cancel.disabled = !/^(discovering|choose|pairing|waiting)$/.test(
+                status.state
+            );
+        var choices = document.getElementById("commandServerDiscoveryChoices");
+        if (!choices) return;
+        choices.textContent = "";
+        controls.length = Math.min(controls.length, 9);
+        controlActions.length = Math.min(controlActions.length, 9);
+        status.servers.forEach(function (server: any, index: number) {
+            var button = document.createElement("button");
+            button.textContent =
+                server.address +
+                (server.domain ? " (" + server.domain + ")" : "");
+            choices!.appendChild(button);
+            var at = controlActions.length;
+            controlActions.push(function () {
+                discovery.choose(index);
+            });
+            bindControl(button, at);
+        });
+        if (selectedControl >= controls.length) selectControl(3, false);
+    }
     function refreshServerStatus(): void {
         if (!commandServer) return;
         var status = commandServer.status();
@@ -5849,6 +5920,7 @@ window.settingsCommands = function (): void {
             button.textContent = w._(status.enabled ? "Disconnect" : "Connect");
     }
     if (commandServer) commandServer.subscribe(refreshServerStatus);
+    if (discovery) discovery.subscribe(refreshDiscovery);
     var changingHttpRemote = false;
     var httpRemoteError = false;
     var closed = false;
@@ -5863,6 +5935,9 @@ window.settingsCommands = function (): void {
         },
         toggleServer,
         function (): void {
+            if (discovery) discovery.start(true);
+        },
+        function (): void {
             editUrl(false);
         },
         function (): void {
@@ -5870,6 +5945,9 @@ window.settingsCommands = function (): void {
         },
         toggleHttpRemote,
         close,
+        function (): void {
+            if (discovery) discovery.cancel();
+        },
     ];
     var parent = ["listCaption", "listDetail", "listPodval"].map(function (id) {
         var element = document.getElementById(id);
@@ -5936,6 +6014,7 @@ window.settingsCommands = function (): void {
     function close(): void {
         closed = true;
         if (commandServer) commandServer.subscribe(null);
+        if (discovery) discovery.subscribe(null);
         $("#listAbout").hide().text("");
         ["listCaption", "listDetail", "listPodval"].forEach(
             function (id, index) {
@@ -6027,6 +6106,11 @@ window.settingsCommands = function (): void {
             '<button id="commandServerConnect"><span class="btn">5</span> <span id="commandServerConnectLabel">' +
             text(w._("Connect")) +
             "</span></button><br/><br/>" +
+            '<button id="commandServerFind"><span class="btn">6</span> ' +
+            text(w._("Find command server")) +
+            '</button> <button id="commandServerDiscoveryCancel" disabled>' +
+            text(w._("Cancel pairing")) +
+            '</button><br/><span id="commandServerDiscoveryStatus" role="status"></span><div id="commandServerDiscoveryChoices"></div><br/>' +
             "<b>" +
             text(w._("Local HTTP remote control")) +
             ":</b> " +
@@ -6114,6 +6198,11 @@ window.settingsCommands = function (): void {
         bindControl(document.getElementById("commandServerAddress")!, 0);
         bindControl(document.getElementById("commandServerToken")!, 1);
         bindControl(document.getElementById("commandServerConnect")!, 2);
+        bindControl(document.getElementById("commandServerFind")!, 3);
+        bindControl(
+            document.getElementById("commandServerDiscoveryCancel")!,
+            8
+        );
         var footerControls = footer
             ? footer.querySelectorAll("span[onclick]")
             : [];
@@ -6123,11 +6212,12 @@ window.settingsCommands = function (): void {
             if (footerControls[footerIndex])
                 bindControl(
                     footerControls[footerIndex] as HTMLElement,
-                    index + 3
+                    index + 4
                 );
         });
         selectControl(selectedControl, selectedControl >= 0);
         refreshServerStatus();
+        refreshDiscovery();
         var codeInput = document.getElementById(
             "localHttpDeviceCode"
         ) as HTMLInputElement | null;
@@ -6150,6 +6240,7 @@ window.settingsCommands = function (): void {
     }
 
     function editServer(secret: boolean): void {
+        if (discovery) discovery.cancel();
         var draft = beginSettingsDraft();
         $("#listAbout").hide();
         editSettingsText(
@@ -6207,6 +6298,7 @@ window.settingsCommands = function (): void {
         );
     }
     function toggleServer(): void {
+        if (discovery) discovery.cancel();
         if (commandServer)
             commandServer.configure({
                 address: settings.commandServerAddress,
@@ -6289,6 +6381,15 @@ window.settingsCommands = function (): void {
                           (e === w.keys.LEFT ? -1 : 1) +
                           controls.length) %
                       controls.length;
+            for (
+                var skip = 0;
+                skip < controls.length &&
+                (controls[next] as HTMLButtonElement).disabled;
+                skip++
+            )
+                next =
+                    (next + (e === w.keys.LEFT ? -1 : 1) + controls.length) %
+                    controls.length;
             selectControl(next, true);
             return true;
         }
@@ -6317,13 +6418,18 @@ window.settingsCommands = function (): void {
             toggleServer();
             return true;
         }
+        if (e === w.keys.N6 || e === 54) {
+            selectControl(3, false);
+            if (discovery) discovery.start(true);
+            return true;
+        }
         if (e === w.keys.ENTER || e === w.keys.N2 || e === 50) {
-            selectControl(e === w.keys.ENTER ? 3 : 4, false);
+            selectControl(e === w.keys.ENTER ? 4 : 5, false);
             editUrl(e !== w.keys.ENTER);
             return true;
         }
         if (e === w.keys.N1 || e === 49) {
-            selectControl(5, false);
+            selectControl(6, false);
             toggleHttpRemote();
             return true;
         }

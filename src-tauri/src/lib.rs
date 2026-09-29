@@ -64,6 +64,7 @@ pub fn run() {
             commands::tmdb::tmdb_proxy,
             commands::tauri_commands::proxy_fetch,
             commands::http::proxy_http,
+            commands::control_discovery::discover_control_servers,
             commands::swop::swop_http,
             commands::native_hls::native_hls_start,
             commands::native_hls::native_hls_stats,

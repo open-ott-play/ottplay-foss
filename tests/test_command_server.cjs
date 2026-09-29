@@ -540,11 +540,13 @@ assert.equal(batch.requests.at(-1).request.method, "GET");
 (async () => {
     const t = harness();
     let resolveNative;
+    let nativeRequest;
     const completed = [];
     const transport = createCommandServerTransport(
         t.w,
-        () =>
+        (value) =>
             new Promise((resolve) => {
+                nativeRequest = value;
                 resolveNative = resolve;
             })
     );
@@ -607,6 +609,94 @@ assert.equal(batch.requests.at(-1).request.method, "GET");
     xhr.responseText = "denied";
     xhr.onload();
     assert.deepEqual({ ...completed[1] }, { body: "denied", status: 403 });
+    assert.equal(t.jobs.size, 0);
+    const secure = {
+        ...request,
+        method: "GET",
+        body: undefined,
+        secureControl: true,
+        url: "https://host/api/pairings?id=" + "a".repeat(32),
+    };
+    const cancelNativeSecure = transport(secure, () => {});
+    assert.equal(nativeRequest.secureControl, true);
+    assert.equal(nativeRequest.url, secure.url);
+    cancelNativeSecure();
+    const secureResults = [];
+    const acceptSecure = (value) => secureResults.push(value);
+    browserTransport(secure, acceptSecure);
+    assert.equal(secureResults.at(-1).error, "secure_control_unavailable");
+    const originalXhr = xhr;
+    let fetched;
+    let resolveFetch;
+    let rejectFetch;
+    t.w.Request = Request;
+    t.w.fetch = (value) => {
+        fetched = value;
+        return new Promise((resolve, reject) => {
+            resolveFetch = resolve;
+            rejectFetch = reject;
+        });
+    };
+    browserTransport(secure, acceptSecure);
+    assert.equal(secureResults.at(-1).error, "secure_control_unavailable");
+    assert.equal(fetched, undefined, "uncancellable Fetch never starts");
+    secureResults.pop();
+    t.w.AbortController = AbortController;
+    const cancelFetch = browserTransport(secure, acceptSecure);
+    assert.equal(fetched.redirect, "error");
+    assert.equal(fetched.credentials, "omit");
+    assert.equal(fetched.url, secure.url);
+    assert.equal(fetched.headers.get("Authorization"), "Bearer " + token);
+    cancelFetch();
+    assert.equal(fetched.signal.aborted, true);
+    resolveFetch(new Response("{}", { status: 200 }));
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(
+        secureResults.length,
+        1,
+        "late secure fetch responses are ignored"
+    );
+    browserTransport(secure, acceptSecure);
+    rejectFetch(new TypeError("redirect blocked"));
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(secureResults.at(-1), undefined);
+    browserTransport(secure, acceptSecure);
+    t.next();
+    assert.equal(
+        fetched.signal.aborted,
+        true,
+        "secure fetch timeout aborts request"
+    );
+    resolveFetch(new Response("{}", { status: 200 }));
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(secureResults.length, 3);
+    browserTransport(secure, acceptSecure);
+    resolveFetch(new Response('{"status":"pending"}', { status: 202 }));
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(
+        { ...secureResults.at(-1) },
+        {
+            body: '{"status":"pending"}',
+            status: 202,
+        }
+    );
+    const previousFetch = fetched;
+    for (const url of [
+        "http://host/api/pairings",
+        "https://user:pass@host/api/pairings",
+        "https://host/api/pairings#fragment",
+    ])
+        browserTransport({ ...secure, url }, acceptSecure);
+    assert.equal(fetched, previousFetch, "invalid secure URLs are never sent");
+    t.w.Request = function () {};
+    browserTransport(secure, acceptSecure);
+    assert.equal(secureResults.at(-1).error, "secure_control_unavailable");
+    assert.equal(
+        fetched,
+        previousFetch,
+        "a Request polyfill ignoring redirect is rejected"
+    );
+    assert.equal(xhr, originalXhr, "secure requests never fall back to XHR");
     assert.equal(t.jobs.size, 0);
     console.log(
         "PASS command server: ES5, address/auth policy, independent consent, ACK retry/dedup, revocation, backoff, native/XHR cancellation and timeouts"

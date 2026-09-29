@@ -790,4 +790,45 @@ var keyStrings = {
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "Шаравоз settings",
     "↑↓ Scroll": "↑↓ Scroll",
+    "Find command server": "Find command server",
+    "Cancel pairing": "Cancel pairing",
+    "Command server discovery has not started.":
+        "Command server discovery has not started.",
+    "Settings changed. Discovery was canceled.":
+        "Settings changed. Discovery was canceled.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "This browser cannot safely pair automatically. Update it or enter the command server settings manually.",
+    "Requesting approval for %1": "Requesting approval for %1",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Could not create a pairing request. Find the server again to retry.",
+    "Pairing expired. Find the server again to retry.":
+        "Pairing expired. Find the server again to retry.",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Approve the code for %1 with ott approve NAME CODE:",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Pairing server is unavailable. Find the server again to retry.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Pairing was rejected or returned an invalid approval. Find the server again to retry.",
+    "Pairing approved. Command server configured.":
+        "Pairing approved. Command server configured.",
+    "Could not save the approved command server settings.":
+        "Could not save the approved command server settings.",
+    "The discovery response is invalid.": "The discovery response is invalid.",
+    "No command server was found on this network.":
+        "No command server was found on this network.",
+    "Command server found.": "Command server found.",
+    "Several command servers were found. Select one below.":
+        "Several command servers were found. Select one below.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "This browser has no discovery profile. Enter a server address or configure the deployment profile.",
+    "The command server discovery URL is invalid.":
+        "The command server discovery URL is invalid.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Command server discovery is unavailable. Use Find command server to retry.",
+    "Command server discovery canceled.": "Command server discovery canceled.",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Device UUID is not ready. Use Find command server to retry.",
+    "Finding command servers...": "Finding command servers...",
+    "Command server discovery timed out.":
+        "Command server discovery timed out.",
 };
