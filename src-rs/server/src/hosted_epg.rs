@@ -11,16 +11,16 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use ottplay_core::xmltv::{self, Channels, MatchIndex, Programs};
+use ottplay_core::xmltv::{self, Channels, MatchBudget, MatchIndex, Programs};
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 use std::{
     collections::HashSet,
     io::Read,
-    sync::Arc,
+    sync::{Arc, Mutex},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
-use tokio::sync::{RwLock, Semaphore};
+use tokio::sync::{OwnedSemaphorePermit, RwLock, Semaphore};
 
 const SOURCE: &str = "epg-one";
 const SOURCE_URL: &str = "https://cdn.epg.one/epg2.xml.gz";
@@ -29,6 +29,35 @@ const WIRE_LIMIT: usize = 96 * 1024 * 1024;
 const XML_LIMIT: usize = 512 * 1024 * 1024;
 const MAX_ROWS: usize = 20_000;
 const MAX_ROW_BYTES: usize = 8 * 1024 * 1024;
+const MATCH_TIMEOUT: Duration = Duration::from_secs(8);
+
+type PendingMatchPermits = Arc<Mutex<Option<(OwnedSemaphorePermit, OwnedSemaphorePermit)>>>;
+
+struct CancelMatchOnDrop {
+    budget: MatchBudget,
+    work: Option<tokio::task::AbortHandle>,
+    pending: Option<PendingMatchPermits>,
+}
+
+impl Drop for CancelMatchOnDrop {
+    fn drop(&mut self) {
+        self.budget.cancel();
+        // Tokio can remove a blocking task that has not started yet. Once it
+        // starts, the JS interrupt and row checks observe the cancelled budget.
+        if let Some(work) = &self.work {
+            work.abort();
+        }
+        // A saturated Tokio blocking pool may not drop an aborted queued task
+        // until it is dequeued. Release its leases now, but never take leases
+        // already transferred to a running worker.
+        if let Some(pending) = &self.pending {
+            pending
+                .lock()
+                .unwrap_or_else(|error| error.into_inner())
+                .take();
+        }
+    }
+}
 
 struct Snapshot {
     channels: Channels,
@@ -66,14 +95,21 @@ impl Snapshot {
             "stale":now.saturating_sub(self.fetched_at) >= REFRESH_MS})
     }
 
-    fn matches(&self, channels: Vec<ChannelInput>, now: u64) -> anyhow::Result<Value> {
+    fn matches(
+        &self,
+        channels: Vec<ChannelInput>,
+        now: u64,
+        budget: &MatchBudget,
+    ) -> anyhow::Result<Value> {
         let mut mappings = Map::new();
         for row in channels {
-            if let Some(id) = self
-                .index
-                .resolve(&row.tvg_id, &[&row.tvg_name, &row.name])?
-            {
-                let shift = self.index.web_shift_seconds(&row.name)?;
+            budget.check()?;
+            if let Some((id, shift)) = self.index.resolve_web_with_budget(
+                &row.tvg_id,
+                &[&row.tvg_name, &row.name],
+                &row.name,
+                budget,
+            )? {
                 let logo = self
                     .channels
                     .get(&id)
@@ -82,6 +118,7 @@ impl Snapshot {
                 mappings.insert(row.id, json!({"channelId":id,"shift":shift,"logo":logo}));
             }
         }
+        budget.check()?;
         let mut result = self.metadata(now);
         result["mappings"] = Value::Object(mappings);
         Ok(result)
@@ -124,6 +161,7 @@ impl Snapshot {
 struct GuideState {
     snapshot: RwLock<Option<Arc<Snapshot>>>,
     match_requests: Arc<Semaphore>,
+    match_execution: Arc<Semaphore>,
     programme_requests: Arc<Semaphore>,
 }
 
@@ -134,6 +172,9 @@ impl GuideState {
             // QuickJS serializes access to the shared index. Bound its queue
             // separately so matching new playlists cannot starve guide reads.
             match_requests: Arc::new(Semaphore::new(2)),
+            // Wait asynchronously rather than blocking another worker on the
+            // serialized JS context. Both admission and execution are bounded.
+            match_execution: Arc::new(Semaphore::new(1)),
             programme_requests: Arc::new(Semaphore::new(4)),
         })
     }
@@ -208,6 +249,7 @@ enum ApiError {
     Busy,
     Limit,
     Internal,
+    Timeout,
 }
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
@@ -220,6 +262,7 @@ impl IntoResponse for ApiError {
             Self::Busy => (StatusCode::TOO_MANY_REQUESTS, "EPG_BUSY"),
             Self::Limit => (StatusCode::UNPROCESSABLE_ENTITY, "EPG_CHANNEL_LIMIT"),
             Self::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "EPG_INTERNAL"),
+            Self::Timeout => (StatusCode::GATEWAY_TIMEOUT, "EPG_TIMEOUT"),
         };
         let mut response = (
             status,
@@ -292,26 +335,81 @@ async fn match_channels(
     if !input.valid() {
         return Err(ApiError::Invalid);
     }
+    run_match(state, input, MATCH_TIMEOUT).await
+}
+
+async fn run_match(
+    state: Arc<GuideState>,
+    input: MatchInput,
+    timeout: Duration,
+) -> Result<Response, ApiError> {
+    run_match_using(state, input, timeout, |snapshot, channels, budget| {
+        snapshot.matches(channels, now_ms(), budget)
+    })
+    .await
+}
+
+async fn run_match_using(
+    state: Arc<GuideState>,
+    input: MatchInput,
+    timeout: Duration,
+    work: impl FnOnce(Arc<Snapshot>, Vec<ChannelInput>, &MatchBudget) -> anyhow::Result<Value>
+        + Send
+        + 'static,
+) -> Result<Response, ApiError> {
+    let budget = MatchBudget::new(timeout);
+    let mut cancel = CancelMatchOnDrop {
+        budget: budget.clone(),
+        work: None,
+        pending: None,
+    };
+    let deadline = tokio::time::Instant::from_std(budget.deadline());
     let permit = state
         .match_requests
         .clone()
         .try_acquire_owned()
         .map_err(|_| ApiError::Busy)?;
-    let snapshot = state
-        .snapshot
-        .read()
+    let snapshot = tokio::time::timeout_at(deadline, state.snapshot.read())
         .await
+        .map_err(|_| ApiError::Timeout)?
         .clone()
         .ok_or(ApiError::NotReady)?;
-    tokio::task::spawn_blocking(move || {
-        let _permit = permit;
-        snapshot
-            .matches(input.channels, now_ms())
+    let execution =
+        tokio::time::timeout_at(deadline, state.match_execution.clone().acquire_owned())
+            .await
+            .map_err(|_| ApiError::Timeout)?
+            .map_err(|_| ApiError::Internal)?;
+    let work_budget = budget.clone();
+    let pending = Arc::new(Mutex::new(Some((permit, execution))));
+    cancel.pending = Some(pending.clone());
+    let work = tokio::task::spawn_blocking(move || {
+        let _permits = pending
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .take()
+            .ok_or(ApiError::Timeout)?;
+        if work_budget.stopped() {
+            return Err(ApiError::Timeout);
+        }
+        let result = work(snapshot, input.channels, &work_budget)
             .map(|value| Json(value).into_response())
-            .map_err(|_| ApiError::Internal)
-    })
-    .await
-    .map_err(|_| ApiError::Internal)?
+            .map_err(|_| {
+                if work_budget.stopped() {
+                    ApiError::Timeout
+                } else {
+                    ApiError::Internal
+                }
+            });
+        if work_budget.stopped() {
+            return Err(ApiError::Timeout);
+        }
+        result
+    });
+    cancel.work = Some(work.abort_handle());
+    tokio::time::timeout_at(deadline, work)
+        .await
+        .map_err(|_| ApiError::Timeout)?
+        .map_err(|_| ApiError::Internal)?
 }
 
 async fn programmes(
@@ -451,6 +549,209 @@ mod tests {
         }
     }
 
+    fn match_input() -> MatchInput {
+        MatchInput {
+            version: 1,
+            source: SOURCE.into(),
+            channels: vec![channel("local", "ren", "", "РЕН ТВ")],
+        }
+    }
+
+    // Deterministic host-work probe: core tests separately interrupt a real
+    // infinite JS loop. Here we test HTTP ownership, queuing and permit cleanup
+    // without relying on how fast the evolving matcher handles a fixture.
+    fn blocked_match(
+        entered: Arc<tokio::sync::Notify>,
+        finished: Arc<std::sync::atomic::AtomicBool>,
+    ) -> impl FnOnce(Arc<Snapshot>, Vec<ChannelInput>, &MatchBudget) -> anyhow::Result<Value> + Send
+    {
+        move |_, _, budget| {
+            entered.notify_one();
+            while !budget.stopped() {
+                std::thread::park_timeout(Duration::from_millis(1));
+            }
+            finished.store(true, std::sync::atomic::Ordering::SeqCst);
+            budget.check()?;
+            unreachable!("a stopped budget is never a successful empty mapping")
+        }
+    }
+
+    #[tokio::test]
+    async fn hosted_match_queue_deadline_and_drop_release_admission() {
+        let state = GuideState::new();
+        state.publish(snapshot()).await;
+        let held = state.match_execution.clone().acquire_owned().await.unwrap();
+        let response = run_match(state.clone(), match_input(), Duration::from_millis(20)).await;
+        assert!(matches!(response, Err(ApiError::Timeout)));
+        assert_eq!(state.match_requests.available_permits(), 2);
+        let task = tokio::spawn(run_match(state.clone(), match_input(), MATCH_TIMEOUT));
+        tokio::time::timeout(Duration::from_secs(1), async {
+            while state.match_requests.available_permits() != 1 {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        task.abort();
+        assert!(matches!(task.await, Err(error) if error.is_cancelled()));
+        assert_eq!(state.match_requests.available_permits(), 2);
+        drop(held);
+        assert!(run_match(state, match_input(), MATCH_TIMEOUT).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn hosted_match_active_deadline_releases_worker_without_empty_success() {
+        let state = GuideState::new();
+        state.publish(snapshot()).await;
+        let entered = Arc::new(tokio::sync::Notify::new());
+        let finished = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let response = run_match_using(
+            state.clone(),
+            match_input(),
+            Duration::from_millis(20),
+            blocked_match(entered, finished.clone()),
+        )
+        .await;
+        assert!(matches!(response, Err(ApiError::Timeout)));
+        let released = tokio::time::timeout(
+            Duration::from_secs(1),
+            state.match_execution.clone().acquire_owned(),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert!(finished.load(std::sync::atomic::Ordering::SeqCst));
+        assert_eq!(state.match_requests.available_permits(), 2);
+        drop(released);
+        let response = ApiError::Timeout.into_response();
+        assert_eq!(response.status(), StatusCode::GATEWAY_TIMEOUT);
+        let bytes = to_bytes(response.into_body(), 1024).await.unwrap();
+        let data: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(data["error"]["code"], "EPG_TIMEOUT");
+        assert!(data.get("mappings").is_none());
+        assert!(run_match(state, match_input(), MATCH_TIMEOUT).await.is_ok());
+    }
+
+    #[test]
+    fn hosted_match_cancelled_blocking_queue_releases_permits_before_dequeue() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .max_blocking_threads(1)
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let state = GuideState::new();
+            state.publish(snapshot()).await;
+            let (release, held) = std::sync::mpsc::channel();
+            let entered = Arc::new(tokio::sync::Notify::new());
+            let signal = entered.clone();
+            let blocker = tokio::task::spawn_blocking(move || {
+                signal.notify_one();
+                let _ = held.recv();
+            });
+            entered.notified().await;
+            let request = tokio::spawn(run_match(state.clone(), match_input(), MATCH_TIMEOUT));
+            tokio::time::timeout(Duration::from_secs(1), async {
+                while state.match_execution.available_permits() != 0 {
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+            request.abort();
+            assert!(matches!(request.await, Err(error) if error.is_cancelled()));
+            // The blocking worker is still occupied by an unrelated task. The
+            // cancelled queued request must release capacity without running.
+            assert_eq!(state.match_execution.available_permits(), 1);
+            assert_eq!(state.match_requests.available_permits(), 2);
+            release.send(()).unwrap();
+            blocker.await.unwrap();
+            assert!(run_match(state, match_input(), MATCH_TIMEOUT).await.is_ok());
+        });
+    }
+
+    #[tokio::test]
+    async fn hosted_match_socket_disconnect_cancels_work_without_starving_guide() {
+        use tokio::io::AsyncWriteExt;
+        let state = GuideState::new();
+        state.publish(snapshot()).await;
+        let generation = state
+            .snapshot
+            .read()
+            .await
+            .as_ref()
+            .unwrap()
+            .generation
+            .clone();
+        let entered = Arc::new(tokio::sync::Notify::new());
+        let finished = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let app = router(state.clone()).route(
+            "/test-match",
+            post({
+                let state = state.clone();
+                let entered = entered.clone();
+                let finished = finished.clone();
+                move |Json(input): Json<MatchInput>| {
+                    run_match_using(
+                        state.clone(),
+                        input,
+                        MATCH_TIMEOUT,
+                        blocked_match(entered.clone(), finished.clone()),
+                    )
+                }
+            }),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+        let mut socket = tokio::net::TcpStream::connect(address).await.unwrap();
+        let body = r#"{"version":1,"source":"epg-one","channels":[]}"#;
+        socket.write_all(format!("POST /test-match HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}", body.len()).as_bytes()).await.unwrap();
+        tokio::time::timeout(Duration::from_secs(1), entered.notified())
+            .await
+            .unwrap();
+        let path =
+            format!("/epg/v1/programmes?channelId=ren&shift=0&hours=8784&generation={generation}");
+        assert_eq!(
+            tokio::time::timeout(
+                Duration::from_secs(1),
+                request(router(state.clone()), "GET", &path, Value::Null)
+            )
+            .await
+            .unwrap()
+            .0,
+            StatusCode::OK
+        );
+        assert_eq!(
+            request(router(state.clone()), "GET", "/epg/v1/health", Value::Null)
+                .await
+                .0,
+            StatusCode::OK
+        );
+        drop(socket);
+        let released = tokio::time::timeout(
+            Duration::from_secs(1),
+            state.match_execution.clone().acquire_owned(),
+        )
+        .await;
+        server.abort();
+        let released = released
+            .expect("disconnect must cancel active work before the eight-second deadline")
+            .unwrap();
+        assert!(finished.load(std::sync::atomic::Ordering::SeqCst));
+        assert_eq!(state.match_requests.available_permits(), 2);
+        drop(released);
+        assert!(run_match(state.clone(), match_input(), MATCH_TIMEOUT)
+            .await
+            .is_ok());
+        assert_eq!(
+            state.snapshot.read().await.as_ref().unwrap().generation,
+            generation
+        );
+    }
+
     async fn request(app: Router, method: &str, path: &str, body: Value) -> (StatusCode, Value) {
         let response = app
             .oneshot(
@@ -486,6 +787,7 @@ mod tests {
                     channel("exact", "amb2", "Shared Alias", ""),
                 ],
                 NOW,
+                &MatchBudget::new(MATCH_TIMEOUT),
             )
             .unwrap();
         assert_eq!(result["mappings"]["id"]["channelId"], "ren");
@@ -741,6 +1043,7 @@ mod tests {
                     channel("plus7", "18", "", "РЕН ТВ +7"),
                 ],
                 now,
+                &MatchBudget::new(MATCH_TIMEOUT),
             )
             .unwrap();
         assert_eq!(matches["mappings"]["ren"]["channelId"], "18");

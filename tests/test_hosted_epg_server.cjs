@@ -243,8 +243,13 @@ async function main() {
                 path: url.pathname,
             });
             if (state.matchError) {
-                json(503, {
-                    error: { code: "EPG_NOT_READY" },
+                json(state.matchError === 504 ? 504 : 503, {
+                    error: {
+                        code:
+                            state.matchError === 504
+                                ? "EPG_TIMEOUT"
+                                : "EPG_NOT_READY",
+                    },
                     source: "epg-one",
                     version: 1,
                 });
@@ -438,24 +443,34 @@ async function main() {
         // Close/reopen uses genuine persisted IndexedDB rows immediately while
         // background matching is unavailable; no raw XMLTV or fallback GET.
         await close();
-        reset();
-        state.matchError = true;
-        await page.reload();
-        await install();
-        await page.evaluate((rows) => window.openGuide(rows), channels("18"));
-        await page.waitForFunction(() => window.notifications.length > 0);
-        assert.deepEqual(await get("18"), first);
-        assert.equal(guideRequests().length, 0);
-        await page.waitForFunction(
-            () => window.__ottHostedEpg.diagnostics().code === "EPG_HTTP"
-        );
-        assert.equal(
+        for (const [status, diagnostic] of [
+            [503, "EPG_HTTP"],
+            [504, "EPG_TIMEOUT"],
+        ]) {
+            reset();
+            state.matchError = status;
+            await page.reload();
+            await install();
             await page.evaluate(
-                () => window.__ottHostedEpg.diagnostics().cached
-            ),
-            true
-        );
-        await close();
+                (rows) => window.openGuide(rows),
+                channels("18")
+            );
+            await page.waitForFunction(() => window.notifications.length > 0);
+            assert.deepEqual(await get("18"), first);
+            assert.equal(guideRequests().length, 0);
+            await page.waitForFunction(
+                (code) => window.__ottHostedEpg.diagnostics().code === code,
+                diagnostic
+            );
+            assert.equal(
+                await page.evaluate(
+                    () => window.__ottHostedEpg.diagnostics().cached
+                ),
+                true,
+                "server unavailability or deadline preserves the saved guide"
+            );
+            await close();
+        }
 
         const catalogue = (count, prefix) =>
             Array.from({ length: count }, (_, i) => channels(prefix + i)[0]);

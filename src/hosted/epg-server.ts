@@ -217,7 +217,13 @@ function createHostedEpgServer(env: any): void {
             xhr.setRequestHeader("Accept", "application/json");
             xhr.onload = function () {
                 if (xhr.status < 200 || xhr.status >= 300) {
-                    finish(xhr.status === 409 ? "EPG_GENERATION" : "EPG_HTTP");
+                    finish(
+                        xhr.status === 409
+                            ? "EPG_GENERATION"
+                            : xhr.status === 504
+                              ? "EPG_TIMEOUT"
+                              : "EPG_HTTP"
+                    );
                     return;
                 }
                 if (
