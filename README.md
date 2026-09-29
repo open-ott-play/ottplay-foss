@@ -754,6 +754,8 @@ The default bind address is `127.0.0.1`; the example explicitly enables LAN acce
 
 Both sending and draining require the matching Bearer device code. There is no unauthenticated broadcast endpoint. Commands expire after 60 seconds; each proxy retains at most 50 commands.
 
+The proxy handles up to 16 connections concurrently, so an idle browser connection or incomplete request does not delay other command requests. Each socket has a five-second inactivity timeout; additional connections are closed while all workers are occupied. Queue insertion and draining are atomic across workers.
+
 ### Smoke script (all modes)
 
 ```bash

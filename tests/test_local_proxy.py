@@ -1,10 +1,12 @@
 """Real HTTP regression tests for explicit consent and command authentication."""
 import contextlib
+import concurrent.futures
 import http.client
 import importlib.util
 import json
 import os
 import pathlib
+import socket
 import subprocess
 import sys
 import threading
@@ -154,6 +156,154 @@ class LocalProxyTests(unittest.TestCase):
             self.assertEqual(len(data), 49)
             self.assertEqual(data[0]['volume'], 6)
             self.assertEqual(data[-1]['volume'], 54)
+
+    def test_idle_connection_does_not_block_polling(self):
+        accepted = threading.Event()
+        original_accept = proxy.CommandProxyServer.get_request
+
+        def accept(server):
+            result = original_accept(server)
+            accepted.set()
+            return result
+
+        with mock.patch.object(proxy.CommandProxyServer, 'get_request', accept):
+            with running_proxy(enabled=True, token=TOKEN) as server:
+                with socket.create_connection(server.server_address, timeout=2):
+                    self.assertTrue(accepted.wait(2), 'idle connection was not accepted')
+                    # request() times out after 3s; the idle socket times out after 5s.
+                    self.assertEqual(request(server, token=TOKEN)[0], 200)
+
+    def test_partial_post_does_not_block_polling_or_enqueue_early(self):
+        authorized = threading.Event()
+        original_authorize = proxy.CommandProxyHandler._authorize
+
+        def authorize(handler):
+            result = original_authorize(handler)
+            if handler.command == 'POST':
+                authorized.set()
+            return result
+
+        with mock.patch.object(proxy.CommandProxyHandler, '_authorize', authorize):
+            with running_proxy(enabled=True, token=TOKEN) as server:
+                connection = http.client.HTTPConnection(*server.server_address, timeout=3)
+                try:
+                    body = b'{"command":"random_channel"}'
+                    connection.putrequest('POST', PATH)
+                    connection.putheader('Authorization', 'Bearer ' + TOKEN)
+                    connection.putheader('Content-Length', str(len(body)))
+                    connection.endheaders(body[:1])
+                    self.assertTrue(authorized.wait(2))
+                    self.assertEqual(request(server, token=TOKEN)[2], [])
+                    connection.send(body[1:])
+                    response = connection.getresponse()
+                    self.assertEqual(response.status, 200)
+                    response.read()
+                    self.assertEqual(request(server, token=TOKEN)[2][0]['command'], 'random_channel')
+                finally:
+                    connection.close()
+
+    def test_worker_limit_closes_excess_connections_and_recovers(self):
+        workers_started = threading.Event()
+        release_workers = threading.Event()
+        workers_finished = threading.Event()
+        count_lock = threading.Lock()
+        counts = {'started': 0, 'finished': 0}
+        original_handle = proxy.CommandProxyHandler.handle
+        original_worker = proxy.CommandProxyServer.process_request_thread
+
+        def handle(handler):
+            with count_lock:
+                counts['started'] += 1
+                if counts['started'] == 2:
+                    workers_started.set()
+            release_workers.wait(3)
+            original_handle(handler)
+
+        def worker(server, *args):
+            try:
+                original_worker(server, *args)
+            finally:
+                with count_lock:
+                    counts['finished'] += 1
+                    if counts['finished'] == 2:
+                        workers_finished.set()
+
+        with mock.patch.object(proxy.CommandProxyServer, 'MAX_CONNECTIONS', 2), \
+                mock.patch.object(proxy.CommandProxyHandler, 'handle', handle), \
+                mock.patch.object(proxy.CommandProxyServer, 'process_request_thread', worker):
+            with running_proxy(enabled=True, token=TOKEN) as server:
+                try:
+                    with contextlib.ExitStack() as clients:
+                        for _ in range(2):
+                            clients.enter_context(socket.create_connection(server.server_address, timeout=2))
+                        self.assertTrue(workers_started.wait(2))
+                        with socket.create_connection(server.server_address, timeout=2) as excess:
+                            self.assertEqual(excess.recv(1), b'')
+                        self.assertEqual(counts['started'], 2)
+                finally:
+                    release_workers.set()
+                self.assertTrue(workers_finished.wait(2), 'worker slots were not released')
+                self.assertEqual(request(server, token=TOKEN)[0], 200)
+
+    def test_failed_worker_start_releases_its_slot(self):
+        with mock.patch.object(proxy.CommandProxyServer, 'MAX_CONNECTIONS', 1):
+            with proxy.CommandProxyServer(('127.0.0.1', 0)) as server:
+                with mock.patch.object(proxy.http.server.ThreadingHTTPServer, 'process_request',
+                                       side_effect=RuntimeError('cannot start worker')) as start:
+                    for _ in range(2):
+                        with self.assertRaisesRegex(RuntimeError, 'cannot start worker'):
+                            server.process_request(mock.Mock(), ('127.0.0.1', 0))
+                    self.assertEqual(start.call_count, 2)
+
+    def test_enqueue_during_drain_is_not_lost(self):
+        scanning = threading.Event()
+        producer_started = threading.Event()
+        producer_done = threading.Event()
+
+        class DelayedTimestamp:
+            def __gt__(self, _cutoff):
+                # Force a producer to arrive while the consumer filters the
+                # snapshot. Without atomic queue operations its new command
+                # would be discarded by the consumer's subsequent clear.
+                scanning.set()
+                if not producer_started.wait(2):
+                    raise AssertionError('producer did not start')
+                producer_done.wait(0.1)
+                return True
+
+        with proxy.CommandProxyServer(('127.0.0.1', 0)) as server:
+            server.commands = [{'command': 'first', 'ts': DelayedTimestamp()}]
+
+            def enqueue():
+                producer_started.set()
+                server.enqueue_command({'command': 'second'})
+                producer_done.set()
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as workers:
+                drain = workers.submit(server.drain_commands)
+                self.assertTrue(scanning.wait(2))
+                producer = workers.submit(enqueue)
+                self.assertEqual([row['command'] for row in drain.result(timeout=3)], ['first'])
+                producer.result(timeout=3)
+            self.assertEqual([row['command'] for row in server.drain_commands()], ['second'])
+
+    def test_concurrent_pollers_deliver_each_command_once(self):
+        with running_proxy(enabled=True, token=TOKEN) as server:
+            for number in range(40):
+                self.assertEqual(request(server, 'POST', token=TOKEN,
+                                         body={'command': 'set_volume', 'volume': number})[0], 200)
+            start = threading.Barrier(4)
+
+            def poll():
+                start.wait(timeout=3)
+                status, _, rows = request(server, token=TOKEN)
+                self.assertEqual(status, 200)
+                return rows
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=4) as workers:
+                polls = [workers.submit(poll) for _ in range(4)]
+                volumes = [row['volume'] for poll in polls for row in poll.result(timeout=3)]
+            self.assertEqual(sorted(volumes), list(range(40)))
 
     def test_handler_never_serves_files(self):
         with running_proxy(enabled=True, token=TOKEN) as server:
