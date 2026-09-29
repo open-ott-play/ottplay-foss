@@ -282,7 +282,57 @@ async function testInputDiagnostics() {
             );
             const document = context.document;
             const target = document.getElementById("target");
+            const snapshot = () =>
+                JSON.parse(JSON.stringify(context.__ottDebugInputSnapshot()));
+            function readSnapshot() {
+                const registrations = [];
+                const targets = [context, document];
+                const original = targets.map((item) => item.addEventListener);
+                const before = {
+                    enabled: context.__ottDebug.enabled,
+                    hud: document.getElementById("ott_debug_hud"),
+                    log: context.__ottDebug.dump(),
+                    native: nativeCalls.length,
+                    requests: requests.length,
+                    timers: timers.length,
+                };
+                targets.forEach((item, index) => {
+                    item.addEventListener = function (...args) {
+                        registrations.push(args[0]);
+                        return original[index].apply(this, args);
+                    };
+                });
+                let result;
+                try {
+                    result = snapshot();
+                } finally {
+                    targets.forEach((item, index) => {
+                        item.addEventListener = original[index];
+                    });
+                }
+                assert.deepEqual(registrations, []);
+                assert.equal(context.__ottDebug.enabled, before.enabled);
+                assert.equal(
+                    document.getElementById("ott_debug_hud"),
+                    before.hud
+                );
+                assert.equal(context.__ottDebug.dump(), before.log);
+                assert.equal(nativeCalls.length, before.native);
+                assert.equal(requests.length, before.requests);
+                assert.equal(timers.length, before.timers);
+                return result;
+            }
             if (!enabledAtBoot) {
+                assert.deepEqual(readSnapshot(), {
+                    available: true,
+                    enabled: false,
+                });
+                const disabled = context.__ottDebugInputSnapshot();
+                disabled.enabled = true;
+                assert.deepEqual(readSnapshot(), {
+                    available: true,
+                    enabled: false,
+                });
                 assert.equal(
                     context.__ottDebugInput,
                     undefined,
@@ -292,6 +342,10 @@ async function testInputDiagnostics() {
                 target.dispatchEvent(
                     new context.MouseEvent("mousemove", { bubbles: true })
                 );
+                assert.deepEqual(readSnapshot(), {
+                    available: true,
+                    enabled: false,
+                });
                 if (bundle) context.toggleDebugHudInfo();
                 else context.__ottDebug.toggleHud();
             }
@@ -312,6 +366,18 @@ async function testInputDiagnostics() {
             assert(hud().textContent.includes("cursor=unknown"));
             assert(hud().textContent.includes("move=0 down=0 click=0 wheel=0"));
             assert(hud().textContent.includes("(no video)"));
+            assert.deepEqual(readSnapshot(), {
+                area: "unknown",
+                available: true,
+                click: 0,
+                cursor: "unknown",
+                down: 0,
+                enabled: true,
+                focus: document.hasFocus() ? "on" : "off",
+                move: 0,
+                page: "unknown",
+                wheel: 0,
+            });
             const cursor = (visibility) =>
                 document.dispatchEvent(
                     new context.CustomEvent("cursorStateChange", {
@@ -328,6 +394,25 @@ async function testInputDiagnostics() {
             refresh();
             assert(hud().textContent.includes("cursor=on focus=on"));
             assert(hud().textContent.includes("area=in"));
+            const active = readSnapshot();
+            assert.equal(active.cursor, "on");
+            assert.equal(active.focus, "on");
+            assert.equal(active.area, "in");
+            const returned = context.__ottDebugInputSnapshot();
+            returned.cursor = "DUMMY_SECRET";
+            returned.move = 9999;
+            assert.deepEqual(readSnapshot(), active);
+            for (const value of ["visible", "hidden", "DUMMY_SECRET"]) {
+                Object.defineProperty(document, "visibilityState", {
+                    configurable: true,
+                    value,
+                });
+                assert.equal(
+                    readSnapshot().page,
+                    value === "DUMMY_SECRET" ? "unknown" : value
+                );
+            }
+            delete document.visibilityState;
             cursor("DUMMY_SECRET");
             document.dispatchEvent(
                 new context.CustomEvent("webOSMouse", {
@@ -397,6 +482,13 @@ async function testInputDiagnostics() {
             assert(
                 hud().textContent.includes("move=1000 down=1 click=1 wheel=2")
             );
+            assert.deepEqual(readSnapshot(), {
+                ...active,
+                click: 1,
+                down: 1,
+                move: 1000,
+                wheel: 2,
+            });
             cursor(false);
             context.dispatchEvent(new context.Event("blur"));
             document.dispatchEvent(
@@ -413,6 +505,19 @@ async function testInputDiagnostics() {
             const timerCount = timers.length;
             api.toggleHud();
             assert.equal(hud(), null);
+            const hidden = readSnapshot();
+            assert.equal(hidden.enabled, true);
+            assert.equal(hidden.cursor, "off");
+            assert.equal(hidden.focus, "off");
+            assert.equal(hidden.area, "out");
+            assert.equal(hidden.wheel, 2);
+            wheel("mousewheel");
+            assert.equal(readSnapshot().wheel, 3);
+            assert.equal(
+                hud(),
+                null,
+                "Reading input state keeps the HUD hidden"
+            );
             api.toggleHud();
             target.dispatchEvent(
                 new context.MouseEvent("mousemove", { bubbles: true })
@@ -424,8 +529,8 @@ async function testInputDiagnostics() {
             );
             wheel("wheel");
             refresh();
-            assert(hud().textContent.includes("wheel=3"));
-            assert.equal(wheels, 3);
+            assert(hud().textContent.includes("wheel=4"));
+            assert.equal(wheels, 4);
             assert.equal(timers.length, timerCount);
             assert.equal(
                 context.localStorage.getItem("ottplay_debug"),

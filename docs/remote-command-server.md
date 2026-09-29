@@ -116,6 +116,54 @@ between batches, keeps at most four guide requests pending, and rejects results
 if the source or channel-load generation changes during collection.
 The previous command-only API remains compatible with older servers and players.
 
+### Remote diagnostic snapshots
+
+The existing `status` request (`ott NAME` or `ott --json NAME`) retains its
+`channels`, `provider`, `ready`, `uuid` and `volume` fields and adds an optional
+`diagnostics` object with `version: 1`. It uses the same authenticated request
+and response routes; no new server endpoint, credential or CLI action is needed.
+Older players may omit `diagnostics`, and consumers must accept that omission.
+
+The `epg` section reports whether hosted EPG diagnostics are `available` and
+whether hosted EPG is `enabled` for this installation. When enabled, the snapshot
+contains only `phase`, `failedPhase`, `elapsedMs` and `timingsMs` with separate
+`cache`, `download` and `parse` durations in milliseconds. Error codes, byte and
+programme counts remain in the player's local EPG diagnostics screen.
+Phases are `idle`,
+`starting`, `cache`, `waiting`, `download`, `parse`, `ready` and `error`; an
+unrecognized phase is `null`. This describes the hosted XMLTV worker, not
+native/provider EPG or proof that a particular channel has a current programme.
+
+The `input` section reports whether the LG input snapshot API is `available`
+and whether collection is `enabled`. Collection retains the existing local
+opt-in through **Information → Debug HUD**. A status query does not enable the
+HUD, install input listeners, change pointer visibility or start debug uploads.
+Once enabled, the snapshot contains cursor/focus states (`on`, `off`, `unknown`),
+page visibility (`visible`, `hidden`, `unknown`), pointer area (`in`, `out`,
+`unknown`) and counts of move, down, click and wheel events delivered to the
+page. Counts cover the current opted-in page session. Hiding the HUD does not
+end that session or reset its counters.
+
+`available: false` means the corresponding diagnostic API is absent.
+`available: true, enabled: false` means the API exists but its feature or
+collection is disabled; measurements are omitted.
+`available: true, enabled: null` means the API exists but its enabled state or snapshot could not be read
+reliably; measurements are also omitted.
+`unknown` means no usable state has been observed, not that the cursor is hidden
+or the TV is unfocused. Numeric counters and durations accept only finite,
+nonnegative safe integers up to `9007199254740991`; invalid measurements are
+`null`, not zero. Other unrecognized enum values are also `null`. A failed
+diagnostic getter does not prevent the ordinary status fields from being returned.
+
+Each producer creates a fresh snapshot with an explicit field allowlist; the
+status handler reads those dedicated APIs, never the raw local diagnostics.
+The diagnostics object excludes source
+URIs, hostnames, filenames, playback URLs, query strings, credentials, extra
+identifiers, raw error text and debug dumps. Pointer positions, typed keys and
+individual input events are not returned. Snapshots are read-only observations;
+an offline player cannot supply one, and an authenticated response does not
+prove visible playback or physical remote behavior.
+
 OTTClub's `server` is a bare host with an optional port, such as `club.example:8080`;
 its existing driver supplies the URL scheme. Other supported providers accept
 HTTP(S) URLs. Changing an OTTClub key preserves the stored host.

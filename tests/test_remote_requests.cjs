@@ -353,7 +353,106 @@ function checkGuideSelectionAndReload() {
         assert.equal(pending.timers.size, 0);
     }
 }
+async function checkStatusDiagnostics() {
+    const snapshot = async () =>
+        JSON.parse(JSON.stringify((await call("status")).data));
+    const forbidden = () =>
+        assert.fail("status must not read raw logs or enable collection");
+    const safe = { available: true, enabled: false };
+    host.__ottDebugInputInit = forbidden;
+    host.__ottDebug = { dump: forbidden, toggleHud: forbidden };
+    host.fetch = forbidden;
+    try {
+        let data = await snapshot();
+        assert.deepEqual(data, {
+            channels: 3,
+            diagnostics: {
+                epg: { available: false },
+                input: { available: false },
+                version: 1,
+            },
+            provider: "xtream",
+            ready: true,
+            uuid: "dev_test",
+            volume: 35,
+        });
+        host.__ottHostedEpg = {
+            diagnostics: forbidden,
+            remoteSnapshot: () => ({ ...safe }),
+        };
+        host.__ottDebugInputSnapshot = () => ({ ...safe });
+        data = await snapshot();
+        assert.deepEqual(data.diagnostics.epg, safe);
+        assert.deepEqual(data.diagnostics.input, safe);
+        const active = {
+            available: true,
+            elapsedMs: 96000,
+            enabled: true,
+            failedPhase: null,
+            phase: "download",
+            timingsMs: { cache: 1000, download: 90000, parse: 5000 },
+        };
+        host.__ottHostedEpg.remoteSnapshot = () => ({ ...active });
+        assert.deepEqual((await snapshot()).diagnostics.epg, active);
+        const secret = "private_subscription_token";
+        for (const unavailable of [
+            () => null,
+            () => true,
+            () => 1,
+            () => secret,
+            () => [],
+            () => ({ enabled: true }),
+            () => ({ available: true, enabled: "yes" }),
+            () => {
+                throw new Error(secret);
+            },
+        ]) {
+            host.__ottHostedEpg.remoteSnapshot = unavailable;
+            data = await snapshot();
+            assert.deepEqual(data.diagnostics.epg, {
+                available: true,
+                enabled: null,
+            });
+            assert.deepEqual(
+                data.diagnostics.input,
+                safe,
+                "failed EPG does not block input"
+            );
+            assert.equal(
+                data.volume,
+                35,
+                "failed diagnostics do not block ordinary status"
+            );
+            assert.ok(!JSON.stringify(data).includes(secret));
+            host.__ottHostedEpg.remoteSnapshot = () => ({ ...active });
+            host.__ottDebugInputSnapshot = unavailable;
+            data = await snapshot();
+            assert.deepEqual(data.diagnostics.input, {
+                available: true,
+                enabled: null,
+            });
+            assert.deepEqual(
+                data.diagnostics.epg,
+                active,
+                "failed input does not block EPG"
+            );
+            assert.ok(!JSON.stringify(data).includes(secret));
+            host.__ottDebugInputSnapshot = () => ({ ...safe });
+        }
+    } finally {
+        for (const key of [
+            "__ottHostedEpg",
+            "__ottDebugInputSnapshot",
+            "__ottDebugInputInit",
+            "__ottDebug",
+            "fetch",
+        ])
+            delete host[key];
+    }
+}
+
 (async () => {
+    await checkStatusDiagnostics();
     checkPendingGuideSnapshot();
     checkGuideBatchingAndCancellation();
     checkGuideSelectionAndReload();

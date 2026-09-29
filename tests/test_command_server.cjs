@@ -813,7 +813,17 @@ for (const value of [
 // Cache the serialized snapshot. Native/provider code can retain and mutate
 // its result object after calling done; a lost ACK must retry the same bytes.
 {
-    const result = { data: { volume: 35 }, status: "ok" };
+    const result = {
+        data: {
+            diagnostics: {
+                epg: { available: true, enabled: true, phase: "download" },
+                input: { available: true, enabled: false },
+                version: 1,
+            },
+            volume: 35,
+        },
+        status: "ok",
+    };
     let executions = 0;
     const rpc = harness("http:", (_request, done) => {
         executions++;
@@ -834,9 +844,15 @@ for (const value of [
     rpc.connect();
     rpc.respond(envelope);
     result.data.volume = 70;
+    result.data.diagnostics.epg.phase = "ready";
     rpc.next();
     const body = rpc.requests.at(-1).request.body;
     assert.equal(JSON.parse(body).data.volume, 35);
+    assert.equal(JSON.parse(body).data.diagnostics.epg.phase, "download");
+    assert.deepEqual(JSON.parse(body).data.diagnostics.input, {
+        available: true,
+        enabled: false,
+    });
     rpc.respond({}, 503);
     result.data.volume = 90;
     rpc.next();

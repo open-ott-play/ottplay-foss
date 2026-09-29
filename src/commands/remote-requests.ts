@@ -7,6 +7,23 @@ import {
 } from "../provider";
 import { handleCommand } from "./index";
 
+/** Read only producer-owned, allowlisted snapshots; never raw diagnostics or logs. */
+function remoteSnapshot(read: any): any {
+    if (typeof read !== "function") return { available: false };
+    try {
+        var value = read();
+        if (
+            value &&
+            typeof value === "object" &&
+            !Array.isArray(value) &&
+            value.available === true &&
+            typeof value.enabled === "boolean"
+        )
+            return value;
+    } catch (_) {}
+    return { available: true, enabled: null };
+}
+
 /** Queries expose metadata only: never URLs, credentials or the settings store. */
 export function executeRemoteRequest(
     request: any,
@@ -86,6 +103,13 @@ export function executeRemoteRequest(
     if (request.action === "status") {
         reply({
             channels: channels().length,
+            diagnostics: {
+                epg: remoteSnapshot(
+                    w.__ottHostedEpg && w.__ottHostedEpg.remoteSnapshot
+                ),
+                input: remoteSnapshot(w.__ottDebugInputSnapshot),
+                version: 1,
+            },
             provider: activeProvider(),
             ready: w.commandChannelsReady === true,
             uuid: w.deviceUUID || "",
