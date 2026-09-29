@@ -275,6 +275,169 @@ async function fixturePage(browser, profile, initialSettings, language) {
 
 for (const profile of ["server", "tauri"]) {
     test(
+        profile + " confirmation buttons keep their meaning under CSP",
+        async ({ browser }) => {
+            const fixture = await fixturePage(browser, profile);
+            const page = fixture.page;
+            try {
+                await page.evaluate(() => {
+                    // Reinitialization must not bind another activation handler.
+                    window.uiInit();
+                    window.uiInit();
+                    window.stbBindKeyHandler();
+                    window.closeList();
+                });
+                for (const answer of ["No", "Yes"]) {
+                    for (const action of ["click", "Enter", "Space"]) {
+                        await page.evaluate(() => {
+                            window.__fixtureViolations = [];
+                            window.__dialogAnswers = [];
+                            window.confirmBox(
+                                "Continue watching?",
+                                () => window.__dialogAnswers.push("Yes"),
+                                () => window.__dialogAnswers.push("No")
+                            );
+                        });
+                        const button = page
+                            .locator("#dialogbox")
+                            .getByRole("button", { exact: true, name: answer });
+                        if (action === "click")
+                            await button.locator(".btn").click();
+                        else {
+                            await button.focus();
+                            await page.keyboard.press(action);
+                        }
+                        await expect(page.locator("#dialogbox")).toBeHidden();
+                        await expect(page.locator("#list_window")).toBeHidden();
+                        expect(
+                            await page.evaluate(() => window.__dialogAnswers)
+                        ).toEqual([answer]);
+                        expect(
+                            await page.evaluate(
+                                () => window.__fixtureViolations
+                            )
+                        ).toEqual([]);
+                    }
+                }
+                expect(fixture.errors).toEqual([]);
+                expect(fixture.unexpectedRequests).toEqual([]);
+            } finally {
+                await fixture.close();
+            }
+        }
+    );
+    test(
+        profile + " quality picker consumes clicks and preserves resume input",
+        async ({ browser }) => {
+            const fixture = await fixturePage(browser, profile);
+            const page = fixture.page;
+            try {
+                await page.evaluate(() => {
+                    window.stbBindKeyHandler();
+                    window.__qualityChosen = [];
+                    window.__qualityResumed = 0;
+                    window.curColor = "#ffffff";
+                    window.curColorB = "#345678";
+                    window.__openQuality = () => {
+                        window.__fixtureViolations = [];
+                        window.showSelectBox(
+                            0,
+                            ["480", "720", "1080", "auto"],
+                            (index) => {
+                                window.__qualityChosen.push(index);
+                                window.closeList();
+                                window.confirmBox("Continue watching?", () => {
+                                    window.__qualityResumed++;
+                                });
+                            },
+                            -1,
+                            true
+                        );
+                    };
+                    window.__openQuality();
+                });
+                const picker = page.locator("#numprog");
+                const selected = picker.getByRole("button", {
+                    exact: true,
+                    name: "480",
+                });
+                const fullHd = picker.getByRole("button", {
+                    exact: true,
+                    name: "1080",
+                });
+                await expect(selected).toHaveAttribute("aria-pressed", "true");
+                await expect(selected).toHaveCSS(
+                    "background-color",
+                    "rgb(52, 86, 120)"
+                );
+                await fullHd.click();
+                await expect(fullHd).toHaveAttribute("aria-pressed", "true");
+                await expect(fullHd).toHaveCSS(
+                    "background-color",
+                    "rgb(52, 86, 120)"
+                );
+                await expect(page.locator("#list_window")).toBeHidden();
+                expect(
+                    await page.evaluate(() => window.__qualityChosen)
+                ).toEqual([]);
+                await fullHd.click();
+                await expect(picker).toBeHidden();
+                await expect(page.locator("#dialogbox")).toContainText(
+                    "Continue watching?"
+                );
+                expect(
+                    await page.evaluate(() => window.__qualityChosen)
+                ).toEqual([2]);
+                expect(await page.evaluate(() => window.__qualityResumed)).toBe(
+                    0
+                );
+                await page.keyboard.press("Enter");
+                await expect(page.locator("#dialogbox")).toBeHidden();
+                await expect(page.locator("#list_window")).toBeHidden();
+                expect(await page.evaluate(() => window.__qualityResumed)).toBe(
+                    1
+                );
+
+                await page.evaluate(() => window.__openQuality());
+                await page.keyboard.press("ArrowDown");
+                await page.keyboard.press("ArrowDown");
+                await expect(fullHd).toHaveAttribute("aria-pressed", "true");
+                await page.keyboard.press("Enter");
+                await expect(page.locator("#dialogbox")).toBeVisible();
+                expect(
+                    await page.evaluate(() => window.__qualityChosen)
+                ).toEqual([2, 2]);
+                expect(await page.evaluate(() => window.__qualityResumed)).toBe(
+                    1
+                );
+                await page.keyboard.press("Enter");
+                await expect(page.locator("#dialogbox")).toBeHidden();
+                await expect(page.locator("#list_window")).toBeHidden();
+                expect(await page.evaluate(() => window.__qualityResumed)).toBe(
+                    2
+                );
+
+                await page.evaluate(() => window.__openQuality());
+                await selected.focus();
+                await page.keyboard.press("Space");
+                await expect(page.locator("#dialogbox")).toBeVisible();
+                expect(
+                    await page.evaluate(() => window.__qualityChosen)
+                ).toEqual([2, 2, 0]);
+                expect(await page.evaluate(() => window.__qualityResumed)).toBe(
+                    2
+                );
+                expect(
+                    await page.evaluate(() => window.__fixtureViolations)
+                ).toEqual([]);
+                expect(fixture.errors).toEqual([]);
+                expect(fixture.unexpectedRequests).toEqual([]);
+            } finally {
+                await fixture.close();
+            }
+        }
+    );
+    test(
         profile +
             " archive confirmation preserves translated lines and choices",
         async ({ browser }) => {
