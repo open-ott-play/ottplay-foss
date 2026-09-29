@@ -454,6 +454,8 @@ async function testInputDiagnostics() {
         ["?debug=10", null, false],
         ["?debug=trueish", null, false],
         ["?next=debug=1", null, false],
+        ["?next=https://example.invalid/?debug=1", null, false],
+        ["?next=https://example.invalid/?debug=true", null, false],
         ["?debug=1&other=yes", null, true],
         ["?other=yes&debug=true", null, true],
         ["?debug=1", "0", true],
