@@ -80,6 +80,9 @@ function fixture(
                 append() {
                     return this;
                 },
+                hide() {
+                    return this;
+                },
                 is: () => true,
             };
         },

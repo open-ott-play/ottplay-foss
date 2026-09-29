@@ -1958,13 +1958,17 @@ function mountProviderDriver(
     if (profile.kind === "playlist") specialized = host.__ottPlaylistDrivers;
     if (profile.kind === "edem") specialized = host.__ottEdemDriver;
     // OTTPLAY_FULL_ONLY_END
-    host.getChannelsArray = function (callback: () => void) {
+    host.getChannelsArray = function (
+        callback: () => void,
+        settled?: () => void
+    ) {
         if (!owner.active()) return;
         if (id === "xtream")
             host.$(host.launch_id).append(
                 host._("Loading channels from Xtream API...")
             );
         driver.load(function (catalog, error, pending) {
+            if (owner.active() && !pending && settled) settled();
             if (!owner.active()) return;
             if (error === "credentials" && !specialized) {
                 if (stalkerSettings) stalkerSettings.edit();

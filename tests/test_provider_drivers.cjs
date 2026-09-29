@@ -288,6 +288,150 @@ test("actual loadProv/loadChannels use instance paths without script evaluation 
     assert.deepEqual(f.scripts, []);
 });
 
+test("managed M3U loading stays visible through slow direct/proxy stages and closes on success or failure", () => {
+    const f = integrationFixture("m3u", {
+        m3um3uArr: JSON.stringify({
+            active: 0,
+            M3Us: [{ www: "https://playlist.test/list.m3u" }],
+        }),
+    });
+    const body = "#EXTM3U\n#EXTINF:-1,One\nhttps://stream.test/one\n";
+    f.host.loadProv();
+    f.advanceTimers(5000);
+    assert.equal(f.panels["#launch"].visible, true);
+    f.requests[0].reject();
+    const pending = f.requests[1];
+    assert(pending.settings.url.endsWith("/m3u/cp.php"));
+    f.advanceTimers(30000);
+    assert.equal(f.panels["#launch"].visible, true);
+    assert.equal(f.completed, 0);
+    pending.resolve(body);
+    assert.equal(f.panels["#launch"].visible, false);
+    assert.equal(f.completed, 1);
+    f.host.loadChannels();
+    assert.equal(f.panels["#dialogbox"].visible, true);
+    f.requests.at(-1).reject();
+    f.advanceTimers(30000);
+    assert.equal(f.panels["#dialogbox"].visible, true);
+    f.requests.at(-1).reject();
+    assert.equal(f.panels["#dialogbox"].visible, false);
+    assert.equal(f.completed, 2);
+    assert.equal(f.errors.length, 1);
+});
+
+test("all managed provider kinds settle loader only on a terminal catalog result", () => {
+    const profiles = fixture().host.__ottProviderDriverProfiles;
+    const representatives = new Map(
+        profiles.map((profile) => [profile.kind, profile.id])
+    );
+    assert.equal(representatives.size, 10);
+    for (const [kind, id] of representatives) {
+        const f = integrationFixture(id);
+        f.host.infoBox = () => {};
+        const driver = f.mount(id);
+        let deliver;
+        driver.load = (callback) => {
+            deliver = callback;
+        };
+        f.host.loadChannels();
+        f.advanceTimers(30000);
+        assert.equal(f.panels["#launch"].visible, true, kind);
+        deliver(
+            { channels: {}, groupOrder: [], groups: {}, ids: [] },
+            undefined,
+            true
+        );
+        assert.equal(
+            f.panels["#launch"].visible,
+            true,
+            kind + ": partial catalog"
+        );
+        assert.equal(f.completed, 0, kind);
+        deliver(undefined, "network");
+        assert.equal(f.panels["#launch"].visible, false, kind);
+        assert.equal(f.completed, 1, kind);
+    }
+});
+
+test("missing credentials settle before opening settings and cleanup preserves the new dialog", () => {
+    for (const id of ["m3u", "xtream", "stalker"]) {
+        const f = integrationFixture(id, { xtreamxtream_data: "{}" });
+        let opened = 0;
+        f.host.showPage = () => {
+            assert.equal(f.panels["#launch"].visible, false, id);
+            opened++;
+            f.host.$("#dialogbox").html("settings").show();
+        };
+        f.host.loadProv();
+        assert.equal(f.completed, 0, id);
+        assert.equal(f.requests.length, 0, id);
+        assert(opened > 0, id);
+        f.advanceTimers(30000);
+        f.host.__ottProviderRuntime.classic.dispose();
+        assert.equal(f.panels["#dialogbox"].visible, true, id);
+    }
+});
+
+test("catalog cancel and provider replacement cannot dismiss a newer playback prompt", () => {
+    const f = integrationFixture("xtream");
+    f.host.loadProv();
+    f.host.__ottProviderRuntime.classic.dispose();
+    assert.equal(f.panels["#launch"].visible, false);
+    assert.equal(f.requests[0].aborts, 1);
+    f.host.loadProv();
+    const old = f.requests.at(-1);
+    assert.equal(f.panels["#dialogbox"].visible, true);
+    const loaded = f.host.onChannelsLoaded;
+    f.host.onChannelsLoaded = () => {
+        loaded();
+        f.host.$("#dialogbox").html("playback prompt").show();
+    };
+    f.host.loadProv("demo");
+    assert.equal(old.aborts, 1);
+    assert.equal(f.panels["#dialogbox"].visible, true);
+    old.resolve({ live_streams: [] });
+    f.advanceTimers(30000);
+    f.host.__ottProviderRuntime.classic.dispose();
+    assert.equal(f.panels["#dialogbox"].visible, true);
+    assert.equal(f.panels["#dialogbox"].html, "playback prompt");
+});
+
+test("repeated catalog reloads replace the spinner after both pending and completed loads", () => {
+    const f = integrationFixture("xtream");
+    const channels = { live_streams: [{ name: "Live", stream_id: 7 }] };
+    f.host.loadProv();
+    f.requests[0].resolve(channels);
+    f.host.loadChannels();
+    const pending = f.requests.at(-1);
+    assert.equal(f.panels["#dialogbox"].visible, true);
+    f.host.loadChannels();
+    assert.equal(pending.aborts, 1);
+    assert.equal(f.panels["#dialogbox"].visible, true);
+    pending.resolve(channels);
+    f.advanceTimers(30000);
+    assert.equal(f.panels["#dialogbox"].visible, true);
+    f.requests.at(-1).resolve(channels);
+    assert.equal(f.panels["#dialogbox"].visible, false);
+    f.host.loadChannels();
+    assert.equal(f.panels["#dialogbox"].visible, true);
+    f.requests.at(-1).resolve(channels);
+    assert.equal(f.panels["#dialogbox"].visible, false);
+    assert.equal(f.completed, 3);
+});
+
+test("unmanaged dealer scripts retain the bounded compatibility fallback", () => {
+    const f = integrationFixture("demo");
+    f.mount("demo");
+    f.host.__ottActiveProviderDriver = null;
+    f.host.getChannelsArray = () => {};
+    f.host.loadChannels();
+    f.advanceTimers(2999);
+    assert.equal(f.panels["#launch"].visible, true);
+    f.advanceTimers(1);
+    assert.equal(f.panels["#launch"].visible, false);
+    assert.equal(f.completed, 0);
+});
+
 test("driver-owned channels cannot be changed by classic view normalization", () => {
     const f = fixture(stored());
     const driver = f.mount("xtream");
