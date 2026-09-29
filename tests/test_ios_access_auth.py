@@ -588,6 +588,45 @@ Task { @MainActor in
         httpPlugin.httpRequest(badHttpID)
         assert(badHttpID.error == "Invalid HTTP request identifier")
 
+        for portal in [false, true] {
+            let url = "https://text.fixture.invalid/" + (portal ? "load.php" : "list.m3u") + "?token=PRIVATE_FIXTURE"
+            let requestID = portal ? "invalid-portal-text" : "invalid-http-text"
+            URLSession.handler = { request in
+                return (Data([0xC3, 0x28]), HTTPURLResponse(url: request.url!, statusCode: 200,
+                    httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "text/plain; charset=utf-8"])!)
+            }
+            let malformed = CAPPluginCall(["url": url, "requestId": requestID])
+            if portal { httpPlugin.portalRequest(malformed) } else { httpPlugin.httpRequest(malformed) }
+            await until { malformed.settlements == 1 }
+            assert(malformed.result == nil && malformed.error == "portalRequest failed: response is not valid UTF-8",
+                "Malformed upstream bytes must fail instead of becoming a successful empty playlist")
+            assert(malformed.errorCode == "invalid_response")
+
+            let text = "#EXTM3U\n#EXTINF:-1,Канал 🎵\nhttps://media.fixture.invalid/live\n"
+            URLSession.handler = { request in
+                return (Data(text.utf8), HTTPURLResponse(url: request.url!, statusCode: 200,
+                    httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "text/plain; charset=utf-8"])!)
+            }
+            let retry = CAPPluginCall(["url": url, "requestId": requestID])
+            if portal { httpPlugin.portalRequest(retry) } else { httpPlugin.httpRequest(retry) }
+            await until { retry.settlements == 1 }
+            assert(retry.error == nil && retry.result?["body"] as? String == text,
+                "Failed decoding must release the request ID and preserve the exact Unicode retry")
+            let completed = CAPPluginCall(["requestId": requestID])
+            httpPlugin.cancelHttpRequest(completed)
+            await until { completed.result != nil }
+            assert(completed.result?["cancelled"] as? Bool == false)
+        }
+        URLSession.handler = { request in
+            return (Data(), HTTPURLResponse(url: request.url!, statusCode: 204,
+                httpVersion: "HTTP/1.1", headerFields: [:])!)
+        }
+        let emptyResponse = CAPPluginCall(["url": "https://text.fixture.invalid/empty", "requestId": "empty-response"])
+        httpPlugin.httpRequest(emptyResponse)
+        await until { emptyResponse.settlements == 1 }
+        assert(emptyResponse.error == nil && emptyResponse.result?["body"] as? String == "" &&
+            emptyResponse.result?["status"] as? Int == 204, "A legitimate empty response must remain valid")
+
         var downloadGate: CheckedContinuation<Void, Never>?
         var downloadCancelled = false
         AccessMediaHTTP.handler = { request, limit in
